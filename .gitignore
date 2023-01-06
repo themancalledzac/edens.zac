@@ -9,6 +9,14 @@ lerna-debug.log*
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
+# Intelli-J
+.idea
+
+# Package / Dependencies
+package.json
+package-lock.json
+
+
 # Runtime data
 pids
 *.pid
