@@ -34,7 +34,10 @@ as 'outdoors', 'portrait', 'Scotland', 'PNWER', 'Big Sky' and more. We want the 
 view what they want to see.
 
 - FrontEnd Application ( Client )
-    - We need a functional Application that fulfils two objectives, Photography and Coding
+    - We need a functional Application that fulfils two objectives, Photography and Coding. Iniitally we only will care
+      or work on the Photography side of things. This will be a full stack application, and as such the Front End (
+      Client ) will be required to make DB calls for Image data, and will need to have that data able to be re-sorted,
+      searched, queried, created, and modified.
     - Pages:
         - Front Page is a landing page for the user to choose one or the other.
             - Background Image, no scrolling, no header/footer, no menu bar, just two options to click.
@@ -80,6 +83,8 @@ view what they want to see.
       from a local machine to AWS. We have a bit of backend business logic that needs to take place between selecting an
       image, and hitting upload. An image should contain metadata tags, either on lightroom export, or on upload.
       Initially we will probably need to build a super simple frontend for this application to allow for the uploading.
+    - Tech to be used:
+        - Java ( latest ), Spring Framework, AWS DynamoDB, AWS S3 Bucket storage
     - Business Logic on image Select -> Upload:
         - Assign Image a UUID.
         - Pull any EXIF tags, if any exist.
@@ -107,6 +112,7 @@ view what they want to see.
 - Milestone 1:
     - Get a body of photography that we can work with
         - MVP would include Steph Wedding pics, PNWER pics, family pics, and maybe a few backpacking trips exported.
+    - We need to get a solid 100-200 images. best of the best from a few different time periods.
 - Milestone 2:
     - AWS S3 bucket
         - Images uploaded here for storage.
