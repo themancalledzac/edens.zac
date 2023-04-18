@@ -101,7 +101,7 @@ view what they want to see.
             - Each of these variants of the image would have their own location, all saved to that UUID.
         - Upload to DynamoDB a document as follows:
             - UUID, S3 Bucket Location(s), Tag Array(could be blank? but prefer not), date, Aperture, Shutter Speed,
-              ISO, Location, Color/BW,
+              ISO, Location, Color/BW, STAR RATING(*)
             - We should probably verify that at least 1 TAG exists
     - Future Logic would allow for us to PULL down images, and update/add Tags/metadata at will. (PUT method obvs)
         - This would really allow us to UPLOAD now FIX later.
@@ -109,17 +109,17 @@ view what they want to see.
 
 ## Milestone Order
 
-- Milestone 1:
+- ### **_Milestone 1:_**
     - Get a body of photography that we can work with
         - MVP would include Steph Wedding pics, PNWER pics, family pics, and maybe a few backpacking trips exported.
     - We need to get a solid 100-200 images. best of the best from a few different time periods.
-- Milestone 2:
+- ### **_Milestone 2:_**
     - AWS S3 bucket
         - Images uploaded here for storage.
         - Will need to work out how to access images in a secure manner.
         - Right now, we will need to upload manually to AWS. We will have easy access to image locations, and can use
           that later in our building of our Database
-- Milestone 3:
+- ### **_Milestone 3:_**
     - FrontEnd application in a bare state. Let's start with:
         - Landing Page ( as seen above )
         - Photo Page
@@ -127,7 +127,7 @@ view what they want to see.
             - ( as above )
             - Let's start with Header, Footer, Body contains:
                 - List of Photo groupings ( start with Event, Outdoor, Portrait )
-- Milestone 4:
+- ### **_Milestone 4_**:
     - Backend Application time!
         - Let's start by building a SPRING gateway server
         - Keep it simple
@@ -138,20 +138,31 @@ view what they want to see.
             - getImagesByTag
     - Database Build
         - AWS DynamoDB
-- Milestone 5:
+- ### _**Milestone** 5_:
     - Frontend:
         - Move our logic from using static images to utilizing our Server DB connection.
         - Right now let's just utilize the logic we are already doing here but with our server.
             - aka, getSection, or getLayout, or getActivity, or something like that.
-- Milestone 6:
+- ### **_Milestone 6:_**
     - Auth0 logic added
     - New page, which requires an AUTH0 login
         - Dev Page ( last, once photos are accessible from DB )
-- Milestone 7:
+- ### **_Milestone 7:_**
     - Dev Page Logic
     - We want an Upload ability, and an Edit ability
     - Upload will require a certain number of data-points from an Image
     - We will select an image from local Storage, which will need to:
-    - Read EXIF metadata from image, and add it the page, helping fill out our required 'Image Data' portion
+    - Read `EXIF` metadata from image, and add it the page, helping fill out our required 'Image Data' portion
     - This is important because when uploading a new image, we need to make sure certain data exists, as stated above.
-    - 
+    -
+
+## Thoughts
+
+- Star Rating
+    - What we could do with this have a more specified order, showing, or hiding altogether, based on star rating.
+    - If 10 images are in a grouping, but only 5 can be shown at a time, we would choose the highest rated images first,
+      and then progress in whatever other order we'd want.
+    - Guest, or not logged in users would be presented the base page, where only top rated images are visible.
+    - As such, We could also have ALL images available only when LOGGED IN ( AUTH0 ), otherwise the only images that load are the
+      top-rated.
+        - Could also have a `LoggedInOnly` [STATE] that would render a toggle to `SHOW_ALL`, or something like that.
