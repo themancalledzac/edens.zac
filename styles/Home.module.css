@@ -1,35 +1,79 @@
 .container {
-    background-color: #0070f3;
+    background-color: #fafafa;
     height: 100%;
     width: 100%;
     min-height: 100vh;
+    display: flex;
+    /*margin-top: 0.3rem;*/
 }
 
-
 .paragraph {
+    /*color: blue;*/
+}
+
+.menu {
     color: black;
+    max-width: 100%;
+}
+
+.menuItem {
+    width: 100%;
+    padding-bottom: 1rem;
+}
+
+.sideBarButton {
+    font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+    font-size: 2.5rem;
+    transition: 0.08s ease-in-out;
+    width: 100%;
+}
+
+.sideBarButton:hover {
+    font-family: "Apple SD Gothic Neo";
+    padding-left: 0.2rem;
+    font-size: 2.55rem;
+    color: #d8d8d8;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.name {
+    max-width: 100%;
+    font-size: 50px;
+    color: black;
+    vertical-align: top;
+    margin-top: 0;
 }
 
 .test {
     background-color: darkorange;
 }
 
+.sidebar {
+    flex-grow: 0;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    width: 300px;
+    min-width: 290px;
+
+}
 
 .main {
     min-height: 100vh;
-    /*max-height: 90%;*/
-    padding: 3rem 0;
-    max-width: 1500px;
-    margin-left: 3rem;
-    margin-right: 3rem;
+    flex-grow: 5;
+    padding: 1rem 0;
+    max-width: 2500px;
+    padding-right: 1rem;
     margin-top: auto;
     /*opacity: 50%;*/
-    flex: 1;
+    flex: 0 1 auto;
     /*display: flex;*/
     flex-direction: column;
     justify-content: center;
     align-items: center;
 }
+
 
 .header {
     width: 100%;
@@ -37,7 +81,10 @@
     display: flex;
     flex-direction: row-reverse;
     margin-bottom: 3rem;
+    position: relative;
+
 }
+
 
 .icon {
     height: 50px;
@@ -50,12 +97,27 @@
 
 .mainCard {
     max-height: 75%;
-    background-color: lightblue;
+    background-color: white;
     padding: 2rem;
-    border-radius: 0.5rem;
+    /*border-radius: 0.5rem;*/
     margin-bottom: 3rem;
 
 }
+
+.carouselImageHorizontal {
+    max-width: 50%;
+    padding: 0.5rem;
+}
+
+.carouselImageVertical {
+    padding: 0.5rem;
+    max-width: 25%;
+    /*border: 10px solid white;*/
+}
+
+/*.carouselImage:hover {*/
+/*    max-width: 100%;*/
+/*}*/
 
 .footer {
     display: flex;
@@ -74,7 +136,7 @@
 }
 
 .title a {
-    color: #0070f3;
+    color: black;
     text-decoration: none;
 }
 
@@ -86,6 +148,7 @@
 }
 
 .title {
+    color: black;
     margin: 0;
     line-height: 1.15;
     font-size: 4rem;
@@ -150,8 +213,9 @@
     margin-top: 25px;
 }
 
-.paragraph {
+.aboutParagraph {
     width: 95%;
+    color: black;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -169,6 +233,17 @@
         width: 100%;
         flex-direction: column;
     }
+
+    .main {
+        width: 100%;
+    }
+
+    .sidebar {
+        flex-grow: 0;
+        width: 5rem;
+        flex-shrink: 3;
+        /*padding: 1rem;*/
+    }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -184,4 +259,25 @@
     .logo img {
         filter: invert(1);
     }
+
+    .container {
+        background-color: black;
+    }
+
+    .name {
+        color: white;
+    }
+
+    .menu {
+        color: white;
+    }
+
 }
+
+
+/*  Breakpoint for Width change is 1300*/
+
+/*
+    1500px - Breakpoint for Main Card, aka the max width for an image(?)
+    Do we want something lower for a main card?
+ */

@@ -154,7 +154,10 @@ view what they want to see.
     - We will select an image from local Storage, which will need to:
     - Read `EXIF` metadata from image, and add it the page, helping fill out our required 'Image Data' portion
     - This is important because when uploading a new image, we need to make sure certain data exists, as stated above.
-    -
+- ### **_Milestone 8:_**
+    - https://aws.amazon.com/blogs/mobile/amplify-next-js-13/
+      - Let's connect to amplify
+      - Get base Page Working
 
 ## Thoughts
 
@@ -163,6 +166,82 @@ view what they want to see.
     - If 10 images are in a grouping, but only 5 can be shown at a time, we would choose the highest rated images first,
       and then progress in whatever other order we'd want.
     - Guest, or not logged in users would be presented the base page, where only top rated images are visible.
-    - As such, We could also have ALL images available only when LOGGED IN ( AUTH0 ), otherwise the only images that load are the
-      top-rated.
+    - As such, We could also have ALL images available only when LOGGED IN ( AUTH0 ), otherwise the only images that
+      load are the top-rated.
         - Could also have a `LoggedInOnly` [STATE] that would render a toggle to `SHOW_ALL`, or something like that.
+
+Logic Image carousel Layout Images 4 + 5 stars are full sized (for horizontal), and side by side for vertical. Images 3
+stars are as follows:
+
+createImageCarousel(Array images) => {
+
+    // Images will probably be more of an Array of Image Objects?
+
+    While (images.length) {
+
+        new array[] newSmallVerticalRow, newSmallHorizontalRow, newLargeVerticalRow, newLargeHorizontalRow; 
+        new array[] rowArray = [newSmallVerticalRow, newSmallHorizontalRow, newLargeVerticalRow, newLargeHorizontalRow];
+        new Boolean preferLarge = true;
+
+        addRow(images) => {
+            checkComplete();
+            if (!completed) => {
+                for (image in images) {
+                    addImage(image);
+                    if (checkComplete() => return)
+                }
+            }
+addImage(images) => {
+    
+                if(newImage.star == 3) => 
+                    if(newImage.dir == vertical) => SmallVerticalRow(newImage);
+                    if(newImage.dir == horizontal) => SmallHorizontalRow(newImage);
+                if(newImage.star >= 4) =>
+                    if(newImage.dir == vertical) => LargeVerticalRow(newImage);
+                    if(newImage.dir == horizontal) => LargeHorizontalRow(newImage);
+                verifyRowCreated;
+                setNewFalse;
+            )
+            if(!new) => {
+                for (row in rowArray) {
+                    if (row.length == row.maxLength) =>
+                        return row
+                }
+            }
+        } 
+
+        addImage(images) => {
+              if(newImage.star == 3) => 
+                    if(newImage.dir == vertical) => SmallVerticalRow(newImage);
+                    if(newImage.dir == horizontal) => SmallHorizontalRow(newImage);
+                if(newImage.star >= 4) =>
+                    if(newImage.dir == vertical) => LargeVerticalRow(newImage);
+                    if(newImage.dir == horizontal) => LargeHorizontalRow(newImage);
+                verifyRowCreated;
+                setNewFalse;
+        }
+    }
+
+}
+
+
+class ImageRow =>
+    int length;
+    int maxLength;
+    Array [Images]
+    
+
+class SmallVerticalRow extends ImageRow =>
+    int length;
+    int maxLength = 4;
+
+
+
+// TODO: We need a new different, Mix row. if Small(3star)
+    // TODO: contains 1 horizontal and 2 vertical
+    // TODO: Do we, when creating, take 1 image out of IMAGE, and into Store(short term storage image bucket)
+    // TODO: if we do this, then after adding image, we check if any type of row is able to be built, and THEN build it.
+    // TODO: we could have an alternator value (preferLarge==true/false) that prefers a Large row, UNTIL we have gotten one
+        // TODO: aka, if(preferLarge) => check large row options first(aka, do we have 1 horizontal, or two vertical)
+        // TODO: aka, if(!preferLarge) => check small row opetion first
+        // TODO: aka, this means that, we will still get what is available, but should get more variance, or back and forth

@@ -1,7 +1,11 @@
-// import Head from 'next/head'
-// import Image from 'next/image'
 import styles from '../styles/Home.module.css'
-import { Parallax, ParallaxLayer } from '@react-spring/parallax';
+import Image from 'next/image';
+import SideBar from "../Components/SideBar";
+import About from "../Components/About";
+import { imageData } from "../Assets/imageData";
+import CarouselImage from "../Components/CarouselImage";
+import ImageCarousel from "../Components/ImageCarousel";
+
 
 export default function Home() {
 
@@ -10,39 +14,21 @@ export default function Home() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.containerMain}>
-                <div className={styles.main}>
-                    <div className={styles.header}>
-                        <a className={styles.icon}></a>
-                        <a className={styles.icon}></a>
-                        <a className={styles.icon}></a>
-                    </div>
-                    <div className={styles.mainCard}>
-
-                        <h1 className={styles.title}>Zac</h1>
-                        <h1 className={styles.title}>
-                            <a>Edens</a>
-                        </h1>
-                        <paragraph className={styles.paragraph}>This is my About me yo. It will be hidden on load, or
-                            easily openable. Lorem ipsum dolor sit amet, consectetur adipisicing
-                            elit.
-                            Dolor
-                            eaque eligendi fuga ipsum
-                            iste iure minima molestias natus, neque nisi odio possimus quam quo quos reiciendis
-                            similique
-                            suscipit! Ab aperiam architecto aut, eius ex exercitationem explicabo facere facilis itaque
-                            iusto
-                            labore maxime natus nulla quaerat quia quibusdam recusandae suscipit ullam!
-                        </paragraph>
-                    </div>
-                    {/*TODO: These bottom cards need to be 'workCard' or something*/}
-                    {/*TODO: They need to be slightly farther away from our main card.*/}
-                    <div className={styles.mainCard}>
-                        <h1 className={styles.title}>Photography</h1>
-                    </div>
-                    <div className={styles.mainCard}>
-                        <h1 className={styles.title}>Coding</h1>
-                    </div>
+            <SideBar/>
+            <div className={styles.main}>
+                <Image
+                    src={require( '../public/000005530033.jpg' )}
+                    alt="picture I took"
+                />
+                <About/>
+                <ImageCarousel/>
+                <div className={styles.header}>
+                    <a className={styles.icon}>A</a>
+                    <a className={styles.icon}>B</a>
+                    <a className={styles.icon}>C</a>
+                </div>
+                <div className={styles.mainCard}>
+                    <h1 className={styles.title}>Coding</h1>
                 </div>
             </div>
         </div>
