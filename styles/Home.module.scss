@@ -1,0 +1,326 @@
+.container {
+  height: 100%;
+  width: 100%;
+  min-height: 100vh;
+  background-color: black;
+  display: flex;
+  flex-direction: column;
+}
+
+.navBarWrapper {
+  width: 100%;
+  height: 5rem;
+  display: flex;
+  justify-content: space-between;
+  flex-direction: row;
+}
+
+.navBarLeft, .navBarRight {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* This line centers items vertically */
+  padding: 1rem;
+}
+
+.navBarLeft {
+  background-color: #0070f3;
+}
+
+.navBarRight {
+  background-color: red;
+}
+
+.bodyWrapper {
+  margin: 2rem;
+}
+
+.sectionOne, .sectionTwo, .sectionThree {
+  width: 100%;
+  height: 10rem;
+  margin-bottom: 2rem;
+  background-size: 100% auto;
+  background-position: center;
+  background-attachment: fixed;
+  //background-image: url("../Images/testImage.jpg");
+}
+
+.sectionOne {
+  //background-image: url("../Images/testImage.jpg");
+}
+
+.sectionTwo {
+  background-color: #5b9fef;
+}
+
+.sectionThree {
+  background-color: #8ab7ec;
+}
+
+.menu {
+  color: black;
+  max-width: 100%;
+}
+
+.menuItem {
+  width: 100%;
+  padding-bottom: 1rem;
+}
+
+.sideBarButton {
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  font-size: 2.5rem;
+  transition: 0.08s ease-in-out;
+  width: 100%;
+}
+
+.sideBarButton:hover {
+  font-family: "Apple SD Gothic Neo";
+  padding-left: 0.2rem;
+  font-size: 2.55rem;
+  color: #d8d8d8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.name {
+  max-width: 100%;
+  font-size: 50px;
+  color: black;
+  vertical-align: top;
+  margin-top: 0;
+}
+
+.test {
+  background-color: darkorange;
+}
+
+.sidebar {
+  flex-grow: 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  min-width: 290px;
+
+}
+
+.main {
+  min-height: 100vh;
+  flex-grow: 5;
+  padding: 1rem 0;
+  max-width: 2500px;
+  padding-right: 1rem;
+  margin-top: auto;
+  /*opacity: 50%;*/
+  flex: 0 1 auto;
+  /*display: flex;*/
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+
+.header {
+  width: 100%;
+  flex: auto;
+  display: flex;
+  flex-direction: row-reverse;
+  margin-bottom: 3rem;
+  position: relative;
+
+}
+
+
+.icon {
+  height: 50px;
+  width: 50px;
+  border-radius: 5px;
+  background-color: #fafafa;
+  top: 50px;
+  margin-left: 3rem;
+}
+
+.mainCard {
+  max-height: 75%;
+  background-color: white;
+  padding: 2rem;
+  /*border-radius: 0.5rem;*/
+  margin-bottom: 3rem;
+
+}
+
+.carouselImageHorizontal {
+  max-width: 50%;
+  padding: 0.5rem;
+}
+
+.carouselImageVertical {
+  padding: 0.5rem;
+  max-width: 25%;
+  /*border: 10px solid white;*/
+}
+
+/*.carouselImage:hover {*/
+/*    max-width: 100%;*/
+/*}*/
+
+.footer {
+  display: flex;
+  flex: 1;
+  padding: 2rem 0;
+  border-top: 1px solid #eaeaea;
+  justify-content: center;
+  align-items: center;
+}
+
+.footer a {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+}
+
+.title a {
+  color: black;
+  text-decoration: none;
+}
+
+.title a:hover,
+.title a:focus,
+.title a:active {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.title {
+  color: black;
+  margin: 0;
+  line-height: 1.15;
+  font-size: 4rem;
+}
+
+.title,
+.description {
+  text-align: center;
+}
+
+.description {
+  margin: 4rem 0;
+  line-height: 1.5;
+  font-size: 1.5rem;
+}
+
+.code {
+  background: #fafafa;
+  border-radius: 5px;
+  padding: 0.75rem;
+  font-size: 1.1rem;
+  font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono,
+  Bitstream Vera Sans Mono, Courier New, monospace;
+}
+
+.grid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 800px;
+}
+
+.card {
+  margin: 1rem;
+  padding: 1.5rem;
+  text-align: left;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid #eaeaea;
+  border-radius: 10px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  max-width: 300px;
+}
+
+.card:hover,
+.card:focus,
+.card:active {
+  color: #0070f3;
+  border-color: #0070f3;
+}
+
+.card h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+}
+
+.card p {
+  margin: 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+  margin-top: 25px;
+}
+
+.aboutParagraph {
+  width: 95%;
+  color: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: auto;
+  margin-top: 2rem;
+}
+
+.logo {
+  height: 1em;
+  margin-left: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .grid {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .main {
+    width: 100%;
+  }
+
+  .sidebar {
+    flex-grow: 0;
+    width: 5rem;
+    flex-shrink: 3;
+    /*padding: 1rem;*/
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .card,
+  .footer {
+    border-color: #222;
+  }
+
+  .code {
+    background: #111;
+  }
+
+  .logo img {
+    filter: invert(1);
+  }
+
+  .name {
+    color: white;
+  }
+
+  .menu {
+    color: white;
+  }
+
+}
+
+
+/*  Breakpoint for Width change is 1300*/
+
+/*
+    1500px - Breakpoint for Main Card, aka the max width for an image(?)
+    Do we want something lower for a main card?
+ */

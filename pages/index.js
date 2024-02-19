@@ -1,36 +1,30 @@
-import styles from '../styles/Home.module.css'
-import Image from 'next/image';
-import SideBar from "../Components/SideBar";
-import About from "../Components/About";
-import { imageData } from "../Assets/imageData";
-import CarouselImage from "../Components/CarouselImage";
-import ImageCarousel from "../Components/ImageCarousel";
-
+import styles from '../styles/Home.module.scss'
+import ParallaxSection from "../Components/ParallaxSection/ParallaxSection";
+import imageDirectory from "../Images/imageDirectory.json";
+import { useState } from "react";
+import PhotographyPage from "../Components/PhotographyPage/PhotographyPage";
 
 export default function Home() {
+    const [isPhotographyPage, setIsPhotographyPage] = useState( true );
 
     // TODO: link: https://webdesign.tutsplus.com/tutorials/create-a-masked-background-effect-with-css--cms-21112
     // TODO: a 'fixed background' scrolling effect
 
     return (
         <div className={styles.container}>
-            <SideBar/>
-            <div className={styles.main}>
-                <Image
-                    src={require( '../public/000005530033.jpg' )}
-                    alt="picture I took"
-                />
-                <About/>
-                <ImageCarousel/>
-                <div className={styles.header}>
-                    <a className={styles.icon}>A</a>
-                    <a className={styles.icon}>B</a>
-                    <a className={styles.icon}>C</a>
+            <div className={styles.navBarWrapper}>
+                <div className={styles.navBarLeft}>
+                    <h2>Zechariah Edens Portfolio</h2>
+                    <h2>coding</h2>
                 </div>
-                <div className={styles.mainCard}>
-                    <h1 className={styles.title}>Coding</h1>
+                <div className={styles.navBarRight}>
+                    <h2>photography</h2>
+                    <h2>About</h2>
                 </div>
             </div>
+            {isPhotographyPage ?
+                <PhotographyPage/>
+                : <></>}
         </div>
     )
 }
