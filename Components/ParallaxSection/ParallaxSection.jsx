@@ -1,8 +1,18 @@
 import React, { useEffect, useRef } from 'react';
 import styles from '../../styles/ParallaxSection.module.scss'; // Adjust the path as needed
+import imageDirectory from "../../Images/imageDirectory.json";
+import { useRouter } from 'next/router';
 
-const ParallaxSection = ( { title, imageLocation } ) => {
+const ParallaxSection = ( { title, bannerImage } ) => {
     const sectionRef = useRef( null );
+    const router = useRouter();
+
+    const handleClick = () => {
+        // Assuming you have pages named after the titles
+        // e.g., pages/amsterdam.js for "Amsterdam"
+        const urlTitle = title.toLowerCase().replace( /\s+/g, '-' );
+        router.push( `/${urlTitle}` );
+    };
 
     const handleScroll = () => {
         if ( sectionRef.current ) {
@@ -25,10 +35,13 @@ const ParallaxSection = ( { title, imageLocation } ) => {
     };
 
     // Inline style for background image
-    const imagePath = `/${imageLocation}`;
+    // const imageObject = imageDirectory.find( bannerImage );
+    const titleImage = bannerImage;
+    const imagePath = `/${bannerImage}`;
     const sectionStyle = {
         backgroundImage: `url(${imagePath})`,
     };
+    // const imageList = imageObject ? imageObject.photoList : 'none returned';
 
 
     useEffect( () => {
@@ -41,8 +54,8 @@ const ParallaxSection = ( { title, imageLocation } ) => {
     }, [] );
 
     return (
-        <div ref={sectionRef} className={styles.parallaxSection} style={sectionStyle}>
-            <h1 className={styles.parallaxSectionTitle}>{imageLocation.slice( 0, -5 )}</h1>
+        <div onClick={handleClick} ref={sectionRef} className={styles.parallaxSection} style={sectionStyle}>
+            <h1 className={styles.parallaxSectionTitle}>{title}</h1>
         </div>
     )
 };

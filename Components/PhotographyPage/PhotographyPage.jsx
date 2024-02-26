@@ -1,12 +1,11 @@
 import styles from "../../styles/Home.module.scss";
-import imageDirectory from "../../Images/imageDirectory.json";
 import ParallaxSection from "../ParallaxSection/ParallaxSection";
 
-export default function PhotographyPage() {
+export default function PhotographyPage( { projectStructure } ) {
     return (
         <div className={styles.bodyWrapper}>
-            {imageDirectory.map( ( imageLocation, index ) => (
-                <ParallaxSection key={index} title={`Section ${index + 1}`} imageLocation={imageLocation}/>
+            {projectStructure.map( ( imageLocation, index ) => (
+                <ParallaxSection key={index} title={imageLocation.title} bannerImage={imageLocation.bannerImage}/>
             ) )}
         </div>
     )

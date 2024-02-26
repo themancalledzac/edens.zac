@@ -1,11 +1,14 @@
 import styles from '../styles/Home.module.scss'
 import ParallaxSection from "../Components/ParallaxSection/ParallaxSection";
 import imageDirectory from "../Images/imageDirectory.json";
+import projectStructure from "../Images/projectStructure.json";
 import { useState } from "react";
 import PhotographyPage from "../Components/PhotographyPage/PhotographyPage";
 
 export default function Home() {
     const [isPhotographyPage, setIsPhotographyPage] = useState( true );
+    const [photoPageList, setPhotoPageList] = useState( ["Amsterdam", "Paris", "Florence", "Rome", "Vienna"]
+    )
 
     // TODO: link: https://webdesign.tutsplus.com/tutorials/create-a-masked-background-effect-with-css--cms-21112
     // TODO: a 'fixed background' scrolling effect
@@ -23,7 +26,7 @@ export default function Home() {
                 </div>
             </div>
             {isPhotographyPage ?
-                <PhotographyPage/>
+                <PhotographyPage projectStructure={projectStructure}/>
                 : <></>}
         </div>
     )
