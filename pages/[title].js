@@ -1,19 +1,26 @@
-// pages/[title].js
-import fs from 'fs';
-import path from 'path';
-import imageDirectory from "../Images/imageDirectory.json";
-
 import { useRouter } from 'next/router';
 import PhotoBlockComponent from "../Components/PhotoBlockComponent/PhotoBlockComponent";
+import React, { useEffect, useState } from "react";
 
-// Assuming you have a function to fetch photoList based on title
-// This is just a placeholder, replace with your actual data fetching logic
-async function fetchPhotoListByTitle( title ) {
-    // TODO: Update this so it takes our 'metadata' location and returns a list of image objects for our `photoListData in 'getStaticProps'
+export async function getServerSideProps( { params } ) {
+    console.log( params );
+    const url = `http://localhost:8080/api/v1/image/getImagesByAdventure/${params.title}`;
 
-    const photoProject = imageDirectory.find( item => item.title.toLowerCase() === title.toLowerCase() );
-    console.log( photoProject );
-    return photoProject ? photoProject.photoList : [];
+    try {
+        const response = await fetch( url, { cache: 'force-cache' } );
+        if ( !response.ok ) {
+            throw new Error( 'Network response not ok.' );
+        }
+        const photoDataList = await response.json();
+        const chunkedList = await chunkArray( photoDataList, 2 );
+
+        return {
+            props: { data: chunkedList },
+        };
+    } catch (error) {
+        console.error( "Fetch error: ", error );
+        return { props: { data: [] } }; // return empty data in case of error
+    }
 }
 
 async function chunkArray( photoArray, chunkSize ) {
@@ -24,40 +31,11 @@ async function chunkArray( photoArray, chunkSize ) {
     return result;
 }
 
-export async function getStaticPaths() {
-    // Ideally, fetch your list of titles from an API or define statically
-    const paths = [
-        { params: { title: 'amsterdam' } },
-        { params: { title: 'paris' } },
-        { params: { title: 'florence' } },
-        { params: { title: 'rome' } },
-        { params: { title: 'vienna' } },
-        // add more paths for other titles
-    ];
-
-    return { paths, fallback: false };
-}
-
-export async function getStaticProps( { params } ) {
-    // Use the title to fetch or compute the necessary data for the page
-    const filePath = path.join( process.cwd(), 'Images', `imageMetadata_${params.title}.json` );
-    const jsonData = fs.readFileSync( filePath, 'utf8' );
-    const photoDataList = JSON.parse( jsonData );
-    console.log( photoDataList );
-    const photoListData = await fetchPhotoListByTitle( params.title, params.metadata );
-    const chunkedList = await chunkArray( photoDataList, 2 );
-
-    return {
-        props: { // Pass the fetched data to the page component as props
-            data: chunkedList
-        },
-    };
-}
-
 // The page component that renders the content for each title
 const TitlePage = ( { data } ) => {
+    const [photoList, setPhotoList] = useState( [] );
     const router = useRouter();
-    if ( router.isFallback ) {
+    if ( !data ) {
         return <div>Loading...</div>;
     }
 

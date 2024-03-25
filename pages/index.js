@@ -2,16 +2,65 @@ import styles from '../styles/Home.module.scss'
 import ParallaxSection from "../Components/ParallaxSection/ParallaxSection";
 import imageDirectory from "../Images/imageDirectory.json";
 import projectStructure from "../Images/projectStructure.json";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PhotographyPage from "../Components/PhotographyPage/PhotographyPage";
 
 export default function Home() {
     const [isPhotographyPage, setIsPhotographyPage] = useState( true );
     const [photoPageList, setPhotoPageList] = useState( ["Amsterdam", "Paris", "Florence", "Rome", "Vienna"]
-    )
+    );
+    const [photoDataList, setPhotoDataList] = useState( [] );
+    const [currentAdventure, setCurrentAdventure] = useState( '' );
+
+    const queryString = photoPageList.join( ',' );
+    // http://localhost:8080/api/v1/image/getImagesByAdventures?adventures=Amsterdam,Paris,Rome
+
+    const oldUrl = `http://localhost:8080/api/v1/image/getImagesByAdventures?adventures=${queryString}`;
+    const url = 'http://localhost:8080/api/v1/adventure/mainPageAdventureList';
+
+    // const data = fetch( url );
+    // console.log( data );
+    // http://localhost:8080/api/v1/image/getImagesByAdventures?adventures=Amsterdam,Paris
 
     // TODO: link: https://webdesign.tutsplus.com/tutorials/create-a-masked-background-effect-with-css--cms-21112
     // TODO: a 'fixed background' scrolling effect
+
+    // TODO:
+    //  1. update projectStructure.json into the following calls:
+    //
+
+    // on initial page load
+
+    // useEffect( () => {
+    //     let data;
+    //     const fetchData = async () => {
+    //         try {
+    //
+    //             data = await fetch( url, { cache: 'force-cache' } );
+    //         } finally {
+    //             console.log( data.body );
+    //
+    //         }
+    //     }
+    //     fetchData();
+    // }, [] );
+
+    useEffect( () => {
+        const fetchData = async () => {
+            try {
+                const response = await fetch( url, { cache: 'force-cache' } );
+                if ( !response.ok ) {
+                    throw new Error( 'Network response was not ok' );
+                }
+                const data = await response.json(); // This line reads and parses the JSON body
+                console.log( data ); // Now `data` contains the parsed JSON object
+                setPhotoDataList( data );
+            } catch (error) {
+                console.error( "Fetch error: ", error );
+            }
+        };
+        fetchData();
+    }, [] );
 
     return (
         <div className={styles.container}>
@@ -25,8 +74,9 @@ export default function Home() {
                     <h2>About</h2>
                 </div>
             </div>
-            {isPhotographyPage ?
-                <PhotographyPage projectStructure={projectStructure}/>
+            {isPhotographyPage && ( photoDataList.length > 0 ) ?
+                <PhotographyPage projectStructure={projectStructure} photoDataList={photoDataList}
+                                 setCurrentAdventure={setCurrentAdventure}/>
                 : <></>}
         </div>
     )

@@ -6,12 +6,6 @@ import florence from "../../Images/imageMetadata_florence.json";
 import rome from "../../Images/imageMetadata_rome.json";
 import vienna from "../../Images/imageMetadata_vienna.json";
 
-console.log( 'florence is: ' + amsterdam.length );
-console.log( 'paris is: ' + paris.length );
-console.log( 'florence is: ' + florence.length );
-console.log( 'rome is: ' + rome.length );
-console.log( 'rome is: ' + vienna.length );
-
 function calculateImageSizes( images, componentWidth ) {
     // Calculate the ratios using imageWidth and imageHeight from the input objects
     const ratio1 = images[ 0 ].imageWidth / images[ 0 ].imageHeight;
@@ -31,14 +25,6 @@ function calculateImageSizes( images, componentWidth ) {
         return { ...image, ...newSize };
     } );
 }
-
-// Example usage
-const images = [{ 'title': 'image01', 'ratio': [2, 3] }, { 'title': 'image02', 'ratio': [5, 7] }];
-const componentWidth = 1000;
-const sizes = calculateImageSizes( images, componentWidth );
-
-// console.log( sizes );
-
 
 function calculateStylesForPhotoPair( photos, componentWidth = 1300 ) {
     // Aspect ratios
@@ -92,6 +78,7 @@ function calculateStylesForPhotoPair( photos, componentWidth = 1300 ) {
 
 
 export default function PhotoBlockComponent( { photos } ) {
+    console.log( { photos } );
     const [componentWidth, setComponentWidth] = useState( 1000 );
     const [imageOne, setImageOne] = useState( photos[ 0 ] );
     const [imageTwo, setImageTwo] = useState( photos[ 1 ] );
@@ -107,6 +94,14 @@ export default function PhotoBlockComponent( { photos } ) {
     // console.log( calculatedValues );
     // console.log( photos );
 
+    const isValidSource = ( title ) => {
+        // Example validation logic (adjust based on your criteria)
+        return title && title !== ""; // Add more conditions as needed
+    };
+
+    console.log( "image One: " + imageOne.title + " " + imageOne.width );
+    console.log( "image Two: " + imageTwo.title + " " + imageTwo.width );
+
 
     return (
         <div style={{
@@ -116,31 +111,11 @@ export default function PhotoBlockComponent( { photos } ) {
             justifyContent: 'center',
             alignItems: 'center'
         }}>
-            <img src={`/${imageOne.title}`} alt={`Photo ${imageOne.title}`}
+            <img src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""} alt={`Photo`}
                  style={{ width: `${imageOne.width}px`, height: `${imageOne.height}px` }}/> {/* Added units */}
-            <img src={`/${imageTwo.title}`} alt={`Photo ${imageTwo.title}`}
+            <img src={isValidSource( imageTwo?.title ) ? `/${imageTwo.title}` : ""} alt={`Photo`}
                  style={{ width: `${imageTwo.width}px`, height: `${imageTwo.height}px` }}/> {/* Added units */}
         </div>
     );
 };
 
-
-// 2x3 and 3x2
-
-// 6 x 9 and 4 x 6
-
-// width = 9 + 4 = 13
-// height = 9
-
-
-// componentWidth = 900px
-// componentHeight = 600px
-
-// verticalImageWidth = componentWidth - horizontalImageWidth;
-// verticalImageHeight / verticalImageWidth = horizontalImageWidth / horizontalImageHeight;
-// verticalImageHeight = componentHeight = horizontalImageHeight;
-// verticalImageWidth = (600 * 2) / 3 = 400px
-// horizontalImageWidth = (600 * 3) / 2 = 900px
-// componentWidth = 400 + 900
-//
-//

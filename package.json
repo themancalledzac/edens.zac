@@ -14,7 +14,7 @@
     "@mui/icons-material": "^5.11.16",
     "@mui/material": "^5.12.1",
     "@react-spring/parallax": "^9.6.1",
-    "next": "12.2.4",
+    "next": "14.1.1-canary.78",
     "nprogress": "^0.2.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
