@@ -301,6 +301,23 @@
   margin-left: 0.5rem;
 }
 
+.image {
+  margin-bottom: 1rem;
+  border: 2px solid white;
+}
+
+.imageOne {
+  @extend .image;
+  margin-left: 1rem;
+  margin-right: 0.5rem;
+}
+
+.imageTwo {
+  @extend .image;
+  margin-right: 1rem;
+  margin-left: 0.5rem;
+}
+
 @media (max-width: 600px) {
   .grid {
     width: 100%;
