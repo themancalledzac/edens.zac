@@ -7,24 +7,38 @@ import rome from "../../Images/imageMetadata_rome.json";
 import vienna from "../../Images/imageMetadata_vienna.json";
 
 function calculateImageSizes( images, componentWidth ) {
-    // Calculate the ratios using imageWidth and imageHeight from the input objects
-    const ratio1 = images[ 0 ].imageWidth / images[ 0 ].imageHeight;
-    const ratio2 = images[ 1 ].imageWidth / images[ 1 ].imageHeight;
+    if ( images.length === 1 ) {
+        // Handle the single image case
+        const ratio = images[ 0 ].imageWidth / images[ 0 ].imageHeight;
+        const height = componentWidth / ratio;
+        const width = ratio * height;
 
-    // Solve for the heights and widths
-    const height = componentWidth / ( ratio1 + ratio2 );
-    const width1 = ratio1 * height;
-    const width2 = ratio2 * height;
+        return [{
+            ...images[ 0 ],
+            width: componentWidth,
+            height: height
+        }];
+    } else {
+        // Calculate the ratios using imageWidth and imageHeight from the input objects
+        const ratio1 = images[ 0 ].imageWidth / images[ 0 ].imageHeight;
+        const ratio2 = images[ 1 ].imageWidth / images[ 1 ].imageHeight;
 
-    // Return the original objects with added calculated width and height
-    return images.map( ( image, index ) => {
-        // Calculate new size based on the index
-        const newSize = index === 0 ? { width: width1, height: height } : { width: width2, height: height };
+        // Solve for the heights and widths
+        const height = componentWidth / ( ratio1 + ratio2 );
+        const width1 = ratio1 * height;
+        const width2 = ratio2 * height;
 
-        // Spread the original image object and merge with the new size
-        return { ...image, ...newSize };
-    } );
+        // Return the original objects with added calculated width and height
+        return images.map( ( image, index ) => {
+            // Calculate new size based on the index
+            const newSize = index === 0 ? { width: width1, height: height } : { width: width2, height: height };
+
+            // Spread the original image object and merge with the new size
+            return { ...image, ...newSize };
+        } );
+    }
 }
+
 
 function calculateStylesForPhotoPair( photos, componentWidth = 1300 ) {
     // Aspect ratios
@@ -78,43 +92,50 @@ function calculateStylesForPhotoPair( photos, componentWidth = 1300 ) {
 
 
 export default function PhotoBlockComponent( { photos } ) {
-    console.log( { photos } );
     const [componentWidth, setComponentWidth] = useState( 1000 );
+    const [loading, setLoading] = useState( true );
     const [imageOne, setImageOne] = useState( photos[ 0 ] );
-    const [imageTwo, setImageTwo] = useState( photos[ 1 ] );
-
+    const [imageTwo, setImageTwo] = useState( photos.length > 1 ? photos[ 1 ] : null );
 
     useEffect( () => {
-        const calculatedValues = calculateImageSizes( photos, componentWidth );
-        // console.log( calculatedValues );
-        setImageOne( calculatedValues[ 0 ] );
-        setImageTwo( calculatedValues[ 1 ] );
+        try {
+            console.log( 'useEffect before calculateImageSizes', { photos } );
+            const calculatedValues = calculateImageSizes( photos, componentWidth );
+            console.log( 'useEffect after calculateImageSizes', { calculatedValues } );
+            setImageOne( calculatedValues[ 0 ] );
+            if ( calculatedValues.length > 1 ) {
+                setImageTwo( calculatedValues[ 1 ] );
+            }
+        } catch (error) {
+            console.error( error );
+        } finally {
+            setLoading( false );
+        }
     }, [photos, componentWidth] );
 
-    // console.log( calculatedValues );
-    // console.log( photos );
-
     const isValidSource = ( title ) => {
-        // Example validation logic (adjust based on your criteria)
-        return title && title !== ""; // Add more conditions as needed
+        return title && title !== "";
     };
 
-    console.log( "image One: " + imageOne.title + " " + imageOne.width );
-    console.log( "image Two: " + imageTwo.title + " " + imageTwo.width );
-
+    if ( loading ) {
+        return <div></div>
+    }
 
     return (
         <div style={{
             display: 'flex',
             width: `${componentWidth}px`,
-            height: `${imageOne.height}px`, // Make sure this is set correctly
             justifyContent: 'center',
             alignItems: 'center'
         }}>
-            <img src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""} alt={`Photo`}
-                 style={{ width: `${imageOne.width}px`, height: `${imageOne.height}px` }}/> {/* Added units */}
-            <img src={isValidSource( imageTwo?.title ) ? `/${imageTwo.title}` : ""} alt={`Photo`}
-                 style={{ width: `${imageTwo.width}px`, height: `${imageTwo.height}px` }}/> {/* Added units */}
+            <img src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""}
+                 alt="Photo"
+                 style={{ width: `${imageOne.width}px`, height: `${imageOne.height}px`, objectFit: 'contain' }}/>
+            {imageTwo && (
+                <img src={isValidSource( imageTwo.title ) ? `/${imageTwo.title}` : ""}
+                     alt="Photo"
+                     style={{ width: `${imageTwo.width}px`, height: `${imageTwo.height}px`, objectFit: 'contain' }}/>
+            )}
         </div>
     );
 };

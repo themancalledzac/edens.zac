@@ -23,11 +23,39 @@ export async function getServerSideProps( { params } ) {
     }
 }
 
+// old
+// async function chunkArray( photoArray, chunkSize ) {
+//     let result = [];
+//     for (let i = 0; i < photoArray.length; i += chunkSize) {
+//         result.push( photoArray.slice( i, i + chunkSize ) );
+//     }
+//     return result;
+// }
+
 async function chunkArray( photoArray, chunkSize ) {
     let result = [];
-    for (let i = 0; i < photoArray.length; i += chunkSize) {
-        result.push( photoArray.slice( i, i + chunkSize ) );
+    let todo = [];
+
+    for (const photo of photoArray) {
+        if ( photo.rating === 5 ) {
+            // If it's a 5-star image, add it immediately as a single-image pair.
+            result.push( [photo] );
+        } else {
+            // Add current image to the waiting list.
+            todo.push( photo );
+            // If we have enough images for a pair, add them to the result.
+            if ( todo.length === chunkSize ) {
+                result.push( [...todo] ); // Use spread operator to clone the array
+                todo = []; // Clear the todo list
+            }
+        }
     }
+
+    // If there's an image left over that didn't form a pair, add it to the result.
+    if ( todo.length > 0 ) {
+        result.push( todo );
+    }
+
     return result;
 }
 
