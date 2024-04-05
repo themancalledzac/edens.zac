@@ -1,9 +1,9 @@
 import { useRouter } from 'next/router';
 import PhotoBlockComponent from "../Components/PhotoBlockComponent/PhotoBlockComponent";
 import React, { useEffect, useState } from "react";
+import styles from '../styles/Title.module.scss';
 
 export async function getServerSideProps( { params } ) {
-    console.log( params );
     const url = `http://localhost:8080/api/v1/image/getImagesByAdventure/${params.title}`;
 
     try {
@@ -37,7 +37,7 @@ async function chunkArray( photoArray, chunkSize ) {
     let todo = [];
 
     for (const photo of photoArray) {
-        if ( photo.rating === 5 ) {
+        if ( photo.rating === 5 && !( photo.imageHeight > photo.imageWidth ) ) { // TODO: Add an, `&& if vertical`
             // If it's a 5-star image, add it immediately as a single-image pair.
             result.push( [photo] );
         } else {
@@ -68,14 +68,9 @@ const TitlePage = ( { data } ) => {
     }
 
     return (
-        <div>
+        <div className={styles.titlePageMain}>
             <h1>{router.query.title}</h1>
-            <div>
-                {/*{data.map( ( photo, index ) => (*/}
-                {/*    <div key={index}>*/}
-                {/*        <img src={`/${photo.title}`} alt={`Photo ${index + 1}`} style={{ maxWidth: "1000px" }}/>*/}
-                {/*    </div>*/}
-                {/*) )}*/}
+            <div className={styles.photoBlockWrapper}>
                 {data.map( ( photoPair, index ) => (
                     <PhotoBlockComponent key={index} photos={photoPair}/>
                 ) )}

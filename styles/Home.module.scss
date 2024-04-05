@@ -13,6 +13,7 @@
   display: flex;
   justify-content: space-between;
   flex-direction: row;
+  margin-bottom: 2rem;
 }
 
 .navBarLeft, .navBarRight {
@@ -33,7 +34,9 @@
 }
 
 .bodyWrapper {
-  margin: 2rem;
+  margin-left: 2rem;
+  margin-right: 2rem;
+  margin-bottom: 2rem;
 }
 
 .photoHeader {

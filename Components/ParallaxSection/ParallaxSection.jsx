@@ -3,14 +3,14 @@ import styles from '../../styles/ParallaxSection.module.scss'; // Adjust the pat
 import imageDirectory from "../../Images/imageDirectory.json";
 import { useRouter } from 'next/router';
 
-const ParallaxSection = ( { title, bannerImage, setCurrentAdventure } ) => {
+export default function ParallaxSection( { title, bannerImage, setCurrentAdventure } ) {
     const sectionRef = useRef( null );
     const router = useRouter();
 
     const handleClick = () => {
         // Assuming you have pages named after the titles
         // e.g., pages/amsterdam.js for "Amsterdam"
-        setCurrentAdventure( title );
+        // setCurrentAdventure( title );
         const urlTitle = title.toLowerCase().replace( /\s+/g, '-' );
         router.push( `/${urlTitle}` );
     };
@@ -60,5 +60,3 @@ const ParallaxSection = ( { title, bannerImage, setCurrentAdventure } ) => {
         </div>
     )
 };
-
-export default ParallaxSection;

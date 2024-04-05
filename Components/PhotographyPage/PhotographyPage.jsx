@@ -15,9 +15,9 @@ export default function PhotographyPage( { photoDataList, setCurrentAdventure } 
             {/*    <h1 className={styles.photoHeaderTitle}>Zac</h1>*/}
             {/*</div>*/}
             {/*{photoDataList.map( ( { adventure, images, index } ) => (*/}
-            {photoDataList.map( ( { name, imageMain, id } ) => (
+            {photoDataList.map( ( { id, imageMain, name } ) => (
                 <ParallaxSection key={id} title={name} setCurrentAdventure={setCurrentAdventure}
-                                 bannerImage={imageMain.title}/>
+                                 bannerImage={imageMain.title} image={imageMain}/>
             ) )}
             <div className={styles.footer}>
                 <a className={styles.title}>edens.zac production</a>

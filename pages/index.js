@@ -18,17 +18,6 @@ export default function Home() {
     const oldUrl = `http://localhost:8080/api/v1/image/getImagesByAdventures?adventures=${queryString}`;
     const url = 'http://localhost:8080/api/v1/adventure/mainPageAdventureList';
 
-    // const data = fetch( url );
-    // console.log( data );
-    // http://localhost:8080/api/v1/image/getImagesByAdventures?adventures=Amsterdam,Paris
-
-    // TODO: link: https://webdesign.tutsplus.com/tutorials/create-a-masked-background-effect-with-css--cms-21112
-    // TODO: a 'fixed background' scrolling effect
-
-    // TODO:
-    //  1. update projectStructure.json into the following calls:
-    //
-
     // on initial page load
 
     // useEffect( () => {
@@ -75,9 +64,10 @@ export default function Home() {
                 </div>
             </div>
             {isPhotographyPage && ( photoDataList.length > 0 ) ?
-                <PhotographyPage projectStructure={projectStructure} photoDataList={photoDataList}
+                <PhotographyPage photoDataList={photoDataList}
                                  setCurrentAdventure={setCurrentAdventure}/>
                 : <></>}
+            {/* todo: Add <CodingPage /> Here */}
         </div>
     )
 }
