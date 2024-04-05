@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import PhotoBlockComponent from "../Components/PhotoBlockComponent/PhotoBlockComponent";
 import React, { useEffect, useState } from "react";
 import styles from '../styles/Title.module.scss';
+import ImageFullScreen from "../Components/ImageFullScreen/ImageFullScreen";
 
 export async function getServerSideProps( { params } ) {
     const url = `http://localhost:8080/api/v1/image/getImagesByAdventure/${params.title}`;
@@ -59,22 +60,31 @@ async function chunkArray( photoArray, chunkSize ) {
     return result;
 }
 
+
 // The page component that renders the content for each title
 const TitlePage = ( { data } ) => {
     const [photoList, setPhotoList] = useState( [] );
+    const [selectedPhoto, setSelectedPhoto] = useState( null );
     const router = useRouter();
     if ( !data ) {
         return <div>Loading...</div>;
     }
+    console.log( 'title page: ' );
+    console.log( selectedPhoto );
 
     return (
         <div className={styles.titlePageMain}>
-            <h1>{router.query.title}</h1>
+            <div className={styles.titleHeader}>
+                <h1>{router.query.title}</h1>
+            </div>
             <div className={styles.photoBlockWrapper}>
                 {data.map( ( photoPair, index ) => (
-                    <PhotoBlockComponent key={index} photos={photoPair}/>
+                    <PhotoBlockComponent key={index} photos={photoPair} setSelectedPhoto={setSelectedPhoto}/>
                 ) )}
             </div>
+            {selectedPhoto && (
+                <ImageFullScreen setSelectedPhoto={setSelectedPhoto} selectedPhoto={selectedPhoto}/>
+            )}
         </div>
     );
 };

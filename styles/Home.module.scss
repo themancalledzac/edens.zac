@@ -23,14 +23,27 @@
   justify-content: space-between;
   align-items: center; /* This line centers items vertically */
   padding: 1rem;
+  transition: background-color 0.15s;
 }
 
 .navBarLeft {
-  background-color: #0070f3;
+  background-color: #171b21;
+
+  &:hover {
+    background-color: #213e6a;
+  }
 }
 
 .navBarRight {
-  background-color: red;
+  background-color: #312424;
+
+  &:hover {
+    background-color: #662727;
+  }
+}
+
+.selected {
+
 }
 
 .bodyWrapper {

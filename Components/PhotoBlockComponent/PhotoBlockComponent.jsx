@@ -41,11 +41,15 @@ function calculateImageSizes( images, componentWidth ) {
 }
 
 
-export default function PhotoBlockComponent( { photos } ) {
+export default function PhotoBlockComponent( { photos, setSelectedPhoto, setSelect } ) {
     const [componentWidth, setComponentWidth] = useState( 800 );
     const [loading, setLoading] = useState( true );
     const [imageOne, setImageOne] = useState( photos[ 0 ] );
     const [imageTwo, setImageTwo] = useState( photos.length > 1 ? photos[ 1 ] : null );
+    const handleClick = ( image ) => {
+        setSelectedPhoto( image );
+        console.log( image );
+    }
 
     useEffect( () => {
         try {
@@ -81,14 +85,15 @@ export default function PhotoBlockComponent( { photos } ) {
             <img src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""}
                  alt="Photo"
                  className={styles.imageOne}
-                 style={{ width: `${imageOne.width}px`, height: `${imageOne.height}px`, objectFit: 'contain' }}/>
+                 style={{ width: `${imageOne.width}px`, height: `${imageOne.height}px`, objectFit: 'contain' }}
+                 onClick={() => handleClick( imageOne )}/>
             {imageTwo && (
                 <img src={isValidSource( imageTwo.title ) ? `/${imageTwo.title}` : ""}
                      alt="Photo"
                      className={styles.imageTwo}
-                     style={{ width: `${imageTwo.width}px`, height: `${imageTwo.height}px`, objectFit: 'contain' }}/>
+                     style={{ width: `${imageTwo.width}px`, height: `${imageTwo.height}px`, objectFit: 'contain' }}
+                     onClick={() => handleClick( imageTwo )}/>
             )}
         </div>
     );
 };
-

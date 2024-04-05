@@ -4,6 +4,7 @@ import imageDirectory from "../Images/imageDirectory.json";
 import projectStructure from "../Images/projectStructure.json";
 import { useEffect, useState } from "react";
 import PhotographyPage from "../Components/PhotographyPage/PhotographyPage";
+import CodingPage from "../Components/CodingPage/CodingPage";
 
 export default function Home() {
     const [isPhotographyPage, setIsPhotographyPage] = useState( true );
@@ -53,9 +54,9 @@ export default function Home() {
 
     return (
         <div className={styles.container}>
-            <div className={styles.navBarWrapper}>
+            <div className={`${styles.navBarWrapper} ${isPhotographyPage && styles.selected}`}>
                 <div className={styles.navBarLeft}>
-                    <h2>Zechariah Edens Portfolio</h2>
+                    <h2>Zechariah Edens</h2>
                     <h2>coding</h2>
                 </div>
                 <div className={styles.navBarRight}>
@@ -64,10 +65,9 @@ export default function Home() {
                 </div>
             </div>
             {isPhotographyPage && ( photoDataList.length > 0 ) ?
-                <PhotographyPage photoDataList={photoDataList}
-                                 setCurrentAdventure={setCurrentAdventure}/>
-                : <></>}
-            {/* todo: Add <CodingPage /> Here */}
+                <PhotographyPage photoDataList={photoDataList} setCurrentAdventure={setCurrentAdventure}/>
+                : <CodingPage photoDataList={photoDataList} setCurrentAdventure={setCurrentAdventure}/>
+            }
         </div>
     )
 }
