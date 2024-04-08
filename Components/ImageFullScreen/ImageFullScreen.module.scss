@@ -10,3 +10,15 @@
   background-color: rgba(17, 17, 17, 0.75); /* Adjusted for better visibility */
   z-index: 1000; /* Ensure it's above other content */
 }
+
+.closeButton {
+  position: absolute;
+  top: 3%;
+  right: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 24px;
+  color: white;
+  text-shadow: #111111;
+}

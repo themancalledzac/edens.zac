@@ -8,6 +8,17 @@ const isValidSource = ( title ) => {
 
 export default function ImageFullScreen( { imageSelected, setImageSelected } ) {
     const [isZoomed, setIsZoomed] = useState( false );
+    const [screenSize, setScreenSize] = useState( { width: window.innerWidth, height: window.innerHeight } );
+    const [imageStyle, setImageStyle] = useState( {} );
+
+    useEffect( () => {
+        const handleResize = () => {
+            setScreenSize( { width: window.innerWidth, height: window.innerHeight } );
+        };
+
+        window.addEventListener( "resize", handleResize );
+        return () => window.removeEventListener( "resize", handleResize );
+    }, [] );
 
     useEffect( () => {
         const handleKeyDown = ( event ) => {
@@ -21,6 +32,35 @@ export default function ImageFullScreen( { imageSelected, setImageSelected } ) {
         // Cleanup
         return () => window.removeEventListener( "keydown", handleKeyDown );
     }, [setImageSelected] );
+
+    useEffect( () => {
+        // Assuming imageSelected includes naturalWidth and naturalHeight
+        if ( !imageSelected ) return;
+        const { imageWidth, imageHeight } = imageSelected;
+
+        if ( isZoomed ) {
+            setImageStyle( {
+                width: imageWidth > imageHeight ? '100%' : 'auto',
+                height: imageWidth > imageHeight ? 'auto' : '100%',
+                cursor: "move",
+            } );
+        } else {
+            // Adjust the image size based on its orientation and screen size
+            if ( imageWidth > imageHeight ) {
+                // Horizontal image
+                setImageStyle( {
+                    maxWidth: '100%',
+                    height: 'auto',
+                } );
+            } else {
+                // Vertical image
+                setImageStyle( {
+                    maxWidth: 'auto',
+                    maxHeight: '100%',
+                } );
+            }
+        }
+    }, [screenSize, imageSelected, isZoomed] );
 
     // Not yet working as NextJS Image is taking 100% of screen. investigating
     const handleClickOutside = () => {
@@ -43,18 +83,32 @@ export default function ImageFullScreen( { imageSelected, setImageSelected } ) {
 
     return (
         <div className={styles.imageFullScreenWrapper} onClick={handleClickOutside}>
-            <Image
+            <img
                 src={isValidSource( imageSelected?.title ) ? `/${imageSelected.title}` : ""}
                 alt={'Photo'}
-                layout="fill"
-                objectFit={isZoomed ? "cover" : "contain"}
-                priority={true}
                 style={{
+                    ...imageStyle,
                     backgroundColor: "rgba(17, 17, 17, 0.75)",
-                    cursor: isZoomed ? "move" : "default",
                 }}
                 onClick={handleImageClick}
             />
+            <button
+                className={styles.closeButton}
+                onClick={handleClick}>
+                &#10005; {/* This is the HTML entity for a multiplication sign (X) */}
+            </button>
+            {/*<Image*/}
+            {/*    src={isValidSource( imageSelected?.title ) ? `/${imageSelected.title}` : ""}*/}
+            {/*    alt={'Photo'}*/}
+            {/*    layout="fill"*/}
+            {/*    objectFit={isZoomed ? "cover" : "contain"}*/}
+            {/*    priority={true}*/}
+            {/*    style={{*/}
+            {/*        backgroundColor: "rgba(17, 17, 17, 0.75)",*/}
+            {/*        cursor: isZoomed ? "move" : "default",*/}
+            {/*    }}*/}
+            {/*    onClick={handleImageClick}*/}
+            {/*/>*/}
         </div>
     )
 }
