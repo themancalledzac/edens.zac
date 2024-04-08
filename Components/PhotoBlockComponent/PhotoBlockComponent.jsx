@@ -1,5 +1,7 @@
 import styles from "../../styles/Home.module.scss";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import ImageFullScreen from "../ImageFullScreen/ImageFullScreen";
+import Image from "next/image";
 
 // TODO:
 //  1. Need conditional Logic for, if 5 star && vertical, make max height, align-left(?)
@@ -41,21 +43,20 @@ function calculateImageSizes( images, componentWidth ) {
 }
 
 
-export default function PhotoBlockComponent( { photos, setSelectedPhoto, setSelect } ) {
+export default function PhotoBlockComponent( { photos } ) {
     const [componentWidth, setComponentWidth] = useState( 800 );
+    const [imageSelected, setImageSelected] = useState( null );
     const [loading, setLoading] = useState( true );
     const [imageOne, setImageOne] = useState( photos[ 0 ] );
     const [imageTwo, setImageTwo] = useState( photos.length > 1 ? photos[ 1 ] : null );
     const handleClick = ( image ) => {
-        setSelectedPhoto( image );
+        setImageSelected( image );
         console.log( image );
     }
 
     useEffect( () => {
         try {
-            console.log( 'useEffect before calculateImageSizes', { photos } );
             const calculatedValues = calculateImageSizes( photos, componentWidth );
-            console.log( 'useEffect after calculateImageSizes', { calculatedValues } );
             setImageOne( calculatedValues[ 0 ] );
             if ( calculatedValues.length > 1 ) {
                 setImageTwo( calculatedValues[ 1 ] );
@@ -76,24 +77,31 @@ export default function PhotoBlockComponent( { photos, setSelectedPhoto, setSele
     }
 
     return (
-        <div style={{
-            display: 'flex',
-            width: `${componentWidth}px`,
-            justifyContent: 'center',
-            alignItems: 'center'
-        }}>
-            <img src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""}
-                 alt="Photo"
-                 className={styles.imageOne}
-                 style={{ width: `${imageOne.width}px`, height: `${imageOne.height}px`, objectFit: 'contain' }}
-                 onClick={() => handleClick( imageOne )}/>
-            {imageTwo && (
-                <img src={isValidSource( imageTwo.title ) ? `/${imageTwo.title}` : ""}
-                     alt="Photo"
-                     className={styles.imageTwo}
-                     style={{ width: `${imageTwo.width}px`, height: `${imageTwo.height}px`, objectFit: 'contain' }}
-                     onClick={() => handleClick( imageTwo )}/>
+        <>
+            <div style={{
+                display: 'flex',
+                width: `${componentWidth}px`,
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <Image src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""}
+                       alt="Photo"
+                       width={Math.round( imageOne.width )}
+                       height={Math.round( imageOne.height )}
+                       className={styles.imageOne}
+                       onClick={() => handleClick( imageOne )}/>
+                {imageTwo && (
+                    <Image src={isValidSource( imageTwo.title ) ? `/${imageTwo.title}` : ""}
+                           alt="Photo"
+                           className={styles.imageTwo}
+                           width={Math.round( imageTwo.width )}
+                           height={Math.round( imageTwo.height )}
+                           onClick={() => handleClick( imageTwo )}/>
+                )}
+            </div>
+            {imageSelected && (
+                <ImageFullScreen setImageSelected={setImageSelected} imageSelected={imageSelected}/>
             )}
-        </div>
+        </>
     );
 };

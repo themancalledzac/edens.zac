@@ -79,12 +79,9 @@ const TitlePage = ( { data } ) => {
             </div>
             <div className={styles.photoBlockWrapper}>
                 {data.map( ( photoPair, index ) => (
-                    <PhotoBlockComponent key={index} photos={photoPair} setSelectedPhoto={setSelectedPhoto}/>
+                    <PhotoBlockComponent key={index} photos={photoPair}/>
                 ) )}
             </div>
-            {selectedPhoto && (
-                <ImageFullScreen setSelectedPhoto={setSelectedPhoto} selectedPhoto={selectedPhoto}/>
-            )}
         </div>
     );
 };

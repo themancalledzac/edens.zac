@@ -1,29 +1,24 @@
 import Image from "next/image";
 import styles from './ImageFullScreen.module.scss';
-import { useEffect } from "react";
+import React from "react";
 
 const isValidSource = ( title ) => {
     return title && title !== "";
 };
 
-export default function ImageFullScreen( { selectedPhoto, setSelectedPhoto } ) {
-
-    console.log( 'image full screen:' );
-    console.log( selectedPhoto );
+export default function ImageFullScreen( { imageSelected, setImageSelected } ) {
     const handleClick = () => {
-        setSelectedPhoto( null );
+        setImageSelected( null );
     }
 
     return (
         <div className={styles.imageFullScreenWrapper} onClick={handleClick}>
             <Image
-                src={isValidSource( selectedPhoto?.title ) ? `/${selectedPhoto.title}` : ""}
+                src={isValidSource( imageSelected?.title ) ? `/${imageSelected.title}` : ""}
                 alt={'Photo'}
-                // width={selectedPhoto.imageWidth} height={selectedPhoto.imageHeight}
                 layout="fill"
                 objectFit="contain"
-                priority
-                quality={55}
+                priority={true}
             />
         </div>
     )
