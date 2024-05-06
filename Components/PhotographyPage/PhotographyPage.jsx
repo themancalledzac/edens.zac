@@ -1,7 +1,7 @@
 import styles from "../../styles/Home.module.scss";
 import ParallaxSection from "../ParallaxSection/ParallaxSection";
 
-export default function PhotographyPage( { photoDataList, setCurrentAdventure } ) {
+export default function PhotographyPage( { photoDataList, setCurrentCatalog } ) {
 
     function getRandomElementFromArray( array ) {
         const randomIndex = Math.floor( Math.random() * array.length );
@@ -14,10 +14,11 @@ export default function PhotographyPage( { photoDataList, setCurrentAdventure } 
             {/*<div className={styles.photoHeader}>*/}
             {/*    <h1 className={styles.photoHeaderTitle}>Zac</h1>*/}
             {/*</div>*/}
-            {/*{photoDataList.map( ( { adventure, images, index } ) => (*/}
+            {/*{photoDataList.map( ( { catalog, images, index } ) => (*/}
             {photoDataList.map( ( { id, imageMain, name } ) => (
-                <ParallaxSection key={id} title={name} setCurrentAdventure={setCurrentAdventure}
-                                 bannerImage={imageMain.title} image={imageMain}/>
+                console.log( imageMain.title ),
+                    <ParallaxSection key={id} catalogTitle={name} setCurrentCatalog={setCurrentCatalog}
+                                     bannerImage={imageMain.title} image={imageMain}/>
             ) )}
             <div className={styles.footer}>
                 <a className={styles.title}>edens.zac production</a>

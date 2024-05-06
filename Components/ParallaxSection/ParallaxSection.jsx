@@ -3,16 +3,16 @@ import styles from '../../styles/ParallaxSection.module.scss'; // Adjust the pat
 import imageDirectory from "../../Images/imageDirectory.json";
 import { useRouter } from 'next/router';
 
-export default function ParallaxSection( { title, bannerImage, setCurrentAdventure } ) {
+export default function ParallaxSection( { catalogTitle, bannerImage, setCurrentCatalog } ) {
     const sectionRef = useRef( null );
     const router = useRouter();
 
     const handleClick = () => {
         // Assuming you have pages named after the titles
         // e.g., pages/amsterdam.js for "Amsterdam"
-        // setCurrentAdventure( title );
-        const urlTitle = title.toLowerCase().replace( /\s+/g, '-' );
-        router.push( `/${urlTitle}` );
+        // setCurrentCatalog( title );
+        const catalog = catalogTitle.toLowerCase().replace( /\s+/g, '-' );
+        router.push( `/${catalog}` );
     };
 
     const handleScroll = () => {
@@ -56,7 +56,7 @@ export default function ParallaxSection( { title, bannerImage, setCurrentAdventu
 
     return (
         <div onClick={handleClick} ref={sectionRef} className={styles.parallaxSection} style={sectionStyle}>
-            <h1 className={styles.parallaxSectionTitle}>{title}</h1>
+            <h1 className={styles.parallaxSectionTitle}>{catalogTitle}</h1>
         </div>
     )
 };

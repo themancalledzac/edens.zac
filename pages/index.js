@@ -5,19 +5,22 @@ import projectStructure from "../Images/projectStructure.json";
 import { useEffect, useState } from "react";
 import PhotographyPage from "../Components/PhotographyPage/PhotographyPage";
 import CodingPage from "../Components/CodingPage/CodingPage";
+import Header from "../Components/Header/Header";
+import { useAppContext } from "../context/AppContext";
 
 export default function Home() {
-    const [isPhotographyPage, setIsPhotographyPage] = useState( true );
-    const [photoPageList, setPhotoPageList] = useState( ["Amsterdam", "Paris", "Florence", "Rome", "Vienna"]
-    );
-    const [photoDataList, setPhotoDataList] = useState( [] );
-    const [currentAdventure, setCurrentAdventure] = useState( '' );
+    const {
+        isPhotographyPage,
+        photoDataList,
+        setCurrentCatalog,
+        setPhotoDataList
+    } = useAppContext();
+    // const [isPhotographyPage, setIsPhotographyPage] = useState( true );
+    // const [photoDataList, setPhotoDataList] = useState( [] );
+    // const [currentCatalog, setCurrentCatalog] = useState( '' );
 
-    const queryString = photoPageList.join( ',' );
-    // http://localhost:8080/api/v1/image/getImagesByAdventures?adventures=Amsterdam,Paris,Rome
 
-    const oldUrl = `http://localhost:8080/api/v1/image/getImagesByAdventures?adventures=${queryString}`;
-    const url = 'http://localhost:8080/api/v1/adventure/mainPageAdventureList';
+    const url = 'http://localhost:8080/api/v1/catalog/mainPageCatalogList';
 
     // on initial page load
 
@@ -38,7 +41,7 @@ export default function Home() {
     useEffect( () => {
         const fetchData = async () => {
             try {
-                const response = await fetch( url, { cache: 'force-cache' } );
+                const response = await fetch( url, { cache: 'no-store' } ); // or force-cache
                 if ( !response.ok ) {
                     throw new Error( 'Network response was not ok' );
                 }
@@ -54,19 +57,10 @@ export default function Home() {
 
     return (
         <div className={styles.container}>
-            <div className={`${styles.navBarWrapper} ${isPhotographyPage && styles.selected}`}>
-                <div className={styles.navBarLeft}>
-                    <h2>Zechariah Edens</h2>
-                    <h2>coding</h2>
-                </div>
-                <div className={styles.navBarRight}>
-                    <h2>photography</h2>
-                    <h2>About</h2>
-                </div>
-            </div>
+            <Header isPhotographyPage={isPhotographyPage}/>
             {isPhotographyPage && ( photoDataList.length > 0 ) ?
-                <PhotographyPage photoDataList={photoDataList} setCurrentAdventure={setCurrentAdventure}/>
-                : <CodingPage photoDataList={photoDataList} setCurrentAdventure={setCurrentAdventure}/>
+                <PhotographyPage photoDataList={photoDataList} setCurrentCatalog={setCurrentCatalog}/>
+                : <CodingPage photoDataList={photoDataList} setCurrentCatalog={setCurrentCatalog}/>
             }
         </div>
     )

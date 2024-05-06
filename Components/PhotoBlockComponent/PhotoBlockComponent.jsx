@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import ImageFullScreen from "../ImageFullScreen/ImageFullScreen";
 import Image from "next/image";
 
-// TODO:
+// TODO:componentWidth
 //  1. Need conditional Logic for, if 5 star && vertical, make max height, align-left(?)
 //  2. If 5 star && description.notNull(), make description a 'part2' to our single image(?)
 //  3. Need PhotoBlockComponent dictate the WIDTh of the images, as they only take up the INSIDE.
@@ -51,7 +51,6 @@ export default function PhotoBlockComponent( { photos } ) {
     const [imageTwo, setImageTwo] = useState( photos.length > 1 ? photos[ 1 ] : null );
     const handleClick = ( image ) => {
         setImageSelected( image );
-        console.log( image );
     }
 
     useEffect( () => {
@@ -75,6 +74,10 @@ export default function PhotoBlockComponent( { photos } ) {
     if ( loading ) {
         return <div></div>
     }
+    // TODO
+    //  1. Update WIDTH of our parent div here to be dynamic with the page. Look to the PhotographyPage < ParallaxSection interaction for inspiration. This would include a max-width at different screen widths, and then say, under 800, it would be full width dynamic.
+    //  2. Images would need to have their width autmatically 'half' of the parent component ( or whatever the translation is from above )
+    //  3. Images need to retain their Ratios, and
 
     return (
         <>
@@ -82,21 +85,26 @@ export default function PhotoBlockComponent( { photos } ) {
                 display: 'flex',
                 width: `${componentWidth}px`,
                 justifyContent: 'center',
-                alignItems: 'center'
+                alignItems: 'center',
+                marginBottom: '1rem'
             }}>
                 <Image src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""}
                        alt="Photo"
                        width={Math.round( imageOne.width )}
                        height={Math.round( imageOne.height )}
                        className={styles.imageOne}
-                       onClick={() => handleClick( imageOne )}/>
+                       onClick={() => handleClick( imageOne )}
+                       style={!imageTwo ? { margin: '0' } : { margin: '0', marginRight: '0.5rem' }}
+                />
                 {imageTwo && (
                     <Image src={isValidSource( imageTwo.title ) ? `/${imageTwo.title}` : ""}
                            alt="Photo"
                            className={styles.imageTwo}
                            width={Math.round( imageTwo.width )}
                            height={Math.round( imageTwo.height )}
-                           onClick={() => handleClick( imageTwo )}/>
+                           onClick={() => handleClick( imageTwo )}
+                           style={{ margin: '0', marginLeft: '0.5rem' }}
+                    />
                 )}
             </div>
             {imageSelected && (

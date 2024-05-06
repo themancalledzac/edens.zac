@@ -1,0 +1,103 @@
+.header {
+  display: flex;
+  width: 100%;
+  height: 5rem;
+  margin-bottom: 2rem;
+}
+
+.title {
+  width: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: black;
+  color: white;
+  cursor: pointer;
+}
+
+.navBarWrapper {
+  flex-grow: 1; // Takes up the remaining space
+  display: flex;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.navBarLeft, .navBarRight {
+  position: relative;
+  flex-grow: 1; // take up remaining space
+  height: 100%;
+  display: flex;
+  align-items: center; /* This line centers items vertically */
+  padding: 1rem;
+  transition: all 0.2s ease-in-out; // Transition for resizing and background color
+  flex-basis: 50%;
+}
+
+.navBarLeft {
+  flex-basis: 10%; // Start with 10% width
+}
+
+.textCentered {
+  margin: 0 auto; // Center the text within the expanded side
+}
+
+.navBarRight {
+  flex-basis: 90%; // Start with 90% width
+  //background-color: #ffdbdb;
+}
+
+.expanded {
+  flex-basis: 90%; // Expands to 90% on active
+  background-color: white;
+  color: black !important;
+}
+
+.collapsed {
+  flex-basis: 10%; // Reduces to 10% when not active
+  background-color: #d7d7d7;
+  color: #2c2c2c !important;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #bcbcbc;
+  }
+}
+
+//.text {
+//  color: black;
+//}
+
+.menu {
+  color: black;
+  cursor: pointer;
+}
+
+//input[disabled] {
+//  opacity: 0.5;
+//}
+
+.dropdown {
+  position: absolute; // Dropdown is positioned absolutely relative to its parent
+  top: 100%; // Position right below the parent
+  left: 0; // Align with the left side of the parent
+  width: 100%; // Ensure it matches the width of the parent
+  background-color: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+  z-index: 1;
+}
+
+.dropdown div {
+  height: 50px; // Increased height
+  line-height: 50px; // Center text vertically
+  font-size: 18px; // Larger font size
+  text-align: right; // Align text to the right
+  padding-right: 20px; // Padding for text alignment
+}
+
+.searchBar {
+  border: none; // Remove border
+  padding: 10px; // Padding inside the search input
+  width: 100%; // Full width of the dropdown
+}

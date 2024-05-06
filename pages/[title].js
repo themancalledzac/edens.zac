@@ -1,11 +1,13 @@
 import { useRouter } from 'next/router';
 import PhotoBlockComponent from "../Components/PhotoBlockComponent/PhotoBlockComponent";
 import React, { useEffect, useState } from "react";
-import styles from '../styles/Title.module.scss';
+import styles from '../styles/Catalog.module.scss';
 import ImageFullScreen from "../Components/ImageFullScreen/ImageFullScreen";
+import Header from "../Components/Header/Header";
+import { useAppContext } from "../context/AppContext";
 
 export async function getServerSideProps( { params } ) {
-    const url = `http://localhost:8080/api/v1/image/getImagesByAdventure/${params.title}`;
+    const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${params.title}`;
 
     try {
         const response = await fetch( url, { cache: 'force-cache' } );
@@ -63,20 +65,21 @@ async function chunkArray( photoArray, chunkSize ) {
 
 // The page component that renders the content for each title
 const TitlePage = ( { data } ) => {
+    const {
+        isPhotographyPage,
+        photoDataList,
+        setCurrentCatalog
+    } = useAppContext();
     const [photoList, setPhotoList] = useState( [] );
     const [selectedPhoto, setSelectedPhoto] = useState( null );
     const router = useRouter();
     if ( !data ) {
         return <div>Loading...</div>;
     }
-    console.log( 'title page: ' );
-    console.log( selectedPhoto );
 
     return (
-        <div className={styles.titlePageMain}>
-            <div className={styles.titleHeader}>
-                <h1>{router.query.title}</h1>
-            </div>
+        <div className={styles.catalogPageMain}>
+            <Header isPhotographyPage={isPhotographyPage}/>
             <div className={styles.photoBlockWrapper}>
                 {data.map( ( photoPair, index ) => (
                     <PhotoBlockComponent key={index} photos={photoPair}/>

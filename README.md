@@ -156,8 +156,8 @@ view what they want to see.
     - This is important because when uploading a new image, we need to make sure certain data exists, as stated above.
 - ### **_Milestone 8:_**
     - https://aws.amazon.com/blogs/mobile/amplify-next-js-13/
-      - Let's connect to amplify
-      - Get base Page Working
+        - Let's connect to amplify
+        - Get base Page Working
 
 ## Thoughts
 
@@ -191,8 +191,9 @@ createImageCarousel(Array images) => {
                     if (checkComplete() => return)
                 }
             }
+
 addImage(images) => {
-    
+
                 if(newImage.star == 3) => 
                     if(newImage.dir == vertical) => SmallVerticalRow(newImage);
                     if(newImage.dir == horizontal) => SmallHorizontalRow(newImage);
@@ -224,24 +225,45 @@ addImage(images) => {
 
 }
 
-
 class ImageRow =>
-    int length;
-    int maxLength;
-    Array [Images]
-    
+int length;
+int maxLength;
+Array [Images]
 
 class SmallVerticalRow extends ImageRow =>
-    int length;
-    int maxLength = 4;
-
-
+int length;
+int maxLength = 4;
 
 // TODO: We need a new different, Mix row. if Small(3star)
-    // TODO: contains 1 horizontal and 2 vertical
-    // TODO: Do we, when creating, take 1 image out of IMAGE, and into Store(short term storage image bucket)
-    // TODO: if we do this, then after adding image, we check if any type of row is able to be built, and THEN build it.
-    // TODO: we could have an alternator value (preferLarge==true/false) that prefers a Large row, UNTIL we have gotten one
-        // TODO: aka, if(preferLarge) => check large row options first(aka, do we have 1 horizontal, or two vertical)
-        // TODO: aka, if(!preferLarge) => check small row opetion first
-        // TODO: aka, this means that, we will still get what is available, but should get more variance, or back and forth
+// TODO: contains 1 horizontal and 2 vertical
+// TODO: Do we, when creating, take 1 image out of IMAGE, and into Store(short term storage image bucket)
+// TODO: if we do this, then after adding image, we check if any type of row is able to be built, and THEN build it.
+// TODO: we could have an alternator value (preferLarge==true/false) that prefers a Large row, UNTIL we have gotten one
+// TODO: aka, if(preferLarge) => check large row options first(aka, do we have 1 horizontal, or two vertical)
+// TODO: aka, if(!preferLarge) => check small row opetion first
+// TODO: aka, this means that, we will still get what is available, but should get more variance, or back and forth
+
+NEW TODO:
+
+- Home page is awesome, but header and background need to be more abstract
+- Simple clean lines, but maybe all white to contrast images
+    - Easy enough to move it to Darkmode this way as well
+    - Header bar needs more items, needs to be expanded upon.
+    - 
+    - Each side ( code, photograph ) both need to have multiple options
+    - MAYBE ( 800 width or less ) we have them simply be dropdowns
+    - Items on current page are indicative of header options
+    - Need a more 'set' group of items, which could include OTHER groups of catalogs(?)
+    - For Photography, a 'Catalog' is a group of like-minded images.
+    - Our Main Items need a name (?) that makes sense for both Photo and Code sides.
+    - Photo Main Items:
+        - Can be a Catalog, i.e. 'Juni', 'Amsterdam', 'Architecture'
+        - Can be a Group of Catalogs, i.e. 'Europe', 'Adventures', Blog
+    - Catalog - This has a lot of potential, but a lot of ways it could be overbearing.
+        - First, we should only be showing 4/5 star images, or images that FIT a vibe.
+        - These need to be FAR more curated, limited to only a handful ( think 10-30 tops )
+        - Need to figure out a way to insert context, dialogue DYNAMICALLY, so that we can have a 'list' of images being
+          added to the page and we are simply inserting relevant stuff where needed.
+            - OR, could be a 5 star 'comment'
+            - OR... our backend 'Catalog' has the ability to order images and text together, i.e. a List<Image, String>?
+        - 
