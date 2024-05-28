@@ -249,7 +249,7 @@ NEW TODO:
 - Simple clean lines, but maybe all white to contrast images
     - Easy enough to move it to Darkmode this way as well
     - Header bar needs more items, needs to be expanded upon.
-    - 
+    -
     - Each side ( code, photograph ) both need to have multiple options
     - MAYBE ( 800 width or less ) we have them simply be dropdowns
     - Items on current page are indicative of header options
@@ -266,4 +266,3 @@ NEW TODO:
           added to the page and we are simply inserting relevant stuff where needed.
             - OR, could be a 5 star 'comment'
             - OR... our backend 'Catalog' has the ability to order images and text together, i.e. a List<Image, String>?
-        - 

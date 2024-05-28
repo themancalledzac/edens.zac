@@ -56,6 +56,7 @@ export default function ParallaxSection( { catalogTitle, bannerImage, setCurrent
 
     return (
         <div onClick={handleClick} ref={sectionRef} className={styles.parallaxSection} style={sectionStyle}>
+            {/*TODO: Duplicate our title, and give it SLIGHT parallax effect, so white behind going slightly up. */}
             <h1 className={styles.parallaxSectionTitle}>{catalogTitle}</h1>
         </div>
     )

@@ -16,7 +16,7 @@
 }
 
 .navBarWrapper {
-  flex-grow: 1; // Takes up the remaining space
+  //flex-grow: 1; // Takes up the remaining space
   display: flex;
   justify-content: space-between;
   height: 100%;
@@ -34,7 +34,19 @@
 }
 
 .navBarLeft {
-  flex-basis: 10%; // Start with 10% width
+  flex-basis: 20%; // Start with 10% width
+  background-color: #d7d7d7;
+  color: #2c2c2c !important;
+  cursor: pointer;
+  justify-content: center;
+
+  &:hover {
+    background-color: #bcbcbc;
+  }
+
+  .text {
+    align-items: center;
+  }
 }
 
 .textCentered {
