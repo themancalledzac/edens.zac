@@ -7,6 +7,7 @@ import PhotographyPage from "../Components/PhotographyPage/PhotographyPage";
 import CodingPage from "../Components/CodingPage/CodingPage";
 import Header from "../Components/Header/Header";
 import { useAppContext } from "../context/AppContext";
+import photoData from "../public/homePagePhotoData.json";
 
 export default function Home() {
     const {
@@ -41,7 +42,7 @@ export default function Home() {
     useEffect( () => {
         const fetchData = async () => {
             try {
-                const response = await fetch( url, { cache: 'no-store' } ); // or force-cache
+                let response = await fetch( url, { cache: 'no-store' } ); // or force-cache
                 if ( !response.ok ) {
                     throw new Error( 'Network response was not ok' );
                 }
@@ -50,6 +51,7 @@ export default function Home() {
                 setPhotoDataList( data );
             } catch (error) {
                 console.error( "Fetch error: ", error );
+                setPhotoDataList( photoData );
             }
         };
         fetchData();

@@ -1,0 +1,172 @@
+[
+  {
+    "id": 2,
+    "name": "Amsterdam",
+    "imageMain": {
+      "id": 2,
+      "title": "_DSC0263.webp",
+      "imageWidth": 2500,
+      "imageHeight": 1663,
+      "iso": 900,
+      "author": "Zechariah Edens",
+      "rating": 5,
+      "lens": "NIKKOR Z 24-70mm f/4 S",
+      "blackAndWhite": false,
+      "shutterSpeed": "1/24 sec",
+      "rawFileName": "_DSC0263.NEF",
+      "camera": "NIKON Z 6",
+      "focalLength": "52 mm",
+      "location": null,
+      "imageUrlLarge": null,
+      "imageUrlSmall": null,
+      "imageUrlRaw": null,
+      "catalog": [
+        "Amsterdam",
+        "Europe"
+      ],
+      "createDate": "2023:10:13 01:12:51",
+      "updateDate": "2024-05-05T18:10:38.185406",
+      "fstop": "f/8.0"
+    },
+    "location": null,
+    "people": null,
+    "tags": null,
+    "priority": 0
+  },
+  {
+    "id": 3,
+    "name": "Paris",
+    "imageMain": {
+      "id": 97,
+      "title": "_DSC1384.webp",
+      "imageWidth": 5882,
+      "imageHeight": 3914,
+      "iso": 250,
+      "author": "Zechariah Edens",
+      "rating": 4,
+      "lens": "NIKKOR Z 24-70mm f/4 S",
+      "blackAndWhite": true,
+      "shutterSpeed": "1/399 sec",
+      "rawFileName": "_DSC1384.NEF",
+      "camera": "NIKON Z 6",
+      "focalLength": "24 mm",
+      "location": null,
+      "imageUrlLarge": null,
+      "imageUrlSmall": null,
+      "imageUrlRaw": null,
+      "catalog": [
+        "Europe",
+        "Paris"
+      ],
+      "createDate": "2023:10:16 09:04:33",
+      "updateDate": "2024-05-05T18:12:22.557822",
+      "fstop": "f/4.0"
+    },
+    "location": null,
+    "people": null,
+    "tags": null,
+    "priority": 0
+  },
+  {
+    "id": 4,
+    "name": "Florence",
+    "imageMain": {
+      "id": 201,
+      "title": "_DSC2558.webp",
+      "imageWidth": 2500,
+      "imageHeight": 1663,
+      "iso": 500,
+      "author": "Zechariah Edens",
+      "rating": 5,
+      "lens": "NIKKOR Z 24-70mm f/4 S",
+      "blackAndWhite": true,
+      "shutterSpeed": "1/124 sec",
+      "rawFileName": "_DSC2558.NEF",
+      "camera": "NIKON Z 6",
+      "focalLength": "24 mm",
+      "location": null,
+      "imageUrlLarge": null,
+      "imageUrlSmall": null,
+      "imageUrlRaw": null,
+      "catalog": [
+        "Florence",
+        "Europe"
+      ],
+      "createDate": "2023:10:19 08:06:32",
+      "updateDate": "2024-05-05T18:14:18.871957",
+      "fstop": "f/5.6"
+    },
+    "location": null,
+    "people": null,
+    "tags": null,
+    "priority": 0
+  },
+  {
+    "id": 5,
+    "name": "Rome",
+    "imageMain": {
+      "id": 296,
+      "title": "_DSC3291.webp",
+      "imageWidth": 2500,
+      "imageHeight": 1667,
+      "iso": 160,
+      "author": "Zechariah Edens",
+      "rating": 4,
+      "lens": "NIKKOR Z 24-70mm f/4 S",
+      "blackAndWhite": true,
+      "shutterSpeed": "1/399 sec",
+      "rawFileName": "_DSC3291.NEF",
+      "camera": "NIKON Z 6",
+      "focalLength": "24 mm",
+      "location": null,
+      "imageUrlLarge": null,
+      "imageUrlSmall": null,
+      "imageUrlRaw": null,
+      "catalog": [
+        "Europe",
+        "Rome"
+      ],
+      "createDate": "2023:10:22 03:29:11",
+      "updateDate": "2024-05-05T18:17:29.639999",
+      "fstop": "f/9.0"
+    },
+    "location": null,
+    "people": null,
+    "tags": null,
+    "priority": 0
+  },
+  {
+    "id": 6,
+    "name": "Vienna",
+    "imageMain": {
+      "id": 377,
+      "title": "_DSC3818.webp",
+      "imageWidth": 6042,
+      "imageHeight": 4020,
+      "iso": 100,
+      "author": "Zechariah Edens",
+      "rating": 4,
+      "lens": "NIKKOR Z 24-70mm f/4 S",
+      "blackAndWhite": false,
+      "shutterSpeed": "1/99 sec",
+      "rawFileName": "_DSC3818.NEF",
+      "camera": "NIKON Z 6",
+      "focalLength": "70 mm",
+      "location": null,
+      "imageUrlLarge": null,
+      "imageUrlSmall": null,
+      "imageUrlRaw": null,
+      "catalog": [
+        "Europe",
+        "Vienna"
+      ],
+      "createDate": "2023:10:24 23:32:27",
+      "updateDate": "2024-05-05T18:20:31.154165",
+      "fstop": "f/4.0"
+    },
+    "location": null,
+    "people": null,
+    "tags": null,
+    "priority": 0
+  }
+]
