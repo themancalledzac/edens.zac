@@ -5,6 +5,11 @@ import styles from '../styles/Catalog.module.scss';
 import ImageFullScreen from "../Components/ImageFullScreen/ImageFullScreen";
 import Header from "../Components/Header/Header";
 import { useAppContext } from "../context/AppContext";
+import amsterdamPage from "../Images/amsterdamPage.json";
+import parisPage from "../Images/parisPage.json";
+import florencePage from "../Images/florencePage.json";
+import romePage from "../Images/romePage.json";
+import viennaPage from "../Images/viennaPage.json";
 
 export async function getServerSideProps( { params } ) {
     const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${params.title}`;
@@ -22,7 +27,20 @@ export async function getServerSideProps( { params } ) {
         };
     } catch (error) {
         console.error( "Fetch error: ", error );
-        return { props: { data: [] } }; // return empty data in case of error
+
+        switch (params.title) {
+            case "amsterdam":
+                return { props: { data: amsterdamPage } };
+            case "paris":
+                return { props: { data: parisPage } };
+            case "florence":
+                return { props: { data: florencePage } };
+            case "rome":
+                return { props: { data: romePage } };
+            case "vienna":
+                return { props: { data: viennaPage } };
+        }
+        // return { props: { data: staticData } }; // commented out until our 'local' solution is no longer needed
     }
 }
 

@@ -7,7 +7,7 @@ import PhotographyPage from "../Components/PhotographyPage/PhotographyPage";
 import CodingPage from "../Components/CodingPage/CodingPage";
 import Header from "../Components/Header/Header";
 import { useAppContext } from "../context/AppContext";
-import photoData from "../public/homePagePhotoData.json";
+import photoData from "../Images/homePagePhotoData.json";
 
 export default function Home() {
     const {
