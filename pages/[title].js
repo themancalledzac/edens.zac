@@ -11,6 +11,12 @@ import florencePage from "../Images/florencePage.json";
 import romePage from "../Images/romePage.json";
 import viennaPage from "../Images/viennaPage.json";
 
+/**
+ * Photography Gallery Page.
+ * Currently, has a switch case with local json files when backend not available.
+ * @param params
+ * @returns {Promise<{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: *[]}}|{props: {data: {}}}>}
+ */
 export async function getServerSideProps( { params } ) {
     const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${params.title}`;
 
@@ -58,7 +64,7 @@ async function chunkArray( photoArray, chunkSize ) {
     let todo = [];
 
     for (const photo of photoArray) {
-        if ( photo.rating === 5 && !( photo.imageHeight > photo.imageWidth ) ) { // TODO: Add an, `&& if vertical`
+        if ( photo?.rating === 5 && !( photo?.imageHeight > photo?.imageWidth ) ) { // TODO: Add an, `&& if vertical`
             // If it's a 5-star image, add it immediately as a single-image pair.
             result.push( [photo] );
         } else {
@@ -86,7 +92,8 @@ const TitlePage = ( { data } ) => {
     const {
         isPhotographyPage,
         photoDataList,
-        setCurrentCatalog
+        setCurrentCatalog,
+        isMobile
     } = useAppContext();
     const [photoList, setPhotoList] = useState( [] );
     const [selectedPhoto, setSelectedPhoto] = useState( null );

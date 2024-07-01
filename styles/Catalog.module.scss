@@ -2,6 +2,11 @@
   margin-left: auto;
   margin-right: auto;
   margin-bottom: 2rem;
+
+  &.mobile {
+    margin-left: 1rem;
+    margin-right: 1rem;
+  }
 }
 
 .catalogHeader {
@@ -13,4 +18,8 @@
   flex-direction: column;
   align-items: center;
   background-color: white;
+
+  &.mobileWrapper {
+    align-items: stretch; // Full width on mobile
+  }
 }

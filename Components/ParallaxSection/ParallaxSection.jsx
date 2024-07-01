@@ -2,9 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import styles from '../../styles/ParallaxSection.module.scss'; // Adjust the path as needed
 import imageDirectory from "../../Images/imageDirectory.json";
 import { useRouter } from 'next/router';
+import { useAppContext } from "../../context/AppContext";
 
 export default function ParallaxSection( { catalogTitle, bannerImage, setCurrentCatalog } ) {
     const sectionRef = useRef( null );
+    const { isMobile } = useAppContext();
     const router = useRouter();
 
     const handleClick = () => {
@@ -26,12 +28,23 @@ export default function ParallaxSection( { catalogTitle, bannerImage, setCurrent
             const viewportMidpoint = viewportHeight / 2;
             const distanceFromViewportCenter = sectionMidpoint - viewportMidpoint;
 
+            const parallaxMultiplier = isMobile ? 0.2 : 0.5;
+
+
             // Adjust the background position based on the distance from the viewport center
             // The multiplier (e.g., 0.5) controls the speed of the parallax effect
             // You might need to adjust this multiplier to get the desired effect
-            const offset = distanceFromViewportCenter * 0.5;
+            const offset = distanceFromViewportCenter * parallaxMultiplier;
 
-            sectionRef.current.style.backgroundPosition = `center calc(50% + ${offset}px)`;
+
+            // sectionRef.current.style.backgroundPosition = `center calc(50% + ${offset}px)`;
+            if ( isMobile ) {
+                sectionRef.current.style.backgroundSize = 'cover';
+                sectionRef.current.style.backgroundPosition = `center calc(50% + ${offset}px)`;
+            } else {
+                sectionRef.current.style.backgroundSize = '100% auto';
+                sectionRef.current.style.backgroundPosition = `center calc(50% + ${offset}px)`;
+            }
         }
     };
 

@@ -6,7 +6,13 @@
   background-position: center;
   background-attachment: fixed;
   background-repeat: no-repeat;
+  cursor: pointer;
   //background-image: url("../Images/testImage.jpg");
+  @media (max-width: 768px) {
+    aspect-ratio: 1 / 1; /* Adjust aspect ratio for mobile */
+    background-attachment: scroll; /* This can help with performance on mobile */
+    margin-bottom: 0rem;
+  }
 }
 
 .parallaxSectionTitle {
@@ -15,4 +21,10 @@
   margin: 0;
   color: black;
   text-shadow: 2px 2px 0 white, 4px 4px 0 white;
+
+  @media (max-width: 568px) {
+    font-size: 2rem;
+    //padding-right: 1rem;
+    padding: 1.5rem 0 0 1rem;
+  }
 }

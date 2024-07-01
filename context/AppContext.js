@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
 // Creating the context object and exporting so that other components can use it.
 export const AppContext = createContext();
@@ -9,8 +9,23 @@ export const AppProvider = ( { children } ) => {
     const [isPhotographyPage, setIsPhotographyPage] = useState( true );
     const [photoDataList, setPhotoDataList] = useState( [] );
     const [currentCatalog, setCurrentCatalog] = useState( '' );
+    const [isMobile, setIsMobile] = useState( false );
 
-    // You can add more state and functions as needed here
+
+    useEffect( () => {
+        const checkIsMobile = () => {
+            setIsMobile( window.innerWidth <= 768 ); // You can adjust this threshold
+        };
+
+        // Check initially
+        checkIsMobile();
+
+        // Add event listener for window resize
+        window.addEventListener( 'resize', checkIsMobile );
+
+        // Cleanup
+        return () => window.removeEventListener( 'resize', checkIsMobile );
+    }, [] );
 
     return (
         <AppContext.Provider value={{
@@ -19,7 +34,8 @@ export const AppProvider = ( { children } ) => {
             photoDataList,
             setPhotoDataList,
             currentCatalog,
-            setCurrentCatalog
+            setCurrentCatalog,
+            isMobile
         }}>
             {children}
         </AppContext.Provider>

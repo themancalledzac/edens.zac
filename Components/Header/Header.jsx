@@ -3,6 +3,7 @@ import ParallaxSection from "../ParallaxSection/ParallaxSection";
 import { useAppContext } from "../../context/AppContext";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
+import { AlignJustify } from "lucide-react";
 
 
 // TODO: Header Update
@@ -60,23 +61,10 @@ export default function Header() {
     //  - Update Menu so margin-right is equal to the rest of the page.
     return (
         <header className={styles.header}>
-            {/*<div className={styles.navBarWrapper}>*/}
-            <div className={styles.title} onClick={handleTitleClick}>
-                <h2>Zac Edens</h2>
-            </div>
-            <div
-                className={styles.navBarLeft}
-                onClick={handleHeaderClick}
-            >
-                <h2 className={styles.text}>{isPhotographyPage ? 'Coding' : 'Photography'}</h2>
-            </div>
-            <div
-                className={styles.navBarRight}
-                onClick={() => setIsPhotographyPage( true )}
-            >
-                <h2 className={styles.textCentered}>{!isPhotographyPage ? 'Coding' : 'Photography'}</h2>
-                <h2 className={styles.menu} ref={aboutRef}
-                    onClick={() => setShowDropdown( !showDropdown )}>About</h2>
+            <div className={styles.navBarWrapper}>
+                <div className={styles.title} onClick={handleTitleClick}>
+                    <h2>Zac Edens</h2>
+                </div>
                 {showDropdown && (
                     <div className={styles.dropdown} ref={dropdownRef}>
                         <input type="text" placeholder="Search (not in use)" className={styles.searchBar}/>
@@ -86,8 +74,10 @@ export default function Header() {
                         <div>Contact</div>
                     </div>
                 )}
+                <AlignJustify
+                    className={styles.menu}
+                    onClick={() => setShowDropdown( !showDropdown )}/>
             </div>
-            {/*</div>*/}
         </header>
     );
 };

@@ -10,6 +10,7 @@ import Image from "next/image";
 //  4. They don't have margin or padding INSIDE, instead, we use flex to have space-between.
 
 function calculateImageSizes( images, componentWidth ) {
+
     if ( images.length === 1 ) {
         // Handle the single image case
         const ratio = images[ 0 ].imageWidth / images[ 0 ].imageHeight;
@@ -43,7 +44,7 @@ function calculateImageSizes( images, componentWidth ) {
 }
 
 
-export default function PhotoBlockComponent( { photos } ) {
+export default function PhotoBlockComponent( { photos, isMobile } ) {
     const [componentWidth, setComponentWidth] = useState( 800 );
     const [imageSelected, setImageSelected] = useState( null );
     const [loading, setLoading] = useState( true );
@@ -52,6 +53,25 @@ export default function PhotoBlockComponent( { photos } ) {
     const handleClick = ( image ) => {
         setImageSelected( image );
     }
+
+    useEffect( () => {
+        const calculateComponentWidth = () => {
+            if ( isMobile ) {
+                return window.innerWidth - 32; // Subtract padding (16px on each side)
+            } else {
+                return Math.min( window.innerWidth * 0.8, 1200 ); // 80% of window width, max 1200px
+            }
+        };
+
+        setComponentWidth( calculateComponentWidth() );
+
+        const handleResize = () => {
+            setComponentWidth( calculateComponentWidth() );
+        };
+
+        window.addEventListener( 'resize', handleResize );
+        return () => window.removeEventListener( 'resize', handleResize );
+    }, [isMobile] );
 
     useEffect( () => {
         try {
@@ -86,7 +106,10 @@ export default function PhotoBlockComponent( { photos } ) {
                 width: `${componentWidth}px`,
                 justifyContent: 'center',
                 alignItems: 'center',
-                marginBottom: '1rem'
+                ...( isMobile
+                        ? { marginBottom: '0', flexDirection: 'column' }
+                        : { marginBottom: '1rem', flexDirection: 'row' }
+                )
             }}>
                 <Image src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""}
                        alt="Photo"
@@ -94,7 +117,10 @@ export default function PhotoBlockComponent( { photos } ) {
                        height={Math.round( imageOne.height )}
                        className={styles.imageOne}
                        onClick={() => handleClick( imageOne )}
-                       style={!imageTwo ? { margin: '0' } : { margin: '0', marginRight: '0.5rem' }}
+                       style={isMobile ? { margin: '0', width: '100%', height: 'auto' } : {
+                           margin: '0',
+                           marginRight: '0'
+                       }}
                 />
                 {imageTwo && (
                     <Image src={isValidSource( imageTwo.title ) ? `/${imageTwo.title}` : ""}
@@ -103,7 +129,10 @@ export default function PhotoBlockComponent( { photos } ) {
                            width={Math.round( imageTwo.width )}
                            height={Math.round( imageTwo.height )}
                            onClick={() => handleClick( imageTwo )}
-                           style={{ margin: '0', marginLeft: '0.5rem' }}
+                           style={isMobile ? { margin: '0', width: '100%', height: 'auto' } : {
+                               margin: '0',
+                               marginLeft: '0'
+                           }}
                     />
                 )}
             </div>
