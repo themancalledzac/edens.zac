@@ -1,7 +1,7 @@
-//.header {
-//  display: flex;
-//  width: 100%;
-//}
+.header {
+  position: relative; // add this to make it a positioning context for the dropdown
+  width: 100%;
+}
 
 .title {
   width: 200px;
@@ -25,96 +25,54 @@
   margin-right: 2rem;
 }
 
-.navBarLeft, .navBarRight {
-  position: relative;
-  flex-grow: 1; // take up remaining space
-  height: 100%;
-  display: flex;
-  align-items: center; /* This line centers items vertically */
-  padding: 1rem;
-  transition: all 0.2s ease-in-out; // Transition for resizing and background color
-  flex-basis: 50%;
-}
-
-.navBarLeft {
-  flex-basis: 20%; // Start with 10% width
-  background-color: #d7d7d7;
-  color: #2c2c2c !important;
-  cursor: pointer;
-  justify-content: center;
-
-  &:hover {
-    background-color: #bcbcbc;
-  }
-
-  .text {
-    align-items: center;
-  }
-}
-
-.textCentered {
-  margin: 0 auto; // Center the text within the expanded side
-}
-
-.navBarRight {
-  //flex-basis: 90%; // Start with 90% width
-  //background-color: #ffdbdb;
-}
-
-.expanded {
-  flex-basis: 90%; // Expands to 90% on active
-  background-color: white;
-  color: black !important;
-}
-
-.collapsed {
-  flex-basis: 10%; // Reduces to 10% when not active
-  background-color: #d7d7d7;
-  color: #2c2c2c !important;
-  cursor: pointer;
-
-  &:hover {
-    background-color: #bcbcbc;
-  }
-}
-
-//.text {
-//  color: black;
-//}
-
 .menu {
   color: black;
   cursor: pointer;
   width: 64px;
   height: 64px;
+  z-index: 1000; // ensure above other elements
 }
 
-//input[disabled] {
-//  opacity: 0.5;
-//}
-
 .dropdown {
-  position: absolute; // Dropdown is positioned absolutely relative to its parent
-  top: 100%; // Position right below the parent
-  right: 0; // Align with the left side of the parent
-  //width: 100%; // Ensure it matches the width of the parent
-  background-color: #f0f0f0;
+  position: fixed; // fixed position relative to the viewport
+  top: 0; // align to the top of the viewport
+  right: 0; // Align to the right of the viewport
+  width: 400px;
+  height: 100vh;
+  padding-top: 5rem;
+  margin-right: 2rem;
+  background-color: rgba(255, 255, 255, 0.92);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
-  z-index: 1;
+  box-shadow: -8px 0 16px 0 rgba(0, 0, 0, 0.2);
+  overflow-y: auto; // add scrolling if content exceeds height
+
+  transition: transform 0.3s ease-in-out;
+  //transform: translateX(100%); // Start off-screen
+}
+
+.dropdown.show {
+  transform: translateX(0);
 }
 
 .dropdown div {
-  height: 50px; // Increased height
-  line-height: 50px; // Center text vertically
-  font-size: 18px; // Larger font size
+  height: 60px; // Increased height
+  line-height: 60px; // Center text vertically
+  font-size: 20px; // Larger font size
   text-align: right; // Align text to the right
-  padding-right: 20px; // Padding for text alignment
+  //padding-right: 30px; // Padding for text alignment
 }
 
 .searchBar {
   border: none; // Remove border
-  padding: 10px; // Padding inside the search input
+  padding: 15px; // Padding inside the search input
   width: 100%; // Full width of the dropdown
+  font-size: 18px;
+}
+
+.dropdownHeader {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
