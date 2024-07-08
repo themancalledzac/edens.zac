@@ -16,7 +16,7 @@ export default function PhotographyPage( { photoDataList, setCurrentCatalog } ) 
             {/*</div>*/}
             {/*{photoDataList.map( ( { catalog, images, index } ) => (*/}
             {photoDataList.map( ( { id, imageMain, name } ) => (
-                console.log( imageMain.title ),
+                console.log( name ),
                     <ParallaxSection key={id} catalogTitle={name} setCurrentCatalog={setCurrentCatalog}
                                      bannerImage={imageMain.title} image={imageMain}/>
             ) )}
