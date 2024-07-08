@@ -92,11 +92,6 @@ const TitlePage = ( { data } ) => {
     const [photoList, setPhotoList] = useState( [] );
     const [imageSelected, setImageSelected] = useState( null );
     const router = useRouter();
-    if ( !data ) {
-        return <div>Loading...</div>;
-    }
-
-    console.log( imageSelected ); // current full image object, such as:
 
     useEffect( () => {
         const handleKeyDown = ( event ) => {
@@ -121,6 +116,12 @@ const TitlePage = ( { data } ) => {
         }
 
     }, [data, imageSelected] );
+
+    if ( !data ) {
+        return <div>Loading...</div>;
+    }
+
+    console.log( imageSelected ); // current full image object, such as:
 
     return (
         <div className={styles.catalogPageMain}>

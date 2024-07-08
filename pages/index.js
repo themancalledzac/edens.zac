@@ -23,22 +23,6 @@ export default function Home() {
 
     const url = 'http://localhost:8080/api/v1/catalog/mainPageCatalogList';
 
-    // on initial page load
-
-    // useEffect( () => {
-    //     let data;
-    //     const fetchData = async () => {
-    //         try {
-    //
-    //             data = await fetch( url, { cache: 'force-cache' } );
-    //         } finally {
-    //             console.log( data.body );
-    //
-    //         }
-    //     }
-    //     fetchData();
-    // }, [] );
-
     useEffect( () => {
         const fetchData = async () => {
             try {
@@ -55,7 +39,7 @@ export default function Home() {
             }
         };
         fetchData();
-    }, [] );
+    }, [setPhotoDataList] );
 
     return (
         <div className={styles.container}>
