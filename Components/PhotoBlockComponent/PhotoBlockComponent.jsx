@@ -44,9 +44,9 @@ function calculateImageSizes( images, componentWidth ) {
 }
 
 
-export default function PhotoBlockComponent( { photos, isMobile } ) {
+export default function PhotoBlockComponent( { photos, isMobile, imageSelected, setImageSelected } ) {
     const [componentWidth, setComponentWidth] = useState( 800 );
-    const [imageSelected, setImageSelected] = useState( null );
+    // const [imageSelected, setImageSelected] = useState( null );
     const [loading, setLoading] = useState( true );
     const [imageOne, setImageOne] = useState( photos[ 0 ] );
     const [imageTwo, setImageTwo] = useState( photos.length > 1 ? photos[ 1 ] : null );

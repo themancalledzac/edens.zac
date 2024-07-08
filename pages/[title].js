@@ -10,6 +10,7 @@ import parisPage from "../Images/parisPage.json";
 import florencePage from "../Images/florencePage.json";
 import romePage from "../Images/romePage.json";
 import viennaPage from "../Images/viennaPage.json";
+import corporatePage from "../Images/corporatePage.json";
 
 /**
  * Photography Gallery Page.
@@ -45,19 +46,12 @@ export async function getServerSideProps( { params } ) {
                 return { props: { data: romePage } };
             case "vienna":
                 return { props: { data: viennaPage } };
+            case "corporate":
+                return { props: { data: corporatePage } };
         }
         // return { props: { data: staticData } }; // commented out until our 'local' solution is no longer needed
     }
 }
-
-// old
-// async function chunkArray( photoArray, chunkSize ) {
-//     let result = [];
-//     for (let i = 0; i < photoArray.length; i += chunkSize) {
-//         result.push( photoArray.slice( i, i + chunkSize ) );
-//     }
-//     return result;
-// }
 
 async function chunkArray( photoArray, chunkSize ) {
     let result = [];
@@ -96,18 +90,49 @@ const TitlePage = ( { data } ) => {
         isMobile
     } = useAppContext();
     const [photoList, setPhotoList] = useState( [] );
-    const [selectedPhoto, setSelectedPhoto] = useState( null );
+    const [imageSelected, setImageSelected] = useState( null );
     const router = useRouter();
     if ( !data ) {
         return <div>Loading...</div>;
     }
+
+    console.log( imageSelected ); // current full image object, such as:
+
+    useEffect( () => {
+        const handleKeyDown = ( event ) => {
+            if ( imageSelected === null ) return;
+
+            const flattenedData = data.flat();
+            const currentIndex = flattenedData.findIndex( img => img.id === imageSelected.id );
+
+            if ( event.key === "ArrowRight" ) {
+                const nextIndex = ( currentIndex + 1 ) % flattenedData.length;
+                setImageSelected( flattenedData[ nextIndex ] );
+            } else if ( event.key === "ArrowLeft" ) {
+                const prevIndex = ( currentIndex - 1 + flattenedData.length ) % flattenedData.length;
+                setImageSelected( flattenedData[ prevIndex ] );
+            }
+        };
+
+        window.addEventListener( 'keydown', handleKeyDown );
+
+        return () => {
+            window.removeEventListener( 'keydown', handleKeyDown );
+        }
+
+    }, [data, imageSelected] );
 
     return (
         <div className={styles.catalogPageMain}>
             <Header isPhotographyPage={isPhotographyPage}/>
             <div className={styles.photoBlockWrapper}>
                 {data.map( ( photoPair, index ) => (
-                    <PhotoBlockComponent key={index} photos={photoPair}/>
+                    <PhotoBlockComponent
+                        key={index}
+                        photos={photoPair}
+                        imageSelected={imageSelected}
+                        setImageSelected={setImageSelected}
+                    />
                 ) )}
             </div>
         </div>
