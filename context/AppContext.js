@@ -10,6 +10,7 @@ export const AppProvider = ( { children } ) => {
     const [photoDataList, setPhotoDataList] = useState( [] );
     const [currentCatalog, setCurrentCatalog] = useState( '' );
     const [isMobile, setIsMobile] = useState( false );
+    const [isLoading, setIsLoading] = useState( true );
 
 
     useEffect( () => {
@@ -35,7 +36,9 @@ export const AppProvider = ( { children } ) => {
             setPhotoDataList,
             currentCatalog,
             setCurrentCatalog,
-            isMobile
+            isMobile,
+            isLoading,
+            setIsLoading,
         }}>
             {children}
         </AppContext.Provider>

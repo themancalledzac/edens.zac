@@ -1,5 +1,6 @@
 .parallaxSection {
   width: 100%;
+  max-width: 2500px;
   aspect-ratio: 2 / 1;
   margin-bottom: 2rem;
   background-size: 100% auto;
@@ -11,7 +12,7 @@
   @media (max-width: 768px) {
     aspect-ratio: 1 / 1; /* Adjust aspect ratio for mobile */
     background-attachment: scroll; /* This can help with performance on mobile */
-    margin-bottom: 0rem;
+    margin-bottom: 0;
   }
 }
 

@@ -1,5 +1,6 @@
 import styles from "../../styles/Home.module.scss";
 import ParallaxSection from "../ParallaxSection/ParallaxSection";
+import Footer from "../Footer/Footer";
 
 export default function PhotographyPage( { photoDataList, setCurrentCatalog } ) {
 
@@ -14,18 +15,11 @@ export default function PhotographyPage( { photoDataList, setCurrentCatalog } ) 
             {/*<div className={styles.photoHeader}>*/}
             {/*    <h1 className={styles.photoHeaderTitle}>Zac</h1>*/}
             {/*</div>*/}
-            {/*{photoDataList.map( ( { catalog, images, index } ) => (*/}
             {photoDataList.map( ( { id, imageMain, name } ) => (
-                console.log( name ),
-                    <ParallaxSection key={id} catalogTitle={name} setCurrentCatalog={setCurrentCatalog}
-                                     bannerImage={imageMain.title} image={imageMain}/>
+                <ParallaxSection key={id} catalogTitle={name} setCurrentCatalog={setCurrentCatalog}
+                                 bannerImage={imageMain.title} image={imageMain}/>
             ) )}
-            <div className={styles.footer}>
-                <a className={styles.title}>edens.zac production</a>
-                <a>instagram</a>
-                <a>email</a>
-                <a></a>
-            </div>
+            <Footer/>
         </div>
     )
 };

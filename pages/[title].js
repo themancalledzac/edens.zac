@@ -2,7 +2,6 @@ import { useRouter } from 'next/router';
 import PhotoBlockComponent from "../Components/PhotoBlockComponent/PhotoBlockComponent";
 import React, { useEffect, useState } from "react";
 import styles from '../styles/Catalog.module.scss';
-import ImageFullScreen from "../Components/ImageFullScreen/ImageFullScreen";
 import Header from "../Components/Header/Header";
 import { useAppContext } from "../context/AppContext";
 import amsterdamPage from "../Images/amsterdamPage.json";
@@ -11,6 +10,33 @@ import florencePage from "../Images/florencePage.json";
 import romePage from "../Images/romePage.json";
 import viennaPage from "../Images/viennaPage.json";
 import corporatePage from "../Images/corporatePage.json";
+
+async function chunkArray( photoArray, chunkSize ) {
+    let result = [];
+    let todo = [];
+
+    for (const photo of photoArray) {
+        if ( photo?.rating === 5 && !( photo?.imageHeight > photo?.imageWidth ) ) { // TODO: Add an, `&& if vertical`
+            // If it's a 5-star image, add it immediately as a single-image pair.
+            result.push( [photo] );
+        } else {
+            // Add current image to the waiting list.
+            todo.push( photo );
+            // If we have enough images for a pair, add them to the result.
+            if ( todo.length === chunkSize ) {
+                result.push( [...todo] ); // Use spread operator to clone the array
+                todo = []; // Clear the todo list
+            }
+        }
+    }
+
+    // If there's an image left over that didn't form a pair, add it to the result.
+    if ( todo.length > 0 ) {
+        result.push( todo );
+    }
+
+    return result;
+}
 
 /**
  * Photography Gallery Page.
@@ -53,43 +79,11 @@ export async function getServerSideProps( { params } ) {
     }
 }
 
-async function chunkArray( photoArray, chunkSize ) {
-    let result = [];
-    let todo = [];
-
-    for (const photo of photoArray) {
-        if ( photo?.rating === 5 && !( photo?.imageHeight > photo?.imageWidth ) ) { // TODO: Add an, `&& if vertical`
-            // If it's a 5-star image, add it immediately as a single-image pair.
-            result.push( [photo] );
-        } else {
-            // Add current image to the waiting list.
-            todo.push( photo );
-            // If we have enough images for a pair, add them to the result.
-            if ( todo.length === chunkSize ) {
-                result.push( [...todo] ); // Use spread operator to clone the array
-                todo = []; // Clear the todo list
-            }
-        }
-    }
-
-    // If there's an image left over that didn't form a pair, add it to the result.
-    if ( todo.length > 0 ) {
-        result.push( todo );
-    }
-
-    return result;
-}
-
-
 // The page component that renders the content for each title
 const TitlePage = ( { data } ) => {
     const {
-        isPhotographyPage,
-        photoDataList,
-        setCurrentCatalog,
-        isMobile
+        isPhotographyPage
     } = useAppContext();
-    const [photoList, setPhotoList] = useState( [] );
     const [imageSelected, setImageSelected] = useState( null );
     const router = useRouter();
 
@@ -120,8 +114,6 @@ const TitlePage = ( { data } ) => {
     if ( !data ) {
         return <div>Loading...</div>;
     }
-
-    console.log( imageSelected ); // current full image object, such as:
 
     return (
         <div className={styles.catalogPageMain}>
