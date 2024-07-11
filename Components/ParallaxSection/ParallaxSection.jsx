@@ -30,12 +30,10 @@ export default function ParallaxSection( { catalogTitle, bannerImage, setCurrent
 
             const parallaxMultiplier = isMobile ? 0.2 : 0.5;
 
-
             // Adjust the background position based on the distance from the viewport center
             // The multiplier (e.g., 0.5) controls the speed of the parallax effect
             // You might need to adjust this multiplier to get the desired effect
             const offset = distanceFromViewportCenter * parallaxMultiplier;
-
 
             // sectionRef.current.style.backgroundPosition = `center calc(50% + ${offset}px)`;
             if ( isMobile ) {

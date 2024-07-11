@@ -4,12 +4,56 @@ import React, { useEffect, useState } from "react";
 import styles from '../styles/Catalog.module.scss';
 import Header from "../Components/Header/Header";
 import { useAppContext } from "../context/AppContext";
-import amsterdamPage from "../Images/amsterdamPage.json";
-import parisPage from "../Images/parisPage.json";
-import florencePage from "../Images/florencePage.json";
-import romePage from "../Images/romePage.json";
-import viennaPage from "../Images/viennaPage.json";
-import corporatePage from "../Images/corporatePage.json";
+import amsterdam from "../Images/amsterdamPage.json";
+import paris from "../Images/parisPage.json";
+import florence from "../Images/florencePage.json";
+import rome from "../Images/romePage.json";
+import vienna from "../Images/viennaPage.json";
+import corporate from "../Images/corporatePage.json";
+
+const localDataMap = {
+    amsterdam,
+    paris,
+    florence,
+    rome,
+    vienna,
+    corporate
+};
+
+/**
+ * Photography Gallery Page.
+ * Currently, has a switch case with local json files when backend not available.
+ * @param params
+ * @returns {Promise<{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: *[]}}|{props: {data: {}}}>}
+ */
+export async function getServerSideProps( { params } ) {
+    const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${params.title}`;
+
+    try {
+        const response = await fetch( url, { cache: 'force-cache' } );
+        if ( !response.ok ) {
+            throw new Error( 'Network response not ok.' );
+        }
+        const photoDataList = await response.json();
+        const chunkedList = await chunkArray( photoDataList, 2 );
+
+        return {
+            props: { data: chunkedList },
+        };
+    } catch (error) {
+        console.error( "Fetch error: ", error );
+
+        const localData = localDataMap[ params.title ];
+
+        if ( !localData ) {
+            throw new Error( `No local data found for ${params.title}` );
+        }
+
+        return {
+            props: { data: await chunkArray( localData, 2 ) }
+        };
+    }
+}
 
 async function chunkArray( photoArray, chunkSize ) {
     let result = [];
@@ -36,47 +80,6 @@ async function chunkArray( photoArray, chunkSize ) {
     }
 
     return result;
-}
-
-/**
- * Photography Gallery Page.
- * Currently, has a switch case with local json files when backend not available.
- * @param params
- * @returns {Promise<{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: *[]}}|{props: {data: {}}}>}
- */
-export async function getServerSideProps( { params } ) {
-    const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${params.title}`;
-
-    try {
-        const response = await fetch( url, { cache: 'force-cache' } );
-        if ( !response.ok ) {
-            throw new Error( 'Network response not ok.' );
-        }
-        const photoDataList = await response.json();
-        const chunkedList = await chunkArray( photoDataList, 2 );
-
-        return {
-            props: { data: chunkedList },
-        };
-    } catch (error) {
-        console.error( "Fetch error: ", error );
-
-        switch (params.title) {
-            case "amsterdam":
-                return { props: { data: amsterdamPage } };
-            case "paris":
-                return { props: { data: parisPage } };
-            case "florence":
-                return { props: { data: florencePage } };
-            case "rome":
-                return { props: { data: romePage } };
-            case "vienna":
-                return { props: { data: viennaPage } };
-            case "corporate":
-                return { props: { data: corporatePage } };
-        }
-        // return { props: { data: staticData } }; // commented out until our 'local' solution is no longer needed
-    }
 }
 
 // The page component that renders the content for each title
