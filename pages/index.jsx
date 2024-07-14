@@ -24,15 +24,11 @@ export default function Home( { homePageCatalogList } ) {
         setCurrentCatalog
     } = useAppContext();
 
-    console.log( homePageCatalogList );
-    console.log( { homePageCatalogList } );
-
-
     return (
         <div className={styles.container}>
             <Header isPhotographyPage={isPhotographyPage}/>
             {isPhotographyPage && ( homePageCatalogList.length > 0 ) ?
-                <PhotographyPage photoDataList={homePageCatalogList} setCurrentCatalog={setCurrentCatalog}/>
+                <PhotographyPage photoDataList={homePageCatalogList}/>
                 : <CodingPage photoDataList={null} setCurrentCatalog={setCurrentCatalog}/>
             }
         </div>

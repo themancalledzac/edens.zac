@@ -15,7 +15,7 @@ function calculateImageSizes( images, componentWidth ) {
         // Handle the single image case
         const ratio = images[ 0 ].imageWidth / images[ 0 ].imageHeight;
         const height = componentWidth / ratio;
-        const width = ratio * height;
+        // const width = ratio * height;
 
         return [{
             ...images[ 0 ],
@@ -50,8 +50,8 @@ export default function PhotoBlockComponent( { photos, isMobile, imageSelected, 
     const [loading, setLoading] = useState( true );
     const [imageOne, setImageOne] = useState( photos[ 0 ] );
     const [imageTwo, setImageTwo] = useState( photos.length > 1 ? photos[ 1 ] : null );
-    const handleClick = ( image ) => {
-        setImageSelected( image );
+    const handleClick = async ( image ) => {
+        await setImageSelected( image );
     }
 
     useEffect( () => {

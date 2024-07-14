@@ -1,6 +1,7 @@
 .header {
   position: relative; // add this to make it a positioning context for the dropdown
   width: 100%;
+  z-index: 100;
 }
 
 .title {
@@ -35,12 +36,12 @@
 
 .dropdown {
   position: fixed; // fixed position relative to the viewport
-  padding-right: 0.5rem;
+  //padding-right: 0.5rem;
   top: 0; // align to the top of the viewport
   right: 0; // Align to the right of the viewport
   width: 400px;
   height: 100vh;
-  padding-top: 5rem;
+  //padding-top: 5rem;
   margin-right: 2rem;
   background-color: rgba(255, 255, 255, 0.92);
   display: flex;
@@ -65,7 +66,7 @@
 }
 
 .dropdown div {
-  height: 60px; // Increased height
+  height: 80px; // Increased height
   line-height: 60px; // Center text vertically
   font-size: 20px; // Larger font size
   text-align: right; // Align text to the right
@@ -74,6 +75,23 @@
     text-align: center;
     width: 100%;
   }
+}
+
+.dropdownCloseButtonWrapper {
+  margin-bottom: 2rem;
+  padding-top: 1rem;
+}
+
+.dropdownCloseButton {
+  text-align: right;
+  width: 60px;
+  height: 60px;
+  cursor: pointer;
+}
+
+.dropdownMenuOptions {
+  padding-right: 1rem;
+  cursor: pointer;
 }
 
 .searchBar {

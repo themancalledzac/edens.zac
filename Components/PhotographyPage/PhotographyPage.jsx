@@ -1,13 +1,7 @@
 import styles from "../../styles/Home.module.scss";
 import ParallaxSection from "../ParallaxSection/ParallaxSection";
-import Footer from "../Footer/Footer";
 
-export default function PhotographyPage( { photoDataList, setCurrentCatalog } ) {
-
-    function getRandomElementFromArray( array ) {
-        const randomIndex = Math.floor( Math.random() * array.length );
-        return array[ randomIndex ];
-    }
+export default function PhotographyPage( { photoDataList } ) {
 
     return (
         <div className={styles.bodyWrapper}>
@@ -16,10 +10,9 @@ export default function PhotographyPage( { photoDataList, setCurrentCatalog } ) 
             {/*    <h1 className={styles.photoHeaderTitle}>Zac</h1>*/}
             {/*</div>*/}
             {photoDataList.map( ( { id, imageMain, name } ) => (
-                <ParallaxSection key={id} catalogTitle={name} setCurrentCatalog={setCurrentCatalog}
+                <ParallaxSection key={id} catalogTitle={name}
                                  bannerImage={imageMain.title} image={imageMain}/>
             ) )}
-            <Footer/>
         </div>
     )
 };
