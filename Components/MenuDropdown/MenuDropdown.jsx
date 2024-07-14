@@ -6,6 +6,27 @@ import InstagramIcon from "../InstagramIcon/InstagramIcon";
 export default function MenuDropdown( { dropdownRef, showDropdown, setShowDropdown } ) {
     const [aboutDropdownVisible, setAboutDropdownVisible] = useState( false );
     const [contactDropdownVisible, setContactDropdownVisible] = useState( false );
+    const [formData, setFormData] = useState( { title: '', message: '' } );
+
+    const handleInputChange = ( e ) => {
+        const { name, value } = e.target;
+        setFormData( prevData => ( { ...prevData, [ name ]: value } ) );
+        console.log( formData );
+    };
+
+    const generateMailToLink = () => {
+        const encodedEmail = "ZWRlbnMuemFjQGdtYWlsLmNvbQ=="; // Base64 encoded email
+        const email = atob( encodedEmail ); // Decode at runtime
+        const subject = encodeURIComponent( formData.title );
+        const body = encodeURIComponent( formData.message );
+        return `mailto:${email}?subject=${subject}&body=${body}`;
+    };
+
+    const handleSubmit = async ( e ) => {
+        e.preventDefault();
+        const mailToLink = generateMailToLink();
+        window.open( mailToLink, '_blank', 'noopener,noreferrer' );
+    }
 
     return (
         <div className={styles.dropdown} ref={dropdownRef}>
@@ -26,7 +47,9 @@ export default function MenuDropdown( { dropdownRef, showDropdown, setShowDropdo
                             />
                             <h2>About</h2>
                         </div>
-                        {/* Add your about content here */}
+                        <div className={styles.dropdownSelectBoxWrapper}>
+                            <div>Zechariah Edens</div>
+                        </div>
                     </div>
                 </div>
             ) : contactDropdownVisible ? (
@@ -39,7 +62,28 @@ export default function MenuDropdown( { dropdownRef, showDropdown, setShowDropdo
                             />
                             <h2>Contact</h2>
                         </div>
-                        {/* Add your contact content here */}
+                        <div className={styles.dropdownSelectBoxWrapper}>
+                            <form className={styles.contactForm} onSubmit={handleSubmit}>
+                                <input
+                                    type="text"
+                                    name="title"
+                                    placeholder="Title"
+                                    className={styles.contactFormTitle}
+                                    value={formData.title}
+                                    onChange={handleInputChange}
+                                />
+                                <textarea
+                                    placeholder="Your message"
+                                    name="message"
+                                    className={styles.contactFormMessage}
+                                    value={formData.message}
+                                    onChange={handleInputChange}
+                                />
+                                <button type="submit" className={styles.contactFormSubmit}>
+                                    Send
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             ) : (

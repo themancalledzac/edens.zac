@@ -129,3 +129,53 @@
   align-items: center;
   justify-content: flex-end;
 }
+
+.dropdownSelectBoxWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100vh - 15rem) !important; // Adjust this value based on your header height
+  overflow-y: auto;
+}
+
+.contactForm {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+}
+
+.contactFormTitle {
+  height: 80px;
+  font-size: 1.2rem;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.contactFormMessage {
+  flex: 1;
+  font-size: 1rem;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: none;
+}
+
+.contactFormSubmit {
+  height: 60px;
+  font-size: 1.2rem;
+  background-color: #000;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background-color: #333;
+  }
+}
