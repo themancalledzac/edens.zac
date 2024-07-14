@@ -1,0 +1,131 @@
+.dropdown {
+  position: fixed; // fixed position relative to the viewport
+  //padding-right: 0.5rem;
+  top: 0; // align to the top of the viewport
+  right: 0; // Align to the right of the viewport
+  width: 400px;
+  height: 100vh;
+  //padding-top: 5rem;
+  margin-right: 2rem;
+  background-color: rgba(255, 255, 255, 0.92);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 16px -8px rgba(0, 0, 0, 0.2);
+  overflow-y: auto; // add scrolling if content exceeds height
+
+  transition: transform 0.3s ease-in-out;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    margin-right: 0;
+    padding-right: 0;
+    padding-top: 2rem;
+    align-items: center;
+    height: 100vh;
+  }
+}
+
+.dropdown.show {
+  transform: translateX(0);
+}
+
+.dropdown div {
+  height: 80px; // Increased height
+  line-height: 60px; // Center text vertically
+  font-size: 20px; // Larger font size
+  text-align: right; // Align text to the right
+  //padding-right: 30px; // Padding for text alignment
+  @media (max-width: 768px) {
+    text-align: center;
+    width: 100%;
+  }
+}
+
+.dropdownCloseButtonWrapper {
+  margin-bottom: 2rem;
+  padding-top: 1rem;
+}
+
+.dropdownCloseButton {
+  text-align: right;
+  width: 60px;
+  height: 60px;
+  cursor: pointer;
+}
+
+.dropdownBackButton {
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.dropdownMenuOptionsWrapper {
+  padding-right: 1rem;
+  padding-left: 1rem;
+  width: 100%;
+}
+
+.dropdownMenuItem {
+  align-items: center;
+  height: auto;
+  line-height: normal;
+}
+
+.dropdownMenuOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 80px;
+  cursor: pointer;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
+}
+
+.dropdownMenuItem,
+.dropdownMenuOptions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 80px;
+  cursor: pointer;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
+}
+
+.dropdownMenuOptions,
+.dropdownSubMenu h2,
+.dropdownMenuItem h2 {
+  font-size: 25px;
+  margin: 0;
+  padding-left: 15px;
+}
+
+
+.searchBar {
+  border: none; // Remove border
+  padding: 15px; // Padding inside the search input
+  width: 100%; // Full width of the dropdown
+  font-size: 18px;
+}
+
+.dropdownHeader {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dropdownSubMenu {
+  display: flex;
+  justify-content: space-between;
+}
+
+.dropdownMenuOptions:last-child {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
