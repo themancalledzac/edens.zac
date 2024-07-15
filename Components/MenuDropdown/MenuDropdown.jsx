@@ -1,12 +1,24 @@
 import styles from "./MenuDropdown.module.scss";
 import { CircleX, Undo2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import InstagramIcon from "../InstagramIcon/InstagramIcon";
 
 export default function MenuDropdown( { dropdownRef, showDropdown, setShowDropdown } ) {
     const [aboutDropdownVisible, setAboutDropdownVisible] = useState( false );
     const [contactDropdownVisible, setContactDropdownVisible] = useState( false );
     const [formData, setFormData] = useState( { title: '', message: '' } );
+    const [isMobile, setIsMobile] = useState( false );
+
+    useEffect( () => {
+        const checkMobile = () => {
+            setIsMobile( window.innerWidth <= 768 ); // You can adjust this threshold
+        };
+
+        checkMobile(); // Check on initial load
+        window.addEventListener( 'resize', checkMobile );
+
+        return () => window.removeEventListener( 'resize', checkMobile );
+    }, [] );
 
     const handleInputChange = ( e ) => {
         const { name, value } = e.target;
@@ -25,7 +37,12 @@ export default function MenuDropdown( { dropdownRef, showDropdown, setShowDropdo
     const handleSubmit = async ( e ) => {
         e.preventDefault();
         const mailToLink = generateMailToLink();
-        window.open( mailToLink, '_blank', 'noopener,noreferrer' );
+        if ( isMobile ) {
+            // For mobile, just change the window location
+            window.location.href = mailToLink;
+        } else {
+            window.open( mailToLink, '_blank', 'noopener,noreferrer' );
+        }
     }
 
     return (
