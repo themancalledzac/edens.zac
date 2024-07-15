@@ -19,7 +19,6 @@
     width: 100%;
     margin-right: 0;
     padding-right: 0;
-    padding-top: 2rem;
     align-items: center;
     height: 100vh;
   }
@@ -34,9 +33,9 @@
   line-height: 60px; // Center text vertically
   font-size: 20px; // Larger font size
   text-align: right; // Align text to the right
-  //padding-right: 30px; // Padding for text alignment
   @media (max-width: 768px) {
-    text-align: center;
+    text-align: right;
+    justify-content: space-between;
     width: 100%;
   }
 }
@@ -44,6 +43,11 @@
 .dropdownCloseButtonWrapper {
   margin-bottom: 2rem;
   padding-top: 1rem;
+  @media (max-width: 768px) {
+    padding-right: 2rem;
+    padding-left: 2rem;
+
+  }
 }
 
 .dropdownCloseButton {
@@ -63,6 +67,11 @@
   padding-right: 1rem;
   padding-left: 1rem;
   width: 100%;
+
+  @media (max-width: 768px) {
+    padding-right: 2.75rem;
+    padding-left: 2.75rem;
+  }
 }
 
 .dropdownMenuItem {
@@ -79,7 +88,8 @@
   cursor: pointer;
 
   @media (max-width: 768px) {
-    justify-content: center;
+    justify-content: space-between;
+    padding-right: 0 !important;
   }
 }
 
@@ -92,24 +102,18 @@
   cursor: pointer;
 
   @media (max-width: 768px) {
-    justify-content: center;
+    text-align: right;
+    width: 100%;
+    padding-right: 0 !important;
   }
 }
 
 .dropdownMenuOptions,
 .dropdownSubMenu h2,
 .dropdownMenuItem h2 {
-  font-size: 25px;
+  //font-size: 25px;
   margin: 0;
   padding-left: 15px;
-}
-
-
-.searchBar {
-  border: none; // Remove border
-  padding: 15px; // Padding inside the search input
-  width: 100%; // Full width of the dropdown
-  font-size: 18px;
 }
 
 .dropdownHeader {
@@ -143,7 +147,6 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1rem;
 }
 
 .contactFormTitle {
