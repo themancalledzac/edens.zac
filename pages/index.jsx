@@ -8,7 +8,7 @@ import photoData from "../Images/homePagePhotoData.json";
 export async function getServerSideProps() {
     const url = 'http://localhost:8080/api/v1/catalog/mainPageCatalogList';
     try {
-        const response = await fetch( url );
+        const response = await fetch( url, { cache: 'force-cache' } );
         const data = await response.json();
         const sortedData = data.sort( ( a, b ) => a.priority - b.priority );
         return { props: { homePageCatalogList: sortedData } };
@@ -28,7 +28,7 @@ export default function Home( { homePageCatalogList } ) {
         <div className={styles.container}>
             <Header isPhotographyPage={isPhotographyPage}/>
             {isPhotographyPage && ( homePageCatalogList.length > 0 ) ?
-                <PhotographyPage photoDataList={homePageCatalogList}/>
+                <PhotographyPage homePageCatalogList={homePageCatalogList}/>
                 : <CodingPage photoDataList={null} setCurrentCatalog={setCurrentCatalog}/>
             }
         </div>

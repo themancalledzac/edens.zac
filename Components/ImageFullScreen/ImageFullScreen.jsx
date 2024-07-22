@@ -83,7 +83,7 @@ export default function ImageFullScreen( { imageSelected, setImageSelected } ) {
     return (
         <div className={styles.imageFullScreenWrapper} onClick={handleClickOutside}>
             <img
-                src={isValidSource( imageSelected?.title ) ? `/${imageSelected.title}` : ""}
+                src={isValidSource( imageSelected?.location ) ? `/${imageSelected.location}` : ""}
                 alt={'Photo'}
                 style={{
                     ...imageStyle,

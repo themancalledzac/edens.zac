@@ -12,12 +12,12 @@ import vienna from "../Images/viennaPage.json";
 import corporate from "../Images/corporatePage.json";
 
 const localDataMap = {
+    corporate,
     amsterdam,
     paris,
     florence,
     rome,
-    vienna,
-    corporate
+    vienna
 };
 
 /**
@@ -30,7 +30,8 @@ export async function getServerSideProps( { params } ) {
     const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${params.title}`;
 
     try {
-        const response = await fetch( url, { cache: 'force-cache' } );
+        const response = await fetch( url );
+        // const response = await fetch( url, { cache: "no-cache" } );
         if ( !response.ok ) {
             throw new Error( 'Network response not ok.' );
         }
@@ -107,10 +108,12 @@ const TitlePage = ( { data } ) => {
         };
 
         window.addEventListener( 'keydown', handleKeyDown );
+        console.log( { data } );
 
         return () => {
             window.removeEventListener( 'keydown', handleKeyDown );
         }
+
 
     }, [data, imageSelected] );
 

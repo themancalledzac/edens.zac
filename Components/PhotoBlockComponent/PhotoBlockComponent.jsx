@@ -111,7 +111,7 @@ export default function PhotoBlockComponent( { photos, isMobile, imageSelected, 
                         : { marginBottom: '1rem', flexDirection: 'row' }
                 )
             }}>
-                <Image src={isValidSource( imageOne?.title ) ? `/${imageOne.title}` : ""}
+                <Image src={isValidSource( imageOne?.location ) ? `/${imageOne.location}` : ""}
                        alt="Photo"
                        width={Math.round( imageOne.width )}
                        height={Math.round( imageOne.height )}
@@ -123,7 +123,7 @@ export default function PhotoBlockComponent( { photos, isMobile, imageSelected, 
                        }}
                 />
                 {imageTwo && (
-                    <Image src={isValidSource( imageTwo.title ) ? `/${imageTwo.title}` : ""}
+                    <Image src={isValidSource( imageTwo.location ) ? `/${imageTwo.location}` : ""}
                            alt="Photo"
                            className={styles.imageTwo}
                            width={Math.round( imageTwo.width )}
