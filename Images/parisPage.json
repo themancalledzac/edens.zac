@@ -1,6 +1,6 @@
 [
   {
-    "id": 24,
+    "id": 148,
     "title": "_DSC0930.webp",
     "imageWidth": 5965,
     "imageHeight": 3969,
@@ -13,20 +13,19 @@
     "rawFileName": "_DSC0930.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC0930.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:15 02:00:42",
-    "updateDate": "2024-07-07T21:08:56.312342",
+    "updateDate": "2024-07-20T09:43:40.282531",
     "fstop": "f/8.0"
   },
   {
-    "id": 25,
+    "id": 149,
     "title": "_DSC0933.webp",
     "imageWidth": 4606,
     "imageHeight": 3071,
@@ -39,20 +38,19 @@
     "rawFileName": "_DSC0933.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC0933.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:15 02:01:52",
-    "updateDate": "2024-07-07T21:08:56.377876",
+    "updateDate": "2024-07-20T09:43:40.359778",
     "fstop": "f/5.6"
   },
   {
-    "id": 26,
+    "id": 150,
     "title": "_DSC0940.webp",
     "imageWidth": 5714,
     "imageHeight": 3802,
@@ -65,20 +63,19 @@
     "rawFileName": "_DSC0940.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC0940.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:15 02:07:22",
-    "updateDate": "2024-07-07T21:08:56.389544",
+    "updateDate": "2024-07-20T09:43:40.372674",
     "fstop": "f/8.0"
   },
   {
-    "id": 27,
+    "id": 151,
     "title": "_DSC0956.webp",
     "imageWidth": 3423,
     "imageHeight": 5144,
@@ -91,20 +88,19 @@
     "rawFileName": "_DSC0956.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "39 mm",
-    "location": null,
+    "location": "Paris/_DSC0956.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:15 02:24:27",
-    "updateDate": "2024-07-07T21:08:56.402317",
+    "updateDate": "2024-07-20T09:43:40.384357",
     "fstop": "f/8.0"
   },
   {
-    "id": 28,
+    "id": 152,
     "title": "_DSC0984.webp",
     "imageWidth": 5988,
     "imageHeight": 3984,
@@ -117,20 +113,19 @@
     "rawFileName": "_DSC0984.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "48 mm",
-    "location": null,
+    "location": "Paris/_DSC0984.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:15 03:12:30",
-    "updateDate": "2024-07-07T21:08:56.414045",
+    "updateDate": "2024-07-20T09:43:40.393773",
     "fstop": "f/8.0"
   },
   {
-    "id": 29,
+    "id": 153,
     "title": "_DSC0996.webp",
     "imageWidth": 4020,
     "imageHeight": 6042,
@@ -143,20 +138,19 @@
     "rawFileName": "_DSC0996.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "51 mm",
-    "location": null,
+    "location": "Paris/_DSC0996.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:15 03:55:58",
-    "updateDate": "2024-07-07T21:08:56.424982",
+    "updateDate": "2024-07-20T09:43:40.403763",
     "fstop": "f/8.0"
   },
   {
-    "id": 30,
+    "id": 154,
     "title": "_DSC1071.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -169,20 +163,19 @@
     "rawFileName": "_DSC1071.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "70 mm",
-    "location": null,
+    "location": "Paris/_DSC1071.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:15 04:56:30",
-    "updateDate": "2024-07-07T21:08:56.437179",
+    "updateDate": "2024-07-20T09:43:40.414048",
     "fstop": "f/8.0"
   },
   {
-    "id": 31,
+    "id": 155,
     "title": "_DSC1088.webp",
     "imageWidth": 3670,
     "imageHeight": 5516,
@@ -195,20 +188,19 @@
     "rawFileName": "_DSC1088.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1088.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:15 05:11:04",
-    "updateDate": "2024-07-07T21:08:56.448943",
+    "updateDate": "2024-07-20T09:43:40.4238",
     "fstop": "f/8.0"
   },
   {
-    "id": 32,
+    "id": 156,
     "title": "_DSC1118-Pano.webp",
     "imageWidth": 3361,
     "imageHeight": 5041,
@@ -221,20 +213,19 @@
     "rawFileName": "_DSC1118-Pano.dng",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1118-Pano.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 00:56:19",
-    "updateDate": "2024-07-07T21:08:56.467845",
+    "updateDate": "2024-07-20T09:43:40.443914",
     "fstop": "f/8.0"
   },
   {
-    "id": 33,
+    "id": 157,
     "title": "_DSC1134.webp",
     "imageWidth": 3864,
     "imageHeight": 5808,
@@ -247,20 +238,19 @@
     "rawFileName": "_DSC1134.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "32 mm",
-    "location": null,
+    "location": "Paris/_DSC1134.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 03:55:00",
-    "updateDate": "2024-07-07T21:08:56.482883",
+    "updateDate": "2024-07-20T09:43:40.453385",
     "fstop": "f/8.0"
   },
   {
-    "id": 34,
+    "id": 158,
     "title": "_DSC1184.webp",
     "imageWidth": 4020,
     "imageHeight": 6042,
@@ -273,20 +263,19 @@
     "rawFileName": "_DSC1184.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "31 mm",
-    "location": null,
+    "location": "Paris/_DSC1184.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 03:59:32",
-    "updateDate": "2024-07-07T21:08:56.495793",
+    "updateDate": "2024-07-20T09:43:40.464168",
     "fstop": "f/5.6"
   },
   {
-    "id": 35,
+    "id": 159,
     "title": "_DSC1199.webp",
     "imageWidth": 3759,
     "imageHeight": 5650,
@@ -299,20 +288,19 @@
     "rawFileName": "_DSC1199.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1199.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 04:06:11",
-    "updateDate": "2024-07-07T21:08:56.508729",
+    "updateDate": "2024-07-20T09:43:40.472641",
     "fstop": "f/5.6"
   },
   {
-    "id": 36,
+    "id": 160,
     "title": "_DSC1216.webp",
     "imageWidth": 3369,
     "imageHeight": 5064,
@@ -325,20 +313,19 @@
     "rawFileName": "_DSC1216.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "70 mm",
-    "location": null,
+    "location": "Paris/_DSC1216.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 04:32:22",
-    "updateDate": "2024-07-07T21:08:56.521009",
+    "updateDate": "2024-07-20T09:43:40.486302",
     "fstop": "f/5.6"
   },
   {
-    "id": 37,
+    "id": 161,
     "title": "_DSC1221.webp",
     "imageWidth": 3934,
     "imageHeight": 5912,
@@ -351,20 +338,19 @@
     "rawFileName": "_DSC1221.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1221.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 04:34:03",
-    "updateDate": "2024-07-07T21:08:56.530612",
+    "updateDate": "2024-07-20T09:43:40.494955",
     "fstop": "f/5.6"
   },
   {
-    "id": 38,
+    "id": 162,
     "title": "_DSC1228.webp",
     "imageWidth": 3512,
     "imageHeight": 5278,
@@ -377,20 +363,19 @@
     "rawFileName": "_DSC1228.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1228.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 04:43:30",
-    "updateDate": "2024-07-07T21:08:56.539211",
+    "updateDate": "2024-07-20T09:43:40.503239",
     "fstop": "f/8.0"
   },
   {
-    "id": 39,
+    "id": 163,
     "title": "_DSC1230.webp",
     "imageWidth": 5857,
     "imageHeight": 3897,
@@ -403,20 +388,19 @@
     "rawFileName": "_DSC1230.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "27 mm",
-    "location": null,
+    "location": "Paris/_DSC1230.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 04:43:49",
-    "updateDate": "2024-07-07T21:08:56.549274",
+    "updateDate": "2024-07-20T09:43:40.51455",
     "fstop": "f/8.0"
   },
   {
-    "id": 40,
+    "id": 164,
     "title": "_DSC1299.webp",
     "imageWidth": 3951,
     "imageHeight": 5938,
@@ -429,20 +413,19 @@
     "rawFileName": "_DSC1299.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1299.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 07:10:21",
-    "updateDate": "2024-07-07T21:08:56.558358",
+    "updateDate": "2024-07-20T09:43:40.523527",
     "fstop": "f/8.0"
   },
   {
-    "id": 41,
+    "id": 165,
     "title": "_DSC1306.webp",
     "imageWidth": 5852,
     "imageHeight": 3894,
@@ -455,20 +438,19 @@
     "rawFileName": "_DSC1306.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "70 mm",
-    "location": null,
+    "location": "Paris/_DSC1306.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 07:48:42",
-    "updateDate": "2024-07-07T21:08:56.569249",
+    "updateDate": "2024-07-20T09:43:40.532883",
     "fstop": "f/8.0"
   },
   {
-    "id": 42,
+    "id": 166,
     "title": "_DSC1316.webp",
     "imageWidth": 6002,
     "imageHeight": 3993,
@@ -481,20 +463,19 @@
     "rawFileName": "_DSC1316.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1316.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 07:59:30",
-    "updateDate": "2024-07-07T21:08:56.579624",
+    "updateDate": "2024-07-20T09:43:40.541582",
     "fstop": "f/8.0"
   },
   {
-    "id": 43,
+    "id": 167,
     "title": "_DSC1334.webp",
     "imageWidth": 6046,
     "imageHeight": 4023,
@@ -507,20 +488,19 @@
     "rawFileName": "_DSC1334.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "56 mm",
-    "location": null,
+    "location": "Paris/_DSC1334.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 08:28:41",
-    "updateDate": "2024-07-07T21:08:56.590052",
+    "updateDate": "2024-07-20T09:43:40.550691",
     "fstop": "f/8.0"
   },
   {
-    "id": 44,
+    "id": 168,
     "title": "_DSC1384.webp",
     "imageWidth": 5882,
     "imageHeight": 3914,
@@ -533,20 +513,19 @@
     "rawFileName": "_DSC1384.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1384.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 09:04:33",
-    "updateDate": "2024-07-07T21:08:56.601523",
+    "updateDate": "2024-07-20T09:43:40.559247",
     "fstop": "f/4.0"
   },
   {
-    "id": 45,
+    "id": 169,
     "title": "_DSC1390.webp",
     "imageWidth": 5928,
     "imageHeight": 3944,
@@ -559,20 +538,19 @@
     "rawFileName": "_DSC1390.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "49 mm",
-    "location": null,
+    "location": "Paris/_DSC1390.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:16 09:05:51",
-    "updateDate": "2024-07-07T21:08:56.61252",
+    "updateDate": "2024-07-20T09:43:40.569818",
     "fstop": "f/4.0"
   },
   {
-    "id": 46,
+    "id": 170,
     "title": "_DSC1511.webp",
     "imageWidth": 3511,
     "imageHeight": 5277,
@@ -585,20 +563,19 @@
     "rawFileName": "_DSC1511.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "44 mm",
-    "location": null,
+    "location": "Paris/_DSC1511.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 03:16:50",
-    "updateDate": "2024-07-07T21:08:56.622336",
+    "updateDate": "2024-07-20T09:43:40.579989",
     "fstop": "f/8.0"
   },
   {
-    "id": 47,
+    "id": 171,
     "title": "_DSC1548.webp",
     "imageWidth": 5507,
     "imageHeight": 3664,
@@ -611,20 +588,19 @@
     "rawFileName": "_DSC1548.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1548.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 03:28:15",
-    "updateDate": "2024-07-07T21:08:56.632727",
+    "updateDate": "2024-07-20T09:43:40.589007",
     "fstop": "f/8.0"
   },
   {
-    "id": 48,
+    "id": 172,
     "title": "_DSC1582.webp",
     "imageWidth": 3727,
     "imageHeight": 4969,
@@ -637,20 +613,19 @@
     "rawFileName": "_DSC1582.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1582.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 03:39:59",
-    "updateDate": "2024-07-07T21:08:56.641987",
+    "updateDate": "2024-07-20T09:43:40.598081",
     "fstop": "f/8.0"
   },
   {
-    "id": 49,
+    "id": 173,
     "title": "_DSC1614.webp",
     "imageWidth": 4021,
     "imageHeight": 6043,
@@ -663,20 +638,19 @@
     "rawFileName": "_DSC1614.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "70 mm",
-    "location": null,
+    "location": "Paris/_DSC1614.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 03:51:17",
-    "updateDate": "2024-07-07T21:08:56.652293",
+    "updateDate": "2024-07-20T09:43:40.606373",
     "fstop": "f/8.0"
   },
   {
-    "id": 50,
+    "id": 174,
     "title": "_DSC1631.webp",
     "imageWidth": 3795,
     "imageHeight": 5704,
@@ -689,20 +663,19 @@
     "rawFileName": "_DSC1631.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "58 mm",
-    "location": null,
+    "location": "Paris/_DSC1631.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 04:04:26",
-    "updateDate": "2024-07-07T21:08:56.665088",
+    "updateDate": "2024-07-20T09:43:40.619468",
     "fstop": "f/8.0"
   },
   {
-    "id": 51,
+    "id": 175,
     "title": "_DSC1645.webp",
     "imageWidth": 5727,
     "imageHeight": 3810,
@@ -715,20 +688,19 @@
     "rawFileName": "_DSC1645.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "63 mm",
-    "location": null,
+    "location": "Paris/_DSC1645.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 04:21:05",
-    "updateDate": "2024-07-07T21:08:56.675927",
+    "updateDate": "2024-07-20T09:43:40.63117",
     "fstop": "f/8.0"
   },
   {
-    "id": 52,
+    "id": 176,
     "title": "_DSC1649.webp",
     "imageWidth": 5294,
     "imageHeight": 3522,
@@ -741,20 +713,19 @@
     "rawFileName": "_DSC1649.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "54 mm",
-    "location": null,
+    "location": "Paris/_DSC1649.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 04:27:08",
-    "updateDate": "2024-07-07T21:08:56.684553",
+    "updateDate": "2024-07-20T09:43:40.639512",
     "fstop": "f/8.0"
   },
   {
-    "id": 53,
+    "id": 177,
     "title": "_DSC1658.webp",
     "imageWidth": 5795,
     "imageHeight": 3863,
@@ -767,20 +738,19 @@
     "rawFileName": "_DSC1658.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1658.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 04:38:57",
-    "updateDate": "2024-07-07T21:08:56.693565",
+    "updateDate": "2024-07-20T09:43:40.648733",
     "fstop": "f/8.0"
   },
   {
-    "id": 54,
+    "id": 178,
     "title": "_DSC1680.webp",
     "imageWidth": 5861,
     "imageHeight": 3900,
@@ -793,20 +763,19 @@
     "rawFileName": "_DSC1680.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1680.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 04:51:02",
-    "updateDate": "2024-07-07T21:08:56.702359",
+    "updateDate": "2024-07-20T09:43:40.657009",
     "fstop": "f/8.0"
   },
   {
-    "id": 55,
+    "id": 179,
     "title": "_DSC1702.webp",
     "imageWidth": 3655,
     "imageHeight": 4873,
@@ -819,20 +788,19 @@
     "rawFileName": "_DSC1702.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1702.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 04:56:25",
-    "updateDate": "2024-07-07T21:08:56.713313",
+    "updateDate": "2024-07-20T09:43:40.665255",
     "fstop": "f/8.0"
   },
   {
-    "id": 56,
+    "id": 180,
     "title": "_DSC1713.webp",
     "imageWidth": 3588,
     "imageHeight": 5392,
@@ -845,20 +813,19 @@
     "rawFileName": "_DSC1713.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1713.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 05:12:50",
-    "updateDate": "2024-07-07T21:08:56.722685",
+    "updateDate": "2024-07-20T09:43:40.673978",
     "fstop": "f/4.0"
   },
   {
-    "id": 57,
+    "id": 181,
     "title": "_DSC1714.webp",
     "imageWidth": 3822,
     "imageHeight": 5096,
@@ -871,20 +838,19 @@
     "rawFileName": "_DSC1714.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1714.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 05:13:04",
-    "updateDate": "2024-07-07T21:08:56.731435",
+    "updateDate": "2024-07-20T09:43:40.685951",
     "fstop": "f/8.0"
   },
   {
-    "id": 58,
+    "id": 182,
     "title": "_DSC1723.webp",
     "imageWidth": 5872,
     "imageHeight": 3907,
@@ -897,20 +863,19 @@
     "rawFileName": "_DSC1723.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1723.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 05:19:06",
-    "updateDate": "2024-07-07T21:08:56.739384",
+    "updateDate": "2024-07-20T09:43:40.693578",
     "fstop": "f/8.0"
   },
   {
-    "id": 59,
+    "id": 183,
     "title": "_DSC1733.webp",
     "imageWidth": 5928,
     "imageHeight": 3952,
@@ -923,20 +888,19 @@
     "rawFileName": "_DSC1733.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "28 mm",
-    "location": null,
+    "location": "Paris/_DSC1733.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 05:27:24",
-    "updateDate": "2024-07-07T21:08:56.748549",
+    "updateDate": "2024-07-20T09:43:40.701668",
     "fstop": "f/8.0"
   },
   {
-    "id": 60,
+    "id": 184,
     "title": "_DSC1786.webp",
     "imageWidth": 5708,
     "imageHeight": 3798,
@@ -949,20 +913,19 @@
     "rawFileName": "_DSC1786.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1786.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 07:13:05",
-    "updateDate": "2024-07-07T21:08:56.756769",
+    "updateDate": "2024-07-20T09:43:40.708903",
     "fstop": "f/11.0"
   },
   {
-    "id": 61,
+    "id": 185,
     "title": "_DSC1829.webp",
     "imageWidth": 5872,
     "imageHeight": 3907,
@@ -975,20 +938,19 @@
     "rawFileName": "_DSC1829.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "200 mm",
-    "location": null,
+    "location": "Paris/_DSC1829.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 07:34:40",
-    "updateDate": "2024-07-07T21:08:56.766632",
+    "updateDate": "2024-07-20T09:43:40.717309",
     "fstop": "f/8.0"
   },
   {
-    "id": 62,
+    "id": 186,
     "title": "_DSC1860.webp",
     "imageWidth": 5911,
     "imageHeight": 3933,
@@ -1001,20 +963,19 @@
     "rawFileName": "_DSC1860.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "25 mm",
-    "location": null,
+    "location": "Paris/_DSC1860.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 07:51:14",
-    "updateDate": "2024-07-07T21:08:56.775319",
+    "updateDate": "2024-07-20T09:43:40.724444",
     "fstop": "f/8.0"
   },
   {
-    "id": 63,
+    "id": 187,
     "title": "_DSC1870.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -1027,20 +988,19 @@
     "rawFileName": "_DSC1870.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1870.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 07:52:26",
-    "updateDate": "2024-07-07T21:08:56.785607",
+    "updateDate": "2024-07-20T09:43:40.733581",
     "fstop": "f/14.0"
   },
   {
-    "id": 64,
+    "id": 188,
     "title": "_DSC1900.webp",
     "imageWidth": 5716,
     "imageHeight": 3803,
@@ -1053,20 +1013,19 @@
     "rawFileName": "_DSC1900.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1900.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 08:05:00",
-    "updateDate": "2024-07-07T21:08:56.794308",
+    "updateDate": "2024-07-20T09:43:40.742136",
     "fstop": "f/5.6"
   },
   {
-    "id": 65,
+    "id": 189,
     "title": "_DSC1912.webp",
     "imageWidth": 5675,
     "imageHeight": 3776,
@@ -1079,20 +1038,19 @@
     "rawFileName": "_DSC1912.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1912.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:17 08:12:46",
-    "updateDate": "2024-07-07T21:08:56.804801",
+    "updateDate": "2024-07-20T09:43:40.751196",
     "fstop": "f/8.0"
   },
   {
-    "id": 66,
+    "id": 190,
     "title": "_DSC1987.webp",
     "imageWidth": 3833,
     "imageHeight": 5366,
@@ -1105,20 +1063,19 @@
     "rawFileName": "_DSC1987.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "29 mm",
-    "location": null,
+    "location": "Paris/_DSC1987.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 04:52:52",
-    "updateDate": "2024-07-07T21:08:56.817192",
+    "updateDate": "2024-07-20T09:43:40.76049",
     "fstop": "f/8.0"
   },
   {
-    "id": 67,
+    "id": 191,
     "title": "_DSC1995.webp",
     "imageWidth": 5632,
     "imageHeight": 3747,
@@ -1131,20 +1088,19 @@
     "rawFileName": "_DSC1995.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC1995.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 04:54:24",
-    "updateDate": "2024-07-07T21:08:56.829335",
+    "updateDate": "2024-07-20T09:43:40.77029",
     "fstop": "f/5.6"
   },
   {
-    "id": 68,
+    "id": 192,
     "title": "_DSC2010.webp",
     "imageWidth": 3757,
     "imageHeight": 5647,
@@ -1157,20 +1113,19 @@
     "rawFileName": "_DSC2010.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "35 mm",
-    "location": null,
+    "location": "Paris/_DSC2010.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 04:56:10",
-    "updateDate": "2024-07-07T21:08:56.839023",
+    "updateDate": "2024-07-20T09:43:40.781844",
     "fstop": "f/5.6"
   },
   {
-    "id": 69,
+    "id": 193,
     "title": "_DSC2036.webp",
     "imageWidth": 5942,
     "imageHeight": 3953,
@@ -1183,20 +1138,19 @@
     "rawFileName": "_DSC2036.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC2036.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 05:09:24",
-    "updateDate": "2024-07-07T21:08:56.848678",
+    "updateDate": "2024-07-20T09:43:40.790186",
     "fstop": "f/5.6"
   },
   {
-    "id": 70,
+    "id": 194,
     "title": "_DSC2046.webp",
     "imageWidth": 6014,
     "imageHeight": 4001,
@@ -1209,20 +1163,19 @@
     "rawFileName": "_DSC2046.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "25 mm",
-    "location": null,
+    "location": "Paris/_DSC2046.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 05:17:37",
-    "updateDate": "2024-07-07T21:08:56.858282",
+    "updateDate": "2024-07-20T09:43:40.799264",
     "fstop": "f/8.0"
   },
   {
-    "id": 71,
+    "id": 195,
     "title": "_DSC2050.webp",
     "imageWidth": 3938,
     "imageHeight": 5919,
@@ -1235,20 +1188,19 @@
     "rawFileName": "_DSC2050.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "34 mm",
-    "location": null,
+    "location": "Paris/_DSC2050.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 05:17:55",
-    "updateDate": "2024-07-07T21:08:56.869455",
+    "updateDate": "2024-07-20T09:43:40.808462",
     "fstop": "f/5.6"
   },
   {
-    "id": 72,
+    "id": 196,
     "title": "_DSC2060.webp",
     "imageWidth": 5988,
     "imageHeight": 3984,
@@ -1261,20 +1213,19 @@
     "rawFileName": "_DSC2060.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC2060.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 05:33:41",
-    "updateDate": "2024-07-07T21:08:56.877814",
+    "updateDate": "2024-07-20T09:43:40.817887",
     "fstop": "f/5.6"
   },
   {
-    "id": 73,
+    "id": 197,
     "title": "_DSC2090.webp",
     "imageWidth": 5566,
     "imageHeight": 3703,
@@ -1287,20 +1238,19 @@
     "rawFileName": "_DSC2090.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC2090.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 06:37:47",
-    "updateDate": "2024-07-07T21:08:56.886216",
+    "updateDate": "2024-07-20T09:43:40.842829",
     "fstop": "f/8.0"
   },
   {
-    "id": 74,
+    "id": 198,
     "title": "_DSC2104.webp",
     "imageWidth": 3813,
     "imageHeight": 5731,
@@ -1313,20 +1263,19 @@
     "rawFileName": "_DSC2104.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC2104.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 06:40:37",
-    "updateDate": "2024-07-07T21:08:56.894282",
+    "updateDate": "2024-07-20T09:43:40.851066",
     "fstop": "f/5.6"
   },
   {
-    "id": 75,
+    "id": 199,
     "title": "_DSC2148.webp",
     "imageWidth": 3701,
     "imageHeight": 5562,
@@ -1339,20 +1288,19 @@
     "rawFileName": "_DSC2148.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "27 mm",
-    "location": null,
+    "location": "Paris/_DSC2148.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 06:55:24",
-    "updateDate": "2024-07-07T21:08:56.904547",
+    "updateDate": "2024-07-20T09:43:40.859205",
     "fstop": "f/5.6"
   },
   {
-    "id": 76,
+    "id": 200,
     "title": "_DSC2202.webp",
     "imageWidth": 3757,
     "imageHeight": 5647,
@@ -1365,20 +1313,19 @@
     "rawFileName": "_DSC2202.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "67 mm",
-    "location": null,
+    "location": "Paris/_DSC2202.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 07:52:43",
-    "updateDate": "2024-07-07T21:08:56.917524",
+    "updateDate": "2024-07-20T09:43:40.867225",
     "fstop": "f/5.6"
   },
   {
-    "id": 77,
+    "id": 201,
     "title": "_DSC2204.webp",
     "imageWidth": 3900,
     "imageHeight": 5861,
@@ -1391,20 +1338,19 @@
     "rawFileName": "_DSC2204.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC2204.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 07:53:12",
-    "updateDate": "2024-07-07T21:08:56.92573",
+    "updateDate": "2024-07-20T09:43:40.87508",
     "fstop": "f/5.6"
   },
   {
-    "id": 78,
+    "id": 202,
     "title": "_DSC2220.webp",
     "imageWidth": 3935,
     "imageHeight": 5509,
@@ -1417,20 +1363,19 @@
     "rawFileName": "_DSC2220.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC2220.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 07:58:05",
-    "updateDate": "2024-07-07T21:08:56.935149",
+    "updateDate": "2024-07-20T09:43:40.882803",
     "fstop": "f/5.6"
   },
   {
-    "id": 79,
+    "id": 203,
     "title": "_DSC2240.webp",
     "imageWidth": 3796,
     "imageHeight": 5706,
@@ -1443,20 +1388,19 @@
     "rawFileName": "_DSC2240.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "25 mm",
-    "location": null,
+    "location": "Paris/_DSC2240.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 08:05:07",
-    "updateDate": "2024-07-07T21:08:56.943672",
+    "updateDate": "2024-07-20T09:43:40.891727",
     "fstop": "f/8.0"
   },
   {
-    "id": 80,
+    "id": 204,
     "title": "_DSC2271.webp",
     "imageWidth": 3281,
     "imageHeight": 4932,
@@ -1469,20 +1413,19 @@
     "rawFileName": "_DSC2271.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "38 mm",
-    "location": null,
+    "location": "Paris/_DSC2271.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 08:27:38",
-    "updateDate": "2024-07-07T21:08:56.953349",
+    "updateDate": "2024-07-20T09:43:40.899988",
     "fstop": "f/5.0"
   },
   {
-    "id": 81,
+    "id": 205,
     "title": "_DSC2297-Enhanced-NR.webp",
     "imageWidth": 4808,
     "imageHeight": 3846,
@@ -1495,16 +1438,15 @@
     "rawFileName": "_DSC2297-Enhanced-NR.dng",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Paris/_DSC2297-Enhanced-NR.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Paris",
-      "Europe"
+      "Paris"
     ],
     "createDate": "2023:10:18 08:36:05",
-    "updateDate": "2024-07-07T21:08:56.964519",
+    "updateDate": "2024-07-20T09:43:40.911481",
     "fstop": "f/5.0"
   }
 ]

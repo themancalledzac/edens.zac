@@ -4,15 +4,23 @@ import React, { useEffect, useState } from "react";
 import styles from '../styles/Catalog.module.scss';
 import Header from "../Components/Header/Header";
 import { useAppContext } from "../context/AppContext";
+import corporate from "../Images/corporatePage.json";
+import enchantments from "../Images/enchantmentsPage.json";
+import arches from "../Images/archesPage.json";
+import hidden_lake from "../Images/hidden_lakePage.json";
+import oval_lakes from "../Images/oval_LakesPage.json";
 import amsterdam from "../Images/amsterdamPage.json";
 import paris from "../Images/parisPage.json";
 import florence from "../Images/florencePage.json";
 import rome from "../Images/romePage.json";
 import vienna from "../Images/viennaPage.json";
-import corporate from "../Images/corporatePage.json";
 
 const localDataMap = {
     corporate,
+    enchantments,
+    arches,
+    hidden_lake,
+    oval_lakes,
     amsterdam,
     paris,
     florence,

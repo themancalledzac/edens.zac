@@ -1,6 +1,6 @@
 [
   {
-    "id": 116,
+    "id": 240,
     "title": "_DSC3019.webp",
     "imageWidth": 2908,
     "imageHeight": 4370,
@@ -13,20 +13,19 @@
     "rawFileName": "_DSC3019.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "70 mm",
-    "location": null,
+    "location": "Rome/_DSC3019.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 06:40:58",
-    "updateDate": "2024-07-07T21:10:01.560094",
+    "updateDate": "2024-07-20T09:48:31.97182",
     "fstop": "f/8.0"
   },
   {
-    "id": 117,
+    "id": 241,
     "title": "_DSC3032.webp",
     "imageWidth": 3373,
     "imageHeight": 5060,
@@ -39,20 +38,19 @@
     "rawFileName": "_DSC3032.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "70 mm",
-    "location": null,
+    "location": "Rome/_DSC3032.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 06:44:30",
-    "updateDate": "2024-07-07T21:10:01.627604",
+    "updateDate": "2024-07-20T09:48:32.038224",
     "fstop": "f/4.0"
   },
   {
-    "id": 118,
+    "id": 242,
     "title": "_DSC3043.webp",
     "imageWidth": 3938,
     "imageHeight": 5919,
@@ -65,20 +63,19 @@
     "rawFileName": "_DSC3043.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "50 mm",
-    "location": null,
+    "location": "Rome/_DSC3043.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 06:52:14",
-    "updateDate": "2024-07-07T21:10:01.639194",
+    "updateDate": "2024-07-20T09:48:32.051671",
     "fstop": "f/8.0"
   },
   {
-    "id": 119,
+    "id": 243,
     "title": "_DSC3052.webp",
     "imageWidth": 3766,
     "imageHeight": 5660,
@@ -91,20 +88,19 @@
     "rawFileName": "_DSC3052.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "57 mm",
-    "location": null,
+    "location": "Rome/_DSC3052.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 06:54:06",
-    "updateDate": "2024-07-07T21:10:01.651974",
+    "updateDate": "2024-07-20T09:48:32.062317",
     "fstop": "f/8.0"
   },
   {
-    "id": 120,
+    "id": 244,
     "title": "_DSC3056.webp",
     "imageWidth": 3612,
     "imageHeight": 5418,
@@ -117,20 +113,19 @@
     "rawFileName": "_DSC3056.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3056.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 06:55:56",
-    "updateDate": "2024-07-07T21:10:01.664724",
+    "updateDate": "2024-07-20T09:48:32.073346",
     "fstop": "f/8.0"
   },
   {
-    "id": 121,
+    "id": 245,
     "title": "_DSC3114.webp",
     "imageWidth": 5840,
     "imageHeight": 3886,
@@ -143,20 +138,19 @@
     "rawFileName": "_DSC3114.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "54 mm",
-    "location": null,
+    "location": "Rome/_DSC3114.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:11:35",
-    "updateDate": "2024-07-07T21:10:01.675618",
+    "updateDate": "2024-07-20T09:48:32.082869",
     "fstop": "f/8.0"
   },
   {
-    "id": 122,
+    "id": 246,
     "title": "_DSC3152.webp",
     "imageWidth": 5986,
     "imageHeight": 3983,
@@ -169,20 +163,19 @@
     "rawFileName": "_DSC3152.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "25 mm",
-    "location": null,
+    "location": "Rome/_DSC3152.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:28:00",
-    "updateDate": "2024-07-07T21:10:01.687751",
+    "updateDate": "2024-07-20T09:48:32.09701",
     "fstop": "f/8.0"
   },
   {
-    "id": 123,
+    "id": 247,
     "title": "_DSC3156.webp",
     "imageWidth": 5740,
     "imageHeight": 3819,
@@ -195,20 +188,19 @@
     "rawFileName": "_DSC3156.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "39 mm",
-    "location": null,
+    "location": "Rome/_DSC3156.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:32:39",
-    "updateDate": "2024-07-07T21:10:01.69911",
+    "updateDate": "2024-07-20T09:48:32.106705",
     "fstop": "f/8.0"
   },
   {
-    "id": 124,
+    "id": 248,
     "title": "_DSC3161.webp",
     "imageWidth": 3373,
     "imageHeight": 5069,
@@ -221,20 +213,19 @@
     "rawFileName": "_DSC3161.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "58 mm",
-    "location": null,
+    "location": "Rome/_DSC3161.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:36:52",
-    "updateDate": "2024-07-07T21:10:01.708778",
+    "updateDate": "2024-07-20T09:48:32.115467",
     "fstop": "f/8.0"
   },
   {
-    "id": 125,
+    "id": 249,
     "title": "_DSC3166.webp",
     "imageWidth": 5853,
     "imageHeight": 3894,
@@ -247,20 +238,19 @@
     "rawFileName": "_DSC3166.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3166.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:38:50",
-    "updateDate": "2024-07-07T21:10:01.720059",
+    "updateDate": "2024-07-20T09:48:32.123868",
     "fstop": "f/8.0"
   },
   {
-    "id": 126,
+    "id": 250,
     "title": "_DSC3169.webp",
     "imageWidth": 5950,
     "imageHeight": 3959,
@@ -273,20 +263,19 @@
     "rawFileName": "_DSC3169.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3169.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:39:27",
-    "updateDate": "2024-07-07T21:10:01.732014",
+    "updateDate": "2024-07-20T09:48:32.132986",
     "fstop": "f/8.0"
   },
   {
-    "id": 127,
+    "id": 251,
     "title": "_DSC3170.webp",
     "imageWidth": 4005,
     "imageHeight": 6020,
@@ -299,20 +288,19 @@
     "rawFileName": "_DSC3170.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "26 mm",
-    "location": null,
+    "location": "Rome/_DSC3170.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:39:34",
-    "updateDate": "2024-07-07T21:10:01.742741",
+    "updateDate": "2024-07-20T09:48:32.142538",
     "fstop": "f/8.0"
   },
   {
-    "id": 128,
+    "id": 252,
     "title": "_DSC3178.webp",
     "imageWidth": 4024,
     "imageHeight": 6048,
@@ -325,20 +313,19 @@
     "rawFileName": "_DSC3178.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "46 mm",
-    "location": null,
+    "location": "Rome/_DSC3178.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:41:08",
-    "updateDate": "2024-07-07T21:10:01.752788",
+    "updateDate": "2024-07-20T09:48:32.167603",
     "fstop": "f/8.0"
   },
   {
-    "id": 129,
+    "id": 253,
     "title": "_DSC3182.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -351,20 +338,19 @@
     "rawFileName": "_DSC3182.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3182.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:41:26",
-    "updateDate": "2024-07-07T21:10:01.762124",
+    "updateDate": "2024-07-20T09:48:32.179045",
     "fstop": "f/8.0"
   },
   {
-    "id": 130,
+    "id": 254,
     "title": "_DSC3185.webp",
     "imageWidth": 4024,
     "imageHeight": 5634,
@@ -377,20 +363,19 @@
     "rawFileName": "_DSC3185.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "68 mm",
-    "location": null,
+    "location": "Rome/_DSC3185.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:44:26",
-    "updateDate": "2024-07-07T21:10:01.771438",
+    "updateDate": "2024-07-20T09:48:32.187763",
     "fstop": "f/8.0"
   },
   {
-    "id": 131,
+    "id": 255,
     "title": "_DSC3209.webp",
     "imageWidth": 5804,
     "imageHeight": 3862,
@@ -403,20 +388,19 @@
     "rawFileName": "_DSC3209.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "62 mm",
-    "location": null,
+    "location": "Rome/_DSC3209.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 07:58:03",
-    "updateDate": "2024-07-07T21:10:01.781103",
+    "updateDate": "2024-07-20T09:48:32.199143",
     "fstop": "f/8.0"
   },
   {
-    "id": 132,
+    "id": 256,
     "title": "_DSC3216.webp",
     "imageWidth": 3879,
     "imageHeight": 5830,
@@ -429,20 +413,19 @@
     "rawFileName": "_DSC3216.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "33 mm",
-    "location": null,
+    "location": "Rome/_DSC3216.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 08:12:08",
-    "updateDate": "2024-07-07T21:10:01.790032",
+    "updateDate": "2024-07-20T09:48:32.208125",
     "fstop": "f/8.0"
   },
   {
-    "id": 133,
+    "id": 257,
     "title": "_DSC3219.webp",
     "imageWidth": 5914,
     "imageHeight": 3935,
@@ -455,20 +438,19 @@
     "rawFileName": "_DSC3219.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3219.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 08:14:35",
-    "updateDate": "2024-07-07T21:10:01.799355",
+    "updateDate": "2024-07-20T09:48:32.217596",
     "fstop": "f/8.0"
   },
   {
-    "id": 134,
+    "id": 258,
     "title": "_DSC3225.webp",
     "imageWidth": 5520,
     "imageHeight": 3673,
@@ -481,20 +463,19 @@
     "rawFileName": "_DSC3225.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3225.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 08:19:30",
-    "updateDate": "2024-07-07T21:10:01.808824",
+    "updateDate": "2024-07-20T09:48:32.227937",
     "fstop": "f/16.0"
   },
   {
-    "id": 135,
+    "id": 259,
     "title": "_DSC3237.webp",
     "imageWidth": 5840,
     "imageHeight": 3886,
@@ -507,20 +488,19 @@
     "rawFileName": "_DSC3237.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3237.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 08:23:36",
-    "updateDate": "2024-07-07T21:10:01.821532",
+    "updateDate": "2024-07-20T09:48:32.23737",
     "fstop": "f/8.0"
   },
   {
-    "id": 136,
+    "id": 260,
     "title": "_DSC3240.webp",
     "imageWidth": 3632,
     "imageHeight": 5459,
@@ -533,20 +513,19 @@
     "rawFileName": "_DSC3240.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "25 mm",
-    "location": null,
+    "location": "Rome/_DSC3240.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 08:24:29",
-    "updateDate": "2024-07-07T21:10:01.832428",
+    "updateDate": "2024-07-20T09:48:32.247094",
     "fstop": "f/8.0"
   },
   {
-    "id": 137,
+    "id": 261,
     "title": "_DSC3256.webp",
     "imageWidth": 5510,
     "imageHeight": 3666,
@@ -559,20 +538,19 @@
     "rawFileName": "_DSC3256.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "49 mm",
-    "location": null,
+    "location": "Rome/_DSC3256.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:21 10:18:48",
-    "updateDate": "2024-07-07T21:10:01.842495",
+    "updateDate": "2024-07-20T09:48:32.255757",
     "fstop": "f/4.0"
   },
   {
-    "id": 138,
+    "id": 262,
     "title": "_DSC3262.webp",
     "imageWidth": 3735,
     "imageHeight": 5614,
@@ -585,20 +563,19 @@
     "rawFileName": "_DSC3262.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "32 mm",
-    "location": null,
+    "location": "Rome/_DSC3262.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 02:52:44",
-    "updateDate": "2024-07-07T21:10:01.853122",
+    "updateDate": "2024-07-20T09:48:32.26489",
     "fstop": "f/5.6"
   },
   {
-    "id": 139,
+    "id": 263,
     "title": "_DSC3282.webp",
     "imageWidth": 3917,
     "imageHeight": 5887,
@@ -611,20 +588,19 @@
     "rawFileName": "_DSC3282.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3282.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 03:18:56",
-    "updateDate": "2024-07-07T21:10:01.862743",
+    "updateDate": "2024-07-20T09:48:32.274143",
     "fstop": "f/8.0"
   },
   {
-    "id": 140,
+    "id": 264,
     "title": "_DSC3291.webp",
     "imageWidth": 6023,
     "imageHeight": 4015,
@@ -637,20 +613,19 @@
     "rawFileName": "_DSC3291.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3291.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 03:29:11",
-    "updateDate": "2024-07-07T21:10:01.872258",
+    "updateDate": "2024-07-20T09:48:32.282687",
     "fstop": "f/9.0"
   },
   {
-    "id": 141,
+    "id": 265,
     "title": "_DSC3305.webp",
     "imageWidth": 3941,
     "imageHeight": 5923,
@@ -663,20 +638,19 @@
     "rawFileName": "_DSC3305.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "58 mm",
-    "location": null,
+    "location": "Rome/_DSC3305.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 03:45:15",
-    "updateDate": "2024-07-07T21:10:01.892027",
+    "updateDate": "2024-07-20T09:48:32.305029",
     "fstop": "f/8.0"
   },
   {
-    "id": 142,
+    "id": 266,
     "title": "_DSC3308.webp",
     "imageWidth": 3839,
     "imageHeight": 5770,
@@ -689,20 +663,19 @@
     "rawFileName": "_DSC3308.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "70 mm",
-    "location": null,
+    "location": "Rome/_DSC3308.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 03:47:05",
-    "updateDate": "2024-07-07T21:10:01.902664",
+    "updateDate": "2024-07-20T09:48:32.315079",
     "fstop": "f/8.0"
   },
   {
-    "id": 143,
+    "id": 267,
     "title": "_DSC3311.webp",
     "imageWidth": 3986,
     "imageHeight": 5580,
@@ -715,20 +688,19 @@
     "rawFileName": "_DSC3311.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "60 mm",
-    "location": null,
+    "location": "Rome/_DSC3311.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 03:49:44",
-    "updateDate": "2024-07-07T21:10:01.91112",
+    "updateDate": "2024-07-20T09:48:32.324412",
     "fstop": "f/8.0"
   },
   {
-    "id": 144,
+    "id": 268,
     "title": "_DSC3353.webp",
     "imageWidth": 6022,
     "imageHeight": 4007,
@@ -741,20 +713,19 @@
     "rawFileName": "_DSC3353.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3353.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 04:14:22",
-    "updateDate": "2024-07-07T21:10:01.919887",
+    "updateDate": "2024-07-20T09:48:32.332619",
     "fstop": "f/8.0"
   },
   {
-    "id": 145,
+    "id": 269,
     "title": "_DSC3356.webp",
     "imageWidth": 5899,
     "imageHeight": 3925,
@@ -767,20 +738,19 @@
     "rawFileName": "_DSC3356.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "49 mm",
-    "location": null,
+    "location": "Rome/_DSC3356.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 04:14:41",
-    "updateDate": "2024-07-07T21:10:01.92847",
+    "updateDate": "2024-07-20T09:48:32.340668",
     "fstop": "f/8.0"
   },
   {
-    "id": 146,
+    "id": 270,
     "title": "_DSC3378.webp",
     "imageWidth": 3937,
     "imageHeight": 5917,
@@ -793,20 +763,19 @@
     "rawFileName": "_DSC3378.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "32 mm",
-    "location": null,
+    "location": "Rome/_DSC3378.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 05:06:47",
-    "updateDate": "2024-07-07T21:10:01.936998",
+    "updateDate": "2024-07-20T09:48:32.349069",
     "fstop": "f/8.0"
   },
   {
-    "id": 147,
+    "id": 271,
     "title": "_DSC3381.webp",
     "imageWidth": 3988,
     "imageHeight": 5995,
@@ -819,20 +788,19 @@
     "rawFileName": "_DSC3381.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "43 mm",
-    "location": null,
+    "location": "Rome/_DSC3381.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 05:15:12",
-    "updateDate": "2024-07-07T21:10:01.945285",
+    "updateDate": "2024-07-20T09:48:32.358188",
     "fstop": "f/8.0"
   },
   {
-    "id": 148,
+    "id": 272,
     "title": "_DSC3385.webp",
     "imageWidth": 3569,
     "imageHeight": 5364,
@@ -845,20 +813,19 @@
     "rawFileName": "_DSC3385.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "28 mm",
-    "location": null,
+    "location": "Rome/_DSC3385.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 05:31:09",
-    "updateDate": "2024-07-07T21:10:01.954777",
+    "updateDate": "2024-07-20T09:48:32.367474",
     "fstop": "f/8.0"
   },
   {
-    "id": 149,
+    "id": 273,
     "title": "_DSC3396.webp",
     "imageWidth": 3571,
     "imageHeight": 5367,
@@ -871,20 +838,19 @@
     "rawFileName": "_DSC3396.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "36 mm",
-    "location": null,
+    "location": "Rome/_DSC3396.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 06:23:33",
-    "updateDate": "2024-07-07T21:10:01.963987",
+    "updateDate": "2024-07-20T09:48:32.378258",
     "fstop": "f/8.0"
   },
   {
-    "id": 150,
+    "id": 274,
     "title": "_DSC3397.webp",
     "imageWidth": 5525,
     "imageHeight": 3676,
@@ -897,20 +863,19 @@
     "rawFileName": "_DSC3397.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3397.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 06:23:35",
-    "updateDate": "2024-07-07T21:10:01.972345",
+    "updateDate": "2024-07-20T09:48:32.386833",
     "fstop": "f/8.0"
   },
   {
-    "id": 151,
+    "id": 275,
     "title": "_DSC3410.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -923,20 +888,19 @@
     "rawFileName": "_DSC3410.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3410.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 06:25:01",
-    "updateDate": "2024-07-07T21:10:01.981709",
+    "updateDate": "2024-07-20T09:48:32.395822",
     "fstop": "f/8.0"
   },
   {
-    "id": 152,
+    "id": 276,
     "title": "_DSC3430.webp",
     "imageWidth": 5022,
     "imageHeight": 3341,
@@ -949,20 +913,19 @@
     "rawFileName": "_DSC3430.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "25 mm",
-    "location": null,
+    "location": "Rome/_DSC3430.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 08:09:49",
-    "updateDate": "2024-07-07T21:10:01.990502",
+    "updateDate": "2024-07-20T09:48:32.403465",
     "fstop": "f/8.0"
   },
   {
-    "id": 153,
+    "id": 277,
     "title": "_DSC3461.webp",
     "imageWidth": 5610,
     "imageHeight": 3733,
@@ -975,20 +938,19 @@
     "rawFileName": "_DSC3461.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "40 mm",
-    "location": null,
+    "location": "Rome/_DSC3461.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 08:15:31",
-    "updateDate": "2024-07-07T21:10:01.999814",
+    "updateDate": "2024-07-20T09:48:32.412037",
     "fstop": "f/8.0"
   },
   {
-    "id": 154,
+    "id": 278,
     "title": "_DSC3478.webp",
     "imageWidth": 3930,
     "imageHeight": 5907,
@@ -1001,20 +963,19 @@
     "rawFileName": "_DSC3478.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3478.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 09:27:13",
-    "updateDate": "2024-07-07T21:10:02.010425",
+    "updateDate": "2024-07-20T09:48:32.419648",
     "fstop": "f/4.0"
   },
   {
-    "id": 155,
+    "id": 279,
     "title": "_DSC3486.webp",
     "imageWidth": 4024,
     "imageHeight": 6048,
@@ -1027,20 +988,19 @@
     "rawFileName": "_DSC3486.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3486.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:22 13:32:12",
-    "updateDate": "2024-07-07T21:10:02.028303",
+    "updateDate": "2024-07-20T09:48:32.429023",
     "fstop": "f/4.0"
   },
   {
-    "id": 156,
+    "id": 280,
     "title": "_DSC3506.webp",
     "imageWidth": 3578,
     "imageHeight": 5378,
@@ -1053,20 +1013,19 @@
     "rawFileName": "_DSC3506.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "35 mm",
-    "location": null,
+    "location": "Rome/_DSC3506.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 05:51:34",
-    "updateDate": "2024-07-07T21:10:02.040593",
+    "updateDate": "2024-07-20T09:48:32.439408",
     "fstop": "f/8.0"
   },
   {
-    "id": 157,
+    "id": 281,
     "title": "_DSC3519.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -1079,20 +1038,19 @@
     "rawFileName": "_DSC3519.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3519.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 06:06:36",
-    "updateDate": "2024-07-07T21:10:02.051352",
+    "updateDate": "2024-07-20T09:48:32.448429",
     "fstop": "f/8.0"
   },
   {
-    "id": 158,
+    "id": 282,
     "title": "_DSC3564.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -1105,20 +1063,19 @@
     "rawFileName": "_DSC3564.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3564.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:16:00",
-    "updateDate": "2024-07-07T21:10:02.061223",
+    "updateDate": "2024-07-20T09:48:32.457398",
     "fstop": "f/8.0"
   },
   {
-    "id": 159,
+    "id": 283,
     "title": "_DSC3570.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -1131,20 +1088,19 @@
     "rawFileName": "_DSC3570.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3570.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:18:00",
-    "updateDate": "2024-07-07T21:10:02.073155",
+    "updateDate": "2024-07-20T09:48:32.466209",
     "fstop": "f/8.0"
   },
   {
-    "id": 160,
+    "id": 284,
     "title": "_DSC3583.webp",
     "imageWidth": 5935,
     "imageHeight": 3949,
@@ -1157,20 +1113,19 @@
     "rawFileName": "_DSC3583.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "30 mm",
-    "location": null,
+    "location": "Rome/_DSC3583.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:24:46",
-    "updateDate": "2024-07-07T21:10:02.082312",
+    "updateDate": "2024-07-20T09:48:32.4748",
     "fstop": "f/8.0"
   },
   {
-    "id": 161,
+    "id": 285,
     "title": "_DSC3631.webp",
     "imageWidth": 6036,
     "imageHeight": 4024,
@@ -1183,20 +1138,19 @@
     "rawFileName": "_DSC3631.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "31 mm",
-    "location": null,
+    "location": "Rome/_DSC3631.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:40:59",
-    "updateDate": "2024-07-07T21:10:02.090781",
+    "updateDate": "2024-07-20T09:48:32.482981",
     "fstop": "f/8.0"
   },
   {
-    "id": 162,
+    "id": 286,
     "title": "_DSC3639.webp",
     "imageWidth": 5919,
     "imageHeight": 3938,
@@ -1209,20 +1163,19 @@
     "rawFileName": "_DSC3639.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3639.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:47:43",
-    "updateDate": "2024-07-07T21:10:02.100245",
+    "updateDate": "2024-07-20T09:48:32.491697",
     "fstop": "f/8.0"
   },
   {
-    "id": 163,
+    "id": 287,
     "title": "_DSC3641.webp",
     "imageWidth": 5970,
     "imageHeight": 3972,
@@ -1235,20 +1188,19 @@
     "rawFileName": "_DSC3641.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "55 mm",
-    "location": null,
+    "location": "Rome/_DSC3641.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:47:58",
-    "updateDate": "2024-07-07T21:10:02.109302",
+    "updateDate": "2024-07-20T09:48:32.500767",
     "fstop": "f/8.0"
   },
   {
-    "id": 164,
+    "id": 288,
     "title": "_DSC3656.webp",
     "imageWidth": 5801,
     "imageHeight": 3860,
@@ -1261,20 +1213,19 @@
     "rawFileName": "_DSC3656.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3656.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:54:57",
-    "updateDate": "2024-07-07T21:10:02.119397",
+    "updateDate": "2024-07-20T09:48:32.510212",
     "fstop": "f/8.0"
   },
   {
-    "id": 165,
+    "id": 289,
     "title": "_DSC3657.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -1287,20 +1238,19 @@
     "rawFileName": "_DSC3657.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3657.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:55:03",
-    "updateDate": "2024-07-07T21:10:02.127885",
+    "updateDate": "2024-07-20T09:48:32.518693",
     "fstop": "f/8.0"
   },
   {
-    "id": 166,
+    "id": 290,
     "title": "_DSC3658-Pano.webp",
     "imageWidth": 8696,
     "imageHeight": 5797,
@@ -1313,20 +1263,19 @@
     "rawFileName": "_DSC3658-Pano.dng",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3658-Pano.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:55:28",
-    "updateDate": "2024-07-07T21:10:02.137046",
+    "updateDate": "2024-07-20T09:48:32.529782",
     "fstop": "f/8.0"
   },
   {
-    "id": 167,
+    "id": 291,
     "title": "_DSC3671.webp",
     "imageWidth": 5701,
     "imageHeight": 3793,
@@ -1339,20 +1288,19 @@
     "rawFileName": "_DSC3671.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3671.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:55:37",
-    "updateDate": "2024-07-07T21:10:02.145798",
+    "updateDate": "2024-07-20T09:48:32.538629",
     "fstop": "f/8.0"
   },
   {
-    "id": 168,
+    "id": 292,
     "title": "_DSC3677.webp",
     "imageWidth": 5694,
     "imageHeight": 3788,
@@ -1365,20 +1313,19 @@
     "rawFileName": "_DSC3677.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "57 mm",
-    "location": null,
+    "location": "Rome/_DSC3677.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:56:03",
-    "updateDate": "2024-07-07T21:10:02.154393",
+    "updateDate": "2024-07-20T09:48:32.547425",
     "fstop": "f/8.0"
   },
   {
-    "id": 169,
+    "id": 293,
     "title": "_DSC3680.webp",
     "imageWidth": 5995,
     "imageHeight": 3989,
@@ -1391,20 +1338,19 @@
     "rawFileName": "_DSC3680.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "35 mm",
-    "location": null,
+    "location": "Rome/_DSC3680.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:56:16",
-    "updateDate": "2024-07-07T21:10:02.162444",
+    "updateDate": "2024-07-20T09:48:32.558017",
     "fstop": "f/8.0"
   },
   {
-    "id": 170,
+    "id": 294,
     "title": "_DSC3682.webp",
     "imageWidth": 6048,
     "imageHeight": 4024,
@@ -1417,20 +1363,19 @@
     "rawFileName": "_DSC3682.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "24 mm",
-    "location": null,
+    "location": "Rome/_DSC3682.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:56:33",
-    "updateDate": "2024-07-07T21:10:02.171173",
+    "updateDate": "2024-07-20T09:48:32.566735",
     "fstop": "f/8.0"
   },
   {
-    "id": 171,
+    "id": 295,
     "title": "_DSC3686-Pano.webp",
     "imageWidth": 6019,
     "imageHeight": 4013,
@@ -1443,20 +1388,19 @@
     "rawFileName": "_DSC3686-Pano.dng",
     "camera": "NIKON Z 6",
     "focalLength": "37 mm",
-    "location": null,
+    "location": "Rome/_DSC3686-Pano.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 07:57:28",
-    "updateDate": "2024-07-07T21:10:02.18018",
+    "updateDate": "2024-07-20T09:48:32.57552",
     "fstop": "f/8.0"
   },
   {
-    "id": 172,
+    "id": 296,
     "title": "_DSC3702.webp",
     "imageWidth": 6046,
     "imageHeight": 4023,
@@ -1469,20 +1413,19 @@
     "rawFileName": "_DSC3702.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "38 mm",
-    "location": null,
+    "location": "Rome/_DSC3702.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 08:09:25",
-    "updateDate": "2024-07-07T21:10:02.188795",
+    "updateDate": "2024-07-20T09:48:32.583514",
     "fstop": "f/8.0"
   },
   {
-    "id": 173,
+    "id": 297,
     "title": "_DSC3725.webp",
     "imageWidth": 3965,
     "imageHeight": 5959,
@@ -1495,20 +1438,19 @@
     "rawFileName": "_DSC3725.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "42 mm",
-    "location": null,
+    "location": "Rome/_DSC3725.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 08:35:58",
-    "updateDate": "2024-07-07T21:10:02.197552",
+    "updateDate": "2024-07-20T09:48:32.591828",
     "fstop": "f/8.0"
   },
   {
-    "id": 174,
+    "id": 298,
     "title": "_DSC3786.webp",
     "imageWidth": 3773,
     "imageHeight": 5671,
@@ -1521,20 +1463,19 @@
     "rawFileName": "_DSC3786.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "27 mm",
-    "location": null,
+    "location": "Rome/_DSC3786.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 09:12:05",
-    "updateDate": "2024-07-07T21:10:02.206377",
+    "updateDate": "2024-07-20T09:48:32.599723",
     "fstop": "f/6.3"
   },
   {
-    "id": 175,
+    "id": 299,
     "title": "_DSC3800.webp",
     "imageWidth": 4024,
     "imageHeight": 6048,
@@ -1547,16 +1488,15 @@
     "rawFileName": "_DSC3800.NEF",
     "camera": "NIKON Z 6",
     "focalLength": "70 mm",
-    "location": null,
+    "location": "Rome/_DSC3800.webp",
     "imageUrlLarge": null,
     "imageUrlSmall": null,
     "imageUrlRaw": null,
     "catalog": [
-      "Europe",
       "Rome"
     ],
     "createDate": "2023:10:23 09:20:16",
-    "updateDate": "2024-07-07T21:10:02.216694",
+    "updateDate": "2024-07-20T09:48:32.607981",
     "fstop": "f/4.0"
   }
 ]
