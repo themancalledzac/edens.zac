@@ -1,10 +1,11 @@
 import {isLocalEnvironment} from "@/utils/environment";
 import {useRouter} from "next/router";
-import {ChangeEvent, Reducer, ReducerState, useEffect, useReducer, useState} from "react";
+import React, {ChangeEvent, Reducer, ReducerState, useEffect, useReducer, useState} from "react";
 import styles from "../../styles/Upload.module.scss";
 import {QueueAction, QueueItem} from "@/interfaceLibrary/QueueTypes";
 import {queueReducer} from "@/state/reducers/queueReducer";
 import UploadQueue from "@/Components/UploadQueue/UploadQueue";
+import Header from "@/Components/Header/Header";
 
 export async function getServerSideProps() {
     if (!isLocalEnvironment()) {
@@ -97,37 +98,40 @@ export default function UploadPage() {
     }, [uploadQueue]);
 
     return (
-        <div className={styles.batchUploader}>
-            <div className={styles.uploadZone}>
-                <div className={styles.container}>
-                    <h1 className={styles.icon}>UPLOAD</h1>
-                    <p className={styles.title}>Select images for upload</p>
-                    <p className={styles.subtitle}>Support for batch uploads (up to 200 images)</p>
-                    <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className={styles.input}
-                        id="file-upload"
-                    />
-                    <button
-                        onClick={() => document.getElementById('file-upload').click()}
-                        className={styles.button}
-                    >
-                        Select Files
-                    </button>
+        <div>
+            <Header/>
+            <div className={styles.batchUploader}>
+                <div className={styles.uploadZone}>
+                    <div className={styles.container}>
+                        <h1 className={styles.icon}>UPLOAD</h1>
+                        <p className={styles.title}>Select images for upload</p>
+                        <p className={styles.subtitle}>Support for batch uploads (up to 200 images)</p>
+                        <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleFileSelect}
+                            className={styles.input}
+                            id="file-upload"
+                        />
+                        <button
+                            onClick={() => document.getElementById('file-upload').click()}
+                            className={styles.button}
+                        >
+                            Select Files
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            {uploadQueue.length > 0 && (
-                <>
-                    <UploadQueue uploading={uploading} setUploading={setUploading} uploadQueue={uploadQueue}
-                                 dispatch={dispatch} uploadProgress={uploadProgress}
-                                 setUploadProgress={setUploadProgress}></UploadQueue>
-                </>
-            )
-            }
+                {uploadQueue.length > 0 && (
+                    <>
+                        <UploadQueue uploading={uploading} setUploading={setUploading} uploadQueue={uploadQueue}
+                                     dispatch={dispatch} uploadProgress={uploadProgress}
+                                     setUploadProgress={setUploadProgress}></UploadQueue>
+                    </>
+                )
+                }
+            </div>
         </div>
     );
 };

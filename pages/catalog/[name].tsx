@@ -131,7 +131,7 @@ const CatalogPage = ({data}) => {
 
     return (
         <div className={styles.catalogPageMain}>
-            <Header isPhotographyPage={homePageType}/>
+            <Header/>
             <div className={styles.photoBlockWrapper}>
                 {data.map((photoPair, index) => (
                     <PhotoBlockComponent
