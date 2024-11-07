@@ -4,6 +4,10 @@ import {useEffect, useRef, useState} from "react";
 import {AlignJustify} from "lucide-react";
 import MenuDropdown from "../MenuDropdown/MenuDropdown";
 
+/**
+ * Header Component for all pages
+ * @constructor
+ */
 export default function Header() {
     const router = useRouter();
     const [showDropdown, setShowDropdown] = useState(false);

@@ -3,7 +3,7 @@ import ParallaxSection from "../ParallaxSection/ParallaxSection";
 
 export default function PhotographyPage({homePageCatalogList}) {
 
-    console.log({homePageCatalogList})
+    // console.log({homePageCatalogList})
 
     return (
         <div className={styles.bodyWrapper}>

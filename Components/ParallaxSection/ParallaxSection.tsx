@@ -14,7 +14,6 @@ export default function ParallaxSection({catalogTitle, bannerImage}) {
 
     const handleClick = async () => {
         const catalog = catalogTitle.toLowerCase().replace(/\s+/g, '-');
-        console.log(`attempting to get to /catalog/${catalog}`);
         try {
             await router.push(`/catalog/${catalog}`);
         } catch (e) {

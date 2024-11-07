@@ -9,6 +9,7 @@ const nextConfig = {
     images: {
         domains: ['localhost'], // Add your domain here
         formats: ['image/webp'],
+        // remotePatterns
     },
     // Add webpack configuration to handle caching
     webpack: ( config, { dev, isServer } ) => {

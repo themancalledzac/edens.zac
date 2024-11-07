@@ -1,0 +1,340 @@
+.imageUploadPageMain {
+  max-width: 1200px;
+  width: 80%;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+
+.batchUploader {
+  //width: 100%;
+  //min-width: var(--content-min-width);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+// Upload Zone
+.uploadZone {
+  margin-bottom: 2rem;
+  width: 100%;
+
+  .container {
+    border: 2px dashed #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #f9fafb;
+  }
+
+  .icon {
+    height: 3rem;
+    width: 3rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .title {
+    font-size: 1.125rem;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 1rem;
+  }
+
+  .input {
+    display: none;
+  }
+
+  .button {
+    padding: 0.5rem 1.5rem;
+    background-color: #2563eb;
+    color: white;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #1d4ed8;
+    }
+  }
+}
+
+// Queue
+.queue {
+  width: 100%;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  .header {
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .info {
+    // todo
+  }
+
+  .title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .count {
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  .uploadButton {
+    padding: 0.5rem 1.5rem;
+    background-color: #059669;
+    color: white;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #047857;
+    }
+  }
+
+  .items {
+    max-height: 24rem;
+    overflow-y: auto;
+    border-top: 1px solid #e5e7eb;
+  }
+}
+
+// Queue Item
+.queueItem {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
+
+  .content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+  }
+
+  .preview {
+    width: 4rem;
+    height: 4rem;
+    background-color: #f3f4f6;
+    border-radius: 0.25rem;
+    overflow: hidden;
+  }
+
+  .image {
+    max-width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .info {
+    flex: 1;
+  }
+
+  .filename {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+  }
+
+  .size {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+  }
+
+  .status {
+    width: 12rem;
+  }
+
+  .remove {
+    margin-left: 1rem;
+    padding: 0.25rem;
+    color: #6b7280;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #ef4444;
+    }
+
+    .icon {
+      height: 1.25rem;
+      width: 1.25rem;
+    }
+  }
+}
+
+// Progress Bar
+.progress-bar {
+  height: 0.5rem;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+
+  .fill {
+    height: 100%;
+    background-color: #2563eb;
+    transition: width 0.3s;
+  }
+}
+
+// Status
+.status {
+  &-completed {
+    color: #059669;
+  }
+
+  .queued {
+    color: #6b7280;
+  }
+}
+
+// Reset button styles
+.button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.queueItemExpanded {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: white;
+  z-index: 1000;
+  overflow-y: auto;
+
+  .header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .leftSection {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .expandedPreview {
+      width: 6rem;
+      height: 6rem;
+      background-color: #f3f4f6;
+      border-radius: 0.25rem;
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .expandedInfo {
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+      }
+
+      p {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin: 0;
+      }
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+
+      .closeButton {
+        padding: 0.5rem;
+        color: #6b7280;
+        transition: color 0.2s;
+
+        &:hover {
+          color: #ef4444;
+        }
+
+        .icon {
+          height: 1.5rem;
+          width: 1.5rem;
+        }
+      }
+    }
+  }
+
+  .metadataGrid {
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+
+    .metadataItem {
+      display: flex;
+      gap: 1rem;
+
+      .label {
+        min-width: 120px;
+        font-weight: 500;
+        color: #4b5563;
+      }
+
+      .value {
+        color: #111827;
+      }
+    }
+  }
+}
+
+// Add hover state for clickable queue items
+.queueItem {
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: #f9fafb;
+  }
+}
+
+// Add chevron icon styles
+.chevronIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #6b7280;
+  margin-left: auto;
+}
