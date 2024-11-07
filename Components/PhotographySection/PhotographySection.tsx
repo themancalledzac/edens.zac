@@ -1,6 +1,6 @@
 import styles from "../../styles/Home.module.scss";
 import imageDirectory from "../../Images/imageDirectory.json";
-import ParallaxSection from "../ParallaxSection/ParallaxSection";
+import ParallaxSection from "../ParallaxSection/ParallaxSection.js";
 import { useEffect, useRef } from "react";
 
 export default function PhotographySection( { key, title, photoList } ) {
