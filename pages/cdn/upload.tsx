@@ -6,6 +6,7 @@ import {QueueAction, QueueItem} from "@/interfaceLibrary/QueueTypes";
 import {queueReducer} from "@/state/reducers/queueReducer";
 import UploadQueue from "@/Components/UploadQueue/UploadQueue";
 import Header from "@/Components/Header/Header";
+import UploadModule from "@/Components/UploadModule/UploadModule";
 
 export async function getServerSideProps() {
     if (!isLocalEnvironment()) {
@@ -35,65 +36,13 @@ export default function UploadPage() {
     );
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
-
-    const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        console.log('Files selected:', files);
-
-        // Add files to queue immediately with 'processing' status
-        dispatch({
-            type: 'ADD_FILES',
-            files: files
-        });
-
-        const formData = new FormData();
-
-        files.forEach(file => {
-            console.log('Adding file:', file.name, file.type);
-            formData.append('images', file);
-        });
-
-        try {
-            const response = await fetch('/api/proxy/v1/image/getBatchImageMetadata', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json'
-                },
-                credentials: 'include',
-                body: formData,
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const metadataList = await response.json();
-            console.log(metadataList);
-            // Update metadata for each file
-            files.forEach((file, index) => {
-                const fileId = `${file.name}`;
-                dispatch({
-                    type: 'UPDATE_METADATA',
-                    id: fileId,
-                    metadata: metadataList[index]
-                });
-            });
-        } catch (error) {
-            // Handle error for all files
-            files.forEach(file => {
-                const fileId = `${file.name}-${Date.now()}`;
-                dispatch({
-                    type: 'SET_ERROR',
-                    id: fileId
-                });
-            });
-            console.error('Error fetching metadata:', error);
-        }
-    };
+    const [isSelected, setIsSelected] = useState<Boolean>(false);
 
     useEffect(() => {
 
-        console.log(uploadQueue);
+        if (uploadQueue.length === 0) {
+            setIsSelected(false);
+        }
 
     }, [uploadQueue]);
 
@@ -101,27 +50,8 @@ export default function UploadPage() {
         <div>
             <Header/>
             <div className={styles.batchUploader}>
-                <div className={styles.uploadZone}>
-                    <div className={styles.container}>
-                        <h1 className={styles.icon}>UPLOAD</h1>
-                        <p className={styles.title}>Select images for upload</p>
-                        <p className={styles.subtitle}>Support for batch uploads (up to 200 images)</p>
-                        <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={handleFileSelect}
-                            className={styles.input}
-                            id="file-upload"
-                        />
-                        <button
-                            onClick={() => document.getElementById('file-upload').click()}
-                            className={styles.button}
-                        >
-                            Select Files
-                        </button>
-                    </div>
-                </div>
+                <UploadModule uploadQueue={uploadQueue} dispatch={dispatch} isSelected={isSelected}
+                              setIsSelected={setIsSelected}/>
 
                 {uploadQueue.length > 0 && (
                     <>

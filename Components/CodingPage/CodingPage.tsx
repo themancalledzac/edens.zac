@@ -1,7 +1,7 @@
 import styles from "../../styles/Home.module.scss";
 import ParallaxSection from "../ParallaxSection/ParallaxSection.js";
 
-export default function CodingPage({photoDataList, setCurrentCatalog}) {
+export default function CodingPage() {
 
     function getRandomElementFromArray(array) {
         const randomIndex = Math.floor(Math.random() * array.length);

@@ -36,4 +36,5 @@ export type QueueAction =
     | { type: 'ADD_FILES'; files: File[] }  // Make sure this matches exactly
     | { type: 'UPDATE_STATUS'; id: string; status: QueueItemStatus }
     | { type: 'UPDATE_METADATA'; id: string; metadata: ImageMetadata }
-    | { type: 'SET_ERROR'; id: string };
+    | { type: 'SET_ERROR'; id: string }
+    | { type: 'REMOVE_FILE'; id: string };

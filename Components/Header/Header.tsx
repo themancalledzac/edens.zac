@@ -20,6 +20,10 @@ export default function Header() {
         }
     }
 
+    const handleClick = (page: string) => {
+        router.push(`/${page}`);
+    }
+
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (showDropdown && dropdownRef.current && !dropdownRef.current.contains(event.target) &&
@@ -35,8 +39,17 @@ export default function Header() {
     return (
         <header className={styles.header}>
             <div className={styles.navBarWrapper}>
-                <div className={styles.title} onClick={handleTitleClick}>
-                    <h2>Zac Edens</h2>
+                <div className={styles.navBarLeftWrapper}>
+
+                    <div className={styles.title} onClick={() => handleClick('/')}>
+                        <h2>Zac Edens</h2>
+                    </div>
+                    <div className={styles.menuItemsWrapper}>
+                        <div className={styles.menuItem} onClick={() => handleClick('/cdn/upload')}>Upload</div>
+                        <div className={styles.menuItem} onClick={() => handleClick('/cdn/catalog')}>Catlogs</div>
+                        <div className={styles.menuItem} onClick={() => handleClick('/cdn/search')}>Tags</div>
+                        <div className={styles.menuItem} onClick={() => handleClick('/cdn/search')}>Search</div>
+                    </div>
                 </div>
                 {showDropdown ? (
                     <MenuDropdown dropdownRef={dropdownRef} showDropdown={showDropdown}

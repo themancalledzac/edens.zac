@@ -7,14 +7,12 @@ const UploadQueue = ({uploading, setUploading, uploadQueue, dispatch, uploadProg
 
     const removeFile = useCallback((fileId, e) => {
         e.stopPropagation(); // Prevent click from triggering item selection
-        dispatch(prev => prev.filter(item => item.id !== fileId));
-    }, []);
+        dispatch({
+            type: 'REMOVE_FILE',
+            id: fileId
+        });
+    }, [dispatch]);
 
-    // TODO:
-    //  1. Upload Logic redo:
-    //  2. Add local endpoint for backend api
-    //  3. Emulate passing images the way we did with POStMAN
-    //  4. Figure out how to upload images AND an Array of Objects of metadata
     const uploadFiles = async () => {
         setUploading(true);
         const batchSize = 5;

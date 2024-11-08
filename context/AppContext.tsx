@@ -5,8 +5,6 @@ import {Image} from "@/types/Image";
 // export const AppContext = createContext();
 
 interface AppContextState {
-    homePageType: string;
-    setHomePageType: (value: string) => void;
     photoDataList: Image[]; // TODO: Verify that this DataList is an Image(metadata) List. CONFIRM
     setPhotoDataList: (data: Image[]) => void;
     currentCatalog: string;
@@ -32,7 +30,6 @@ interface AppProviderProps {
 }
 
 export const AppProvider: React.FC<AppProviderProps> = ({children}) => {
-    const [homePageType, setHomePageType] = useState<string>('photography');
     const [photoDataList, setPhotoDataList] = useState<Image[]>([]);
     const [currentCatalog, setCurrentCatalog] = useState<string>('');
     const [isMobile, setIsMobile] = useState<boolean>(false);
@@ -55,8 +52,6 @@ export const AppProvider: React.FC<AppProviderProps> = ({children}) => {
     }, []);
 
     const value: AppContextState = {
-        homePageType,
-        setHomePageType,
         photoDataList,
         setPhotoDataList,
         currentCatalog,

@@ -1,12 +1,10 @@
 import styles from '../styles/Home.module.scss'
-import PhotographyPage from "../Components/PhotographyPage/PhotographyPage";
-import CodingPage from "../Components/CodingPage/CodingPage";
 import Header from "../Components/Header/Header";
-import {useAppContext} from "../context/AppContext";
 import photoData from "../Images/homePagePhotoData.json";
+import ParallaxSection from "@/Components/ParallaxSection/ParallaxSection";
 
 export async function getServerSideProps() {
-    const url = `http://localhost:8080/api/v1/catalog/mainPageCatalogList${'test'}`;
+    const url = 'http://localhost:8080/api/v1/catalog/mainPageCatalogList/test';
     try {
         const response = await fetch(url, {cache: 'force-cache'});
         const data = await response.json();
@@ -19,18 +17,18 @@ export async function getServerSideProps() {
 }
 
 export default function Home({homePageCatalogList}) {
-    const {
-        homePageType,
-        setCurrentCatalog
-    } = useAppContext();
 
     return (
         <div className={styles.container}>
-            <Header isPhotographyPage={homePageType}/>
-            {homePageType === 'photography' && <PhotographyPage homePageCatalogList={homePageCatalogList}/>}
-            {homePageType === 'coding' && <CodingPage photoDataList={null} setCurrentCatalog={setCurrentCatalog}/>}
-            {homePageType === 'coding' && <CodingPage photoDataList={null} setCurrentCatalog={setCurrentCatalog}/>}
-
+            <Header/>
+            <div className={styles.bodyWrapper}>
+                {/* TODO: Additional Elements go in here. Do we make them PART of our .map below? for Dynamic organization...*/}
+                {homePageCatalogList.map(({id, imageMain, name}) => (
+                    <ParallaxSection key={id} catalogTitle={name}
+                                     bannerImage={imageMain.location} image={imageMain}/>
+                ))}
+            </div>
+            {/*<Footer />*/}
         </div>
     )
 };

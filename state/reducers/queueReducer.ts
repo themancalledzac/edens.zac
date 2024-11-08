@@ -34,6 +34,9 @@ export const queueReducer = (state: QueueItem[], action: QueueAction): QueueItem
                     : item
             );
 
+        case 'REMOVE_FILE':
+            return state.filter(item => item.id !== action.id);
+
         default:
             return state;
     }
