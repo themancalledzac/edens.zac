@@ -14,14 +14,12 @@ export default function Header() {
     const dropdownRef = useRef(null);
     const aboutRef = useRef(null);
 
-    const handleTitleClick = () => {
-        if (router.pathname !== '/') {
-            router.push('/');
-        }
-    }
-
     const handleClick = (page: string) => {
-        router.push(`/${page}`);
+        try {
+            router.push(`/${page}`);
+        } catch (e) {
+            console.error(`Error fetching ${page} page. ${e}`);
+        }
     }
 
     useEffect(() => {
@@ -36,19 +34,16 @@ export default function Header() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showDropdown]);
 
+    // TODO: Update Header:
+    //  1. Move menuItems into dropdown(pull out) menu
+    //  2. Verify that
     return (
         <header className={styles.header}>
             <div className={styles.navBarWrapper}>
                 <div className={styles.navBarLeftWrapper}>
 
-                    <div className={styles.title} onClick={() => handleClick('/')}>
+                    <div className={styles.title} onClick={() => handleClick('')}>
                         <h2>Zac Edens</h2>
-                    </div>
-                    <div className={styles.menuItemsWrapper}>
-                        <div className={styles.menuItem} onClick={() => handleClick('/cdn/upload')}>Upload</div>
-                        <div className={styles.menuItem} onClick={() => handleClick('/cdn/catalog')}>Catlogs</div>
-                        <div className={styles.menuItem} onClick={() => handleClick('/cdn/search')}>Tags</div>
-                        <div className={styles.menuItem} onClick={() => handleClick('/cdn/search')}>Search</div>
                     </div>
                 </div>
                 {showDropdown ? (

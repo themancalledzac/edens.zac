@@ -71,7 +71,6 @@ export default function UploadModule({uploadQueue, dispatch, isSelected, setIsSe
 
     }, [uploadQueue]);
 
-
     return (
 
         <div className={!isSelected ? styles.uploadZone : styles.uploadZoneSmall}>

@@ -54,11 +54,9 @@ export default function UploadPage() {
                               setIsSelected={setIsSelected}/>
 
                 {uploadQueue.length > 0 && (
-                    <>
-                        <UploadQueue uploading={uploading} setUploading={setUploading} uploadQueue={uploadQueue}
-                                     dispatch={dispatch} uploadProgress={uploadProgress}
-                                     setUploadProgress={setUploadProgress}></UploadQueue>
-                    </>
+                    <UploadQueue uploading={uploading} setUploading={setUploading} uploadQueue={uploadQueue}
+                                 dispatch={dispatch} uploadProgress={uploadProgress}
+                                 setUploadProgress={setUploadProgress}></UploadQueue>
                 )
                 }
             </div>

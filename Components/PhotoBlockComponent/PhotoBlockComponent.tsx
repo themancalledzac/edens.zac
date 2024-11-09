@@ -110,7 +110,7 @@ export default function PhotoBlockComponent({photos, isMobile, imageSelected, se
                         ? {marginBottom: '0', flexDirection: 'column'}
                         : {marginBottom: '1rem', flexDirection: 'row'}
                 )
-            }}>
+            } as React.CSSProperties}>
                 <Image src={isValidSource(imageOne?.location) ? `/${imageOne.location}` : ""}
                        alt="Photo"
                        width={Math.round(imageOne.width)}
