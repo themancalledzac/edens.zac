@@ -280,14 +280,8 @@
 }
 
 .queueItemExpanded {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: white;
-  z-index: 1000;
-  overflow-y: auto;
+  width: 100%;
+  background-color: rgba(26, 29, 44, 0.8);
 
   .header {
     padding: 1.5rem;
@@ -321,11 +315,12 @@
         font-size: 1.25rem;
         font-weight: 600;
         margin: 0 0 0.5rem 0;
+        color: white;
       }
 
       p {
         font-size: 0.875rem;
-        color: #6b7280;
+        color: #ffffff;
         margin: 0;
       }
     }
@@ -367,11 +362,11 @@
       .label {
         min-width: 120px;
         font-weight: 500;
-        color: #4b5563;
+        color: #ffffff;
       }
 
       .value {
-        color: #111827;
+        color: #ffffff;
       }
     }
   }

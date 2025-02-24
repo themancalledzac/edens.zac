@@ -2,6 +2,7 @@ import styles from '../styles/Home.module.scss'
 import Header from "../Components/Header/Header";
 import photoData from "../Images/homePagePhotoData.json";
 import ParallaxSection from "@/Components/ParallaxSection/ParallaxSection";
+import ParallaxSectionWrapper from "@/Components/ParallaxSectionWrapper";
 
 export async function getServerSideProps() {
     const url = 'http://localhost:8080/api/v1/catalog/mainPageCatalogList/test';
@@ -18,14 +19,29 @@ export async function getServerSideProps() {
 
 export default function Home({homePageCatalogList}) {
 
+    const catalogPairs = [];
+    for (let i = 0; i < homePageCatalogList.length; i += 2) {
+        catalogPairs.push(homePageCatalogList.slice(i, i + 2));
+    }
+
+    // TODO: Additional Elements will eventually also be in this. Do we make them PART of our .map below? for Dynamic organization...
+    //  look at work examples of inserting 'Ads' in random places. we could implement a similar theory
+
     return (
         <div className={styles.container}>
             <Header/>
             <div className={styles.bodyWrapper}>
-                {/* TODO: Additional Elements go in here. Do we make them PART of our .map below? for Dynamic organization...*/}
-                {homePageCatalogList.map(({id, imageMain, name}) => (
-                    <ParallaxSection key={id} catalogTitle={name}
-                                     bannerImage={imageMain.location} image={imageMain}/>
+                {catalogPairs.map((pair, index) => (
+                    <ParallaxSectionWrapper key={index}>
+                        {pair.map(({id, imageMain, name}) => (
+                            <ParallaxSection
+                                key={id}
+                                catalogTitle={name}
+                                bannerImage={imageMain.location}
+                                image={imageMain}
+                            />
+                        ))}
+                    </ParallaxSectionWrapper>
                 ))}
             </div>
             {/*<Footer />*/}

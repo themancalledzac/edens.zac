@@ -7,6 +7,7 @@ import {queueReducer} from "@/state/reducers/queueReducer";
 import UploadQueue from "@/Components/UploadQueue/UploadQueue";
 import Header from "@/Components/Header/Header";
 import UploadModule from "@/Components/UploadModule/UploadModule";
+import {MetadataEditCard} from "@/Components/MetadataEditCard/MetadataEditCard";
 
 export async function getServerSideProps() {
     if (!isLocalEnvironment()) {
@@ -59,6 +60,9 @@ export default function UploadPage() {
                                  setUploadProgress={setUploadProgress}></UploadQueue>
                 )
                 }
+                {/*{0 === 1 && (*/}
+                {/*    <MetadataEditCard / TOOD: need to add 'current image' to Global State, in order to move this here>*/}
+                {/*)}*/}
             </div>
         </div>
     );

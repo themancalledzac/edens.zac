@@ -3,8 +3,22 @@ import styles from '../../styles/ParallaxSection.module.scss'; // Adjust the pat
 import {useRouter} from 'next/router';
 import {useAppContext} from "@/context/AppContext";
 import {throttle} from 'lodash';
+import {Image} from "@/types/Image";
 
-export default function ParallaxSection({catalogTitle, bannerImage}) {
+interface ParallaxSectionProps {
+    catalogTitle?: string
+    bannerImage?: string
+    image?: Image
+}
+
+/**
+ * Parallax Section for dynamic scrolling
+ * @param catalogTitle
+ * @param {string} bannerImage
+ * @param {Image} image
+ * @constructor
+ */
+export default function ParallaxSection({catalogTitle, bannerImage, image}) {
 
 
     const sectionRef = useRef(null);

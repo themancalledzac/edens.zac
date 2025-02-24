@@ -43,7 +43,14 @@ function calculateImageSizes(images, componentWidth) {
     }
 }
 
-
+/**
+ * Photo Block Component which can contain 1 or 2 images, depending on Rating.
+ * @param {Array} photos
+ * @param {boolean} isMobile
+ * @param {Image} imageSelected
+ * @param {function} setImageSelected
+ * @constructor
+ */
 export default function PhotoBlockComponent({photos, isMobile, imageSelected, setImageSelected}) {
     const [componentWidth, setComponentWidth] = useState(800);
     // const [imageSelected, setImageSelected] = useState( null );

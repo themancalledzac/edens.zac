@@ -1,7 +1,6 @@
 import {useState, useCallback} from 'react';
 import {ChevronDown, X} from "lucide-react";
 import styles from "../../styles/Upload.module.scss"
-import {MetadataEditCard} from "@/Components/MetadataEditCard/MetadataEditCard";
 
 const UploadQueue = ({uploading, setUploading, uploadQueue, dispatch, uploadProgress, setUploadProgress}) => {
     const [selectedItem, setSelectedItem] = useState(null);
@@ -62,6 +61,42 @@ const UploadQueue = ({uploading, setUploading, uploadQueue, dispatch, uploadProg
         );
     };
 
+    const renderExpandedItem = (item) => (
+        <div className={styles.queueItemExpanded}>
+            <div className={styles.header}>
+                <div className={styles.leftSection}>
+                    <div className={styles.expandedPreview}>
+                        <img
+                            src={URL.createObjectURL(item.file)}
+                            alt=""
+                        />
+                    </div>
+                    <div className={styles.expandedInfo}>
+                        <h2>{item.file.name}</h2>
+                        <p>{(item.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                </div>
+                <div className={styles.actions}>
+                    {!uploading && (
+                        <button
+                            onClick={uploadFiles}
+                            className={styles.uploadButton}
+                        >
+                            Start Upload
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setSelectedItem(null)}
+                        className={styles.closeButton}
+                    >
+                        <X className={styles.icon}/>
+                    </button>
+                </div>
+            </div>
+            {renderMetadataGrid(item.metadata)}
+        </div>
+    );
+
     return (
         <div className={styles.queue}>
             <div className={styles.header}>
@@ -82,9 +117,7 @@ const UploadQueue = ({uploading, setUploading, uploadQueue, dispatch, uploadProg
             <div className={styles.items}>
                 {uploadQueue.map((item) => (
                     selectedItem === item.id ? (
-                        <MetadataEditCard key={item.id} item={item} renderMetadataGrid={renderMetadataGrid}
-                                          setSelectedItem={setSelectedItem} uploading={uploading}
-                                          uploadFiles={uploadFiles}/>
+                        renderExpandedItem(item)
                     ) : (
                         <div
                             key={item.id}

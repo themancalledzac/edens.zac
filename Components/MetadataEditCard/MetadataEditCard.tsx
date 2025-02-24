@@ -17,14 +17,6 @@ export const MetadataEditCard = ({item, uploading, uploadFiles, setSelectedItem,
                 </div>
             </div>
             <div className={styles.actions}>
-                {!uploading && (
-                    <button
-                        onClick={uploadFiles}
-                        className={styles.uploadButton}
-                    >
-                        Start Upload
-                    </button>
-                )}
                 <button
                     onClick={() => setSelectedItem(null)}
                     className={styles.closeButton}

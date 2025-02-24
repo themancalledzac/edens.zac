@@ -35,7 +35,7 @@ const localDataMap = {
  * @returns {Promise<{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: *[]}}|{props: {data: {}}}>}
  */
 export async function getServerSideProps({params: {name}}) {
-    const url = `TESTING_http://localhost:8080/api/v1/image/getImagesByCatalogs/${name}`;
+    const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${name}`;
 
     try {
         const response = await fetch(url);
@@ -93,9 +93,7 @@ async function chunkArray(photoArray, chunkSize) {
 
 // The page component that renders the content for each title
 const CatalogPage = ({data}) => {
-    const {
-        homePageType
-    } = useAppContext();
+    // const {homePageType} = useAppContext();
     const [imageSelected, setImageSelected] = useState(null);
     const router = useRouter();
 
@@ -135,6 +133,7 @@ const CatalogPage = ({data}) => {
             <div className={styles.photoBlockWrapper}>
                 {data.map((photoPair, index) => (
                     <PhotoBlockComponent
+                        isMobile={false}
                         key={index}
                         photos={photoPair}
                         imageSelected={imageSelected}
