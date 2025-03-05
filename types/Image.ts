@@ -1,4 +1,5 @@
-import {Catalog} from "./Catalog";
+import {Catalog, CatalogMin} from "./Catalog";
+import {Blog, BlogMin} from "@/types/Blog";
 
 export type Rating = 1 | 2 | 3 | 4 | 5;
 
@@ -12,6 +13,7 @@ export type Rating = 1 | 2 | 3 | 4 | 5;
  * @property {number} iso - Camera ISO strength
  * @property {string} author - Usually me
  * @property {Rating} rating - 1-5 rating, 5 being the best
+ * @property {string} fstop - such as F1.2, F8, F11
  * @property {string} lens - Camera Lens
  * @property {boolean} blackAndWhite - if BW
  * @property {string} shutterSpeed - like 1/60 or 1/500
@@ -23,9 +25,9 @@ export type Rating = 1 | 2 | 3 | 4 | 5;
  * @property {string} imageUrlSmall - S3 location of SMALL sized image ( thumbnail )
  * @property {string} imageUrlRaw - S3 location of RAW image
  * @property {Catalog[]} catalog - List of all associated catalogs
+ * @property {Blog[]} blogs = List of all associated Blogs
  * @property {Date} createDate - DATE of creation
  * @property {Date} updateDate - DATE of last edit
- * @property {string} fstop - such as F1.2, F8, F11
  */
 export interface Image {
     id: number;
@@ -35,6 +37,7 @@ export interface Image {
     iso: number;
     author: string;
     rating: Rating;
+    fStop: string;
     lens: string;
     blackAndWhite: boolean;
     shutterSpeed: string;
@@ -45,8 +48,8 @@ export interface Image {
     imageUrlWeb: string | null;
     imageUrlSmall: string | null;
     imageUrlRaw: string | null;
-    catalog: Catalog[];
+    catalog: CatalogMin[];
+    blogs: BlogMin[];
     createDate: Date;
     updateDate: Date;
-    fstop: string;
 }

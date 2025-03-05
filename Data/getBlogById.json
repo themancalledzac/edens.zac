@@ -1,0 +1,39 @@
+{
+  "id": 1,
+  "title": "frontendTest05",
+  "date": "2025-03-05",
+  "location": "Seattle, Wa",
+  "paragraph": "We are looking to start building our frontend around this new BLOG logic. A such, we will need a functioning new 'page', a menu button, as well as an 'upload' images interface.",
+  "images": [
+    {
+      "id": 1,
+      "title": "_DSC2558.webp",
+      "imageWidth": 2500,
+      "imageHeight": 1663,
+      "iso": 500,
+      "author": "Zechariah Edens",
+      "rating": 5,
+      "lens": "NIKKOR Z 24-70mm f/4 S",
+      "blackAndWhite": true,
+      "shutterSpeed": "1/124 sec",
+      "rawFileName": "_DSC2558.NEF",
+      "camera": "NIKON Z 6",
+      "focalLength": "24 mm",
+      "location": "frontendTest05/_DSC2558.webp",
+      "imageUrlWeb": "https://d2qp8h5pbkohe6.cloudfront.net/2023-10-19/WEB/_DSC2558.webp",
+      "imageUrlSmall": "https://d2qp8h5pbkohe6.cloudfront.net/2023-10-19/WEB/_DSC2558.webp",
+      "imageUrlRaw": null,
+      "catalog": [],
+      "blogs": [
+        "frontendTest05"
+      ],
+      "createDate": "2023:10:19 08:06:32",
+      "updateDate": "2025-03-05T02:35:45.033616",
+      "fstop": "f/5.6"
+    }
+  ],
+  "author": "Zac Edens",
+  "tags": [],
+  "coverImageUrl": "https://d2qp8h5pbkohe6.cloudfront.net/2023-10-19/WEB/_DSC2558.webp",
+  "slug": "frontendtest05"
+}
