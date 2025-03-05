@@ -24,8 +24,11 @@ export default function Home({homePageCatalogList}) {
         catalogPairs.push(homePageCatalogList.slice(i, i + 2));
     }
 
-    // TODO: Additional Elements will eventually also be in this. Do we make them PART of our .map below? for Dynamic organization...
-    //  look at work examples of inserting 'Ads' in random places. we could implement a similar theory
+    // TODO: Additional Elements will go here, along with our catalogPairs
+    //  - Blog Home Page
+    //  -
+    //  -
+    //  -
 
     return (
         <div className={styles.container}>
