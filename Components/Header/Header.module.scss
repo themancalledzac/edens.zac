@@ -13,6 +13,35 @@
   color: white;
   cursor: pointer;
   height: 5rem;
+  margin-right: 2rem;
+}
+
+.menuItemsWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  background-color: black;
+  //max-width: 500px;
+  height: 5rem;
+}
+
+.navBarLeftWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-right: 2rem;
+  //max-width: 1000px; // TODO: Not doing anything, need to figure out width of menu one level up
+}
+
+.menuItem {
+  background-color: white;
+  height: 3rem;
+  width: 5rem;
+  padding: 1rem 1rem;
+  margin: 3rem;
+  color: black;
+  font-family: Futura, serif;
+  cursor: pointer;
 }
 
 .navBarWrapper {

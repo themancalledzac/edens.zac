@@ -1,5 +1,5 @@
 import styles from "../../styles/Home.module.scss";
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useState} from "react";
 import ImageFullScreen from "../ImageFullScreen/ImageFullScreen";
 import Image from "next/image";
 
@@ -9,89 +9,96 @@ import Image from "next/image";
 //  3. Need PhotoBlockComponent dictate the WIDTh of the images, as they only take up the INSIDE.
 //  4. They don't have margin or padding INSIDE, instead, we use flex to have space-between.
 
-function calculateImageSizes( images, componentWidth ) {
+function calculateImageSizes(images, componentWidth) {
 
-    if ( images.length === 1 ) {
+    if (images.length === 1) {
         // Handle the single image case
-        const ratio = images[ 0 ].imageWidth / images[ 0 ].imageHeight;
+        const ratio = images[0].imageWidth / images[0].imageHeight;
         const height = componentWidth / ratio;
         // const width = ratio * height;
 
         return [{
-            ...images[ 0 ],
+            ...images[0],
             width: componentWidth,
             height: height
         }];
     } else {
         // Calculate the ratios using imageWidth and imageHeight from the input objects
-        const ratio1 = images[ 0 ].imageWidth / images[ 0 ].imageHeight;
-        const ratio2 = images[ 1 ].imageWidth / images[ 1 ].imageHeight;
+        const ratio1 = images[0].imageWidth / images[0].imageHeight;
+        const ratio2 = images[1].imageWidth / images[1].imageHeight;
 
         // Solve for the heights and widths
-        const height = componentWidth / ( ratio1 + ratio2 );
+        const height = componentWidth / (ratio1 + ratio2);
         const width1 = ratio1 * height;
         const width2 = ratio2 * height;
 
         // Return the original objects with added calculated width and height
-        return images.map( ( image, index ) => {
+        return images.map((image, index) => {
             // Calculate new size based on the index
-            const newSize = index === 0 ? { width: width1, height: height } : { width: width2, height: height };
+            const newSize = index === 0 ? {width: width1, height: height} : {width: width2, height: height};
 
             // Spread the original image object and merge with the new size
-            return { ...image, ...newSize };
-        } );
+            return {...image, ...newSize};
+        });
     }
 }
 
-
-export default function PhotoBlockComponent( { photos, isMobile, imageSelected, setImageSelected } ) {
-    const [componentWidth, setComponentWidth] = useState( 800 );
+/**
+ * Photo Block Component which can contain 1 or 2 images, depending on Rating.
+ * @param {Array} photos
+ * @param {boolean} isMobile
+ * @param {Image} imageSelected
+ * @param {function} setImageSelected
+ * @constructor
+ */
+export default function PhotoBlockComponent({photos, isMobile, imageSelected, setImageSelected}) {
+    const [componentWidth, setComponentWidth] = useState(800);
     // const [imageSelected, setImageSelected] = useState( null );
-    const [loading, setLoading] = useState( true );
-    const [imageOne, setImageOne] = useState( photos[ 0 ] );
-    const [imageTwo, setImageTwo] = useState( photos.length > 1 ? photos[ 1 ] : null );
-    const handleClick = async ( image ) => {
-        await setImageSelected( image );
+    const [loading, setLoading] = useState(true);
+    const [imageOne, setImageOne] = useState(photos[0]);
+    const [imageTwo, setImageTwo] = useState(photos.length > 1 ? photos[1] : null);
+    const handleClick = async (image) => {
+        await setImageSelected(image);
     }
 
-    useEffect( () => {
+    useEffect(() => {
         const calculateComponentWidth = () => {
-            if ( isMobile ) {
+            if (isMobile) {
                 return window.innerWidth - 32; // Subtract padding (16px on each side)
             } else {
-                return Math.min( window.innerWidth * 0.8, 1200 ); // 80% of window width, max 1200px
+                return Math.min(window.innerWidth * 0.8, 1200); // 80% of window width, max 1200px
             }
         };
 
-        setComponentWidth( calculateComponentWidth() );
+        setComponentWidth(calculateComponentWidth());
 
         const handleResize = () => {
-            setComponentWidth( calculateComponentWidth() );
+            setComponentWidth(calculateComponentWidth());
         };
 
-        window.addEventListener( 'resize', handleResize );
-        return () => window.removeEventListener( 'resize', handleResize );
-    }, [isMobile] );
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [isMobile]);
 
-    useEffect( () => {
+    useEffect(() => {
         try {
-            const calculatedValues = calculateImageSizes( photos, componentWidth );
-            setImageOne( calculatedValues[ 0 ] );
-            if ( calculatedValues.length > 1 ) {
-                setImageTwo( calculatedValues[ 1 ] );
+            const calculatedValues = calculateImageSizes(photos, componentWidth);
+            setImageOne(calculatedValues[0]);
+            if (calculatedValues.length > 1) {
+                setImageTwo(calculatedValues[1]);
             }
         } catch (error) {
-            console.error( error );
+            console.error(error);
         } finally {
-            setLoading( false );
+            setLoading(false);
         }
-    }, [photos, componentWidth] );
+    }, [photos, componentWidth]);
 
-    const isValidSource = ( title ) => {
+    const isValidSource = (title) => {
         return title && title !== "";
     };
 
-    if ( loading ) {
+    if (loading) {
         return <div></div>
     }
     // TODO
@@ -106,30 +113,30 @@ export default function PhotoBlockComponent( { photos, isMobile, imageSelected, 
                 width: `${componentWidth}px`,
                 justifyContent: 'center',
                 alignItems: 'center',
-                ...( isMobile
-                        ? { marginBottom: '0', flexDirection: 'column' }
-                        : { marginBottom: '1rem', flexDirection: 'row' }
+                ...(isMobile
+                        ? {marginBottom: '0', flexDirection: 'column'}
+                        : {marginBottom: '1rem', flexDirection: 'row'}
                 )
-            }}>
-                <Image src={isValidSource( imageOne?.location ) ? `/${imageOne.location}` : ""}
+            } as React.CSSProperties}>
+                <Image src={isValidSource(imageOne?.location) ? `/${imageOne.location}` : ""}
                        alt="Photo"
-                       width={Math.round( imageOne.width )}
-                       height={Math.round( imageOne.height )}
+                       width={Math.round(imageOne.width)}
+                       height={Math.round(imageOne.height)}
                        className={styles.imageOne}
-                       onClick={() => handleClick( imageOne )}
-                       style={isMobile ? { margin: '0', width: '100%', height: 'auto' } : {
+                       onClick={() => handleClick(imageOne)}
+                       style={isMobile ? {margin: '0', width: '100%', height: 'auto'} : {
                            margin: '0',
                            marginRight: '0'
                        }}
                 />
                 {imageTwo && (
-                    <Image src={isValidSource( imageTwo.location ) ? `/${imageTwo.location}` : ""}
+                    <Image src={isValidSource(imageTwo.location) ? `/${imageTwo.location}` : ""}
                            alt="Photo"
                            className={styles.imageTwo}
-                           width={Math.round( imageTwo.width )}
-                           height={Math.round( imageTwo.height )}
-                           onClick={() => handleClick( imageTwo )}
-                           style={isMobile ? { margin: '0', width: '100%', height: 'auto' } : {
+                           width={Math.round(imageTwo.width)}
+                           height={Math.round(imageTwo.height)}
+                           onClick={() => handleClick(imageTwo)}
+                           style={isMobile ? {margin: '0', width: '100%', height: 'auto'} : {
                                margin: '0',
                                marginLeft: '0'
                            }}

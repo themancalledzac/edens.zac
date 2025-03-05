@@ -1,31 +1,31 @@
+import {useEffect, useRef} from "react";
 import styles from "../../styles/Home.module.scss";
 import imageDirectory from "../../Images/imageDirectory.json";
-import ParallaxSection from "../ParallaxSection/ParallaxSection";
-import { useEffect, useRef } from "react";
 import SideBarItem from "../SideBarItem/SideBarItem";
 
-export default function SideBar( { image, width, screenVertical } ) {
-    console.log( image );
+export default function SideBar({image, width, screenVertical}) {
+    console.log(image);
 
     return (
-        <div className={styles.sidebarWrapper} style={{ width: `${width}` }}>
+        <div className={styles.sidebarWrapper} style={{width: `${width}`}}>
             <h1>title</h1>
             <h2>metadata...</h2>
             {/*{image.map( ( keyValue ) => (*/}
             {/*    <SideBarItem key={keyValue.key()} value={keyValue}/>*/}
             {/*) )}*/}
             {
-                Object.entries( image ).map( ( [key, value] ) => {
+                Object.entries(image).map(([key, value]) => {
                     // Skipping complex or unnecessary fields
-                    if ( key === 'catalog' || key === 'imageUrlLarge' || key === 'imageUrlSmall' || key === 'imageUrlRaw' ) {
+                    if (key === 'catalog' || key === 'imageUrlLarge' || key === 'imageUrlSmall' || key === 'imageUrlRaw') {
                         return null; // Skip rendering for these keys
                     }
+                    // @ts-ignore
                     return (
                         <div key={key}>
-                            <strong>{key}</strong>: {Array.isArray( value ) ? value.join( ', ' ) : value}
+                            <strong>{key}</strong>: {Array.isArray(value) ? value.join(', ') : value}
                         </div>
                     );
-                } )
+                })
             }
         </div>
     )

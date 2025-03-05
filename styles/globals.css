@@ -1,4 +1,10 @@
 html,
+:root {
+    --content-width: 72rem;
+    --content-min-width: 766px;
+    --content-max-width: 800px;
+}
+
 body {
     padding: 0;
     margin: 0;
@@ -16,6 +22,10 @@ a {
     margin: 0;
     padding: 0;
 }
+
+/*TODO: DarkMode Color Options*/
+/*TODO: Darkmode/RegularMode separate for main colors*/
+/*TODO: Could we have BASE color names that are overwritten by one or the other? How do we DYNAMICALLY do that at the global level?*/
 
 /*@media (prefers-color-scheme: dark) {*/
 /*  html {*/

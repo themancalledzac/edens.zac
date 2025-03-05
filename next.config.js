@@ -1,15 +1,21 @@
+import path from 'path'
+
 /** @type {import('next').NextConfig} */
-const path = require( 'path' )
 const nextConfig = {
     reactStrictMode: true,
-    swcMinify: true,
     sassOptions: {
-        includePaths: [path.join( __dirname, 'styles' )],
+        includePaths: [path.join( process.cwd(), 'styles' )],
     },
     images: {
         domains: ['localhost'], // Add your domain here
         formats: ['image/webp'],
+        // remotePatterns
+    },
+    // Add webpack configuration to handle caching
+    webpack: ( config, { dev, isServer } ) => {
+        // Custom webpack config if needed
+        return config
     },
 }
 
-module.exports = nextConfig
+export default nextConfig
