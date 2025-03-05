@@ -3326,31 +3326,5 @@
     "createDate": "2023:10:23 09:18:41",
     "updateDate": "2024-03-11T21:13:41.548681",
     "fstop": "f/4.0"
-  },
-  {
-    "id": 375,
-    "title": "_DSC3800.webp",
-    "imageWidth": 1663,
-    "imageHeight": 2500,
-    "iso": 2200,
-    "author": "Zechariah Edens",
-    "rating": 4,
-    "lens": "NIKKOR Z 24-70mm f/4 S",
-    "blackAndWhite": true,
-    "shutterSpeed": "1/60 sec",
-    "rawFileName": "_DSC3800.NEF",
-    "camera": "NIKON Z 6",
-    "focalLength": "70 mm",
-    "location": null,
-    "imageUrlLarge": null,
-    "imageUrlSmall": null,
-    "imageUrlRaw": null,
-    "catalog": [
-      "Europe",
-      "Rome"
-    ],
-    "createDate": "2023:10:23 09:20:16",
-    "updateDate": "2024-03-11T21:13:41.560582",
-    "fstop": "f/4.0"
   }
 ]
