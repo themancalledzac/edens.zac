@@ -1,73 +1,72 @@
-import Image from "next/image";
 import styles from './ImageFullScreen.module.scss';
-import React, { useEffect, useState } from "react";
+import React, {useEffect, useState} from "react";
 import SideBar from "../SideBar/SideBar";
 
-const isValidSource = ( title ) => {
+const isValidSource = (title) => {
     return title && title !== "";
 };
 
-export default function ImageFullScreen( { imageSelected, setImageSelected } ) {
-    const [sidebarVisible, setSidebarVisible] = useState( false );
-    const [screenSize, setScreenSize] = useState( { width: window.innerWidth, height: window.innerHeight } );
-    const [imageStyle, setImageStyle] = useState( {} );
-    const [sidebarWidth, setSidebarWidth] = useState( "0px" );
+export default function ImageFullScreen({imageSelected, setImageSelected}) {
+    const [sidebarVisible, setSidebarVisible] = useState(false);
+    const [screenSize, setScreenSize] = useState({width: window.innerWidth, height: window.innerHeight});
+    const [imageStyle, setImageStyle] = useState({});
+    const [sidebarWidth, setSidebarWidth] = useState("0px");
 
-    useEffect( () => {
+    useEffect(() => {
         const handleResize = () => {
-            setScreenSize( { width: window.innerWidth, height: window.innerHeight } );
+            setScreenSize({width: window.innerWidth, height: window.innerHeight});
         };
 
-        window.addEventListener( "resize", handleResize );
-        return () => window.removeEventListener( "resize", handleResize );
-    }, [] );
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
-    useEffect( () => {
-        const handleKeyDown = ( event ) => {
-            if ( event.key === "Escape" ) {
-                setImageSelected( null );
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") {
+                setImageSelected(null);
             }
         };
 
-        window.addEventListener( "keydown", handleKeyDown );
+        window.addEventListener("keydown", handleKeyDown);
 
         // Cleanup
-        return () => window.removeEventListener( "keydown", handleKeyDown );
-    }, [setImageSelected] );
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [setImageSelected]);
 
-    useEffect( () => {
+    useEffect(() => {
         // Assuming imageSelected includes naturalWidth and naturalHeight
-        if ( !imageSelected ) return;
-        const { imageWidth, imageHeight } = imageSelected;
+        if (!imageSelected) return;
+        const {imageWidth, imageHeight} = imageSelected;
 
         // Adjust the image size based on its orientation and screen size
-        if ( imageWidth > imageHeight ) {
+        if (imageWidth > imageHeight) {
             // Horizontal image
-            setImageStyle( {
+            setImageStyle({
                 maxWidth: '90%',
                 height: 'auto',
-            } );
+            });
         } else {
             // Vertical image
-            setImageStyle( {
+            setImageStyle({
                 maxWidth: 'auto',
                 maxHeight: '100%',
-            } );
+            });
         }
-    }, [screenSize, imageSelected] );
+    }, [screenSize, imageSelected]);
 
     // Not yet working as NextJS Image is taking 100% of screen. investigating
     const handleClickOutside = () => {
-        setImageSelected( null );
+        setImageSelected(null);
     };
 
-    const handleImageClick = ( e ) => {
+    const handleImageClick = (e) => {
         e.stopPropagation(); // prevent triggering handleClickOutside
-        setImageSelected( null );
+        setImageSelected(null);
     }
 
     const handleClick = () => {
-        setImageSelected( null );
+        setImageSelected(null);
     }
 
     // const handleMetadataClick = () => {
@@ -83,7 +82,7 @@ export default function ImageFullScreen( { imageSelected, setImageSelected } ) {
     return (
         <div className={styles.imageFullScreenWrapper} onClick={handleClickOutside}>
             <img
-                src={isValidSource( imageSelected?.location ) ? `/${imageSelected.location}` : ""}
+                src={isValidSource(imageSelected?.imageUrlWeb) ? `/${imageSelected.imageUrlWeb}` : ""}
                 alt={'Photo'}
                 style={{
                     ...imageStyle,

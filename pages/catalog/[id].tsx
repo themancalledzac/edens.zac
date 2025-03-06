@@ -3,7 +3,6 @@ import PhotoBlockComponent from "../../Components/PhotoBlockComponent/PhotoBlock
 import React, {useEffect, useState} from "react";
 import styles from '../../styles/Catalog.module.scss';
 import Header from "../../Components/Header/Header";
-import {useAppContext} from "@/context/AppContext";
 import corporate from "../../Images/corporatePage.json";
 import enchantments from "../../Images/enchantmentsPage.json";
 import arches from "../../Images/archesPage.json";
@@ -14,6 +13,9 @@ import paris from "../../Images/parisPage.json";
 import florence from "../../Images/florencePage.json";
 import rome from "../../Images/romePage.json";
 import vienna from "../../Images/viennaPage.json";
+import {fetchCatalogById} from "@/lib/api/catalogs";
+import {Catalog} from "@/types/Catalog";
+import {Image} from "@/types/Image";
 
 const localDataMap = {
     corporate,
@@ -28,23 +30,29 @@ const localDataMap = {
     vienna
 };
 
+interface CatalogPageProps {
+    catalog: Catalog;
+}
+
 /**
  * Photography Gallery Page.
  * Currently, has a switch case with local json files when backend not available.
  * @param params
  * @returns {Promise<{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: *[]}}|{props: {data: {}}}>}
  */
-export async function getServerSideProps({params: {name}}) {
-    const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${name}`;
+export async function getServerSideProps({params}) {
+    // const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${name}`;
 
     try {
-        const response = await fetch(url);
-        // const response = await fetch( url, { cache: "no-cache" } );
-        if (!response.ok) {
-            throw new Error('Network response not ok.');
-        }
-        const photoDataList = await response.json();
-        const chunkedList = await chunkArray(photoDataList, 2);
+        const id = params?.id as string;
+        const catalog = await fetchCatalogById(id);
+        console.log(catalog);
+
+        // return {
+        //     props: {}
+        // }
+        // const photoDataList = await response.json();
+        const chunkedList = await chunkArray(catalog.images, 2);
 
         return {
             props: {data: chunkedList},
@@ -52,19 +60,22 @@ export async function getServerSideProps({params: {name}}) {
     } catch (error) {
         console.error("Fetch error: ", error);
 
-        const localData = localDataMap[name];
-
-        if (!localData) {
-            throw new Error(`No local data found for ${name}`);
-        }
-
+        // return {
+        //     props: {data: await chunkArray(localData, 2)}
+        // };
         return {
-            props: {data: await chunkArray(localData, 2)}
+            notFound: true
         };
     }
 }
 
-async function chunkArray(photoArray, chunkSize) {
+// TODO: PRIORITY ---------------------------------------------------------------------------------
+//  - Update this into a Utils file ( think about a central 'utils' file, would that make sense? or individual for each file? hmm
+//  - This would actually be REALLY useful bits of code here in a central repo
+//  - Usable by Blog, or even Home Page if we do it correctly ( could have 'vertical' items intermixed
+// TODO: PRIORITY ---------------------------------------------------------------------------------
+
+async function chunkArray(photoArray: Image[], chunkSize: number) {
     let result = [];
     let todo = [];
 

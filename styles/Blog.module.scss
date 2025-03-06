@@ -1,0 +1,90 @@
+// styles/Blog.module.scss
+.container {
+  box-sizing: border-box;
+  height: 100%;
+  width: 100%;
+  min-height: 100vh;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.blogWrapper {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%;
+}
+
+.blogHeader {
+  margin-bottom: 2rem;
+}
+
+.blogTitle {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.blogMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.coverImageWrapper {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    height: 250px;
+  }
+}
+
+.blogContent {
+  margin-bottom: 2rem;
+
+  .paragraph {
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+  }
+}
+
+.blogGallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.galleryItem {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 75%; // 4:3 aspect ratio
+  overflow: hidden;
+
+  img {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.blogTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.tag {
+  background-color: #f0f0f0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+}
