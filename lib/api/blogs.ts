@@ -44,6 +44,6 @@ export async function fetchLatestBlog(): Promise<Blog> {
  * @param id - The blog id
  * @returns The blog data
  */
-export async function fetchBlogById(id: number): Promise<Blog> {
-    return fetchFromApi<Blog>(`/blog/${id}`);
+export async function fetchBlogById(id: string): Promise<Blog> {
+    return fetchFromApi<Blog>(`/blog/byId/${id}`);
 }

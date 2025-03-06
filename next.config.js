@@ -7,7 +7,11 @@ const nextConfig = {
         includePaths: [path.join( process.cwd(), 'styles' )],
     },
     images: {
-        domains: ['localhost'], // Add your domain here
+        domains: [
+            'localhost',
+            `${process.env.AWS_CLOUDFRONT_DOMAIN_NAME}.cloudfront.net`
+            // Add your domain here
+        ],
         formats: ['image/webp'],
         // remotePatterns
     },

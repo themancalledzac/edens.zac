@@ -20,7 +20,7 @@ export async function fetchAllCatalogs(): Promise<Catalog[]> {
  */
 export async function fetchCatalogByTitle(title: string): Promise<Catalog> {
     try {
-        return fetchFromApi<Catalog>(`/catalog/${title}`);
+        return fetchFromApi<Catalog>(`/catalog/byId/${title}`);
     } catch (error) {
         console.error(`Error fetching catalog "${title}:`, error);
     }
@@ -37,5 +37,43 @@ export async function fetchCatalogByTitle(title: string): Promise<Catalog> {
         images: [],
         slug: '',
         date: ''
+    }
+}
+
+/**
+ * Fetches a specific catalog by id
+ *
+ * @param id - The catalog id
+ * @returns The catalog data
+ */
+export async function fetchCatalogById(id: string): Promise<Catalog> {
+    try {
+        return fetchFromApi<Catalog>(`/catalog/byId/${id}`);
+    } catch (error) {
+        console.error(`Error fetching catalog "${id}:`, error);
+    }
+
+    // Fallback to local data if API fails
+    return {
+        id: 1,
+        title: 'failedUpload',
+        location: '',
+        priority: 3,
+        coverImageUrl: '',
+        people: [],
+        tags: [],
+        images: [],
+        slug: '',
+        date: ''
+    }
+}
+
+// TODO:
+async function fetchCatalogBySlug(slug: string): Promise<Catalog> {
+    try {
+        return fetchFromApi<Catalog>(`/catalog/${slug}`);
+    } catch (error) {
+
+        console.error(`Error fetching catalog "${slug}:`, error);
     }
 }
