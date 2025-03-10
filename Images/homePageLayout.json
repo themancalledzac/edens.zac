@@ -1,0 +1,35 @@
+[
+  {
+    "id": 1,
+    "title": "Seattle 2024",
+    "cardType": "catalog",
+    "location": "Seattle Wa",
+    "date": "2024",
+    "priority": 1,
+    "coverImageUrl": "S3::////wildCoolS3BucketEndpoint.endpoint",
+    "slug": "seattle_2024",
+    "text": ""
+  },
+  {
+    "id": 2,
+    "title": "Seattle 2020 Protests",
+    "cardType": "catalog",
+    "location": "Seattle Wa",
+    "date": "2020",
+    "priority": 1,
+    "coverImageUrl": "S3::////wildCoolS3BucketEndpoint.endpoint",
+    "slug": "seattle_2020_protests",
+    "text": ""
+  },
+  {
+    "id": 1,
+    "title": "Florence People",
+    "cardType": "catalog",
+    "location": "Florence Italy",
+    "date": "2023",
+    "priority": 1,
+    "coverImageUrl": "S3::////wildCoolS3BucketEndpoint.endpoint",
+    "slug": "florence_people",
+    "text": ""
+  }
+]

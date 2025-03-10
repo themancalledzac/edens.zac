@@ -1,47 +1,56 @@
 import styles from '../styles/Home.module.scss'
 import Header from "../Components/Header/Header";
-import photoData from "../Images/homePagePhotoData.json";
 import ParallaxSection from "@/Components/ParallaxSection/ParallaxSection";
 import ParallaxSectionWrapper from "@/Components/ParallaxSectionWrapper";
+import {fetchHomePage} from "@/lib/api/home";
+import {HomeCardModel} from "@/types/HomeCardModel";
 
 export async function getServerSideProps() {
-    const url = 'http://localhost:8080/api/v1/catalog/mainPageCatalogList/test';
     try {
-        const response = await fetch(url, {cache: 'force-cache'});
-        const data = await response.json();
-        const sortedData = data.sort((a, b) => a.priority - b.priority);
-        return {props: {homePageCatalogList: sortedData}};
+
+        // Fetch home cards from API
+        const homeCards = await fetchHomePage();
+
+        return {
+            props: {homeCards}
+        };
+
+        // // const response = await fetch(url, {cache: 'force-cache'});
+        // const data = await response.json();
+        // const sortedData = data.sort((a, b) => a.priority - b.priority);
+        // return {props: {homePageCatalogList: sortedData}};
     } catch (error) {
         console.error('Fetch error:', error);
-        return {props: {homePageCatalogList: photoData}};
+        return {
+            notFound: true
+        };
     }
 }
 
-export default function Home({homePageCatalogList}) {
 
-    const catalogPairs = [];
-    for (let i = 0; i < homePageCatalogList.length; i += 2) {
-        catalogPairs.push(homePageCatalogList.slice(i, i + 2));
+// TODO:
+
+export default function Home({homeCards}) {
+
+
+    // TODO: Need to handle homeCards being null
+    const cardPairs: HomeCardModel[][] = [];
+    for (let i = 0; i < homeCards.length; i += 2) {
+        cardPairs.push(homeCards.slice(i, Math.min(i + 2, homeCards.length)));
+        // cardPairs.push(homeCards.slice(i, i + 2));
     }
-
-    // TODO: Additional Elements will go here, along with our catalogPairs
-    //  - Blog Home Page
-    //  -
-    //  -
-    //  -
 
     return (
         <div className={styles.container}>
             <Header/>
+
             <div className={styles.bodyWrapper}>
-                {catalogPairs.map((pair, index) => (
+                {cardPairs.map((pair, index) => (
                     <ParallaxSectionWrapper key={index}>
-                        {pair.map(({id, imageMain, name}) => (
+                        {pair.map((card) => (
                             <ParallaxSection
-                                key={id}
-                                catalogTitle={name}
-                                bannerImage={imageMain.location}
-                                image={imageMain}
+                                key={card.id}
+                                card={card}
                             />
                         ))}
                     </ParallaxSectionWrapper>

@@ -47,3 +47,13 @@ export async function fetchLatestBlog(): Promise<Blog> {
 export async function fetchBlogById(id: string): Promise<Blog> {
     return fetchFromApi<Blog>(`/blog/byId/${id}`);
 }
+
+
+export async function fetchBlogBySlug(slug: string): Promise<Blog> {
+    try {
+        return fetchFromApi<Blog>(`/blog/${slug}`);
+    } catch (error) {
+
+        console.error(`Error fetching blog "${slug}:`, error);
+    }
+}

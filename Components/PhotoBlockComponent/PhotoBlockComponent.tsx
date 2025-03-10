@@ -9,7 +9,7 @@ import Image from "next/image";
 //  3. Need PhotoBlockComponent dictate the WIDTh of the images, as they only take up the INSIDE.
 //  4. They don't have margin or padding INSIDE, instead, we use flex to have space-between.
 
-function calculateImageSizes(images, componentWidth) {
+function calculateImageSizes(images: any[], componentWidth: number) {
 
     if (images.length === 1) {
         // Handle the single image case
@@ -123,6 +123,7 @@ export default function PhotoBlockComponent({photos, isMobile, imageSelected, se
                        width={Math.round(imageOne.width)}
                        height={Math.round(imageOne.height)}
                        className={styles.imageOne}
+                       unoptimized={true}
                        onClick={() => handleClick(imageOne)}
                        style={isMobile ? {margin: '0', width: '100%', height: 'auto'} : {
                            margin: '0',

@@ -48,7 +48,7 @@ export async function fetchCatalogByTitle(title: string): Promise<Catalog> {
  */
 export async function fetchCatalogById(id: string): Promise<Catalog> {
     try {
-        return fetchFromApi<Catalog>(`/catalog/byId/${id}`);
+        const catalogLayout = fetchFromApi<Catalog>(`/catalog/byId/${id}`);
     } catch (error) {
         console.error(`Error fetching catalog "${id}:`, error);
     }
@@ -68,10 +68,11 @@ export async function fetchCatalogById(id: string): Promise<Catalog> {
     }
 }
 
-// TODO:
-async function fetchCatalogBySlug(slug: string): Promise<Catalog> {
+export async function fetchCatalogBySlug(slug: string): Promise<Catalog> {
     try {
-        return fetchFromApi<Catalog>(`/catalog/${slug}`);
+        const catalogLayout = fetchFromApi<Catalog>(`/catalog/bySlug/${slug}`);
+
+        return catalogLayout;
     } catch (error) {
 
         console.error(`Error fetching catalog "${slug}:`, error);
