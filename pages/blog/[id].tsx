@@ -1,11 +1,11 @@
-// pages/blog/[id].tsx
+// pages/blog/[slug].tsx
 import {useRouter} from 'next/router';
 import styles from '@/styles/Blog.module.scss';
 import Header from '@/Components/Header/Header';
 import Image from 'next/image';
 import {GetServerSideProps} from 'next';
 import {Blog} from '@/types/Blog';
-import {fetchBlogById} from "@/lib/api/blogs";
+import {fetchBlogBySlug} from "@/lib/api/blogs";
 
 interface BlogPageProps {
     blog: Blog;
@@ -16,7 +16,7 @@ export const getServerSideProps: GetServerSideProps = async ({params}) => {
     // For now, we'll use a simple mock or fetch from the local API
     try {
         const id = params?.id as string;
-        const blog = await fetchBlogById(id);
+        const blog = await fetchBlogBySlug(id);
 
         return {
             props: {blog}

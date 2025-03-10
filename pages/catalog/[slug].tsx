@@ -3,32 +3,9 @@ import PhotoBlockComponent from "../../Components/PhotoBlockComponent/PhotoBlock
 import React, {useEffect, useState} from "react";
 import styles from '../../styles/Catalog.module.scss';
 import Header from "../../Components/Header/Header";
-import corporate from "../../Images/corporatePage.json";
-import enchantments from "../../Images/enchantmentsPage.json";
-import arches from "../../Images/archesPage.json";
-import hidden_lake from "../../Images/hidden_lakePage.json";
-import oval_lakes from "../../Images/oval_LakesPage.json";
-import amsterdam from "../../Images/amsterdamPage.json";
-import paris from "../../Images/parisPage.json";
-import florence from "../../Images/florencePage.json";
-import rome from "../../Images/romePage.json";
-import vienna from "../../Images/viennaPage.json";
-import {fetchCatalogById} from "@/lib/api/catalogs";
+import {fetchCatalogBySlug} from "@/lib/api/catalogs";
 import {Catalog} from "@/types/Catalog";
 import {Image} from "@/types/Image";
-
-const localDataMap = {
-    corporate,
-    enchantments,
-    arches,
-    hidden_lake,
-    oval_lakes,
-    amsterdam,
-    paris,
-    florence,
-    rome,
-    vienna
-};
 
 interface CatalogPageProps {
     catalog: Catalog;
@@ -41,12 +18,10 @@ interface CatalogPageProps {
  * @returns {Promise<{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: *[]}}|{props: {data: {}}}>}
  */
 export async function getServerSideProps({params}) {
-    // const url = `http://localhost:8080/api/v1/image/getImagesByCatalogs/${name}`;
 
     try {
-        const id = params?.id as string;
-        const catalog = await fetchCatalogById(id);
-        console.log(catalog);
+        const slug = params?.slug as string;
+        const catalog = await fetchCatalogBySlug(slug);
 
         // return {
         //     props: {}

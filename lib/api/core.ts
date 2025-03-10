@@ -2,6 +2,7 @@
  * Core API utilities for making requests to the backend
  */
 
+// TODO: Need to update this to push towards PROD endpoint, Fallback to Localhost
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 /**

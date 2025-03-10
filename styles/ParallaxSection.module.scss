@@ -56,3 +56,17 @@
     padding: 1.5rem 0 0 1rem;
   }
 }
+
+.parallaxSectionText {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1rem;
+  max-width: 80%;
+  color: white;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 0.75rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  line-height: 1.5;
+
+}

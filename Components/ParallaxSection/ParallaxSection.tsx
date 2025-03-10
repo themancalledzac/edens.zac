@@ -3,48 +3,34 @@ import styles from '../../styles/ParallaxSection.module.scss'; // Adjust the pat
 import {useRouter} from 'next/router';
 import {useAppContext} from "@/context/AppContext";
 import {throttle} from 'lodash';
-import {Image} from "@/types/Image";
+import {HomeCardModel} from "@/types/HomeCardModel";
 
 interface ParallaxSectionProps {
-    catalogTitle?: string
-    bannerImage?: string
-    image?: Image
+    card: HomeCardModel;
 }
 
-/**
- * Parallax Section for dynamic scrolling
- * @param catalogTitle
- * @param {string} bannerImage
- * @param {Image} image
- * @constructor
- */
-export default function ParallaxSection({catalogTitle, bannerImage, image}) {
+export default function ParallaxSection({card}) {
+    const {id, title, coverImageUrl, text, slug, cardType} = card;
 
-
-    const sectionRef = useRef(null);
+    const sectionRef = useRef<HTMLDivElement>(null);
     const {isMobile} = useAppContext();
     const router = useRouter();
     const [offset, setOffset] = useState(0);
 
     const handleClick = async () => {
-        // TODO: Update:::::
-        //  1. change to take 'slug'/'id' ( regardless of 'catalog/blog' )
-        //  2. Debate ID vs SLUG for param do they coincide or clash if slugs are similar?
-        //  3. Update 'Parallax' logic into a Utils file to keep this clean
-        //  4. IS this a client component? since the user is interacting with it? (scroll)
-        //  5. If it is a Client, what can we remove a layer in, to reduce the amount of client side code
-        //  6.
-        //  1.
-        const catalog = catalogTitle.toLowerCase().replace(/\s+/g, '-');
         try {
-            // todo #1
-            await router.push(`/catalog/${catalog}`);
+            if (cardType === 'catalog') {
+                await router.push(`/catalog/${slug}`);
+            } else if (cardType === 'blog') {
+                await router.push(`/blog/${slug}`);
+            } else {
+                await router.push(`/${cardType}/${slug}`);
+            }
         } catch (e) {
             console.error(`Handled error in handleClick in ParallaxSection, ${e}`);
         }
-    };
+    }
 
-    // todo: #3
     const handleScroll = () => {
         if (sectionRef.current) {
             const rect = sectionRef.current.getBoundingClientRect();
@@ -56,7 +42,6 @@ export default function ParallaxSection({catalogTitle, bannerImage, image}) {
         }
     };
 
-    // todo: #5
     useEffect(() => {
         const throttledHandleScroll = throttle(handleScroll, 16);
         window.addEventListener('scroll', throttledHandleScroll);
@@ -65,18 +50,19 @@ export default function ParallaxSection({catalogTitle, bannerImage, image}) {
         return () => window.removeEventListener('scroll', throttledHandleScroll);
     }, []);
 
-    const imagePath = `/${bannerImage}`;
+    // const imagePath = `/${bannerImage}`;
 
     return (
         <div onClick={handleClick} ref={sectionRef} className={styles.parallaxSection}>
             <div
                 className={styles.parallaxBackground}
                 style={{
-                    backgroundImage: `url(${imagePath})`,
+                    backgroundImage: `url(${coverImageUrl})`,
                     transform: `translateY(${offset}px)`,
                 }}
             />
-            <h1 className={styles.parallaxSectionTitle}>{catalogTitle}</h1>
+            <h1 className={styles.parallaxSectionTitle}>{title}</h1>
+            {text && <p className={styles.parallaxSectionText}>{text}</p>}
         </div>
     );
 };
