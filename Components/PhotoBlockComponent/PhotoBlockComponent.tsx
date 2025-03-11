@@ -2,6 +2,7 @@ import styles from "../../styles/Home.module.scss";
 import React, {useEffect, useState} from "react";
 import ImageFullScreen from "../ImageFullScreen/ImageFullScreen";
 import Image from "next/image";
+import {calculateImageSizes} from "@/utils/imageUtils";
 
 // TODO:componentWidth
 //  1. Need conditional Logic for, if 5 star && vertical, make max height, align-left(?)
@@ -9,39 +10,48 @@ import Image from "next/image";
 //  3. Need PhotoBlockComponent dictate the WIDTh of the images, as they only take up the INSIDE.
 //  4. They don't have margin or padding INSIDE, instead, we use flex to have space-between.
 
-function calculateImageSizes(images: any[], componentWidth: number) {
+// function calculateImageSizes(images: any[], componentWidth: number) {
+//
+//     if (images.length === 1) {
+//         // Handle the single image case
+//         const ratio = images[0].imageWidth / images[0].imageHeight;
+//         const height = componentWidth / ratio;
+//         // const width = ratio * height;
+//
+//         return [{
+//             ...images[0],
+//             width: componentWidth,
+//             height: height
+//         }];
+//     } else {
+//         // Calculate the ratios using imageWidth and imageHeight from the input objects
+//         const ratio1 = images[0].imageWidth / images[0].imageHeight;
+//         const ratio2 = images[1].imageWidth / images[1].imageHeight;
+//
+//         // Solve for the heights and widths
+//         const height = componentWidth / (ratio1 + ratio2);
+//         const width1 = ratio1 * height;
+//         const width2 = ratio2 * height;
+//
+//         // Return the original objects with added calculated width and height
+//         return images.map((image, index) => {
+//             // Calculate new size based on the index
+//             const newSize = index === 0 ? {width: width1, height: height} : {width: width2, height: height};
+//
+//             // Spread the original image object and merge with the new size
+//             return {...image, ...newSize};
+//         });
+//     }
+// }
 
-    if (images.length === 1) {
-        // Handle the single image case
-        const ratio = images[0].imageWidth / images[0].imageHeight;
-        const height = componentWidth / ratio;
-        // const width = ratio * height;
-
-        return [{
-            ...images[0],
-            width: componentWidth,
-            height: height
-        }];
-    } else {
-        // Calculate the ratios using imageWidth and imageHeight from the input objects
-        const ratio1 = images[0].imageWidth / images[0].imageHeight;
-        const ratio2 = images[1].imageWidth / images[1].imageHeight;
-
-        // Solve for the heights and widths
-        const height = componentWidth / (ratio1 + ratio2);
-        const width1 = ratio1 * height;
-        const width2 = ratio2 * height;
-
-        // Return the original objects with added calculated width and height
-        return images.map((image, index) => {
-            // Calculate new size based on the index
-            const newSize = index === 0 ? {width: width1, height: height} : {width: width2, height: height};
-
-            // Spread the original image object and merge with the new size
-            return {...image, ...newSize};
-        });
-    }
-}
+// TODO: Update this file to be a TwoCardBlockComponent
+//  - This now takes 'cards' of sorts, instead of just images
+//  - THink of the home page card push.
+//  - Can we combine that and this into one concept?
+//  - Does it work to have 'parallax' on/off switch, and then legit have the same 'cardWrapper' vibe?
+//  - BUT, it DOES make sense to have our image resize/fit algorithm working for all pages, even home
+//  - Need to figure out if 'Parallax' works on 'any' size image, or if that will be a limitation ( might need to minimize it?)\
+//  - Both are using a 'pair' logic
 
 /**
  * Photo Block Component which can contain 1 or 2 images, depending on Rating.

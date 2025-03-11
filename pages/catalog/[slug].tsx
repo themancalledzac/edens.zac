@@ -6,6 +6,7 @@ import Header from "../../Components/Header/Header";
 import {fetchCatalogBySlug} from "@/lib/api/catalogs";
 import {Catalog} from "@/types/Catalog";
 import {Image} from "@/types/Image";
+import {chunkImageArray} from "@/utils/imageUtils";
 
 interface CatalogPageProps {
     catalog: Catalog;
@@ -27,7 +28,7 @@ export async function getServerSideProps({params}) {
         //     props: {}
         // }
         // const photoDataList = await response.json();
-        const chunkedList = await chunkArray(catalog.images, 2);
+        const chunkedList = await chunkImageArray(catalog.images, 2);
 
         return {
             props: {data: chunkedList},
@@ -44,44 +45,23 @@ export async function getServerSideProps({params}) {
     }
 }
 
-// TODO: PRIORITY ---------------------------------------------------------------------------------
-//  - Update this into a Utils file ( think about a central 'utils' file, would that make sense? or individual for each file? hmm
-//  - This would actually be REALLY useful bits of code here in a central repo
-//  - Usable by Blog, or even Home Page if we do it correctly ( could have 'vertical' items intermixed
-// TODO: PRIORITY ---------------------------------------------------------------------------------
-
-async function chunkArray(photoArray: Image[], chunkSize: number) {
-    let result = [];
-    let todo = [];
-
-    for (const photo of photoArray) {
-        if (photo?.rating === 5 && !(photo?.imageHeight > photo?.imageWidth)) { // TODO: Add an, `&& if vertical`
-            // If it's a 5-star image, add it immediately as a single-image pair.
-            result.push([photo]);
-        } else {
-            // Add current image to the waiting list.
-            todo.push(photo);
-            // If we have enough images for a pair, add them to the result.
-            if (todo.length === chunkSize) {
-                result.push([...todo]); // Use spread operator to clone the array
-                todo = []; // Clear the todo list
-            }
-        }
-    }
-
-    // If there's an image left over that didn't form a pair, add it to the result.
-    if (todo.length > 0) {
-        result.push(todo);
-    }
-
-    return result;
-}
-
 // The page component that renders the content for each title
 const CatalogPage = ({data}) => {
-    // const {homePageType} = useAppContext();
     const [imageSelected, setImageSelected] = useState(null);
     const router = useRouter();
+    const [isMobile, setIsMobile] = useState(false);
+
+
+    useEffect(() => {
+        const checkIsMobile = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+
+        checkIsMobile();
+        window.addEventListener('resize', checkIsMobile);
+        return () => window.removeEventListener('resize', checkIsMobile);
+
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (event) => {
@@ -117,9 +97,9 @@ const CatalogPage = ({data}) => {
         <div className={styles.catalogPageMain}>
             <Header/>
             <div className={styles.photoBlockWrapper}>
-                {data.map((photoPair, index) => (
+                {data.map((photoPair: any, index: React.Key) => (
                     <PhotoBlockComponent
-                        isMobile={false}
+                        isMobile={isMobile}
                         key={index}
                         photos={photoPair}
                         imageSelected={imageSelected}

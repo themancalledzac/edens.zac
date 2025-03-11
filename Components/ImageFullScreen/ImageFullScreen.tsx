@@ -1,6 +1,7 @@
 import styles from './ImageFullScreen.module.scss';
 import React, {useEffect, useState} from "react";
 import SideBar from "../SideBar/SideBar";
+import Image from "next/image";
 
 const isValidSource = (title) => {
     return title && title !== "";
@@ -81,9 +82,11 @@ export default function ImageFullScreen({imageSelected, setImageSelected}) {
 
     return (
         <div className={styles.imageFullScreenWrapper} onClick={handleClickOutside}>
-            <img
-                src={isValidSource(imageSelected?.imageUrlWeb) ? `/${imageSelected.imageUrlWeb}` : ""}
+            <Image
+                src={isValidSource(imageSelected?.imageUrlWeb) ? `${imageSelected.imageUrlWeb}` : ""}
                 alt={'Photo'}
+                width={Math.round(imageSelected.width)}
+                height={Math.round(imageSelected.height)}
                 style={{
                     ...imageStyle,
                     backgroundColor: "rgba(17, 17, 17, 0.75)",
