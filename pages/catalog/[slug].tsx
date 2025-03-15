@@ -1,4 +1,3 @@
-import {useRouter} from 'next/router';
 import PhotoBlockComponent from "../../Components/PhotoBlockComponent/PhotoBlockComponent";
 import React, {useEffect, useState} from "react";
 import styles from '../../styles/Catalog.module.scss';
@@ -6,31 +5,33 @@ import Header from "../../Components/Header/Header";
 import {fetchCatalogBySlug} from "@/lib/api/catalogs";
 import {Catalog} from "@/types/Catalog";
 import {Image} from "@/types/Image";
+import {chunkImages} from "@/utils/imageUtils";
 
 interface CatalogPageProps {
     catalog: Catalog;
+    imageChunks: Image[][];
 }
 
 /**
  * Photography Gallery Page.
- * Currently, has a switch case with local json files when backend not available.
- * @param params
- * @returns {Promise<{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: *[]}}|{props: {data: {}}}>}
  */
 export async function getServerSideProps({params}) {
 
     try {
-        const slug = params?.slug as string;
-        const catalog = await fetchCatalogBySlug(slug);
+        const slug: string = params?.slug as string;
+        const catalogFull: Catalog = await fetchCatalogBySlug(slug);
 
-        // return {
-        //     props: {}
-        // }
-        // const photoDataList = await response.json();
-        const chunkedList = await chunkArray(catalog.images, 2);
+        const {images, ...catalog} = catalogFull;
+
+        // We can only do the chunking on the server, not the sizing
+        // as sizing depends on client viewport dimensions
+        const imageChunks: Image[][] = chunkImages(images, 2);
 
         return {
-            props: {data: chunkedList},
+            props: {
+                catalog,
+                imageChunks
+            },
         };
     } catch (error) {
         console.error("Fetch error: ", error);
@@ -44,50 +45,27 @@ export async function getServerSideProps({params}) {
     }
 }
 
-// TODO: PRIORITY ---------------------------------------------------------------------------------
-//  - Update this into a Utils file ( think about a central 'utils' file, would that make sense? or individual for each file? hmm
-//  - This would actually be REALLY useful bits of code here in a central repo
-//  - Usable by Blog, or even Home Page if we do it correctly ( could have 'vertical' items intermixed
-// TODO: PRIORITY ---------------------------------------------------------------------------------
-
-async function chunkArray(photoArray: Image[], chunkSize: number) {
-    let result = [];
-    let todo = [];
-
-    for (const photo of photoArray) {
-        if (photo?.rating === 5 && !(photo?.imageHeight > photo?.imageWidth)) { // TODO: Add an, `&& if vertical`
-            // If it's a 5-star image, add it immediately as a single-image pair.
-            result.push([photo]);
-        } else {
-            // Add current image to the waiting list.
-            todo.push(photo);
-            // If we have enough images for a pair, add them to the result.
-            if (todo.length === chunkSize) {
-                result.push([...todo]); // Use spread operator to clone the array
-                todo = []; // Clear the todo list
-            }
-        }
-    }
-
-    // If there's an image left over that didn't form a pair, add it to the result.
-    if (todo.length > 0) {
-        result.push(todo);
-    }
-
-    return result;
-}
-
 // The page component that renders the content for each title
-const CatalogPage = ({data}) => {
-    // const {homePageType} = useAppContext();
+const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
     const [imageSelected, setImageSelected] = useState(null);
-    const router = useRouter();
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkIsMobile = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+
+        checkIsMobile();
+        window.addEventListener('resize', checkIsMobile);
+        return () => window.removeEventListener('resize', checkIsMobile);
+
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (imageSelected === null) return;
 
-            const flattenedData = data.flat();
+            const flattenedData = imageChunks.flat();
             const currentIndex = flattenedData.findIndex(img => img.id === imageSelected.id);
 
             if (event.key === "ArrowRight") {
@@ -100,16 +78,16 @@ const CatalogPage = ({data}) => {
         };
 
         window.addEventListener('keydown', handleKeyDown);
-        console.log({data});
+        console.log({imageChunks});
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         }
 
 
-    }, [data, imageSelected]);
+    }, [imageChunks, imageSelected]);
 
-    if (!data) {
+    if (!catalog) {
         return <div>Loading...</div>;
     }
 
@@ -117,15 +95,16 @@ const CatalogPage = ({data}) => {
         <div className={styles.catalogPageMain}>
             <Header/>
             <div className={styles.photoBlockWrapper}>
-                {data.map((photoPair, index) => (
-                    <PhotoBlockComponent
-                        isMobile={false}
-                        key={index}
-                        photos={photoPair}
-                        imageSelected={imageSelected}
-                        setImageSelected={setImageSelected}
-                    />
-                ))}
+                {imageChunks && imageChunks.length > 0 && (
+                    imageChunks.map((photoPair: Image[], index: React.Key) => (
+                        <PhotoBlockComponent
+                            isMobile={isMobile}
+                            key={index}
+                            photos={photoPair}
+                            imageSelected={imageSelected}
+                            setImageSelected={setImageSelected}
+                        />
+                    )))}
             </div>
         </div>
     );
