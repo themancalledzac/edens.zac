@@ -19,6 +19,7 @@ export interface Catalog {
     title: string;
     location?: string;
     priority: number;
+    paragraph?: string;
     coverImageUrl: string;
     people?: string[];
     tags?: string[];

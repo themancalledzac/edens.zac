@@ -4,66 +4,22 @@ import ImageFullScreen from "../ImageFullScreen/ImageFullScreen";
 import Image from "next/image";
 import {calculateImageSizes} from "@/utils/imageUtils";
 
-// TODO:componentWidth
-//  1. Need conditional Logic for, if 5 star && vertical, make max height, align-left(?)
-//  2. If 5 star && description.notNull(), make description a 'part2' to our single image(?)
-//  3. Need PhotoBlockComponent dictate the WIDTh of the images, as they only take up the INSIDE.
-//  4. They don't have margin or padding INSIDE, instead, we use flex to have space-between.
-
-// function calculateImageSizes(images: any[], componentWidth: number) {
-//
-//     if (images.length === 1) {
-//         // Handle the single image case
-//         const ratio = images[0].imageWidth / images[0].imageHeight;
-//         const height = componentWidth / ratio;
-//         // const width = ratio * height;
-//
-//         return [{
-//             ...images[0],
-//             width: componentWidth,
-//             height: height
-//         }];
-//     } else {
-//         // Calculate the ratios using imageWidth and imageHeight from the input objects
-//         const ratio1 = images[0].imageWidth / images[0].imageHeight;
-//         const ratio2 = images[1].imageWidth / images[1].imageHeight;
-//
-//         // Solve for the heights and widths
-//         const height = componentWidth / (ratio1 + ratio2);
-//         const width1 = ratio1 * height;
-//         const width2 = ratio2 * height;
-//
-//         // Return the original objects with added calculated width and height
-//         return images.map((image, index) => {
-//             // Calculate new size based on the index
-//             const newSize = index === 0 ? {width: width1, height: height} : {width: width2, height: height};
-//
-//             // Spread the original image object and merge with the new size
-//             return {...image, ...newSize};
-//         });
-//     }
-// }
-
-// TODO: Update this file to be a TwoCardBlockComponent
-//  - This now takes 'cards' of sorts, instead of just images
-//  - THink of the home page card push.
-//  - Can we combine that and this into one concept?
-//  - Does it work to have 'parallax' on/off switch, and then legit have the same 'cardWrapper' vibe?
-//  - BUT, it DOES make sense to have our image resize/fit algorithm working for all pages, even home
-//  - Need to figure out if 'Parallax' works on 'any' size image, or if that will be a limitation ( might need to minimize it?)\
-//  - Both are using a 'pair' logic
-
 /**
  * Photo Block Component which can contain 1 or 2 images, depending on Rating.
  * @param {Array} photos
  * @param {boolean} isMobile
+ * @param {number} componentWidth
  * @param {Image} imageSelected
- * @param {function} setImageSelected
+ * @param {Function} setImageSelected Function to update the selected image state
  * @constructor
  */
-export default function PhotoBlockComponent({photos, isMobile, imageSelected, setImageSelected}) {
-    const [componentWidth, setComponentWidth] = useState(800);
-    // const [imageSelected, setImageSelected] = useState( null );
+export default function PhotoBlockComponent({
+                                                componentWidth = 800,
+                                                photos,
+                                                isMobile,
+                                                imageSelected,
+                                                setImageSelected
+                                            }) {
     const [loading, setLoading] = useState(true);
     const [imageOne, setImageOne] = useState(photos[0]);
     const [imageTwo, setImageTwo] = useState(photos.length > 1 ? photos[1] : null);
@@ -71,24 +27,6 @@ export default function PhotoBlockComponent({photos, isMobile, imageSelected, se
         await setImageSelected(image);
     }
 
-    useEffect(() => {
-        const calculateComponentWidth = () => {
-            if (isMobile) {
-                return window.innerWidth - 32; // Subtract padding (16px on each side)
-            } else {
-                return Math.min(window.innerWidth * 0.8, 1200); // 80% of window width, max 1200px
-            }
-        };
-
-        setComponentWidth(calculateComponentWidth());
-
-        const handleResize = () => {
-            setComponentWidth(calculateComponentWidth());
-        };
-
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [isMobile]);
 
     useEffect(() => {
         try {
@@ -111,10 +49,6 @@ export default function PhotoBlockComponent({photos, isMobile, imageSelected, se
     if (loading) {
         return <div></div>
     }
-    // TODO
-    //  1. Update WIDTH of our parent div here to be dynamic with the page. Look to the PhotographyPage < ParallaxSection interaction for inspiration. This would include a max-width at different screen widths, and then say, under 800, it would be full width dynamic.
-    //  2. Images would need to have their width autmatically 'half' of the parent component ( or whatever the translation is from above )
-    //  3. Images need to retain their Ratios, and
 
     return (
         <>
