@@ -1,5 +1,195 @@
 import {Image} from "@/types/Image";
 
+export interface DisplayImage {
+    image: Image;
+    width: number;
+    height: number;
+}
+
+/**
+ * Determines if an image should be displayed as a standalone item
+ * based on rating and orientation
+ *
+ * @returns Boolean if standalone image.
+ */
+export function isStandaloneImage(image: Image): boolean {
+    if (!image) return false;
+
+    const isHighRated = image.rating === 5;
+    const isVertical = image.imageHeight > image.imageWidth;
+
+    return isHighRated && isVertical;
+}
+
+/**
+ * Gets the aspect ratio of an image
+ */
+export function getAspectRatio(image: Image): number {
+    return image.imageWidth / image.imageHeight;
+}
+
+/**
+ * Sorts images by rating and other criteria for optimal display
+ */
+export function sortImagesByPriority(images: Image[]): Image[] {
+    return [...images].sort((a, b) => {
+        // First sort by rating (highest first)
+        if ((b.rating || 0) !== (a.rating || 0)) {
+            return (b.rating || 0) - (a.rating || 0);
+        }
+
+        // Then prioritize vertical images for variety
+        const aIsVertical = a.imageHeight > a.imageWidth;
+        const bIsVertical = b.imageHeight > b.imageWidth;
+        if (aIsVertical !== bIsVertical) {
+            return aIsVertical ? -1 : 1;
+        }
+
+        // Default to original order
+        return 0;
+    });
+}
+
+
+/**
+ * Chunks an array of images into groups for display
+ *
+ * @param images Array of images to chunk
+ * @param chunkSize Default size of chunks (usually 2)
+ * @returns Array of image arrays (chunks)
+ */
+export function chunkImages(images: Image[], chunkSize: number = 2): Image[][] {
+    if (!images || images.length === 0) return [];
+
+    // Clone the array to avoid mutating the original
+    const sortedImages = sortImagesByPriority([...images]);
+
+    const result: Image[][] = [];
+    let currentChunk: Image[] = [];
+
+    for (const image of sortedImages) {
+        // Standalone images get their own chunk
+        if (isStandaloneImage(image)) {
+            // If we have a partial chunk, add it to the result first
+            if (currentChunk.length > 0) {
+                result.push([...currentChunk]);
+                currentChunk = [];
+            }
+
+            // Add the standalone image as its own chunk
+            result.push([image]);
+            continue;
+        }
+
+        // Add to current chunk
+        currentChunk.push(image);
+
+        // When chunk is full, add it to results and start a new chunk
+        if (currentChunk.length === chunkSize) {
+            result.push([...currentChunk]);
+            currentChunk = [];
+        }
+    }
+
+    // Add any remaining images
+    if (currentChunk.length > 0) {
+        result.push(currentChunk);
+    }
+
+    return result;
+}
+
+/**
+ * Calculates optimal sizes for a single image to fit available width
+ */
+export function calculateSingleImageSize(
+    image: Image,
+    availableWidth: number
+): DisplayImage {
+    const ratio = getAspectRatio(image);
+    const height = availableWidth / ratio;
+
+    return {
+        image: undefined,
+        ...image,
+        width: availableWidth,
+        height
+    };
+}
+
+/**
+ * Calculates optimal sizes for a pair of images to fit available width
+ * while maintaining their aspect ratios
+ */
+export function calculatePairImageSizes(
+    firstImage: Image,
+    secondImage: Image,
+    availableWidth: number,
+    gapWidth: number = 0
+): [DisplayImage, DisplayImage] {
+    const ratio1 = getAspectRatio(firstImage);
+    const ratio2 = getAspectRatio(secondImage);
+
+    // Adjust available width for the gap between images
+    const adjustedWidth = availableWidth - gapWidth;
+
+    // Calculate the common height that will divide the available width
+    // according to the aspect ratios of both images
+    const commonHeight = adjustedWidth / (ratio1 + ratio2);
+
+    // Calculate widths based on the common height
+    const width1 = ratio1 * commonHeight;
+    const width2 = ratio2 * commonHeight;
+
+    return [
+        {image: firstImage, width: width1, height: commonHeight},
+        {image: secondImage, width: width2, height: commonHeight}
+    ];
+}
+
+/**
+ * Calculates sizes for a chunk of images (1 or 2)
+ */
+export function calculateChunkSizes(
+    imageChunk: Image[],
+    availableWidth: number,
+    gapWidth: number = 0
+): DisplayImage[] {
+    if (!imageChunk || imageChunk.length === 0) {
+        return [];
+    }
+
+    if (imageChunk.length === 1) {
+        return [calculateSingleImageSize(imageChunk[0], availableWidth)];
+    }
+
+    // For pairs of images
+    const [first, second] = calculatePairImageSizes(
+        imageChunk[0],
+        imageChunk[1],
+        availableWidth,
+        gapWidth
+    );
+
+    return [first, second];
+}
+
+/**
+ * Processes an array of images into display-ready chunks with calculated dimensions
+ */
+export function processImagesForDisplay(
+    images: Image[],
+    availableWidth: number,
+    chunkSize: number = 2,
+    gapWidth: number = 0
+): DisplayImage[][] {
+    // First chunk the images
+    const chunks = chunkImages(images, chunkSize);
+
+    // Then calculate sizes for each chunk
+    return chunks.map(chunk => calculateChunkSizes(chunk, availableWidth, gapWidth));
+}
+
 /**
  * Chunks an array of Cards ('photo' | 'text'| 'gif' | 'etc') into pairs
  * based on their rating and orientation.
@@ -47,7 +237,7 @@ export async function chunkImageArray(photoArray: Image[], chunkSize: number = 2
  * @returns Images with calculated width and height properties
  *
  */
-export function calculateImageSizes(images: any[], componentWidth: number) {
+export function calculateImageSizes(images: any[], componentWidth: number): DisplayImage[] {
     if (!images || images.length === 0) {
         return [];
     }
@@ -93,7 +283,7 @@ export function calculateImageSizes(images: any[], componentWidth: number) {
  * @param chunkSize Default chunk size (usually 2)
  * @returns Array of image chunks with calculated dimensions
  */
-export async function processImagesForDisplay(
+export async function processImagesForDisplayOld(
     images: Image[],
     componentWidth: number,
     chunkSize: number = 2

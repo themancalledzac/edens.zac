@@ -1,4 +1,3 @@
-import {useRouter} from 'next/router';
 import PhotoBlockComponent from "../../Components/PhotoBlockComponent/PhotoBlockComponent";
 import React, {useEffect, useState} from "react";
 import styles from '../../styles/Catalog.module.scss';
@@ -6,32 +5,33 @@ import Header from "../../Components/Header/Header";
 import {fetchCatalogBySlug} from "@/lib/api/catalogs";
 import {Catalog} from "@/types/Catalog";
 import {Image} from "@/types/Image";
-import {chunkImageArray} from "@/utils/imageUtils";
+import {chunkImages} from "@/utils/imageUtils";
 
 interface CatalogPageProps {
     catalog: Catalog;
+    imageChunks: Image[][];
 }
 
 /**
  * Photography Gallery Page.
- * Currently, has a switch case with local json files when backend not available.
- * @param params
- * @returns {Promise<{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: {}}}|{props: {data: *[]}}|{props: {data: {}}}>}
  */
 export async function getServerSideProps({params}) {
 
     try {
-        const slug = params?.slug as string;
-        const catalog = await fetchCatalogBySlug(slug);
+        const slug: string = params?.slug as string;
+        const catalogFull: Catalog = await fetchCatalogBySlug(slug);
 
-        // return {
-        //     props: {}
-        // }
-        // const photoDataList = await response.json();
-        const chunkedList = await chunkImageArray(catalog.images, 2);
+        const {images, ...catalog} = catalogFull;
+
+        // We can only do the chunking on the server, not the sizing
+        // as sizing depends on client viewport dimensions
+        const imageChunks: Image[][] = chunkImages(images, 2);
 
         return {
-            props: {data: chunkedList},
+            props: {
+                catalog,
+                imageChunks
+            },
         };
     } catch (error) {
         console.error("Fetch error: ", error);
@@ -46,11 +46,9 @@ export async function getServerSideProps({params}) {
 }
 
 // The page component that renders the content for each title
-const CatalogPage = ({data}) => {
+const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
     const [imageSelected, setImageSelected] = useState(null);
-    const router = useRouter();
     const [isMobile, setIsMobile] = useState(false);
-
 
     useEffect(() => {
         const checkIsMobile = () => {
@@ -67,7 +65,7 @@ const CatalogPage = ({data}) => {
         const handleKeyDown = (event) => {
             if (imageSelected === null) return;
 
-            const flattenedData = data.flat();
+            const flattenedData = imageChunks.flat();
             const currentIndex = flattenedData.findIndex(img => img.id === imageSelected.id);
 
             if (event.key === "ArrowRight") {
@@ -80,16 +78,16 @@ const CatalogPage = ({data}) => {
         };
 
         window.addEventListener('keydown', handleKeyDown);
-        console.log({data});
+        console.log({imageChunks});
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         }
 
 
-    }, [data, imageSelected]);
+    }, [imageChunks, imageSelected]);
 
-    if (!data) {
+    if (!catalog) {
         return <div>Loading...</div>;
     }
 
@@ -97,15 +95,16 @@ const CatalogPage = ({data}) => {
         <div className={styles.catalogPageMain}>
             <Header/>
             <div className={styles.photoBlockWrapper}>
-                {data.map((photoPair: any, index: React.Key) => (
-                    <PhotoBlockComponent
-                        isMobile={isMobile}
-                        key={index}
-                        photos={photoPair}
-                        imageSelected={imageSelected}
-                        setImageSelected={setImageSelected}
-                    />
-                ))}
+                {imageChunks && imageChunks.length > 0 && (
+                    imageChunks.map((photoPair: Image[], index: React.Key) => (
+                        <PhotoBlockComponent
+                            isMobile={isMobile}
+                            key={index}
+                            photos={photoPair}
+                            imageSelected={imageSelected}
+                            setImageSelected={setImageSelected}
+                        />
+                    )))}
             </div>
         </div>
     );

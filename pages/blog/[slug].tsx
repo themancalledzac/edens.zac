@@ -2,7 +2,7 @@
 import {useRouter} from 'next/router';
 import styles from '@/styles/Blog.module.scss';
 import Header from '@/Components/Header/Header';
-import Image from 'next/image';
+import {Image} from "@/types/Image";
 import {GetServerSideProps} from 'next';
 import {Blog} from '@/types/Blog';
 import {fetchBlogBySlug} from "@/lib/api/blogs";
@@ -20,9 +20,12 @@ export const getServerSideProps: GetServerSideProps = async ({params}) => {
     // For now, we'll use a simple mock or fetch from the local API
     try {
         const slug = params?.slug as string;
-        const blog = await fetchBlogBySlug(slug);
+        const fullBlog = await fetchBlogBySlug(slug);
 
-        const imageChunks = await chunkImageArray(blog.images, 2);
+        const {images, ...blog} = fullBlog;
+
+
+        const imageChunks: Image[][] = await chunkImageArray(images, 2);
 
         // TODO: emulate chunkedList logic
         //  - This includes adding 'textBox' as an option INTO the chunkedList, if an Image(?) is associated/connected/has a textBox
