@@ -49,7 +49,9 @@ export async function getServerSideProps({params}) {
 const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
     const [imageSelected, setImageSelected] = useState(null);
     const [isMobile, setIsMobile] = useState(false);
+    const [contentWidth, setContentWidth] = useState(800);
 
+    // Hook for Mobile state
     useEffect(() => {
         const checkIsMobile = () => {
             setIsMobile(window.innerWidth <= 768);
@@ -61,6 +63,7 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
 
     }, []);
 
+    // Hook to handle Arrow Clicks on ImageFullScreen
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (imageSelected === null) return;
@@ -87,6 +90,26 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
 
     }, [imageChunks, imageSelected]);
 
+    // Hook to calculate component width
+    useEffect(() => {
+        const calculateComponentWidth = () => {
+            if (isMobile) {
+                return window.innerWidth - 32; // Subtract padding (16px on each side)
+            } else {
+                return Math.min(window.innerWidth * 0.8, 1200); // 80% of window width, max 1200px
+            }
+        };
+
+        setContentWidth(calculateComponentWidth());
+
+        const handleResize = () => {
+            setContentWidth(calculateComponentWidth());
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [isMobile]);
+
     if (!catalog) {
         return <div>Loading...</div>;
     }
@@ -94,20 +117,35 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
     return (
         <div className={styles.catalogPageMain}>
             <Header/>
-            <div className={styles.photoBlockWrapper}>
-                {imageChunks && imageChunks.length > 0 && (
-                    imageChunks.map((photoPair: Image[], index: React.Key) => (
-                        <PhotoBlockComponent
-                            isMobile={isMobile}
-                            key={index}
-                            photos={photoPair}
-                            imageSelected={imageSelected}
-                            setImageSelected={setImageSelected}
-                        />
-                    )))}
+
+            <div className={styles.catalogContent}>
+                <div
+                    className={styles.catalogHeader}
+                    style={{width: `${contentWidth}px`, margin: '0 auto'}}
+                >
+                    <h1 className={styles.catalogTitle}>{catalog.title}</h1>
+                    {catalog.paragraph && (
+                        <p className={styles.catalogDescription}>{catalog.paragraph}</p>
+                    )}
+                </div>
+
+                <div className={styles.photoBlockWrapper}>
+                    {imageChunks && imageChunks.length > 0 && (
+                        imageChunks.map((photoPair: Image[], index: React.Key) => (
+                            <PhotoBlockComponent
+                                componentWidth={contentWidth}
+                                isMobile={isMobile}
+                                key={index}
+                                photos={photoPair}
+                                imageSelected={imageSelected}
+                                setImageSelected={setImageSelected}
+                            />
+                        )))}
+                </div>
             </div>
         </div>
-    );
+    )
+        ;
 };
 
 export default CatalogPage;
