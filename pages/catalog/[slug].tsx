@@ -6,6 +6,8 @@ import {fetchCatalogBySlug} from "@/lib/api/catalogs";
 import {Catalog} from "@/types/Catalog";
 import {Image} from "@/types/Image";
 import {chunkImages} from "@/utils/imageUtils";
+import {useAppContext} from "@/context/AppContext";
+import ImageFullScreen from "@/Components/ImageFullScreen/ImageFullScreen";
 
 interface CatalogPageProps {
     catalog: Catalog;
@@ -25,7 +27,7 @@ export async function getServerSideProps({params}) {
 
         // We can only do the chunking on the server, not the sizing
         // as sizing depends on client viewport dimensions
-        const imageChunks: Image[][] = chunkImages(images, 2);
+        const imageChunks: Image[][] = chunkImages(images, 3);
 
         return {
             props: {
@@ -47,21 +49,10 @@ export async function getServerSideProps({params}) {
 
 // The page component that renders the content for each title
 const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
+    const {isMobile} = useAppContext();
     const [imageSelected, setImageSelected] = useState(null);
-    const [isMobile, setIsMobile] = useState(false);
+    // const [isMobile, setIsMobile] = useState(false);
     const [contentWidth, setContentWidth] = useState(800);
-
-    // Hook for Mobile state
-    useEffect(() => {
-        const checkIsMobile = () => {
-            setIsMobile(window.innerWidth <= 768);
-        };
-
-        checkIsMobile();
-        window.addEventListener('resize', checkIsMobile);
-        return () => window.removeEventListener('resize', checkIsMobile);
-
-    }, []);
 
     // Hook to handle Arrow Clicks on ImageFullScreen
     useEffect(() => {
@@ -94,7 +85,7 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
     useEffect(() => {
         const calculateComponentWidth = () => {
             if (isMobile) {
-                return window.innerWidth - 32; // Subtract padding (16px on each side)
+                return window.innerWidth - 40; // Subtract padding (10px on each side)
             } else {
                 return Math.min(window.innerWidth * 0.8, 1200); // 80% of window width, max 1200px
             }
@@ -121,7 +112,10 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
             <div className={styles.catalogContent}>
                 <div
                     className={styles.catalogHeader}
-                    style={{width: `${contentWidth}px`, margin: '0 auto'}}
+                    style={isMobile
+                        ? {width: '100%'}
+                        : {width: `${contentWidth}px`, margin: '0 auto'}
+                    }
                 >
                     <h1 className={styles.catalogTitle}>{catalog.title}</h1>
                     {catalog.paragraph && (
@@ -142,6 +136,9 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
                             />
                         )))}
                 </div>
+                {imageSelected && (
+                    <ImageFullScreen setImageSelected={setImageSelected} imageSelected={imageSelected}/>
+                )}
             </div>
         </div>
     )

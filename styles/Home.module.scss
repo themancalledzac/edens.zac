@@ -319,31 +319,42 @@
 }
 
 .image {
-  margin-bottom: 1rem;
-  border: 2px solid white;
+  //margin-bottom: 1rem;
 }
 
 .imageOne {
   @extend .image;
-  margin-left: 1rem;
-  margin-right: 0.5rem;
+  padding-right: 0.4rem;
 }
 
 .imageTwo {
   @extend .image;
-  margin-right: 1rem;
-  margin-left: 0.5rem;
+  padding-left: 0.4rem;
 }
 
-.imageOne .imageTwo {
-  @media (max-width: 768px) {
-    width: 100% !important;
-    height: auto !important;
-    margin: 0 !important;
+.imageTwoOfThree {
+  @extend .image;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+}
+
+.imageThree {
+  @extend .image;
+  padding-left: 0.4rem;
+}
+
+@media (max-width: 768px) {
+
+  .image {
+    border-width: 12px 12px 0 12px;
+    border-style: solid;
+    border-color: white;
+    margin: 0;
+    width: 100%;
+    height: auto;
+    padding: 0 0 0 0;
   }
-}
 
-@media (max-width: 600px) {
   .grid {
     width: 100%;
     flex-direction: column;

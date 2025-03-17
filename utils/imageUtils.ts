@@ -28,10 +28,12 @@ export function getAspectRatio(image: Image): number {
     return image.imageWidth / image.imageHeight;
 }
 
-/**
- * Sorts images by rating and other criteria for optimal display
- */
 export function sortImagesByPriority(images: Image[]): Image[] {
+    /**
+     * Sorts images by rating and other criteria for optimal display
+     * This needs to be used as a: 'for all 5 star, go first'. oOtherwise, we use the regular order.
+     * This means we don't plan on reorganizing much more than a few 'top' images.
+     */
     return [...images].sort((a, b) => {
         // First sort by rating (highest first)
         if ((b.rating || 0) !== (a.rating || 0)) {
@@ -61,13 +63,16 @@ export function sortImagesByPriority(images: Image[]): Image[] {
 export function chunkImages(images: Image[], chunkSize: number = 2): Image[][] {
     if (!images || images.length === 0) return [];
 
+    // TODO: We only sort Images if order is not a priority. Thinking abstract catalogs, not a day of images.
+    //  - This means we need to have some sort of KVP that determines a catalog being order based or priority based.
     // Clone the array to avoid mutating the original
-    const sortedImages = sortImagesByPriority([...images]);
+    // const sortedImages = sortImagesByPriority([...images]);
 
     const result: Image[][] = [];
     let currentChunk: Image[] = [];
 
-    for (const image of sortedImages) {
+    for (const image of images) {
+        // for (const image of sortedImages) {
         // Standalone images get their own chunk
         if (isStandaloneImage(image)) {
             // If we have a partial chunk, add it to the result first
@@ -254,22 +259,26 @@ export function calculateImageSizes(images: any[], componentWidth: number): Disp
             height: height
         }];
     } else {
-        // Calculate the ratios using imageWidth and imageHeight from the input objects
-        const ratio1 = images[0].imageWidth / images[0].imageHeight;
-        const ratio2 = images[1].imageWidth / images[1].imageHeight;
+        // Calculate the ratios for all images.
+        const ratios = images.map(img => img.imageWidth / img.imageHeight);
 
-        // Solve for the heights and widths
-        const height = componentWidth / (ratio1 + ratio2);
-        const width1 = ratio1 * height;
-        const width2 = ratio2 * height;
+        // Calculate the sum of all ratios
+        const ratioSum = ratios.reduce((sum, ratio) => sum + ratio, 0);
+
+        // Determine the common height
+        const height = componentWidth / ratioSum;
 
         // Return the original objects with added calculated width and height
+        // Calculate width for each image based on its ratio and the common height
         return images.map((image, index) => {
             // Calculate new size based on the index
-            const newSize = index === 0 ? {width: width1, height: height} : {width: width2, height: height};
+            const width = ratios[index] * height;
 
-            // Spread the original image object and merge with the new size
-            return {...image, ...newSize};
+            return {
+                ...image,
+                width: width,
+                height: height
+            }
         });
     }
 }

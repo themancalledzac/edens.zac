@@ -14,7 +14,7 @@ import {calculateImageSizes} from "@/utils/imageUtils";
  * @constructor
  */
 export default function PhotoBlockComponent({
-                                                componentWidth = 800,
+                                                componentWidth,
                                                 photos,
                                                 isMobile,
                                                 imageSelected,
@@ -23,10 +23,10 @@ export default function PhotoBlockComponent({
     const [loading, setLoading] = useState(true);
     const [imageOne, setImageOne] = useState(photos[0]);
     const [imageTwo, setImageTwo] = useState(photos.length > 1 ? photos[1] : null);
+    const [imageThree, setImageThree] = useState(photos.length > 2 ? photos[2] : null);
     const handleClick = async (image) => {
         await setImageSelected(image);
     }
-
 
     useEffect(() => {
         try {
@@ -34,6 +34,9 @@ export default function PhotoBlockComponent({
             setImageOne(calculatedValues[0]);
             if (calculatedValues.length > 1) {
                 setImageTwo(calculatedValues[1]);
+            }
+            if (calculatedValues.length > 2) {
+                setImageThree(calculatedValues[2])
             }
         } catch (error) {
             console.error(error);
@@ -50,11 +53,11 @@ export default function PhotoBlockComponent({
         return <div></div>
     }
 
+    // TODO: Update this to simply map our items, and depending on the 'length' of the array being passed, we pass specific css classNames for specific padding styling
     return (
         <>
             <div style={{
                 display: 'flex',
-                width: `${componentWidth}px`,
                 justifyContent: 'center',
                 alignItems: 'center',
                 ...(isMobile
@@ -69,28 +72,26 @@ export default function PhotoBlockComponent({
                        className={styles.imageOne}
                        unoptimized={true}
                        onClick={() => handleClick(imageOne)}
-                       style={isMobile ? {margin: '0', width: '100%', height: 'auto'} : {
-                           margin: '0',
-                           marginRight: '0'
-                       }}
                 />
                 {imageTwo && (
                     <Image src={isValidSource(imageTwo.imageUrlWeb) ? `${imageTwo.imageUrlWeb}` : ""}
                            alt="Photo"
-                           className={styles.imageTwo}
+                           className={imageThree ? styles.imageTwoOfThree : styles.imageTwo}
                            width={Math.round(imageTwo.width)}
                            height={Math.round(imageTwo.height)}
                            onClick={() => handleClick(imageTwo)}
-                           style={isMobile ? {margin: '0', width: '100%', height: 'auto'} : {
-                               margin: '0',
-                               marginLeft: '0'
-                           }}
+                    />
+                )}
+                {imageThree && (
+                    <Image src={isValidSource(imageThree.imageUrlWeb) ? `${imageThree.imageUrlWeb}` : ""}
+                           alt="Photo"
+                           className={styles.imageThree}
+                           width={Math.round(imageThree.width)}
+                           height={Math.round(imageThree.height)}
+                           onClick={() => handleClick(imageThree)}
                     />
                 )}
             </div>
-            {imageSelected && (
-                <ImageFullScreen setImageSelected={setImageSelected} imageSelected={imageSelected}/>
-            )}
         </>
     );
 };
