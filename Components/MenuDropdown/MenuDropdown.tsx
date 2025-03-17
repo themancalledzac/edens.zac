@@ -6,11 +6,13 @@ import {handleClick, handleInputChange, handleSubmit} from "@/Components/MenuDro
 import {useRouter} from "next/router";
 import {isLocalEnvironment} from "@/utils/environment";
 import {useAppContext} from "@/context/AppContext";
+import {useEditContext} from "@/context/EditContext";
 
 export default function MenuDropdown({dropdownRef, showDropdown, setShowDropdown}) {
     const [aboutDropdownVisible, setAboutDropdownVisible] = useState(false);
     const [contactDropdownVisible, setContactDropdownVisible] = useState(false);
     const [formData, setFormData] = useState({title: '', message: ''});
+    const {isEditMode, setIsEditMode} = useEditContext();
     const router = useRouter();
 
     const isMobile = useAppContext().isMobile;
@@ -24,7 +26,9 @@ export default function MenuDropdown({dropdownRef, showDropdown, setShowDropdown
         // TODO: Determine the best approach for navigation
         // Option 1: pass the current data via router state
         // Option 2: Use a query parameter to tell the update page what to fetch ( current until we fix )
-        router.push(`/update/${currentType}/${currentSlug}`);
+        console.log('setIsEditMode to true');
+        setIsEditMode(!isEditMode);
+        setShowDropdown(!showDropdown);
     }
 
     const handleCreateClick = () => {

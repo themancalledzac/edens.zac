@@ -343,6 +343,23 @@
   padding-left: 0.4rem;
 }
 
+.imageEdit {
+  border: 10px solid white;
+
+  &:hover {
+    border: 11px solid white;
+    opacity: 75%;
+  }
+}
+
+.imageSelected {
+  opacity: 75%;
+  background-color: rgba(255, 0, 0, 1.00);
+  background-blend-mode: color-burn;
+  //border: 11px solid red;
+
+}
+
 @media (max-width: 768px) {
 
   .image {

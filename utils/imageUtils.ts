@@ -8,7 +8,9 @@ export interface DisplayImage {
 
 /**
  * Determines if an image should be displayed as a standalone item
- * based on rating and orientation
+ * based on rating and orientation.
+ * We don't want vertical as it gets too crowded,
+ * but we also need panoramas to Always be standalone.
  *
  * @returns Boolean if standalone image.
  */
@@ -16,9 +18,10 @@ export function isStandaloneImage(image: Image): boolean {
     if (!image) return false;
 
     const isHighRated = image.rating === 5;
+    const isPanorama = (image.imageWidth / image.imageHeight) >= 2;
     const isVertical = image.imageHeight > image.imageWidth;
 
-    return isHighRated && isVertical;
+    return isHighRated && !isVertical || isPanorama;
 }
 
 /**
@@ -234,6 +237,12 @@ export async function chunkImageArray(photoArray: Image[], chunkSize: number = 2
     return result;
 }
 
+export interface calculateImageSizesReturn {
+    image: Image;
+    width: number;
+    height: number;
+}
+
 /**
  * Calculates optimal sizes for images in a row based on their aspect ratios
  *
@@ -242,7 +251,7 @@ export async function chunkImageArray(photoArray: Image[], chunkSize: number = 2
  * @returns Images with calculated width and height properties
  *
  */
-export function calculateImageSizes(images: any[], componentWidth: number): DisplayImage[] {
+export function calculateImageSizes(images: any[], componentWidth: number): calculateImageSizesReturn[] {
     if (!images || images.length === 0) {
         return [];
     }
@@ -254,7 +263,7 @@ export function calculateImageSizes(images: any[], componentWidth: number): Disp
         // const width = ratio * height;
 
         return [{
-            ...images[0],
+            image: images[0],
             width: componentWidth,
             height: height
         }];
@@ -275,7 +284,7 @@ export function calculateImageSizes(images: any[], componentWidth: number): Disp
             const width = ratios[index] * height;
 
             return {
-                ...image,
+                image: image,
                 width: width,
                 height: height
             }
@@ -302,4 +311,28 @@ export async function processImagesForDisplayOld(
 
     // Then calculate sizes for each chunk
     return chunks.map(chunk => calculateImageSizes(chunk, componentWidth));
+}
+
+interface swapImagesResponse {
+    newImages: Image[] | null;
+    newChunks: Image[][] | null;
+}
+
+export const swapImages = (images: Image[], id1: number, id2: number) => {
+    const newImages = [...images];
+    const index1 = newImages.findIndex(img => img.id === id1);
+    const index2 = newImages.findIndex(img => img.id === id2);
+
+    if (index1 >= 0 && index2 >= 0) {
+        // swap images
+        [newImages[index1], newImages[index2]] = [newImages[index2], newImages[index1]];
+        // updateChunks
+        const newChunks = chunkImages(newImages, 3);
+
+        return {
+            newImages,
+            newChunks
+        };
+    }
+    return null;
 }

@@ -4,9 +4,11 @@ import {Image} from "@/types/Image";
 import {GetServerSideProps} from 'next';
 import {Blog} from '@/types/Blog';
 import {fetchBlogBySlug} from "@/lib/api/blogs";
-import {chunkImageArray} from "@/utils/imageUtils";
-import {useEffect, useState} from "react";
+import {chunkImageArray, chunkImages, swapImages} from "@/utils/imageUtils";
+import React, {useEffect, useState} from "react";
 import PhotoBlockComponent from "@/Components/PhotoBlockComponent/PhotoBlockComponent";
+import ImageFullScreen from "@/Components/ImageFullScreen/ImageFullScreen";
+import {useEditContext} from "@/context/EditContext";
 
 interface BlogPageProps {
     blog: Blog;
@@ -23,7 +25,7 @@ export const getServerSideProps: GetServerSideProps = async ({params}) => {
         const {images, ...blog} = fullBlog;
 
 
-        const imageChunks: Image[][] = await chunkImageArray(images, 2);
+        const imageChunks: Image[][] = await chunkImages(images, 3);
 
         // TODO: emulate chunkedList logic
         //  - This includes adding 'textBox' as an option INTO the chunkedList, if an Image(?) is associated/connected/has a textBox
@@ -44,9 +46,9 @@ export const getServerSideProps: GetServerSideProps = async ({params}) => {
 };
 
 export default function BlogPage({blog, imageChunks}: BlogPageProps) {
-    const [imageSelected, setImageSelected] = useState(null);
     const [isMobile, setIsMobile] = useState(false);
     const [contentWidth, setContentWidth] = useState(800);
+    const {isEditMode, imageSelected, setImageSelected, selectedForSwap, setSelectedForSwap} = useEditContext();
 
     useEffect(() => {
         // Check for mobile viewport
@@ -106,6 +108,32 @@ export default function BlogPage({blog, imageChunks}: BlogPageProps) {
         return () => window.removeEventListener('resize', handleResize);
     }, [isMobile]);
 
+    // TODO: Determine if we can throw this in imageUrils
+    // const handleImageEdit = (image: Image) => {
+    //     if (selectedForSwap === null) {
+    //         // first image selected
+    //         setSelectedForSwap(image);
+    //     } else if (selectedForSwap.id === image.id) {
+    //         setSelectedForSwap(null);
+    //     } else {
+    //         // second image selected, swap
+    //         const {newImages, newChunks} = swapImages(images, selectedForSwap.id, image.id);
+    //         // swapImages(selectedForSwap.id, image.id);
+    //         setImages(newImages);
+    //         setImageChunks(newChunks);
+    //         setSelectedForSwap(null);
+    //     }
+    // }
+
+    const handleImageClick = (image: Image) => {
+        if (isEditMode) {
+            // TODO
+            // handleImageEdit(image);
+        } else {
+            setImageSelected(image);
+        }
+    };
+
     // Handle loading state
     if (!blog) {
         return <div>Loading...</div>;
@@ -140,9 +168,8 @@ export default function BlogPage({blog, imageChunks}: BlogPageProps) {
                                 isMobile={isMobile}
                                 key={index}
                                 photos={photoPair}
-                                imageSelected={imageSelected}
                                 setImageSelected={setImageSelected}
-                            />
+                                handleImageClick={handleImageClick} selectedForSwap={undefined}/>
                         ))}
                     </div>
                 )}
@@ -153,6 +180,9 @@ export default function BlogPage({blog, imageChunks}: BlogPageProps) {
                             <span key={tag} className={styles.tag}>{tag}</span>
                         ))}
                     </div>
+                )}
+                {imageSelected && (
+                    <ImageFullScreen setImageSelected={setImageSelected} imageSelected={imageSelected}/>
                 )}
             </div>
         </div>

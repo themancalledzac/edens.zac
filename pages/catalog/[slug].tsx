@@ -5,9 +5,10 @@ import Header from "../../Components/Header/Header";
 import {fetchCatalogBySlug} from "@/lib/api/catalogs";
 import {Catalog} from "@/types/Catalog";
 import {Image} from "@/types/Image";
-import {chunkImages} from "@/utils/imageUtils";
+import {chunkImages, swapImages} from "@/utils/imageUtils";
 import {useAppContext} from "@/context/AppContext";
 import ImageFullScreen from "@/Components/ImageFullScreen/ImageFullScreen";
+import {useEditContext} from "@/context/EditContext";
 
 interface CatalogPageProps {
     catalog: Catalog;
@@ -21,13 +22,11 @@ export async function getServerSideProps({params}) {
 
     try {
         const slug: string = params?.slug as string;
-        const catalogFull: Catalog = await fetchCatalogBySlug(slug);
-
-        const {images, ...catalog} = catalogFull;
+        const catalog: Catalog = await fetchCatalogBySlug(slug);
 
         // We can only do the chunking on the server, not the sizing
         // as sizing depends on client viewport dimensions
-        const imageChunks: Image[][] = chunkImages(images, 3);
+        const imageChunks: Image[][] = chunkImages(catalog.images, 3);
 
         return {
             props: {
@@ -37,10 +36,6 @@ export async function getServerSideProps({params}) {
         };
     } catch (error) {
         console.error("Fetch error: ", error);
-
-        // return {
-        //     props: {data: await chunkArray(localData, 2)}
-        // };
         return {
             notFound: true
         };
@@ -48,11 +43,37 @@ export async function getServerSideProps({params}) {
 }
 
 // The page component that renders the content for each title
-const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
+const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProps) => {
     const {isMobile} = useAppContext();
-    const [imageSelected, setImageSelected] = useState(null);
-    // const [isMobile, setIsMobile] = useState(false);
     const [contentWidth, setContentWidth] = useState(800);
+    const {isEditMode, imageSelected, setImageSelected, selectedForSwap, setSelectedForSwap} = useEditContext();
+
+    // Update state
+    const [images, setImages] = useState<Image[]>(catalog.images || []);
+    const [imageChunks, setImageChunks] = useState<Image[][]>(initialImageChunks);
+
+    const handleImageEdit = (image: Image) => {
+        if (selectedForSwap === null) {
+            // first image selected
+            setSelectedForSwap(image);
+        } else if (selectedForSwap.id === image.id) {
+            setSelectedForSwap(null);
+        } else {
+            // second image selected, swap
+            const {newImages, newChunks} = swapImages(images, selectedForSwap.id, image.id);
+            setImages(newImages);
+            setImageChunks(newChunks);
+            setSelectedForSwap(null);
+        }
+    }
+
+    const handleImageClick = (image: Image) => {
+        if (isEditMode) {
+            handleImageEdit(image);
+        } else {
+            setImageSelected(image);
+        }
+    };
 
     // Hook to handle Arrow Clicks on ImageFullScreen
     useEffect(() => {
@@ -79,7 +100,7 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
         }
 
 
-    }, [imageChunks, imageSelected]);
+    }, [imageChunks, imageSelected, setImageSelected]);
 
     // Hook to calculate component width
     useEffect(() => {
@@ -117,9 +138,9 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
                         : {width: `${contentWidth}px`, margin: '0 auto'}
                     }
                 >
-                    <h1 className={styles.catalogTitle}>{catalog.title}</h1>
+                    <h1 className={`${styles.catalogTitle} ${isEditMode && styles.catalogTitleEdit}`}>{catalog.title}</h1>
                     {catalog.paragraph && (
-                        <p className={styles.catalogDescription}>{catalog.paragraph}</p>
+                        <p className={`${styles.catalogDescription} ${isEditMode && styles.descriptionEdit}`}>{catalog.paragraph}</p>
                     )}
                 </div>
 
@@ -131,8 +152,9 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
                                 isMobile={isMobile}
                                 key={index}
                                 photos={photoPair}
-                                imageSelected={imageSelected}
+                                handleImageClick={handleImageClick}
                                 setImageSelected={setImageSelected}
+                                selectedForSwap={selectedForSwap}
                             />
                         )))}
                 </div>
@@ -141,8 +163,7 @@ const CatalogPage = ({catalog, imageChunks}: CatalogPageProps) => {
                 )}
             </div>
         </div>
-    )
-        ;
+    );
 };
 
 export default CatalogPage;
