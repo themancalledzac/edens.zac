@@ -10,7 +10,6 @@ interface PhotoBlockComponentProps {
     photos: ImageType[];
     isMobile: boolean;
     handleImageClick: (image: ImageType) => void;
-    setImageSelected: (image: ImageType) => void;
     selectedForSwap: ImageType;
 }
 
@@ -22,21 +21,16 @@ export default function PhotoBlockComponent({
                                                 photos,
                                                 isMobile,
                                                 handleImageClick,
-                                                setImageSelected,
                                                 selectedForSwap
                                             }: PhotoBlockComponentProps) {
     const [loading, setLoading] = useState(true);
     const {isEditMode} = useEditContext();
     const [imageItems, setImageItems] = useState<calculateImageSizesReturn[]>([]);
 
-    const handleClick = (image: ImageType) => {
-        if (handleImageClick) {
-            handleImageClick(image);
-        } else {
-            setImageSelected(image);
-        }
-    }
-
+    /**
+     * Hook to calculate Image sizes, recalculated when photos or componentWidth change.
+     * This is an important hook in that, on reorder, this is in charge of recalculation.
+     */
     useEffect(() => {
         try {
             const calculatedValues = calculateImageSizes(photos, componentWidth);
@@ -48,6 +42,13 @@ export default function PhotoBlockComponent({
         }
     }, [photos, componentWidth]);
 
+    /**
+     * Associates images with their correct css styling based on images per block, and image location(left/middle/right)
+     *
+     * @param index - What number image we are dealing with.
+     * @param totalImages - Total number of images.
+     * @returns Returns styling.
+     */
     const getPositionStyle = (index: number, totalImages: number): string => {
         if (totalImages === 1) return styles.imageSingle;
         if (index === 0) return styles.imageLeft;
@@ -93,7 +94,7 @@ export default function PhotoBlockComponent({
                                 ${isSelected(item.image) && styles.imageSelected}
                             `}
                             unoptimized={true}
-                            onClick={() => handleClick(item.image)}
+                            onClick={() => handleImageClick(item.image)}
                             style={{
                                 ...(index === 0 && !isMobile ? {paddingRight: '0.4rem'} : {}),
                                 ...(index > 0 && index < imageItems.length - 1 && !isMobile ? {

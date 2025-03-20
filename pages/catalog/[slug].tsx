@@ -42,7 +42,13 @@ export async function getServerSideProps({params}) {
     }
 }
 
-// The page component that renders the content for each title
+/**
+ * The page component that renders the content for each title
+ *
+ * @param catalog Catalog data.
+ * @param initialImageChunks Images from the database, in order.
+ * @constructor
+ */
 const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProps) => {
     const {isMobile} = useAppContext();
     const [contentWidth, setContentWidth] = useState(800);
@@ -52,6 +58,16 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
     const [images, setImages] = useState<Image[]>(catalog.images || []);
     const [imageChunks, setImageChunks] = useState<Image[][]>(initialImageChunks);
 
+    /**
+     * Function to handle Image position change.
+     *
+     * Our current edit image position entails the following logic:
+     * First image clicked will set our image as 'selectedForSwap'.
+     * If we click that first image again, we unselect it.
+     * If we instead click a second image, we swap images, which causes a page rerender.
+     *
+     * @param image Image.
+     */
     const handleImageEdit = (image: Image) => {
         if (selectedForSwap === null) {
             // first image selected
@@ -67,6 +83,10 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
         }
     }
 
+    /**
+     * Handles an image click, either for Edit or for Full Screen.
+     * @param image - Image.
+     */
     const handleImageClick = (image: Image) => {
         if (isEditMode) {
             handleImageEdit(image);
@@ -75,7 +95,9 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
         }
     };
 
-    // Hook to handle Arrow Clicks on ImageFullScreen
+    /**
+     * Hook to handle Arrow Clicks on ImageFullScreen.
+     */
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (imageSelected === null) return;
@@ -101,7 +123,9 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
 
     }, [imageChunks, imageSelected, setImageSelected]);
 
-    // Hook to calculate component width
+    /**
+     * Hook to calculate component width if Mobile view changes.
+     */
     useEffect(() => {
         const calculateComponentWidth = () => {
             if (isMobile) {
@@ -132,10 +156,7 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
             <div className={styles.catalogContent}>
                 <div
                     className={styles.catalogHeader}
-                    style={isMobile
-                        ? {width: '100%'}
-                        : {width: `${contentWidth}px`, margin: '0 auto'}
-                    }
+                    style={isMobile ? {width: '100%'} : {width: `${contentWidth}px`, margin: '0 auto'}}
                 >
                     <h1 className={`${styles.catalogTitle} ${isEditMode && styles.catalogTitleEdit}`}>{catalog.title}</h1>
                     {catalog.paragraph && (
@@ -152,7 +173,6 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
                                 key={index}
                                 photos={photoPair}
                                 handleImageClick={handleImageClick}
-                                setImageSelected={setImageSelected}
                                 selectedForSwap={selectedForSwap}
                             />
                         )))}
