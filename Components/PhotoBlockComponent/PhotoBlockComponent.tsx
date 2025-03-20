@@ -1,6 +1,5 @@
 import styles from "../../styles/Home.module.scss";
 import React, {useEffect, useState} from "react";
-import ImageFullScreen from "../ImageFullScreen/ImageFullScreen";
 import Image from "next/image";
 import {Image as ImageType} from "@/types/Image";
 import {calculateImageSizes, calculateImageSizesReturn, DisplayImage} from "@/utils/imageUtils";
@@ -27,18 +26,8 @@ export default function PhotoBlockComponent({
                                                 selectedForSwap
                                             }: PhotoBlockComponentProps) {
     const [loading, setLoading] = useState(true);
-    const [imageOne, setImageOne] = useState<calculateImageSizesReturn>({image: photos[0], height: 0, width: 0});
-    const [imageTwo, setImageTwo] = useState<calculateImageSizesReturn | null>({
-        image: (photos.length > 1 ? photos[1] : null),
-        height: 0,
-        width: 0
-    });
-    const [imageThree, setImageThree] = useState<calculateImageSizesReturn | null>({
-        image: (photos.length > 2 ? photos[2] : null),
-        height: 0,
-        width: 0
-    });
-    const {isEditMode, setIsEditMode} = useEditContext();
+    const {isEditMode} = useEditContext();
+    const [imageItems, setImageItems] = useState<calculateImageSizesReturn[]>([]);
 
     const handleClick = (image: ImageType) => {
         if (handleImageClick) {
@@ -51,13 +40,7 @@ export default function PhotoBlockComponent({
     useEffect(() => {
         try {
             const calculatedValues = calculateImageSizes(photos, componentWidth);
-            setImageOne(calculatedValues[0]);
-            if (calculatedValues.length > 1) {
-                setImageTwo(calculatedValues[1]);
-            }
-            if (calculatedValues.length > 2) {
-                setImageThree(calculatedValues[2])
-            }
+            setImageItems(calculatedValues);
         } catch (error) {
             console.error(error);
         } finally {
@@ -65,11 +48,18 @@ export default function PhotoBlockComponent({
         }
     }, [photos, componentWidth]);
 
+    const getPositionStyle = (index: number, totalImages: number): string => {
+        if (totalImages === 1) return styles.imageSingle;
+        if (index === 0) return styles.imageLeft;
+        if (index === totalImages - 1) return styles.imageRight;
+        return styles.imageMiddle;
+    }
+
     const isValidSource = (title: string) => {
         return title && title !== "";
     };
 
-    if (loading || !imageOne.image.imageUrlWeb) {
+    if (loading || imageItems.length === 0) {
         return <div></div>
     }
 
@@ -78,7 +68,6 @@ export default function PhotoBlockComponent({
 
     }
 
-    // TODO: Update this to simply map our items, and depending on the 'length' of the array being passed, we pass specific css classNames for specific padding styling
     return (
         <>
             <div style={{
@@ -90,44 +79,32 @@ export default function PhotoBlockComponent({
                         : {marginBottom: '1rem', flexDirection: 'row'}
                 )
             } as React.CSSProperties}>
-                <Image src={isValidSource(imageOne?.image?.imageUrlWeb) ? `${imageOne.image.imageUrlWeb}` : ""}
-                       alt="Photo"
-                       width={Math.round(imageOne?.width)}
-                       height={Math.round(imageOne?.height)}
-                       className={`
-                            ${styles.imageOne} 
-                            ${isEditMode && styles.imageEdit}
-                            ${isSelected(imageOne.image) && styles.imageSelected}
-                       `}
-                       unoptimized={true}
-                       onClick={() => handleClick(imageOne?.image)}
-                />
-                {imageTwo && (
-                    <Image src={isValidSource(imageTwo?.image?.imageUrlWeb) ? `${imageTwo.image.imageUrlWeb}` : ""}
-                           alt="Photo"
-                           className={`
-                              ${imageThree ? styles.imageTwoOfThree : styles.imageTwo}
-                              ${isEditMode && styles.imageEdit}
-                              ${isSelected(imageTwo.image) && styles.imageSelected}
-                           `}
-                           width={Math.round(imageTwo?.width)}
-                           height={Math.round(imageTwo?.height)}
-                           onClick={() => handleClick(imageTwo?.image)}
-                    />
-                )}
-                {imageThree && (
-                    <Image src={isValidSource(imageThree?.image?.imageUrlWeb) ? `${imageThree.image.imageUrlWeb}` : ""}
-                           alt="Photo"
-                           className={`
-                               ${styles.imageThree} 
-                               ${isEditMode && styles.imageEdit}
-                               ${isSelected(imageThree.image) && styles.imageSelected}
-                           `}
-                           width={Math.round(imageThree.width)}
-                           height={Math.round(imageThree.height)}
-                           onClick={() => handleClick(imageThree?.image)}
-                    />
-                )}
+                {imageItems.map((item, index) => (
+                    item && item.image && isValidSource(item.image.imageUrlWeb) && (
+                        <Image
+                            key={item.image.id}
+                            src={item.image.imageUrlWeb}
+                            alt="photo"
+                            width={Math.round(item.width)}
+                            height={Math.round(item.height)}
+                            className={`
+                                ${getPositionStyle(index, imageItems.length)}
+                                ${isEditMode && styles.imageEdit}
+                                ${isSelected(item.image) && styles.imageSelected}
+                            `}
+                            unoptimized={true}
+                            onClick={() => handleClick(item.image)}
+                            style={{
+                                ...(index === 0 && !isMobile ? {paddingRight: '0.4rem'} : {}),
+                                ...(index > 0 && index < imageItems.length - 1 && !isMobile ? {
+                                    paddingLeft: '0.4rem',
+                                    paddingRight: '0.4rem'
+                                } : {}),
+                                ...(index === imageItems.length - 1 && index !== 0 && !isMobile ? {paddingLeft: '0.4rem'} : {})
+                            }}
+                        />
+                    )
+                ))}
             </div>
         </>
     );

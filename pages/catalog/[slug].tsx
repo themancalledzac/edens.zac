@@ -93,7 +93,6 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
         };
 
         window.addEventListener('keydown', handleKeyDown);
-        console.log({imageChunks});
 
         return () => {
             window.removeEventListener('keydown', handleKeyDown);

@@ -319,26 +319,31 @@
 }
 
 .image {
-  //margin-bottom: 1rem;
+  margin: 0;
 }
 
-.imageOne {
+.imageSingle {
+  @extend .image;
+  width: 100%;
+}
+
+.imageLeft {
   @extend .image;
   padding-right: 0.4rem;
 }
 
-.imageTwo {
+.imageRight {
   @extend .image;
   padding-left: 0.4rem;
 }
 
-.imageTwoOfThree {
+.imageMiddle {
   @extend .image;
   padding-left: 0.4rem;
   padding-right: 0.4rem;
 }
 
-.imageThree {
+.imageRight {
   @extend .image;
   padding-left: 0.4rem;
 }
