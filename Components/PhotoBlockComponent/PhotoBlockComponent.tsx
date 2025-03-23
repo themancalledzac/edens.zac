@@ -2,7 +2,7 @@ import styles from "../../styles/Home.module.scss";
 import React, {useEffect, useState} from "react";
 import Image from "next/image";
 import {Image as ImageType} from "@/types/Image";
-import {calculateImageSizes, calculateImageSizesReturn, DisplayImage} from "@/utils/imageUtils";
+import {calculateImageSizes, calculateImageSizesReturn} from "@/utils/imageUtils";
 import {useEditContext} from "@/context/EditContext";
 
 interface PhotoBlockComponentProps {
@@ -33,6 +33,15 @@ export default function PhotoBlockComponent({
      */
     useEffect(() => {
         try {
+            // Filter out invalid images before calculation
+            const validPhotos = photos.filter(photo => isValidUrl(photo?.imageUrlWeb));
+
+            // if no valid photos, don't try to calculate sizes
+            if (validPhotos.length === 0) {
+                setImageItems([]);
+                setLoading(false);
+                return;
+            }
             const calculatedValues = calculateImageSizes(photos, componentWidth);
             setImageItems(calculatedValues);
         } catch (error) {
@@ -56,16 +65,21 @@ export default function PhotoBlockComponent({
         return styles.imageMiddle;
     }
 
-    const isValidSource = (title: string) => {
-        return title && title !== "";
+    /**
+     * Verifies image source.
+     * Need to update for URL use cases.
+     * @param url
+     */
+    const isValidUrl = (url?: string): boolean => {
+        return !!url && url != "";
     };
 
     if (loading || imageItems.length === 0) {
         return <div></div>
     }
 
-    const isSelected = (image: ImageType) => {
-        return selectedForSwap && selectedForSwap.id === image?.id;
+    const isSelected = (image: ImageType): Boolean => {
+        return !!selectedForSwap && selectedForSwap.id === image?.id;
 
     }
 
@@ -81,7 +95,7 @@ export default function PhotoBlockComponent({
                 )
             } as React.CSSProperties}>
                 {imageItems.map((item, index) => (
-                    item && item.image && isValidSource(item.image.imageUrlWeb) && (
+                    item && item.image && isValidUrl(item.image.imageUrlWeb) && (
                         <Image
                             key={item.image.id}
                             src={item.image.imageUrlWeb}

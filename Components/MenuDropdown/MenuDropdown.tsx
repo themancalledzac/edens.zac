@@ -1,6 +1,6 @@
 import styles from "./MenuDropdown.module.scss";
 import {CircleX, Undo2} from "lucide-react";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import InstagramIcon from "../InstagramIcon/InstagramIcon";
 import {handleClick, handleInputChange, handleSubmit} from "@/Components/MenuDropdown/MenuUtils";
 import {useRouter} from "next/router";
@@ -19,14 +19,9 @@ export default function MenuDropdown({dropdownRef, showDropdown, setShowDropdown
 
     // Determine if we are on a catalog or blog page
     const currentSlug = router.query.slug as string;
-    const currentType = router.pathname.startsWith('/catalog/') ? 'catalog' : router.pathname.startsWith('/blog/') ? 'blog' : '';
     const isItemPage = currentSlug !== '';
 
     const handleUpdateClick = () => {
-        // TODO: Determine the best approach for navigation
-        // Option 1: pass the current data via router state
-        // Option 2: Use a query parameter to tell the update page what to fetch ( current until we fix )
-        console.log('setIsEditMode to true');
         setIsEditMode(!isEditMode);
         setShowDropdown(!showDropdown);
     }
@@ -44,7 +39,7 @@ export default function MenuDropdown({dropdownRef, showDropdown, setShowDropdown
             <>
                 {isItemPage ? (
                     <div className={styles.dropdownMenuItem} onClick={handleUpdateClick}>
-                        <h2 className={styles.dropdownMenuOptions}>Update</h2>
+                        <h2 className={styles.dropdownMenuOptions}>{isEditMode ? 'Cancel Update' : 'Update'}</h2>
                     </div>
                 ) : (
                     <div className={styles.dropdownMenuItem} onClick={handleCreateClick}>

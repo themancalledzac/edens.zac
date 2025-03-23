@@ -1,5 +1,6 @@
 import React, {createContext, useContext, useState} from "react";
 import {Image} from "@/types/Image";
+import {Catalog} from "@/types/Catalog";
 
 interface EditContextState {
     isEditMode: boolean;
@@ -10,6 +11,8 @@ interface EditContextState {
     setCurrentEditType: (value: string | null) => void;
     selectedForSwap: Image | null;
     setSelectedForSwap: (value: Image | null) => void;
+    editCatalog: Catalog | null;
+    setEditCatalog: (value: Catalog | null) => void;
 }
 
 const EditContext = createContext<EditContextState | undefined>(undefined);
@@ -31,6 +34,7 @@ export const EditProvider: React.FC<EditProviderProps> = ({children}) => {
     const [imageSelected, setImageSelected] = useState(null);
     const [currentEditType, setCurrentEditType] = useState<string | null>(null);
     const [selectedForSwap, setSelectedForSwap] = useState<Image | null>(null);
+    const [editCatalog, setEditCatalog] = useState<Catalog | null>(null);
 
     const value = {
         isEditMode,
@@ -40,7 +44,9 @@ export const EditProvider: React.FC<EditProviderProps> = ({children}) => {
         currentEditType,
         setCurrentEditType,
         selectedForSwap,
-        setSelectedForSwap
+        setSelectedForSwap,
+        editCatalog,
+        setEditCatalog
     };
 
     return (

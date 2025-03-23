@@ -20,10 +20,16 @@
 .catalogHeader {
   text-align: left;
   margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
 
   @media (max-width: 768px) {
     padding-left: 12px;
   }
+}
+
+.catalogHeaderLeft {
+  flex-grow: inherit;
 }
 
 .photoBlockWrapper {
