@@ -32,19 +32,22 @@ interface AppProviderProps {
 export const AppProvider: React.FC<AppProviderProps> = ({children}) => {
     const [photoDataList, setPhotoDataList] = useState<Image[]>([]);
     const [currentCatalog, setCurrentCatalog] = useState<string>('');
-    const [isMobile, setIsMobile] = useState<boolean>(false);
+    const [isMobile, setIsMobile] = useState<boolean>(true);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
 
     useEffect(() => {
         const checkIsMobile = () => {
-            setIsMobile(window.innerWidth <= 768); // You can adjust this threshold
+            const width = window.innerWidth ||
+                document.documentElement.clientWidth ||
+                document.body.clientWidth;
+            setIsMobile(width <= 768); // You can adjust this threshold
         };
 
         // Check initially
         checkIsMobile();
 
-        // Add event listener for window resize
+        // Set up event listener for window resize
         window.addEventListener('resize', checkIsMobile);
 
         // Cleanup

@@ -319,31 +319,64 @@
 }
 
 .image {
-  margin-bottom: 1rem;
-  border: 2px solid white;
+  margin: 0;
 }
 
-.imageOne {
+.imageSingle {
   @extend .image;
-  margin-left: 1rem;
-  margin-right: 0.5rem;
+  width: 100%;
 }
 
-.imageTwo {
+.imageLeft {
   @extend .image;
-  margin-right: 1rem;
-  margin-left: 0.5rem;
+  padding-right: 0.4rem;
 }
 
-.imageOne .imageTwo {
-  @media (max-width: 768px) {
-    width: 100% !important;
-    height: auto !important;
-    margin: 0 !important;
+.imageRight {
+  @extend .image;
+  padding-left: 0.4rem;
+}
+
+.imageMiddle {
+  @extend .image;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+}
+
+.imageRight {
+  @extend .image;
+  padding-left: 0.4rem;
+}
+
+.imageEdit {
+  border: 10px solid white;
+
+  &:hover {
+    border: 11px solid white;
+    opacity: 75%;
   }
 }
 
-@media (max-width: 600px) {
+.imageSelected {
+  opacity: 75%;
+  background-color: rgba(255, 0, 0, 1.00);
+  background-blend-mode: color-burn;
+  //border: 11px solid red;
+
+}
+
+@media (max-width: 768px) {
+
+  .image {
+    border-width: 12px 12px 0 12px;
+    border-style: solid;
+    border-color: white;
+    margin: 0;
+    width: 100%;
+    height: auto;
+    padding: 0 0 0 0;
+  }
+
   .grid {
     width: 100%;
     flex-direction: column;

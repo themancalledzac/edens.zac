@@ -1,40 +1,49 @@
 import styles from "../../styles/Home.module.scss";
 import React, {useEffect, useState} from "react";
-import ImageFullScreen from "../ImageFullScreen/ImageFullScreen";
 import Image from "next/image";
-import {calculateImageSizes} from "@/utils/imageUtils";
+import {Image as ImageType} from "@/types/Image";
+import {calculateImageSizes, calculateImageSizesReturn} from "@/utils/imageUtils";
+import {useEditContext} from "@/context/EditContext";
+
+interface PhotoBlockComponentProps {
+    componentWidth: number;
+    photos: ImageType[];
+    isMobile: boolean;
+    handleImageClick: (image: ImageType) => void;
+    selectedForSwap: ImageType;
+}
 
 /**
  * Photo Block Component which can contain 1 or 2 images, depending on Rating.
- * @param {Array} photos
- * @param {boolean} isMobile
- * @param {number} componentWidth
- * @param {Image} imageSelected
- * @param {Function} setImageSelected Function to update the selected image state
- * @constructor
  */
 export default function PhotoBlockComponent({
-                                                componentWidth = 800,
+                                                componentWidth,
                                                 photos,
                                                 isMobile,
-                                                imageSelected,
-                                                setImageSelected
-                                            }) {
+                                                handleImageClick,
+                                                selectedForSwap
+                                            }: PhotoBlockComponentProps) {
     const [loading, setLoading] = useState(true);
-    const [imageOne, setImageOne] = useState(photos[0]);
-    const [imageTwo, setImageTwo] = useState(photos.length > 1 ? photos[1] : null);
-    const handleClick = async (image) => {
-        await setImageSelected(image);
-    }
+    const {isEditMode} = useEditContext();
+    const [imageItems, setImageItems] = useState<calculateImageSizesReturn[]>([]);
 
-
+    /**
+     * Hook to calculate Image sizes, recalculated when photos or componentWidth change.
+     * This is an important hook in that, on reorder, this is in charge of recalculation.
+     */
     useEffect(() => {
         try {
-            const calculatedValues = calculateImageSizes(photos, componentWidth);
-            setImageOne(calculatedValues[0]);
-            if (calculatedValues.length > 1) {
-                setImageTwo(calculatedValues[1]);
+            // Filter out invalid images before calculation
+            const validPhotos = photos.filter(photo => isValidUrl(photo?.imageUrlWeb));
+
+            // if no valid photos, don't try to calculate sizes
+            if (validPhotos.length === 0) {
+                setImageItems([]);
+                setLoading(false);
+                return;
             }
+            const calculatedValues = calculateImageSizes(photos, componentWidth);
+            setImageItems(calculatedValues);
         } catch (error) {
             console.error(error);
         } finally {
@@ -42,19 +51,42 @@ export default function PhotoBlockComponent({
         }
     }, [photos, componentWidth]);
 
-    const isValidSource = (title) => {
-        return title && title !== "";
+    /**
+     * Associates images with their correct css styling based on images per block, and image location(left/middle/right)
+     *
+     * @param index - What number image we are dealing with.
+     * @param totalImages - Total number of images.
+     * @returns Returns styling.
+     */
+    const getPositionStyle = (index: number, totalImages: number): string => {
+        if (totalImages === 1) return styles.imageSingle;
+        if (index === 0) return styles.imageLeft;
+        if (index === totalImages - 1) return styles.imageRight;
+        return styles.imageMiddle;
+    }
+
+    /**
+     * Verifies image source.
+     * Need to update for URL use cases.
+     * @param url
+     */
+    const isValidUrl = (url?: string): boolean => {
+        return !!url && url != "";
     };
 
-    if (loading) {
+    if (loading || imageItems.length === 0) {
         return <div></div>
+    }
+
+    const isSelected = (image: ImageType): Boolean => {
+        return !!selectedForSwap && selectedForSwap.id === image?.id;
+
     }
 
     return (
         <>
             <div style={{
                 display: 'flex',
-                width: `${componentWidth}px`,
                 justifyContent: 'center',
                 alignItems: 'center',
                 ...(isMobile
@@ -62,35 +94,33 @@ export default function PhotoBlockComponent({
                         : {marginBottom: '1rem', flexDirection: 'row'}
                 )
             } as React.CSSProperties}>
-                <Image src={isValidSource(imageOne?.imageUrlWeb) ? `${imageOne.imageUrlWeb}` : ""}
-                       alt="Photo"
-                       width={Math.round(imageOne.width)}
-                       height={Math.round(imageOne.height)}
-                       className={styles.imageOne}
-                       unoptimized={true}
-                       onClick={() => handleClick(imageOne)}
-                       style={isMobile ? {margin: '0', width: '100%', height: 'auto'} : {
-                           margin: '0',
-                           marginRight: '0'
-                       }}
-                />
-                {imageTwo && (
-                    <Image src={isValidSource(imageTwo.imageUrlWeb) ? `${imageTwo.imageUrlWeb}` : ""}
-                           alt="Photo"
-                           className={styles.imageTwo}
-                           width={Math.round(imageTwo.width)}
-                           height={Math.round(imageTwo.height)}
-                           onClick={() => handleClick(imageTwo)}
-                           style={isMobile ? {margin: '0', width: '100%', height: 'auto'} : {
-                               margin: '0',
-                               marginLeft: '0'
-                           }}
-                    />
-                )}
+                {imageItems.map((item, index) => (
+                    item && item.image && isValidUrl(item.image.imageUrlWeb) && (
+                        <Image
+                            key={item.image.id}
+                            src={item.image.imageUrlWeb}
+                            alt="photo"
+                            width={Math.round(item.width)}
+                            height={Math.round(item.height)}
+                            className={`
+                                ${getPositionStyle(index, imageItems.length)}
+                                ${isEditMode && styles.imageEdit}
+                                ${isSelected(item.image) && styles.imageSelected}
+                            `}
+                            unoptimized={true}
+                            onClick={() => handleImageClick(item.image)}
+                            style={{
+                                ...(index === 0 && !isMobile ? {paddingRight: '0.4rem'} : {}),
+                                ...(index > 0 && index < imageItems.length - 1 && !isMobile ? {
+                                    paddingLeft: '0.4rem',
+                                    paddingRight: '0.4rem'
+                                } : {}),
+                                ...(index === imageItems.length - 1 && index !== 0 && !isMobile ? {paddingLeft: '0.4rem'} : {})
+                            }}
+                        />
+                    )
+                ))}
             </div>
-            {imageSelected && (
-                <ImageFullScreen setImageSelected={setImageSelected} imageSelected={imageSelected}/>
-            )}
         </>
     );
 };

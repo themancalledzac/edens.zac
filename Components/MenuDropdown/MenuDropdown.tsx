@@ -1,58 +1,61 @@
 import styles from "./MenuDropdown.module.scss";
 import {CircleX, Undo2} from "lucide-react";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import InstagramIcon from "../InstagramIcon/InstagramIcon";
 import {handleClick, handleInputChange, handleSubmit} from "@/Components/MenuDropdown/MenuUtils";
 import {useRouter} from "next/router";
 import {isLocalEnvironment} from "@/utils/environment";
-import {MenuDropdownAdmin} from "@/Components/MenuDropdownAdmin/MenuDropdownAdmin";
+import {useAppContext} from "@/context/AppContext";
+import {useEditContext} from "@/context/EditContext";
 
 export default function MenuDropdown({dropdownRef, showDropdown, setShowDropdown}) {
     const [aboutDropdownVisible, setAboutDropdownVisible] = useState(false);
     const [contactDropdownVisible, setContactDropdownVisible] = useState(false);
     const [formData, setFormData] = useState({title: '', message: ''});
-    const [isMobile, setIsMobile] = useState(false);
+    const {isEditMode, setIsEditMode} = useEditContext();
     const router = useRouter();
 
+    const isMobile = useAppContext().isMobile;
 
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth <= 768); // You can adjust this threshold
-        };
+    // Determine if we are on a catalog or blog page
+    const currentSlug = router.query.slug as string;
+    const isItemPage = currentSlug !== '';
 
-        checkMobile(); // Check on initial load
-        window.addEventListener('resize', checkMobile);
+    const handleUpdateClick = () => {
+        setIsEditMode(!isEditMode);
+        setShowDropdown(!showDropdown);
+    }
 
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
+    const handleCreateClick = () => {
+        router.push('/create');
+    }
 
-    // TODO: Update this so it uses our conditional rendering based on if Local
-    // const adminMenu = () => {
-    //     if (!isLocalEnvironment()) {
-    //         return null;
-    //     }
-    //     // if (!isLocal) return null;
-    //     return (
-    //         <>
-    //             <div className={styles.dropdownMenuItem} onClick={() => handleClick('/cdn/upload', router)}>
-    //                 <h2 className={styles.dropdownMenuOptions}
-    //                     onClick={() => setAboutDropdownVisible(!aboutDropdownVisible)}>Upload</h2>
-    //             </div>
-    //             <div className={styles.dropdownMenuItem} onClick={() => handleClick('/cdn/catalog', router)}>
-    //                 <h2 className={styles.dropdownMenuOptions}
-    //                     onClick={() => setAboutDropdownVisible(!aboutDropdownVisible)}>Catalogs</h2>
-    //             </div>
-    //             <div className={styles.dropdownMenuItem} onClick={() => handleClick('/cdn/search', router)}>
-    //                 <h2 className={styles.dropdownMenuOptions}
-    //                     onClick={() => setAboutDropdownVisible(!aboutDropdownVisible)}>Tags</h2>
-    //             </div>
-    //             <div className={styles.dropdownMenuItem} onClick={() => handleClick('/cdn/search', router)}>
-    //                 <h2 className={styles.dropdownMenuOptions}
-    //                     onClick={() => setAboutDropdownVisible(!aboutDropdownVisible)}>Search</h2>
-    //             </div>
-    //         </>
-    //     )
-    // }
+    const adminMenu = () => {
+        if (!isLocalEnvironment()) {
+            return null;
+        }
+
+        return (
+            <>
+                {isItemPage ? (
+                    <div className={styles.dropdownMenuItem} onClick={handleUpdateClick}>
+                        <h2 className={styles.dropdownMenuOptions}>{isEditMode ? 'Cancel Update' : 'Update'}</h2>
+                    </div>
+                ) : (
+                    <div className={styles.dropdownMenuItem} onClick={handleCreateClick}>
+                        <h2 className={styles.dropdownMenuOptions}>Create</h2>
+                    </div>
+                )}
+                <div className={styles.dropdownMenuItem} onClick={() => handleClick('/cdn/catalog', router)}>
+                    <h2 className={styles.dropdownMenuOptions}>Catalogs</h2>
+                </div>
+                <div className={styles.dropdownMenuItem} onClick={() => handleClick('/cdn/search', router)}>
+                    <h2 className={styles.dropdownMenuOptions}>Tags</h2>
+                </div>
+            </>
+        )
+    }
+
 
     const aboutMenu = () => {
         return (
@@ -119,12 +122,9 @@ export default function MenuDropdown({dropdownRef, showDropdown, setShowDropdown
     const defaultMenu = () => {
         return (
             <div className={styles.dropdownMenuOptionsWrapper}>
-                {isLocalEnvironment() &&
-                    <MenuDropdownAdmin setAboutDropdownVisible={setAboutDropdownVisible}
-                                       aboutDropdownVisible={aboutDropdownVisible}/>
-                }
+                {isLocalEnvironment() && adminMenu()}
                 <div className={styles.dropdownMenuItem}>
-                    <h2 className={styles.dropdownMenuOptions}
+                    <h2 className={styles.dropdownMenuItem}
                         onClick={() => setAboutDropdownVisible(!aboutDropdownVisible)}>About</h2>
                 </div>
                 <div className={styles.dropdownMenuItem}>

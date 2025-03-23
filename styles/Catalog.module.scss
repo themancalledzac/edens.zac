@@ -4,8 +4,10 @@
   margin-bottom: 2rem;
 
   &.mobile {
-    margin-left: 1rem;
-    margin-right: 1rem;
+    width: 100%;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    box-sizing: border-box;
   }
 }
 
@@ -18,10 +20,16 @@
 .catalogHeader {
   text-align: left;
   margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
 
   @media (max-width: 768px) {
-    padding: 0 1rem;
+    padding-left: 12px;
   }
+}
+
+.catalogHeaderLeft {
+  flex-grow: inherit;
 }
 
 .photoBlockWrapper {
@@ -32,16 +40,41 @@
 
   &.mobileWrapper {
     align-items: stretch; // Full width on mobile
+    width: 100%;
   }
 }
 
 .catalogTitle {
   font-size: 2.5rem;
   margin-bottom: 1rem;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    font-size: 1.8rem;
+  }
+}
+
+.catalogTitleEdit {
+  color: red;
+  margin: 0 1rem 2rem 1rem;
 }
 
 .catalogDescription {
   font-size: 1.1rem;
   line-height: 1.6;
   color: #333;
+
+  @media (max-width: 768px) {
+    font-size: 0.9rem;
+  }
+}
+
+.photoBlockContainer {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 }
