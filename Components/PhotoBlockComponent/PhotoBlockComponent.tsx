@@ -109,14 +109,6 @@ export default function PhotoBlockComponent({
                             `}
                             unoptimized={true}
                             onClick={() => handleImageClick(item.image)}
-                            style={{
-                                ...(index === 0 && !isMobile ? {paddingRight: '0.4rem'} : {}),
-                                ...(index > 0 && index < imageItems.length - 1 && !isMobile ? {
-                                    paddingLeft: '0.4rem',
-                                    paddingRight: '0.4rem'
-                                } : {}),
-                                ...(index === imageItems.length - 1 && index !== 0 && !isMobile ? {paddingLeft: '0.4rem'} : {})
-                            }}
                         />
                     )
                 ))}
