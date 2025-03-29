@@ -75,3 +75,31 @@ export async function fetchCatalogBySlug(slug: string): Promise<Catalog> {
         console.error(`Error fetching catalog "${slug}:`, error);
     }
 }
+
+export const updateCatalog = async (catalog: Catalog): Promise<Catalog> => {
+    try {
+        const response = await fetch(`http://localhost:8080/api/v1/catalog/update/`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                id: catalog.id,
+                title: catalog.title,
+                location: catalog.location,
+                priority: catalog.priority,
+                coverImageUrl: catalog.coverImageUrl,
+                people: catalog.people,
+                tags: catalog.tags,
+                slug: catalog.slug,
+                date: catalog.date,
+                updateHomeCard: true,
+                images: catalog.images
+            }),
+        });
+        return await response.json();
+    } catch (error) {
+        console.error(`Error fetching catalog "${catalog.id}:`, error);
+        throw error;
+    }
+}

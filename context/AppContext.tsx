@@ -1,5 +1,6 @@
 import React, {createContext, useState, useContext, useEffect} from 'react';
 import {Image} from "@/types/Image";
+import {Catalog} from "@/types/Catalog";
 
 // Creating the context object and exporting so that other components can use it.
 // export const AppContext = createContext();
@@ -7,8 +8,8 @@ import {Image} from "@/types/Image";
 interface AppContextState {
     photoDataList: Image[]; // TODO: Verify that this DataList is an Image(metadata) List. CONFIRM
     setPhotoDataList: (data: Image[]) => void;
-    currentCatalog: string;
-    setCurrentCatalog: (value: string) => void;
+    currentCatalog: Catalog | null;
+    setCurrentCatalog: (value: Catalog | null) => void;
     isMobile: boolean;
     setIsMobile: (value: boolean) => void;
     isLoading: boolean;
@@ -31,7 +32,7 @@ interface AppProviderProps {
 
 export const AppProvider: React.FC<AppProviderProps> = ({children}) => {
     const [photoDataList, setPhotoDataList] = useState<Image[]>([]);
-    const [currentCatalog, setCurrentCatalog] = useState<string>('');
+    const [currentCatalog, setCurrentCatalog] = useState<Catalog | null>(null);
     const [isMobile, setIsMobile] = useState<boolean>(true);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 

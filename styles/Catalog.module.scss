@@ -25,6 +25,7 @@
 
   @media (max-width: 768px) {
     padding-left: 12px;
+    padding-right: 12px;
   }
 }
 
@@ -47,7 +48,7 @@
 .catalogTitle {
   font-size: 2.5rem;
   margin-bottom: 1rem;
-  width: 100%;
+  margin-top: 3rem;
 
   @media (max-width: 768px) {
     font-size: 1.8rem;

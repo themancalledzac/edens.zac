@@ -111,7 +111,7 @@
 }
 
 .sideBarButton:hover {
-  font-family: "Apple SD Gothic Neo";
+  font-family: "Apple SD Gothic Neo", serif;
   padding-left: 0.2rem;
   font-size: 2.55rem;
   color: #d8d8d8;
@@ -143,10 +143,8 @@
 
 .main {
   min-height: 100vh;
-  flex-grow: 5;
-  padding: 1rem 0;
   max-width: 2500px;
-  padding-right: 1rem;
+  padding: 1rem 1rem 1rem 0;
   margin-top: auto;
   /*opacity: 50%;*/
   flex: 0 1 auto;
@@ -322,11 +320,6 @@
   margin: 0;
 }
 
-.imageSingle {
-  @extend .image;
-  width: 100%;
-}
-
 .imageLeft {
   @extend .image;
   padding-right: 0.4rem;
@@ -349,17 +342,26 @@
 }
 
 .imageEdit {
-  border: 10px solid white;
+  //border: 10px solid white;
+
+  padding: 1rem 1rem 1rem 1rem;
 
   &:hover {
-    border: 11px solid white;
+    border: 2px solid white;
     opacity: 75%;
   }
 }
 
+.imageSingle {
+  @extend .image;
+  //width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
 .imageSelected {
   opacity: 75%;
-  background-color: rgba(255, 0, 0, 1.00);
+  background-color: rgba(255, 0, 0, 0.62);
   background-blend-mode: color-burn;
   //border: 11px solid red;
 

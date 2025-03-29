@@ -1,8 +1,8 @@
 import PhotoBlockComponent from "../../Components/PhotoBlockComponent/PhotoBlockComponent";
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import styles from '../../styles/Catalog.module.scss';
 import Header from "../../Components/Header/Header";
-import {fetchCatalogBySlug} from "@/lib/api/catalogs";
+import {fetchCatalogBySlug, updateCatalog} from "@/lib/api/catalogs";
 import {Catalog} from "@/types/Catalog";
 import {Image} from "@/types/Image";
 import {chunkImages, swapImages} from "@/utils/imageUtils";
@@ -25,14 +25,14 @@ export async function getServerSideProps({params}) {
         const slug: string = params?.slug as string;
         const catalog: Catalog = await fetchCatalogBySlug(slug);
 
-        // We can only do the chunking on the server, not the sizing
-        // as sizing depends on client viewport dimensions
-        const imageChunks: Image[][] = chunkImages(catalog.images, 3);
+        // // We can only do the chunking on the server, not the sizing
+        // // as sizing depends on client viewport dimensions
+        // const imageChunks: Image[][] = chunkImages(catalog.images, 3);
 
         return {
             props: {
-                catalog,
-                imageChunks
+                catalog
+                // imageChunks
             },
         };
     } catch (error) {
@@ -55,11 +55,11 @@ export async function getServerSideProps({params}) {
  *  -
  *
  * @param catalog Catalog data.
- * @param initialImageChunks Images from the database, in order.
+ // * @param initialImageChunks Images from the database, in order.
  * @constructor
  */
-const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProps) => {
-    const {isMobile} = useAppContext();
+const CatalogPage = ({catalog}: CatalogPageProps) => {
+    const {isMobile, currentCatalog, setCurrentCatalog} = useAppContext();
     const [contentWidth, setContentWidth] = useState(800);
     const {
         isEditMode,
@@ -69,12 +69,28 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
         selectedForSwap,
         setSelectedForSwap,
         editCatalog,
-        setEditCatalog
+        setEditCatalog,
     } = useEditContext();
 
-    // Update state
-    const [imageChunks, setImageChunks] = useState<Image[][]>(initialImageChunks);
+    const [isTitleEdit, setIsTitleEdit] = useState<boolean>(false);
+    const [isParagraphEdit, setIsParagraphEdit] = useState<boolean>(false);
     const testParagraph = "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Amet asperiores at, cumque deleniti dignissimos ducimus error ipsa libero minima nisi obcaecati quos, repellendus repudiandae sequi sit voluptate voluptatem? Ad assumenda, autem error facilis harum non pariatur placeat qui tenetur. Accusamus aliquid deleniti eligendi labore maiores nobis placeat quas reiciendis tempore.";
+    const imageChunks = useMemo(() => {
+        // When editing, use editCatalog's images
+        const sourceImages = isEditMode && editCatalog
+            ? editCatalog?.images
+            : currentCatalog?.images;
+        return chunkImages(sourceImages, 3);
+    }, [currentCatalog, editCatalog, isEditMode, catalog]);
+
+    /**
+     * Hook that updates current catalog on update.
+     */
+    useEffect(() => {
+        if (catalog && (!currentCatalog || currentCatalog.id !== catalog.id)) {
+            setCurrentCatalog(catalog);
+        }
+    }, [catalog, currentCatalog]);
 
     /**
      * Function to handle Image position change.
@@ -103,16 +119,48 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
                 ...editCatalog,
                 images: newImages
             })
-            setImageChunks(newChunks);
             setSelectedForSwap(null);
         }
     }
 
-    const handleSaveChanges = () => {
-        setEditCatalog(null);
-        setImageChunks(initialImageChunks);
+    const handleTitleChange = (e) => {
+        setEditCatalog({
+            ...editCatalog,
+            title: e.target.value
+        })
+    }
 
-        setIsEditMode(false);
+    const handleParagraphChange = (e) => {
+        setEditCatalog({
+            ...editCatalog,
+            paragraph: e.target.value
+        })
+    }
+
+    const handleSaveChanges = async () => {
+        try {
+            if (!editCatalog) return;
+
+            const updatedCatalog = await updateCatalog(editCatalog);
+            console.log('Before context update:', currentCatalog?.title);
+            setCurrentCatalog(updatedCatalog);
+
+            // const newImageChunks = chunkImages(updatedCatalog.images, 3);
+
+            console.log("After context update:", currentCatalog?.title);
+            setEditCatalog(null);
+            setIsEditMode(false);
+
+            setIsParagraphEdit(false);
+            setIsTitleEdit(false);
+
+        } catch (error) {
+            console.error('Failed to save changes:', error);
+        } finally {
+
+            // setEditCatalog(null);
+            // setIsEditMode(false);
+        }
     };
 
     /**
@@ -127,19 +175,40 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
         }
     };
 
+    const handleImageUpload = () => {
+        // TODO:
+        //  - On Button Click, we need to emulate our current 'upload' page logic.
+        //  - Will need to be a pop-out / Modal, OR, could simply push down all 'current' images with new images up top
+        //  - Simple upload, simply select images for now
+        //  - Future would be adding 'tags' or 'people' or 'location' for ALL images / individual
+    }
+
+    const handleSelectCoverImage = (image: Image) => {
+        // TODO:
+        //  - Set Image As Cover Image
+        //  - Need a 'hover' or otherwise BUTTON to determine clicking for a cover image
+        //  - Better yet would be a 'selectCoverImage' button in our 'updateToolbar', that updates 'selectImage' logic to instead select Coverimage instead.
+        //  - On select of cover image, we would turn off 'isSetCoverImage' state
+    }
+
+    const handleCancelUpdate = () => {
+        setEditCatalog(null);
+        setIsParagraphEdit(false);
+        setIsTitleEdit(false);
+    }
+
     /**
      * Hook to handle Catalog in Update/Edit mode.
      */
     useEffect(() => {
         if (isEditMode) {
             setEditCatalog({
-                ...catalog,
+                ...currentCatalog,
             });
         } else {
             setEditCatalog(null);
-            setImageChunks(initialImageChunks);
         }
-    }, [isEditMode, catalog, setEditCatalog, initialImageChunks]);
+    }, [isEditMode, currentCatalog, setEditCatalog]);
 
     /**
      * Hook to handle Arrow Clicks on ImageFullScreen.
@@ -204,9 +273,39 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
                     className={styles.catalogHeader}
                     style={isMobile ? {width: '100%'} : {width: `${contentWidth}px`, margin: '0 auto'}}
                 >
-                    <h1 className={`${styles.catalogTitle} ${isEditMode && styles.catalogTitleEdit}`}>{catalog.title}</h1>
-                    {catalog.paragraph || isEditMode && (
-                        <p className={`${styles.catalogDescription} ${isEditMode && styles.descriptionEdit}`}>{catalog.paragraph ? catalog.paragraph : testParagraph}</p>
+                    {isTitleEdit ? (
+                        isEditMode && (
+
+                            <input
+                                type="text"
+                                value={editCatalog?.title}
+                                onChange={handleTitleChange}
+                                className={`${styles.catalogTitle} ${styles.catalogTitleEdit}`}
+                            />
+                        )
+                    ) : (
+                        <h1 className={`${styles.catalogTitle} ${isEditMode && styles.catalogTitleEdit}`}
+                            onClick={() => isEditMode && setIsTitleEdit(!isTitleEdit)}>
+                            {isEditMode && editCatalog ? editCatalog.title : (currentCatalog?.title || catalog?.title)}
+                        </h1>
+                    )}
+                    {isParagraphEdit ? (
+                        isEditMode && (
+                            <input
+                                type="text"
+                                value={editCatalog?.paragraph}
+                                onChange={handleParagraphChange}
+                                className={`${styles.catalogDescription} ${styles.catalogDescriptionEdit}`}
+                            />
+                        )
+                    ) : (
+                        <p
+                            onClick={() => isEditMode && setIsParagraphEdit(!isParagraphEdit)}
+                            className={`${styles.catalogDescription} ${isEditMode && styles.descriptionEdit}`}
+                        >
+                            {currentCatalog?.paragraph ? currentCatalog?.paragraph : testParagraph}
+                        </p>
+
                     )}
                 </div>
 
@@ -215,6 +314,7 @@ const CatalogPage = ({catalog, imageChunks: initialImageChunks}: CatalogPageProp
                         contentWidth={contentWidth}
                         isMobile={isMobile}
                         handleCancelChanges={() => setIsEditMode(!isEditMode)}
+                        handleSaveChanges={() => handleSaveChanges()}
                     />
                 )}
 
