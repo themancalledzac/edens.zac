@@ -1,16 +1,16 @@
-import {isLocalEnvironment} from "@/utils/environment";
+import { isLocalEnvironment } from '@/utils/environment';
 
 export async function getServerSideProps() {
-    if (!isLocalEnvironment()) {
-        return {
-            redirect: {
-                destination: '/',
-                permanent: false,
-            },
-        };
-    }
-
+  if (!isLocalEnvironment()) {
     return {
-        props: {}
-    }
+      redirect: {
+        destination: '/',
+        permanent: false,
+      },
+    };
+  }
+
+  return {
+    props: {},
+  };
 }

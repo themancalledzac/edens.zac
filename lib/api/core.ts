@@ -9,13 +9,13 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/a
  * Custom error class for API responses
  */
 export class ApiError extends Error {
-    status: number
+  status: number;
 
-    constructor(message: string, status: number) {
-        super(message);
-        this.status = status;
-        this.name = 'ApiError';
-    }
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = 'ApiError';
+  }
 }
 
 /**
@@ -27,43 +27,43 @@ export class ApiError extends Error {
  * @throws ApiError if the request fails
  */
 export async function fetchFromApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    try {
-        const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+  try {
+    const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
 
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-            ...options,
-        });
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
 
-        // For non-OK responses, throw an ApiError
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new ApiError(
-                errorData?.message || `API error: ${response.status}${response.statusText}`,
-                response.status
-            )
-        }
-
-        // For 204 no content responses, return null
-        if (response.status === 204) {
-            return null as unknown as T;
-        }
-
-        // Parse and return the response data
-        return await response.json();
-
-    } catch (error) {
-        if (error instanceof ApiError) {
-            throw error;
-        }
-
-        // Convert other errors to ApiErrors
-        throw new ApiError(
-            error instanceof Error ? error.message : "Unknown error has occured",
-            500
-        )
+    // For non-OK responses, throw an ApiError
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new ApiError(
+        errorData?.message || `API error: ${response.status}${response.statusText}`,
+        response.status,
+      );
     }
+
+    // For 204 no content responses, return null
+    if (response.status === 204) {
+      return null as unknown as T;
+    }
+
+    // Parse and return the response data
+    return await response.json();
+
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    // Convert other errors to ApiErrors
+    throw new ApiError(
+      error instanceof Error ? error.message : 'Unknown error has occured',
+      500,
+    );
+  }
 }

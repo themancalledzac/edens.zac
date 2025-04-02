@@ -1,5 +1,6 @@
-import {Catalog, CatalogMin} from "./Catalog";
-import {Blog, BlogMin} from "@/types/Blog";
+import { BlogMin } from '@/types/Blog';
+
+import { CatalogMin } from './Catalog';
 
 export type Rating = 1 | 2 | 3 | 4 | 5;
 
@@ -30,26 +31,26 @@ export type Rating = 1 | 2 | 3 | 4 | 5;
  * @property {Date} updateDate - DATE of last edit
  */
 export interface Image {
-    id: number;
-    title: string;
-    imageWidth: number;
-    imageHeight: number;
-    iso: number;
-    author: string;
-    rating: Rating;
-    fStop: string;
-    lens: string;
-    blackAndWhite: boolean;
-    shutterSpeed: string;
-    rawFileName: string;
-    camera: string;
-    focalLength: string;
-    location: string;
-    imageUrlWeb: string | null;
-    imageUrlSmall: string | null;
-    imageUrlRaw: string | null;
-    catalog: CatalogMin[];
-    blogs: BlogMin[];
-    createDate: Date;
-    updateDate: Date;
+  id: number;
+  title: string;
+  imageWidth: number;
+  imageHeight: number;
+  iso: number;
+  author: string;
+  rating: Rating;
+  fStop: string;
+  lens: string;
+  blackAndWhite: boolean;
+  shutterSpeed: string;
+  rawFileName: string;
+  camera: string;
+  focalLength: string;
+  location: string;
+  imageUrlWeb: string | null;
+  imageUrlSmall: string | null;
+  imageUrlRaw: string | null;
+  catalog: CatalogMin[];
+  blogs: BlogMin[];
+  createDate: Date;
+  updateDate: Date;
 }

@@ -1,14 +1,11 @@
-import styles from "../../styles/Home.module.scss";
-import imageDirectory from "../../Images/imageDirectory.json";
-import ParallaxSection from "../ParallaxSection/ParallaxSection.js";
-import { useEffect, useRef } from "react";
+import styles from '../../styles/Home.module.scss';
 
-export default function SideBarItem( { key, value } ) {
+export default function SideBarItem({ key, value }) {
 
-    return (
-        <div className={styles.sideBarItemWrapper}>
-            <h1>{key}</h1>
-            <h2>{value}</h2>
-        </div>
-    )
+  return (
+    <div className={styles.sideBarItemWrapper}>
+      <h1>{key}</h1>
+      <h2>{value}</h2>
+    </div>
+  );
 }

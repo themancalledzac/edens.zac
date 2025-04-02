@@ -2,9 +2,9 @@
  * API functions for home-related operations
  */
 
-import {Blog} from "@/types/Blog";
-import {fetchFromApi} from "@/lib/api/core";
-import {HomeCardModel} from "@/types/HomeCardModel";
+import { fetchFromApi } from '@/lib/api/core';
+import { Blog } from '@/types/Blog';
+import { HomeCardModel } from '@/types/HomeCardModel';
 
 /**
  * Fetches the latest home page
@@ -12,20 +12,20 @@ import {HomeCardModel} from "@/types/HomeCardModel";
  * @returns The latest home page
  */
 export async function fetchHomePage(): Promise<HomeCardModel[]> {
-    try {
-        const homeLayout = await fetchFromApi<HomeCardModel[]>('/home/getHome');
+  try {
+    const homeLayout = await fetchFromApi<HomeCardModel[]>('/home/getHome');
 
-        if (homeLayout && homeLayout.length > 0) {
-            return homeLayout;
-        }
-
-        throw new Error('No home page found');
-    } catch (error) {
-        console.error('Error fetching home page:', error);
-
-        // Fallback
-        return null;
+    if (homeLayout && homeLayout.length > 0) {
+      return homeLayout;
     }
+
+    throw new Error('No home page found');
+  } catch (error) {
+    console.error('Error fetching home page:', error);
+
+    // Fallback
+    return null;
+  }
 }
 
 /**
@@ -35,5 +35,5 @@ export async function fetchHomePage(): Promise<HomeCardModel[]> {
  * @returns The blog data
  */
 export async function fetchBlogById(id: string): Promise<Blog> {
-    return fetchFromApi<Blog>(`/blog/byId/${id}`);
+  return fetchFromApi<Blog>(`/blog/byId/${id}`);
 }
