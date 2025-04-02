@@ -1,14 +1,15 @@
 /**
  * Base utilities for server-side props handling
  */
-import {GetServerSidePropsContext, GetServerSidePropsResult} from "next";
-import {ApiError} from "@/lib/api/core";
+import { GetServerSidePropsContext, GetServerSidePropsResult } from 'next';
+
+import { ApiError } from '@/lib/api/core';
 
 /**
  * Type for any getServerSideProps function
  */
 type GetServerSidePropsFunction = (
-    context: GetServerSidePropsContext
+  context: GetServerSidePropsContext,
 ) => Promise<GetServerSidePropsResult<any>>;
 
 /**
@@ -18,28 +19,26 @@ type GetServerSidePropsFunction = (
  * @returns A wrapped function with error handling
  */
 export function withErrorHandling(propsFn: GetServerSidePropsFunction): GetServerSidePropsFunction {
-    return async (context) => {
-        try {
-            return await propsFn(context);
-        } catch (error) {
-            console.error('Error in getServerSideProps:', error);
+  return async (context) => {
+    try {
+      return await propsFn(context);
+    } catch (error) {
+      console.error('Error in getServerSideProps:', error);
 
-            // Handle API errors
-            if (error instanceof ApiError) {
-                if (error.status === 400) {
-                    return {
-                        notFound: true
-                    };
-                }
-            }
+      // Handle API errors
+      if (error instanceof ApiError && error.status === 400) {
+        return {
+          notFound: true,
+        };
+      }
 
-            // Default error props
-            return {
-                props: {
-                    error: true,
-                    errorMessage: error instanceof Error ? error.message : 'Unknown error occured in GetServerSideProps',
-                }
-            };
-        }
+      // Default error props
+      return {
+        props: {
+          error: true,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error occured in GetServerSideProps',
+        },
+      };
     }
+  };
 }

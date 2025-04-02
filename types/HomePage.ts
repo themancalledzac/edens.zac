@@ -1,5 +1,5 @@
-import {Catalog} from "@/types/Catalog";
-import {Blog} from "@/types/Blog";
+import { Blog } from '@/types/Blog';
+import { Catalog } from '@/types/Catalog';
 
 /**
  * Base interface for all home page items
@@ -7,28 +7,28 @@ import {Blog} from "@/types/Blog";
  *
  */
 export interface HomePageItem {
-    id: number;
-    order: number;
-    title: string;
-    coverImage: string;
-    type: 'catalog' | 'blog' | 'gif' | 'feature' | 'custom';
-    desktopOrder?: number;
-    mobileOrder?: number;
+  id: number;
+  order: number;
+  title: string;
+  coverImage: string;
+  type: 'catalog' | 'blog' | 'gif' | 'feature' | 'custom';
+  desktopOrder?: number;
+  mobileOrder?: number;
 }
 
 /**
  * Catalog-specific homepage item
  */
 export interface CatalogHomeItem extends HomePageItem {
-    type: 'catalog';
-    content?: Catalog;
+  type: 'catalog';
+  content?: Catalog;
 }
 
 export interface BlogHomeItem extends HomePageItem {
-    type: 'blog';
-    displayMode?: 'compact' | 'featured';
-    content?: Blog;
-    // TODO: thoughts on what else we need on the home page object
+  type: 'blog';
+  displayMode?: 'compact' | 'featured';
+  content?: Blog;
+  // TODO: thoughts on what else we need on the home page object
 }
 
 // The full template type

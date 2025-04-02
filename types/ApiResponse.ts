@@ -1,6 +1,6 @@
 // Basic API response wrapper
-import {Image} from "./Image";
-import {Catalog} from "./Catalog";
+import { Catalog } from './Catalog';
+import { Image } from './Image';
 
 /**
  * API Interface
@@ -10,29 +10,29 @@ import {Catalog} from "./Catalog";
  * @property {string} message - message
  */
 export interface ApiResponse<T> {
-    data: T;
-    status: number;
-    message?: string;
+  data: T;
+  status: number;
+  message?: string;
 }
 
 // Error response
 export interface ApiError {
-    status: number;
-    message: string;
-    errors?: Record<string, string[]>;
+  status: number;
+  message: string;
+  errors?: Record<string, string[]>;
 }
 
 // Pagination metadata ( ? thought )
 export interface PaginationMetadata {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
 }
 
 // Paginated response
 export interface PaginatedApiResponse<T> extends ApiResponse<T> {
-    pagination: PaginationMetadata;
+  pagination: PaginationMetadata;
 }
 
 // Common response types:

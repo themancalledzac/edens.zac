@@ -1,4 +1,4 @@
-import {Image} from "./Image";
+import { Image } from './Image';
 
 /**
  * Photography Portfolio Catalog containing:
@@ -15,24 +15,24 @@ import {Image} from "./Image";
  * @property {string} date - Date
  */
 export interface Catalog {
-    id: number;
-    title: string;
-    location?: string;
-    priority: number;
-    paragraph?: string;
-    coverImageUrl: string;
-    people?: string[];
-    tags?: string[];
-    images?: Image[];
-    slug: string;
-    date: string;
+  id: number;
+  title: string;
+  location?: string;
+  priority: number;
+  paragraph?: string;
+  coverImageUrl: string;
+  people?: string[];
+  tags?: string[];
+  images?: Image[];
+  slug: string;
+  date: string;
 //     catalogs: <CatalogMin[]> // Future idea of catalogs having catalogs
 }
 
 // Small catalog object for return data of Image.catalog array
 export interface CatalogMin {
-    id: number;
-    title: string;
-    slug: string;
-    coverImageUrl: string;
+  id: number;
+  title: string;
+  slug: string;
+  coverImageUrl: string;
 }
