@@ -26,7 +26,7 @@ export default function PhotoBlockComponent({
   selectedForSwap,
 }: PhotoBlockComponentProps) {
   const [loading, setLoading] = useState(true);
-  const { isEditMode } = useEditContext();
+  const { isEditMode, isEditCoverImage, editCatalog } = useEditContext();
   const [imageItems, setImageItems] = useState<calculateImageSizesReturn[]>([]);
 
   /**
@@ -54,6 +54,8 @@ export default function PhotoBlockComponent({
   }, [photos, componentWidth]);
 
   /**
+   * Get Position Style
+   *
    * Associates images with their correct css styling based on images per block,
    * and image location(left/middle/right)
    *
@@ -82,8 +84,9 @@ export default function PhotoBlockComponent({
   }
 
   const isSelected = (image: ImageType): boolean => {
-    return !!selectedForSwap && selectedForSwap.id === image?.id;
-
+    if (!isEditCoverImage) {
+      return !!selectedForSwap && selectedForSwap.id === image?.id;
+    }
   };
 
   return (
@@ -105,10 +108,15 @@ export default function PhotoBlockComponent({
             width={Math.round(item.width)}
             height={Math.round(item.height)}
             className={`
-                                ${getPositionStyle(index, imageItems.length)}
-                                ${isEditMode && styles.imageEdit}
-                                ${isSelected(item.image) && styles.imageSelected}
-                            `}
+                ${getPositionStyle(index, imageItems.length)}
+                ${isEditMode && styles.imageEdit}
+                ${isSelected(item.image) && styles.imageSelected}
+                ${(
+            isEditMode
+              && isEditCoverImage
+              && editCatalog?.coverImageUrl === item.image.imageUrlWeb)
+            && styles.coverImageEdit}
+            `}
             unoptimized
             onClick={() => handleImageClick(item.image)}
           />

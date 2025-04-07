@@ -1,10 +1,14 @@
-import React, { createContext, useContext, useEffect,useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 import { Catalog } from '@/types/Catalog';
 import { Image } from '@/types/Image';
 
-// Creating the context object and exporting so that other components can use it.
-// export const AppContext = createContext();
+/**
+ * Global app state, device info, current view data
+ *
+ * Creating the context object and exporting so that other components can use it.
+ * export const AppContext = createContext();
+ */
 
 interface AppContextState {
   photoDataList: Image[]; // TODO: Verify that this DataList is an Image(metadata) List. CONFIRM

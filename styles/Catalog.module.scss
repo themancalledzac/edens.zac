@@ -14,14 +14,15 @@
 .catalogContent {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  //align-items: center;
 }
 
 .catalogHeader {
   text-align: left;
   margin-bottom: 2rem;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: space-between;
 
   @media (max-width: 768px) {
     padding-left: 12px;
@@ -30,7 +31,19 @@
 }
 
 .catalogHeaderLeft {
-  flex-grow: inherit;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+.catalogHeaderRight {
+
 }
 
 .photoBlockWrapper {
@@ -57,7 +70,7 @@
 
 .catalogTitleEdit {
   color: red;
-  margin: 0 1rem 2rem 1rem;
+  margin: 0 1rem 2rem 0;
 }
 
 .catalogDescription {
@@ -68,6 +81,10 @@
   @media (max-width: 768px) {
     font-size: 0.9rem;
   }
+}
+
+.catalogDate {
+  font-size: 0.8rem;
 }
 
 .photoBlockContainer {

@@ -3,9 +3,17 @@ import React, { createContext, useContext, useState } from 'react';
 import { Catalog } from '@/types/Catalog';
 import { Image } from '@/types/Image';
 
+/**
+ * Editing state for any content type
+ *
+ * Currently works with Catalogs and Blogs
+ */
+
 interface EditContextState {
   isEditMode: boolean;
   setIsEditMode: (value: boolean) => void;
+  isCreateMode: boolean;
+  setIsCreateMode: (value: boolean) => void;
   imageSelected: Image | null;
   setImageSelected: (value: Image | null) => void;
   currentEditType: string | null;
@@ -14,6 +22,8 @@ interface EditContextState {
   setSelectedForSwap: (value: Image | null) => void;
   editCatalog: Catalog | null;
   setEditCatalog: (value: Catalog | null) => void;
+  isEditCoverImage: boolean;
+  setIsEditCoverImage: (value: boolean) => void;
 }
 
 const EditContext = createContext<EditContextState | undefined>(undefined);
@@ -32,14 +42,18 @@ interface EditProviderProps {
 
 export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [isCreateMode, setIsCreateMode] = useState<boolean>(false);
   const [imageSelected, setImageSelected] = useState(null);
   const [currentEditType, setCurrentEditType] = useState<string | null>(null);
   const [selectedForSwap, setSelectedForSwap] = useState<Image | null>(null);
   const [editCatalog, setEditCatalog] = useState<Catalog | null>(null);
+  const [isEditCoverImage, setIsEditCoverImage] = useState<boolean>(false);
 
   const value = {
     isEditMode,
     setIsEditMode,
+    isCreateMode,
+    setIsCreateMode,
     imageSelected,
     setImageSelected,
     currentEditType,
@@ -48,6 +62,8 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
     setSelectedForSwap,
     editCatalog,
     setEditCatalog,
+    isEditCoverImage,
+    setIsEditCoverImage,
   };
 
   return (

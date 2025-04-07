@@ -1,40 +1,43 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
+import CatalogMetadata from '@/Components/Catalog/CatalogMetadata';
+import ImageUploadList, { PreviewImage } from '@/Components/Catalog/ImageUploadList';
+import ImageUploadModule from '@/Components/Catalog/ImageUploadModule';
 import { UpdateToolbar } from '@/Components/EditToolbar/UpdateToolbar';
 import ImageFullScreen from '@/Components/ImageFullScreen/ImageFullScreen';
+import PhotoBlockComponent from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
 import { useAppContext } from '@/context/AppContext';
 import { useEditContext } from '@/context/EditContext';
 import { fetchCatalogBySlug, updateCatalog } from '@/lib/api/catalogs';
 import { Catalog } from '@/types/Catalog';
 import { Image } from '@/types/Image';
+import { CatalogPageProps, createEmptyCatalog } from '@/utils/catalogUtils';
 import { chunkImages, swapImages } from '@/utils/imageUtils';
 
 import Header from '../../Components/Header/Header';
-import PhotoBlockComponent from '../../Components/PhotoBlockComponent/PhotoBlockComponent';
 import styles from '../../styles/Catalog.module.scss';
-
-interface CatalogPageProps {
-  catalog: Catalog;
-  imageChunks: Image[][];
-}
 
 /**
  * Photography Gallery Page.
  */
 export async function getServerSideProps({ params }) {
+  const { slug } = params;
 
-  try {
-    const slug: string = params?.slug as string;
-    const catalog: Catalog = await fetchCatalogBySlug(slug);
-
-    // // We can only do the chunking on the server, not the sizing
-    // // as sizing depends on client viewport dimensions
-    // const imageChunks: Image[][] = chunkImages(catalog.images, 3);
-
+  if (slug === 'create') {
     return {
       props: {
+        create: true,
+        catalog: null,
+      },
+    };
+  }
+
+  try {
+    const catalog: Catalog = await fetchCatalogBySlug(slug);
+    return {
+      props: {
+        create: false,
         catalog,
-        // imageChunks
       },
     };
   } catch (error) {
@@ -51,32 +54,32 @@ export async function getServerSideProps({ params }) {
  * TODO: Add more space above Title, feels too crowded
  *  - Verify 2 wide and pans also are still working
  *  - blog single isn't full width fyi
- *  - Need 'on click' edit paragraph. even if we have to use another component.
  *  - "Tab Enter" to accept, or, the ACCEPT button on the bottom right, next to CANCEL
- *  - Need to verify that we are changing our MAIN OBJECT's image order On Change, every change.
- *  -
  *
+ * @param create
  * @param catalog Catalog data.
  // * @param initialImageChunks Images from the database, in order.
  * @constructor
  */
-const CatalogPage = ({ catalog }: CatalogPageProps) => {
+const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPageProps) => {
   const { isMobile, currentCatalog, setCurrentCatalog } = useAppContext();
-  const [contentWidth, setContentWidth] = useState(800);
   const {
     isEditMode,
     setIsEditMode,
+    setIsCreateMode,
+    isCreateMode,
     imageSelected,
     setImageSelected,
     selectedForSwap,
     setSelectedForSwap,
     editCatalog,
     setEditCatalog,
+    isEditCoverImage,
+    setIsEditCoverImage,
   } = useEditContext();
 
-  const [isTitleEdit, setIsTitleEdit] = useState<boolean>(false);
-  const [isParagraphEdit, setIsParagraphEdit] = useState<boolean>(false);
-  const testParagraph = 'Lorem ipsum dolor sit amet, consectetur adipisicing elit. Amet asperiores at, cumque deleniti dignissimos ducimus error ipsa libero minima nisi obcaecati quos, repellendus repudiandae sequi sit voluptate voluptatem? Ad assumenda, autem error facilis harum non pariatur placeat qui tenetur. Accusamus aliquid deleniti eligendi labore maiores nobis placeat quas reiciendis tempore.';
+  const [contentWidth, setContentWidth] = useState(800);
+
   const imageChunks = useMemo(() => {
     // When editing, use editCatalog's images
     const sourceImages = isEditMode && editCatalog
@@ -84,10 +87,22 @@ const CatalogPage = ({ catalog }: CatalogPageProps) => {
       : currentCatalog?.images;
     return chunkImages(sourceImages, 3);
   }, [currentCatalog, editCatalog, isEditMode, catalog]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewData, setPreviewData] = useState<PreviewImage[]>([]);
+
+  useEffect(() => {
+    if (create) {
+      setIsCreateMode(true);
+      setEditCatalog(createEmptyCatalog());
+    } else if (catalog) {
+      setCurrentCatalog(catalog);
+      setEditCatalog(null);
+    }
+  }, [catalog, create, setCurrentCatalog, setEditCatalog, setIsEditMode]);
 
   /**
-   * Hook that updates current catalog on update.
-   */
+     * Hook that updates current catalog on update.
+     */
   useEffect(() => {
     if (catalog && (!currentCatalog || currentCatalog.id !== catalog.id)) {
       setCurrentCatalog(catalog);
@@ -95,15 +110,15 @@ const CatalogPage = ({ catalog }: CatalogPageProps) => {
   }, [catalog, currentCatalog]);
 
   /**
-   * Function to handle Image position change.
-   *
-   * Our current edit image position entails the following logic:
-   * First image clicked will set our image as 'selectedForSwap'.
-   * If we click that first image again, we unselect it.
-   * If we instead click a second image, we swap images, which causes a page rerender.
-   *
-   * @param image Image.
-   */
+     * Function to handle Image position change.
+     *
+     * Our current edit image position entails the following logic:
+     * First image clicked will set our image as 'selectedForSwap'.
+     * If we click that first image again, we unselect it.
+     * If we instead click a second image, we swap images, which causes a page rerender.
+     *
+     * @param image Image.
+     */
   const handleImageSwitch = (image: Image) => {
     if (!editCatalog) return;
 
@@ -125,33 +140,56 @@ const CatalogPage = ({ catalog }: CatalogPageProps) => {
     }
   };
 
-  const handleTitleChange = (e) => {
-    setEditCatalog({
-      ...editCatalog,
-      title: e.target.value,
-    });
-  };
-
-  const handleParagraphChange = (e) => {
-    setEditCatalog({
-      ...editCatalog,
-      paragraph: e.target.value,
-    });
-  };
-
-  const handleSaveChanges = async () => {
+  const handleSave = async () => {
+    console.log('[zac] - in handleSave');
     try {
-      if (!editCatalog) return;
+      if (isCreateMode) {
+        console.log('[zac] - in handleSave - isCreateMode');
+        // If we have images to upload, we need to include them in the request
+        const formData = new FormData();
+        console.log('[zac] - in handleSave - isCreateMode');
 
-      const updatedCatalog = await updateCatalog(editCatalog);
-      console.log('Before context update:', currentCatalog?.title);
-      setCurrentCatalog(updatedCatalog);
+        // Add catalog data as JSON
+        const catalogData = {
+          title: editCatalog.title,
+          location: editCatalog.location,
+          priority: editCatalog.priority,
+          tags: editCatalog.tags || [],
+          people: editCatalog.people || [],
+          coverImageUrl: editCatalog.coverImageUrl,
+          date: editCatalog.date,
+          createHomeCard: true,
+        };
 
-      setEditCatalog(null);
-      setIsEditMode(false);
+        formData.append('catalogDTO', JSON.stringify(catalogData));
 
-      setIsParagraphEdit(false);
-      setIsTitleEdit(false);
+        // Add any selected files
+        for (const file of selectedFiles) {
+          formData.append('images', file);
+        }
+
+        // API request :TODO: update this with our current route
+        const response = await fetch('http://localhost:8080/api/v1/catalog/uploadCatalogWithImages', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+
+        // Navigate to the new catalog
+        window.location.href = `/catalog/${result.slug}`;
+
+      } else {
+
+        if (!editCatalog) return;
+
+        const result = await updateCatalog(editCatalog);
+        console.log('Before context update:', currentCatalog?.title);
+        setCurrentCatalog(result);
+
+        setIsEditMode(false);
+        setEditCatalog(null);
+      }
 
     } catch (error) {
       console.error('Failed to save changes:', error);
@@ -159,44 +197,43 @@ const CatalogPage = ({ catalog }: CatalogPageProps) => {
   };
 
   /**
-   * Handles an image click, either for Edit or for Full Screen.
-   * @param image - Image.
-   */
+     * Handles an image click, either for Edit or for Full Screen.
+     * @param image - Image.
+     */
   const handleImageClick = (image: Image) => {
     if (isEditMode) {
-      handleImageSwitch(image);
+      if (isEditCoverImage) {
+        setEditCatalog({
+          ...editCatalog,
+          coverImageUrl: image.imageUrlWeb,
+        });
+        setIsEditCoverImage(!isEditCoverImage);
+      } else {
+        handleImageSwitch(image);
+      }
     } else {
       setImageSelected(image);
     }
   };
 
-  const handleImageUpload = () => {
-    // TODO:
-    //  - On Button Click, we need to emulate our current 'upload' page logic.
-    //  - Will need to be a pop-out / Modal, OR,
-    //   - could simply push down all 'current' images with new images up top
-    //  - Simple upload, simply select images for now
-    //  - Future would be adding 'tags' or 'people' or 'location' for ALL images / individual
-  };
-
-  const handleSelectCoverImage = (image: Image) => {
-    // TODO:
-    //  - Set Image As Cover Image
-    //  - Need a 'hover' or otherwise BUTTON to determine clicking for a cover image
-    //  - Better yet would be a 'selectCoverImage' button in our 'updateToolbar',
-    //   - that updates 'selectImage' logic to instead select Coverimage instead.
-    //  - On select of cover image, we would turn off 'isSetCoverImage' state
-  };
-
-  const handleCancelUpdate = () => {
-    setIsTitleEdit(false);
-    setIsParagraphEdit(false);
-    setEditCatalog(null);
+  /**
+     * Handle canceling edit/create mode
+     */
+  const handleCancel = () => {
+    if (isCreateMode) {
+      // Navigate back to home page
+      setIsEditMode(false);
+      setIsCreateMode(false);
+      window.location.href = '/';
+    } else {
+      setIsEditMode(false);
+      setEditCatalog(null);
+    }
   };
 
   /**
-   * Hook to handle Catalog in Update/Edit mode.
-   */
+     * Hook to handle Catalog in Update/Edit mode.
+     */
   useEffect(() => {
     if (isEditMode) {
       setEditCatalog({
@@ -204,14 +241,12 @@ const CatalogPage = ({ catalog }: CatalogPageProps) => {
       });
     } else {
       setEditCatalog(null);
-      setIsTitleEdit(false);
-      setIsParagraphEdit(false);
     }
   }, [isEditMode, currentCatalog, setEditCatalog]);
 
   /**
-   * Hook to handle Arrow Clicks on ImageFullScreen.
-   */
+     * ImageFullScreen Hook to handle arrow click.
+     */
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (imageSelected === null) return;
@@ -238,8 +273,8 @@ const CatalogPage = ({ catalog }: CatalogPageProps) => {
   }, [imageChunks, imageSelected, setImageSelected]);
 
   /**
-   * Hook to calculate component width if Mobile view changes.
-   */
+     * Hook to calculate component width if Mobile view changes.
+     */
   useEffect(() => {
     const calculateComponentWidth = () => {
       return isMobile ? window.innerWidth - 40 : Math.min(window.innerWidth * 0.8, 1200);
@@ -255,86 +290,94 @@ const CatalogPage = ({ catalog }: CatalogPageProps) => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isMobile]);
 
-  if (!catalog) {
-    return <div>Loading...</div>;
-  }
+  // TODO:
+  //  - On select files, only 1 at a time is showing, but 'selectedFiles' shows them all?
+  //  - If you select more files, it seems to overwrite previous 'selectedFiles'
+  //  - On Create: if you 'cancel' image upload, we see the rest of the 'create' page, but no longer can upload images
+  //  - On Create: the rest of the 'create' boxes aren't visible on load, unless we 'cancel' image upload box
+  //  - On Update: Give a 'success' indicator.
+
+  /**
+     * Handle image selection
+     */
+  const handleImagesSelected = (files: File[]) => {
+    // This will be called by the ImageUploadModule component
+    console.log('Selected files:', files);
+    // We'll handle this data in state already
+  };
 
   return (
     <div className={styles.catalogPageMain}>
       <Header />
+      <div className={styles.catalogContent}
+        style={isMobile ? { width: '100%' } : { width: `${contentWidth}px`, margin: '0 auto' }}>
 
-      <div className={styles.catalogContent}>
-        <div
-          className={styles.catalogHeader}
-          style={isMobile ? { width: '100%' } : { width: `${contentWidth}px`, margin: '0 auto' }}
-        >
-          {isTitleEdit ? (
-            isEditMode && (
+        <div className={styles.catalogHeader}>
+          <div className={styles.catalogHeaderLeft}>
+            <CatalogMetadata contentWidth={contentWidth} />
+          </div>
 
-              <input
-                type="text"
-                value={editCatalog?.title}
-                onChange={handleTitleChange}
-                className={`${styles.catalogTitle} ${styles.catalogTitleEdit}`}
+          {(isEditMode || isCreateMode) && (
+            <div className={styles.catalogHeaderRight}>
+              <ImageUploadModule
+                onImagesSelected={handleImagesSelected}
               />
-            )
-          ) : (
-            <h1 className={`${styles.catalogTitle} ${isEditMode && styles.catalogTitleEdit}`}
-              onClick={() => isEditMode && setIsTitleEdit(!isTitleEdit)}>
-              {isEditMode && editCatalog
-                ? editCatalog.title
-                : (currentCatalog?.title || catalog?.title)
-              }
-            </h1>
-          )}
-          {isParagraphEdit ? (
-            isEditMode && (
-              <input
-                type="text"
-                value={editCatalog?.paragraph}
-                onChange={handleParagraphChange}
-                className={`${styles.catalogDescription} ${styles.catalogDescriptionEdit}`}
-              />
-            )
-          ) : (
-            <p
-              onClick={() => isEditMode && setIsParagraphEdit(!isParagraphEdit)}
-              className={`${styles.catalogDescription} ${isEditMode && styles.descriptionEdit}`}
-            >
-              {currentCatalog?.paragraph ? currentCatalog?.paragraph : testParagraph}
-            </p>
-
+            </div>
           )}
         </div>
+      </div>
 
-        {isEditMode && (
+      {(isEditMode || isCreateMode) && (
+        <>
           <UpdateToolbar
             contentWidth={contentWidth}
             isMobile={isMobile}
-            handleCancelChanges={() => handleCancelUpdate()}
-            handleSaveChanges={() => handleSaveChanges()}
+            handleCancelChanges={handleCancel}
+            handleSaveChanges={handleSave}
           />
-        )}
+          <ImageUploadList
+            previewData={previewData}
+            setPreviewData={setPreviewData}
+            selectedFiles={selectedFiles}
+            setSelectedFiles={setSelectedFiles}
+          />
+        </>
+      )}
 
+      {!isCreateMode && (
         <div className={styles.photoBlockWrapper}>
-          {imageChunks && imageChunks.length > 0 && (
-            imageChunks.map((photoPair: Image[], index: React.Key) => (
+          {imageChunks && imageChunks.length > 0 ? (
+            imageChunks.map((photoPair) => (
               <PhotoBlockComponent
+                key={photoPair[0].id}
                 componentWidth={contentWidth}
                 isMobile={isMobile}
-                key={index}
                 photos={photoPair}
-                handleImageClick={handleImageClick}
+                handleImageClick={
+                  (isCreateMode || isEditCoverImage)
+                    ? handleImageClick
+                    : handleImageSwitch
+                }
                 selectedForSwap={selectedForSwap}
               />
-            )))}
+            ))
+          ) : (
+            <div className={styles.emptyState}>
+              <p>No images yet. Click "Upload Images" to add images.</p>
+            </div>
+          )}
         </div>
-        {imageSelected && (
-          <ImageFullScreen setImageSelected={setImageSelected} imageSelected={imageSelected} />
-        )}
-      </div>
+      )}
+
+      {imageSelected && (
+        <ImageFullScreen
+          setImageSelected={setImageSelected}
+          imageSelected={imageSelected}
+        />
+      )}
     </div>
   );
-};
+}
+;
 
 export default CatalogPage;

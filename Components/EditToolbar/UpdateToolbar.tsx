@@ -24,7 +24,7 @@ export const UpdateToolbar = ({
   contentWidth,
   isMobile,
 }: updateToolbarProps) => {
-  const { isEditMode, setIsEditMode } = useEditContext();
+  const { isEditMode } = useEditContext();
   if (!isEditMode) return null;
 
   return (
@@ -34,7 +34,7 @@ export const UpdateToolbar = ({
       <button className={styles.updateButton} onClick={() => handleCancelChanges()}>Upload</button>
       <button className={styles.updateButton} onClick={() => handleSaveChanges()}>Save</button>
       {/* eslint-disable-next-line @stylistic/max-len */}
-      <button className={styles.updateButton} onClick={() => setIsEditMode(!isEditMode)}>Cancel</button>
+      <button className={styles.updateButton} onClick={() => handleCancelChanges()}>Cancel</button>
     </div>
   );
 };

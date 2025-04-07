@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
+
 import ParallaxSection from '@/Components/ParallaxSection/ParallaxSection';
 import ParallaxSectionWrapper from '@/Components/ParallaxSectionWrapper';
+import { useEditContext } from '@/context/EditContext';
 import { fetchHomePage } from '@/lib/api/home';
 import { HomeCardModel } from '@/types/HomeCardModel';
 
@@ -28,10 +31,8 @@ export async function getServerSideProps() {
   }
 }
 
-
-// TODO:
-
 export default function Home({ homeCards }) {
+  const { setIsEditMode, setIsCreateMode } = useEditContext();
 
 
   // TODO: Need to handle homeCards being null
@@ -40,6 +41,14 @@ export default function Home({ homeCards }) {
     cardPairs.push(homeCards.slice(i, Math.min(i + 2, homeCards.length)));
     // cardPairs.push(homeCards.slice(i, i + 2));
   }
+
+  /**
+   * Hook to reset our home page to neither edit nor create modes.
+   */
+  useEffect(() => {
+    setIsEditMode(false);
+    setIsCreateMode(false);
+  }, []);
 
   return (
     <div className={styles.container}>
