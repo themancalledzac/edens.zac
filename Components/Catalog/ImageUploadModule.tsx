@@ -3,17 +3,18 @@ import React from 'react';
 import styles from '@/styles/Upload.module.scss';
 
 interface ImageUploadModuleProps {
-  onImagesSelected: (files: File[]) => void;
+  // onImagesSelected: (files: File[]) => void;
 }
 
-const ImageUploadModule: React.FC<ImageUploadModuleProps> = ({ onImagesSelected }) => {
+const ImageUploadModule: React.FC<ImageUploadModuleProps> = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
     console.log('zac inside imageUploadModule');
 
     const files = Array.from(e.target.files);
-    onImagesSelected(files);
+    // send API call from here
+    // onImagesSelected(files);
   };
 
   return (

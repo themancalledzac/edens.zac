@@ -29,7 +29,7 @@ export const UpdateToolbar = ({
 
   return (
     <div
-      style={isMobile ? { width: '100%' } : { width: `${contentWidth}px`, margin: '0 auto' }}
+      style={isMobile ? { width: '100%' } : { width: `${contentWidth / 2}px`, margin: '0 auto' }}
       className={styles.updateToolbar}>
       <button className={styles.updateButton} onClick={() => handleCancelChanges()}>Upload</button>
       <button className={styles.updateButton} onClick={() => handleSaveChanges()}>Save</button>

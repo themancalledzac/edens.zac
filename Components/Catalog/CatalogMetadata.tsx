@@ -10,8 +10,8 @@ interface CatalogMetadataProps {
   contentWidth: number;
 }
 
-const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
-  const { currentCatalog } = useAppContext();
+const CatalogMetadata: React.FC<CatalogMetadataProps> = (contentWidth) => {
+  const { currentCatalog, isMobile } = useAppContext();
   const {
     isEditMode,
     isCreateMode,
@@ -25,7 +25,7 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
     console.log(`[zac] - editCatalog: ${JSON.stringify(editCatalog)}`);
   }, [editCatalog]);
 
-  const handleFieldChange = (field: string) => (e: any) => {
+  const handleFieldChange = (field: string) => (e: never) => {
     let value = e.target.value;
     if (field === 'priority') {
       value = Number.parseInt(value, 10);
@@ -54,7 +54,9 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
   }
 
   return (
-    <div className={styles.catalogHeader}>
+    <div
+      style={isMobile ? { width: '100%' } : { width: `${contentWidth / 2}px`, margin: '0 auto' }}
+      className={styles.metadataWrapper}>
       <div className={styles.catalogHeaderLeft}>
         {Object.entries(fieldConfigs).map(([field, config]) => (
           <EditableField
@@ -70,6 +72,7 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
             editClassName={config.editClassName}
             editable={config.editable}
             onClick={() => handleButtonClick(field)}
+            main={config.main}
           />
         ))}
       </div>

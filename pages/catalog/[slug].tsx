@@ -76,6 +76,7 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
     setEditCatalog,
     isEditCoverImage,
     setIsEditCoverImage,
+    handleCancelChanges,
   } = useEditContext();
 
   const [contentWidth, setContentWidth] = useState(800);
@@ -111,11 +112,6 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
 
   /**
      * Function to handle Image position change.
-     *
-     * Our current edit image position entails the following logic:
-     * First image clicked will set our image as 'selectedForSwap'.
-     * If we click that first image again, we unselect it.
-     * If we instead click a second image, we swap images, which causes a page rerender.
      *
      * @param image Image.
      */
@@ -217,21 +213,6 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
   };
 
   /**
-     * Handle canceling edit/create mode
-     */
-  const handleCancel = () => {
-    if (isCreateMode) {
-      // Navigate back to home page
-      setIsEditMode(false);
-      setIsCreateMode(false);
-      window.location.href = '/';
-    } else {
-      setIsEditMode(false);
-      setEditCatalog(null);
-    }
-  };
-
-  /**
      * Hook to handle Catalog in Update/Edit mode.
      */
   useEffect(() => {
@@ -291,19 +272,18 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
   }, [isMobile]);
 
   // TODO:
-  //  - On select files, only 1 at a time is showing, but 'selectedFiles' shows them all?
   //  - If you select more files, it seems to overwrite previous 'selectedFiles'
-  //  - On Create: if you 'cancel' image upload, we see the rest of the 'create' page, but no longer can upload images
-  //  - On Create: the rest of the 'create' boxes aren't visible on load, unless we 'cancel' image upload box
   //  - On Update: Give a 'success' indicator.
 
   /**
      * Handle image selection
      */
-  const handleImagesSelected = (files: File[]) => {
-    // This will be called by the ImageUploadModule component
-    console.log('Selected files:', files);
-    // We'll handle this data in state already
+  const handleImageClickWrapper = (image: Image) => {
+    if (!isEditCoverImage && isEditMode) {
+      handleImageSwitch(image);
+    } else {
+      handleImageClick(image);
+    }
   };
 
   return (
@@ -315,59 +295,54 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
         <div className={styles.catalogHeader}>
           <div className={styles.catalogHeaderLeft}>
             <CatalogMetadata contentWidth={contentWidth} />
+            {(isEditMode || isCreateMode) && (
+              <UpdateToolbar
+                contentWidth={contentWidth}
+                isMobile={isMobile}
+                handleCancelChanges={handleCancelChanges}
+                handleSaveChanges={handleSave}
+              />
+            )}
           </div>
 
           {(isEditMode || isCreateMode) && (
             <div className={styles.catalogHeaderRight}>
-              <ImageUploadModule
-                onImagesSelected={handleImagesSelected}
-              />
+              <ImageUploadModule />
             </div>
           )}
         </div>
-      </div>
 
-      {(isEditMode || isCreateMode) && (
-        <>
-          <UpdateToolbar
-            contentWidth={contentWidth}
-            isMobile={isMobile}
-            handleCancelChanges={handleCancel}
-            handleSaveChanges={handleSave}
-          />
+
+        {(isEditMode || isCreateMode) && (
           <ImageUploadList
             previewData={previewData}
             setPreviewData={setPreviewData}
             selectedFiles={selectedFiles}
             setSelectedFiles={setSelectedFiles}
           />
-        </>
-      )}
+        )}
 
-      {!isCreateMode && (
-        <div className={styles.photoBlockWrapper}>
-          {imageChunks && imageChunks.length > 0 ? (
-            imageChunks.map((photoPair) => (
-              <PhotoBlockComponent
-                key={photoPair[0].id}
-                componentWidth={contentWidth}
-                isMobile={isMobile}
-                photos={photoPair}
-                handleImageClick={
-                  (isCreateMode || isEditCoverImage)
-                    ? handleImageClick
-                    : handleImageSwitch
-                }
-                selectedForSwap={selectedForSwap}
-              />
-            ))
-          ) : (
-            <div className={styles.emptyState}>
-              <p>No images yet. Click "Upload Images" to add images.</p>
-            </div>
-          )}
-        </div>
-      )}
+        {!isCreateMode && (
+          <div className={styles.photoBlockWrapper}>
+            {imageChunks && imageChunks.length > 0 ? (
+              imageChunks.map((photoPair) => (
+                <PhotoBlockComponent
+                  key={photoPair[0].id}
+                  componentWidth={contentWidth}
+                  isMobile={isMobile}
+                  photos={photoPair}
+                  handleImageClick={handleImageClickWrapper}
+                  selectedForSwap={selectedForSwap}
+                />
+              ))
+            ) : (
+              <div className={styles.emptyState}>
+                <p>No images yet. Click "Upload Images" to add images.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {imageSelected && (
         <ImageFullScreen

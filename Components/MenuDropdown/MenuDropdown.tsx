@@ -14,25 +14,13 @@ export default function MenuDropdown({ dropdownRef, showDropdown, setShowDropdow
   const [aboutDropdownVisible, setAboutDropdownVisible] = useState(false);
   const [contactDropdownVisible, setContactDropdownVisible] = useState(false);
   const [formData, setFormData] = useState({ title: '', message: '' });
-  const { isEditMode, setIsEditMode, isCreateMode, setIsCreateMode } = useEditContext();
+  const { isEditMode, setIsEditMode, isCreateMode, setIsCreateMode, handleCancelChanges } = useEditContext();
   const router = useRouter();
 
   const isMobile = useAppContext().isMobile;
 
   // Determine if we are on a catalog or blog page
   const isItemPage = router.query.slug as string;
-
-  const handleCancel = () => {
-    if (isEditMode) {
-      setIsEditMode(!isEditMode);
-      setIsCreateMode(false);
-    } else {
-      setIsCreateMode(!isCreateMode);
-      setIsEditMode(false);
-      window.location.href = '/';
-    }
-    setShowDropdown(!showDropdown);
-  };
 
   const handleUpdateClick = () => {
     setIsEditMode(!isEditMode);
@@ -55,7 +43,7 @@ export default function MenuDropdown({ dropdownRef, showDropdown, setShowDropdow
       <>
         {isItemPage && (
           (isEditMode || isCreateMode) ? (
-            <div className={styles.dropdownMenuItem} onClick={handleCancel}>
+            <div className={styles.dropdownMenuItem} onClick={handleCancelChanges}>
               <h2 className={styles.dropdownMenuOptions}>
                 {isEditMode ? 'Cancel Update' : 'Cancel Create'}
               </h2>

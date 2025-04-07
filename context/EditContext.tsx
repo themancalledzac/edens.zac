@@ -24,6 +24,7 @@ interface EditContextState {
   setEditCatalog: (value: Catalog | null) => void;
   isEditCoverImage: boolean;
   setIsEditCoverImage: (value: boolean) => void;
+  handleCancelChanges: () => void;
 }
 
 const EditContext = createContext<EditContextState | undefined>(undefined);
@@ -49,6 +50,19 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
   const [editCatalog, setEditCatalog] = useState<Catalog | null>(null);
   const [isEditCoverImage, setIsEditCoverImage] = useState<boolean>(false);
 
+  const handleCancelChanges = () => {
+    if (isCreateMode) {
+      // Navigate back to home page
+      setIsEditMode(false);
+      setIsCreateMode(false);
+      setIsEditCoverImage(false);
+      window.location.href = '/';
+    } else {
+      setIsEditMode(false);
+      setEditCatalog(null);
+    }
+  };
+
   const value = {
     isEditMode,
     setIsEditMode,
@@ -64,6 +78,7 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
     setEditCatalog,
     isEditCoverImage,
     setIsEditCoverImage,
+    handleCancelChanges,
   };
 
   return (

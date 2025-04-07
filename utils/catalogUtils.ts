@@ -62,6 +62,7 @@ export const fieldConfigs: Record<string, {
   editClassName: string;
   options?: Array<{ value: string | number, label: string }>;
   editable: boolean;
+  main: boolean;
 }> = {
   title: {
     placeholder: 'Enter title',
@@ -70,6 +71,7 @@ export const fieldConfigs: Record<string, {
     viewClassName: styles.catalogTitle,
     editClassName: styles.catalogTitleEdit,
     editable: true,
+    main: true,
   },
   location: {
     placeholder: 'Enter location',
@@ -78,6 +80,7 @@ export const fieldConfigs: Record<string, {
     viewClassName: styles.catalogLocation,
     editClassName: styles.catalogLocationEdit,
     editable: true,
+    main: true,
   },
   date: {
     placeholder: new Date().toISOString().split('T')[0],
@@ -86,6 +89,7 @@ export const fieldConfigs: Record<string, {
     viewClassName: styles.catalogDate,
     editClassName: '',
     editable: false,
+    main: true,
   },
   paragraph: {
     placeholder: 'Enter description',
@@ -94,14 +98,16 @@ export const fieldConfigs: Record<string, {
     viewClassName: styles.catalogParagraph,
     editClassName: styles.catalogParagraphEdit,
     editable: true,
+    main: true,
   },
   coverImageUrl: {
     placeholder: 'Choose Image',
     fieldType: 'button',
     options: [],
-    viewClassName: styles.catalogParagraph,
-    editClassName: styles.catalogParagraphEdit,
+    viewClassName: styles.catalogCoverImageUrl,
+    editClassName: styles.catalogCoverImageUrlEdit,
     editable: true,
+    main: false,
   },
   priority: {
     placeholder: 'Select priority',
@@ -114,5 +120,6 @@ export const fieldConfigs: Record<string, {
     viewClassName: styles.catalogPriority,
     editClassName: styles.catalogPriorityEdit,
     editable: true,
+    main: false,
   },
 };

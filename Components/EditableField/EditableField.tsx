@@ -18,6 +18,7 @@ interface EditableFieldProps {
   editClassName?: string;
   editable: boolean;
   onClick: () => void;
+  main: boolean;
 }
 
 const EditableField: React.FC<EditableFieldProps> = ({
@@ -32,7 +33,12 @@ const EditableField: React.FC<EditableFieldProps> = ({
   editClassName,
   editable,
   onClick,
+  main,
 }) => {
+
+  if (!main && (!isEditMode && !isCreateMode)) {
+    return null;
+  }
 
   if ((!isEditMode && !isCreateMode) || !editable) {
     return (
