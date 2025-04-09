@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
+import { PreviewImage } from '@/Components/Catalog/ImageUploadList';
 import { Catalog } from '@/types/Catalog';
 import { Image } from '@/types/Image';
 
@@ -25,6 +26,10 @@ interface EditContextState {
   isEditCoverImage: boolean;
   setIsEditCoverImage: (value: boolean) => void;
   handleCancelChanges: () => void;
+  selectedFiles: File[] | [];
+  setSelectedFiles: (selectedFiles: File[] | null) => void;
+  previewData: PreviewImage[] | [];
+  setPreviewData: (previewData: PreviewImage[] | null) => void;
 }
 
 const EditContext = createContext<EditContextState | undefined>(undefined);
@@ -47,15 +52,17 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
   const [imageSelected, setImageSelected] = useState(null);
   const [currentEditType, setCurrentEditType] = useState<string | null>(null);
   const [selectedForSwap, setSelectedForSwap] = useState<Image | null>(null);
-  const [editCatalog, setEditCatalog] = useState<Catalog | null>(null);
+  const [editCatalog, setEditCatalog] = useState<Catalog | null>();
   const [isEditCoverImage, setIsEditCoverImage] = useState<boolean>(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewData, setPreviewData] = useState<PreviewImage[]>([]);
 
   const handleCancelChanges = () => {
     if (isCreateMode) {
-      // Navigate back to home page
       setIsEditMode(false);
       setIsCreateMode(false);
       setIsEditCoverImage(false);
+      // Navigate back to home page
       window.location.href = '/';
     } else {
       setIsEditMode(false);
@@ -79,6 +86,10 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
     isEditCoverImage,
     setIsEditCoverImage,
     handleCancelChanges,
+    selectedFiles,
+    setSelectedFiles,
+    previewData,
+    setPreviewData,
   };
 
   return (

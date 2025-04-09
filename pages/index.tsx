@@ -37,7 +37,7 @@ export default function Home({ homeCards }) {
 
   // TODO: Need to handle homeCards being null
   const cardPairs: HomeCardModel[][] = [];
-  for (let i = 0; i < homeCards.length; i += 2) {
+  for (let i = 0; i < homeCards?.length; i += 2) {
     cardPairs.push(homeCards.slice(i, Math.min(i + 2, homeCards.length)));
     // cardPairs.push(homeCards.slice(i, i + 2));
   }
@@ -55,8 +55,8 @@ export default function Home({ homeCards }) {
       <Header />
 
       <div className={styles.bodyWrapper}>
-        {cardPairs.map((pair, index) => (
-          <ParallaxSectionWrapper key={index}>
+        {cardPairs.map((pair) => (
+          <ParallaxSectionWrapper key={pair[0].id}>
             {pair.map((card) => (
               <ParallaxSection
                 key={card.id}

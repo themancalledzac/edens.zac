@@ -30,12 +30,25 @@
   }
 }
 
-.catalogHeaderLeft {
+.metadataWrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  //padding-right: 2rem;
+
+  @media (max-width: 768px) {
+    width: 100%;
+  }
+}
+
+.metadata {
   display: flex;
   flex-grow: 4;
-  flex-direction: column;
+  flex-direction: row;
   text-align: left;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 
   @media (max-width: 768px) {
     padding-left: 12px;
@@ -43,11 +56,30 @@
   }
 }
 
-.metadataWrapper {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  padding-right: 2rem;
+.fieldContainer {
+  flex-basis: auto;
+  align-self: auto;
+  margin-bottom: 0.5rem;
+
+  &.full-width {
+    width: 100%;
+  }
+
+  &.half-width {
+    width: calc(50% - 0.5rem);
+
+    @media (max-width: 768px) {
+      width: 100%;
+    }
+  }
+
+  &.quarter-width {
+    width: calc(25% - 0.5rem);
+
+    @media (max-width: 768px) {
+      width: calc(50% - 0.5rem);
+    }
+  }
 }
 
 .catalogHeaderRight {
@@ -71,6 +103,7 @@
   margin-bottom: 0.5rem;
   margin-top: 3rem;
   border: none;
+  width: 100%;
 
   @media (max-width: 768px) {
     font-size: 1.8rem;
@@ -82,9 +115,12 @@
   font-size: 2.5rem;
 }
 
-.catalogParagraph {
+.catalogDescription {
   font-size: 1.1rem;
   margin-top: 2rem;
+  padding: 0.5rem;
+  width: 100%;
+  border: none;
   line-height: 1.6;
   color: #333;
 
@@ -93,14 +129,23 @@
   }
 }
 
-.catalogParagraphEdit {
-  @extend .catalogParagraph;
+.catalogDescriptionEdit {
+  @extend .catalogDescription;
+  border-bottom: 2px solid grey;
+  border-left: 2px solid grey;
 
 }
 
 .catalogLocation {
   font-style: italic;
   margin-left: 0.5rem;
+  width: 100%;
+}
+
+.catalogLocationEdit {
+  @extend .catalogLocation;
+  border: none;
+  border-bottom: 1px solid grey;
 }
 
 
@@ -109,6 +154,35 @@
   padding-top: 0.5rem;
   margin-left: 0.5rem;
   font-style: italic;
+}
+
+.catalogTagsEdit {
+  width: 100%;
+  padding: 2px;
+}
+
+.catalogSelectImages {
+  color: grey;
+}
+
+.catalogSelectImagesEdit {
+  @extend .catalogSelectImages;
+  width: 100%;
+}
+
+.catalogCoverImageUrlEdit {
+  width: 100%;
+}
+
+.catalogHomeItemEdit {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid grey;
+}
+
+.catalogPriorityEdit {
+  width: 100%;
+  padding: 0.5rem;
 }
 
 .photoBlockContainer {

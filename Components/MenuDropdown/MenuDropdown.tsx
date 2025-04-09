@@ -22,6 +22,11 @@ export default function MenuDropdown({ dropdownRef, showDropdown, setShowDropdow
   // Determine if we are on a catalog or blog page
   const isItemPage = router.query.slug as string;
 
+  const handleCancel = () => {
+    setShowDropdown(!showDropdown);
+    handleCancelChanges();
+  };
+
   const handleUpdateClick = () => {
     setIsEditMode(!isEditMode);
     setShowDropdown(!showDropdown);
@@ -43,7 +48,7 @@ export default function MenuDropdown({ dropdownRef, showDropdown, setShowDropdow
       <>
         {isItemPage && (
           (isEditMode || isCreateMode) ? (
-            <div className={styles.dropdownMenuItem} onClick={handleCancelChanges}>
+            <div className={styles.dropdownMenuItem} onClick={handleCancel}>
               <h2 className={styles.dropdownMenuOptions}>
                 {isEditMode ? 'Cancel Update' : 'Cancel Create'}
               </h2>

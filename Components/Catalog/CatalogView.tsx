@@ -38,7 +38,7 @@ const CatalogView: React.FC<CatalogViewProps> = ({
         </h1>
 
         <p className={styles.catalogDescription}>
-          {currentCatalog.paragraph ||
+          {currentCatalog.description ||
             (currentCatalog.location ? `Photos from ${currentCatalog.location}` : '')}
         </p>
       </div>

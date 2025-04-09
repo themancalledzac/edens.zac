@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 
 import CatalogMetadata from '@/Components/Catalog/CatalogMetadata';
-import ImageUploadList, { PreviewImage } from '@/Components/Catalog/ImageUploadList';
-import ImageUploadModule from '@/Components/Catalog/ImageUploadModule';
+import ImageUploadList from '@/Components/Catalog/ImageUploadList';
 import { UpdateToolbar } from '@/Components/EditToolbar/UpdateToolbar';
 import ImageFullScreen from '@/Components/ImageFullScreen/ImageFullScreen';
 import PhotoBlockComponent from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
@@ -27,7 +26,7 @@ export async function getServerSideProps({ params }) {
     return {
       props: {
         create: true,
-        catalog: null,
+        catalog: createEmptyCatalog(),
       },
     };
   }
@@ -77,6 +76,10 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
     isEditCoverImage,
     setIsEditCoverImage,
     handleCancelChanges,
+    selectedFiles,
+    setSelectedFiles,
+    previewData,
+    setPreviewData,
   } = useEditContext();
 
   const [contentWidth, setContentWidth] = useState(800);
@@ -88,21 +91,34 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
       : currentCatalog?.images;
     return chunkImages(sourceImages, 3);
   }, [currentCatalog, editCatalog, isEditMode, catalog]);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previewData, setPreviewData] = useState<PreviewImage[]>([]);
 
   useEffect(() => {
     if (create) {
       setIsCreateMode(true);
-      setEditCatalog(createEmptyCatalog());
-    } else if (catalog) {
+    } else {
       setCurrentCatalog(catalog);
-      setEditCatalog(null);
     }
-  }, [catalog, create, setCurrentCatalog, setEditCatalog, setIsEditMode]);
+  }, [catalog, create]);
+
+  /**
+     * Hook to handle Catalog in Update/Edit mode.
+     */
+  useEffect(() => {
+    if (isEditMode) {
+      setEditCatalog({
+        ...currentCatalog,
+      });
+    }
+  }, [isEditMode, currentCatalog, setEditCatalog]);
+
+  useEffect(() => {
+    console.log(`[zac] - editCatalog: ${JSON.stringify(editCatalog)}`);
+  }, [editCatalog]);
 
   /**
      * Hook that updates current catalog on update.
+     *
+     * TODO: Not sure if this is needed or this automatically happens.
      */
   useEffect(() => {
     if (catalog && (!currentCatalog || currentCatalog.id !== catalog.id)) {
@@ -137,24 +153,18 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
   };
 
   const handleSave = async () => {
-    console.log('[zac] - in handleSave');
     try {
       if (isCreateMode) {
-        console.log('[zac] - in handleSave - isCreateMode');
         // If we have images to upload, we need to include them in the request
         const formData = new FormData();
-        console.log('[zac] - in handleSave - isCreateMode');
 
         // Add catalog data as JSON
         const catalogData = {
           title: editCatalog.title,
           location: editCatalog.location,
-          priority: editCatalog.priority,
-          tags: editCatalog.tags || [],
-          people: editCatalog.people || [],
-          coverImageUrl: editCatalog.coverImageUrl,
-          date: editCatalog.date,
-          createHomeCard: true,
+          priority: editCatalog.priority || 2,
+          description: editCatalog.description,
+          isHomeCard: editCatalog.isHomeCard,
         };
 
         formData.append('catalogDTO', JSON.stringify(catalogData));
@@ -211,19 +221,6 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
       setImageSelected(image);
     }
   };
-
-  /**
-     * Hook to handle Catalog in Update/Edit mode.
-     */
-  useEffect(() => {
-    if (isEditMode) {
-      setEditCatalog({
-        ...currentCatalog,
-      });
-    } else {
-      setEditCatalog(null);
-    }
-  }, [isEditMode, currentCatalog, setEditCatalog]);
 
   /**
      * ImageFullScreen Hook to handle arrow click.
@@ -293,8 +290,8 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
         style={isMobile ? { width: '100%' } : { width: `${contentWidth}px`, margin: '0 auto' }}>
 
         <div className={styles.catalogHeader}>
-          <div className={styles.catalogHeaderLeft}>
-            <CatalogMetadata contentWidth={contentWidth} />
+          <div>
+            <CatalogMetadata />
             {(isEditMode || isCreateMode) && (
               <UpdateToolbar
                 contentWidth={contentWidth}
@@ -304,14 +301,7 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
               />
             )}
           </div>
-
-          {(isEditMode || isCreateMode) && (
-            <div className={styles.catalogHeaderRight}>
-              <ImageUploadModule />
-            </div>
-          )}
         </div>
-
 
         {(isEditMode || isCreateMode) && (
           <ImageUploadList

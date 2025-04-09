@@ -1,22 +1,20 @@
-import styles from '@/styles/Catalog.module.scss';
-import { Catalog } from '@/types/Catalog';
+import React from 'react';
+
+import { PreviewImage } from '@/Components/Catalog/ImageUploadList';
+import { Catalog, CatalogCreateDTO } from '@/types/Catalog';
 
 /**
  * Catalog Object Template for Create page.
  * @returns A new empty catalog object
  */
-export const createEmptyCatalog = (): Catalog => ({
-  id: null,
+export const createEmptyCatalog = (): CatalogCreateDTO => ({
   title: '',
   location: '',
   priority: 2, // default to medium priority
-  coverImageUrl: '',
-  people: [],
-  tags: [],
-  images: [],
-  slug: '',
-  date: new Date().toISOString().split('T')[0], // today's date in YYYY-MM-DD format
+  description: '',
+  isHomeCard: false,
 });
+
 
 export interface CatalogPageProps {
   create: boolean;
@@ -53,73 +51,49 @@ export const formatCatalogDate = (dateString: string): string => {
   }
 };
 
-export type FieldType = 'input' | 'textarea' | 'select' | 'button';
+/**
+ * Handles file selection and creates previews for selected images
+ *
+ * @param {React.Dispatch<React.SetStateAction<File[]>>} setSelectedFiles - State setter for selected files
+ * @param {React.Dispatch<React.SetStateAction<PreviewImage[]>>} setPreviewData - State setter for preview data
+ * @param {FileList} fileList - The list of files from input element
+ */
+export const handleFileSelect = (
+  setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>,
+  setPreviewData: React.Dispatch<React.SetStateAction<PreviewImage[]>>,
+  fileList: FileList,
+) => {
+  if (!fileList) return;
 
-export const fieldConfigs: Record<string, {
-  placeholder: string;
-  fieldType: FieldType;
-  viewClassName: string;
-  editClassName: string;
-  options?: Array<{ value: string | number, label: string }>;
-  editable: boolean;
-  main: boolean;
-}> = {
-  title: {
-    placeholder: 'Enter title',
-    fieldType: 'input',
-    options: [],
-    viewClassName: styles.catalogTitle,
-    editClassName: styles.catalogTitleEdit,
-    editable: true,
-    main: true,
-  },
-  location: {
-    placeholder: 'Enter location',
-    fieldType: 'input',
-    options: [],
-    viewClassName: styles.catalogLocation,
-    editClassName: styles.catalogLocationEdit,
-    editable: true,
-    main: true,
-  },
-  date: {
-    placeholder: new Date().toISOString().split('T')[0],
-    fieldType: 'input',
-    options: [],
-    viewClassName: styles.catalogDate,
-    editClassName: '',
-    editable: false,
-    main: true,
-  },
-  paragraph: {
-    placeholder: 'Enter description',
-    fieldType: 'textarea',
-    options: [],
-    viewClassName: styles.catalogParagraph,
-    editClassName: styles.catalogParagraphEdit,
-    editable: true,
-    main: true,
-  },
-  coverImageUrl: {
-    placeholder: 'Choose Image',
-    fieldType: 'button',
-    options: [],
-    viewClassName: styles.catalogCoverImageUrl,
-    editClassName: styles.catalogCoverImageUrlEdit,
-    editable: true,
-    main: false,
-  },
-  priority: {
-    placeholder: 'Select priority',
-    fieldType: 'select',
-    options: [
-      { value: 1, label: 'High (1)' },
-      { value: 2, label: 'Medium (2)' },
-      { value: 3, label: 'Low (3)' },
-    ],
-    viewClassName: styles.catalogPriority,
-    editClassName: styles.catalogPriorityEdit,
-    editable: true,
-    main: false,
-  },
+  // const files = Array.from(e.target.files);
+  const files = Array.from(fileList).filter(file => {
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/webp'];
+    return validTypes.includes(file.type);
+  });
+
+  if (files.length === 0) {
+    alert('Please select only JPG or WebP images.');
+    return;
+  }
+
+  // Update selectedFiles state
+  setSelectedFiles((prev: any) => [...prev, ...files]);
+
+  // Create preview data for each file
+  const newPreviews: PreviewImage[] = files.map(file => {
+    const previewUrl = URL.createObjectURL(file);
+
+    return {
+      id: `${file.name}-${Date.now()}`,
+      file: file,
+      preview: previewUrl,
+      metadata: {
+        title: file.name,
+      },
+    };
+  });
+  // send API call from here
+  // onImagesSelected(files);
+
+  setPreviewData((prev: any) => [...prev, ...newPreviews]);
 };

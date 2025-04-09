@@ -1,20 +1,53 @@
 import React from 'react';
 
+import { PreviewImage } from '@/Components/Catalog/ImageUploadList';
 import styles from '@/styles/Upload.module.scss';
 
 interface ImageUploadModuleProps {
-  // onImagesSelected: (files: File[]) => void;
+  selectedFiles: File[];
+  setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  previewData: PreviewImage[];
+  setPreviewData: React.Dispatch<React.SetStateAction<PreviewImage[]>>;
 }
 
-const ImageUploadModule: React.FC<ImageUploadModuleProps> = () => {
+const ImageUploadModule: React.FC<ImageUploadModuleProps> = ({
+  setSelectedFiles,
+  setPreviewData,
+}) => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
-    console.log('zac inside imageUploadModule');
+    // const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files).filter(file => {
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/webp'];
+      return validTypes.includes(file.type);
+    });
 
-    const files = Array.from(e.target.files);
+    if (files.length === 0) {
+      alert('Please select only JPG or WebP images.');
+      return;
+    }
+
+    // Update selectedFiles state
+    setSelectedFiles(prev => [...prev, ...files]);
+
+    // Create preview data for each file
+    const newPreviews: PreviewImage[] = files.map(file => {
+      const previewUrl = URL.createObjectURL(file);
+
+      return {
+        id: `${file.name}-${Date.now()}`,
+        file: file,
+        preview: previewUrl,
+        metadata: {
+          title: file.name,
+        },
+      };
+    });
     // send API call from here
     // onImagesSelected(files);
+
+    setPreviewData(prev => [...prev, ...newPreviews]);
   };
 
   return (
@@ -27,7 +60,7 @@ const ImageUploadModule: React.FC<ImageUploadModuleProps> = () => {
         <input
           type="file"
           multiple
-          accept="image/*"
+          accept="image/jpeg,image/jpg,image/webp"
           onChange={handleFileSelect}
           className={styles.input}
           id="file-upload"

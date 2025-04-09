@@ -1,9 +1,9 @@
 import React from 'react';
 
-import { FieldType } from '@/utils/catalogUtils';
+import { FieldType } from '@/utils/catalogFieldConfigs';
 
 interface EditableFieldProps {
-  value: string | number;
+  value: string | number | boolean;
   placeholder: string;
   onChange: (
     e: React.ChangeEvent<HTMLInputElement
@@ -77,7 +77,27 @@ const EditableField: React.FC<EditableFieldProps> = ({
       );
     case 'button':
       return (
-        <button onClick={onClick}>Select Cover Image</button>
+        <button
+          className={editClassName}
+          onClick={value === 'selectImages'
+            ? () => document.getElementById('file-upload')?.click()
+            : onClick}
+        >
+          {placeholder}
+        </button>
+      );
+    case 'toggle':
+      return (
+        <div className={editClassName}>
+          <input
+            type="checkbox"
+            checked={value as boolean}
+            onChange={onChange}
+          />
+          <label className="toggleLabel">
+            {placeholder}
+          </label>
+        </div>
       );
     default:
       return (
