@@ -1,5 +1,3 @@
-import { useEditContext } from '@/context/EditContext';
-
 import styles from '../../styles/Edit.module.scss';
 
 interface updateToolbarProps {
@@ -24,17 +22,13 @@ export const UpdateToolbar = ({
   contentWidth,
   isMobile,
 }: updateToolbarProps) => {
-  const { isEditMode, setIsEditMode } = useEditContext();
-  if (!isEditMode) return null;
 
   return (
     <div
-      style={isMobile ? { width: '100%' } : { width: `${contentWidth}px`, margin: '0 auto' }}
+      style={isMobile ? { width: '100%' } : { width: `${contentWidth / 2}px padding: '2px'` }}
       className={styles.updateToolbar}>
-      <button className={styles.updateButton} onClick={() => handleCancelChanges()}>Upload</button>
       <button className={styles.updateButton} onClick={() => handleSaveChanges()}>Save</button>
-      {/* eslint-disable-next-line @stylistic/max-len */}
-      <button className={styles.updateButton} onClick={() => setIsEditMode(!isEditMode)}>Cancel</button>
+      <button className={styles.updateButton} onClick={() => handleCancelChanges()}>Cancel</button>
     </div>
   );
 };

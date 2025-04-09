@@ -1,11 +1,20 @@
 import React, { createContext, useContext, useState } from 'react';
 
+import { PreviewImage } from '@/Components/Catalog/ImageUploadList';
 import { Catalog } from '@/types/Catalog';
 import { Image } from '@/types/Image';
+
+/**
+ * Editing state for any content type
+ *
+ * Currently works with Catalogs and Blogs
+ */
 
 interface EditContextState {
   isEditMode: boolean;
   setIsEditMode: (value: boolean) => void;
+  isCreateMode: boolean;
+  setIsCreateMode: (value: boolean) => void;
   imageSelected: Image | null;
   setImageSelected: (value: Image | null) => void;
   currentEditType: string | null;
@@ -14,6 +23,13 @@ interface EditContextState {
   setSelectedForSwap: (value: Image | null) => void;
   editCatalog: Catalog | null;
   setEditCatalog: (value: Catalog | null) => void;
+  isEditCoverImage: boolean;
+  setIsEditCoverImage: (value: boolean) => void;
+  handleCancelChanges: () => void;
+  selectedFiles: File[] | [];
+  setSelectedFiles: (selectedFiles: File[] | null) => void;
+  previewData: PreviewImage[] | [];
+  setPreviewData: (previewData: PreviewImage[] | null) => void;
 }
 
 const EditContext = createContext<EditContextState | undefined>(undefined);
@@ -32,14 +48,33 @@ interface EditProviderProps {
 
 export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  const [isCreateMode, setIsCreateMode] = useState<boolean>(false);
   const [imageSelected, setImageSelected] = useState(null);
   const [currentEditType, setCurrentEditType] = useState<string | null>(null);
   const [selectedForSwap, setSelectedForSwap] = useState<Image | null>(null);
-  const [editCatalog, setEditCatalog] = useState<Catalog | null>(null);
+  const [editCatalog, setEditCatalog] = useState<Catalog | null>();
+  const [isEditCoverImage, setIsEditCoverImage] = useState<boolean>(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewData, setPreviewData] = useState<PreviewImage[]>([]);
+
+  const handleCancelChanges = () => {
+    if (isCreateMode) {
+      setIsEditMode(false);
+      setIsCreateMode(false);
+      setIsEditCoverImage(false);
+      // Navigate back to home page
+      window.location.href = '/';
+    } else {
+      setIsEditMode(false);
+      setEditCatalog(null);
+    }
+  };
 
   const value = {
     isEditMode,
     setIsEditMode,
+    isCreateMode,
+    setIsCreateMode,
     imageSelected,
     setImageSelected,
     currentEditType,
@@ -48,6 +83,13 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
     setSelectedForSwap,
     editCatalog,
     setEditCatalog,
+    isEditCoverImage,
+    setIsEditCoverImage,
+    handleCancelChanges,
+    selectedFiles,
+    setSelectedFiles,
+    previewData,
+    setPreviewData,
   };
 
   return (

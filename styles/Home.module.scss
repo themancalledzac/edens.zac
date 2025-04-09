@@ -342,7 +342,6 @@
 }
 
 .imageEdit {
-  //border: 10px solid white;
 
   padding: 1rem 1rem 1rem 1rem;
 
@@ -365,6 +364,10 @@
   background-blend-mode: color-burn;
   //border: 11px solid red;
 
+}
+
+.coverImageEdit {
+  border: 5px solid blue;
 }
 
 @media (max-width: 768px) {

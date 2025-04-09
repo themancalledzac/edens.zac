@@ -17,7 +17,8 @@ export default function Header() {
 
   const handleClick = (page: string) => {
     try {
-      router.push(`/${page}`);
+      router.push(`/${page}`).then(() => {
+      });
     } catch (error) {
       console.error(`Error fetching ${page} page. ${error}`);
     }

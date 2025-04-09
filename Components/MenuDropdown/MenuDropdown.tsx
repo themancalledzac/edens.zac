@@ -14,22 +14,29 @@ export default function MenuDropdown({ dropdownRef, showDropdown, setShowDropdow
   const [aboutDropdownVisible, setAboutDropdownVisible] = useState(false);
   const [contactDropdownVisible, setContactDropdownVisible] = useState(false);
   const [formData, setFormData] = useState({ title: '', message: '' });
-  const { isEditMode, setIsEditMode } = useEditContext();
+  const { isEditMode, setIsEditMode, isCreateMode, setIsCreateMode, handleCancelChanges } = useEditContext();
   const router = useRouter();
 
   const isMobile = useAppContext().isMobile;
 
   // Determine if we are on a catalog or blog page
-  const currentSlug = router.query.slug as string;
-  const isItemPage = currentSlug !== '';
+  const isItemPage = router.query.slug as string;
+
+  const handleCancel = () => {
+    setShowDropdown(!showDropdown);
+    handleCancelChanges();
+  };
 
   const handleUpdateClick = () => {
     setIsEditMode(!isEditMode);
     setShowDropdown(!showDropdown);
   };
 
-  const handleCreateClick = () => {
-    router.push('/create');
+  const handleSelectCreate = () => {
+    setIsCreateMode(true);
+    setIsEditMode(false);
+    window.location.href = '/catalog/create';
+    setShowDropdown(!showDropdown);
   };
 
   const adminMenu = () => {
@@ -39,15 +46,26 @@ export default function MenuDropdown({ dropdownRef, showDropdown, setShowDropdow
 
     return (
       <>
-        {isItemPage ? (
-          <div className={styles.dropdownMenuItem} onClick={handleUpdateClick}>
-            <h2 className={styles.dropdownMenuOptions}>{isEditMode ? 'Cancel Update' : 'Update'}</h2>
-          </div>
-        ) : (
-          <div className={styles.dropdownMenuItem} onClick={handleCreateClick}>
+        {isItemPage && (
+          (isEditMode || isCreateMode) ? (
+            <div className={styles.dropdownMenuItem} onClick={handleCancel}>
+              <h2 className={styles.dropdownMenuOptions}>
+                {isEditMode ? 'Cancel Update' : 'Cancel Create'}
+              </h2>
+            </div>
+          ) : (
+            <div className={styles.dropdownMenuItem} onClick={handleUpdateClick}>
+              <h2 className={styles.dropdownMenuOptions}>
+                Update
+              </h2>
+            </div>
+          ))}
+        {!isCreateMode && (
+          <div className={styles.dropdownMenuItem} onClick={handleSelectCreate}>
             <h2 className={styles.dropdownMenuOptions}>Create</h2>
           </div>
         )}
+
         <div className={styles.dropdownMenuItem} onClick={() => handleClick('/cdn/catalog', router)}>
           <h2 className={styles.dropdownMenuOptions}>Catalogs</h2>
         </div>

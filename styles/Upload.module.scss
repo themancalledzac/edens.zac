@@ -10,7 +10,6 @@
   max-width: 1000px;
   margin-bottom: 2rem;
   margin-left: 2rem;
-  margin-right: 2rem;
   //min-width: var(--content-min-width);
   //max-width: var(--content-max-width);
   //margin: 0 auto;
@@ -168,7 +167,6 @@
   }
 
   .items {
-    max-height: 24rem;
     overflow-y: auto;
     border-top: 1px solid #e5e7eb;
   }
@@ -190,17 +188,17 @@
   }
 
   .preview {
-    width: 4rem;
-    height: 4rem;
+    width: auto;
+    height: 10rem;
     background-color: #f3f4f6;
     border-radius: 0.25rem;
     overflow: hidden;
   }
 
   .image {
-    max-width: 100%;
-    height: 100%;
-    object-fit: cover;
+    max-height: 100%;
+    width: auto;
+    object-fit: contain;
   }
 
   .info {
