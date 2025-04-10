@@ -1,6 +1,5 @@
 // eslint.config.mjs
 import eslint from '@eslint/js';
-import stylistic from '@stylistic/eslint-plugin';
 import reactPlugin from 'eslint-plugin-react';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import unicornPlugin from 'eslint-plugin-unicorn';
@@ -123,29 +122,6 @@ export default tseslint.config(
     rules: {
       'simple-import-sort/exports': 'error',
       'simple-import-sort/imports': 'error',
-    },
-  },
-
-  // Stylistic rules
-  {
-    plugins: {
-      '@stylistic': stylistic,
-    },
-    rules: {
-      '@stylistic/semi': ['error', 'always'],
-      '@stylistic/quotes': ['error', 'single', { avoidEscape: true }],
-      '@stylistic/comma-dangle': ['error', 'always-multiline'],
-      '@stylistic/max-len': ['error', { code: 100, ignoreUrls: true, ignoreStrings: true }],
-      // Add these indentation rules
-      '@stylistic/indent': ['error', 2, {
-        SwitchCase: 1,
-        VariableDeclarator: 'first',
-        FunctionDeclaration: { parameters: 'first' },
-        FunctionExpression: { parameters: 'first' },
-        CallExpression: { arguments: 'first' },
-        ArrayExpression: 'first',
-        ObjectExpression: 'first',
-      }],
     },
   },
 );
