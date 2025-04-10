@@ -31,7 +31,13 @@ export interface Catalog {
   isHomeCard: boolean;
 }
 
-//     catalogs: <CatalogMin[]> // Future idea of catalogs having catalogs
+// Small catalog object for return data of Image.catalog array
+export interface CatalogMin {
+  id: number;
+  title: string;
+  slug: string;
+  coverImageUrl: string;
+}
 
 // Small catalog object for return data of Image.catalog array
 export interface CatalogCreateDTO {
