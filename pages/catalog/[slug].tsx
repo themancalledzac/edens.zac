@@ -7,7 +7,7 @@ import ImageFullScreen from '@/Components/ImageFullScreen/ImageFullScreen';
 import PhotoBlockComponent from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
 import { useAppContext } from '@/context/AppContext';
 import { useEditContext } from '@/context/EditContext';
-import { fetchCatalogBySlug, updateCatalog } from '@/lib/api/catalogs';
+import { createCatalog, fetchCatalogBySlug, updateCatalog } from '@/lib/api/catalogs';
 import { Catalog } from '@/types/Catalog';
 import { Image } from '@/types/Image';
 import { CatalogPageProps, createEmptyCatalog } from '@/utils/catalogUtils';
@@ -155,42 +155,15 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
   const handleSave = async () => {
     try {
       if (isCreateMode) {
-        // If we have images to upload, we need to include them in the request
-        const formData = new FormData();
-
-        // Add catalog data as JSON
-        const catalogData = {
-          title: editCatalog.title,
-          location: editCatalog.location,
-          priority: editCatalog.priority || 2,
-          description: editCatalog.description,
-          isHomeCard: editCatalog.isHomeCard,
-        };
-
-        formData.append('catalogDTO', JSON.stringify(catalogData));
-
-        // Add any selected files
-        for (const file of selectedFiles) {
-          formData.append('images', file);
-        }
-
-        // API request :TODO: update this with our current route
-        const response = await fetch('http://localhost:8080/api/v1/catalog/uploadCatalogWithImages', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await response.json();
+        const result = await createCatalog(editCatalog, selectedFiles);
 
         // Navigate to the new catalog
         window.location.href = `/catalog/${result.slug}`;
 
       } else {
-
         if (!editCatalog) return;
 
         const result = await updateCatalog(editCatalog);
-        console.log('Before context update:', currentCatalog?.title);
         setCurrentCatalog(result);
 
         setIsEditMode(false);
