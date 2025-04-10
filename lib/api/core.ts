@@ -3,7 +3,9 @@
  */
 
 // TODO: Need to update this to push towards PROD endpoint, Fallback to Localhost
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
+  : 'http://localhost:8080/api/v1';
 
 /**
  * Custom error class for API responses
@@ -26,7 +28,9 @@ export class ApiError extends Error {
  * @returns The parsed response data
  * @throws ApiError if the request fails
  */
-export async function fetchFromApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+export async function fetchFromApi<T>(
+  endpoint: string,
+  options: RequestInit = {}): Promise<T> {
   try {
     const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
 
@@ -66,4 +70,54 @@ export async function fetchFromApi<T>(endpoint: string, options: RequestInit = {
       500,
     );
   }
+}
+
+const fetchWriteBase = async <T>(url: string, options: RequestInit): Promise<T> => {
+  try {
+    const response = await fetch(url, options);
+
+    if (!response.ok) {
+      console.error(`[zac] - response: ${JSON.stringify(response)}`);
+
+      throw new ApiError(
+        `API error: ${response.status} ${response.statusText}`,
+        response.status,
+      );
+    }
+
+    // Return parsed response
+    if (response.status === 204) {
+      return null as unknown as T;
+    }
+
+    return await response.json();
+  } catch (error) {
+    // All error handling in catch block
+    console.error('Error in API call:', error);
+    throw error;
+  }
+};
+
+// For JSON-based updates (PUT)
+export async function fetchJsonApi<T>(endpoint: string, body: any): Promise<T> {
+  const baseUrl = 'http://localhost:8080/api/v1';
+  const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+
+  return await fetchWriteBase<T>(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+}
+
+// For FormData-based creates (POST)
+export async function fetchFormDataApi<T>(endpoint: string, formData: FormData): Promise<T> {
+  const baseUrl = 'http://localhost:8080/api/v1';
+  const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+
+  return await fetchWriteBase<T>(url, {
+    method: 'POST',
+    body: formData,
+  });
 }
