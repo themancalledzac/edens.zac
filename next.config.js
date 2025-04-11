@@ -15,6 +15,9 @@ const nextConfig = {
     formats: ['image/webp'],
     // remotePatterns
   },
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  },
   // Add webpack configuration to handle caching
   webpack: ( config, { dev, isServer } ) => {
     // Custom webpack config if needed
