@@ -2,7 +2,6 @@
  * Core API utilities for making requests to the backend
  */
 
-// TODO: Need to update this to push towards PROD endpoint, Fallback to Localhost
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
   : 'http://localhost:8080/api/v1';
@@ -32,6 +31,8 @@ export async function fetchFromApi<T>(
   endpoint: string,
   options: RequestInit = {}): Promise<T> {
   try {
+    console.log(`[zac] - fetching endpoint: ${endpoint} with API_BASE_URL=${API_BASE_URL}`);
+    console.log(process.env.NEXT_PUBLIC_API_URL);
     const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
 
     const response = await fetch(url, {
