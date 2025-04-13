@@ -2,7 +2,7 @@
  * API functions for blog-related operations
  */
 
-import { fetchFromApi } from '@/lib/api/core';
+import { fetchReadApi } from '@/lib/api/core';
 import { Blog } from '@/types/Blog';
 
 /**
@@ -12,7 +12,7 @@ import { Blog } from '@/types/Blog';
  */
 export async function fetchLatestBlog(): Promise<Blog> {
   try {
-    const blogs = await fetchFromApi<Blog[]>('/blog/getAll?page=0&size=1');
+    const blogs = await fetchReadApi<Blog[]>('/blog/getAll?page=0&size=1');
 
     if (blogs && blogs.length > 0) {
       return blogs[0];
@@ -45,13 +45,13 @@ export async function fetchLatestBlog(): Promise<Blog> {
  * @returns The blog data
  */
 export async function fetchBlogById(id: number): Promise<Blog> {
-  return fetchFromApi<Blog>(`/blog/byId/${id}`);
+  return fetchReadApi<Blog>(`/blog/byId/${id}`);
 }
 
 
 export async function fetchBlogBySlug(slug: string): Promise<Blog> {
   try {
-    return fetchFromApi<Blog>(`/blog/${slug}`);
+    return fetchReadApi<Blog>(`/blog/${slug}`);
   } catch (error) {
 
     console.error(`Error fetching blog "${slug}:`, error);
