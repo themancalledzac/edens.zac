@@ -1,10 +1,21 @@
+import { isProduction } from '@/utils/environment';
+
+// Static variables for our endpoints
+const READ = 'read';
+const WRITE = 'write';
+
 /**
  * Core API utilities for making requests to the backend
  */
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api/v1`
-  : 'http://localhost:8080/api/v1';
+const API_BASE_URL = (readWrite: string) => {
+  return readWrite === READ
+    ? (isProduction()
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/${READ}`
+      : `http://localhost:8080/api/${READ}`)
+    : (isProduction()
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/${WRITE}`
+      : `http://localhost:8080/api/${WRITE}`);
+};
 
 /**
  * Custom error class for API responses
@@ -27,13 +38,12 @@ export class ApiError extends Error {
  * @returns The parsed response data
  * @throws ApiError if the request fails
  */
-export async function fetchFromApi<T>(
+export async function fetchReadApi<T>(
   endpoint: string,
   options: RequestInit = {}): Promise<T> {
   try {
-    console.log(`[zac] - fetching endpoint: ${endpoint} with API_BASE_URL=${API_BASE_URL}`);
-    console.log(process.env.NEXT_PUBLIC_API_URL);
-    const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+    const url = `${API_BASE_URL(READ)}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+    console.log(`Fetch Read Request: ${url}`);
 
     const response = await fetch(url, {
       headers: {
@@ -73,8 +83,10 @@ export async function fetchFromApi<T>(
   }
 }
 
-const fetchWriteBase = async <T>(url: string, options: RequestInit): Promise<T> => {
+const fetchWriteBase = async <T>(endpoint: string, options: RequestInit): Promise<T> => {
   try {
+    const url = `${API_BASE_URL(WRITE)}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+    console.log(`Fetch Write Request: ${url}`);
     const response = await fetch(url, options);
 
     if (!response.ok) {
@@ -101,23 +113,16 @@ const fetchWriteBase = async <T>(url: string, options: RequestInit): Promise<T> 
 
 // For JSON-based updates (PUT)
 export async function fetchJsonApi<T>(endpoint: string, body: any): Promise<T> {
-  const baseUrl = 'http://localhost:8080/api/v1';
-  const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-
-  return await fetchWriteBase<T>(url, {
+  return await fetchWriteBase<T>(endpoint, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-
 }
 
 // For FormData-based creates (POST)
 export async function fetchFormDataApi<T>(endpoint: string, formData: FormData): Promise<T> {
-  const baseUrl = 'http://localhost:8080/api/v1';
-  const url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-
-  return await fetchWriteBase<T>(url, {
+  return await fetchWriteBase<T>(endpoint, {
     method: 'POST',
     body: formData,
   });

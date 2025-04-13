@@ -1,7 +1,7 @@
 /**
  * API functions for catalog-related operations
  */
-import { fetchFormDataApi, fetchFromApi, fetchJsonApi } from '@/lib/api/core';
+import { fetchFormDataApi, fetchJsonApi, fetchReadApi } from '@/lib/api/core';
 import { Catalog } from '@/types/Catalog';
 
 /** Fetches all catalogs for the home page
@@ -10,12 +10,12 @@ import { Catalog } from '@/types/Catalog';
  * @returns Array of catalog data
  */
 export async function fetchAllCatalogs(): Promise<Catalog[]> {
-  return fetchFromApi<Catalog[]>('/catalog/mainPageCatalogList');
+  return fetchReadApi<Catalog[]>('/catalog/mainPageCatalogList');
 }
 
 export async function fetchCatalogBySlug(slug: string): Promise<Catalog> {
   try {
-    return fetchFromApi<Catalog>(`/catalog/bySlug/${slug}`);
+    return fetchReadApi<Catalog>(`/catalog/bySlug/${slug}`);
   } catch (error) {
     console.error(`Error fetching catalog "${slug}:`, error);
   }
@@ -23,7 +23,6 @@ export async function fetchCatalogBySlug(slug: string): Promise<Catalog> {
 
 export const updateCatalog = async (catalog: Catalog): Promise<Catalog> => {
 
-  // const response = await fetch('http://localhost:8080/api/v1/catalog/update/', {
   return fetchJsonApi<Catalog>('/catalog/update/', {
     id: catalog.id,
     title: catalog.title,

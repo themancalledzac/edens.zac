@@ -2,7 +2,7 @@
  * API functions for home-related operations
  */
 
-import { fetchFromApi } from '@/lib/api/core';
+import { fetchReadApi } from '@/lib/api/core';
 import { Blog } from '@/types/Blog';
 import { HomeCardModel } from '@/types/HomeCardModel';
 
@@ -13,7 +13,7 @@ import { HomeCardModel } from '@/types/HomeCardModel';
  */
 export async function fetchHomePage(): Promise<HomeCardModel[]> {
   try {
-    const homeLayout = await fetchFromApi<HomeCardModel[]>('/home/getHome');
+    const homeLayout = await fetchReadApi<HomeCardModel[]>('/home/getHome');
 
     if (homeLayout && homeLayout.length > 0) {
       return homeLayout;
@@ -35,5 +35,5 @@ export async function fetchHomePage(): Promise<HomeCardModel[]> {
  * @returns The blog data
  */
 export async function fetchBlogById(id: string): Promise<Blog> {
-  return fetchFromApi<Blog>(`/blog/byId/${id}`);
+  return fetchReadApi<Blog>(`/blog/byId/${id}`);
 }

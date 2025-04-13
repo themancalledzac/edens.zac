@@ -48,8 +48,7 @@ export default function Home({ homeCards }) {
   useEffect(() => {
     setIsEditMode(false);
     setIsCreateMode(false);
-    console.log(process.env.NEXT_PUBLIC_API_URL);
-    
+
   }, []);
 
   return (
