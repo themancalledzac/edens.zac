@@ -6,6 +6,11 @@ export interface DisplayImage {
   height: number;
 }
 
+interface Dimensions {
+  width: number;
+  height: number;
+}
+
 /**
  * Determines if an image should be displayed as a standalone item
  * based on rating and orientation.
@@ -22,6 +27,40 @@ export function isStandaloneImage(image: Image): boolean {
   const isVertical = image.imageHeight > image.imageWidth;
 
   return isHighRated && !isVertical || isPanorama;
+}
+
+/**
+ * Helper function to verify an image source is valid
+ * @param src
+ */
+export const isValidSource = (src) => {
+  return src && src !== '';
+};
+
+/**
+ * Calculate Optimal Dimensions
+ *
+ * Helper function to return image width and height based on available space and image aspect ratio
+ * @param aspectRatio - Width divided by height of the image
+ * @param availableSpace - Available space dimensions
+ * @returns Calculated optimal dimensions
+ */
+export function calculateOptimalDimensions(
+  aspectRatio: number,
+  availableSpace: Dimensions): Dimensions {
+  // First try fitting by height ( good for vertical images )
+  let height = availableSpace.height;
+  let width = height * aspectRatio;
+
+  // If width exceeds available width, fit by width instead
+  if (width > availableSpace.width) {
+    width = availableSpace.width;
+    height = width / aspectRatio;
+  }
+  return {
+    width: Math.round(width),
+    height: Math.round(height),
+  };
 }
 
 /**

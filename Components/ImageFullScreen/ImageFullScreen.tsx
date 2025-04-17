@@ -1,16 +1,10 @@
 import Image from 'next/image';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import SideBar from '../SideBar/SideBar';
-import styles from './ImageFullScreen.module.scss';
+import ImageInfo from '@/Components/ImageInfo/ImageInfo';
+import { calculateOptimalDimensions, isValidSource } from '@/utils/imageUtils';
 
-/**
- * Helper function to verify an image source is valid
- * @param src
- */
-const isValidSource = (src) => {
-  return src && src !== '';
-};
+import styles from './ImageFullScreen.module.scss';
 
 /**
  * ImageFUllScreen component displays an image in fullscreen mode with metadata in a sidebar
@@ -56,65 +50,64 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }) {
   }, [imageSelected]);
 
   /**
-   * Calculates the optimal dimensions for the displayed image
-   *
-   * Logic:
-   * 1. For vertical images:
-   *    - Try to fill available height first
-   *    - If width exceeds available space, scale down to fit width
-   *    - This keeps vertical images centered with max height
-   *
-   * 2. For horizontal images:
-   *    - Always constrain by available width (screen width minus sidebar)
-   *    - If resulting height is too tall, scale down to fit height
-   *    - This ensures horizontal images fully utilize available width
-   *
-   * The sidebar is always fixed at 300px on the right side of the screen.
+   * useCallback Hook that calculates
+   * the optimal dimensions for the displayed image
    */
   const calculateDimensions = useCallback(() => {
     if (!imageSelected) return;
 
+    // Step 1: Extract image properties
     const { imageWidth, imageHeight } = imageSelected;
     const aspectRatio = imageWidth / imageHeight;
-    const isVertical = imageHeight > imageWidth;
+    const isMobileView = screenSize.width < 768;
 
-    const availableWidth = screenSize.width - SIDEBAR_WIDTH - 20; // 10px padding on each side
-    const availableHeight = screenSize.height - 20; // 10px padding top and bottom
-
-    let width: number, height: number;
-
-    if (isVertical) {
-      // For vertical images, prefer constrain by height
-      height = availableHeight;
-      width = height * aspectRatio;
-
-      // If width exceeds available width, constrain by width instead
-      if (width > availableWidth) {
-        width = availableWidth;
-        height = width / aspectRatio;
-      }
-    } else {
-      // For horizontal images, always constrain by width
-      width = availableWidth;
-      height = width / aspectRatio;
-
-      // If height exceeds available height, adjust
-      if (height > availableHeight) {
-        height = availableHeight;
-        width = height * aspectRatio;
-      }
-    }
-
-    return {
-      width: Math.round(width),
-      height: Math.round(height),
+    // Step 2: Calculate available space based on layout
+    const availableSpace = {
+      width: isMobileView ? screenSize.width - 20 : screenSize.width - SIDEBAR_WIDTH - 20,
+      height: isMobileView ? screenSize.height * 0.7 - 20 : screenSize.height - 20,
     };
+
+    // Step 3: Calculate optimal dimensions
+    return calculateOptimalDimensions(aspectRatio, availableSpace);
   }, [screenSize, imageSelected]);
 
-  // Update dimensions when dependencies change
+  /**
+   * Hook to update dimensions when calculateDimensions change
+   */
   useEffect(() => {
     setImageDimensions(calculateDimensions());
   }, [calculateDimensions]);
+
+  /**
+   * Hook on load that removes background page scroll
+   */
+  useEffect(() => {
+    // Save original style
+    const originalStyle = document.body.style.overflow;
+
+    // Disable scrolling on body
+    document.body.style.overflow = 'hidden';
+
+    // Prevent mouse wheel events on the wrapper but not on the sidebar
+    const handleWheel = (e) => {
+      // Check if the event target is within the sidebar
+      const isInSidebar = e.target.closest(`.${styles.sidebar}`);
+
+      // Only prevent default if not in sidebar
+      if (!isInSidebar) {
+        e.preventDefault();
+      }
+    };
+
+    // Add the event listener with passive: false to allow preventDefault()
+    window.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      // Restore original style and remove listener
+      document.body.style.overflow = originalStyle;
+      window.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   const handleClickOutside = () => {
     setImageSelected(null);
@@ -144,12 +137,12 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }) {
           />
         )}
         {/* Conditional rendering for SideBar based on orientation */}
-        {imageSelected &&
-          <div className={styles.sidebar}>
-            <SideBar image={imageSelected} width={`${SIDEBAR_WIDTH}px`} />
-          </div>
-        }
       </div>
+      {imageSelected && (
+        <div className={styles.sidebar}>
+          <ImageInfo image={imageSelected} width="100%" />
+        </div>
+      )}
       <button
         className={styles.closeButton}
         onClick={handleClickOutside}>
