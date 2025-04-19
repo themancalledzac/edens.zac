@@ -1,7 +1,9 @@
 import React from 'react';
 
 import { PreviewImage } from '@/Components/Catalog/ImageUploadList';
+import { postImagesForCatalog } from '@/lib/api/catalogs';
 import { Catalog, CatalogCreateDTO } from '@/types/Catalog';
+import { Image } from '@/types/Image';
 
 /**
  * Catalog Object Template for Create page.
@@ -51,6 +53,20 @@ export const formatCatalogDate = (dateString: string): string => {
   }
 };
 
+const validateFiles = (fileList: FileList): File[] | null => {
+  // const files = Array.from(e.target.files);
+  const files = Array.from(fileList).filter(file => {
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/webp'];
+    return validTypes.includes(file.type);
+  });
+
+  if (files.length === 0) {
+    alert('Please select only JPG or WebP images.');
+    return null;
+  }
+  return files;
+};
+
 /**
  * Handles file selection and creates previews for selected images
  *
@@ -66,15 +82,7 @@ export const handleFileSelect = (
   if (!fileList) return;
 
   // const files = Array.from(e.target.files);
-  const files = Array.from(fileList).filter(file => {
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/webp'];
-    return validTypes.includes(file.type);
-  });
-
-  if (files.length === 0) {
-    alert('Please select only JPG or WebP images.');
-    return;
-  }
+  const files = validateFiles(fileList);
 
   // Update selectedFiles state
   setSelectedFiles((prev: any) => [...prev, ...files]);
@@ -96,4 +104,17 @@ export const handleFileSelect = (
   // onImagesSelected(files);
 
   setPreviewData((prev: any) => [...prev, ...newPreviews]);
+};
+
+export const uploadSelectedFiles = async (
+  fileList: FileList,
+  catalogTitle: string,
+): Promise<Image[]> => {
+  if (!fileList) return [];
+
+  const files = validateFiles(fileList);
+  if (!files || files.length === 0) return [];
+
+  const catalogTitleFormatted = catalogTitle.replace(/\s/g, '_');
+  return await postImagesForCatalog(catalogTitleFormatted, files);
 };

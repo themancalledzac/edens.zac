@@ -3,6 +3,7 @@
  */
 import { fetchFormDataApi, fetchJsonApi, fetchReadApi } from '@/lib/api/core';
 import { Catalog } from '@/types/Catalog';
+import { Image } from '@/types/Image';
 
 /** Fetches all catalogs for the home page
  *
@@ -59,4 +60,16 @@ export const createCatalog = async (
 
   return await fetchFormDataApi<Catalog>('/catalog/uploadCatalogWithImages', formData);
 
+};
+
+export const postImagesForCatalog = async (
+  catalogTitle: string,
+  selectedFiles: File[]): Promise<Image[]> => {
+
+  const formData = new FormData();
+  for (const file of selectedFiles) {
+    formData.append('images', file);
+  }
+
+  return await fetchFormDataApi<Image[]>(`/image/postImagesForCatalog/${catalogTitle}`, formData);
 };
