@@ -5,7 +5,7 @@ import { useAppContext } from '@/context/AppContext';
 import { useEditContext } from '@/context/EditContext';
 import styles from '@/styles/Catalog.module.scss';
 import { fieldConfigs } from '@/utils/catalogFieldConfigs';
-import { handleFileSelect } from '@/utils/catalogUtils';
+import { handleFileSelect, uploadSelectedFiles } from '@/utils/catalogUtils';
 
 type CatalogMetadataProps = object;
 
@@ -22,11 +22,28 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
     setPreviewData,
   } = useEditContext();
 
-  const handleFieldChange = (field: string) => (e: any) => {
+  const handleFieldChange = (field: string) => async (e: any) => {
     let value: number | boolean;
 
     if (field === 'selectImage' && e.target.files) {
-      handleFileSelect(setSelectedFiles, setPreviewData, e.target.files);
+      if (isEditMode) {
+        try {
+
+          const uploadedImages = await uploadSelectedFiles(e.target.files, editCatalog.title);
+          if (uploadedImages && uploadedImages.length > 0) {
+
+            setEditCatalog({
+              ...editCatalog,
+              images: uploadedImages,
+            });
+          }
+        } catch (error) {
+          console.error('Error uploading images:', error);
+        }
+
+      } else {
+        handleFileSelect(setSelectedFiles, setPreviewData, e.target.files);
+      }
       return;
     } else if (field === 'isHomeCard') {
       value = !editCatalog.isHomeCard;
