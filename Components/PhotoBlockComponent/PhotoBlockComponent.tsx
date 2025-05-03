@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useEditContext } from '@/context/EditContext';
 import { Image as ImageType } from '@/types/Image';
 import { calculateImageSizes, calculateImageSizesReturn } from '@/utils/imageUtils';
+import { swapImages } from '@/utils/imageUtils';
 
 import styles from '../../styles/Home.module.scss';
 
@@ -11,23 +12,81 @@ interface PhotoBlockComponentProps {
   componentWidth: number;
   photos: ImageType[];
   isMobile: boolean;
-  handleImageClick: (image: ImageType) => void;
-  selectedForSwap: ImageType;
+  selectedForSwap?: ImageType;
 }
 
 /**
  * Photo Block Component which can contain 1 or 2 images, depending on Rating.
  */
 export default function PhotoBlockComponent({
-  componentWidth,
-  photos,
-  isMobile,
-  handleImageClick,
-  selectedForSwap,
+componentWidth,
+photos,
+isMobile,
 }: PhotoBlockComponentProps) {
   const [loading, setLoading] = useState(true);
-  const { isEditMode, isEditCoverImage, editCatalog } = useEditContext();
+  const {
+    isEditMode,
+    isEditCoverImage,
+    editCatalog,
+    setEditCatalog,
+    isImageReorderMode,
+    selectedForSwap: contextSelectedForSwap,
+    setSelectedForSwap,
+    setImageSelected,
+  } = useEditContext();
   const [imageItems, setImageItems] = useState<calculateImageSizesReturn[]>([]);
+
+  /**
+   * Handles image swap logic
+   */
+  const handleImageSwitch = (image: ImageType) => {
+    if (!editCatalog) return;
+
+    if (contextSelectedForSwap === null) {
+      // first image selected
+      setSelectedForSwap(image);
+    } else if (contextSelectedForSwap.id === image.id) {
+      setSelectedForSwap(null);
+    } else {
+      // second image selected, swap
+      const { newImages } = swapImages(editCatalog.images, contextSelectedForSwap.id, image.id);
+
+      // Update edit catalog with new image order
+      setEditCatalog({
+        ...editCatalog,
+        images: newImages,
+      });
+      setSelectedForSwap(null);
+    }
+  };
+
+  /**
+   * Handle image click with proper mode checking
+   */
+  const handleImageClick = (image: ImageType) => {
+    if (isEditMode) {
+      // First check if we're in cover image selection mode
+      if (isEditCoverImage && editCatalog) {
+        setEditCatalog({
+          ...editCatalog,
+          coverImageUrl: image.imageUrlWeb,
+        });
+        // Optionally toggle off cover image mode after selection
+        // setIsEditCoverImage(false);
+      }
+      // Only allow reordering if image reorder mode is active
+      else if (isImageReorderMode) {
+        handleImageSwitch(image);
+      }
+      // If not in any special mode, just show the image fullscreen
+      else {
+        setImageSelected(image);
+      }
+    } else {
+      // Not in edit mode, just show the image fullscreen
+      setImageSelected(image);
+    }
+  };
 
   /**
    * Hook to calculate Image sizes, recalculated when photos or componentWidth change.
@@ -85,8 +144,9 @@ export default function PhotoBlockComponent({
 
   const isSelected = (image: ImageType): boolean => {
     if (!isEditCoverImage) {
-      return !!selectedForSwap && selectedForSwap.id === image?.id;
+      return !!contextSelectedForSwap && contextSelectedForSwap.id === image?.id;
     }
+    return false;
   };
 
   return (
@@ -95,8 +155,8 @@ export default function PhotoBlockComponent({
       justifyContent: 'center',
       alignItems: 'center',
       ...(isMobile
-        ? { marginBottom: '0', flexDirection: 'column' }
-        : { marginBottom: '1rem', flexDirection: 'row' }
+          ? { marginBottom: '0', flexDirection: 'column' }
+          : { marginBottom: '1rem', flexDirection: 'row' }
       ),
     } as React.CSSProperties}>
       {imageItems.map((item, index) => (
@@ -112,16 +172,16 @@ export default function PhotoBlockComponent({
                 ${isEditMode && styles.imageEdit}
                 ${isSelected(item.image) && styles.imageSelected}
                 ${(
-            isEditMode
+              isEditMode
               && isEditCoverImage
               && editCatalog?.coverImageUrl === item.image.imageUrlWeb)
             && styles.coverImageEdit}
             `}
-            unoptimized
+            loading="lazy"
             onClick={() => handleImageClick(item.image)}
           />
         )
       ))}
     </div>
   );
-};
+}

@@ -1,10 +1,8 @@
 import React from 'react';
 
-import EditableField from '@/Components/EditableField/EditableField';
 import { useAppContext } from '@/context/AppContext';
 import { useEditContext } from '@/context/EditContext';
 import styles from '@/styles/Catalog.module.scss';
-import { fieldConfigs } from '@/utils/catalogFieldConfigs';
 import { handleFileSelect, uploadSelectedFiles } from '@/utils/catalogUtils';
 
 type CatalogMetadataProps = object;
@@ -20,6 +18,10 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
     setIsEditCoverImage,
     setSelectedFiles,
     setPreviewData,
+    selectedForSwap,
+    setSelectedForSwap,
+    isImageReorderMode,
+    setIsImageReorderMode,
   } = useEditContext();
 
   const handleFieldChange = (field: string) => async (e: any) => {
@@ -40,7 +42,6 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
         } catch (error) {
           console.error('Error uploading images:', error);
         }
-
       } else {
         handleFileSelect(setSelectedFiles, setPreviewData, e.target.files);
       }
@@ -49,11 +50,9 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
       value = !editCatalog.isHomeCard;
     } else if (field === 'priority') {
       value = Number.parseInt(e.target.value, 10);
-      console.log(`[zac] - priority number: ${e.target.value}`);
     } else {
       // Regular field change
       value = e.target.value;
-
     }
 
     setEditCatalog({
@@ -69,6 +68,15 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
     if (field === 'selectImages') {
       document.getElementById('file-upload')?.click();
     }
+    if (field === 'imageReorder') {
+      // Toggle image reorder mode
+      setIsImageReorderMode(!isImageReorderMode);
+      
+      // Clear the selected image for swap when toggling off
+      if (isImageReorderMode && selectedForSwap) {
+        setSelectedForSwap(null);
+      }
+    }
   };
 
   // Display data source depends on mode
@@ -80,9 +88,11 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
     return <div>Loading catalog data...</div>;
   }
 
+  // Date placeholder value
+  const datePlaceholder = new Date().toISOString().split('T')[0];
+
   return (
-    <div
-      className={styles.metadataWrapper}>
+    <div className={styles.metadataWrapper}>
       <div className={styles.metadata}>
         <input
           type="file"
@@ -93,27 +103,142 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
           className={styles.input}
           id="file-upload"
         />
-        {Object.entries(fieldConfigs).map(([field, config]) => (
-          <div
-            key={field}
-            className={`${styles.fieldContainer} ${styles[`${config.width}-width`]}`}
-          >
-            <EditableField
-              key={field}
-              value={catalog?.[field] || ''}
-              placeholder={config.placeholder}
-              onChange={handleFieldChange(field)}
-              isEditMode={isEditMode}
-              isCreateMode={isCreateMode}
-              fieldType={config.fieldType}
-              options={config?.options}
-              viewClassName={config.viewClassName}
-              editClassName={config.editClassName}
-              editable={config.editable}
-              onClick={() => handleButtonClick(field)}
-              main={config.main} />
+
+        {/* Title field */}
+        <div className={`${styles.fieldContainer} ${styles['full-width']}`}>
+          {(isEditMode || isCreateMode) ? (
+            <input
+              type="text"
+              value={catalog?.title || ''}
+              onChange={handleFieldChange('title')}
+              placeholder="Enter title"
+              className={styles.catalogTitleEdit}
+            />
+          ) : (
+            <div className={styles.catalogTitle}>
+              {catalog?.title || 'Enter title'}
+            </div>
+          )}
+        </div>
+
+        {/* Date field */}
+        <div className={`${styles.fieldContainer} ${styles['half-width']}`}>
+          {(isEditMode || isCreateMode) ? (
+            <div>
+              <input
+                type="date"
+                value={catalog?.date || datePlaceholder}
+                onChange={handleFieldChange('date')}
+                className={styles.catalogDateEdit || ''}
+              />
+            </div>
+          ) : (
+            <div className={styles.catalogDate}>
+              {catalog?.date || datePlaceholder}
+            </div>
+          )}
+        </div>
+        
+        {/* Location field */}
+        <div className={`${styles.fieldContainer} ${styles['full-width']}`}>
+          {(isEditMode || isCreateMode) ? (
+            <input
+              type="text"
+              value={catalog?.location || ''}
+              onChange={handleFieldChange('location')}
+              placeholder="Enter location"
+              className={styles.catalogLocationEdit}
+            />
+          ) : (
+            <div className={styles.catalogLocation}>
+              {catalog?.location || 'Enter location'}
+            </div>
+          )}
+        </div>
+        
+        {/* Description field  */}
+        <div className={`${styles.fieldContainer} ${styles['full-width']}`}>
+          {(isEditMode || isCreateMode) ? (
+            <textarea
+              value={catalog?.description || ''}
+              onChange={handleFieldChange('description')}
+              placeholder="Enter description"
+              className={styles.catalogDescriptionEdit}
+              rows={3}
+            />
+          ) : (
+            <div className={styles.catalogDescription}>
+              {catalog?.description || 'Enter description'}
+            </div>
+          )}
+        </div>
+        
+        {/* CoverImageUrl button */}
+        {(isEditMode || isCreateMode) && (
+          <div className={`${styles.fieldContainer} ${styles['half-width']}`}>
+            <button 
+              className={styles.catalogCoverImageUrlEdit}
+              onClick={() => handleButtonClick('coverImageUrl')}
+            >
+              Select Cover Image
+            </button>
           </div>
-        ))}
+        )}
+        
+        {/* SelectImages button */}
+        {(isEditMode || isCreateMode) && (
+          <div className={`${styles.fieldContainer} ${styles['half-width']}`}>
+            <button 
+              className={styles.catalogSelectImagesEdit}
+              onClick={() => handleButtonClick('selectImages')}
+            >
+              Select Images
+            </button>
+          </div>
+        )}
+        
+        {/* Image Reorder button */}
+        {(isEditMode || isCreateMode) && (
+          <div className={`${styles.fieldContainer} ${styles['half-width']}`}>
+            <button 
+              className={`${styles.catalogSelectImagesEdit} ${isImageReorderMode ? styles.active : ''}`}
+              onClick={() => handleButtonClick('imageReorder')}
+            >
+              Image Reorder
+            </button>
+          </div>
+        )}
+        
+        {/* Priority select */}
+        {(isEditMode || isCreateMode) && (
+          <div className={`${styles.fieldContainer} ${styles['quarter-width']}`}>
+            <select
+              value={catalog?.priority || 3}
+              onChange={handleFieldChange('priority')}
+              className={styles.catalogPriorityEdit}
+            >
+              <option value={1}>High (1)</option>
+              <option value={2}>Medium (2)</option>
+              <option value={3}>Low (3)</option>
+            </select>
+          </div>
+        )}
+        
+        {/* IsHomeCard toggle */}
+        {(isEditMode || isCreateMode) && (
+          <div className={`${styles.fieldContainer} ${styles['quarter-width']}`}>
+            <div className={styles.catalogHomeItemEdit}>
+              <input
+                type="checkbox"
+                checked={catalog?.isHomeCard || false}
+                onChange={handleFieldChange('isHomeCard')}
+              />
+              <label className="toggleLabel">
+                Home Item
+              </label>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

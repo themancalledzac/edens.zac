@@ -25,6 +25,8 @@ interface EditContextState {
   setEditCatalog: (value: Catalog | null) => void;
   isEditCoverImage: boolean;
   setIsEditCoverImage: (value: boolean) => void;
+  isImageReorderMode: boolean;
+  setIsImageReorderMode: (value: boolean) => void;
   handleCancelChanges: () => void;
   selectedFiles: File[] | [];
   setSelectedFiles: (selectedFiles: File[] | null) => void;
@@ -54,6 +56,7 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
   const [selectedForSwap, setSelectedForSwap] = useState<Image | null>(null);
   const [editCatalog, setEditCatalog] = useState<Catalog | null>();
   const [isEditCoverImage, setIsEditCoverImage] = useState<boolean>(false);
+  const [isImageReorderMode, setIsImageReorderMode] = useState<boolean>(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewData, setPreviewData] = useState<PreviewImage[]>([]);
 
@@ -85,6 +88,8 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
     setEditCatalog,
     isEditCoverImage,
     setIsEditCoverImage,
+    isImageReorderMode,
+    setIsImageReorderMode,
     handleCancelChanges,
     selectedFiles,
     setSelectedFiles,
