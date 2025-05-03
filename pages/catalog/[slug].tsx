@@ -9,9 +9,8 @@ import { useAppContext } from '@/context/AppContext';
 import { useEditContext } from '@/context/EditContext';
 import { createCatalog, fetchCatalogBySlug, updateCatalog } from '@/lib/api/catalogs';
 import { Catalog } from '@/types/Catalog';
-import { Image } from '@/types/Image';
 import { CatalogPageProps, createEmptyCatalog } from '@/utils/catalogUtils';
-import { chunkImages, swapImages } from '@/utils/imageUtils';
+import { chunkImages } from '@/utils/imageUtils';
 
 import Header from '../../Components/Header/Header';
 import styles from '../../styles/Catalog.module.scss';
@@ -69,12 +68,8 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
       isCreateMode,
       imageSelected,
       setImageSelected,
-      selectedForSwap,
-      setSelectedForSwap,
       editCatalog,
       setEditCatalog,
-      isEditCoverImage,
-      setIsEditCoverImage,
       handleCancelChanges,
       selectedFiles,
       setSelectedFiles,
@@ -122,32 +117,6 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
       }
     }, [catalog, currentCatalog]);
 
-    /**
-     * Function to handle Image position change.
-     *
-     * @param image Image.
-     */
-    const handleImageSwitch = (image: Image) => {
-      if (!editCatalog) return;
-
-      if (selectedForSwap === null) {
-        // first image selected
-        setSelectedForSwap(image);
-      } else if (selectedForSwap.id === image.id) {
-        setSelectedForSwap(null);
-      } else {
-        // second image selected, swap
-        const { newImages } = swapImages(editCatalog.images, selectedForSwap.id, image.id);
-
-        // Update edit catalog with new image order
-        setEditCatalog({
-          ...editCatalog,
-          images: newImages,
-        });
-        setSelectedForSwap(null);
-      }
-    };
-
     const handleSave = async () => {
       try {
         if (isCreateMode) {
@@ -168,26 +137,6 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
 
       } catch (error) {
         console.error('Failed to save changes:', error);
-      }
-    };
-
-    /**
-     * Handles an image click, either for Edit or for Full Screen.
-     * @param image - Image.
-     */
-    const handleImageClick = (image: Image) => {
-      if (isEditMode) {
-        if (isEditCoverImage) {
-          setEditCatalog({
-            ...editCatalog,
-            coverImageUrl: image.imageUrlWeb,
-          });
-          setIsEditCoverImage(!isEditCoverImage);
-        } else {
-          handleImageSwitch(image);
-        }
-      } else {
-        setImageSelected(image);
       }
     };
 
@@ -237,21 +186,6 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
       return () => window.removeEventListener('resize', handleResize);
     }, [isMobile]);
 
-    // TODO:
-    //  - If you select more files, it seems to overwrite previous 'selectedFiles'
-    //  - On Update: Give a 'success' indicator.
-
-    /**
-     * Handle image selection
-     */
-    const handleImageClickWrapper = (image: Image) => {
-      if (!isEditCoverImage && isEditMode) {
-        handleImageSwitch(image);
-      } else {
-        handleImageClick(image);
-      }
-    };
-
     return (
       <div className={styles.catalogPageMain}>
         <Header />
@@ -290,8 +224,6 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
                     componentWidth={contentWidth}
                     isMobile={isMobile}
                     photos={photoPair}
-                    handleImageClick={handleImageClickWrapper}
-                    selectedForSwap={selectedForSwap}
                   />
                 ))
               ) : (
