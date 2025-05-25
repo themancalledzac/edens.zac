@@ -51,12 +51,7 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }: Ima
   }, [imageSelected]);
 
   // Event handlers
-  const handleClickOutside = useCallback(() => {
-    setImageSelected(null);
-  }, [setImageSelected]);
-
-  const handleImageClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation(); // prevent triggering handleClickOutside
+  const handleExitImageFullscreen = useCallback(() => {
     setImageSelected(null);
   }, [setImageSelected]);
 
@@ -77,7 +72,7 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }: Ima
       setImageSelected(null);
     }
   }, [setImageSelected]);
-  
+
   const handleWheel = useCallback((e: WheelEvent) => {
     const isInSidebar = e.target instanceof Node && !!e.target.closest(`.${styles.sidebar}`);
     if (!isInSidebar) {
@@ -91,15 +86,15 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }: Ima
 
     try {
       const { imageWidth, imageHeight } = imageSelected;
-      
+
       // Validate width and height are valid numbers
       if (!imageWidth || !imageHeight || Number.isNaN(imageWidth) || Number.isNaN(imageHeight)) {
         console.warn('Invalid image dimensions:', { imageWidth, imageHeight });
         return { width: 800, height: 600 }; // Fallback dimensions
       }
-      
+
       const aspectRatio = imageWidth / imageHeight;
-      
+
       const availableSpace = {
         width: isMobileView ? screenSize.width - 20 : screenSize.width - SIDEBAR_WIDTH - 20,
         height: isMobileView ? screenSize.height * 0.7 - 20 : screenSize.height - 20,
@@ -118,7 +113,7 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }: Ima
   }, [imageSelected]);
 
   // Effects
-  
+
   // Handle window resize
   useEffect(() => {
     window.addEventListener('resize', handleResize);
@@ -151,14 +146,13 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }: Ima
 
   // Render
   return (
-    <div 
-      className={styles.imageFullScreenWrapper} 
-      onClick={handleClickOutside}
+    <div
+      className={styles.imageFullScreenWrapper}
       role="dialog"
       aria-modal="true"
       aria-labelledby="fullscreen-image-title"
     >
-      <div className={styles.imageContainer} onClick={handleImageClick}>
+      <div className={styles.imageContainer} onClick={handleExitImageFullscreen}>
         {imageSelected && imageDimensions.height > 0 && !imageError && (
             <Image
               src={imageUrl}
@@ -169,18 +163,18 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }: Ima
                 objectFit: 'contain',
                 backgroundColor: 'transparent',
               }}
-              onClick={handleImageClick}
+              // onClick={handleExitImageFullscreen}
               onError={handleImageError}
               priority
               unoptimized
             />
         )}
-        
+
         {imageError && (
           <div className={styles.errorContainer}>
             <p>Failed to load image</p>
-            <button 
-              onClick={handleClickOutside}
+            <button
+              onClick={handleExitImageFullscreen}
               className={styles.errorButton}
             >
               Close
@@ -188,16 +182,20 @@ export default function ImageFullScreen({ imageSelected, setImageSelected }: Ima
           </div>
         )}
       </div>
-      
+
       {imageSelected && !imageError && (
-        <div className={styles.sidebar} role="complementary" aria-label="Image details">
+        <div
+          className={styles.sidebar}
+          role="complementary"
+          aria-label="Image details"
+        >
           <ImageInfo image={imageSelected} width="100%" />
         </div>
       )}
       
       <button
         className={styles.closeButton}
-        onClick={handleClickOutside}
+        onClick={handleExitImageFullscreen}
         aria-label="Close fullscreen image"
       >
         <span aria-hidden="true">&#10005;</span>

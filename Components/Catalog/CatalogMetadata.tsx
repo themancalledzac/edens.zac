@@ -24,29 +24,28 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
     setIsImageReorderMode,
   } = useEditContext();
 
+  const selectImages = async (e: { target: { files: FileList } }) => {
+    if (isEditMode) {
+      try {
+        const uploadedImages = await uploadSelectedFiles(e.target.files, editCatalog.title);
+        if (uploadedImages && uploadedImages.length > 0) {
+          setEditCatalog({
+            ...editCatalog,
+            images: uploadedImages,
+          });
+        }
+      } catch (error) {
+        console.error('Error uploading images:', error);
+      }
+    } else {
+      handleFileSelect(setSelectedFiles, setPreviewData, e.target.files);
+    }
+  };
+
   const handleFieldChange = (field: string) => async (e: any) => {
     let value: number | boolean;
 
-    if (field === 'selectImage' && e.target.files) {
-      if (isEditMode) {
-        try {
-
-          const uploadedImages = await uploadSelectedFiles(e.target.files, editCatalog.title);
-          if (uploadedImages && uploadedImages.length > 0) {
-
-            setEditCatalog({
-              ...editCatalog,
-              images: uploadedImages,
-            });
-          }
-        } catch (error) {
-          console.error('Error uploading images:', error);
-        }
-      } else {
-        handleFileSelect(setSelectedFiles, setPreviewData, e.target.files);
-      }
-      return;
-    } else if (field === 'isHomeCard') {
+    if (field === 'isHomeCard') {
       value = !editCatalog.isHomeCard;
     } else if (field === 'priority') {
       value = Number.parseInt(e.target.value, 10);
@@ -71,7 +70,7 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
     if (field === 'imageReorder') {
       // Toggle image reorder mode
       setIsImageReorderMode(!isImageReorderMode);
-      
+
       // Clear the selected image for swap when toggling off
       if (isImageReorderMode && selectedForSwap) {
         setSelectedForSwap(null);
@@ -80,9 +79,7 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
   };
 
   // Display data source depends on mode
-  const catalog = (isEditMode || isCreateMode)
-    ? editCatalog
-    : currentCatalog;
+  const catalog = isEditMode || isCreateMode ? editCatalog : currentCatalog;
 
   if (!catalog && !isCreateMode) {
     return <div>Loading catalog data...</div>;
@@ -99,14 +96,14 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
           multiple
           style={{ display: 'none' }}
           accept="image/jpeg,image/jpg,image/webp"
-          onChange={handleFieldChange('selectImage')}
+          onChange={selectImages}
           className={styles.input}
           id="file-upload"
         />
 
         {/* Title field */}
         <div className={`${styles.fieldContainer} ${styles['full-width']}`}>
-          {(isEditMode || isCreateMode) ? (
+          {isEditMode || isCreateMode ? (
             <input
               type="text"
               value={catalog?.title || ''}
@@ -115,15 +112,13 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
               className={styles.catalogTitleEdit}
             />
           ) : (
-            <div className={styles.catalogTitle}>
-              {catalog?.title || 'Enter title'}
-            </div>
+            <div className={styles.catalogTitle}>{catalog?.title || 'Enter title'}</div>
           )}
         </div>
 
         {/* Date field */}
         <div className={`${styles.fieldContainer} ${styles['half-width']}`}>
-          {(isEditMode || isCreateMode) ? (
+          {isEditMode || isCreateMode ? (
             <div>
               <input
                 type="date"
@@ -133,15 +128,13 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
               />
             </div>
           ) : (
-            <div className={styles.catalogDate}>
-              {catalog?.date || datePlaceholder}
-            </div>
+            <div className={styles.catalogDate}>{catalog?.date || datePlaceholder}</div>
           )}
         </div>
-        
+
         {/* Location field */}
         <div className={`${styles.fieldContainer} ${styles['full-width']}`}>
-          {(isEditMode || isCreateMode) ? (
+          {isEditMode || isCreateMode ? (
             <input
               type="text"
               value={catalog?.location || ''}
@@ -150,15 +143,13 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
               className={styles.catalogLocationEdit}
             />
           ) : (
-            <div className={styles.catalogLocation}>
-              {catalog?.location || 'Enter location'}
-            </div>
+            <div className={styles.catalogLocation}>{catalog?.location || 'Enter location'}</div>
           )}
         </div>
-        
+
         {/* Description field  */}
         <div className={`${styles.fieldContainer} ${styles['full-width']}`}>
-          {(isEditMode || isCreateMode) ? (
+          {isEditMode || isCreateMode ? (
             <textarea
               value={catalog?.description || ''}
               onChange={handleFieldChange('description')}
@@ -172,11 +163,11 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
             </div>
           )}
         </div>
-        
+
         {/* CoverImageUrl button */}
         {(isEditMode || isCreateMode) && (
           <div className={`${styles.fieldContainer} ${styles['half-width']}`}>
-            <button 
+            <button
               className={styles.catalogCoverImageUrlEdit}
               onClick={() => handleButtonClick('coverImageUrl')}
             >
@@ -184,11 +175,11 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
             </button>
           </div>
         )}
-        
+
         {/* SelectImages button */}
         {(isEditMode || isCreateMode) && (
           <div className={`${styles.fieldContainer} ${styles['half-width']}`}>
-            <button 
+            <button
               className={styles.catalogSelectImagesEdit}
               onClick={() => handleButtonClick('selectImages')}
             >
@@ -196,11 +187,11 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
             </button>
           </div>
         )}
-        
+
         {/* Image Reorder button */}
         {(isEditMode || isCreateMode) && (
           <div className={`${styles.fieldContainer} ${styles['half-width']}`}>
-            <button 
+            <button
               className={`${styles.catalogSelectImagesEdit} ${isImageReorderMode ? styles.active : ''}`}
               onClick={() => handleButtonClick('imageReorder')}
             >
@@ -208,7 +199,7 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
             </button>
           </div>
         )}
-        
+
         {/* Priority select */}
         {(isEditMode || isCreateMode) && (
           <div className={`${styles.fieldContainer} ${styles['quarter-width']}`}>
@@ -223,7 +214,7 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
             </select>
           </div>
         )}
-        
+
         {/* IsHomeCard toggle */}
         {(isEditMode || isCreateMode) && (
           <div className={`${styles.fieldContainer} ${styles['quarter-width']}`}>
@@ -233,9 +224,7 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
                 checked={catalog?.isHomeCard || false}
                 onChange={handleFieldChange('isHomeCard')}
               />
-              <label className="toggleLabel">
-                Home Item
-              </label>
+              <label className="toggleLabel">Home Item</label>
             </div>
           </div>
         )}

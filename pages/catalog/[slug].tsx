@@ -9,6 +9,7 @@ import { useAppContext } from '@/context/AppContext';
 import { useEditContext } from '@/context/EditContext';
 import { createCatalog, fetchCatalogBySlug, updateCatalog } from '@/lib/api/catalogs';
 import { Catalog } from '@/types/Catalog';
+import { Image } from '@/types/Image';
 import { CatalogPageProps, createEmptyCatalog } from '@/utils/catalogUtils';
 import { chunkImages } from '@/utils/imageUtils';
 
@@ -90,10 +91,11 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
     useEffect(() => {
       if (create) {
         setIsCreateMode(true);
-      } else {
+      } else if (catalog && (!currentCatalog || currentCatalog.id !== catalog.id)) {
+        // Only update if the catalog changed or is not yet set
         setCurrentCatalog(catalog);
       }
-    }, [catalog, create]);
+    }, [catalog, create, currentCatalog]);
 
     /**
      * Hook to handle Catalog in Update/Edit mode.
@@ -117,28 +119,32 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
       }
     }, [catalog, currentCatalog]);
 
-    const handleSave = async () => {
-      try {
-        if (isCreateMode) {
-          const result = await createCatalog(editCatalog, selectedFiles);
+const handleSave = async () => {
+  try {
+    if (isCreateMode) {
+      // Leave create mode logic as is
+      const result = await createCatalog(editCatalog, selectedFiles);
+      window.location.href = `/catalog/${result.slug}`;
+    } else {
+      if (!editCatalog || !currentCatalog) return;
 
-          // Navigate to the new catalog
-          window.location.href = `/catalog/${result.slug}`;
-
-        } else {
-          if (!editCatalog) return;
-
-          const result = await updateCatalog(editCatalog);
-          setCurrentCatalog(result);
-
-          setIsEditMode(false);
-          setEditCatalog(null);
-        }
-
-      } catch (error) {
-        console.error('Failed to save changes:', error);
-      }
-    };
+      // Create a copy of editCatalog
+      const optimizedCatalog = { ...editCatalog };
+      
+      // Use type assertion to tell TypeScript "trust me, this is valid"
+      optimizedCatalog.images = editCatalog.images?.map(img => ({ 
+        id: img.id 
+      })) as Image[];
+      
+      const result = await updateCatalog(optimizedCatalog);
+      setCurrentCatalog(result);
+      setIsEditMode(false);
+      setEditCatalog(null);
+    }
+  } catch (error) {
+    console.error('Failed to save changes:', error);
+  }
+};
 
     /**
      * ImageFullScreen Hook to handle arrow click.
