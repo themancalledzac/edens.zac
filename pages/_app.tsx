@@ -1,3 +1,4 @@
+// TODO:deprecate (Phase 5.2 end): Legacy Pages Router entrypoint retained during hybrid migration
 import '../styles/globals.css';
 
 import type { AppProps } from 'next/app';

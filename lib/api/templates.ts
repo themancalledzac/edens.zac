@@ -3,7 +3,7 @@
  */
 
 
-import { HomePageTemplate } from '@/types/HomePage';
+import { type HomePageTemplate } from '@/types/HomePage';
 
 /**
  * Fetches the homepage template configuration
