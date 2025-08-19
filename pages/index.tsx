@@ -1,3 +1,4 @@
+// TODO:deprecate (Phase 5.2 end): Legacy Pages Router home retained during hybrid migration
 import { useEffect } from 'react';
 
 import { Header } from '@/Components/Header/Header';

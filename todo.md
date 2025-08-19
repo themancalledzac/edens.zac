@@ -246,57 +246,129 @@ A flexible CMS-like system where each content type has:
 - [x] Testing
     - [x] Add/confirm Jest + RTL setup (unit tests for components)
 
-### 5.2 App Router Migration Assessment (from Pages Router)
-- [ ] Decide strategy: Full migration now vs. hybrid (keep Pages, introduce App Router gradually)
-- [ ] Key code changes required for App Router
-    - [ ] Create `app/` directory with `layout.tsx` and `page.tsx` replacing `_app.tsx` and most `pages/*`
-    - [ ] Use RSC by default; minimize `"use client"`
-    - [ ] Replace `getServerSideProps` with async RSC data fetching (or Route Handlers)
-    - [ ] Move head tags to the Metadata API (`export const metadata`)
-    - [ ] Convert dynamic routes: `pages/collection/[slug].tsx` -> `app/collection/[slug]/page.tsx`
-    - [ ] Shared layouts/nesting via `app/(routes)/...` and segment layouts
-    - [ ] Error boundaries: `error.tsx`, `not-found.tsx`
-    - [ ] Loading UI: `loading.tsx` for segment-level suspense
-    - [ ] API routes: consider consolidating client calls via server components or route handlers in `app/api`
-- [ ] Client state & context adjustments
-    - [ ] Keep global providers in `app/layout.tsx`; scope edit-only context to client components
-    - [ ] Replace unnecessary context with props from RSC
-- [ ] Routing utilities
-    - [ ] Replace `next/router` with `next/navigation` in client components
-- [ ] MUI + RSC
-    - [ ] Ensure MUI styles with RSC (styled-registry or CSS baseline); consider CSS Modules for most UI
-- [ ] Migration plan
-    - [ ] Start with Home and new Collection pages under `app/`
-    - [ ] Keep legacy pages under `pages/` until parity reached
-    - [ ] Feature flag routes and run A/B locally
+### 5.2 App Router Migration - Foundation
+- [x] **Migration Strategy Decision**: Gradual hybrid approach - new features in App Router, legacy in Pages
+- [x] **Initial App Router Setup**
+- [x] Create `app/` directory structure with base layout
+- [x] Create root `app/layout.tsx` with minimal client providers
+- [x] Create `app/not-found.tsx` and `app/error.tsx` for error boundaries
+- [ ] Setup CSS Modules and ensure MUI compatibility with RSC
+- [x] Configure metadata defaults in root layout
 
-### 5.3 Project Structure Updates (align to backend API changes)
-- [ ] Types
-    - [ ] Add `types/content-collection.ts` and `types/content-block.ts` mapping backend enums
-- [ ] API layer
-    - [ ] Add `lib/api/content-collections.ts` with paginated fetchers and error handling
-    - [ ] Introduce thin server-only wrappers `lib/server/collections.ts` for RSC use
-- [ ] Components
-    - [ ] Create `components/content-blocks/*` and `components/content-collection/*` folders (lowercase dashed names)
-- [ ] Config & utilities
-    - [ ] Centralize API base URLs and fetch wrappers; add caching strategies
-- [ ] Testing
-    - [ ] Unit tests for types and API functions
+### 5.3 App Router - Content Collections (New Features First)
+- [x] **Collection Pages (Server-First)**
+- [x] Create `app/collection/[slug]/page.tsx` - RSC with async data fetching
+  ```tsx
+  // Direct fetch, no getServerSideProps
+  const collection = await fetchCollectionBySlug(params.slug);
+  ```
+- [x] Create `app/collection/[slug]/loading.tsx` - skeleton for collection metadata
+- [x] Implement `generateMetadata()` for SEO/social sharing
+- [x] Add pagination via URL params (`?page=0&size=30`)
 
-### 5.4 Tooling & Config Updates
-- [x] tsconfig
-    - [x] Enable `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`
-    - [x] Configure path aliases (`@/`)
-- [x] ESLint & Prettier
-    - [x] Enforce import sorting, no default export for components (warn), exhaustive-deps enforced
-- [ ] Performance configs
-    - [ ] Next/Image remotePatterns
-    - [ ] Experimental React 19 features gated if used
+- [x] **Parallel Routes for Collection Viewer**
+- [x] Create `app/collection/[slug]/@viewer/page.tsx` - image grid with suspense
+- [x] Create `app/collection/[slug]/@sidebar/page.tsx` - metadata/info panel
+- [x] Create `app/collection/[slug]/layout.tsx` - combines parallel routes
+- [x] Implement independent loading states for each slot
 
-### 5.5 Risk Management & Rollback
-- [ ] Maintain a migration branch; deploy behind feature flags
-- [ ] Keep Pages Router functional until App Router parity is achieved
-- [ ] Add smoke tests for critical routes (home, catalog, collection) before upgrades
+- [x] **Collection Type-Specific Views (RSC)**
+- [x] Create `components/content-collection/blog-view.tsx` - server component
+- [x] Create `components/content-collection/art-gallery-view.tsx` - server component
+- [x] Create `components/content-collection/portfolio-view.tsx` - server component
+- [x] Create `components/content-collection/client-gallery-view.tsx` - hybrid (RSC + client for password)
+
+### 5.4 App Router - Content Blocks & Performance
+- [x] **Content Block Components (SSR-Optimized)**
+- [x] Create `components/content-blocks/image-content-block.tsx` - server component with next/image
+- [x] Create `components/content-blocks/text-content-block.tsx` - server component
+- [x] Create `components/content-blocks/code-content-block.tsx` - server component with syntax highlighting
+- [x] Create `components/content-blocks/content-block-renderer.tsx` - server-side switch component
+
+- [x] **Partial Prerendering & Streaming**
+- [x] Implement streaming for image blocks:
+  ```tsx
+  <Suspense fallback={<ImageBlockSkeleton />}>
+    <ImageContentBlock block={block} />
+  </Suspense>
+  ```
+- [x] Configure static shell with `export const dynamic = 'force-static'`
+- [x] Add `export const revalidate = 3600` for hourly cache updates
+- [x] Implement progressive loading for collections with 30+ blocks
+
+### 5.5 App Router - State Management Refactor
+- [ ] **Context to URL State Migration**
+- [ ] Move `imageSelected` to URL: `/collection/[slug]?image=123`
+- [ ] Move `isEditMode` to route: `/collection/[slug]/edit`
+- [ ] Replace `currentCatalog` context with RSC props
+- [ ] Remove `photoDataList` from context - fetch where needed
+
+- [ ] **Client-Only Context Optimization**
+- [ ] Create `app/providers.tsx` for remaining client providers
+- [ ] Keep only drag-drop state (`selectedForSwap`) in EditContext
+- [ ] Keep file upload state (`previewData`) in client context
+- [ ] Wrap only interactive components, not entire pages
+
+### 5.6 App Router - Data Fetching & Caching
+- [ ] **API Layer Updates for RSC**
+- [ ] Update `lib/api/contentCollections.ts` with Next.js cache options:
+  ```tsx
+  fetch(url, {
+    next: { 
+      revalidate: 3600,
+      tags: [`collection-${slug}`]
+    }
+  })
+  ```
+- [ ] Create server-only wrappers in `lib/server/collections.ts`
+- [ ] Implement cache tags for targeted revalidation
+- [ ] Configure CloudFront for S3 images (separate from Next cache)
+
+- [ ] **Route Handlers Migration**
+- [ ] Migrate `pages/api/proxy/[...path].ts` to `app/api/proxy/[...path]/route.ts`
+- [ ] Use modern Request/Response APIs
+- [ ] Implement streaming for large file uploads
+
+### 5.7 App Router - Admin Features (Client-Heavy)
+- [ ] **Collection Creation/Editing**
+- [ ] Create `app/(admin)/collection/create/page.tsx` - client page with 'use client'
+- [ ] Create `app/(admin)/collection/[slug]/edit/page.tsx` - client page
+- [ ] Keep editing components client-side (drag-drop, file upload required)
+- [ ] Use route groups `(admin)` for organization
+
+- [ ] **Admin Middleware & Protection**
+- [ ] Update `middleware.ts` for App Router paths
+- [ ] Add authentication checks for admin routes
+- [ ] Implement feature flags for gradual rollout
+
+### 5.8 App Router - Legacy Migration (Final Phase)
+- [ ] **Catalog to Collection Migration**
+- [ ] Keep `pages/catalog/[slug].tsx` operational during transition
+- [ ] Create redirect rules from old catalog URLs to new collection URLs
+- [ ] Update home page to pull from ContentCollections
+- [ ] Deprecate catalog endpoints once migration complete
+
+- [ ] **Performance Monitoring**
+- [ ] Add Web Vitals tracking for new App Router pages
+- [ ] Monitor Core Web Vitals: LCP < 2.5s, FID < 100ms, CLS < 0.1
+- [ ] Compare performance: Pages Router vs App Router
+- [ ] Optimize based on real-world metrics
+
+### 5.9 Next.js Configuration Updates
+- [ ] **Image Optimization for S3/CloudFront**
+ ```js
+ // next.config.js
+ images: {
+   remotePatterns: [{
+     protocol: 'https',
+     hostname: 'd2qp8h5pbkohe6.cloudfront.net',
+   }],
+   formats: ['image/avif', 'image/webp'],
+ }
+```
+- [ ] Update build configuration for App Router
+- [ ] Configure experimental features if needed
+- [ ] Setup development/production environment variables
 
 ---
 

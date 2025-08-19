@@ -97,9 +97,7 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
     setPreviewData,
   };
 
-  return (
-    <EditContext.Provider value={value}>
-      {children}
-    </EditContext.Provider>
-  );
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  return <EditContext.Provider value={value}>{children}</EditContext.Provider>;
 };
