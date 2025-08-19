@@ -1,14 +1,14 @@
-import { GetServerSideProps } from 'next';
+import { type GetServerSideProps } from 'next';
 import React, { useEffect, useState } from 'react';
 
-import Header from '@/Components/Header/Header';
-import ImageFullScreen from '@/Components/ImageFullScreen/ImageFullScreen';
-import PhotoBlockComponent from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
+import { Header } from '@/Components/Header/Header';
+import { ImageFullScreen } from '@/Components/ImageFullScreen/ImageFullScreen';
+import { PhotoBlockComponent } from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
 import { useEditContext } from '@/context/EditContext';
 import { fetchBlogBySlug } from '@/lib/api/blogs';
 import styles from '@/styles/Blog.module.scss';
-import { Blog } from '@/types/Blog';
-import { Image } from '@/types/Image';
+import { type Blog } from '@/types/Blog';
+import { type Image } from '@/types/Image';
 import { chunkImages } from '@/utils/imageUtils';
 
 interface BlogPageProps {
@@ -149,7 +149,7 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
         <div className={styles.blogContent}>
           {/* Split paragraphs by newlines */}
           {blog.paragraph.split('\n\n').map((paragraph, index) => (
-            <p key={index} className={styles.paragraph}>
+            <p key={paragraph[0]} className={styles.paragraph}>
               {paragraph}
             </p>
           ))}

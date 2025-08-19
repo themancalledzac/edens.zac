@@ -1,10 +1,9 @@
 import React from 'react';
 
-import PhotoBlockComponent from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
 import { useAppContext } from '@/context/AppContext';
 import { useEditContext } from '@/context/EditContext';
 import styles from '@/styles/Catalog.module.scss';
-import { Image } from '@/types/Image';
+import { type Image } from '@/types/Image';
 
 interface CatalogViewProps {
   contentWidth: number;

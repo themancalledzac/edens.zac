@@ -7,7 +7,7 @@ interface ImageInfoProps {
   width: string | number; // TODO: make this normalized
 }
 
-export default function ImageInfo({ image, width }: ImageInfoProps) {
+export function ImageInfo({ image, width }: ImageInfoProps) {
   const {isEditMode, editCatalog} = useEditContext();
   if (!image) return null;
 

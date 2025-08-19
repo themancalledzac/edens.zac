@@ -3,15 +3,15 @@
  */
 
 import { fetchReadApi } from '@/lib/api/core';
-import { Blog } from '@/types/Blog';
-import { HomeCardModel } from '@/types/HomeCardModel';
+import { type Blog } from '@/types/Blog';
+import { type HomeCardModel } from '@/types/HomeCardModel';
 
 /**
  * Fetches the latest home page
  *
  * @returns The latest home page
  */
-export async function fetchHomePage(): Promise<HomeCardModel[]> {
+export async function fetchHomePage(): Promise<null> {
   try {
     const homeLayout = await fetchReadApi<HomeCardModel[]>('/home/getHome');
 

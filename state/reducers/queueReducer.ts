@@ -1,4 +1,4 @@
-import {QueueAction, QueueItem} from "@/interfaceLibrary/QueueTypes";
+import {type QueueAction, type QueueItem} from "@/interfaceLibrary/QueueTypes";
 
 export const queueReducer = (state: QueueItem[], action: QueueAction): QueueItem[] => {
     switch (action.type) {

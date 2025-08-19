@@ -1,8 +1,8 @@
 import styles from '../../styles/Home.module.scss';
 
-export default function CodingPage() {
+export function CodingPage() {
 
-  function getRandomElementFromArray(array) {
+  function getRandomElementFromArray(array: string | any[]) {
     const randomIndex = Math.floor(Math.random() * array.length);
     return array[randomIndex];
   }
@@ -12,5 +12,5 @@ export default function CodingPage() {
       <div>coding</div>
     </div>
   );
-};
+}
 

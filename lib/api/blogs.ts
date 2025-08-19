@@ -3,7 +3,7 @@
  */
 
 import { fetchReadApi } from '@/lib/api/core';
-import { Blog } from '@/types/Blog';
+import { type Blog } from '@/types/Blog';
 
 /**
  * Fetches the latest blog post

@@ -1,7 +1,15 @@
-import { NextRouter } from 'next/router';
-import { FormEvent } from 'react';
+import { type NextRouter } from 'next/router';
+import { type ChangeEvent, type FormEvent, type SetStateAction } from 'react';
 
-export const handleInputChange = async (e, setFormData, formData) => {
+export const handleInputChange = async (
+  e: ChangeEvent<HTMLInputElement> | ChangeEvent<HTMLTextAreaElement>,
+  setFormData: {
+    (value: SetStateAction<{ title: string; message: string }>): void;
+    (value: SetStateAction<{ title: string; message: string }>): void;
+    (arg0: (prevData: any) => any): any;
+  },
+  formData: { title: string; message: string }
+) => {
   const { name, value } = e.target;
   const newData = prevData => ({ ...prevData, [name]: value });
   console.log(newData);

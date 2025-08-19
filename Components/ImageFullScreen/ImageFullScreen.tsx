@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import ImageInfo from '@/Components/ImageInfo/ImageInfo';
-import { Image as ImageType } from '@/types/Image';
+import { ImageInfo } from '@/Components/ImageInfo/ImageInfo';
+import { type Image as ImageType } from '@/types/Image';
 import { calculateOptimalDimensions, isValidSource } from '@/utils/imageUtils';
 
 import styles from './ImageFullScreen.module.scss';
@@ -25,7 +25,7 @@ interface ImageDimensions {
 /**
  * ImageFullScreen component displays an image in fullscreen mode with metadata in a sidebar
  */
-export default function ImageFullScreen({ imageSelected, setImageSelected }: ImageFullScreenProps) {
+export function ImageFullScreen({ imageSelected, setImageSelected }: ImageFullScreenProps) {
   // Constants
   const SIDEBAR_WIDTH = 300;
   const MOBILE_BREAKPOINT = 768;

@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 
-import ParallaxSection from '@/Components/ParallaxSection/ParallaxSection';
+import { Header } from '@/Components/Header/Header';
+import { ParallaxSection } from '@/Components/ParallaxSection/ParallaxSection';
 import ParallaxSectionWrapper from '@/Components/ParallaxSectionWrapper';
 import { useEditContext } from '@/context/EditContext';
 import { fetchHomePage } from '@/lib/api/home';
-import { HomeCardModel } from '@/types/HomeCardModel';
+import { type HomeCardModel } from '@/types/HomeCardModel';
 
-import Header from '../Components/Header/Header';
 import styles from '../styles/Home.module.scss';
 
 export async function getServerSideProps() {
@@ -31,7 +31,7 @@ export async function getServerSideProps() {
   }
 }
 
-export default function Home({ homeCards }) {
+export default function Home({ homeCards }: { homeCards: HomeCardModel[] }) {
   const { setIsEditMode, setIsCreateMode } = useEditContext();
 
 
@@ -57,7 +57,7 @@ export default function Home({ homeCards }) {
 
       <div className={styles.bodyWrapper}>
         {cardPairs.map((pair) => (
-          <ParallaxSectionWrapper key={pair[0].id}>
+          <ParallaxSectionWrapper key={pair[0]?.id}>
             {pair.map((card) => (
               <ParallaxSection
                 key={card.id}

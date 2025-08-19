@@ -2,8 +2,8 @@ import Image from 'next/image';
 import React, { useEffect, useState } from 'react';
 
 import { useEditContext } from '@/context/EditContext';
-import { Image as ImageType } from '@/types/Image';
-import { calculateImageSizes, calculateImageSizesReturn } from '@/utils/imageUtils';
+import { type Image as ImageType } from '@/types/Image';
+import { calculateImageSizes, type calculateImageSizesReturn } from '@/utils/imageUtils';
 import { swapImages } from '@/utils/imageUtils';
 
 import styles from '../../styles/Home.module.scss';
@@ -18,7 +18,7 @@ interface PhotoBlockComponentProps {
 /**
  * Photo Block Component which can contain 1 or 2 images, depending on Rating.
  */
-export default function PhotoBlockComponent({
+export function PhotoBlockComponent({
 componentWidth,
 photos,
 isMobile,

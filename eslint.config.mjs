@@ -1,6 +1,8 @@
 // eslint.config.mjs
 import eslint from '@eslint/js';
+import nextPlugin from '@next/eslint-plugin-next';
 import reactPlugin from 'eslint-plugin-react';
+import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import unicornPlugin from 'eslint-plugin-unicorn';
 import tseslint from 'typescript-eslint';
@@ -33,14 +35,16 @@ export default tseslint.config(
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
       }],
+      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', fixStyle: 'inline-type-imports' }],
     },
   },
 
-  // React specific rules
+  // React & Hooks specific rules
   {
     files: ['**/*.{jsx,tsx}'],
     plugins: {
       react: reactPlugin,
+      'react-hooks': reactHooksPlugin,
     },
     rules: {
       'react/jsx-boolean-value': ['error', 'never'],
@@ -50,19 +54,26 @@ export default tseslint.config(
       'react/no-array-index-key': 'error',
       'react/self-closing-comp': 'error',
       'react/react-in-jsx-scope': 'off', // Not needed in Next.js
+      // Hooks
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': ['warn', { additionalHooks: '' }],
+      // Disallow default exports in component files
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: 'ExportDefaultDeclaration',
+          message: 'Default exports are discouraged for React components. Use named exports.',
+        },
+      ],
     },
     settings: {
-      react: {
-        version: 'detect',
-      },
+      react: { version: 'detect' },
     },
   },
 
   // Unicorn plugin (common best practices)
   {
-    plugins: {
-      unicorn: unicornPlugin,
-    },
+    plugins: { unicorn: unicornPlugin },
     rules: {
       'unicorn/better-regex': 'error',
       'unicorn/catch-error-name': 'error',
@@ -81,7 +92,7 @@ export default tseslint.config(
       'unicorn/no-lonely-if': 'error',
       'unicorn/no-nested-ternary': 'error',
       'unicorn/no-new-array': 'error',
-      'unicorn/no-null': 'off', // Too strict for most projects
+      'unicorn/no-null': 'off',
       'unicorn/no-object-as-default-parameter': 'error',
       'unicorn/no-useless-undefined': 'error',
       'unicorn/prefer-add-event-listener': 'error',
@@ -102,23 +113,27 @@ export default tseslint.config(
     },
   },
 
-  // Next.js specific rules
+  // Allow default export for Next.js pages and API route files
+  {
+    files: ['pages/**/*.{js,jsx,ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
+
+  // Next.js plugin (core-web-vitals)
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
+    plugins: { '@next/next': nextPlugin },
     rules: {
-      // Add Next.js specific rules here -
-      // - using just the core rules instead of the full eslint-config-next
-      'import/no-anonymous-default-export': 'off',
-      'react/display-name': 'off',
-      '@next/next/no-img-element': 'off', // Add this only if you want to use <img> instead of next/image
+      ...nextPlugin.configs['core-web-vitals'].rules,
+      '@next/next/no-img-element': 'off', // allow <img> if needed, prefer next/image
     },
   },
 
   // Import sorting
   {
-    plugins: {
-      'simple-import-sort': simpleImportSort,
-    },
+    plugins: { 'simple-import-sort': simpleImportSort },
     rules: {
       'simple-import-sort/exports': 'error',
       'simple-import-sort/imports': 'error',

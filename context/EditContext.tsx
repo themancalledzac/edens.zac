@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState } from 'react';
 
-import { PreviewImage } from '@/Components/Catalog/ImageUploadList';
-import { Catalog } from '@/types/Catalog';
-import { Image } from '@/types/Image';
+import { type PreviewImage } from '@/Components/Catalog/ImageUploadList';
+import { type Catalog } from '@/types/Catalog';
+import { type Image } from '@/types/Image';
 
 /**
  * Editing state for any content type
@@ -22,7 +22,7 @@ interface EditContextState {
   selectedForSwap: Image | null;
   setSelectedForSwap: (value: Image | null) => void;
   editCatalog: Catalog | null;
-  setEditCatalog: (value: Catalog | null) => void;
+  setEditCatalog: (value: object) => void;
   isEditCoverImage: boolean;
   setIsEditCoverImage: (value: boolean) => void;
   isImageReorderMode: boolean;

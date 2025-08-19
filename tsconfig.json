@@ -9,8 +9,9 @@
     "allowJs": true,
     // Allow JavaScript files to be compiled
     "skipLibCheck": true,
-    "strict": false,
-    // We'll turn this on later
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -33,6 +34,10 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/__tests__/**",
+    "tests/**",
+    "jest.setup.ts",
+    "jest.config.mjs"
   ]
 }

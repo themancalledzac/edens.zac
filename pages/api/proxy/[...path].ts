@@ -1,5 +1,5 @@
 // pages/api/proxy/[...path].ts
-import { NextApiRequest, NextApiResponse } from 'next';
+import { type NextApiRequest, type NextApiResponse } from 'next';
 import { Readable } from 'stream';
 
 export const config = {
