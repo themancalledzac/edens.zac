@@ -10,7 +10,7 @@ import { isLocalEnvironment } from '@/utils/environment';
 import InstagramIcon from '../InstagramIcon/InstagramIcon';
 import styles from './MenuDropdown.module.scss';
 
-export default function MenuDropdown({ dropdownRef, showDropdown, setShowDropdown }) {
+export function MenuDropdown({ dropdownRef, showDropdown, setShowDropdown }) {
   const [aboutDropdownVisible, setAboutDropdownVisible] = useState(false);
   const [contactDropdownVisible, setContactDropdownVisible] = useState(false);
   const [formData, setFormData] = useState({ title: '', message: '' });

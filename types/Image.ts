@@ -1,6 +1,6 @@
-import { BlogMin } from '@/types/Blog';
+import { type BlogMin } from '@/types/Blog';
 
-import { CatalogMin } from './Catalog';
+import { type CatalogMin } from './Catalog';
 
 export type Rating = 1 | 2 | 3 | 4 | 5;
 

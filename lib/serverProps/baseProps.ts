@@ -1,7 +1,7 @@
 /**
  * Base utilities for server-side props handling
  */
-import { GetServerSidePropsContext, GetServerSidePropsResult } from 'next';
+import { type GetServerSidePropsContext, type GetServerSidePropsResult } from 'next';
 
 import { ApiError } from '@/lib/api/core';
 

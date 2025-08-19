@@ -1,4 +1,4 @@
-import { Image } from '@/types/Image';
+import { type Image } from '@/types/Image';
 
 export interface DisplayImage {
   image: Image;
@@ -23,17 +23,17 @@ export function isStandaloneImage(image: Image): boolean {
   if (!image) return false;
 
   const isHighRated = image.rating === 5;
-  const isPanorama = (image.imageWidth / image.imageHeight) >= 2;
+  const isPanorama = image.imageWidth / image.imageHeight >= 2;
   const isVertical = image.imageHeight > image.imageWidth;
 
-  return isHighRated && !isVertical || isPanorama;
+  return (isHighRated && !isVertical) || isPanorama;
 }
 
 /**
  * Helper function to verify an image source is valid
  * @param src
  */
-export const isValidSource = (src) => {
+export const isValidSource = src => {
   return src && src !== '';
 };
 
@@ -47,7 +47,8 @@ export const isValidSource = (src) => {
  */
 export function calculateOptimalDimensions(
   aspectRatio: number,
-  availableSpace: Dimensions): Dimensions {
+  availableSpace: Dimensions
+): Dimensions {
   // First try fitting by height ( good for vertical images )
   let height = availableSpace.height;
   let width = height * aspectRatio;
@@ -94,7 +95,6 @@ export function sortImagesByPriority(images: Image[]): Image[] {
   });
 }
 
-
 /**
  * Chunks an array of images into groups for display
  *
@@ -102,7 +102,7 @@ export function sortImagesByPriority(images: Image[]): Image[] {
  * @param chunkSize Default size of chunks (usually 2)
  * @returns Array of image arrays (chunks)
  */
-export function chunkImages(images: Image[], chunkSize: number = 2): Image[][] {
+export function chunkImages(images: Image[] | undefined, chunkSize: number = 2): Image[][] {
   if (!images || images.length === 0) return [];
 
   // TODO: We only sort Images if order is not a priority. Thinking abstract catalogs, not a day of images.
@@ -149,10 +149,7 @@ export function chunkImages(images: Image[], chunkSize: number = 2): Image[][] {
 /**
  * Calculates optimal sizes for a single image to fit available width
  */
-export function calculateSingleImageSize(
-  image: Image,
-  availableWidth: number,
-): DisplayImage {
+export function calculateSingleImageSize(image: Image, availableWidth: number): DisplayImage {
   const ratio = getAspectRatio(image);
   const height = availableWidth / ratio;
 
@@ -172,7 +169,7 @@ export function calculatePairImageSizes(
   firstImage: Image,
   secondImage: Image,
   availableWidth: number,
-  gapWidth: number = 0,
+  gapWidth: number = 0
 ): [DisplayImage, DisplayImage] {
   const ratio1 = getAspectRatio(firstImage);
   const ratio2 = getAspectRatio(secondImage);
@@ -200,7 +197,7 @@ export function calculatePairImageSizes(
 export function calculateChunkSizes(
   imageChunk: Image[],
   availableWidth: number,
-  gapWidth: number = 0,
+  gapWidth: number = 0
 ): DisplayImage[] {
   if (!imageChunk || imageChunk.length === 0) {
     return [];
@@ -215,7 +212,7 @@ export function calculateChunkSizes(
     imageChunk[0],
     imageChunk[1],
     availableWidth,
-    gapWidth,
+    gapWidth
   );
 
   return [first, second];
@@ -228,7 +225,7 @@ export function processImagesForDisplay(
   images: Image[],
   availableWidth: number,
   chunkSize: number = 2,
-  gapWidth: number = 0,
+  gapWidth: number = 0
 ): DisplayImage[][] {
   // First chunk the images
   const chunks = chunkImages(images, chunkSize);
@@ -254,7 +251,8 @@ export async function chunkImageArray(photoArray: Image[], chunkSize: number = 2
   for (const photo of photoArray) {
     const isHorizontal = photo?.imageWidth >= photo?.imageHeight;
     const isHighRated = photo?.rating === 5;
-    if (isHighRated && !isHorizontal) { // TODO: Add an, `&& if vertical`
+    if (isHighRated && !isHorizontal) {
+      // TODO: Add an, `&& if vertical`
       // If it's a 5-star image, add it immediately as a single-image pair.
       result.push([photo]);
     } else {
@@ -290,7 +288,10 @@ export interface calculateImageSizesReturn {
  * @returns Images with calculated width and height properties
  *
  */
-export function calculateImageSizes(images: any[], componentWidth: number): calculateImageSizesReturn[] {
+export function calculateImageSizes(
+  images: any[],
+  componentWidth: number
+): calculateImageSizesReturn[] {
   if (!images || images.length === 0) {
     return [];
   }
@@ -301,11 +302,13 @@ export function calculateImageSizes(images: any[], componentWidth: number): calc
     const height = componentWidth / ratio;
     // const width = ratio * height;
 
-    return [{
-      image: images[0],
-      width: componentWidth,
-      height: height,
-    }];
+    return [
+      {
+        image: images[0],
+        width: componentWidth,
+        height: height,
+      },
+    ];
   } else {
     // Calculate the ratios for all images.
     const ratios = images.map(img => img.imageWidth / img.imageHeight);
@@ -343,7 +346,7 @@ export function calculateImageSizes(images: any[], componentWidth: number): calc
 export async function processImagesForDisplayOld(
   images: Image[],
   componentWidth: number,
-  chunkSize: number = 2,
+  chunkSize: number = 2
 ) {
   // First chunk the images
   const chunks = await chunkImageArray(images, chunkSize);

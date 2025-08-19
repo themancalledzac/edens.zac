@@ -2,14 +2,14 @@ import { AlignJustify } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
 
-import MenuDropdown from '../MenuDropdown/MenuDropdown';
+import { MenuDropdown } from '../MenuDropdown/MenuDropdown';
 import styles from './Header.module.scss';
 
 /**
  * Header Component for all pages
  * @constructor
  */
-export default function Header() {
+export function Header() {
   const router = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);

@@ -2,8 +2,8 @@
  * API functions for catalog-related operations
  */
 import { fetchFormDataApi, fetchJsonApi, fetchReadApi } from '@/lib/api/core';
-import { Catalog } from '@/types/Catalog';
-import { Image } from '@/types/Image';
+import { type Catalog } from '@/types/Catalog';
+import { type Image } from '@/types/Image';
 
 /** Fetches all catalogs for the home page
  *

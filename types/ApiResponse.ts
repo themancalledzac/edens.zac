@@ -1,6 +1,6 @@
 // Basic API response wrapper
-import { Catalog } from './Catalog';
-import { Image } from './Image';
+import { type Catalog } from './Catalog';
+import { type Image } from './Image';
 
 /**
  * API Interface

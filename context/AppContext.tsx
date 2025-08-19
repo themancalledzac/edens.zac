@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-import { Catalog } from '@/types/Catalog';
-import { Image } from '@/types/Image';
+import { type Catalog } from '@/types/Catalog';
+import { type Image } from '@/types/Image';
 
 /**
  * Global app state, device info, current view data

@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { PreviewImage } from '@/Components/Catalog/ImageUploadList';
+import { type PreviewImage } from '@/Components/Catalog/ImageUploadList';
 import styles from '@/styles/Upload.module.scss';
 
 interface ImageUploadModuleProps {

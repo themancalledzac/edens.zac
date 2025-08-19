@@ -1,5 +1,5 @@
-import { Blog } from '@/types/Blog';
-import { Catalog } from '@/types/Catalog';
+import { type Blog } from '@/types/Blog';
+import { type Catalog } from '@/types/Catalog';
 
 /**
  * Base interface for all home page items

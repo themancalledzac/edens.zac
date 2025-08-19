@@ -1,6 +1,14 @@
+import { useEditContext } from '@/context/EditContext';
+
 import styles from './ImageInfo.module.scss';
 
-export default function ImageInfo({ image, width }) {
+interface ImageInfoProps {
+  image: any;
+  width: string | number; // TODO: make this normalized
+}
+
+export function ImageInfo({ image, width }: ImageInfoProps) {
+  const {isEditMode, editCatalog} = useEditContext();
   if (!image) return null;
 
   // format metadata for display
@@ -11,16 +19,20 @@ export default function ImageInfo({ image, width }) {
     return value;
   };
 
+  console.log(JSON.stringify(editCatalog));
+
   const displayKeys = [
     'title',
     'camera',
+    'rating',
+    'description',
+    'location',
     'lens',
     'focalLength',
     'fstop',
     'shutterSpeed',
     'iso',
     'author',
-    'location',
     'createDate',
   ];
 

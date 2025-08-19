@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import React, { useEffect, useRef, useState } from 'react';
 
 import { useAppContext } from '@/context/AppContext';
-import { HomeCardModel } from '@/types/HomeCardModel';
+import { type HomeCardModel } from '@/types/HomeCardModel';
 
 import styles from '../../styles/ParallaxSection.module.scss'; // Adjust the path as needed
 
@@ -11,7 +11,7 @@ interface ParallaxSectionProps {
   card: HomeCardModel;
 }
 
-export default function ParallaxSection({ card }: ParallaxSectionProps): React.JSX.Element {
+export function ParallaxSection({ card }: ParallaxSectionProps): React.JSX.Element {
   const { id, title, coverImageUrl, text, slug, cardType } = card;
 
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -50,7 +50,7 @@ export default function ParallaxSection({ card }: ParallaxSectionProps): React.J
     throttledHandleScroll(); // Initial call
 
     return () => window.removeEventListener('scroll', throttledHandleScroll);
-  }, []);
+  }, [handleScroll]);
 
   // const imagePath = `/${bannerImage}`;
 
@@ -67,4 +67,4 @@ export default function ParallaxSection({ card }: ParallaxSectionProps): React.J
       {text && <p className={styles.parallaxSectionText}>{text}</p>}
     </div>
   );
-};
+}

@@ -1,6 +1,6 @@
 import styles from '../../styles/Home.module.scss';
 
-export default function SideBarItem({ key, value }) {
+export function SideBarItem({ key, value }) {
 
   return (
     <div className={styles.sideBarItemWrapper}>

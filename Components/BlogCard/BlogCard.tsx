@@ -1,6 +1,6 @@
-import { FC } from 'react';
+import { type FC } from 'react';
 
-import { Blog } from '@/types/Blog';
+import { type Blog } from '@/types/Blog';
 
 import styles from './BlogCard.module.scss';
 

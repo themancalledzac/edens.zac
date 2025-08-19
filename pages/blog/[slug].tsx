@@ -1,14 +1,14 @@
-import { GetServerSideProps } from 'next';
+import { type GetServerSideProps } from 'next';
 import React, { useEffect, useState } from 'react';
 
-import Header from '@/Components/Header/Header';
-import ImageFullScreen from '@/Components/ImageFullScreen/ImageFullScreen';
-import PhotoBlockComponent from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
+import { Header } from '@/Components/Header/Header';
+import { ImageFullScreen } from '@/Components/ImageFullScreen/ImageFullScreen';
+import { PhotoBlockComponent } from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
 import { useEditContext } from '@/context/EditContext';
 import { fetchBlogBySlug } from '@/lib/api/blogs';
 import styles from '@/styles/Blog.module.scss';
-import { Blog } from '@/types/Blog';
-import { Image } from '@/types/Image';
+import { type Blog } from '@/types/Blog';
+import { type Image } from '@/types/Image';
 import { chunkImages } from '@/utils/imageUtils';
 
 interface BlogPageProps {
@@ -24,7 +24,6 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
     const fullBlog = await fetchBlogBySlug(slug);
 
     const { images, ...blog } = fullBlog;
-
 
     const imageChunks: Image[][] = chunkImages(images, 3);
 
@@ -65,7 +64,7 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
 
   // Hook to handle Arrow Clicks on ImageFullScreen
   useEffect(() => {
-    const handleKeyDown = (event) => {
+    const handleKeyDown = event => {
       if (imageSelected === null) return;
 
       const flattenedData = imageChunks.flat();
@@ -86,8 +85,6 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-
-
   }, [imageChunks, imageSelected]);
 
   // Hook to calculate component width
@@ -145,28 +142,27 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
           <h1 className={styles.blogTitle}>{blog.title}</h1>
           <div className={styles.blogMeta}>
             <span className={styles.blogDate}>{blog.date}</span>
-            {blog.location && (
-              <span className={styles.blogLocation}>{blog.location}</span>
-            )}
+            {blog.location && <span className={styles.blogLocation}>{blog.location}</span>}
             <span className={styles.blogAuthor}>By {blog.author}</span>
           </div>
         </div>
         <div className={styles.blogContent}>
           {/* Split paragraphs by newlines */}
           {blog.paragraph.split('\n\n').map((paragraph, index) => (
-            <p key={index} className={styles.paragraph}>{paragraph}</p>
+            <p key={paragraph[0]} className={styles.paragraph}>
+              {paragraph}
+            </p>
           ))}
         </div>
 
         {imageChunks && imageChunks.length > 0 && (
           <div className={styles.blogGallery}>
-            {imageChunks.map((photoPair) => (
+            {imageChunks.map(photoPair => (
               <PhotoBlockComponent
                 componentWidth={contentWidth}
                 isMobile={isMobile}
                 photos={photoPair}
-                handleImageClick={handleImageClick}
-                selectedForSwap={undefined} />
+              />
             ))}
           </div>
         )}
@@ -174,7 +170,9 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
         {blog.tags && blog.tags.length > 0 && (
           <div className={styles.blogTags}>
             {blog.tags.map(tag => (
-              <span key={tag} className={styles.tag}>{tag}</span>
+              <span key={tag} className={styles.tag}>
+                {tag}
+              </span>
             ))}
           </div>
         )}

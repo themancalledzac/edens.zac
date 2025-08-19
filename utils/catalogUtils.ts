@@ -1,9 +1,9 @@
-import React from 'react';
+import type React from 'react';
 
-import { PreviewImage } from '@/Components/Catalog/ImageUploadList';
+import { type PreviewImage } from '@/Components/Catalog/ImageUploadList';
 import { postImagesForCatalog } from '@/lib/api/catalogs';
-import { Catalog, CatalogCreateDTO } from '@/types/Catalog';
-import { Image } from '@/types/Image';
+import { type Catalog, type CatalogCreateDTO } from '@/types/Catalog';
+import { type Image } from '@/types/Image';
 
 /**
  * Catalog Object Template for Create page.
@@ -17,7 +17,6 @@ export const createEmptyCatalog = (): CatalogCreateDTO => ({
   isHomeCard: false,
 });
 
-
 export interface CatalogPageProps {
   create: boolean;
   catalog: Catalog | null;
@@ -28,9 +27,11 @@ export interface CatalogPageProps {
  * @param catalog
  */
 export const validateCatalog = (catalog: Catalog): boolean => {
-  return !(!!catalog.title && catalog.title.trim().length > 0 ||
-    !!catalog.location && catalog.location.trim().length > 0 ||
-    !!catalog.coverImageUrl && catalog.coverImageUrl.trim().length > 0);
+  return !(
+    (!!catalog.title && catalog.title.trim().length > 0) ||
+    (!!catalog.location && catalog.location.trim().length > 0) ||
+    (!!catalog.coverImageUrl && catalog.coverImageUrl.trim().length > 0)
+  );
 };
 
 export const formatCatalogDate = (dateString: string): string => {
@@ -77,7 +78,7 @@ const validateFiles = (fileList: FileList): File[] | null => {
 export const handleFileSelect = (
   setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>,
   setPreviewData: React.Dispatch<React.SetStateAction<PreviewImage[]>>,
-  fileList: FileList,
+  fileList: FileList
 ) => {
   if (!fileList) return;
 
@@ -108,7 +109,7 @@ export const handleFileSelect = (
 
 export const uploadSelectedFiles = async (
   fileList: FileList,
-  catalogTitle: string,
+  catalogTitle: string
 ): Promise<Image[]> => {
   if (!fileList) return [];
 
