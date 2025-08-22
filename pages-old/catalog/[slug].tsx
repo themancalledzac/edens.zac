@@ -6,8 +6,8 @@ import { UpdateToolbar } from '@/Components/EditToolbar/UpdateToolbar';
 import { Header } from '@/Components/Header/Header';
 import { ImageFullScreen } from '@/Components/ImageFullScreen/ImageFullScreen';
 import { PhotoBlockComponent } from '@/Components/PhotoBlockComponent/PhotoBlockComponent';
-import { useAppContext } from '@/context/AppContext';
-import { useEditContext } from '@/context/EditContext';
+import { AppProvider, useAppContext } from '@/context/AppContext';
+import { EditProvider, useEditContext } from '@/context/EditContext';
 import { createCatalog, fetchCatalogBySlug, updateCatalog } from '@/lib/api/catalogs';
 import { type Catalog } from '@/types/Catalog';
 import { type Image } from '@/types/Image';
@@ -55,7 +55,7 @@ export async function getServerSideProps({ params }) {
  *  - blog single isn't full width fyi
  *  - "Tab Enter" to accept, or, the ACCEPT button on the bottom right, next to CANCEL
  */
-const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPageProps) => {
+const CatalogPageInner: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPageProps) => {
   const { isMobile, currentCatalog, setCurrentCatalog } = useAppContext();
   const {
     isEditMode,
@@ -237,4 +237,11 @@ const CatalogPage: React.FC<CatalogPageProps> = ({ create, catalog }: CatalogPag
     </div>
   );
 };
+const CatalogPage: React.FC<CatalogPageProps> = (props: CatalogPageProps) => (
+  <AppProvider>
+    <EditProvider>
+      <CatalogPageInner {...props} />
+    </EditProvider>
+  </AppProvider>
+);
 export default CatalogPage;

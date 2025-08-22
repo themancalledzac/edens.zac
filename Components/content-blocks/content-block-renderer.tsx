@@ -9,7 +9,8 @@ import { Suspense } from 'react';
 import CodeContentBlock from '@/Components/content-blocks/code-content-block';
 import ImageContentBlock from '@/Components/content-blocks/image-content-block';
 import TextContentBlock from '@/Components/content-blocks/text-content-block';
-import { type BaseContentBlock } from '@/lib/api/contentCollections';
+import SelectableWrapper from '@/Components/url-state/selectable-wrapper';
+import { type BaseBlock } from '@/lib/api/contentCollections';
 import { type CodeBlock, type ImageBlock, type TextBlock } from '@/types/ContentBlock';
 
 function ImageBlockSkeleton() {
@@ -19,11 +20,11 @@ function ImageBlockSkeleton() {
 }
 
 export type ContentBlockRendererProps = {
-  block: BaseContentBlock;
+  block: BaseBlock;
   className?: string;
 };
 
-export type AnyRenderableBlock = ImageBlock | TextBlock | CodeBlock | BaseContentBlock;
+export type AnyRenderableBlock = ImageBlock | TextBlock | CodeBlock | BaseBlock;
 
 export default function ContentBlockRenderer({ block, className }: ContentBlockRendererProps) {
   // Defensive: ensure a type exists
@@ -32,9 +33,11 @@ export default function ContentBlockRenderer({ block, className }: ContentBlockR
   switch (type) {
     case 'IMAGE': {
       return (
-        <Suspense fallback={<ImageBlockSkeleton />}>
-          <ImageContentBlock block={block as ImageBlock} className={className} />
-        </Suspense>
+        <SelectableWrapper blockId={(block as ImageBlock).id}>
+          <Suspense fallback={<ImageBlockSkeleton />}>
+            <ImageContentBlock block={block as ImageBlock} className={className} />
+          </Suspense>
+        </SelectableWrapper>
       );
     }
     case 'TEXT': {

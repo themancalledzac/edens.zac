@@ -12,7 +12,7 @@ const nextConfig = {
       `${process.env.AWS_CLOUDFRONT_DOMAIN_NAME}.cloudfront.net`,
       // Add your domain here
     ],
-    formats: ['image/webp'],
+    formats: ['image/avif', 'image/webp'],
     // remotePatterns
   },
   env: {

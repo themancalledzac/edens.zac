@@ -1,11 +1,11 @@
-import { type BaseContentBlock } from '@/lib/api/contentCollections';
+import { type BaseBlock } from '@/lib/api/contentCollections';
 
 /**
  * Shared Content Block Types for frontend components.
  *
  * Centralized definitions to avoid duplicating interfaces across components.
  */
-export interface ImageBlock extends BaseContentBlock {
+export interface ImageBlock extends BaseBlock {
   type: 'IMAGE';
   webUrl?: string;
   url?: string;
@@ -19,7 +19,7 @@ export interface ImageBlock extends BaseContentBlock {
   [key: string]: unknown;
 }
 
-export interface TextBlock extends BaseContentBlock {
+export interface TextBlock extends BaseBlock {
   type: 'TEXT';
   content?: string;
   text?: string;
@@ -29,7 +29,7 @@ export interface TextBlock extends BaseContentBlock {
   [key: string]: unknown;
 }
 
-export interface CodeBlock extends BaseContentBlock {
+export interface CodeBlock extends BaseBlock {
   type: 'CODE';
   code?: string;
   content?: string;
@@ -39,4 +39,4 @@ export interface CodeBlock extends BaseContentBlock {
   [key: string]: unknown;
 }
 
-export type AnyContentBlock = ImageBlock | TextBlock | CodeBlock | BaseContentBlock;
+export type AnyContentBlock = ImageBlock | TextBlock | CodeBlock | BaseBlock;

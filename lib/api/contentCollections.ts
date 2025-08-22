@@ -1,110 +1,334 @@
 /**
- * Title: Content Collections API (Frontend)
+ * Content Collections API (RSC Read Layer)
  *
- * What this file is:
- * - TypeScript API utilities and types for the new ContentCollection system.
- * - Provides read helpers with pagination and a normalize() layer to absorb backend field variance.
+ * Purpose
+ * - Provides React Server Component–friendly read functions for the ContentCollection system.
+ * - Applies Next.js caching with hourly revalidation and cache tags for targeted invalidation.
+ * - Contains no secrets and can be safely imported by Server Components and route handlers.
  *
- * Replaces in the old code:
- * - Supersedes ad-hoc catalog/blog fetch patterns used via pages/ and lib/api/{catalogs,blogs}.ts for collections.
- * - Moves away from Pages Router-specific SSR patterns (getServerSideProps) in favor of direct RSC fetching.
+ * When to use
+ * - Use from server components/pages to fetch data (reads) that can be cached and revalidated.
+ * - Do NOT put mutating operations here; see `lib/server/collections.ts` for server-only writes.
  *
- * New Next.js features used:
- * - Designed for React Server Components (App Router) where fetch() is invoked directly in server components.
- * - Compatible with Next.js caching (revalidate/tags planned in Phase 5.6).
+ * Caching Strategy
+ * - Each read uses `{ next: { revalidate: 3600, tags: [...] } }`.
+ * - Tag scheme:
+ *   - `collection-${slug}` for collection detail pages
+ *   - `collections-index` for the collections index/listing
+ *   - `collections-type-${type}` for per-type listings
  *
- * TODOs / Improvements:
- * - Add next: { revalidate, tags } options and server-only wrappers (Phase 5.6).
- * - Expand type safety per block type (image/text/code/gif) once Phase 5.4 block components land.
- * - Unify error surfaces and telemetry for ApiError across the app.
+ * Error Handling
+ * - Normalizes non-OK responses to Error; 404 triggers Next.js `notFound()` for RSC-compatible 404s.
+ * - Guards against non-JSON responses for reads.
  */
-import { ApiError,fetchReadApi } from '@/lib/api/core';
+import { notFound } from 'next/navigation';
+import { isProduction } from '@/utils/environment';
 
+/** Distinct collection categories supported by the system. */
 export type CollectionType = 'BLOG' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'PORTFOLIO';
+
+/** Content block kinds supported by the frontend. */
 export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF';
 
-export interface PageMetadata {
-  currentPage: number;
+/**
+ * Pagination meta reported by the backend for a given collection page.
+ */
+export interface PageMeta {
+  page: number;
+  size: number;
   totalPages: number;
   totalBlocks: number;
-  pageSize: number;
 }
 
-export interface BaseContentBlock {
-  id: number;
+/** Base shape for all content blocks. */
+export interface BaseBlock {
+  id: string;
   type: ContentBlockType;
   orderIndex: number;
-  // Allow backend to send type-specific fields without breaking the UI
   [key: string]: unknown;
 }
+/** Image content block. */
+export interface ImageBlock extends BaseBlock {
+  type: 'IMAGE';
+  webUrl: string;
+  rawUrl?: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+}
+/** Text content block. */
+export interface TextBlock extends BaseBlock {
+  type: 'TEXT';
+  content: string;
+  format: 'markdown' | 'html' | 'plain';
+}
+/** Code content block. */
+export interface CodeBlock extends BaseBlock {
+  type: 'CODE';
+  content: string;
+  language: string;
+}
+/** GIF content block. */
+export interface GifBlock extends BaseBlock {
+  type: 'GIF';
+  webUrl: string;
+  rawUrl?: string;
+  alt?: string;
+}
+/** Union of all supported content blocks. */
+export type ContentBlock = ImageBlock | TextBlock | CodeBlock | GifBlock | BaseBlock;
 
-export interface ContentCollectionApiModel {
-  id: number;
+/**
+ * Fully-hydrated collection returned from the backend read endpoints.
+ */
+export interface ContentCollection {
+  id: string;
+  slug: string;
   title: string;
   description?: string;
-  slug: string;
   type: CollectionType;
-  contentBlocks?: BaseContentBlock[]; // preferred
-  blocks?: BaseContentBlock[]; // fallback if backend uses different key
-  currentPage?: number;
-  totalPages?: number;
-  totalBlocks?: number;
+  date?: string;
+  visibility?: 'PUBLIC' | 'PRIVATE';
+  priority?: number;
+  isPasswordProtected?: boolean;
+  hasAccess?: boolean;
   blocksPerPage?: number;
+  page: PageMeta;
+  blocks: ContentBlock[];
 }
 
-export interface ContentCollectionNormalized {
-  id: number;
-  title: string;
-  description?: string;
-  slug: string;
-  type: CollectionType;
-  blocks: BaseContentBlock[];
-  pagination: PageMetadata;
-}
-
-const normalize = (data: ContentCollectionApiModel): ContentCollectionNormalized => {
-  const blocks = (data.contentBlocks ?? data.blocks ?? []) as BaseContentBlock[];
-  const pageSize = typeof data.blocksPerPage === 'number' ? data.blocksPerPage : blocks.length || 30;
-
-  return {
-    id: data.id,
-    title: data.title,
-    description: data.description,
-    slug: data.slug,
-    type: data.type,
-    blocks,
-    pagination: {
-      currentPage: data.currentPage ?? 0,
-      totalPages: data.totalPages ?? 1,
-      totalBlocks: data.totalBlocks ?? blocks.length,
-      pageSize,
-    },
-  };
+/** Read-only fetch init with Next.js cache options. */
+type ReadonlyFetchInit = Omit<RequestInit, 'body' | 'method'> & {
+  next?: { revalidate?: number; tags?: string[] };
 };
 
 /**
- * Fetch a collection by slug with pagination
+ * Resolve the READ API base URL using the same logic as legacy core:
+ * - Production: `${NEXT_PUBLIC_API_URL}/api/read`
+ * - Local/dev:  `http://localhost:8080/api/read`
+ * Never throws — always returns a usable base for server-side reads.
  */
-export async function fetchCollectionBySlug(slug: string, page = 0, size = 30): Promise<ContentCollectionNormalized> {
-  // guard clauses
-  if (!slug) {
-    throw new ApiError('Missing collection slug', 400);
-  }
-  const safePage = Number.isFinite(page) && page >= 0 ? Math.floor(page) : 0;
-  const safeSize = Number.isFinite(size) && size > 0 && size <= 100 ? Math.floor(size) : 30;
-
-  const data = await fetchReadApi<ContentCollectionApiModel>(`/collections/${encodeURIComponent(slug)}?page=${safePage}&size=${safeSize}`);
-
-  return normalize(data);
+function getReadBaseUrl(): string {
+  const base = isProduction() && process.env.NEXT_PUBLIC_API_URL
+    ? String(process.env.NEXT_PUBLIC_API_URL).replace(/\/+$/, '')
+    : 'http://localhost:8080';
+  return `${base}/api/read`;
 }
 
 /**
- * Fetch multiple collections, optionally by type (not required for Phase 5.3)
+ * Build a full URL to the read API with optional query parameters.
  */
-export async function fetchCollections(page = 0, size = 10, type?: CollectionType) {
-  const safePage = Number.isFinite(page) && page >= 0 ? Math.floor(page) : 0;
-  const safeSize = Number.isFinite(size) && size > 0 && size <= 100 ? Math.floor(size) : 10;
-
-  const base = type ? `/collections/type/${type}` : '/collections';
-  return fetchReadApi(`${base}?page=${safePage}&size=${safeSize}`);
+function toURL(path: string, params?: Record<string, string | number | boolean | undefined>) {
+  const url = new URL(`${getReadBaseUrl()}${path.startsWith('/') ? path : '/' + path}`);
+  if (params)
+    for (const [k, v] of Object.entries(params))
+      if (v !== undefined) url.searchParams.set(k, String(v));
+  console.log(url.toString());
+  return url.toString();
 }
+
+/**
+ * Ensure a successful JSON response.
+ * - Throws on non-OK responses; triggers notFound() on 404 for RSC.
+ * - Throws if response is not JSON for read operations.
+ */
+async function safeJson<T>(res: Response): Promise<T> {
+  const ct = res.headers.get('content-type') || '';
+  if (!res.ok) {
+    let detail: unknown;
+    try {
+      detail = ct.includes('application/json') ? await res.json() : await res.text();
+    } catch {
+      detail = await res.text();
+    }
+    const message = typeof detail === 'string' ? detail : JSON.stringify(detail);
+    if (res.status === 404) notFound();
+    throw new Error(`API ${res.status}: ${message}`);
+  }
+  if (!ct.includes('application/json')) throw new Error('Unexpected non-JSON response from API');
+  return res.json() as Promise<T>;
+}
+
+/**
+ * Compute cache tag for a specific collection slug.
+ */
+function tagForSlug(slug: string) {
+  return `collection-${slug}`;
+}
+
+/** Cache tag for the collections index. */
+function tagForIndex() {
+  return 'collections-index';
+}
+
+/** Cache tag for all collections belonging to a specific type. */
+function tagForType(type: CollectionType) {
+  return `collections-type-${type}`;
+}
+
+/**
+ * Fetch a paginated list of collections.
+ * Uses the collections-index cache tag.
+ */
+export async function fetchCollections(page = 0, size = 10): Promise<ContentCollection[]> {
+  // Graceful degradation for local dev when backend is unavailable or misconfigured.
+  // If NEXT_PUBLIC_API_URL is not set or the endpoint returns 404, return an empty list
+  // instead of triggering a global 404 via notFound(). This keeps the home page usable.
+  const url = toURL('/collections', { page, size });
+  try {
+    const res = await fetch(url, {
+      next: { revalidate: 3600, tags: [tagForIndex()] },
+    } as ReadonlyFetchInit);
+    if (res.status === 404) return [];
+
+    // Parse once, then normalize shape. Backend may return an array or a paginated object.
+    const data = await safeJson<any>(res);
+
+    // Dev-friendly logging without leaking secrets; helpful for shape debugging.
+    try {
+      const preview = typeof data === 'object' ? JSON.stringify(data).slice(0, 200) : String(data);
+      console.debug('[collections] parsed body preview:', preview);
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[collections] preview logging failed', error instanceof Error ? error.message : String(error));
+      }
+    }
+
+    if (Array.isArray(data)) return data as ContentCollection[];
+    if (data && typeof data === 'object') {
+      const maybe = (data as any).content ?? (data as any).collections ?? (data as any).items ?? null;
+      if (Array.isArray(maybe)) return maybe as ContentCollection[];
+    }
+
+    // Unknown shape; avoid crashing callers. Return empty list.
+    return [];
+  } catch {
+    // Network or parsing failure — prefer empty state on home rather than crashing.
+    return [];
+  }
+}
+
+/**
+ * Fetch Home Page collections using the new endpoint.
+ * Accepts maxPriority (default 2) and an optional limit.
+ * Uses the collections-index cache tag for revalidation.
+ */
+export async function fetchHomePageCollections(
+  { maxPriority = 1, limit }: { maxPriority?: number; limit?: number } = {}
+): Promise<ContentCollection[]> {
+  // Endpoint should be /api/read/collections/homePage with optional query params
+  const url = toURL('/collections/homePage', { maxPriority, limit });
+  try {
+    const res = await fetch(url, {
+      next: { revalidate: 3600, tags: [tagForIndex()] },
+    } as ReadonlyFetchInit);
+    if (res.status === 404) return [];
+
+    const data = await safeJson<any>(res);
+
+    // Normalize possible shapes to an array
+    if (Array.isArray(data)) return data as ContentCollection[];
+    if (data && typeof data === 'object') {
+      const maybe = (data as any).content ?? (data as any).collections ?? (data as any).items ?? null;
+      if (Array.isArray(maybe)) return maybe as ContentCollection[];
+    }
+
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Normalized shape used by viewers to avoid leaking backend pagination internals.
+ */
+export interface ContentCollectionNormalized {
+  id: string;
+  title: string;
+  description?: string;
+  slug: string;
+  type: CollectionType;
+  blocks: ContentBlock[];
+  pagination: { currentPage: number; totalPages: number; totalBlocks: number; pageSize: number };
+}
+
+/** Convert backend collection to the normalized frontend shape. */
+function toNormalized(c: ContentCollection): ContentCollectionNormalized {
+  return {
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    slug: c.slug,
+    type: c.type,
+    blocks: c.blocks,
+    pagination: {
+      currentPage: c.page?.page ?? 0,
+      totalPages: c.page?.totalPages ?? 1,
+      totalBlocks: c.page?.totalBlocks ?? c.blocks.length,
+      pageSize: c.page?.size ?? c.blocksPerPage ?? 30,
+    },
+  };
+}
+
+/**
+ * Fetch a single collection by slug with pagination and return the normalized shape.
+ * Tagged with the per-slug cache tag for targeted revalidation after writes.
+ */
+export async function fetchCollectionBySlug(
+  slug: string,
+  page = 0,
+  size = 30
+): Promise<ContentCollectionNormalized> {
+  if (!slug) throw new Error('slug is required');
+  const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });
+  const res = await fetch(url, {
+    next: { revalidate: 3600, tags: [tagForSlug(slug)] },
+  } as ReadonlyFetchInit);
+  const raw = await safeJson<ContentCollection>(res);
+  return toNormalized(raw);
+}
+
+/**
+ * Fetch collections by type with pagination.
+ * Tagged with `collections-type-${type}` for precise revalidation.
+ */
+export async function fetchCollectionsByType(
+  type: CollectionType,
+  page = 0,
+  size = 10
+): Promise<ContentCollection[]> {
+  if (!type) throw new Error('type is required');
+  const url = toURL(`/collections/type/${type}`, { page, size });
+  const res = await fetch(url, {
+    next: { revalidate: 3600, tags: [tagForType(type)] },
+  } as ReadonlyFetchInit);
+  return safeJson<ContentCollection[]>(res);
+}
+
+/** Response for client gallery access validation. */
+export interface ClientGalleryAccess {
+  hasAccess: boolean;
+}
+
+/**
+ * Validate password-based access for a client gallery.
+ * Uses no-store caching since the result is user-specific.
+ */
+export async function validateClientGalleryAccess(
+  slug: string,
+  password: string
+): Promise<ClientGalleryAccess> {
+  if (!slug) throw new Error('slug is required');
+  if (!password) throw new Error('password is required');
+  const url = toURL(`/collections/${encodeURIComponent(slug)}/access`);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password }),
+    cache: 'no-store',
+  });
+  return safeJson<ClientGalleryAccess>(res);
+}
+
+/** Export tag helpers for use by server-side mutation wrappers. */
+export const collectionCacheTags = { tagForSlug, tagForIndex, tagForType };
