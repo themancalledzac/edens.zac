@@ -1,29 +1,13 @@
-"use client";
-
 /**
- * App-wide Client Providers (App Router)
+ * App-wide Providers (App Router)
  *
- * What this file is:
- * - A minimal client-only wrapper that configures React Context providers for the App Router layout.
- *
- * Replaces in the old code:
- * - Replaces global context usage sprinkled across pages/components; centralizes client providers in one island.
- *
- * New Next.js features used:
- * - Isolated client boundary embedded within a server layout to minimize client JS.
- *
- * TODOs / Improvements:
- * - Keep this list minimal; move data fetching to RSC and lift non-interactive logic server-side.
+ * Optimization: Avoid global client providers. Use server component here and
+ * wrap only interactive islands with client providers locally.
  */
-import React from 'react';
+import type { ReactElement, ReactNode } from 'react';
 
-import { AppProvider } from '@/context/AppContext';
-import { EditProvider } from '@/context/EditContext';
-
-export function Providers({ children }: { children: React.ReactNode }) {
-  return (
-    <AppProvider>
-      <EditProvider>{children}</EditProvider>
-    </AppProvider>
-  );
+export function Providers({ children }: { children: ReactNode }) {
+  // Intentionally no client providers at the root to minimize client JS payload.
+  // Interactive components should import and use EditLiteProvider locally.
+  return children as ReactElement;
 }

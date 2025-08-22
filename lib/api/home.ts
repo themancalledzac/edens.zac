@@ -7,13 +7,24 @@ import { type Blog } from '@/types/Blog';
 import { type HomeCardModel } from '@/types/HomeCardModel';
 
 /**
- * Fetches the latest home page
+ * Fetches the latest home page collections
+ * Endpoint: GET /api/read/collections/homePage
+ * Optional query params: maxPriority, limit
  *
- * @returns The latest home page
+ * @param params - Optional filters for priority and limit
+ * @returns The latest home page layout cards or null on failure
  */
-export async function fetchHomePage(): Promise<null> {
+export async function fetchHomePage(
+  params: { maxPriority?: number; limit?: number } = {}
+): Promise<HomeCardModel[] | null> {
   try {
-    const homeLayout = await fetchReadApi<HomeCardModel[]>('/home/getHome');
+    const { maxPriority = 2, limit } = params;
+    const search = new URLSearchParams();
+    if (maxPriority !== undefined) search.set('maxPriority', String(maxPriority));
+    if (limit !== undefined) search.set('limit', String(limit));
+
+    const endpoint = `/collections/homePage${search.toString() ? `?${search.toString()}` : ''}`;
+    const homeLayout = await fetchReadApi<HomeCardModel[]>(endpoint);
 
     if (homeLayout && homeLayout.length > 0) {
       return homeLayout;

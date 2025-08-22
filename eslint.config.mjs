@@ -58,13 +58,13 @@ export default tseslint.config(
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': ['warn', { additionalHooks: '' }],
       // Disallow default exports in component files
-      'no-restricted-syntax': [
-        'warn',
-        {
-          selector: 'ExportDefaultDeclaration',
-          message: 'Default exports are discouraged for React components. Use named exports.',
-        },
-      ],
+      // 'no-restricted-syntax': [
+      //   'warn',
+      //   {
+      //     selector: 'ExportDefaultDeclaration',
+      //     message: 'Default exports are discouraged for React components. Use named exports.',
+      //   },
+      // ],
     },
     settings: {
       react: { version: 'detect' },

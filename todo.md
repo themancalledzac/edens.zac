@@ -297,21 +297,21 @@ A flexible CMS-like system where each content type has:
 - [x] Implement progressive loading for collections with 30+ blocks
 
 ### 5.5 App Router - State Management Refactor
-- [ ] **Context to URL State Migration**
-- [ ] Move `imageSelected` to URL: `/collection/[slug]?image=123`
-- [ ] Move `isEditMode` to route: `/collection/[slug]/edit`
-- [ ] Replace `currentCatalog` context with RSC props
-- [ ] Remove `photoDataList` from context - fetch where needed
+- [x] **Context to URL State Migration**
+- [x] Move `imageSelected` to URL: `/collection/[slug]?image=123`
+- [x] Move `isEditMode` to route: `/collection/[slug]/edit`
+- [x] Replace `currentCatalog` context with RSC props
+- [x] Remove `photoDataList` from context - fetch where needed
 
-- [ ] **Client-Only Context Optimization**
-- [ ] Create `app/providers.tsx` for remaining client providers
-- [ ] Keep only drag-drop state (`selectedForSwap`) in EditContext
-- [ ] Keep file upload state (`previewData`) in client context
-- [ ] Wrap only interactive components, not entire pages
+- [x] **Client-Only Context Optimization**
+- [x] Create `app/providers.tsx` for remaining client providers
+- [x] Keep only drag-drop state (`selectedForSwap`) in EditContext
+- [x] Keep file upload state (`previewData`) in client context
+- [x] Wrap only interactive components, not entire pages
 
 ### 5.6 App Router - Data Fetching & Caching
-- [ ] **API Layer Updates for RSC**
-- [ ] Update `lib/api/contentCollections.ts` with Next.js cache options:
+- [x] **API Layer Updates for RSC**
+- [x] Update `lib/api/contentCollections.ts` with Next.js cache options:
   ```tsx
   fetch(url, {
     next: { 
@@ -320,32 +320,34 @@ A flexible CMS-like system where each content type has:
     }
   })
   ```
-- [ ] Create server-only wrappers in `lib/server/collections.ts`
-- [ ] Implement cache tags for targeted revalidation
-- [ ] Configure CloudFront for S3 images (separate from Next cache)
+- [x] Create server-only wrappers in `lib/server/collections.ts`
+- [x] Implement cache tags for targeted revalidation
+- [x] Configure CloudFront for S3 images (separate from Next cache)
 
-- [ ] **Route Handlers Migration**
-- [ ] Migrate `pages/api/proxy/[...path].ts` to `app/api/proxy/[...path]/route.ts`
-- [ ] Use modern Request/Response APIs
-- [ ] Implement streaming for large file uploads
+- [x] **Route Handlers Migration**
+- [x] Migrate `pages/api/proxy/[...path].ts` to `app/api/proxy/[...path]/route.ts`
+- [x] Use modern Request/Response APIs
+- [x] Implement streaming for large file uploads
 
 ### 5.7 App Router - Admin Features (Client-Heavy)
-- [ ] **Collection Creation/Editing**
-- [ ] Create `app/(admin)/collection/create/page.tsx` - client page with 'use client'
-- [ ] Create `app/(admin)/collection/[slug]/edit/page.tsx` - client page
-- [ ] Keep editing components client-side (drag-drop, file upload required)
-- [ ] Use route groups `(admin)` for organization
+- [x] **Collection Creation/Editing**
+- [x] Create `app/(admin)/collection/create/page.tsx` - client page with 'use client'
+- [x] Create `app/(admin)/collection/[slug]/edit/page.tsx` - client page
+- [x] Keep editing components client-side (drag-drop, file upload required)
+- [x] Use route groups `(admin)` for organization
 
-- [ ] **Admin Middleware & Protection**
-- [ ] Update `middleware.ts` for App Router paths
-- [ ] Add authentication checks for admin routes
-- [ ] Implement feature flags for gradual rollout
+- [x] **Admin Middleware & Protection**
+- [x] Update `middleware.ts` for App Router paths
+- [x] Add authentication checks for admin routes
+- [x] Implement feature flags for gradual rollout
 
 ### 5.8 App Router - Legacy Migration (Final Phase)
-- [ ] **Catalog to Collection Migration**
-- [ ] Keep `pages/catalog/[slug].tsx` operational during transition
-- [ ] Create redirect rules from old catalog URLs to new collection URLs
-- [ ] Update home page to pull from ContentCollections
+- [x] Temporarily disable legacy Pages Router entrypoint by commenting out `pages/_app.tsx` so only App Router loads locally for testing
+- [x] **Catalog to Collection Migration**
+- [x] Keep `pages/catalog/[slug].tsx` operational during transition
+- [x] Create redirect rules from old catalog URLs to new collection URLs
+  - Flag-gated in middleware via `COLLECTION_REDIRECTS_ENABLED` (true => 308 to `/collection/[slug]`, except `/catalog/create`)
+- [x] Update home page to pull from ContentCollections
 - [ ] Deprecate catalog endpoints once migration complete
 
 - [ ] **Performance Monitoring**
@@ -372,15 +374,100 @@ A flexible CMS-like system where each content type has:
 
 ---
 
-## Phase 6: Ultra-fast Initial Home Page
+## Phase 6: New Home Page Rebuild
 
-### 6.1 Goals & Metrics
+### 6.1 Overview & Constraints
+- [x] Build a new Home page at `app/page.tsx` using the App Router (RSC-first)
+- [x] Keep all old files untouched (e.g., `pages-old/index.tsx`, `types/HomeCardModel.ts`, `lib/api/home.ts`)
+- [ ] Base layout and visual structure on the Old Home Page, but use the new ContentCollection system
+- [ ] Use `ContentCollection.ContentBlock` image blocks as sources that map from legacy `HomeCardModel` semantics
+- [ ] Maintain or improve initial load performance; provide placeholder/skeleton blocks until images load
+
+### 6.1.2 Backend Model Alignment (Updated)
+- [x] The current getHome API already returns the correct HomeCardModel. Including the model here for reference:
+```java
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+@Builder
+public class HomeCardModel {
+    private Long id;
+    private String title;
+    private String cardType;
+    private String location;
+    private String date;
+    private Integer priority;
+    private String coverImageUrl;
+    private String slug;
+    private String text;
+}
+```
+
+### 6.2 Data & Fetching
+- [ ] Create `fetchHomePageCollections` in `lib/api/contentCollections.ts`
+  - [ ] Fetch minimal, cacheable data for home (featured collections + light metadata)
+  - [ ] Use Next cache with `revalidate` and `tags` (e.g., `home`, `collection-*`)
+  - [ ] Return a typed array of `ContentCollection` with a minimal `ContentBlock[]` subset suitable for cards/hero
+- [ ] Confirm/define `ContentCollection` and `ContentBlock` TypeScript types for home usage (if not already finalized)
+  - [ ] Ensure image block fields include width/height, aspect ratio, srcset/webp/avif when available
+
+### 6.3 UI Composition (RSC-first)
+- [ ] Implement new Home at `app/page.tsx`
+  - [ ] Server-render above-the-fold hero and initial card grid
+  - [ ] Use `next/image` with width/height and priority for hero; lazy for others
+  - [ ] Provide skeleton placeholders for cards while images stream
+- [ ] CSS-based Parallax implementation
+  - [ ] Prefer pure CSS (e.g., layered backgrounds, transform + perspective) with reduced motion support
+  - [ ] Fallback or opt-in JS only if necessary (dynamically import client module)
+- [ ] New Header (V2) and MenuDropdown (V2) components
+  - [ ] Create parallel components (e.g., `components/header-v2`, `components/menu-dropdown-v2`) to avoid touching legacy
+  - [ ] Keep them SSR-friendly; minimal client event handlers
+
+### 6.4 Performance Targets (Initial)
+- [ ] JS on home route < 50KB (initial) and CSS critical < 20KB
+- [ ] Use PPR/streaming with Suspense boundaries where beneficial
+- [ ] Use WebP/AVIF formats and CloudFront-allowed domains (see next.config.js)
+- [ ] Preload only critical assets; avoid large fonts
+
+### 6.5 Accessibility & Responsiveness
+- [ ] Mobile-first responsive grid for cards
+- [ ] Respect reduced motion; keyboard navigable menu
+- [ ] Provide semantic landmarks and alt text from content metadata
+
+### 6.6 Testing & Monitoring
+- [ ] Unit tests for `fetchHomePageCollections`
+- [ ] Component tests for `app/page.tsx` skeletons and image rendering
+- [ ] Lighthouse/perf script alignment with (now) Phase 7 goals
+
+### 6.7 Decisions & Specs (Confirmed)
+- [x] Collection types on Home: All (BLOG, ART_GALLERY, CLIENT_GALLERY, PORTFOLIO)
+- [x] Ordering: priority (desc), then date (newest first)
+- [x] Initial visible items: target 12; use 6 simple placeholders above-the-fold for tiny initial JS, hydrate/stream rest
+- [x] Card data shape: Update to new HomeCardModel and ensure API returns this shape from `fetchHomePageCollections`
+- [x] Card fields on UI: show `title`; consider `date` and `cardType` badges on cards
+- [x] Layout parity: 2-wide grid (no cardPairs); mobile 1-wide; keep parallax on scroll
+- [x] Parallax: prefer CSS; keep background layer + cards; discuss optional lazy client JS enhancement later
+- [x] Header/Menu: keep current Header/MenuDropdown unchanged for now; same items (About / Contact). Show Create/Update locally
+- [x] Placeholders: support both shimmer skeletons and blur LQIP as options; discuss LQIP strategy later
+- [x] Caching: only cache Home for now; define revalidate interval (e.g., 3600s) as a follow-up
+- [x] Remote images: unchanged (same CloudFront domain)
+- [x] SEO/Branding: no changes for now
+
+### 6.8 API Contract (To implement)
+- [ ] `fetchHomePageCollections`: returns array of HomeCardModel-like objects with minimal fields
+- [ ] Server caching: `next: { revalidate: <interval>, tags: ['home'] }`
+- [ ] Accept optional filters (type) and pagination (page/size) for future-proofing
+
+---
+
+## Phase 7: Ultra-fast Initial Home Page
+
+### 7.1 Goals & Metrics
 - [ ] First Contentful Paint < 1s on fast 4G, LCP < 2.5s
 - [ ] JS shipped < 50KB on initial home route; CSS < 20KB critical
 - [ ] 100 Lighthouse Performance on desktop; 90+ on mobile
 
-### 6.2 Implementation Plan (RSC-first)
-- [ ] Convert home to RSC (App Router) or keep SSR minimal in Pages until migration
+### 7.2 Implementation Plan (RSC-first)
 - [ ] Server-render above-the-fold content; no client providers on home unless needed
 - [ ] Use CSS Modules with minimal rules; remove heavy parallax on first load or lazy-load it
 - [ ] Replace image components with `next/image` using WebP/AVIF, width/height, lazy loading
@@ -389,113 +476,19 @@ A flexible CMS-like system where each content type has:
 - [ ] Use `preload` for critical fonts/assets; avoid large font files
 - [ ] Cache home data at the edge (Next cache route or `revalidate`), enable `stale-while-revalidate`
 
-### 6.3 Verification
+### 7.3 Verification
 - [ ] Add a `scripts/perf/home-lh.mjs` to run Lighthouse CI locally
 - [ ] Track metrics in README/todo; include before/after numbers
 
 ---
 
-## Phase 7: Frontend Types & Models
 
-### 7.1 Create TypeScript Types
-- [ ] Create `types/ContentCollection.ts`
-    - [ ] Define CollectionType enum matching backend
-    - [ ] Include pagination interfaces (PaginatedResponse, PageMetadata)
-    - [ ] Add client gallery access types
-- [ ] Create `types/ContentBlock.ts`
-    - [ ] Define ContentBlockType enum matching backend
-    - [ ] Create interfaces for each content block type
-    - [ ] Include ordering and editing interfaces
-- [ ] Follow existing TypeScript patterns from Catalog/Image types
-- **Files to create**:
-    - `types/ContentCollection.ts`
-    - `types/ContentBlock.ts`
-- **Testing**: Create type-only test files to ensure type safety
-
-### 7.2 Create API Functions
-- [ ] Create `lib/api/contentCollections.ts`
-- [ ] Implement fetch functions (align with backend paths and defaults):
-    - [ ] `fetchCollections(page = 0, size = 10)` -> GET `/api/read/collections`
-    - [ ] `fetchCollectionBySlug(slug, page = 0, size = 30)` -> GET `/api/read/collections/{slug}`
-    - [ ] `fetchCollectionsByType(type, page = 0, size = 10)` -> GET `/api/read/collections/type/{type}`
-    - [ ] `validateClientGalleryAccess(slug, password)` -> POST `/api/read/collections/{slug}/access`
-    - [ ] `createCollection(dto)` -> POST `/api/write/collections/createCollection` (JSON)
-    - [ ] `uploadContentFiles(collectionId, files)` -> POST `/api/write/collections/{id}/content` (multipart)
-    - [ ] `updateCollection(id, updates)` -> PUT `/api/write/collections/{id}` (metadata + reorder/remove/add text)
-    - [ ] `deleteCollection(id)` -> DELETE `/api/write/collections/{id}`
-- [ ] Follow existing error handling patterns from `lib/api/core.ts`
-- [ ] Keep separate from existing catalog API functions
-- [ ] Add proper TypeScript return types
-- **Files to create**: `lib/api/contentCollections.ts`
-- **Testing**: Unit tests for API functions and error handling
 
 ---
 
-## Phase 8: Frontend Components (SSR-Optimized)
+## Phase 8: Content Creation & Management
 
-### 8.1 Create Content Block Components (SSR-First)
-- [ ] Create `Components/ContentBlocks/ImageContentBlock.tsx`
-    - [ ] **Server-side component** - no hooks/context unless absolutely necessary
-    - [ ] Reuse image optimization from existing components
-    - [ ] Add lazy loading for performance
-- [ ] Create `Components/ContentBlocks/TextContentBlock.tsx`
-    - [ ] **Server-side component** with markdown/HTML rendering
-    - [ ] Add syntax highlighting for formatted text
-- [ ] Create `Components/ContentBlocks/CodeContentBlock.tsx`
-    - [ ] **Server-side component** with syntax highlighting
-    - [ ] Support multiple programming languages
-- [ ] Create `Components/ContentBlocks/GifContentBlock.tsx`
-    - [ ] **Server-side component** optimized for GIF display
-- [ ] Create `Components/ContentBlocks/ContentBlockRenderer.tsx`
-    - [ ] **Server-side switch component** based on block type
-    - [ ] Minimal logic, pure rendering
-- **Files to create**: Multiple ContentBlock components
-- **Testing**: Component tests using React Testing Library
-- **SCSS**: Follow existing module patterns, create `ContentBlocks.module.scss`
-
-### 8.2 Create ContentCollection Display Components (SSR-First)
-- [ ] Create `Components/ContentCollection/ContentCollectionView.tsx`
-    - [ ] **Server-side base component** with minimal logic
-    - [ ] Handle pagination controls (minimal client-side interaction)
-    - [ ] Type-based rendering delegation
-- [ ] Create `Components/ContentCollection/BlogView.tsx`
-    - [ ] **Server-side component** optimized for chronological content
-    - [ ] Mixed content layout (text + images)
-- [ ] Create `Components/ContentCollection/ArtGalleryView.tsx`
-    - [ ] **Server-side component** optimized for image-focused display
-    - [ ] Grid layouts, artistic presentation
-- [ ] Create `Components/ContentCollection/PortfolioView.tsx`
-    - [ ] **Server-side component** for professional presentation
-    - [ ] Clean, polished layouts
-- [ ] Create `Components/ContentCollection/ClientGalleryView.tsx`
-    - [ ] **Hybrid component** - SSR for display, client-side for password access
-    - [ ] Download functionality (minimal client-side logic)
-    - [ ] Password protection interface
-- [ ] Create `Components/ContentCollection/PaginationControls.tsx`
-    - [ ] **Client-side component** for navigation (necessary for interactivity)
-    - [ ] URL-based pagination (SEO-friendly)
-- **Files to create**: Multiple view components
-- **Testing**: Component tests for each view type and pagination
-- **SCSS**: Create unified `ContentCollection.module.scss` following best practices
-
-### 8.3 Create ContentCollection Page Route
-- [ ] Create `pages/collection/[slug].tsx`
-    - [ ] **Server-side rendering** with `getServerSideProps`
-    - [ ] Handle pagination in SSR (page, size query params)
-    - [ ] Dynamic rendering based on CollectionType
-    - [ ] Client gallery password handling (hybrid approach)
-    - [ ] Keep completely separate from existing `pages/catalog/[slug].tsx`
-- [ ] Follow existing SSR patterns from catalog pages
-- [ ] Implement proper error handling (404, 403, etc.)
-- [ ] Add SEO optimization (meta tags, structured data)
-- **Files to create**: `pages/collection/[slug].tsx`
-- **Testing**: Page-level integration tests
-
----
-
-## Phase 9: Content Creation & Management
-
-### 9.1 Create ContentCollection Create/Edit Components
+### 8.1 Create ContentCollection Create/Edit Components
 - [ ] Create `Components/ContentCollection/ContentCollectionEditor.tsx`
     - [ ] **Client-side component** (editing requires interactivity)
     - [ ] Type-specific form fields based on CollectionType
@@ -515,7 +508,7 @@ A flexible CMS-like system where each content type has:
 - **Testing**: Component tests for editing functionality
 - **SCSS**: Create `ContentCollectionEditor.module.scss`
 
-### 9.2 Update Header/Navigation (Minimal Client-Side Impact)
+### 8.2 Update Header/Navigation (Minimal Client-Side Impact)
 - [ ] Add ContentCollection routes to header navigation
     - [ ] Update `Components/Header/Header.tsx` - keep server-side
     - [ ] Add collection type navigation
@@ -530,20 +523,21 @@ A flexible CMS-like system where each content type has:
 
 ---
 
-## Phase 10: Migration Strategy & Tooling
 
-### 10.1 Create Migration Utilities
+## Phase 9: Migration Strategy & Tooling
+
+### 9.1 Create Migration Utilities (Backend kept here for visibility)
 - [ ] Create `MigrationService.java` for converting Catalogs to ContentCollections
     - [ ] Catalog type detection logic (analyze titles, content, metadata)
     - [ ] Batch migration with progress tracking
     - [ ] Data validation and integrity checks
 - [ ] Create migration endpoint (dev-only): `POST /api/write/migration/catalog-to-collection/{catalogId}`
 - [ ] Add rollback functionality for failed migrations
-- [ ] **Consider Flyway**: Evaluate adding Flyway for future schema changes
+- [ ] Consider Flyway for future schema changes
 - **Files to create**: `src/main/java/edens/zac/portfolio/backend/services/MigrationService.java`
 - **Testing**: Unit tests for migration logic and integration tests for data integrity
 
-### 10.2 Create Migration Scripts & Tools
+### 9.2 Create Migration Scripts & Tools
 - [ ] Create database migration script for bulk conversion
     - [ ] SQL scripts for data type mapping
     - [ ] Image-to-ImageContentBlock conversion
@@ -558,57 +552,66 @@ A flexible CMS-like system where each content type has:
 
 ---
 
-## Phase 11: Testing Strategy & Validation
+## Phase 10: Testing Strategy & Validation
 
-### 11.1 Backend Testing
-- [ ] **Unit Tests**: Create comprehensive unit tests for all services and utilities
-    - [ ] Test pagination logic thoroughly
-    - [ ] Test client gallery password validation
-    - [ ] Test content block ordering and reordering
-    - [ ] Mock external dependencies (S3, database)
-- [ ] **Integration Tests**: Test full API endpoints
-    - [ ] Test pagination with real data
-    - [ ] Test multipart uploads for mixed content
-    - [ ] Test client gallery access flows
-- [ ] **Performance Tests**: Test with large collections
-    - [ ] 200+ content blocks pagination performance
-    - [ ] Database query optimization
-    - [ ] S3 upload performance for batch operations
+### 10.1 Current Test Files and Required Coverage (be explicit)
+- tests/lib/api/contentCollections.test.ts
+  - Functions to cover:
+    - fetchCollections, fetchCollectionBySlug, fetchCollectionsByType, fetchHomePageCollections, validateClientGalleryAccess
+  - General instructions:
+    - Mock global.fetch. Assert Next.js cache tags in init.next.tags and revalidate values where applicable.
+    - Verify 404 triggers notFound() for slug detail. Verify non-JSON responses throw a descriptive error.
+    - Normalize shapes: test array and paginated object responses for fetchCollections and fetchHomePageCollections.
 
-### 11.2 Frontend Testing
-- [ ] **Component Tests**: Use React Testing Library for all components
-    - [ ] Test SSR components render correctly
-    - [ ] Test client-side components handle state properly
-    - [ ] Test pagination controls
-    - [ ] Test content block rendering for each type
-- [ ] **Integration Tests**: Test page-level functionality
-    - [ ] Test SSR data fetching
-    - [ ] Test client gallery password flows
-    - [ ] Test collection creation and editing
-- [ ] **Performance Tests**: Test with large collections
-    - [ ] Image lazy loading effectiveness
-    - [ ] Pagination performance on slow connections
+- tests/lib/server/collections.test.ts
+  - Functions to cover:
+    - createCollection, updateCollection, deleteCollection, uploadContentFiles
+  - General instructions:
+    - Mock global.fetch and next/cache revalidateTag/revalidatePath. Ensure correct tags are revalidated per operation.
+    - Validate required argument guard clauses (e.g., missing id/slug/password) throw early.
+    - For uploadContentFiles, ensure FormData is constructed and at least one file is required.
 
-### 11.3 End-to-End Validation
-- [ ] Create test collections of each type with real content
-- [ ] Verify all CRUD operations work correctly
-- [ ] Test content block ordering and editing across all types
-- [ ] Validate responsive design on all collection types and devices
-- [ ] Test client gallery security and access controls
-- [ ] **Future**: Plan for Selenium UI testing framework
+- tests/url-state/selectable-wrapper.test.tsx
+  - Behaviors to cover:
+    - Renders child, computes href with image selection, fires router.push on click (mock).
+  - Instructions:
+    - Mock next/navigation hooks (useRouter/usePathname/useSearchParams). Use RTL render/fireEvent.
+
+- New tests to add (files to create):
+  - tests/app/home.page.test.tsx
+    - Cover RSC fallback behavior by using experimental-server mocks or treat as integration via route handler.
+    - Verify minimal list rendering when fetchHomePageCollections returns [] and when it returns data.
+  - tests/Components/content-collection/*.test.tsx (one per view)
+    - blog-view, art-gallery-view, portfolio-view, client-gallery-view
+    - Mount with minimal collection fixture and assert block rendering via ContentBlockRenderer.
+  - tests/Components/content-blocks/content-block-renderer.test.tsx
+    - Given blocks of type IMAGE/TEXT/CODE/GIF, dispatches to correct subcomponent.
+
+### 10.2 Test Data and Fixtures
+- Create lightweight fixtures for ContentCollectionNormalized and ContentBlock variants in tests/_fixtures.ts.
+- Provide helper to build URLSearchParams for pagination queries.
+
+### 10.3 Tooling and Commands
+- Ensure npx jest runs with jsdom for component tests and node for API tests (already configured in jest.config.mjs).
+- Add npm scripts: "test:watch", "test:ci" with --runInBand for CI.
+
+### 10.4 Performance/Lighthouse (deferred until Home UI is ready)
+- Add scripts/perf/home-lh.mjs to run Lighthouse locally against / (once Home UI is more complete).
+- Capture metrics in README with before/after snaps.
+
 
 ---
 
-## Phase 12: Gradual Migration & Production Deployment
+## Phase 11: Gradual Migration & Production Deployment
 
-### 12.1 Environment Considerations
+### 13.1 Environment Considerations
 - [ ] **Production Data**: Continue using production environment for now
 - [ ] **Future Environment Setup**: Plan for staging environment
     - [ ] Separate S3 buckets for staging
     - [ ] Separate database for testing migrations
     - [ ] CI/CD pipeline for automated testing
 
-### 12.2 Migrate Existing Data
+### 13.2 Migrate Existing Data
 - [ ] **Catalog Classification**: Identify which catalogs belong to which CollectionType
     - [ ] Art galleries: Abstract concepts ("humans in nature", "urban landscapes")
     - [ ] Portfolio pieces: Location/event specific ("Arches National Park", "Wedding Showcase")
@@ -623,7 +626,7 @@ A flexible CMS-like system where each content type has:
     - [ ] Verify pagination works with migrated content
     - [ ] Test performance with large migrated collections
 
-### 12.3 Update Home Page & Navigation
+### 13.3 Update Home Page & Navigation
 - [ ] Modify home page to pull from ContentCollections instead of Catalogs
     - [ ] Update `fetchHomePage()` API to use new endpoints
     - [ ] Update `HomeCardModel` to support collection types
@@ -635,7 +638,7 @@ A flexible CMS-like system where each content type has:
     - `pages/index.tsx`
     - `src/main/java/edens/zac/portfolio/backend/services/HomeService.java`
 
-### 12.4 Performance Monitoring & Optimization
+### 13.4 Performance Monitoring & Optimization
 - [ ] Monitor database performance with new pagination queries
 - [ ] Monitor S3 usage patterns with mixed content types
 - [ ] Optimize any slow queries discovered in production

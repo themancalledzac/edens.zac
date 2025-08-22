@@ -13,7 +13,7 @@ import { chunkImages } from '@/utils/imageUtils';
 
 interface BlogPageProps {
   blog: Blog;
-  imageChunks: any[];
+  imageChunks: Image[];
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
