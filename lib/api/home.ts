@@ -7,6 +7,16 @@ import { type Blog } from '@/types/Blog';
 import { type HomeCardModel } from '@/types/HomeCardModel';
 
 /**
+ * Backend response structure for home page
+ */
+interface HomePageResponse {
+  items: HomeCardModel[];
+  count: number;
+  maxPriority: number;
+  generatedAt: string;
+}
+
+/**
  * Fetches the latest home page collections
  * Endpoint: GET /api/read/collections/homePage
  * Optional query params: maxPriority, limit
@@ -24,17 +34,17 @@ export async function fetchHomePage(
     if (limit !== undefined) search.set('limit', String(limit));
 
     const endpoint = `/collections/homePage${search.toString() ? `?${search.toString()}` : ''}`;
-    const homeLayout = await fetchReadApi<HomeCardModel[]>(endpoint);
+    const response = await fetchReadApi<HomePageResponse>(endpoint);
 
-    if (homeLayout && homeLayout.length > 0) {
-      return homeLayout;
+    if (response && response.items && response.items.length > 0) {
+      console.log(`Found ${response.items.length} home page items`);
+      return response.items;
     }
 
-    throw new Error('No home page found');
+    console.log('No home page items found in response');
+    return [];
   } catch (error) {
     console.error('Error fetching home page:', error);
-
-    // Fallback
     return null;
   }
 }

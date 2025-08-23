@@ -1,102 +1,91 @@
+import { AlignJustify } from 'lucide-react';
 import Link from 'next/link';
-import React from 'react';
+import { Suspense } from 'react';
 
-import { fetchHomePageCollections } from '@/lib/api/contentCollections';
+import { fetchHomePage } from '@/lib/api/home';
+import { type HomeCardModel } from '@/types/HomeCardModel';
 
-/**
- * Simplified Home Page
- * - Renders a 2-column grid of images based on fetchHomePageCollections response.items
- * - Uses backgroundImage style consistent with ParallaxSection
- * - Server Component (no client hooks)
- */
-export const revalidate = 600;
+import { GridSection } from './components/GridSection';
+import styles from './page.module.scss';
 
-/** Infer items array from various backend shapes */
-function toItemsArray(data: unknown): Array<any> {
-  if (!data) return [];
-  if (Array.isArray(data)) return data;
-  if (typeof data === 'object') {
-    const items = (data as any).items ?? (data as any).content ?? (data as any).collections ?? null;
-    return Array.isArray(items) ? items : [];
-  }
-  return [];
+// Simple Header component for temporary use
+function Header() {
+  return (
+    <header className={styles.header}>
+      <div className={styles.navBarWrapper}>
+        <div className={styles.navBarLeftWrapper}>
+          <Link href="/" className={styles.title}>
+            <h2>Zac Edens</h2>
+          </Link>
+        </div>
+        <div className={styles.menuWrapper}>
+          {/* TODO: Add dropdown menu functionality */}
+          <AlignJustify className={styles.menu} />
+        </div>
+      </div>
+    </header>
+  );
 }
 
-export default async function HomePage() {
-  const raw = await fetchHomePageCollections({ maxPriority: 3, limit: 12 });
-  const items = toItemsArray(raw);
+
+// Loading component
+function HomeLoading() {
+  return (
+    <div className={styles.container}>
+      <Header />
+      <main className={styles.main}>
+        <div className={styles.gridContainer}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={`${styles.gridSection} ${styles.loading}`}>
+              <div className={styles.loadingSkeleton} />
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// Home content component
+async function HomeContent() {
+  let homeCards: HomeCardModel[] = [];
+
+  try {
+    const result = await fetchHomePage({ maxPriority: 2, limit: 12 });
+    if (result && result.length > 0) {
+      homeCards = result;
+    }
+  } catch (error) {
+    console.log('Error loading home page data:', error);
+    // Continue with empty array - graceful degradation
+  }
 
   return (
-    <main
-      style={{
-        padding: '1rem',
-        display: 'grid',
-        justifyItems: 'center',
-      }}
-    >
-      <section aria-label="Collections" style={{ width: '100%', maxWidth: 1400 }}>
-        <ul
-          style={{
-            listStyle: 'none',
-            padding: 0,
-            margin: 0,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: '1rem',
-          }}
-        >
-          {items.map((item) => {
-            // Support both HomeCardModel and possible legacy shapes
-            const id = String(item.id ?? item.slug ?? Math.random());
-            const slug = String(item.slug ?? '');
-            const title = String(item.title ?? '');
-            const coverImageUrl = String(item.coverImageUrl ?? item.coverUrl ?? '');
-            const href = `/collection/${slug}`;
+    <div className={styles.container}>
+      <Header />
+      <main className={styles.main}>
+        {homeCards.length > 0 ? (
+          <div className={styles.gridContainer}>
+            {homeCards.map((card) => (
+              <GridSection key={card.id} card={card} />
+            ))}
+          </div>
+        ) : (
+          <div className={styles.emptyState}>
+            <h2>Welcome to Zac Edens Photography</h2>
+            <p>Loading portfolio collections...</p>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
 
-            if (!slug || !coverImageUrl) return null; // guard against incomplete data
-
-            return (
-              <li key={id}>
-                <Link href={href} prefetch aria-label={title} title={title}>
-                  <div
-                    style={{
-                      position: 'relative',
-                      width: '100%',
-                      aspectRatio: '3 / 2',
-                      borderRadius: 8,
-                      overflow: 'hidden',
-                      backgroundColor: '#e5e7eb',
-                      backgroundImage: `url(${coverImageUrl})`, // See ParallaxSection usage
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat',
-                    }}
-                    role="img"
-                    aria-label={title}
-                  />
-                </Link>
-              </li>
-            );
-          })}
-
-          {items.length === 0 && (
-            ['a','b','c','d'].map((key) => (
-              <li key={`skeleton-${key}`}>
-                <div
-                  aria-hidden
-                  style={{
-                    width: '100%',
-                    aspectRatio: '3 / 2',
-                    borderRadius: 8,
-                    background: 'linear-gradient(90deg,#e5e7eb,#f3f4f6)',
-                    animation: 'pulse 1.5s ease-in-out infinite',
-                  }}
-                />
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
-    </main>
+// Main page component
+export default function HomePage() {
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <HomeContent />
+    </Suspense>
   );
 }
