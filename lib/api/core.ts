@@ -120,6 +120,18 @@ export async function fetchJsonApi<T>(endpoint: string, body: any): Promise<T> {
   });
 }
 
+// For JSON-based creates (POST)
+export async function fetchPostJsonApi<T>(endpoint: string, body: any): Promise<T> {
+  console.log('[fetchPostJsonApi] Endpoint:', endpoint);
+  console.log('[fetchPostJsonApi] Body:', JSON.stringify(body, null, 2));
+  
+  return await fetchWriteBase<T>(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 // For FormData-based creates (POST)
 export async function fetchFormDataApi<T>(endpoint: string, formData: FormData): Promise<T> {
   return await fetchWriteBase<T>(endpoint, {

@@ -1,42 +1,23 @@
-import { AlignJustify } from 'lucide-react';
-import Link from 'next/link';
 import { Suspense } from 'react';
 
 import { fetchHomePage } from '@/lib/api/home';
 import { type HomeCardModel } from '@/types/HomeCardModel';
 
 import { GridSection } from './components/GridSection';
+import SiteHeader from './components/site-header';
 import styles from './page.module.scss';
-
-// Simple Header component for temporary use
-function Header() {
-  return (
-    <header className={styles.header}>
-      <div className={styles.navBarWrapper}>
-        <div className={styles.navBarLeftWrapper}>
-          <Link href="/" className={styles.title}>
-            <h2>Zac Edens</h2>
-          </Link>
-        </div>
-        <div className={styles.menuWrapper}>
-          {/* TODO: Add dropdown menu functionality */}
-          <AlignJustify className={styles.menu} />
-        </div>
-      </div>
-    </header>
-  );
-}
 
 
 // Loading component
 function HomeLoading() {
+  const skeletonKeys = ['sk1','sk2','sk3','sk4','sk5','sk6'];
   return (
     <div className={styles.container}>
-      <Header />
+      <SiteHeader />
       <main className={styles.main}>
         <div className={styles.gridContainer}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={`${styles.gridSection} ${styles.loading}`}>
+          {skeletonKeys.map((key) => (
+            <div key={key} className={`${styles.gridSection} ${styles.loading}`}>
               <div className={styles.loadingSkeleton} />
             </div>
           ))}
@@ -62,7 +43,7 @@ async function HomeContent() {
 
   return (
     <div className={styles.container}>
-      <Header />
+      <SiteHeader />
       <main className={styles.main}>
         {homeCards.length > 0 ? (
           <div className={styles.gridContainer}>

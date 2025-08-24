@@ -1,7 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { HomeCardModel } from '@/types/HomeCardModel';
+
+import { type HomeCardModel } from '@/types/HomeCardModel';
+
 import { useParallax } from '../hooks/useParallax';
 import styles from '../page.module.scss';
 
@@ -24,18 +26,20 @@ export function GridSection({ card }: GridSectionProps) {
   };
 
   return (
-    <Link href={getHref()} className={styles.gridSection} ref={parallaxRef}>
-      <div
-        className={`${styles.gridBackground} parallax-bg`}
-        style={{ backgroundImage: `url(${coverImageUrl})` }}
-      />
-      <div className={styles.gridContent}>
-        <h1 className={styles.gridTitle}>{title}</h1>
-        {text && <p className={styles.gridText}>{text}</p>}
-        <div className={styles.cardTypeBadge}>
-          {cardType}
+    <div className={styles.gridSection} ref={parallaxRef}>
+      <Link href={getHref()}>
+        <div
+          className={`${styles.gridBackground} parallax-bg`}
+          style={{ backgroundImage: `url(${coverImageUrl})` }}
+        />
+        <div className={styles.gridContent}>
+          <h1 className={styles.gridTitle}>{title}</h1>
+          {text && <p className={styles.gridText}>{text}</p>}
+          <div className={styles.cardTypeBadge}>
+            {cardType}
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
