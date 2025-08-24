@@ -1,213 +1,331 @@
-"use client";
+'use client';
 
-/**
- * Admin — Create Content Collection Page (Client Component)
- *
- * Purpose
- * - Client-only page to create a new ContentCollection (metadata only). Media uploads are
- *   performed on the edit page afterward.
- *
- * Notes
- * - Uses proxy route /api/proxy to talk to backend write endpoints.
- * - Validates basic inputs client-side; server performs authoritative validation.
- */
+import { useRouter } from 'next/navigation';
+import { type FormEvent, useState } from 'react';
 
-import { useRouter } from "next/navigation";
-import React, { useCallback, useMemo, useState } from "react";
+import SiteHeader from '@/app/components/site-header';
+import { createContentCollection } from '@/lib/api/home';
+import { CollectionType, type ContentCollectionCreateDTO } from '@/types/ContentCollection';
 
-// Shared types from read layer for enums
-import type { CollectionType } from "@/lib/api/contentCollections";
-
-// Local DTOs for client submission
-type Visibility = "PUBLIC" | "PRIVATE";
-
-type CreateCollectionDTO = {
-  title: string;
-  slug?: string;
-  type: CollectionType;
-  description?: string;
-  visibility?: Visibility;
-  password?: string; // only for CLIENT_GALLERY
-  blocksPerPage?: number;
-  priority?: number;
-};
-
-const DEFAULTS: Pick<CreateCollectionDTO, "visibility" | "blocksPerPage"> = {
-  visibility: "PUBLIC",
-  blocksPerPage: 30,
-};
-
-/** Determine if type is a client gallery to conditionally require password. */
-function isClientGallery(type: CollectionType) {
-  return type === "CLIENT_GALLERY";
-}
-
-/**
- * Create the collection via backend write endpoint through app proxy.
- * Returns id/slug/type on success; throws with readable message on failure.
- */
-async function createViaProxy(dto: CreateCollectionDTO) {
-  const res = await fetch("/api/proxy/api/write/collections/createCollection", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(dto),
-    cache: "no-store",
-  });
-  const ct = res.headers.get("content-type") || "";
-  if (!res.ok) {
-    const msg = ct.includes("application/json") ? JSON.stringify(await res.json()) : await res.text();
-    throw new Error(msg || `Create failed: ${res.status}`);
-  }
-  const json = (ct.includes("application/json") ? await res.json() : undefined) as
-    | { id: string; slug: string; type: CollectionType }
-    | undefined;
-  if (!json) throw new Error("Unexpected response from API");
-  return json;
-}
-
-/** Client page component for creating a new ContentCollection. */
 export default function CreateCollectionPage() {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [slug, setSlug] = useState("");
-  const [type, setType] = useState<CollectionType>("ART_GALLERY");
-  const [description, setDescription] = useState("");
-  const [visibility, setVisibility] = useState<Visibility>(DEFAULTS.visibility!);
-  const [password, setPassword] = useState("");
-  const [blocksPerPage, setBlocksPerPage] = useState<number>(DEFAULTS.blocksPerPage!);
-  const [priority, setPriority] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState<ContentCollectionCreateDTO>({
+    type: CollectionType.PORTFOLIO,
+    title: '',
+    description: '',
+    location: '',
+    priority: 2,
+    visible: true,
+    homeCardEnabled: false,
+    homeCardText: '',
+    homeCardCoverImageUrl: '',
+    blocksPerPage: 12
+  });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasError, setHasError] = useState<string | null>(null);
+  const handleInputChange = (field: keyof ContentCollectionCreateDTO, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
 
-  const isPasswordVisible = isClientGallery(type);
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
-  const isValid = useMemo(() => {
-    if (!title.trim()) return false;
-    if (isPasswordVisible && password.trim().length === 0) return false; // require password for client gallery
-    return !(blocksPerPage < 1 || blocksPerPage > 200);
-
-  }, [title, isPasswordVisible, password, blocksPerPage]);
-
-  const onSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!isValid) return;
-      setIsSubmitting(true);
-      setHasError(null);
-      try {
-        const dto: CreateCollectionDTO = {
-          title: title.trim(),
-          slug: slug.trim() || undefined,
-          type,
-          description: description.trim() || undefined,
-          visibility,
-          blocksPerPage,
-          priority,
-          ...(isPasswordVisible ? { password } : {}),
-        };
-        const created = await createViaProxy(dto);
-        // Navigate to the edit page of the new collection
-        router.replace(`/collection/${created.slug}/edit`);
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        setHasError(msg);
-      } finally {
-        setIsSubmitting(false);
+    try {
+      // Basic validation
+      if (!formData.title.trim()) {
+        throw new Error('Title is required');
       }
-    },
-    [isValid, title, slug, type, description, visibility, blocksPerPage, priority, isPasswordVisible, password, router]
-  );
+      if (formData.title.length < 3 || formData.title.length > 100) {
+        throw new Error('Title must be between 3 and 100 characters');
+      }
+
+      console.log('Submitting form data:', formData);
+      const result = await createContentCollection(formData);
+      
+      console.log('Collection created successfully:', result);
+      
+      // Redirect to the created collection
+      if (result.slug) {
+        router.push(`/${result.type}/${result.slug}`);
+      } else {
+        // Fallback if no slug
+        router.push('/');
+      }
+    } catch (error_: any) {
+      console.error('Error creating collection:', error_);
+      setError(error_.message || 'Failed to create collection');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <main style={{ maxWidth: 720, margin: "0 auto", padding: "1.5rem" }}>
-      <h1 style={{ marginBottom: "1rem" }}>Create Content Collection</h1>
-      <p style={{ color: "#666", marginBottom: "1rem" }}>
-        Create a new collection. Creation is metadata-only; you can upload media on the edit page afterward.
-      </p>
-
-      {hasError && (
-        <div role="alert" style={{ background: "#fee", color: "#900", padding: "0.75rem", borderRadius: 6, marginBottom: 12 }}>
-          {hasError}
+    <div>
+      <SiteHeader />
+      <div style={{ 
+        maxWidth: '800px', 
+        margin: '0 auto', 
+        padding: '2rem',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <h1>Create New Collection</h1>
+        
+        {error && (
+        <div style={{ 
+          background: '#fee', 
+          border: '1px solid #fcc', 
+          padding: '1rem', 
+          borderRadius: '4px',
+          marginBottom: '1rem',
+          color: '#c33'
+        }}>
+          {error}
         </div>
       )}
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Type</span>
-          <select value={type} onChange={(e) => setType(e.target.value as CollectionType)} required>
-            <option value="ART_GALLERY">Art Gallery</option>
-            <option value="PORTFOLIO">Portfolio</option>
-            <option value="BLOG">Blog</option>
-            <option value="CLIENT_GALLERY">Client Gallery</option>
-          </select>
-          <small style={{ color: "#666" }}>
-            {type === "BLOG" && "Mixed text/images, chronological."}
-            {type === "ART_GALLERY" && "Curated images, artistic presentation."}
-            {type === "PORTFOLIO" && "Professional showcase."}
-            {type === "CLIENT_GALLERY" && "Private delivery with password."}
-          </small>
-        </label>
-
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Title</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Arches National Park" required />
-        </label>
-
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Slug (optional)</span>
-          <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="arches-national-park" />
-          <small style={{ color: "#666" }}>If empty, slug will be generated automatically.</small>
-        </label>
-
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Description (optional)</span>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
-        </label>
-
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Visibility</span>
-            <select value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)}>
-              <option value="PUBLIC">Public</option>
-              <option value="PRIVATE">Private</option>
-            </select>
+      <form onSubmit={handleSubmit}>
+        {/* Collection Type */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+            Collection Type *
           </label>
+          <select 
+            value={formData.type}
+            onChange={(e) => handleInputChange('type', e.target.value as CollectionType)}
+            style={{ 
+              width: '100%', 
+              padding: '0.5rem', 
+              border: '1px solid #ccc', 
+              borderRadius: '4px' 
+            }}
+            required
+          >
+            <option value={CollectionType.PORTFOLIO}>Portfolio</option>
+            <option value={CollectionType.CATALOG}>Catalog</option>
+            <option value={CollectionType.BLOG}>Blog</option>
+            <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
+          </select>
+        </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Blocks per page</span>
+        {/* Title */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+            Title * (3-100 characters)
+          </label>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => handleInputChange('title', e.target.value)}
+            style={{ 
+              width: '100%', 
+              padding: '0.5rem', 
+              border: '1px solid #ccc', 
+              borderRadius: '4px' 
+            }}
+            required
+            minLength={3}
+            maxLength={100}
+          />
+        </div>
+
+        {/* Description */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+            Description (max 500 characters)
+          </label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            style={{ 
+              width: '100%', 
+              padding: '0.5rem', 
+              border: '1px solid #ccc', 
+              borderRadius: '4px',
+              minHeight: '100px',
+              resize: 'vertical'
+            }}
+            maxLength={500}
+          />
+        </div>
+
+        {/* Location */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+            Location (max 255 characters)
+          </label>
+          <input
+            type="text"
+            value={formData.location}
+            onChange={(e) => handleInputChange('location', e.target.value)}
+            style={{ 
+              width: '100%', 
+              padding: '0.5rem', 
+              border: '1px solid #ccc', 
+              borderRadius: '4px' 
+            }}
+            maxLength={255}
+          />
+        </div>
+
+        {/* Priority */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+            Priority (1 = highest, 4 = lowest) - applies to both collection and home card
+          </label>
+          <select 
+            value={formData.priority}
+            onChange={(e) => handleInputChange('priority', Number(e.target.value))}
+            style={{ 
+              width: '100%', 
+              padding: '0.5rem', 
+              border: '1px solid #ccc', 
+              borderRadius: '4px' 
+            }}
+          >
+            <option value={1}>1 - Highest</option>
+            <option value={2}>2 - High</option>
+            <option value={3}>3 - Medium</option>
+            <option value={4}>4 - Low</option>
+          </select>
+        </div>
+
+        {/* Visibility */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <input
-              type="number"
-              min={1}
-              max={200}
-              value={blocksPerPage}
-              onChange={(e) => setBlocksPerPage(Number(e.target.value))}
-              required
+              type="checkbox"
+              checked={formData.visible}
+              onChange={(e) => handleInputChange('visible', e.target.checked)}
             />
+            <span style={{ fontWeight: 'bold' }}>Make collection visible</span>
           </label>
         </div>
 
-        {isPasswordVisible && (
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Password (required for client galleries)</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required={isPasswordVisible} />
-          </label>
+        {/* Client Gallery Password */}
+        {formData.type === CollectionType.CLIENT_GALLERY && (
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+              Password (8-100 characters, required for client galleries)
+            </label>
+            <input
+              type="password"
+              value={formData.password || ''}
+              onChange={(e) => handleInputChange('password', e.target.value)}
+              style={{ 
+                width: '100%', 
+                padding: '0.5rem', 
+                border: '1px solid #ccc', 
+                borderRadius: '4px' 
+              }}
+              minLength={8}
+              maxLength={100}
+              required={formData.type === CollectionType.CLIENT_GALLERY}
+            />
+          </div>
         )}
 
-        <label style={{ display: "grid", gap: 6 }}>
-          <span>Priority (optional)</span>
-          <input type="number" value={priority} onChange={(e) => setPriority(Number(e.target.value))} />
-        </label>
+        {/* Home Card Settings */}
+        <fieldset style={{ 
+          marginBottom: '1rem', 
+          padding: '1rem', 
+          border: '1px solid #ccc', 
+          borderRadius: '4px' 
+        }}>
+          <legend style={{ fontWeight: 'bold' }}>Home Page Card Settings</legend>
+          
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                type="checkbox"
+                checked={formData.homeCardEnabled}
+                onChange={(e) => handleInputChange('homeCardEnabled', e.target.checked)}
+              />
+              <span>Enable home page card</span>
+            </label>
+          </div>
 
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button type="submit" disabled={!isValid || isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create"}
+          {formData.homeCardEnabled && (
+            <>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                  Home Card Text
+                </label>
+                <textarea
+                  value={formData.homeCardText}
+                  onChange={(e) => handleInputChange('homeCardText', e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.5rem', 
+                    border: '1px solid #ccc', 
+                    borderRadius: '4px',
+                    minHeight: '60px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                  Home Card Cover Image URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.homeCardCoverImageUrl}
+                  onChange={(e) => handleInputChange('homeCardCoverImageUrl', e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.5rem', 
+                    border: '1px solid #ccc', 
+                    borderRadius: '4px' 
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </fieldset>
+
+        {/* Submit Buttons */}
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: loading ? '#ccc' : '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: '1rem'
+            }}
+          >
+            {loading ? 'Creating...' : 'Create Collection'}
           </button>
-          <button type="button" onClick={() => router.back()} disabled={isSubmitting}>
+          
+          <button
+            type="button"
+            onClick={() => router.back()}
+            style={{
+              padding: '0.75rem 1.5rem',
+              background: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '1rem'
+            }}
+          >
             Cancel
           </button>
         </div>
       </form>
-    </main>
+      </div>
+    </div>
   );
 }

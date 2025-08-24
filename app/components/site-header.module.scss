@@ -1,0 +1,56 @@
+.header {
+  position: relative;
+  background-color: transparent;
+  border-bottom: none;
+}
+
+.navBarWrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  margin: 0 auto;
+
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+}
+
+.navBarLeftWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.title {
+  text-decoration: none;
+  color: inherit;
+
+  h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: black;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: #333;
+    }
+  }
+}
+
+.menuWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.menu {
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+  color: black;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #333;
+  }
+}

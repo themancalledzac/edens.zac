@@ -2,9 +2,10 @@
  * API functions for home-related operations
  */
 
-import { fetchReadApi } from '@/lib/api/core';
+import { fetchReadApi, fetchPostJsonApi } from '@/lib/api/core';
 import { type Blog } from '@/types/Blog';
 import { type HomeCardModel } from '@/types/HomeCardModel';
+import { type ContentCollectionCreateDTO, type ContentCollectionModel } from '@/types/ContentCollection';
 
 /**
  * Backend response structure for home page
@@ -57,4 +58,44 @@ export async function fetchHomePage(
  */
 export async function fetchBlogById(id: string): Promise<Blog> {
   return fetchReadApi<Blog>(`/blog/byId/${id}`);
+}
+
+/**
+ * Fetches a content collection by slug
+ * Endpoint: GET /api/read/collections/{slug}
+ *
+ * @param slug - The collection slug
+ * @returns The collection data
+ */
+export async function fetchCollectionBySlug(slug: string): Promise<any> {
+  try {
+    return await fetchReadApi<any>(`/collections/${slug}`);
+  } catch (error) {
+    console.error(`Error fetching collection "${slug}":`, error);
+    throw error;
+  }
+}
+
+/**
+ * Creates a new content collection
+ * Endpoint: POST /api/write/collections/createCollection
+ *
+ * @param createData - The collection creation data
+ * @returns The created collection
+ */
+export async function createContentCollection(
+  createData: ContentCollectionCreateDTO
+): Promise<ContentCollectionModel> {
+  try {
+    console.log('[createContentCollection] Input data:', createData);
+    console.log('[createContentCollection] Calling POST /api/write/collections/createCollection');
+    
+    const result = await fetchPostJsonApi<ContentCollectionModel>('/collections/createCollection', createData);
+    
+    console.log('[createContentCollection] API response:', result);
+    return result;
+  } catch (error) {
+    console.error('[createContentCollection] Error:', error);
+    throw error;
+  }
 }

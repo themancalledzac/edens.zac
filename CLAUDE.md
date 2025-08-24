@@ -290,8 +290,3 @@ Based on current state, prioritize tests for:
 - **Assume localhost development**: Unless specifically told otherwise
 - **S3/CloudFront knowledge**: Use existing infrastructure patterns
 - **Spring Boot familiarity**: Leverage existing backend API patterns
-
-### Official Docs
-1. ** https://react.dev/reference/react
-2. ** https://nextjs.org/docs
-3. ** https://nextjs.org/docs/app/guides/migrating/app-router-migration#migrating-from-pages-to-app
