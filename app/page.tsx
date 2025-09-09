@@ -9,21 +9,30 @@ import styles from './page.module.scss';
 
 
 // Loading component
+// Reusable fallback card using local image
+const FALLBACK_CARD: HomeCardModel = {
+  id: 0,
+  title: 'test catalog',
+  cardType: 'catalog',
+  location: 'seattle',
+  priority: 1,
+  coverImageUrl: '/img001.jpg',
+  slug: 'test-catalog'
+};
+
 function HomeLoading() {
   const skeletonKeys = ['sk1','sk2','sk3','sk4','sk5','sk6'];
   return (
-    <div className={styles.container}>
-      <SiteHeader />
-      <main className={styles.main}>
         <div className={styles.gridContainer}>
-          {skeletonKeys.map((key) => (
-            <div key={key} className={`${styles.gridSection} ${styles.loading}`}>
-              <div className={styles.loadingSkeleton} />
-            </div>
+          {skeletonKeys.map((key, i) => (
+            <GridSection
+              key={`${key}-${i}`}
+              card={{ ...FALLBACK_CARD, id: i + 1, slug: `${FALLBACK_CARD.slug}-${i + 1}` }}
+              desktopRowIndex={Math.floor(i / 2)}
+              mobileRowIndex={i}
+            />
           ))}
         </div>
-      </main>
-    </div>
   );
 }
 
@@ -34,6 +43,11 @@ async function HomeContent() {
   try {
     const result = await fetchHomePage({ maxPriority: 2, limit: 12 });
     if (result && result.length > 0) {
+      // TODO:
+      //  - Should we also look into saving this in browser memory/application/cookies/etc?
+      //  - Check first if exists, if not, fetchHomePage
+      //  - On Fetch, we save to short term memory, just a JSON object of HomePageContent objects, so fairly light.
+      //  - Keep for say, 30min for a short term cache policy
       homeCards = result;
     }
   } catch (error) {
@@ -65,10 +79,7 @@ async function HomeContent() {
             ))}
           </div>
         ) : (
-          <div className={styles.emptyState}>
-            <h2>Welcome to Zac Edens Photography</h2>
-            <p>Loading portfolio collections...</p>
-          </div>
+          <HomeLoading />
         )}
       </main>
     </div>

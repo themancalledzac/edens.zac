@@ -1,3 +1,9 @@
+/*
+  Style Strategy: Mobile-first
+  - Base rules target mobile.
+  - Larger breakpoints use @media (min-width: ...).
+*/
+
 // Container and layout
 .container {
   min-height: 100vh;
@@ -7,9 +13,15 @@
 
 .main {
   flex: 1;
-  padding: 2rem;
+  /* Mobile base padding */
+  padding: 0;
   margin: 0 auto;
   width: 100%;
+
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    padding: 2rem;
+  }
 }
 
 // Header styles (temporary inline header)
@@ -23,11 +35,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
+  /* Mobile base padding */
+  padding: 1rem;
   margin: 0 auto;
 
-  @media (max-width: 768px) {
-    padding: 1rem;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    padding: 1rem 2rem;
   }
 }
 
@@ -42,13 +56,19 @@
 
   h2 {
     margin: 0;
-    font-size: 1.8rem;
+    /* Mobile base font-size */
+    font-size: 1.5rem;
     font-weight: 600;
     color: black;
     transition: color 0.2s ease;
 
     &:hover {
       color: #333;
+    }
+
+    /* Desktop version (enhancement): min-width 768px and up */
+    @media (min-width: 768px) {
+      font-size: 1.8rem;
     }
   }
 }
@@ -59,6 +79,7 @@
 }
 
 .menu {
+  /* Mobile base size */
   width: 2rem;
   height: 2rem;
   cursor: pointer;
@@ -70,26 +91,26 @@
   }
 }
 
-// Grid layout styles
 .gridContainer {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
+  /* Mobile base: single column */
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
   margin-top: 0;
   margin-left: auto;
   margin-right: auto;
 
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
     gap: 2rem;
-    margin-top: 0;
   }
 }
 
-// Grid section styles with JavaScript parallax
 .gridSection {
   position: relative;
-  aspect-ratio: 1.75 / 1;
+  /* Mobile base: square with simpler rendering */
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   cursor: pointer;
   text-decoration: none;
@@ -101,33 +122,40 @@
     }
   }
 
-  @media (max-width: 768px) {
-    aspect-ratio: 1 / 1;
-    // Disable parallax on mobile for performance
-    transform-style: flat;
-    perspective: none;
+  // Disable parallax on mobile for performance
+  transform-style: flat;
+  perspective: none;
+
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    aspect-ratio: 1.75 / 1;
+    /* Re-enable 3D context for parallax on desktop */
+    transform-style: preserve-3d;
+    perspective: 800px;
   }
 }
 
 .gridBackground {
   position: absolute;
-  top: -15%;
+  /* Mobile base: no parallax, centered background */
+  top: 0;
   left: 0;
   right: 0;
-  bottom: -15%;
-  background-size: cover;
-  background-position: center;
+  bottom: 0;
+  background-size: 160%;
+  background-position: center center;
   background-repeat: no-repeat;
-  will-change: transform;
+  /* Allow JS parallax transforms on desktop; keep none on mobile base */
+  transform: none;
+  will-change: auto;
 
-  @media (max-width: 768px) {
-    // Disable parallax on mobile - reset to standard positioning
-    top: 0;
-    bottom: 0;
-    background-size: 160%;
-    background-position: center center;
-    transform: none !important;
-    will-change: auto;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    top: -15%;
+    bottom: -15%;
+    background-size: cover;
+    background-position: center;
+    will-change: transform;
   }
 }
 
@@ -140,66 +168,82 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 1.5rem;
+  /* Mobile base padding */
+  padding: 1rem;
   transition: background-color 0.3s ease;
 
-  @media (max-width: 768px) {
-    padding: 1rem;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    //padding: 1.5rem;
+    padding: 0;
   }
 }
 
 .gridTitle {
   margin: 0;
-  font-size: 2.5rem;
+  /* Mobile base size */
+  font-size: 1.5rem;
   font-weight: 700;
   color: white;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
   line-height: 1.1;
 
-  @media (max-width: 768px) {
+  /* Desktop version (enhancement): min-width 480px and up */
+  @media (min-width: 480px) {
     font-size: 1.8rem;
   }
 
-  @media (max-width: 480px) {
-    font-size: 1.5rem;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    padding: 1.5rem;
+    font-size: 2.5rem;
   }
 }
 
 .gridText {
   margin: 0;
-  font-size: 1rem;
+  /* Mobile base */
+  font-size: 0.9rem;
   color: white;
   background-color: rgba(0, 0, 0, 0.7);
-  padding: 0.75rem;
+  padding: 0.5rem;
   border-radius: 6px;
   line-height: 1.5;
-  max-width: 80%;
+  max-width: 100%;
 
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-    padding: 0.5rem;
-    max-width: 100%;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    font-size: 1rem;
+    padding: 0.75rem;
+    max-width: 80%;
   }
 }
 
 .cardTypeBadge {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background-color: rgba(255, 255, 255, 0.9);
-  color: #333;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
+  /* Mobile base */
+  top: 0.5rem;
+  right: 0.5rem;
+  // TODO: including padding, the right needs to line up correctly,
+  //  - rather than needing to add all 'right' padding to the 'right' for our position
+  //  - this means we align-right inside?
+  background-color: rgba(0, 0, 0, 0.9);
+  color: #ffffff;
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.6rem;
+  //border-radius: 20px;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 
-  @media (max-width: 768px) {
-    top: 0.5rem;
-    right: 0.5rem;
-    font-size: 0.7rem;
-    padding: 0.2rem 0.6rem;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    top: 0;
+    right: 0;
+    font-size: 0.8rem;
+    padding: 0.55rem 0.75rem;
+    margin-top: 0;
   }
 }
 
@@ -257,30 +301,35 @@
 // Placeholder grid for empty state
 .placeholderGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  /* Mobile base */
+  grid-template-columns: 1fr;
+  gap: 1rem;
   max-width: 1000px;
   width: 100%;
 
-  @media (max-width: 768px) {
+  /* Desktop version (enhancement): min-width 480px and up */
+  @media (min-width: 480px) {
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
   }
 
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
   }
 }
 
 .placeholderCard {
-  aspect-ratio: 1.75 / 1;
+  /* Mobile base */
+  aspect-ratio: 1.2 / 1;
   background-color: #f5f5f5;
   border-radius: 8px;
   overflow: hidden;
   opacity: 0.6;
 
-  @media (max-width: 768px) {
-    aspect-ratio: 1.2 / 1;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    aspect-ratio: 1.75 / 1;
   }
 }
 
@@ -314,21 +363,6 @@
   background-color: #e0e0e0;
   border-radius: 4px;
   width: 60%;
-}
-
-// Responsive adjustments
-@media (max-width: 480px) {
-  .main {
-    padding: 0.5rem;
-  }
-
-  .gridContainer {
-    gap: 1rem;
-  }
-
-  .gridSection {
-    border-radius: 6px;
-  }
 }
 
 // Dark mode support
