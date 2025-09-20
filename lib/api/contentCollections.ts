@@ -107,7 +107,9 @@ export interface ContentCollection {
   collectionDate?: string;
   visible?: boolean;
   priority?: number;
+  // Legacy: coverImageUrl has been replaced by coverImage
   coverImageUrl?: string;
+  coverImage?: { url: string; width?: number; height?: number } | null;
   isPasswordProtected?: boolean;
   hasAccess?: boolean;
   configJson?: ConfigJson | string;
@@ -269,7 +271,9 @@ export interface ContentCollectionNormalized {
   id: number;
   title: string;
   description?: string;
+  // Legacy compatibility: keep coverImageUrl, but prefer coverImage object
   coverImageUrl?: string;
+  coverImage?: { url: string; width?: number; height?: number } | null;
   slug: string;
   location?: string;
   collectionDate?: string;
@@ -280,11 +284,13 @@ export interface ContentCollectionNormalized {
 
 /** Convert backend collection to the normalized frontend shape. */
 function toNormalized(c: ContentCollection): ContentCollectionNormalized {
+  const cover = c.coverImage ?? (c.coverImageUrl ? { url: c.coverImageUrl } : null);
   return {
     id: c.id,
     title: c.title,
     description: c.description,
     coverImageUrl: c.coverImageUrl,
+    coverImage: cover,
     slug: c.slug,
     location: c.location,
     collectionDate: c.collectionDate,

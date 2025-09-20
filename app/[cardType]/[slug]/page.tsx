@@ -19,15 +19,25 @@ interface ContentCollectionPageProps {
   }>;
 }
 
-function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentBlock | null {
-  if (!content.coverImageUrl) return null;
+type CoverDescriptor = { url: string; width?: number; height?: number } | null;
+
+function getCoverDescriptor(content: ContentCollectionNormalized): CoverDescriptor {
+  const cov = content.coverImage ?? (content.coverImageUrl ? { url: content.coverImageUrl } : null);
+  if (!cov || !cov.url) return null;
+  return { url: cov.url, width: cov.width, height: cov.height };
+}
+
+function buildCoverImageBlock(content: ContentCollectionNormalized, cover: CoverDescriptor): AnyContentBlock | null {
+  if (!cover) return null;
   return {
     id: Number.MAX_SAFE_INTEGER - 1,
     type: 'IMAGE',
     blockType: 'IMAGE',
     title: content.title,
     caption: content.description ?? undefined,
-    imageUrlWeb: content.coverImageUrl,
+    imageUrlWeb: cover.url,
+    imageWidth: cover.width,
+    imageHeight: cover.height,
     rating: 3,
     orderIndex: -2,
   } as AnyContentBlock;
@@ -35,7 +45,8 @@ function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentB
 
 function buildMetadataTextBlock(
   content: ContentCollectionNormalized,
-  opts: { cardType: string; slug: string }
+  opts: { cardType: string; slug: string },
+  cover: CoverDescriptor
 ): AnyContentBlock {
   const rows = [
     `Card Type: ${opts.cardType}`,
@@ -45,6 +56,11 @@ function buildMetadataTextBlock(
     content.collectionDate ? `Date: ${new Date(content.collectionDate).toLocaleDateString()}` : undefined,
     content.description ? `Description: ${content.description}` : undefined,
   ].filter(Boolean) as string[];
+
+  // Match metadata block dimensions to the cover image when available so the first row aligns.
+  const width = cover?.width;
+  const height = cover?.height;
+
   return {
     id: Number.MAX_SAFE_INTEGER,
     type: 'TEXT',
@@ -53,6 +69,9 @@ function buildMetadataTextBlock(
     content: rows.join('\n'),
     format: 'plain',
     align: 'start',
+    // Provide sizing hints so normalizeContentBlock uses these exact dims
+    contentWidth: typeof width === 'number' && width > 0 ? width : undefined,
+    contentHeight: typeof height === 'number' && height > 0 ? height : undefined,
     rating: 3,
     orderIndex: -1,
   } as AnyContentBlock;
@@ -80,6 +99,8 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
           description: (blogData as any).description,
           slug: (blogData as any).slug,
           type: (blogData as any).type,
+          coverImageUrl: (blogData as any).coverImageUrl,
+          coverImage: (blogData as any).coverImage ?? ((blogData as any).coverImageUrl ? { url: (blogData as any).coverImageUrl } : null),
           blocks: (blogData as any).contentBlocks ?? [],
           pagination: {
             currentPage: (blogData as any).currentPage ?? 0,
@@ -114,9 +135,10 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
 
   // Build synthetic blocks for unified layout
   const heroBlocks: AnyContentBlock[] = [];
-  const cover = buildCoverImageBlock(content);
-  if (cover) heroBlocks.push(cover);
-  heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }));
+  const coverDesc = getCoverDescriptor(content);
+  const coverBlock = buildCoverImageBlock(content, coverDesc);
+  if (coverBlock) heroBlocks.push(coverBlock);
+  heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }, coverDesc));
   const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks || [])];
 
   return (
