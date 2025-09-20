@@ -3,8 +3,12 @@
 import { notFound } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 
-import { fetchCollectionBySlug } from '@/lib/api/home';
 import SiteHeader from '@/app/components/site-header';
+import { type ContentCollectionNormalized } from '@/lib/api/contentCollections';
+import { fetchCollectionBySlug } from '@/lib/api/home';
+
+import blogData from '../../../Data/getBlogById.json';
+import styles from '../../page.module.scss';
 
 interface ContentCollectionPageProps {
   params: Promise<{
@@ -15,9 +19,8 @@ interface ContentCollectionPageProps {
 
 export default function ContentCollectionPage({ params }: ContentCollectionPageProps) {
   const { cardType, slug } = use(params);
-  const [content, setContent] = useState<any | null>(null);
+  const [content, setContent] = useState<ContentCollectionNormalized | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -29,7 +32,22 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
         setContent(collectionData);
       } catch (error_) {
         console.error('Error fetching content:', error_);
-        setError(`Failed to fetch content: ${error_?.message || error_}`);
+        // Fallback to local JSON sample normalized to the expected shape
+        const fallback: ContentCollectionNormalized = {
+          id: (blogData as any).id,
+          title: (blogData as any).title,
+          description: (blogData as any).description,
+          slug: (blogData as any).slug,
+          type: (blogData as any).type,
+          blocks: (blogData as any).contentBlocks ?? [],
+          pagination: {
+            currentPage: (blogData as any).currentPage ?? 0,
+            totalPages: (blogData as any).totalPages ?? 1,
+            totalBlocks: (blogData as any).totalBlocks ?? ((blogData as any).contentBlocks?.length ?? 0),
+            pageSize: (blogData as any).blocksPerPage ?? 30,
+          },
+        };
+        setContent(fallback);
       } finally {
         setIsLoading(false);
       }
@@ -42,23 +60,8 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
     return (
       <div>
         <SiteHeader />
-        <div style={{ padding: '2rem' }}>
+        <div className={styles.main}>
           <p>Loading {cardType} content...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div>
-        <SiteHeader />
-        <div style={{ padding: '2rem' }}>
-          <h1>Error Loading Content</h1>
-          <p><strong>Card Type:</strong> {cardType}</p>
-          <p><strong>Slug:</strong> {slug}</p>
-          <p><strong>Error:</strong> {error}</p>
-          <p>This helps debug the API call. The content might not exist or the API endpoint might be different.</p>
         </div>
       </div>
     );
@@ -68,39 +71,74 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
     return notFound();
   }
 
+  // TODO:
+  //  - I believe we are using the incorrect shape of data being 'getBlogById.json'
+  //  -
+  //  -
+  //  -
+
   return (
     <div>
       <SiteHeader />
-      <div style={{ padding: '2rem' }}>
-        <h1>{content.title}</h1>
-        {content.coverImageUrl && (
-          <img
-            src={content.coverImageUrl}
-            alt={content.title}
-            style={{ width: '100%', maxWidth: '600px', height: 'auto' }}
-          />
-        )}
-        <p><strong>Card Type:</strong> {cardType}</p>
-        <p><strong>Slug:</strong> {slug}</p>
-        {content.location && <p><strong>Location:</strong> {content.location}</p>}
-        {content.date && <p><strong>Date:</strong> {new Date(content.date).toLocaleDateString()}</p>}
-        {content.description && <p>{content.description}</p>}
-
-        {content.images && content.images.length > 0 && (
-          <div style={{ marginTop: '2rem' }}>
-            <h2>Images ({content.images.length})</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              {content.images.map((image) => (
-                <img
-                  key={image.id}
-                  src={image.url}
-                  alt={image.filename || `Image ${image.id}`}
-                  style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
-                />
-              ))}
-            </div>
+      <div className={styles.contentPadding}>
+        <div className={styles.gridContainer}>
+          <div className={styles.coverImage}>
+            {content.coverImageUrl && (
+              <img
+                src={content.coverImageUrl}
+                alt={content.title}
+                className={styles.coverImageTag}
+              />
+            )}
           </div>
-        )}
+          <div className={styles.metadata}>
+            <p>
+              <strong>Card Type:</strong> {cardType}
+            </p>
+            <p>
+              <strong>Title:</strong> {content.title}
+            </p>
+            <p>
+              <strong>Slug:</strong> {slug}
+            </p>
+            {content.location && (
+              <p>
+                <strong>Location:</strong> {content.location}
+              </p>
+            )}
+            {content.collectionDate && (
+              <p>
+                <strong>Date:</strong> {new Date(content.collectionDate).toLocaleDateString()}
+              </p>
+            )}
+            {content.description && (
+              <p>
+                <strong>Description:</strong> {content.description}
+              </p>
+            )}
+          </div>
+        </div>
+        {(() => {
+          const imageBlocks = (content.blocks || []).filter((b: any) => b.blockType === 'IMAGE') as any[];
+          return imageBlocks.length > 0 ? (
+            <div className={styles.blockGroup}>
+              <div className={styles.gridContainer}>
+                {imageBlocks.map((image: any) => (
+                  <div key={image.id} className={styles.slug_gridSection}>
+                    <div className={styles.slug_gridBackground}>
+                      <img
+                        src={image.imageUrlWeb}
+                        alt={image.title || `Image ${image.id}`}
+                        className={styles.blockImage}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          ) : null;
+        })()}
       </div>
     </div>
   );

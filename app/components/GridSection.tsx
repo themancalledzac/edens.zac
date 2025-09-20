@@ -55,7 +55,9 @@ export function GridSection({ card, desktopRowIndex, mobileRowIndex }: GridSecti
           style={{ backgroundImage: `url(${coverImageUrl})` }}
         />
         <div className={styles.gridContent}>
-          <h1 className={styles.gridTitle}>{title}</h1>
+          <div className={styles.gridHeader}>
+            <h1 className={styles.gridTitle}>{title}</h1>
+          </div>
           {text && <p className={styles.gridText}>{text}</p>}
           <div className={styles.cardTypeBadge}>
             {cardType}

@@ -57,7 +57,7 @@ async function HomeContent() {
 
   // Calculate row indices for both desktop and mobile
   // Since this is SSR, we'll calculate both and let the hook handle detection
-  const cardsWithRows = homeCards.map((card, index) => ({
+  const cardsWithRows = homeCards.map((card: HomeCardModel, index) => ({
     card,
     desktopRowIndex: Math.floor(index / 2), // Desktop: 2 columns
     mobileRowIndex: index // Mobile: 1 column (each item is its own row)

@@ -22,6 +22,7 @@
  * - Guards against non-JSON responses for reads.
  */
 import { notFound } from 'next/navigation';
+
 import { isProduction } from '@/utils/environment';
 
 /** Distinct collection categories supported by the system. */
@@ -30,51 +31,66 @@ export type CollectionType = 'BLOG' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'PORTFO
 /** Content block kinds supported by the frontend. */
 export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF';
 
-/**
- * Pagination meta reported by the backend for a given collection page.
- */
-export interface PageMeta {
-  page: number;
-  size: number;
-  totalPages: number;
-  totalBlocks: number;
+export interface ConfigJson {
+  showDates: boolean;
+  displayMode: string;
 }
 
-/** Base shape for all content blocks. */
+/** Base shape for all content blocks based on backend model. */
 export interface BaseBlock {
-  id: string;
-  type: ContentBlockType;
+  id: number;
+  blockType: ContentBlockType;
   orderIndex: number;
+  title?: string;
+  caption?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   [key: string]: unknown;
 }
-/** Image content block. */
+
+/** Image content block (matches Data/getBlogById.json). */
 export interface ImageBlock extends BaseBlock {
-  type: 'IMAGE';
-  webUrl: string;
-  rawUrl?: string;
-  alt?: string;
-  width?: number;
-  height?: number;
+  blockType: 'IMAGE';
+  imageUrlWeb: string;
+  imageUrlRaw?: string | null;
+  imageWidth?: number;
+  imageHeight?: number;
+  iso?: number;
+  author?: string | null;
+  rating?: number;
+  lens?: string | null;
+  blackAndWhite?: boolean;
+  isFilm?: boolean;
+  shutterSpeed?: string | null;
+  rawFileName?: string | null;
+  camera?: string | null;
+  focalLength?: string | null;
+  location?: string | null;
+  createDate?: string | null;
+  fstop?: string | null;
 }
-/** Text content block. */
+
+/** Text content block placeholder for future support. */
 export interface TextBlock extends BaseBlock {
-  type: 'TEXT';
-  content: string;
-  format: 'markdown' | 'html' | 'plain';
+  blockType: 'TEXT';
+  content?: string;
+  format?: 'markdown' | 'html' | 'plain';
 }
-/** Code content block. */
+
+/** Code content block placeholder for future support. */
 export interface CodeBlock extends BaseBlock {
-  type: 'CODE';
-  content: string;
-  language: string;
+  blockType: 'CODE';
+  content?: string;
+  language?: string;
 }
-/** GIF content block. */
+
+/** GIF content block placeholder for future support. */
 export interface GifBlock extends BaseBlock {
-  type: 'GIF';
-  webUrl: string;
-  rawUrl?: string;
-  alt?: string;
+  blockType: 'GIF';
+  imageUrlWeb: string;
+  imageUrlRaw?: string | null;
 }
+
 /** Union of all supported content blocks. */
 export type ContentBlock = ImageBlock | TextBlock | CodeBlock | GifBlock | BaseBlock;
 
@@ -82,19 +98,26 @@ export type ContentBlock = ImageBlock | TextBlock | CodeBlock | GifBlock | BaseB
  * Fully-hydrated collection returned from the backend read endpoints.
  */
 export interface ContentCollection {
-  id: string;
-  slug: string;
-  title: string;
-  description?: string;
+  id: number;
   type: CollectionType;
-  date?: string;
-  visibility?: 'PUBLIC' | 'PRIVATE';
+  title: string;
+  slug: string;
+  description?: string;
+  location?: string;
+  collectionDate?: string;
+  visible?: boolean;
   priority?: number;
+  coverImageUrl?: string;
   isPasswordProtected?: boolean;
   hasAccess?: boolean;
+  configJson?: ConfigJson | string;
+  createdAt?: string;
+  updatedAt?: string;
   blocksPerPage?: number;
-  page: PageMeta;
-  blocks: ContentBlock[];
+  totalBlocks?: number;
+  currentPage?: number;
+  totalPages?: number;
+  contentBlocks: ContentBlock[];
 }
 
 /** Read-only fetch init with Next.js cache options. */
@@ -243,10 +266,13 @@ export async function fetchHomePageCollections(
  * Normalized shape used by viewers to avoid leaking backend pagination internals.
  */
 export interface ContentCollectionNormalized {
-  id: string;
+  id: number;
   title: string;
   description?: string;
+  coverImageUrl?: string;
   slug: string;
+  location?: string;
+  collectionDate?: string;
   type: CollectionType;
   blocks: ContentBlock[];
   pagination: { currentPage: number; totalPages: number; totalBlocks: number; pageSize: number };
@@ -258,14 +284,17 @@ function toNormalized(c: ContentCollection): ContentCollectionNormalized {
     id: c.id,
     title: c.title,
     description: c.description,
+    coverImageUrl: c.coverImageUrl,
     slug: c.slug,
+    location: c.location,
+    collectionDate: c.collectionDate,
     type: c.type,
-    blocks: c.blocks,
+    blocks: c.contentBlocks ?? [],
     pagination: {
-      currentPage: c.page?.page ?? 0,
-      totalPages: c.page?.totalPages ?? 1,
-      totalBlocks: c.page?.totalBlocks ?? c.blocks.length,
-      pageSize: c.page?.size ?? c.blocksPerPage ?? 30,
+      currentPage: c.currentPage ?? 0,
+      totalPages: c.totalPages ?? 1,
+      totalBlocks: c.totalBlocks ?? (c.contentBlocks?.length ?? 0),
+      pageSize: c.blocksPerPage ?? 30,
     },
   };
 }
