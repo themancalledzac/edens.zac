@@ -1,3 +1,4 @@
+import { type AnyContentBlock } from '@/types/ContentBlock';
 import { type Image } from '@/types/Image';
 
 export interface DisplayImage {
@@ -154,8 +155,7 @@ export function calculateSingleImageSize(image: Image, availableWidth: number): 
   const height = availableWidth / ratio;
 
   return {
-    image: undefined,
-    ...image,
+    image,
     width: availableWidth,
     height,
   };
@@ -298,7 +298,7 @@ export function calculateImageSizes(
 
   if (images.length === 1) {
     // Handle the single image case
-    const ratio = images[0].imageWidth / images[0].imageHeight;
+    const ratio = images[0].imageWidth / Math.max(1, images[0].imageHeight);
     const height = componentWidth / ratio;
     // const width = ratio * height;
 
@@ -311,7 +311,7 @@ export function calculateImageSizes(
     ];
   } else {
     // Calculate the ratios for all images.
-    const ratios = images.map(img => img.imageWidth / img.imageHeight);
+    const ratios = images.map(img => img.imageWidth / Math.max(1, img.imageHeight));
 
     // Calculate the sum of all ratios
     const ratioSum = ratios.reduce((sum, ratio) => sum + ratio, 0);
@@ -355,9 +355,142 @@ export async function processImagesForDisplayOld(
   return chunks.map(chunk => calculateImageSizes(chunk, componentWidth));
 }
 
-interface swapImagesResponse {
-  newImages: Image[] | null;
-  newChunks: Image[][] | null;
+/**
+ * ContentBlock-oriented normalization and layout helpers (non-breaking additions)
+ */
+export type NormalizedContentBlock = {
+  id: number | string;
+  imageUrlWeb: string | null; // null indicates non-image blocks
+  contentWidth: number;
+  contentHeight: number;
+  rating?: number;
+  // Keep loose shape compatibility by holding the original block
+  [key: string]: unknown;
+};
+
+/**
+ * Returns aspect ratio for a content block. For text/code and other non-image blocks,
+ * we use the default 2:3 (portrait) ratio per requirements.
+ */
+export function getContentBlockAspectRatio(block: AnyContentBlock | NormalizedContentBlock): number {
+  // If already normalized
+  const maybeNormalized = block as Partial<NormalizedContentBlock>;
+  if (typeof maybeNormalized.contentWidth === 'number' && typeof maybeNormalized.contentHeight === 'number') {
+    const w = maybeNormalized.contentWidth as number;
+    const h = maybeNormalized.contentHeight as number;
+    if (w > 0 && h > 0) return w / h;
+  }
+
+  const b = block as any;
+  const w = b?.contentWidth ?? b?.width ?? b?.imageWidth;
+  const h = b?.contentHeight ?? b?.height ?? b?.imageHeight;
+  if (typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
+    return w / h;
+  }
+  // Default for non-image or missing dims: 2:3
+  return 2 / 3;
+}
+
+/**
+ * Normalize a ContentBlock to a consistent render shape for layout sizing.
+ * - IMAGE/GIF: carry through url and dimensions
+ * - TEXT/CODE: synthesize dimensions using default 2:3 aspect and base width
+ */
+export function normalizeContentBlock(
+  block: AnyContentBlock,
+  options?: { defaultAspect?: number; baseWidth?: number; defaultRating?: number }
+): NormalizedContentBlock {
+  const defaultAspect = options?.defaultAspect ?? 2 / 3; // width/height
+  const baseWidth = options?.baseWidth ?? 1000;
+  const defaultRating = options?.defaultRating ?? 3;
+
+  const type = (block as any).type ?? (block as any).blockType;
+
+  if (type === 'IMAGE' || type === 'GIF') {
+    const url =
+      (block as any).imageUrlWeb ?? (block as any).webUrl ?? (block as any).url ?? (block as any).src ?? null;
+    const width = (block as any).contentWidth ?? (block as any).width ?? (block as any).imageWidth ?? 0;
+    const height = (block as any).contentHeight ?? (block as any).height ?? (block as any).imageHeight ?? 0;
+    const rating = (block as any).rating ?? defaultRating;
+
+    // If missing dimensions, fall back to default aspect to avoid next/image issues later.
+    const finalWidth = typeof width === 'number' && width > 0 ? width : baseWidth;
+    const finalHeight = typeof height === 'number' && height > 0 ? height : Math.round(finalWidth / defaultAspect);
+
+    return {
+      id: (block as any).id ?? `${type}-${Math.random().toString(36).slice(2)}`,
+      imageUrlWeb: url,
+      contentWidth: finalWidth,
+      contentHeight: finalHeight,
+      rating,
+      originalBlock: block,
+    };
+  }
+
+  // TEXT/CODE or unknown block types -> synthesize
+  const rating = (block as any).rating ?? defaultRating;
+  const width = baseWidth;
+  const height = Math.round(width / defaultAspect);
+  return {
+    id: (block as any).id ?? `${type ?? 'BLOCK'}-${Math.random().toString(36).slice(2)}`,
+    imageUrlWeb: null, // signifies non-image; renderer can branch
+    contentWidth: width,
+    contentHeight: height,
+    rating,
+    originalBlock: block,
+  };
+}
+
+/**
+ * Chunk arbitrary content blocks (after normalization) using the same standalone logic
+ * for image items. Non-image items will never be treated as panoramas; only rating-based
+ * standalone applies if desired.
+ */
+export function chunkContentBlocks(
+  blocks: AnyContentBlock[] | NormalizedContentBlock[] | undefined,
+  chunkSize: number = 2
+): NormalizedContentBlock[][] {
+  if (!blocks || blocks.length === 0) return [];
+
+  // Normalize to NormalizedContentBlock
+  const items: NormalizedContentBlock[] = (blocks as any[]).map(b =>
+    (b as any).contentWidth !== undefined && (b as any).contentHeight !== undefined && 'imageUrlWeb' in (b as any)
+      ? (b as NormalizedContentBlock)
+      : normalizeContentBlock(b as AnyContentBlock)
+  );
+
+  const result: NormalizedContentBlock[][] = [];
+  let currentChunk: NormalizedContentBlock[] = [];
+
+  for (const item of items) {
+    // Only treat as standalone if it's an image with panorama or 5-star horizontal
+    const isImage = !!item.imageUrlWeb;
+    const ratio = item.contentWidth / Math.max(1, item.contentHeight);
+    const isPanorama = isImage && ratio >= 2;
+    const isVertical = item.contentHeight > item.contentWidth;
+    const isHighRated = (item.rating ?? 0) === 5;
+
+    if (isImage && ((isHighRated && !isVertical) || isPanorama)) {
+      if (currentChunk.length > 0) {
+        result.push([...currentChunk]);
+        currentChunk = [];
+      }
+      result.push([item]);
+      continue;
+    }
+
+    currentChunk.push(item);
+    if (currentChunk.length === chunkSize) {
+      result.push([...currentChunk]);
+      currentChunk = [];
+    }
+  }
+
+  if (currentChunk.length > 0) {
+    result.push(currentChunk);
+  }
+
+  return result;
 }
 
 export const swapImages = (images: Image[], id1: number, id2: number) => {
@@ -378,3 +511,56 @@ export const swapImages = (images: Image[], id1: number, id2: number) => {
   }
   return null;
 };
+
+
+// ===================== ContentBlock sizing (new) =====================
+export interface CalculatedContentBlockSize {
+  block: NormalizedContentBlock;
+  width: number;
+  height: number;
+}
+
+/**
+ * Calculates sizes for a row of normalized content blocks so their heights match
+ * and their widths sum to the component width.
+ */
+export function calculateContentBlockSizes(
+  blocks: NormalizedContentBlock[],
+  componentWidth: number
+): CalculatedContentBlockSize[] {
+  if (!blocks || blocks.length === 0) return [];
+
+  if (blocks.length === 1) {
+    const ratio = blocks[0].contentWidth / Math.max(1, blocks[0].contentHeight);
+    const height = componentWidth / ratio;
+    return [
+      {
+        block: blocks[0],
+        width: componentWidth,
+        height,
+      },
+    ];
+  }
+
+  const ratios = blocks.map(b => b.contentWidth / Math.max(1, b.contentHeight));
+  const ratioSum = ratios.reduce((sum, r) => sum + r, 0);
+  const commonHeight = componentWidth / ratioSum;
+
+  return blocks.map((block, idx) => ({
+    block,
+    width: ratios[idx] * commonHeight,
+    height: commonHeight,
+  }));
+}
+
+/**
+ * Unified pipeline for ContentBlocks: chunk then size.
+ */
+export function processContentBlocksForDisplay(
+  blocks: AnyContentBlock[] | NormalizedContentBlock[],
+  componentWidth: number,
+  chunkSize: number = 2
+): CalculatedContentBlockSize[][] {
+  const chunks = chunkContentBlocks(blocks, chunkSize);
+  return chunks.map(chunk => calculateContentBlockSizes(chunk, componentWidth));
+}

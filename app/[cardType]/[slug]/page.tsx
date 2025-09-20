@@ -1,11 +1,13 @@
 'use client';
 
-import { notFound } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
+import { notFound } from 'next/navigation';
 
 import SiteHeader from '@/app/components/site-header';
 import { type ContentCollectionNormalized } from '@/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/lib/api/home';
+import { type AnyContentBlock } from '@/types/ContentBlock';
+import ContentBlocksClient from './ContentBlocksClient';
 
 import blogData from '../../../Data/getBlogById.json';
 import styles from '../../page.module.scss';
@@ -15,6 +17,45 @@ interface ContentCollectionPageProps {
     cardType: string;
     slug: string;
   }>;
+}
+
+function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentBlock | null {
+  if (!content.coverImageUrl) return null;
+  return {
+    id: Number.MAX_SAFE_INTEGER - 1,
+    type: 'IMAGE',
+    blockType: 'IMAGE',
+    title: content.title,
+    caption: content.description ?? undefined,
+    imageUrlWeb: content.coverImageUrl,
+    rating: 3,
+    orderIndex: -2,
+  } as AnyContentBlock;
+}
+
+function buildMetadataTextBlock(
+  content: ContentCollectionNormalized,
+  opts: { cardType: string; slug: string }
+): AnyContentBlock {
+  const rows = [
+    `Card Type: ${opts.cardType}`,
+    `Title: ${content.title}`,
+    `Slug: ${opts.slug}`,
+    content.location ? `Location: ${content.location}` : undefined,
+    content.collectionDate ? `Date: ${new Date(content.collectionDate).toLocaleDateString()}` : undefined,
+    content.description ? `Description: ${content.description}` : undefined,
+  ].filter(Boolean) as string[];
+  return {
+    id: Number.MAX_SAFE_INTEGER,
+    type: 'TEXT',
+    blockType: 'TEXT',
+    title: `${content.title} — Details`,
+    content: rows.join('\n'),
+    format: 'plain',
+    align: 'start',
+    rating: 3,
+    orderIndex: -1,
+  } as AnyContentBlock;
 }
 
 export default function ContentCollectionPage({ params }: ContentCollectionPageProps) {
@@ -71,74 +112,20 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
     return notFound();
   }
 
-  // TODO:
-  //  - I believe we are using the incorrect shape of data being 'getBlogById.json'
-  //  -
-  //  -
-  //  -
+  // Build synthetic blocks for unified layout
+  const heroBlocks: AnyContentBlock[] = [];
+  const cover = buildCoverImageBlock(content);
+  if (cover) heroBlocks.push(cover);
+  heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }));
+  const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks || [])];
 
   return (
     <div>
       <SiteHeader />
       <div className={styles.contentPadding}>
-        <div className={styles.gridContainer}>
-          <div className={styles.coverImage}>
-            {content.coverImageUrl && (
-              <img
-                src={content.coverImageUrl}
-                alt={content.title}
-                className={styles.coverImageTag}
-              />
-            )}
-          </div>
-          <div className={styles.metadata}>
-            <p>
-              <strong>Card Type:</strong> {cardType}
-            </p>
-            <p>
-              <strong>Title:</strong> {content.title}
-            </p>
-            <p>
-              <strong>Slug:</strong> {slug}
-            </p>
-            {content.location && (
-              <p>
-                <strong>Location:</strong> {content.location}
-              </p>
-            )}
-            {content.collectionDate && (
-              <p>
-                <strong>Date:</strong> {new Date(content.collectionDate).toLocaleDateString()}
-              </p>
-            )}
-            {content.description && (
-              <p>
-                <strong>Description:</strong> {content.description}
-              </p>
-            )}
-          </div>
+        <div className={styles.blockGroup}>
+          <ContentBlocksClient blocks={combinedBlocks} />
         </div>
-        {(() => {
-          const imageBlocks = (content.blocks || []).filter((b: any) => b.blockType === 'IMAGE') as any[];
-          return imageBlocks.length > 0 ? (
-            <div className={styles.blockGroup}>
-              <div className={styles.gridContainer}>
-                {imageBlocks.map((image: any) => (
-                  <div key={image.id} className={styles.slug_gridSection}>
-                    <div className={styles.slug_gridBackground}>
-                      <img
-                        src={image.imageUrlWeb}
-                        alt={image.title || `Image ${image.id}`}
-                        className={styles.blockImage}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-            </div>
-          ) : null;
-        })()}
       </div>
     </div>
   );
