@@ -54,10 +54,21 @@ function renderImageBlock(
   height: number,
   className: string,
   overlayText?: string,
-  onClick?: () => void
+  onClick?: () => void,
+  isMobile?: boolean
 ): React.ReactElement {
   const originalBlock = getOriginalBlock(block);
   const alt = typeof originalBlock?.title === 'string' ? originalBlock.title : 'content';
+
+  // For mobile, use responsive styling instead of fixed dimensions
+  const imageStyle: React.CSSProperties = {
+    cursor: onClick ? 'pointer' : 'default',
+    ...(isMobile ? {
+      width: '100%',
+      height: 'auto',
+      display: 'block'
+    } : {})
+  };
 
   const imageElement = (
     <Image
@@ -67,7 +78,7 @@ function renderImageBlock(
       height={height}
       className={overlayText ? undefined : className}
       loading="lazy"
-      style={overlayText ? { display: 'block', cursor: onClick ? 'pointer' : 'default' } : { cursor: onClick ? 'pointer' : 'default' }}
+      style={imageStyle}
       onClick={onClick}
     />
   );
@@ -166,7 +177,7 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
 
                 return (
                   <React.Fragment key={block.id}>
-                    {renderImageBlock(block, w, h, cls, overlayText)}
+                    {renderImageBlock(block, w, h, cls, overlayText, undefined, isMobile)}
                   </React.Fragment>
                 );
               }
