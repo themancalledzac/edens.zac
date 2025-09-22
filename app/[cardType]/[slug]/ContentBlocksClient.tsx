@@ -2,10 +2,21 @@
 
 import React, { useEffect, useState } from 'react';
 
-import ContentBlockComponent from '@/Components/ContentBlockComponent';
+import ContentBlockComponent from '@/app/components/ContentBlockComponent';
 import { type AnyContentBlock } from '@/types/ContentBlock';
 
-type Props = { blocks: AnyContentBlock[] };
+interface ImageData {
+  id: number;
+  imageUrlWeb: string;
+  imageWidth: number;
+  imageHeight: number;
+  title?: string;
+}
+
+type Props = {
+  blocks: AnyContentBlock[];
+  onImageClick?: (image: ImageData) => void;
+};
 
 export default function ContentBlocksClient({ blocks }: Props) {
   const [width, setWidth] = useState<number>(0);
@@ -40,6 +51,7 @@ export default function ContentBlocksClient({ blocks }: Props) {
           componentWidth={width}
           isMobile={isMobile}
           chunkSize={2}
+          // onImageClick={onImageClick}
         />
       )}
     </div>

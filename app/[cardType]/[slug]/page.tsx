@@ -1,16 +1,16 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
 import { notFound } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
 
+// import ImageFullScreen from '@/app/components/ImageFullScreen';
 import SiteHeader from '@/app/components/site-header';
 import { type ContentCollectionNormalized } from '@/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/lib/api/home';
 import { type AnyContentBlock } from '@/types/ContentBlock';
-import ContentBlocksClient from './ContentBlocksClient';
 
-import blogData from '../../../Data/getBlogById.json';
 import styles from '../../page.module.scss';
+import ContentBlocksClient from './ContentBlocksClient';
 
 interface ContentCollectionPageProps {
   params: Promise<{
@@ -19,34 +19,34 @@ interface ContentCollectionPageProps {
   }>;
 }
 
-type CoverDescriptor = { url: string; width?: number; height?: number } | null;
+function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentBlock | null {
+  // If coverImage exists, use it (it's always a ContentBlock now)
+  if (content.coverImage) {
+    return {
+      ...content.coverImage,
+      overlayText: content.title, // Add collection title as overlay text
+      orderIndex: -2, // Ensure it appears first
+    } as AnyContentBlock;
+  }
 
-function getCoverDescriptor(content: ContentCollectionNormalized): CoverDescriptor {
-  const cov = content.coverImage ?? (content.coverImageUrl ? { url: content.coverImageUrl } : null);
-  if (!cov || !cov.url) return null;
-  return { url: cov.url, width: cov.width, height: cov.height };
-}
+  // Fallback: use the first IMAGE block from content.blocks
+  const firstImageBlock = content.blocks.find(block => block.blockType === 'IMAGE');
+  if (firstImageBlock) {
+    return {
+      ...firstImageBlock,
+      overlayText: content.title, // Add collection title as overlay text
+      orderIndex: -2, // Ensure it appears first
+    } as AnyContentBlock;
+  }
 
-function buildCoverImageBlock(content: ContentCollectionNormalized, cover: CoverDescriptor): AnyContentBlock | null {
-  if (!cover) return null;
-  return {
-    id: Number.MAX_SAFE_INTEGER - 1,
-    type: 'IMAGE',
-    blockType: 'IMAGE',
-    title: content.title,
-    caption: content.description ?? undefined,
-    imageUrlWeb: cover.url,
-    imageWidth: cover.width,
-    imageHeight: cover.height,
-    rating: 3,
-    orderIndex: -2,
-  } as AnyContentBlock;
+  // No cover image available
+  return null;
 }
 
 function buildMetadataTextBlock(
   content: ContentCollectionNormalized,
   opts: { cardType: string; slug: string },
-  cover: CoverDescriptor
+  coverBlock: AnyContentBlock | null
 ): AnyContentBlock {
   const rows = [
     `Card Type: ${opts.cardType}`,
@@ -58,8 +58,8 @@ function buildMetadataTextBlock(
   ].filter(Boolean) as string[];
 
   // Match metadata block dimensions to the cover image when available so the first row aligns.
-  const width = cover?.width;
-  const height = cover?.height;
+  const width = coverBlock?.imageWidth;
+  const height = coverBlock?.imageHeight;
 
   return {
     id: Number.MAX_SAFE_INTEGER,
@@ -81,6 +81,7 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
   const { cardType, slug } = use(params);
   const [content, setContent] = useState<ContentCollectionNormalized | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // const [fullScreenImage, setFullScreenImage] = useState<ImageData | null>(null);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -92,24 +93,6 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
         setContent(collectionData);
       } catch (error_) {
         console.error('Error fetching content:', error_);
-        // Fallback to local JSON sample normalized to the expected shape
-        const fallback: ContentCollectionNormalized = {
-          id: (blogData as any).id,
-          title: (blogData as any).title,
-          description: (blogData as any).description,
-          slug: (blogData as any).slug,
-          type: (blogData as any).type,
-          coverImageUrl: (blogData as any).coverImageUrl,
-          coverImage: (blogData as any).coverImage ?? ((blogData as any).coverImageUrl ? { url: (blogData as any).coverImageUrl } : null),
-          blocks: (blogData as any).contentBlocks ?? [],
-          pagination: {
-            currentPage: (blogData as any).currentPage ?? 0,
-            totalPages: (blogData as any).totalPages ?? 1,
-            totalBlocks: (blogData as any).totalBlocks ?? ((blogData as any).contentBlocks?.length ?? 0),
-            pageSize: (blogData as any).blocksPerPage ?? 30,
-          },
-        };
-        setContent(fallback);
       } finally {
         setIsLoading(false);
       }
@@ -135,20 +118,31 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
 
   // Build synthetic blocks for unified layout
   const heroBlocks: AnyContentBlock[] = [];
-  const coverDesc = getCoverDescriptor(content);
-  const coverBlock = buildCoverImageBlock(content, coverDesc);
+  const coverBlock = buildCoverImageBlock(content);
   if (coverBlock) heroBlocks.push(coverBlock);
-  heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }, coverDesc));
+  heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }, coverBlock));
   const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks || [])];
 
   return (
-    <div>
-      <SiteHeader />
-      <div className={styles.contentPadding}>
-        <div className={styles.blockGroup}>
-          <ContentBlocksClient blocks={combinedBlocks} />
+    <>
+      <div>
+        <SiteHeader />
+        <div className={styles.contentPadding}>
+          <div className={styles.blockGroup}>
+            <ContentBlocksClient
+              blocks={combinedBlocks}
+              // onImageClick={setFullScreenImage}
+            />
+          </div>
         </div>
       </div>
-    </div>
+
+      {/*{fullScreenImage && (*/}
+      {/*  <ImageFullScreen*/}
+      {/*    image={fullScreenImage}*/}
+      {/*    onClose={() => setFullScreenImage(null)}*/}
+      {/*  />*/}
+      {/*)}*/}
+    </>
   );
 }

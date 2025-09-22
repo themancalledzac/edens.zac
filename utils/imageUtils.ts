@@ -30,13 +30,6 @@ export function isStandaloneImage(image: Image): boolean {
   return (isHighRated && !isVertical) || isPanorama;
 }
 
-/**
- * Helper function to verify an image source is valid
- * @param src
- */
-export const isValidSource = src => {
-  return src && src !== '';
-};
 
 /**
  * Calculate Optimal Dimensions
@@ -204,13 +197,19 @@ export function calculateChunkSizes(
   }
 
   if (imageChunk.length === 1) {
-    return [calculateSingleImageSize(imageChunk[0], availableWidth)];
+    const firstImage = imageChunk[0];
+    if (!firstImage) return [];
+    return [calculateSingleImageSize(firstImage, availableWidth)];
   }
 
   // For pairs of images
+  const firstImage = imageChunk[0];
+  const secondImage = imageChunk[1];
+  if (!firstImage || !secondImage) return [];
+
   const [first, second] = calculatePairImageSizes(
-    imageChunk[0],
-    imageChunk[1],
+    firstImage,
+    secondImage,
     availableWidth,
     gapWidth
   );
@@ -289,7 +288,7 @@ export interface calculateImageSizesReturn {
  *
  */
 export function calculateImageSizes(
-  images: any[],
+  images: Image[],
   componentWidth: number
 ): calculateImageSizesReturn[] {
   if (!images || images.length === 0) {
@@ -297,14 +296,16 @@ export function calculateImageSizes(
   }
 
   if (images.length === 1) {
+    const firstImage = images[0];
+    if (!firstImage) return [];
+
     // Handle the single image case
-    const ratio = images[0].imageWidth / Math.max(1, images[0].imageHeight);
+    const ratio = firstImage.imageWidth / Math.max(1, firstImage.imageHeight);
     const height = componentWidth / ratio;
-    // const width = ratio * height;
 
     return [
       {
-        image: images[0],
+        image: firstImage,
         width: componentWidth,
         height: height,
       },
@@ -322,8 +323,16 @@ export function calculateImageSizes(
     // Return the original objects with added calculated width and height
     // Calculate width for each image based on its ratio and the common height
     return images.map((image, index) => {
-      // Calculate new size based on the index
-      const width = ratios[index] * height;
+      const ratio = ratios[index];
+      if (!ratio) {
+        return {
+          image,
+          width: 0,
+          height: 0,
+        };
+      }
+
+      const width = ratio * height;
 
       return {
         image: image,
@@ -427,10 +436,14 @@ export function normalizeContentBlock(
     };
   }
 
-  // TEXT/CODE or unknown block types -> synthesize
+  // TEXT/CODE or unknown block types -> synthesize, but respect provided dimensions
   const rating = (block as any).rating ?? defaultRating;
-  const width = baseWidth;
-  const height = Math.round(width / defaultAspect);
+  const providedWidth = (block as any).contentWidth ?? (block as any).width;
+  const providedHeight = (block as any).contentHeight ?? (block as any).height;
+
+  const width = typeof providedWidth === 'number' && providedWidth > 0 ? providedWidth : baseWidth;
+  const height = typeof providedHeight === 'number' && providedHeight > 0 ? providedHeight : Math.round(width / defaultAspect);
+
   return {
     id: (block as any).id ?? `${type ?? 'BLOCK'}-${Math.random().toString(36).slice(2)}`,
     imageUrlWeb: null, // signifies non-image; renderer can branch
@@ -499,15 +512,20 @@ export const swapImages = (images: Image[], id1: number, id2: number) => {
   const index2 = newImages.findIndex(img => img.id === id2);
 
   if (index1 >= 0 && index2 >= 0) {
-    // swap images
-    [newImages[index1], newImages[index2]] = [newImages[index2], newImages[index1]];
-    // updateChunks
-    const newChunks = chunkImages(newImages, 3);
+    const image1 = newImages[index1];
+    const image2 = newImages[index2];
 
-    return {
-      newImages,
-      newChunks,
-    };
+    if (image1 && image2) {
+      // swap images
+      [newImages[index1], newImages[index2]] = [image2, image1];
+      // updateChunks
+      const newChunks = chunkImages(newImages, 3);
+
+      return {
+        newImages,
+        newChunks,
+      };
+    }
   }
   return null;
 };
@@ -531,11 +549,14 @@ export function calculateContentBlockSizes(
   if (!blocks || blocks.length === 0) return [];
 
   if (blocks.length === 1) {
-    const ratio = blocks[0].contentWidth / Math.max(1, blocks[0].contentHeight);
+    const firstBlock = blocks[0];
+    if (!firstBlock) return [];
+
+    const ratio = firstBlock.contentWidth / Math.max(1, firstBlock.contentHeight);
     const height = componentWidth / ratio;
     return [
       {
-        block: blocks[0],
+        block: firstBlock,
         width: componentWidth,
         height,
       },
@@ -546,11 +567,16 @@ export function calculateContentBlockSizes(
   const ratioSum = ratios.reduce((sum, r) => sum + r, 0);
   const commonHeight = componentWidth / ratioSum;
 
-  return blocks.map((block, idx) => ({
-    block,
-    width: ratios[idx] * commonHeight,
-    height: commonHeight,
-  }));
+  return blocks.map((block, idx) => {
+    const ratio = ratios[idx];
+    if (!ratio) return { block, width: 0, height: 0 };
+
+    return {
+      block,
+      width: ratio * commonHeight,
+      height: commonHeight,
+    };
+  });
 }
 
 /**

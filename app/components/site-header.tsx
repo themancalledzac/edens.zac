@@ -1,26 +1,45 @@
-import Link from 'next/link';
+'use client';
+
 import { AlignJustify } from 'lucide-react';
+import Link from 'next/link';
+import { useState } from 'react';
+
+import { MenuDropdown } from './MenuDropdown';
 import styles from './site-header.module.scss';
 
 /**
  * Shared site header for App Router pages.
- * Server Component (no client hooks) to minimize client JS.
+ * Client Component with minimal state for menu dropdown.
  */
 export function SiteHeader() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  const closeMenu = () => setIsMenuOpen(false);
+
   return (
-    <header className={styles.header}>
-      <div className={styles.navBarWrapper}>
-        <div className={styles.navBarLeftWrapper}>
-          <Link href="/" className={styles.title}>
-            <h2>Zac Edens</h2>
-          </Link>
+    <>
+      <header className={styles.header}>
+        <div className={styles.navBarWrapper}>
+          <div className={styles.navBarLeftWrapper}>
+            <Link href="/" className={styles.title}>
+              <h2>Zac Edens</h2>
+            </Link>
+          </div>
+          <div className={styles.menuWrapper}>
+            <AlignJustify
+              className={styles.menu}
+              onClick={toggleMenu}
+            />
+          </div>
         </div>
-        <div className={styles.menuWrapper}>
-          {/* TODO: Replace with actual dropdown component when App Router compatible */}
-          <AlignJustify className={styles.menu} />
-        </div>
-      </div>
-    </header>
+      </header>
+
+      <MenuDropdown
+        isOpen={isMenuOpen}
+        onClose={closeMenu}
+      />
+    </>
   );
 }
 

@@ -32,66 +32,12 @@ $bp-lg: 1024px;
   width: 100%;
 
   @media (min-width: 768px) {
-    padding: 2rem;
+    padding: var(--page-padding-desktop);
   }
 }
 
-// Header styles (temporary inline header)
-.header {
-  position: relative;
-  background-color: transparent;
-  border-bottom: none;
-}
-
-.navBarWrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  /* Mobile base padding */
-  padding: 1rem;
-  margin: 0 auto;
-
-  /* Desktop version (enhancement): min-width 768px and up */
-  @media (min-width: 768px) {
-    padding: 1rem 2rem;
-  }
-}
-
-.navBarLeftWrapper {
-  display: flex;
-  align-items: center;
-}
-
-.title {
-  text-decoration: none;
-  color: inherit;
-
-  h2 {
-    margin: 0;
-    /* Mobile base font-size */
-    font-size: var(--text-xl);
-    font-weight: 600;
-    color: var(--color-fg);
-    /* No hover color change per requirement */
-
-    @include up($bp-md) {
-      font-size: 1.8rem;
-    }
-  }
-}
-
-.menuWrapper {
-  display: flex;
-  align-items: center;
-}
-
-.menu {
-  /* Mobile base size */
-  width: 2rem;
-  height: 2rem;
-  cursor: pointer;
-  color: var(--color-fg);
-}
+// Note: Header styles moved to app/components/site-header.module.scss
+// This file now only contains grid and layout styles for the home page
 
 .gridContainer {
   display: grid;
@@ -155,11 +101,13 @@ $bp-lg: 1024px;
 
 .gridBackground {
   position: absolute;
-  /* Mobile base: parallax variant uses 150% */
+  /* Mobile base: use cover for better visibility */
   inset: 0;
   background-size: 160%;
   background-position: center center;
   background-repeat: no-repeat;
+  /* Ensure background is visible */
+  z-index: 1;
   /* Allow JS parallax transforms on desktop; keep none on mobile base */
   transform: none;
   // will-change: auto; // commented out per requirement; kept for potential revert
@@ -188,11 +136,14 @@ $bp-lg: 1024px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  z-index: 2;
+  pointer-events: none;
 }
 
 /* Header row for title; provides spacing without affecting the badge position */
 .gridHeader {
   padding: var(--space-4);
+  pointer-events: auto;
 
   //@include up($bp-md) {
   //  padding: var(--space-0);
@@ -256,6 +207,7 @@ $bp-lg: 1024px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-radius: var(--radius-0);
+  pointer-events: auto;
 
   @include up($bp-md) {
     inset-block-start: 0;

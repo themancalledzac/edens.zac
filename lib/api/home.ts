@@ -52,6 +52,31 @@ export async function fetchHomePage(
 }
 
 /**
+ * Fetches collections by type
+ * Endpoint: GET /api/read/collections/type/{type}
+ *
+ * @param type - The collection type to fetch
+ * @returns Array of HomeCardModel collections
+ */
+export async function fetchCollectionsByType(type: string): Promise<HomeCardModel[] | null> {
+  try {
+    const endpoint = `/collections/type/${type}`;
+    const response = await fetchReadApi<HomeCardModel[]>(endpoint);
+
+    if (response && response.length > 0) {
+      console.log(`Found ${response.length} collections of type ${type}`);
+      return response;
+    }
+
+    console.log(`No collections found for type: ${type}`);
+    return [];
+  } catch (error) {
+    console.error(`Error fetching collections by type "${type}":`, error);
+    return null;
+  }
+}
+
+/**
  * Fetches a specific blog by ID
  *
  * @param id - The blog id

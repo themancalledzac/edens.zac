@@ -1,0 +1,22 @@
+/*
+  ContentCollectionPage styles
+  Shared between home page and other collection type pages
+*/
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  /* Container padding is handled by .contentPadding utility when needed */
+  padding: 0;
+  margin: 0 auto;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    padding: var(--page-padding-desktop);
+  }
+}
