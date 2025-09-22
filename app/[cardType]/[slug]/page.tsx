@@ -19,12 +19,13 @@ interface ContentCollectionPageProps {
   }>;
 }
 
-function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentBlock | null {
+function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: string): AnyContentBlock | null {
   // If coverImage exists, use it (it's always a ContentBlock now)
   if (content.coverImage) {
     return {
       ...content.coverImage,
       overlayText: content.title, // Add collection title as overlay text
+      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
       orderIndex: -2, // Ensure it appears first
     } as AnyContentBlock;
   }
@@ -35,6 +36,7 @@ function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentB
     return {
       ...firstImageBlock,
       overlayText: content.title, // Add collection title as overlay text
+      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
       orderIndex: -2, // Ensure it appears first
     } as AnyContentBlock;
   }
@@ -49,13 +51,14 @@ function buildMetadataTextBlock(
   coverBlock: AnyContentBlock | null
 ): AnyContentBlock {
   const rows = [
-    `Card Type: ${opts.cardType}`,
-    `Title: ${content.title}`,
-    `Slug: ${opts.slug}`,
     content.location ? `Location: ${content.location}` : undefined,
-    content.collectionDate ? `Date: ${new Date(content.collectionDate).toLocaleDateString()}` : undefined,
-    content.description ? `Description: ${content.description}` : undefined,
+    content.description ? content.description : undefined,
   ].filter(Boolean) as string[];
+
+  // Format date for badge display
+  const dateBadge = content.collectionDate
+    ? new Date(content.collectionDate).toLocaleDateString()
+    : undefined;
 
   // Match metadata block dimensions to the cover image when available so the first row aligns.
   const width = coverBlock?.imageWidth;
@@ -68,11 +71,13 @@ function buildMetadataTextBlock(
     title: `${content.title} — Details`,
     content: rows.join('\n'),
     format: 'plain',
-    align: 'start',
+    align: 'left',
+    dateBadge: dateBadge, // Add date badge for top-left positioning on metadata block
+    // Match the cover image's rating to ensure identical layout treatment
+    rating: coverBlock?.rating || 3,
     // Provide sizing hints so normalizeContentBlock uses these exact dims
     contentWidth: typeof width === 'number' && width > 0 ? width : undefined,
     contentHeight: typeof height === 'number' && height > 0 ? height : undefined,
-    rating: 3,
     orderIndex: -1,
   } as AnyContentBlock;
 }
@@ -118,14 +123,13 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
 
   // Build synthetic blocks for unified layout
   const heroBlocks: AnyContentBlock[] = [];
-  const coverBlock = buildCoverImageBlock(content);
+  const coverBlock = buildCoverImageBlock(content, cardType);
   if (coverBlock) heroBlocks.push(coverBlock);
   heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }, coverBlock));
   const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks || [])];
 
   return (
-    <>
-      <div>
+    <div>
         <SiteHeader />
         <div className={styles.contentPadding}>
           <div className={styles.blockGroup}>
@@ -136,6 +140,5 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
           </div>
         </div>
       </div>
-    </>
   );
 }

@@ -1,17 +1,16 @@
 "use client";
 
-import Image from 'next/image';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import cbStyles from '@/styles/ContentBlockComponent.module.scss';
-import styles from '@/styles/Home.module.scss';
 import { type AnyContentBlock } from '@/types/ContentBlock';
 import {
   type CalculatedContentBlockSize,
   normalizeContentBlock,
-  type NormalizedContentBlock,
   processContentBlocksForDisplay,
 } from '@/utils/imageUtils';
+
+import { ImageBlockRenderer, TextBlockRenderer, isImageBlock, getPositionStyle } from './ContentBlock';
 
 export type ContentBlockComponentProps = {
   blocks: AnyContentBlock[];
@@ -24,78 +23,6 @@ export type ContentBlockComponentProps = {
   baseWidth?: number;
   defaultRating?: number;
 };
-
-function isImageBlock(norm: NormalizedContentBlock): boolean {
-  return !!norm.imageUrlWeb;
-}
-
-function getPositionStyle(index: number, total: number): string {
-  if (total === 1) return styles.imageSingle || '';
-  if (index === 0) return styles.imageLeft || '';
-  if (index === total - 1) return styles.imageRight || '';
-  return styles.imageMiddle || '';
-}
-
-interface OriginalBlock {
-  overlayText?: string;
-  title?: string;
-  text?: string;
-  content?: string;
-  [key: string]: unknown;
-}
-
-function getOriginalBlock(block: NormalizedContentBlock): OriginalBlock | undefined {
-  return (block as any).originalBlock as OriginalBlock | undefined;
-}
-
-function renderImageBlock(
-  block: NormalizedContentBlock,
-  width: number,
-  height: number,
-  className: string,
-  overlayText?: string,
-  onClick?: () => void,
-  isMobile?: boolean
-): React.ReactElement {
-  const originalBlock = getOriginalBlock(block);
-  const alt = typeof originalBlock?.title === 'string' ? originalBlock.title : 'content';
-
-  // For mobile, use responsive styling instead of fixed dimensions
-  const imageStyle: React.CSSProperties = {
-    cursor: onClick ? 'pointer' : 'default',
-    ...(isMobile ? {
-      width: '100%',
-      height: 'auto',
-      display: 'block'
-    } : {})
-  };
-
-  const imageElement = (
-    <Image
-      src={block.imageUrlWeb!}
-      alt={alt}
-      width={width}
-      height={height}
-      className={overlayText ? undefined : className}
-      loading="lazy"
-      style={imageStyle}
-      onClick={onClick}
-    />
-  );
-
-  if (overlayText) {
-    return (
-      <div className={`${className} ${cbStyles.imageContainer}`} onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
-        {imageElement}
-        <div className={cbStyles.textOverlay}>
-          {overlayText}
-        </div>
-      </div>
-    );
-  }
-
-  return imageElement;
-}
 
 export default function ContentBlockComponent(props: ContentBlockComponentProps) {
   const {
@@ -112,10 +39,11 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
   const [rows, setRows] = useState<CalculatedContentBlockSize[][]>([]);
   const [loading, setLoading] = useState(true);
 
-  const normalized: NormalizedContentBlock[] = useMemo(() => {
+  // Memoize block normalization to avoid unnecessary recalculations
+  const normalized = useMemo(() => {
     if (!blocks || blocks.length === 0) return [];
-    return blocks.map(b =>
-      normalizeContentBlock(b, {
+    return blocks.map(block =>
+      normalizeContentBlock(block, {
         defaultAspect,
         baseWidth,
         defaultRating,
@@ -123,6 +51,7 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
     );
   }, [blocks, defaultAspect, baseWidth, defaultRating]);
 
+  // Process blocks for display layout
   useEffect(() => {
     try {
       if (normalized.length === 0 || !componentWidth) {
@@ -130,8 +59,8 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
         setLoading(false);
         return;
       }
-      const sized = processContentBlocksForDisplay(normalized, componentWidth, chunkSize);
-      setRows(sized);
+      const processedRows = processContentBlocksForDisplay(normalized, componentWidth, chunkSize);
+      setRows(processedRows);
     } catch (error) {
       console.error('ContentBlockComponent sizing error:', error);
       setRows([]);
@@ -140,6 +69,7 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
     }
   }, [normalized, componentWidth, chunkSize]);
 
+  // Early returns for loading and empty states
   if (loading) return <div />;
   if (rows.length === 0) return <div />;
 
@@ -147,56 +77,48 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
     <div className={cbStyles.wrapper}>
       <div className={cbStyles.inner} style={{ width: '100%' }}>
         {rows.map((row, rowIndex) => {
-          const total = row.length;
+          const totalInRow = row.length;
+
           return (
             <div
               key={`row-${rowIndex}`}
               className={isMobile ? cbStyles.rowMobile : cbStyles.row}
             >
               {row.map((item, index) => {
-              const cls = getPositionStyle(index, total);
-              const w = Math.round(item.width);
-              const h = Math.round(item.height);
-              const block = item.block;
-              const originalBlock = getOriginalBlock(block);
+                const className = getPositionStyle(index, totalInRow);
+                const width = Math.round(item.width);
+                const height = Math.round(item.height);
+                const block = item.block;
 
-              if (isImageBlock(block) && block.imageUrlWeb) {
-                const overlayText = originalBlock?.overlayText;
+                // Render image blocks using specialized renderer
+                if (isImageBlock(block) && block.imageUrlWeb) {
+                  return (
+                    <React.Fragment key={block.id}>
+                      <ImageBlockRenderer
+                        block={block}
+                        width={width}
+                        height={height}
+                        className={className}
+                        isMobile={isMobile}
+                        // onClick={handleImageClick} // TODO: Implement if needed
+                      />
+                    </React.Fragment>
+                  );
+                }
 
-                // const handleImageClick = () => {
-                //   if (onImageClick) {
-                //     onImageClick({
-                //       id: Number(block.id),
-                //       imageUrlWeb: block.imageUrlWeb!,
-                //       imageWidth: Number(block.imageWidth) || w,
-                //       imageHeight: Number(block.imageHeight) || h,
-                //       title: typeof originalBlock?.title === 'string' ? originalBlock.title : undefined
-                //     });
-                //   }
-                // };
-
+                // Render text blocks using specialized renderer
                 return (
                   <React.Fragment key={block.id}>
-                    {renderImageBlock(block, w, h, cls, overlayText, undefined, isMobile)}
+                    <TextBlockRenderer
+                      block={block}
+                      width={width}
+                      height={height}
+                      className={className}
+                      isMobile={isMobile}
+                    />
                   </React.Fragment>
                 );
-              }
-
-              const previewText =
-                originalBlock?.text ?? originalBlock?.content ?? originalBlock?.title ?? 'Text/Code Block';
-
-              return (
-                <div
-                  key={block.id}
-                  className={`${cls} ${cbStyles.blockContainer}`}
-                  style={{ width: w, height: h }}
-                >
-                  <div className={cbStyles.blockInner}>
-                    <span>{previewText}</span>
-                  </div>
-                </div>
-              );
-            })}
+              })}
             </div>
           );
         })}

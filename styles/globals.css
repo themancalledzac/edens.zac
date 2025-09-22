@@ -95,6 +95,49 @@ a {
     text-decoration: none;
 }
 
+/* Global cardTypeBadge for consistent styling across components */
+.cardTypeBadge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: #ffffff;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: var(--radius-0);
+    pointer-events: none;
+    z-index: 3;
+}
+
+/* Date badge - similar to cardTypeBadge but positioned on the right */
+.dateBadge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: #ffffff;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: var(--radius-0);
+    pointer-events: none;
+    z-index: 3;
+}
+
+@media (min-width: 768px) {
+    .cardTypeBadge {
+        font-size: 0.8rem;
+    }
+
+    .dateBadge {
+        font-size: 0.8rem;
+    }
+}
+
 /*TODO: DarkMode Color Options*/
 /*TODO: Darkmode/RegularMode separate for main colors*/
 /*TODO: Could we have BASE color names that are overwritten by one or the other? How do we DYNAMICALLY do that at the global level?*/
