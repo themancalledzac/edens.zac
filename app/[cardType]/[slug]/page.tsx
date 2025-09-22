@@ -136,13 +136,6 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
           </div>
         </div>
       </div>
-
-      {/*{fullScreenImage && (*/}
-      {/*  <ImageFullScreen*/}
-      {/*    image={fullScreenImage}*/}
-      {/*    onClose={() => setFullScreenImage(null)}*/}
-      {/*  />*/}
-      {/*)}*/}
     </>
   );
 }
