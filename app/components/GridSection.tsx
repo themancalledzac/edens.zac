@@ -15,7 +15,7 @@ interface GridSectionProps {
 }
 
 export function GridSection({ card, desktopRowIndex, mobileRowIndex }: GridSectionProps) {
-  const { title, coverImageUrl, text, slug, cardType } = card;
+  const { title, coverImageUrl, slug, cardType } = card;
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -55,8 +55,9 @@ export function GridSection({ card, desktopRowIndex, mobileRowIndex }: GridSecti
           style={{ backgroundImage: `url(${coverImageUrl})` }}
         />
         <div className={styles.gridContent}>
-          <h1 className={styles.gridTitle}>{title}</h1>
-          {text && <p className={styles.gridText}>{text}</p>}
+          <div className={styles.gridHeader}>
+            <h1 className={styles.gridTitle}>{title}</h1>
+          </div>
           <div className={styles.cardTypeBadge}>
             {cardType}
           </div>

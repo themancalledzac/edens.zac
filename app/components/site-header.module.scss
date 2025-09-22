@@ -1,3 +1,9 @@
+/*
+  Style Strategy: Mobile-first
+  - Base rules target mobile.
+  - Larger breakpoints use @media (min-width: ...).
+*/
+
 .header {
   position: relative;
   background-color: transparent;
@@ -8,11 +14,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 2rem;
+  /* Mobile base padding */
+  padding: var(--page-padding-mobile);
   margin: 0 auto;
 
-  @media (max-width: 768px) {
-    padding: 1rem;
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    padding: var(--page-padding-desktop);
   }
 }
 
@@ -27,13 +35,20 @@
 
   h2 {
     margin: 0;
-    font-size: 1.8rem;
+    /* Mobile base font-size */
+    font-size: 1.5rem;
     font-weight: 600;
     color: black;
     transition: color 0.2s ease;
 
     &:hover {
       color: #333;
+    }
+
+    /* Desktop version (enhancement): min-width 768px and up */
+    @media (min-width: 768px) {
+      font-size: var(--text-2xl);
+      font-weight: 700;
     }
   }
 }
@@ -44,6 +59,7 @@
 }
 
 .menu {
+  /* Mobile base size smaller */
   width: 2rem;
   height: 2rem;
   cursor: pointer;
@@ -52,5 +68,11 @@
 
   &:hover {
     color: #333;
+  }
+
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (min-width: 768px) {
+    width: var(--space-8);
+    height: var(--space-8);
   }
 }

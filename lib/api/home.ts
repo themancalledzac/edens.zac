@@ -2,10 +2,11 @@
  * API functions for home-related operations
  */
 
-import { fetchReadApi, fetchPostJsonApi } from '@/lib/api/core';
+import { type ContentCollectionNormalized,fetchCollectionBySlug as fetchCollectionBySlugNormalized } from '@/lib/api/contentCollections';
+import { fetchPostJsonApi,fetchReadApi } from '@/lib/api/core';
 import { type Blog } from '@/types/Blog';
-import { type HomeCardModel } from '@/types/HomeCardModel';
 import { type ContentCollectionCreateDTO, type ContentCollectionModel } from '@/types/ContentCollection';
+import { type HomeCardModel } from '@/types/HomeCardModel';
 
 /**
  * Backend response structure for home page
@@ -51,6 +52,31 @@ export async function fetchHomePage(
 }
 
 /**
+ * Fetches collections by type
+ * Endpoint: GET /api/read/collections/type/{type}
+ *
+ * @param type - The collection type to fetch
+ * @returns Array of HomeCardModel collections
+ */
+export async function fetchCollectionsByType(type: string): Promise<HomeCardModel[] | null> {
+  try {
+    const endpoint = `/collections/type/${type}`;
+    const response = await fetchReadApi<HomeCardModel[]>(endpoint);
+
+    if (response && response.length > 0) {
+      console.log(`Found ${response.length} collections of type ${type}`);
+      return response;
+    }
+
+    console.log(`No collections found for type: ${type}`);
+    return [];
+  } catch (error) {
+    console.error(`Error fetching collections by type "${type}":`, error);
+    return null;
+  }
+}
+
+/**
  * Fetches a specific blog by ID
  *
  * @param id - The blog id
@@ -67,9 +93,10 @@ export async function fetchBlogById(id: string): Promise<Blog> {
  * @param slug - The collection slug
  * @returns The collection data
  */
-export async function fetchCollectionBySlug(slug: string): Promise<any> {
+export async function fetchCollectionBySlug(slug: string): Promise<ContentCollectionNormalized> {
   try {
-    return await fetchReadApi<any>(`/collections/${slug}`);
+    // Delegate to the normalized fetch in contentCollections to keep a single source of truth
+    return await fetchCollectionBySlugNormalized(slug);
   } catch (error) {
     console.error(`Error fetching collection "${slug}":`, error);
     throw error;

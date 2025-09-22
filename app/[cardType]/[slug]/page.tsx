@@ -3,8 +3,14 @@
 import { notFound } from 'next/navigation';
 import { use, useEffect, useState } from 'react';
 
-import { fetchCollectionBySlug } from '@/lib/api/home';
+// import ImageFullScreen from '@/app/components/ImageFullScreen';
 import SiteHeader from '@/app/components/site-header';
+import { type ContentCollectionNormalized } from '@/lib/api/contentCollections';
+import { fetchCollectionBySlug } from '@/lib/api/home';
+import { type AnyContentBlock } from '@/types/ContentBlock';
+
+import styles from '../../page.module.scss';
+import ContentBlocksClient from './ContentBlocksClient';
 
 interface ContentCollectionPageProps {
   params: Promise<{
@@ -13,11 +19,69 @@ interface ContentCollectionPageProps {
   }>;
 }
 
+function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentBlock | null {
+  // If coverImage exists, use it (it's always a ContentBlock now)
+  if (content.coverImage) {
+    return {
+      ...content.coverImage,
+      overlayText: content.title, // Add collection title as overlay text
+      orderIndex: -2, // Ensure it appears first
+    } as AnyContentBlock;
+  }
+
+  // Fallback: use the first IMAGE block from content.blocks
+  const firstImageBlock = content.blocks.find(block => block.blockType === 'IMAGE');
+  if (firstImageBlock) {
+    return {
+      ...firstImageBlock,
+      overlayText: content.title, // Add collection title as overlay text
+      orderIndex: -2, // Ensure it appears first
+    } as AnyContentBlock;
+  }
+
+  // No cover image available
+  return null;
+}
+
+function buildMetadataTextBlock(
+  content: ContentCollectionNormalized,
+  opts: { cardType: string; slug: string },
+  coverBlock: AnyContentBlock | null
+): AnyContentBlock {
+  const rows = [
+    `Card Type: ${opts.cardType}`,
+    `Title: ${content.title}`,
+    `Slug: ${opts.slug}`,
+    content.location ? `Location: ${content.location}` : undefined,
+    content.collectionDate ? `Date: ${new Date(content.collectionDate).toLocaleDateString()}` : undefined,
+    content.description ? `Description: ${content.description}` : undefined,
+  ].filter(Boolean) as string[];
+
+  // Match metadata block dimensions to the cover image when available so the first row aligns.
+  const width = coverBlock?.imageWidth;
+  const height = coverBlock?.imageHeight;
+
+  return {
+    id: Number.MAX_SAFE_INTEGER,
+    type: 'TEXT',
+    blockType: 'TEXT',
+    title: `${content.title} — Details`,
+    content: rows.join('\n'),
+    format: 'plain',
+    align: 'start',
+    // Provide sizing hints so normalizeContentBlock uses these exact dims
+    contentWidth: typeof width === 'number' && width > 0 ? width : undefined,
+    contentHeight: typeof height === 'number' && height > 0 ? height : undefined,
+    rating: 3,
+    orderIndex: -1,
+  } as AnyContentBlock;
+}
+
 export default function ContentCollectionPage({ params }: ContentCollectionPageProps) {
   const { cardType, slug } = use(params);
-  const [content, setContent] = useState<any | null>(null);
+  const [content, setContent] = useState<ContentCollectionNormalized | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // const [fullScreenImage, setFullScreenImage] = useState<ImageData | null>(null);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -29,7 +93,6 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
         setContent(collectionData);
       } catch (error_) {
         console.error('Error fetching content:', error_);
-        setError(`Failed to fetch content: ${error_?.message || error_}`);
       } finally {
         setIsLoading(false);
       }
@@ -42,23 +105,8 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
     return (
       <div>
         <SiteHeader />
-        <div style={{ padding: '2rem' }}>
+        <div className={styles.main}>
           <p>Loading {cardType} content...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div>
-        <SiteHeader />
-        <div style={{ padding: '2rem' }}>
-          <h1>Error Loading Content</h1>
-          <p><strong>Card Type:</strong> {cardType}</p>
-          <p><strong>Slug:</strong> {slug}</p>
-          <p><strong>Error:</strong> {error}</p>
-          <p>This helps debug the API call. The content might not exist or the API endpoint might be different.</p>
         </div>
       </div>
     );
@@ -68,40 +116,33 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
     return notFound();
   }
 
-  return (
-    <div>
-      <SiteHeader />
-      <div style={{ padding: '2rem' }}>
-        <h1>{content.title}</h1>
-        {content.coverImageUrl && (
-          <img
-            src={content.coverImageUrl}
-            alt={content.title}
-            style={{ width: '100%', maxWidth: '600px', height: 'auto' }}
-          />
-        )}
-        <p><strong>Card Type:</strong> {cardType}</p>
-        <p><strong>Slug:</strong> {slug}</p>
-        {content.location && <p><strong>Location:</strong> {content.location}</p>}
-        {content.date && <p><strong>Date:</strong> {new Date(content.date).toLocaleDateString()}</p>}
-        {content.description && <p>{content.description}</p>}
+  // Build synthetic blocks for unified layout
+  const heroBlocks: AnyContentBlock[] = [];
+  const coverBlock = buildCoverImageBlock(content);
+  if (coverBlock) heroBlocks.push(coverBlock);
+  heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }, coverBlock));
+  const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks || [])];
 
-        {content.images && content.images.length > 0 && (
-          <div style={{ marginTop: '2rem' }}>
-            <h2>Images ({content.images.length})</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              {content.images.map((image) => (
-                <img
-                  key={image.id}
-                  src={image.url}
-                  alt={image.filename || `Image ${image.id}`}
-                  style={{ width: '100%', height: 'auto', borderRadius: '4px' }}
-                />
-              ))}
-            </div>
+  return (
+    <>
+      <div>
+        <SiteHeader />
+        <div className={styles.contentPadding}>
+          <div className={styles.blockGroup}>
+            <ContentBlocksClient
+              blocks={combinedBlocks}
+              // onImageClick={setFullScreenImage}
+            />
           </div>
-        )}
+        </div>
       </div>
-    </div>
+
+      {/*{fullScreenImage && (*/}
+      {/*  <ImageFullScreen*/}
+      {/*    image={fullScreenImage}*/}
+      {/*    onClose={() => setFullScreenImage(null)}*/}
+      {/*  />*/}
+      {/*)}*/}
+    </>
   );
 }

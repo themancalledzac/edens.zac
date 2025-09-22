@@ -15,6 +15,7 @@ export interface ImageBlock extends BaseBlock {
   height?: number;
   alt?: string;
   caption?: string;
+  overlayText?: string;
   aspectRatio?: number;
   [key: string]: unknown;
 }

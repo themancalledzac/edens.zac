@@ -22,7 +22,9 @@ export interface ContentCollectionBaseModel {
   collectionDate?: string; // ISO date string
   visible?: boolean;
   priority?: number; // 1-4, where 1 = best, 4 = worst
+  // Legacy: url-only cover; replaced by coverImage object
   coverImageUrl?: string;
+  coverImage?: { url: string; width?: number; height?: number } | null;
   isPasswordProtected?: boolean;
   hasAccess?: boolean;
   configJson?: string;

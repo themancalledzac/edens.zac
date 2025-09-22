@@ -22,6 +22,12 @@ const rowManagers = new Map<
   }
 >();
 
+/**
+ * // TODO: Describe createRowManager
+ * // TODO: are these 'threshold/rootMargin' needing to be defined here, or should all 'parallaxOptions' be passed together
+ * @param rowId
+ * @param options
+ */
 function createRowManager(rowId: string, options: ParallaxOptions) {
   const { threshold = 0.1, rootMargin = '50px' } = options;
 
@@ -33,6 +39,9 @@ function createRowManager(rowId: string, options: ParallaxOptions) {
     isScrolling: false,
   };
 
+  /**
+   * Need to explain why this is so complex
+   */
   const handleScroll = () => {
     if (manager.rafId) {
       cancelAnimationFrame(manager.rafId);
@@ -98,6 +107,7 @@ function createRowManager(rowId: string, options: ParallaxOptions) {
     rootMargin,
   });
 
+  // TODO: Explain if this is set Every time a 'row' is created, or if it becomes visible?
   rowManagers.set(rowId, manager);
   return manager;
 }
@@ -118,7 +128,14 @@ export function useParallax(options: ParallaxOptions = {}) {
       return;
     }
 
+    // Compute effective speed based on device and user preferences
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobileMq = window.matchMedia('(max-width: 768px)').matches;
+    const attenuation = prefersReduced ? 0.2 : (isMobileMq ? 0.4 : 1);
+    const effectiveSpeed = speed * attenuation;
+
     // Use individual observer if no rowId provided (fallback to original behavior)
+    // TODO: Is this fallback required any longer?
     if (!rowId) {
       const rafRef = { current: null as number | null };
       const lastOffsetRef = { current: undefined as number | undefined };
@@ -135,7 +152,7 @@ export function useParallax(options: ParallaxOptions = {}) {
           const elementCenter = rect.top + rect.height / 2;
           const viewportCenter = window.innerHeight / 2;
           const distance = elementCenter - viewportCenter;
-          const newOffset = distance * speed;
+          const newOffset = distance * effectiveSpeed;
 
           if (
             lastOffsetRef.current === undefined ||
@@ -198,7 +215,7 @@ export function useParallax(options: ParallaxOptions = {}) {
 
     // Add element to row manager
     elements.add(element);
-    parallaxElements.set(element, { bg: parallaxBg, speed });
+    parallaxElements.set(element, { bg: parallaxBg, speed: effectiveSpeed });
     observer?.observe(element);
 
     return () => {

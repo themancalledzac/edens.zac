@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ImageInfo } from '@/Components/ImageInfo/ImageInfo';
 import { type Image as ImageType } from '@/types/Image';
-import { calculateOptimalDimensions, isValidSource } from '@/utils/imageUtils';
+import { calculateOptimalDimensions } from '@/utils/imageUtils';
 
 import styles from './ImageFullScreen.module.scss';
 
@@ -42,7 +42,7 @@ export function ImageFullScreen({ imageSelected, setImageSelected }: ImageFullSc
   const isMobileView = screenSize.width < MOBILE_BREAKPOINT;
   const imageUrl = useMemo(() => {
     if (!imageSelected) return '';
-    return isValidSource(imageSelected.imageUrlWeb) ? imageSelected.imageUrlWeb : '';
+    return imageSelected.imageUrlWeb && imageSelected.imageUrlWeb !== '' ? imageSelected.imageUrlWeb : '';
   }, [imageSelected]);
 
   const imageAlt = useMemo(() => {

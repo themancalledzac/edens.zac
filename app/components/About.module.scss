@@ -1,0 +1,55 @@
+/*
+  About component styles
+  Based on ContactForm component structure
+*/
+
+.aboutContainer {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--space-4);
+
+  @media (min-width: 768px) {
+    padding-top: var(--space-6);
+  }
+}
+
+.contentWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow-y: auto;
+
+  @media (min-width: 768px) {
+    padding-right: var(--space-4);
+  }
+}
+
+.imageContainer {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-6);
+}
+
+.profileImage {
+  width: 33.333%; /* 1/3rd of available width */
+  height: auto;
+  border-radius: var(--radius-2);
+  object-fit: cover;
+}
+
+.textContainer {
+  flex: 1;
+
+  p {
+    font-size: var(--text-md);
+    line-height: 1.6;
+    color: var(--color-fg);
+    margin: 0;
+
+    @media (min-width: 768px) {
+      font-size: var(--text-lg);
+      line-height: 1.7;
+    }
+  }
+}

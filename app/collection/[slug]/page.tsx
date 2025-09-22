@@ -30,6 +30,7 @@ type PageProps = {
   searchParams: { page?: string; size?: string };
 };
 
+// TODO: Move this to a helper function/file for use elsewhere
 function parsePagination(searchParams: PageProps['searchParams']): { page: number; size: number } {
   const rawPage = Number(searchParams.page);
   const rawSize = Number(searchParams.size);
@@ -38,8 +39,10 @@ function parsePagination(searchParams: PageProps['searchParams']): { page: numbe
   return { page, size };
 }
 
+// TODO: What is the purpose of this function, when it's not in use and we have an alternative below?
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   try {
+    // TODO: why is the 'size' here defaulting to 1? is this only returning one item?
     const collection = await fetchCollectionBySlug(params.slug, 0, 1);
     const title = collection?.title ? `${collection.title} — Collection` : 'Collection';
     const description = collection?.description ?? 'Photography collection';
