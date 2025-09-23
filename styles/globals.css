@@ -152,17 +152,3 @@ a {
         font-size: 0.8rem;
     }
 }
-
-/*TODO: DarkMode Color Options*/
-/*TODO: Darkmode/RegularMode separate for main colors*/
-/*TODO: Could we have BASE color names that are overwritten by one or the other? How do we DYNAMICALLY do that at the global level?*/
-
-/*@media (prefers-color-scheme: dark) {*/
-/*  html {*/
-/*    color-scheme: dark;*/
-/*  }*/
-/*  body {*/
-/*    color: white;*/
-/*    background: black;*/
-/*  }*/
-/*}*/
