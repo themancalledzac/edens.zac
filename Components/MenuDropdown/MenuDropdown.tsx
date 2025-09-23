@@ -1,6 +1,6 @@
 import { CircleX, Undo2 } from 'lucide-react';
 import { useRouter } from 'next/router';
-import { useState } from 'react';
+import { type RefObject,useState } from 'react';
 
 import { handleClick, handleInputChange, handleSubmit } from '@/Components/MenuDropdown/MenuUtils';
 import { useAppContext } from '@/context/AppContext';
@@ -10,7 +10,13 @@ import { isLocalEnvironment } from '@/utils/environment';
 import InstagramIcon from '../InstagramIcon/InstagramIcon';
 import styles from './MenuDropdown.module.scss';
 
-export function MenuDropdown({ dropdownRef, showDropdown, setShowDropdown }) {
+interface MenuDropdownProps {
+  dropdownRef: RefObject<HTMLDivElement>;
+  showDropdown: boolean;
+  setShowDropdown: (show: boolean) => void;
+}
+
+export function MenuDropdown({ dropdownRef, showDropdown, setShowDropdown }: MenuDropdownProps) {
   const [aboutDropdownVisible, setAboutDropdownVisible] = useState(false);
   const [contactDropdownVisible, setContactDropdownVisible] = useState(false);
   const [formData, setFormData] = useState({ title: '', message: '' });

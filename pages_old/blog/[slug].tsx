@@ -13,7 +13,7 @@ import { chunkImages } from '@/utils/imageUtils';
 
 interface BlogPageProps {
   blog: Blog;
-  imageChunks: Image[];
+  imageChunks: Image[][];
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
@@ -49,7 +49,7 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
 export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [contentWidth, setContentWidth] = useState(800);
-  const { isEditMode, imageSelected, setImageSelected } = useEditContext();
+  const { imageSelected, setImageSelected } = useEditContext();
 
   useEffect(() => {
     // Check for mobile viewport
@@ -64,7 +64,7 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
 
   // Hook to handle Arrow Clicks on ImageFullScreen
   useEffect(() => {
-    const handleKeyDown = event => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (imageSelected === null) return;
 
       const flattenedData = imageChunks.flat();
@@ -72,10 +72,12 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
 
       if (event.key === 'ArrowRight') {
         const nextIndex = (currentIndex + 1) % flattenedData.length;
-        setImageSelected(flattenedData[nextIndex]);
+        const nextImage = flattenedData[nextIndex];
+        if (nextImage) setImageSelected(nextImage);
       } else if (event.key === 'ArrowLeft') {
         const prevIndex = (currentIndex - 1 + flattenedData.length) % flattenedData.length;
-        setImageSelected(flattenedData[prevIndex]);
+        const prevImage = flattenedData[prevIndex];
+        if (prevImage) setImageSelected(prevImage);
       }
     };
 
@@ -103,32 +105,6 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, [isMobile]);
 
-  // TODO: Determine if we can throw this in imageUrils
-  // const handleImageEdit = (image: Image) => {
-  //     if (selectedForSwap === null) {
-  //         // first image selected
-  //         setSelectedForSwap(image);
-  //     } else if (selectedForSwap.id === image.id) {
-  //         setSelectedForSwap(null);
-  //     } else {
-  //         // second image selected, swap
-  //         const {newImages, newChunks} = swapImages(images, selectedForSwap.id, image.id);
-  //         // swapImages(selectedForSwap.id, image.id);
-  //         setImages(newImages);
-  //         setImageChunks(newChunks);
-  //         setSelectedForSwap(null);
-  //     }
-  // }
-
-  const handleImageClick = (image: Image) => {
-    if (isEditMode) {
-      // TODO
-      // handleImageEdit(image);
-    } else {
-      setImageSelected(image);
-    }
-  };
-
   // Handle loading state
   if (!blog) {
     return <div>Loading...</div>;
@@ -148,7 +124,7 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
         </div>
         <div className={styles.blogContent}>
           {/* Split paragraphs by newlines */}
-          {blog.paragraph.split('\n\n').map((paragraph, index) => (
+          {blog.paragraph.split('\n\n').map((paragraph, _index) => (
             <p key={paragraph[0]} className={styles.paragraph}>
               {paragraph}
             </p>
@@ -157,8 +133,9 @@ export default function BlogPage({ blog, imageChunks }: BlogPageProps) {
 
         {imageChunks && imageChunks.length > 0 && (
           <div className={styles.blogGallery}>
-            {imageChunks.map(photoPair => (
+            {imageChunks.map((photoPair) => (
               <PhotoBlockComponent
+                key={photoPair.map(photo => photo.id).join('-')}
                 componentWidth={contentWidth}
                 isMobile={isMobile}
                 photos={photoPair}
