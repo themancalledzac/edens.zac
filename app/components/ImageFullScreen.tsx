@@ -18,6 +18,23 @@ interface ImageFullScreenProps {
   onClose: () => void;
 }
 
+/**
+ * Image Full Screen Component
+ *
+ * Full-screen image modal overlay with keyboard navigation and accessibility features.
+ * Displays images in a modal dialog with responsive scaling and close interactions.
+ * Features keyboard escape handling, click-to-close functionality, and screen reader support.
+ *
+ * @dependencies
+ * - Next.js Image component for optimized image loading
+ * - React hooks for event handling and lifecycle management
+ * - ImageFullScreen.module.scss for modal styling
+ *
+ * @param props - Component props object containing:
+ * @param props.image - Image data object with URL, dimensions, and metadata
+ * @param props.onClose - Callback function to handle modal close events
+ * @returns Client component rendering accessible full-screen image modal
+ */
 export default function ImageFullScreen({ image, onClose }: ImageFullScreenProps) {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Escape') {

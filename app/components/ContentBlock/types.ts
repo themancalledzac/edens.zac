@@ -1,3 +1,21 @@
+/**
+ * ContentBlock Type Definitions
+ *
+ * Comprehensive TypeScript interfaces and type definitions for the ContentBlock system.
+ * Provides strongly typed contracts for all ContentBlock components, renderers, and utilities.
+ * Ensures type safety across image blocks, text blocks, badges, and wrapper components.
+ *
+ * @dependencies
+ * - NormalizedContentBlock from imageUtils for core block structure
+ * - React types for component prop definitions
+ *
+ * @exports
+ * - Component prop interfaces for all ContentBlock renderers
+ * - Badge system configuration types
+ * - Enhanced block data structures with metadata
+ * - Wrapper and overlay component interfaces
+ */
+
 import { type NormalizedContentBlock } from '@/utils/imageUtils';
 
 // Enhanced original block interface with proper types
