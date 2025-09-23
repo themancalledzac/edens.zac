@@ -1,17 +1,15 @@
 /**
- * Global 404 Not Found (App Router)
+ * Global 404 Not Found Page
  *
- * What this file is:
- * - Catch-all not-found UI for routes that call notFound() or fail to resolve.
+ * Default not found page component that renders when routes fail to resolve
+ * or when notFound() is explicitly called. Provides user-friendly error
+ * messaging and navigation back to the home page.
  *
- * Replaces in the old code:
- * - Replaces custom 404 page in Pages Router (pages/404.tsx) with App Router not-found.tsx.
+ * @dependencies
+ * - Next.js Link component for client-side navigation
+ * - layout.module.scss for styling
  *
- * New Next.js features used:
- * - Route-aware notFound() handling that renders this component automatically.
- *
- * TODOs / Improvements:
- * - Add helpful links or search; consider logging missing slugs during migration.
+ * @returns Server component displaying 404 error with home link
  */
 import Link from 'next/link';
 
