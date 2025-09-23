@@ -12,8 +12,8 @@ import styles from './Header.module.scss';
 export function Header() {
   const router = useRouter();
   const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef(null);
-  const aboutRef = useRef(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const aboutRef = useRef<HTMLDivElement>(null);
 
   const handleClick = (page: string) => {
     try {
@@ -25,9 +25,9 @@ export function Header() {
   };
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showDropdown && dropdownRef.current && !dropdownRef.current.contains(event.target) &&
-        aboutRef.current && !aboutRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showDropdown && dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+        aboutRef.current && !aboutRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
       }
     };
