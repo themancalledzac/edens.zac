@@ -15,6 +15,23 @@ interface MenuDropdownProps {
   onClose: () => void;
 }
 
+/**
+ * Menu Dropdown
+ *
+ * Full-screen navigation menu with expandable sections for About and Contact.
+ * Features body scroll locking, click-outside-to-close on desktop, and
+ * social media integration. Manages nested form states and navigation.
+ *
+ * @dependencies
+ * - Lucide React CircleX icon for close button
+ * - React hooks for state and lifecycle management
+ * - About and ContactForm components for expandable sections
+ * - InstagramIcon and GitHubIcon for social media links
+ *
+ * @param isOpen - Controls dropdown visibility state
+ * @param onClose - Callback function to close the dropdown
+ * @returns Client component rendering full navigation menu overlay
+ */
 export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 

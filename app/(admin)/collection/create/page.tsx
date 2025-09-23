@@ -1,3 +1,20 @@
+/**
+ * Create Collection Page
+ *
+ * Administrative form page for creating new content collections. Features
+ * comprehensive form validation, conditional fields based on collection type,
+ * and server-side creation with proper error handling and navigation.
+ *
+ * @dependencies
+ * - Next.js useRouter for navigation
+ * - React hooks for form state management
+ * - SiteHeader for consistent navigation
+ * - createContentCollection API function
+ * - ContentCollectionCreateDTO type for form data
+ * - CollectionType enum for type selection
+ *
+ * @returns Client component with collection creation form
+ */
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -6,6 +23,8 @@ import { type FormEvent, useState } from 'react';
 import SiteHeader from '@/app/components/site-header';
 import { createContentCollection } from '@/lib/api/home';
 import { CollectionType, type ContentCollectionCreateDTO } from '@/types/ContentCollection';
+
+import styles from './page.module.scss';
 
 export default function CreateCollectionPage() {
   const router = useRouter();
@@ -25,7 +44,7 @@ export default function CreateCollectionPage() {
     blocksPerPage: 12
   });
 
-  const handleInputChange = (field: keyof ContentCollectionCreateDTO, value: any) => {
+  const handleInputChange = (field: keyof ContentCollectionCreateDTO, value: ContentCollectionCreateDTO[keyof ContentCollectionCreateDTO]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -58,9 +77,10 @@ export default function CreateCollectionPage() {
         // Fallback if no slug
         router.push('/');
       }
-    } catch (error_: any) {
+    } catch (error_: unknown) {
       console.error('Error creating collection:', error_);
-      setError(error_.message || 'Failed to create collection');
+      const errorMessage = error_ instanceof Error ? error_.message : 'Failed to create collection';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -69,12 +89,7 @@ export default function CreateCollectionPage() {
   return (
     <div>
       <SiteHeader />
-      <div style={{ 
-        maxWidth: '800px', 
-        margin: '0 auto', 
-        padding: '2rem',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
+      <div className={styles.form}>
         <h1>Create New Collection</h1>
         
         {error && (

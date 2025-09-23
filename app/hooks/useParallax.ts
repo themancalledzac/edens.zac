@@ -23,10 +23,15 @@ const rowManagers = new Map<
 >();
 
 /**
- * // TODO: Describe createRowManager
- * // TODO: are these 'threshold/rootMargin' needing to be defined here, or should all 'parallaxOptions' be passed together
- * @param rowId
- * @param options
+ * Create Row Manager
+ *
+ * Creates a shared manager for coordinating parallax effects across multiple
+ * elements in the same row. Optimizes performance by batching scroll calculations
+ * and using a single IntersectionObserver per row.
+ *
+ * @param rowId - Unique identifier for the row
+ * @param options - Parallax configuration options
+ * @returns Manager object with element tracking and scroll handling
  */
 function createRowManager(rowId: string, options: ParallaxOptions) {
   const { threshold = 0.1, rootMargin = '50px' } = options;
@@ -40,7 +45,11 @@ function createRowManager(rowId: string, options: ParallaxOptions) {
   };
 
   /**
-   * Need to explain why this is so complex
+   * Handle Scroll Events
+   *
+   * Optimized scroll handler using requestAnimationFrame to batch DOM updates
+   * and prevent layout thrashing. Only processes visible elements and applies
+   * threshold-based updates to minimize unnecessary style recalculations.
    */
   const handleScroll = () => {
     if (manager.rafId) {
@@ -107,11 +116,31 @@ function createRowManager(rowId: string, options: ParallaxOptions) {
     rootMargin,
   });
 
-  // TODO: Explain if this is set Every time a 'row' is created, or if it becomes visible?
+  // Store manager globally for row-based coordination across components
   rowManagers.set(rowId, manager);
   return manager;
 }
 
+/**
+ * useParallax Hook
+ *
+ * Performance-optimized parallax effect hook that creates smooth background
+ * movement based on scroll position. Supports row-based batching for multiple
+ * elements and respects user motion preferences and device capabilities.
+ *
+ * @dependencies
+ * - React useEffect and useRef for lifecycle and DOM manipulation
+ * - IntersectionObserver for visibility detection
+ * - requestAnimationFrame for smooth animations
+ *
+ * @param options - Configuration object with speed, selectors, and thresholds containing:
+ * @param options.speed - Parallax movement speed multiplier (default: -0.1)
+ * @param options.selector - CSS selector for parallax background element (default: '.parallax-bg')
+ * @param options.rowId - Optional row identifier for batched processing
+ * @param options.threshold - IntersectionObserver threshold (default: 0.1)
+ * @param options.rootMargin - IntersectionObserver root margin (default: '50px')
+ * @returns Ref to attach to the container element
+ */
 export function useParallax(options: ParallaxOptions = {}) {
   const { speed = -0.1, selector = '.parallax-bg', rowId, threshold, rootMargin } = options;
 
@@ -134,8 +163,7 @@ export function useParallax(options: ParallaxOptions = {}) {
     const attenuation = prefersReduced ? 0.2 : (isMobileMq ? 0.4 : 1);
     const effectiveSpeed = speed * attenuation;
 
-    // Use individual observer if no rowId provided (fallback to original behavior)
-    // TODO: Is this fallback required any longer?
+    // Use individual observer if no rowId provided (legacy fallback behavior)
     if (!rowId) {
       const rafRef = { current: null as number | null };
       const lastOffsetRef = { current: undefined as number | undefined };

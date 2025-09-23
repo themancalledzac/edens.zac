@@ -1,21 +1,23 @@
 "use client";
 
 /**
- * Title: Global Error Boundary (App Router)
+ * Global Error Boundary
  *
- * What this file is:
- * - Client component used by the App Router to render a fallback UI when an error is thrown.
+ * Client-side error boundary component that renders fallback UI when
+ * unhandled errors occur in the application. Provides error recovery
+ * functionality and optional error reporting integration.
  *
- * Replaces in the old code:
- * - Replaces _error.tsx / custom error pages from the Pages Router in favor of per-route error boundaries.
+ * @dependencies
+ * - React for useEffect hook and component structure
+ * - layout.module.scss for styling
  *
- * New Next.js features used:
- * - Route-level error.tsx in the App Router with reset() for recovery.
- *
- * TODOs / Improvements:
- * - Wire up error reporting (Sentry/Datadog) and show a friendlier message by environment.
+ * @param error - Error object with optional digest for tracking
+ * @param reset - Function to attempt error recovery and re-render
+ * @returns Client component with error message and retry functionality
  */
 import React from "react";
+
+import styles from './styles/layout.module.scss';
 
 export default function GlobalError({
   error,
@@ -30,12 +32,12 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <main style={{ padding: "2rem" }}>
+    <main className={styles.main}>
       <h1>Something went wrong</h1>
       {error?.digest ? (
-        <p style={{ color: "#888" }}>Error ID: {error.digest}</p>
+        <p className={styles.errorMessage}>Error ID: {error.digest}</p>
       ) : null}
-      <button onClick={() => reset()} style={{ marginTop: "1rem" }}>
+      <button onClick={() => reset()} className={styles.retryButton}>
         Try again
       </button>
     </main>

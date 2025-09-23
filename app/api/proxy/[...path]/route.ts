@@ -2,18 +2,30 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 /**
- * Proxy route for backend API
- * - Forwards requests under /api/proxy/* to the backend defined by NEXT_PUBLIC_API_URL
- * - Falls back to http://localhost:8080 when env var is not set (developer-friendly)
- * - Preserves method, headers (filtered), body, and streams the response back
+ * Get Backend Base URL
+ *
+ * Retrieves the backend API base URL from environment variables with
+ * fallback to localhost for development. Normalizes URL by removing
+ * trailing slashes for consistent path construction.
+ *
+ * @returns Normalized backend base URL
  */
-
 function getBackendBase(): string {
   const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
   // Trim trailing slash
   return base.replace(/\/+$/, '');
 }
 
+/**
+ * Build Target URL
+ *
+ * Constructs the full backend URL from path segments and search parameters.
+ * Handles path normalization and query string preservation for proxying.
+ *
+ * @param pathParts - Array of URL path segments after /api/proxy
+ * @param search - Query string including leading '?' if present
+ * @returns Complete target URL for backend request
+ */
 function buildTargetUrl(pathParts: string[], search: string): string {
   // pathParts already contains everything after /api/proxy
   const targetPath = pathParts.join('/');
@@ -22,7 +34,16 @@ function buildTargetUrl(pathParts: string[], search: string): string {
   return search ? `${url}${search}` : url;
 }
 
-// Filter out headers that should not be forwarded or managed by fetch automatically
+/**
+ * Forward Headers
+ *
+ * Filters and forwards request headers to the backend, excluding hop-by-hop
+ * headers and platform-specific headers that shouldn't be proxied. Ensures
+ * JSON accept header for API compatibility.
+ *
+ * @param req - Incoming Next.js request object
+ * @returns Filtered headers safe for backend forwarding
+ */
 function forwardHeaders(req: NextRequest): Headers {
   const headers = new Headers();
   for (const [key, value] of req.headers) {
@@ -50,6 +71,22 @@ function forwardHeaders(req: NextRequest): Headers {
   return headers;
 }
 
+/**
+ * Proxy Handler
+ *
+ * Universal handler for all HTTP methods that forwards requests to the backend
+ * API. Handles request transformation, error handling, and response streaming
+ * with proper header filtering for both directions.
+ *
+ * @dependencies
+ * - Next.js server APIs for request/response handling
+ * - Backend API for actual data processing
+ * - Helper functions for URL construction and header filtering
+ *
+ * @param req - Incoming Next.js request
+ * @param context - Route context containing dynamic path parameters
+ * @returns Proxied response from backend or error response
+ */
 async function handle(req: NextRequest, context: { params: { path: string[] } }) {
   const { params } = context;
   const method = req.method;

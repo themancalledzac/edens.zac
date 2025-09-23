@@ -48,7 +48,7 @@
   overflow: hidden;
   width: 100%;
   height: auto;
-  border-width: 12px 0 0 0;
+  border-width: var(--space-mobile-border) 0 0 0;
   border-style: solid;
   border-color: white;
   margin: 0;
@@ -160,8 +160,8 @@
   align-items: center;
   justify-content: center;
   background: rgba(89, 89, 89, 0.4);
-  color: #ffffff;
-  font-family: 'Big Caslon', 'Book Antiqua', serif; /* Dramatic, high-contrast serif */
+  color: var(--color-white);
+  font-family: var(--font-serif); /* Dramatic, high-contrast serif */
   font-size: 65px;
   font-weight: 700;
   text-align: center;

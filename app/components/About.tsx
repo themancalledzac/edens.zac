@@ -8,6 +8,21 @@ interface AboutProps {
   onBack: () => void;
 }
 
+/**
+ * About Component
+ *
+ * Personal introduction component displaying profile image and bio text.
+ * Showcases photographer and software engineer background with call-to-action
+ * for collaboration and print sales.
+ *
+ * @dependencies
+ * - Next.js Image component for optimized image loading
+ * - About.module.scss for component styling
+ *
+ * @param props - Component props object containing:
+ * @param props.onBack - Callback function to return to previous view (currently unused)
+ * @returns Client component displaying personal about section
+ */
 export function About({ onBack: _onBack }: AboutProps) {
   return (
     <div className={styles.aboutContainer}>

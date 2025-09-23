@@ -1,18 +1,21 @@
 /**
- * Root App Layout (App Router)
+ * Root App Layout
  *
- * What this file is:
- * - The global layout for the App Router. Defines metadata, viewport, font, and wraps children with client Providers.
+ * Global layout component for the App Router that defines application-wide
+ * configuration including metadata, viewport settings, fonts, and provider
+ * wrapping. Replaces _app.tsx and _document.tsx from Pages Router.
  *
- * Replaces in the old code:
- * - Replaces _app.tsx and _document.tsx responsibilities from the Pages Router with a single layout file.
+ * @dependencies
+ * - Inter font from Google Fonts
+ * - Providers component for client-side context providers
+ * - globals.css for application-wide styles
  *
- * New Next.js features used:
- * - App Router root layout, Metadata/Viewport exports, and server-first rendering with isolated client Providers island.
+ * @exports
+ * - metadata - Application metadata configuration
+ * - viewport - Viewport and theme configuration
+ * - RootLayout - Root layout component
  *
- * TODOs / Improvements:
- * - Migrate any remaining global styles toward CSS Modules or scoped styles where possible.
- * - Add additional metadata defaults (Open Graph, Twitter) if needed.
+ * @returns React Server Component wrapping entire application
  */
 import '@/styles/globals.css';
 

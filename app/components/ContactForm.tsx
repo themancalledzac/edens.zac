@@ -14,6 +14,23 @@ interface ContactFormProps {
   onSubmit: () => void;
 }
 
+/**
+ * Contact Form Component
+ *
+ * Interactive contact form that generates mailto links with form data.
+ * Handles responsive behavior for mobile vs desktop email client opening
+ * and includes email obfuscation for spam protection.
+ *
+ * @dependencies
+ * - React useState for form state management
+ * - ContactForm.module.scss for component styling
+ * - FormData interface for type safety
+ *
+ * @param props - Component props object containing:
+ * @param props.onBack - Callback function to return to previous view (currently unused)
+ * @param props.onSubmit - Callback function called after successful form submission
+ * @returns Client component rendering contact form with mailto functionality
+ */
 export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
   const [formData, setFormData] = useState<FormData>({ title: '', message: '' });
 

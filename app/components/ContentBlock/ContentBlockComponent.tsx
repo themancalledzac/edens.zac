@@ -11,27 +11,56 @@ import {
 
 import { getPositionStyle, ImageBlockRenderer, isImageBlock, TextBlockRenderer } from './index';
 
+export type ContentBlockDisplayOptions = {
+  chunkSize: number;
+  defaultAspect: number;
+  baseWidth: number;
+  defaultRating: number;
+};
+
 export type ContentBlockComponentProps = {
   blocks: AnyContentBlock[];
   componentWidth: number;
   isMobile: boolean;
-  // optional tuning
-  chunkSize?: number;
-  defaultAspect?: number;
-  baseWidth?: number;
-  defaultRating?: number;
+  options?: Partial<ContentBlockDisplayOptions>;
 };
 
+const DEFAULT_OPTIONS: ContentBlockDisplayOptions = {
+  chunkSize: 2,
+  defaultAspect: 2 / 3,
+  baseWidth: 1000,
+  defaultRating: 3,
+};
+
+/**
+ * Content Block Component
+ *
+ * High-performance content rendering system that processes and displays
+ * mixed content blocks (images, text, etc.) in optimized responsive layouts.
+ * Features memoized calculations, responsive chunking, and specialized renderers.
+ *
+ * @dependencies
+ * - React useMemo for performance optimization
+ * - ContentBlock utilities for normalization and processing
+ * - Specialized block renderers (Image, Text)
+ * - ContentBlockComponent.module.scss for styling
+ *
+ * @param props - Component props object containing:
+ * @param props.blocks - Array of content blocks to render
+ * @param props.componentWidth - Available width for layout calculations
+ * @param props.isMobile - Mobile breakpoint flag for responsive behavior
+ * @param props.options - Optional display configuration overrides
+ * @returns Client component rendering optimized content block layout
+ */
 export default function ContentBlockComponent(props: ContentBlockComponentProps) {
+  const { blocks, componentWidth, isMobile, options = {} } = props;
+
   const {
-    blocks,
-    componentWidth,
-    isMobile,
-    chunkSize = 2,
-    defaultAspect = 2 / 3,
-    baseWidth = 1000,
-    defaultRating = 3,
-  } = props;
+    chunkSize,
+    defaultAspect,
+    baseWidth,
+    defaultRating,
+  } = { ...DEFAULT_OPTIONS, ...options };
 
   // Memoize block normalization and layout processing for optimal performance
   const normalizedBlocks = useMemo(() => {

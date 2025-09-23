@@ -11,7 +11,12 @@ interface ContentCollectionContentProps {
   cardsPromise: Promise<HomeCardModel[] | null>;
 }
 
-// Async component for content collection data
+/**
+ * Content Collection Content
+ *
+ * Async server component that resolves card data promise and renders
+ * appropriate content or fallback states based on data availability.
+ */
 async function ContentCollectionContent({ cardsPromise }: ContentCollectionContentProps) {
   let cards: HomeCardModel[] = [];
 
@@ -36,7 +41,23 @@ interface ContentCollectionPageProps {
   cardsPromise: Promise<HomeCardModel[] | null>;
 }
 
-// Main content collection page component
+/**
+ * Content Collection Page
+ *
+ * Main page component that displays collections of content cards with
+ * streaming support. Handles async data loading with Suspense boundaries
+ * and graceful error handling for failed data fetches.
+ *
+ * @dependencies
+ * - React Suspense for streaming and loading states
+ * - HomeCardModel type for card data structure
+ * - CardsGrid component for rendering card collections
+ * - CardsGridSkeleton for loading state
+ * - SiteHeader for page navigation
+ *
+ * @param cardsPromise - Promise resolving to array of home card data
+ * @returns Server component with streamed content loading
+ */
 export default function ContentCollectionPage({ cardsPromise }: ContentCollectionPageProps) {
   return (
     <div className={styles.container}>

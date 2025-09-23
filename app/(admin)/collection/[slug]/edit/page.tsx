@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * Admin — Edit Content Collection Page (Client Component)
- *
- * Purpose
- * - Client-side editing UI for ContentCollections, including metadata updates and media uploads.
- *
- * Notes
- * - Reads and writes are performed through the local proxy route to the backend API.
- * - Keeps interactions responsive; server performs cache revalidation post-writes.
- */
 
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -19,9 +9,19 @@ import type { ContentBlock } from "@/lib/api/contentCollections";
 import type { CollectionRead, UpdateCollectionDTO, Visibility } from "@/types/collection-edit";
 import { fetchCollectionViaProxy, updateCollectionViaProxy, uploadFilesViaProxy } from "@/utils/collections-client";
 
+import formStyles from '../../../../styles/forms.module.scss';
+import adminStyles from '../../../../styles/admin.module.scss';
+import layoutStyles from '../../../../styles/layout.module.scss';
+
 /**
- * EditForm — form to edit collection metadata and upload media.
- * - Handles client-side validation and invokes proxy helpers for mutations.
+ * Edit Form Component
+ *
+ * Comprehensive form component for editing collection metadata including
+ * title, description, visibility settings, password management, and file
+ * uploads. Features optimistic updates and error handling.
+ *
+ * @param initial - Initial collection data for form population
+ * @returns Form component with collection editing capabilities
  */
 function EditForm({ initial }: { initial: CollectionRead }) {
   const router = useRouter();
@@ -93,47 +93,47 @@ function EditForm({ initial }: { initial: CollectionRead }) {
   }, [initial.id, router]);
 
   return (
-    <section style={{ display: "grid", gap: 16 }}>
+    <section className={formStyles.form}>
       <h1>Edit Collection — {initial.title}</h1>
 
       {saveError && (
-        <div role="alert" style={{ background: "#fee", color: "#900", padding: 12, borderRadius: 6 }}>{saveError}</div>
+        <div role="alert" className={layoutStyles.errorAlert}>{saveError}</div>
       )}
 
-      <div style={{ display: "grid", gap: 12 }}>
-        <label style={{ display: "grid", gap: 6 }}>
+      <div className={formStyles.formGrid}>
+        <label className={formStyles.label}>
           <span>Title</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
 
-        <label style={{ display: "grid", gap: 6 }}>
+        <label className={styles.label}>
           <span>Description</span>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
         </label>
 
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
-          <label style={{ display: "grid", gap: 6 }}>
+        <div className={styles.twoColumnGrid}>
+          <label className={styles.label}>
             <span>Visibility</span>
             <select value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)}>
               <option value="PUBLIC">Public</option>
               <option value="PRIVATE">Private</option>
             </select>
           </label>
-          <label style={{ display: "grid", gap: 6 }}>
+          <label className={styles.label}>
             <span>Blocks per page</span>
             <input type="number" min={1} max={200} value={blocksPerPage} onChange={(e) => setBlocksPerPage(Number(e.target.value))} />
           </label>
         </div>
 
-        <label style={{ display: "grid", gap: 6 }}>
+        <label className={styles.label}>
           <span>Priority</span>
           <input type="number" value={priority} onChange={(e) => setPriority(Number(e.target.value))} />
         </label>
 
-        <fieldset style={{ border: "1px solid #ddd", padding: 12, borderRadius: 8 }}>
+        <fieldset className={styles.fieldset}>
           <legend>Password (Client Gallery)</legend>
-          <div style={{ display: "grid", gap: 8 }}>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className={styles.fieldsetGrid}>
+            <label className={styles.checkboxLabel}>
               <input
                 type="radio"
                 name="pwdAction"
@@ -143,7 +143,7 @@ function EditForm({ initial }: { initial: CollectionRead }) {
               />
               <span>No change</span>
             </label>
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <label className={styles.checkboxLabel}>
               <input
                 type="radio"
                 name="pwdAction"
@@ -156,7 +156,7 @@ function EditForm({ initial }: { initial: CollectionRead }) {
             {passwordAction === "set" && (
               <input type="password" placeholder="New password" value={password} onChange={(e) => setPassword(e.target.value)} />
             )}
-            <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <label className={styles.checkboxLabel}>
               <input
                 type="radio"
                 name="pwdAction"
@@ -169,7 +169,7 @@ function EditForm({ initial }: { initial: CollectionRead }) {
           </div>
         </fieldset>
 
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div className={styles.actionsRow}>
           <button onClick={onSave} disabled={isSaving}>{isSaving ? "Saving..." : "Save Changes"}</button>
           <button type="button" onClick={() => router.push(`/collection/${initial.slug}`)}>View</button>
         </div>
@@ -177,10 +177,10 @@ function EditForm({ initial }: { initial: CollectionRead }) {
 
       <hr />
 
-      <div style={{ display: "grid", gap: 8 }}>
+      <div className={styles.uploadSection}>
         <h2>Upload Media</h2>
         {uploadError && (
-          <div role="alert" style={{ background: "#fee", color: "#900", padding: 12, borderRadius: 6 }}>{uploadError}</div>
+          <div role="alert" className={styles.errorAlert}>{uploadError}</div>
         )}
         <input ref={fileRef} type="file" multiple onChange={onUpload} />
         {isUploading && <span>Uploading...</span>}
@@ -194,30 +194,53 @@ function EditForm({ initial }: { initial: CollectionRead }) {
 }
 
 /**
- * BlocksList — simple read-only list of blocks until DnD editor is implemented.
+ * Blocks List Component
+ *
+ * Read-only display component for content blocks showing type, order,
+ * and preview content. Placeholder implementation pending full drag-and-drop
+ * editor functionality.
+ *
+ * @param blocks - Array of content blocks to display
+ * @returns List component showing block metadata and previews
  */
 function BlocksList({ blocks }: { blocks: ContentBlock[] }) {
   // Simple placeholder until full drag-drop editor is added.
   return (
-    <div style={{ display: "grid", gap: 8 }}>
+    <div className={styles.blocksSection}>
       <h2>Content Blocks</h2>
-      <ol style={{ paddingLeft: 20 }}>
+      <ol className={styles.blocksList}>
         {blocks.map((b) => (
-          <li key={b.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <code style={{ padding: "2px 6px", background: "#f6f6f6", borderRadius: 4 }}>{b.type}</code>
+          <li key={b.id} className={styles.blockItem}>
+            <code className={styles.blockTypeCode}>{b.type}</code>
             <span>#{b.orderIndex}</span>
-            {b.type === "TEXT" && typeof (b as any).content === "string" && (
-              <span style={{ color: "#666" }}>{String((b as any).content).slice(0, 60)}...</span>
+            {b.type === "TEXT" && 'content' in b && typeof b.content === "string" && (
+              <span className={styles.blockContent}>{b.content.slice(0, 60)}...</span>
             )}
           </li>
         ))}
       </ol>
-      <p style={{ color: "#666" }}>Drag-and-drop reordering and block editing will be added in a subsequent step.</p>
+      <p className={styles.helpText}>Drag-and-drop reordering and block editing will be added in a subsequent step.</p>
     </div>
   );
 }
 
-/** Page component that loads collection data and renders the EditForm. */
+/**
+ * Edit Collection Page
+ *
+ * Administrative page component for editing content collections. Handles
+ * client-side data fetching, loading states, error handling, and provides
+ * editing context through provider wrapper.
+ *
+ * @dependencies
+ * - Next.js router hooks for navigation and params
+ * - React hooks for state management and effects
+ * - EditLiteProvider for editing context
+ * - Collection proxy utilities for API communication
+ * - EditForm and BlocksList components
+ *
+ * @param params - Route parameters containing collection slug
+ * @returns Client component with collection editing interface
+ */
 export default function EditCollectionPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
   const [data, setData] = useState<CollectionRead | null>(null);
@@ -242,16 +265,16 @@ export default function EditCollectionPage({ params }: { params: { slug: string 
 
   if (hasError) {
     return (
-      <main style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem" }}>
+      <main className={styles.main}>
         <h1>Edit Collection</h1>
-        <div role="alert" style={{ background: "#fee", color: "#900", padding: 12, borderRadius: 6 }}>{hasError}</div>
+        <div role="alert" className={styles.errorAlert}>{hasError}</div>
       </main>
     );
   }
 
   if (!data) {
     return (
-      <main style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem" }}>
+      <main className={styles.main}>
         <h1>Edit Collection</h1>
         <p>Loading...</p>
       </main>
@@ -260,7 +283,7 @@ export default function EditCollectionPage({ params }: { params: { slug: string 
 
   return (
     <EditLiteProvider>
-      <main style={{ maxWidth: 960, margin: "0 auto", padding: "1.5rem" }}>
+      <main className={styles.main}>
         <EditForm initial={data} />
       </main>
     </EditLiteProvider>
