@@ -14,7 +14,7 @@ interface ContactFormProps {
   onSubmit: () => void;
 }
 
-export function ContactForm({ onBack, onSubmit }: ContactFormProps) {
+export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
   const [formData, setFormData] = useState<FormData>({ title: '', message: '' });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

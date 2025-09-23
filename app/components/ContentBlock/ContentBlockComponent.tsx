@@ -1,22 +1,20 @@
-"use client";
+'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 
 import cbStyles from '@/styles/ContentBlockComponent.module.scss';
 import { type AnyContentBlock } from '@/types/ContentBlock';
 import {
-  type CalculatedContentBlockSize,
   normalizeContentBlock,
   processContentBlocksForDisplay,
 } from '@/utils/imageUtils';
 
-import { ImageBlockRenderer, TextBlockRenderer, isImageBlock, getPositionStyle } from './ContentBlock';
+import { getPositionStyle, ImageBlockRenderer, isImageBlock, TextBlockRenderer } from './index';
 
 export type ContentBlockComponentProps = {
   blocks: AnyContentBlock[];
   componentWidth: number;
   isMobile: boolean;
-  // onImageClick?: (image: ImageData) => void;
   // optional tuning
   chunkSize?: number;
   defaultAspect?: number;
@@ -29,18 +27,14 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
     blocks,
     componentWidth,
     isMobile,
-    // onImageClick,
     chunkSize = 2,
     defaultAspect = 2 / 3,
     baseWidth = 1000,
     defaultRating = 3,
   } = props;
 
-  const [rows, setRows] = useState<CalculatedContentBlockSize[][]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Memoize block normalization to avoid unnecessary recalculations
-  const normalized = useMemo(() => {
+  // Memoize block normalization and layout processing for optimal performance
+  const normalizedBlocks = useMemo(() => {
     if (!blocks || blocks.length === 0) return [];
     return blocks.map(block =>
       normalizeContentBlock(block, {
@@ -51,26 +45,24 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
     );
   }, [blocks, defaultAspect, baseWidth, defaultRating]);
 
-  // Process blocks for display layout
-  useEffect(() => {
-    try {
-      if (normalized.length === 0 || !componentWidth) {
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-      const processedRows = processContentBlocksForDisplay(normalized, componentWidth, chunkSize);
-      setRows(processedRows);
-    } catch (error) {
-      console.error('ContentBlockComponent sizing error:', error);
-      setRows([]);
-    } finally {
-      setLoading(false);
+  // Memoize layout calculations to prevent unnecessary recalculations
+  const rows = useMemo(() => {
+    if (normalizedBlocks.length === 0 || !componentWidth) {
+      return [];
     }
-  }, [normalized, componentWidth, chunkSize]);
 
-  // Early returns for loading and empty states
-  if (loading) return <div />;
+    try {
+      return processContentBlocksForDisplay(normalizedBlocks, componentWidth, chunkSize);
+    } catch (error) {
+      // Only log in development
+      if (process.env.NODE_ENV === 'development') {
+        console.error('ContentBlockComponent sizing error:', error);
+      }
+      return [];
+    }
+  }, [normalizedBlocks, componentWidth, chunkSize]);
+
+  // Early return for empty state
   if (rows.length === 0) return <div />;
 
   return (
@@ -80,10 +72,7 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
           const totalInRow = row.length;
 
           return (
-            <div
-              key={`row-${rowIndex}`}
-              className={isMobile ? cbStyles.rowMobile : cbStyles.row}
-            >
+            <div key={`row-${rowIndex}`} className={isMobile ? cbStyles.rowMobile : cbStyles.row}>
               {row.map((item, index) => {
                 const className = getPositionStyle(index, totalInRow);
                 const width = Math.round(item.width);
@@ -93,30 +82,27 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                 // Render image blocks using specialized renderer
                 if (isImageBlock(block) && block.imageUrlWeb) {
                   return (
-                    <React.Fragment key={block.id}>
-                      <ImageBlockRenderer
-                        block={block}
-                        width={width}
-                        height={height}
-                        className={className}
-                        isMobile={isMobile}
-                        // onClick={handleImageClick} // TODO: Implement if needed
-                      />
-                    </React.Fragment>
-                  );
-                }
-
-                // Render text blocks using specialized renderer
-                return (
-                  <React.Fragment key={block.id}>
-                    <TextBlockRenderer
+                    <ImageBlockRenderer
+                      key={block.id}
                       block={block}
                       width={width}
                       height={height}
                       className={className}
                       isMobile={isMobile}
                     />
-                  </React.Fragment>
+                  );
+                }
+
+                // Render text blocks using specialized renderer
+                return (
+                  <TextBlockRenderer
+                    key={block.id}
+                    block={block}
+                    width={width}
+                    height={height}
+                    className={className}
+                    isMobile={isMobile}
+                  />
                 );
               })}
             </div>

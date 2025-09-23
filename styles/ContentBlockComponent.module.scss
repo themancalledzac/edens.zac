@@ -39,27 +39,28 @@
   padding-right: 0 !important;
 }
 
-/* Non-image block containers */
+/* Non-image block containers - Mobile First */
 .blockContainer {
   display: flex;
   align-items: center;
   justify-content: center;
-  //background: #fafafa;
   color: #111;
   overflow: hidden;
-  border-radius: 4px;
+  width: 100%;
+  height: auto;
+  border-width: 12px 0 0 0;
+  border-style: solid;
+  border-color: white;
+  margin: 0;
+  padding: 0;
 }
 
-/* Mobile override for text blocks - ensure they are full width with top border */
-@media (max-width: 768px) {
+/* Desktop styles for text blocks */
+@media (min-width: 768px) {
   .blockContainer {
-    width: 100% !important;
-    height: auto !important;
-    border-width: 12px 0 0 0 !important;
-    border-style: solid !important;
-    border-color: white !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    border-radius: 4px;
+    border-width: 0;
+    /* Desktop specific styles can be added here */
   }
 }
 
@@ -90,7 +91,7 @@
 
 /* Left-aligned text block with date badge - extra top padding to clear the badge */
 .blockInnerLeftWithBadge {
-  padding: 47px 16px 16px 16px; /* 31px badge height + 16px spacing */
+  padding: 47px 16px 16px 16px;
   width: 100%;
   height: 100%;
   display: flex;
@@ -127,7 +128,6 @@
   left: 0;
   right: 0;
   bottom: 0;
-  /* Remove any inherited padding that might affect positioning */
   padding: 0;
   margin: 0;
 }

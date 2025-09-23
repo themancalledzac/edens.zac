@@ -43,10 +43,6 @@
   }
 }
 
-.selected {
-
-}
-
 .bodyWrapper {
   margin-left: 2rem;
   margin-right: 2rem;
@@ -78,11 +74,10 @@
   background-size: 100% auto;
   background-position: center;
   background-attachment: fixed;
-  //background-image: url("../Images/testImage.jpg");
 }
 
 .sectionOne {
-  //background-image: url("../Images/testImage.jpg");
+  /* No specific styles needed - inherits from parent selector */
 }
 
 .sectionTwo {
@@ -146,9 +141,7 @@
   max-width: 2500px;
   padding: 1rem 1rem 1rem 0;
   margin-top: auto;
-  /*opacity: 50%;*/
   flex: 0 1 auto;
-  /*display: flex;*/
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -179,9 +172,7 @@
   max-height: 75%;
   background-color: white;
   padding: 2rem;
-  /*border-radius: 0.5rem;*/
   margin-bottom: 3rem;
-
 }
 
 .carouselImageHorizontal {
@@ -192,12 +183,8 @@
 .carouselImageVertical {
   padding: 0.5rem;
   max-width: 25%;
-  /*border: 10px solid white;*/
 }
 
-/*.carouselImage:hover {*/
-/*    max-width: 100%;*/
-/*}*/
 .footer {
   width: 100%;
   height: 5rem;
@@ -336,11 +323,6 @@
   padding-right: 0.4rem;
 }
 
-.imageRight {
-  @extend .image;
-  padding-left: 0.4rem;
-}
-
 .imageEdit {
 
   padding: 1rem 1rem 1rem 1rem;
@@ -353,7 +335,6 @@
 
 .imageSingle {
   @extend .image;
-  //width: 100%;
   padding-left: 0;
   padding-right: 0;
 }
@@ -362,8 +343,6 @@
   opacity: 75%;
   background-color: rgba(255, 0, 0, 0.62);
   background-blend-mode: color-burn;
-  //border: 11px solid red;
-
 }
 
 .coverImageEdit {
@@ -423,9 +402,8 @@
 }
 
 
-/*  Breakpoint for Width change is 1300*/
-
-/*
-    1500px - Breakpoint for Main Card, aka the max width for an image(?)
-    Do we want something lower for a main card?
+/* Responsive breakpoints:
+   768px - Mobile/tablet breakpoint
+   1300px - Width change breakpoint
+   1500px - Max width for main card images
  */

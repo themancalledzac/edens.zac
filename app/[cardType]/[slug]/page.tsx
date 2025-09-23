@@ -23,6 +23,7 @@ function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: st
       overlayText: content.title, // Add collection title as overlay text
       cardTypeBadge: cardType, // Add cardType badge for top-left positioning
       orderIndex: -2, // Ensure it appears first
+      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
     } as AnyContentBlock;
   }
 
@@ -34,6 +35,7 @@ function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: st
       overlayText: content.title, // Add collection title as overlay text
       cardTypeBadge: cardType, // Add cardType badge for top-left positioning
       orderIndex: -2, // Ensure it appears first
+      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
     } as AnyContentBlock;
   }
 

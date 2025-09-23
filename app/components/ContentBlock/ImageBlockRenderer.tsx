@@ -5,14 +5,8 @@ import cbStyles from '@/styles/ContentBlockComponent.module.scss';
 
 import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import { BlockWrapper } from './BlockWrapper';
-import { type EnhancedOriginalBlock, type ImageBlockRendererProps } from './types';
-
-/**
- * Utility function to safely extract original block data
- */
-function getOriginalBlock(block: any): EnhancedOriginalBlock {
-  return (block.originalBlock as EnhancedOriginalBlock) || {};
-}
+import { type ImageBlockRendererProps } from './types';
+import { getOriginalBlock } from './utils';
 
 /**
  * Specialized component for rendering image blocks with overlays and badges
