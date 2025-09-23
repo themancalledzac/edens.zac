@@ -206,8 +206,8 @@ function BlocksList({ blocks }: { blocks: ContentBlock[] }) {
           <li key={b.id} style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <code style={{ padding: "2px 6px", background: "#f6f6f6", borderRadius: 4 }}>{b.type}</code>
             <span>#{b.orderIndex}</span>
-            {b.type === "TEXT" && typeof (b as any).content === "string" && (
-              <span style={{ color: "#666" }}>{String((b as any).content).slice(0, 60)}...</span>
+            {b.type === "TEXT" && 'content' in b && typeof b.content === "string" && (
+              <span style={{ color: "#666" }}>{b.content.slice(0, 60)}...</span>
             )}
           </li>
         ))}

@@ -25,7 +25,7 @@ export default function CreateCollectionPage() {
     blocksPerPage: 12
   });
 
-  const handleInputChange = (field: keyof ContentCollectionCreateDTO, value: any) => {
+  const handleInputChange = (field: keyof ContentCollectionCreateDTO, value: ContentCollectionCreateDTO[keyof ContentCollectionCreateDTO]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -58,9 +58,10 @@ export default function CreateCollectionPage() {
         // Fallback if no slug
         router.push('/');
       }
-    } catch (error_: any) {
+    } catch (error_: unknown) {
       console.error('Error creating collection:', error_);
-      setError(error_.message || 'Failed to create collection');
+      const errorMessage = error_ instanceof Error ? error_.message : 'Failed to create collection';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
