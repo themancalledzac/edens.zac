@@ -1,9 +1,9 @@
 import Image from 'next/image';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { useDebounce } from '@/app/utils/debounce';
 import { ImageInfo } from '@/Components/ImageInfo/ImageInfo';
 import { type Image as ImageType } from '@/types/Image';
-import { useDebounce } from '@/app/utils/debounce';
 import { calculateOptimalDimensions } from '@/utils/imageUtils';
 
 import styles from './ImageFullScreen.module.scss';

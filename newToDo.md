@@ -158,3 +158,46 @@
 3. **CLEANUP**: Remove commented ImageFullScreen code and unused imports
 4. **STANDARDS**: Fix duplicate CSS classes and empty selectors
 5. **TYPES**: Replace `any` types with proper TypeScript interfaces
+
+## TODOs
+
+### Current App Router Issues
+- **Collection page size parameter defaulting to 1** (`app/collection/[slug]/page.tsx:42`)
+  - Investigate why 'size' parameter defaults to 1, potentially only returning one item
+  - May affect pagination or content display
+
+### Image Processing & Utilities
+- **Image sorting logic for abstract catalogs** (`utils/imageUtils.ts:102`)
+  - Only sort Images if order is not a priority for abstract catalogs vs day-based image collections
+  - Need to determine proper sorting strategy
+
+- **Vertical image handling enhancement** (`utils/imageUtils.ts:254`)
+  - Add conditional logic for vertical image processing
+  - Complete implementation: `&& if vertical`
+
+### Type System Improvements
+- **Normalize ImageInfo width type** (`Components/ImageInfo/ImageInfo.tsx:7`)
+  - Width property accepts both string and number, should be normalized to single type
+  - Improve type safety and consistency
+
+- **Home page object expansion** (`types/HomePage.ts:31`)
+  - Define additional properties needed for home page functionality
+  - Expand HomePage interface based on requirements
+
+- **Blog template layout system** (`types/Blog.ts:25`)
+  - Blog pages will eventually need template-based layout system
+  - Design and implement layout configuration
+
+### API & Service Improvements
+- **Update catalogs API for CatalogAll page** (`lib/api/catalogs.ts:10`)
+  - Adapt existing catalog API functionality for new CatalogAll page requirements
+  - Ensure compatibility with current ContentCollection system
+
+### Backend Service TODOs (from todo.md)
+- **Add unit tests for service methods**
+  - Tests for `addContentBlocks` flow need implementation
+  - Integration tests for pagination functionality
+
+- **Migrate client passwords to BCrypt**
+  - Currently using SHA-256 hashing for client passwords
+  - Migrate to BCrypt before client gallery frontend implementation
