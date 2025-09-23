@@ -14,7 +14,7 @@ interface GridSectionProps {
 
 export function GridSection({ card, enableParallax = false }: GridSectionProps) {
   const { title, coverImageUrl, text, slug, cardType } = card;
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const linkRef = useRef<HTMLAnchorElement>(null);
   const [offset, setOffset] = useState(0);
 
   // Optional parallax effect (can be enabled for desktop)
@@ -22,8 +22,8 @@ export function GridSection({ card, enableParallax = false }: GridSectionProps) 
     if (!enableParallax) return;
 
     const handleScroll = () => {
-      if (sectionRef.current) {
-        const rect = sectionRef.current.getBoundingClientRect();
+      if (linkRef.current) {
+        const rect = linkRef.current.getBoundingClientRect();
         const scrollPercentage = (window.innerHeight - rect.top) / (window.innerHeight + rect.height);
         const parallaxMultiplier = 0.3; // Reduced for subtlety
         const newOffset = scrollPercentage * rect.height * parallaxMultiplier;
@@ -51,7 +51,7 @@ export function GridSection({ card, enableParallax = false }: GridSectionProps) 
   };
 
   return (
-    <Link href={getHref()} className={styles.gridSection} ref={sectionRef}>
+    <Link href={getHref()} className={styles.gridSection} ref={linkRef}>
       <div
         className={styles.gridBackground}
         style={{
@@ -78,7 +78,7 @@ export function GridSection({ card, enableParallax = false }: GridSectionProps) 
 }
 
 // Simple throttle implementation
-function throttle<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
+function throttle<T extends (...args: unknown[]) => unknown>(func: T, delay: number): (...args: Parameters<T>) => void {
   let timeoutId: NodeJS.Timeout | null = null;
   let lastExecTime = 0;
 
