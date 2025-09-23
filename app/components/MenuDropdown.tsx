@@ -7,6 +7,7 @@ import InstagramIcon from '@/Components/InstagramIcon/InstagramIcon';
 
 import { About } from './About';
 import { ContactForm } from './ContactForm';
+import GitHubIcon from './GitHubIcon';
 import styles from './MenuDropdown.module.scss';
 
 interface MenuDropdownProps {
@@ -28,6 +29,11 @@ export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
 
   const handleInstagramClick = () => {
     window.open('https://instagram.com/themancalledzac', '_blank', 'noopener,noreferrer');
+    onClose();
+  };
+
+  const handleGithubClick = () => {
+    window.open('https://github.com/themancalledzac', '_blank', 'noopener,noreferrer');
     onClose();
   };
 
@@ -153,10 +159,15 @@ export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
           </h2>
         </div>
 
-        <div className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions}`}>
+        <div className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons}`}>
           <InstagramIcon
             size={32}
             onClick={() => handleItemClick(handleInstagramClick)}
+          />
+          <GitHubIcon
+            size={32}
+            onClick={() => handleItemClick(handleGithubClick)}
+            className={styles.githubIcon}
           />
         </div>
       </div>
