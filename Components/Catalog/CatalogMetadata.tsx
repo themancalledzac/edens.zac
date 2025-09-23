@@ -24,10 +24,13 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
     setIsImageReorderMode,
   } = useEditContext();
 
-  const selectImages = async (e: { target: { files: FileList } }) => {
-    if (isEditMode) {
+  const selectImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    if (isEditMode && editCatalog) {
       try {
-        const uploadedImages = await uploadSelectedFiles(e.target.files, editCatalog.title);
+        const uploadedImages = await uploadSelectedFiles(files, editCatalog.title);
         if (uploadedImages && uploadedImages.length > 0) {
           setEditCatalog({
             ...editCatalog,
@@ -38,11 +41,13 @@ const CatalogMetadata: React.FC<CatalogMetadataProps> = () => {
         console.error('Error uploading images:', error);
       }
     } else {
-      handleFileSelect(setSelectedFiles, setPreviewData, e.target.files);
+      handleFileSelect(setSelectedFiles, setPreviewData, files);
     }
   };
 
   const handleFieldChange = (field: string) => async (e: any) => {
+    if (!editCatalog) return;
+
     let value: number | boolean;
 
     if (field === 'isHomeCard') {

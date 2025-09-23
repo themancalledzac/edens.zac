@@ -84,6 +84,7 @@ export const handleFileSelect = (
 
   // const files = Array.from(e.target.files);
   const files = validateFiles(fileList);
+  if (!files) return;
 
   // Update selectedFiles state
   setSelectedFiles((prev: any) => [...prev, ...files]);

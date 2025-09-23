@@ -12,26 +12,26 @@ import { type Image } from '@/types/Image';
 
 interface EditContextState {
   isEditMode: boolean;
-  setIsEditMode: (value: boolean) => void;
+  setIsEditMode: React.Dispatch<React.SetStateAction<boolean>>;
   isCreateMode: boolean;
-  setIsCreateMode: (value: boolean) => void;
+  setIsCreateMode: React.Dispatch<React.SetStateAction<boolean>>;
   imageSelected: Image | null;
-  setImageSelected: (value: Image | null) => void;
+  setImageSelected: React.Dispatch<React.SetStateAction<Image | null>>;
   currentEditType: string | null;
-  setCurrentEditType: (value: string | null) => void;
+  setCurrentEditType: React.Dispatch<React.SetStateAction<string | null>>;
   selectedForSwap: Image | null;
-  setSelectedForSwap: (value: Image | null) => void;
+  setSelectedForSwap: React.Dispatch<React.SetStateAction<Image | null>>;
   editCatalog: Catalog | null;
-  setEditCatalog: (value: object) => void;
+  setEditCatalog: React.Dispatch<React.SetStateAction<Catalog | null>>;
   isEditCoverImage: boolean;
-  setIsEditCoverImage: (value: boolean) => void;
+  setIsEditCoverImage: React.Dispatch<React.SetStateAction<boolean>>;
   isImageReorderMode: boolean;
-  setIsImageReorderMode: (value: boolean) => void;
+  setIsImageReorderMode: React.Dispatch<React.SetStateAction<boolean>>;
   handleCancelChanges: () => void;
-  selectedFiles: File[] | [];
-  setSelectedFiles: (selectedFiles: File[] | null) => void;
-  previewData: PreviewImage[] | [];
-  setPreviewData: (previewData: PreviewImage[] | null) => void;
+  selectedFiles: File[];
+  setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  previewData: PreviewImage[];
+  setPreviewData: React.Dispatch<React.SetStateAction<PreviewImage[]>>;
 }
 
 const EditContext = createContext<EditContextState | undefined>(undefined);
@@ -51,10 +51,10 @@ interface EditProviderProps {
 export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isCreateMode, setIsCreateMode] = useState<boolean>(false);
-  const [imageSelected, setImageSelected] = useState(null);
+  const [imageSelected, setImageSelected] = useState<Image | null>(null);
   const [currentEditType, setCurrentEditType] = useState<string | null>(null);
   const [selectedForSwap, setSelectedForSwap] = useState<Image | null>(null);
-  const [editCatalog, setEditCatalog] = useState<Catalog | null>();
+  const [editCatalog, setEditCatalog] = useState<Catalog | null>(null);
   const [isEditCoverImage, setIsEditCoverImage] = useState<boolean>(false);
   const [isImageReorderMode, setIsImageReorderMode] = useState<boolean>(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -97,7 +97,5 @@ export const EditProvider: React.FC<EditProviderProps> = ({ children }) => {
     setPreviewData,
   };
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
   return <EditContext.Provider value={value}>{children}</EditContext.Provider>;
 };
