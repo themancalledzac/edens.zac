@@ -49,7 +49,8 @@ isMobile,
       setSelectedForSwap(null);
     } else {
       // second image selected, swap
-      const { newImages } = swapImages(editCatalog.images, contextSelectedForSwap.id, image.id);
+      const result = swapImages(editCatalog.images || [], contextSelectedForSwap.id, image.id);
+      const { newImages } = result || { newImages: editCatalog.images || [] };
 
       // Update edit catalog with new image order
       setEditCatalog({
@@ -69,7 +70,7 @@ isMobile,
       if (isEditCoverImage && editCatalog) {
         setEditCatalog({
           ...editCatalog,
-          coverImageUrl: image.imageUrlWeb,
+          coverImageUrl: image.imageUrlWeb || '',
         });
         // Optionally toggle off cover image mode after selection
         // setIsEditCoverImage(false);
@@ -95,7 +96,7 @@ isMobile,
   useEffect(() => {
     try {
       // Filter out invalid images before calculation
-      const validPhotos = photos.filter(photo => isValidUrl(photo?.imageUrlWeb));
+      const validPhotos = photos.filter(photo => photo && isValidUrl(photo.imageUrlWeb || ''));
 
       // if no valid photos, don't try to calculate sizes
       if (validPhotos.length === 0) {
@@ -123,10 +124,10 @@ isMobile,
    * @returns Returns styling.
    */
   const getPositionStyle = (index: number, totalImages: number): string => {
-    if (totalImages === 1) return styles.imageSingle;
-    if (index === 0) return styles.imageLeft;
-    if (index === totalImages - 1) return styles.imageRight;
-    return styles.imageMiddle;
+    if (totalImages === 1) return styles.imageSingle || '';
+    if (index === 0) return styles.imageLeft || '';
+    if (index === totalImages - 1) return styles.imageRight || '';
+    return styles.imageMiddle || '';
   };
 
   /**
@@ -160,10 +161,10 @@ isMobile,
       ),
     } as React.CSSProperties}>
       {imageItems.map((item, index) => (
-        item && item.image && isValidUrl(item.image.imageUrlWeb) && (
+        item && item.image && isValidUrl(item.image.imageUrlWeb || '') && (
           <Image
             key={item.image.id}
-            src={item.image.imageUrlWeb}
+            src={item.image.imageUrlWeb || ''}
             alt="photo"
             width={Math.round(item.width)}
             height={Math.round(item.height)}
@@ -178,7 +179,7 @@ isMobile,
             && styles.coverImageEdit}
             `}
             loading="lazy"
-            onClick={() => handleImageClick(item.image)}
+            onClick={() => item.image && handleImageClick(item.image)}
           />
         )
       ))}

@@ -19,7 +19,7 @@ import styles from '../../styles/Catalog.module.scss';
 /**
  * Photography Gallery Page.
  */
-export async function getServerSideProps({ params }) {
+export async function getServerSideProps({ params }: { params: { slug: string } }) {
   const { slug } = params;
 
   if (slug === 'create') {
@@ -94,7 +94,7 @@ const CatalogPageInner: React.FC<CatalogPageProps> = ({ create, catalog }: Catal
    * Hook to handle Catalog in Update/Edit mode.
    */
   useEffect(() => {
-    if (isEditMode) {
+    if (isEditMode && currentCatalog) {
       setEditCatalog({
         ...currentCatalog,
       });
@@ -114,6 +114,7 @@ const CatalogPageInner: React.FC<CatalogPageProps> = ({ create, catalog }: Catal
     try {
       if (isCreateMode) {
         // Leave create mode logic as is
+        if (!editCatalog) return;
         const result = await createCatalog(editCatalog, selectedFiles);
         window.location.href = `/catalog/${result.slug}`;
       } else {
@@ -141,7 +142,7 @@ const CatalogPageInner: React.FC<CatalogPageProps> = ({ create, catalog }: Catal
    * ImageFullScreen Hook to handle arrow click.
    */
   useEffect(() => {
-    const handleKeyDown = event => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (imageSelected === null) return;
 
       const flattenedData = imageChunks.flat();
@@ -149,10 +150,12 @@ const CatalogPageInner: React.FC<CatalogPageProps> = ({ create, catalog }: Catal
 
       if (event.key === 'ArrowRight') {
         const nextIndex = (currentIndex + 1) % flattenedData.length;
-        setImageSelected(flattenedData[nextIndex]);
+        const nextImage = flattenedData[nextIndex];
+        if (nextImage) setImageSelected(nextImage);
       } else if (event.key === 'ArrowLeft') {
         const prevIndex = (currentIndex - 1 + flattenedData.length) % flattenedData.length;
-        setImageSelected(flattenedData[prevIndex]);
+        const prevImage = flattenedData[prevIndex];
+        if (prevImage) setImageSelected(prevImage);
       }
     };
 
@@ -214,9 +217,9 @@ const CatalogPageInner: React.FC<CatalogPageProps> = ({ create, catalog }: Catal
         {!isCreateMode && (
           <div className={styles.photoBlockWrapper}>
             {imageChunks && imageChunks.length > 0 ? (
-              imageChunks.map(photoPair => (
+              imageChunks.map((photoPair, index) => (
                 <PhotoBlockComponent
-                  key={photoPair[0].id}
+                  key={photoPair[0]?.id || `chunk-${index}`}
                   componentWidth={contentWidth}
                   isMobile={isMobile}
                   photos={photoPair}

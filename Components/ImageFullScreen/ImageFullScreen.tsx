@@ -78,7 +78,7 @@ export function ImageFullScreen({ imageSelected, setImageSelected }: ImageFullSc
   }, [setImageSelected]);
 
   const handleWheel = useCallback((e: WheelEvent) => {
-    const isInSidebar = e.target instanceof Node && !!e.target.closest(`.${styles.sidebar}`);
+    const isInSidebar = e.target instanceof Element && !!e.target.closest(`.${styles.sidebar}`);
     if (!isInSidebar) {
       e.preventDefault();
     }
