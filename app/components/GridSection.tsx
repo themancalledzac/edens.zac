@@ -14,6 +14,25 @@ interface GridSectionProps {
   mobileRowIndex: number;
 }
 
+/**
+ * Grid Section
+ *
+ * Individual card component with responsive design, parallax background effects,
+ * and dynamic routing based on card type. Adapts layout and animations based
+ * on screen size with debounced resize handling for performance.
+ *
+ * @dependencies
+ * - Next.js Link for client-side navigation
+ * - React hooks for state and lifecycle management
+ * - HomeCardModel type for card data structure
+ * - useParallax hook for scroll-based background animations
+ * - page.module.scss for grid styling
+ *
+ * @param card - Home card data including title, image, and routing info
+ * @param desktopRowIndex - Row position for desktop layout (2 columns)
+ * @param mobileRowIndex - Row position for mobile layout (1 column)
+ * @returns Client component rendering interactive card with parallax effects
+ */
 export function GridSection({ card, desktopRowIndex, mobileRowIndex }: GridSectionProps) {
   const { title, coverImageUrl, slug, cardType } = card;
   const [isMobile, setIsMobile] = useState(false);

@@ -8,8 +8,19 @@ import { MenuDropdown } from './MenuDropdown';
 import styles from './site-header.module.scss';
 
 /**
- * Shared site header for App Router pages.
- * Client Component with minimal state for menu dropdown.
+ * Site Header
+ *
+ * Shared navigation header component with responsive design and mobile
+ * menu functionality. Displays site title/logo and hamburger menu toggle
+ * for accessing navigation dropdown.
+ *
+ * @dependencies
+ * - Lucide React AlignJustify icon for menu toggle
+ * - Next.js Link for client-side navigation
+ * - React useState for menu state management
+ * - MenuDropdown component for navigation menu
+ *
+ * @returns Client component with site branding and navigation
  */
 export function SiteHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

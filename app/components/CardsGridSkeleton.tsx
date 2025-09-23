@@ -3,6 +3,20 @@ import { type HomeCardModel } from '@/types/HomeCardModel';
 import styles from '../page.module.scss';
 import { GridSection } from './GridSection';
 
+/**
+ * Cards Grid Skeleton
+ *
+ * Loading state component that displays placeholder cards while content
+ * is being fetched. Creates mock card data to maintain grid layout and
+ * provides visual feedback during data loading.
+ *
+ * @dependencies
+ * - HomeCardModel type for consistent card structure
+ * - GridSection component for rendering placeholder cards
+ * - page.module.scss for grid container styling
+ *
+ * @returns React component displaying 6 skeleton loading cards
+ */
 export function CardsGridSkeleton() {
   const skeletonCards: HomeCardModel[] = Array.from({ length: 6 }, (_, i) => ({
     id: i + 1,
