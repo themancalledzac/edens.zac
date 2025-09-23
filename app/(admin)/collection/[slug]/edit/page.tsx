@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * Admin — Edit Content Collection Page (Client Component)
- *
- * Purpose
- * - Client-side editing UI for ContentCollections, including metadata updates and media uploads.
- *
- * Notes
- * - Reads and writes are performed through the local proxy route to the backend API.
- * - Keeps interactions responsive; server performs cache revalidation post-writes.
- */
 
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -24,8 +14,14 @@ import adminStyles from '../../../../styles/admin.module.scss';
 import layoutStyles from '../../../../styles/layout.module.scss';
 
 /**
- * EditForm — form to edit collection metadata and upload media.
- * - Handles client-side validation and invokes proxy helpers for mutations.
+ * Edit Form Component
+ *
+ * Comprehensive form component for editing collection metadata including
+ * title, description, visibility settings, password management, and file
+ * uploads. Features optimistic updates and error handling.
+ *
+ * @param initial - Initial collection data for form population
+ * @returns Form component with collection editing capabilities
  */
 function EditForm({ initial }: { initial: CollectionRead }) {
   const router = useRouter();
@@ -198,7 +194,14 @@ function EditForm({ initial }: { initial: CollectionRead }) {
 }
 
 /**
- * BlocksList — simple read-only list of blocks until DnD editor is implemented.
+ * Blocks List Component
+ *
+ * Read-only display component for content blocks showing type, order,
+ * and preview content. Placeholder implementation pending full drag-and-drop
+ * editor functionality.
+ *
+ * @param blocks - Array of content blocks to display
+ * @returns List component showing block metadata and previews
  */
 function BlocksList({ blocks }: { blocks: ContentBlock[] }) {
   // Simple placeholder until full drag-drop editor is added.
@@ -221,7 +224,23 @@ function BlocksList({ blocks }: { blocks: ContentBlock[] }) {
   );
 }
 
-/** Page component that loads collection data and renders the EditForm. */
+/**
+ * Edit Collection Page
+ *
+ * Administrative page component for editing content collections. Handles
+ * client-side data fetching, loading states, error handling, and provides
+ * editing context through provider wrapper.
+ *
+ * @dependencies
+ * - Next.js router hooks for navigation and params
+ * - React hooks for state management and effects
+ * - EditLiteProvider for editing context
+ * - Collection proxy utilities for API communication
+ * - EditForm and BlocksList components
+ *
+ * @param params - Route parameters containing collection slug
+ * @returns Client component with collection editing interface
+ */
 export default function EditCollectionPage({ params }: { params: { slug: string } }) {
   const { slug } = params;
   const [data, setData] = useState<CollectionRead | null>(null);

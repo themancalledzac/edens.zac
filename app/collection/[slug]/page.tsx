@@ -1,23 +1,3 @@
-/**
- * Title: Collection Route (App Router) — Server Component
- *
- * What this file is:
- * - RSC page for /collection/[slug] that fetches a ContentCollection with pagination.
- * - Provides generateMetadata() for SEO and renders a minimal server-first placeholder view.
- *
- * Replaces in the old code:
- * - Replaces Pages Router pattern (pages/collection/[slug].tsx with getServerSideProps) that mirrored catalog flows.
- * - Moves away from catalog-centric rendering and context-heavy client patterns.
- *
- * New Next.js features used:
- * - React Server Components (no 'use client'), generateMetadata, and route-level revalidate for caching.
- * - notFound() for HTTP-aware 404 handling without getServerSideProps.
- *
- * TODOs / Improvements:
- * - Move inline styles to CSS Modules and unify spacing vars.
- * - Replace JSON previews with real block renderers (Phase 5.4) and enable streaming with Suspense.
- * - Add cache tags for targeted revalidation (Phase 5.6).
- */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -30,7 +10,15 @@ type PageProps = {
   searchParams: { page?: string; size?: string };
 };
 
-// TODO: Move this to a helper function/file for use elsewhere
+/**
+ * Parse Pagination Parameters
+ *
+ * Utility function that safely parses and validates pagination parameters
+ * from URL search params with sensible defaults and bounds checking.
+ *
+ * @param searchParams - URL search parameters containing page and size
+ * @returns Validated pagination object with page and size numbers
+ */
 function parsePagination(searchParams: PageProps['searchParams']): { page: number; size: number } {
   const rawPage = Number(searchParams.page);
   const rawSize = Number(searchParams.size);
@@ -39,7 +27,16 @@ function parsePagination(searchParams: PageProps['searchParams']): { page: numbe
   return { page, size };
 }
 
-// TODO: What is the purpose of this function, when it's not in use and we have an alternative below?
+/**
+ * Generate Metadata
+ *
+ * Generates dynamic SEO metadata for collection pages including title,
+ * description, and Open Graph tags. Fetches minimal collection data
+ * for metadata generation with error handling fallbacks.
+ *
+ * @param params - Route parameters containing collection slug
+ * @returns Metadata object for SEO and social sharing
+ */
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   try {
     // TODO: why is the 'size' here defaulting to 1? is this only returning one item?
@@ -67,6 +64,23 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
+/**
+ * Collection Page
+ *
+ * Server component for displaying paginated content collections with
+ * minimal placeholder rendering. Handles pagination, error states,
+ * and generates temporary JSON preview of content blocks.
+ *
+ * @dependencies
+ * - Next.js notFound for 404 handling
+ * - fetchCollectionBySlug for data retrieval
+ * - parsePagination utility for parameter validation
+ * - ContentCollectionNormalized type
+ *
+ * @param params - Route parameters containing collection slug
+ * @param searchParams - URL parameters for pagination
+ * @returns Server component displaying collection with pagination
+ */
 export default async function CollectionPage({ params, searchParams }: PageProps) {
   const { page, size } = parsePagination(searchParams);
 

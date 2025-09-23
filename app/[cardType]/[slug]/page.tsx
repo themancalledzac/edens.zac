@@ -15,6 +15,17 @@ interface ContentCollectionPageProps {
   }>;
 }
 
+/**
+ * Build Cover Image Block
+ *
+ * Creates a synthetic cover image block from collection data, either using
+ * the defined cover image or falling back to the first image block. Adds
+ * overlay text and card type badge for consistent display formatting.
+ *
+ * @param content - Normalized collection data
+ * @param cardType - Collection type for badge display
+ * @returns Formatted cover image block or null if no image available
+ */
 function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: string): AnyContentBlock | null {
   // If coverImage exists, use it (it's always a ContentBlock now)
   if (content.coverImage) {
@@ -43,6 +54,17 @@ function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: st
   return null;
 }
 
+/**
+ * Build Metadata Text Block
+ *
+ * Creates a synthetic text block containing collection metadata including
+ * location, description, and formatted date. Matches dimensions to cover
+ * image for proper layout alignment.
+ *
+ * @param content - Normalized collection data
+ * @param coverBlock - Cover image block for dimension matching
+ * @returns Formatted metadata text block
+ */
 function buildMetadataTextBlock(
   content: ContentCollectionNormalized,
   coverBlock: AnyContentBlock | null
@@ -79,6 +101,23 @@ function buildMetadataTextBlock(
   } as AnyContentBlock;
 }
 
+/**
+ * Content Collection Page
+ *
+ * Dynamic route page for displaying individual content collections by slug.
+ * Constructs unified layout with synthetic cover and metadata blocks,
+ * handles server-side data fetching with proper error boundaries.
+ *
+ * @dependencies
+ * - Next.js notFound for 404 handling
+ * - SiteHeader for navigation
+ * - fetchCollectionBySlug for data retrieval
+ * - ContentBlocksClient for block rendering
+ * - Helper functions for block construction
+ *
+ * @param params - Route parameters containing cardType and slug
+ * @returns Server component displaying collection content
+ */
 export default async function ContentCollectionPage({ params }: ContentCollectionPageProps) {
   const { cardType, slug } = await params;
 

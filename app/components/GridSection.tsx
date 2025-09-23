@@ -28,9 +28,10 @@ interface GridSectionProps {
  * - useParallax hook for scroll-based background animations
  * - page.module.scss for grid styling
  *
- * @param card - Home card data including title, image, and routing info
- * @param desktopRowIndex - Row position for desktop layout (2 columns)
- * @param mobileRowIndex - Row position for mobile layout (1 column)
+ * @param props - Component props object containing:
+ * @param props.card - Home card data including title, image, and routing info
+ * @param props.desktopRowIndex - Row position for desktop layout (2 columns)
+ * @param props.mobileRowIndex - Row position for mobile layout (1 column)
  * @returns Client component rendering interactive card with parallax effects
  */
 export function GridSection({ card, desktopRowIndex, mobileRowIndex }: GridSectionProps) {

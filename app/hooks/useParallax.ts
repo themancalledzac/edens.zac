@@ -133,7 +133,7 @@ function createRowManager(rowId: string, options: ParallaxOptions) {
  * - IntersectionObserver for visibility detection
  * - requestAnimationFrame for smooth animations
  *
- * @param options - Configuration object with speed, selectors, and thresholds
+ * @param options - Configuration object with speed, selectors, and thresholds containing:
  * @param options.speed - Parallax movement speed multiplier (default: -0.1)
  * @param options.selector - CSS selector for parallax background element (default: '.parallax-bg')
  * @param options.rowId - Optional row identifier for batched processing

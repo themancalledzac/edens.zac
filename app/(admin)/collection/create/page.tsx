@@ -1,3 +1,20 @@
+/**
+ * Create Collection Page
+ *
+ * Administrative form page for creating new content collections. Features
+ * comprehensive form validation, conditional fields based on collection type,
+ * and server-side creation with proper error handling and navigation.
+ *
+ * @dependencies
+ * - Next.js useRouter for navigation
+ * - React hooks for form state management
+ * - SiteHeader for consistent navigation
+ * - createContentCollection API function
+ * - ContentCollectionCreateDTO type for form data
+ * - CollectionType enum for type selection
+ *
+ * @returns Client component with collection creation form
+ */
 'use client';
 
 import { useRouter } from 'next/navigation';

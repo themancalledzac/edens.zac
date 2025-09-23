@@ -19,7 +19,8 @@ interface AboutProps {
  * - Next.js Image component for optimized image loading
  * - About.module.scss for component styling
  *
- * @param onBack - Callback function to return to previous view (currently unused)
+ * @param props - Component props object containing:
+ * @param props.onBack - Callback function to return to previous view (currently unused)
  * @returns Client component displaying personal about section
  */
 export function About({ onBack: _onBack }: AboutProps) {

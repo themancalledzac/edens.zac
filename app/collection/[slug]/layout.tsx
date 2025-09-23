@@ -1,24 +1,22 @@
 /**
- * Collection Layout with Parallel Routes (@viewer, @sidebar)
+ * Collection Layout
  *
- * What this file is:
- * - Layout for /collection/[slug] that arranges the @viewer and @sidebar slots responsively.
- * - Enables independent loading/error boundaries for each slot.
+ * Responsive layout component for collection pages using parallel routes.
+ * Arranges viewer and sidebar slots independently with responsive grid
+ * positioning and fallback rendering support.
  *
- * Replaces in the old code:
- * - Replaces monolithic page layouts in Pages Router that coupled metadata and viewer in a single render path.
+ * @dependencies
+ * - React ReactNode type for slot typing
+ * - Next.js parallel routes (@viewer, @sidebar)
+ * - Responsive CSS grid with mobile-first approach
  *
- * New Next.js features used:
- * - Parallel Routes in the App Router (named slots) + responsive CSS via a simple grid.
- *
- * TODOs / Improvements:
- * - Move inline styles to CSS Modules and adopt a shared layout system.
- * - Consider adding error.tsx per slot for finer error UX.
+ * @param children - Fallback content for noscript scenarios
+ * @param viewer - Main content viewer slot (@viewer)
+ * @param sidebar - Sidebar metadata slot (@sidebar)
+ * @returns Layout component with responsive grid arrangement
  */
 import type { ReactNode } from 'react';
 
-// Parallel routes layout for collection pages
-// Renders @viewer and @sidebar independently so each can load/fail in isolation
 export default function CollectionLayout({
   children,
   viewer,

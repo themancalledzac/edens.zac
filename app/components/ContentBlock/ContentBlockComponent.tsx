@@ -32,6 +32,26 @@ const DEFAULT_OPTIONS: ContentBlockDisplayOptions = {
   defaultRating: 3,
 };
 
+/**
+ * Content Block Component
+ *
+ * High-performance content rendering system that processes and displays
+ * mixed content blocks (images, text, etc.) in optimized responsive layouts.
+ * Features memoized calculations, responsive chunking, and specialized renderers.
+ *
+ * @dependencies
+ * - React useMemo for performance optimization
+ * - ContentBlock utilities for normalization and processing
+ * - Specialized block renderers (Image, Text)
+ * - ContentBlockComponent.module.scss for styling
+ *
+ * @param props - Component props object containing:
+ * @param props.blocks - Array of content blocks to render
+ * @param props.componentWidth - Available width for layout calculations
+ * @param props.isMobile - Mobile breakpoint flag for responsive behavior
+ * @param props.options - Optional display configuration overrides
+ * @returns Client component rendering optimized content block layout
+ */
 export default function ContentBlockComponent(props: ContentBlockComponentProps) {
   const { blocks, componentWidth, isMobile, options = {} } = props;
 
