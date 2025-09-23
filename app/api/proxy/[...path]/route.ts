@@ -46,7 +46,7 @@ function buildTargetUrl(pathParts: string[], search: string): string {
  */
 function forwardHeaders(req: NextRequest): Headers {
   const headers = new Headers();
-  for (const [key, value] of req.headers) {
+  for (const [key, value] of req.headers.entries()) {
     const k = key.toLowerCase();
     if ([
       'connection',
@@ -87,8 +87,8 @@ function forwardHeaders(req: NextRequest): Headers {
  * @param context - Route context containing dynamic path parameters
  * @returns Proxied response from backend or error response
  */
-async function handle(req: NextRequest, context: { params: { path: string[] } }) {
-  const { params } = context;
+async function handle(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  const params = await context.params;
   const method = req.method;
   const targetUrl = buildTargetUrl(params.path || [], req.nextUrl.search);
 
