@@ -7,6 +7,8 @@ import SiteHeader from '@/app/components/site-header';
 import { createContentCollection } from '@/lib/api/home';
 import { CollectionType, type ContentCollectionCreateDTO } from '@/types/ContentCollection';
 
+import styles from './page.module.scss';
+
 export default function CreateCollectionPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -70,12 +72,7 @@ export default function CreateCollectionPage() {
   return (
     <div>
       <SiteHeader />
-      <div style={{ 
-        maxWidth: '800px', 
-        margin: '0 auto', 
-        padding: '2rem',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
-      }}>
+      <div className={styles.form}>
         <h1>Create New Collection</h1>
         
         {error && (

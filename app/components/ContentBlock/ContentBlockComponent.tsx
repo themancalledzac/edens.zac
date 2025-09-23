@@ -11,27 +11,36 @@ import {
 
 import { getPositionStyle, ImageBlockRenderer, isImageBlock, TextBlockRenderer } from './index';
 
+export type ContentBlockDisplayOptions = {
+  chunkSize: number;
+  defaultAspect: number;
+  baseWidth: number;
+  defaultRating: number;
+};
+
 export type ContentBlockComponentProps = {
   blocks: AnyContentBlock[];
   componentWidth: number;
   isMobile: boolean;
-  // optional tuning
-  chunkSize?: number;
-  defaultAspect?: number;
-  baseWidth?: number;
-  defaultRating?: number;
+  options?: Partial<ContentBlockDisplayOptions>;
+};
+
+const DEFAULT_OPTIONS: ContentBlockDisplayOptions = {
+  chunkSize: 2,
+  defaultAspect: 2 / 3,
+  baseWidth: 1000,
+  defaultRating: 3,
 };
 
 export default function ContentBlockComponent(props: ContentBlockComponentProps) {
+  const { blocks, componentWidth, isMobile, options = {} } = props;
+
   const {
-    blocks,
-    componentWidth,
-    isMobile,
-    chunkSize = 2,
-    defaultAspect = 2 / 3,
-    baseWidth = 1000,
-    defaultRating = 3,
-  } = props;
+    chunkSize,
+    defaultAspect,
+    baseWidth,
+    defaultRating,
+  } = { ...DEFAULT_OPTIONS, ...options };
 
   // Memoize block normalization and layout processing for optimal performance
   const normalizedBlocks = useMemo(() => {

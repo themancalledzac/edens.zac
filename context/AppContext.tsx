@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 import { type Catalog } from '@/types/Catalog';
 import { type Image } from '@/types/Image';
+import { useDebounce } from '@/app/utils/debounce';
 
 /**
  * Global app state, device info, current view data
@@ -50,14 +51,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
       setIsMobile(width <= 768); // You can adjust this threshold
     };
 
+    // Debounced resize handler for better performance
+    const debouncedCheckIsMobile = useDebounce(checkIsMobile, 100);
+
     // Check initially
     checkIsMobile();
 
-    // Set up event listener for window resize
-    window.addEventListener('resize', checkIsMobile);
+    // Set up debounced event listener for window resize
+    window.addEventListener('resize', debouncedCheckIsMobile);
 
     // Cleanup
-    return () => window.removeEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', debouncedCheckIsMobile);
   }, []);
 
   const value: AppContextState = {

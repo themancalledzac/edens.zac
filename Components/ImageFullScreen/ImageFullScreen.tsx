@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ImageInfo } from '@/Components/ImageInfo/ImageInfo';
 import { type Image as ImageType } from '@/types/Image';
+import { useDebounce } from '@/app/utils/debounce';
 import { calculateOptimalDimensions } from '@/utils/imageUtils';
 
 import styles from './ImageFullScreen.module.scss';
@@ -67,6 +68,9 @@ export function ImageFullScreen({ imageSelected, setImageSelected }: ImageFullSc
     });
   }, []);
 
+  // Debounced resize handler for better performance
+  const debouncedHandleResize = useDebounce(handleResize, 100);
+
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       setImageSelected(null);
@@ -114,11 +118,11 @@ export function ImageFullScreen({ imageSelected, setImageSelected }: ImageFullSc
 
   // Effects
 
-  // Handle window resize
+  // Handle window resize with debouncing
   useEffect(() => {
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [handleResize]);
+    window.addEventListener('resize', debouncedHandleResize);
+    return () => window.removeEventListener('resize', debouncedHandleResize);
+  }, [debouncedHandleResize]);
 
   // Handle escape key press
   useEffect(() => {

@@ -1,0 +1,63 @@
+// Shared Form Components
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+
+.formGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.field {
+  margin-bottom: 1rem;
+}
+
+.label {
+  display: grid;
+  gap: 6px;
+  font-weight: bold;
+}
+
+.blockLabel {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.twoColumnGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.fieldset {
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.fieldsetGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.checkboxLabel {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actionsRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}

@@ -19,18 +19,29 @@ export function GridSection({ card, desktopRowIndex, mobileRowIndex }: GridSecti
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    // Debounced resize handler for better performance - reusing the debounce pattern
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth <= 768);
     };
 
+    const debouncedCheckScreenSize = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(checkScreenSize, 100); // 100ms debounce like other components
+    };
+
     checkScreenSize(); // Initial check
-    window.addEventListener('resize', checkScreenSize);
-    
-    return () => window.removeEventListener('resize', checkScreenSize);
+    window.addEventListener('resize', debouncedCheckScreenSize);
+
+    return () => {
+      window.removeEventListener('resize', debouncedCheckScreenSize);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const currentRowIndex = isMobile ? mobileRowIndex : desktopRowIndex;
-  
+
   const parallaxRef = useParallax({
     rowId: `row-${currentRowIndex}`,
     speed: -0.1,

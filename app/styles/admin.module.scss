@@ -1,0 +1,48 @@
+// Admin-specific Components
+
+.adminMain {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.adminForm {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.uploadSection {
+  display: grid;
+  gap: 8px;
+}
+
+.blocksSection {
+  display: grid;
+  gap: 8px;
+}
+
+.blocksList {
+  padding-left: 20px;
+}
+
+.blockItem {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.blockTypeCode {
+  padding: 2px 6px;
+  background: #f6f6f6;
+  border-radius: 4px;
+}
+
+.blockContent {
+  color: #666;
+}
+
+.helpText {
+  color: #666;
+}

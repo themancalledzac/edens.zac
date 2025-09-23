@@ -118,6 +118,8 @@ $bp-lg: 1024px;
     background-size: cover;
     background-position: center;
     will-change: transform;
+    /* Reset transform for JS parallax to work */
+    transform: translate3d(0, 0, 0);
   }
 }
 

@@ -15,9 +15,11 @@
  */
 import Link from 'next/link';
 
+import styles from './styles/layout.module.scss';
+
 export default function NotFound() {
   return (
-    <main style={{ padding: '2rem' }}>
+    <main className={styles.main}>
       <h1>404 — Not Found</h1>
       <p>The page you’re looking for doesn’t exist.</p>
       <p>

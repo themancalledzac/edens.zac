@@ -17,6 +17,8 @@
  */
 import React from "react";
 
+import styles from './styles/layout.module.scss';
+
 export default function GlobalError({
   error,
   reset,
@@ -30,12 +32,12 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <main style={{ padding: "2rem" }}>
+    <main className={styles.main}>
       <h1>Something went wrong</h1>
       {error?.digest ? (
-        <p style={{ color: "#888" }}>Error ID: {error.digest}</p>
+        <p className={styles.errorMessage}>Error ID: {error.digest}</p>
       ) : null}
-      <button onClick={() => reset()} style={{ marginTop: "1rem" }}>
+      <button onClick={() => reset()} className={styles.retryButton}>
         Try again
       </button>
     </main>

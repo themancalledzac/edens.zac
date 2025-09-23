@@ -1,0 +1,33 @@
+// Shared Layout Utilities
+
+.main {
+  padding: 2rem;
+}
+
+.mainCentered {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.errorAlert {
+  background: #fee;
+  color: #900;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.retryButton {
+  margin-top: 1rem;
+}
+
+.errorMessage {
+  color: #888;
+}
+
+.wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
