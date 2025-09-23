@@ -105,3 +105,22 @@
     font-weight: 600;
   }
 }
+
+.socialIcons {
+  gap: var(--space-4);
+
+  @media (min-width: 768px) {
+    gap: var(--space-6);
+  }
+}
+
+.githubIcon {
+  cursor: pointer;
+  color: black;
+  transition: color 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    color: #333;
+    transform: scale(1.05);
+  }
+}

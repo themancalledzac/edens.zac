@@ -152,18 +152,15 @@ $bp-lg: 1024px;
 
 .gridTitle {
   margin: 0;
-  font-size: var(--text-xl);
+  font-family: 'Big Caslon', 'Book Antiqua', serif; /* Match collection page serif font */
+  font-size: 65px; /* Match collection page mobile size */
   font-weight: 700;
-  color: var(--color-fg);
+  color: #ffffff; /* Match collection page white text */
   line-height: 1.1;
+  text-align: left;
 
-  @include up($bp-sm) {
-    font-size: 1.8rem;
-  }
-
-  @include up($bp-md) {
-    /* Remove padding from title; spacing handled by container */
-    font-size: 2.5rem;
+  @media (min-width: 768px) {
+    font-size: 65px; /* Match collection page desktop size */
   }
 }
 
