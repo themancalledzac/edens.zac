@@ -4,6 +4,18 @@ interface GitHubIconProps {
   className?: string;
 }
 
+/**
+ * GitHub Icon Component
+ *
+ * Scalable SVG icon component for GitHub branding with interactive capabilities.
+ * Dynamically adjusts cursor style based on click handler presence and supports
+ * custom sizing and styling through props.
+ *
+ * @param size - Icon dimensions in pixels (default: 24)
+ * @param onClick - Optional click handler for interactive behavior
+ * @param className - Optional CSS class for additional styling
+ * @returns SVG icon component with GitHub logo
+ */
 export default function GitHubIcon({ size = 24, onClick, className }: GitHubIconProps) {
   return (
     <svg

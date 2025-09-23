@@ -1,11 +1,19 @@
 import { useCallback, useRef } from 'react';
 
 /**
- * Debounce utility hook for performance optimization
+ * useDebounce Hook
+ *
+ * Performance optimization hook that delays function execution until after
+ * a specified period has passed since the last invocation. Uses useRef to
+ * persist timeout across renders and prevent memory leaks through cleanup.
+ *
+ * @dependencies
+ * - React useCallback for memoization
+ * - React useRef for timeout persistence
  *
  * @param callback - Function to debounce
- * @param delay - Delay in milliseconds
- * @returns Debounced version of the callback
+ * @param delay - Delay in milliseconds before execution
+ * @returns Debounced version of the callback function
  */
 export function useDebounce<T extends (...args: never[]) => void>(
   callback: T,
