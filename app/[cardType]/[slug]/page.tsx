@@ -1,9 +1,5 @@
-'use client';
-
 import { notFound } from 'next/navigation';
-import { use, useEffect, useState } from 'react';
 
-// import ImageFullScreen from '@/app/components/ImageFullScreen';
 import SiteHeader from '@/app/components/site-header';
 import { type ContentCollectionNormalized } from '@/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/lib/api/home';
@@ -19,13 +15,15 @@ interface ContentCollectionPageProps {
   }>;
 }
 
-function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentBlock | null {
+function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: string): AnyContentBlock | null {
   // If coverImage exists, use it (it's always a ContentBlock now)
   if (content.coverImage) {
     return {
       ...content.coverImage,
       overlayText: content.title, // Add collection title as overlay text
+      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
       orderIndex: -2, // Ensure it appears first
+      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
     } as AnyContentBlock;
   }
 
@@ -35,7 +33,9 @@ function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentB
     return {
       ...firstImageBlock,
       overlayText: content.title, // Add collection title as overlay text
+      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
       orderIndex: -2, // Ensure it appears first
+      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
     } as AnyContentBlock;
   }
 
@@ -45,17 +45,17 @@ function buildCoverImageBlock(content: ContentCollectionNormalized): AnyContentB
 
 function buildMetadataTextBlock(
   content: ContentCollectionNormalized,
-  opts: { cardType: string; slug: string },
   coverBlock: AnyContentBlock | null
 ): AnyContentBlock {
   const rows = [
-    `Card Type: ${opts.cardType}`,
-    `Title: ${content.title}`,
-    `Slug: ${opts.slug}`,
     content.location ? `Location: ${content.location}` : undefined,
-    content.collectionDate ? `Date: ${new Date(content.collectionDate).toLocaleDateString()}` : undefined,
-    content.description ? `Description: ${content.description}` : undefined,
+    content.description ? content.description : undefined,
   ].filter(Boolean) as string[];
+
+  // Format date for badge display
+  const dateBadge = content.collectionDate
+    ? new Date(content.collectionDate).toLocaleDateString()
+    : undefined;
 
   // Match metadata block dimensions to the cover image when available so the first row aligns.
   const width = coverBlock?.imageWidth;
@@ -68,48 +68,27 @@ function buildMetadataTextBlock(
     title: `${content.title} — Details`,
     content: rows.join('\n'),
     format: 'plain',
-    align: 'start',
+    align: 'left',
+    dateBadge: dateBadge, // Add date badge for top-left positioning on metadata block
+    // Match the cover image's rating to ensure identical layout treatment
+    rating: coverBlock?.rating || 3,
     // Provide sizing hints so normalizeContentBlock uses these exact dims
     contentWidth: typeof width === 'number' && width > 0 ? width : undefined,
     contentHeight: typeof height === 'number' && height > 0 ? height : undefined,
-    rating: 3,
     orderIndex: -1,
   } as AnyContentBlock;
 }
 
-export default function ContentCollectionPage({ params }: ContentCollectionPageProps) {
-  const { cardType, slug } = use(params);
-  const [content, setContent] = useState<ContentCollectionNormalized | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  // const [fullScreenImage, setFullScreenImage] = useState<ImageData | null>(null);
+export default async function ContentCollectionPage({ params }: ContentCollectionPageProps) {
+  const { cardType, slug } = await params;
 
-  useEffect(() => {
-    const fetchContent = async () => {
-      try {
-        setIsLoading(true);
-
-        console.log(`Attempting to fetch collection: cardType=${cardType}, slug=${slug}`);
-        const collectionData = await fetchCollectionBySlug(slug);
-        setContent(collectionData);
-      } catch (error_) {
-        console.error('Error fetching content:', error_);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchContent();
-  }, [slug, cardType]);
-
-  if (isLoading) {
-    return (
-      <div>
-        <SiteHeader />
-        <div className={styles.main}>
-          <p>Loading {cardType} content...</p>
-        </div>
-      </div>
-    );
+  // Server-side data fetching with proper error handling
+  let content: ContentCollectionNormalized;
+  try {
+    content = await fetchCollectionBySlug(slug);
+  } catch {
+    // If fetch fails, return 404
+    return notFound();
   }
 
   if (!content) {
@@ -118,24 +97,19 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
 
   // Build synthetic blocks for unified layout
   const heroBlocks: AnyContentBlock[] = [];
-  const coverBlock = buildCoverImageBlock(content);
+  const coverBlock = buildCoverImageBlock(content, cardType);
   if (coverBlock) heroBlocks.push(coverBlock);
-  heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }, coverBlock));
+  heroBlocks.push(buildMetadataTextBlock(content, coverBlock));
   const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks || [])];
 
   return (
-    <>
-      <div>
-        <SiteHeader />
-        <div className={styles.contentPadding}>
-          <div className={styles.blockGroup}>
-            <ContentBlocksClient
-              blocks={combinedBlocks}
-              // onImageClick={setFullScreenImage}
-            />
-          </div>
+    <div>
+      <SiteHeader />
+      <div className={styles.contentPadding}>
+        <div className={styles.blockGroup}>
+          <ContentBlocksClient blocks={combinedBlocks} />
         </div>
       </div>
-    </>
+    </div>
   );
 }

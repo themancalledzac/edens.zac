@@ -2,10 +2,16 @@
  * API functions for home-related operations
  */
 
-import { type ContentCollectionNormalized,fetchCollectionBySlug as fetchCollectionBySlugNormalized } from '@/lib/api/contentCollections';
-import { fetchPostJsonApi,fetchReadApi } from '@/lib/api/core';
+import {
+  type ContentCollectionNormalized,
+  fetchCollectionBySlug as fetchCollectionBySlugNormalized,
+} from '@/lib/api/contentCollections';
+import { fetchPostJsonApi, fetchReadApi } from '@/lib/api/core';
 import { type Blog } from '@/types/Blog';
-import { type ContentCollectionCreateDTO, type ContentCollectionModel } from '@/types/ContentCollection';
+import {
+  type ContentCollectionCreateDTO,
+  type ContentCollectionModel,
+} from '@/types/ContentCollection';
 import { type HomeCardModel } from '@/types/HomeCardModel';
 
 /**
@@ -39,11 +45,9 @@ export async function fetchHomePage(
     const response = await fetchReadApi<HomePageResponse>(endpoint);
 
     if (response && response.items && response.items.length > 0) {
-      console.log(`Found ${response.items.length} home page items`);
       return response.items;
     }
 
-    console.log('No home page items found in response');
     return [];
   } catch (error) {
     console.error('Error fetching home page:', error);
@@ -64,11 +68,8 @@ export async function fetchCollectionsByType(type: string): Promise<HomeCardMode
     const response = await fetchReadApi<HomeCardModel[]>(endpoint);
 
     if (response && response.length > 0) {
-      console.log(`Found ${response.length} collections of type ${type}`);
       return response;
     }
-
-    console.log(`No collections found for type: ${type}`);
     return [];
   } catch (error) {
     console.error(`Error fetching collections by type "${type}":`, error);
@@ -114,13 +115,10 @@ export async function createContentCollection(
   createData: ContentCollectionCreateDTO
 ): Promise<ContentCollectionModel> {
   try {
-    console.log('[createContentCollection] Input data:', createData);
-    console.log('[createContentCollection] Calling POST /api/write/collections/createCollection');
-    
-    const result = await fetchPostJsonApi<ContentCollectionModel>('/collections/createCollection', createData);
-    
-    console.log('[createContentCollection] API response:', result);
-    return result;
+    return await fetchPostJsonApi<ContentCollectionModel>(
+      '/collections/createCollection',
+      createData
+    );
   } catch (error) {
     console.error('[createContentCollection] Error:', error);
     throw error;

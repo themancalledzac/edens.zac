@@ -8,7 +8,7 @@ interface AboutProps {
   onBack: () => void;
 }
 
-export function About({ onBack }: AboutProps) {
+export function About({ onBack: _onBack }: AboutProps) {
   return (
     <div className={styles.aboutContainer}>
       <div className={styles.contentWrapper}>
@@ -23,10 +23,9 @@ export function About({ onBack }: AboutProps) {
         </div>
         <div className={styles.textContainer}>
           <p>
-            I'm a photographer and developer passionate about capturing moments and creating digital experiences.
-            My work spans from landscape photography to portrait sessions, always seeking to tell compelling stories
-            through visual media. When I'm not behind the camera, I'm building software solutions that help bring
-            creative visions to life.
+            Photographer and Software engineer. This site is a little portfolio page for both of my
+            passions. Shoot me a message if you'd like to know more, see an Image you'd like to have
+            printed, or maybe even collab.
           </p>
         </div>
       </div>

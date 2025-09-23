@@ -38,12 +38,9 @@ export class ApiError extends Error {
  * @returns The parsed response data
  * @throws ApiError if the request fails
  */
-export async function fetchReadApi<T>(
-  endpoint: string,
-  options: RequestInit = {}): Promise<T> {
+export async function fetchReadApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   try {
     const url = `${API_BASE_URL(READ)}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-    console.log(`Fetch Read Request: ${url}`);
 
     const response = await fetch(url, {
       headers: {
@@ -58,7 +55,7 @@ export async function fetchReadApi<T>(
       const errorData = await response.json().catch(() => null);
       throw new ApiError(
         errorData?.message || `API error: ${response.status}${response.statusText}`,
-        response.status,
+        response.status
       );
     }
 
@@ -69,33 +66,25 @@ export async function fetchReadApi<T>(
 
     // Parse and return the response data
     return await response.json();
-
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
     }
 
     // Convert other errors to ApiErrors
-    throw new ApiError(
-      error instanceof Error ? error.message : 'Unknown error has occured',
-      500,
-    );
+    throw new ApiError(error instanceof Error ? error.message : 'Unknown error has occured', 500);
   }
 }
 
 const fetchWriteBase = async <T>(endpoint: string, options: RequestInit): Promise<T> => {
   try {
     const url = `${API_BASE_URL(WRITE)}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-    console.log(`Fetch Write Request: ${url}`);
     const response = await fetch(url, options);
 
     if (!response.ok) {
       console.error(`[zac] - response: ${JSON.stringify(response)}`);
 
-      throw new ApiError(
-        `API error: ${response.status} ${response.statusText}`,
-        response.status,
-      );
+      throw new ApiError(`API error: ${response.status} ${response.statusText}`, response.status);
     }
 
     // Return parsed response
@@ -122,9 +111,6 @@ export async function fetchJsonApi<T>(endpoint: string, body: any): Promise<T> {
 
 // For JSON-based creates (POST)
 export async function fetchPostJsonApi<T>(endpoint: string, body: any): Promise<T> {
-  console.log('[fetchPostJsonApi] Endpoint:', endpoint);
-  console.log('[fetchPostJsonApi] Body:', JSON.stringify(body, null, 2));
-  
   return await fetchWriteBase<T>(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
