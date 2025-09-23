@@ -3,7 +3,7 @@
   height: 100%;
   width: 100%;
   min-height: 100vh;
-  background-color: #ffffff;
+  background-color: var(--color-bg);
   display: flex;
   flex-direction: column;
 }
@@ -352,7 +352,7 @@
 @media (max-width: 768px) {
 
   .image {
-    border-width: 12px 0 0 0;
+    border-width: var(--space-mobile-border) 0 0 0;
     border-style: solid;
     border-color: white;
     margin: 0;
