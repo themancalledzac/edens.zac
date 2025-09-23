@@ -1,9 +1,5 @@
-'use client';
-
 import { notFound } from 'next/navigation';
-import { use, useEffect, useState } from 'react';
 
-// import ImageFullScreen from '@/app/components/ImageFullScreen';
 import SiteHeader from '@/app/components/site-header';
 import { type ContentCollectionNormalized } from '@/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/lib/api/home';
@@ -47,7 +43,6 @@ function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: st
 
 function buildMetadataTextBlock(
   content: ContentCollectionNormalized,
-  opts: { cardType: string; slug: string },
   coverBlock: AnyContentBlock | null
 ): AnyContentBlock {
   const rows = [
@@ -82,39 +77,16 @@ function buildMetadataTextBlock(
   } as AnyContentBlock;
 }
 
-export default function ContentCollectionPage({ params }: ContentCollectionPageProps) {
-  const { cardType, slug } = use(params);
-  const [content, setContent] = useState<ContentCollectionNormalized | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  // const [fullScreenImage, setFullScreenImage] = useState<ImageData | null>(null);
+export default async function ContentCollectionPage({ params }: ContentCollectionPageProps) {
+  const { cardType, slug } = await params;
 
-  useEffect(() => {
-    const fetchContent = async () => {
-      try {
-        setIsLoading(true);
-
-        console.log(`Attempting to fetch collection: cardType=${cardType}, slug=${slug}`);
-        const collectionData = await fetchCollectionBySlug(slug);
-        setContent(collectionData);
-      } catch (error_) {
-        console.error('Error fetching content:', error_);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchContent();
-  }, [slug, cardType]);
-
-  if (isLoading) {
-    return (
-      <div>
-        <SiteHeader />
-        <div className={styles.main}>
-          <p>Loading {cardType} content...</p>
-        </div>
-      </div>
-    );
+  // Server-side data fetching with proper error handling
+  let content: ContentCollectionNormalized;
+  try {
+    content = await fetchCollectionBySlug(slug);
+  } catch {
+    // If fetch fails, return 404
+    return notFound();
   }
 
   if (!content) {
@@ -125,20 +97,17 @@ export default function ContentCollectionPage({ params }: ContentCollectionPageP
   const heroBlocks: AnyContentBlock[] = [];
   const coverBlock = buildCoverImageBlock(content, cardType);
   if (coverBlock) heroBlocks.push(coverBlock);
-  heroBlocks.push(buildMetadataTextBlock(content, { cardType, slug }, coverBlock));
+  heroBlocks.push(buildMetadataTextBlock(content, coverBlock));
   const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks || [])];
 
   return (
     <div>
-        <SiteHeader />
-        <div className={styles.contentPadding}>
-          <div className={styles.blockGroup}>
-            <ContentBlocksClient
-              blocks={combinedBlocks}
-              // onImageClick={setFullScreenImage}
-            />
-          </div>
+      <SiteHeader />
+      <div className={styles.contentPadding}>
+        <div className={styles.blockGroup}>
+          <ContentBlocksClient blocks={combinedBlocks} />
         </div>
       </div>
+    </div>
   );
 }
