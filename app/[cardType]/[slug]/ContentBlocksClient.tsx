@@ -4,7 +4,7 @@ import React from 'react';
 
 import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
 import { useViewport } from '@/app/hooks/useViewport';
-import { type AnyContentBlock } from '@/types/ContentBlock';
+import { type AnyContentBlock } from '@/app/types/ContentBlock';
 
 import styles from '../../styles/layout.module.scss';
 

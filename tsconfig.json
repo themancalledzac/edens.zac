@@ -43,7 +43,7 @@
   "exclude": [
     "node_modules",
     "**/__tests__/**",
-    "tests/**",
+    "old/tests/**",
     "jest.setup.ts",
     "jest.config.mjs"
   ]

@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
 
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { type ContentCollectionNormalized } from '@/lib/api/contentCollections';
-import { fetchCollectionBySlug } from '@/lib/api/home';
-import { type AnyContentBlock } from '@/types/ContentBlock';
+import { type ContentCollectionNormalized } from '@/app/lib/api/contentCollections';
+import { fetchCollectionBySlug } from '@/app/lib/api/home';
+import { type AnyContentBlock } from '@/app/types/ContentBlock';
 
 import styles from '../../page.module.scss';
 import ContentBlocksClient from './ContentBlocksClient';

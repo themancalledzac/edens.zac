@@ -33,7 +33,7 @@ export function SiteHeader() {
       <header className={styles.header}>
         <div className={styles.navBarWrapper}>
           <div className={styles.navBarLeftWrapper}>
-            <Link href="/public" className={styles.title}>
+            <Link href="/" className={styles.title}>
               <h2>Zac Edens</h2>
             </Link>
           </div>

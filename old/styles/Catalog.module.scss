@@ -1,0 +1,199 @@
+//.catalogPageMain {
+//  margin-left: auto;
+//  margin-right: auto;
+//  margin-bottom: 2rem;
+//
+//  &.mobile {
+//    width: 100%;
+//    padding-left: 0.5rem;
+//    padding-right: 0.5rem;
+//    box-sizing: border-box;
+//  }
+//}
+//
+//.catalogContent {
+//  display: flex;
+//  flex-direction: column;
+//
+//  //align-items: center;
+//}
+//
+//.catalogHeader {
+//  text-align: left;
+//  margin-bottom: 2rem;
+//  display: flex;
+//  flex-direction: row;
+//  justify-content: space-between;
+//
+//  @media (width <= 768px) {
+//    padding-left: 12px;
+//    padding-right: 12px;
+//  }
+//}
+//
+//.metadataWrapper {
+//  display: flex;
+//  flex-direction: column;
+//  width: 100%;
+//
+//  //padding-right: 2rem;
+//
+//  @media (width <= 768px) {
+//    width: 100%;
+//  }
+//}
+//
+//.metadata {
+//  display: flex;
+//  flex-grow: 4;
+//  flex-direction: row;
+//  text-align: left;
+//  margin-bottom: 2rem;
+//  flex-wrap: wrap;
+//  gap: 0.5rem;
+//
+//  @media (width <= 768px) {
+//    padding-left: 12px;
+//    padding-right: 12px;
+//  }
+//}
+//
+//.fieldContainer {
+//  flex-basis: auto;
+//  align-self: auto;
+//  margin-bottom: 0.5rem;
+//
+//  &.full-width {
+//    width: 100%;
+//  }
+//
+//  &.half-width {
+//    width: calc(50% - 0.5rem);
+//
+//    @media (width <= 768px) {
+//      width: 100%;
+//    }
+//  }
+//
+//  &.quarter-width {
+//    width: calc(25% - 0.5rem);
+//
+//    @media (width <= 768px) {
+//      width: calc(50% - 0.5rem);
+//    }
+//  }
+//}
+//
+//.catalogHeaderRight {
+//}
+//
+//.photoBlockWrapper {
+//  display: flex;
+//  flex-direction: column;
+//  align-items: center;
+//  background-color: white;
+//
+//  &.mobileWrapper {
+//    align-items: stretch; // Full width on mobile
+//    width: 100%;
+//  }
+//}
+//
+//.catalogTitle {
+//  font-size: 2.5rem;
+//  margin-bottom: 0.5rem;
+//  margin-top: 3rem;
+//  border: none;
+//  width: 100%;
+//
+//  @media (width <= 768px) {
+//    font-size: 1.8rem;
+//  }
+//}
+//
+//.catalogTitleEdit {
+//  @extend .catalogTitle;
+//
+//  font-size: 2.5rem;
+//}
+//
+//.catalogDescription {
+//  font-size: 1.1rem;
+//  margin-top: 2rem;
+//  padding: 0.5rem;
+//  width: 100%;
+//  border: none;
+//  line-height: 1.6;
+//  color: #333;
+//
+//  @media (width <= 768px) {
+//    font-size: 0.9rem;
+//  }
+//}
+//
+//.catalogDescriptionEdit {
+//  @extend .catalogDescription;
+//
+//  border-bottom: 2px solid grey;
+//  border-left: 2px solid grey;
+//}
+//
+//.catalogLocation {
+//  font-style: italic;
+//  margin-left: 0.5rem;
+//  width: 100%;
+//}
+//
+//.catalogLocationEdit {
+//  @extend .catalogLocation;
+//
+//  border: none;
+//  border-bottom: 1px solid grey;
+//}
+//
+//.catalogDate {
+//  font-size: 0.8rem;
+//  padding-top: 0.5rem;
+//  margin-left: 0.5rem;
+//  font-style: italic;
+//}
+//
+//.catalogTagsEdit {
+//  width: 100%;
+//  padding: 2px;
+//}
+//
+//.catalogSelectImages {
+//  color: grey;
+//}
+//
+//.catalogSelectImagesEdit {
+//  @extend .catalogSelectImages;
+//
+//  width: 100%;
+//}
+//
+//.catalogCoverImageUrlEdit {
+//  width: 100%;
+//}
+//
+//.catalogHomeItemEdit {
+//  width: 100%;
+//  padding: 0.5rem;
+//  border: 1px solid grey;
+//}
+//
+//.catalogPriorityEdit {
+//  width: 100%;
+//  padding: 0.5rem;
+//}
+//
+//.photoBlockContainer {
+//  width: 100%;
+//  max-width: 960px;
+//  margin: 0 auto;
+//
+//  @media (width <= 768px) {
+//    width: 100%;
+//  }
+//}

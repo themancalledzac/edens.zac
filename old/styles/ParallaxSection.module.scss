@@ -1,0 +1,80 @@
+//.parallaxSection {
+//  position: relative;
+//  width: 100%;
+//  max-width: 1500px;
+//  margin-right: auto;
+//  margin-left: auto;
+//  aspect-ratio: 1.75 / 1;
+//  margin-bottom: 2rem;
+//
+//  //align-items: center;
+//  //background-size: 100% auto;
+//  //background-position: center;
+//  //background-attachment: fixed;
+//  //background-repeat: no-repeat;
+//  cursor: pointer;
+//  overflow: hidden;
+//
+//  //background-image: url("../Images/testImage.jpg");
+//  @media (width <= 768px) {
+//    aspect-ratio: 1 / 1; /* Adjust aspect ratio for mobile */
+//    background-attachment: scroll; /* This can help with performance on mobile */
+//    //margin-bottom: 2rem;
+//  }
+//}
+//
+//.parallaxBackground {
+//  position: absolute;
+//  top: -50%;
+//  left: 0;
+//  right: 0;
+//  bottom: 0;
+//  background-size: cover;
+//
+//  //background-size: cover;
+//  background-position: center;
+//  background-repeat: no-repeat;
+//  will-change: transform;
+//
+//  @media (width <= 768px) {
+//    background-attachment: scroll;
+//    background-size: 160%;
+//    background-position: center center;
+//  }
+//}
+//
+//.parallaxSectionTitle {
+//  position: absolute;
+//  top: 0.5rem;
+//
+//  //z-index: 1;
+//  padding: 1rem;
+//  font-size: 3rem;
+//  margin: 0;
+//  color: white;
+//
+//  //text-shadow: 2px 2px 0 white, 4px 4px 0 white;
+//  text-shadow:
+//    1px 1px 0 rgba(0, 0, 0, 0.5),
+//    2px 2px 0 rgba(0, 0, 0, 0.3);
+//
+//  @media (width <= 568px) {
+//    font-size: 2rem;
+//
+//    //padding-right: 1rem;
+//    padding: 1.5rem 0 0 1rem;
+//  }
+//}
+//
+//.parallaxSectionText {
+//  position: absolute;
+//  bottom: 1.5rem;
+//  left: 1rem;
+//  max-width: 80%;
+//  color: white;
+//  background-color: rgba(0, 0, 0, 0.6);
+//  padding: 0.75rem;
+//  border-radius: 4px;
+//  font-size: 1rem;
+//  line-height: 1.5;
+//}

@@ -24,7 +24,7 @@ export default tseslint.config(
       'coverage/**',
       '**/*.d.ts',
       'Components/**',
-      'pages_old/**',
+      'old/**',
     ],
   },
 
