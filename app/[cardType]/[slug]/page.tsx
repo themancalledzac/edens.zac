@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import SiteHeader from '@/app/components/site-header';
+import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentCollectionNormalized } from '@/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/lib/api/home';
 import { type AnyContentBlock } from '@/types/ContentBlock';

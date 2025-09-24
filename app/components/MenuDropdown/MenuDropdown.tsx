@@ -3,11 +3,11 @@
 import { CircleX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import InstagramIcon from '@/app/components/InstagramIcon/InstagramIcon';
+import InstagramIcon from '@/app/components/Icons/InstagramIcon';
 
-import { About } from './About';
-import { ContactForm } from './ContactForm';
-import GitHubIcon from './GitHubIcon';
+import { About } from '../About/About';
+import { ContactForm } from '../ContactForm/ContactForm';
+import GitHubIcon from '../Icons/GitHubIcon';
 import styles from './MenuDropdown.module.scss';
 
 interface MenuDropdownProps {

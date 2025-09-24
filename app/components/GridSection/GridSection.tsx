@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 
 import { type HomeCardModel } from '@/types/HomeCardModel';
 
-import { useParallax } from '../hooks/useParallax';
-import styles from '../page.module.scss';
+import { useParallax } from '../../hooks/useParallax';
+import styles from '../../page.module.scss';
 
 interface GridSectionProps {
   card: HomeCardModel;

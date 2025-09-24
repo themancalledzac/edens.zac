@@ -2,10 +2,10 @@ import { Suspense } from 'react';
 
 import { type HomeCardModel } from '@/types/HomeCardModel';
 
-import { CardsGrid } from './CardsGrid';
-import { CardsGridSkeleton } from './CardsGridSkeleton';
+import { CardsGrid } from '../CardsGrid/CardsGrid';
+import { CardsGridSkeleton } from '../CardsGrid/CardsGridSkeleton';
+import SiteHeader from '../SiteHeader/SiteHeader';
 import styles from './ContentCollectionPage.module.scss';
-import SiteHeader from './site-header';
 
 interface ContentCollectionContentProps {
   cardsPromise: Promise<HomeCardModel[] | null>;
