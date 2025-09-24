@@ -2,13 +2,12 @@
 
 import React, { useMemo } from 'react';
 
-import { type AnyContentBlock } from '@/app/types/ContentBlock';
+import { type AnyContentBlock } from '../../types/ContentBlock';
 import {
   normalizeContentBlock,
   processContentBlocksForDisplay,
-} from '@/app/utils/imageUtils';
-
-import cbStyles from './ContentBlockComponent.module.scss';
+} from '../../utils/imageUtils';
+import cbStyles from './ContentBlock.module.scss';
 import { getPositionStyle, ImageBlockRenderer, isImageBlock, TextBlockRenderer } from './index';
 
 export type ContentBlockDisplayOptions = {
