@@ -1,10 +1,10 @@
 import React from 'react';
 
-import cbStyles from '@/app/components/ContentBlock/ContentBlockComponent.module.scss';
 import { type NormalizedContentBlock } from '@/app/utils/imageUtils';
 
 import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import { BlockWrapper } from './BlockWrapper';
+import cbStyles from './ContentBlockComponent.module.scss';
 import { type EnhancedOriginalBlock, type TextBlockRendererProps } from './types';
 
 /**
