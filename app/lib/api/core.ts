@@ -100,14 +100,15 @@ const fetchWriteBase = async <T>(endpoint: string, options: RequestInit): Promis
   }
 };
 
-// For JSON-based updates (PUT)
-export async function fetchJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
-  return await fetchWriteBase<T>(endpoint, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
+// TODO: verify if this is needed or remove completely
+// // For JSON-based updates (PUT)
+// export async function fetchJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
+//   return await fetchWriteBase<T>(endpoint, {
+//     method: 'PUT',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify(body),
+//   });
+// }
 
 // For JSON-based creates (POST)
 export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
@@ -118,10 +119,11 @@ export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Prom
   });
 }
 
-// For FormData-based creates (POST)
-export async function fetchFormDataApi<T>(endpoint: string, formData: FormData): Promise<T> {
-  return await fetchWriteBase<T>(endpoint, {
-    method: 'POST',
-    body: formData,
-  });
-}
+// TODO: verify if this is needed or remove completely
+// // For FormData-based creates (POST)
+// export async function fetchFormDataApi<T>(endpoint: string, formData: FormData): Promise<T> {
+//   return await fetchWriteBase<T>(endpoint, {
+//     method: 'POST',
+//     body: formData,
+//   });
+// }

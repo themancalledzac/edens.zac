@@ -149,7 +149,6 @@ function toURL(path: string, params?: Record<string, string | number | boolean |
   if (params)
     for (const [k, v] of Object.entries(params))
       if (v !== undefined) url.searchParams.set(k, String(v));
-  console.log(url.toString());
   return url.toString();
 }
 
@@ -230,37 +229,6 @@ export async function fetchCollections(page = 0, size = 10): Promise<ContentColl
     return [];
   } catch {
     // Network or parsing failure — prefer empty state on home rather than crashing.
-    return [];
-  }
-}
-
-/**
- * Fetch Home Page collections using the new endpoint.
- * Accepts maxPriority (default 2) and an optional limit.
- * Uses the collections-index cache tag for revalidation.
- */
-export async function fetchHomePageCollections(
-  { maxPriority = 1, limit }: { maxPriority?: number; limit?: number } = {}
-): Promise<ContentCollection[]> {
-  // Endpoint should be /api/read/collections/homePage with optional query params
-  const url = toURL('/collections/homePage', { maxPriority, limit });
-  try {
-    const res = await fetch(url, {
-      next: { revalidate: 3600, tags: [tagForIndex()] },
-    } as ReadonlyFetchInit);
-    if (res.status === 404) return [];
-
-    const data = await safeJson<unknown>(res);
-
-    // Normalize possible shapes to an array
-    if (Array.isArray(data)) return data as ContentCollection[];
-    if (data && typeof data === 'object') {
-      const maybe = (data as Record<string, unknown>).content ?? (data as Record<string, unknown>).collections ?? (data as Record<string, unknown>).items ?? null;
-      if (Array.isArray(maybe)) return maybe as ContentCollection[];
-    }
-
-    return [];
-  } catch {
     return [];
   }
 }
