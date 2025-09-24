@@ -1,4 +1,4 @@
-import SiteHeader from '@/app/components/site-header';
+import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 
 import styles from '../../page.module.scss';
 

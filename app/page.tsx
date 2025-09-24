@@ -1,6 +1,6 @@
 import { fetchHomePage } from '@/lib/api/home';
 
-import ContentCollectionPage from './components/ContentCollectionPage';
+import ContentCollectionPage from './components/ContentCollection/ContentCollectionPage';
 
 /**
  * Home Page

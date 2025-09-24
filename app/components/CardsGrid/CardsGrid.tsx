@@ -1,7 +1,7 @@
 import { type HomeCardModel } from '@/types/HomeCardModel';
 
-import styles from '../page.module.scss';
-import { GridSection } from './GridSection';
+import styles from '../../page.module.scss';
+import { GridSection } from '../GridSection/GridSection';
 
 interface CardsGridProps {
   cards: HomeCardModel[];

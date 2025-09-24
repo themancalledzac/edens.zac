@@ -42,7 +42,7 @@ $bp-lg: 1024px;
   }
 }
 
-// Note: Header styles moved to app/components/site-header.module.scss
+// Note: Header styles moved to app/components/SiteHeader.module.scss
 // This file now only contains grid and layout styles for the home page
 
 .gridContainer {
@@ -169,7 +169,7 @@ $bp-lg: 1024px;
 
 .gridTitle {
   margin: 0;
-  font-family: var(--font-serif); /* Match collection page serif font */
+  font-family: var(--font-serif), serif; /* Match collection page serif font */
   font-size: 65px; /* Match collection page mobile size */
   font-weight: 700;
   color: var(--color-bg); /* Match collection page white text */
