@@ -1,4 +1,6 @@
 // pages/api/proxy/[...path].ts
+// TODO:deprecate (Phase 5.2 end): Legacy Pages Router API proxy retained during hybrid migration
+/*
 import { type NextApiRequest, type NextApiResponse } from 'next';
 import { Readable } from 'stream';
 
@@ -53,3 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: 'Failed to process request' });
   }
 }
+*/
+
+// Keep module non-empty to satisfy linting without providing a Pages Router API endpoint.
+export {};

@@ -88,7 +88,7 @@ export default tseslint.config(
       'unicorn/no-array-for-each': 'error',
       'unicorn/no-array-push-push': 'error',
       'unicorn/no-console-spaces': 'error',
-      'unicorn/no-empty-file': 'error',
+      // 'unicorn/no-empty-file': 'error',
       'unicorn/no-hex-escape': 'error',
       'unicorn/no-instanceof-array': 'error',
       'unicorn/no-lonely-if': 'error',

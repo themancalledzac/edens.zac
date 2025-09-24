@@ -687,3 +687,17 @@ public class HomeCardModel {
 - **Text/Code content**: Database storage as `@Lob` fields (no S3 needed)
 - **Metadata**: Database with proper indexing for performance
 - **Client passwords**: Currently SHA-256 hashing (TODO: migrate to BCrypt before client gallery frontend work)
+
+
+context: `.junie/guidelines.md` `newToDO.md` `todo.md`,
+`mobileToDo.md`
+
+We need to consolidate our todo files, so that  todo.md is
+our only todo file. it should  include ONLY things that are
+still needing to be done, from all three. This should be
+based on order of priority. we can obviously remove all
+backend todo items. For some items like `Ultra-fast initial
+  Home Page`, this is a 'verify' step.
+
+again, let's keep these organized by order of importance,
+basically what needs to be done next. 

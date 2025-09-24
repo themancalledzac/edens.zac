@@ -1,3 +1,5 @@
+// TODO:deprecate (Phase 5.2 end): Legacy Components retained during hybrid migration
+/*
 import { throttle } from 'lodash';
 import { useRouter } from 'next/router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -68,3 +70,7 @@ export function ParallaxSection({ card }: ParallaxSectionProps): React.JSX.Eleme
     </div>
   );
 }
+*/
+
+// Keep module non-empty to satisfy linting without providing legacy Components.
+export {};

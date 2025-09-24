@@ -7,8 +7,7 @@
   align-items: flex-start;
   justify-content: space-between;
 
-
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     margin-top: 1rem;
     margin-left: 0;
   }
@@ -40,6 +39,4 @@
     border-color: #a48;
     color: #a48;
   }
-
-
 }
