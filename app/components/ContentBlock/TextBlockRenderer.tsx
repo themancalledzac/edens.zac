@@ -1,7 +1,7 @@
 import React from 'react';
 
-import cbStyles from '@/styles/ContentBlockComponent.module.scss';
-import { type NormalizedContentBlock } from '@/utils/imageUtils';
+import cbStyles from '@/app/components/ContentBlock/ContentBlockComponent.module.scss';
+import { type NormalizedContentBlock } from '@/app/utils/imageUtils';
 
 import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import { BlockWrapper } from './BlockWrapper';

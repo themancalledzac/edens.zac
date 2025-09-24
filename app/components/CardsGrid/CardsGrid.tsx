@@ -1,4 +1,4 @@
-import { type HomeCardModel } from '@/types/HomeCardModel';
+import { type HomeCardModel } from '@/app/types/HomeCardModel';
 
 import styles from '../../page.module.scss';
 import { GridSection } from '../GridSection/GridSection';

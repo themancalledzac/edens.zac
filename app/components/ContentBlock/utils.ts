@@ -1,6 +1,6 @@
-import styles from '@/styles/Home.module.scss';
-import { type NormalizedContentBlock } from '@/utils/imageUtils';
+import { type NormalizedContentBlock } from '@/app/utils/imageUtils';
 
+import styles from './ContentBlock.module.scss';
 import { type EnhancedOriginalBlock } from './types';
 
 /**

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 
-import { type HomeCardModel } from '@/types/HomeCardModel';
+import { type HomeCardModel } from '@/app/types/HomeCardModel';
 
 import { CardsGrid } from '../CardsGrid/CardsGrid';
 import { CardsGridSkeleton } from '../CardsGrid/CardsGridSkeleton';

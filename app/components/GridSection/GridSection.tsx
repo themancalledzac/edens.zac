@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import { type HomeCardModel } from '@/types/HomeCardModel';
+import { type HomeCardModel } from '@/app/types/HomeCardModel';
 
 import { useParallax } from '../../hooks/useParallax';
 import styles from '../../page.module.scss';

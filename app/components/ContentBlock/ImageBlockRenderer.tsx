@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import React from 'react';
 
-import cbStyles from '@/styles/ContentBlockComponent.module.scss';
+import cbStyles from '@/app/components/ContentBlock/ContentBlockComponent.module.scss';
 
 import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import { BlockWrapper } from './BlockWrapper';

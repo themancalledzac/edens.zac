@@ -16,7 +16,7 @@
  * - Wrapper and overlay component interfaces
  */
 
-import { type NormalizedContentBlock } from '@/utils/imageUtils';
+import { type NormalizedContentBlock } from '@/app/utils/imageUtils';
 
 // Enhanced original block interface with proper types
 export interface EnhancedOriginalBlock {

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { hasValidAdminAuth,isAdminRoutesEnabled } from '@/utils/admin';
-import { isLocalEnvironment } from '@/utils/environment';
+import { hasValidAdminAuth,isAdminRoutesEnabled } from '@/app/utils/admin';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 /**
  * Global Next.js Middleware
