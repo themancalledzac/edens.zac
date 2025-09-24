@@ -7,7 +7,7 @@ import {
   normalizeContentBlock,
   processContentBlocksForDisplay,
 } from '../../utils/imageUtils';
-import cbStyles from './ContentBlock.module.scss';
+import cbStyles from './ContentBlockComponent.module.scss';
 import { getPositionStyle, ImageBlockRenderer, isImageBlock, TextBlockRenderer } from './index';
 
 export type ContentBlockDisplayOptions = {
