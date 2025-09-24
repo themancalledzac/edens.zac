@@ -8,6 +8,7 @@ const nextConfig = {
     includePaths: [path.join( process.cwd(), 'styles' )],
   },
   images: {
+    unoptimized: true,
     domains: [
       'localhost',
       `${process.env.AWS_CLOUDFRONT_DOMAIN_NAME}.cloudfront.net`,
