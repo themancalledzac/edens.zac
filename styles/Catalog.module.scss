@@ -14,6 +14,7 @@
 .catalogContent {
   display: flex;
   flex-direction: column;
+
   //align-items: center;
 }
 
@@ -24,7 +25,7 @@
   flex-direction: row;
   justify-content: space-between;
 
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     padding-left: 12px;
     padding-right: 12px;
   }
@@ -34,9 +35,10 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+
   //padding-right: 2rem;
 
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     width: 100%;
   }
 }
@@ -50,7 +52,7 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     padding-left: 12px;
     padding-right: 12px;
   }
@@ -68,7 +70,7 @@
   &.half-width {
     width: calc(50% - 0.5rem);
 
-    @media (max-width: 768px) {
+    @media (width <= 768px) {
       width: 100%;
     }
   }
@@ -76,14 +78,13 @@
   &.quarter-width {
     width: calc(25% - 0.5rem);
 
-    @media (max-width: 768px) {
+    @media (width <= 768px) {
       width: calc(50% - 0.5rem);
     }
   }
 }
 
 .catalogHeaderRight {
-
 }
 
 .photoBlockWrapper {
@@ -105,13 +106,14 @@
   border: none;
   width: 100%;
 
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     font-size: 1.8rem;
   }
 }
 
 .catalogTitleEdit {
   @extend .catalogTitle;
+
   font-size: 2.5rem;
 }
 
@@ -124,16 +126,16 @@
   line-height: 1.6;
   color: #333;
 
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     font-size: 0.9rem;
   }
 }
 
 .catalogDescriptionEdit {
   @extend .catalogDescription;
+
   border-bottom: 2px solid grey;
   border-left: 2px solid grey;
-
 }
 
 .catalogLocation {
@@ -144,10 +146,10 @@
 
 .catalogLocationEdit {
   @extend .catalogLocation;
+
   border: none;
   border-bottom: 1px solid grey;
 }
-
 
 .catalogDate {
   font-size: 0.8rem;
@@ -167,6 +169,7 @@
 
 .catalogSelectImagesEdit {
   @extend .catalogSelectImages;
+
   width: 100%;
 }
 
@@ -190,7 +193,7 @@
   max-width: 960px;
   margin: 0 auto;
 
-  @media (max-width: 768px) {
+  @media (width <= 768px) {
     width: 100%;
   }
 }

@@ -3,7 +3,7 @@
 import { CircleX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import InstagramIcon from '@/Components/InstagramIcon/InstagramIcon';
+import InstagramIcon from '@/app/components/InstagramIcon/InstagramIcon';
 
 import { About } from './About';
 import { ContactForm } from './ContactForm';

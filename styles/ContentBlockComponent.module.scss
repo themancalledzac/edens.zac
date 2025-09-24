@@ -34,6 +34,7 @@
 .row :global(.imageSingle) {
   padding-left: 0 !important;
 }
+
 .row :global(.imageRight),
 .row :global(.imageSingle) {
   padding-right: 0 !important;
@@ -56,10 +57,11 @@
 }
 
 /* Desktop styles for text blocks */
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .blockContainer {
     border-radius: 4px;
     border-width: 0;
+
     /* Desktop specific styles can be added here */
   }
 }
@@ -91,7 +93,7 @@
 
 /* Left-aligned text block with date badge - extra top padding to clear the badge */
 .blockInnerLeftWithBadge {
-  padding: 47px 16px 16px 16px;
+  padding: 47px 16px 16px;
   width: 100%;
   height: 100%;
   display: flex;
@@ -107,6 +109,7 @@
 .imageContainer {
   position: relative;
   display: inline-block;
+
   /* Don't override padding - let Home module classes handle it */
 }
 
@@ -170,7 +173,7 @@
 }
 
 /* Desktop styles */
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .textOverlay {
     font-size: 75px;
     padding: 20px;

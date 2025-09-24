@@ -8,7 +8,7 @@
   flex-direction: column;
   padding-top: var(--space-4);
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding-top: var(--space-6);
   }
 }
@@ -21,7 +21,7 @@
   height: calc(100vh - 15rem);
   overflow-y: auto;
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding-right: var(--space-4);
   }
 }

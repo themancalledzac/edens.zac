@@ -1,3 +1,5 @@
+// TODO:deprecate (Phase 5.2 end): Legacy Components retained during hybrid migration
+/*
 import styles from '../../styles/Home.module.scss';
 
 export function Footer() {
@@ -10,3 +12,7 @@ export function Footer() {
     </div>
   );
 }
+*/
+
+// Keep module non-empty to satisfy linting without providing legacy Components.
+// export {};

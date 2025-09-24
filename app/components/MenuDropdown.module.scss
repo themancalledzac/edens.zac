@@ -14,13 +14,12 @@
   width: 100vw;
   height: 100vh;
   background-color: rgba(255, 255, 255, 0.95);
-
   display: flex;
   flex-direction: column;
   overflow-y: auto;
 
   /* Desktop: Half width with right alignment */
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     width: 50vw;
     box-shadow: -8px 0 16px -8px rgba(0, 0, 0, 0.2);
   }
@@ -32,7 +31,7 @@
   padding: var(--page-padding-mobile);
   margin-bottom: var(--page-padding-mobile);
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding: var(--page-padding-desktop);
     margin-bottom: var(--page-padding-desktop);
   }
@@ -49,7 +48,7 @@
     color: #333;
   }
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     width: 4rem;
     height: 4rem;
   }
@@ -59,10 +58,11 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+
   /* Mobile: Same padding as navBarWrapper */
   padding: 0 var(--page-padding-mobile);
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding: 0 var(--page-padding-desktop);
   }
 }
@@ -79,7 +79,7 @@
     border-bottom: none;
   }
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding-right: var(--space-4);
   }
 }
@@ -100,7 +100,7 @@
     color: #333;
   }
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     font-size: var(--text-2xl);
     font-weight: 600;
   }
@@ -109,7 +109,7 @@
 .socialIcons {
   gap: var(--space-4);
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     gap: var(--space-6);
   }
 }
@@ -117,7 +117,9 @@
 .githubIcon {
   cursor: pointer;
   color: black;
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 
   &:hover {
     color: #333;

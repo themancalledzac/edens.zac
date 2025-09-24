@@ -15,7 +15,12 @@
 $bp-sm: 480px;
 $bp-md: 768px;
 $bp-lg: 1024px;
-@mixin up($bp) { @media (min-width: $bp) { @content; } }
+
+@mixin up($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
 
 // Container and layout
 .container {
@@ -26,12 +31,13 @@ $bp-lg: 1024px;
 
 .main {
   flex: 1;
+
   /* Container padding is handled by .contentPadding utility when needed */
   padding: 0;
   margin: 0 auto;
   width: 100%;
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding: var(--page-padding-desktop);
   }
 }
@@ -41,6 +47,7 @@ $bp-lg: 1024px;
 
 .gridContainer {
   display: grid;
+
   /* Mobile base: single column */
   grid-template-columns: 1fr;
   gap: var(--space-5);
@@ -49,7 +56,7 @@ $bp-lg: 1024px;
   margin-right: auto;
 
   /* Desktop version (enhancement): min-width 768px and up */
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     grid-template-columns: repeat(2, 1fr);
     gap: var(--space-6);
   }
@@ -57,6 +64,7 @@ $bp-lg: 1024px;
 
 .gridSection {
   position: relative;
+
   /* Mobile base: square with simpler rendering */
   aspect-ratio: 1 / 1;
   overflow: hidden;
@@ -70,6 +78,7 @@ $bp-lg: 1024px;
 
   @include up($bp-md) {
     aspect-ratio: 1.75 / 1;
+
     /* Re-enable 3D context for parallax on desktop */
     transform-style: preserve-3d;
     perspective: 800px;
@@ -82,6 +91,7 @@ $bp-lg: 1024px;
   overflow: hidden;
   text-decoration: none;
   color: inherit;
+
   /* no aspect-ratio here so height fits image */
 }
 
@@ -101,15 +111,19 @@ $bp-lg: 1024px;
 
 .gridBackground {
   position: absolute;
+
   /* Mobile base: use cover for better visibility */
   inset: 0;
   background-size: 160%;
   background-position: center center;
   background-repeat: no-repeat;
+
   /* Ensure background is visible */
   z-index: 1;
+
   /* Allow JS parallax transforms on desktop; keep none on mobile base */
   transform: none;
+
   // will-change: auto; // commented out per requirement; kept for potential revert
 
   @include up($bp-md) {
@@ -118,6 +132,7 @@ $bp-lg: 1024px;
     background-size: cover;
     background-position: center;
     will-change: transform;
+
     /* Reset transform for JS parallax to work */
     transform: translate3d(0, 0, 0);
   }
@@ -161,7 +176,7 @@ $bp-lg: 1024px;
   line-height: 1.1;
   text-align: left;
 
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     font-size: 65px; /* Match collection page desktop size */
   }
 }
@@ -170,6 +185,7 @@ $bp-lg: 1024px;
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-fg);
+
   /* No default overlay/background; overlay usage is manual per block */
   padding: var(--space-2);
   border-radius: var(--radius-1);
@@ -233,11 +249,11 @@ $bp-lg: 1024px;
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }
 }
-
 
 // Empty state
 .emptyState {
@@ -264,6 +280,7 @@ $bp-lg: 1024px;
 // Placeholder grid for empty state
 .placeholderGrid {
   display: grid;
+
   /* Mobile base */
   grid-template-columns: 1fr;
   gap: var(--space-4);
@@ -271,12 +288,12 @@ $bp-lg: 1024px;
   width: 100%;
 
   /* Desktop version (enhancement): min-width 480px and up */
-  @media (min-width: 480px) {
+  @media (width >= 480px) {
     grid-template-columns: repeat(2, 1fr);
   }
 
   /* Desktop version (enhancement): min-width 768px and up */
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: var(--space-5);
   }
@@ -291,7 +308,7 @@ $bp-lg: 1024px;
   opacity: 0.6;
 
   /* Desktop version (enhancement): min-width 768px and up */
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     aspect-ratio: 1.75 / 1;
   }
 }
@@ -299,7 +316,14 @@ $bp-lg: 1024px;
 .placeholderImage {
   height: 70%;
   background-size: 20px 20px;
-  background: linear-gradient(45deg, #e0e0e0 25%, transparent 25%) linear-gradient(-45deg, #e0e0e0 25%, transparent 25%) linear-gradient(45deg, transparent 75%, #e0e0e0 75%) linear-gradient(-45deg, transparent 75%, #e0e0e0 75%) 0 0, 0 10px, 10px -10px, -10px 0px;
+  background:
+    linear-gradient(45deg, #e0e0e0 25%, transparent 25%)
+      linear-gradient(-45deg, #e0e0e0 25%, transparent 25%)
+      linear-gradient(45deg, transparent 75%, #e0e0e0 75%)
+      linear-gradient(-45deg, transparent 75%, #e0e0e0 75%) 0 0,
+    0 10px,
+    10px -10px,
+    -10px 0;
 }
 
 .placeholderText {
@@ -332,7 +356,7 @@ $bp-lg: 1024px;
   padding: 0;
 
   /* Desktop and up */
-  @media (min-width: 768px) {
+  @media (width >= 768px) {
     padding: var(--space-6);
   }
 }
@@ -345,6 +369,7 @@ $bp-lg: 1024px;
 
 .coverImageTag {
   @extend .contentBlock;
+
   /* Cap width on larger screens to keep parity with grid visuals */
   @include up($bp-md) {
     max-width: 600px;

@@ -1,226 +1,226 @@
-// Main grid section container
-.gridSection {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  aspect-ratio: 1.75 / 1;
-  cursor: pointer;
-  text-decoration: none;
-  color: inherit;
-  overflow: hidden;
-  transition: none;
-  box-shadow: none;
-
-  &:hover {
-    transform: none;
-    box-shadow: none;
-
-    .gridBackground {
-      transform: none;
-    }
-
-    .gridOverlay {
-      background-color: rgba(0, 0, 0, 0.6);
-    }
-  }
-
-  @media (max-width: 768px) {
-    aspect-ratio: 1 / 1;
-    flex: none;
-    width: 100%;
-
-    &:hover {
-      .gridOverlay {
-        background-color: rgba(0, 0, 0, 0.4);
-      }
-    }
-  }
-}
-
-// Background image
-.gridBackground {
-  position: absolute;
-  top: -50%;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  will-change: transform;
-
-  @media (max-width: 768px) {
-    background-attachment: scroll;
-    background-size: 160%;
-    background-position: center center;
-  }
-}
-
-// Overlay for better text readability
-.gridOverlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  transition: background-color 0.4s ease;
-}
-
-// Content wrapper
-.gridContent {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 0;
-  z-index: 2;
-}
-
-// Top content (badge)
-.contentTop {
-  display: flex;
-  justify-content: flex-end;
-  align-items: flex-start;
-  padding: 0.5rem;
-}
-
-// Bottom content (title and text)
-.contentBottom {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.gridTextWrapper {
-  position: absolute;
-  bottom: 1.5rem;
-  left: 1rem;
-  max-width: 80%;
-}
-
-// Typography
-.gridTitle {
-  margin: 0;
-  font-size: 3rem;
-  font-weight: 700;
-  color: white;
-  text-shadow:
-          1px 1px 0 rgba(0, 0, 0, 0.5),
-          2px 2px 0 rgba(0, 0, 0, 0.3);
-  line-height: 1.1;
-  padding: 1rem;
-
-  @media (max-width: 568px) {
-    font-size: 2rem;
-    padding: 1.5rem 0 0 1rem;
-  }
-}
-
-.gridText {
-  margin: 0;
-  color: white;
-  background-color: rgba(0, 0, 0, 0.6);
-  padding: 0.75rem;
-  border-radius: 4px;
-  font-size: 1rem;
-  line-height: 1.5;
-  max-width: 80%;
-
-  @media (max-width: 768px) {
-    font-size: 0.9rem;
-    padding: 0.6rem;
-  }
-}
-
-// Badge styling
-.cardTypeBadge {
-  background: linear-gradient(
-                  135deg,
-                  rgba(255, 255, 255, 0.95) 0%,
-                  rgba(255, 255, 255, 0.85) 100%
-  );
-  color: #333;
-  padding: 0.4rem 0.9rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-
-  @media (max-width: 768px) {
-    font-size: 0.7rem;
-    padding: 0.3rem 0.7rem;
-    letter-spacing: 0.6px;
-  }
-
-  @media (max-width: 480px) {
-    font-size: 0.65rem;
-    padding: 0.25rem 0.6rem;
-  }
-}
-
-// Enhanced accessibility
-@media (prefers-reduced-motion: reduce) {
-  .gridSection,
-  .gridBackground,
-  .gridOverlay,
-  .gridTitle,
-  .cardTypeBadge {
-    transition: none;
-  }
-
-  .gridSection:hover {
-    transform: none;
-
-    .gridBackground {
-      transform: none;
-    }
-
-    .gridTitle {
-      transform: none;
-    }
-
-    .cardTypeBadge {
-      transform: none;
-    }
-  }
-}
-
-// Focus states for keyboard navigation
-.gridSection:focus {
-  outline: 3px solid #007acc;
-  outline-offset: 2px;
-}
-
-// Print styles
-@media print {
-  .gridSection {
-    break-inside: avoid;
-    box-shadow: none;
-    border: 1px solid #ccc;
-  }
-
-  .gridOverlay {
-    background: rgba(255, 255, 255, 0.8);
-  }
-
-  .gridTitle,
-  .gridText {
-    color: #000;
-    text-shadow: none;
-  }
-
-  .cardTypeBadge {
-    background: #f0f0f0;
-    color: #000;
-  }
-}
+//// Main grid section container
+//.gridSection {
+//  position: relative;
+//  flex: 1;
+//  min-width: 0;
+//  aspect-ratio: 1.75 / 1;
+//  cursor: pointer;
+//  text-decoration: none;
+//  color: inherit;
+//  overflow: hidden;
+//  transition: none;
+//  box-shadow: none;
+//
+//  &:hover {
+//    transform: none;
+//    box-shadow: none;
+//
+//    .gridBackground {
+//      transform: none;
+//    }
+//
+//    .gridOverlay {
+//      background-color: rgba(0, 0, 0, 0.6);
+//    }
+//  }
+//
+//  @media (max-width: 768px) {
+//    aspect-ratio: 1 / 1;
+//    flex: none;
+//    width: 100%;
+//
+//    &:hover {
+//      .gridOverlay {
+//        background-color: rgba(0, 0, 0, 0.4);
+//      }
+//    }
+//  }
+//}
+//
+//// Background image
+//.gridBackground {
+//  position: absolute;
+//  top: -50%;
+//  left: 0;
+//  right: 0;
+//  bottom: 0;
+//  background-size: cover;
+//  background-position: center;
+//  background-repeat: no-repeat;
+//  will-change: transform;
+//
+//  @media (max-width: 768px) {
+//    background-attachment: scroll;
+//    background-size: 160%;
+//    background-position: center center;
+//  }
+//}
+//
+//// Overlay for better text readability
+//.gridOverlay {
+//  position: absolute;
+//  top: 0;
+//  left: 0;
+//  right: 0;
+//  bottom: 0;
+//  background-color: rgba(0, 0, 0, 0.4);
+//  transition: background-color 0.4s ease;
+//}
+//
+//// Content wrapper
+//.gridContent {
+//  position: absolute;
+//  top: 0;
+//  left: 0;
+//  right: 0;
+//  bottom: 0;
+//  display: flex;
+//  flex-direction: column;
+//  justify-content: space-between;
+//  padding: 0;
+//  z-index: 2;
+//}
+//
+//// Top content (badge)
+//.contentTop {
+//  display: flex;
+//  justify-content: flex-end;
+//  align-items: flex-start;
+//  padding: 0.5rem;
+//}
+//
+//// Bottom content (title and text)
+//.contentBottom {
+//  display: flex;
+//  flex-direction: column;
+//  gap: 0;
+//}
+//
+//.gridTextWrapper {
+//  position: absolute;
+//  bottom: 1.5rem;
+//  left: 1rem;
+//  max-width: 80%;
+//}
+//
+//// Typography
+//.gridTitle {
+//  margin: 0;
+//  font-size: 3rem;
+//  font-weight: 700;
+//  color: white;
+//  text-shadow:
+//          1px 1px 0 rgba(0, 0, 0, 0.5),
+//          2px 2px 0 rgba(0, 0, 0, 0.3);
+//  line-height: 1.1;
+//  padding: 1rem;
+//
+//  @media (max-width: 568px) {
+//    font-size: 2rem;
+//    padding: 1.5rem 0 0 1rem;
+//  }
+//}
+//
+//.gridText {
+//  margin: 0;
+//  color: white;
+//  background-color: rgba(0, 0, 0, 0.6);
+//  padding: 0.75rem;
+//  border-radius: 4px;
+//  font-size: 1rem;
+//  line-height: 1.5;
+//  max-width: 80%;
+//
+//  @media (max-width: 768px) {
+//    font-size: 0.9rem;
+//    padding: 0.6rem;
+//  }
+//}
+//
+//// Badge styling
+//.cardTypeBadge {
+//  background: linear-gradient(
+//                  135deg,
+//                  rgba(255, 255, 255, 0.95) 0%,
+//                  rgba(255, 255, 255, 0.85) 100%
+//  );
+//  color: #333;
+//  padding: 0.4rem 0.9rem;
+//  border-radius: 20px;
+//  font-size: 0.75rem;
+//  font-weight: 700;
+//  text-transform: uppercase;
+//  letter-spacing: 0.8px;
+//  transition: all 0.3s ease;
+//  backdrop-filter: blur(8px);
+//  border: 1px solid rgba(255, 255, 255, 0.3);
+//  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+//
+//  @media (max-width: 768px) {
+//    font-size: 0.7rem;
+//    padding: 0.3rem 0.7rem;
+//    letter-spacing: 0.6px;
+//  }
+//
+//  @media (max-width: 480px) {
+//    font-size: 0.65rem;
+//    padding: 0.25rem 0.6rem;
+//  }
+//}
+//
+//// Enhanced accessibility
+//@media (prefers-reduced-motion: reduce) {
+//  .gridSection,
+//  .gridBackground,
+//  .gridOverlay,
+//  .gridTitle,
+//  .cardTypeBadge {
+//    transition: none;
+//  }
+//
+//  .gridSection:hover {
+//    transform: none;
+//
+//    .gridBackground {
+//      transform: none;
+//    }
+//
+//    .gridTitle {
+//      transform: none;
+//    }
+//
+//    .cardTypeBadge {
+//      transform: none;
+//    }
+//  }
+//}
+//
+//// Focus states for keyboard navigation
+//.gridSection:focus {
+//  outline: 3px solid #007acc;
+//  outline-offset: 2px;
+//}
+//
+//// Print styles
+//@media print {
+//  .gridSection {
+//    break-inside: avoid;
+//    box-shadow: none;
+//    border: 1px solid #ccc;
+//  }
+//
+//  .gridOverlay {
+//    background: rgba(255, 255, 255, 0.8);
+//  }
+//
+//  .gridTitle,
+//  .gridText {
+//    color: #000;
+//    text-shadow: none;
+//  }
+//
+//  .cardTypeBadge {
+//    background: #f0f0f0;
+//    color: #000;
+//  }
+//}

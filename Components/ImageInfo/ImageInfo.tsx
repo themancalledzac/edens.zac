@@ -1,3 +1,4 @@
+// TODO:deprecate (Phase 5.2 end): Legacy Components retained during hybrid migration
 // import { useEditContext } from '@/context/EditContext';
 //
 // import styles from './ImageInfo.module.scss';
@@ -90,3 +91,6 @@
 //     </div>
 //   );
 // }
+
+// Keep module non-empty to satisfy linting without providing legacy Components.
+export {};

@@ -1,3 +1,4 @@
+// TODO:deprecate (Phase 5.2 end): Legacy Components retained during hybrid migration
 // import React, { ChangeEvent, useEffect } from 'react';
 //
 // import styles from '../../styles/Upload.module.scss';
@@ -95,3 +96,6 @@
 //     </div>
 //   );
 // };
+
+// Keep module non-empty to satisfy linting without providing legacy Components.
+export {};

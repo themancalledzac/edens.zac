@@ -390,7 +390,7 @@ export function getContentBlockAspectRatio(block: AnyContentBlock | NormalizedCo
     if (w > 0 && h > 0) return w / h;
   }
 
-  const b = block as any;
+  const b = block as AnyContentBlock;
   const w = b?.contentWidth ?? b?.width ?? b?.imageWidth;
   const h = b?.contentHeight ?? b?.height ?? b?.imageHeight;
   if (typeof w === 'number' && typeof h === 'number' && w > 0 && h > 0) {
@@ -413,21 +413,21 @@ export function normalizeContentBlock(
   const baseWidth = options?.baseWidth ?? 1000;
   const defaultRating = options?.defaultRating ?? 3;
 
-  const type = (block as any).type ?? (block as any).blockType;
+  const type = (block as AnyContentBlock).type ?? (block as AnyContentBlock).blockType;
 
   if (type === 'IMAGE' || type === 'GIF') {
     const url =
-      (block as any).imageUrlWeb ?? (block as any).webUrl ?? (block as any).url ?? (block as any).src ?? null;
-    const width = (block as any).contentWidth ?? (block as any).width ?? (block as any).imageWidth ?? 0;
-    const height = (block as any).contentHeight ?? (block as any).height ?? (block as any).imageHeight ?? 0;
-    const rating = (block as any).rating ?? defaultRating;
+      (block as AnyContentBlock).imageUrlWeb ?? (block as AnyContentBlock).webUrl ?? (block as AnyContentBlock).url ?? (block as AnyContentBlock).src ?? null;
+    const width = (block as AnyContentBlock).contentWidth ?? (block as AnyContentBlock).width ?? (block as AnyContentBlock).imageWidth ?? 0;
+    const height = (block as AnyContentBlock).contentHeight ?? (block as AnyContentBlock).height ?? (block as AnyContentBlock).imageHeight ?? 0;
+    const rating = (block as AnyContentBlock).rating ?? defaultRating;
 
     // If missing dimensions, fall back to default aspect to avoid next/image issues later.
     const finalWidth = typeof width === 'number' && width > 0 ? width : baseWidth;
     const finalHeight = typeof height === 'number' && height > 0 ? height : Math.round(finalWidth / defaultAspect);
 
     return {
-      id: (block as any).id ?? `${type}-${Math.random().toString(36).slice(2)}`,
+      id: (block as AnyContentBlock).id ?? `${type}-${Math.random().toString(36).slice(2)}`,
       imageUrlWeb: url,
       contentWidth: finalWidth,
       contentHeight: finalHeight,
@@ -437,15 +437,15 @@ export function normalizeContentBlock(
   }
 
   // TEXT/CODE or unknown block types -> synthesize, but respect provided dimensions
-  const rating = (block as any).rating ?? defaultRating;
-  const providedWidth = (block as any).contentWidth ?? (block as any).width;
-  const providedHeight = (block as any).contentHeight ?? (block as any).height;
+  const rating = (block as AnyContentBlock).rating ?? defaultRating;
+  const providedWidth = (block as AnyContentBlock).contentWidth ?? (block as AnyContentBlock).width;
+  const providedHeight = (block as AnyContentBlock).contentHeight ?? (block as AnyContentBlock).height;
 
   const width = typeof providedWidth === 'number' && providedWidth > 0 ? providedWidth : baseWidth;
   const height = typeof providedHeight === 'number' && providedHeight > 0 ? providedHeight : Math.round(width / defaultAspect);
 
   return {
-    id: (block as any).id ?? `${type ?? 'BLOCK'}-${Math.random().toString(36).slice(2)}`,
+    id: (block as AnyContentBlock).id ?? `${type ?? 'BLOCK'}-${Math.random().toString(36).slice(2)}`,
     imageUrlWeb: null, // signifies non-image; renderer can branch
     contentWidth: width,
     contentHeight: height,
@@ -466,8 +466,8 @@ export function chunkContentBlocks(
   if (!blocks || blocks.length === 0) return [];
 
   // Normalize to NormalizedContentBlock
-  const items: NormalizedContentBlock[] = (blocks as any[]).map(b =>
-    (b as any).contentWidth !== undefined && (b as any).contentHeight !== undefined && 'imageUrlWeb' in (b as any)
+  const items: NormalizedContentBlock[] = (blocks as (AnyContentBlock | NormalizedContentBlock)[]).map(b =>
+    (b as Partial<NormalizedContentBlock>).contentWidth !== undefined && (b as Partial<NormalizedContentBlock>).contentHeight !== undefined && 'imageUrlWeb' in (b as Partial<NormalizedContentBlock>)
       ? (b as NormalizedContentBlock)
       : normalizeContentBlock(b as AnyContentBlock)
   );

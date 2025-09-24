@@ -87,7 +87,7 @@ export const handleFileSelect = (
   if (!files) return;
 
   // Update selectedFiles state
-  setSelectedFiles((prev: any) => [...prev, ...files]);
+  setSelectedFiles((prev: File[]) => [...prev, ...files]);
 
   // Create preview data for each file
   const newPreviews: PreviewImage[] = files.map(file => {
@@ -105,7 +105,7 @@ export const handleFileSelect = (
   // send API call from here
   // onImagesSelected(files);
 
-  setPreviewData((prev: any) => [...prev, ...newPreviews]);
+  setPreviewData((prev: PreviewImage[]) => [...prev, ...newPreviews]);
 };
 
 export const uploadSelectedFiles = async (
