@@ -7,7 +7,6 @@ import {
   fetchCollectionBySlug as fetchCollectionBySlugNormalized,
 } from '@/lib/api/contentCollections';
 import { fetchPostJsonApi, fetchReadApi } from '@/lib/api/core';
-import { type Blog } from '@/types/Blog';
 import {
   type ContentCollectionCreateDTO,
   type ContentCollectionModel,
@@ -53,38 +52,6 @@ export async function fetchHomePage(
     console.error('Error fetching home page:', error);
     return null;
   }
-}
-
-/**
- * Fetches collections by type
- * Endpoint: GET /api/read/collections/type/{type}
- *
- * @param type - The collection type to fetch
- * @returns Array of HomeCardModel collections
- */
-export async function fetchCollectionsByType(type: string): Promise<HomeCardModel[] | null> {
-  try {
-    const endpoint = `/collections/type/${type}`;
-    const response = await fetchReadApi<HomeCardModel[]>(endpoint);
-
-    if (response && response.length > 0) {
-      return response;
-    }
-    return [];
-  } catch (error) {
-    console.error(`Error fetching collections by type "${type}":`, error);
-    return null;
-  }
-}
-
-/**
- * Fetches a specific blog by ID
- *
- * @param id - The blog id
- * @returns The blog data
- */
-export async function fetchBlogById(id: string): Promise<Blog> {
-  return fetchReadApi<Blog>(`/blog/byId/${id}`);
 }
 
 /**

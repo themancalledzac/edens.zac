@@ -101,7 +101,7 @@ const fetchWriteBase = async <T>(endpoint: string, options: RequestInit): Promis
 };
 
 // For JSON-based updates (PUT)
-export async function fetchJsonApi<T>(endpoint: string, body: any): Promise<T> {
+export async function fetchJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
   return await fetchWriteBase<T>(endpoint, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -110,7 +110,7 @@ export async function fetchJsonApi<T>(endpoint: string, body: any): Promise<T> {
 }
 
 // For JSON-based creates (POST)
-export async function fetchPostJsonApi<T>(endpoint: string, body: any): Promise<T> {
+export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
   return await fetchWriteBase<T>(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

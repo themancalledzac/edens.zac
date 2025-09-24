@@ -9,8 +9,8 @@ import { type BadgeOverlayProps } from './types';
 export function BadgeOverlay({ badges }: BadgeOverlayProps): React.ReactElement {
   return (
     <>
-      {badges.map((badge, index) => (
-        <div key={`badge-${index}`} className={badge.className}>
+      {badges.map((badge) => (
+        <div key={`badge-${badge.position}-${badge.text}`} className={badge.className}>
           {badge.text}
         </div>
       ))}

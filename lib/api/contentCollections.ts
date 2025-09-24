@@ -207,7 +207,7 @@ export async function fetchCollections(page = 0, size = 10): Promise<ContentColl
     if (res.status === 404) return [];
 
     // Parse once, then normalize shape. Backend may return an array or a paginated object.
-    const data = await safeJson<any>(res);
+    const data = await safeJson<unknown>(res);
 
     // Dev-friendly logging without leaking secrets; helpful for shape debugging.
     try {
@@ -221,7 +221,7 @@ export async function fetchCollections(page = 0, size = 10): Promise<ContentColl
 
     if (Array.isArray(data)) return data as ContentCollection[];
     if (data && typeof data === 'object') {
-      const maybe = (data as any).content ?? (data as any).collections ?? (data as any).items ?? null;
+      const maybe = (data as Record<string, unknown>).content ?? (data as Record<string, unknown>).collections ?? (data as Record<string, unknown>).items ?? null;
       if (Array.isArray(maybe)) return maybe as ContentCollection[];
     }
 
@@ -237,32 +237,33 @@ export async function fetchCollections(page = 0, size = 10): Promise<ContentColl
  * Fetch Home Page collections using the new endpoint.
  * Accepts maxPriority (default 2) and an optional limit.
  * Uses the collections-index cache tag for revalidation.
+ * TODO: Decide on where to keep the ACTUAL fetchHomePageCOllections
  */
-export async function fetchHomePageCollections(
-  { maxPriority = 1, limit }: { maxPriority?: number; limit?: number } = {}
-): Promise<ContentCollection[]> {
-  // Endpoint should be /api/read/collections/homePage with optional query params
-  const url = toURL('/collections/homePage', { maxPriority, limit });
-  try {
-    const res = await fetch(url, {
-      next: { revalidate: 3600, tags: [tagForIndex()] },
-    } as ReadonlyFetchInit);
-    if (res.status === 404) return [];
-
-    const data = await safeJson<any>(res);
-
-    // Normalize possible shapes to an array
-    if (Array.isArray(data)) return data as ContentCollection[];
-    if (data && typeof data === 'object') {
-      const maybe = (data as any).content ?? (data as any).collections ?? (data as any).items ?? null;
-      if (Array.isArray(maybe)) return maybe as ContentCollection[];
-    }
-
-    return [];
-  } catch {
-    return [];
-  }
-}
+// export async function fetchHomePageCollections(
+//   { maxPriority = 1, limit }: { maxPriority?: number; limit?: number } = {}
+// ): Promise<ContentCollection[]> {
+//   // Endpoint should be /api/read/collections/homePage with optional query params
+//   const url = toURL('/collections/homePage', { maxPriority, limit });
+//   try {
+//     const res = await fetch(url, {
+//       next: { revalidate: 3600, tags: [tagForIndex()] },
+//     } as ReadonlyFetchInit);
+//     if (res.status === 404) return [];
+//
+//     const data = await safeJson<unknown>(res);
+//
+//     // Normalize possible shapes to an array
+//     if (Array.isArray(data)) return data as ContentCollection[];
+//     if (data && typeof data === 'object') {
+//       const maybe = (data as Record<string, unknown>).content ?? (data as Record<string, unknown>).collections ?? (data as Record<string, unknown>).items ?? null;
+//       if (Array.isArray(maybe)) return maybe as ContentCollection[];
+//     }
+//
+//     return [];
+//   } catch {
+//     return [];
+//   }
+// }
 
 /**
  * Normalized shape used by viewers to avoid leaking backend pagination internals.

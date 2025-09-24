@@ -11,7 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
  * @param delay - Delay in milliseconds before execution
  * @returns Debounced version of the callback function
  */
-function useDebounce<T extends (...args: any[]) => any>(
+function useDebounce<T extends (...args: never[]) => void>(
   callback: T,
   delay: number
 ): T {
