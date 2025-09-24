@@ -1,0 +1,41 @@
+.image {
+  margin: 0;
+}
+
+.imageLeft {
+  @extend .image;
+
+  padding-right: 0.4rem;
+}
+
+.imageRight {
+  @extend .image;
+
+  padding-left: 0.4rem;
+}
+
+.imageMiddle {
+  @extend .image;
+
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+}
+
+.imageSingle {
+  @extend .image;
+
+  padding-left: 0;
+  padding-right: 0;
+}
+
+@media (width <= 768px) {
+  .image {
+    border-width: var(--space-mobile-border) 0 0 0;
+    border-style: solid;
+    border-color: white;
+    margin: 0;
+    width: 100%;
+    height: auto;
+    padding: 0;
+  }
+}
