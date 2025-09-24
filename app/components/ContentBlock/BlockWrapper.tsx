@@ -1,7 +1,6 @@
 import React from 'react';
 
-import cbStyles from '@/app/components/ContentBlock/ContentBlockComponent.module.scss';
-
+import cbStyles from './ContentBlockComponent.module.scss';
 import { type BlockWrapperProps } from './types';
 
 /**

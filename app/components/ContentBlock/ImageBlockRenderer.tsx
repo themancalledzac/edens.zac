@@ -1,10 +1,9 @@
 import Image from 'next/image';
 import React from 'react';
 
-import cbStyles from '@/app/components/ContentBlock/ContentBlockComponent.module.scss';
-
 import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import { BlockWrapper } from './BlockWrapper';
+import cbStyles from './ContentBlockComponent.module.scss';
 import { type ImageBlockRendererProps } from './types';
 import { getOriginalBlock } from './utils';
 
