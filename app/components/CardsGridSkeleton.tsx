@@ -32,7 +32,7 @@ export function CardsGridSkeleton() {
     <div className={styles.gridContainer}>
       {skeletonCards.map((card, i) => (
         <GridSection
-          key={`skeleton-${i}`}
+          key={`skeleton-${card.id}`}
           card={card}
           desktopRowIndex={Math.floor(i / 2)}
           mobileRowIndex={i}

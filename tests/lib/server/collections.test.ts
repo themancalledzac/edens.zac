@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), revalidatePath: vi.fn() }));
 
 import { revalidatePath, revalidateTag } from 'next/cache';
+
 import { createCollection, deleteCollection, updateCollection, uploadContentFiles } from '@/lib/server/collections';
 
 const originalEnv = process.env;
@@ -19,9 +20,9 @@ describe('lib/server/collections (server-only mutations)', () => {
   });
 
   it('revalidates index, type, slug and path after create', async () => {
-    (global.fetch as any).mockResolvedValueOnce(new Response(JSON.stringify({ id: '1', slug: 'abc', type: 'BLOG' }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response(JSON.stringify({ id: '1', slug: 'abc', type: 'BLOG' }), { status: 200, headers: { 'content-type': 'application/json' } }));
 
-    const res = await createCollection({ title: 't', type: 'BLOG' as any });
+    const res = await createCollection({ title: 't', type: 'BLOG' as const });
     expect(res.slug).toBe('abc');
 
     expect(revalidateTag).toHaveBeenCalledWith('collections-index');
@@ -31,7 +32,7 @@ describe('lib/server/collections (server-only mutations)', () => {
   });
 
   it('revalidates on update', async () => {
-    (global.fetch as any).mockResolvedValueOnce(new Response(JSON.stringify({ id: '1', slug: 'abc', type: 'PORTFOLIO' }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response(JSON.stringify({ id: '1', slug: 'abc', type: 'PORTFOLIO' }), { status: 200, headers: { 'content-type': 'application/json' } }));
 
     await updateCollection('1', { title: 'x' });
     expect(revalidateTag).toHaveBeenCalledWith('collections-index');
@@ -40,14 +41,14 @@ describe('lib/server/collections (server-only mutations)', () => {
   });
 
   it('revalidates index on delete', async () => {
-    (global.fetch as any).mockResolvedValueOnce(new Response('', { status: 200, headers: { 'content-type': 'application/json' } }));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response('', { status: 200, headers: { 'content-type': 'application/json' } }));
 
     await deleteCollection('1');
     expect(revalidateTag).toHaveBeenCalledWith('collections-index');
   });
 
   it('revalidates slug and type on upload', async () => {
-    (global.fetch as any).mockResolvedValueOnce(new Response(JSON.stringify({ slug: 'abc', type: 'ART_GALLERY' }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response(JSON.stringify({ slug: 'abc', type: 'ART_GALLERY' }), { status: 200, headers: { 'content-type': 'application/json' } }));
 
     const file = new File(['x'], 'x.txt');
     await uploadContentFiles('1', [file]);

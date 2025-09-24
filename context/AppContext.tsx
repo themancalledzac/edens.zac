@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+import { useDebounce } from '@/app/utils/debounce';
 import { type Catalog } from '@/types/Catalog';
 import { type Image } from '@/types/Image';
-import { useDebounce } from '@/app/utils/debounce';
 
 /**
  * Global app state, device info, current view data
@@ -42,18 +42,17 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   const [isMobile, setIsMobile] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const checkIsMobile = () => {
+    const width = window.innerWidth ||
+      document.documentElement.clientWidth ||
+      document.body.clientWidth;
+    setIsMobile(width <= 768); // You can adjust this threshold
+  };
+
+  // Debounced resize handler for better performance
+  const debouncedCheckIsMobile = useDebounce(checkIsMobile, 100);
 
   useEffect(() => {
-    const checkIsMobile = () => {
-      const width = window.innerWidth ||
-        document.documentElement.clientWidth ||
-        document.body.clientWidth;
-      setIsMobile(width <= 768); // You can adjust this threshold
-    };
-
-    // Debounced resize handler for better performance
-    const debouncedCheckIsMobile = useDebounce(checkIsMobile, 100);
-
     // Check initially
     checkIsMobile();
 
@@ -62,7 +61,7 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
     // Cleanup
     return () => window.removeEventListener('resize', debouncedCheckIsMobile);
-  }, []);
+  }, [debouncedCheckIsMobile]);
 
   const value: AppContextState = {
     photoDataList,

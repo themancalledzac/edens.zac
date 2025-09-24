@@ -23,6 +23,8 @@ export default tseslint.config(
       'public/**',
       'coverage/**',
       '**/*.d.ts',
+      'Components/**',
+      'pages_old/**',
     ],
   },
 

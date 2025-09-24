@@ -21,41 +21,41 @@ describe('lib/api/contentCollections (RSC friendly)', () => {
 
   it('adds Next.js cache tags for index list', async () => {
     const data = [];
-    (global.fetch as any).mockResolvedValueOnce(new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } }));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } }));
 
     await fetchCollections(0, 10);
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    const [, init] = (global.fetch as any).mock.calls[0];
+    const [, init] = (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(init?.next).toEqual({ revalidate: 3600, tags: [collectionCacheTags.tagForIndex()] });
   });
 
   it('adds Next.js cache tags for slug fetch', async () => {
     const payload = { id: '1', slug: 'abc', title: 't', type: 'BLOG', page: { page:0, size:1, totalPages:1, totalBlocks:0 }, blocks: [] };
-    (global.fetch as any).mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200, headers: { 'content-type': 'application/json' } }));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response(JSON.stringify(payload), { status: 200, headers: { 'content-type': 'application/json' } }));
 
     await fetchCollectionBySlug('abc', 0, 30);
-    const [, init] = (global.fetch as any).mock.calls[0];
+    const [, init] = (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(init?.next?.tags).toEqual(['collection-abc']);
   });
 
   it('adds Next.js cache tags for type fetch', async () => {
-    const data: any[] = [];
-    (global.fetch as any).mockResolvedValueOnce(new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const data = [];
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response(JSON.stringify(data), { status: 200, headers: { 'content-type': 'application/json' } }));
 
     await fetchCollectionsByType('BLOG', 0, 10);
-    const [, init] = (global.fetch as any).mock.calls[0];
+    const [, init] = (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(init?.next?.tags).toEqual(['collections-type-BLOG']);
   });
 
   it('calls notFound() on 404s', async () => {
-    (global.fetch as any).mockResolvedValueOnce(new Response('not found', { status: 404, headers: { 'content-type': 'text/plain' } }));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response('not found', { status: 404, headers: { 'content-type': 'text/plain' } }));
 
     await expect(fetchCollectionBySlug('missing')).rejects.toThrow('NOT_FOUND_THROW');
   });
 
   it('throws on non-JSON responses', async () => {
-    (global.fetch as any).mockResolvedValueOnce(new Response('html', { status: 200, headers: { 'content-type': 'text/html' } }));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(new Response('html', { status: 200, headers: { 'content-type': 'text/html' } }));
 
     await expect(fetchCollections()).rejects.toThrow('Unexpected non-JSON response');
   });

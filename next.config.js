@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import path from 'path';
 
 /** @type {import('next').NextConfig} */
@@ -19,7 +20,7 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
   // Add webpack configuration to handle caching
-  webpack: ( config, { dev, isServer } ) => {
+  webpack: (config) => {
     // Custom webpack config if needed
     return config;
   },

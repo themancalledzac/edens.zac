@@ -10,7 +10,7 @@ import { ApiError } from '@/lib/api/core';
  */
 type GetServerSidePropsFunction = (
   context: GetServerSidePropsContext,
-) => Promise<GetServerSidePropsResult<any>>;
+) => Promise<GetServerSidePropsResult<Record<string, unknown>>>;
 
 /**
  * Wrap a getServerSideProps function with standard error handling

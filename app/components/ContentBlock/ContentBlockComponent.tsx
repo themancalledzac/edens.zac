@@ -97,11 +97,11 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
   return (
     <div className={cbStyles.wrapper}>
       <div className={cbStyles.inner} style={{ width: '100%' }}>
-        {rows.map((row, rowIndex) => {
+        {rows.map((row, _rowIndex) => {
           const totalInRow = row.length;
 
           return (
-            <div key={`row-${rowIndex}`} className={isMobile ? cbStyles.rowMobile : cbStyles.row}>
+            <div key={`row-${row.map(item => item.block.id).join('-')}`} className={isMobile ? cbStyles.rowMobile : cbStyles.row}>
               {row.map((item, index) => {
                 const className = getPositionStyle(index, totalInRow);
                 const width = Math.round(item.width);
