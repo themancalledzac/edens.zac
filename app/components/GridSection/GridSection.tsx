@@ -1,17 +1,18 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import React from 'react';
 
+import { ParallaxImageRenderer } from '@/app/components/ContentBlock/ParallaxImageRenderer';
+import { useParallax } from '@/app/hooks/useParallax';
+import pageStyles from '@/app/page.module.scss';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
-
-import { useParallax } from '../../hooks/useParallax';
-import styles from '../../page.module.scss';
+import { buildParallaxImageFromHomeCard } from '@/app/utils/parallaxImageUtils';
 
 interface GridSectionProps {
   card: HomeCardModel;
   desktopRowIndex: number;
   mobileRowIndex: number;
+  skeleton?: boolean;
 }
 
 /**
@@ -34,66 +35,53 @@ interface GridSectionProps {
  * @param props.mobileRowIndex - Row position for mobile layout (1 column)
  * @returns Client component rendering interactive card with parallax effects
  */
-export function GridSection({ card, desktopRowIndex, mobileRowIndex }: GridSectionProps) {
-  const { title, coverImageUrl, slug, cardType } = card;
-  const [isMobile, setIsMobile] = useState(false);
+export function GridSection({
+  card,
+  desktopRowIndex: _desktopRowIndex,
+  mobileRowIndex: _mobileRowIndex,
+  skeleton: _skeleton = false,
+}: GridSectionProps) {
+  // Convert HomeCardModel to ParallaxImageContentBlock
+  const parallaxBlock = buildParallaxImageFromHomeCard(card);
 
-  useEffect(() => {
-    // Debounced resize handler for better performance - reusing the debounce pattern
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    const checkScreenSize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
-    const debouncedCheckScreenSize = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(checkScreenSize, 100); // 100ms debounce like other components
-    };
-
-    checkScreenSize(); // Initial check
-    window.addEventListener('resize', debouncedCheckScreenSize);
-
-    return () => {
-      window.removeEventListener('resize', debouncedCheckScreenSize);
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, []);
-
-  const currentRowIndex = isMobile ? mobileRowIndex : desktopRowIndex;
-
+  // Setup parallax effect for this grid section
   const parallaxRef = useParallax({
-    rowId: `row-${currentRowIndex}`,
-    speed: -0.1,
-    selector: '.parallax-bg'
+    mode: 'single',
+    speed: parallaxBlock.parallaxSpeed || -0.1,
+    selector: '.parallax-bg',
+    enableParallax: parallaxBlock.enableParallax,
+    threshold: 0.1,
+    rootMargin: '50px',
   });
 
   const getHref = () => {
-    if (cardType === 'catalog') {
-      return `/catalog/${slug}`;
-    } else if (cardType === 'blog') {
-      return `/blog/${slug}`;
+    if (card.cardType === 'catalog') {
+      return `/catalog/${card.slug}`;
+    } else if (card.cardType === 'blog') {
+      return `/blog/${card.slug}`;
     } else {
-      return `/${cardType}/${slug}`;
+      return `/${card.cardType}/${card.slug}`;
     }
   };
 
   return (
-    <div className={styles.gridSection} ref={parallaxRef}>
-      <Link href={getHref()}>
-        <div
-          className={`${styles.gridBackground} parallax-bg`}
-          style={{ backgroundImage: `url(${coverImageUrl})` }}
+    <div className={pageStyles.gridSection}>
+      <a href={getHref()} ref={parallaxRef}>
+        <ParallaxImageRenderer
+          block={parallaxBlock}
+          className={pageStyles.gridBackground}
         />
-        <div className={styles.gridContent}>
-          <div className={styles.gridHeader}>
-            <h1 className={styles.gridTitle}>{title}</h1>
+        <div className={pageStyles.gridContent}>
+          <div className={pageStyles.gridHeader}>
+            <h1 className={pageStyles.gridTitle}>{card.title}</h1>
           </div>
-          <div className={styles.cardTypeBadge}>
-            {cardType}
-          </div>
+          {card.cardType && (
+            <div className={`${pageStyles.cardTypeBadge}`}>
+              {card.cardType}
+            </div>
+          )}
         </div>
-      </Link>
+      </a>
     </div>
   );
 }

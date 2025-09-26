@@ -55,7 +55,14 @@ export const BlockWrapper = forwardRef<HTMLDivElement, BlockWrapperProps>(functi
     >
       {/* Inner container to constrain content within padding boundaries */}
       <div style={{ width: '100%', height: '100%', boxSizing: 'border-box' }}>
-        {children}
+        {hasOverlays ? (
+          // Add imageWrapper for proper overlay positioning on images with overlays
+          <div className={cbStyles.imageWrapper}>
+            {children}
+          </div>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );

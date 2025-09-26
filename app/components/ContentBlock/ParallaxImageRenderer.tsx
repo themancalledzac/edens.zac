@@ -5,113 +5,84 @@ import React from 'react';
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
 
-import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
-import {
-  BaseContentBlockRender,
-  type BaseContentBlockRendererProps,
-} from './BaseContentBlockRenderer';
-import cbStyles from './ContentBlockComponent.module.scss';
+import variantStyles from './ParallaxImageRenderer.module.scss';
 
 /**
- * Props for ParallaxImageContentBlockRenderer
+ * Variant types for different parallax image use cases
  */
-export interface ParallaxImageContentBlockRendererProps extends BaseContentBlockRendererProps {
+export type ParallaxImageVariant = 'home-grid' | 'content-block';
+
+/**
+ * Props for ParallaxImageRenderer - pure parallax image that fills its container
+ * All layout, sizing, and overlay logic handled by parent components
+ */
+export interface ParallaxImageContentBlockRendererProps {
   block: ParallaxImageContentBlock;
+  className?: string;
+  parallaxRef?: React.RefObject<HTMLDivElement>;
 }
 
 /**
- * Parallax-enabled image block renderer component
+ * Pure parallax image component that fills its container
  *
- * Extends the BaseContentBlockRenderer with parallax scrolling effects
- * for cover images and other special image blocks. Uses the useParallax
- * hook in single-element mode for optimal performance.
+ * Renders a parallax-enabled img element that adapts to any container size.
+ * All layout, sizing, overlays, and click handling managed by parent components.
+ * Applies proper scaling and positioning for parallax effect.
  */
 export function ParallaxImageRenderer({
   block,
-  width,
-  height,
   className = '',
-  isMobile = false,
-  onClick,
+  parallaxRef
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
-  // Setup parallax effect for the background image
-  // Single point of control for mobile/desktop speed differences
-  const baseSpeed = block.parallaxSpeed || -0.1;
-  const effectiveSpeed = isMobile ? baseSpeed * 0.8 : baseSpeed;
 
-  const parallaxRef = useParallax({
-    mode: 'single',
-    speed: effectiveSpeed,
-    selector: '.parallax-bg',
-    enableParallax: block.enableParallax,
-    threshold: 0.1,
-    rootMargin: '50px',
-    disableDeviceAttenuation: true, // Bypass useParallax mobile attenuation
-  });
+  const { imageUrlWeb, enableParallax, overlayText } = block;
 
-  const renderParallaxContent = (parallaxBlock: ParallaxImageContentBlock): React.ReactElement => {
-    // Extract overlay and badge data
-    const { overlayText, cardTypeBadge, dateBadge, imageUrlWeb, enableParallax } = parallaxBlock;
+  // Determine if this is likely a home grid image based on className
+  const isGridBackground = className.includes('gridBackground');
 
-    // Check if parallax is enabled for this render
-    const isParallaxEnabled = enableParallax;
+  // Calculate IMG sizing and positioning for parallax
+  const getImageStyles = () => {
+    const baseStyles = {
+      display: 'block' as const,
+      objectFit: 'cover' as const,
+      willChange: enableParallax ? 'transform' : 'auto',
+    };
 
-    // Create the parallax background element with conditional styling
-    const parallaxBackground = (
-      <div
-        className="parallax-bg"
-        style={{
-          position: 'absolute',
-          top: isParallaxEnabled ? '-10%' : '0', // Normal positioning when parallax disabled
-          left: isParallaxEnabled ? '-5%' : '0',
-          right: isParallaxEnabled ? '-5%' : '0',
-          bottom: isParallaxEnabled ? '-10%' : '0', // Normal positioning when parallax disabled
-          backgroundImage: `url(${imageUrlWeb})`,
-          backgroundSize: isParallaxEnabled ? '110%' : '100%', // Normal scaling when parallax disabled
-          backgroundPosition: isParallaxEnabled ? '50% 100%' : '50% 80%', // Start at bottom when parallax enabled
-          backgroundRepeat: 'no-repeat',
-          willChange: isParallaxEnabled ? 'transform' : 'auto',
-          cursor: onClick ? 'pointer' : 'default',
-        }}
-        onClick={onClick}
-      />
-    );
-
-    // Create badge configurations
-    const badges = createBadgeConfigs(cardTypeBadge, dateBadge);
-
-    // Render content with parallax background and overlays
-    return (
-      <div
-        ref={parallaxRef}
-        className={cbStyles.imageWrapper}
-        style={{
-          position: 'relative',
-          overflow: 'hidden',
-          width: '100%',
-          height: '100%',
-        }}
-      >
-        {parallaxBackground}
-        {overlayText && (
-          <div className={cbStyles.textOverlay} style={{ zIndex: 2 }}>
-            {overlayText}
-          </div>
-        )}
-        <BadgeOverlay badges={badges} />
-      </div>
-    );
+    if (isGridBackground) {
+      // Grid images need extra content for parallax movement
+      // Use approach similar to original: more scaling on mobile, positioning on desktop
+      return {
+        ...baseStyles,
+        width: '100%',
+        height: '130%', // 30% extra content for parallax movement
+        position: 'absolute' as const,
+        top: '-15%', // Start positioned higher to align bottom properly
+        left: '0',
+        // Additional mobile scaling will be handled by transform during parallax
+      };
+    } else {
+      // Collection images - use same approach as grid for consistent parallax
+      return {
+        ...baseStyles,
+        width: '100%',
+        height: '130%', // 30% extra content for parallax movement like grid images
+        position: 'absolute' as const,
+        top: '-15%', // Start positioned higher to align bottom properly
+        left: '0',
+      };
+    }
   };
 
+  // Pure parallax IMG element that fills its container
+  // Note: parallaxRef should be attached to parent container by the caller
   return (
-    <BaseContentBlockRender
-      block={block}
-      width={width}
-      height={height}
-      className={className}
-      isMobile={isMobile}
-      onClick={onClick}
-      renderContent={() => renderParallaxContent(block)}
+    <img
+      src={imageUrlWeb}
+      alt={overlayText || 'Parallax image'}
+      className={`parallax-bg ${variantStyles.parallaxImage} ${className}`}
+      style={getImageStyles()}
+      loading="lazy"
+      decoding="async"
     />
   );
 }

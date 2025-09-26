@@ -4,7 +4,7 @@ import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentCollectionNormalized } from '@/app/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
 import { type AnyContentBlock, type ParallaxImageContentBlock, type TextContentBlock } from '@/app/types/ContentBlock';
-import { isImageBlock } from '@/app/utils/contentBlockTypeGuards';
+import { buildParallaxImageContentBlock } from '@/app/utils/parallaxImageUtils';
 
 import styles from '../../page.module.scss';
 import ContentBlocksClient from './ContentBlocksClient';
@@ -16,48 +16,6 @@ interface ContentCollectionPageProps {
   }>;
 }
 
-/**
- * Build Cover Image Block
- *
- * Creates a synthetic cover image block from collection data, either using
- * the defined cover image or falling back to the first image block. Adds
- * overlay text and card type badge for consistent display formatting.
- *
- * @param content - Normalized collection data
- * @param cardType - Collection type for badge display
- * @returns Formatted cover image block or null if no image available
- */
-function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: string): ParallaxImageContentBlock | null {
-  // If coverImage exists and it's an image block, use it
-  if (content.coverImage && isImageBlock(content.coverImage)) {
-    return {
-      ...content.coverImage,
-      enableParallax: true, // Enable parallax for cover images
-      parallaxSpeed: -0.1, // Default parallax speed
-      overlayText: content.title, // Add collection title as overlay text
-      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
-      orderIndex: -2, // Ensure it appears first
-      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
-    };
-  }
-
-  // Fallback: use the first IMAGE block from content.blocks
-  const firstImageBlock = content.blocks.find(isImageBlock);
-  if (firstImageBlock) {
-    return {
-      ...firstImageBlock,
-      enableParallax: true, // Enable parallax for cover images
-      parallaxSpeed: -0.1, // Default parallax speed
-      overlayText: content.title, // Add collection title as overlay text
-      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
-      orderIndex: -2, // Ensure it appears first
-      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
-    };
-  }
-
-  // No cover image available
-  return null;
-}
 
 /**
  * Build Metadata Text Block
@@ -140,7 +98,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
 
   // Build synthetic blocks for unified layout
   const heroBlocks: AnyContentBlock[] = [];
-  const coverBlock = buildCoverImageBlock(content, cardType);
+  const coverBlock = buildParallaxImageContentBlock(content, cardType);
   if (coverBlock) heroBlocks.push(coverBlock);
   heroBlocks.push(buildMetadataTextBlock(content, coverBlock));
   const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks as AnyContentBlock[] || [])];

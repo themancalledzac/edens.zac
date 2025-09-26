@@ -22,6 +22,7 @@ export interface BaseContentBlockRendererProps {
  */
 export interface BaseContentBlockRenderProps extends BaseContentBlockRendererProps {
   renderContent: (block: AnyContentBlock) => React.ReactElement;
+  customRef?: React.RefObject<HTMLDivElement>;
 }
 
 export function BaseContentBlockRender({
@@ -31,7 +32,8 @@ export function BaseContentBlockRender({
   className = '',
   isMobile = false,
   onClick,
-  renderContent
+  renderContent,
+  customRef
 }: BaseContentBlockRenderProps): React.ReactElement {
 
   const hasOverlays = !!(block.overlayText || block.cardTypeBadge || block.dateBadge);
@@ -46,6 +48,7 @@ export function BaseContentBlockRender({
       onClick={onClick}
       hasOverlays={hasOverlays}
       isTextBlock={isTextBlock}
+      ref={customRef}
     >
       {renderContent(block)}
     </BlockWrapper>

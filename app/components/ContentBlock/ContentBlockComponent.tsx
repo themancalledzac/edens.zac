@@ -9,14 +9,17 @@ import {
   isGifBlock,
   isImageBlock,
   isParallaxImageBlock,
-  isTextBlock} from '@/app/utils/contentBlockTypeGuards';
+  isTextBlock,
+} from '@/app/utils/contentBlockTypeGuards';
 
+import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import { CodeContentBlockRenderer } from './CodeContentBlockRenderer';
 import cbStyles from './ContentBlockComponent.module.scss';
 import { GifContentBlockRenderer } from './GifContentBlockRenderer';
 import { ImageContentBlockRenderer } from './ImageBlockRenderer';
 import { getPositionStyle } from './index';
 import { ParallaxImageRenderer } from './ParallaxImageRenderer';
+import { useParallax } from '@/app/hooks/useParallax';
 import { TextBlockRenderer } from './TextBlockRenderer';
 
 export type ContentBlockDisplayOptions = {
@@ -73,7 +76,10 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
           const totalInRow = row.length;
 
           return (
-            <div key={`row-${row.map(item => item.block.id).join('-')}`} className={isMobile ? cbStyles.rowMobile : cbStyles.row}>
+            <div
+              key={`row-${row.map(item => item.block.id).join('-')}`}
+              className={isMobile ? cbStyles.rowMobile : cbStyles.row}
+            >
               {row.map((item, index) => {
                 const className = getPositionStyle(index, totalInRow);
                 const width = Math.round(item.width);
@@ -81,77 +87,76 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                 const block = item.block;
 
                 // Type-safe dispatching to appropriate renderer
-                const commonProps = {
-                  width,
-                  height,
-                  className,
-                  isMobile,
-                };
+                const baseProps = { key: block.id, width, height, className, isMobile };
 
-                // Check for parallax image first (most specific)
+                // Renderer lookup map - check most specific types first
                 if (isParallaxImageBlock(block)) {
+                  // Handle parallax image with proper container structure for collections
+                  const badges = createBadgeConfigs(block.cardTypeBadge, block.dateBadge);
+
+                  // Setup parallax for this image block
+                  const parallaxRef = useParallax({
+                    mode: 'single',
+                    speed: block.parallaxSpeed || -0.1,
+                    selector: '.parallax-bg',
+                    enableParallax: block.enableParallax,
+                    threshold: 0.1,
+                    rootMargin: '50px',
+                  });
+
                   return (
-                    <ParallaxImageRenderer
+                    <div
                       key={block.id}
-                      {...commonProps}
-                      block={block}
-                    />
+                      className={`${className} ${cbStyles.imageContainer}`}
+                      style={{
+                        width: isMobile ? '100%' : width,
+                        height: isMobile ? 'auto' : height,
+                        aspectRatio: isMobile ? width / height : undefined,
+                        cursor: 'default',
+                        boxSizing: 'border-box',
+                        position: 'relative',
+                      }}
+                    >
+                      <div
+                        className={cbStyles.imageWrapper}
+                        ref={parallaxRef}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          boxSizing: 'border-box',
+                          position: 'relative',
+                          overflow: 'hidden'
+                        }}
+                      >
+                        <ParallaxImageRenderer
+                          block={block}
+                          className=""
+                        />
+                        {block.overlayText && (
+                          <div className={cbStyles.textOverlay}>
+                            {block.overlayText}
+                          </div>
+                        )}
+                        <BadgeOverlay badges={badges} />
+                      </div>
+                    </div>
                   );
                 }
+                if (isImageBlock(block))
+                  return <ImageContentBlockRenderer {...baseProps} block={block} />;
+                if (isGifBlock(block))
+                  return <GifContentBlockRenderer {...baseProps} block={block} />;
+                if (isCodeBlock(block))
+                  return <CodeContentBlockRenderer {...baseProps} block={block} />;
+                if (isTextBlock(block)) return <TextBlockRenderer {...baseProps} block={block} />;
 
-                // Check for regular image blocks
-                if (isImageBlock(block)) {
-                  return (
-                    <ImageContentBlockRenderer
-                      key={block.id}
-                      {...commonProps}
-                      block={block}
-                    />
-                  );
-                }
-
-                // Check for GIF blocks
-                if (isGifBlock(block)) {
-                  return (
-                    <GifContentBlockRenderer
-                      key={block.id}
-                      {...commonProps}
-                      block={block}
-                    />
-                  );
-                }
-
-                // Check for code blocks
-                if (isCodeBlock(block)) {
-                  return (
-                    <CodeContentBlockRenderer
-                      key={block.id}
-                      {...commonProps}
-                      block={block}
-                    />
-                  );
-                }
-
-                // Check for text blocks
-                if (isTextBlock(block)) {
-                  return (
-                    <TextBlockRenderer
-                      key={block.id}
-                      {...commonProps}
-                      block={block}
-                    />
-                  );
-                }
-
-                // Fallback for unknown block types - render as text
-                console.warn('Unknown block type:', (block as AnyContentBlock).blockType, 'rendering as text');
-                return (
-                  <TextBlockRenderer
-                    key={block.id}
-                    {...commonProps}
-                    block={block as unknown as any} // Fallback cast for unknown block types
-                  />
+                // Fallback for unknown block types
+                console.warn(
+                  'Unknown block type:',
+                  (block as AnyContentBlock).blockType,
+                  'rendering as text'
                 );
+                return <TextBlockRenderer {...baseProps} block={block as any} />;
               })}
             </div>
           );

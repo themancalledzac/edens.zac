@@ -36,6 +36,7 @@ export function CardsGridSkeleton() {
           card={card}
           desktopRowIndex={Math.floor(i / 2)}
           mobileRowIndex={i}
+          skeleton={true}
         />
       ))}
     </div>

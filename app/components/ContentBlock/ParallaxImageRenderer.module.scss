@@ -1,0 +1,205 @@
+/*
+  ParallaxImageRenderer variant-specific styles
+  Consolidated styling for different parallax image use cases
+*/
+
+/* SCSS breakpoints and mixins */
+$bp-sm: 480px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+
+@mixin up($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
+
+/* Base parallax container - shared across all variants */
+.parallaxContainer {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+/* Parallax image base styles */
+.parallaxImage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: inherit;
+}
+
+/* Clean text overlay without background for parallax images */
+.cleanTextOverlay {
+  background: none !important;
+  /* Keep the text styling but remove the semi-transparent background */
+}
+
+/* Content overlay container - shared */
+.contentOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* HOME GRID VARIANT - Transfer original GridSection styling */
+.homeGridContainer {
+  @extend .parallaxContainer;
+
+  /* Mobile base: square with simpler rendering */
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+
+  // Disable parallax on mobile for performance
+  transform-style: flat;
+  perspective: none;
+
+  @include up($bp-md) {
+    aspect-ratio: 1.75 / 1;
+
+    /* Re-enable 3D context for parallax on desktop */
+    transform-style: preserve-3d;
+    perspective: 800px;
+  }
+}
+
+.homeGridBackground {
+  @extend .parallaxImage;
+
+  /* Mobile base: use cover for better visibility - ORIGINAL GRID STYLING */
+  background-size: 160%;
+  background-position: center center;
+
+  /* Allow JS parallax transforms on desktop; keep none on mobile base */
+  transform: none;
+
+  /* CSS-only fade-in animation to hide layout shifts */
+  opacity: 0;
+  animation: fadeIn 0.1s ease-out 0.1s forwards;
+
+  @include up($bp-md) {
+    top: -15%;
+    bottom: -15%;
+    background-size: cover;
+    background-position: center;
+    will-change: transform;
+
+    /* Reset transform for JS parallax to work */
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.homeGridContent {
+  @extend .contentOverlay;
+}
+
+/* Header row for title; provides spacing without affecting the badge position */
+.homeGridHeader {
+  padding: var(--space-4);
+  pointer-events: auto;
+}
+
+.homeGridTitle {
+  margin: 0;
+  font-family: var(--font-serif), serif; /* Match collection page serif font */
+  font-size: 65px; /* Match collection page mobile size */
+  font-weight: 700;
+  color: var(--color-bg); /* Match collection page white text */
+  line-height: 1.1;
+  text-align: left;
+
+  @media (width >= 768px) {
+    font-size: 65px; /* Match collection page desktop size */
+  }
+}
+
+/* Position override for global cardTypeBadge in home grid */
+.homeGridBadgePosition {
+  /* Override global cardTypeBadge position (top-left) to top-right */
+  left: auto !important;
+  right: 0;
+
+  /* Enable pointer events for home grid badges */
+  pointer-events: auto;
+
+  /* Match the background image fade-in timing */
+  opacity: 0;
+  animation: fadeIn 0.4s ease-out 0.1s forwards;
+}
+
+/* COLLECTION COVER VARIANT - Current collection page styling */
+.collectionCoverContainer {
+  @extend .parallaxContainer;
+}
+
+.collectionCoverBackground {
+  @extend .parallaxImage;
+
+  /* Use the existing ParallaxImageRenderer styling for collections */
+  /* This will be set via inline styles based on enableParallax prop */
+}
+
+.collectionCoverContent {
+  @extend .contentOverlay;
+}
+
+/* CONTENT BLOCK VARIANT - Standard content block styling */
+.contentBlockContainer {
+  @extend .parallaxContainer;
+}
+
+.contentBlockBackground {
+  @extend .parallaxImage;
+}
+
+.contentBlockContent {
+  @extend .contentOverlay;
+}
+
+/* SKELETON STATE STYLES */
+.skeleton {
+  /* Additional skeleton-specific container styling if needed */
+  pointer-events: none;
+}
+
+.skeletonBackground {
+  /* Override background image with skeleton styling */
+  /* Add subtle animation for skeleton loading effect */
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite ease-in-out;
+}
+
+.skeletonSpinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

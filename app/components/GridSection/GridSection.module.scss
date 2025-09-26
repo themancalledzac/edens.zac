@@ -1,0 +1,110 @@
+/*
+  GridSection styles - home page grid container styling
+  Transferred from ParallaxImageRenderer homeGrid variant
+*/
+
+/* SCSS breakpoints and mixins */
+$bp-sm: 480px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+
+@mixin up($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
+
+/* GRID SECTION - Main grid section container */
+.gridSection {
+  position: relative;
+  overflow: hidden;
+
+  /* Mobile base: square with simpler rendering */
+  aspect-ratio: 1 / 1;
+  width: 100vw;
+
+  // Disable parallax on mobile for performance
+  transform-style: flat;
+  perspective: none;
+
+  @include up($bp-md) {
+    aspect-ratio: 1.75 / 1;
+    width: 50vw; /* Half viewport width for desktop grid */
+
+    /* Re-enable 3D context for parallax on desktop */
+    transform-style: preserve-3d;
+    perspective: 800px;
+  }
+}
+
+/* GRID BACKGROUND - Class for ParallaxImageRenderer */
+.gridBackground {
+  /* Any specific styling for the parallax background in grid context */
+}
+
+/* GRID CONTENT - Overlay container for title and badges */
+.gridContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* GRID HEADER - Title container */
+.gridHeader {
+  padding: var(--space-4);
+  pointer-events: auto;
+}
+
+/* GRID TITLE - Main title styling */
+.gridTitle {
+  margin: 0;
+  font-family: var(--font-serif), serif;
+  font-size: 65px;
+  font-weight: 700;
+  color: var(--color-bg); /* White text */
+  line-height: 1.1;
+  text-align: center; /* Match collection page center alignment */
+  background: rgba(89, 89, 89, 0.4); /* Semi-transparent background to match collection page */
+  padding: 16px; /* Match collection page padding */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @media (width >= 768px) {
+    font-size: 65px;
+    padding: 20px; /* Match collection page desktop padding */
+  }
+}
+
+/* GRID BADGE POSITION - CardType badge positioning */
+.gridBadgePosition {
+  /* Override global cardTypeBadge position to top-right */
+  position: absolute !important;
+  top: 0;
+  right: 0;
+  left: auto !important;
+  pointer-events: auto;
+
+  /* Match the background image fade-in timing */
+  opacity: 0;
+  animation: fadeIn 0.4s ease-out 0.1s forwards;
+}
+
+/* SKELETON STATE */
+.skeleton {
+  pointer-events: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

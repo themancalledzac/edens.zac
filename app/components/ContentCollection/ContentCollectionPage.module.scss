@@ -1,6 +1,6 @@
 /*
   ContentCollectionPage styles
-  Shared between home page and other collection type pages
+  Consolidated component that handles both page layout and cards grid
 */
 
 .container {
@@ -19,5 +19,22 @@
 
   @media (width >= 768px) {
     padding: var(--page-padding-desktop);
+  }
+}
+
+.gridContainer {
+  display: grid;
+
+  /* Mobile base: single column */
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  margin-top: 0;
+  margin-left: auto;
+  margin-right: auto;
+
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (width >= 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-6);
   }
 }
