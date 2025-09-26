@@ -39,6 +39,7 @@ async function ContentCollectionContent({ cardsPromise }: ContentCollectionConte
 
 interface ContentCollectionPageProps {
   cardsPromise: Promise<HomeCardModel[] | null>;
+  collectionType?: string;
 }
 
 /**
@@ -56,9 +57,10 @@ interface ContentCollectionPageProps {
  * - SiteHeader for page navigation
  *
  * @param cardsPromise - Promise resolving to array of home card data
+ * @param collectionType - Optional collection type for future customization
  * @returns Server component with streamed content loading
  */
-export default function ContentCollectionPage({ cardsPromise }: ContentCollectionPageProps) {
+export default function ContentCollectionPage({ cardsPromise, collectionType }: ContentCollectionPageProps) {
   return (
     <div className={styles.container}>
       <SiteHeader />

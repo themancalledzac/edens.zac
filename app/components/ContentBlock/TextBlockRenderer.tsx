@@ -1,26 +1,25 @@
 import React from 'react';
 
-import { type NormalizedContentBlock } from '@/app/utils/imageUtils';
+import { type TextContentBlock } from '@/app/types/ContentBlock';
 
 import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
-import { BlockWrapper } from './BlockWrapper';
+import {
+  BaseContentBlockRender,
+  type BaseContentBlockRendererProps,
+} from './BaseContentBlockRenderer';
 import cbStyles from './ContentBlockComponent.module.scss';
-import { type EnhancedOriginalBlock, type TextBlockRendererProps } from './types';
 
 /**
- * Utility function to safely extract original block data
+ * Props for TextContentBlockRenderer
  */
-function getOriginalBlock(block: NormalizedContentBlock): EnhancedOriginalBlock {
-  return (block.originalBlock as EnhancedOriginalBlock) || {};
+export interface TextContentBlockRendererProps extends BaseContentBlockRendererProps {
+  block: TextContentBlock;
 }
 
 /**
  * Determine the appropriate CSS class based on text alignment and badge presence
  */
-function getTextBlockClass(
-  isLeftAligned: boolean,
-  hasBadge: boolean
-): string {
+function getTextBlockClass(isLeftAligned: boolean, hasBadge: boolean): string {
   if (!isLeftAligned) {
     return cbStyles.blockInner || ''; // default centered
   }
@@ -30,53 +29,57 @@ function getTextBlockClass(
 
 /**
  * Specialized component for rendering text blocks with badges and proper alignment
+ * Extends BaseContentBlockRenderer for consistent behavior
  */
 export function TextBlockRenderer({
   block,
   width,
   height,
-  className,
-  isMobile = false
-}: TextBlockRendererProps): React.ReactElement {
-  const originalBlock = getOriginalBlock(block);
+  className = '',
+  isMobile = false,
+}: TextContentBlockRendererProps): React.ReactElement {
+  const renderTextContent = (textBlock: TextContentBlock): React.ReactElement => {
+    // Extract text content - use content field from proper type
+    const displayText = textBlock.content || textBlock.title || 'Text Block';
+    const isLeftAligned = textBlock.align === 'left';
+    const { dateBadge, format } = textBlock;
+    const hasBadge = !!dateBadge;
 
-  // Extract text content and configuration
-  const previewText = (originalBlock.text ||
-                      originalBlock.content ||
-                      originalBlock.title ||
-                      'Text/Code Block') as string;
+    // Create badge configurations
+    const badges = createBadgeConfigs(undefined, dateBadge);
 
-  const isLeftAligned = originalBlock.align === 'left';
-  const { dateBadge } = originalBlock;
-  const hasBadge = !!dateBadge;
+    // Determine the appropriate inner class
+    const innerClass = getTextBlockClass(isLeftAligned, hasBadge);
 
-  // Create badge configurations
-  const badges = createBadgeConfigs(undefined, dateBadge);
-
-  // Determine the appropriate inner class
-  const innerClass = getTextBlockClass(isLeftAligned, hasBadge);
-
-  // Create the text content with proper styling and positioning
-  const content = (
-    <div
-      className={cbStyles.blockContainer}
-      style={{ position: hasBadge ? 'relative' : undefined }}
-    >
-      <BadgeOverlay badges={badges} />
-      <div className={innerClass}>
-        <span>{previewText}</span>
+    // Create the text content with proper styling and positioning
+    return (
+      <div
+        className={cbStyles.blockContainer}
+        style={{ position: hasBadge ? 'relative' : undefined }}
+      >
+        <BadgeOverlay badges={badges} />
+        <div className={innerClass}>
+          {format === 'html' ? (
+            <div dangerouslySetInnerHTML={{ __html: displayText }} />
+          ) : (format === 'markdown' ? (
+            // TODO: Add markdown parser when needed
+            <span>{displayText}</span>
+          ) : (
+            <span>{displayText}</span>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <BlockWrapper
+    <BaseContentBlockRender
+      block={block}
       width={width}
       height={height}
       className={className}
       isMobile={isMobile}
-    >
-      {content}
-    </BlockWrapper>
+      renderContent={() => renderTextContent(block)}
+    />
   );
 }

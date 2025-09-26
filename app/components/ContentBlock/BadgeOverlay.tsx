@@ -1,6 +1,16 @@
 import React from 'react';
 
-import { type BadgeOverlayProps } from './types';
+// Badge configuration interface
+export interface BadgeConfig {
+  text: string;
+  position: 'top-left' | 'top-right';
+  className: string;
+}
+
+// Badge overlay props
+export interface BadgeOverlayProps {
+  badges: BadgeConfig[];
+}
 
 /**
  * Reusable component for rendering badges with proper positioning

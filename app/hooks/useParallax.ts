@@ -8,6 +8,9 @@ interface ParallaxOptions {
   rootMargin?: string;
   selector?: string;
   rowId?: string;
+  mode?: 'single' | 'row';
+  enableParallax?: boolean;
+  disableDeviceAttenuation?: boolean;
 }
 
 // Global storage for row-based parallax management
@@ -125,8 +128,9 @@ function createRowManager(rowId: string, options: ParallaxOptions) {
  * useParallax Hook
  *
  * Performance-optimized parallax effect hook that creates smooth background
- * movement based on scroll position. Supports row-based batching for multiple
- * elements and respects user motion preferences and device capabilities.
+ * movement based on scroll position. Supports both individual elements and
+ * row-based batching for multiple elements. Respects user motion preferences
+ * and device capabilities.
  *
  * @dependencies
  * - React useEffect and useRef for lifecycle and DOM manipulation
@@ -137,17 +141,29 @@ function createRowManager(rowId: string, options: ParallaxOptions) {
  * @param options.speed - Parallax movement speed multiplier (default: -0.1)
  * @param options.selector - CSS selector for parallax background element (default: '.parallax-bg')
  * @param options.rowId - Optional row identifier for batched processing
+ * @param options.mode - Explicit mode: 'single' or 'row' (auto-detected from rowId if not provided)
+ * @param options.enableParallax - Enable/disable parallax effect (default: true)
  * @param options.threshold - IntersectionObserver threshold (default: 0.1)
  * @param options.rootMargin - IntersectionObserver root margin (default: '50px')
+ * @param options.disableDeviceAttenuation - Skip mobile/desktop speed attenuation (default: false)
  * @returns Ref to attach to the container element
  */
 export function useParallax(options: ParallaxOptions = {}) {
-  const { speed = -0.1, selector = '.parallax-bg', rowId, threshold, rootMargin } = options;
+  const {
+    speed = -0.1,
+    selector = '.parallax-bg',
+    rowId,
+    mode,
+    enableParallax = true,
+    threshold,
+    rootMargin,
+    disableDeviceAttenuation = false,
+  } = options;
 
   const elementRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !elementRef.current) return;
+    if (typeof window === 'undefined' || !elementRef.current || !enableParallax) return;
 
     const element = elementRef.current;
     const parallaxBg = element.querySelector(selector) as HTMLElement;
@@ -160,11 +176,22 @@ export function useParallax(options: ParallaxOptions = {}) {
     // Compute effective speed based on device and user preferences
     const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const isMobileMq = window.matchMedia('(max-width: 768px)').matches;
-    const attenuation = prefersReduced ? 0.2 : (isMobileMq ? 0.4 : 1);
-    const effectiveSpeed = speed * attenuation;
 
-    // Use individual observer if no rowId provided (legacy fallback behavior)
-    if (!rowId) {
+    // Apply attenuation unless explicitly disabled
+    let effectiveSpeed = speed;
+    if (!disableDeviceAttenuation) {
+      const attenuation = prefersReduced ? 0.2 : (isMobileMq ? 0.4 : 1);
+      effectiveSpeed = speed * attenuation;
+    } else if (prefersReduced) {
+      // Still respect reduced motion preference even when device attenuation is disabled
+      effectiveSpeed = speed * 0.2;
+    }
+
+    // Determine parallax mode: individual or row-based
+    const useIndividualMode = mode === 'single' || (!rowId && mode !== 'row');
+
+    // Use individual observer for single element mode
+    if (useIndividualMode) {
       const rafRef = { current: null as number | null };
       const lastOffsetRef = { current: undefined as number | undefined };
 
@@ -233,7 +260,12 @@ export function useParallax(options: ParallaxOptions = {}) {
       };
     }
 
-    // Row-based management
+    // Row-based management (rowId must be defined at this point)
+    if (!rowId) {
+      console.warn('useParallax: rowId is required for row-based mode');
+      return;
+    }
+
     let manager = rowManagers.get(rowId);
     if (!manager) {
       manager = createRowManager(rowId, options);
@@ -247,8 +279,14 @@ export function useParallax(options: ParallaxOptions = {}) {
     observer?.observe(element);
 
     return () => {
-      if (manager) {
-        const { elements: cleanupElements, parallaxElements: cleanupParallaxElements, observer: cleanupObserver, isScrolling, rafId } = manager;
+      if (manager && rowId) {
+        const {
+          elements: cleanupElements,
+          parallaxElements: cleanupParallaxElements,
+          observer: cleanupObserver,
+          isScrolling,
+          rafId,
+        } = manager;
 
         cleanupElements.delete(element);
         cleanupParallaxElements.delete(element);
@@ -269,7 +307,7 @@ export function useParallax(options: ParallaxOptions = {}) {
         }
       }
     };
-  }, [speed, selector, rowId, threshold, rootMargin]);
+  }, [speed, selector, rowId, mode, enableParallax, threshold, rootMargin]);
 
   return elementRef;
 }

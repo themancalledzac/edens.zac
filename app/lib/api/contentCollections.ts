@@ -23,77 +23,14 @@
  */
 import { notFound } from 'next/navigation';
 
+import { type CollectionType, type ContentBlock } from '@/app/types/ContentBlock';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isProduction } from '@/app/utils/environment';
-
-/** Distinct collection categories supported by the system. */
-export type CollectionType = 'BLOG' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'PORTFOLIO';
-
-/** Content block kinds supported by the frontend. */
-export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF';
 
 export interface ConfigJson {
   showDates: boolean;
   displayMode: string;
 }
-
-/** Base shape for all content blocks based on backend model. */
-export interface BaseBlock {
-  id: number;
-  blockType: ContentBlockType;
-  orderIndex: number;
-  title?: string;
-  caption?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-  [key: string]: unknown;
-}
-
-/** Image content block (matches Data/getBlogById.json). */
-export interface ImageBlock extends BaseBlock {
-  blockType: 'IMAGE';
-  imageUrlWeb: string;
-  imageUrlRaw?: string | null;
-  imageWidth?: number;
-  imageHeight?: number;
-  iso?: number;
-  author?: string | null;
-  rating?: number;
-  lens?: string | null;
-  blackAndWhite?: boolean;
-  isFilm?: boolean;
-  shutterSpeed?: string | null;
-  rawFileName?: string | null;
-  camera?: string | null;
-  focalLength?: string | null;
-  location?: string | null;
-  createDate?: string | null;
-  fstop?: string | null;
-}
-
-/** Text content block placeholder for future support. */
-export interface TextBlock extends BaseBlock {
-  blockType: 'TEXT';
-  content?: string;
-  format?: 'markdown' | 'html' | 'plain';
-}
-
-/** Code content block placeholder for future support. */
-export interface CodeBlock extends BaseBlock {
-  blockType: 'CODE';
-  content?: string;
-  language?: string;
-}
-
-/** GIF content block placeholder for future support. */
-export interface GifBlock extends BaseBlock {
-  blockType: 'GIF';
-  imageUrlWeb: string;
-  imageUrlRaw?: string | null;
-}
-
-/** Union of all supported content blocks. */
-export type ContentBlock = ImageBlock | TextBlock | CodeBlock | GifBlock | BaseBlock;
 
 /**
  * Fully-hydrated collection returned from the backend read endpoints.

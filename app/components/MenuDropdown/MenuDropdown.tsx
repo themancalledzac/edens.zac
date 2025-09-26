@@ -39,45 +39,41 @@ export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
-  const handleItemClick = (action: () => void) => {
-    action();
-    onClose();
+  // Navigation handlers with automatic close
+  const handleNavigation = {
+    blogs: () => {
+      window.location.href = '/blogs';
+      onClose();
+    },
+    instagram: () => {
+      window.open('https://instagram.com/themancalledzac', '_blank', 'noopener,noreferrer');
+      onClose();
+    },
+    github: () => {
+      window.open('https://github.com/themancalledzac', '_blank', 'noopener,noreferrer');
+      onClose();
+    }
   };
 
-  const handleInstagramClick = () => {
-    window.open('https://instagram.com/themancalledzac', '_blank', 'noopener,noreferrer');
-    onClose();
+  // Toggle handlers for expandable sections
+  const handleToggle = {
+    about: () => {
+      setShowAbout(prev => !prev);
+      setShowContactForm(false);
+    },
+    contact: () => {
+      setShowContactForm(prev => !prev);
+      setShowAbout(false);
+    }
   };
 
-  const handleGithubClick = () => {
-    window.open('https://github.com/themancalledzac', '_blank', 'noopener,noreferrer');
-    onClose();
-  };
-
-  const handleBlogsClick = () => {
-    window.location.href = '/blogs';
-    onClose();
-  };
-
-  const handleAboutClick = () => {
-    // Toggle About, close Contact if open
-    setShowAbout(prev => !prev);
-    setShowContactForm(false);
-  };
-
-  const handleContactClick = () => {
-    // Toggle Contact, close About if open
-    setShowContactForm(prev => !prev);
-    setShowAbout(false);
-  };
-
+  // Internal navigation handlers
   const handleBackToMenu = () => {
     setShowContactForm(false);
     setShowAbout(false);
   };
 
   const handleContactSubmit = () => {
-    // Close dropdown after successful contact form submission
     onClose();
   };
 
@@ -141,7 +137,7 @@ export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
         <div className={styles.dropdownMenuItem}>
           <h2
             className={styles.dropdownMenuOptions}
-            onClick={handleAboutClick}
+            onClick={handleToggle.about}
           >
             About
           </h2>
@@ -154,7 +150,7 @@ export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
         <div className={styles.dropdownMenuItem}>
           <h2
             className={styles.dropdownMenuOptions}
-            onClick={handleContactClick}
+            onClick={handleToggle.contact}
           >
             Contact
           </h2>
@@ -170,7 +166,7 @@ export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
         <div className={styles.dropdownMenuItem}>
           <h2
             className={styles.dropdownMenuOptions}
-            onClick={() => handleItemClick(handleBlogsClick)}
+            onClick={handleNavigation.blogs}
           >
             Blogs
           </h2>
@@ -179,11 +175,11 @@ export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
         <div className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons}`}>
           <InstagramIcon
             size={32}
-            onClick={() => handleItemClick(handleInstagramClick)}
+            onClick={handleNavigation.instagram}
           />
           <GitHubIcon
             size={32}
-            onClick={() => handleItemClick(handleGithubClick)}
+            onClick={handleNavigation.github}
             className={styles.githubIcon}
           />
         </div>

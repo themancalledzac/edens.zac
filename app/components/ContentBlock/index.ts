@@ -2,19 +2,22 @@
  * ContentBlock Module Exports
  *
  * Central export hub for the ContentBlock system providing unified access to all
- * components, utilities, and type definitions. Organizes the modular ContentBlock
- * architecture with clear separation of concerns and streamlined imports.
- *
- * @exports
- * - Core rendering components (BlockWrapper, ImageBlockRenderer, TextBlockRenderer)
- * - Badge system components and utilities (BadgeOverlay, createBadgeConfigs)
- * - Utility functions for block processing (isImageBlock, getPositionStyle, getOriginalBlock)
- * - Complete TypeScript type definitions and interfaces
+ * components, utilities, and type definitions.
  */
+import styles from './ContentBlock.module.scss';
 
 export { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 export { BlockWrapper } from './BlockWrapper';
-export { ImageBlockRenderer } from './ImageBlockRenderer';
+export { ImageContentBlockRenderer } from './ImageBlockRenderer';
+export { ParallaxImageRenderer } from './ParallaxImageRenderer';
 export { TextBlockRenderer } from './TextBlockRenderer';
-export type * from './types';
-export { getOriginalBlock,getPositionStyle, isImageBlock } from './utils';
+
+/**
+ * Get position-based CSS class for block layout
+ */
+export function getPositionStyle(index: number, total: number): string {
+  if (total === 1) return styles.imageSingle || '';
+  if (index === 0) return styles.imageLeft || '';
+  if (index === total - 1) return styles.imageRight || '';
+  return styles.imageMiddle || '';
+}
