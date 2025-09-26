@@ -3,7 +3,6 @@
 import React from 'react';
 
 import { ParallaxImageRenderer } from '@/app/components/ContentBlock/ParallaxImageRenderer';
-import { useParallax } from '@/app/hooks/useParallax';
 import pageStyles from '@/app/page.module.scss';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { buildParallaxImageFromHomeCard } from '@/app/utils/parallaxImageUtils';
@@ -44,16 +43,6 @@ export function GridSection({
   // Convert HomeCardModel to ParallaxImageContentBlock
   const parallaxBlock = buildParallaxImageFromHomeCard(card);
 
-  // Setup parallax effect for this grid section
-  const parallaxRef = useParallax({
-    mode: 'single',
-    speed: parallaxBlock.parallaxSpeed || -0.1,
-    selector: '.parallax-bg',
-    enableParallax: parallaxBlock.enableParallax,
-    threshold: 0.1,
-    rootMargin: '50px',
-  });
-
   const getHref = () => {
     if (card.cardType === 'catalog') {
       return `/catalog/${card.slug}`;
@@ -66,21 +55,12 @@ export function GridSection({
 
   return (
     <div className={pageStyles.gridSection}>
-      <a href={getHref()} ref={parallaxRef}>
+      <a href={getHref()}>
         <ParallaxImageRenderer
           block={parallaxBlock}
           className={pageStyles.gridBackground}
+          cardTypeBadge={card.cardType?.toUpperCase()}
         />
-        <div className={pageStyles.gridContent}>
-          <div className={pageStyles.gridHeader}>
-            <h1 className={pageStyles.gridTitle}>{card.title}</h1>
-          </div>
-          {card.cardType && (
-            <div className={`${pageStyles.cardTypeBadge}`}>
-              {card.cardType}
-            </div>
-          )}
-        </div>
       </a>
     </div>
   );

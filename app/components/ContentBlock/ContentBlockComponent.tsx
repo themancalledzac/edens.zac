@@ -12,14 +12,12 @@ import {
   isTextBlock,
 } from '@/app/utils/contentBlockTypeGuards';
 
-import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import { CodeContentBlockRenderer } from './CodeContentBlockRenderer';
 import cbStyles from './ContentBlockComponent.module.scss';
 import { GifContentBlockRenderer } from './GifContentBlockRenderer';
 import { ImageContentBlockRenderer } from './ImageBlockRenderer';
 import { getPositionStyle } from './index';
 import { ParallaxImageRenderer } from './ParallaxImageRenderer';
-import { useParallax } from '@/app/hooks/useParallax';
 import { TextBlockRenderer } from './TextBlockRenderer';
 
 export type ContentBlockDisplayOptions = {
@@ -92,18 +90,6 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                 // Renderer lookup map - check most specific types first
                 if (isParallaxImageBlock(block)) {
                   // Handle parallax image with proper container structure for collections
-                  const badges = createBadgeConfigs(block.cardTypeBadge, block.dateBadge);
-
-                  // Setup parallax for this image block
-                  const parallaxRef = useParallax({
-                    mode: 'single',
-                    speed: block.parallaxSpeed || -0.1,
-                    selector: '.parallax-bg',
-                    enableParallax: block.enableParallax,
-                    threshold: 0.1,
-                    rootMargin: '50px',
-                  });
-
                   return (
                     <div
                       key={block.id}
@@ -119,7 +105,6 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                     >
                       <div
                         className={cbStyles.imageWrapper}
-                        ref={parallaxRef}
                         style={{
                           width: '100%',
                           height: '100%',
@@ -131,13 +116,9 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                         <ParallaxImageRenderer
                           block={block}
                           className=""
+                          cardTypeBadge={block.cardTypeBadge}
+                          dateBadge={block.dateBadge}
                         />
-                        {block.overlayText && (
-                          <div className={cbStyles.textOverlay}>
-                            {block.overlayText}
-                          </div>
-                        )}
-                        <BadgeOverlay badges={badges} />
                       </div>
                     </div>
                   );
