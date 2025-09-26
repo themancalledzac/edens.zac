@@ -115,7 +115,7 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                       >
                         <ParallaxImageRenderer
                           block={block}
-                          className=""
+                          blockType="collection"
                           cardTypeBadge={block.cardTypeBadge}
                           dateBadge={block.dateBadge}
                         />
