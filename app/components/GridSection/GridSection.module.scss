@@ -42,7 +42,6 @@ $bp-lg: 1024px;
   /* Any specific styling for the parallax background in grid context */
 }
 
-
 /* SKELETON STATE */
 .skeleton {
   pointer-events: none;
@@ -53,6 +52,7 @@ $bp-lg: 1024px;
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }

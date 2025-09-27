@@ -88,7 +88,7 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                 const baseProps = { key: block.id, width, height, className, isMobile };
 
                 // Renderer lookup map - check most specific types first
-                if (isParallaxImageBlock(block)) {
+                if (isParallaxImageBlock(block) && block.enableParallax) {
 
                   console.log(block.collectionDate);
                   console.log(JSON.stringify(block));
@@ -133,14 +133,6 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                 if (isCodeBlock(block))
                   return <CodeContentBlockRenderer {...baseProps} block={block} />;
                 if (isTextBlock(block)) return <TextBlockRenderer {...baseProps} block={block} />;
-
-                // Fallback for unknown block types
-                console.warn(
-                  'Unknown block type:',
-                  (block as AnyContentBlock).blockType,
-                  'rendering as text'
-                );
-                return <TextBlockRenderer {...baseProps} block={block as any} />;
               })}
             </div>
           );

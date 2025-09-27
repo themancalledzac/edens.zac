@@ -42,12 +42,15 @@ export const BlockWrapper = forwardRef<HTMLDivElement, BlockWrapperProps>(functi
         // Image blocks with overlays on mobile: full width with aspect ratio
         // Desktop: calculated width and height for all blocks
         // Mobile without overlays: no fixed dimensions (responsive)
-        width: isMobile ?
-          (isTextBlock ? undefined : (hasOverlays ? '100%' : undefined)) :
-          width,
-        height: isMobile ?
-          (isTextBlock ? undefined : (hasOverlays ? undefined : undefined)) :
-          height,
+        width: (() => {
+          if (!isMobile) return width;
+          if (isTextBlock) return;
+          return hasOverlays ? '100%' : undefined;
+        })(),
+        height: (() => {
+          if (!isMobile) return height;
+          return;
+        })(),
         aspectRatio: isMobile && hasOverlays && !isTextBlock ? aspectRatio : undefined,
         cursor: onClick ? 'pointer' : 'default',
         boxSizing: 'border-box' // Ensure padding is included in width/height

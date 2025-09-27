@@ -37,20 +37,3 @@ export const DEFAULT_PARALLAX_CONFIG = {
   rootMargin: PARALLAX_CONSTANTS.DEFAULT_ROOT_MARGIN,
 } as const;
 
-/**
- * Get parallax configuration for specific block type
- *
- * @param customSpeed - Optional custom speed override
- * @param enableParallax - Whether parallax is enabled
- * @returns Configured parallax options
- */
-export function getParallaxConfig(
-  customSpeed?: number,
-  enableParallax = true
-) {
-  return {
-    ...DEFAULT_PARALLAX_CONFIG,
-    speed: customSpeed || PARALLAX_CONSTANTS.DEFAULT_SPEED,
-    enableParallax,
-  };
-}

@@ -2,7 +2,6 @@
 
 import React from 'react';
 
-import { getParallaxConfig } from '@/app/constants/parallax';
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
 
@@ -10,15 +9,6 @@ import { type BadgeContentType, BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentBlockComponent.module.scss';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 
-/**
- * Get dynamic image styles for parallax behavior
- * Only returns styles that need to be dynamic based on props
- */
-function getImageStyles(enableParallax: boolean) {
-  return {
-    willChange: enableParallax ? 'transform' : 'auto',
-  };
-}
 
 /**
  * Props for ParallaxImageRenderer - complete parallax image component with overlays
@@ -45,17 +35,12 @@ export function ParallaxImageRenderer({
   cardTypeBadge,
   dateBadge,
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
-  const { imageUrlWeb, enableParallax, overlayText, parallaxSpeed, collectionDate } = block;
+  const { imageUrlWeb, overlayText, collectionDate } = block;
   const dateSimple = new Date(collectionDate || new Date()).toLocaleDateString();
 
-  // Get complete configuration for this block type
-  const config = getParallaxConfig(parallaxSpeed, enableParallax);
+  // Setup parallax effect for this image using defaults
+  const parallaxRef = useParallax();
 
-  // Setup parallax effect for this image
-  const parallaxRef = useParallax(config);
-
-  // Get optimized image styles
-  const imageStyles = getImageStyles(enableParallax);
   console.log(dateBadge);
 
   // Complete parallax container with image, overlays, and badges
@@ -65,7 +50,6 @@ export function ParallaxImageRenderer({
         src={imageUrlWeb}
         alt={overlayText || 'Parallax image'}
         className={`parallax-bg ${variantStyles.parallaxImage}`}
-        style={imageStyles}
         loading="lazy"
         decoding="async"
       />

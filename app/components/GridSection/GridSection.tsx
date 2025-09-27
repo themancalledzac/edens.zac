@@ -11,7 +11,6 @@ interface GridSectionProps {
   card: HomeCardModel;
   desktopRowIndex: number;
   mobileRowIndex: number;
-  skeleton?: boolean;
 }
 
 /**
@@ -38,7 +37,6 @@ export function GridSection({
   card,
   desktopRowIndex: _desktopRowIndex,
   mobileRowIndex: _mobileRowIndex,
-  skeleton: _skeleton = false,
 }: GridSectionProps) {
   // Convert HomeCardModel to ParallaxImageContentBlock
   const parallaxBlock = buildParallaxImageFromHomeCard(card);

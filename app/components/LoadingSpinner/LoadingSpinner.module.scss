@@ -7,7 +7,7 @@
 .circle {
   border-radius: 50%;
   border: 2px solid transparent;
-  border-top: 2px solid currentColor;
+  border-top: 2px solid currentcolor;
   animation: spin 1s linear infinite;
 }
 
@@ -32,21 +32,22 @@
 
 /* Color variants */
 .white {
-  color: #ffffff;
+  color: #fff;
 }
 
 .dark {
-  color: #333333;
+  color: #333;
 }
 
 .grey {
-  color: #888888;
+  color: #888;
 }
 
 @keyframes spin {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }

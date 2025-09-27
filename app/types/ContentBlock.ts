@@ -62,9 +62,9 @@ export interface ImageContentBlock extends ContentBlock {
 
 /**
  * Parallax-enabled image content block
- * Extends ImageContentBlock with parallax functionality
+ * Based on ImageContentBlock with parallax functionality
  */
-export interface ParallaxImageContentBlock extends ImageContentBlock {
+export interface ParallaxImageContentBlock extends Omit<ImageContentBlock, 'blockType'> {
   blockType: 'PARALLAX';
   collectionDate?: string;
   type?: string;

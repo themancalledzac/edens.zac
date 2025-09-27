@@ -8,7 +8,7 @@ export type BadgeContentType = 'collection' | 'contentBlock';
 // Badge overlay props with simplified API
 export interface BadgeOverlayProps {
   contentType: BadgeContentType;
-  badgeValue: string | CollectionType;
+  badgeValue: string | CollectionType | null;
 }
 
 /**
@@ -19,6 +19,10 @@ export function BadgeOverlay({
   contentType = 'contentBlock',
   badgeValue,
 }: BadgeOverlayProps): React.ReactElement | null {
+  if (badgeValue === null) {
+    return null;
+  }
+
   return (
     <div className={contentType === 'contentBlock' ? 'dateBadge' : 'cardTypeBadge'}>
       {badgeValue}

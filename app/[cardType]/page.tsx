@@ -12,7 +12,6 @@ const VALID_CARD_TYPES = {
 } as const;
 
 type ValidCardType = keyof typeof VALID_CARD_TYPES;
-type CollectionType = typeof VALID_CARD_TYPES[ValidCardType];
 
 interface PageProps {
   params: Promise<{
@@ -52,16 +51,4 @@ export default async function DynamicCollectionPage({ params }: PageProps) {
   const cardsPromise = fetchCollectionsByType(collectionType).then(cards => cards || null);
 
   return <ContentCollectionPage cardsPromise={cardsPromise} collectionType={collectionType} />;
-}
-
-/**
- * Generate Static Params
- *
- * Pre-generates static paths for all valid collection types to enable
- * static generation at build time for better performance.
- */
-export function generateStaticParams() {
-  return Object.keys(VALID_CARD_TYPES).map((cardType) => ({
-    cardType,
-  }));
 }
