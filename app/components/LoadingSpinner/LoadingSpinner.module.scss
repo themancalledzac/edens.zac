@@ -1,0 +1,54 @@
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.circle {
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top: 2px solid currentcolor;
+  animation: spin 1s linear infinite;
+}
+
+/* Size variants */
+.small .circle {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.medium .circle {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+}
+
+.large .circle {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+/* Color variants */
+.white {
+  color: #fff;
+}
+
+.dark {
+  color: #333;
+}
+
+.grey {
+  color: #888;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -3,7 +3,13 @@ import { notFound } from 'next/navigation';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentCollectionNormalized } from '@/app/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
-import { type AnyContentBlock } from '@/app/types/ContentBlock';
+import {
+  type AnyContentBlock,
+  type ImageContentBlock,
+  type ParallaxImageContentBlock,
+  type TextContentBlock,
+} from '@/app/types/ContentBlock';
+import { buildParallaxImageContentBlock } from '@/app/utils/parallaxImageUtils';
 
 import styles from '../../page.module.scss';
 import ContentBlocksClient from './ContentBlocksClient';
@@ -13,45 +19,6 @@ interface ContentCollectionPageProps {
     cardType: string;
     slug: string;
   }>;
-}
-
-/**
- * Build Cover Image Block
- *
- * Creates a synthetic cover image block from collection data, either using
- * the defined cover image or falling back to the first image block. Adds
- * overlay text and card type badge for consistent display formatting.
- *
- * @param content - Normalized collection data
- * @param cardType - Collection type for badge display
- * @returns Formatted cover image block or null if no image available
- */
-function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: string): AnyContentBlock | null {
-  // If coverImage exists, use it (it's always a ContentBlock now)
-  if (content.coverImage) {
-    return {
-      ...content.coverImage,
-      overlayText: content.title, // Add collection title as overlay text
-      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
-      orderIndex: -2, // Ensure it appears first
-      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
-    } as AnyContentBlock;
-  }
-
-  // Fallback: use the first IMAGE block from content.blocks
-  const firstImageBlock = content.blocks.find(block => block.blockType === 'IMAGE');
-  if (firstImageBlock) {
-    return {
-      ...firstImageBlock,
-      overlayText: content.title, // Add collection title as overlay text
-      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
-      orderIndex: -2, // Ensure it appears first
-      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
-    } as AnyContentBlock;
-  }
-
-  // No cover image available
-  return null;
 }
 
 /**
@@ -67,8 +34,8 @@ function buildCoverImageBlock(content: ContentCollectionNormalized, cardType: st
  */
 function buildMetadataTextBlock(
   content: ContentCollectionNormalized,
-  coverBlock: AnyContentBlock | null
-): AnyContentBlock {
+  coverBlock: ParallaxImageContentBlock | null
+): TextContentBlock {
   const rows = [
     content.location ? `Location: ${content.location}` : undefined,
     content.description ? content.description : undefined,
@@ -85,20 +52,19 @@ function buildMetadataTextBlock(
 
   return {
     id: Number.MAX_SAFE_INTEGER,
-    type: 'TEXT',
     blockType: 'TEXT',
     title: `${content.title} — Details`,
     content: rows.join('\n'),
-    format: 'plain',
-    align: 'left',
+    format: 'plain' as const,
+    align: 'left' as const,
     dateBadge: dateBadge, // Add date badge for top-left positioning on metadata block
-    // Match the cover image's rating to ensure identical layout treatment
-    rating: coverBlock?.rating || 3,
-    // Provide sizing hints so normalizeContentBlock uses these exact dims
-    contentWidth: typeof width === 'number' && width > 0 ? width : undefined,
-    contentHeight: typeof height === 'number' && height > 0 ? height : undefined,
+    // Provide sizing hints for layout
+    width: typeof width === 'number' && width > 0 ? width : undefined,
+    height: typeof height === 'number' && height > 0 ? height : undefined,
     orderIndex: -1,
-  } as AnyContentBlock;
+    createdAt: content.collectionDate,
+    updatedAt: content.collectionDate,
+  };
 }
 
 /**
@@ -119,7 +85,7 @@ function buildMetadataTextBlock(
  * @returns Server component displaying collection content
  */
 export default async function ContentCollectionPage({ params }: ContentCollectionPageProps) {
-  const { cardType, slug } = await params;
+  const { slug } = await params;
 
   // Server-side data fetching with proper error handling
   let content: ContentCollectionNormalized;
@@ -136,10 +102,21 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
 
   // Build synthetic blocks for unified layout
   const heroBlocks: AnyContentBlock[] = [];
-  const coverBlock = buildCoverImageBlock(content, cardType);
+  const image =
+    content.coverImage ||
+    (content.blocks.find(block => block.blockType === 'IMAGE') as ImageContentBlock | undefined);
+  const coverBlock = buildParallaxImageContentBlock(
+    image,
+    content.collectionDate ?? '',
+    content.type,
+    content.title
+  );
   if (coverBlock) heroBlocks.push(coverBlock);
   heroBlocks.push(buildMetadataTextBlock(content, coverBlock));
-  const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks || [])];
+  const combinedBlocks: AnyContentBlock[] = [
+    ...heroBlocks,
+    ...((content.blocks as AnyContentBlock[]) || []),
+  ];
 
   return (
     <div>

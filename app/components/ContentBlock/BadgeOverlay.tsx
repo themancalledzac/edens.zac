@@ -1,47 +1,31 @@
 import React from 'react';
 
-import { type BadgeOverlayProps } from './types';
+import { type CollectionType } from '@/app/types/ContentCollection';
 
-/**
- * Reusable component for rendering badges with proper positioning
- * Handles both cardType badges (top-left) and date badges (top-right)
- */
-export function BadgeOverlay({ badges }: BadgeOverlayProps): React.ReactElement {
-  return (
-    <>
-      {badges.map((badge) => (
-        <div key={`badge-${badge.position}-${badge.text}`} className={badge.className}>
-          {badge.text}
-        </div>
-      ))}
-    </>
-  );
+// Content types that can display badges
+export type BadgeContentType = 'collection' | 'contentBlock';
+
+// Badge overlay props with simplified API
+export interface BadgeOverlayProps {
+  contentType: BadgeContentType;
+  badgeValue: string | CollectionType | null;
 }
 
 /**
- * Utility function to create badge configurations from block data
+ * Reusable component for rendering badges with proper positioning
+ * Automatically determines position based on badge value type
  */
-export function createBadgeConfigs(
-  cardTypeBadge?: string | undefined,
-  dateBadge?: string | undefined
-): Array<{ text: string; position: 'top-left' | 'top-right'; className: string }> {
-  const badges: Array<{ text: string; position: 'top-left' | 'top-right'; className: string }> = [];
-
-  if (cardTypeBadge) {
-    badges.push({
-      text: cardTypeBadge,
-      position: 'top-left' as const,
-      className: 'cardTypeBadge'
-    });
+export function BadgeOverlay({
+  contentType = 'contentBlock',
+  badgeValue,
+}: BadgeOverlayProps): React.ReactElement | null {
+  if (badgeValue === null) {
+    return null;
   }
 
-  if (dateBadge) {
-    badges.push({
-      text: dateBadge,
-      position: 'top-right' as const,
-      className: 'dateBadge'
-    });
-  }
-
-  return badges;
+  return (
+    <div className={contentType === 'contentBlock' ? 'dateBadge' : 'cardTypeBadge'}>
+      {badgeValue}
+    </div>
+  );
 }

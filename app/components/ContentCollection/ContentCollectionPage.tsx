@@ -2,69 +2,59 @@ import { Suspense } from 'react';
 
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 
-import { CardsGrid } from '../CardsGrid/CardsGrid';
 import { CardsGridSkeleton } from '../CardsGrid/CardsGridSkeleton';
+import { GridSection } from '../GridSection/GridSection';
 import SiteHeader from '../SiteHeader/SiteHeader';
 import styles from './ContentCollectionPage.module.scss';
 
-interface ContentCollectionContentProps {
-  cardsPromise: Promise<HomeCardModel[] | null>;
-}
-
-/**
- * Content Collection Content
- *
- * Async server component that resolves card data promise and renders
- * appropriate content or fallback states based on data availability.
- */
-async function ContentCollectionContent({ cardsPromise }: ContentCollectionContentProps) {
-  let cards: HomeCardModel[] = [];
-
-  try {
-    const result = await cardsPromise;
-    if (result && result.length > 0) {
-      cards = result;
-    }
-  } catch (error) {
-    console.log('Error loading content collection data:', error);
-    // Continue with empty array - graceful degradation
-  }
-
-  if (cards.length === 0) {
-    return <CardsGridSkeleton />;
-  }
-
-  return <CardsGrid cards={cards} />;
-}
-
 interface ContentCollectionPageProps {
   cardsPromise: Promise<HomeCardModel[] | null>;
+  collectionType?: string;
 }
 
 /**
  * Content Collection Page
  *
- * Main page component that displays collections of content cards with
- * streaming support. Handles async data loading with Suspense boundaries
- * and graceful error handling for failed data fetches.
- *
- * @dependencies
- * - React Suspense for streaming and loading states
- * - HomeCardModel type for card data structure
- * - CardsGrid component for rendering card collections
- * - CardsGridSkeleton for loading state
- * - SiteHeader for page navigation
+ * Consolidated component that displays collections of content cards with
+ * streaming support. Handles async data loading, layout, and grid rendering
+ * all in one place with Suspense boundaries for loading states.
  *
  * @param cardsPromise - Promise resolving to array of home card data
+ * @param collectionType - Optional collection type for future customization
  * @returns Server component with streamed content loading
  */
-export default function ContentCollectionPage({ cardsPromise }: ContentCollectionPageProps) {
+export default async function ContentCollectionPage({
+  cardsPromise,
+  collectionType: _collectionType,
+}: ContentCollectionPageProps) {
+  const cards = await cardsPromise;
+
+  // Calculate row indices for both desktop and mobile
+  const cardsWithRows = cards?.map((card: HomeCardModel, index) => ({
+    card,
+    desktopRowIndex: Math.floor(index / 2), // Desktop: 2 columns
+    mobileRowIndex: index, // Mobile: 1 column (each item is its own row)
+  }));
+
   return (
     <div className={styles.container}>
       <SiteHeader />
       <main className={styles.main}>
         <Suspense fallback={<CardsGridSkeleton />}>
-          <ContentCollectionContent cardsPromise={cardsPromise} />
+          {cardsWithRows && cardsWithRows.length > 0 ? (
+            <div className={styles.gridContainer}>
+              {cardsWithRows.map(({ card, desktopRowIndex, mobileRowIndex }) => (
+                <GridSection
+                  key={card.id}
+                  card={card}
+                  desktopRowIndex={desktopRowIndex}
+                  mobileRowIndex={mobileRowIndex}
+                />
+              ))}
+            </div>
+          ) : (
+            <CardsGridSkeleton />
+          )}
         </Suspense>
       </main>
     </div>

@@ -1,0 +1,18 @@
+/*
+  ParallaxImageRenderer styles
+  Minimal styles for parallax image component
+*/
+
+/* Parallax image base styles */
+.parallaxImage {
+  display: block;
+  object-fit: cover;
+  width: 100%;
+  height: 130%; /* PARALLAX_CONSTANTS.IMAGE_HEIGHT_PERCENTAGE */
+  position: absolute;
+  top: -25%; /* PARALLAX_CONSTANTS.IMAGE_TOP_OFFSET */
+  left: 0;
+  z-index: 1;
+  cursor: inherit;
+  will-change: transform;
+}
