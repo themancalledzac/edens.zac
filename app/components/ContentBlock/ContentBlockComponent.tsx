@@ -90,8 +90,6 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                 // Renderer lookup map - check most specific types first
                 if (isParallaxImageBlock(block) && block.enableParallax) {
 
-                  console.log(block.collectionDate);
-                  console.log(JSON.stringify(block));
                   // Handle parallax image with proper container structure for collections
                   return (
                     <div
