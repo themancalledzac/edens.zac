@@ -6,7 +6,7 @@
  */
 import styles from './ContentBlock.module.scss';
 
-export { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
+export { BadgeOverlay } from './BadgeOverlay';
 export { BlockWrapper } from './BlockWrapper';
 export { ImageContentBlockRenderer } from './ImageBlockRenderer';
 export { ParallaxImageRenderer } from './ParallaxImageRenderer';

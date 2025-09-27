@@ -3,7 +3,12 @@ import { notFound } from 'next/navigation';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentCollectionNormalized } from '@/app/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
-import { type AnyContentBlock, type ParallaxImageContentBlock, type TextContentBlock } from '@/app/types/ContentBlock';
+import {
+  type AnyContentBlock,
+  type ImageContentBlock,
+  type ParallaxImageContentBlock,
+  type TextContentBlock,
+} from '@/app/types/ContentBlock';
 import { buildParallaxImageContentBlock } from '@/app/utils/parallaxImageUtils';
 
 import styles from '../../page.module.scss';
@@ -15,7 +20,6 @@ interface ContentCollectionPageProps {
     slug: string;
   }>;
 }
-
 
 /**
  * Build Metadata Text Block
@@ -81,7 +85,7 @@ function buildMetadataTextBlock(
  * @returns Server component displaying collection content
  */
 export default async function ContentCollectionPage({ params }: ContentCollectionPageProps) {
-  const { cardType, slug } = await params;
+  const { slug } = await params;
 
   // Server-side data fetching with proper error handling
   let content: ContentCollectionNormalized;
@@ -98,10 +102,21 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
 
   // Build synthetic blocks for unified layout
   const heroBlocks: AnyContentBlock[] = [];
-  const coverBlock = buildParallaxImageContentBlock(content, cardType);
+  const image =
+    content.coverImage ||
+    (content.blocks.find(block => block.blockType === 'IMAGE') as ImageContentBlock | undefined);
+  const coverBlock = buildParallaxImageContentBlock(
+    image,
+    content.collectionDate ?? '',
+    content.type,
+    content.title
+  );
   if (coverBlock) heroBlocks.push(coverBlock);
   heroBlocks.push(buildMetadataTextBlock(content, coverBlock));
-  const combinedBlocks: AnyContentBlock[] = [...heroBlocks, ...(content.blocks as AnyContentBlock[] || [])];
+  const combinedBlocks: AnyContentBlock[] = [
+    ...heroBlocks,
+    ...((content.blocks as AnyContentBlock[]) || []),
+  ];
 
   return (
     <div>

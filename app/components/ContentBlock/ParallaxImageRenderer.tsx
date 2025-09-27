@@ -2,17 +2,23 @@
 
 import React from 'react';
 
+import { getParallaxConfig } from '@/app/constants/parallax';
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
 
-import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
+import { type BadgeContentType, BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentBlockComponent.module.scss';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 
 /**
- * Variant types for different parallax image use cases
+ * Get dynamic image styles for parallax behavior
+ * Only returns styles that need to be dynamic based on props
  */
-export type ParallaxImageBlockType = 'home' | 'collection';
+function getImageStyles(enableParallax: boolean) {
+  return {
+    willChange: enableParallax ? 'transform' : 'auto',
+  };
+}
 
 /**
  * Props for ParallaxImageRenderer - complete parallax image component with overlays
@@ -20,7 +26,7 @@ export type ParallaxImageBlockType = 'home' | 'collection';
  */
 export interface ParallaxImageContentBlockRendererProps {
   block: ParallaxImageContentBlock;
-  blockType?: ParallaxImageBlockType;
+  blockType?: BadgeContentType;
   // Optional props for badge customization
   cardTypeBadge?: string;
   dateBadge?: string;
@@ -35,51 +41,22 @@ export interface ParallaxImageContentBlockRendererProps {
  */
 export function ParallaxImageRenderer({
   block,
-  blockType = 'collection',
+  blockType = 'contentBlock',
   cardTypeBadge,
-  dateBadge
+  dateBadge,
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
+  const { imageUrlWeb, enableParallax, overlayText, parallaxSpeed, collectionDate } = block;
+  const dateSimple = new Date(collectionDate || new Date()).toLocaleDateString();
 
-  const { imageUrlWeb, enableParallax, overlayText, parallaxSpeed } = block;
-
-  // Determine badge positioning based on block type
-  const isHomeGrid = blockType === 'home';
+  // Get complete configuration for this block type
+  const config = getParallaxConfig(parallaxSpeed, enableParallax);
 
   // Setup parallax effect for this image
-  const parallaxRef = useParallax({
-    mode: 'single',
-    speed: parallaxSpeed || -0.1,
-    selector: '.parallax-bg',
-    enableParallax: enableParallax,
-    threshold: 0.1,
-    rootMargin: '50px',
-  });
+  const parallaxRef = useParallax(config);
 
-  // Create badge configurations - use props if provided, otherwise fall back to block data
-  // For home grid, position cardType badge on top-right instead of top-left
-  const badges = isHomeGrid ?
-    // Home grid: swap parameters to move cardType to top-right position
-    createBadgeConfigs(
-      undefined, // No badge on top-left for home grid
-      cardTypeBadge || block.cardTypeBadge // Move cardType to top-right position
-    ) :
-    // Regular positioning for collection pages
-    createBadgeConfigs(
-      cardTypeBadge || block.cardTypeBadge,
-      dateBadge || block.dateBadge
-    );
-
-  // Unified image styles for consistent parallax behavior
-  const imageStyles = {
-    display: 'block' as const,
-    objectFit: 'cover' as const,
-    willChange: enableParallax ? 'transform' : 'auto',
-    width: '100%',
-    height: '130%', // 30% extra content for parallax movement
-    position: 'absolute' as const,
-    top: '-15%', // Start positioned higher to align bottom properly
-    left: '0',
-  };
+  // Get optimized image styles
+  const imageStyles = getImageStyles(enableParallax);
+  console.log(dateBadge);
 
   // Complete parallax container with image, overlays, and badges
   return (
@@ -92,12 +69,11 @@ export function ParallaxImageRenderer({
         loading="lazy"
         decoding="async"
       />
-      {overlayText && (
-        <div className={cbStyles.textOverlay}>
-          {overlayText}
-        </div>
-      )}
-      <BadgeOverlay badges={badges} />
+      {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
+      <BadgeOverlay
+        contentType={blockType}
+        badgeValue={blockType === 'contentBlock' ? dateSimple : cardTypeBadge || ''}
+      />
     </div>
   );
 }

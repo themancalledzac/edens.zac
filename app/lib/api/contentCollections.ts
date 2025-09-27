@@ -23,7 +23,7 @@
  */
 import { notFound } from 'next/navigation';
 
-import { type CollectionType, type ContentBlock } from '@/app/types/ContentBlock';
+import { type CollectionType, type ContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isProduction } from '@/app/utils/environment';
 
@@ -47,7 +47,7 @@ export interface ContentCollection {
   priority?: number;
   // Legacy: coverImageUrl has been replaced by coverImage
   coverImageUrl?: string;
-  coverImage?: ContentBlock | null;
+  coverImage?: ImageContentBlock | null;
   isPasswordProtected?: boolean;
   hasAccess?: boolean;
   configJson?: ConfigJson | string;
@@ -179,7 +179,7 @@ export interface ContentCollectionNormalized {
   description?: string;
   // Legacy compatibility: keep coverImageUrl, but prefer coverImage object
   coverImageUrl?: string;
-  coverImage?: ContentBlock | null;
+  coverImage?: ImageContentBlock | null;
   slug: string;
   location?: string;
   collectionDate?: string;

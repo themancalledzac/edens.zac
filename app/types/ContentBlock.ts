@@ -6,7 +6,7 @@
  */
 
 /** Content block kinds supported by the system. */
-export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF';
+export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF' | 'PARALLAX';
 
 /** Distinct collection categories supported by the system. */
 export type CollectionType = 'BLOG' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'PORTFOLIO';
@@ -65,6 +65,9 @@ export interface ImageContentBlock extends ContentBlock {
  * Extends ImageContentBlock with parallax functionality
  */
 export interface ParallaxImageContentBlock extends ImageContentBlock {
+  blockType: 'PARALLAX';
+  collectionDate?: string;
+  type?: string;
   enableParallax: true;
   parallaxSpeed?: number;
 }

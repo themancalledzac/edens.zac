@@ -1,57 +1,27 @@
 import React from 'react';
 
-// Badge configuration interface
-export interface BadgeConfig {
-  text: string;
-  position: 'top-left' | 'top-right';
-  className: string;
-}
+import { type CollectionType } from '@/app/types/ContentCollection';
 
-// Badge overlay props
+// Content types that can display badges
+export type BadgeContentType = 'collection' | 'contentBlock';
+
+// Badge overlay props with simplified API
 export interface BadgeOverlayProps {
-  badges: BadgeConfig[];
+  contentType: BadgeContentType;
+  badgeValue: string | CollectionType;
 }
 
 /**
  * Reusable component for rendering badges with proper positioning
- * Handles both cardType badges (top-left) and date badges (top-right)
+ * Automatically determines position based on badge value type
  */
-export function BadgeOverlay({ badges }: BadgeOverlayProps): React.ReactElement {
+export function BadgeOverlay({
+  contentType = 'contentBlock',
+  badgeValue,
+}: BadgeOverlayProps): React.ReactElement | null {
   return (
-    <>
-      {badges.map((badge) => (
-        <div key={`badge-${badge.position}-${badge.text}`} className={badge.className}>
-          {badge.text}
-        </div>
-      ))}
-    </>
+    <div className={contentType === 'contentBlock' ? 'dateBadge' : 'cardTypeBadge'}>
+      {badgeValue}
+    </div>
   );
-}
-
-/**
- * Utility function to create badge configurations from block data
- */
-export function createBadgeConfigs(
-  cardTypeBadge?: string | undefined,
-  dateBadge?: string | undefined
-): Array<{ text: string; position: 'top-left' | 'top-right'; className: string }> {
-  const badges: Array<{ text: string; position: 'top-left' | 'top-right'; className: string }> = [];
-
-  if (cardTypeBadge) {
-    badges.push({
-      text: cardTypeBadge,
-      position: 'top-left' as const,
-      className: 'cardTypeBadge'
-    });
-  }
-
-  if (dateBadge) {
-    badges.push({
-      text: dateBadge,
-      position: 'top-right' as const,
-      className: 'dateBadge'
-    });
-  }
-
-  return badges;
 }

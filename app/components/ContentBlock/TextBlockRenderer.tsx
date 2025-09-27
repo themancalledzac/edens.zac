@@ -2,7 +2,6 @@ import React from 'react';
 
 import { type TextContentBlock } from '@/app/types/ContentBlock';
 
-import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import {
   BaseContentBlockRender,
   type BaseContentBlockRendererProps,
@@ -17,18 +16,18 @@ export interface TextContentBlockRendererProps extends BaseContentBlockRendererP
 }
 
 /**
- * Determine the appropriate CSS class based on text alignment and badge presence
+ * Determine the appropriate CSS class based on text alignment
  */
-function getTextBlockClass(isLeftAligned: boolean, hasBadge: boolean): string {
+function getTextBlockClass(isLeftAligned: boolean): string {
   if (!isLeftAligned) {
     return cbStyles.blockInner || ''; // default centered
   }
 
-  return (hasBadge ? cbStyles.blockInnerLeftWithBadge : cbStyles.blockInnerLeft) || '';
+  return cbStyles.blockInnerLeft || '';
 }
 
 /**
- * Specialized component for rendering text blocks with badges and proper alignment
+ * Specialized component for rendering text blocks with proper alignment
  * Extends BaseContentBlockRenderer for consistent behavior
  */
 export function TextBlockRenderer({
@@ -42,22 +41,14 @@ export function TextBlockRenderer({
     // Extract text content - use content field from proper type
     const displayText = textBlock.content || textBlock.title || 'Text Block';
     const isLeftAligned = textBlock.align === 'left';
-    const { dateBadge, format } = textBlock;
-    const hasBadge = !!dateBadge;
-
-    // Create badge configurations
-    const badges = createBadgeConfigs(undefined, dateBadge);
+    const { format } = textBlock;
 
     // Determine the appropriate inner class
-    const innerClass = getTextBlockClass(isLeftAligned, hasBadge);
+    const innerClass = getTextBlockClass(isLeftAligned);
 
     // Create the text content with proper styling and positioning
     return (
-      <div
-        className={cbStyles.blockContainer}
-        style={{ position: hasBadge ? 'relative' : undefined }}
-      >
-        <BadgeOverlay badges={badges} />
+      <div className={cbStyles.blockContainer}>
         <div className={innerClass}>
           {format === 'html' ? (
             <div dangerouslySetInnerHTML={{ __html: displayText }} />

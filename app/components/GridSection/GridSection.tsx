@@ -58,7 +58,7 @@ export function GridSection({
       <a href={getHref()}>
         <ParallaxImageRenderer
           block={parallaxBlock}
-          blockType="home"
+          blockType="collection"
           cardTypeBadge={card.cardType?.toUpperCase()}
         />
       </a>

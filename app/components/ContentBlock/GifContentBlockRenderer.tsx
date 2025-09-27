@@ -3,7 +3,7 @@ import React from 'react';
 
 import { type GifContentBlock } from '@/app/types/ContentBlock';
 
-import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
+import { BadgeOverlay } from './BadgeOverlay';
 import {
   BaseContentBlockRender,
   type BaseContentBlockRendererProps,
@@ -64,15 +64,12 @@ export function GifContentBlockRenderer({
       />
     );
 
-    // Create badge configurations
-    const badges = createBadgeConfigs(cardTypeBadge, dateBadge);
-
     // Render content based on whether overlays are needed
     return hasOverlays ? (
       <div className={cbStyles.imageWrapper}>
         {gifElement}
         {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
-        <BadgeOverlay badges={badges} />
+        <BadgeOverlay contentType="contentBlock" badgeValue={null} />
       </div>
     ) : (
       gifElement

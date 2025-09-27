@@ -24,7 +24,7 @@ export function isImageBlock(block: ContentBlock): block is ImageContentBlock {
  * Type guard to check if a ContentBlock is a ParallaxImageContentBlock
  */
 export function isParallaxImageBlock(block: ContentBlock): block is ParallaxImageContentBlock {
-  return isImageBlock(block) && 'enableParallax' in block && block.enableParallax === true;
+  return block.blockType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax === true;
 }
 
 /**
@@ -49,10 +49,10 @@ export function isGifBlock(block: ContentBlock): block is GifContentBlock {
 }
 
 /**
- * Type guard to check if a ContentBlock has an image (IMAGE or GIF)
+ * Type guard to check if a ContentBlock has an image (IMAGE, PARALLAX, or GIF)
  */
-export function hasImage(block: ContentBlock): block is ImageContentBlock | GifContentBlock {
-  return isImageBlock(block) || isGifBlock(block);
+export function hasImage(block: ContentBlock): block is ImageContentBlock | ParallaxImageContentBlock | GifContentBlock {
+  return isImageBlock(block) || isParallaxImageBlock(block) || isGifBlock(block);
 }
 
 /**
@@ -83,8 +83,8 @@ export function getBlockDimensions(block: ContentBlock, defaultWidth = 1000, def
     return { width: block.width, height: block.height };
   }
 
-  // For image blocks, use image dimensions
-  if (isImageBlock(block)) {
+  // For image blocks (including parallax), use image dimensions
+  if (isImageBlock(block) || isParallaxImageBlock(block)) {
     const width = block.imageWidth || defaultWidth;
     const height = block.imageHeight || Math.round(width / defaultAspect);
     return { width, height };
@@ -105,7 +105,7 @@ export function validateContentBlock(block: unknown): block is ContentBlock {
   return (
     typeof candidate.id === 'number' &&
     typeof candidate.blockType === 'string' &&
-    ['IMAGE', 'TEXT', 'CODE', 'GIF'].includes(candidate.blockType) &&
+    ['IMAGE', 'TEXT', 'CODE', 'GIF', 'PARALLAX'].includes(candidate.blockType) &&
     typeof candidate.orderIndex === 'number'
   );
 }

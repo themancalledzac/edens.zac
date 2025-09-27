@@ -2,7 +2,6 @@ import React from 'react';
 
 import { type CodeContentBlock } from '@/app/types/ContentBlock';
 
-import { BadgeOverlay, createBadgeConfigs } from './BadgeOverlay';
 import { BaseContentBlockRender, type BaseContentBlockRendererProps } from './BaseContentBlockRenderer';
 import cbStyles from './ContentBlockComponent.module.scss';
 
@@ -26,19 +25,11 @@ export function CodeContentBlockRenderer({
 }: CodeContentBlockRendererProps): React.ReactElement {
 
   const renderCodeContent = (codeBlock: CodeContentBlock): React.ReactElement => {
-    const { dateBadge, filename, content, language } = codeBlock;
-    const hasBadge = !!dateBadge;
-
-    // Create badge configurations
-    const badges = createBadgeConfigs(undefined, dateBadge);
+    const { filename, content, language } = codeBlock;
 
     // Create the code content with syntax highlighting
     return (
-      <div
-        className={cbStyles.blockContainer}
-        style={{ position: hasBadge ? 'relative' : undefined }}
-      >
-        <BadgeOverlay badges={badges} />
+      <div className={cbStyles.blockContainer}>
         <div className={`${cbStyles.blockInnerLeft || ''} ${cbStyles.codeBlock || ''}`}>
           {filename && (
             <div className={cbStyles.codeFilename || ''}>

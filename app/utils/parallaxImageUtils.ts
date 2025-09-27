@@ -1,51 +1,59 @@
-import { type ContentCollectionNormalized } from '@/app/lib/api/contentCollections';
-import { type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
+import { PARALLAX_CONSTANTS } from '@/app/constants/parallax';
+import { type ImageContentBlock, type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isImageBlock } from '@/app/utils/contentBlockTypeGuards';
 
 /**
- * Build Parallax Image Content Block from Collection Data
+ * Create base parallax image properties
+ * Shared logic for common parallax block configuration
+ */
+function createBaseParallaxProperties(
+  overlayText: string,
+  cardTypeBadge: string,
+  orderIndex = -2,
+  rating = 3
+) {
+  return {
+    enableParallax: true as const,
+    parallaxSpeed: PARALLAX_CONSTANTS.DEFAULT_SPEED,
+    overlayText,
+    cardTypeBadge,
+    orderIndex, // Ensure it appears first
+    rating, // Force standard rating to prevent full-screen display
+  };
+}
+
+/**
+ * Build Parallax Image Content Block from Image Data
  *
- * Creates a synthetic parallax image block from collection data, either using
- * the defined cover image or falling back to the first image block. Adds
+ * Creates a synthetic parallax image block from specific image data. Adds
  * overlay text and card type badge for consistent display formatting.
  *
- * @param content - Normalized collection data
- * @param cardType - Collection type for badge display
+ * @param image - Image block data (either coverImage or first image block)
+ * @param collectionDate - Collection date for the image
+ * @param type - Collection type for badge display
+ * @param title - Collection title for overlay text
  * @returns Formatted parallax image block or null if no image available
  */
 export function buildParallaxImageContentBlock(
-  content: ContentCollectionNormalized,
-  cardType: string
+  image: ImageContentBlock | undefined,
+  collectionDate: string,
+  type: string,
+  title: string
 ): ParallaxImageContentBlock | null {
-  // If coverImage exists and it's an image block, use it
-  if (content.coverImage && isImageBlock(content.coverImage)) {
+  // If image exists and it's an image block, use it
+  if (image && isImageBlock(image)) {
     return {
-      ...content.coverImage,
-      enableParallax: true, // Enable parallax for cover images
-      parallaxSpeed: -0.1, // Default parallax speed
-      overlayText: content.title, // Add collection title as overlay text
-      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
-      orderIndex: -2, // Ensure it appears first
-      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
+      ...image,
+      ...createBaseParallaxProperties(title, type),
+      blockType: 'PARALLAX',
+      title, // Override the image's title with the collection title
+      collectionDate,
+      type,
     };
   }
 
-  // Fallback: use the first IMAGE block from content.blocks
-  const firstImageBlock = content.blocks.find(isImageBlock);
-  if (firstImageBlock) {
-    return {
-      ...firstImageBlock,
-      enableParallax: true, // Enable parallax for cover images
-      parallaxSpeed: -0.1, // Default parallax speed
-      overlayText: content.title, // Add collection title as overlay text
-      cardTypeBadge: cardType, // Add cardType badge for top-left positioning
-      orderIndex: -2, // Ensure it appears first
-      rating: 3, // Force standard rating to prevent full-screen display (rating=5 causes standalone/full-width behavior)
-    };
-  }
-
-  // No cover image available
+  // No image available
   return null;
 }
 
@@ -61,19 +69,18 @@ export function buildParallaxImageContentBlock(
 export function buildParallaxImageFromHomeCard(homeCard: HomeCardModel): ParallaxImageContentBlock {
   return {
     id: homeCard.id,
-    blockType: 'IMAGE',
+    blockType: 'PARALLAX',
     title: homeCard.title,
     imageUrlWeb: homeCard.coverImageUrl, // Use coverImageUrl for web display
     imageWidth: 800, // Default width for grid images
     imageHeight: homeCard.cardType === 'catalog' ? 800 : 457, // 1:1 for catalog, 1.75:1 for blog to match current grid
-    orderIndex: homeCard.priority,
-    rating: 3, // Standard rating for grid display
     createdAt: homeCard.date || new Date().toISOString(),
     updatedAt: homeCard.date || new Date().toISOString(),
-    // Parallax-specific properties
-    enableParallax: true,
-    parallaxSpeed: -0.1, // Standard parallax speed
-    overlayText: homeCard.title, // Use title as overlay text
-    cardTypeBadge: homeCard.cardType.toUpperCase(), // Badge showing card type
+    // Parallax-specific properties with custom order from priority
+    ...createBaseParallaxProperties(
+      homeCard.title,
+      homeCard.cardType.toUpperCase(),
+      homeCard.priority
+    ),
   };
 }

@@ -89,6 +89,9 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
 
                 // Renderer lookup map - check most specific types first
                 if (isParallaxImageBlock(block)) {
+
+                  console.log(block.collectionDate);
+                  console.log(JSON.stringify(block));
                   // Handle parallax image with proper container structure for collections
                   return (
                     <div
@@ -115,7 +118,7 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                       >
                         <ParallaxImageRenderer
                           block={block}
-                          blockType="collection"
+                          blockType="contentBlock"
                           cardTypeBadge={block.cardTypeBadge}
                           dateBadge={block.dateBadge}
                         />
