@@ -3,9 +3,9 @@ import React from 'react';
 import { type TextContentBlock } from '@/app/types/ContentBlock';
 
 import {
-  BaseContentBlockRender,
   type BaseContentBlockRendererProps,
-} from './BaseContentBlockRenderer';
+  BlockWrapper,
+} from './BlockWrapper';
 import cbStyles from './ContentBlockComponent.module.scss';
 
 /**
@@ -64,7 +64,7 @@ export function TextBlockRenderer({
   };
 
   return (
-    <BaseContentBlockRender
+    <BlockWrapper
       block={block}
       width={width}
       height={height}

@@ -2,7 +2,7 @@ import React from 'react';
 
 import { type CodeContentBlock } from '@/app/types/ContentBlock';
 
-import { BaseContentBlockRender, type BaseContentBlockRendererProps } from './BaseContentBlockRenderer';
+import { type BaseContentBlockRendererProps,BlockWrapper } from './BlockWrapper';
 import cbStyles from './ContentBlockComponent.module.scss';
 
 /**
@@ -45,7 +45,7 @@ export function CodeContentBlockRenderer({
   };
 
   return (
-    <BaseContentBlockRender
+    <BlockWrapper
       block={block}
       width={width}
       height={height}

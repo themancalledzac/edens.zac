@@ -76,7 +76,7 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
           return (
             <div
               key={`row-${row.map(item => item.block.id).join('-')}`}
-              className={isMobile ? cbStyles.rowMobile : cbStyles.row}
+              className={cbStyles.row}
             >
               {row.map((item, index) => {
                 const className = getPositionStyle(index, totalInRow);
