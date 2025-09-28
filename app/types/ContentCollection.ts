@@ -3,10 +3,10 @@
  */
 
 export enum CollectionType {
-  PORTFOLIO = 'PORTFOLIO',
-  CATALOG = 'CATALOG', 
-  BLOG = 'BLOG',
-  CLIENT_GALLERY = 'CLIENT_GALLERY'
+  portfolio = 'PORTFOLIO',
+  catalog = 'CATALOG',
+  blogs = 'BLOG',
+  'client-gallery' = 'CLIENT_GALLERY'
 }
 
 /**
@@ -52,6 +52,14 @@ export interface ContentCollectionCreateDTO extends ContentCollectionBaseModel {
 }
 
 /**
+ * Simplified DTO for creating new content collections (matches backend ContentCollectionCreateRequest)
+ */
+export interface ContentCollectionSimpleCreateDTO {
+  type: CollectionType;
+  title: string;
+}
+
+/**
  * Response DTO for content collections
  */
 export interface ContentCollectionModel extends ContentCollectionBaseModel {
@@ -62,34 +70,3 @@ export interface ContentCollectionModel extends ContentCollectionBaseModel {
   createdAt: string;
   updatedAt: string;
 }
-
-// /**
-//  * Validation constraints (from backend)
-//  */
-// export const ValidationRules = {
-//   title: {
-//     min: 3,
-//     max: 100
-//   },
-//   slug: {
-//     min: 3,
-//     max: 150
-//   },
-//   description: {
-//     max: 500
-//   },
-//   location: {
-//     max: 255
-//   },
-//   priority: {
-//     min: 1,
-//     max: 4
-//   },
-//   password: {
-//     min: 8,
-//     max: 100
-//   },
-//   blocksPerPage: {
-//     min: 1
-//   },
-// } as const;

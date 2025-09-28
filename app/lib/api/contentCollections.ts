@@ -23,7 +23,8 @@
  */
 import { notFound } from 'next/navigation';
 
-import { type CollectionType, type ContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
+import { type ContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
+import { type CollectionType } from '@/app/types/ContentCollection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isProduction } from '@/app/utils/environment';
 
