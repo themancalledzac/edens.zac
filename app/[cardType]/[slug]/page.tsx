@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 
+import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentCollectionNormalized } from '@/app/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
@@ -12,7 +13,6 @@ import {
 import { buildParallaxImageContentBlock } from '@/app/utils/parallaxImageUtils';
 
 import styles from '../../page.module.scss';
-import ContentBlocksClient from './ContentBlocksClient';
 
 interface ContentCollectionPageProps {
   params: Promise<{
@@ -123,7 +123,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
       <SiteHeader />
       <div className={styles.contentPadding}>
         <div className={styles.blockGroup}>
-          <ContentBlocksClient blocks={combinedBlocks} />
+          <ContentBlockComponent blocks={combinedBlocks} />
         </div>
       </div>
     </div>

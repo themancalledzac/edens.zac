@@ -2,6 +2,8 @@ import React from 'react';
 
 import { type CollectionType } from '@/app/types/ContentCollection';
 
+import cbStyles from './ContentBlockComponent.module.scss';
+
 // Content types that can display badges
 export type BadgeContentType = 'collection' | 'contentBlock';
 
@@ -24,7 +26,7 @@ export function BadgeOverlay({
   }
 
   return (
-    <div className={contentType === 'contentBlock' ? 'dateBadge' : 'cardTypeBadge'}>
+    <div className={contentType === 'contentBlock' ? cbStyles.dateBadge : cbStyles.cardTypeBadge}>
       {badgeValue}
     </div>
   );

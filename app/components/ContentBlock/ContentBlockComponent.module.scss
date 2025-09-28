@@ -7,7 +7,7 @@
 
 .inner {
   width: 100%;
-  max-width: 1200px;
+  max-width: var(--page-max-width);
   margin: 0 auto;
 }
 
@@ -103,7 +103,7 @@
 }
 
 /* Image container with overlay support */
-.imageContainer {
+.overlayContainer {
   position: relative;
   display: inline-block;
 
@@ -117,7 +117,7 @@
 }
 
 /* Ensure overlay only covers the image, not any padding */
-.imageContainer img {
+.overlayContainer img {
   display: block;
 }
 
@@ -139,14 +139,78 @@
   z-index: 3;
 }
 
-.imageWrapper .cardTypeBadge {
+.cardTypeBadge {
+  position: absolute;
   top: 0;
   left: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: var(--radius-0);
+  pointer-events: none;
+  z-index: 3;
 }
 
-.imageWrapper .dateBadge {
+.dateBadge {
+  position: absolute;
   top: 0;
   right: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: var(--radius-0);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Position styles for content blocks in rows */
+.image {
+  margin: 0;
+}
+
+.imageLeft {
+  @extend .image;
+
+  padding-right: 0.4rem;
+}
+
+.imageRight {
+  @extend .image;
+
+  padding-left: 0.4rem;
+}
+
+.imageMiddle {
+  @extend .image;
+
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+}
+
+.imageSingle {
+  @extend .image;
+
+  padding-left: 0;
+  padding-right: 0;
+}
+
+@media (width <= 768px) {
+  .image {
+    border-width: var(--space-mobile-border) 0 0 0;
+    border-style: solid;
+    border-color: white;
+    margin: 0;
+    width: 100%;
+    height: auto;
+    padding: 0;
+  }
 }
 
 /* Text overlay positioned over image - Mobile First */

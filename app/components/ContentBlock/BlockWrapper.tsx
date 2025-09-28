@@ -38,7 +38,7 @@ export const BlockWrapper = forwardRef<HTMLDivElement, BlockWrapperProps>(functi
   className,
   isMobile = false,
   onClick,
-  hasOverlays,
+  hasOverlays = false,
   isTextBlock,
   // BaseContentBlockRenderer props
   block,
@@ -57,7 +57,7 @@ export const BlockWrapper = forwardRef<HTMLDivElement, BlockWrapperProps>(functi
   return (
     <div
       ref={ref}
-      className={`${className} ${finalHasOverlays ? cbStyles.imageContainer : ''}`}
+      className={className}
       onClick={onClick}
       style={{
         // Text blocks on mobile: no fixed dimensions (auto height)

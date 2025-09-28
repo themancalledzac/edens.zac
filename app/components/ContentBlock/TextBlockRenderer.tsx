@@ -16,17 +16,6 @@ export interface TextContentBlockRendererProps extends BaseContentBlockRendererP
 }
 
 /**
- * Determine the appropriate CSS class based on text alignment
- */
-function getTextBlockClass(isLeftAligned: boolean): string {
-  if (!isLeftAligned) {
-    return cbStyles.blockInner || ''; // default centered
-  }
-
-  return cbStyles.blockInnerLeft || '';
-}
-
-/**
  * Specialized component for rendering text blocks with proper alignment
  * Extends BaseContentBlockRenderer for consistent behavior
  */
@@ -39,25 +28,14 @@ export function TextBlockRenderer({
 }: TextContentBlockRendererProps): React.ReactElement {
   const renderTextContent = (textBlock: TextContentBlock): React.ReactElement => {
     // Extract text content - use content field from proper type
-    const displayText = textBlock.content || textBlock.title || 'Text Block';
+    const displayText = textBlock.content;
     const isLeftAligned = textBlock.align === 'left';
-    const { format } = textBlock;
-
-    // Determine the appropriate inner class
-    const innerClass = getTextBlockClass(isLeftAligned);
 
     // Create the text content with proper styling and positioning
     return (
       <div className={cbStyles.blockContainer}>
-        <div className={innerClass}>
-          {format === 'html' ? (
-            <div dangerouslySetInnerHTML={{ __html: displayText }} />
-          ) : (format === 'markdown' ? (
-            // TODO: Add markdown parser when needed
+        <div className={isLeftAligned ? cbStyles.blockInnerLeft : cbStyles.blockInner}>
             <span>{displayText}</span>
-          ) : (
-            <span>{displayText}</span>
-          ))}
         </div>
       </div>
     );
