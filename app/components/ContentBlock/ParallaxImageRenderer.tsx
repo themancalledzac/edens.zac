@@ -33,15 +33,12 @@ export function ParallaxImageRenderer({
   block,
   blockType = 'contentBlock',
   cardTypeBadge,
-  dateBadge,
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
   const { imageUrlWeb, overlayText, collectionDate } = block;
   const dateSimple = new Date(collectionDate || new Date()).toLocaleDateString();
 
   // Setup parallax effect for this image using defaults
   const parallaxRef = useParallax();
-
-  console.log(dateBadge);
 
   // Complete parallax container with image, overlays, and badges
   return (

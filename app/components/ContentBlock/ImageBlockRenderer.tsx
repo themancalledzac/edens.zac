@@ -5,9 +5,9 @@ import { type ImageContentBlock } from '@/app/types/ContentBlock';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import {
-  BaseContentBlockRender,
   type BaseContentBlockRendererProps,
-} from './BaseContentBlockRenderer';
+  BlockWrapper,
+} from './BlockWrapper';
 import cbStyles from './ContentBlockComponent.module.scss';
 
 /**
@@ -77,7 +77,7 @@ export function ImageContentBlockRenderer({
   };
 
   return (
-    <BaseContentBlockRender
+    <BlockWrapper
       block={block}
       width={width}
       height={height}

@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 
+import { useViewport } from '@/app/hooks/useViewport';
 import { type AnyContentBlock } from '@/app/types/ContentBlock';
 import { processContentBlocksForDisplay } from '@/app/utils/contentBlockLayout';
 import {
@@ -16,24 +17,34 @@ import { CodeContentBlockRenderer } from './CodeContentBlockRenderer';
 import cbStyles from './ContentBlockComponent.module.scss';
 import { GifContentBlockRenderer } from './GifContentBlockRenderer';
 import { ImageContentBlockRenderer } from './ImageBlockRenderer';
-import { getPositionStyle } from './index';
 import { ParallaxImageRenderer } from './ParallaxImageRenderer';
 import { TextBlockRenderer } from './TextBlockRenderer';
 
-export type ContentBlockDisplayOptions = {
-  chunkSize: number;
-};
+/**
+ * Determines base props for a content block including width, height, className, and block
+ * @param item - The processed content block item with calculated dimensions
+ * @param totalInRow - Total number of items in the row
+ * @param index - Current item's index in the row (0-based)
+ * @returns Object containing width, height, className, and block
+ */
+function determineBaseProps(
+  item: { block: AnyContentBlock; width: number; height: number },
+  totalInRow: number,
+  index: number,
+) {
+  let className = '';
+  if (totalInRow === 1) className = cbStyles.imageSingle || '';
+  else if (index === 0) className = cbStyles.imageLeft || '';
+  else if (index === totalInRow - 1) className = cbStyles.imageRight || '';
+  else className = cbStyles.imageMiddle || '';
 
-export type ContentBlockComponentProps = {
-  blocks: AnyContentBlock[];
-  componentWidth: number;
-  isMobile: boolean;
-  options?: Partial<ContentBlockDisplayOptions>;
-};
-
-const DEFAULT_OPTIONS: ContentBlockDisplayOptions = {
-  chunkSize: 2,
-};
+  return {
+    width: Math.round(item.width),
+    height: Math.round(item.height),
+    className,
+    block: item.block,
+  };
+}
 
 /**
  * Content Block Component
@@ -42,19 +53,17 @@ const DEFAULT_OPTIONS: ContentBlockDisplayOptions = {
  * mixed content blocks (images, text, etc.) in optimized responsive layouts.
  * Features memoized calculations, responsive chunking, and type-safe specialized renderers.
  */
-export default function ContentBlockComponent(props: ContentBlockComponentProps) {
-  const { blocks, componentWidth, isMobile, options = {} } = props;
+export default function ContentBlockComponent({ blocks }: { blocks: AnyContentBlock[] }) {
+  const chunkSize = 2;
+  const { contentWidth, isMobile } = useViewport();
 
-  const { chunkSize } = { ...DEFAULT_OPTIONS, ...options };
-
-  // Memoize layout calculations to prevent unnecessary recalculations
   const rows = useMemo(() => {
-    if (!blocks || blocks.length === 0 || !componentWidth) {
+    if (!blocks || blocks.length === 0 || !contentWidth) {
       return [];
     }
 
     try {
-      return processContentBlocksForDisplay(blocks, componentWidth, chunkSize);
+      return processContentBlocksForDisplay(blocks, contentWidth, chunkSize);
     } catch (error) {
       // Only log in development
       if (process.env.NODE_ENV === 'development') {
@@ -62,39 +71,29 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
       }
       return [];
     }
-  }, [blocks, componentWidth, chunkSize]);
+  }, [blocks, contentWidth, chunkSize]);
 
   // Early return for empty state
   if (rows.length === 0) return <div />;
 
   return (
     <div className={cbStyles.wrapper}>
-      <div className={cbStyles.inner} style={{ width: '100%' }}>
+      <div className={cbStyles.inner}>
         {rows.map((row, _rowIndex) => {
           const totalInRow = row.length;
 
           return (
-            <div
-              key={`row-${row.map(item => item.block.id).join('-')}`}
-              className={isMobile ? cbStyles.rowMobile : cbStyles.row}
-            >
+            <div key={`row-${row.map(item => item.block.id).join('-')}`} className={cbStyles.row}>
               {row.map((item, index) => {
-                const className = getPositionStyle(index, totalInRow);
-                const width = Math.round(item.width);
-                const height = Math.round(item.height);
-                const block = item.block;
-
-                // Type-safe dispatching to appropriate renderer
-                const baseProps = { key: block.id, width, height, className, isMobile };
+                const { block, className, width, height } = determineBaseProps(item, totalInRow, index);
 
                 // Renderer lookup map - check most specific types first
                 if (isParallaxImageBlock(block) && block.enableParallax) {
-
                   // Handle parallax image with proper container structure for collections
                   return (
                     <div
                       key={block.id}
-                      className={`${className} ${cbStyles.imageContainer}`}
+                      className={`${className} ${cbStyles.overlayContainer}`}
                       style={{
                         width: isMobile ? '100%' : width,
                         height: isMobile ? 'auto' : height,
@@ -111,26 +110,62 @@ export default function ContentBlockComponent(props: ContentBlockComponentProps)
                           height: '100%',
                           boxSizing: 'border-box',
                           position: 'relative',
-                          overflow: 'hidden'
+                          overflow: 'hidden',
                         }}
                       >
                         <ParallaxImageRenderer
                           block={block}
                           blockType="contentBlock"
                           cardTypeBadge={block.cardTypeBadge}
-                          dateBadge={block.dateBadge}
                         />
                       </div>
                     </div>
                   );
                 }
                 if (isImageBlock(block))
-                  return <ImageContentBlockRenderer {...baseProps} block={block} />;
+                  return (
+                    <ImageContentBlockRenderer
+                      key={block.id}
+                      block={block}
+                      width={width}
+                      height={height}
+                      className={className}
+                      isMobile={isMobile}
+                    />
+                  );
                 if (isGifBlock(block))
-                  return <GifContentBlockRenderer {...baseProps} block={block} />;
+                  return (
+                    <GifContentBlockRenderer
+                      key={block.id}
+                      block={block}
+                      width={width}
+                      height={height}
+                      className={className}
+                      isMobile={isMobile}
+                    />
+                  );
                 if (isCodeBlock(block))
-                  return <CodeContentBlockRenderer {...baseProps} block={block} />;
-                if (isTextBlock(block)) return <TextBlockRenderer {...baseProps} block={block} />;
+                  return (
+                    <CodeContentBlockRenderer
+                      key={block.id}
+                      block={block}
+                      width={width}
+                      height={height}
+                      className={className}
+                      isMobile={isMobile}
+                    />
+                  );
+                if (isTextBlock(block))
+                  return (
+                    <TextBlockRenderer
+                      key={block.id}
+                      block={block}
+                      width={width}
+                      height={height}
+                      className={className}
+                      isMobile={isMobile}
+                    />
+                  );
               })}
             </div>
           );
