@@ -46,6 +46,14 @@ function determineBaseProps(
   };
 }
 
+export interface ContentBlockComponentProps {
+  blocks: AnyContentBlock[];
+  isSelectingCoverImage?: boolean;
+  currentCoverImageId?: number;
+  onImageClick?: (imageId: number) => void;
+  justClickedImageId?: number | null;
+}
+
 /**
  * Content Block Component
  *
@@ -53,7 +61,13 @@ function determineBaseProps(
  * mixed content blocks (images, text, etc.) in optimized responsive layouts.
  * Features memoized calculations, responsive chunking, and type-safe specialized renderers.
  */
-export default function ContentBlockComponent({ blocks }: { blocks: AnyContentBlock[] }) {
+export default function ContentBlockComponent({
+  blocks,
+  isSelectingCoverImage = false,
+  currentCoverImageId,
+  onImageClick,
+  justClickedImageId
+}: ContentBlockComponentProps) {
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
 
@@ -122,17 +136,66 @@ export default function ContentBlockComponent({ blocks }: { blocks: AnyContentBl
                     </div>
                   );
                 }
-                if (isImageBlock(block))
+                if (isImageBlock(block)) {
+                  const isCurrentCover = currentCoverImageId === block.id;
+                  const isJustClicked = justClickedImageId === block.id;
+                  const shouldShowOverlay = (isSelectingCoverImage && isCurrentCover) || isJustClicked;
+
                   return (
-                    <ImageContentBlockRenderer
+                    <div
                       key={block.id}
-                      block={block}
-                      width={width}
-                      height={height}
-                      className={className}
-                      isMobile={isMobile}
-                    />
+                      style={{
+                        position: 'relative',
+                        cursor: isSelectingCoverImage ? 'pointer' : 'default',
+                      }}
+                      onClick={() => {
+                        if (isSelectingCoverImage && onImageClick) {
+                          onImageClick(block.id);
+                        }
+                      }}
+                    >
+                      <div style={{ cursor: isSelectingCoverImage ? 'pointer' : 'default' }}>
+                        <ImageContentBlockRenderer
+                          block={block}
+                          width={width}
+                          height={height}
+                          className={className}
+                          isMobile={isMobile}
+                        />
+                      </div>
+                      {shouldShowOverlay && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                            pointerEvents: 'none',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <svg
+                            width="60"
+                            height="60"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
                   );
+                }
                 if (isGifBlock(block))
                   return (
                     <GifContentBlockRenderer

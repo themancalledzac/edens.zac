@@ -50,6 +50,9 @@ export interface ContentCollectionUpdateDTO extends ContentCollectionBaseModel {
   // Pagination settings
   blocksPerPage?: number; // Min 1
 
+  // Display mode
+  displayMode?: 'CHRONOLOGICAL' | 'ORDERED';
+
   // Home page card settings (optional)
   homeCardEnabled?: boolean; // null = no change
   homeCardText?: string;

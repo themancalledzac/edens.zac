@@ -4,6 +4,7 @@ import { CircleX } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 import { About } from '../About/About';
 import { ContactForm } from '../ContactForm/ContactForm';
@@ -13,6 +14,8 @@ import styles from './MenuDropdown.module.scss';
 interface MenuDropdownProps {
   isOpen: boolean;
   onClose: () => void;
+  pageType?: 'default' | 'manage' | 'collection' | 'collectionsCollection';
+  collectionSlug?: string;
 }
 
 /**
@@ -30,17 +33,26 @@ interface MenuDropdownProps {
  *
  * @param isOpen - Controls dropdown visibility state
  * @param onClose - Callback function to close the dropdown
+ * @param pageType
+ * @param collectionSlug
  * @returns Client component rendering full navigation menu overlay
  */
-export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
+export function MenuDropdown({ isOpen, onClose, pageType = 'default', collectionSlug }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Form/page state
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
+  // Show Update button only on localhost and for collectionsCollection pages
+  const showUpdateButton = isLocalEnvironment() && pageType === 'collection';
+
   // Navigation handlers with automatic close
   const handleNavigation = {
+    update: () => {
+      window.location.href = collectionSlug ? `/collection/manage/${collectionSlug}` : '/collection/manage';
+      onClose();
+    },
     blogs: () => {
       window.location.href = '/blogs';
       onClose();
@@ -134,6 +146,17 @@ export function MenuDropdown({ isOpen, onClose }: MenuDropdownProps) {
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
+        {showUpdateButton && (
+          <div className={styles.dropdownMenuItem}>
+            <h2
+              className={styles.dropdownMenuOptions}
+              onClick={handleNavigation.update}
+            >
+              Update
+            </h2>
+          </div>
+        )}
+
         <div className={styles.dropdownMenuItem}>
           <h2
             className={styles.dropdownMenuOptions}

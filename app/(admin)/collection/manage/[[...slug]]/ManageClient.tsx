@@ -20,21 +20,23 @@ import { type FormEvent, useState } from 'react';
  */
 import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { type ContentCollectionNormalized } from '@/app/lib/api/contentCollections';
-import { addContentBlocks, createContentCollectionSimple, fetchCollectionBySlug, updateContentCollection } from '@/app/lib/api/home';
+import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
+import { addContentBlocks, createContentCollectionSimple, fetchCollectionBySlugAdmin, updateContentCollection } from '@/app/lib/api/home';
 import { type AnyContentBlock } from '@/app/types/ContentBlock';
 import { CollectionType, type ContentCollectionSimpleCreateDTO, type ContentCollectionUpdateDTO } from '@/app/types/ContentCollection';
 
 import styles from '../../../../page.module.scss';
 
 interface ManageClientProps {
-  initialCollection?: ContentCollectionNormalized | null;
+  initialCollection?: ContentCollectionFullModel | null;
 }
 
 export default function ManageClient({ initialCollection }: ManageClientProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [collection, setCollection] = useState<ContentCollectionNormalized | null>(initialCollection || null);
+  const [collection, setCollection] = useState<ContentCollectionFullModel | null>(initialCollection || null);
+  const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
+  const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
 
   // Create form state
   const [createData, setCreateData] = useState<ContentCollectionSimpleCreateDTO>({
@@ -47,11 +49,12 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     title: initialCollection?.title || '',
     description: initialCollection?.description || '',
     location: initialCollection?.location || '',
-    visible: true,
-    priority: 2,
-    homeCardEnabled: false, // TODO: Get from initialCollection when available
-    homeCardText: '', // TODO: Get from initialCollection when available
-    coverImageId: undefined // TODO: Get from initialCollection when available
+    visible: initialCollection?.visible ?? true,
+    priority: initialCollection?.priority ?? 2,
+    displayMode: initialCollection?.displayMode ?? 'CHRONOLOGICAL',
+    homeCardEnabled: initialCollection?.homeCardEnabled ?? false,
+    homeCardText: initialCollection?.homeCardText || '',
+    coverImageId: undefined
   });
 
   const isCreateMode = !initialCollection;
@@ -74,8 +77,8 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
       console.log('Collection created:', response);
 
-      // Convert response to normalized format and switch to update mode
-      const normalizedCollection: ContentCollectionNormalized = {
+      // Convert response to full model format and switch to update mode
+      const normalizedCollection: ContentCollectionFullModel = {
         id: response.id,
         type: response.type,
         title: response.title,
@@ -85,6 +88,13 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
         collectionDate: response.collectionDate,
         coverImageUrl: response.coverImageUrl,
         coverImage: null, // New collection has no cover image initially
+        visible: true,
+        priority: 2,
+        isPasswordProtected: false,
+        hasAccess: true,
+        displayMode: 'CHRONOLOGICAL',
+        homeCardEnabled: false,
+        homeCardText: '',
         blocks: [], // New collection has no blocks initially
         pagination: {
           currentPage: 0,
@@ -137,7 +147,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       console.log('Collection updated successfully:', response);
 
       // Update local collection state with response data
-      const updatedCollection: ContentCollectionNormalized = {
+      const updatedCollection: ContentCollectionFullModel = {
         ...collection,
         title: response.title,
         description: response.description || '',
@@ -175,8 +185,8 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
       console.log('Images uploaded successfully:', response);
 
-      // Re-fetch collection to get updated normalized format
-      const refreshedCollection = await fetchCollectionBySlug(collection.slug);
+      // Re-fetch collection to get updated full model format
+      const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
       setCollection(refreshedCollection);
 
       // Clear the file input
@@ -190,9 +200,32 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     }
   };
 
+  // Handle cover image selection
+  const handleCoverImageClick = (imageId: number) => {
+    setUpdateData(prev => ({ ...prev, coverImageId: imageId }));
+    setIsSelectingCoverImage(false);
+
+    // Show temporary red overlay on newly selected image
+    setJustClickedImageId(imageId);
+    setTimeout(() => {
+      setJustClickedImageId(null);
+    }, 500);
+  };
+
+  // Get the displayed cover image (pending selection or current)
+  // Cast blocks to AnyContentBlock since they come from the API properly typed
+  const displayedCoverImage = updateData.coverImageId
+    ? (collection?.blocks as AnyContentBlock[])?.find(block => block.id === updateData.coverImageId && 'imageUrlWeb' in block)
+    : collection?.coverImage;
+
+  // Type guard to check if it's an image block with imageUrlWeb
+  const hasImageUrl = (block: unknown): block is { imageUrlWeb: string } => {
+    return block !== null && block !== undefined && typeof block === 'object' && 'imageUrlWeb' in block;
+  };
+
   return (
     <div>
-      <SiteHeader />
+      <SiteHeader pageType="manage" />
       <div className={styles.contentPadding}>
 
         {/* CREATE MODE */}
@@ -307,24 +340,83 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                 </div>
               )}
 
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                  Upload Images
-                </label>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={loading}
-                  style={{
-                    padding: '0.5rem',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px',
-                    width: '100%'
-                  }}
-                />
-                {loading && <div style={{ marginTop: '0.5rem', color: '#666' }}>Uploading...</div>}
+              <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem' }}>
+                {/* Cover Image Section */}
+                <div style={{ flex: '0 0 200px' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Cover Image
+                  </label>
+                  {hasImageUrl(displayedCoverImage) ? (
+                    <div>
+                      <img
+                        src={displayedCoverImage.imageUrlWeb}
+                        alt="Cover"
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          maxHeight: '300px',
+                          objectFit: 'contain',
+                          borderRadius: '4px',
+                          border: '1px solid #ccc',
+                          marginBottom: '0.5rem'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          background: isSelectingCoverImage ? '#dc3545' : '#6c757d',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: isSelectingCoverImage ? 'bold' : 'normal'
+                        }}
+                      >
+                        {isSelectingCoverImage ? 'Cancel Selection' : 'Update Cover Image'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '150px',
+                      border: '2px dashed #ccc',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#999',
+                      fontSize: '0.875rem',
+                      marginBottom: '0.5rem'
+                    }}>
+                      No cover image
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Images Section */}
+                <div style={{ flex: '1' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Upload Images
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={loading}
+                    style={{
+                      padding: '0.5rem',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      width: '100%'
+                    }}
+                  />
+                  {loading && <div style={{ marginTop: '0.5rem', color: '#666' }}>Uploading...</div>}
+                </div>
               </div>
 
               <form onSubmit={handleUpdate}>
@@ -381,7 +473,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <input
@@ -413,6 +505,25 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                       <option value={4}>4 - Low</option>
                     </select>
                   </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                      Display Mode
+                    </label>
+                    <select
+                      value={updateData.displayMode}
+                      onChange={(e) => setUpdateData(prev => ({ ...prev, displayMode: e.target.value as 'CHRONOLOGICAL' | 'ORDERED' }))}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      <option value="CHRONOLOGICAL">Chronological</option>
+                      <option value="ORDERED">Ordered</option>
+                    </select>
+                  </div>
                 </div>
 
                 {/* Home Card Settings */}
@@ -424,62 +535,41 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                 }}>
                   <legend style={{ fontWeight: 'bold' }}>Home Page Card Settings</legend>
 
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={updateData.homeCardEnabled}
-                        onChange={(e) => setUpdateData(prev => ({ ...prev, homeCardEnabled: e.target.checked }))}
-                      />
-                      <span>Enable home page card</span>
-                    </label>
-                  </div>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ flex: '0 0 auto' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={updateData.homeCardEnabled}
+                          onChange={(e) => setUpdateData(prev => ({ ...prev, homeCardEnabled: e.target.checked }))}
+                        />
+                        <span>Enable home page card</span>
+                      </label>
+                    </div>
 
-                  {updateData.homeCardEnabled && (
-                    <div style={{ marginBottom: '1rem' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem' }}>
+                    <div style={{ flex: '1' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
                         Home Card Text
                       </label>
                       <textarea
                         value={updateData.homeCardText}
                         onChange={(e) => setUpdateData(prev => ({ ...prev, homeCardText: e.target.value }))}
+                        disabled={!updateData.homeCardEnabled}
                         style={{
                           width: '100%',
                           padding: '0.5rem',
                           border: '1px solid #ccc',
                           borderRadius: '4px',
-                          minHeight: '60px'
+                          minHeight: '60px',
+                          opacity: updateData.homeCardEnabled ? 1 : 0.5,
+                          cursor: updateData.homeCardEnabled ? 'text' : 'not-allowed'
                         }}
                         placeholder="Text to display on the home page card"
                       />
                     </div>
-                  )}
+                  </div>
                 </fieldset>
 
-                {/* Cover Image Settings */}
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                    Cover Image ID
-                  </label>
-                  <input
-                    type="number"
-                    value={updateData.coverImageId ?? ''}
-                    onChange={(e) => setUpdateData(prev => ({
-                      ...prev,
-                      coverImageId: e.target.value ? Number(e.target.value) : undefined
-                    }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px'
-                    }}
-                    placeholder="ID of content block to use as cover image"
-                  />
-                  <div style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.25rem' }}>
-                    Enter the ID of a content block to use as the cover image
-                  </div>
-                </div>
 
                 <button
                   type="submit"
@@ -510,8 +600,19 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   borderRadius: '4px'
                 }}>
                   Collection Content ({collection.blocks.length} blocks)
+                  {isSelectingCoverImage && (
+                    <span style={{ marginLeft: '1rem', color: '#dc3545', fontWeight: 'bold' }}>
+                      (Click any image to set as cover)
+                    </span>
+                  )}
                 </h3>
-                <ContentBlockComponent blocks={collection.blocks as AnyContentBlock[]} />
+                <ContentBlockComponent
+                  blocks={collection.blocks as AnyContentBlock[]}
+                  isSelectingCoverImage={isSelectingCoverImage}
+                  currentCoverImageId={collection.coverImage?.id}
+                  onImageClick={handleCoverImageClick}
+                  justClickedImageId={justClickedImageId}
+                />
               </div>
             )}
           </>

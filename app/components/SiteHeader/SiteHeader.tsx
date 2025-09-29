@@ -7,6 +7,11 @@ import { useState } from 'react';
 import { MenuDropdown } from '../MenuDropdown/MenuDropdown';
 import styles from './SiteHeader.module.scss';
 
+interface SiteHeaderProps {
+  pageType?: 'default' | 'manage' | 'collection' | 'collectionsCollection';
+  collectionSlug?: string;
+}
+
 /**
  * Site Header
  *
@@ -22,7 +27,7 @@ import styles from './SiteHeader.module.scss';
  *
  * @returns Client component with site branding and navigation
  */
-export function SiteHeader() {
+export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -49,6 +54,8 @@ export function SiteHeader() {
       <MenuDropdown
         isOpen={isMenuOpen}
         onClose={closeMenu}
+        pageType={pageType}
+        collectionSlug={collectionSlug}
       />
     </>
   );

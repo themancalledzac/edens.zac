@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import { fetchCollectionBySlug } from '@/app/lib/api/home';
+import { fetchCollectionBySlugAdmin } from '@/app/lib/api/home';
 
 import ManageClient from './ManageClient';
 
@@ -30,9 +30,10 @@ export default async function ManageCollectionPage({ params }: ManageCollectionP
     return <ManageClient />;
   }
 
-  // UPDATE MODE: Slug provided, fetch collection data server-side
+  // UPDATE MODE: Slug provided, fetch collection data server-side (admin version)
   try {
-    const collection = await fetchCollectionBySlug(slug);
+    const collection = await fetchCollectionBySlugAdmin(slug);
+    console.log(JSON.stringify(collection));
 
     if (!collection) {
       return notFound();

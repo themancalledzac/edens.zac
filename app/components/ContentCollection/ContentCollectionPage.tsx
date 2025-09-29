@@ -38,7 +38,7 @@ export default async function ContentCollectionPage({
 
   return (
     <div className={styles.container}>
-      <SiteHeader />
+      <SiteHeader/>
       <main className={styles.main}>
         <Suspense fallback={<CardsGridSkeleton />}>
           {cardsWithRows && cardsWithRows.length > 0 ? (

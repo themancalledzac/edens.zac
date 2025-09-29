@@ -3,8 +3,10 @@
  */
 
 import {
-  type ContentCollectionNormalized,
-  fetchCollectionBySlug as fetchCollectionBySlugNormalized,
+  type ContentCollectionBase,
+  type ContentCollectionModel as ContentCollectionFullModel,
+  fetchCollectionBySlug as fetchCollectionBySlugPublic,
+  fetchCollectionBySlugAdmin as fetchCollectionBySlugAdminInternal,
 } from '@/app/lib/api/contentCollections';
 import { fetchFormDataApi, fetchPostJsonApi, fetchPutJsonApi, fetchReadApi } from '@/app/lib/api/core';
 import {
@@ -56,18 +58,35 @@ export async function fetchHomePage(
 }
 
 /**
- * Fetches a content collection by slug
+ * Fetches a content collection by slug for public display pages.
+ * Enforces access control and returns base model with public fields only.
  * Endpoint: GET /api/read/collections/{slug}
  *
  * @param slug - The collection slug
- * @returns The collection data
+ * @returns The collection data (base model)
  */
-export async function fetchCollectionBySlug(slug: string): Promise<ContentCollectionNormalized> {
+export async function fetchCollectionBySlug(slug: string): Promise<ContentCollectionBase> {
   try {
-    // Delegate to the normalized fetch in contentCollections to keep a single source of truth
-    return await fetchCollectionBySlugNormalized(slug);
+    return await fetchCollectionBySlugPublic(slug);
   } catch (error) {
     console.error(`Error fetching collection "${slug}":`, error);
+    throw error;
+  }
+}
+
+/**
+ * Fetches a content collection by slug for admin pages.
+ * No access control checks - returns full model with all admin fields.
+ * Endpoint: GET /api/read/collections/{slug}
+ *
+ * @param slug - The collection slug
+ * @returns The collection data (full model)
+ */
+export async function fetchCollectionBySlugAdmin(slug: string): Promise<ContentCollectionFullModel> {
+  try {
+    return await fetchCollectionBySlugAdminInternal(slug);
+  } catch (error) {
+    console.error(`Error fetching collection "${slug}" (admin):`, error);
     throw error;
   }
 }
