@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
@@ -20,21 +21,27 @@ export interface ParallaxImageContentBlockRendererProps {
   // Optional props for badge customization
   cardTypeBadge?: string;
   dateBadge?: string;
+  // Priority loading for above-the-fold images (LCP optimization)
+  priority?: boolean;
 }
 
 /**
  * Complete parallax image component with overlays and badges
  *
- * Renders a parallax-enabled img element with text overlays and badges.
+ * Renders a parallax-enabled image element with text overlays and badges.
  * Handles all parallax logic, overlay rendering, and badge positioning internally.
  * Self-contained component that consolidates all parallax-related functionality.
+ *
+ * Uses Next.js Image component for optimization and supports priority loading
+ * for above-the-fold images to improve LCP (Largest Contentful Paint).
  */
 export function ParallaxImageRenderer({
   block,
   blockType = 'contentBlock',
   cardTypeBadge,
+  priority = false,
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
-  const { imageUrlWeb, overlayText, collectionDate } = block;
+  const { imageUrlWeb, overlayText, collectionDate, imageWidth, imageHeight } = block;
   const dateSimple = new Date(collectionDate || new Date()).toLocaleDateString();
 
   // Setup parallax effect for this image using defaults
@@ -43,12 +50,14 @@ export function ParallaxImageRenderer({
   // Complete parallax container with image, overlays, and badges
   return (
     <div ref={parallaxRef}>
-      <img
+      <Image
         src={imageUrlWeb}
         alt={overlayText || 'Parallax image'}
+        width={imageWidth || 1200}
+        height={imageHeight || 800}
         className={`parallax-bg ${variantStyles.parallaxImage}`}
-        loading="lazy"
-        decoding="async"
+        priority={priority}
+        loading={priority ? undefined : 'lazy'}
       />
       {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
       <BadgeOverlay

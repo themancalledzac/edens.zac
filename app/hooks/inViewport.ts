@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useState } from 'react';
+import { type RefObject, useEffect, useMemo, useState } from 'react';
 
 interface UseInViewportOptions {
   threshold?: number | number[];
@@ -25,6 +25,16 @@ export function useInViewport(ref: RefObject<Element>, options: UseInViewportOpt
 
   const { threshold = 0, root = null, rootMargin = '0px' } = options;
 
+  // Memoize observer options to prevent unnecessary effect re-runs
+  const observerOptions = useMemo(
+    (): IntersectionObserverInit => ({
+      root,
+      rootMargin,
+      threshold
+    }),
+    [root, rootMargin, threshold]
+  );
+
   useEffect(() => {
     if (!ref.current) return;
 
@@ -35,13 +45,13 @@ export function useInViewport(ref: RefObject<Element>, options: UseInViewportOpt
           setIntersectionRatio(entry.intersectionRatio);
         }
       },
-      { root, rootMargin, threshold }
+      observerOptions
     );
 
     observer.observe(ref.current);
 
     return () => observer.disconnect();
-  }, [ref, root, rootMargin, threshold]);
+  }, [ref, observerOptions]);
 
   return { isVisible, intersectionRatio };
 }

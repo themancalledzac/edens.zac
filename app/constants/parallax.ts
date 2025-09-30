@@ -9,6 +9,8 @@ export const PARALLAX_CONSTANTS = {
   // IntersectionObserver configuration
   DEFAULT_THRESHOLD: 0.1,
   DEFAULT_ROOT_MARGIN: '50px',
+  // Threshold array for granular intersection detection (0-100% in 10% increments)
+  THRESHOLD_ARRAY: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
 
   // Performance settings
   // Minimum pixel change before updating transform (0.5px provides smooth animation)
@@ -26,5 +28,5 @@ export const PARALLAX_CONSTANTS = {
   // Viewport height adjustment (accounts for fixed header and mobile chrome UI)
   VIEWPORT_HEIGHT_OFFSET: 200,
 
-} as const;
+};
 

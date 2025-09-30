@@ -52,6 +52,7 @@ export interface ContentBlockComponentProps {
   currentCoverImageId?: number;
   onImageClick?: (imageId: number) => void;
   justClickedImageId?: number | null;
+  priorityBlockIndex?: number; // Index of block to prioritize for LCP (usually 0 for hero)
 }
 
 /**
@@ -66,7 +67,8 @@ export default function ContentBlockComponent({
   isSelectingCoverImage = false,
   currentCoverImageId,
   onImageClick,
-  justClickedImageId
+  justClickedImageId,
+  priorityBlockIndex = 0,
 }: ContentBlockComponentProps) {
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
@@ -101,6 +103,9 @@ export default function ContentBlockComponent({
               {row.map((item, index) => {
                 const { block, className, width, height } = determineBaseProps(item, totalInRow, index);
 
+                // Determine if this block should have priority loading (for LCP optimization)
+                const shouldPrioritize = blocks.findIndex(b => b.id === block.id) === priorityBlockIndex;
+
                 // Renderer lookup map - check most specific types first
                 if (isParallaxImageBlock(block) && block.enableParallax) {
                   // Handle parallax image with proper container structure for collections
@@ -131,6 +136,7 @@ export default function ContentBlockComponent({
                           block={block}
                           blockType="contentBlock"
                           cardTypeBadge={block.cardTypeBadge}
+                          priority={shouldPrioritize}
                         />
                       </div>
                     </div>
