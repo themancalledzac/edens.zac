@@ -43,12 +43,13 @@ export default async function ContentCollectionPage({
         <Suspense fallback={<CardsGridSkeleton />}>
           {cardsWithRows && cardsWithRows.length > 0 ? (
             <div className={styles.gridContainer}>
-              {cardsWithRows.map(({ card, desktopRowIndex, mobileRowIndex }) => (
+              {cardsWithRows.map(({ card, desktopRowIndex, mobileRowIndex }, index) => (
                 <GridSection
                   key={card.id}
                   card={card}
                   desktopRowIndex={desktopRowIndex}
                   mobileRowIndex={mobileRowIndex}
+                  priority={index < 2} // Priority load first 2 cards (first row on desktop)
                 />
               ))}
             </div>

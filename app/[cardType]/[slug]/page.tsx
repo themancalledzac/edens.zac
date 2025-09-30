@@ -123,7 +123,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
       <SiteHeader pageType="collection" collectionSlug={slug} />
       <div className={styles.contentPadding}>
         <div className={styles.blockGroup}>
-          <ContentBlockComponent blocks={combinedBlocks} />
+          <ContentBlockComponent blocks={combinedBlocks} priorityBlockIndex={0} />
         </div>
       </div>
     </div>

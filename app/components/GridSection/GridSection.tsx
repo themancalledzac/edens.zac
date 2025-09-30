@@ -11,6 +11,7 @@ interface GridSectionProps {
   card: HomeCardModel;
   desktopRowIndex: number;
   mobileRowIndex: number;
+  priority?: boolean; // For LCP optimization of above-the-fold images
 }
 
 /**
@@ -37,6 +38,7 @@ export function GridSection({
   card,
   desktopRowIndex: _desktopRowIndex,
   mobileRowIndex: _mobileRowIndex,
+  priority = false,
 }: GridSectionProps) {
   // Convert HomeCardModel to ParallaxImageContentBlock
   const parallaxBlock = buildParallaxImageFromHomeCard(card);
@@ -58,6 +60,7 @@ export function GridSection({
           block={parallaxBlock}
           blockType="collection"
           cardTypeBadge={card.cardType?.toUpperCase()}
+          priority={priority}
         />
       </a>
     </div>

@@ -40,7 +40,7 @@ export function useParallax(options: ParallaxOptions = {}) {
 
   const elementRef = useRef<HTMLDivElement>(null);
   const { isVisible } = useInViewport(elementRef, {
-    threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    threshold: PARALLAX_CONSTANTS.THRESHOLD_ARRAY,
     rootMargin: '0px',
   });
 
