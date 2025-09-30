@@ -2,10 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 
+import { useInViewport } from './inViewport';
+
 interface ParallaxOptions {
-  speed?: number;
-  threshold?: number;
-  rootMargin?: string;
   selector?: string;
   enableParallax?: boolean;
 }
@@ -14,33 +13,35 @@ interface ParallaxOptions {
 /**
  * useParallax Hook
  *
- * Performance-optimized parallax effect hook that creates smooth background
- * movement based on scroll position. Respects user motion preferences
- * and device capabilities.
+ * Viewport-based parallax effect that scrolls images based on their visibility
+ * in the viewport. Images are scaled to 130% (15% overflow above and below).
+ *
+ * Behavior:
+ * - When element enters bottom of viewport: image positioned at top (-15%)
+ * - When element exits top of viewport: image positioned at bottom (+15%)
+ * - Scroll position interpolates linearly between these states
  *
  * @dependencies
- * - React useEffect and useRef for lifecycle and DOM manipulation
- * - IntersectionObserver for visibility detection
+ * - useInViewport for visibility detection and intersection ratio
  * - requestAnimationFrame for smooth animations
  *
- * @param options - Configuration object with speed, selectors, and thresholds containing:
- * @param options.speed - Parallax movement speed multiplier (default: -0.1)
+ * @param options - Configuration object
  * @param options.selector - CSS selector for parallax background element (default: '.parallax-bg')
  * @param options.enableParallax - Enable/disable parallax effect (default: true)
- * @param options.threshold - IntersectionObserver threshold (default: 0.1)
- * @param options.rootMargin - IntersectionObserver root margin (default: '50px')
  * @returns Ref to attach to the container element
  */
 export function useParallax(options: ParallaxOptions = {}) {
   const {
-    speed = -0.1,
     selector = '.parallax-bg',
     enableParallax = true,
-    threshold = 0.1,
-    rootMargin = '50px',
   } = options;
 
   const elementRef = useRef<HTMLDivElement>(null);
+  const { isVisible, intersectionRatio } = useInViewport(elementRef, {
+    threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    rootMargin: '0px',
+  });
+  const prevIsVisibleRef = useRef<boolean>(isVisible);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !elementRef.current || !enableParallax) return;
@@ -53,18 +54,10 @@ export function useParallax(options: ParallaxOptions = {}) {
       return;
     }
 
-    // Compute effective speed based on device and user preferences
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const isMobileMq = window.matchMedia('(max-width: 768px)').matches;
-
-    // Apply device attenuation for performance and accessibility
-    const attenuation = prefersReduced ? 0.2 : (isMobileMq ? 0.4 : 1);
-    const effectiveSpeed = speed * attenuation;
-
     const rafRef = { current: null as number | null };
     const lastOffsetRef = { current: undefined as number | undefined };
 
-    const handleScroll = () => {
+    const updateParallax = () => {
       if (!element || !parallaxBg) return;
 
       if (rafRef.current) {
@@ -72,11 +65,45 @@ export function useParallax(options: ParallaxOptions = {}) {
       }
 
       rafRef.current = requestAnimationFrame(() => {
-        const rect = element.getBoundingClientRect();
-        const elementCenter = rect.top + rect.height / 2;
-        const viewportCenter = window.innerHeight / 2;
-        const distance = elementCenter - viewportCenter;
-        const newOffset = distance * effectiveSpeed;
+        const viewportHeight = window.innerHeight -200;
+        const imageRect = parallaxBg.getBoundingClientRect();
+
+        // Calculate scroll progress based on IMAGE visibility in viewport
+        // START: When imageRect.top = viewportHeight (image top just entering viewport bottom)
+        // END: When imageRect.bottom = 0 (image bottom just exiting viewport top)
+        //
+        // Total travel distance: from top entering bottom to bottom exiting top
+        // Distance = viewportHeight + imageHeight
+        const travelDistance = viewportHeight + imageRect.height;
+
+        // Current position: how far the image top has traveled from viewport bottom
+        // When top is at viewportHeight (entering): currentPos = 0
+        // When top is at 0: currentPos = viewportHeight
+        // When bottom is at 0 (exiting): currentPos = viewportHeight + imageHeight
+        const currentPosition = viewportHeight - imageRect.top;
+
+        const scrollProgress = Math.max(0, Math.min(1, currentPosition / travelDistance));
+
+        // Track actual image entry/exit (not container visibility)
+        const imageFullyEntered = imageRect.top <= viewportHeight;
+        const imageFullyExited = imageRect.bottom <= 0;
+
+        if (imageFullyEntered && !prevIsVisibleRef.current) {
+          const currentTransform = parallaxBg.style.transform;
+          console.log('🟢 Image ENTERING viewport (top crossing bottom edge), transform at:', currentTransform, '| scrollProgress:', scrollProgress.toFixed(3));
+          prevIsVisibleRef.current = true;
+        } else if (imageFullyExited && prevIsVisibleRef.current) {
+          const currentTransform = parallaxBg.style.transform;
+          console.log('🔴 Image EXITING viewport (bottom crossing top edge), transform at:', currentTransform, '| scrollProgress:', scrollProgress.toFixed(3));
+          prevIsVisibleRef.current = false;
+        }
+
+        // Fixed pixel range: -50px to +100px
+        const minOffset = -50;
+        const maxOffset = 100;
+        const offsetRange = maxOffset - minOffset;
+
+        const newOffset = minOffset + (scrollProgress * offsetRange);
 
         if (
           lastOffsetRef.current === undefined ||
@@ -84,51 +111,27 @@ export function useParallax(options: ParallaxOptions = {}) {
         ) {
           parallaxBg.style.transform = `translate3d(0, ${newOffset}px, 0)`;
           lastOffsetRef.current = newOffset;
+          // console.log('✅ Transform applied:', `translate3d(0, ${newOffset}px, 0)`);
         }
       });
     };
 
-    let isScrollListenerActive = false;
+    // Initial update
+    updateParallax();
 
-    const observer = new IntersectionObserver(
-      entries => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            if (!isScrollListenerActive) {
-              window.addEventListener('scroll', handleScroll, { passive: true });
-              isScrollListenerActive = true;
-              handleScroll();
-            }
-          } else {
-            if (isScrollListenerActive) {
-              window.removeEventListener('scroll', handleScroll);
-              isScrollListenerActive = false;
-              if (rafRef.current) {
-                cancelAnimationFrame(rafRef.current);
-              }
-            }
-          }
-        }
-      },
-      {
-        threshold,
-        rootMargin,
-      }
-    );
-
-    observer.observe(element);
+    // Update on scroll
+    window.addEventListener('scroll', updateParallax, { passive: true });
+    window.addEventListener('resize', updateParallax, { passive: true });
 
     return () => {
-      observer.disconnect();
-      if (isScrollListenerActive) {
-        window.removeEventListener('scroll', handleScroll);
-      }
+      window.removeEventListener('scroll', updateParallax);
+      window.removeEventListener('resize', updateParallax);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }
     };
 
-  }, [speed, selector, enableParallax, threshold, rootMargin]);
+  }, [isVisible, intersectionRatio, selector, enableParallax]);
 
   return elementRef;
 }

@@ -24,6 +24,10 @@ export const PARALLAX_CONSTANTS = {
   FADE_IN_DELAY: '0.1s',
   FADE_IN_DURATION: '0.4s',
 
+  // Parallax offset range (in pixels)
+  OFFSET_MIN: -50,
+  OFFSET_MAX: 50,
+
 } as const;
 
 /**
