@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
+import { PARALLAX_CONSTANTS } from '@/app/constants/parallax';
+
 import { useInViewport } from './inViewport';
 
 interface ParallaxOptions {
@@ -37,11 +39,10 @@ export function useParallax(options: ParallaxOptions = {}) {
   } = options;
 
   const elementRef = useRef<HTMLDivElement>(null);
-  const { isVisible, intersectionRatio } = useInViewport(elementRef, {
+  const { isVisible } = useInViewport(elementRef, {
     threshold: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
     rootMargin: '0px',
   });
-  const prevIsVisibleRef = useRef<boolean>(isVisible);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !elementRef.current || !enableParallax) return;
@@ -65,7 +66,7 @@ export function useParallax(options: ParallaxOptions = {}) {
       }
 
       rafRef.current = requestAnimationFrame(() => {
-        const viewportHeight = window.innerHeight -200;
+        const viewportHeight = window.innerHeight - PARALLAX_CONSTANTS.VIEWPORT_HEIGHT_OFFSET;
         const imageRect = parallaxBg.getBoundingClientRect();
 
         // Calculate scroll progress based on IMAGE visibility in viewport
@@ -84,34 +85,16 @@ export function useParallax(options: ParallaxOptions = {}) {
 
         const scrollProgress = Math.max(0, Math.min(1, currentPosition / travelDistance));
 
-        // Track actual image entry/exit (not container visibility)
-        const imageFullyEntered = imageRect.top <= viewportHeight;
-        const imageFullyExited = imageRect.bottom <= 0;
-
-        if (imageFullyEntered && !prevIsVisibleRef.current) {
-          const currentTransform = parallaxBg.style.transform;
-          console.log('🟢 Image ENTERING viewport (top crossing bottom edge), transform at:', currentTransform, '| scrollProgress:', scrollProgress.toFixed(3));
-          prevIsVisibleRef.current = true;
-        } else if (imageFullyExited && prevIsVisibleRef.current) {
-          const currentTransform = parallaxBg.style.transform;
-          console.log('🔴 Image EXITING viewport (bottom crossing top edge), transform at:', currentTransform, '| scrollProgress:', scrollProgress.toFixed(3));
-          prevIsVisibleRef.current = false;
-        }
-
-        // Fixed pixel range: -50px to +100px
-        const minOffset = -50;
-        const maxOffset = 100;
-        const offsetRange = maxOffset - minOffset;
-
-        const newOffset = minOffset + (scrollProgress * offsetRange);
+        // Calculate parallax offset using configured range
+        const offsetRange = PARALLAX_CONSTANTS.OFFSET_MAX - PARALLAX_CONSTANTS.OFFSET_MIN;
+        const newOffset = PARALLAX_CONSTANTS.OFFSET_MIN + (scrollProgress * offsetRange);
 
         if (
           lastOffsetRef.current === undefined ||
-          Math.abs(newOffset - lastOffsetRef.current) > 0.5
+          Math.abs(newOffset - lastOffsetRef.current) > PARALLAX_CONSTANTS.UPDATE_THRESHOLD
         ) {
           parallaxBg.style.transform = `translate3d(0, ${newOffset}px, 0)`;
           lastOffsetRef.current = newOffset;
-          // console.log('✅ Transform applied:', `translate3d(0, ${newOffset}px, 0)`);
         }
       });
     };
@@ -131,7 +114,7 @@ export function useParallax(options: ParallaxOptions = {}) {
       }
     };
 
-  }, [isVisible, intersectionRatio, selector, enableParallax]);
+  }, [isVisible, selector, enableParallax]);
 
   return elementRef;
 }
