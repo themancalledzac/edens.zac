@@ -1,4 +1,3 @@
-import { PARALLAX_CONSTANTS } from '@/app/constants/parallax';
 import { type ImageContentBlock, type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isImageBlock } from '@/app/utils/contentBlockTypeGuards';
@@ -15,7 +14,6 @@ function createBaseParallaxProperties(
 ) {
   return {
     enableParallax: true as const,
-    parallaxSpeed: PARALLAX_CONSTANTS.DEFAULT_SPEED,
     overlayText,
     cardTypeBadge,
     orderIndex, // Ensure it appears first

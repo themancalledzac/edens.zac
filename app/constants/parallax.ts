@@ -11,7 +11,9 @@ export const PARALLAX_CONSTANTS = {
   DEFAULT_ROOT_MARGIN: '50px',
 
   // Performance settings
-  UPDATE_THRESHOLD: 0.5, // Minimum pixel change before updating transform
+  // Minimum pixel change before updating transform (0.5px provides smooth animation)
+  // Note: Increasing to 1-2px reduces repaints but may appear less smooth
+  UPDATE_THRESHOLD: 0.5,
 
   // Animation timing
   FADE_IN_DELAY: '0.1s',
