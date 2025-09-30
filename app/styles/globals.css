@@ -67,6 +67,21 @@ html,
   --font-sans:
     -apple-system, blinkmacsystemfont, segoe ui, roboto, oxygen, ubuntu, cantarell, fira sans,
     droid sans, helvetica neue, sans-serif;
+
+  /* Admin/Form Colors */
+  --color-bg-light: #f8f9fa;
+  --color-border-light: #ccc;
+  --color-border-medium: #dee2e6;
+  --color-text-primary: #333;
+  --color-text-secondary: #666;
+  --color-text-muted: #999;
+  --color-error-bg: #fee;
+  --color-error-border: #fcc;
+  --color-error-text: #c33;
+  --color-primary: #007bff;
+  --color-secondary: #6c757d;
+  --color-danger: #dc3545;
+  --color-disabled: #ccc;
 }
 
 body {

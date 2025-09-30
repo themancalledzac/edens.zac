@@ -24,7 +24,7 @@
 import { notFound } from 'next/navigation';
 
 import { type ContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
-import { type CollectionType } from '@/app/types/ContentCollection';
+import { type CollectionType, type DisplayMode } from '@/app/types/ContentCollection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isProduction } from '@/app/utils/environment';
 
@@ -51,7 +51,7 @@ export interface ContentCollection {
   coverImage?: ImageContentBlock | null;
   isPasswordProtected?: boolean;
   hasAccess?: boolean;
-  displayMode?: 'CHRONOLOGICAL' | 'ORDERED';
+  displayMode?: DisplayMode;
   configJson?: ConfigJson | string;
   createdAt?: string;
   updatedAt?: string;
@@ -189,7 +189,7 @@ export interface ContentCollectionBase {
   // Legacy compatibility: keep coverImageUrl, but prefer coverImage object
   coverImageUrl?: string;
   coverImage?: ImageContentBlock | null;
-  displayMode?: 'CHRONOLOGICAL' | 'ORDERED';
+  displayMode?: DisplayMode;
   blocks: ContentBlock[];
   pagination: { currentPage: number; totalPages: number; totalBlocks: number; pageSize: number };
 }

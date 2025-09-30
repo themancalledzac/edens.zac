@@ -2,30 +2,26 @@
 
 import { type FormEvent, useState } from 'react';
 
-/**
- * TODO: Future Content Block Operations
- *
- * Add support for the following backend fields in updateData:
- *
- * Content block operations (processed separately in service layer):
- * - reorderOperations: Array<ContentBlockReorderOperation>
- * - contentBlockIdsToRemove: Array<number>
- * - newTextBlocks: Array<string>
- * - newCodeBlocks: Array<string>
- *
- * ContentBlockReorderOperation interface:
- * - contentBlockId?: number (positive for existing, negative for new placeholders)
- * - oldOrderIndex?: number (original position, min 0)
- * - newOrderIndex: number (new position, min 0)
- */
 import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
 import { addContentBlocks, createContentCollectionSimple, fetchCollectionBySlugAdmin, updateContentCollection } from '@/app/lib/api/home';
 import { type AnyContentBlock } from '@/app/types/ContentBlock';
-import { CollectionType, type ContentCollectionSimpleCreateDTO, type ContentCollectionUpdateDTO } from '@/app/types/ContentCollection';
+import { CollectionType, type ContentBlockReorderOperation, type ContentCollectionSimpleCreateDTO, type DisplayMode } from '@/app/types/ContentCollection';
 
-import styles from '../../../../page.module.scss';
+import pageStyles from '../../../../page.module.scss';
+import styles from './ManageClient.module.scss';
+import {
+  buildUpdatePayload,
+  COVER_IMAGE_FLASH_DURATION,
+  getDisplayedCoverImage,
+  initializeUpdateFormData,
+  isImageContentBlock,
+  type ManageFormData,
+  normalizeCollectionResponse,
+  syncCollectionState,
+  validateFormData
+} from './manageUtils';
 
 interface ManageClientProps {
   initialCollection?: ContentCollectionFullModel | null;
@@ -37,31 +33,88 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
   const [collection, setCollection] = useState<ContentCollectionFullModel | null>(initialCollection || null);
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
-
-  // Create form state
   const [createData, setCreateData] = useState<ContentCollectionSimpleCreateDTO>({
     type: CollectionType.portfolio,
     title: ''
   });
 
-  // Update form state
-  const [updateData, setUpdateData] = useState<ContentCollectionUpdateDTO>({
-    title: initialCollection?.title || '',
-    description: initialCollection?.description || '',
-    location: initialCollection?.location || '',
-    visible: initialCollection?.visible ?? true,
-    priority: initialCollection?.priority ?? 2,
-    displayMode: initialCollection?.displayMode ?? 'CHRONOLOGICAL',
-    homeCardEnabled: initialCollection?.homeCardEnabled ?? false,
-    homeCardText: initialCollection?.homeCardText || '',
-    coverImageId: undefined
-  });
+  // Update form state - initialized with utility function
+  const [updateData, setUpdateData] = useState<ManageFormData>(
+    initializeUpdateFormData(initialCollection)
+  );
+
+  // Content block operation states
+  const [reorderOperations, setReorderOperations] = useState<ContentBlockReorderOperation[]>([]);
+  const [contentBlockIdsToRemove, setContentBlockIdsToRemove] = useState<number[]>([]);
 
   const isCreateMode = !initialCollection;
+
+  // Handle creating a new text block - immediately POST to backend
+  const handleCreateNewTextBlock = async () => {
+    if (!collection) return;
+
+    const newText = prompt('Enter text for the new block:');
+    if (!newText || !newText.trim()) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log('Creating new text block for collection:', collection.id);
+
+      // TODO: Replace with actual API call when backend endpoint is ready
+      // For now, mock the response by adding a fake text block
+
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Create mock text block (matching TextContentBlock structure)
+      const mockTextBlock = {
+        id: Date.now(), // Temporary ID
+        blockType: 'TEXT' as const,
+        content: newText.trim(),
+        format: 'plain' as const,
+        align: 'left' as const,
+        orderIndex: collection.blocks.length, // Add to end
+        rating: 3,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Add mock block to collection
+      const updatedCollection = {
+        ...collection,
+        blocks: [...collection.blocks, mockTextBlock]
+      };
+
+      setCollection(updatedCollection);
+      console.log('Text block added (mocked):', mockTextBlock);
+
+      // TODO: When backend is ready, use this instead:
+      // const formData = new FormData();
+      // formData.append('textContent', newText.trim());
+      // const response = await addContentBlocks(collection.id, formData);
+      // const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
+      // setCollection(refreshedCollection);
+
+    } catch (error) {
+      console.error('Error creating text block:', error);
+      setError(error instanceof Error ? error.message : 'Failed to create text block');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Handle create form submission
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
+
+    // Validate form data
+    const validationError = validateFormData(updateData, true);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
     if (!createData.title.trim()) {
       setError('Title is required');
@@ -77,53 +130,20 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
       console.log('Collection created:', response);
 
-      // Convert response to full model format and switch to update mode
-      const normalizedCollection: ContentCollectionFullModel = {
-        id: response.id,
-        type: response.type,
-        title: response.title,
-        slug: response.slug,
-        description: response.description || '',
-        location: response.location || '',
-        collectionDate: response.collectionDate,
-        coverImageUrl: response.coverImageUrl,
-        coverImage: null, // New collection has no cover image initially
-        visible: true,
-        priority: 2,
-        isPasswordProtected: false,
-        hasAccess: true,
-        displayMode: 'CHRONOLOGICAL',
-        homeCardEnabled: false,
-        homeCardText: '',
-        blocks: [], // New collection has no blocks initially
-        pagination: {
-          currentPage: 0,
-          totalPages: 0,
-          totalBlocks: 0,
-          pageSize: 30
-        }
-      };
+      // Convert response to full model format using utility function
+      const normalizedCollection = normalizeCollectionResponse(response);
 
       setCollection(normalizedCollection);
 
-      // Populate update form with created collection data
-      setUpdateData({
-        title: normalizedCollection.title,
-        description: normalizedCollection.description || '',
-        location: normalizedCollection.location || '',
-        visible: true, // Default value
-        priority: 2,   // Default value
-        homeCardEnabled: false,
-        homeCardText: '',
-        coverImageId: undefined
-      });
+      // Populate update form with created collection data using utility function
+      setUpdateData(initializeUpdateFormData(normalizedCollection));
 
       // Update URL to reflect the new collection
       window.history.pushState({}, '', `/collection/manage/${response.slug}`);
 
-    } catch (error_: unknown) {
-      console.error('Error creating collection:', error_);
-      const errorMessage = error_ instanceof Error ? error_.message : 'Failed to create collection';
+    } catch (error: unknown) {
+      console.error('Error creating collection:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create collection';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -136,25 +156,50 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
     if (!collection) return;
 
+    // Validate form data
+    const validationError = validateFormData(updateData, false);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      console.log('Updating collection:', collection.id, updateData);
+      // Build payload with only changed fields and content block operations
+      const payload = buildUpdatePayload(
+        updateData,
+        collection,
+        reorderOperations,
+        contentBlockIdsToRemove
+      );
 
-      const response = await updateContentCollection(collection.id, updateData);
+      console.log('Updating collection:', collection.id, payload);
+
+      const response = await updateContentCollection(collection.id, payload);
 
       console.log('Collection updated successfully:', response);
 
-      // Update local collection state with response data
-      const updatedCollection: ContentCollectionFullModel = {
-        ...collection,
-        title: response.title,
-        description: response.description || '',
-        location: response.location || ''
-      };
+      // If content block operations were performed, refetch to get updated blocks
+      const hasContentBlockOperations =
+        reorderOperations.length > 0 ||
+        contentBlockIdsToRemove.length > 0;
 
-      setCollection(updatedCollection);
+      if (hasContentBlockOperations) {
+        // Refetch collection to get updated blocks with proper ordering
+        const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
+        setCollection(refreshedCollection);
+      } else {
+        // Just sync metadata changes if no block operations
+        const updatedCollection = syncCollectionState(collection, response, updateData);
+        setCollection(updatedCollection);
+      }
+
+      // Reset coverImageId and content block operations after successful update
+      setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
+      setReorderOperations([]);
+      setContentBlockIdsToRemove([]);
 
     } catch (error) {
       console.error('Error updating collection:', error);
@@ -209,63 +254,37 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     setJustClickedImageId(imageId);
     setTimeout(() => {
       setJustClickedImageId(null);
-    }, 500);
+    }, COVER_IMAGE_FLASH_DURATION);
   };
 
   // Get the displayed cover image (pending selection or current)
-  // Cast blocks to AnyContentBlock since they come from the API properly typed
-  const displayedCoverImage = updateData.coverImageId
-    ? (collection?.blocks as AnyContentBlock[])?.find(block => block.id === updateData.coverImageId && 'imageUrlWeb' in block)
-    : collection?.coverImage;
-
-  // Type guard to check if it's an image block with imageUrlWeb
-  const hasImageUrl = (block: unknown): block is { imageUrlWeb: string } => {
-    return block !== null && block !== undefined && typeof block === 'object' && 'imageUrlWeb' in block;
-  };
+  const displayedCoverImage = getDisplayedCoverImage(collection, updateData.coverImageId);
 
   return (
     <div>
       <SiteHeader pageType="manage" />
-      <div className={styles.contentPadding}>
+      <div className={pageStyles.contentPadding}>
 
         {/* CREATE MODE */}
         {isCreateMode && !collection && (
-          <div style={{
-            background: '#f8f9fa',
-            border: '1px solid #dee2e6',
-            borderRadius: '8px',
-            padding: '1.5rem',
-            marginBottom: '2rem'
-          }}>
-            <h2 style={{ marginBottom: '1.5rem', color: '#333' }}>Create New Collection</h2>
+          <div className={styles.createContainer}>
+            <h2 className={styles.createHeading}>Create New Collection</h2>
 
             {error && (
-              <div style={{
-                background: '#fee',
-                border: '1px solid #fcc',
-                padding: '1rem',
-                borderRadius: '4px',
-                marginBottom: '1rem',
-                color: '#c33'
-              }}>
+              <div className={styles.errorMessage}>
                 {error}
               </div>
             )}
 
             <form onSubmit={handleCreate}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>
                   Collection Type *
                 </label>
                 <select
                   value={createData.type}
                   onChange={(e) => setCreateData(prev => ({ ...prev, type: e.target.value as CollectionType }))}
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px'
-                  }}
+                  className={styles.formSelect}
                   required
                 >
                   <option value={CollectionType.portfolio}>Portfolio</option>
@@ -275,20 +294,15 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                 </select>
               </div>
 
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel}>
                   Title *
                 </label>
                 <input
                   type="text"
                   value={createData.title}
                   onChange={(e) => setCreateData(prev => ({ ...prev, title: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    border: '1px solid #ccc',
-                    borderRadius: '4px'
-                  }}
+                  className={styles.formInput}
                   required
                   placeholder="e.g., Film Pack 002"
                 />
@@ -297,15 +311,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
               <button
                 type="submit"
                 disabled={loading}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: loading ? '#ccc' : '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '1rem'
-                }}
+                className={styles.submitButton}
               >
                 {loading ? 'Creating...' : 'Create Collection'}
               </button>
@@ -316,90 +322,47 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
         {/* UPDATE MODE */}
         {collection && (
           <>
-            <div style={{
-              background: '#f8f9fa',
-              border: '1px solid #dee2e6',
-              borderRadius: '8px',
-              padding: '1.5rem',
-              marginBottom: '2rem'
-            }}>
-              <h2 style={{ marginBottom: '1.5rem', color: '#333' }}>
+            <div className={styles.updateContainer}>
+              <h2 className={styles.updateHeading}>
                 Manage Collection: {collection.title}
               </h2>
 
               {error && (
-                <div style={{
-                  background: '#fee',
-                  border: '1px solid #fcc',
-                  padding: '1rem',
-                  borderRadius: '4px',
-                  marginBottom: '1rem',
-                  color: '#c33'
-                }}>
+                <div className={styles.errorMessage}>
                   {error}
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem' }}>
+              <div className={styles.mediaSection}>
                 {/* Cover Image Section */}
-                <div style={{ flex: '0 0 200px' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                <div className={styles.coverImageSection}>
+                  <label className={styles.formLabel}>
                     Cover Image
                   </label>
-                  {hasImageUrl(displayedCoverImage) ? (
-                    <div>
+                  {displayedCoverImage && isImageContentBlock(displayedCoverImage) ? (
+                    <div className={styles.coverImageWrapper}>
                       <img
                         src={displayedCoverImage.imageUrlWeb}
                         alt="Cover"
-                        style={{
-                          width: '100%',
-                          height: 'auto',
-                          maxHeight: '300px',
-                          objectFit: 'contain',
-                          borderRadius: '4px',
-                          border: '1px solid #ccc',
-                          marginBottom: '0.5rem'
-                        }}
                       />
                       <button
                         type="button"
                         onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                        style={{
-                          width: '100%',
-                          padding: '0.5rem',
-                          background: isSelectingCoverImage ? '#dc3545' : '#6c757d',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem',
-                          fontWeight: isSelectingCoverImage ? 'bold' : 'normal'
-                        }}
+                        className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
                       >
                         {isSelectingCoverImage ? 'Cancel Selection' : 'Update Cover Image'}
                       </button>
                     </div>
                   ) : (
-                    <div style={{
-                      width: '100%',
-                      height: '150px',
-                      border: '2px dashed #ccc',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#999',
-                      fontSize: '0.875rem',
-                      marginBottom: '0.5rem'
-                    }}>
+                    <div className={styles.noCoverImage}>
                       No cover image
                     </div>
                   )}
                 </div>
 
                 {/* Upload Images Section */}
-                <div style={{ flex: '1' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                <div className={styles.uploadSection}>
+                  <label className={styles.formLabel}>
                     Upload Images
                   </label>
                   <input
@@ -408,96 +371,85 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                     accept="image/*"
                     onChange={handleImageUpload}
                     disabled={loading}
-                    style={{
-                      padding: '0.5rem',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      width: '100%'
-                    }}
+                    className={styles.uploadInput}
                   />
-                  {loading && <div style={{ marginTop: '0.5rem', color: '#666' }}>Uploading...</div>}
+                  {loading && <div className={styles.uploadingText}>Uploading...</div>}
+                </div>
+
+                {/* Add Text Block Section */}
+                <div className={styles.textBlockSection}>
+                  <label className={styles.formLabel}>
+                    Add Text Block
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleCreateNewTextBlock}
+                    disabled={loading}
+                    className={styles.addTextBlockButton}
+                  >
+                    + Create New Text Block
+                  </button>
                 </div>
               </div>
 
               <form onSubmit={handleUpdate}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className={styles.formGrid2Col}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    <label className={styles.formLabel}>
                       Title
                     </label>
                     <input
                       type="text"
                       value={updateData.title}
                       onChange={(e) => setUpdateData(prev => ({ ...prev, title: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px'
-                      }}
+                      className={styles.formInput}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    <label className={styles.formLabel}>
                       Location
                     </label>
                     <input
                       type="text"
                       value={updateData.location}
                       onChange={(e) => setUpdateData(prev => ({ ...prev, location: e.target.value }))}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px'
-                      }}
+                      className={styles.formInput}
                     />
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
                     Description
                   </label>
                   <textarea
                     value={updateData.description}
                     onChange={(e) => setUpdateData(prev => ({ ...prev, description: e.target.value }))}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid #ccc',
-                      borderRadius: '4px',
-                      minHeight: '100px'
-                    }}
+                    className={styles.formTextarea}
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div className={styles.formGrid3Col}>
                   <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label className={styles.checkboxLabel}>
                       <input
                         type="checkbox"
                         checked={updateData.visible}
                         onChange={(e) => setUpdateData(prev => ({ ...prev, visible: e.target.checked }))}
                       />
-                      <span style={{ fontWeight: 'bold' }}>Visible</span>
+                      <span>Visible</span>
                     </label>
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    <label className={styles.formLabel}>
                       Priority
                     </label>
                     <select
                       value={updateData.priority}
                       onChange={(e) => setUpdateData(prev => ({ ...prev, priority: Number(e.target.value) }))}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px'
-                      }}
+                      className={styles.formSelect}
                     >
                       <option value={1}>1 - Highest</option>
                       <option value={2}>2 - High</option>
@@ -507,18 +459,13 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    <label className={styles.formLabel}>
                       Display Mode
                     </label>
                     <select
                       value={updateData.displayMode}
-                      onChange={(e) => setUpdateData(prev => ({ ...prev, displayMode: e.target.value as 'CHRONOLOGICAL' | 'ORDERED' }))}
-                      style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px'
-                      }}
+                      onChange={(e) => setUpdateData(prev => ({ ...prev, displayMode: e.target.value as DisplayMode }))}
+                      className={styles.formSelect}
                     >
                       <option value="CHRONOLOGICAL">Chronological</option>
                       <option value="ORDERED">Ordered</option>
@@ -527,17 +474,12 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                 </div>
 
                 {/* Home Card Settings */}
-                <fieldset style={{
-                  marginBottom: '1rem',
-                  padding: '1rem',
-                  border: '1px solid #ccc',
-                  borderRadius: '4px'
-                }}>
-                  <legend style={{ fontWeight: 'bold' }}>Home Page Card Settings</legend>
+                <fieldset className={styles.homeCardFieldset}>
+                  <legend>Home Page Card Settings</legend>
 
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ flex: '0 0 auto' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className={styles.homeCardContent}>
+                    <div className={styles.homeCardCheckbox}>
+                      <label>
                         <input
                           type="checkbox"
                           checked={updateData.homeCardEnabled}
@@ -547,23 +489,14 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                       </label>
                     </div>
 
-                    <div style={{ flex: '1' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    <div className={styles.homeCardTextArea}>
+                      <label>
                         Home Card Text
                       </label>
                       <textarea
                         value={updateData.homeCardText}
                         onChange={(e) => setUpdateData(prev => ({ ...prev, homeCardText: e.target.value }))}
                         disabled={!updateData.homeCardEnabled}
-                        style={{
-                          width: '100%',
-                          padding: '0.5rem',
-                          border: '1px solid #ccc',
-                          borderRadius: '4px',
-                          minHeight: '60px',
-                          opacity: updateData.homeCardEnabled ? 1 : 0.5,
-                          cursor: updateData.homeCardEnabled ? 'text' : 'not-allowed'
-                        }}
                         placeholder="Text to display on the home page card"
                       />
                     </div>
@@ -574,15 +507,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                 <button
                   type="submit"
                   disabled={loading}
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    background: loading ? '#ccc' : '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    fontSize: '1rem'
-                  }}
+                  className={styles.submitButton}
                 >
                   {loading ? 'Updating...' : 'Update Metadata'}
                 </button>
@@ -591,17 +516,11 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
             {/* Collection Content */}
             {collection.blocks && collection.blocks.length > 0 && (
-              <div className={styles.blockGroup}>
-                <h3 style={{
-                  marginBottom: '1rem',
-                  padding: '1rem',
-                  background: '#f8f9fa',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '4px'
-                }}>
+              <div className={pageStyles.blockGroup}>
+                <h3 className={styles.contentHeading}>
                   Collection Content ({collection.blocks.length} blocks)
                   {isSelectingCoverImage && (
-                    <span style={{ marginLeft: '1rem', color: '#dc3545', fontWeight: 'bold' }}>
+                    <span className={styles.selectingNotice}>
                       (Click any image to set as cover)
                     </span>
                   )}

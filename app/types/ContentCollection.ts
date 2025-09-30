@@ -10,6 +10,13 @@ export enum CollectionType {
 }
 
 /**
+ * Display mode for content collections
+ * - CHRONOLOGICAL: Order blocks by creation date
+ * - ORDERED: Manual ordering via orderIndex
+ */
+export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED';
+
+/**
  * Base model containing common fields shared across all ContentCollection DTOs
  */
 export interface ContentCollectionBaseModel {
@@ -51,7 +58,7 @@ export interface ContentCollectionUpdateDTO extends ContentCollectionBaseModel {
   blocksPerPage?: number; // Min 1
 
   // Display mode
-  displayMode?: 'CHRONOLOGICAL' | 'ORDERED';
+  displayMode?: DisplayMode;
 
   // Home page card settings (optional)
   homeCardEnabled?: boolean; // null = no change
@@ -101,4 +108,7 @@ export interface ContentCollectionModel extends ContentCollectionBaseModel {
   slug: string;
   createdAt: string;
   updatedAt: string;
+  displayMode?: DisplayMode;
+  homeCardEnabled?: boolean;
+  homeCardText?: string;
 }
