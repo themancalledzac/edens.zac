@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 
 import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { type ContentCollectionNormalized } from '@/app/lib/api/contentCollections';
+import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
 import {
   type AnyContentBlock,
@@ -33,7 +33,7 @@ interface ContentCollectionPageProps {
  * @returns Formatted metadata text block
  */
 function buildMetadataTextBlock(
-  content: ContentCollectionNormalized,
+  content: ContentCollectionBase,
   coverBlock: ParallaxImageContentBlock | null
 ): TextContentBlock {
   const rows = [
@@ -88,7 +88,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
   const { slug } = await params;
 
   // Server-side data fetching with proper error handling
-  let content: ContentCollectionNormalized;
+  let content: ContentCollectionBase;
   try {
     content = await fetchCollectionBySlug(slug);
   } catch {
@@ -120,7 +120,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
 
   return (
     <div>
-      <SiteHeader />
+      <SiteHeader pageType="collection" collectionSlug={slug} />
       <div className={styles.contentPadding}>
         <div className={styles.blockGroup}>
           <ContentBlockComponent blocks={combinedBlocks} />

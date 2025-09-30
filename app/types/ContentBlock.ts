@@ -8,9 +8,6 @@
 /** Content block kinds supported by the system. */
 export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF' | 'PARALLAX';
 
-/** Distinct collection categories supported by the system. */
-export type CollectionType = 'BLOG' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'PORTFOLIO';
-
 /**
  * Base ContentBlock interface - all content blocks extend this
  * Provides consistent shape for layout, rendering, and UI enhancements

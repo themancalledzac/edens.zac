@@ -3,11 +3,18 @@
  */
 
 export enum CollectionType {
-  PORTFOLIO = 'PORTFOLIO',
-  CATALOG = 'CATALOG', 
-  BLOG = 'BLOG',
-  CLIENT_GALLERY = 'CLIENT_GALLERY'
+  portfolio = 'PORTFOLIO',
+  catalog = 'CATALOG',
+  blogs = 'BLOG',
+  'client-gallery' = 'CLIENT_GALLERY'
 }
+
+/**
+ * Display mode for content collections
+ * - CHRONOLOGICAL: Order blocks by creation date
+ * - ORDERED: Manual ordering via orderIndex
+ */
+export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED';
 
 /**
  * Base model containing common fields shared across all ContentCollection DTOs
@@ -33,22 +40,62 @@ export interface ContentCollectionBaseModel {
 }
 
 /**
- * DTO for creating new content collections
+ * Simplified DTO for creating new content collections (matches backend ContentCollectionCreateRequest)
  */
-export interface ContentCollectionCreateDTO extends ContentCollectionBaseModel {
-  // Required fields for creation
+export interface ContentCollectionSimpleCreateDTO {
   type: CollectionType;
-  title: string; // 3-100 characters
-  
-  // Optional fields
-  visible?: boolean;
-  password?: string; // 8-100 characters, only for client galleries
-  blocksPerPage?: number; // >= 1
-  
-  // Home page card settings
-  homeCardEnabled?: boolean; // defaults to false
+  title: string;
+}
+
+/**
+ * DTO for updating existing content collections (matches backend ContentCollectionUpdateDTO)
+ */
+export interface ContentCollectionUpdateDTO extends ContentCollectionBaseModel {
+  // Password handling for client galleries
+  password?: string; // Raw password, will be hashed (null = no change)
+
+  // Pagination settings
+  blocksPerPage?: number; // Min 1
+
+  // Display mode
+  displayMode?: DisplayMode;
+
+  // Home page card settings (optional)
+  homeCardEnabled?: boolean; // null = no change
   homeCardText?: string;
-  homeCardCoverImageUrl?: string;
+
+  coverImageId?: number;
+
+  // Content block operations (processed separately in service layer)
+  reorderOperations?: ContentBlockReorderOperation[];
+  contentBlockIdsToRemove?: number[];
+  newTextBlocks?: string[];
+  newCodeBlocks?: string[];
+}
+
+/**
+ * Content block reordering operation interface
+ */
+export interface ContentBlockReorderOperation {
+  /**
+   * Identifier of the block to move. Optional:
+   * - Positive ID: refers to an existing block in the collection.
+   * - Negative ID: placeholder mapping for newly added text blocks in this request.
+   *   Use -1 for the first newTextBlocks entry, -2 for the second, etc.
+   * - Null: when null, the block will be resolved by oldOrderIndex.
+   */
+  contentBlockId?: number;
+
+  /**
+   * The original order index of the block prior to reordering. Used when contentBlockId is null
+   * or to double-check position in conflict scenarios.
+   */
+  oldOrderIndex?: number; // Min 0
+
+  /**
+   * The new position for this block.
+   */
+  newOrderIndex: number; // Min 0
 }
 
 /**
@@ -61,35 +108,7 @@ export interface ContentCollectionModel extends ContentCollectionBaseModel {
   slug: string;
   createdAt: string;
   updatedAt: string;
+  displayMode?: DisplayMode;
+  homeCardEnabled?: boolean;
+  homeCardText?: string;
 }
-
-// /**
-//  * Validation constraints (from backend)
-//  */
-// export const ValidationRules = {
-//   title: {
-//     min: 3,
-//     max: 100
-//   },
-//   slug: {
-//     min: 3,
-//     max: 150
-//   },
-//   description: {
-//     max: 500
-//   },
-//   location: {
-//     max: 255
-//   },
-//   priority: {
-//     min: 1,
-//     max: 4
-//   },
-//   password: {
-//     min: 8,
-//     max: 100
-//   },
-//   blocksPerPage: {
-//     min: 1
-//   },
-// } as const;

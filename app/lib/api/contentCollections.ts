@@ -23,7 +23,8 @@
  */
 import { notFound } from 'next/navigation';
 
-import { type CollectionType, type ContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
+import { type ContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
+import { type CollectionType, type DisplayMode } from '@/app/types/ContentCollection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isProduction } from '@/app/utils/environment';
 
@@ -50,6 +51,7 @@ export interface ContentCollection {
   coverImage?: ImageContentBlock | null;
   isPasswordProtected?: boolean;
   hasAccess?: boolean;
+  displayMode?: DisplayMode;
   configJson?: ConfigJson | string;
   createdAt?: string;
   updatedAt?: string;
@@ -57,6 +59,8 @@ export interface ContentCollection {
   totalBlocks?: number;
   currentPage?: number;
   totalPages?: number;
+  homeCardEnabled?: boolean;
+  homeCardText?: string;
   contentBlocks: ContentBlock[];
 }
 
@@ -171,26 +175,44 @@ export async function fetchCollections(page = 0, size = 10): Promise<ContentColl
 }
 
 /**
- * Normalized shape used by viewers to avoid leaking backend pagination internals.
+ * Base model for public-facing collection display pages.
+ * Contains only fields needed for rendering collection content.
  */
-export interface ContentCollectionNormalized {
+export interface ContentCollectionBase {
   id: number;
   title: string;
   description?: string;
-  // Legacy compatibility: keep coverImageUrl, but prefer coverImage object
-  coverImageUrl?: string;
-  coverImage?: ImageContentBlock | null;
   slug: string;
   location?: string;
   collectionDate?: string;
   type: CollectionType;
+  // Legacy compatibility: keep coverImageUrl, but prefer coverImage object
+  coverImageUrl?: string;
+  coverImage?: ImageContentBlock | null;
+  displayMode?: DisplayMode;
   blocks: ContentBlock[];
   pagination: { currentPage: number; totalPages: number; totalBlocks: number; pageSize: number };
 }
 
-/** Convert backend collection to the normalized frontend shape. */
-function toNormalized(c: ContentCollection): ContentCollectionNormalized {
-  // coverImage is now always a ContentBlock object from the API
+/**
+ * Full collection model matching the complete backend API response.
+ * Used by admin interfaces with all management fields.
+ */
+export interface ContentCollectionModel extends ContentCollectionBase {
+  visible?: boolean;
+  priority?: number;
+  isPasswordProtected?: boolean;
+  hasAccess?: boolean;
+  homeCardEnabled?: boolean;
+  homeCardText?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  configJson?: ConfigJson | string;
+  blocksPerPage?: number;
+}
+
+/** Convert backend collection to the full model shape. */
+function toModel(c: ContentCollection): ContentCollectionModel {
   const cover = c.coverImage ?? null;
   return {
     id: c.id,
@@ -202,6 +224,17 @@ function toNormalized(c: ContentCollection): ContentCollectionNormalized {
     location: c.location,
     collectionDate: c.collectionDate,
     type: c.type,
+    displayMode: c.displayMode,
+    visible: c.visible,
+    priority: c.priority,
+    isPasswordProtected: c.isPasswordProtected,
+    hasAccess: c.hasAccess,
+    homeCardEnabled: c.homeCardEnabled,
+    homeCardText: c.homeCardText,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+    configJson: c.configJson,
+    blocksPerPage: c.blocksPerPage,
     blocks: c.contentBlocks ?? [],
     pagination: {
       currentPage: c.currentPage ?? 0,
@@ -212,22 +245,69 @@ function toNormalized(c: ContentCollection): ContentCollectionNormalized {
   };
 }
 
+/** Convert full model to base model by stripping admin-only fields. */
+function toBase(model: ContentCollectionModel): ContentCollectionBase {
+  return {
+    id: model.id,
+    title: model.title,
+    description: model.description,
+    slug: model.slug,
+    location: model.location,
+    collectionDate: model.collectionDate,
+    type: model.type,
+    coverImageUrl: model.coverImageUrl,
+    coverImage: model.coverImage,
+    displayMode: model.displayMode,
+    blocks: model.blocks,
+    pagination: model.pagination,
+  };
+}
+
 /**
- * Fetch a single collection by slug with pagination and return the normalized shape.
+ * Fetch a single collection by slug for public display pages.
+ * Enforces access control via hasAccess check.
+ * Returns base model with only public-facing fields.
  * Tagged with the per-slug cache tag for targeted revalidation after writes.
  */
 export async function fetchCollectionBySlug(
   slug: string,
   page = 0,
   size = 30
-): Promise<ContentCollectionNormalized> {
+): Promise<ContentCollectionBase> {
   if (!slug) throw new Error('slug is required');
   const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });
   const res = await fetch(url, {
     next: { revalidate: 3600, tags: [tagForSlug(slug)] },
   } as ReadonlyFetchInit);
   const raw = await safeJson<ContentCollection>(res);
-  return toNormalized(raw);
+  const model = toModel(raw);
+
+  // Security: Enforce access control for public pages
+  if (!model.hasAccess) {
+    notFound();
+  }
+
+  return toBase(model);
+}
+
+/**
+ * Fetch a single collection by slug for admin pages.
+ * No access control checks - admins can see everything.
+ * Returns full model with all admin fields.
+ * Tagged with the per-slug cache tag for targeted revalidation after writes.
+ */
+export async function fetchCollectionBySlugAdmin(
+  slug: string,
+  page = 0,
+  size = 30
+): Promise<ContentCollectionModel> {
+  if (!slug) throw new Error('slug is required');
+  const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });
+  const res = await fetch(url, {
+    next: { revalidate: 3600, tags: [tagForSlug(slug)] },
+  } as ReadonlyFetchInit);
+  const raw = await safeJson<ContentCollection>(res);
+  return toModel(raw);
 }
 
 /**

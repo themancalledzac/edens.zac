@@ -3,13 +3,16 @@
  */
 
 import {
-  type ContentCollectionNormalized,
-  fetchCollectionBySlug as fetchCollectionBySlugNormalized,
+  type ContentCollectionBase,
+  type ContentCollectionModel as ContentCollectionFullModel,
+  fetchCollectionBySlug as fetchCollectionBySlugPublic,
+  fetchCollectionBySlugAdmin as fetchCollectionBySlugAdminInternal,
 } from '@/app/lib/api/contentCollections';
-import { fetchPostJsonApi, fetchReadApi } from '@/app/lib/api/core';
+import { fetchFormDataApi, fetchPostJsonApi, fetchPutJsonApi, fetchReadApi } from '@/app/lib/api/core';
 import {
-  type ContentCollectionCreateDTO,
   type ContentCollectionModel,
+  type ContentCollectionSimpleCreateDTO,
+  type ContentCollectionUpdateDTO,
 } from '@/app/types/ContentCollection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 
@@ -55,16 +58,16 @@ export async function fetchHomePage(
 }
 
 /**
- * Fetches a content collection by slug
+ * Fetches a content collection by slug for public display pages.
+ * Enforces access control and returns base model with public fields only.
  * Endpoint: GET /api/read/collections/{slug}
  *
  * @param slug - The collection slug
- * @returns The collection data
+ * @returns The collection data (base model)
  */
-export async function fetchCollectionBySlug(slug: string): Promise<ContentCollectionNormalized> {
+export async function fetchCollectionBySlug(slug: string): Promise<ContentCollectionBase> {
   try {
-    // Delegate to the normalized fetch in contentCollections to keep a single source of truth
-    return await fetchCollectionBySlugNormalized(slug);
+    return await fetchCollectionBySlugPublic(slug);
   } catch (error) {
     console.error(`Error fetching collection "${slug}":`, error);
     throw error;
@@ -72,14 +75,31 @@ export async function fetchCollectionBySlug(slug: string): Promise<ContentCollec
 }
 
 /**
- * Creates a new content collection
+ * Fetches a content collection by slug for admin pages.
+ * No access control checks - returns full model with all admin fields.
+ * Endpoint: GET /api/read/collections/{slug}
+ *
+ * @param slug - The collection slug
+ * @returns The collection data (full model)
+ */
+export async function fetchCollectionBySlugAdmin(slug: string): Promise<ContentCollectionFullModel> {
+  try {
+    return await fetchCollectionBySlugAdminInternal(slug);
+  } catch (error) {
+    console.error(`Error fetching collection "${slug}" (admin):`, error);
+    throw error;
+  }
+}
+
+/**
+ * Creates a new content collection with simplified request (just type and title)
  * Endpoint: POST /api/write/collections/createCollection
  *
- * @param createData - The collection creation data
+ * @param createData - The simplified collection creation data
  * @returns The created collection
  */
-export async function createContentCollection(
-  createData: ContentCollectionCreateDTO
+export async function createContentCollectionSimple(
+  createData: ContentCollectionSimpleCreateDTO
 ): Promise<ContentCollectionModel> {
   try {
     return await fetchPostJsonApi<ContentCollectionModel>(
@@ -87,7 +107,53 @@ export async function createContentCollection(
       createData
     );
   } catch (error) {
-    console.error('[createContentCollection] Error:', error);
+    console.error('[createContentCollectionSimple] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Updates an existing content collection metadata
+ * Endpoint: PUT /api/write/collections/{id}
+ *
+ * @param id - The collection ID
+ * @param updateData - The collection update data
+ * @returns The updated collection
+ */
+export async function updateContentCollection(
+  id: number,
+  updateData: ContentCollectionUpdateDTO
+): Promise<ContentCollectionModel> {
+  try {
+    return await fetchPutJsonApi<ContentCollectionModel>(
+      `/collections/${id}`,
+      updateData
+    );
+  } catch (error) {
+    console.error('[updateContentCollection] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Adds content blocks (images) to a collection
+ * Endpoint: POST /api/write/collections/{id}/content
+ *
+ * @param id - The collection ID
+ * @param formData - FormData containing image files
+ * @returns The updated collection with new content blocks
+ */
+export async function addContentBlocks(
+  id: number,
+  formData: FormData
+): Promise<ContentCollectionModel> {
+  try {
+    return await fetchFormDataApi<ContentCollectionModel>(
+      `/collections/${id}/content`,
+      formData
+    );
+  } catch (error) {
+    console.error('[addContentBlocks] Error:', error);
     throw error;
   }
 }
