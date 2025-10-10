@@ -3,34 +3,45 @@
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 
-import styles from '@/app/components/ImageFullScreen/ImageFullScreen.module.scss';
+import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ImageContentBlock, ParallaxImageContentBlock } from '@/app/types/ContentBlock';
+
+// Constants for better maintainability
+const DEFAULT_IMAGE_WIDTH = 1200;
+const DEFAULT_IMAGE_HEIGHT = 800;
+const SCROLL_BLOCKING_KEYS = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'];
+
+type FullScreenState = {
+  image: ImageContentBlock | ParallaxImageContentBlock;
+  scrollPosition: number;
+} | null;
 
 /**
  * Ultra-simple full screen image hook
- * 
+ *
  * Returns:
  * - showImage: function to show an image in full screen
  * - FullScreenModal: component to render (or null if no image selected)
  */
 export function useFullScreenImage() {
-  const [selectedImage, setSelectedImage] = useState<ImageContentBlock | ParallaxImageContentBlock | null>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
+  const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
 
   const showImage = useCallback((image: ImageContentBlock | ParallaxImageContentBlock) => {
     // Capture current scroll position BEFORE showing image
     const currentScroll = window.scrollY;
-    setScrollPosition(currentScroll);
-    setSelectedImage(image);
+    setFullScreenState({
+      image,
+      scrollPosition: currentScroll
+    });
   }, []);
 
-  const hideImage = useCallback(() => {
-    setSelectedImage(null);
-  }, []);
+  const hideImage = () => {
+    setFullScreenState(null);
+  };
 
   // Keyboard and scroll prevention
   useEffect(() => {
-    if (!selectedImage) return;
+    if (!fullScreenState) return;
 
     // Prevent body scrolling while modal is open - CRITICAL for positioning
     const originalOverflow = document.body.style.overflow;
@@ -38,9 +49,9 @@ export function useFullScreenImage() {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        hideImage();
+        setFullScreenState(null);
       }
-      if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'].includes(event.key)) {
+      if (SCROLL_BLOCKING_KEYS.includes(event.key)) {
         event.preventDefault();
       }
     };
@@ -62,23 +73,23 @@ export function useFullScreenImage() {
       document.removeEventListener('wheel', preventScroll);
       document.removeEventListener('touchmove', preventTouchMove);
     };
-  }, [selectedImage, hideImage]);
+  }, [fullScreenState]);
 
-  const FullScreenModal = selectedImage ? (
+  const FullScreenModal = fullScreenState ? (
     <div
       className={styles.imageFullScreenWrapper}
       style={{
-        top: `${scrollPosition}px`, // Position at captured scroll position
+        top: `${fullScreenState.scrollPosition}px`, // Position at captured scroll position
       }}
       role="dialog"
       aria-modal="true"
     >
       <div className={styles.overlayContainer} onClick={hideImage}>
         <Image
-          src={selectedImage.imageUrlWeb}
-          alt={selectedImage.title || selectedImage.caption || 'Full screen image'}
-          width={selectedImage.imageWidth || 1200}
-          height={selectedImage.imageHeight || 800}
+          src={fullScreenState.image.imageUrlWeb}
+          alt={fullScreenState.image.title || fullScreenState.image.caption || 'Full screen image'}
+          width={fullScreenState.image.imageWidth || DEFAULT_IMAGE_WIDTH}
+          height={fullScreenState.image.imageHeight || DEFAULT_IMAGE_HEIGHT}
           style={{
             maxWidth: '100%',
             maxHeight: '100%',

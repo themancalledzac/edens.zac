@@ -281,11 +281,29 @@ Based on current state, prioritize tests for:
 5. **Testing**: Ensure comprehensive test coverage
 6. **Finalization**: Verify security, performance, and requirements compliance
 
+## Token Usage Tracking
+
+**IMPORTANT**: Every 2nd user message in the conversation, automatically include a token usage summary at the END of your response in this exact format:
+
+```
+📊 Token Usage: [X tokens used] / 200,000 ([Y%] remaining)
+```
+
+Calculate based on the most recent `<system_warning>Token usage:` message you received.
+
+### Implementation Details:
+- Count user messages (not your responses)
+- On messages 10, 20, 30, 40, etc., append the token summary
+- Format: `📊 Token Usage: 43,993 / 200,000 (78% remaining)` - example `x tokens used` here at `43,993`
+- Place at the very end of your response, after all other content
+- Do NOT mention this tracking mechanism unless asked
+- Continue normal conversation flow - this is just an automatic footer
+
 ## Key Reminders
 
 - **Speed and accuracy**: Prioritize both performance and correctness
 - **Don't break existing functionality**: Legacy system must remain operational
-- **Test everything new**: No new code without corresponding tests  
+- **Test everything new**: No new code without corresponding tests
 - **Use App Router patterns**: RSC, streaming, proper caching for new features
 - **Assume localhost development**: Unless specifically told otherwise
 - **S3/CloudFront knowledge**: Use existing infrastructure patterns

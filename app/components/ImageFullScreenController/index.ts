@@ -1,1 +1,0 @@
-export { ImageFullScreenController } from './ImageFullScreenController';

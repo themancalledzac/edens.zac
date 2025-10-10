@@ -2,9 +2,12 @@
 
 import React, { useMemo } from 'react';
 
-// import { useImageSelection } from '@/app/hooks/useImageSelection'; // OLD COMPLEX VERSION
 import { useViewport } from '@/app/hooks/useViewport';
-import { type AnyContentBlock, type ImageContentBlock, type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
+import {
+  type AnyContentBlock,
+  type ImageContentBlock,
+  type ParallaxImageContentBlock,
+} from '@/app/types/ContentBlock';
 import { processContentBlocksForDisplay } from '@/app/utils/contentBlockLayout';
 import {
   isCodeBlock,
@@ -31,7 +34,7 @@ import { TextBlockRenderer } from './TextBlockRenderer';
 function determineBaseProps(
   item: { block: AnyContentBlock; width: number; height: number },
   totalInRow: number,
-  index: number,
+  index: number
 ) {
   let className = '';
   if (totalInRow === 1) className = cbStyles.imageSingle || '';
@@ -46,7 +49,6 @@ function determineBaseProps(
     block: item.block,
   };
 }
-
 
 export interface ContentBlockComponentProps {
   blocks: AnyContentBlock[];
@@ -78,9 +80,6 @@ export default function ContentBlockComponent({
 }: ContentBlockComponentProps) {
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
-  // const { selectImage } = useImageSelection(); // OLD COMPLEX VERSION
-
-
 
   const rows = useMemo(() => {
     if (!blocks || blocks.length === 0 || !contentWidth) {
@@ -110,10 +109,15 @@ export default function ContentBlockComponent({
           return (
             <div key={`row-${row.map(item => item.block.id).join('-')}`} className={cbStyles.row}>
               {row.map((item, index) => {
-                const { block, className, width, height } = determineBaseProps(item, totalInRow, index);
+                const { block, className, width, height } = determineBaseProps(
+                  item,
+                  totalInRow,
+                  index
+                );
 
                 // Determine if this block should have priority loading (for LCP optimization)
-                const shouldPrioritize = blocks.findIndex(b => b.id === block.id) === priorityBlockIndex;
+                const shouldPrioritize =
+                  blocks.findIndex(b => b.id === block.id) === priorityBlockIndex;
 
                 // Renderer lookup map - check most specific types first
                 if (isParallaxImageBlock(block) && block.enableParallax) {
@@ -146,7 +150,11 @@ export default function ContentBlockComponent({
                           blockType="contentBlock"
                           cardTypeBadge={block.cardTypeBadge}
                           priority={shouldPrioritize}
-                          onClick={enableFullScreenView && onFullScreenImageClick ? () => onFullScreenImageClick(block) : undefined}
+                          onClick={
+                            enableFullScreenView && onFullScreenImageClick
+                              ? () => onFullScreenImageClick(block)
+                              : undefined
+                          }
                         />
                       </div>
                     </div>
@@ -155,7 +163,8 @@ export default function ContentBlockComponent({
                 if (isImageBlock(block)) {
                   const isCurrentCover = currentCoverImageId === block.id;
                   const isJustClicked = justClickedImageId === block.id;
-                  const shouldShowOverlay = (isSelectingCoverImage && isCurrentCover) || isJustClicked;
+                  const shouldShowOverlay =
+                    (isSelectingCoverImage && isCurrentCover) || isJustClicked;
 
                   // Determine which click handler to use
                   const handleClick = () => {

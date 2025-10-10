@@ -3,13 +3,12 @@
 import React from 'react';
 
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
-import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
+import { type AnyContentBlock } from '@/app/types/ContentBlock';
 
 import ContentBlockComponent from './ContentBlockComponent';
 
 interface ContentBlockWithFullScreenProps {
   blocks: AnyContentBlock[];
-  allImages?: ImageContentBlock[]; // Optional since we don't use it directly
   priorityBlockIndex?: number;
   enableFullScreenView?: boolean;
 }
