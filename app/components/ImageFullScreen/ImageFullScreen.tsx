@@ -40,6 +40,11 @@ export default function ImageFullScreen({ image, onClose }: ImageFullScreenProps
     if (event.key === 'Escape') {
       onClose();
     }
+
+    // Prevent arrow keys, page up/down, space from scrolling background
+    if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'].includes(event.key)) {
+      event.preventDefault();
+    }
   }, [onClose]);
 
   const handleExitImageFullscreen = useCallback(() => {
@@ -51,24 +56,40 @@ export default function ImageFullScreen({ image, onClose }: ImageFullScreenProps
   }, [image?.imageUrlWeb]);
 
   useEffect(() => {
+    // Prevent all scroll-related events
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+    };
+
+    const preventTouchMove = (e: TouchEvent) => {
+      // Allow touch on the image itself for potential future zoom/pan
+      // but prevent on the overlay background
+      if ((e.target as HTMLElement).tagName !== 'IMG') {
+        e.preventDefault();
+      }
+    };
+
+    // Add event listeners
     document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('wheel', preventScroll, { passive: false });
+    document.addEventListener('touchmove', preventTouchMove, { passive: false });
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('wheel', preventScroll);
+      document.removeEventListener('touchmove', preventTouchMove);
     };
   }, [handleKeyDown]);
 
   if (!image?.imageUrlWeb) {
-    console.log('ImageFullScreen: No image or imageUrlWeb provided', image);
+    console.error('❌ [ImageFullScreen] No imageUrlWeb provided:', image);
     return null;
   }
 
-  console.log('ImageFullScreen rendering with image:', {
-    id: image.id,
+  console.log('🖼️ [ImageFullScreen] Rendering image:', {
     imageUrlWeb: image.imageUrlWeb,
-    imageWidth: image.imageWidth,
-    imageHeight: image.imageHeight,
-    title: image.title
+    dimensions: `${image.imageWidth}x${image.imageHeight}`,
+    title: image.title,
   });
 
   return (
@@ -78,15 +99,18 @@ export default function ImageFullScreen({ image, onClose }: ImageFullScreenProps
       aria-modal="true"
       aria-labelledby="fullscreen-image-title"
     >
-      <div className={styles.imageContainer} onClick={handleExitImageFullscreen}>
+      <div className={styles.overlayContainer} onClick={handleExitImageFullscreen}>
         <Image
           src={image.imageUrlWeb}
           alt={image.title || 'Full screen image'}
           width={image.imageWidth}
           height={image.imageHeight}
           style={{
+            maxWidth: '100%',
+            maxHeight: '100%',
+            width: 'auto',
+            height: 'auto',
             objectFit: 'contain',
-            backgroundColor: 'transparent',
           }}
           onError={handleImageError}
           priority

@@ -22,6 +22,8 @@
   contain: none !important;
   will-change: auto !important;
   perspective: none !important;
+  overscroll-behavior: none; /* Prevent scroll chaining */
+  touch-action: none; /* Prevent touch gestures from scrolling */
 
   @media (width <= 768px) {
     flex-direction: column;

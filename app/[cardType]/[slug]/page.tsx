@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
+import { ImageFullScreenController } from '@/app/components/ImageFullScreenController';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
@@ -118,12 +119,20 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
     ...((content.blocks as AnyContentBlock[]) || []),
   ];
 
+  // Extract all image blocks for full-screen viewing
+  // Include both regular images and parallax images
+  const allImages: ImageContentBlock[] = combinedBlocks.filter(
+    (block): block is ImageContentBlock =>
+      block.blockType === 'IMAGE' || block.blockType === 'PARALLAX'
+  );
+
   return (
     <div>
       <SiteHeader pageType="collection" collectionSlug={slug} />
+      <ImageFullScreenController images={allImages} />
       <div className={styles.contentPadding}>
         <div className={styles.blockGroup}>
-          <ContentBlockComponent blocks={combinedBlocks} priorityBlockIndex={0} />
+          <ContentBlockComponent blocks={combinedBlocks} priorityBlockIndex={0} enableFullScreenView />
         </div>
       </div>
     </div>
