@@ -4,7 +4,7 @@
 
 export enum CollectionType {
   portfolio = 'PORTFOLIO',
-  catalog = 'CATALOG',
+  'art-gallery' = 'ART_GALLERY',
   blogs = 'BLOG',
   'client-gallery' = 'CLIENT_GALLERY'
 }

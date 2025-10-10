@@ -18,7 +18,7 @@ interface PageProps {
  *
  * @example
  * - /blogs -> CollectionType.blogs ('BLOG') collections
- * - /catalog -> CollectionType.catalog ('CATALOG') collections
+ * - /art-gallery -> CollectionType['art-gallery'] ('ART_GALLERY') collections
  * - /client-gallery -> CollectionType['client-gallery'] ('CLIENT_GALLERY') collections
  * - /portfolio -> CollectionType.portfolio ('PORTFOLIO') collections
  *
