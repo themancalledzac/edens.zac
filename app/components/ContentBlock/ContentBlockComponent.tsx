@@ -2,9 +2,9 @@
 
 import React, { useMemo } from 'react';
 
-import { useImageSelection } from '@/app/hooks/useImageSelection';
+// import { useImageSelection } from '@/app/hooks/useImageSelection'; // OLD COMPLEX VERSION
 import { useViewport } from '@/app/hooks/useViewport';
-import { type AnyContentBlock } from '@/app/types/ContentBlock';
+import { type AnyContentBlock, type ImageContentBlock, type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
 import { processContentBlocksForDisplay } from '@/app/utils/contentBlockLayout';
 import {
   isCodeBlock,
@@ -56,6 +56,7 @@ export interface ContentBlockComponentProps {
   justClickedImageId?: number | null;
   priorityBlockIndex?: number; // Index of block to prioritize for LCP (usually 0 for hero)
   enableFullScreenView?: boolean; // Enable full-screen image viewing on click
+  onFullScreenImageClick?: (image: ImageContentBlock | ParallaxImageContentBlock) => void; // NEW SIMPLE VERSION
 }
 
 /**
@@ -73,10 +74,11 @@ export default function ContentBlockComponent({
   justClickedImageId,
   priorityBlockIndex = 0,
   enableFullScreenView = false,
+  onFullScreenImageClick, // NEW SIMPLE VERSION
 }: ContentBlockComponentProps) {
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
-  const { selectImage } = useImageSelection();
+  // const { selectImage } = useImageSelection(); // OLD COMPLEX VERSION
 
 
 
@@ -144,7 +146,7 @@ export default function ContentBlockComponent({
                           blockType="contentBlock"
                           cardTypeBadge={block.cardTypeBadge}
                           priority={shouldPrioritize}
-                          onClick={enableFullScreenView ? () => selectImage(block) : undefined}
+                          onClick={enableFullScreenView && onFullScreenImageClick ? () => onFullScreenImageClick(block) : undefined}
                         />
                       </div>
                     </div>
@@ -159,8 +161,8 @@ export default function ContentBlockComponent({
                   const handleClick = () => {
                     if (isSelectingCoverImage && onImageClick) {
                       onImageClick(block.id);
-                    } else if (enableFullScreenView) {
-                      selectImage(block);
+                    } else if (enableFullScreenView && onFullScreenImageClick) {
+                      onFullScreenImageClick(block);
                     }
                   };
 

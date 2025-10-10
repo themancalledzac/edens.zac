@@ -34,20 +34,6 @@ export function ImageFullScreenController({ images }: ImageFullScreenControllerP
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  // Log all available images on mount (only in development)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('📸 [ImageFullScreenController] Available images:', {
-      count: images.length,
-      images: images.map(img => ({
-        id: img.id,
-        blockType: img.blockType,
-        rawFileName: img.rawFileName,
-        hasImageUrlWeb: !!img.imageUrlWeb,
-        imageUrlWeb: img.imageUrlWeb,
-      })),
-    });
-  }
-
   // Get selected image ID from URL (?img=DSC_8767)
   const selectedImageId = searchParams.get('img');
 
@@ -59,36 +45,10 @@ export function ImageFullScreenController({ images }: ImageFullScreenControllerP
   const selectedImage = selectedImageId
     ? images.find(img => {
         const rawName = img.rawFileName?.split('.')[0];
-        const matches = rawName === selectedImageId;
 
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 [ImageFullScreenController] Checking image:', {
-            id: img.id,
-            rawFileName: img.rawFileName,
-            rawName,
-            selectedImageId,
-            matches,
-          });
-        }
-
-        return matches;
+        return rawName === selectedImageId;
       })
     : null;
-
-  // Log the result of the search
-  if (selectedImageId && process.env.NODE_ENV === 'development') {
-    console.log('🎯 [ImageFullScreenController] Image search result:', {
-      selectedImageId,
-      found: !!selectedImage,
-      selectedImage: selectedImage ? {
-        id: selectedImage.id,
-        rawFileName: selectedImage.rawFileName,
-        imageUrlWeb: selectedImage.imageUrlWeb,
-        dimensions: `${selectedImage.imageWidth}x${selectedImage.imageHeight}`,
-      } : null,
-      totalImagesAvailable: images.length,
-    });
-  }
 
   // Track scroll position and manage full-screen state
   useEffect(() => {
@@ -100,60 +60,36 @@ export function ImageFullScreenController({ images }: ImageFullScreenControllerP
       const currentScroll = savedScroll > 0 ? savedScroll : window.scrollY;
       scrollPositionRef.current = currentScroll;
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📍 [ImageFullScreenController] Scroll position for full-screen:', {
-          fromStore: savedScroll,
-          fromWindow: window.scrollY,
-          using: currentScroll,
-        });
-      }
-
-      // Apply all styles using cssText for atomic operation
+      // Simply prevent scrolling - overlay will render at scroll position
       const body = document.body;
-      const originalStyle = body.style.cssText;
+      const originalOverflow = body.style.overflow;
 
-      // Store original for potential restoration
-      body.setAttribute('data-original-style', originalStyle);
+      // Store original to restore later
+      body.setAttribute('data-original-overflow', originalOverflow);
 
-      // Apply all styles at once to prevent intermediate reflows
-      body.style.cssText = `
-        ${originalStyle}
-        overflow: hidden !important;
-        position: fixed !important;
-        width: 100% !important;
-        top: -${currentScroll}px !important;
-        left: 0 !important;
-        right: 0 !important;
-      `;
-
-      // CRITICAL: Scroll window to top so full-screen image is visible
-      // The body's negative top makes the page content appear to stay at currentScroll
-      // but the viewport is now at 0, where the fixed overlay is positioned
-      window.scrollTo(0, 0);
+      // Just prevent scrolling - no viewport or body manipulation
+      body.style.overflow = 'hidden';
 
       setIsFullScreen(true);
     } else if (!selectedImage && isFullScreen) {
       // CLOSING: Only run when transitioning from open to closed
-      const savedScroll = scrollPositionRef.current;
-
-      // Restore original styles
+      // Restore original overflow
       const body = document.body;
-      body.style.cssText = body.getAttribute('data-original-style') || '';
-      body.removeAttribute('data-original-style');
+      body.style.overflow = body.getAttribute('data-original-overflow') || '';
+      body.removeAttribute('data-original-overflow');
 
-      // Then restore scroll position
-      window.scrollTo(0, savedScroll);
+      // No scroll manipulation needed - user never moved!
 
       setIsFullScreen(false);
     }
 
     return () => {
-      // Cleanup on unmount - restore original styles
+      // Cleanup on unmount - restore overflow
       const body = document.body;
-      const originalStyle = body.getAttribute('data-original-style');
-      if (originalStyle !== null) {
-        body.style.cssText = originalStyle;
-        body.removeAttribute('data-original-style');
+      const originalOverflow = body.getAttribute('data-original-overflow');
+      if (originalOverflow !== null) {
+        body.style.overflow = originalOverflow;
+        body.removeAttribute('data-original-overflow');
       }
     };
   }, [selectedImage, isFullScreen]);
@@ -168,34 +104,26 @@ export function ImageFullScreenController({ images }: ImageFullScreenControllerP
   }, [router, pathname, searchParams]);
 
   // Convert ImageContentBlock to ImageData format expected by ImageFullScreen
-  const imageData = selectedImage ? {
-    id: selectedImage.id,
-    imageUrlWeb: selectedImage.imageUrlWeb,
-    imageWidth: selectedImage.imageWidth || 1200,
-    imageHeight: selectedImage.imageHeight || 800,
-    title: selectedImage.title || selectedImage.caption || selectedImage.rawFileName || undefined,
-  } : null;
-
-  // Log the converted image data
-  if (imageData && process.env.NODE_ENV === 'development') {
-    console.log('📦 [ImageFullScreenController] Converted imageData:', {
-      ...imageData,
-      hasImageUrl: !!imageData.imageUrlWeb,
-      imageUrlLength: imageData.imageUrlWeb?.length,
-    });
-  }
+  const imageData = selectedImage
+    ? {
+        id: selectedImage.id,
+        imageUrlWeb: selectedImage.imageUrlWeb,
+        imageWidth: selectedImage.imageWidth || 1200,
+        imageHeight: selectedImage.imageHeight || 800,
+        title:
+          selectedImage.title || selectedImage.caption || selectedImage.rawFileName || undefined,
+      }
+    : null;
 
   if (!isFullScreen || !imageData) {
-    if (selectedImageId && process.env.NODE_ENV === 'development') {
-      console.log('⚠️ [ImageFullScreenController] Not rendering:', {
-        isFullScreen,
-        hasImageData: !!imageData,
-        selectedImageId,
-      });
-    }
     return null;
   }
 
-  console.log('✅ [ImageFullScreenController] Rendering ImageFullScreen with:', imageData);
-  return <ImageFullScreen image={imageData} onClose={handleClose} />;
+  return (
+    <ImageFullScreen
+      image={imageData}
+      onClose={handleClose}
+      scrollPosition={scrollPositionRef.current}
+    />
+  );
 }

@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
 
-import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
-import { ImageFullScreenController } from '@/app/components/ImageFullScreenController';
+import ContentBlockWithFullScreen from '@/app/components/ContentBlock/ContentBlockWithFullScreen';
+// import { ImageFullScreenController } from '@/app/components/ImageFullScreenController'; // OLD COMPLEX VERSION
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+// import { useFullScreenImage } from '@/app/hooks/useFullScreenImage'; // NEW SIMPLE VERSION (not used directly in server component)
 import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
 import {
@@ -129,10 +130,15 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
   return (
     <div>
       <SiteHeader pageType="collection" collectionSlug={slug} />
-      <ImageFullScreenController images={allImages} />
+      {/* <ImageFullScreenController images={allImages} /> */} {/* OLD COMPLEX VERSION */}
       <div className={styles.contentPadding}>
         <div className={styles.blockGroup}>
-          <ContentBlockComponent blocks={combinedBlocks} priorityBlockIndex={0} enableFullScreenView />
+          <ContentBlockWithFullScreen 
+            blocks={combinedBlocks} 
+            allImages={allImages}
+            priorityBlockIndex={0} 
+            enableFullScreenView 
+          />
         </div>
       </div>
     </div>

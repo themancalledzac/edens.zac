@@ -16,6 +16,7 @@ interface ImageData {
 interface ImageFullScreenProps {
   image: ImageData;
   onClose: () => void;
+  scrollPosition: number; // Current scroll position to render overlay at
 }
 
 /**
@@ -35,7 +36,7 @@ interface ImageFullScreenProps {
  * @param props.onClose - Callback function to handle modal close events
  * @returns Client component rendering accessible full-screen image modal
  */
-export default function ImageFullScreen({ image, onClose }: ImageFullScreenProps) {
+export default function ImageFullScreen({ image, onClose, scrollPosition }: ImageFullScreenProps) {
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       onClose();
@@ -86,15 +87,12 @@ export default function ImageFullScreen({ image, onClose }: ImageFullScreenProps
     return null;
   }
 
-  console.log('🖼️ [ImageFullScreen] Rendering image:', {
-    imageUrlWeb: image.imageUrlWeb,
-    dimensions: `${image.imageWidth}x${image.imageHeight}`,
-    title: image.title,
-  });
-
   return (
     <div
       className={styles.imageFullScreenWrapper}
+      style={{
+        top: `${scrollPosition}px`,
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="fullscreen-image-title"

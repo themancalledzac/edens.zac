@@ -25,9 +25,6 @@ let savedScrollPosition = 0;
  */
 export function saveScrollPosition(position: number): void {
   savedScrollPosition = position;
-  if (process.env.NODE_ENV === 'development') {
-    console.log('📍 [scrollPositionStore] Saved scroll position:', position);
-  }
 }
 
 /**
@@ -35,9 +32,6 @@ export function saveScrollPosition(position: number): void {
  * Call this in effect after URL update to restore correct scroll
  */
 export function getSavedScrollPosition(): number {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('📍 [scrollPositionStore] Retrieved scroll position:', savedScrollPosition);
-  }
   return savedScrollPosition;
 }
 
@@ -47,7 +41,4 @@ export function getSavedScrollPosition(): number {
  */
 export function clearSavedScrollPosition(): void {
   savedScrollPosition = 0;
-  if (process.env.NODE_ENV === 'development') {
-    console.log('📍 [scrollPositionStore] Cleared scroll position');
-  }
 }

@@ -23,12 +23,6 @@ export function useImageSelection() {
    * Select an image by updating the URL with its rawFileName (without extension)
    */
   const selectImage = useCallback((image: ImageContentBlock | ParallaxImageContentBlock) => {
-    console.log('🖱️ [useImageSelection] Image clicked:', {
-      id: image.id,
-      rawFileName: image.rawFileName,
-      imageUrlWeb: image.imageUrlWeb,
-      dimensions: `${image.imageWidth}x${image.imageHeight}`,
-    });
 
     const rawName = image.rawFileName?.split('.')[0];
     if (!rawName) {
@@ -36,14 +30,11 @@ export function useImageSelection() {
       return;
     }
 
-    console.log('✅ [useImageSelection] Setting URL param ?img=', rawName);
-
     // CRITICAL: Capture scroll position BEFORE router.push()
     // This prevents race condition where browser navigation resets scroll
     // before React effects can capture it
     const currentScroll = window.scrollY;
     saveScrollPosition(currentScroll);
-    console.log('📍 [useImageSelection] Captured scroll position BEFORE navigation:', currentScroll);
 
     const params = new URLSearchParams(searchParams.toString());
     params.set('img', rawName);
