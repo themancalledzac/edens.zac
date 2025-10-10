@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
 
+import { saveScrollPosition } from '@/app/lib/scrollPositionStore';
 import type { ImageContentBlock, ParallaxImageContentBlock } from '@/app/types/ContentBlock';
 
 /**
@@ -36,6 +37,14 @@ export function useImageSelection() {
     }
 
     console.log('✅ [useImageSelection] Setting URL param ?img=', rawName);
+
+    // CRITICAL: Capture scroll position BEFORE router.push()
+    // This prevents race condition where browser navigation resets scroll
+    // before React effects can capture it
+    const currentScroll = window.scrollY;
+    saveScrollPosition(currentScroll);
+    console.log('📍 [useImageSelection] Captured scroll position BEFORE navigation:', currentScroll);
+
     const params = new URLSearchParams(searchParams.toString());
     params.set('img', rawName);
     router.push(`${pathname}?${params}`, { scroll: false });

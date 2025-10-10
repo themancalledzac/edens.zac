@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import ImageFullScreen from '@/app/components/ImageFullScreen/ImageFullScreen';
+import { getSavedScrollPosition } from '@/app/lib/scrollPositionStore';
 import type { ImageContentBlock } from '@/app/types/ContentBlock';
 
 /**
@@ -93,9 +94,19 @@ export function ImageFullScreenController({ images }: ImageFullScreenControllerP
   useEffect(() => {
     if (selectedImage && !isFullScreen) {
       // OPENING: Only run when transitioning from closed to open
-      // Capture current scroll position synchronously BEFORE any DOM changes
-      const currentScroll = window.scrollY;
+      // Get scroll position from store (captured BEFORE router.push in useImageSelection)
+      // Fallback to window.scrollY for defensive programming (e.g., direct URL access)
+      const savedScroll = getSavedScrollPosition();
+      const currentScroll = savedScroll > 0 ? savedScroll : window.scrollY;
       scrollPositionRef.current = currentScroll;
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📍 [ImageFullScreenController] Scroll position for full-screen:', {
+          fromStore: savedScroll,
+          fromWindow: window.scrollY,
+          using: currentScroll,
+        });
+      }
 
       // Apply all styles using cssText for atomic operation
       const body = document.body;
@@ -114,6 +125,11 @@ export function ImageFullScreenController({ images }: ImageFullScreenControllerP
         left: 0 !important;
         right: 0 !important;
       `;
+
+      // CRITICAL: Scroll window to top so full-screen image is visible
+      // The body's negative top makes the page content appear to stay at currentScroll
+      // but the viewport is now at 0, where the fixed overlay is positioned
+      window.scrollTo(0, 0);
 
       setIsFullScreen(true);
     } else if (!selectedImage && isFullScreen) {
