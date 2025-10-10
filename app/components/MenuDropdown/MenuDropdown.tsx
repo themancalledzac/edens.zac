@@ -47,8 +47,15 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
   // Show Update button only on localhost and for collectionsCollection pages
   const showUpdateButton = isLocalEnvironment() && pageType === 'collection';
 
+   // Show Create button only on localhost and for home page
+  const showCreateButton = isLocalEnvironment() && pageType === 'default';
+
   // Navigation handlers with automatic close
   const handleNavigation = {
+    create: () => {
+      window.location.href = '/collection/manage';
+      onClose();
+    },
     update: () => {
       window.location.href = collectionSlug ? `/collection/manage/${collectionSlug}` : '/collection/manage';
       onClose();
@@ -146,6 +153,17 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
+        {showCreateButton && (
+          <div className={styles.dropdownMenuItem}>
+            <h2
+              className={styles.dropdownMenuOptions}
+              onClick={handleNavigation.create}
+            >
+              Create
+            </h2>
+          </div>
+        )}
+
         {showUpdateButton && (
           <div className={styles.dropdownMenuItem}>
             <h2

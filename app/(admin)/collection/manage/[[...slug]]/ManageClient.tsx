@@ -109,13 +109,6 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Validate form data
-    const validationError = validateFormData(updateData, true);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
     if (!createData.title.trim()) {
       setError('Title is required');
       return;
@@ -288,7 +281,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   required
                 >
                   <option value={CollectionType.portfolio}>Portfolio</option>
-                  <option value={CollectionType.catalog}>Catalog</option>
+                  <option value={CollectionType['art-gallery']}>Art Gallery</option>
                   <option value={CollectionType.blogs}>Blog</option>
                   <option value={CollectionType['client-gallery']}>Client Gallery</option>
                 </select>
