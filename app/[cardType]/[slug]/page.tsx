@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
+import ContentBlockWithFullScreen from '@/app/components/ContentBlock/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
@@ -118,12 +118,18 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
     ...((content.blocks as AnyContentBlock[]) || []),
   ];
 
+
   return (
     <div>
       <SiteHeader pageType="collection" collectionSlug={slug} />
+
       <div className={styles.contentPadding}>
         <div className={styles.blockGroup}>
-          <ContentBlockComponent blocks={combinedBlocks} priorityBlockIndex={0} />
+          <ContentBlockWithFullScreen
+            blocks={combinedBlocks}
+            priorityBlockIndex={0}
+            enableFullScreenView
+          />
         </div>
       </div>
     </div>

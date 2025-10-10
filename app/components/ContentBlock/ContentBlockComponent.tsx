@@ -3,7 +3,11 @@
 import React, { useMemo } from 'react';
 
 import { useViewport } from '@/app/hooks/useViewport';
-import { type AnyContentBlock } from '@/app/types/ContentBlock';
+import {
+  type AnyContentBlock,
+  type ImageContentBlock,
+  type ParallaxImageContentBlock,
+} from '@/app/types/ContentBlock';
 import { processContentBlocksForDisplay } from '@/app/utils/contentBlockLayout';
 import {
   isCodeBlock,
@@ -30,7 +34,7 @@ import { TextBlockRenderer } from './TextBlockRenderer';
 function determineBaseProps(
   item: { block: AnyContentBlock; width: number; height: number },
   totalInRow: number,
-  index: number,
+  index: number
 ) {
   let className = '';
   if (totalInRow === 1) className = cbStyles.imageSingle || '';
@@ -53,6 +57,8 @@ export interface ContentBlockComponentProps {
   onImageClick?: (imageId: number) => void;
   justClickedImageId?: number | null;
   priorityBlockIndex?: number; // Index of block to prioritize for LCP (usually 0 for hero)
+  enableFullScreenView?: boolean; // Enable full-screen image viewing on click
+  onFullScreenImageClick?: (image: ImageContentBlock | ParallaxImageContentBlock) => void; // NEW SIMPLE VERSION
 }
 
 /**
@@ -69,6 +75,8 @@ export default function ContentBlockComponent({
   onImageClick,
   justClickedImageId,
   priorityBlockIndex = 0,
+  enableFullScreenView = false,
+  onFullScreenImageClick, // NEW SIMPLE VERSION
 }: ContentBlockComponentProps) {
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
@@ -101,10 +109,15 @@ export default function ContentBlockComponent({
           return (
             <div key={`row-${row.map(item => item.block.id).join('-')}`} className={cbStyles.row}>
               {row.map((item, index) => {
-                const { block, className, width, height } = determineBaseProps(item, totalInRow, index);
+                const { block, className, width, height } = determineBaseProps(
+                  item,
+                  totalInRow,
+                  index
+                );
 
                 // Determine if this block should have priority loading (for LCP optimization)
-                const shouldPrioritize = blocks.findIndex(b => b.id === block.id) === priorityBlockIndex;
+                const shouldPrioritize =
+                  blocks.findIndex(b => b.id === block.id) === priorityBlockIndex;
 
                 // Renderer lookup map - check most specific types first
                 if (isParallaxImageBlock(block) && block.enableParallax) {
@@ -137,6 +150,11 @@ export default function ContentBlockComponent({
                           blockType="contentBlock"
                           cardTypeBadge={block.cardTypeBadge}
                           priority={shouldPrioritize}
+                          onClick={
+                            enableFullScreenView && onFullScreenImageClick
+                              ? () => onFullScreenImageClick(block)
+                              : undefined
+                          }
                         />
                       </div>
                     </div>
@@ -145,22 +163,30 @@ export default function ContentBlockComponent({
                 if (isImageBlock(block)) {
                   const isCurrentCover = currentCoverImageId === block.id;
                   const isJustClicked = justClickedImageId === block.id;
-                  const shouldShowOverlay = (isSelectingCoverImage && isCurrentCover) || isJustClicked;
+                  const shouldShowOverlay =
+                    (isSelectingCoverImage && isCurrentCover) || isJustClicked;
+
+                  // Determine which click handler to use
+                  const handleClick = () => {
+                    if (isSelectingCoverImage && onImageClick) {
+                      onImageClick(block.id);
+                    } else if (enableFullScreenView && onFullScreenImageClick) {
+                      onFullScreenImageClick(block);
+                    }
+                  };
+
+                  const isClickable = isSelectingCoverImage || enableFullScreenView;
 
                   return (
                     <div
                       key={block.id}
                       style={{
                         position: 'relative',
-                        cursor: isSelectingCoverImage ? 'pointer' : 'default',
+                        cursor: isClickable ? 'pointer' : 'default',
                       }}
-                      onClick={() => {
-                        if (isSelectingCoverImage && onImageClick) {
-                          onImageClick(block.id);
-                        }
-                      }}
+                      onClick={handleClick}
                     >
-                      <div style={{ cursor: isSelectingCoverImage ? 'pointer' : 'default' }}>
+                      <div style={{ cursor: isClickable ? 'pointer' : 'default' }}>
                         <ImageContentBlockRenderer
                           block={block}
                           width={width}

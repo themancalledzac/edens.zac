@@ -23,6 +23,8 @@ export interface ParallaxImageContentBlockRendererProps {
   dateBadge?: string;
   // Priority loading for above-the-fold images (LCP optimization)
   priority?: boolean;
+  // Optional click handler for image interaction
+  onClick?: () => void;
 }
 
 /**
@@ -40,6 +42,7 @@ export function ParallaxImageRenderer({
   blockType = 'contentBlock',
   cardTypeBadge,
   priority = false,
+  onClick,
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
   const { imageUrlWeb, overlayText, collectionDate, imageWidth, imageHeight } = block;
   const dateSimple = new Date(collectionDate || new Date()).toLocaleDateString();
@@ -49,7 +52,11 @@ export function ParallaxImageRenderer({
 
   // Complete parallax container with image, overlays, and badges
   return (
-    <div ref={parallaxRef}>
+    <div
+      ref={parallaxRef}
+      onClick={onClick}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
       <Image
         src={imageUrlWeb}
         alt={overlayText || 'Parallax image'}

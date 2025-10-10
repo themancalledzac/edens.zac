@@ -1,33 +1,33 @@
-/* Exact copy of old working CSS */
+/* Full Screen Image Modal Styles */
+
+/* Main wrapper positioned at current scroll position */
 .imageFullScreenWrapper {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: none !important;
-  max-height: none !important;
+  position: absolute;
+  inset: 0; /* Shorthand for left: 0, right: 0, top: 0, bottom: 0 */
+  width: 100vw;
+  height: 100vh;
   display: flex;
   flex-direction: row;
   background-color: rgba(0, 0, 0, 0.9);
   z-index: 9999;
   overflow: hidden;
+
+  /* Reset inherited styles - these need !important to override global styles */
   margin: 0 !important;
   padding: 0 !important;
-  box-sizing: border-box !important;
-  transform: none !important;
-  filter: none !important;
-  contain: none !important;
-  will-change: auto !important;
-  perspective: none !important;
+  transform: none !important; /* Override body's 3D transform context */
+  perspective: none !important; /* Override body's parallax perspective */
+
+  /* Prevent scrolling interactions */
+  overscroll-behavior: none;
+  touch-action: none;
 
   @media (width <= 768px) {
     flex-direction: column;
   }
 }
 
+/* Container for the image with centering */
 .overlayContainer {
   flex: 1;
   display: flex;
@@ -43,6 +43,7 @@
   }
 }
 
+/* Close button styled as circle with X */
 .closeButton {
   position: absolute;
   top: 20px;
