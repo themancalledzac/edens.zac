@@ -273,7 +273,7 @@ function toBase(model: ContentCollectionModel): ContentCollectionBase {
 export async function fetchCollectionBySlug(
   slug: string,
   page = 0,
-  size = PAGINATION.defaultPageSize
+  size: number = PAGINATION.defaultPageSize
 ): Promise<ContentCollectionBase> {
   if (!slug) throw new Error('slug is required');
   const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });
@@ -300,7 +300,7 @@ export async function fetchCollectionBySlug(
 export async function fetchCollectionBySlugAdmin(
   slug: string,
   page = 0,
-  size?: 50
+  size: number = PAGINATION.defaultPageSize
 ): Promise<ContentCollectionModel> {
   if (!slug) throw new Error('slug is required');
   const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });

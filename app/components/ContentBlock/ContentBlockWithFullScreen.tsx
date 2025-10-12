@@ -96,7 +96,7 @@ export default function ContentBlockWithFullScreen({
       />
 
       {hasMore && (
-        <div className={styles.loadMoreWrapper}>
+        <div>
           {/* Invisible sentinel element to detect when user is near bottom */}
           <div ref={sentinelRef} style={{ height: '1px', visibility: 'hidden' }} />
 
