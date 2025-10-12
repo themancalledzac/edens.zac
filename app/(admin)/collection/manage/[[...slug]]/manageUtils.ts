@@ -5,17 +5,18 @@
 
 import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
 import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
-import { type ContentBlockReorderOperation, type ContentCollectionModel, type ContentCollectionUpdateDTO, type DisplayMode } from '@/app/types/ContentCollection';
+import { CollectionType, type ContentBlockReorderOperation, type ContentCollectionModel, type ContentCollectionUpdateDTO, type DisplayMode } from '@/app/types/ContentCollection';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
-export const DEFAULT_PAGE_SIZE = 30;
+export const DEFAULT_PAGE_SIZE = 50;
 
 /**
  * Form data type for managing collections
  * All fields are required/have defaults for form state management
  */
 export interface ManageFormData {
+  type: CollectionType;
   title: string;
   description: string;
   location: string;
@@ -24,6 +25,7 @@ export interface ManageFormData {
   displayMode: DisplayMode;
   homeCardEnabled: boolean;
   homeCardText: string;
+  blocksPerPage: number;
   coverImageId?: number;
 }
 
@@ -69,6 +71,7 @@ export function initializeUpdateFormData(
   collection?: ContentCollectionFullModel | null
 ): ManageFormData {
   return {
+    type: collection?.type ?? CollectionType.portfolio,
     title: collection?.title || '',
     description: collection?.description || '',
     location: collection?.location || '',
@@ -77,6 +80,7 @@ export function initializeUpdateFormData(
     displayMode: collection?.displayMode ?? 'CHRONOLOGICAL',
     homeCardEnabled: collection?.homeCardEnabled ?? false,
     homeCardText: collection?.homeCardText || '',
+    blocksPerPage: collection?.pagination?.pageSize ?? DEFAULT_PAGE_SIZE,
     coverImageId: undefined
   };
 }
@@ -96,6 +100,9 @@ export function buildUpdatePayload(
   const payload: ContentCollectionUpdateDTO = {};
 
   // Only include fields that have actually changed
+  if (formData.type !== originalCollection.type) {
+    payload.type = formData.type;
+  }
   if (formData.title !== originalCollection.title) {
     payload.title = formData.title;
   }
@@ -119,6 +126,9 @@ export function buildUpdatePayload(
   }
   if (formData.homeCardText !== (originalCollection.homeCardText || '')) {
     payload.homeCardText = formData.homeCardText;
+  }
+  if (formData.blocksPerPage !== (originalCollection.pagination?.pageSize ?? DEFAULT_PAGE_SIZE)) {
+    payload.blocksPerPage = formData.blocksPerPage;
   }
   if (formData.coverImageId !== undefined) {
     payload.coverImageId = formData.coverImageId;

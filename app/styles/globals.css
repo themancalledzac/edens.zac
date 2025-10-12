@@ -78,10 +78,21 @@ html,
   --color-error-bg: #fee;
   --color-error-border: #fcc;
   --color-error-text: #c33;
-  --color-primary: #007bff;
+  --color-primary: #212226;
   --color-secondary: #6c757d;
   --color-danger: #dc3545;
   --color-disabled: #ccc;
+
+  /* Z-Index Layers - Systematic stacking order */
+  /* IMPORTANT: Keep in sync with app/constants/index.ts Z_INDEX */
+  --z-base: 1;              /* Base content layer */
+  --z-content: 2;           /* Content elements above base */
+  --z-overlay: 3;           /* Text overlays, badges */
+  --z-dropdown: 100;        /* Dropdown menus */
+  --z-sticky: 500;          /* Sticky headers */
+  --z-modal: 1000;          /* Modal backdrops */
+  --z-modal-controls: 1002; /* Modal close buttons */
+  --z-fullscreen: 9999;     /* Fullscreen overlays */
 }
 
 body {
@@ -141,7 +152,7 @@ a {
   letter-spacing: 0.5px;
   border-radius: var(--radius-0);
   pointer-events: none;
-  z-index: 3;
+  z-index: var(--z-overlay);
 }
 
 @media (width >= 768px) {

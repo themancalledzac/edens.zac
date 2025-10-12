@@ -112,7 +112,7 @@ $bp-lg: 1024px;
   background-repeat: no-repeat;
 
   /* Ensure background is visible */
-  z-index: 1;
+  z-index: var(--z-base);
 
   /* Allow JS parallax transforms on desktop; keep none on mobile base */
   transform: none;
@@ -146,7 +146,7 @@ $bp-lg: 1024px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  z-index: 2;
+  z-index: var(--z-content);
   pointer-events: none;
 }
 

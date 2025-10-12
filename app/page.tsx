@@ -1,3 +1,4 @@
+import { PAGINATION } from '@/app/constants';
 import { fetchHomePage } from '@/app/lib/api/home';
 
 import ContentCollectionPage from './components/ContentCollection/ContentCollectionPage';
@@ -16,7 +17,7 @@ import ContentCollectionPage from './components/ContentCollection/ContentCollect
  * @returns React Server Component displaying home page content
  */
 export default function HomePage() {
-  const homeCardsPromise = fetchHomePage({ maxPriority: 2, limit: 12 });
+  const homeCardsPromise = fetchHomePage({ maxPriority: 2, limit: PAGINATION.homePageSize });
 
   return <ContentCollectionPage cardsPromise={homeCardsPromise} />;
 }

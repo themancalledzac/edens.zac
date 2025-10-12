@@ -75,6 +75,7 @@ export interface CalculatedContentBlockSize {
 /**
  * Calculate display sizes for a row of ContentBlocks so their heights match
  * and their widths sum to the component width
+ * TODO: Image width have not been updated to our new '--page-max-width: 1300px;', meaning two images next to each other are not taking up the full width. they are based on the 'old' width
  */
 export function calculateContentBlockSizes(
   blocks: AnyContentBlock[],
