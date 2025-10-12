@@ -12,7 +12,7 @@
   position: absolute;
   top: -25%; /* PARALLAX_CONSTANTS.IMAGE_TOP_OFFSET */
   left: 0;
-  z-index: 1;
+  z-index: var(--z-base);
   cursor: inherit;
   will-change: transform;
 }

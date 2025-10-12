@@ -2,6 +2,7 @@
  * API functions for home-related operations
  */
 
+import { PAGINATION } from '@/app/constants';
 import {
   type ContentCollectionBase,
   type ContentCollectionModel as ContentCollectionFullModel,
@@ -63,11 +64,17 @@ export async function fetchHomePage(
  * Endpoint: GET /api/read/collections/{slug}
  *
  * @param slug - The collection slug
+ * @param page - Page number (default: 0)
+ * @param size - Page size (default: from PAGINATION.defaultPageSize)
  * @returns The collection data (base model)
  */
-export async function fetchCollectionBySlug(slug: string): Promise<ContentCollectionBase> {
+export async function fetchCollectionBySlug(
+  slug: string,
+  page = 0,
+  size = PAGINATION.defaultPageSize
+): Promise<ContentCollectionBase> {
   try {
-    return await fetchCollectionBySlugPublic(slug);
+    return await fetchCollectionBySlugPublic(slug, page, size);
   } catch (error) {
     console.error(`Error fetching collection "${slug}":`, error);
     throw error;
@@ -80,11 +87,17 @@ export async function fetchCollectionBySlug(slug: string): Promise<ContentCollec
  * Endpoint: GET /api/read/collections/{slug}
  *
  * @param slug - The collection slug
+ * @param page - Page number (default: 0)
+ * @param size - Page size (default: from PAGINATION.defaultPageSize)
  * @returns The collection data (full model)
  */
-export async function fetchCollectionBySlugAdmin(slug: string): Promise<ContentCollectionFullModel> {
+export async function fetchCollectionBySlugAdmin(
+  slug: string,
+  page = 0,
+  size = PAGINATION.defaultPageSize
+): Promise<ContentCollectionFullModel> {
   try {
-    return await fetchCollectionBySlugAdminInternal(slug);
+    return await fetchCollectionBySlugAdminInternal(slug, page, size);
   } catch (error) {
     console.error(`Error fetching collection "${slug}" (admin):`, error);
     throw error;

@@ -56,28 +56,10 @@ export function hasImage(block: ContentBlock): block is ImageContentBlock | Para
 }
 
 /**
- * Type guard to check if a ContentBlock is a cover image
- * Cover images are ParallaxImageContentBlocks with overlay text
- */
-export function isCoverImage(block: ContentBlock): block is ParallaxImageContentBlock {
-  return isParallaxImageBlock(block) && !!block.overlayText;
-}
-
-/**
- * Get the image URL from a ContentBlock that has an image
- */
-export function getImageUrl(block: ContentBlock): string | null {
-  if (hasImage(block)) {
-    return block.imageUrlWeb;
-  }
-  return null;
-}
-
-/**
  * Get the content width and height from any ContentBlock
  * Falls back to imageWidth/Height for image blocks, or default dimensions
  */
-export function getBlockDimensions(block: ContentBlock, defaultWidth = 1000, defaultAspect = 2/3): { width: number; height: number } {
+export function getBlockDimensions(block: ContentBlock, defaultWidth = 1300, defaultAspect = 2/3): { width: number; height: number } {
   // Use explicit width/height if available
   if (block.width && block.height) {
     return { width: block.width, height: block.height };

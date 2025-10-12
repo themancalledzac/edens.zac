@@ -29,6 +29,7 @@ interface ManageClientProps {
 
 export default function ManageClient({ initialCollection }: ManageClientProps) {
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collection, setCollection] = useState<ContentCollectionFullModel | null>(initialCollection || null);
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
@@ -48,6 +49,21 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
   const [contentBlockIdsToRemove, setContentBlockIdsToRemove] = useState<number[]>([]);
 
   const isCreateMode = !initialCollection;
+
+  // Pagination state - check if there are more pages to load
+  const hasMorePages = collection ? (collection.pagination.currentPage + 1) < collection.pagination.totalPages : false;
+
+  // Debug pagination info
+  if (collection) {
+    console.log('Pagination debug:', {
+      currentPage: collection.pagination.currentPage,
+      totalPages: collection.pagination.totalPages,
+      totalBlocks: collection.pagination.totalBlocks,
+      pageSize: collection.pagination.pageSize,
+      hasMorePages,
+      blocksLoaded: collection.blocks.length
+    });
+  }
 
   // Handle creating a new text block - immediately POST to backend
   const handleCreateNewTextBlock = async () => {
@@ -250,6 +266,45 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     }, COVER_IMAGE_FLASH_DURATION);
   };
 
+  // Handle loading more content blocks
+  const handleLoadMore = async () => {
+    if (!collection || !hasMorePages) return;
+
+    try {
+      setLoadingMore(true);
+      setError(null);
+
+      const nextPage = collection.pagination.currentPage + 1;
+      const pageSize = collection.pagination.pageSize;
+
+      console.log(`Loading page ${nextPage} with size ${pageSize} for collection:`, collection.slug);
+
+      // Fetch next page
+      const nextPageData = await fetchCollectionBySlugAdmin(
+        collection.slug,
+        nextPage,
+        pageSize
+      );
+
+      console.log('Next page loaded:', nextPageData);
+
+      // Append new blocks to existing blocks
+      const updatedCollection = {
+        ...collection,
+        blocks: [...collection.blocks, ...nextPageData.blocks],
+        pagination: nextPageData.pagination
+      };
+
+      setCollection(updatedCollection);
+
+    } catch (error) {
+      console.error('Error loading more content:', error);
+      setError(error instanceof Error ? error.message : 'Failed to load more content');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   // Get the displayed cover image (pending selection or current)
   const displayedCoverImage = getDisplayedCoverImage(collection, updateData.coverImageId);
 
@@ -389,6 +444,38 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                 <div className={styles.formGrid2Col}>
                   <div>
                     <label className={styles.formLabel}>
+                      Collection Type
+                    </label>
+                    <select
+                      value={updateData.type}
+                      onChange={(e) => setUpdateData(prev => ({ ...prev, type: e.target.value as CollectionType }))}
+                      className={styles.formSelect}
+                    >
+                      <option value={CollectionType.portfolio}>Portfolio</option>
+                      <option value={CollectionType['art-gallery']}>Art Gallery</option>
+                      <option value={CollectionType.blogs}>Blog</option>
+                      <option value={CollectionType['client-gallery']}>Client Gallery</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={styles.formLabel}>
+                      Items Per Page
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="200"
+                      value={updateData.blocksPerPage}
+                      onChange={(e) => setUpdateData(prev => ({ ...prev, blocksPerPage: Number(e.target.value) }))}
+                      className={styles.formInput}
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formGrid2Col}>
+                  <div>
+                    <label className={styles.formLabel}>
                       Title
                     </label>
                     <input
@@ -511,7 +598,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
             {collection.blocks && collection.blocks.length > 0 && (
               <div className={pageStyles.blockGroup}>
                 <h3 className={styles.contentHeading}>
-                  Collection Content ({collection.blocks.length} blocks)
+                  Collection Content ({collection.blocks.length} of {collection.pagination.totalBlocks} blocks)
                   {isSelectingCoverImage && (
                     <span className={styles.selectingNotice}>
                       (Click any image to set as cover)
@@ -525,6 +612,23 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   onImageClick={handleCoverImageClick}
                   justClickedImageId={justClickedImageId}
                 />
+
+                {/* Load More Button */}
+                {hasMorePages && (
+                  <div className={styles.loadMoreContainer}>
+                    <button
+                      type="button"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      className={styles.loadMoreButton}
+                    >
+                      {loadingMore ? 'Loading...' : 'Load More'}
+                    </button>
+                    <div className={styles.paginationInfo}>
+                      Page {collection.pagination.currentPage + 1} of {collection.pagination.totalPages}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </>

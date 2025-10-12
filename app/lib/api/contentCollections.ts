@@ -23,6 +23,7 @@
  */
 import { notFound } from 'next/navigation';
 
+import { PAGINATION, TIMING } from '@/app/constants';
 import { type ContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
 import { type CollectionType, type DisplayMode } from '@/app/types/ContentCollection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
@@ -136,14 +137,14 @@ function tagForType(type: CollectionType) {
  * Fetch a paginated list of collections.
  * Uses the collections-index cache tag.
  */
-export async function fetchCollections(page = 0, size = 10): Promise<ContentCollection[]> {
+export async function fetchCollections(page = 0, size = PAGINATION.homePageSize): Promise<ContentCollection[]> {
   // Graceful degradation for local dev when backend is unavailable or misconfigured.
   // If NEXT_PUBLIC_API_URL is not set or the endpoint returns 404, return an empty list
   // instead of triggering a global 404 via notFound(). This keeps the home page usable.
   const url = toURL('/collections', { page, size });
   try {
     const res = await fetch(url, {
-      next: { revalidate: 3600, tags: [tagForIndex()] },
+      next: { revalidate: TIMING.revalidateCache, tags: [tagForIndex()] },
     } as ReadonlyFetchInit);
     if (res.status === 404) return [];
 
@@ -240,7 +241,7 @@ function toModel(c: ContentCollection): ContentCollectionModel {
       currentPage: c.currentPage ?? 0,
       totalPages: c.totalPages ?? 1,
       totalBlocks: c.totalBlocks ?? (c.contentBlocks?.length ?? 0),
-      pageSize: c.blocksPerPage ?? 30,
+      pageSize: c.blocksPerPage ?? PAGINATION.collectionPageSize,
     },
   };
 }
@@ -272,7 +273,7 @@ function toBase(model: ContentCollectionModel): ContentCollectionBase {
 export async function fetchCollectionBySlug(
   slug: string,
   page = 0,
-  size = 30
+  size = PAGINATION.defaultPageSize
 ): Promise<ContentCollectionBase> {
   if (!slug) throw new Error('slug is required');
   const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });
@@ -299,12 +300,12 @@ export async function fetchCollectionBySlug(
 export async function fetchCollectionBySlugAdmin(
   slug: string,
   page = 0,
-  size = 30
+  size?: 50
 ): Promise<ContentCollectionModel> {
   if (!slug) throw new Error('slug is required');
   const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });
   const res = await fetch(url, {
-    next: { revalidate: 3600, tags: [tagForSlug(slug)] },
+    next: { revalidate: TIMING.revalidateCache, tags: [tagForSlug(slug)] },
   } as ReadonlyFetchInit);
   const raw = await safeJson<ContentCollection>(res);
   return toModel(raw);
@@ -317,12 +318,12 @@ export async function fetchCollectionBySlugAdmin(
 export async function fetchCollectionsByType(
   type: CollectionType,
   page = 0,
-  size = 10
+  size = PAGINATION.collectionPageSize
 ): Promise<HomeCardModel[]> {
   if (!type) throw new Error('type is required');
   const url = toURL(`/collections/type/${type}`, { page, size });
   const res = await fetch(url, {
-    next: { revalidate: 3600, tags: [tagForType(type)] },
+    next: { revalidate: TIMING.revalidateCache, tags: [tagForType(type)] },
   } as ReadonlyFetchInit);
   return safeJson<HomeCardModel[]>(res);
 }

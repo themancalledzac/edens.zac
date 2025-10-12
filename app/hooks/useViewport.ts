@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { BREAKPOINTS, getContentWidth } from '@/app/constants';
+
 /**
  * useDebounce Hook
  *
@@ -56,17 +58,8 @@ export function useViewport(): ViewportDimensions {
 
   const measure = useCallback(() => {
     const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
-    const mobile = vw < 768;
-
-    let contentWidth: number;
-    if (mobile) {
-      // Legacy mobile rule: full-bleed minus 40px
-      contentWidth = Math.max(0, vw - 40);
-    } else {
-      // App Router desktop: subtract .contentPadding's 2rem + 2rem (64px) and cap at 1200
-      const desktopPadding = 64; // 2rem each side at ≥768px
-      contentWidth = Math.max(0, Math.min(vw - desktopPadding, 1200));
-    }
+    const mobile = vw < BREAKPOINTS.mobile;
+    const contentWidth = getContentWidth(vw, mobile);
 
     setDimensions({
       width: vw,

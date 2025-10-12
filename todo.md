@@ -1,16 +1,62 @@
-# Content Collection Refactor TODO
+# TODO
+
+---
+## Phase 1: Content Creation & Management
+- [ ] **Edit Image Modal**
+- [ ] **Get All images endpoint / page**
+- [ ] **edit image endpoint**
+- [ ] **Add existing images to collection**
+- [ ] **Add existing images to collection** aka, 'getAllImages -> display images by date/location/etc'
+- [ ] **Display Metadata on images**
+- [ ] **Clickable metadata on images to go to 'tags'**
+- [ ] **Tag page**
+- [ ] **all images page**
+  - Includes 'filter by'
+  - Includes 'order by'
+  - Includes a 'add to collection' button
+    - Allows us to select multiple to add to
+  - Includes a 'upload images(not to collection)'
+  - Includes 'update metadata' where we can update multiple
+    - i.e., update location - select all 'seattle'
+  - Includes updating tags ( type tag, select all that apply?)
+
+### Notes
+- **Do NOT combine Image/GIF renderers** - GIF component is still in development
+- **Keep Image/GIF styles separate** - Different optimization requirements
+- **Preserve ParallaxImageRenderer special styling** - Mobile/desktop wrapper logic must stay in ContentBlockComponent
+
+### Phase 3: Architecture Improvements (Medium Priority)
+- [ ] **Implement renderer registry pattern**
+  - Replace inline type checking (lines 91-133) with registry map
+  - Create `RENDERERS` object mapping block types to components
+  - Simplify ContentBlockComponent render logic
+
+- [ ] **Move parallax wrapper logic to ParallaxImageRenderer**
+  - Remove special-case inline JSX from ContentBlockComponent (lines 94-125)
+  - Move wrapper divs and styling into ParallaxImageRenderer component
+  - Make all renderers follow consistent pattern
+
+- [ ] **Simplify hasOverlays detection**
+  - Remove duplicate overlay calculations in individual renderers
+  - Centralize overlay detection since only ParallaxImageRenderer has text overlays currently
+
+- [ ] **Create responsive styles hook**
+  - Extract mobile/desktop logic into `useResponsiveBlockStyles` hook
+  - Centralize responsive calculations for reuse across components
+  - Keep special ParallaxImageRenderer wrapper styling in ContentBlockComponent
+
 
 ## Overview
 
 
-## Phase 7: Ultra-fast Initial Home Page
+## Phase 4: Ultra-fast Initial Home Page
 
-### 7.1 Goals & Metrics
+### 4.1 Goals & Metrics
 - [ ] First Contentful Paint < 1s on fast 4G, LCP < 2.5s
 - [ ] JS shipped < 50KB on initial home route; CSS < 20KB critical
 - [ ] 100 Lighthouse Performance on desktop; 90+ on mobile
 
-### 7.2 Implementation Plan (RSC-first)
+### 4.2 Implementation Plan (RSC-first)
 - [ ] Server-render above-the-fold content; no client providers on home unless needed
 - [ ] Use CSS Modules with minimal rules; remove heavy parallax on first load or lazy-load it
 - [ ] Replace image components with `next/image` using WebP/AVIF, width/height, lazy loading
@@ -19,79 +65,13 @@
 - [ ] Use `preload` for critical fonts/assets; avoid large font files
 - [ ] Cache home data at the edge (Next cache route or `revalidate`), enable `stale-while-revalidate`
 
-### 7.3 Verification
+### 4.3 Verification
 - [ ] Add a `scripts/perf/home-lh.mjs` to run Lighthouse CI locally
 - [ ] Track metrics in README/todo; include before/after numbers
 
 ---
 
-
-
 ---
-
-## Phase 1: Content Creation & Management
-
-### 1.1 Create ContentCollection Create/Edit Components
-- [ ] Create `Components/ContentCollection/ContentCollectionEditor.tsx`
-    - [ ] **Client-side component** (editing requires interactivity)
-    - [ ] Type-specific form fields based on CollectionType
-    - [ ] Validation using existing patterns
-- [ ] Create `Components/ContentCollection/ContentBlockEditor.tsx`
-    - [ ] **Client-side component** for drag-and-drop reordering
-    - [ ] Content block type selection and editing
-    - [ ] File upload for media content blocks
-- [ ] Create `Components/ContentCollection/CollectionTypeSelector.tsx`
-    - [ ] **Client-side component** for type selection during creation
-    - [ ] Type-specific feature explanations
-- [ ] Create `pages/collection/create.tsx`
-    - [ ] **Client-side page** (creation requires extensive interactivity)
-    - [ ] Follow existing creation patterns from catalog create
-- [ ] Use existing context patterns from `EditContext` where necessary
-- **Files to create**: Multiple editor components and create page
-- **Testing**: Component tests for editing functionality
-- **SCSS**: Create `ContentCollectionEditor.module.scss`
-
-### 1.2 Update Header/Navigation (Minimal Client-Side Impact)
-- [ ] Add ContentCollection routes to header navigation
-    - [ ] Update `Components/Header/Header.tsx` - keep server-side
-    - [ ] Add collection type navigation
-- [ ] Update admin menu to include "Create Collection" option
-    - [ ] Update `Components/MenuDropdown/MenuDropdown.tsx`
-    - [ ] Keep existing Catalog navigation intact during transition
-- [ ] Follow existing navigation patterns
-- **Files to modify**:
-    - `Components/Header/Header.tsx`
-    - `Components/MenuDropdown/MenuDropdown.tsx`
-- **Testing**: Component tests for navigation updates
-
----
-
-
-## Phase 2: Migration Strategy & Tooling
-
-### 2.1 Create Migration Utilities (Backend kept here for visibility)
-- [ ] Create `MigrationService.java` for converting Catalogs to ContentCollections
-    - [ ] Catalog type detection logic (analyze titles, content, metadata)
-    - [ ] Batch migration with progress tracking
-    - [ ] Data validation and integrity checks
-- [ ] Create migration endpoint (dev-only): `POST /api/write/migration/catalog-to-collection/{catalogId}`
-- [ ] Add rollback functionality for failed migrations
-- [ ] Consider Flyway for future schema changes
-- **Files to create**: `src/main/java/edens/zac/portfolio/backend/services/MigrationService.java`
-- **Testing**: Unit tests for migration logic and integration tests for data integrity
-
-### 2.2 Create Migration Scripts & Tools
-- [ ] Create database migration script for bulk conversion
-    - [ ] SQL scripts for data type mapping
-    - [ ] Image-to-ImageContentBlock conversion
-- [ ] Add validation script to ensure data integrity
-    - [ ] Compare before/after data
-    - [ ] Verify S3 URLs and metadata
-- [ ] Create frontend tool for selective migration
-    - [ ] Admin interface for choosing which catalogs to migrate
-    - [ ] Preview functionality before migration
-- **Files to create**: Migration scripts and admin tools
-- **Testing**: Integration tests for migration scripts
 
 ---
 
@@ -142,51 +122,6 @@
 - Add scripts/perf/home-lh.mjs to run Lighthouse locally against / (once Home UI is more complete).
 - Capture metrics in README with before/after snaps.
 
-
----
-
-## Phase 4: Gradual Migration & Production Deployment
-
-### 4.1 Environment Considerations
-- [ ] **Production Data**: Continue using production environment for now
-- [ ] **Future Environment Setup**: Plan for staging environment
-    - [ ] Separate S3 buckets for staging
-    - [ ] Separate database for testing migrations
-    - [ ] CI/CD pipeline for automated testing
-
-### 4.2 Migrate Existing Data
-- [ ] **Catalog Classification**: Identify which catalogs belong to which CollectionType
-    - [ ] Art galleries: Abstract concepts ("humans in nature", "urban landscapes")
-    - [ ] Portfolio pieces: Location/event specific ("Arches National Park", "Wedding Showcase")
-    - [ ] Client galleries: Individual client work (if any exist)
-- [ ] **Migration Order** (lowest risk first):
-    - [ ] Migrate art galleries first (lowest risk, most generic)
-    - [ ] Migrate portfolio pieces (professional showcases)
-    - [ ] Create new blogs rather than migrating (fresh start)
-    - [ ] Keep any client galleries as catalogs initially
-- [ ] **Data Validation**: Verify all migrated content displays correctly
-    - [ ] Check image loading and metadata
-    - [ ] Verify pagination works with migrated content
-    - [ ] Test performance with large migrated collections
-
-### 4.3 Update Home Page & Navigation
-- [ ] Modify home page to pull from ContentCollections instead of Catalogs
-    - [ ] Update `fetchHomePage()` API to use new endpoints
-    - [ ] Update `HomeCardModel` to support collection types
-    - [ ] Ensure backwards compatibility during transition
-- [ ] Update main navigation to include collection types
-- [ ] **Gradual Rollout**: Feature flag approach for testing
-- **Files to modify**:
-    - `lib/api/home.ts`
-    - `pages/index.tsx`
-    - `src/main/java/edens/zac/portfolio/backend/services/HomeService.java`
-
-### 4.4 Performance Monitoring & Optimization
-- [ ] Monitor database performance with new pagination queries
-- [ ] Monitor S3 usage patterns with mixed content types
-- [ ] Optimize any slow queries discovered in production
-- [ ] Monitor user experience with larger collections
-
 ---
 
 ## Notes for Future Development
@@ -232,131 +167,18 @@
 - **Client passwords**: Currently SHA-256 hashing (TODO: migrate to BCrypt before client gallery frontend work)
 
 
-context: `.junie/guidelines.md` `newToDO.md` `todo.md`,
-`mobileToDo.md`
+- [ ] **Touch interaction optimization** - test scroll smoothness on actual mobile devices
 
-We need to consolidate our todo files, so that  todo.md is
-our only todo file. it should  include ONLY things that are
-still needing to be done, from all three. This should be
-based on order of priority. we can obviously remove all
-backend todo items. For some items like `Ultra-fast initial
-  Home Page`, this is a 'verify' step.
-
-again, let's keep these organized by order of importance,
-basically what needs to be done next. 
+### 5.4 Lessons Learned
+- ✅ **Incremental changes**: Test one change at a time, not everything at once
+- ✅ **Preserve working functionality**: Don't fix what isn't broken
+- ✅ **Performance vs UX trade-offs**: Address separately, not simultaneously
+- ✅ **Testing is critical**: Especially for visual effects like parallax
 
 
-
-## Phase 12: Parallax Unification & Mobile Optimization
-
-### Description
-After implementing ParallaxImageRenderer for collection pages, we've achieved better mobile parallax functionality than our home page implementation. The collection pages display full-width images with proper parallax starting from the bottom, while the home page crops to 1:1 ratio and has suboptimal parallax behavior on mobile.
-
-**Key Differences Identified:**
-- Collection cover: Uses ParallaxImageRenderer with proper background positioning (50% 100%) and sizing (110%)
-- Home page: Uses generic parallax with different styling and 1:1 crop causing visual issues
-- useParallax.ts: Large, complex hook that could benefit from modularization and simplification
-
-**Questions/Concerns:**
-- Can we use ParallaxImageRenderer for home page images to unify behavior?
-- Should we treat home page images as ParallaxImageContentBlock types?
-- Do we need buildCoverImageBlock logic outside of collection pages?
-- Can useParallax.ts logic be simplified or consolidated into smaller functions?
-- Is there a performance reason to keep separate parallax implementations?
-
-### 12.1 Width Container System Unification (Priority: High)
-- [x] **Analyze width container differences** between home and collection pages
-    - **Home Page**: CSS Grid, full page width, forced aspect ratios (1:1 mobile, 1.75:1 desktop), `.gridBackground` parallax
-    - **Collection Pages**: Fixed max-width 1200px container, calculated dimensions via useViewport, ParallaxImageRenderer, custom contentBlockPair logic
-    - **Issue**: Home page 1:1 cropping causes visual problems, different container approaches create inconsistency
-- [ ] **Design unified container system supporting both grid and content-based layouts**
-    - [ ] Create ContainerContext to provide layout mode (grid vs content) and dimensions
-    - [ ] Design responsive width calculation that works for both grid cards and content blocks
-    - [ ] Plan container wrapper that handles both fixed-width (collections) and full-width (home) scenarios
-    - [ ] Ensure mobile-first approach: full width mobile, appropriate containers desktop
-- [ ] **Create shared width/container utilities**
-    - [ ] Extract buildCoverImageBlock from `app/[cardType]/[slug]/page.tsx` to shared utility
-    - [ ] Create utility to convert home page images to ParallaxImageContentBlock format
-    - [ ] Create `getContainerDimensions(mode, viewport)` utility for consistent width calculation
-    - [ ] Create `useContainerLayout` hook to replace individual useViewport calls
-- [ ] **Update BlockWrapper for unified container handling**
-    - [ ] Add containerMode prop: 'grid' | 'content' | 'full-width'
-    - [ ] Remove forced aspect ratios when containerMode='content'
-    - [ ] Handle responsive width calculation internally based on containerMode
-    - [ ] Maintain backward compatibility during transition
-- **Files to modify:**
-    - `app/components/ContentBlock/BlockWrapper.tsx` (unified container logic)
-    - `app/hooks/useContainerLayout.ts` (new unified hook)
-    - `app/utils/containerDimensions.ts` (new utility)
-    - `app/page.tsx` (use new container system)
-    - `app/[cardType]/[slug]/page.tsx` (extract buildCoverImageBlock)
-
-### 12.2 Parallax System Unification (Priority: High)
-- [ ] **Replace home page parallax with ParallaxImageRenderer**
-    - [ ] Update home page to use ParallaxImageRenderer instead of `.gridBackground`
-    - [ ] Convert home page image data to ParallaxImageContentBlock format
-    - [ ] Remove 1:1 aspect ratio constraints that cause cropping issues
-    - [ ] Test mobile behavior matches improved collection page experience
-- [ ] **Standardize parallax background positioning**
-    - [ ] Use consistent background-position: 50% 100% (start at bottom) for all parallax images
-    - [ ] Use consistent background-size: 110% for parallax expansion
-    - [ ] Remove home page specific background sizing (160% on mobile, cover on desktop)
-- **Files to modify:**
-    - `app/page.tsx` (use ParallaxImageRenderer)
-    - `app/page.module.scss` (remove .gridBackground, update grid styles)
-    - `app/utils/` (conversion utilities)
-
-### 12.2 useParallax Hook Refactoring (Priority: Medium)
-- [ ] **Break down useParallax.ts into smaller modules**
-    - [ ] Extract row manager logic into separate `parallaxRowManager.ts`
-    - [ ] Extract individual element logic into `parallaxSingleElement.ts`
-    - [ ] Create `parallaxUtils.ts` for shared calculations and device detection
-    - [ ] Keep main `useParallax.ts` as orchestrator/public API
-- [ ] **Add comprehensive tests for parallax modules**
-    - [ ] Unit tests for row manager functionality
-    - [ ] Unit tests for single element parallax
-    - [ ] Unit tests for utility functions (speed calculation, device detection)
-    - [ ] Integration tests for hook behavior
-- [ ] **Simplify and optimize parallax logic**
-    - [ ] Review if both row-based and single-element modes are necessary
-    - [ ] Consolidate duplicate scroll handling logic
-    - [ ] Optimize performance bottlenecks identified during refactoring
-- **Files to create:**
-    - `app/hooks/parallax/parallaxRowManager.ts`
-    - `app/hooks/parallax/parallaxSingleElement.ts`
-    - `app/hooks/parallax/parallaxUtils.ts`
-    - `tests/hooks/parallax/` (test files)
-
-### 12.3 Mobile Parallax Optimization (Priority: High)
-- [ ] **Fix home page mobile parallax issues**
-    - [ ] Remove 1:1 image cropping on mobile home page
-    - [ ] Implement proper background positioning (50% 100%) like collection pages
-    - [ ] Ensure images display full-width on mobile
-    - [ ] Test parallax smoothness across different mobile devices
-- [ ] **Standardize mobile parallax behavior**
-    - [ ] Use consistent speed attenuation across home and collection pages
-    - [ ] Ensure reduced motion preferences are respected
-    - [ ] Optimize performance for mobile scroll events
-- **Files to modify:**
-    - Home page styling and image rendering
-    - ParallaxImageRenderer mobile optimizations
-
-### 12.4 Type System Integration (Priority: Low)
-- [ ] **Extend ParallaxImageContentBlock usage**
-    - [ ] Evaluate if home page images should use ParallaxImageContentBlock type
-    - [ ] Create conversion utilities from existing image data to ParallaxImageContentBlock
-    - [ ] Update type definitions if needed for home page integration
-- [ ] **Consolidate parallax-related types**
-    - [ ] Review if ParallaxOptions in useParallax can be simplified
-    - [ ] Ensure type consistency between home page and collection page parallax
-
----
-
-Notes from Tyler:
-- skinnier desktop menu ✓
-- menu needs to not be opaque ✓
-- can't see inside
-- collection page, top title image should have parallax ✓
-- menu items should ALL have a dropdown, so 'blog' would show top 3, and a 'see more'. for consistency.
+### Future Thoughts
+- ** Add Image to other collection
+- ** Get all Collection Names endpoint - simply array of name/slug of all collections
+- ** Update Image Metadata endpoint and frontend logic
 
 ---

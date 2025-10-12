@@ -88,9 +88,10 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
   const { slug } = await params;
 
   // Server-side data fetching with proper error handling
+  // Fetch ALL blocks (set high page size to get everything in one call)
   let content: ContentCollectionBase;
   try {
-    content = await fetchCollectionBySlug(slug);
+    content = await fetchCollectionBySlug(slug, 0, 1000);
   } catch {
     // If fetch fails, return 404
     return notFound();
@@ -129,6 +130,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
             blocks={combinedBlocks}
             priorityBlockIndex={0}
             enableFullScreenView
+            initialPageSize={30}
           />
         </div>
       </div>
