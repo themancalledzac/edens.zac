@@ -71,7 +71,7 @@ export async function fetchHomePage(
 export async function fetchCollectionBySlug(
   slug: string,
   page = 0,
-  size = PAGINATION.defaultPageSize
+  size: number = PAGINATION.defaultPageSize
 ): Promise<ContentCollectionBase> {
   try {
     return await fetchCollectionBySlugPublic(slug, page, size);
@@ -94,7 +94,7 @@ export async function fetchCollectionBySlug(
 export async function fetchCollectionBySlugAdmin(
   slug: string,
   page = 0,
-  size = PAGINATION.defaultPageSize
+  size: number = PAGINATION.defaultPageSize
 ): Promise<ContentCollectionFullModel> {
   try {
     return await fetchCollectionBySlugAdminInternal(slug, page, size);

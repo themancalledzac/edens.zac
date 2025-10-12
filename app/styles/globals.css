@@ -84,15 +84,16 @@ html,
   --color-disabled: #ccc;
 
   /* Z-Index Layers - Systematic stacking order */
+
   /* IMPORTANT: Keep in sync with app/constants/index.ts Z_INDEX */
-  --z-base: 1;              /* Base content layer */
-  --z-content: 2;           /* Content elements above base */
-  --z-overlay: 3;           /* Text overlays, badges */
-  --z-dropdown: 100;        /* Dropdown menus */
-  --z-sticky: 500;          /* Sticky headers */
-  --z-modal: 1000;          /* Modal backdrops */
+  --z-base: 1; /* Base content layer */
+  --z-content: 2; /* Content elements above base */
+  --z-overlay: 3; /* Text overlays, badges */
+  --z-dropdown: 100; /* Dropdown menus */
+  --z-sticky: 500; /* Sticky headers */
+  --z-modal: 1000; /* Modal backdrops */
   --z-modal-controls: 1002; /* Modal close buttons */
-  --z-fullscreen: 9999;     /* Fullscreen overlays */
+  --z-fullscreen: 9999; /* Fullscreen overlays */
 }
 
 body {
