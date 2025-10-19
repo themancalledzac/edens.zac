@@ -170,3 +170,93 @@ export async function addContentBlocks(
     throw error;
   }
 }
+
+/**
+ * Transform backend ContentCollectionModel to HomeCardModel
+ * Maps collection data to the home card format with proper CollectionType
+ */
+function mapCollectionToHomeCard(collection: ContentCollectionModel): HomeCardModel {
+  // Extract cover image URL from the nested coverImage object
+  // Backend returns coverImage.imageUrlWeb (webP optimized) as the primary image
+  const coverImageUrl =
+    collection.coverImageUrl || // Legacy field
+    (collection.coverImage as any)?.imageUrlWeb || // New format with webP
+    (collection.coverImage as any)?.imageUrlFullSize || // Fallback to full size
+    ''; // No image
+
+  return {
+    id: collection.id,
+    title: collection.title,
+    cardType: collection.type, // Use actual CollectionType enum value
+    location: collection.location,
+    date: collection.collectionDate,
+    priority: collection.priority || 99,
+    coverImageUrl,
+    slug: collection.slug,
+    text: collection.homeCardText,
+  };
+}
+
+/**
+ * Fetches all content collections (dev/admin only)
+ * Endpoint: GET http://localhost:8080/api/write/collections/all
+ *
+ * Note: This is a dev-only endpoint that ALWAYS hits localhost.
+ * Returns all collections regardless of visibility, priority, or access control.
+ *
+ * @returns All collections as home cards or null on failure
+ */
+export async function fetchAllCollections(): Promise<HomeCardModel[] | null> {
+  try {
+    // Dev-only: Always hit localhost
+    const url = 'http://localhost:8080/api/write/collections/all';
+
+    console.log('[fetchAllCollections] Fetching from:', url);
+
+    const response = await fetch(url, {
+      cache: 'no-store', // Dev endpoint, don't cache
+    });
+
+    console.log('[fetchAllCollections] Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[fetchAllCollections] Error response:', errorText);
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    const rawData = await response.json();
+    console.log('[fetchAllCollections] Received data:', Array.isArray(rawData) ? `Array with ${rawData.length} items` : typeof rawData);
+
+    let collections: ContentCollectionModel[] = [];
+
+    // Handle both array and object responses
+    if (Array.isArray(rawData)) {
+      collections = rawData;
+    } else if (rawData && typeof rawData === 'object') {
+      const items = rawData.items || rawData.collections || rawData.content;
+      if (Array.isArray(items)) {
+        collections = items;
+      }
+    }
+
+    // Debug: Log first collection to see its structure
+    if (collections.length > 0) {
+      console.log('[fetchAllCollections] Sample collection:', JSON.stringify(collections[0], null, 2));
+    }
+
+    // Transform ContentCollectionModel to HomeCardModel
+    const homeCards = collections.map(mapCollectionToHomeCard);
+    console.log('[fetchAllCollections] Transformed to', homeCards.length, 'home cards');
+
+    // Debug: Log first transformed card
+    if (homeCards.length > 0) {
+      console.log('[fetchAllCollections] Sample home card:', JSON.stringify(homeCards[0], null, 2));
+    }
+
+    return homeCards;
+  } catch (error) {
+    console.error('[fetchAllCollections] Error:', error);
+    return null;
+  }
+}

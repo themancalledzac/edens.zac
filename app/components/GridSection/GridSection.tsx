@@ -44,12 +44,20 @@ export function GridSection({
   const parallaxBlock = buildParallaxImageFromHomeCard(card);
 
   const getHref = () => {
-    if (card.cardType === 'catalog') {
-      return `/catalog/${card.slug}`;
-    } else if (card.cardType === 'blog') {
-      return `/blog/${card.slug}`;
-    } else {
-      return `/${card.cardType}/${card.slug}`;
+    // Map CollectionType enum values to URL paths
+    // CollectionType enum keys are: portfolio, 'art-gallery', blogs, 'client-gallery'
+    switch (card.cardType) {
+      case 'BLOG':
+        return `/blogs/${card.slug}`;
+      case 'PORTFOLIO':
+        return `/portfolio/${card.slug}`;
+      case 'ART_GALLERY':
+        return `/art-gallery/${card.slug}`;
+      case 'CLIENT_GALLERY':
+        return `/client-gallery/${card.slug}`;
+      default:
+        // Fallback to lowercase version of the type
+        return `/${card.cardType.toLowerCase()}/${card.slug}`;
     }
   };
 
@@ -59,7 +67,7 @@ export function GridSection({
         <ParallaxImageRenderer
           block={parallaxBlock}
           blockType="collection"
-          cardTypeBadge={card.cardType?.toUpperCase()}
+          cardTypeBadge={card.cardType}
           priority={priority}
         />
       </a>

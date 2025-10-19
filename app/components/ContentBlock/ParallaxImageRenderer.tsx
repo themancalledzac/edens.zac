@@ -50,6 +50,9 @@ export function ParallaxImageRenderer({
   // Setup parallax effect for this image using defaults
   const parallaxRef = useParallax();
 
+  // Determine if we have a valid image URL
+  const hasValidImage = imageUrlWeb && imageUrlWeb.trim() !== '';
+
   // Complete parallax container with image, overlays, and badges
   return (
     <div
@@ -57,15 +60,21 @@ export function ParallaxImageRenderer({
       onClick={onClick}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      <Image
-        src={imageUrlWeb}
-        alt={overlayText || 'Parallax image'}
-        width={imageWidth || 1200}
-        height={imageHeight || 800}
-        className={`parallax-bg ${variantStyles.parallaxImage}`}
-        priority={priority}
-        loading={priority ? undefined : 'lazy'}
-      />
+      {hasValidImage ? (
+        <Image
+          src={imageUrlWeb}
+          alt={overlayText || 'Parallax image'}
+          width={imageWidth || 1200}
+          height={imageHeight || 800}
+          className={`parallax-bg ${variantStyles.parallaxImage}`}
+          priority={priority}
+          loading={priority ? undefined : 'lazy'}
+        />
+      ) : (
+        <div className={`parallax-bg ${variantStyles.parallaxImage} ${variantStyles.placeholderImage}`}>
+          No Image
+        </div>
+      )}
       {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
       <BadgeOverlay
         contentType={blockType}

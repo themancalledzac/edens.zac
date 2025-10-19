@@ -9,6 +9,34 @@
 export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF' | 'PARALLAX';
 
 /**
+ * ImageCollection - Represents the relationship between an image and a collection
+ * Each image can belong to multiple collections with collection-specific metadata
+ */
+export interface ImageCollection {
+  /**
+   * The ID of the collection
+   */
+  collectionId: number;
+
+  /**
+   * The name of the collection (for reference/validation)
+   */
+  collectionName: string;
+
+  /**
+   * Whether the image is visible in this collection
+   * Defaults to true if not specified
+   */
+  visible?: boolean;
+
+  /**
+   * The order index of this image within this specific collection
+   * Each image/collection relationship has its own order_index
+   */
+  orderIndex?: number;
+}
+
+/**
  * Base ContentBlock interface - all content blocks extend this
  * Provides consistent shape for layout, rendering, and UI enhancements
  */
@@ -55,6 +83,12 @@ export interface ImageContentBlock extends ContentBlock {
   fstop?: string | null;
   alt?: string;
   aspectRatio?: number;
+
+  /**
+   * List of collections this image belongs to
+   * Each entry contains collection-specific metadata like visibility and order
+   */
+  imageCollectionList?: ImageCollection[];
 }
 
 /**
