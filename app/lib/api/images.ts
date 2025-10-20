@@ -19,13 +19,34 @@
 
 import { type ImageCollection } from '@/app/types/ContentBlock';
 
-import { fetchPutJsonApi } from './core';
+import { fetchPatchJsonApi } from './core';
+
+/**
+ * Request DTO for creating a new film type on the fly
+ *
+ * Backend auto-generates technical name from filmTypeName:
+ * - filmTypeName: "Kodak Portra 400" → technical name: "KODAK_PORTRA_400"
+ */
+export interface NewFilmTypeRequest {
+  /**
+   * Human-readable film type name (e.g., "Kodak Portra 400")
+   * Backend will auto-generate technical name from this
+   */
+  filmTypeName: string;
+
+  /** Default ISO value for this film stock */
+  defaultIso: number;
+}
 
 /**
  * DTO for updating an image
  * All fields are optional - only include fields you want to update
  */
+
 export interface UpdateImageDTO {
+  /** Image ID - required for backend to identify which image to update */
+  id?: number;
+
   /** Image title */
   title?: string | null;
 
@@ -68,16 +89,48 @@ export interface UpdateImageDTO {
   /** ISO value */
   iso?: number | null;
 
+  /** Film type - enum name (e.g., "KODAK_PORTRA_400") - only used when isFilm is true */
+  filmType?: string | null;
+
+  /** Film type ID to associate with this image (only when isFilm is true) */
+  filmTypeId?: number | null;
+
+  /** New film type to create and associate with this image (takes precedence over filmTypeId) */
+  newFilmType?: NewFilmTypeRequest | null;
+
+  /** Film format - enum name (e.g., "MM_35") - only used when isFilm is true */
+  filmFormat?: string | null;
+
+  /** Tag IDs to associate with this image */
+  tagIds?: number[] | null;
+
+  /** Person IDs to associate with this image */
+  personIds?: number[] | null;
+
+  /** Camera model ID to associate with this image */
+  cameraModelId?: number | null;
+
+  /** Camera name - will find existing or create new camera entity */
+  cameraName?: string | null;
+
+  /** List of new tag names to create and associate with this image */
+  newTags?: string[] | null;
+
+  /** List of new person names to create and associate with this image */
+  newPeople?: string[] | null;
+
   /**
    * List of collections this image belongs to
-   * Each entry should include collectionId, collectionName, visible, and orderIndex
-   * Only include collections being added, updated, or removed
+   * Each entry should include collectionId and collectionName
+   * Backend will automatically set visible=true and assign orderIndex
    */
-  imageCollectionList?: ImageCollection[] | null;
+  collections?: ImageCollection[] | null;
 }
 
 /**
  * Update an image with partial data
+ *
+ * Note: The backend expects an array of image updates, so we wrap the single update in an array
  *
  * @param imageId - The ID of the image to update
  * @param updates - Object containing only the fields to update
@@ -94,7 +147,7 @@ export interface UpdateImageDTO {
  * @example
  * // Update image collection associations
  * await updateImage(123, {
- *   imageCollectionList: [
+ *   collections: [
  *     { collectionId: 1, collectionName: "Portfolio", visible: true, orderIndex: 0 },
  *     { collectionId: 2, collectionName: "Landscapes", visible: true, orderIndex: 5 }
  *   ]
@@ -115,5 +168,9 @@ export async function updateImage<T = unknown>(imageId: number, updates: UpdateI
     throw new Error('Updates object must contain at least one field to update');
   }
 
-  return await fetchPutJsonApi<T>(`/images/${imageId}`, updates);
+  // Backend expects an array of updates and the imageId in the update object
+  const updateWithId = { ...updates, id: imageId };
+  const updateArray = [updateWithId];
+
+  return await fetchPatchJsonApi<T>('/blocks/images', updateArray);
 }

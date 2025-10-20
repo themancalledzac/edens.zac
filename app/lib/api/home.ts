@@ -16,6 +16,7 @@ import {
   type ContentCollectionUpdateDTO,
 } from '@/app/types/ContentCollection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
+import { type CollectionUpdateMetadata } from '@/app/types/ImageMetadata';
 
 /**
  * Backend response structure for home page
@@ -258,5 +259,60 @@ export async function fetchAllCollections(): Promise<HomeCardModel[] | null> {
   } catch (error) {
     console.error('[fetchAllCollections] Error:', error);
     return null;
+  }
+}
+
+/**
+ * Response structure for collection update metadata endpoint
+ * Contains the collection plus all available metadata for dropdowns
+ */
+export interface CollectionUpdateResponse {
+  collection: ContentCollectionFullModel;
+  tags: CollectionUpdateMetadata['tags'];
+  people: CollectionUpdateMetadata['people'];
+  cameras: CollectionUpdateMetadata['cameras'];
+  filmTypes: CollectionUpdateMetadata['filmTypes'];
+  filmFormats: CollectionUpdateMetadata['filmFormats'];
+  collections: CollectionUpdateMetadata['collections'];
+}
+
+/**
+ * Fetches a collection with all metadata needed for the update/manage page.
+ * Returns the collection along with all available tags, people, cameras, and film metadata.
+ * This single endpoint provides everything needed for the image management UI.
+ *
+ * Endpoint: GET /api/write/collections/{slug}/update
+ *
+ * @param slug - The collection slug
+ * @returns The collection and all metadata for dropdowns
+ */
+export async function fetchCollectionUpdateMetadata(
+  slug: string
+): Promise<CollectionUpdateResponse> {
+  try {
+    // This is a write API endpoint that includes all metadata
+    const url = `http://localhost:8080/api/write/collections/${encodeURIComponent(slug)}/update`;
+
+    console.log('[fetchCollectionUpdateMetadata] Fetching from:', url);
+
+    const response = await fetch(url, {
+      cache: 'no-store', // Don't cache admin/update endpoints
+    });
+
+    console.log('[fetchCollectionUpdateMetadata] Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[fetchCollectionUpdateMetadata] Error response:', errorText);
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('[fetchCollectionUpdateMetadata] Received metadata');
+
+    return data as CollectionUpdateResponse;
+  } catch (error) {
+    console.error('[fetchCollectionUpdateMetadata] Error:', error);
+    throw error;
   }
 }

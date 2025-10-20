@@ -168,14 +168,16 @@ export default function ContentBlockComponent({
 
                   // Determine which click handler to use
                   const handleClick = () => {
-                    if (isSelectingCoverImage && onImageClick) {
+                    if (onImageClick) {
+                      // Always use onImageClick if provided (for cover selection or metadata editing)
                       onImageClick(block.id);
                     } else if (enableFullScreenView && onFullScreenImageClick) {
+                      // Fall back to fullscreen handler if no onImageClick provided
                       onFullScreenImageClick(block);
                     }
                   };
 
-                  const isClickable = isSelectingCoverImage || enableFullScreenView;
+                  const isClickable = !!onImageClick || enableFullScreenView;
 
                   return (
                     <div

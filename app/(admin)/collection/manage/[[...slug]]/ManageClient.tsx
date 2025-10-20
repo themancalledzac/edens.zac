@@ -1,13 +1,16 @@
 'use client';
 
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 
 import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
+import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
-import { addContentBlocks, createContentCollectionSimple, fetchCollectionBySlugAdmin, updateContentCollection } from '@/app/lib/api/home';
-import { type AnyContentBlock } from '@/app/types/ContentBlock';
+import { addContentBlocks, createContentCollectionSimple, fetchCollectionBySlugAdmin, fetchCollectionUpdateMetadata, updateContentCollection } from '@/app/lib/api/home';
+import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
 import { CollectionType, type ContentBlockReorderOperation, type ContentCollectionSimpleCreateDTO, type DisplayMode } from '@/app/types/ContentCollection';
+import { type CollectionUpdateMetadata } from '@/app/types/ImageMetadata';
 
 import pageStyles from '../../../../page.module.scss';
 import styles from './ManageClient.module.scss';
@@ -39,6 +42,24 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     title: ''
   });
 
+  // Image metadata - tags, people, cameras, film types/formats, collections
+  const [metadata, setMetadata] = useState<CollectionUpdateMetadata>({
+    tags: [],
+    people: [],
+    cameras: [],
+    filmTypes: [],
+    filmFormats: [],
+    collections: [],
+  });
+
+  // Image metadata editor
+  const {
+    editingImage,
+    scrollPosition,
+    openEditor,
+    closeEditor,
+  } = useImageMetadataEditor();
+
   // Update form state - initialized with utility function
   const [updateData, setUpdateData] = useState<ManageFormData>(
     initializeUpdateFormData(initialCollection)
@@ -64,6 +85,41 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       blocksLoaded: collection.blocks.length
     });
   }
+
+  // Fetch metadata on mount when we have a collection
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      if (!collection) return;
+
+      try {
+        console.log('Fetching metadata for collection:', collection.slug);
+        const response = await fetchCollectionUpdateMetadata(collection.slug);
+
+        setMetadata({
+          tags: response.tags || [],
+          people: response.people || [],
+          cameras: response.cameras || [],
+          collections: response.collections || [],
+          filmTypes: response.filmTypes || [],
+          filmFormats: response.filmFormats || [],
+        });
+
+        console.log('Metadata fetched successfully:', {
+          tags: response.tags?.length || 0,
+          people: response.people?.length || 0,
+          cameras: response.cameras?.length || 0,
+          filmTypes: response.filmTypes?.length || 0,
+          filmFormats: response.filmFormats?.length || 0,
+        });
+      } catch (error) {
+        console.error('Error fetching metadata:', error);
+        // Don't show error to user - metadata is optional
+      }
+    };
+
+    fetchMetadata();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collection?.slug]); // Only re-fetch if collection slug changes
 
   // Handle creating a new text block - immediately POST to backend
   const handleCreateNewTextBlock = async () => {
@@ -264,6 +320,44 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     setTimeout(() => {
       setJustClickedImageId(null);
     }, COVER_IMAGE_FLASH_DURATION);
+  };
+
+  // Handle image click - either set cover or open metadata editor
+  const handleImageClick = (imageId: number) => {
+    if (isSelectingCoverImage) {
+      // Existing behavior - set as cover image
+      handleCoverImageClick(imageId);
+    } else {
+      // New behavior - open metadata editor
+      const imageBlock = collection?.blocks.find(block => block.id === imageId);
+      if (imageBlock && isImageContentBlock(imageBlock)) {
+        openEditor(imageBlock);
+      }
+    }
+  };
+
+  // Handle successful metadata save - refresh collection
+  const handleMetadataSaveSuccess = async (updatedImage: ImageContentBlock) => {
+    console.log('📝 [ManageClient] Metadata save success, updated image:', updatedImage);
+    console.log('📝 [ManageClient] Updated image tags:', updatedImage.tags);
+    console.log('📝 [ManageClient] Updated image people:', updatedImage.people);
+
+    if (!collection) return;
+
+    try {
+      // Re-fetch collection to get updated metadata
+      const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
+      console.log('🔄 [ManageClient] Refreshed collection:', refreshedCollection);
+      setCollection(refreshedCollection);
+
+      // Also refresh metadata to include any new tags/people created
+      const refreshedMetadata = await fetchCollectionUpdateMetadata(collection.slug);
+      console.log('🔄 [ManageClient] Refreshed metadata:', refreshedMetadata);
+      setMetadata(refreshedMetadata);
+    } catch (error) {
+      console.error('Error refreshing collection after metadata update:', error);
+      // Don't show error to user - the save was successful
+    }
   };
 
   // Handle loading more content blocks
@@ -609,7 +703,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   blocks={collection.blocks as AnyContentBlock[]}
                   isSelectingCoverImage={isSelectingCoverImage}
                   currentCoverImageId={collection.coverImage?.id}
-                  onImageClick={handleCoverImageClick}
+                  onImageClick={handleImageClick}
                   justClickedImageId={justClickedImageId}
                 />
 
@@ -634,6 +728,23 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
           </>
         )}
       </div>
+
+      {/* Image Metadata Editor Modal */}
+      {editingImage && (
+        <ImageMetadataModal
+          image={editingImage}
+          scrollPosition={scrollPosition}
+          onClose={closeEditor}
+          onSaveSuccess={handleMetadataSaveSuccess}
+          collectionLocation={collection?.location}
+          availableTags={metadata.tags}
+          availablePeople={metadata.people}
+          availableCameras={metadata.cameras}
+          availableFilmTypes={metadata.filmTypes}
+          availableFilmFormats={metadata.filmFormats}
+          availableCollections={metadata.collections}
+        />
+      )}
     </div>
   );
 }

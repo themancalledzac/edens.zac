@@ -73,9 +73,9 @@ describe('updateImage', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should update imageCollectionList', async () => {
+    it('should update collections', async () => {
       const imageId = 789;
-      const imageCollectionList: ImageCollection[] = [
+      const collections: ImageCollection[] = [
         {
           collectionId: 1,
           collectionName: 'Portfolio',
@@ -90,9 +90,9 @@ describe('updateImage', () => {
         },
       ];
       const updates: UpdateImageDTO = {
-        imageCollectionList,
+        collections,
       };
-      const mockResponse = { id: imageId, imageCollectionList };
+      const mockResponse = { id: imageId, collections };
 
       mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
 
@@ -169,13 +169,13 @@ describe('updateImage', () => {
     });
   });
 
-  describe('imageCollectionList updates', () => {
-    it('should handle empty imageCollectionList', async () => {
+  describe('collections updates', () => {
+    it('should handle empty collections', async () => {
       const imageId = 404;
       const updates: UpdateImageDTO = {
-        imageCollectionList: [],
+        collections: [],
       };
-      const mockResponse = { id: imageId, imageCollectionList: [] };
+      const mockResponse = { id: imageId, collections: [] };
 
       mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
 
@@ -185,9 +185,9 @@ describe('updateImage', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle imageCollectionList with partial data', async () => {
+    it('should handle collections with partial data', async () => {
       const imageId = 505;
-      const imageCollectionList: ImageCollection[] = [
+      const collections: ImageCollection[] = [
         {
           collectionId: 1,
           collectionName: 'Test Collection',
@@ -195,9 +195,9 @@ describe('updateImage', () => {
         },
       ];
       const updates: UpdateImageDTO = {
-        imageCollectionList,
+        collections,
       };
-      const mockResponse = { id: imageId, imageCollectionList };
+      const mockResponse = { id: imageId, collections };
 
       mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
 
@@ -207,12 +207,12 @@ describe('updateImage', () => {
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle clearing imageCollectionList', async () => {
+    it('should handle clearing collections', async () => {
       const imageId = 606;
       const updates: UpdateImageDTO = {
-        imageCollectionList: null,
+        collections: null,
       };
-      const mockResponse = { id: imageId, imageCollectionList: null };
+      const mockResponse = { id: imageId, collections: null };
 
       mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
 
