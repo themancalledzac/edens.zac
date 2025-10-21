@@ -109,6 +109,29 @@ export async function fetchPutJsonApi<T>(endpoint: string, body: unknown): Promi
   });
 }
 
+// For JSON-based partial updates (PATCH)
+export async function fetchPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
+  console.log('🌐 [fetchPatchJsonApi] Request:', {
+    endpoint,
+    method: 'PATCH',
+    body,
+    bodyJson: JSON.stringify(body, null, 2),
+  });
+
+  const result = await fetchWriteBase<T>(endpoint, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  console.log('🌐 [fetchPatchJsonApi] Response:', {
+    endpoint,
+    result,
+  });
+
+  return result;
+}
+
 // For JSON-based creates (POST)
 export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
   return await fetchWriteBase<T>(endpoint, {

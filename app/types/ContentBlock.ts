@@ -5,8 +5,38 @@
  * All blocks extend the base ContentBlock interface for consistent behavior.
  */
 
+import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './ImageMetadata';
+
 /** Content block kinds supported by the system. */
 export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF' | 'PARALLAX';
+
+/**
+ * ImageCollection - Represents the relationship between an image and a collection
+ * Each image can belong to multiple collections with collection-specific metadata
+ */
+export interface ImageCollection {
+  /**
+   * The ID of the collection
+   */
+  collectionId: number;
+
+  /**
+   * The name of the collection (for reference/validation)
+   */
+  collectionName: string;
+
+  /**
+   * Whether the image is visible in this collection
+   * Defaults to true if not specified
+   */
+  visible?: boolean;
+
+  /**
+   * The order index of this image within this specific collection
+   * Each image/collection relationship has its own order_index
+   */
+  orderIndex?: number;
+}
 
 /**
  * Base ContentBlock interface - all content blocks extend this
@@ -48,13 +78,33 @@ export interface ImageContentBlock extends ContentBlock {
   isFilm?: boolean;
   shutterSpeed?: string | null;
   rawFileName?: string | null;
-  camera?: string | null;
+  camera?: ContentCameraModel | null;
   focalLength?: string | null;
   location?: string | null;
   createDate?: string | null;
   fstop?: string | null;
   alt?: string;
   aspectRatio?: number;
+
+  /**
+   * Film-specific metadata - only used when isFilm is true
+   */
+  filmType?: string | null; // Enum name (e.g., "KODAK_PORTRA_400")
+  filmFormat?: string | null; // Enum name (e.g., "MM_35")
+
+  /**
+   * Relationships to tags, people, and camera
+   */
+  tags?: ContentTagModel[];
+  people?: ContentPersonModel[];
+  cameraModel?: ContentCameraModel | null;
+
+  /**
+   * List of collections this image belongs to
+   * Each entry contains collection-specific metadata like visibility and order
+   * Note: Backend returns this as 'collections' field
+   */
+  collections?: ImageCollection[];
 }
 
 /**

@@ -65,19 +65,27 @@ export function buildParallaxImageContentBlock(
  * @returns Formatted parallax image block
  */
 export function buildParallaxImageFromHomeCard(homeCard: HomeCardModel): ParallaxImageContentBlock {
+  // Defensive: ensure cardType exists
+  const cardType = homeCard.cardType;
+
+  // TODO: Why are we assuming this? investigate
+  // Determine aspect ratio based on collection type
+  // BLOG uses 1.75:1 (457 height), everything else uses 1:1 (800 height)
+  const imageHeight = cardType === 'BLOG' ? 457 : 800;
+
   return {
     id: homeCard.id,
     blockType: 'PARALLAX',
     title: homeCard.title,
     imageUrlWeb: homeCard.coverImageUrl, // Use coverImageUrl for web display
     imageWidth: 800, // Default width for grid images
-    imageHeight: homeCard.cardType === 'catalog' ? 800 : 457, // 1:1 for catalog, 1.75:1 for blog to match current grid
+    imageHeight,
     createdAt: homeCard.date || new Date().toISOString(),
     updatedAt: homeCard.date || new Date().toISOString(),
     // Parallax-specific properties with custom order from priority
     ...createBaseParallaxProperties(
       homeCard.title,
-      homeCard.cardType.toUpperCase(),
+      cardType, // Already uppercase in CollectionType enum
       homeCard.priority
     ),
   };

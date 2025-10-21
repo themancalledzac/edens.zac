@@ -1,7 +1,9 @@
+import { type CollectionType } from './ContentCollection';
+
 export interface HomeCardModel {
   id: number;
   title: string;
-  cardType: 'catalog' | 'blog';
+  cardType: CollectionType;
   location?: string;
   date?: string;
   priority: number;

@@ -16,6 +16,7 @@ import {
   type ContentCollectionUpdateDTO,
 } from '@/app/types/ContentCollection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
+import { type CollectionUpdateMetadata } from '@/app/types/ImageMetadata';
 
 /**
  * Backend response structure for home page
@@ -167,6 +168,151 @@ export async function addContentBlocks(
     );
   } catch (error) {
     console.error('[addContentBlocks] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Transform backend ContentCollectionModel to HomeCardModel
+ * Maps collection data to the home card format with proper CollectionType
+ */
+function mapCollectionToHomeCard(collection: ContentCollectionModel): HomeCardModel {
+  // Extract cover image URL from the nested coverImage object
+  // Backend returns coverImage.imageUrlWeb (webP optimized) as the primary image
+  const coverImageUrl =
+    collection.coverImageUrl || // Legacy field
+    (collection.coverImage as any)?.imageUrlWeb || // New format with webP
+    (collection.coverImage as any)?.imageUrlFullSize || // Fallback to full size
+    ''; // No image
+
+  return {
+    id: collection.id,
+    title: collection.title,
+    cardType: collection.type, // Use actual CollectionType enum value
+    location: collection.location,
+    date: collection.collectionDate,
+    priority: collection.priority || 99,
+    coverImageUrl,
+    slug: collection.slug,
+    text: collection.homeCardText,
+  };
+}
+
+/**
+ * Fetches all content collections (dev/admin only)
+ * Endpoint: GET http://localhost:8080/api/write/collections/all
+ *
+ * Note: This is a dev-only endpoint that ALWAYS hits localhost.
+ * Returns all collections regardless of visibility, priority, or access control.
+ *
+ * @returns All collections as home cards or null on failure
+ */
+export async function fetchAllCollections(): Promise<HomeCardModel[] | null> {
+  try {
+    // Dev-only: Always hit localhost
+    const url = 'http://localhost:8080/api/write/collections/all';
+
+    console.log('[fetchAllCollections] Fetching from:', url);
+
+    const response = await fetch(url, {
+      cache: 'no-store', // Dev endpoint, don't cache
+    });
+
+    console.log('[fetchAllCollections] Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[fetchAllCollections] Error response:', errorText);
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    const rawData = await response.json();
+    console.log('[fetchAllCollections] Received data:', Array.isArray(rawData) ? `Array with ${rawData.length} items` : typeof rawData);
+
+    let collections: ContentCollectionModel[] = [];
+
+    // Handle both array and object responses
+    if (Array.isArray(rawData)) {
+      collections = rawData;
+    } else if (rawData && typeof rawData === 'object') {
+      const items = rawData.items || rawData.collections || rawData.content;
+      if (Array.isArray(items)) {
+        collections = items;
+      }
+    }
+
+    // Debug: Log first collection to see its structure
+    if (collections.length > 0) {
+      console.log('[fetchAllCollections] Sample collection:', JSON.stringify(collections[0], null, 2));
+    }
+
+    // Transform ContentCollectionModel to HomeCardModel
+    const homeCards = collections.map(mapCollectionToHomeCard);
+    console.log('[fetchAllCollections] Transformed to', homeCards.length, 'home cards');
+
+    // Debug: Log first transformed card
+    if (homeCards.length > 0) {
+      console.log('[fetchAllCollections] Sample home card:', JSON.stringify(homeCards[0], null, 2));
+    }
+
+    return homeCards;
+  } catch (error) {
+    console.error('[fetchAllCollections] Error:', error);
+    return null;
+  }
+}
+
+/**
+ * Response structure for collection update metadata endpoint
+ * Contains the collection plus all available metadata for dropdowns
+ */
+export interface CollectionUpdateResponse {
+  collection: ContentCollectionFullModel;
+  tags: CollectionUpdateMetadata['tags'];
+  people: CollectionUpdateMetadata['people'];
+  cameras: CollectionUpdateMetadata['cameras'];
+  filmTypes: CollectionUpdateMetadata['filmTypes'];
+  filmFormats: CollectionUpdateMetadata['filmFormats'];
+  collections: CollectionUpdateMetadata['collections'];
+}
+
+/**
+ * Fetches a collection with all metadata needed for the update/manage page.
+ * Returns the collection along with all available tags, people, cameras, and film metadata.
+ * This single endpoint provides everything needed for the image management UI.
+ *
+ * Endpoint: GET /api/write/collections/{slug}/update
+ *
+ * @param slug - The collection slug
+ * @returns The collection and all metadata for dropdowns
+ */
+export async function fetchCollectionUpdateMetadata(
+  slug: string
+): Promise<CollectionUpdateResponse> {
+  try {
+    // This is a write API endpoint that includes all metadata
+    const url = `http://localhost:8080/api/write/collections/${encodeURIComponent(slug)}/update`;
+
+    console.log('[fetchCollectionUpdateMetadata] Fetching from:', url);
+
+    const response = await fetch(url, {
+      cache: 'no-store', // Don't cache admin/update endpoints
+    });
+
+    console.log('[fetchCollectionUpdateMetadata] Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[fetchCollectionUpdateMetadata] Error response:', errorText);
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('[fetchCollectionUpdateMetadata] Received metadata');
+
+    return data as CollectionUpdateResponse;
+  } catch (error) {
+    console.error('[fetchCollectionUpdateMetadata] Error:', error);
     throw error;
   }
 }

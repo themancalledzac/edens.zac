@@ -5,7 +5,13 @@
 
 import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
 import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
-import { CollectionType, type ContentBlockReorderOperation, type ContentCollectionModel, type ContentCollectionUpdateDTO, type DisplayMode } from '@/app/types/ContentCollection';
+import {
+  CollectionType,
+  type ContentBlockReorderOperation,
+  type ContentCollectionModel,
+  type ContentCollectionUpdateDTO,
+  type DisplayMode,
+} from '@/app/types/ContentCollection';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
@@ -58,8 +64,8 @@ export function normalizeCollectionResponse(
       currentPage: 0,
       totalPages: 0,
       totalBlocks: 0,
-      pageSize: DEFAULT_PAGE_SIZE
-    }
+      pageSize: DEFAULT_PAGE_SIZE,
+    },
   };
 }
 
@@ -81,7 +87,7 @@ export function initializeUpdateFormData(
     homeCardEnabled: collection?.homeCardEnabled ?? false,
     homeCardText: collection?.homeCardText || '',
     blocksPerPage: collection?.pagination?.pageSize ?? DEFAULT_PAGE_SIZE,
-    coverImageId: undefined
+    coverImageId: undefined,
   };
 }
 
@@ -163,7 +169,7 @@ export function syncCollectionState(
     priority: formData.priority,
     displayMode: formData.displayMode,
     homeCardEnabled: formData.homeCardEnabled,
-    homeCardText: formData.homeCardText || ''
+    homeCardText: formData.homeCardText || '',
   };
 }
 
@@ -203,7 +209,12 @@ export function getDisplayedCoverImage(
   pendingCoverImageId: number | undefined
 ): ImageContentBlock | null | undefined {
   if (pendingCoverImageId) {
-    return findImageBlockById(collection?.blocks as AnyContentBlock[], pendingCoverImageId);
+    // Type-safe check: only pass blocks if they exist and are the right type
+    const blocks = collection?.blocks;
+    if (!blocks || !Array.isArray(blocks)) return undefined;
+
+    // Safe cast: ContentBlock[] from API response contains AnyContentBlock instances at runtime
+    return findImageBlockById(blocks as AnyContentBlock[], pendingCoverImageId);
   }
   return collection?.coverImage;
 }
@@ -222,4 +233,22 @@ export function validateFormData(formData: ManageFormData, isCreateMode: boolean
   }
 
   return null;
+}
+
+/**
+ * Compare two arrays of numbers for equality
+ * More efficient than JSON.stringify comparison
+ * @param arr1 First array to compare
+ * @param arr2 Second array to compare
+ * @returns true if arrays contain the same numbers (order-independent)
+ */
+export function arraysOfNumbersEqual(arr1: number[], arr2: number[]): boolean {
+  if (arr1.length !== arr2.length) {
+    return false;
+  }
+
+  const sorted1 = [...arr1].sort((a, b) => a - b);
+  const sorted2 = [...arr2].sort((a, b) => a - b);
+
+  return sorted1.every((value, index) => value === sorted2[index]);
 }
