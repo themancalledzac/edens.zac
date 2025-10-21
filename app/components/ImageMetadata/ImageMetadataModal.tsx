@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { type FormEvent, useState } from 'react';
 
+import { arraysOfNumbersEqual } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { IMAGE } from '@/app/constants';
 import { updateImage, type UpdateImageDTO } from '@/app/lib/api/images';
 import type { ImageContentBlock } from '@/app/types/ContentBlock';
@@ -32,6 +33,29 @@ interface ImageMetadataModalProps {
   availableFilmTypes?: FilmTypeModel[];
   availableFilmFormats?: FilmFormatModel[];
   availableCollections?: CollectionListModel[];
+}
+
+// Type for form data state
+interface ImageMetadataFormData {
+  title: string;
+  caption: string;
+  alt: string;
+  author: string;
+  location: string;
+  camera: ContentCameraModel | null;
+  lens: string;
+  iso: string;
+  fstop: string;
+  shutterSpeed: string;
+  focalLength: string;
+  blackAndWhite: boolean;
+  isFilm: boolean;
+  rating: string;
+  filmType: string;
+  filmFormat: string;
+  selectedTagIds: number[];
+  selectedPeopleIds: number[];
+  selectedCollections: number[];
 }
 
 /**
@@ -95,8 +119,15 @@ export default function ImageMetadataModal({
   // Track whether the current camera is new (needs to be created)
   const [isNewCamera, setIsNewCamera] = useState(false);
 
-  // Track form changes
-  const handleChange = (field: keyof typeof formData, value: string | boolean | number[] | number | ContentCameraModel | null) => {
+  // Type-safe form field change events using discriminated unions
+  type FormFieldChange =
+    | { field: 'title' | 'caption' | 'alt' | 'author' | 'location' | 'lens' | 'fstop' | 'shutterSpeed' | 'focalLength' | 'iso' | 'rating' | 'filmType' | 'filmFormat'; value: string }
+    | { field: 'blackAndWhite' | 'isFilm'; value: boolean }
+    | { field: 'selectedTagIds' | 'selectedPeopleIds' | 'selectedCollections'; value: number[] }
+    | { field: 'camera'; value: ContentCameraModel | null };
+
+  // Track form changes with type safety
+  const handleChange = ({ field, value }: FormFieldChange) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
@@ -115,23 +146,31 @@ export default function ImageMetadataModal({
 
   // Handle film stock change - when selecting existing film stock from dropdown
   const handleFilmStockChange = (filmTypeName: string, filmTypeIdFromDropdown?: number) => {
-    handleChange('filmType', filmTypeName);
+    handleChange({ field: 'filmType', value: filmTypeName });
     setFilmTypeId(filmTypeIdFromDropdown || null);
     setNewFilmStock(null); // Clear new film stock if selecting existing one
+
+    // Auto-populate ISO from selected film stock's defaultIso
+    if (filmTypeIdFromDropdown) {
+      const selectedFilmType = availableFilmTypes.find(f => f.id === filmTypeIdFromDropdown);
+      if (selectedFilmType) {
+        handleChange({ field: 'iso', value: selectedFilmType.defaultIso.toString() });
+      }
+    }
   };
 
   // Handle adding new film stock
   const handleAddNewFilmStock = (filmStock: NewFilmStockData) => {
     setNewFilmStock(filmStock);
     setFilmTypeId(null); // Clear film type ID when creating new
-    handleChange('filmType', filmStock.filmTypeName); // Use filmTypeName as temporary value
-    handleChange('iso', filmStock.defaultIso.toString()); // Auto-set ISO from film stock
+    handleChange({ field: 'filmType', value: filmStock.filmTypeName }); // Use filmTypeName as temporary value
+    handleChange({ field: 'iso', value: filmStock.defaultIso.toString() }); // Auto-set ISO from film stock
     setHasChanges(true);
   };
 
   // Handle camera change - determines if using existing camera ID or creating new
   const handleCameraChange = (camera: ContentCameraModel | null, isNew: boolean) => {
-    handleChange('camera', camera);
+    handleChange({ field: 'camera', value: camera });
     setIsNewCamera(isNew);
     setHasChanges(true);
   };
@@ -141,6 +180,224 @@ export default function ImageMetadataModal({
   const allTags = availableTags.map(t => ({ id: t.id, name: t.tagName }));
   const allPeople = availablePeople.map(p => ({ id: p.id, name: p.personName }));
   const allCollections = availableCollections.map(c => ({ id: c.id, name: c.collectionName }));
+
+  // Helper functions for building update DTO sections
+
+  /**
+   * Builds updates object for basic string fields (title, caption, alt, author, location)
+   */
+  const buildStringFieldUpdates = (
+    formData: ImageMetadataFormData,
+    image: ImageContentBlock
+  ): Partial<UpdateImageDTO> => {
+    const updates: Partial<UpdateImageDTO> = {};
+
+    if (formData.title !== (image.title || '')) {
+      updates.title = formData.title.trim() || null;
+    }
+    if (formData.caption !== (image.caption || '')) {
+      updates.caption = formData.caption.trim() || null;
+    }
+    if (formData.alt !== (image.alt || '')) {
+      updates.alt = formData.alt.trim() || null;
+    }
+    if (formData.author !== (image.author || '')) {
+      updates.author = formData.author.trim() || null;
+    }
+    if (formData.location !== (image.location || '')) {
+      updates.location = formData.location.trim() || null;
+    }
+
+    return updates;
+  };
+
+  /**
+   * Builds updates object for camera field with support for new camera creation
+   */
+  const buildCameraUpdates = (
+    formData: ImageMetadataFormData,
+    image: ImageContentBlock,
+    isNewCamera: boolean
+  ): Partial<UpdateImageDTO> => {
+    const updates: Partial<UpdateImageDTO> = {};
+    const currentCameraId = image.camera?.id || null;
+    const newCameraId = formData.camera?.id || null;
+    const currentCameraName = image.camera?.cameraName || null;
+    const newCameraName = formData.camera?.cameraName || null;
+
+    if (currentCameraId !== newCameraId || currentCameraName !== newCameraName) {
+      if (formData.camera) {
+        // If it's a new camera (id is 0 or isNewCamera flag is set), send cameraName
+        if (isNewCamera || formData.camera.id === 0) {
+          updates.cameraName = formData.camera.cameraName.trim();
+        }
+        // Otherwise, send the existing cameraId
+        else {
+          updates.cameraId = formData.camera.id;
+        }
+      } else {
+        // Clear camera by setting cameraId to null
+        updates.cameraId = null;
+      }
+    }
+
+    // Lens field
+    if (formData.lens !== (image.lens || '')) {
+      updates.lens = formData.lens.trim() || null;
+    }
+    if (formData.fstop !== (image.fstop || '')) {
+      updates.fstop = formData.fstop.trim() || null;
+    }
+    if (formData.shutterSpeed !== (image.shutterSpeed || '')) {
+      updates.shutterSpeed = formData.shutterSpeed.trim() || null;
+    }
+    if (formData.focalLength !== (image.focalLength || '')) {
+      updates.focalLength = formData.focalLength.trim() || null;
+    }
+
+    return updates;
+  };
+
+  /**
+   * Builds updates object for numeric fields (ISO, rating)
+   */
+  const buildNumberFieldUpdates = (
+    formData: ImageMetadataFormData,
+    image: ImageContentBlock
+  ): Partial<UpdateImageDTO> => {
+    const updates: Partial<UpdateImageDTO> = {};
+
+    const newIso = formData.iso ? Number.parseInt(formData.iso, 10) : null;
+    if (newIso !== (image.iso || null)) {
+      updates.iso = newIso;
+    }
+
+    const newRating = formData.rating ? Number.parseInt(formData.rating, 10) : null;
+    if (newRating !== (image.rating || null)) {
+      updates.rating = newRating;
+    }
+
+    return updates;
+  };
+
+  /**
+   * Builds updates object for boolean fields (blackAndWhite, isFilm)
+   */
+  const buildBooleanFieldUpdates = (
+    formData: ImageMetadataFormData,
+    image: ImageContentBlock
+  ): Partial<UpdateImageDTO> => {
+    const updates: Partial<UpdateImageDTO> = {};
+
+    if (formData.blackAndWhite !== image.blackAndWhite) {
+      updates.blackAndWhite = formData.blackAndWhite;
+    }
+    if (formData.isFilm !== image.isFilm) {
+      updates.isFilm = formData.isFilm;
+    }
+
+    return updates;
+  };
+
+  /**
+   * Builds updates object for film-specific fields (filmType, filmFormat)
+   * Only processes fields if isFilm is true
+   */
+  const buildFilmUpdates = (
+    formData: ImageMetadataFormData,
+    image: ImageContentBlock,
+    newFilmStock: NewFilmStockData | null,
+    filmTypeId: number | null
+  ): Partial<UpdateImageDTO> => {
+    const updates: Partial<UpdateImageDTO> = {};
+
+    // Film-specific fields (only send if isFilm is true)
+    if (formData.isFilm) {
+      // Handle film type - either new or existing
+      if (formData.filmType !== (image.filmType || '')) {
+        updates.filmType = formData.filmType.trim() || null;
+
+        // If creating new film stock
+        if (newFilmStock) {
+          updates.newFilmType = {
+            filmTypeName: newFilmStock.filmTypeName,
+            defaultIso: newFilmStock.defaultIso,
+          };
+        }
+        // If selecting existing film stock
+        else if (filmTypeId) {
+          updates.filmTypeId = filmTypeId;
+        }
+      }
+
+      if (formData.filmFormat !== (image.filmFormat || '')) {
+        updates.filmFormat = formData.filmFormat.trim() || null;
+      }
+    }
+
+    return updates;
+  };
+
+  /**
+   * Builds updates object for relationship fields (tags, people, collections)
+   */
+  const buildRelationshipUpdates = (
+    formData: ImageMetadataFormData,
+    image: ImageContentBlock,
+    newTagNames: string[],
+    newPersonNames: string[],
+    availableCollections: CollectionListModel[]
+  ): Partial<UpdateImageDTO> => {
+    const updates: Partial<UpdateImageDTO> = {};
+
+    // Tags handling - simple comparison of existing tag IDs
+    const currentTagIds = (image.tags || []).map(t => t.id);
+    const selectedExistingTagIds = [...formData.selectedTagIds];
+    const hasTagChanges = !arraysOfNumbersEqual(currentTagIds, selectedExistingTagIds) || newTagNames.length > 0;
+
+    if (hasTagChanges) {
+      // Send existing tag IDs
+      updates.tagIds = formData.selectedTagIds.length > 0 ? formData.selectedTagIds : null;
+
+      // Send new tag names
+      if (newTagNames.length > 0) {
+        updates.newTags = newTagNames;
+      }
+    }
+
+    // People handling - simple comparison of existing person IDs
+    const currentPersonIds = (image.people || []).map(p => p.id);
+    const selectedExistingPersonIds = [...formData.selectedPeopleIds];
+    const hasPeopleChanges = !arraysOfNumbersEqual(currentPersonIds, selectedExistingPersonIds) || newPersonNames.length > 0;
+
+    if (hasPeopleChanges) {
+      // Send existing person IDs
+      updates.personIds = formData.selectedPeopleIds.length > 0 ? formData.selectedPeopleIds : null;
+
+      // Send new person names
+      if (newPersonNames.length > 0) {
+        updates.newPeople = newPersonNames;
+      }
+    }
+
+    // Collections handling - send list of collection IDs this image should belong to
+    const currentCollectionIds = (image.collections || []).map(c => c.collectionId);
+    const newCollectionIds = [...formData.selectedCollections];
+    if (!arraysOfNumbersEqual(currentCollectionIds, newCollectionIds)) {
+      // Build the collections list with collectionId and collectionName
+      updates.collections = formData.selectedCollections.length > 0
+        ? formData.selectedCollections.map((collectionId: number) => {
+            const collection = availableCollections.find(c => c.id === collectionId);
+            return {
+              collectionId,
+              collectionName: collection?.collectionName || '',
+            };
+          })
+        : [];
+    }
+
+    return updates;
+  };
 
   // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
@@ -155,182 +412,18 @@ export default function ImageMetadataModal({
       setLoading(true);
       setError(null);
 
-      // Build update DTO with only changed fields
-      const updates: UpdateImageDTO = {};
-
-      // String fields - send if changed
-      if (formData.title !== (image.title || '')) {
-        updates.title = formData.title.trim() || null;
-      }
-      if (formData.caption !== (image.caption || '')) {
-        updates.caption = formData.caption.trim() || null;
-      }
-      if (formData.alt !== (image.alt || '')) {
-        updates.alt = formData.alt.trim() || null;
-      }
-      if (formData.author !== (image.author || '')) {
-        updates.author = formData.author.trim() || null;
-      }
-      if (formData.location !== (image.location || '')) {
-        updates.location = formData.location.trim() || null;
-      }
-
-      // Camera handling - check if it changed
-      const currentCameraId = image.camera?.id || null;
-      const newCameraId = formData.camera?.id || null;
-      const currentCameraName = image.camera?.cameraName || null;
-      const newCameraName = formData.camera?.cameraName || null;
-
-      if (currentCameraId !== newCameraId || currentCameraName !== newCameraName) {
-        if (formData.camera) {
-          // If it's a new camera (id is 0 or isNewCamera flag is set), send cameraName
-          if (isNewCamera || formData.camera.id === 0) {
-            updates.cameraName = formData.camera.cameraName.trim();
-          }
-          // Otherwise, send the existing cameraId
-          else {
-            updates.cameraId = formData.camera.id;
-          }
-        } else {
-          // Clear camera by setting cameraId to null
-          updates.cameraId = null;
-        }
-      }
-
-      if (formData.lens !== (image.lens || '')) {
-        updates.lens = formData.lens.trim() || null;
-      }
-      if (formData.fstop !== (image.fstop || '')) {
-        updates.fstop = formData.fstop.trim() || null;
-      }
-      if (formData.shutterSpeed !== (image.shutterSpeed || '')) {
-        updates.shutterSpeed = formData.shutterSpeed.trim() || null;
-      }
-      if (formData.focalLength !== (image.focalLength || '')) {
-        updates.focalLength = formData.focalLength.trim() || null;
-      }
-
-      // Number fields
-      const newIso = formData.iso ? Number.parseInt(formData.iso, 10) : null;
-      if (newIso !== (image.iso || null)) {
-        updates.iso = newIso;
-      }
-
-      const newRating = formData.rating ? Number.parseInt(formData.rating, 10) : null;
-      if (newRating !== (image.rating || null)) {
-        updates.rating = newRating;
-      }
-
-      // Boolean fields
-      if (formData.blackAndWhite !== image.blackAndWhite) {
-        updates.blackAndWhite = formData.blackAndWhite;
-      }
-      if (formData.isFilm !== image.isFilm) {
-        updates.isFilm = formData.isFilm;
-      }
-
-      // Film-specific fields (only send if isFilm is true)
-      if (formData.isFilm) {
-        // Handle film type - either new or existing
-        if (formData.filmType !== (image.filmType || '')) {
-          updates.filmType = formData.filmType.trim() || null;
-
-          // If creating new film stock
-          if (newFilmStock) {
-            updates.newFilmType = {
-              filmTypeName: newFilmStock.filmTypeName,
-              defaultIso: newFilmStock.defaultIso,
-            };
-          }
-          // If selecting existing film stock
-          else if (filmTypeId) {
-            updates.filmTypeId = filmTypeId;
-          }
-        }
-
-        if (formData.filmFormat !== (image.filmFormat || '')) {
-          updates.filmFormat = formData.filmFormat.trim() || null;
-        }
-      }
-
-      // Tags handling - simple comparison of existing tag IDs
-      const currentTagIds = (image.tags || []).map(t => t.id).sort();
-      const selectedExistingTagIds = [...formData.selectedTagIds].sort();
-      const hasTagChanges = JSON.stringify(currentTagIds) !== JSON.stringify(selectedExistingTagIds) || newTagNames.length > 0;
-
-      if (hasTagChanges) {
-        // Send existing tag IDs
-        updates.tagIds = formData.selectedTagIds.length > 0 ? formData.selectedTagIds : null;
-
-        // Send new tag names
-        if (newTagNames.length > 0) {
-          updates.newTags = newTagNames;
-        }
-      }
-
-      // People handling - simple comparison of existing person IDs
-      const currentPersonIds = (image.people || []).map(p => p.id).sort();
-      const selectedExistingPersonIds = [...formData.selectedPeopleIds].sort();
-      const hasPeopleChanges = JSON.stringify(currentPersonIds) !== JSON.stringify(selectedExistingPersonIds) || newPersonNames.length > 0;
-
-      if (hasPeopleChanges) {
-        // Send existing person IDs
-        updates.personIds = formData.selectedPeopleIds.length > 0 ? formData.selectedPeopleIds : null;
-
-        // Send new person names
-        if (newPersonNames.length > 0) {
-          updates.newPeople = newPersonNames;
-        }
-      }
-
-      // Collections handling - send list of collection IDs this image should belong to
-      const currentCollectionIds = (image.collections || []).map(c => c.collectionId).sort();
-      const newCollectionIds = [...formData.selectedCollections].sort();
-      if (JSON.stringify(currentCollectionIds) !== JSON.stringify(newCollectionIds)) {
-        // Build the collections list with collectionId and collectionName
-        updates.collections = formData.selectedCollections.length > 0
-          ? formData.selectedCollections.map(collectionId => {
-              const collection = availableCollections.find(c => c.id === collectionId);
-              return {
-                collectionId,
-                collectionName: collection?.collectionName || '',
-              };
-            })
-          : [];
-      }
-
-      console.log('🔍 [ImageMetadataModal] Updating image metadata:', {
-        imageId: image.id,
-        updates,
-        tagsInfo: {
-          currentTags: image.tags?.map(t => ({ id: t.id, name: t.tagName })),
-          selectedExistingTagIds: formData.selectedTagIds,
-          newTagNames,
-          sendingTagIds: updates.tagIds,
-          sendingNewTags: updates.newTags,
-        },
-        peopleInfo: {
-          currentPeople: image.people?.map(p => ({ id: p.id, name: p.personName })),
-          selectedExistingPersonIds: formData.selectedPeopleIds,
-          newPersonNames,
-          sendingPersonIds: updates.personIds,
-          sendingNewPeople: updates.newPeople,
-        },
-        collectionsInfo: {
-          currentCollections: image.collections?.map(c => ({ id: c.collectionId, name: c.collectionName })),
-          selectedCollectionIds: formData.selectedCollections,
-          sendingCollections: updates.collections,
-        },
-      });
+      // Build update DTO with only changed fields using helper functions
+      const updates: UpdateImageDTO = {
+        ...buildStringFieldUpdates(formData, image),
+        ...buildCameraUpdates(formData, image, isNewCamera),
+        ...buildNumberFieldUpdates(formData, image),
+        ...buildBooleanFieldUpdates(formData, image),
+        ...buildFilmUpdates(formData, image, newFilmStock, filmTypeId),
+        ...buildRelationshipUpdates(formData, image, newTagNames, newPersonNames, availableCollections),
+      };
 
       // Call updateImage API
       const updatedImage = await updateImage<ImageContentBlock>(image.id, updates);
-
-      console.log('✅ [ImageMetadataModal] Image metadata updated successfully:', {
-        updatedImage,
-        returnedTags: updatedImage.tags,
-        returnedPeople: updatedImage.people,
-      });
 
       // Notify parent of success
       if (onSaveSuccess) {
@@ -406,7 +499,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={formData.title}
-                onChange={(e) => handleChange('title', e.target.value)}
+                onChange={(e) => handleChange({ field: 'title', value: e.target.value })}
                 className={styles.formInput}
                 placeholder="Enter image title"
               />
@@ -416,7 +509,7 @@ export default function ImageMetadataModal({
               <label className={styles.formLabel}>Caption</label>
               <textarea
                 value={formData.caption}
-                onChange={(e) => handleChange('caption', e.target.value)}
+                onChange={(e) => handleChange({ field: 'caption', value: e.target.value })}
                 className={styles.formTextarea}
                 placeholder="Enter caption"
                 rows={3}
@@ -428,7 +521,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={formData.alt}
-                onChange={(e) => handleChange('alt', e.target.value)}
+                onChange={(e) => handleChange({ field: 'alt', value: e.target.value })}
                 className={styles.formInput}
                 placeholder="Describe the image for screen readers"
               />
@@ -439,7 +532,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={formData.author}
-                onChange={(e) => handleChange('author', e.target.value)}
+                onChange={(e) => handleChange({ field: 'author', value: e.target.value })}
                 className={styles.formInput}
                 placeholder="Photographer name"
               />
@@ -450,7 +543,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={formData.location}
-                onChange={(e) => handleChange('location', e.target.value)}
+                onChange={(e) => handleChange({ field: 'location', value: e.target.value })}
                 className={styles.formInput}
                 placeholder="Where was this taken?"
               />
@@ -460,7 +553,7 @@ export default function ImageMetadataModal({
               <label className={styles.formLabel}>Rating</label>
               <select
                 value={formData.rating}
-                onChange={(e) => handleChange('rating', e.target.value)}
+                onChange={(e) => handleChange({ field: 'rating', value: e.target.value })}
                 className={styles.formSelect}
               >
                 <option value="">No rating</option>
@@ -488,7 +581,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={formData.lens}
-                onChange={(e) => handleChange('lens', e.target.value)}
+                onChange={(e) => handleChange({ field: 'lens', value: e.target.value })}
                 className={styles.formInput}
                 placeholder="e.g., 24-70mm f/2.8"
               />
@@ -500,7 +593,7 @@ export default function ImageMetadataModal({
                 <input
                   type="number"
                   value={formData.iso}
-                  onChange={(e) => handleChange('iso', e.target.value)}
+                  onChange={(e) => handleChange({ field: 'iso', value: e.target.value })}
                   className={styles.formInput}
                   placeholder="e.g., 800"
                   min="0"
@@ -512,7 +605,7 @@ export default function ImageMetadataModal({
                 <input
                   type="text"
                   value={formData.fstop}
-                  onChange={(e) => handleChange('fstop', e.target.value)}
+                  onChange={(e) => handleChange({ field: 'fstop', value: e.target.value })}
                   className={styles.formInput}
                   placeholder="e.g., f/2.8"
                 />
@@ -525,7 +618,7 @@ export default function ImageMetadataModal({
                 <input
                   type="text"
                   value={formData.shutterSpeed}
-                  onChange={(e) => handleChange('shutterSpeed', e.target.value)}
+                  onChange={(e) => handleChange({ field: 'shutterSpeed', value: e.target.value })}
                   className={styles.formInput}
                   placeholder="e.g., 1/250 sec"
                 />
@@ -536,7 +629,7 @@ export default function ImageMetadataModal({
                 <input
                   type="text"
                   value={formData.focalLength}
-                  onChange={(e) => handleChange('focalLength', e.target.value)}
+                  onChange={(e) => handleChange({ field: 'focalLength', value: e.target.value })}
                   className={styles.formInput}
                   placeholder="e.g., 50 mm"
                 />
@@ -548,7 +641,7 @@ export default function ImageMetadataModal({
                 <input
                   type="checkbox"
                   checked={formData.blackAndWhite}
-                  onChange={(e) => handleChange('blackAndWhite', e.target.checked)}
+                  onChange={(e) => handleChange({ field: 'blackAndWhite', value: e.target.checked })}
                 />
                 <span>Black & White</span>
               </label>
@@ -557,7 +650,7 @@ export default function ImageMetadataModal({
                 <input
                   type="checkbox"
                   checked={formData.isFilm}
-                  onChange={(e) => handleChange('isFilm', e.target.checked)}
+                  onChange={(e) => handleChange({ field: 'isFilm', value: e.target.checked })}
                 />
                 <span>Film Photography</span>
               </label>
@@ -586,7 +679,7 @@ export default function ImageMetadataModal({
                           type="button"
                           onClick={() => {
                             setNewFilmStock(null);
-                            handleChange('filmType', '');
+                            handleChange({ field: 'filmType', value: '' });
                             setHasChanges(true);
                           }}
                           className={styles.chipRemove}
@@ -603,7 +696,7 @@ export default function ImageMetadataModal({
                   <label className={styles.formLabel}>Film Format</label>
                   <select
                     value={formData.filmFormat}
-                    onChange={(e) => handleChange('filmFormat', e.target.value)}
+                    onChange={(e) => handleChange({ field: 'filmFormat', value: e.target.value })}
                     className={styles.formSelect}
                   >
                     <option value="">Select format</option>
@@ -626,7 +719,7 @@ export default function ImageMetadataModal({
               label="Tags"
               options={allTags}
               selectedIds={formData.selectedTagIds}
-              onChange={(ids) => handleChange('selectedTagIds', ids)}
+              onChange={(ids) => handleChange({ field: 'selectedTagIds', value: ids })}
               multiSelect
               placeholder="Select tags or add new"
               allowAddNew
@@ -662,7 +755,7 @@ export default function ImageMetadataModal({
               label="People"
               options={allPeople}
               selectedIds={formData.selectedPeopleIds}
-              onChange={(ids) => handleChange('selectedPeopleIds', ids)}
+              onChange={(ids) => handleChange({ field: 'selectedPeopleIds', value: ids })}
               multiSelect
               placeholder="Select people or add new"
               allowAddNew
@@ -703,7 +796,7 @@ export default function ImageMetadataModal({
               label="Collections"
               options={allCollections}
               selectedIds={formData.selectedCollections}
-              onChange={(ids) => handleChange('selectedCollections', ids)}
+              onChange={(ids) => handleChange({ field: 'selectedCollections', value: ids })}
               multiSelect
               placeholder="Select collections"
               allowAddNew={false}

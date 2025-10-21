@@ -37,8 +37,10 @@ export default function FilmStockSelector({
   const [newDefaultIso, setNewDefaultIso] = useState('');
 
   // Check if current film stock exists in available film types
+  // Compare against displayName since image.filmType stores the display name (e.g., "Fuji NPS 100")
+  // not the enum name (e.g., "FUJI_NPS_100")
   const filmStockExistsInDatabase = currentFilmStock
-    ? availableFilmTypes.some(f => f.name?.toLowerCase() === currentFilmStock.toLowerCase())
+    ? availableFilmTypes.some(f => f.displayName === currentFilmStock)
     : true; // If no film stock, don't show indicator
 
   // Handle selecting from dropdown
@@ -72,7 +74,7 @@ export default function FilmStockSelector({
         <div className={styles.cameraValue}>
           {currentFilmStock || <span className={styles.cameraEmpty}>No film stock set</span>}
           {currentFilmStock && !filmStockExistsInDatabase && (
-            <span className={styles.cameraNewIndicator}>🔴 Will be added</span>
+            <span className={styles.cameraNewIndicator}>🔴 Will be added</span> // TODO: This is shown ON LOAD, and THEN disappears after a second... indicating a race condition. should be FALSE, and THEN be true if empty
           )}
         </div>
 
@@ -104,19 +106,22 @@ export default function FilmStockSelector({
       {isSelectingFromDropdown && (
         <div className={styles.cameraDropdownList}>
           {availableFilmTypes.length > 0 ? (
-            availableFilmTypes.map((filmType) => (
-              <button
-                key={filmType.name}
-                type="button"
-                onClick={() => handleSelectFilmStock(filmType.name, filmType.id)}
-                className={`${styles.cameraDropdownItem} ${
-                  filmType.name === currentFilmStock ? styles.cameraDropdownItemActive : ''
-                }`}
-              >
-                {filmType.displayName} (ISO {filmType.defaultIso})
-                {filmType.name === currentFilmStock && ' ✓'}
-              </button>
-            ))
+            availableFilmTypes.map((filmType) => {
+              const isSelected = currentFilmStock && filmType.displayName === currentFilmStock;
+              return (
+                <button
+                  key={filmType.name}
+                  type="button"
+                  onClick={() => handleSelectFilmStock(filmType.displayName, filmType.id)}
+                  className={`${styles.cameraDropdownItem} ${
+                    isSelected ? styles.cameraDropdownItemActive : ''
+                  }`}
+                >
+                  {filmType.displayName} (ISO {filmType.defaultIso})
+                  {isSelected && ' ✓'}
+                </button>
+              );
+            })
           ) : (
             <div className={styles.cameraDropdownEmpty}>
               No film stocks available. Click "Add New" to create one.

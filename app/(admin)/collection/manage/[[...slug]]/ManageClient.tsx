@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 
 import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
@@ -31,6 +32,7 @@ interface ManageClientProps {
 }
 
 export default function ManageClient({ initialCollection }: ManageClientProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,25 +76,12 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
   // Pagination state - check if there are more pages to load
   const hasMorePages = collection ? (collection.pagination.currentPage + 1) < collection.pagination.totalPages : false;
 
-  // Debug pagination info
-  if (collection) {
-    console.log('Pagination debug:', {
-      currentPage: collection.pagination.currentPage,
-      totalPages: collection.pagination.totalPages,
-      totalBlocks: collection.pagination.totalBlocks,
-      pageSize: collection.pagination.pageSize,
-      hasMorePages,
-      blocksLoaded: collection.blocks.length
-    });
-  }
-
   // Fetch metadata on mount when we have a collection
   useEffect(() => {
     const fetchMetadata = async () => {
       if (!collection) return;
 
       try {
-        console.log('Fetching metadata for collection:', collection.slug);
         const response = await fetchCollectionUpdateMetadata(collection.slug);
 
         setMetadata({
@@ -103,17 +92,10 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
           filmTypes: response.filmTypes || [],
           filmFormats: response.filmFormats || [],
         });
-
-        console.log('Metadata fetched successfully:', {
-          tags: response.tags?.length || 0,
-          people: response.people?.length || 0,
-          cameras: response.cameras?.length || 0,
-          filmTypes: response.filmTypes?.length || 0,
-          filmFormats: response.filmFormats?.length || 0,
-        });
       } catch (error) {
         console.error('Error fetching metadata:', error);
-        // Don't show error to user - metadata is optional
+        // Set simple error message for visibility
+        setError(error instanceof Error ? error.message : 'Failed to load metadata options');
       }
     };
 
@@ -131,8 +113,6 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     try {
       setLoading(true);
       setError(null);
-
-      console.log('Creating new text block for collection:', collection.id);
 
       // TODO: Replace with actual API call when backend endpoint is ready
       // For now, mock the response by adding a fake text block
@@ -160,7 +140,6 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       };
 
       setCollection(updatedCollection);
-      console.log('Text block added (mocked):', mockTextBlock);
 
       // TODO: When backend is ready, use this instead:
       // const formData = new FormData();
@@ -190,10 +169,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       setLoading(true);
       setError(null);
 
-      console.log('Creating collection:', createData);
       const response = await createContentCollectionSimple(createData);
-
-      console.log('Collection created:', response);
 
       // Convert response to full model format using utility function
       const normalizedCollection = normalizeCollectionResponse(response);
@@ -203,8 +179,8 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       // Populate update form with created collection data using utility function
       setUpdateData(initializeUpdateFormData(normalizedCollection));
 
-      // Update URL to reflect the new collection
-      window.history.pushState({}, '', `/collection/manage/${response.slug}`);
+      // Update URL to reflect the new collection using Next.js router
+      router.push(`/collection/manage/${response.slug}`);
 
     } catch (error: unknown) {
       console.error('Error creating collection:', error);
@@ -240,11 +216,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
         contentBlockIdsToRemove
       );
 
-      console.log('Updating collection:', collection.id, payload);
-
       const response = await updateContentCollection(collection.id, payload);
-
-      console.log('Collection updated successfully:', response);
 
       // If content block operations were performed, refetch to get updated blocks
       const hasContentBlockOperations =
@@ -283,7 +255,6 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       setError(null);
 
       const files = Array.from(event.target.files);
-      console.log('Uploading images for collection:', collection.id, files.length, 'files');
 
       // Create FormData and append files
       const formData = new FormData();
@@ -291,9 +262,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
         formData.append('files', file); // Backend expects 'files' field
       }
 
-      const response = await addContentBlocks(collection.id, formData);
-
-      console.log('Images uploaded successfully:', response);
+      await addContentBlocks(collection.id, formData);
 
       // Re-fetch collection to get updated full model format
       const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
@@ -337,26 +306,20 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
   };
 
   // Handle successful metadata save - refresh collection
-  const handleMetadataSaveSuccess = async (updatedImage: ImageContentBlock) => {
-    console.log('📝 [ManageClient] Metadata save success, updated image:', updatedImage);
-    console.log('📝 [ManageClient] Updated image tags:', updatedImage.tags);
-    console.log('📝 [ManageClient] Updated image people:', updatedImage.people);
-
+  const handleMetadataSaveSuccess = async (_updatedImage: ImageContentBlock) => {
     if (!collection) return;
 
     try {
       // Re-fetch collection to get updated metadata
       const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
-      console.log('🔄 [ManageClient] Refreshed collection:', refreshedCollection);
       setCollection(refreshedCollection);
 
       // Also refresh metadata to include any new tags/people created
       const refreshedMetadata = await fetchCollectionUpdateMetadata(collection.slug);
-      console.log('🔄 [ManageClient] Refreshed metadata:', refreshedMetadata);
       setMetadata(refreshedMetadata);
     } catch (error) {
       console.error('Error refreshing collection after metadata update:', error);
-      // Don't show error to user - the save was successful
+      setError(error instanceof Error ? error.message : 'Failed to refresh data. Try reloading the page.');
     }
   };
 
@@ -371,16 +334,12 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       const nextPage = collection.pagination.currentPage + 1;
       const pageSize = collection.pagination.pageSize;
 
-      console.log(`Loading page ${nextPage} with size ${pageSize} for collection:`, collection.slug);
-
       // Fetch next page
       const nextPageData = await fetchCollectionBySlugAdmin(
         collection.slug,
         nextPage,
         pageSize
       );
-
-      console.log('Next page loaded:', nextPageData);
 
       // Append new blocks to existing blocks
       const updatedCollection = {
