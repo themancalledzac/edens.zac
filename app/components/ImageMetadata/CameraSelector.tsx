@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 
+import { type ContentCameraModel } from '@/app/types/ImageMetadata';
+
 import styles from './ImageMetadataModal.module.scss';
 
 interface CameraSelectorProps {
-  currentCamera: string;
-  availableCameras: Array<{ id: number; name: string }>;
-  onChange: (cameraName: string) => void;
+  currentCamera: ContentCameraModel | null;
+  availableCameras: Array<ContentCameraModel>;
+  onChange: (camera: ContentCameraModel | null, isNewCamera: boolean) => void;
 }
 
 /**
@@ -30,20 +32,25 @@ export default function CameraSelector({
 
   // Check if current camera exists in available cameras
   const cameraExistsInDatabase = currentCamera
-    ? availableCameras.some(c => c.name.toLowerCase() === currentCamera.toLowerCase())
+    ? availableCameras.some(c => c.cameraName.toLowerCase() === currentCamera.cameraName.toLowerCase())
     : true; // If no camera, don't show indicator
 
-  // Handle selecting from dropdown
-  const handleSelectCamera = (cameraName: string) => {
-    onChange(cameraName);
+  // Handle selecting from dropdown - pass existing camera with ID
+  const handleSelectCamera = (camera: ContentCameraModel) => {
+    onChange(camera, false); // Not a new camera
     setIsSelectingFromDropdown(false);
   };
 
-  // Handle adding new camera
+  // Handle adding new camera - pass camera object without ID (will be created)
   const handleAddNew = () => {
     const trimmedName = newCameraName.trim();
     if (trimmedName) {
-      onChange(trimmedName);
+      // Create a new camera object without an ID (backend will assign one)
+      const newCamera: ContentCameraModel = {
+        id: 0, // Temporary ID, backend will assign real one
+        cameraName: trimmedName,
+      };
+      onChange(newCamera, true); // This is a new camera
       setNewCameraName('');
       setIsAddingNew(false);
     }
@@ -56,7 +63,7 @@ export default function CameraSelector({
       {/* Current Camera Display */}
       <div className={styles.cameraDisplay}>
         <div className={styles.cameraValue}>
-          {currentCamera || <span className={styles.cameraEmpty}>No camera set</span>}
+          {currentCamera?.cameraName || <span className={styles.cameraEmpty}>No camera set</span>}
           {currentCamera && !cameraExistsInDatabase && (
             <span className={styles.cameraNewIndicator}>🔴 Will be added</span>
           )}
@@ -94,13 +101,13 @@ export default function CameraSelector({
               <button
                 key={camera.id}
                 type="button"
-                onClick={() => handleSelectCamera(camera.name)}
+                onClick={() => handleSelectCamera(camera)}
                 className={`${styles.cameraDropdownItem} ${
-                  camera.name === currentCamera ? styles.cameraDropdownItemActive : ''
+                  currentCamera && camera.cameraName === currentCamera.cameraName ? styles.cameraDropdownItemActive : ''
                 }`}
               >
-                {camera.name}
-                {camera.name === currentCamera && ' ✓'}
+                {camera.cameraName}
+                {currentCamera && camera.cameraName === currentCamera.cameraName && ' ✓'}
               </button>
             ))
           ) : (

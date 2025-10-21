@@ -38,7 +38,7 @@ export default function FilmStockSelector({
 
   // Check if current film stock exists in available film types
   const filmStockExistsInDatabase = currentFilmStock
-    ? availableFilmTypes.some(f => f.name.toLowerCase() === currentFilmStock.toLowerCase())
+    ? availableFilmTypes.some(f => f.name?.toLowerCase() === currentFilmStock.toLowerCase())
     : true; // If no film stock, don't show indicator
 
   // Handle selecting from dropdown

@@ -18,6 +18,7 @@
  */
 
 import { type ImageCollection } from '@/app/types/ContentBlock';
+import type { ContentCameraModel } from '@/app/types/ImageMetadata';
 
 import { fetchPatchJsonApi } from './core';
 
@@ -74,8 +75,14 @@ export interface UpdateImageDTO {
   /** Camera shutter speed */
   shutterSpeed?: string | null;
 
-  /** Camera used */
-  camera?: string | null;
+  /** Camera used - legacy field, prefer cameraId or cameraName */
+  camera?: ContentCameraModel | null;
+
+  /**
+   * Camera ID to associate with this image (select existing camera)
+   * If both cameraId and cameraName are provided, cameraId takes precedence.
+   */
+  cameraId?: number | null;
 
   /** Focal length */
   focalLength?: string | null;

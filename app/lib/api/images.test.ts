@@ -122,7 +122,7 @@ describe('updateImage', () => {
       const imageId = 202;
       const updates: UpdateImageDTO = {
         author: 'John Doe',
-        camera: 'Canon EOS R5',
+        cameraName: 'Canon EOS R5',
         lens: 'Canon RF 24-70mm f/2.8',
         iso: 800,
         fstop: 'f/2.8',

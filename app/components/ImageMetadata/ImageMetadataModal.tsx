@@ -64,7 +64,7 @@ export default function ImageMetadataModal({
     alt: image.alt || '',
     author: image.author || 'Zechariah Edens',
     location: image.location || collectionLocation || '',
-    camera: image.camera || '',
+    camera: image.camera || null,
     lens: image.lens || '',
     iso: image.iso?.toString() || '',
     fstop: image.fstop || '',
@@ -92,8 +92,11 @@ export default function ImageMetadataModal({
   const [newFilmStock, setNewFilmStock] = useState<NewFilmStockData | null>(null);
   const [filmTypeId, setFilmTypeId] = useState<number | null>(null);
 
+  // Track whether the current camera is new (needs to be created)
+  const [isNewCamera, setIsNewCamera] = useState(false);
+
   // Track form changes
-  const handleChange = (field: keyof typeof formData, value: string | boolean | number[] | number | null) => {
+  const handleChange = (field: keyof typeof formData, value: string | boolean | number[] | number | ContentCameraModel | null) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
@@ -126,15 +129,17 @@ export default function ImageMetadataModal({
     setHasChanges(true);
   };
 
-  // Prepare data for components
-  const allCameras = availableCameras.map(c => ({ id: c.id, name: c.cameraName }));
+  // Handle camera change - determines if using existing camera ID or creating new
+  const handleCameraChange = (camera: ContentCameraModel | null, isNew: boolean) => {
+    handleChange('camera', camera);
+    setIsNewCamera(isNew);
+    setHasChanges(true);
+  };
 
-  // For tags dropdown: only show existing tags (new ones will be created on save)
+  // Prepare data for components - map to { id, name } format for dropdowns
+  const allCameras = availableCameras;
   const allTags = availableTags.map(t => ({ id: t.id, name: t.tagName }));
-
-  // For people dropdown: only show existing people (new ones will be created on save)
   const allPeople = availablePeople.map(p => ({ id: p.id, name: p.personName }));
-
   const allCollections = availableCollections.map(c => ({ id: c.id, name: c.collectionName }));
 
   // Handle form submission
@@ -171,12 +176,24 @@ export default function ImageMetadataModal({
       }
 
       // Camera handling - check if it changed
-      if (formData.camera !== (image.camera || '')) {
-        updates.camera = formData.camera.trim() || null;
+      const currentCameraId = image.camera?.id || null;
+      const newCameraId = formData.camera?.id || null;
+      const currentCameraName = image.camera?.cameraName || null;
+      const newCameraName = formData.camera?.cameraName || null;
 
-        // Backend expects 'cameraName' field - will find existing or create new
+      if (currentCameraId !== newCameraId || currentCameraName !== newCameraName) {
         if (formData.camera) {
-          updates.cameraName = formData.camera.trim();
+          // If it's a new camera (id is 0 or isNewCamera flag is set), send cameraName
+          if (isNewCamera || formData.camera.id === 0) {
+            updates.cameraName = formData.camera.cameraName.trim();
+          }
+          // Otherwise, send the existing cameraId
+          else {
+            updates.cameraId = formData.camera.id;
+          }
+        } else {
+          // Clear camera by setting cameraId to null
+          updates.cameraId = null;
         }
       }
 
@@ -463,7 +480,7 @@ export default function ImageMetadataModal({
             <CameraSelector
               currentCamera={formData.camera}
               availableCameras={allCameras}
-              onChange={(cameraName) => handleChange('camera', cameraName)}
+              onChange={handleCameraChange}
             />
 
             <div className={styles.formGroup}>

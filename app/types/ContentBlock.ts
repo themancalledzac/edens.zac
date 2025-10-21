@@ -78,7 +78,7 @@ export interface ImageContentBlock extends ContentBlock {
   isFilm?: boolean;
   shutterSpeed?: string | null;
   rawFileName?: string | null;
-  camera?: string | null;
+  camera?: ContentCameraModel | null;
   focalLength?: string | null;
   location?: string | null;
   createDate?: string | null;
