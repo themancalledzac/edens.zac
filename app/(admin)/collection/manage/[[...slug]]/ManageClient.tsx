@@ -23,8 +23,7 @@ import {
   isImageContentBlock,
   type ManageFormData,
   normalizeCollectionResponse,
-  syncCollectionState,
-  validateFormData
+  syncCollectionState
 } from './manageUtils';
 
 interface ManageClientProps {
@@ -39,16 +38,18 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
   const [collection, setCollection] = useState<ContentCollectionFullModel | null>(initialCollection || null);
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
+  const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
   const [createData, setCreateData] = useState<ContentCollectionSimpleCreateDTO>({
     type: CollectionType.portfolio,
     title: ''
   });
 
-  // Image metadata - tags, people, cameras, film types/formats, collections
+  // Image metadata - tags, people, cameras, lenses, film types/formats, collections
   const [metadata, setMetadata] = useState<CollectionUpdateMetadata>({
     tags: [],
     people: [],
     cameras: [],
+    lenses: [],
     filmTypes: [],
     filmFormats: [],
     collections: [],
@@ -88,6 +89,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
           tags: response.tags || [],
           people: response.people || [],
           cameras: response.cameras || [],
+          lenses: response.lenses || [],
           collections: response.collections || [],
           filmTypes: response.filmTypes || [],
           filmFormats: response.filmFormats || [],
@@ -197,13 +199,6 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
     if (!collection) return;
 
-    // Validate form data
-    const validationError = validateFormData(updateData, false);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
     try {
       setLoading(true);
       setError(null);
@@ -291,11 +286,42 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     }, COVER_IMAGE_FLASH_DURATION);
   };
 
-  // Handle image click - either set cover or open metadata editor
+  // Handle multi-select toggle
+  const handleMultiSelectToggle = (imageId: number) => {
+    setSelectedImageIds(prev => {
+      if (prev.includes(imageId)) {
+        // Deselect
+        return prev.filter(id => id !== imageId);
+      }
+      // Select
+      return [...prev, imageId];
+    });
+  };
+
+  // Handle bulk edit - open modal with selected images
+  const handleBulkEdit = () => {
+    if (selectedImageIds.length === 0 || !collection) return;
+
+    // Get all selected image blocks
+    const selectedImages = collection.blocks.filter(
+      block => isImageContentBlock(block) && selectedImageIds.includes(block.id)
+    ) as ImageContentBlock[];
+
+    const firstImage = selectedImages[0];
+    if (firstImage) {
+      // Open editor with first image as template, but pass all selected IDs
+      openEditor(firstImage);
+    }
+  };
+
+  // Handle image click - either set cover, multi-select, or open metadata editor
   const handleImageClick = (imageId: number) => {
     if (isSelectingCoverImage) {
       // Existing behavior - set as cover image
       handleCoverImageClick(imageId);
+    } else if (selectedImageIds.length > 0) {
+      // Multi-select mode - toggle selection
+      handleMultiSelectToggle(imageId);
     } else {
       // New behavior - open metadata editor
       const imageBlock = collection?.blocks.find(block => block.id === imageId);
@@ -305,7 +331,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     }
   };
 
-  // Handle successful metadata save - refresh collection
+  // Handle successful metadata save - refresh collection and clear selections
   const handleMetadataSaveSuccess = async (_updatedImage: ImageContentBlock) => {
     if (!collection) return;
 
@@ -317,6 +343,9 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       // Also refresh metadata to include any new tags/people created
       const refreshedMetadata = await fetchCollectionUpdateMetadata(collection.slug);
       setMetadata(refreshedMetadata);
+
+      // Clear selected images after successful bulk edit
+      setSelectedImageIds([]);
     } catch (error) {
       console.error('Error refreshing collection after metadata update:', error);
       setError(error instanceof Error ? error.message : 'Failed to refresh data. Try reloading the page.');
@@ -650,20 +679,62 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
             {/* Collection Content */}
             {collection.blocks && collection.blocks.length > 0 && (
               <div className={pageStyles.blockGroup}>
-                <h3 className={styles.contentHeading}>
-                  Collection Content ({collection.blocks.length} of {collection.pagination.totalBlocks} blocks)
-                  {isSelectingCoverImage && (
-                    <span className={styles.selectingNotice}>
-                      (Click any image to set as cover)
-                    </span>
-                  )}
-                </h3>
+                <div className={styles.contentHeader}>
+                  <h3 className={styles.contentHeading}>
+                    Collection Content ({collection.blocks.length} of {collection.pagination.totalBlocks} blocks)
+                    {isSelectingCoverImage && (
+                      <span className={styles.selectingNotice}>
+                        (Click any image to set as cover)
+                      </span>
+                    )}
+                    {selectedImageIds.length > 0 && (
+                      <span className={styles.selectingNotice}>
+                        ({selectedImageIds.length} image{selectedImageIds.length > 1 ? 's' : ''} selected)
+                      </span>
+                    )}
+                  </h3>
+                  <div className={styles.bulkEditControls}>
+                    {selectedImageIds.length === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const firstImage = collection.blocks.find(b => isImageContentBlock(b));
+                          if (firstImage) {
+                            handleMultiSelectToggle(firstImage.id);
+                          }
+                        }}
+                        className={styles.startBulkEditButton}
+                      >
+                        Select Multiple Images
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleBulkEdit}
+                          className={styles.bulkEditButton}
+                          disabled={selectedImageIds.length === 0}
+                        >
+                          Edit {selectedImageIds.length} Image{selectedImageIds.length > 1 ? 's' : ''}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedImageIds([])}
+                          className={styles.cancelBulkEditButton}
+                        >
+                          Cancel Selection
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
                 <ContentBlockComponent
                   blocks={collection.blocks as AnyContentBlock[]}
                   isSelectingCoverImage={isSelectingCoverImage}
                   currentCoverImageId={collection.coverImage?.id}
                   onImageClick={handleImageClick}
                   justClickedImageId={justClickedImageId}
+                  selectedImageIds={selectedImageIds}
                 />
 
                 {/* Load More Button */}
@@ -691,17 +762,17 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       {/* Image Metadata Editor Modal */}
       {editingImage && (
         <ImageMetadataModal
-          image={editingImage}
           scrollPosition={scrollPosition}
           onClose={closeEditor}
           onSaveSuccess={handleMetadataSaveSuccess}
-          collectionLocation={collection?.location}
           availableTags={metadata.tags}
           availablePeople={metadata.people}
           availableCameras={metadata.cameras}
           availableFilmTypes={metadata.filmTypes}
           availableFilmFormats={metadata.filmFormats}
           availableCollections={metadata.collections}
+          selectedImageIds={selectedImageIds.length > 0 ? selectedImageIds : [editingImage.id]}
+          allImages={collection?.blocks.filter(block => isImageContentBlock(block)) as ImageContentBlock[]}
         />
       )}
     </div>

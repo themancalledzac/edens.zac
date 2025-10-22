@@ -30,6 +30,14 @@ export interface ContentCameraModel {
 }
 
 /**
+ * Content Lens - Lens equipment used for photos
+ */
+export interface ContentLensModel {
+  id: number;
+  lensName: string;
+}
+
+/**
  * Film Type - Represents film stock used
  */
 export interface FilmTypeModel {
@@ -64,6 +72,7 @@ export interface CollectionUpdateMetadata {
   tags: ContentTagModel[];
   people: ContentPersonModel[];
   cameras: ContentCameraModel[];
+  lenses: ContentLensModel[];
   filmTypes: FilmTypeModel[];
   filmFormats: FilmFormatModel[];
   collections: CollectionListModel[];

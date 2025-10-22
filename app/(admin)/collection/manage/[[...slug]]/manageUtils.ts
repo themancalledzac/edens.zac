@@ -218,37 +218,3 @@ export function getDisplayedCoverImage(
   }
   return collection?.coverImage;
 }
-
-/**
- * Validate form data before submission
- * Returns error message if validation fails, null if valid
- */
-export function validateFormData(formData: ManageFormData, isCreateMode: boolean): string | null {
-  if (isCreateMode && !formData.title.trim()) {
-    return 'Title is required';
-  }
-
-  if (formData.priority < 1 || formData.priority > 4) {
-    return 'Priority must be between 1 and 4';
-  }
-
-  return null;
-}
-
-/**
- * Compare two arrays of numbers for equality
- * More efficient than JSON.stringify comparison
- * @param arr1 First array to compare
- * @param arr2 Second array to compare
- * @returns true if arrays contain the same numbers (order-independent)
- */
-export function arraysOfNumbersEqual(arr1: number[], arr2: number[]): boolean {
-  if (arr1.length !== arr2.length) {
-    return false;
-  }
-
-  const sorted1 = [...arr1].sort((a, b) => a - b);
-  const sorted2 = [...arr2].sort((a, b) => a - b);
-
-  return sorted1.every((value, index) => value === sorted2[index]);
-}

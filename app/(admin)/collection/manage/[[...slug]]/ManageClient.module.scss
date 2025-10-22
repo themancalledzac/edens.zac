@@ -308,3 +308,72 @@
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
 }
+
+// Bulk Edit Controls
+.contentHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-4);
+  gap: var(--space-4);
+}
+
+.bulkEditControls {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.startBulkEditButton {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-secondary);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--color-secondary-dark);
+  }
+}
+
+.bulkEditButton {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-primary);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background: var(--color-primary-dark);
+  }
+
+  &:disabled {
+    background: var(--color-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.cancelBulkEditButton {
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-bg-medium);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--color-bg-dark);
+  }
+}
