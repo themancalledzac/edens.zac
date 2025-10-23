@@ -10,7 +10,7 @@
  */
 export interface ContentTagModel {
   id: number;
-  tagName: string;
+  name: string;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface ContentTagModel {
  */
 export interface ContentPersonModel {
   id: number;
-  personName: string;
+  name: string;
 }
 
 /**
@@ -26,7 +26,7 @@ export interface ContentPersonModel {
  */
 export interface ContentCameraModel {
   id: number;
-  cameraName: string;
+  name: string;
 }
 
 /**
@@ -34,7 +34,7 @@ export interface ContentCameraModel {
  */
 export interface ContentLensModel {
   id: number;
-  lensName: string;
+  name: string;
 }
 
 /**

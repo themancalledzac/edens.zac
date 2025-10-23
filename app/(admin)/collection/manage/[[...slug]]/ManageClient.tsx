@@ -1,16 +1,27 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
-import { addContentBlocks, createContentCollectionSimple, fetchCollectionBySlugAdmin, fetchCollectionUpdateMetadata, updateContentCollection } from '@/app/lib/api/home';
+import {
+  addContentBlocks,
+  createContentCollectionSimple,
+  fetchCollectionBySlugAdmin,
+  fetchCollectionUpdateMetadata,
+  updateContentCollection,
+} from '@/app/lib/api/home';
 import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
-import { CollectionType, type ContentBlockReorderOperation, type ContentCollectionSimpleCreateDTO, type DisplayMode } from '@/app/types/ContentCollection';
+import {
+  CollectionType,
+  type ContentBlockReorderOperation,
+  type ContentCollectionSimpleCreateDTO,
+  type DisplayMode,
+} from '@/app/types/ContentCollection';
 import { type CollectionUpdateMetadata } from '@/app/types/ImageMetadata';
 
 import pageStyles from '../../../../page.module.scss';
@@ -19,11 +30,13 @@ import {
   buildUpdatePayload,
   COVER_IMAGE_FLASH_DURATION,
   getDisplayedCoverImage,
+  handleApiError,
   initializeUpdateFormData,
   isImageContentBlock,
   type ManageFormData,
   normalizeCollectionResponse,
-  syncCollectionState
+  syncCollectionState,
+  validateCoverImageSelection,
 } from './manageUtils';
 
 interface ManageClientProps {
@@ -35,16 +48,22 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [collection, setCollection] = useState<ContentCollectionFullModel | null>(initialCollection || null);
+  const [collection, setCollection] = useState<ContentCollectionFullModel | null>(
+    initialCollection || null
+  );
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
   const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
+  const [reorderOperations, setReorderOperations] = useState<ContentBlockReorderOperation[]>([]);
+  const [contentBlockIdsToRemove, setContentBlockIdsToRemove] = useState<number[]>([]);
   const [createData, setCreateData] = useState<ContentCollectionSimpleCreateDTO>({
     type: CollectionType.portfolio,
-    title: ''
+    title: '',
   });
-
-  // Image metadata - tags, people, cameras, lenses, film types/formats, collections
+  const [updateData, setUpdateData] = useState<ManageFormData>(
+    initializeUpdateFormData(initialCollection)
+  );
   const [metadata, setMetadata] = useState<CollectionUpdateMetadata>({
     tags: [],
     people: [],
@@ -55,55 +74,74 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     collections: [],
   });
 
-  // Image metadata editor
-  const {
-    editingImage,
-    scrollPosition,
-    openEditor,
-    closeEditor,
-  } = useImageMetadataEditor();
+  const { editingImage, scrollPosition, openEditor, closeEditor } = useImageMetadataEditor();
 
-  // Update form state - initialized with utility function
-  const [updateData, setUpdateData] = useState<ManageFormData>(
-    initializeUpdateFormData(initialCollection)
+  // Derive imagesToEdit from selectedImageIds (always in sync)
+  const imagesToEdit = useMemo(
+    () =>
+      collection?.blocks.filter(
+        block => isImageContentBlock(block) && selectedImageIds.includes(block.id)
+      ) as ImageContentBlock[] || [],
+    [selectedImageIds, collection?.blocks]
   );
-
-  // Content block operation states
-  const [reorderOperations, setReorderOperations] = useState<ContentBlockReorderOperation[]>([]);
-  const [contentBlockIdsToRemove, setContentBlockIdsToRemove] = useState<number[]>([]);
 
   const isCreateMode = !initialCollection;
 
-  // Pagination state - check if there are more pages to load
-  const hasMorePages = collection ? (collection.pagination.currentPage + 1) < collection.pagination.totalPages : false;
+  // Memoized derived values
+  const hasMorePages = useMemo(
+    () =>
+      collection
+        ? collection.pagination.currentPage + 1 < collection.pagination.totalPages
+        : false,
+    [collection]
+  );
+
+  const displayedCoverImage = useMemo(
+    () => getDisplayedCoverImage(collection, updateData.coverImageId),
+    [collection, updateData.coverImageId]
+  );
 
   // Fetch metadata on mount when we have a collection
   useEffect(() => {
-    const fetchMetadata = async () => {
-      if (!collection) return;
+    if (!collection) return;
 
+    // Create abort controller for race condition protection
+    const abortController = new AbortController();
+    let isMounted = true;
+
+    const fetchMetadata = async () => {
       try {
         const response = await fetchCollectionUpdateMetadata(collection.slug);
 
-        setMetadata({
-          tags: response.tags || [],
-          people: response.people || [],
-          cameras: response.cameras || [],
-          lenses: response.lenses || [],
-          collections: response.collections || [],
-          filmTypes: response.filmTypes || [],
-          filmFormats: response.filmFormats || [],
-        });
+        // Only update state if component is still mounted and request wasn't aborted
+        if (isMounted && !abortController.signal.aborted) {
+          setMetadata({
+            tags: response.tags || [],
+            people: response.people || [],
+            cameras: response.cameras || [],
+            lenses: response.lenses || [],
+            collections: response.collections || [],
+            filmTypes: response.filmTypes || [],
+            filmFormats: response.filmFormats || [],
+          });
+        }
       } catch (error) {
-        console.error('Error fetching metadata:', error);
-        // Set simple error message for visibility
-        setError(error instanceof Error ? error.message : 'Failed to load metadata options');
+        // Only set error if not aborted
+        if (!abortController.signal.aborted && isMounted) {
+          console.error('Error fetching metadata:', error);
+          setError(handleApiError(error, 'Failed to load metadata options'));
+        }
       }
     };
 
     fetchMetadata();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collection?.slug]); // Only re-fetch if collection slug changes
+
+    // Cleanup function to abort request and prevent state updates
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
+  }, [collection]);
 
   // Handle creating a new text block - immediately POST to backend
   const handleCreateNewTextBlock = async () => {
@@ -132,13 +170,13 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
         orderIndex: collection.blocks.length, // Add to end
         rating: 3,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       // Add mock block to collection
       const updatedCollection = {
         ...collection,
-        blocks: [...collection.blocks, mockTextBlock]
+        blocks: [...collection.blocks, mockTextBlock],
       };
 
       setCollection(updatedCollection);
@@ -149,10 +187,9 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       // const response = await addContentBlocks(collection.id, formData);
       // const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
       // setCollection(refreshedCollection);
-
     } catch (error) {
       console.error('Error creating text block:', error);
-      setError(error instanceof Error ? error.message : 'Failed to create text block');
+      setError(handleApiError(error, 'Failed to create text block'));
     } finally {
       setLoading(false);
     }
@@ -183,11 +220,9 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
       // Update URL to reflect the new collection using Next.js router
       router.push(`/collection/manage/${response.slug}`);
-
     } catch (error: unknown) {
       console.error('Error creating collection:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create collection';
-      setError(errorMessage);
+      setError(handleApiError(error, 'Failed to create collection'));
     } finally {
       setLoading(false);
     }
@@ -215,8 +250,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
       // If content block operations were performed, refetch to get updated blocks
       const hasContentBlockOperations =
-        reorderOperations.length > 0 ||
-        contentBlockIdsToRemove.length > 0;
+        reorderOperations.length > 0 || contentBlockIdsToRemove.length > 0;
 
       if (hasContentBlockOperations) {
         // Refetch collection to get updated blocks with proper ordering
@@ -232,10 +266,9 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
       setReorderOperations([]);
       setContentBlockIdsToRemove([]);
-
     } catch (error) {
       console.error('Error updating collection:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update collection');
+      setError(handleApiError(error, 'Failed to update collection'));
     } finally {
       setLoading(false);
     }
@@ -265,29 +298,37 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
       // Clear the file input
       event.target.value = '';
-
     } catch (error) {
       console.error('Error uploading images:', error);
-      setError(error instanceof Error ? error.message : 'Failed to upload images');
+      setError(handleApiError(error, 'Failed to upload images'));
     } finally {
       setLoading(false);
     }
   };
 
   // Handle cover image selection
-  const handleCoverImageClick = (imageId: number) => {
-    setUpdateData(prev => ({ ...prev, coverImageId: imageId }));
-    setIsSelectingCoverImage(false);
+  const handleCoverImageClick = useCallback(
+    (imageId: number) => {
+      // Validate that the selected image exists and is an image block
+      if (!validateCoverImageSelection(imageId, collection?.blocks as AnyContentBlock[])) {
+        setError('Invalid cover image selection. Please try again.');
+        return;
+      }
 
-    // Show temporary red overlay on newly selected image
-    setJustClickedImageId(imageId);
-    setTimeout(() => {
-      setJustClickedImageId(null);
-    }, COVER_IMAGE_FLASH_DURATION);
-  };
+      setUpdateData(prev => ({ ...prev, coverImageId: imageId }));
+      setIsSelectingCoverImage(false);
+
+      // Show temporary red overlay on newly selected image
+      setJustClickedImageId(imageId);
+      setTimeout(() => {
+        setJustClickedImageId(null);
+      }, COVER_IMAGE_FLASH_DURATION);
+    },
+    [collection?.blocks]
+  );
 
   // Handle multi-select toggle
-  const handleMultiSelectToggle = (imageId: number) => {
+  const handleMultiSelectToggle = useCallback((imageId: number) => {
     setSelectedImageIds(prev => {
       if (prev.includes(imageId)) {
         // Deselect
@@ -296,10 +337,10 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       // Select
       return [...prev, imageId];
     });
-  };
+  }, []);
 
   // Handle bulk edit - open modal with selected images
-  const handleBulkEdit = () => {
+  const handleBulkEdit = useCallback(() => {
     if (selectedImageIds.length === 0 || !collection) return;
 
     // Get all selected image blocks
@@ -309,48 +350,61 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
     const firstImage = selectedImages[0];
     if (firstImage) {
-      // Open editor with first image as template, but pass all selected IDs
+      // Open editor with first image as template
       openEditor(firstImage);
     }
-  };
+  }, [selectedImageIds, collection, openEditor]);
 
   // Handle image click - either set cover, multi-select, or open metadata editor
-  const handleImageClick = (imageId: number) => {
-    if (isSelectingCoverImage) {
-      // Existing behavior - set as cover image
-      handleCoverImageClick(imageId);
-    } else if (selectedImageIds.length > 0) {
-      // Multi-select mode - toggle selection
-      handleMultiSelectToggle(imageId);
-    } else {
-      // New behavior - open metadata editor
-      const imageBlock = collection?.blocks.find(block => block.id === imageId);
-      if (imageBlock && isImageContentBlock(imageBlock)) {
-        openEditor(imageBlock);
+  const handleImageClick = useCallback(
+    (imageId: number) => {
+      if (isSelectingCoverImage) {
+        // Mode 1: Cover image selection
+        handleCoverImageClick(imageId);
+        return;
       }
-    }
-  };
+
+      if (isMultiSelectMode) {
+        // Mode 2: Multi-select toggle
+        handleMultiSelectToggle(imageId);
+      } else {
+        // Mode 3: Single image edit
+        const imageBlock = collection?.blocks.find(block => block.id === imageId);
+        if (imageBlock && isImageContentBlock(imageBlock)) {
+          // Set selectedImageIds for modal but stay in single-edit mode
+          setSelectedImageIds([imageId]);
+          setIsMultiSelectMode(false);
+          openEditor(imageBlock);
+        }
+      }
+    },
+    [isSelectingCoverImage, isMultiSelectMode, handleCoverImageClick, handleMultiSelectToggle, collection?.blocks, openEditor]
+  );
 
   // Handle successful metadata save - refresh collection and clear selections
-  const handleMetadataSaveSuccess = async (_updatedImage: ImageContentBlock) => {
-    if (!collection) return;
+  const handleMetadataSaveSuccess = useCallback(
+    async (_updatedImage: ImageContentBlock) => {
+      if (!collection) return;
 
-    try {
-      // Re-fetch collection to get updated metadata
-      const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
-      setCollection(refreshedCollection);
+      try {
+        // Re-fetch collection to get updated metadata
+        const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
+        setCollection(refreshedCollection);
 
-      // Also refresh metadata to include any new tags/people created
-      const refreshedMetadata = await fetchCollectionUpdateMetadata(collection.slug);
-      setMetadata(refreshedMetadata);
+        // Also refresh metadata to include any new tags/people created
+        const refreshedMetadata = await fetchCollectionUpdateMetadata(collection.slug);
+        setMetadata(refreshedMetadata);
 
-      // Clear selected images after successful bulk edit
-      setSelectedImageIds([]);
-    } catch (error) {
-      console.error('Error refreshing collection after metadata update:', error);
-      setError(error instanceof Error ? error.message : 'Failed to refresh data. Try reloading the page.');
-    }
-  };
+        // Clear selected images and exit multi-select mode after successful edit
+        setSelectedImageIds([]);
+        setIsMultiSelectMode(false);
+      } catch (error) {
+        console.error('Error refreshing collection after metadata update:', error);
+        setError(handleApiError(error, 'Failed to refresh data. Try reloading the page.'));
+      }
+    },
+    [collection]
+  );
 
   // Handle loading more content blocks
   const handleLoadMore = async () => {
@@ -364,56 +418,43 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
       const pageSize = collection.pagination.pageSize;
 
       // Fetch next page
-      const nextPageData = await fetchCollectionBySlugAdmin(
-        collection.slug,
-        nextPage,
-        pageSize
-      );
+      const nextPageData = await fetchCollectionBySlugAdmin(collection.slug, nextPage, pageSize);
 
       // Append new blocks to existing blocks
       const updatedCollection = {
         ...collection,
         blocks: [...collection.blocks, ...nextPageData.blocks],
-        pagination: nextPageData.pagination
+        pagination: nextPageData.pagination,
       };
 
       setCollection(updatedCollection);
-
     } catch (error) {
       console.error('Error loading more content:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load more content');
+      setError(handleApiError(error, 'Failed to load more content'));
     } finally {
       setLoadingMore(false);
     }
   };
 
-  // Get the displayed cover image (pending selection or current)
-  const displayedCoverImage = getDisplayedCoverImage(collection, updateData.coverImageId);
-
   return (
     <div>
       <SiteHeader pageType="manage" />
       <div className={pageStyles.contentPadding}>
-
         {/* CREATE MODE */}
         {isCreateMode && !collection && (
           <div className={styles.createContainer}>
             <h2 className={styles.createHeading}>Create New Collection</h2>
 
-            {error && (
-              <div className={styles.errorMessage}>
-                {error}
-              </div>
-            )}
+            {error && <div className={styles.errorMessage}>{error}</div>}
 
             <form onSubmit={handleCreate}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>
-                  Collection Type *
-                </label>
+                <label className={styles.formLabel}>Collection Type *</label>
                 <select
                   value={createData.type}
-                  onChange={(e) => setCreateData(prev => ({ ...prev, type: e.target.value as CollectionType }))}
+                  onChange={e =>
+                    setCreateData(prev => ({ ...prev, type: e.target.value as CollectionType }))
+                  }
                   className={styles.formSelect}
                   required
                 >
@@ -425,24 +466,18 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>
-                  Title *
-                </label>
+                <label className={styles.formLabel}>Title *</label>
                 <input
                   type="text"
                   value={createData.title}
-                  onChange={(e) => setCreateData(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={e => setCreateData(prev => ({ ...prev, title: e.target.value }))}
                   className={styles.formInput}
                   required
                   placeholder="e.g., Film Pack 002"
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className={styles.submitButton}
-              >
+              <button type="submit" disabled={loading} className={styles.submitButton}>
                 {loading ? 'Creating...' : 'Create Collection'}
               </button>
             </form>
@@ -453,28 +488,17 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
         {collection && (
           <>
             <div className={styles.updateContainer}>
-              <h2 className={styles.updateHeading}>
-                Manage Collection: {collection.title}
-              </h2>
+              <h2 className={styles.updateHeading}>Manage Collection: {collection.title}</h2>
 
-              {error && (
-                <div className={styles.errorMessage}>
-                  {error}
-                </div>
-              )}
+              {error && <div className={styles.errorMessage}>{error}</div>}
 
               <div className={styles.mediaSection}>
                 {/* Cover Image Section */}
                 <div className={styles.coverImageSection}>
-                  <label className={styles.formLabel}>
-                    Cover Image
-                  </label>
+                  <label className={styles.formLabel}>Cover Image</label>
                   {displayedCoverImage && isImageContentBlock(displayedCoverImage) ? (
                     <div className={styles.coverImageWrapper}>
-                      <img
-                        src={displayedCoverImage.imageUrlWeb}
-                        alt="Cover"
-                      />
+                      <img src={displayedCoverImage.imageUrlWeb} alt="Cover" />
                       <button
                         type="button"
                         onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
@@ -484,17 +508,13 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                       </button>
                     </div>
                   ) : (
-                    <div className={styles.noCoverImage}>
-                      No cover image
-                    </div>
+                    <div className={styles.noCoverImage}>No cover image</div>
                   )}
                 </div>
 
                 {/* Upload Images Section */}
                 <div className={styles.uploadSection}>
-                  <label className={styles.formLabel}>
-                    Upload Images
-                  </label>
+                  <label className={styles.formLabel}>Upload Images</label>
                   <input
                     type="file"
                     multiple
@@ -508,9 +528,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
                 {/* Add Text Block Section */}
                 <div className={styles.textBlockSection}>
-                  <label className={styles.formLabel}>
-                    Add Text Block
-                  </label>
+                  <label className={styles.formLabel}>Add Text Block</label>
                   <button
                     type="button"
                     onClick={handleCreateNewTextBlock}
@@ -525,12 +543,12 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
               <form onSubmit={handleUpdate}>
                 <div className={styles.formGrid2Col}>
                   <div>
-                    <label className={styles.formLabel}>
-                      Collection Type
-                    </label>
+                    <label className={styles.formLabel}>Collection Type</label>
                     <select
                       value={updateData.type}
-                      onChange={(e) => setUpdateData(prev => ({ ...prev, type: e.target.value as CollectionType }))}
+                      onChange={e =>
+                        setUpdateData(prev => ({ ...prev, type: e.target.value as CollectionType }))
+                      }
                       className={styles.formSelect}
                     >
                       <option value={CollectionType.portfolio}>Portfolio</option>
@@ -541,15 +559,15 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   </div>
 
                   <div>
-                    <label className={styles.formLabel}>
-                      Items Per Page
-                    </label>
+                    <label className={styles.formLabel}>Items Per Page</label>
                     <input
                       type="number"
                       min="1"
                       max="200"
                       value={updateData.blocksPerPage}
-                      onChange={(e) => setUpdateData(prev => ({ ...prev, blocksPerPage: Number(e.target.value) }))}
+                      onChange={e =>
+                        setUpdateData(prev => ({ ...prev, blocksPerPage: Number(e.target.value) }))
+                      }
                       className={styles.formInput}
                     />
                   </div>
@@ -557,37 +575,33 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
 
                 <div className={styles.formGrid2Col}>
                   <div>
-                    <label className={styles.formLabel}>
-                      Title
-                    </label>
+                    <label className={styles.formLabel}>Title</label>
                     <input
                       type="text"
                       value={updateData.title}
-                      onChange={(e) => setUpdateData(prev => ({ ...prev, title: e.target.value }))}
+                      onChange={e => setUpdateData(prev => ({ ...prev, title: e.target.value }))}
                       className={styles.formInput}
                     />
                   </div>
 
                   <div>
-                    <label className={styles.formLabel}>
-                      Location
-                    </label>
+                    <label className={styles.formLabel}>Location</label>
                     <input
                       type="text"
                       value={updateData.location}
-                      onChange={(e) => setUpdateData(prev => ({ ...prev, location: e.target.value }))}
+                      onChange={e => setUpdateData(prev => ({ ...prev, location: e.target.value }))}
                       className={styles.formInput}
                     />
                   </div>
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>
-                    Description
-                  </label>
+                  <label className={styles.formLabel}>Description</label>
                   <textarea
                     value={updateData.description}
-                    onChange={(e) => setUpdateData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={e =>
+                      setUpdateData(prev => ({ ...prev, description: e.target.value }))
+                    }
                     className={styles.formTextarea}
                   />
                 </div>
@@ -598,19 +612,21 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                       <input
                         type="checkbox"
                         checked={updateData.visible}
-                        onChange={(e) => setUpdateData(prev => ({ ...prev, visible: e.target.checked }))}
+                        onChange={e =>
+                          setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
+                        }
                       />
                       <span>Visible</span>
                     </label>
                   </div>
 
                   <div>
-                    <label className={styles.formLabel}>
-                      Priority
-                    </label>
+                    <label className={styles.formLabel}>Priority</label>
                     <select
                       value={updateData.priority}
-                      onChange={(e) => setUpdateData(prev => ({ ...prev, priority: Number(e.target.value) }))}
+                      onChange={e =>
+                        setUpdateData(prev => ({ ...prev, priority: Number(e.target.value) }))
+                      }
                       className={styles.formSelect}
                     >
                       <option value={1}>1 - Highest</option>
@@ -621,12 +637,15 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   </div>
 
                   <div>
-                    <label className={styles.formLabel}>
-                      Display Mode
-                    </label>
+                    <label className={styles.formLabel}>Display Mode</label>
                     <select
                       value={updateData.displayMode}
-                      onChange={(e) => setUpdateData(prev => ({ ...prev, displayMode: e.target.value as DisplayMode }))}
+                      onChange={e =>
+                        setUpdateData(prev => ({
+                          ...prev,
+                          displayMode: e.target.value as DisplayMode,
+                        }))
+                      }
                       className={styles.formSelect}
                     >
                       <option value="CHRONOLOGICAL">Chronological</option>
@@ -645,19 +664,21 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                         <input
                           type="checkbox"
                           checked={updateData.homeCardEnabled}
-                          onChange={(e) => setUpdateData(prev => ({ ...prev, homeCardEnabled: e.target.checked }))}
+                          onChange={e =>
+                            setUpdateData(prev => ({ ...prev, homeCardEnabled: e.target.checked }))
+                          }
                         />
                         <span>Enable home page card</span>
                       </label>
                     </div>
 
                     <div className={styles.homeCardTextArea}>
-                      <label>
-                        Home Card Text
-                      </label>
+                      <label>Home Card Text</label>
                       <textarea
                         value={updateData.homeCardText}
-                        onChange={(e) => setUpdateData(prev => ({ ...prev, homeCardText: e.target.value }))}
+                        onChange={e =>
+                          setUpdateData(prev => ({ ...prev, homeCardText: e.target.value }))
+                        }
                         disabled={!updateData.homeCardEnabled}
                         placeholder="Text to display on the home page card"
                       />
@@ -665,12 +686,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   </div>
                 </fieldset>
 
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={styles.submitButton}
-                >
+                <button type="submit" disabled={loading} className={styles.submitButton}>
                   {loading ? 'Updating...' : 'Update Metadata'}
                 </button>
               </form>
@@ -681,7 +697,8 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
               <div className={pageStyles.blockGroup}>
                 <div className={styles.contentHeader}>
                   <h3 className={styles.contentHeading}>
-                    Collection Content ({collection.blocks.length} of {collection.pagination.totalBlocks} blocks)
+                    Collection Content ({collection.blocks.length} of{' '}
+                    {collection.pagination.totalBlocks} blocks)
                     {isSelectingCoverImage && (
                       <span className={styles.selectingNotice}>
                         (Click any image to set as cover)
@@ -689,15 +706,17 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                     )}
                     {selectedImageIds.length > 0 && (
                       <span className={styles.selectingNotice}>
-                        ({selectedImageIds.length} image{selectedImageIds.length > 1 ? 's' : ''} selected)
+                        ({selectedImageIds.length} image{selectedImageIds.length > 1 ? 's' : ''}{' '}
+                        selected)
                       </span>
                     )}
                   </h3>
                   <div className={styles.bulkEditControls}>
-                    {selectedImageIds.length === 0 ? (
+                    {!isMultiSelectMode ? (
                       <button
                         type="button"
                         onClick={() => {
+                          setIsMultiSelectMode(true);
                           const firstImage = collection.blocks.find(b => isImageContentBlock(b));
                           if (firstImage) {
                             handleMultiSelectToggle(firstImage.id);
@@ -715,11 +734,15 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                           className={styles.bulkEditButton}
                           disabled={selectedImageIds.length === 0}
                         >
-                          Edit {selectedImageIds.length} Image{selectedImageIds.length > 1 ? 's' : ''}
+                          Edit {selectedImageIds.length} Image
+                          {selectedImageIds.length > 1 ? 's' : ''}
                         </button>
                         <button
                           type="button"
-                          onClick={() => setSelectedImageIds([])}
+                          onClick={() => {
+                            setSelectedImageIds([]);
+                            setIsMultiSelectMode(false);
+                          }}
                           className={styles.cancelBulkEditButton}
                         >
                           Cancel Selection
@@ -734,7 +757,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                   currentCoverImageId={collection.coverImage?.id}
                   onImageClick={handleImageClick}
                   justClickedImageId={justClickedImageId}
-                  selectedImageIds={selectedImageIds}
+                  selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
                 />
 
                 {/* Load More Button */}
@@ -749,7 +772,8 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                       {loadingMore ? 'Loading...' : 'Load More'}
                     </button>
                     <div className={styles.paginationInfo}>
-                      Page {collection.pagination.currentPage + 1} of {collection.pagination.totalPages}
+                      Page {collection.pagination.currentPage + 1} of{' '}
+                      {collection.pagination.totalPages}
                     </div>
                   </div>
                 )}
@@ -771,8 +795,8 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
           availableFilmTypes={metadata.filmTypes}
           availableFilmFormats={metadata.filmFormats}
           availableCollections={metadata.collections}
-          selectedImageIds={selectedImageIds.length > 0 ? selectedImageIds : [editingImage.id]}
-          allImages={collection?.blocks.filter(block => isImageContentBlock(block)) as ImageContentBlock[]}
+          selectedImageIds={selectedImageIds}
+          allImages={imagesToEdit}
         />
       )}
     </div>

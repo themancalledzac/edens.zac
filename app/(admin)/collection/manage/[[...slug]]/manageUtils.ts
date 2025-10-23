@@ -218,3 +218,36 @@ export function getDisplayedCoverImage(
   }
   return collection?.coverImage;
 }
+
+/**
+ * Filter image blocks from a collection of any content blocks
+ * Returns only blocks that are of type IMAGE
+ */
+export function filterImageBlocks(blocks: AnyContentBlock[] | undefined): ImageContentBlock[] {
+  if (!blocks || !Array.isArray(blocks)) return [];
+  return blocks.filter(isImageContentBlock);
+}
+
+/**
+ * Validate that a cover image selection is valid
+ * Returns true if the image exists and is an image block
+ */
+export function validateCoverImageSelection(
+  imageId: number | undefined,
+  blocks: AnyContentBlock[] | undefined
+): boolean {
+  if (!imageId || !blocks) return false;
+  const imageBlock = findImageBlockById(blocks, imageId);
+  return imageBlock !== undefined;
+}
+
+/**
+ * Standardized error handling helper
+ * Extracts error message from Error objects or provides default
+ */
+export function handleApiError(error: unknown, defaultMessage: string): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return defaultMessage;
+}
