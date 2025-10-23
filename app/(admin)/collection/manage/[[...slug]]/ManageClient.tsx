@@ -74,7 +74,16 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     collections: [],
   });
 
-  const { editingImage, scrollPosition, openEditor, closeEditor } = useImageMetadataEditor();
+  const { editingImage, scrollPosition, openEditor, closeEditor: baseCloseEditor } = useImageMetadataEditor();
+
+  // Wrap closeEditor to clear selectedImageIds when closing in single-edit mode
+  const closeEditor = useCallback(() => {
+    // If not in multi-select mode, clear selections when closing
+    if (!isMultiSelectMode) {
+      setSelectedImageIds([]);
+    }
+    baseCloseEditor();
+  }, [isMultiSelectMode, baseCloseEditor]);
 
   // Derive imagesToEdit from selectedImageIds (always in sync)
   const imagesToEdit = useMemo(
@@ -715,13 +724,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
                     {!isMultiSelectMode ? (
                       <button
                         type="button"
-                        onClick={() => {
-                          setIsMultiSelectMode(true);
-                          const firstImage = collection.blocks.find(b => isImageContentBlock(b));
-                          if (firstImage) {
-                            handleMultiSelectToggle(firstImage.id);
-                          }
-                        }}
+                        onClick={() => setIsMultiSelectMode(true)}
                         className={styles.startBulkEditButton}
                       >
                         Select Multiple Images
