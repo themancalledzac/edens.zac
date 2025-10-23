@@ -10,7 +10,7 @@
  */
 export interface ContentTagModel {
   id: number;
-  tagName: string;
+  name: string;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface ContentTagModel {
  */
 export interface ContentPersonModel {
   id: number;
-  personName: string;
+  name: string;
 }
 
 /**
@@ -26,7 +26,15 @@ export interface ContentPersonModel {
  */
 export interface ContentCameraModel {
   id: number;
-  cameraName: string;
+  name: string;
+}
+
+/**
+ * Content Lens - Lens equipment used for photos
+ */
+export interface ContentLensModel {
+  id: number;
+  name: string;
 }
 
 /**
@@ -64,6 +72,7 @@ export interface CollectionUpdateMetadata {
   tags: ContentTagModel[];
   people: ContentPersonModel[];
   cameras: ContentCameraModel[];
+  lenses: ContentLensModel[];
   filmTypes: FilmTypeModel[];
   filmFormats: FilmFormatModel[];
   collections: CollectionListModel[];

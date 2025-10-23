@@ -59,6 +59,7 @@ export interface ContentBlockComponentProps {
   priorityBlockIndex?: number; // Index of block to prioritize for LCP (usually 0 for hero)
   enableFullScreenView?: boolean; // Enable full-screen image viewing on click
   onFullScreenImageClick?: (image: ImageContentBlock | ParallaxImageContentBlock) => void; // NEW SIMPLE VERSION
+  selectedImageIds?: number[]; // Array of selected image IDs for bulk editing
 }
 
 /**
@@ -77,6 +78,7 @@ export default function ContentBlockComponent({
   priorityBlockIndex = 0,
   enableFullScreenView = false,
   onFullScreenImageClick, // NEW SIMPLE VERSION
+  selectedImageIds = [],
 }: ContentBlockComponentProps) {
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
@@ -163,6 +165,7 @@ export default function ContentBlockComponent({
                 if (isImageBlock(block)) {
                   const isCurrentCover = currentCoverImageId === block.id;
                   const isJustClicked = justClickedImageId === block.id;
+                  const isSelected = selectedImageIds.includes(block.id);
                   const shouldShowOverlay =
                     (isSelectingCoverImage && isCurrentCover) || isJustClicked;
 
@@ -188,7 +191,11 @@ export default function ContentBlockComponent({
                       }}
                       onClick={handleClick}
                     >
-                      <div style={{ cursor: isClickable ? 'pointer' : 'default' }}>
+                      <div style={{
+                        cursor: isClickable ? 'pointer' : 'default',
+                        opacity: isSelected ? 0.6 : 1,
+                        transition: 'opacity 0.2s ease',
+                      }}>
                         <ImageContentBlockRenderer
                           block={block}
                           width={width}
@@ -224,6 +231,38 @@ export default function ContentBlockComponent({
                             strokeLinejoin="round"
                           >
                             <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                      {isSelected && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            width: '32px',
+                            height: '32px',
+                            backgroundColor: 'rgba(220, 38, 38, 0.9)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            pointerEvents: 'none',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
+                          }}
+                        >
+                          <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
                           </svg>
                         </div>
                       )}

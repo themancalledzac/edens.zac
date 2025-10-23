@@ -271,6 +271,7 @@ export interface CollectionUpdateResponse {
   tags: CollectionUpdateMetadata['tags'];
   people: CollectionUpdateMetadata['people'];
   cameras: CollectionUpdateMetadata['cameras'];
+  lenses: CollectionUpdateMetadata['lenses'];
   filmTypes: CollectionUpdateMetadata['filmTypes'];
   filmFormats: CollectionUpdateMetadata['filmFormats'];
   collections: CollectionUpdateMetadata['collections'];

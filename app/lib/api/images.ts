@@ -18,7 +18,6 @@
  */
 
 import { type ImageCollection } from '@/app/types/ContentBlock';
-import type { ContentCameraModel } from '@/app/types/ImageMetadata';
 
 import { fetchPatchJsonApi } from './core';
 
@@ -75,14 +74,20 @@ export interface UpdateImageDTO {
   /** Camera shutter speed */
   shutterSpeed?: string | null;
 
-  /** Camera used - legacy field, prefer cameraId or cameraName */
-  camera?: ContentCameraModel | null;
-
   /**
    * Camera ID to associate with this image (select existing camera)
    * If both cameraId and cameraName are provided, cameraId takes precedence.
    */
   cameraId?: number | null;
+
+  /**
+   * Lens ID to associate with this image (select existing lens)
+   * If both lensId and lensName are provided, lensId takes precedence.
+   */
+  lensId?: number | null;
+
+  /** Lens name - will find existing or create new lens entity */
+  lensName?: string | null;
 
   /** Focal length */
   focalLength?: string | null;
@@ -180,4 +185,35 @@ export async function updateImage<T = unknown>(imageId: number, updates: UpdateI
   const updateArray = [updateWithId];
 
   return await fetchPatchJsonApi<T>('/blocks/images', updateArray);
+}
+
+/**
+ * Update multiple images with the same or different updates in a single API call
+ *
+ * @param imageUpdates - Array of objects containing imageId and updates for each image
+ * @returns Promise that resolves when all updates complete
+ * @throws ApiError if the request fails
+ *
+ * @example
+ * // Update multiple images with same metadata
+ * await updateMultipleImages([
+ *   { imageId: 1, updates: { location: "New York", author: "John Doe" } },
+ *   { imageId: 2, updates: { location: "New York", author: "John Doe" } },
+ *   { imageId: 3, updates: { location: "New York", author: "John Doe" } }
+ * ]);
+ */
+export async function updateMultipleImages(
+  imageUpdates: Array<{ imageId: number; updates: UpdateImageDTO }>
+): Promise<void> {
+  if (!imageUpdates || imageUpdates.length === 0) {
+    throw new Error('At least one image update is required');
+  }
+
+  // Build array of updates with IDs
+  const updateArray = imageUpdates.map(({ imageId, updates }) => ({
+    ...updates,
+    id: imageId,
+  }));
+
+  return await fetchPatchJsonApi<void>('/blocks/images', updateArray);
 }

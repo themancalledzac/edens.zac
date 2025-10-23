@@ -220,35 +220,34 @@ export function getDisplayedCoverImage(
 }
 
 /**
- * Validate form data before submission
- * Returns error message if validation fails, null if valid
+ * Filter image blocks from a collection of any content blocks
+ * Returns only blocks that are of type IMAGE
  */
-export function validateFormData(formData: ManageFormData, isCreateMode: boolean): string | null {
-  if (isCreateMode && !formData.title.trim()) {
-    return 'Title is required';
-  }
-
-  if (formData.priority < 1 || formData.priority > 4) {
-    return 'Priority must be between 1 and 4';
-  }
-
-  return null;
+export function filterImageBlocks(blocks: AnyContentBlock[] | undefined): ImageContentBlock[] {
+  if (!blocks || !Array.isArray(blocks)) return [];
+  return blocks.filter(isImageContentBlock);
 }
 
 /**
- * Compare two arrays of numbers for equality
- * More efficient than JSON.stringify comparison
- * @param arr1 First array to compare
- * @param arr2 Second array to compare
- * @returns true if arrays contain the same numbers (order-independent)
+ * Validate that a cover image selection is valid
+ * Returns true if the image exists and is an image block
  */
-export function arraysOfNumbersEqual(arr1: number[], arr2: number[]): boolean {
-  if (arr1.length !== arr2.length) {
-    return false;
+export function validateCoverImageSelection(
+  imageId: number | undefined,
+  blocks: AnyContentBlock[] | undefined
+): boolean {
+  if (!imageId || !blocks) return false;
+  const imageBlock = findImageBlockById(blocks, imageId);
+  return imageBlock !== undefined;
+}
+
+/**
+ * Standardized error handling helper
+ * Extracts error message from Error objects or provides default
+ */
+export function handleApiError(error: unknown, defaultMessage: string): string {
+  if (error instanceof Error) {
+    return error.message;
   }
-
-  const sorted1 = [...arr1].sort((a, b) => a - b);
-  const sorted2 = [...arr2].sort((a, b) => a - b);
-
-  return sorted1.every((value, index) => value === sorted2[index]);
+  return defaultMessage;
 }

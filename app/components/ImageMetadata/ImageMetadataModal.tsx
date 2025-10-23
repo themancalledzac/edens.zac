@@ -1,61 +1,50 @@
 'use client';
 
 import Image from 'next/image';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 
-import { arraysOfNumbersEqual } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { IMAGE } from '@/app/constants';
-import { updateImage, type UpdateImageDTO } from '@/app/lib/api/images';
+import { type UpdateImageDTO, updateMultipleImages } from '@/app/lib/api/images';
 import type { ImageContentBlock } from '@/app/types/ContentBlock';
 import type {
   CollectionListModel,
   ContentCameraModel,
+  ContentLensModel,
   ContentPersonModel,
   ContentTagModel,
   FilmFormatModel,
   FilmTypeModel,
 } from '@/app/types/ImageMetadata';
 
-import CameraSelector from './CameraSelector';
-import FilmStockSelector, { type NewFilmStockData } from './FilmStockSelector';
 import styles from './ImageMetadataModal.module.scss';
-import MetadataDropdown from './MetadataDropdown';
+import {
+  buildMetadataUpdate,
+  getCommonValues,
+  getDisplayCamera,
+  getDisplayCollections,
+  getDisplayFilmStock,
+  getDisplayLens,
+  getDisplayPeople,
+  getDisplayTags,
+  getFormValue,
+  type MetadataType,
+  toDTOFormat,
+} from './imageMetadataUtils';
+import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 
 interface ImageMetadataModalProps {
-  image: ImageContentBlock;
   scrollPosition: number;
   onClose: () => void;
   onSaveSuccess?: (updatedImage: ImageContentBlock) => void;
-  collectionLocation?: string | null;
   availableTags?: ContentTagModel[];
   availablePeople?: ContentPersonModel[];
   availableCameras?: ContentCameraModel[];
+  availableLenses?: ContentLensModel[];
   availableFilmTypes?: FilmTypeModel[];
   availableFilmFormats?: FilmFormatModel[];
   availableCollections?: CollectionListModel[];
-}
-
-// Type for form data state
-interface ImageMetadataFormData {
-  title: string;
-  caption: string;
-  alt: string;
-  author: string;
-  location: string;
-  camera: ContentCameraModel | null;
-  lens: string;
-  iso: string;
-  fstop: string;
-  shutterSpeed: string;
-  focalLength: string;
-  blackAndWhite: boolean;
-  isFilm: boolean;
-  rating: string;
-  filmType: string;
-  filmFormat: string;
-  selectedTagIds: number[];
-  selectedPeopleIds: number[];
-  selectedCollections: number[];
+  selectedImageIds: number[]; // Array of selected image IDs (1 for single edit, N for bulk edit)
+  allImages: ImageContentBlock[]; // Images to edit (already filtered in parent)
 }
 
 /**
@@ -66,338 +55,80 @@ interface ImageMetadataFormData {
  * - Right side: Metadata form with save/cancel buttons (~50% width)
  */
 export default function ImageMetadataModal({
-  image,
   scrollPosition,
   onClose,
   onSaveSuccess,
-  collectionLocation,
   availableTags = [],
   availablePeople = [],
   availableCameras = [],
+  availableLenses = [],
   availableFilmTypes = [],
   availableFilmFormats = [],
   availableCollections = [],
+  selectedImageIds,
+  allImages,
 }: ImageMetadataModalProps) {
-  // Form state - initialize with current image values, with defaults:
-  // - Author defaults to 'Zechariah Edens' if blank
-  // - Location defaults to collection location if blank
-  // - Camera: simple string field from image.camera
-  const [formData, setFormData] = useState({
-    title: image.title || '',
-    caption: image.caption || '',
-    alt: image.alt || '',
-    author: image.author || 'Zechariah Edens',
-    location: image.location || collectionLocation || '',
-    camera: image.camera || null,
-    lens: image.lens || '',
-    iso: image.iso?.toString() || '',
-    fstop: image.fstop || '',
-    shutterSpeed: image.shutterSpeed || '',
-    focalLength: image.focalLength || '',
-    blackAndWhite: image.blackAndWhite || false,
-    isFilm: image.isFilm || false,
-    rating: image.rating?.toString() || '',
-    filmType: image.filmType || '',
-    filmFormat: image.filmFormat || '',
-    selectedTagIds: (image.tags || []).map(t => t.id),
-    selectedPeopleIds: (image.people || []).map(p => p.id),
-    selectedCollections: (image.collections || []).map(c => c.collectionId),
-  });
-
+  // Images to edit are already filtered by parent component
+  const selectedImages = allImages;
+  const initialValues = useMemo(
+    () => selectedImages.length === 1 ? selectedImages[0]! : getCommonValues(selectedImages),
+    [selectedImages]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
 
-  // Track new tag/person names to be created (simple string arrays)
-  const [newTagNames, setNewTagNames] = useState<string[]>([]);
-  const [newPersonNames, setNewPersonNames] = useState<string[]>([]);
+  // Single source of truth: UpdateImageDTO - all fields start as undefined (not yet touched)
+  // Any change to the form simply updates this DTO
+  const [updateImageDTO, setUpdateImageDTO] = useState<UpdateImageDTO>({});
 
-  // Track new film stock to be created and film type ID for existing selection
-  const [newFilmStock, setNewFilmStock] = useState<NewFilmStockData | null>(null);
-  const [filmTypeId, setFilmTypeId] = useState<number | null>(null);
+  // If no images found, close the modal and exit
+  if (selectedImages.length === 0) {
+    console.error('No images found for the selected image IDs');
+    onClose();
+    return null;
+  }
 
-  // Track whether the current camera is new (needs to be created)
-  const [isNewCamera, setIsNewCamera] = useState(false);
+  const primaryImage = selectedImages[0]!; // Safe: already checked length > 0
 
-  // Type-safe form field change events using discriminated unions
-  type FormFieldChange =
-    | { field: 'title' | 'caption' | 'alt' | 'author' | 'location' | 'lens' | 'fstop' | 'shutterSpeed' | 'focalLength' | 'iso' | 'rating' | 'filmType' | 'filmFormat'; value: string }
-    | { field: 'blackAndWhite' | 'isFilm'; value: boolean }
-    | { field: 'selectedTagIds' | 'selectedPeopleIds' | 'selectedCollections'; value: number[] }
-    | { field: 'camera'; value: ContentCameraModel | null };
+  // Determine if we're in bulk edit mode (more than 1 image selected)
+  const isBulkEdit = selectedImageIds.length > 1;
 
-  // Track form changes with type safety
-  const handleChange = ({ field, value }: FormFieldChange) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setHasChanges(true);
+
+
+  // Helper to update DTO - simply updates the DTO object
+  const updateDTO = (updates: Partial<UpdateImageDTO>) => {
+    setUpdateImageDTO(prev => ({ ...prev, ...updates }));
   };
 
-  // Handle adding new tag
-  const handleAddNewTag = (tagName: string) => {
-    setNewTagNames(prev => [...prev, tagName]);
-    setHasChanges(true);
+  // Derive hasChanges - true if any field in DTO is defined
+  const hasChanges = Object.keys(updateImageDTO).length > 0;
+
+  // Single generic handler for all metadata changes - delegates to util function
+  const handleMetadataChange = (type: MetadataType, value: unknown) => {
+    console.log('[ImageMetadataModal] handleMetadataChange called:', { type, value });
+    const updates = buildMetadataUpdate(type, value, toDTOFormat);
+    console.log('[ImageMetadataModal] buildMetadataUpdate returned:', updates);
+    updateDTO(updates);
+    console.log('[ImageMetadataModal] After updateDTO, new DTO:', { ...updateImageDTO, ...updates });
   };
 
-  // Handle adding new person
-  const handleAddNewPerson = (personName: string) => {
-    setNewPersonNames(prev => [...prev, personName]);
-    setHasChanges(true);
+  // Handle adding new film stock from unified selector
+  const handleAddNewFilmStock = (data: Record<string, string | number>) => {
+    const filmTypeName = data.filmTypeName as string;
+    const defaultIso = data.defaultIso as number;
+
+    const newFilmStock: FilmTypeModel = {
+      id: 0,
+      name: filmTypeName.toUpperCase().replace(/\s+/g, '_'),
+      displayName: filmTypeName,
+      defaultIso,
+    };
+
+    handleMetadataChange('filmStock', newFilmStock);
   };
 
-  // Handle film stock change - when selecting existing film stock from dropdown
-  const handleFilmStockChange = (filmTypeName: string, filmTypeIdFromDropdown?: number) => {
-    handleChange({ field: 'filmType', value: filmTypeName });
-    setFilmTypeId(filmTypeIdFromDropdown || null);
-    setNewFilmStock(null); // Clear new film stock if selecting existing one
-
-    // Auto-populate ISO from selected film stock's defaultIso
-    if (filmTypeIdFromDropdown) {
-      const selectedFilmType = availableFilmTypes.find(f => f.id === filmTypeIdFromDropdown);
-      if (selectedFilmType) {
-        handleChange({ field: 'iso', value: selectedFilmType.defaultIso.toString() });
-      }
-    }
-  };
-
-  // Handle adding new film stock
-  const handleAddNewFilmStock = (filmStock: NewFilmStockData) => {
-    setNewFilmStock(filmStock);
-    setFilmTypeId(null); // Clear film type ID when creating new
-    handleChange({ field: 'filmType', value: filmStock.filmTypeName }); // Use filmTypeName as temporary value
-    handleChange({ field: 'iso', value: filmStock.defaultIso.toString() }); // Auto-set ISO from film stock
-    setHasChanges(true);
-  };
-
-  // Handle camera change - determines if using existing camera ID or creating new
-  const handleCameraChange = (camera: ContentCameraModel | null, isNew: boolean) => {
-    handleChange({ field: 'camera', value: camera });
-    setIsNewCamera(isNew);
-    setHasChanges(true);
-  };
-
-  // Prepare data for components - map to { id, name } format for dropdowns
-  const allCameras = availableCameras;
-  const allTags = availableTags.map(t => ({ id: t.id, name: t.tagName }));
-  const allPeople = availablePeople.map(p => ({ id: p.id, name: p.personName }));
+  // Prepare collection data for UnifiedMetadataSelector
   const allCollections = availableCollections.map(c => ({ id: c.id, name: c.collectionName }));
-
-  // Helper functions for building update DTO sections
-
-  /**
-   * Builds updates object for basic string fields (title, caption, alt, author, location)
-   */
-  const buildStringFieldUpdates = (
-    formData: ImageMetadataFormData,
-    image: ImageContentBlock
-  ): Partial<UpdateImageDTO> => {
-    const updates: Partial<UpdateImageDTO> = {};
-
-    if (formData.title !== (image.title || '')) {
-      updates.title = formData.title.trim() || null;
-    }
-    if (formData.caption !== (image.caption || '')) {
-      updates.caption = formData.caption.trim() || null;
-    }
-    if (formData.alt !== (image.alt || '')) {
-      updates.alt = formData.alt.trim() || null;
-    }
-    if (formData.author !== (image.author || '')) {
-      updates.author = formData.author.trim() || null;
-    }
-    if (formData.location !== (image.location || '')) {
-      updates.location = formData.location.trim() || null;
-    }
-
-    return updates;
-  };
-
-  /**
-   * Builds updates object for camera field with support for new camera creation
-   */
-  const buildCameraUpdates = (
-    formData: ImageMetadataFormData,
-    image: ImageContentBlock,
-    isNewCamera: boolean
-  ): Partial<UpdateImageDTO> => {
-    const updates: Partial<UpdateImageDTO> = {};
-    const currentCameraId = image.camera?.id || null;
-    const newCameraId = formData.camera?.id || null;
-    const currentCameraName = image.camera?.cameraName || null;
-    const newCameraName = formData.camera?.cameraName || null;
-
-    if (currentCameraId !== newCameraId || currentCameraName !== newCameraName) {
-      if (formData.camera) {
-        // If it's a new camera (id is 0 or isNewCamera flag is set), send cameraName
-        if (isNewCamera || formData.camera.id === 0) {
-          updates.cameraName = formData.camera.cameraName.trim();
-        }
-        // Otherwise, send the existing cameraId
-        else {
-          updates.cameraId = formData.camera.id;
-        }
-      } else {
-        // Clear camera by setting cameraId to null
-        updates.cameraId = null;
-      }
-    }
-
-    // Lens field
-    if (formData.lens !== (image.lens || '')) {
-      updates.lens = formData.lens.trim() || null;
-    }
-    if (formData.fstop !== (image.fstop || '')) {
-      updates.fstop = formData.fstop.trim() || null;
-    }
-    if (formData.shutterSpeed !== (image.shutterSpeed || '')) {
-      updates.shutterSpeed = formData.shutterSpeed.trim() || null;
-    }
-    if (formData.focalLength !== (image.focalLength || '')) {
-      updates.focalLength = formData.focalLength.trim() || null;
-    }
-
-    return updates;
-  };
-
-  /**
-   * Builds updates object for numeric fields (ISO, rating)
-   */
-  const buildNumberFieldUpdates = (
-    formData: ImageMetadataFormData,
-    image: ImageContentBlock
-  ): Partial<UpdateImageDTO> => {
-    const updates: Partial<UpdateImageDTO> = {};
-
-    const newIso = formData.iso ? Number.parseInt(formData.iso, 10) : null;
-    if (newIso !== (image.iso || null)) {
-      updates.iso = newIso;
-    }
-
-    const newRating = formData.rating ? Number.parseInt(formData.rating, 10) : null;
-    if (newRating !== (image.rating || null)) {
-      updates.rating = newRating;
-    }
-
-    return updates;
-  };
-
-  /**
-   * Builds updates object for boolean fields (blackAndWhite, isFilm)
-   */
-  const buildBooleanFieldUpdates = (
-    formData: ImageMetadataFormData,
-    image: ImageContentBlock
-  ): Partial<UpdateImageDTO> => {
-    const updates: Partial<UpdateImageDTO> = {};
-
-    if (formData.blackAndWhite !== image.blackAndWhite) {
-      updates.blackAndWhite = formData.blackAndWhite;
-    }
-    if (formData.isFilm !== image.isFilm) {
-      updates.isFilm = formData.isFilm;
-    }
-
-    return updates;
-  };
-
-  /**
-   * Builds updates object for film-specific fields (filmType, filmFormat)
-   * Only processes fields if isFilm is true
-   */
-  const buildFilmUpdates = (
-    formData: ImageMetadataFormData,
-    image: ImageContentBlock,
-    newFilmStock: NewFilmStockData | null,
-    filmTypeId: number | null
-  ): Partial<UpdateImageDTO> => {
-    const updates: Partial<UpdateImageDTO> = {};
-
-    // Film-specific fields (only send if isFilm is true)
-    if (formData.isFilm) {
-      // Handle film type - either new or existing
-      if (formData.filmType !== (image.filmType || '')) {
-        updates.filmType = formData.filmType.trim() || null;
-
-        // If creating new film stock
-        if (newFilmStock) {
-          updates.newFilmType = {
-            filmTypeName: newFilmStock.filmTypeName,
-            defaultIso: newFilmStock.defaultIso,
-          };
-        }
-        // If selecting existing film stock
-        else if (filmTypeId) {
-          updates.filmTypeId = filmTypeId;
-        }
-      }
-
-      if (formData.filmFormat !== (image.filmFormat || '')) {
-        updates.filmFormat = formData.filmFormat.trim() || null;
-      }
-    }
-
-    return updates;
-  };
-
-  /**
-   * Builds updates object for relationship fields (tags, people, collections)
-   */
-  const buildRelationshipUpdates = (
-    formData: ImageMetadataFormData,
-    image: ImageContentBlock,
-    newTagNames: string[],
-    newPersonNames: string[],
-    availableCollections: CollectionListModel[]
-  ): Partial<UpdateImageDTO> => {
-    const updates: Partial<UpdateImageDTO> = {};
-
-    // Tags handling - simple comparison of existing tag IDs
-    const currentTagIds = (image.tags || []).map(t => t.id);
-    const selectedExistingTagIds = [...formData.selectedTagIds];
-    const hasTagChanges = !arraysOfNumbersEqual(currentTagIds, selectedExistingTagIds) || newTagNames.length > 0;
-
-    if (hasTagChanges) {
-      // Send existing tag IDs
-      updates.tagIds = formData.selectedTagIds.length > 0 ? formData.selectedTagIds : null;
-
-      // Send new tag names
-      if (newTagNames.length > 0) {
-        updates.newTags = newTagNames;
-      }
-    }
-
-    // People handling - simple comparison of existing person IDs
-    const currentPersonIds = (image.people || []).map(p => p.id);
-    const selectedExistingPersonIds = [...formData.selectedPeopleIds];
-    const hasPeopleChanges = !arraysOfNumbersEqual(currentPersonIds, selectedExistingPersonIds) || newPersonNames.length > 0;
-
-    if (hasPeopleChanges) {
-      // Send existing person IDs
-      updates.personIds = formData.selectedPeopleIds.length > 0 ? formData.selectedPeopleIds : null;
-
-      // Send new person names
-      if (newPersonNames.length > 0) {
-        updates.newPeople = newPersonNames;
-      }
-    }
-
-    // Collections handling - send list of collection IDs this image should belong to
-    const currentCollectionIds = (image.collections || []).map(c => c.collectionId);
-    const newCollectionIds = [...formData.selectedCollections];
-    if (!arraysOfNumbersEqual(currentCollectionIds, newCollectionIds)) {
-      // Build the collections list with collectionId and collectionName
-      updates.collections = formData.selectedCollections.length > 0
-        ? formData.selectedCollections.map((collectionId: number) => {
-            const collection = availableCollections.find(c => c.id === collectionId);
-            return {
-              collectionId,
-              collectionName: collection?.collectionName || '',
-            };
-          })
-        : [];
-    }
-
-    return updates;
-  };
 
   // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
@@ -412,22 +143,19 @@ export default function ImageMetadataModal({
       setLoading(true);
       setError(null);
 
-      // Build update DTO with only changed fields using helper functions
-      const updates: UpdateImageDTO = {
-        ...buildStringFieldUpdates(formData, image),
-        ...buildCameraUpdates(formData, image, isNewCamera),
-        ...buildNumberFieldUpdates(formData, image),
-        ...buildBooleanFieldUpdates(formData, image),
-        ...buildFilmUpdates(formData, image, newFilmStock, filmTypeId),
-        ...buildRelationshipUpdates(formData, image, newTagNames, newPersonNames, availableCollections),
-      };
+      // The DTO is already complete - no need for complex building logic
+      // Simply map updates to all selected images (1 for single edit, N for bulk edit)
+      const imageUpdates = selectedImageIds.map(imageId => ({
+        imageId,
+        updates: updateImageDTO,
+      }));
 
-      // Call updateImage API
-      const updatedImage = await updateImage<ImageContentBlock>(image.id, updates);
+      // Single API call for both single and bulk updates
+      await updateMultipleImages(imageUpdates);
 
       // Notify parent of success
       if (onSaveSuccess) {
-        onSaveSuccess(updatedImage);
+        onSaveSuccess(primaryImage);
       }
 
       onClose();
@@ -460,27 +188,71 @@ export default function ImageMetadataModal({
     >
       {/* Image Section - Left Side */}
       <div className={styles.imageSection}>
-        <Image
-          src={image.imageUrlWeb}
-          alt={image.alt || image.title || 'Image preview'}
-          width={image.imageWidth || IMAGE.defaultWidth}
-          height={image.imageHeight || IMAGE.defaultHeight}
-          style={{
-            maxWidth: '100%',
-            maxHeight: '100%',
-            width: 'auto',
-            height: 'auto',
-            objectFit: 'contain',
-          }}
-          priority
-          unoptimized
-        />
+        {isBulkEdit ? (
+          // Bulk edit mode - show grid of selected images
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+              gap: '8px',
+              width: '100%',
+              height: '100%',
+              overflowY: 'auto',
+              padding: '8px',
+            }}
+          >
+            {selectedImageIds.map((imageId) => {
+              const img = allImages.find(i => i.id === imageId);
+              if (!img) return null;
+              return (
+                <div
+                  key={imageId}
+                  style={{
+                    position: 'relative',
+                    aspectRatio: '1',
+                    borderRadius: '4px',
+                    overflow: 'hidden',
+                    backgroundColor: '#f0f0f0',
+                  }}
+                >
+                  <Image
+                    src={img.imageUrlWeb}
+                    alt={img.alt || img.title || 'Selected image'}
+                    fill
+                    style={{
+                      objectFit: 'cover',
+                    }}
+                    sizes="150px"
+                    unoptimized
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          // Single edit mode - show full image
+          <Image
+            src={primaryImage.imageUrlWeb}
+            alt={primaryImage.alt || primaryImage.title || 'Image preview'}
+            width={primaryImage.imageWidth || IMAGE.defaultWidth}
+            height={primaryImage.imageHeight || IMAGE.defaultHeight}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              width: 'auto',
+              height: 'auto',
+              objectFit: 'contain',
+            }}
+            priority
+            unoptimized
+          />
+        )}
       </div>
 
       {/* Metadata Section - Right Side */}
       <div className={styles.metadataSection}>
         <h2 id="metadata-modal-title" className={styles.heading}>
-          Edit Image Metadata
+          {isBulkEdit ? `Edit ${selectedImageIds.length} Images` : 'Edit Image Metadata'}
         </h2>
 
         {error && (
@@ -498,8 +270,8 @@ export default function ImageMetadataModal({
               <label className={styles.formLabel}>Title</label>
               <input
                 type="text"
-                value={formData.title}
-                onChange={(e) => handleChange({ field: 'title', value: e.target.value })}
+                value={getFormValue(updateImageDTO.title, initialValues.title, '') ?? ''}
+                onChange={(e) => updateDTO({ title: e.target.value || null })}
                 className={styles.formInput}
                 placeholder="Enter image title"
               />
@@ -508,8 +280,8 @@ export default function ImageMetadataModal({
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Caption</label>
               <textarea
-                value={formData.caption}
-                onChange={(e) => handleChange({ field: 'caption', value: e.target.value })}
+                value={getFormValue(updateImageDTO.caption, initialValues.caption, '') ?? ''}
+                onChange={(e) => updateDTO({ caption: e.target.value || null })}
                 className={styles.formTextarea}
                 placeholder="Enter caption"
                 rows={3}
@@ -520,8 +292,8 @@ export default function ImageMetadataModal({
               <label className={styles.formLabel}>Alt Text (Accessibility)</label>
               <input
                 type="text"
-                value={formData.alt}
-                onChange={(e) => handleChange({ field: 'alt', value: e.target.value })}
+                value={getFormValue(updateImageDTO.alt, initialValues.alt, '') ?? ''}
+                onChange={(e) => updateDTO({ alt: e.target.value || null })}
                 className={styles.formInput}
                 placeholder="Describe the image for screen readers"
               />
@@ -531,8 +303,8 @@ export default function ImageMetadataModal({
               <label className={styles.formLabel}>Author</label>
               <input
                 type="text"
-                value={formData.author}
-                onChange={(e) => handleChange({ field: 'author', value: e.target.value })}
+                value={getFormValue(updateImageDTO.author, initialValues.author, '') ?? ''}
+                onChange={(e) => updateDTO({ author: e.target.value || null })}
                 className={styles.formInput}
                 placeholder="Photographer name"
               />
@@ -542,8 +314,8 @@ export default function ImageMetadataModal({
               <label className={styles.formLabel}>Location</label>
               <input
                 type="text"
-                value={formData.location}
-                onChange={(e) => handleChange({ field: 'location', value: e.target.value })}
+                value={getFormValue(updateImageDTO.location, initialValues.location, '') ?? ''}
+                onChange={(e) => updateDTO({ location: e.target.value || null })}
                 className={styles.formInput}
                 placeholder="Where was this taken?"
               />
@@ -552,8 +324,8 @@ export default function ImageMetadataModal({
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Rating</label>
               <select
-                value={formData.rating}
-                onChange={(e) => handleChange({ field: 'rating', value: e.target.value })}
+                value={getFormValue(updateImageDTO.rating, initialValues.rating, null)?.toString() || ''}
+                onChange={(e) => updateDTO({ rating: e.target.value ? Number.parseInt(e.target.value, 10) : null })}
                 className={styles.formSelect}
               >
                 <option value="">No rating</option>
@@ -570,30 +342,85 @@ export default function ImageMetadataModal({
           <div className={styles.formSection}>
             <h3 className={styles.sectionHeading}>Camera Settings</h3>
 
-            <CameraSelector
-              currentCamera={formData.camera}
-              availableCameras={allCameras}
-              onChange={handleCameraChange}
+            <UnifiedMetadataSelector<ContentCameraModel>
+              label="Camera"
+              multiSelect={false}
+              options={availableCameras}
+              selectedValue={getDisplayCamera(updateImageDTO, initialValues.camera, availableCameras)}
+              onChange={(camera) => handleMetadataChange('camera', camera)}
+              allowAddNew
+              onAddNew={(data) => {
+                // Create new camera object and trigger onChange
+                const newCamera: ContentCameraModel = {
+                  id: 0,
+                  name: data.name as string,
+                };
+                handleMetadataChange('camera', newCamera);
+              }}
+              addNewFields={[
+                {
+                  name: 'name',
+                  label: 'Camera Name',
+                  type: 'text',
+                  placeholder: 'e.g., Canon EOS R5',
+                  required: true,
+                },
+              ]}
+              getDisplayName={(camera) => camera.name}
+              showNewIndicator
+              emptyText="No camera set"
             />
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Lens</label>
-              <input
-                type="text"
-                value={formData.lens}
-                onChange={(e) => handleChange({ field: 'lens', value: e.target.value })}
-                className={styles.formInput}
-                placeholder="e.g., 24-70mm f/2.8"
-              />
-            </div>
+            <UnifiedMetadataSelector<ContentLensModel>
+              label="Lens"
+              multiSelect={false}
+              options={availableLenses}
+              selectedValue={(() => {
+                const displayLens = getDisplayLens(updateImageDTO, initialValues.lensModel, availableLenses);
+                console.log('[ImageMetadataModal] Lens Display Value:', {
+                  displayLens,
+                  updateImageDTO: { lensId: updateImageDTO.lensId, lensName: updateImageDTO.lensName },
+                  initialLens: initialValues.lensModel,
+                  availableLensesCount: availableLenses.length,
+                });
+                return displayLens;
+              })()}
+              onChange={(lens) => {
+                console.log('[ImageMetadataModal] Lens onChange called with:', lens);
+                handleMetadataChange('lens', lens);
+              }}
+              allowAddNew
+              onAddNew={(data) => {
+                console.log('[ImageMetadataModal] Lens onAddNew called with:', data);
+                // Create new lens object and trigger onChange
+                const newLens: ContentLensModel = {
+                  id: 0,
+                  name: data.name as string,
+                };
+                console.log('[ImageMetadataModal] Created new lens object:', newLens);
+                handleMetadataChange('lens', newLens);
+              }}
+              addNewFields={[
+                {
+                  name: 'name',
+                  label: 'Lens Name',
+                  type: 'text',
+                  placeholder: 'e.g., 24-70mm f/2.8',
+                  required: true,
+                },
+              ]}
+              getDisplayName={(lens) => lens.name}
+              showNewIndicator
+              emptyText="No lens set"
+            />
 
             <div className={styles.formGrid2Col}>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>ISO</label>
                 <input
                   type="number"
-                  value={formData.iso}
-                  onChange={(e) => handleChange({ field: 'iso', value: e.target.value })}
+                  value={getFormValue(updateImageDTO.iso, initialValues.iso, null)?.toString() || ''}
+                  onChange={(e) => updateDTO({ iso: e.target.value ? Number.parseInt(e.target.value, 10) : null })}
                   className={styles.formInput}
                   placeholder="e.g., 800"
                   min="0"
@@ -604,8 +431,8 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>F-Stop</label>
                 <input
                   type="text"
-                  value={formData.fstop}
-                  onChange={(e) => handleChange({ field: 'fstop', value: e.target.value })}
+                  value={getFormValue(updateImageDTO.fstop, initialValues.fstop, '') ?? ''}
+                  onChange={(e) => updateDTO({ fstop: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., f/2.8"
                 />
@@ -617,8 +444,8 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>Shutter Speed</label>
                 <input
                   type="text"
-                  value={formData.shutterSpeed}
-                  onChange={(e) => handleChange({ field: 'shutterSpeed', value: e.target.value })}
+                  value={getFormValue(updateImageDTO.shutterSpeed, initialValues.shutterSpeed, '') ?? ''}
+                  onChange={(e) => updateDTO({ shutterSpeed: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., 1/250 sec"
                 />
@@ -628,8 +455,8 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>Focal Length</label>
                 <input
                   type="text"
-                  value={formData.focalLength}
-                  onChange={(e) => handleChange({ field: 'focalLength', value: e.target.value })}
+                  value={getFormValue(updateImageDTO.focalLength, initialValues.focalLength, '') ?? ''}
+                  onChange={(e) => updateDTO({ focalLength: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., 50 mm"
                 />
@@ -640,8 +467,8 @@ export default function ImageMetadataModal({
               <label className={styles.checkboxLabel}>
                 <input
                   type="checkbox"
-                  checked={formData.blackAndWhite}
-                  onChange={(e) => handleChange({ field: 'blackAndWhite', value: e.target.checked })}
+                  checked={getFormValue(updateImageDTO.blackAndWhite, initialValues.blackAndWhite, false) ?? false}
+                  onChange={(e) => updateDTO({ blackAndWhite: e.target.checked })}
                 />
                 <span>Black & White</span>
               </label>
@@ -649,54 +476,51 @@ export default function ImageMetadataModal({
               <label className={styles.checkboxLabel}>
                 <input
                   type="checkbox"
-                  checked={formData.isFilm}
-                  onChange={(e) => handleChange({ field: 'isFilm', value: e.target.checked })}
+                  checked={getFormValue(updateImageDTO.isFilm, initialValues.isFilm, false) ?? false}
+                  onChange={(e) => updateDTO({ isFilm: e.target.checked })}
                 />
                 <span>Film Photography</span>
               </label>
             </div>
 
             {/* Film-specific fields - only shown when isFilm is true */}
-            {formData.isFilm && (
+            {getFormValue(updateImageDTO.isFilm, initialValues.isFilm, false) && (
               <div className={styles.formGrid2Col}>
-                <FilmStockSelector
-                  currentFilmStock={formData.filmType}
-                  availableFilmTypes={availableFilmTypes}
-                  onChange={handleFilmStockChange}
+                <UnifiedMetadataSelector<FilmTypeModel>
+                  label="Film Stock"
+                  multiSelect={false}
+                  options={availableFilmTypes}
+                  selectedValue={getDisplayFilmStock(updateImageDTO, initialValues.filmType, availableFilmTypes)}
+                  onChange={(filmStock) => handleMetadataChange('filmStock', filmStock)}
+                  allowAddNew
                   onAddNew={handleAddNewFilmStock}
+                  addNewFields={[
+                    {
+                      name: 'filmTypeName',
+                      label: 'Film Stock Name',
+                      type: 'text',
+                      placeholder: 'e.g., Kodak Portra 400',
+                      required: true,
+                    },
+                    {
+                      name: 'defaultIso',
+                      label: 'Default ISO',
+                      type: 'number',
+                      placeholder: 'e.g., 400',
+                      required: true,
+                      min: 1,
+                    },
+                  ]}
+                  getDisplayName={(film) => `${film.displayName} (ISO ${film.defaultIso})`}
+                  showNewIndicator
+                  emptyText="No film stock set"
                 />
-
-                {/* Display newly created film stock */}
-                {newFilmStock && (
-                  <div className={styles.newItemsDisplay}>
-                    <span className={styles.newItemsLabel}>New film stock to be created:</span>
-                    <div className={styles.newItemsChips}>
-                      <div className={styles.chip}>
-                        <span>
-                          {newFilmStock.filmTypeName} (ISO {newFilmStock.defaultIso})
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewFilmStock(null);
-                            handleChange({ field: 'filmType', value: '' });
-                            setHasChanges(true);
-                          }}
-                          className={styles.chipRemove}
-                          aria-label="Remove new film stock"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Film Format</label>
                   <select
-                    value={formData.filmFormat}
-                    onChange={(e) => handleChange({ field: 'filmFormat', value: e.target.value })}
+                    value={getFormValue(updateImageDTO.filmFormat, initialValues.filmFormat, '') ?? ''}
+                    onChange={(e) => updateDTO({ filmFormat: e.target.value || null })}
                     className={styles.formSelect}
                   >
                     <option value="">Select format</option>
@@ -715,91 +539,81 @@ export default function ImageMetadataModal({
           <div className={styles.formSection}>
             <h3 className={styles.sectionHeading}>Tags & People</h3>
 
-            <MetadataDropdown
+            <UnifiedMetadataSelector<ContentTagModel>
               label="Tags"
-              options={allTags}
-              selectedIds={formData.selectedTagIds}
-              onChange={(ids) => handleChange({ field: 'selectedTagIds', value: ids })}
               multiSelect
-              placeholder="Select tags or add new"
+              options={availableTags}
+              selectedValues={getDisplayTags(updateImageDTO, initialValues.tags, availableTags)}
+              onChange={(tags) => handleMetadataChange('tags', tags)}
               allowAddNew
-              onAddNew={handleAddNewTag}
+              onAddNew={(data) => {
+                // Create new tag object and add it to current selection
+                const newTag: ContentTagModel = {
+                  id: 0,
+                  name: data.name as string,
+                };
+                const currentTags = getDisplayTags(updateImageDTO, initialValues.tags, availableTags);
+                handleMetadataChange('tags', [...currentTags, newTag]);
+              }}
+              addNewFields={[
+                {
+                  name: 'name',
+                  label: 'Tag Name',
+                  type: 'text',
+                  placeholder: 'Enter new tag',
+                  required: true,
+                },
+              ]}
+              getDisplayName={(tag) => tag.name}
+              changeButtonText="Select More ▼"
+              emptyText="No tags selected"
             />
 
-            {/* Display newly created tags */}
-            {newTagNames.length > 0 && (
-              <div className={styles.newItemsDisplay}>
-                <span className={styles.newItemsLabel}>New tags to be created:</span>
-                <div className={styles.newItemsChips}>
-                  {newTagNames.map((tagName) => (
-                    <div key={tagName} className={styles.chip}>
-                      <span>{tagName}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewTagNames(prev => prev.filter(name => name !== tagName));
-                          setHasChanges(true);
-                        }}
-                        className={styles.chipRemove}
-                        aria-label={`Remove ${tagName}`}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <MetadataDropdown
+            <UnifiedMetadataSelector<ContentPersonModel>
               label="People"
-              options={allPeople}
-              selectedIds={formData.selectedPeopleIds}
-              onChange={(ids) => handleChange({ field: 'selectedPeopleIds', value: ids })}
               multiSelect
-              placeholder="Select people or add new"
+              options={availablePeople}
+              selectedValues={getDisplayPeople(updateImageDTO, initialValues.people, availablePeople)}
+              onChange={(people) => handleMetadataChange('people', people)}
               allowAddNew
-              onAddNew={handleAddNewPerson}
+              onAddNew={(data) => {
+                // Create new person object and add it to current selection
+                const newPerson: ContentPersonModel = {
+                  id: 0,
+                  name: data.name as string,
+                };
+                const currentPeople = getDisplayPeople(updateImageDTO, initialValues.people, availablePeople);
+                handleMetadataChange('people', [...currentPeople, newPerson]);
+              }}
+              addNewFields={[
+                {
+                  name: 'name',
+                  label: 'Person Name',
+                  type: 'text',
+                  placeholder: 'Enter person name',
+                  required: true,
+                },
+              ]}
+              getDisplayName={(person) => person.name}
+              changeButtonText="Select More ▼"
+              emptyText="No people selected"
             />
-
-            {/* Display newly created people */}
-            {newPersonNames.length > 0 && (
-              <div className={styles.newItemsDisplay}>
-                <span className={styles.newItemsLabel}>New people to be created:</span>
-                <div className={styles.newItemsChips}>
-                  {newPersonNames.map((personName) => (
-                    <div key={personName} className={styles.chip}>
-                      <span>{personName}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewPersonNames(prev => prev.filter(name => name !== personName));
-                          setHasChanges(true);
-                        }}
-                        className={styles.chipRemove}
-                        aria-label={`Remove ${personName}`}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Collections */}
           <div className={styles.formSection}>
             <h3 className={styles.sectionHeading}>Collections</h3>
 
-            <MetadataDropdown
+            <UnifiedMetadataSelector<{ id: number; name: string }>
               label="Collections"
-              options={allCollections}
-              selectedIds={formData.selectedCollections}
-              onChange={(ids) => handleChange({ field: 'selectedCollections', value: ids })}
               multiSelect
-              placeholder="Select collections"
+              options={allCollections}
+              selectedValues={getDisplayCollections(updateImageDTO, initialValues.collections)}
+              onChange={(collections) => handleMetadataChange('collections', collections)}
               allowAddNew={false}
+              getDisplayName={(collection) => collection.name}
+              changeButtonText="Select More ▼"
+              emptyText="No collections selected"
             />
           </div>
 

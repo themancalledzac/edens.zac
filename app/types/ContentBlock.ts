@@ -5,7 +5,7 @@
  * All blocks extend the base ContentBlock interface for consistent behavior.
  */
 
-import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './ImageMetadata';
+import type { ContentCameraModel, ContentLensModel, ContentPersonModel, ContentTagModel } from './ImageMetadata';
 
 /** Content block kinds supported by the system. */
 export type ContentBlockType = 'IMAGE' | 'TEXT' | 'CODE' | 'GIF' | 'PARALLAX';
@@ -93,11 +93,12 @@ export interface ImageContentBlock extends ContentBlock {
   filmFormat?: string | null; // Enum name (e.g., "MM_35")
 
   /**
-   * Relationships to tags, people, and camera
+   * Relationships to tags, people, camera, and lens
    */
   tags?: ContentTagModel[];
   people?: ContentPersonModel[];
   cameraModel?: ContentCameraModel | null;
+  lensModel?: ContentLensModel | null;
 
   /**
    * List of collections this image belongs to
