@@ -23,16 +23,12 @@ import { fetchPatchJsonApi } from './core';
 
 /**
  * Request DTO for creating a new film type on the fly
- *
- * Backend auto-generates technical name from filmTypeName:
- * - filmTypeName: "Kodak Portra 400" → technical name: "KODAK_PORTRA_400"
  */
 export interface NewFilmTypeRequest {
   /**
-   * Human-readable film type name (e.g., "Kodak Portra 400")
-   * Backend will auto-generate technical name from this
+   * Film type name (e.g., "Kodak Portra 400")
    */
-  filmTypeName: string;
+  name: string;
 
   /** Default ISO value for this film stock */
   defaultIso: number;
@@ -133,8 +129,15 @@ export interface UpdateImageDTO {
 
   /**
    * List of collections this image belongs to
-   * Each entry should include collectionId and collectionName
-   * Backend will automatically set visible=true and assign orderIndex
+   * Each entry should include collectionId, collectionName, and optionally visible/orderIndex
+   *
+   * Backend behavior:
+   * - If visible is provided (true/false), backend will set it to that value
+   * - If visible is null/undefined, backend will preserve the existing value
+   * - If orderIndex is provided, backend will set it to that value
+   * - If orderIndex is null/undefined, backend will preserve the existing value
+   *
+   * Recommended: Always send the full ImageCollection object with all fields when updating
    */
   collections?: ImageCollection[] | null;
 }
@@ -160,8 +163,8 @@ export interface UpdateImageDTO {
  * // Update image collection associations
  * await updateImage(123, {
  *   collections: [
- *     { collectionId: 1, collectionName: "Portfolio", visible: true, orderIndex: 0 },
- *     { collectionId: 2, collectionName: "Landscapes", visible: true, orderIndex: 5 }
+ *     { collectionId: 1, name: "Portfolio", visible: true, orderIndex: 0 },
+ *     { collectionId: 2, name: "Landscapes", visible: true, orderIndex: 5 }
  *   ]
  * });
  *

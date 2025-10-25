@@ -78,13 +78,13 @@ describe('updateImage', () => {
       const collections: ImageCollection[] = [
         {
           collectionId: 1,
-          collectionName: 'Portfolio',
+          name: 'Portfolio',
           visible: true,
           orderIndex: 0,
         },
         {
           collectionId: 2,
-          collectionName: 'Landscapes',
+          name: 'Landscapes',
           visible: true,
           orderIndex: 5,
         },
@@ -190,7 +190,7 @@ describe('updateImage', () => {
       const collections: ImageCollection[] = [
         {
           collectionId: 1,
-          collectionName: 'Test Collection',
+          name: 'Test Collection',
           // visible and orderIndex are optional
         },
       ];

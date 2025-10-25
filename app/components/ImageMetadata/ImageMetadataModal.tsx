@@ -28,7 +28,6 @@ import {
   getDisplayTags,
   getFormValue,
   type MetadataType,
-  toDTOFormat,
 } from './imageMetadataUtils';
 import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 
@@ -103,24 +102,35 @@ export default function ImageMetadataModal({
   // Derive hasChanges - true if any field in DTO is defined
   const hasChanges = Object.keys(updateImageDTO).length > 0;
 
-  // Single generic handler for all metadata changes - delegates to util function
+  // Single generic handler for all metadata changes
   const handleMetadataChange = (type: MetadataType, value: unknown) => {
-    console.log('[ImageMetadataModal] handleMetadataChange called:', { type, value });
-    const updates = buildMetadataUpdate(type, value, toDTOFormat);
-    console.log('[ImageMetadataModal] buildMetadataUpdate returned:', updates);
-    updateDTO(updates);
-    console.log('[ImageMetadataModal] After updateDTO, new DTO:', { ...updateImageDTO, ...updates });
+    // Collections: apply current visibility to all, use sequential ordering
+    if (type === 'collections') {
+      const currentVisible = updateImageDTO.collections?.[0]?.visible ?? initialValues.collections?.[0]?.visible ?? true;
+
+      updateDTO({
+        collections: (value as Array<{ id: number; name: string }>).map((c, index) => ({
+          collectionId: c.id,
+          name: c.name,
+          visible: currentVisible,
+          orderIndex: index,  // Simple sequential ordering
+        }))
+      });
+      return;
+    }
+
+    // All other metadata types
+    updateDTO(buildMetadataUpdate(type, value));
   };
 
   // Handle adding new film stock from unified selector
   const handleAddNewFilmStock = (data: Record<string, string | number>) => {
-    const filmTypeName = data.filmTypeName as string;
+    const name = data.name as string;
     const defaultIso = data.defaultIso as number;
 
     const newFilmStock: FilmTypeModel = {
       id: 0,
-      name: filmTypeName.toUpperCase().replace(/\s+/g, '_'),
-      displayName: filmTypeName,
+      name,
       defaultIso,
     };
 
@@ -128,7 +138,7 @@ export default function ImageMetadataModal({
   };
 
   // Prepare collection data for UnifiedMetadataSelector
-  const allCollections = availableCollections.map(c => ({ id: c.id, name: c.collectionName }));
+  const allCollections = availableCollections.map(c => ({ id: c.id, name: c.name }));
 
   // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
@@ -336,6 +346,31 @@ export default function ImageMetadataModal({
                 <option value="5">5 Stars</option>
               </select>
             </div>
+
+            {/* Collection Visibility - Only for single image edit */}
+            {!isBulkEdit && (
+              <div className={styles.checkboxGroup}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={getFormValue(
+                      updateImageDTO.collections?.[0]?.visible,
+                      initialValues.collections?.[0]?.visible,
+                      true
+                    ) ?? true}
+                    onChange={(e) => {
+                      const currentCollections = updateImageDTO.collections ?? initialValues.collections ?? [];
+                      const updatedCollections = currentCollections.map(c => ({
+                        ...c,
+                        visible: e.target.checked
+                      }));
+                      updateDTO({ collections: updatedCollections });
+                    }}
+                  />
+                  <span>Collection Visibility</span>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Camera Metadata */}
@@ -375,29 +410,15 @@ export default function ImageMetadataModal({
               label="Lens"
               multiSelect={false}
               options={availableLenses}
-              selectedValue={(() => {
-                const displayLens = getDisplayLens(updateImageDTO, initialValues.lensModel, availableLenses);
-                console.log('[ImageMetadataModal] Lens Display Value:', {
-                  displayLens,
-                  updateImageDTO: { lensId: updateImageDTO.lensId, lensName: updateImageDTO.lensName },
-                  initialLens: initialValues.lensModel,
-                  availableLensesCount: availableLenses.length,
-                });
-                return displayLens;
-              })()}
-              onChange={(lens) => {
-                console.log('[ImageMetadataModal] Lens onChange called with:', lens);
-                handleMetadataChange('lens', lens);
-              }}
+              selectedValue={getDisplayLens(updateImageDTO, initialValues.lensModel, availableLenses)}
+              onChange={(lens) => handleMetadataChange('lens', lens)}
               allowAddNew
               onAddNew={(data) => {
-                console.log('[ImageMetadataModal] Lens onAddNew called with:', data);
                 // Create new lens object and trigger onChange
                 const newLens: ContentLensModel = {
                   id: 0,
                   name: data.name as string,
                 };
-                console.log('[ImageMetadataModal] Created new lens object:', newLens);
                 handleMetadataChange('lens', newLens);
               }}
               addNewFields={[
@@ -496,7 +517,7 @@ export default function ImageMetadataModal({
                   onAddNew={handleAddNewFilmStock}
                   addNewFields={[
                     {
-                      name: 'filmTypeName',
+                      name: 'name',
                       label: 'Film Stock Name',
                       type: 'text',
                       placeholder: 'e.g., Kodak Portra 400',
@@ -511,7 +532,7 @@ export default function ImageMetadataModal({
                       min: 1,
                     },
                   ]}
-                  getDisplayName={(film) => `${film.displayName} (ISO ${film.defaultIso})`}
+                  getDisplayName={(film) => `${film.name} (ISO ${film.defaultIso})`}
                   showNewIndicator
                   emptyText="No film stock set"
                 />

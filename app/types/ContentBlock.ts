@@ -23,7 +23,7 @@ export interface ImageCollection {
   /**
    * The name of the collection (for reference/validation)
    */
-  collectionName: string;
+  name: string;
 
   /**
    * Whether the image is visible in this collection

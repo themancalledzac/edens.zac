@@ -80,12 +80,15 @@ export function getCommonValues(images: ImageContentBlock[]): Partial<ImageConte
 
   // Camera settings
   if (images.every(img => img.camera?.id === first.camera?.id)) common.camera = first.camera;
-  if (images.every(img => img.lensModel?.id === first.lensModel?.id)) common.lensModel = first.lensModel;
+  if (images.every(img => img.lensModel?.id === first.lensModel?.id))
+    common.lensModel = first.lensModel;
   if (images.every(img => img.lens === first.lens)) common.lens = first.lens;
   if (images.every(img => img.iso === first.iso)) common.iso = first.iso;
   if (images.every(img => img.fstop === first.fstop)) common.fstop = first.fstop;
-  if (images.every(img => img.shutterSpeed === first.shutterSpeed)) common.shutterSpeed = first.shutterSpeed;
-  if (images.every(img => img.focalLength === first.focalLength)) common.focalLength = first.focalLength;
+  if (images.every(img => img.shutterSpeed === first.shutterSpeed))
+    common.shutterSpeed = first.shutterSpeed;
+  if (images.every(img => img.focalLength === first.focalLength))
+    common.focalLength = first.focalLength;
 
   // Booleans - only if ALL true
   if (images.every(img => img.blackAndWhite === true)) common.blackAndWhite = true;
@@ -93,37 +96,27 @@ export function getCommonValues(images: ImageContentBlock[]): Partial<ImageConte
 
   // Film settings
   if (images.every(img => img.filmType === first.filmType)) common.filmType = first.filmType;
-  if (images.every(img => img.filmFormat === first.filmFormat)) common.filmFormat = first.filmFormat;
+  if (images.every(img => img.filmFormat === first.filmFormat))
+    common.filmFormat = first.filmFormat;
 
   // Rating
   if (images.every(img => img.rating === first.rating)) common.rating = first.rating;
 
   // Arrays - intersection (tags/people/collections present in ALL images)
-  common.tags = getCommonArrayItems(images.map(img => img.tags || []), 'id');
-  common.people = getCommonArrayItems(images.map(img => img.people || []), 'id');
-  common.collections = getCommonArrayItems(images.map(img => img.collections || []), 'collectionId');
+  common.tags = getCommonArrayItems(
+    images.map(img => img.tags || []),
+    'id'
+  );
+  common.people = getCommonArrayItems(
+    images.map(img => img.people || []),
+    'id'
+  );
+  common.collections = getCommonArrayItems(
+    images.map(img => img.collections || []),
+    'collectionId'
+  );
 
   return common;
-}
-
-/**
- * Convert ImageCollection array to simple {id, name} format for UnifiedMetadataSelector
- */
-export function toSelectorFormat(collections: ImageCollection[]): Array<{ id: number; name: string }> {
-  return collections.map(c => ({
-    id: c.collectionId,
-    name: c.collectionName,
-  }));
-}
-
-/**
- * Convert simple {id, name} format back to ImageCollection for DTO
- */
-export function toDTOFormat(collections: Array<{ id: number; name: string }>): ImageCollection[] {
-  return collections.map(c => ({
-    collectionId: c.id,
-    collectionName: c.name,
-  }));
 }
 
 // ============================================================================
@@ -152,20 +145,22 @@ export function getDisplayItems<T extends { id: number }>(
   availableItems: T[]
 ): T[] {
   // Get existing IDs from DTO or fallback to initial items
-  const existingIds = updateDTO[existingIdsKey] !== undefined
-    ? (updateDTO[existingIdsKey] as number[] | null)
-    : initialItems?.map(item => item.id);
+  const existingIds =
+    updateDTO[existingIdsKey] !== undefined
+      ? (updateDTO[existingIdsKey] as number[] | null)
+      : initialItems?.map(item => item.id);
 
   // Filter available items by IDs
-  const existing = existingIds
-    ? availableItems.filter(item => existingIds.includes(item.id))
-    : [];
+  const existing = existingIds ? availableItems.filter(item => existingIds.includes(item.id)) : [];
 
   // Create pseudo-objects for new items (id: 0 indicates new)
-  const newItems = ((updateDTO[newItemsKey] as string[] | null) || []).map(name => ({
-    id: 0,
-    [nameProperty]: name
-  } as T));
+  const newItems = ((updateDTO[newItemsKey] as string[] | null) || []).map(
+    name =>
+      ({
+        id: 0,
+        [nameProperty]: name,
+      }) as T
+  );
 
   return [...existing, ...newItems];
 }
@@ -189,20 +184,31 @@ export function getDisplayPeople<T extends { id: number; name: string }>(
   initialPeople: T[] | undefined,
   availablePeople: T[]
 ): T[] {
-  return getDisplayItems(updateDTO, 'personIds', 'newPeople', 'name', initialPeople, availablePeople);
+  return getDisplayItems(
+    updateDTO,
+    'personIds',
+    'newPeople',
+    'name',
+    initialPeople,
+    availablePeople
+  );
 }
 
 /**
  * Get display collections from DTO or initialValues
  */
 export function getDisplayCollections(
-  updateDTO: { collections?: ImageCollection[] | null },
+  updateDTO: { collections?: ImageCollection[] | null }, // TODO: only pass the updateDTO.collections, not the entire updateDTO
   initialCollections: ImageCollection[] | undefined
 ): Array<{ id: number; name: string }> {
-  const collections = updateDTO.collections !== undefined
-    ? updateDTO.collections
-    : initialCollections;
-  return collections ? toSelectorFormat(collections) : [];
+  const collections =
+    updateDTO.collections !== undefined ? updateDTO.collections : initialCollections;
+  return collections
+    ? collections.map(c => ({
+        id: c.collectionId,
+        name: c.name,
+      }))
+    : [];
 }
 
 /**
@@ -225,23 +231,12 @@ export function getDisplayItem<T extends { id?: number }>(
   initialItem: T | null | undefined,
   availableItems: T[]
 ): T | null {
-  console.log('[getDisplayItem] Called with:', {
-    idKey,
-    nameKey,
-    nameProperty,
-    dtoIdValue: updateDTO[idKey],
-    dtoNameValue: updateDTO[nameKey],
-    initialItem,
-  });
-
   // Check if name field is defined in DTO (new item) - CHECK THIS FIRST
   // This takes precedence because when adding a new item, we set both lensId=null and lensName="name"
   if (updateDTO[nameKey] !== undefined) {
     const name = updateDTO[nameKey] as string | null;
-    console.log('[getDisplayItem] Name field defined:', name);
     if (name !== null && name !== '') {
       const newItem = { id: 0, [nameProperty]: name } as T;
-      console.log('[getDisplayItem] Created new item:', newItem);
       return newItem;
     }
   }
@@ -249,15 +244,12 @@ export function getDisplayItem<T extends { id?: number }>(
   // Check if ID field is defined in DTO (existing item)
   if (updateDTO[idKey] !== undefined) {
     const id = updateDTO[idKey] as number | null;
-    console.log('[getDisplayItem] ID field defined:', id);
     if (id === null) return null;
     const found = availableItems.find(item => item.id === id) || null;
-    console.log('[getDisplayItem] Found by ID:', found);
     return found;
   }
 
   // Fallback to initial item
-  console.log('[getDisplayItem] Falling back to initial item:', initialItem);
   return initialItem || null;
 }
 
@@ -269,7 +261,14 @@ export function getDisplayCamera<T extends { id?: number; name: string }>(
   initialCamera: T | null | undefined,
   availableCameras: T[]
 ): T | null {
-  return getDisplayItem(updateDTO, 'cameraModelId', 'cameraName', 'name', initialCamera, availableCameras);
+  return getDisplayItem(
+    updateDTO,
+    'cameraModelId',
+    'cameraName',
+    'name',
+    initialCamera,
+    availableCameras
+  );
 }
 
 /**
@@ -280,24 +279,26 @@ export function getDisplayLens<T extends { id?: number; name: string }>(
   initialLens: T | null | undefined,
   availableLenses: T[]
 ): T | null {
-  const result = getDisplayItem(updateDTO, 'lensId', 'lensName', 'name', initialLens, availableLenses);
-  console.log('[getDisplayLens] Called with:', {
-    updateDTO: { lensId: updateDTO.lensId, lensName: updateDTO.lensName },
+  return getDisplayItem(
+    updateDTO,
+    'lensId',
+    'lensName',
+    'name',
     initialLens,
-    availableLensesCount: availableLenses.length,
-    result,
-  });
-  return result;
+    availableLenses
+  );
 }
 
 /**
  * Get display film stock from DTO or initialValues
  * Handles filmTypeId (existing), newFilmType (new), or filmType string
  */
-export function getDisplayFilmStock<T extends { id: number; name?: string; displayName: string; defaultIso: number }>(
+export function getDisplayFilmStock<
+  T extends { id: number; name: string; defaultIso: number },
+>(
   updateDTO: {
     filmTypeId?: number | null;
-    newFilmType?: { filmTypeName: string; defaultIso: number } | null;
+    newFilmType?: { name: string; defaultIso: number } | null;
   },
   initialFilmType: string | null | undefined,
   availableFilmTypes: T[]
@@ -310,13 +311,12 @@ export function getDisplayFilmStock<T extends { id: number; name?: string; displ
     if (updateDTO.newFilmType === null) return null;
     return {
       id: 0,
-      name: updateDTO.newFilmType.filmTypeName.toUpperCase().replace(/\s+/g, '_'),
-      displayName: updateDTO.newFilmType.filmTypeName,
+      name: updateDTO.newFilmType.name,
       defaultIso: updateDTO.newFilmType.defaultIso,
     } as T;
   }
   if (initialFilmType) {
-    return availableFilmTypes.find(f => f.displayName === initialFilmType) || null;
+    return availableFilmTypes.find(f => f.name === initialFilmType) || null;
   }
   return null;
 }
@@ -329,18 +329,16 @@ export function getDisplayFilmStock<T extends { id: number; name?: string; displ
 export type MetadataType = 'tags' | 'people' | 'collections' | 'camera' | 'lens' | 'filmStock';
 
 /**
- * Generic handler for all metadata changes
+ * Generic handler for all metadata changes (except collections, which is handled separately)
  * Processes the value based on type and returns the appropriate DTO updates
  *
- * @param type - The type of metadata being changed
+ * @param type - The type of metadata being changed (tags, people, camera, lens, filmStock)
  * @param value - The new value (varies by type)
- * @param toDTOFormat - Helper to convert collections to DTO format
  * @returns Partial DTO updates to apply
  */
 export function buildMetadataUpdate(
-  type: MetadataType,
-  value: unknown,
-  toDTOFormat: (collections: Array<{ id: number; name: string }>) => ImageCollection[]
+  type: Exclude<MetadataType, 'collections'>,
+  value: unknown
 ): Partial<UpdateImageDTO> {
   switch (type) {
     case 'tags': {
@@ -363,13 +361,6 @@ export function buildMetadataUpdate(
       };
     }
 
-    case 'collections': {
-      const collections = value as Array<{ id: number; name: string }>;
-      return {
-        collections: collections.length > 0 ? toDTOFormat(collections) : []
-      };
-    }
-
     case 'camera': {
       const camera = value as ContentCameraModel | null;
       if (!camera) {
@@ -383,16 +374,12 @@ export function buildMetadataUpdate(
 
     case 'lens': {
       const lens = value as ContentLensModel | null;
-      console.log('[buildMetadataUpdate] Processing lens:', lens);
       if (!lens) {
-        console.log('[buildMetadataUpdate] Lens is null, clearing');
         return { lensId: null, lensName: null };
       }
       if (lens.id && lens.id > 0) {
-        console.log('[buildMetadataUpdate] Lens has existing ID:', lens.id);
         return { lensId: lens.id, lensName: null };
       }
-      console.log('[buildMetadataUpdate] Lens is new, using name:', lens.name);
       return { lensId: null, lensName: lens.name };
     }
 
@@ -403,7 +390,7 @@ export function buildMetadataUpdate(
       }
 
       const updates: Partial<UpdateImageDTO> = {
-        filmType: filmStock.displayName || null,
+        filmType: filmStock.name || null,
       };
 
       // Auto-populate ISO from selected film stock's defaultIso
@@ -413,7 +400,7 @@ export function buildMetadataUpdate(
         updates.newFilmType = null;
       } else {
         updates.newFilmType = {
-          filmTypeName: filmStock.displayName,
+          name: filmStock.name,
           defaultIso: filmStock.defaultIso,
         };
         updates.iso = filmStock.defaultIso;

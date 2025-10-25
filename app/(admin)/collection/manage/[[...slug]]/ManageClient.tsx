@@ -795,6 +795,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
           availableTags={metadata.tags}
           availablePeople={metadata.people}
           availableCameras={metadata.cameras}
+          availableLenses={metadata.lenses}
           availableFilmTypes={metadata.filmTypes}
           availableFilmFormats={metadata.filmFormats}
           availableCollections={metadata.collections}
