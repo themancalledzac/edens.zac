@@ -33,7 +33,6 @@ export default async function ManageCollectionPage({ params }: ManageCollectionP
   // UPDATE MODE: Slug provided, fetch collection data server-side (admin version)
   try {
     const collection = await fetchCollectionBySlugAdmin(slug);
-    console.log(JSON.stringify(collection));
 
     if (!collection) {
       return notFound();

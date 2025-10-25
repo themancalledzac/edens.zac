@@ -7,13 +7,6 @@
 
 import type { UpdateImageDTO } from '@/app/lib/api/images';
 import type { ImageCollection, ImageContentBlock } from '@/app/types/ContentBlock';
-import type {
-  ContentCameraModel,
-  ContentLensModel,
-  ContentPersonModel,
-  ContentTagModel,
-  FilmTypeModel,
-} from '@/app/types/ImageMetadata';
 
 // ============================================================================
 // Pure Helper Functions
@@ -125,40 +118,31 @@ export function getCommonValues(images: ImageContentBlock[]): Partial<ImageConte
 // ============================================================================
 
 /**
- * Generic function to get display items for multi-select metadata (tags, people)
- * Combines existing item IDs with new item names
+ * Get display items for multi-select using prev/newValue pattern
+ * Combines existing item IDs (prev) with new item names (newValue)
  *
- * @param updateDTO - The update DTO containing changes
- * @param existingIdsKey - Key in DTO for existing item IDs (e.g., 'tagIds', 'personIds')
- * @param newItemsKey - Key in DTO for new item names (e.g., 'newTags', 'newPeople')
- * @param nameProperty - Property name for the item name (e.g., 'tagName', 'personName')
+ * @param update - The update object containing prev/newValue
  * @param initialItems - Initial items from the image
  * @param availableItems - All available items to select from
  * @returns Combined array of existing and new items
  */
-export function getDisplayItems<T extends { id: number }>(
-  updateDTO: UpdateImageDTO,
-  existingIdsKey: keyof UpdateImageDTO,
-  newItemsKey: keyof UpdateImageDTO,
-  nameProperty: string,
+export function getDisplayItemsFromUpdate<T extends { id: number; name: string }>(
+  update: { prev?: number[]; newValue?: string[] } | undefined,
   initialItems: T[] | undefined,
   availableItems: T[]
 ): T[] {
-  // Get existing IDs from DTO or fallback to initial items
-  const existingIds =
-    updateDTO[existingIdsKey] !== undefined
-      ? (updateDTO[existingIdsKey] as number[] | null)
-      : initialItems?.map(item => item.id);
+  // Get existing IDs from update.prev or fallback to initial items
+  const existingIds = update?.prev !== undefined ? update.prev : initialItems?.map(item => item.id);
 
   // Filter available items by IDs
   const existing = existingIds ? availableItems.filter(item => existingIds.includes(item.id)) : [];
 
   // Create pseudo-objects for new items (id: 0 indicates new)
-  const newItems = ((updateDTO[newItemsKey] as string[] | null) || []).map(
+  const newItems = (update?.newValue || []).map(
     name =>
       ({
         id: 0,
-        [nameProperty]: name,
+        name,
       }) as T
   );
 
@@ -166,43 +150,36 @@ export function getDisplayItems<T extends { id: number }>(
 }
 
 /**
- * Wrapper for getDisplayItems specifically for tags
+ * Get display tags from DTO or initialValues using prev/newValue pattern
  */
 export function getDisplayTags<T extends { id: number; name: string }>(
   updateDTO: UpdateImageDTO,
   initialTags: T[] | undefined,
   availableTags: T[]
 ): T[] {
-  return getDisplayItems(updateDTO, 'tagIds', 'newTags', 'name', initialTags, availableTags);
+  return getDisplayItemsFromUpdate(updateDTO.tags, initialTags, availableTags);
 }
 
 /**
- * Wrapper for getDisplayItems specifically for people
+ * Get display people from DTO or initialValues using prev/newValue pattern
  */
 export function getDisplayPeople<T extends { id: number; name: string }>(
   updateDTO: UpdateImageDTO,
   initialPeople: T[] | undefined,
   availablePeople: T[]
 ): T[] {
-  return getDisplayItems(
-    updateDTO,
-    'personIds',
-    'newPeople',
-    'name',
-    initialPeople,
-    availablePeople
-  );
+  return getDisplayItemsFromUpdate(updateDTO.people, initialPeople, availablePeople);
 }
 
 /**
- * Get display collections from DTO or initialValues
+ * Get display collections from DTO or initialValues using prev pattern
  */
 export function getDisplayCollections(
-  updateDTO: { collections?: ImageCollection[] | null }, // TODO: only pass the updateDTO.collections, not the entire updateDTO
+  updateDTO: UpdateImageDTO,
   initialCollections: ImageCollection[] | undefined
 ): Array<{ id: number; name: string }> {
   const collections =
-    updateDTO.collections !== undefined ? updateDTO.collections : initialCollections;
+    updateDTO.collections?.prev !== undefined ? updateDTO.collections.prev : initialCollections;
   return collections
     ? collections.map(c => ({
         id: c.collectionId,
@@ -212,41 +189,32 @@ export function getDisplayCollections(
 }
 
 /**
- * Generic function to get display item for single-select metadata (camera, lens)
- * Handles both existing item ID and new item name
+ * Get display item for single-select using prev/newValue/remove pattern
  *
- * @param updateDTO - The update DTO containing changes
- * @param idKey - Key in DTO for existing item ID (e.g., 'cameraModelId', 'lensId')
- * @param nameKey - Key in DTO for new item name (e.g., 'cameraName', 'lensName')
- * @param nameProperty - Property name for the item name (e.g., 'cameraName', 'lensName')
+ * @param update - The update object containing prev/newValue/remove
  * @param initialItem - Initial item from the image
  * @param availableItems - All available items to select from
  * @returns Single item or null
  */
-export function getDisplayItem<T extends { id?: number }>(
-  updateDTO: UpdateImageDTO,
-  idKey: keyof UpdateImageDTO,
-  nameKey: keyof UpdateImageDTO,
-  nameProperty: string,
+export function getDisplayItemFromUpdate<T extends { id?: number; name: string }>(
+  update: { prev?: number; newValue?: string; remove?: boolean } | undefined,
   initialItem: T | null | undefined,
   availableItems: T[]
 ): T | null {
-  // Check if name field is defined in DTO (new item) - CHECK THIS FIRST
-  // This takes precedence because when adding a new item, we set both lensId=null and lensName="name"
-  if (updateDTO[nameKey] !== undefined) {
-    const name = updateDTO[nameKey] as string | null;
-    if (name !== null && name !== '') {
-      const newItem = { id: 0, [nameProperty]: name } as T;
-      return newItem;
-    }
+  // If remove is true, return null
+  if (update?.remove) {
+    return null;
   }
 
-  // Check if ID field is defined in DTO (existing item)
-  if (updateDTO[idKey] !== undefined) {
-    const id = updateDTO[idKey] as number | null;
-    if (id === null) return null;
-    const found = availableItems.find(item => item.id === id) || null;
-    return found;
+  // Check if newValue is defined (new item) - CHECK THIS FIRST
+  if (update?.newValue !== undefined && update.newValue !== null && update.newValue !== '') {
+    return { id: 0, name: update.newValue } as T;
+  }
+
+  // Check if prev is defined (existing item)
+  if (update?.prev !== undefined) {
+    if (update.prev === null) return null;
+    return availableItems.find(item => item.id === update.prev) || null;
   }
 
   // Fallback to initial item
@@ -254,163 +222,168 @@ export function getDisplayItem<T extends { id?: number }>(
 }
 
 /**
- * Wrapper for getDisplayItem specifically for camera
+ * Get display camera from DTO or initialValues using prev/newValue/remove pattern
  */
 export function getDisplayCamera<T extends { id?: number; name: string }>(
   updateDTO: UpdateImageDTO,
   initialCamera: T | null | undefined,
   availableCameras: T[]
 ): T | null {
-  return getDisplayItem(
-    updateDTO,
-    'cameraModelId',
-    'cameraName',
-    'name',
-    initialCamera,
-    availableCameras
-  );
+  return getDisplayItemFromUpdate(updateDTO.camera, initialCamera, availableCameras);
 }
 
 /**
- * Wrapper for getDisplayItem specifically for lens
+ * Get display lens from DTO or initialValues using prev/newValue/remove pattern
  */
 export function getDisplayLens<T extends { id?: number; name: string }>(
   updateDTO: UpdateImageDTO,
   initialLens: T | null | undefined,
   availableLenses: T[]
 ): T | null {
-  return getDisplayItem(
-    updateDTO,
-    'lensId',
-    'lensName',
-    'name',
-    initialLens,
-    availableLenses
-  );
+  return getDisplayItemFromUpdate(updateDTO.lens, initialLens, availableLenses);
 }
 
 /**
- * Get display film stock from DTO or initialValues
- * Handles filmTypeId (existing), newFilmType (new), or filmType string
+ * Get display film stock from DTO or initialValues using prev/newValue/remove pattern
  */
 export function getDisplayFilmStock<
   T extends { id: number; name: string; defaultIso: number },
 >(
-  updateDTO: {
-    filmTypeId?: number | null;
-    newFilmType?: { name: string; defaultIso: number } | null;
-  },
+  updateDTO: UpdateImageDTO,
   initialFilmType: string | null | undefined,
   availableFilmTypes: T[]
 ): T | null {
-  if (updateDTO.filmTypeId !== undefined) {
-    if (updateDTO.filmTypeId === null) return null;
-    return availableFilmTypes.find(f => f.id === updateDTO.filmTypeId) || null;
+  const update = updateDTO.filmType;
+
+  // If remove is true, return null
+  if (update?.remove) {
+    return null;
   }
-  if (updateDTO.newFilmType !== undefined) {
-    if (updateDTO.newFilmType === null) return null;
+
+  // Check if newValue is defined (new film type)
+  if (update?.newValue !== undefined && update.newValue !== null) {
     return {
       id: 0,
-      name: updateDTO.newFilmType.name,
-      defaultIso: updateDTO.newFilmType.defaultIso,
+      name: update.newValue.name,
+      defaultIso: update.newValue.defaultIso,
     } as T;
   }
+
+  // Check if prev is defined (existing film type by ID)
+  if (update?.prev !== undefined) {
+    if (update.prev === null) return null;
+    return availableFilmTypes.find(f => f.id === update.prev) || null;
+  }
+
+  // Fallback to initial film type (by name)
   if (initialFilmType) {
     return availableFilmTypes.find(f => f.name === initialFilmType) || null;
   }
+
   return null;
 }
 
 // ============================================================================
-// Metadata Change Handler
-// Generic handler for all metadata type updates
+// Generic Dropdown Change Handler
 // ============================================================================
 
-export type MetadataType = 'tags' | 'people' | 'collections' | 'camera' | 'lens' | 'filmStock';
+/**
+ * Transforms multi-select dropdown values into prevIds and newNames
+ * Used for tags, people, and other multi-select fields with id/name pattern
+ *
+ * @param value - Array of items from selector (can have id: 0 for new items)
+ * @returns Object with prevIds array and newNames array (or null if empty)
+ *
+ * @example
+ * onChange={(value) => {
+ *   const { prevIds, newNames } = extractMultiSelectValues(value);
+ *   handleDropdownChange({ field: 'tags', prevVal: prevIds, newVal: newNames }, updateDTO);
+ * }}
+ */
+export function extractMultiSelectValues<T extends { id?: number; name: string }>(
+  value: T[] | null | undefined
+): { prevIds: number[] | null; newNames: string[] | null } {
+  const items = (value as T[] | null) ?? [];
+  const prevIds = items.filter(item => item.id && item.id > 0).map(item => item.id!);
+  const newNames = items.filter(item => !item.id || item.id === 0).map(item => item.name);
+
+  return {
+    prevIds: prevIds.length > 0 ? prevIds : null,
+    newNames: newNames.length > 0 ? newNames : null,
+  };
+}
 
 /**
- * Generic handler for all metadata changes (except collections, which is handled separately)
- * Processes the value based on type and returns the appropriate DTO updates
- *
- * @param type - The type of metadata being changed (tags, people, camera, lens, filmStock)
- * @param value - The new value (varies by type)
- * @returns Partial DTO updates to apply
+ * Parameters for handleDropdownChange
  */
-export function buildMetadataUpdate(
-  type: Exclude<MetadataType, 'collections'>,
-  value: unknown
-): Partial<UpdateImageDTO> {
-  switch (type) {
-    case 'tags': {
-      const tags = value as ContentTagModel[];
-      const existingTags = tags.filter(t => t.id && t.id > 0);
-      const newTags = tags.filter(t => !t.id || t.id === 0).map(t => t.name);
-      return {
-        tagIds: existingTags.length > 0 ? existingTags.map(t => t.id) : null,
-        newTags: newTags.length > 0 ? newTags : null,
-      };
+export interface DropdownChangeParams {
+  /** Field name in UpdateImageDTO (e.g., 'tags', 'camera', 'lens', 'people') */
+  field: keyof UpdateImageDTO;
+  /**
+   * Raw value from the selector (can be single item, array, or null)
+   * For multi-select with id/name pattern, extraction happens automatically
+   */
+  value: unknown;
+}
+
+/**
+ * Generic handler for all dropdown changes
+ * Automatically extracts prevIds/newNames for multi-select fields with id/name pattern
+ *
+ * @param params - Dropdown change parameters with raw value
+ * @param updateDTO - Function to update the DTO state
+ *
+ * @example
+ * // Multi-select (tags, people) - automatic extraction
+ * onChange={(value) => handleDropdownChange({ field: 'tags', value }, updateDTO)}
+ *
+ * @example
+ * // Single-select with custom logic (camera, lens, collections)
+ * onChange={(value) => {
+ *   const camera = Array.isArray(value) ? value[0] || null : value;
+ *   if (!camera) {
+ *     handleDropdownChange({ field: 'camera', value: { remove: true } }, updateDTO);
+ *   } else if (camera.id && camera.id > 0) {
+ *     handleDropdownChange({ field: 'camera', value: { prev: camera.id } }, updateDTO);
+ *   } else {
+ *     handleDropdownChange({ field: 'camera', value: { newValue: camera.name } }, updateDTO);
+ *   }
+ * }}
+ */
+export function handleDropdownChange(
+  params: DropdownChangeParams,
+  updateDTO: (updates: Partial<UpdateImageDTO>) => void
+): void {
+  const { field, value } = params;
+
+  // Check if this is a multi-select field with id/name pattern (tags, people)
+  const isMultiSelectWithIdName = field === 'tags' || field === 'people';
+
+  let update: Record<string, unknown> = {};
+
+  if (isMultiSelectWithIdName && (Array.isArray(value) || value === null || value === undefined)) {
+    // Auto-extract prevIds and newNames for multi-select fields
+    const { prevIds, newNames } = extractMultiSelectValues(value as Array<{ id?: number; name: string }> | null | undefined);
+
+    if (prevIds !== null) {
+      update.prev = prevIds;
     }
-
-    case 'people': {
-      const people = value as ContentPersonModel[];
-      const existingPeople = people.filter(p => p.id && p.id > 0);
-      const newPeople = people.filter(p => !p.id || p.id === 0).map(p => p.name);
-      return {
-        personIds: existingPeople.length > 0 ? existingPeople.map(p => p.id) : null,
-        newPeople: newPeople.length > 0 ? newPeople : null,
-      };
+    if (newNames !== null) {
+      update.newValue = newNames;
     }
+  } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    // Value is already a formatted update object (for custom handling like camera, lens, collections)
+    update = value as Record<string, unknown>;
+  }
 
-    case 'camera': {
-      const camera = value as ContentCameraModel | null;
-      if (!camera) {
-        return { cameraModelId: null, cameraName: null };
-      }
-      if (camera.id && camera.id > 0) {
-        return { cameraModelId: camera.id, cameraName: null };
-      }
-      return { cameraModelId: null, cameraName: camera.name };
-    }
-
-    case 'lens': {
-      const lens = value as ContentLensModel | null;
-      if (!lens) {
-        return { lensId: null, lensName: null };
-      }
-      if (lens.id && lens.id > 0) {
-        return { lensId: lens.id, lensName: null };
-      }
-      return { lensId: null, lensName: lens.name };
-    }
-
-    case 'filmStock': {
-      const filmStock = value as FilmTypeModel | null;
-      if (!filmStock) {
-        return { filmType: null, filmTypeId: null, newFilmType: null };
-      }
-
-      const updates: Partial<UpdateImageDTO> = {
-        filmType: filmStock.name || null,
-      };
-
-      // Auto-populate ISO from selected film stock's defaultIso
-      if (filmStock.id && filmStock.id > 0) {
-        updates.iso = filmStock.defaultIso;
-        updates.filmTypeId = filmStock.id;
-        updates.newFilmType = null;
-      } else {
-        updates.newFilmType = {
-          name: filmStock.name,
-          defaultIso: filmStock.defaultIso,
-        };
-        updates.iso = filmStock.defaultIso;
-        updates.filmTypeId = null;
-      }
-
-      return updates;
-    }
-
-    default:
-      return {};
+  // Only update if we have at least one field defined
+  if (Object.keys(update).length > 0) {
+    updateDTO({ [field]: update });
   }
 }
+
+// ============================================================================
+// Note: Metadata change handlers moved to ImageMetadataModal.tsx
+// This simplifies the codebase by keeping transformation logic
+// alongside the component that uses it (fewer layers, easier to modify)
+// ============================================================================

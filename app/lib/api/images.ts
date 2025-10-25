@@ -34,11 +34,98 @@ export interface NewFilmTypeRequest {
   defaultIso: number;
 }
 
+// ============================================================================
+// Update Pattern Types (prev/newValue/remove)
+// ============================================================================
+
+/**
+ * Base update pattern for single-select entity (one-to-one relationship)
+ * - prev: ID of existing entity to use
+ * - newValue: Data for new entity to create
+ * - remove: true to remove entity association
+ */
+export interface SingleEntityUpdate<T = string> {
+  prev?: number;
+  newValue?: T;
+  remove?: boolean;
+}
+
+/**
+ * Base update pattern for multi-select entities (many-to-many relationship)
+ * - prev: List of existing entity IDs to keep/add
+ * - newValue: List of data for new entities to create and add
+ * - remove: List of entity IDs to remove
+ */
+export interface MultiEntityUpdate<T = string> {
+  prev?: number[];
+  newValue?: T[];
+  remove?: number[];
+}
+
+/**
+ * Camera update using prev/newValue/remove pattern
+ * - prev: ID of existing camera to use
+ * - newValue: Name of new camera to create
+ * - remove: true to remove camera association
+ */
+export type CameraUpdate = SingleEntityUpdate;
+
+/**
+ * Lens update using prev/newValue/remove pattern
+ * - prev: ID of existing lens to use
+ * - newValue: Name of new lens to create
+ * - remove: true to remove lens association
+ */
+export type LensUpdate = SingleEntityUpdate;
+
+/**
+ * Film type update using prev/newValue/remove pattern
+ * - prev: ID of existing film type to use
+ * - newValue: Film type request to create new type
+ * - remove: true to remove film type association
+ */
+export type FilmTypeUpdate = SingleEntityUpdate<NewFilmTypeRequest>;
+
+/**
+ * Tag update using prev/newValue/remove pattern
+ * - prev: List of existing tag IDs to keep/add
+ * - newValue: List of new tag names to create and add
+ * - remove: List of tag IDs to remove
+ */
+export type TagUpdate = MultiEntityUpdate;
+
+/**
+ * Person update using prev/newValue/remove pattern
+ * - prev: List of existing person IDs to keep/add
+ * - newValue: List of new person names to create and add
+ * - remove: List of person IDs to remove
+ */
+export type PersonUpdate = MultiEntityUpdate;
+
+/**
+ * Collection update using prev/newValue/remove pattern
+ * - prev: Collections to keep/update (with visibility/order)
+ * - newValue: New collections to add
+ * - remove: Collection IDs to remove image from
+ */
+export interface CollectionUpdate {
+  prev?: ImageCollection[];
+  newValue?: ImageCollection[];
+  remove?: number[];
+}
+
+// ============================================================================
+// Main DTO
+// ============================================================================
+
 /**
  * DTO for updating an image
  * All fields are optional - only include fields you want to update
+ *
+ * Uses prev/newValue/remove pattern for entity relationships:
+ * - Simple fields (title, location, etc.) are updated directly
+ * - Entity relationships use the update pattern objects
  */
-
 export interface UpdateImageDTO {
   /** Image ID - required for backend to identify which image to update */
   id?: number;
@@ -58,9 +145,6 @@ export interface UpdateImageDTO {
   /** Image rating (1-5) */
   rating?: number | null;
 
-  /** Camera lens used */
-  lens?: string | null;
-
   /** Whether the image is black and white */
   blackAndWhite?: boolean | null;
 
@@ -70,21 +154,6 @@ export interface UpdateImageDTO {
   /** Camera shutter speed */
   shutterSpeed?: string | null;
 
-  /**
-   * Camera ID to associate with this image (select existing camera)
-   * If both cameraId and cameraName are provided, cameraId takes precedence.
-   */
-  cameraId?: number | null;
-
-  /**
-   * Lens ID to associate with this image (select existing lens)
-   * If both lensId and lensName are provided, lensId takes precedence.
-   */
-  lensId?: number | null;
-
-  /** Lens name - will find existing or create new lens entity */
-  lensName?: string | null;
-
   /** Focal length */
   focalLength?: string | null;
 
@@ -92,54 +161,34 @@ export interface UpdateImageDTO {
   location?: string | null;
 
   /** F-stop value */
-  fstop?: string | null;
+  fStop?: string | null;
 
   /** ISO value */
   iso?: number | null;
 
-  /** Film type - enum name (e.g., "KODAK_PORTRA_400") - only used when isFilm is true */
-  filmType?: string | null;
-
-  /** Film type ID to associate with this image (only when isFilm is true) */
-  filmTypeId?: number | null;
-
-  /** New film type to create and associate with this image (takes precedence over filmTypeId) */
-  newFilmType?: NewFilmTypeRequest | null;
-
   /** Film format - enum name (e.g., "MM_35") - only used when isFilm is true */
   filmFormat?: string | null;
 
-  /** Tag IDs to associate with this image */
-  tagIds?: number[] | null;
+  /** Date the image was created */
+  createDate?: string | null;
 
-  /** Person IDs to associate with this image */
-  personIds?: number[] | null;
+  /** Camera update using prev/newValue/remove pattern */
+  camera?: CameraUpdate;
 
-  /** Camera model ID to associate with this image */
-  cameraModelId?: number | null;
+  /** Lens update using prev/newValue/remove pattern */
+  lens?: LensUpdate;
 
-  /** Camera name - will find existing or create new camera entity */
-  cameraName?: string | null;
+  /** Film type update using prev/newValue/remove pattern */
+  filmType?: FilmTypeUpdate;
 
-  /** List of new tag names to create and associate with this image */
-  newTags?: string[] | null;
+  /** Tag updates using prev/newValue/remove pattern */
+  tags?: TagUpdate;
 
-  /** List of new person names to create and associate with this image */
-  newPeople?: string[] | null;
+  /** Person updates using prev/newValue/remove pattern */
+  people?: PersonUpdate;
 
-  /**
-   * List of collections this image belongs to
-   * Each entry should include collectionId, collectionName, and optionally visible/orderIndex
-   *
-   * Backend behavior:
-   * - If visible is provided (true/false), backend will set it to that value
-   * - If visible is null/undefined, backend will preserve the existing value
-   * - If orderIndex is provided, backend will set it to that value
-   * - If orderIndex is null/undefined, backend will preserve the existing value
-   *
-   * Recommended: Always send the full ImageCollection object with all fields when updating
-   */
-  collections?: ImageCollection[] | null;
+  /** Collection updates using prev/newValue/remove pattern */
+  collections?: CollectionUpdate;
 }
 
 /**

@@ -90,7 +90,7 @@ describe('updateImage', () => {
         },
       ];
       const updates: UpdateImageDTO = {
-        collections,
+        collections: { prev: collections },
       };
       const mockResponse = { id: imageId, collections };
 
@@ -122,10 +122,10 @@ describe('updateImage', () => {
       const imageId = 202;
       const updates: UpdateImageDTO = {
         author: 'John Doe',
-        cameraName: 'Canon EOS R5',
-        lens: 'Canon RF 24-70mm f/2.8',
+        camera: { newValue: 'Canon EOS R5' },
+        lens: { newValue: 'Canon RF 24-70mm f/2.8' },
         iso: 800,
-        fstop: 'f/2.8',
+        fStop: 'f/2.8',
         shutterSpeed: '1/250 sec',
         focalLength: '50 mm',
         blackAndWhite: false,
