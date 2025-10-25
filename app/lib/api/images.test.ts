@@ -78,19 +78,19 @@ describe('updateImage', () => {
       const collections: ImageCollection[] = [
         {
           collectionId: 1,
-          collectionName: 'Portfolio',
+          name: 'Portfolio',
           visible: true,
           orderIndex: 0,
         },
         {
           collectionId: 2,
-          collectionName: 'Landscapes',
+          name: 'Landscapes',
           visible: true,
           orderIndex: 5,
         },
       ];
       const updates: UpdateImageDTO = {
-        collections,
+        collections: { prev: collections },
       };
       const mockResponse = { id: imageId, collections };
 
@@ -122,10 +122,10 @@ describe('updateImage', () => {
       const imageId = 202;
       const updates: UpdateImageDTO = {
         author: 'John Doe',
-        cameraName: 'Canon EOS R5',
-        lens: 'Canon RF 24-70mm f/2.8',
+        camera: { newValue: 'Canon EOS R5' },
+        lens: { newValue: 'Canon RF 24-70mm f/2.8' },
         iso: 800,
-        fstop: 'f/2.8',
+        fStop: 'f/2.8',
         shutterSpeed: '1/250 sec',
         focalLength: '50 mm',
         blackAndWhite: false,
@@ -190,7 +190,7 @@ describe('updateImage', () => {
       const collections: ImageCollection[] = [
         {
           collectionId: 1,
-          collectionName: 'Test Collection',
+          name: 'Test Collection',
           // visible and orderIndex are optional
         },
       ];

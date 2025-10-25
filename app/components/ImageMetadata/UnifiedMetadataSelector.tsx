@@ -130,7 +130,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
 
   /**
    * Get display name for an item
-   * Uses custom getter if provided, otherwise falls back to displayName, name, or empty string
+   * Uses custom getter if provided, otherwise falls back to displayName or name
    */
   const getItemDisplayName = (item: T): string => {
     if (getDisplayName) return getDisplayName(item);

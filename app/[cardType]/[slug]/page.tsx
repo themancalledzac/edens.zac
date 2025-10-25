@@ -101,11 +101,27 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
     return notFound();
   }
 
+  // Filter blocks to only show images visible in this collection
+  const filteredBlocks = (content.blocks as AnyContentBlock[])?.filter(block => {
+    // Only filter IMAGE blocks that have collections metadata
+    if (block.blockType === 'IMAGE' && 'collections' in block) {
+      const imageBlock = block as ImageContentBlock;
+      // Find the collection relationship for the current collection
+      const collectionRelation = imageBlock.collections?.find(
+        c => c.collectionId === content.id
+      );
+      // If found, check visibility (default to true if not specified)
+      return collectionRelation ? (collectionRelation.visible ?? true) : true;
+    }
+    // Non-image blocks are always shown
+    return true;
+  }) || [];
+
   // Build synthetic blocks for unified layout
   const heroBlocks: AnyContentBlock[] = [];
   const image =
     content.coverImage ||
-    (content.blocks.find(block => block.blockType === 'IMAGE') as ImageContentBlock | undefined);
+    (filteredBlocks.find(block => block.blockType === 'IMAGE') as ImageContentBlock | undefined);
   const coverBlock = buildParallaxImageContentBlock(
     image,
     content.collectionDate ?? '',
@@ -116,7 +132,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
   heroBlocks.push(buildMetadataTextBlock(content, coverBlock));
   const combinedBlocks: AnyContentBlock[] = [
     ...heroBlocks,
-    ...((content.blocks as AnyContentBlock[]) || []),
+    ...filteredBlocks,
   ];
 
 

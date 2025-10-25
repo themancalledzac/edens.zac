@@ -390,26 +390,27 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
     [isSelectingCoverImage, isMultiSelectMode, handleCoverImageClick, handleMultiSelectToggle, collection?.blocks, openEditor]
   );
 
-  // Handle successful metadata save - refresh collection and clear selections
+  // Handle successful metadata save - update local state without refetching
   const handleMetadataSaveSuccess = useCallback(
-    async (_updatedImage: ImageContentBlock) => {
+    async (_updatedImage: ImageContentBlock, hasNewMetadata: boolean) => {
       if (!collection) return;
 
       try {
-        // Re-fetch collection to get updated metadata
-        const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
-        setCollection(refreshedCollection);
+        // Optimized: Don't refetch the entire collection - it's already saved
+        // The backend has already persisted the changes
 
-        // Also refresh metadata to include any new tags/people created
-        const refreshedMetadata = await fetchCollectionUpdateMetadata(collection.slug);
-        setMetadata(refreshedMetadata);
+        // If new metadata entities were created, refresh metadata lists only
+        if (hasNewMetadata) {
+          const refreshedMetadata = await fetchCollectionUpdateMetadata(collection.slug);
+          setMetadata(refreshedMetadata);
+        }
 
         // Clear selected images and exit multi-select mode after successful edit
         setSelectedImageIds([]);
         setIsMultiSelectMode(false);
       } catch (error) {
-        console.error('Error refreshing collection after metadata update:', error);
-        setError(handleApiError(error, 'Failed to refresh data. Try reloading the page.'));
+        console.error('Error after metadata update:', error);
+        setError(handleApiError(error, 'An error occurred. Try reloading the page.'));
       }
     },
     [collection]
@@ -795,6 +796,7 @@ export default function ManageClient({ initialCollection }: ManageClientProps) {
           availableTags={metadata.tags}
           availablePeople={metadata.people}
           availableCameras={metadata.cameras}
+          availableLenses={metadata.lenses}
           availableFilmTypes={metadata.filmTypes}
           availableFilmFormats={metadata.filmFormats}
           availableCollections={metadata.collections}

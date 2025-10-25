@@ -6,44 +6,37 @@
  */
 
 /**
- * Content Tag - Used to categorize images
+ * Base model for entities with id and name
  */
-export interface ContentTagModel {
+export interface IdNameModel {
   id: number;
   name: string;
 }
+
+/**
+ * Content Tag - Used to categorize images
+ */
+export type ContentTagModel = IdNameModel
 
 /**
  * Content Person - Represents people tagged in images
  */
-export interface ContentPersonModel {
-  id: number;
-  name: string;
-}
+export type ContentPersonModel = IdNameModel
 
 /**
  * Content Camera - Camera equipment used for photos
  */
-export interface ContentCameraModel {
-  id: number;
-  name: string;
-}
+export type ContentCameraModel = IdNameModel
 
 /**
  * Content Lens - Lens equipment used for photos
  */
-export interface ContentLensModel {
-  id: number;
-  name: string;
-}
+export type ContentLensModel = IdNameModel
 
 /**
  * Film Type - Represents film stock used
  */
-export interface FilmTypeModel {
-  id: number; // Film type ID
-  name: string; // Enum name (e.g., "KODAK_PORTRA_400")
-  displayName: string; // Display name (e.g., "Kodak Portra 400")
+export interface FilmTypeModel extends IdNameModel {
   defaultIso: number; // Default ISO for this film
 }
 
@@ -58,10 +51,7 @@ export interface FilmFormatModel {
 /**
  * Collection List Model - Basic collection info for dropdown selection
  */
-export interface CollectionListModel {
-  id: number;
-  collectionName: string;
-}
+export type CollectionListModel = IdNameModel
 
 /**
  * Collection Update Metadata Response
