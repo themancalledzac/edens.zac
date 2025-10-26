@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { type FormEvent, useMemo, useState } from 'react';
 
 import { IMAGE } from '@/app/constants';
-import { type UpdateImageDTO, updateMultipleImages } from '@/app/lib/api/images';
+import { type UpdateImageDTO, type UpdateImagesResponse, updateMultipleImages } from '@/app/lib/api/images';
 import type { ImageContentBlock } from '@/app/types/ContentBlock';
 import type {
   CollectionListModel,
@@ -33,7 +33,7 @@ import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 interface ImageMetadataModalProps {
   scrollPosition: number;
   onClose: () => void;
-  onSaveSuccess?: (updatedImage: ImageContentBlock, hasNewMetadata: boolean) => void;
+  onSaveSuccess?: (response: UpdateImagesResponse) => void;
   availableTags?: ContentTagModel[];
   availablePeople?: ContentPersonModel[];
   availableCameras?: ContentCameraModel[];
@@ -42,7 +42,7 @@ interface ImageMetadataModalProps {
   availableFilmFormats?: FilmFormatModel[];
   availableCollections?: CollectionListModel[];
   selectedImageIds: number[]; // Array of selected image IDs (1 for single edit, N for bulk edit)
-  allImages: ImageContentBlock[]; // Images to edit (already filtered in parent)
+  selectedImages: ImageContentBlock[]; // Images to edit (already filtered in parent)
 }
 
 /**
@@ -64,36 +64,19 @@ export default function ImageMetadataModal({
   availableFilmFormats = [],
   availableCollections = [],
   selectedImageIds,
-  allImages,
+  selectedImages,
 }: ImageMetadataModalProps) {
-  // Images to edit are already filtered by parent component
-  const selectedImages = allImages;
   const initialValues = useMemo(
-    () => selectedImages.length === 1 ? selectedImages[0]! : getCommonValues(selectedImages),
+    () => (selectedImages.length === 1 ? selectedImages[0]! : getCommonValues(selectedImages)),
     [selectedImages]
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Single source of truth: UpdateImageDTO - all fields start as undefined (not yet touched)
-  // Any change to the form simply updates this DTO
-  const [updateImageDTO, setUpdateImageDTO] = useState<UpdateImageDTO>({});
-
-  // If no images found, close the modal and exit
-  if (selectedImages.length === 0) {
-    console.error('No images found for the selected image IDs');
-    onClose();
-    return null;
-  }
-
-  const primaryImage = selectedImages[0]!; // Safe: already checked length > 0
-
-  // Determine if we're in bulk edit mode (more than 1 image selected)
   const isBulkEdit = selectedImageIds.length > 1;
 
+  const [updateImageDTO, setUpdateImageDTO] = useState<UpdateImageDTO>({});
 
-
-  // Helper to update DTO - simply updates the DTO object
+  // Helper to update DTO - provides consistent API for all metadata updates
   const updateDTO = (updates: Partial<UpdateImageDTO>) => {
     setUpdateImageDTO(prev => ({ ...prev, ...updates }));
   };
@@ -101,20 +84,11 @@ export default function ImageMetadataModal({
   // Derive hasChanges - true if any field in DTO is defined
   const hasChanges = Object.keys(updateImageDTO).length > 0;
 
+  // Get first image for preview and callback - always safe since selectedImages.length > 0
+  const previewImage = selectedImages[0]!;
+
   // Prepare collection data for UnifiedMetadataSelector
   const allCollections = availableCollections.map(c => ({ id: c.id, name: c.name }));
-
-  // Helper to detect if any new metadata entities were created
-  const detectNewMetadataCreation = (dto: UpdateImageDTO): boolean => {
-    // Check if any entity references have 'newValue' property (indicates new entity creation)
-    return !!(
-      dto.camera?.newValue ||
-      dto.lens?.newValue ||
-      dto.filmType?.newValue ||
-      (dto.tags?.newValue && dto.tags.newValue.length > 0) ||
-      (dto.people?.newValue && dto.people.newValue.length > 0)
-    );
-  };
 
   // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
@@ -129,25 +103,20 @@ export default function ImageMetadataModal({
       setLoading(true);
       setError(null);
 
-      // The DTO is already complete - no need for complex building logic
-      // Simply map updates to all selected images (1 for single edit, N for bulk edit)
       const imageUpdates = selectedImageIds.map(imageId => ({
         imageId,
         updates: updateImageDTO,
       }));
 
-      // Detect if new metadata entities were created
-      const hasNewMetadata = detectNewMetadataCreation(updateImageDTO);
+      const response = await updateMultipleImages(imageUpdates);
 
-      // Single API call for both single and bulk updates
-      console.log(JSON.stringify(imageUpdates));
-      await updateMultipleImages(imageUpdates);
-
-      // Notify parent of success with flag indicating if new metadata was created
-      if (onSaveSuccess) {
-        onSaveSuccess(primaryImage, hasNewMetadata);
+      // Check for validation/business logic errors from backend
+      if (response.errors && response.errors.length > 0) {
+        setError(response.errors.join(', '));
+        return; // Don't close modal - let user fix the issues
       }
 
+      onSaveSuccess?.(response);
       onClose();
     } catch (error_) {
       console.error('Error updating image metadata:', error_);
@@ -157,7 +126,6 @@ export default function ImageMetadataModal({
     }
   };
 
-  // Handle cancel with confirmation if there are unsaved changes
   const handleCancel = () => {
     if (hasChanges) {
       const confirmed = window.confirm('You have unsaved changes. Are you sure you want to close?');
@@ -191,8 +159,8 @@ export default function ImageMetadataModal({
               padding: '8px',
             }}
           >
-            {selectedImageIds.map((imageId) => {
-              const img = allImages.find(i => i.id === imageId);
+            {selectedImageIds.map(imageId => {
+              const img = selectedImages.find(i => i.id === imageId);
               if (!img) return null;
               return (
                 <div
@@ -222,10 +190,10 @@ export default function ImageMetadataModal({
         ) : (
           // Single edit mode - show full image
           <Image
-            src={primaryImage.imageUrlWeb}
-            alt={primaryImage.alt || primaryImage.title || 'Image preview'}
-            width={primaryImage.imageWidth || IMAGE.defaultWidth}
-            height={primaryImage.imageHeight || IMAGE.defaultHeight}
+            src={previewImage.imageUrlWeb}
+            alt={previewImage.alt || previewImage.title || 'Image preview'}
+            width={previewImage.imageWidth || IMAGE.defaultWidth}
+            height={previewImage.imageHeight || IMAGE.defaultHeight}
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
@@ -261,7 +229,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={getFormValue(updateImageDTO.title, initialValues.title, '') ?? ''}
-                onChange={(e) => updateDTO({ title: e.target.value || null })}
+                onChange={e => updateDTO({ title: e.target.value || null })}
                 className={styles.formInput}
                 placeholder="Enter image title"
               />
@@ -271,7 +239,7 @@ export default function ImageMetadataModal({
               <label className={styles.formLabel}>Caption</label>
               <textarea
                 value={getFormValue(updateImageDTO.caption, initialValues.caption, '') ?? ''}
-                onChange={(e) => updateDTO({ caption: e.target.value || null })}
+                onChange={e => updateDTO({ caption: e.target.value || null })}
                 className={styles.formTextarea}
                 placeholder="Enter caption"
                 rows={3}
@@ -283,7 +251,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={getFormValue(updateImageDTO.alt, initialValues.alt, '') ?? ''}
-                onChange={(e) => updateDTO({ alt: e.target.value || null })}
+                onChange={e => updateDTO({ alt: e.target.value || null })}
                 className={styles.formInput}
                 placeholder="Describe the image for screen readers"
               />
@@ -294,7 +262,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={getFormValue(updateImageDTO.author, initialValues.author, '') ?? ''}
-                onChange={(e) => updateDTO({ author: e.target.value || null })}
+                onChange={e => updateDTO({ author: e.target.value || null })}
                 className={styles.formInput}
                 placeholder="Photographer name"
               />
@@ -305,7 +273,7 @@ export default function ImageMetadataModal({
               <input
                 type="text"
                 value={getFormValue(updateImageDTO.location, initialValues.location, '') ?? ''}
-                onChange={(e) => updateDTO({ location: e.target.value || null })}
+                onChange={e => updateDTO({ location: e.target.value || null })}
                 className={styles.formInput}
                 placeholder="Where was this taken?"
               />
@@ -314,8 +282,12 @@ export default function ImageMetadataModal({
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Rating</label>
               <select
-                value={getFormValue(updateImageDTO.rating, initialValues.rating, null)?.toString() || ''}
-                onChange={(e) => updateDTO({ rating: e.target.value ? Number.parseInt(e.target.value, 10) : null })}
+                value={
+                  getFormValue(updateImageDTO.rating, initialValues.rating, null)?.toString() || ''
+                }
+                onChange={e =>
+                  updateDTO({ rating: e.target.value ? Number.parseInt(e.target.value, 10) : null })
+                }
                 className={styles.formSelect}
               >
                 <option value="">No rating</option>
@@ -333,16 +305,19 @@ export default function ImageMetadataModal({
                 <label className={styles.checkboxLabel}>
                   <input
                     type="checkbox"
-                    checked={getFormValue(
-                      updateImageDTO.collections?.prev?.[0]?.visible,
-                      initialValues.collections?.[0]?.visible,
-                      true
-                    ) ?? true}
-                    onChange={(e) => {
-                      const currentCollections = updateImageDTO.collections?.prev ?? initialValues.collections ?? [];
+                    checked={
+                      getFormValue(
+                        updateImageDTO.collections?.prev?.[0]?.visible,
+                        initialValues.collections?.[0]?.visible,
+                        true
+                      ) ?? true
+                    }
+                    onChange={e => {
+                      const currentCollections =
+                        updateImageDTO.collections?.prev ?? initialValues.collections ?? [];
                       const updatedCollections = currentCollections.map(c => ({
                         ...c,
-                        visible: e.target.checked
+                        visible: e.target.checked,
                       }));
                       updateDTO({ collections: { prev: updatedCollections } });
                     }}
@@ -361,20 +336,30 @@ export default function ImageMetadataModal({
               label="Camera"
               multiSelect={false}
               options={availableCameras}
-              selectedValue={getDisplayCamera(updateImageDTO, initialValues.camera, availableCameras)}
-              onChange={(value) => {
+              selectedValue={getDisplayCamera(
+                updateImageDTO,
+                initialValues.camera,
+                availableCameras
+              )}
+              onChange={value => {
                 const camera = Array.isArray(value) ? value[0] || null : value;
                 if (!camera) {
                   handleDropdownChange({ field: 'camera', value: { remove: true } }, updateDTO);
                 } else if (camera.id && camera.id > 0) {
                   handleDropdownChange({ field: 'camera', value: { prev: camera.id } }, updateDTO);
                 } else {
-                  handleDropdownChange({ field: 'camera', value: { newValue: camera.name } }, updateDTO);
+                  handleDropdownChange(
+                    { field: 'camera', value: { newValue: camera.name } },
+                    updateDTO
+                  );
                 }
               }}
               allowAddNew
-              onAddNew={(data) => {
-                handleDropdownChange({ field: 'camera', value: { newValue: data.name as string } }, updateDTO);
+              onAddNew={data => {
+                handleDropdownChange(
+                  { field: 'camera', value: { newValue: data.name as string } },
+                  updateDTO
+                );
               }}
               addNewFields={[
                 {
@@ -385,7 +370,7 @@ export default function ImageMetadataModal({
                   required: true,
                 },
               ]}
-              getDisplayName={(camera) => camera.name}
+              getDisplayName={camera => camera.name}
               showNewIndicator
               emptyText="No camera set"
             />
@@ -394,20 +379,30 @@ export default function ImageMetadataModal({
               label="Lens"
               multiSelect={false}
               options={availableLenses}
-              selectedValue={getDisplayLens(updateImageDTO, initialValues.lensModel, availableLenses)}
-              onChange={(value) => {
+              selectedValue={getDisplayLens(
+                updateImageDTO,
+                initialValues.lensModel,
+                availableLenses
+              )}
+              onChange={value => {
                 const lens = Array.isArray(value) ? value[0] || null : value;
                 if (!lens) {
                   handleDropdownChange({ field: 'lens', value: { remove: true } }, updateDTO);
                 } else if (lens.id && lens.id > 0) {
                   handleDropdownChange({ field: 'lens', value: { prev: lens.id } }, updateDTO);
                 } else {
-                  handleDropdownChange({ field: 'lens', value: { newValue: lens.name } }, updateDTO);
+                  handleDropdownChange(
+                    { field: 'lens', value: { newValue: lens.name } },
+                    updateDTO
+                  );
                 }
               }}
               allowAddNew
-              onAddNew={(data) => {
-                handleDropdownChange({ field: 'lens', value: { newValue: data.name as string } }, updateDTO);
+              onAddNew={data => {
+                handleDropdownChange(
+                  { field: 'lens', value: { newValue: data.name as string } },
+                  updateDTO
+                );
               }}
               addNewFields={[
                 {
@@ -418,7 +413,7 @@ export default function ImageMetadataModal({
                   required: true,
                 },
               ]}
-              getDisplayName={(lens) => lens.name}
+              getDisplayName={lens => lens.name}
               showNewIndicator
               emptyText="No lens set"
             />
@@ -428,8 +423,12 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>ISO</label>
                 <input
                   type="number"
-                  value={getFormValue(updateImageDTO.iso, initialValues.iso, null)?.toString() || ''}
-                  onChange={(e) => updateDTO({ iso: e.target.value ? Number.parseInt(e.target.value, 10) : null })}
+                  value={
+                    getFormValue(updateImageDTO.iso, initialValues.iso, null)?.toString() || ''
+                  }
+                  onChange={e =>
+                    updateDTO({ iso: e.target.value ? Number.parseInt(e.target.value, 10) : null })
+                  }
                   className={styles.formInput}
                   placeholder="e.g., 800"
                   min="0"
@@ -441,7 +440,7 @@ export default function ImageMetadataModal({
                 <input
                   type="text"
                   value={getFormValue(updateImageDTO.fStop, initialValues.fstop, '') ?? ''}
-                  onChange={(e) => updateDTO({ fStop: e.target.value || null })}
+                  onChange={e => updateDTO({ fStop: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., f/2.8"
                 />
@@ -453,8 +452,10 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>Shutter Speed</label>
                 <input
                   type="text"
-                  value={getFormValue(updateImageDTO.shutterSpeed, initialValues.shutterSpeed, '') ?? ''}
-                  onChange={(e) => updateDTO({ shutterSpeed: e.target.value || null })}
+                  value={
+                    getFormValue(updateImageDTO.shutterSpeed, initialValues.shutterSpeed, '') ?? ''
+                  }
+                  onChange={e => updateDTO({ shutterSpeed: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., 1/250 sec"
                 />
@@ -464,8 +465,10 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>Focal Length</label>
                 <input
                   type="text"
-                  value={getFormValue(updateImageDTO.focalLength, initialValues.focalLength, '') ?? ''}
-                  onChange={(e) => updateDTO({ focalLength: e.target.value || null })}
+                  value={
+                    getFormValue(updateImageDTO.focalLength, initialValues.focalLength, '') ?? ''
+                  }
+                  onChange={e => updateDTO({ focalLength: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., 50 mm"
                 />
@@ -476,8 +479,14 @@ export default function ImageMetadataModal({
               <label className={styles.checkboxLabel}>
                 <input
                   type="checkbox"
-                  checked={getFormValue(updateImageDTO.blackAndWhite, initialValues.blackAndWhite, false) ?? false}
-                  onChange={(e) => updateDTO({ blackAndWhite: e.target.checked })}
+                  checked={
+                    getFormValue(
+                      updateImageDTO.blackAndWhite,
+                      initialValues.blackAndWhite,
+                      false
+                    ) ?? false
+                  }
+                  onChange={e => updateDTO({ blackAndWhite: e.target.checked })}
                 />
                 <span>Black & White</span>
               </label>
@@ -485,8 +494,10 @@ export default function ImageMetadataModal({
               <label className={styles.checkboxLabel}>
                 <input
                   type="checkbox"
-                  checked={getFormValue(updateImageDTO.isFilm, initialValues.isFilm, false) ?? false}
-                  onChange={(e) => updateDTO({ isFilm: e.target.checked })}
+                  checked={
+                    getFormValue(updateImageDTO.isFilm, initialValues.isFilm, false) ?? false
+                  }
+                  onChange={e => updateDTO({ isFilm: e.target.checked })}
                 />
                 <span>Film Photography</span>
               </label>
@@ -499,25 +510,46 @@ export default function ImageMetadataModal({
                   label="Film Stock"
                   multiSelect={false}
                   options={availableFilmTypes}
-                  selectedValue={getDisplayFilmStock(updateImageDTO, initialValues.filmType, availableFilmTypes)}
-                  onChange={(value) => {
+                  selectedValue={getDisplayFilmStock(
+                    updateImageDTO,
+                    initialValues.filmType,
+                    availableFilmTypes
+                  )}
+                  onChange={value => {
                     const filmStock = Array.isArray(value) ? value[0] || null : value;
                     if (!filmStock) {
-                      handleDropdownChange({ field: 'filmType', value: { remove: true } }, updateDTO);
+                      handleDropdownChange(
+                        { field: 'filmType', value: { remove: true } },
+                        updateDTO
+                      );
                       updateDTO({ iso: null });
                     } else if (filmStock.id && filmStock.id > 0) {
-                      handleDropdownChange({ field: 'filmType', value: { prev: filmStock.id } }, updateDTO);
+                      handleDropdownChange(
+                        { field: 'filmType', value: { prev: filmStock.id } },
+                        updateDTO
+                      );
                       updateDTO({ iso: filmStock.defaultIso });
                     } else {
-                      handleDropdownChange({ field: 'filmType', value: { newValue: { name: filmStock.name, defaultIso: filmStock.defaultIso } } }, updateDTO);
+                      handleDropdownChange(
+                        {
+                          field: 'filmType',
+                          value: {
+                            newValue: { name: filmStock.name, defaultIso: filmStock.defaultIso },
+                          },
+                        },
+                        updateDTO
+                      );
                       updateDTO({ iso: filmStock.defaultIso });
                     }
                   }}
                   allowAddNew
-                  onAddNew={(data) => {
+                  onAddNew={data => {
                     const name = data.name as string;
                     const defaultIso = data.defaultIso as number;
-                    handleDropdownChange({ field: 'filmType', value: { newValue: { name, defaultIso } } }, updateDTO);
+                    handleDropdownChange(
+                      { field: 'filmType', value: { newValue: { name, defaultIso } } },
+                      updateDTO
+                    );
                     updateDTO({ iso: defaultIso });
                   }}
                   addNewFields={[
@@ -537,7 +569,7 @@ export default function ImageMetadataModal({
                       min: 1,
                     },
                   ]}
-                  getDisplayName={(film) => `${film.name} (ISO ${film.defaultIso})`}
+                  getDisplayName={film => `${film.name} (ISO ${film.defaultIso})`}
                   showNewIndicator
                   emptyText="No film stock set"
                 />
@@ -545,12 +577,14 @@ export default function ImageMetadataModal({
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Film Format</label>
                   <select
-                    value={getFormValue(updateImageDTO.filmFormat, initialValues.filmFormat, '') ?? ''}
-                    onChange={(e) => updateDTO({ filmFormat: e.target.value || null })}
+                    value={
+                      getFormValue(updateImageDTO.filmFormat, initialValues.filmFormat, '') ?? ''
+                    }
+                    onChange={e => updateDTO({ filmFormat: e.target.value || null })}
                     className={styles.formSelect}
                   >
                     <option value="">Select format</option>
-                    {availableFilmFormats.map((format) => (
+                    {availableFilmFormats.map(format => (
                       <option key={format.name} value={format.name}>
                         {format.displayName}
                       </option>
@@ -570,11 +604,15 @@ export default function ImageMetadataModal({
               multiSelect
               options={availableTags}
               selectedValues={getDisplayTags(updateImageDTO, initialValues.tags, availableTags)}
-              onChange={(value) => handleDropdownChange({ field: 'tags', value }, updateDTO)}
+              onChange={value => handleDropdownChange({ field: 'tags', value }, updateDTO)}
               allowAddNew
-              onAddNew={(data) => {
+              onAddNew={data => {
                 const newTag: ContentTagModel = { id: 0, name: data.name as string };
-                const currentTags = getDisplayTags(updateImageDTO, initialValues.tags, availableTags);
+                const currentTags = getDisplayTags(
+                  updateImageDTO,
+                  initialValues.tags,
+                  availableTags
+                );
                 const allTags = [...currentTags, newTag];
                 handleDropdownChange({ field: 'tags', value: allTags }, updateDTO);
               }}
@@ -587,7 +625,7 @@ export default function ImageMetadataModal({
                   required: true,
                 },
               ]}
-              getDisplayName={(tag) => tag.name}
+              getDisplayName={tag => tag.name}
               changeButtonText="Select More ▼"
               emptyText="No tags selected"
             />
@@ -596,12 +634,20 @@ export default function ImageMetadataModal({
               label="People"
               multiSelect
               options={availablePeople}
-              selectedValues={getDisplayPeople(updateImageDTO, initialValues.people, availablePeople)}
-              onChange={(value) => handleDropdownChange({ field: 'people', value }, updateDTO)}
+              selectedValues={getDisplayPeople(
+                updateImageDTO,
+                initialValues.people,
+                availablePeople
+              )}
+              onChange={value => handleDropdownChange({ field: 'people', value }, updateDTO)}
               allowAddNew
-              onAddNew={(data) => {
+              onAddNew={data => {
                 const newPerson: ContentPersonModel = { id: 0, name: data.name as string };
-                const currentPeople = getDisplayPeople(updateImageDTO, initialValues.people, availablePeople);
+                const currentPeople = getDisplayPeople(
+                  updateImageDTO,
+                  initialValues.people,
+                  availablePeople
+                );
                 const allPeople = [...currentPeople, newPerson];
                 handleDropdownChange({ field: 'people', value: allPeople }, updateDTO);
               }}
@@ -614,7 +660,7 @@ export default function ImageMetadataModal({
                   required: true,
                 },
               ]}
-              getDisplayName={(person) => person.name}
+              getDisplayName={person => person.name}
               changeButtonText="Select More ▼"
               emptyText="No people selected"
             />
@@ -629,23 +675,29 @@ export default function ImageMetadataModal({
               multiSelect
               options={allCollections}
               selectedValues={getDisplayCollections(updateImageDTO, initialValues.collections)}
-              onChange={(value) => {
+              onChange={value => {
                 const collections = (value as Array<{ id: number; name: string }> | null) ?? [];
-                const currentVisible = updateImageDTO.collections?.prev?.[0]?.visible ?? initialValues.collections?.[0]?.visible ?? true;
-                handleDropdownChange({
-                  field: 'collections',
-                  value: {
-                    prev: collections.map((c, index) => ({
-                      collectionId: c.id,
-                      name: c.name,
-                      visible: currentVisible,
-                      orderIndex: index,
-                    })),
+                const currentVisible =
+                  updateImageDTO.collections?.prev?.[0]?.visible ??
+                  initialValues.collections?.[0]?.visible ??
+                  true;
+                handleDropdownChange(
+                  {
+                    field: 'collections',
+                    value: {
+                      prev: collections.map((c, index) => ({
+                        collectionId: c.id,
+                        name: c.name,
+                        visible: currentVisible,
+                        orderIndex: index,
+                      })),
+                    },
                   },
-                }, updateDTO);
+                  updateDTO
+                );
               }}
               allowAddNew={false}
-              getDisplayName={(collection) => collection.name}
+              getDisplayName={collection => collection.name}
               changeButtonText="Select More ▼"
               emptyText="No collections selected"
             />
@@ -661,11 +713,7 @@ export default function ImageMetadataModal({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={loading || !hasChanges}
-              className={styles.saveButton}
-            >
+            <button type="submit" disabled={loading || !hasChanges} className={styles.saveButton}>
               {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>

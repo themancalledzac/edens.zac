@@ -246,9 +246,7 @@ export function getDisplayLens<T extends { id?: number; name: string }>(
 /**
  * Get display film stock from DTO or initialValues using prev/newValue/remove pattern
  */
-export function getDisplayFilmStock<
-  T extends { id: number; name: string; defaultIso: number },
->(
+export function getDisplayFilmStock<T extends { id: number; name: string; defaultIso: number }>(
   updateDTO: UpdateImageDTO,
   initialFilmType: string | null | undefined,
   availableFilmTypes: T[]
@@ -363,7 +361,9 @@ export function handleDropdownChange(
 
   if (isMultiSelectWithIdName && (Array.isArray(value) || value === null || value === undefined)) {
     // Auto-extract prevIds and newNames for multi-select fields
-    const { prevIds, newNames } = extractMultiSelectValues(value as Array<{ id?: number; name: string }> | null | undefined);
+    const { prevIds, newNames } = extractMultiSelectValues(
+      value as Array<{ id?: number; name: string }> | null | undefined
+    );
 
     if (prevIds !== null) {
       update.prev = prevIds;
@@ -381,9 +381,3 @@ export function handleDropdownChange(
     updateDTO({ [field]: update });
   }
 }
-
-// ============================================================================
-// Note: Metadata change handlers moved to ImageMetadataModal.tsx
-// This simplifies the codebase by keeping transformation logic
-// alongside the component that uses it (fewer layers, easier to modify)
-// ============================================================================

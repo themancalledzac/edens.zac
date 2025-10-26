@@ -26,6 +26,7 @@ export interface ManageFormData {
   title: string;
   description: string;
   location: string;
+  collectionDate: string;
   visible: boolean;
   priority: number;
   displayMode: DisplayMode;
@@ -36,51 +37,20 @@ export interface ManageFormData {
 }
 
 /**
- * Normalize a ContentCollectionModel response into a full ContentCollectionFullModel
- * Used after creating a new collection to convert the simplified response
- */
-export function normalizeCollectionResponse(
-  response: ContentCollectionModel
-): ContentCollectionFullModel {
-  return {
-    id: response.id,
-    type: response.type,
-    title: response.title,
-    slug: response.slug,
-    description: response.description || '',
-    location: response.location || '',
-    collectionDate: response.collectionDate,
-    coverImageUrl: response.coverImageUrl,
-    coverImage: null, // New collection has no cover image initially
-    visible: response.visible ?? true,
-    priority: response.priority ?? 2,
-    isPasswordProtected: false,
-    hasAccess: true,
-    displayMode: response.displayMode ?? 'CHRONOLOGICAL',
-    homeCardEnabled: response.homeCardEnabled ?? false,
-    homeCardText: response.homeCardText || '',
-    blocks: [], // New collection has no blocks initially
-    pagination: {
-      currentPage: 0,
-      totalPages: 0,
-      totalBlocks: 0,
-      pageSize: DEFAULT_PAGE_SIZE,
-    },
-  };
-}
-
-/**
  * Initialize form data from a collection
  * Provides sensible defaults for all fields
  */
 export function initializeUpdateFormData(
   collection?: ContentCollectionFullModel | null
 ): ManageFormData {
-  return {
+  console.log('[initializeUpdateFormData] collection.collectionDate:', collection?.collectionDate);
+
+  const formData = {
     type: collection?.type ?? CollectionType.portfolio,
     title: collection?.title || '',
     description: collection?.description || '',
     location: collection?.location || '',
+    collectionDate: collection?.collectionDate || '',
     visible: collection?.visible ?? true,
     priority: collection?.priority ?? 2,
     displayMode: collection?.displayMode ?? 'CHRONOLOGICAL',
@@ -89,6 +59,10 @@ export function initializeUpdateFormData(
     blocksPerPage: collection?.pagination?.pageSize ?? DEFAULT_PAGE_SIZE,
     coverImageId: undefined,
   };
+
+  console.log('[initializeUpdateFormData] formData.collectionDate:', formData.collectionDate);
+
+  return formData;
 }
 
 /**
@@ -105,37 +79,36 @@ export function buildUpdatePayload(
 ): ContentCollectionUpdateDTO {
   const payload: ContentCollectionUpdateDTO = {};
 
+  // Field mappings: [formKey, originalValue]
+  const fieldMappings: Array<{
+    key: keyof ManageFormData;
+    original: unknown;
+  }> = [
+    { key: 'type', original: originalCollection.type },
+    { key: 'title', original: originalCollection.title },
+    { key: 'description', original: originalCollection.description || '' },
+    { key: 'location', original: originalCollection.location || '' },
+    { key: 'collectionDate', original: originalCollection.collectionDate || '' },
+    { key: 'visible', original: originalCollection.visible },
+    { key: 'priority', original: originalCollection.priority },
+    { key: 'displayMode', original: originalCollection.displayMode },
+    { key: 'homeCardEnabled', original: originalCollection.homeCardEnabled },
+    { key: 'homeCardText', original: originalCollection.homeCardText || '' },
+    {
+      key: 'blocksPerPage',
+      original: originalCollection.pagination?.pageSize ?? DEFAULT_PAGE_SIZE,
+    },
+  ];
+
   // Only include fields that have actually changed
-  if (formData.type !== originalCollection.type) {
-    payload.type = formData.type;
+  for (const { key, original } of fieldMappings) {
+    if (formData[key] !== original) {
+      // Type assertion needed since we're iterating dynamically
+      (payload as Record<string, unknown>)[key] = formData[key];
+    }
   }
-  if (formData.title !== originalCollection.title) {
-    payload.title = formData.title;
-  }
-  if (formData.description !== (originalCollection.description || '')) {
-    payload.description = formData.description;
-  }
-  if (formData.location !== (originalCollection.location || '')) {
-    payload.location = formData.location;
-  }
-  if (formData.visible !== originalCollection.visible) {
-    payload.visible = formData.visible;
-  }
-  if (formData.priority !== originalCollection.priority) {
-    payload.priority = formData.priority;
-  }
-  if (formData.displayMode !== originalCollection.displayMode) {
-    payload.displayMode = formData.displayMode;
-  }
-  if (formData.homeCardEnabled !== originalCollection.homeCardEnabled) {
-    payload.homeCardEnabled = formData.homeCardEnabled;
-  }
-  if (formData.homeCardText !== (originalCollection.homeCardText || '')) {
-    payload.homeCardText = formData.homeCardText;
-  }
-  if (formData.blocksPerPage !== (originalCollection.pagination?.pageSize ?? DEFAULT_PAGE_SIZE)) {
-    payload.blocksPerPage = formData.blocksPerPage;
-  }
+
+  // Handle coverImageId separately (undefined vs missing distinction matters)
   if (formData.coverImageId !== undefined) {
     payload.coverImageId = formData.coverImageId;
   }
@@ -165,6 +138,7 @@ export function syncCollectionState(
     title: updateResponse.title,
     description: updateResponse.description || '',
     location: updateResponse.location || '',
+    collectionDate: updateResponse.collectionDate || '',
     visible: formData.visible,
     priority: formData.priority,
     displayMode: formData.displayMode,
@@ -220,15 +194,6 @@ export function getDisplayedCoverImage(
 }
 
 /**
- * Filter image blocks from a collection of any content blocks
- * Returns only blocks that are of type IMAGE
- */
-export function filterImageBlocks(blocks: AnyContentBlock[] | undefined): ImageContentBlock[] {
-  if (!blocks || !Array.isArray(blocks)) return [];
-  return blocks.filter(isImageContentBlock);
-}
-
-/**
  * Validate that a cover image selection is valid
  * Returns true if the image exists and is an image block
  */
@@ -243,11 +208,44 @@ export function validateCoverImageSelection(
 
 /**
  * Standardized error handling helper
- * Extracts error message from Error objects or provides default
+ * Extracts error message from various error types or provides default
+ * Handles: Error objects, fetch Response errors, API error objects, and strings
  */
 export function handleApiError(error: unknown, defaultMessage: string): string {
+  // Handle standard Error objects
   if (error instanceof Error) {
     return error.message;
   }
+
+  // Handle fetch Response errors and API error responses
+  if (typeof error === 'object' && error !== null) {
+    // Check for nested response object (common in fetch errors)
+    if ('response' in error && typeof (error as { response: unknown }).response === 'object') {
+      const response = (error as { response: Record<string, unknown> }).response;
+      if (response && 'statusText' in response && typeof response.statusText === 'string') {
+        return response.statusText;
+      }
+      if (response && 'message' in response && typeof response.message === 'string') {
+        return response.message;
+      }
+    }
+
+    // Check for direct message property (API errors often have this)
+    if ('message' in error && typeof (error as { message: unknown }).message === 'string') {
+      return (error as { message: string }).message;
+    }
+
+    // Check for status text (fetch Response objects)
+    if ('statusText' in error && typeof (error as { statusText: unknown }).statusText === 'string') {
+      return (error as { statusText: string }).statusText;
+    }
+  }
+
+  // Handle string errors (sometimes thrown as strings)
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  // Fallback to default message
   return defaultMessage;
 }

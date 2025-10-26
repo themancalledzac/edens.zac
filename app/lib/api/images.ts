@@ -17,7 +17,14 @@
  * - Undefined/omitted fields remain unchanged
  */
 
-import { type ImageCollection } from '@/app/types/ContentBlock';
+import { type ImageCollection, type ImageContentBlock } from '@/app/types/ContentBlock';
+import type {
+  ContentCameraModel,
+  ContentLensModel,
+  ContentPersonModel,
+  ContentTagModel,
+  FilmTypeModel,
+} from '@/app/types/ImageMetadata';
 
 import { fetchPatchJsonApi } from './core';
 
@@ -191,6 +198,44 @@ export interface UpdateImageDTO {
   collections?: CollectionUpdate;
 }
 
+// ============================================================================
+// Response Types
+// ============================================================================
+
+/**
+ * Response from updating image(s)
+ * Returns the fully updated images plus any newly created metadata entities
+ */
+export interface UpdateImagesResponse {
+  /**
+   * The fully updated image blocks with all relationships resolved
+   * - Includes server-side transformations (timestamps, computed fields)
+   * - Relationships are populated (full camera object, not just ID)
+   * - Same shape as GET endpoints for consistency
+   */
+  updatedImages: ImageContentBlock[];
+
+  /**
+   * NEW metadata entities created during this update
+   * - Only includes entities that were created (had id: 0 in request)
+   * - Client uses these to update dropdown options without full refetch
+   * - Fields are null if no new entities of that type were created
+   */
+  newMetadata: {
+    cameras: ContentCameraModel[] | null;
+    lenses: ContentLensModel[] | null;
+    tags: ContentTagModel[] | null;
+    people: ContentPersonModel[] | null;
+    filmTypes: FilmTypeModel[] | null;
+  };
+
+  /**
+   * Validation or processing errors (if any)
+   * - Empty array if all updates succeeded
+   */
+  errors: string[];
+}
+
 /**
  * Update an image with partial data
  *
@@ -243,20 +288,22 @@ export async function updateImage<T = unknown>(imageId: number, updates: UpdateI
  * Update multiple images with the same or different updates in a single API call
  *
  * @param imageUpdates - Array of objects containing imageId and updates for each image
- * @returns Promise that resolves when all updates complete
+ * @returns Promise with updated images and newly created metadata entities
  * @throws ApiError if the request fails
  *
  * @example
  * // Update multiple images with same metadata
- * await updateMultipleImages([
+ * const response = await updateMultipleImages([
  *   { imageId: 1, updates: { location: "New York", author: "John Doe" } },
  *   { imageId: 2, updates: { location: "New York", author: "John Doe" } },
  *   { imageId: 3, updates: { location: "New York", author: "John Doe" } }
  * ]);
+ * // response.updatedImages contains the fully updated ImageContentBlock objects
+ * // response.newMetadata contains any newly created tags, cameras, etc.
  */
 export async function updateMultipleImages(
   imageUpdates: Array<{ imageId: number; updates: UpdateImageDTO }>
-): Promise<void> {
+): Promise<UpdateImagesResponse> {
   if (!imageUpdates || imageUpdates.length === 0) {
     throw new Error('At least one image update is required');
   }
@@ -267,5 +314,5 @@ export async function updateMultipleImages(
     id: imageId,
   }));
 
-  return await fetchPatchJsonApi<void>('/blocks/images', updateArray);
+  return await fetchPatchJsonApi<UpdateImagesResponse>('/blocks/images', updateArray);
 }

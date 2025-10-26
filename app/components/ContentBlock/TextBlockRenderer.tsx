@@ -31,11 +31,17 @@ export function TextBlockRenderer({
     const displayText = textBlock.content;
     const isLeftAligned = textBlock.align === 'left';
 
+    // Split content by newlines to render each line as a separate div
+    const lines = displayText.split('\n');
+
     // Create the text content with proper styling and positioning
     return (
       <div className={cbStyles.blockContainer}>
         <div className={isLeftAligned ? cbStyles.blockInnerLeft : cbStyles.blockInner}>
-            <span>{displayText}</span>
+          {lines.map((line, index) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <div key={index} style={{ width: '100%' }}>{line}</div>
+          ))}
         </div>
       </div>
     );
