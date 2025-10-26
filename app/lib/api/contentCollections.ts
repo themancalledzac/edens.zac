@@ -213,7 +213,7 @@ export interface ContentCollectionModel extends ContentCollectionBase {
 }
 
 /** Convert backend collection to the full model shape. */
-function toModel(c: ContentCollection): ContentCollectionModel {
+export function toModel(c: ContentCollection): ContentCollectionModel {
   const cover = c.coverImage ?? null;
   return {
     id: c.id,

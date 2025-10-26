@@ -8,6 +8,7 @@ import {
   type ContentCollectionModel as ContentCollectionFullModel,
   fetchCollectionBySlug as fetchCollectionBySlugPublic,
   fetchCollectionBySlugAdmin as fetchCollectionBySlugAdminInternal,
+  toModel,
 } from '@/app/lib/api/contentCollections';
 import { fetchFormDataApi, fetchPostJsonApi, fetchPutJsonApi, fetchReadApi } from '@/app/lib/api/core';
 import {
@@ -110,13 +111,13 @@ export async function fetchCollectionBySlugAdmin(
  * Endpoint: POST /api/write/collections/createCollection
  *
  * @param createData - The simplified collection creation data
- * @returns The created collection
+ * @returns The created collection (full model with all fields)
  */
 export async function createContentCollectionSimple(
   createData: ContentCollectionSimpleCreateDTO
-): Promise<ContentCollectionModel> {
+): Promise<ContentCollectionFullModel> {
   try {
-    return await fetchPostJsonApi<ContentCollectionModel>(
+    return await fetchPostJsonApi<ContentCollectionFullModel>(
       '/collections/createCollection',
       createData
     );
@@ -311,7 +312,17 @@ export async function fetchCollectionUpdateMetadata(
     const data = await response.json();
     console.log('[fetchCollectionUpdateMetadata] Received metadata');
 
-    return data as CollectionUpdateResponse;
+    // Transform backend collection to frontend model (contentBlocks → blocks, add pagination)
+    return {
+      collection: toModel(data.collection),
+      tags: data.tags,
+      people: data.people,
+      cameras: data.cameras,
+      lenses: data.lenses,
+      filmTypes: data.filmTypes,
+      filmFormats: data.filmFormats,
+      collections: data.collections,
+    };
   } catch (error) {
     console.error('[fetchCollectionUpdateMetadata] Error:', error);
     throw error;

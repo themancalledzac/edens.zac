@@ -62,7 +62,7 @@ export const IMAGE = {
 
 export const PAGINATION = {
   defaultPageSize: 50,       // Most common - API default
-  collectionPageSize: 30,    // Initial load for collection pages
+  collectionPageSize: 35,    // Initial load for collection pages
   homePageSize: 12,          // Home page card limit
   adminManageMax: 200,       // Max items in admin management interface
 } as const;

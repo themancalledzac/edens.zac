@@ -26,7 +26,7 @@ export interface ContentCollectionBaseModel {
   slug?: string;
   description?: string;
   location?: string;
-  collectionDate?: string; // ISO date string
+  collectionDate?: string; // YYYY-MM-DD format
   visible?: boolean;
   priority?: number; // 1-4, where 1 = best, 4 = worst
   // Legacy: url-only cover; replaced by coverImage object

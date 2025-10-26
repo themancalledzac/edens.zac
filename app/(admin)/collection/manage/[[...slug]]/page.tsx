@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 
-import { fetchCollectionBySlugAdmin } from '@/app/lib/api/home';
+import { type CollectionUpdateResponse, fetchCollectionUpdateMetadata } from '@/app/lib/api/home';
 
 import ManageClient from './ManageClient';
 
@@ -15,7 +15,7 @@ interface ManageCollectionPageProps {
  *
  * Handles initial data fetching server-side and passes to client component.
  * - If no slug: Shows create mode
- * - If slug exists: Fetches collection data and shows update mode
+ * - If slug exists: Fetches collection + metadata in single call
  * - Proper 404 handling at server level
  *
  * @param params - Route parameters containing optional slug
@@ -27,18 +27,20 @@ export default async function ManageCollectionPage({ params }: ManageCollectionP
 
   // CREATE MODE: No slug provided
   if (!slug) {
+    // Fallback to slug again
     return <ManageClient />;
   }
 
-  // UPDATE MODE: Slug provided, fetch collection data server-side (admin version)
+  // UPDATE MODE: Fetch both collection and metadata in a single server-side call
   try {
-    const collection = await fetchCollectionBySlugAdmin(slug);
-
-    if (!collection) {
+    const data: CollectionUpdateResponse = await fetchCollectionUpdateMetadata(slug);
+    if (!data.collection) {
       return notFound();
     }
 
-    return <ManageClient initialCollection={collection} />;
+    if(data) {
+      return <ManageClient initialData={data} />;
+    }
   } catch (error) {
     console.error('Error fetching collection for manage page:', error);
     return notFound();
