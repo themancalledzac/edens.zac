@@ -381,7 +381,7 @@ export default function ImageMetadataModal({
               options={availableLenses}
               selectedValue={getDisplayLens(
                 updateImageDTO,
-                initialValues.lensModel,
+                initialValues.lens,
                 availableLenses
               )}
               onChange={value => {

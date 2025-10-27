@@ -73,7 +73,7 @@ export interface ImageContentBlock extends ContentBlock {
   iso?: number;
   author?: string | null;
   rating?: number;
-  lens?: string | null;
+  lens?: ContentLensModel | null; // Lens object with id and name
   blackAndWhite?: boolean;
   isFilm?: boolean;
   shutterSpeed?: string | null;
@@ -97,8 +97,6 @@ export interface ImageContentBlock extends ContentBlock {
    */
   tags?: ContentTagModel[];
   people?: ContentPersonModel[];
-  cameraModel?: ContentCameraModel | null;
-  lensModel?: ContentLensModel | null;
 
   /**
    * List of collections this image belongs to

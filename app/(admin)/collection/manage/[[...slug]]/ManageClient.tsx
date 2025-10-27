@@ -10,13 +10,14 @@ import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
 import {
   addContentBlocks,
-  type CollectionUpdateResponse,
   createContentCollectionSimple,
   fetchCollectionBySlugAdmin,
   fetchCollectionUpdateMetadata,
+  fetchMetadataOnly,
   updateContentCollection,
 } from '@/app/lib/api/home';
 import { type UpdateImagesResponse } from '@/app/lib/api/images';
+import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
 import {
   CollectionType,
@@ -41,17 +42,15 @@ import {
 } from './manageUtils';
 
 interface ManageClientProps {
-  initialData?: CollectionUpdateResponse | null;
+  slug?: string; // Collection slug for UPDATE mode, undefined for CREATE mode
 }
 
-export default function ManageClient({ initialData }: ManageClientProps) {
+export default function ManageClient({ slug }: ManageClientProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!!slug); // Loading if slug provided (need to fetch data)
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [collection, setCollection] = useState<ContentCollectionFullModel | null>(
-    initialData?.collection || null
-  );
+  const [collection, setCollection] = useState<ContentCollectionFullModel | null>(null);
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
@@ -63,16 +62,16 @@ export default function ManageClient({ initialData }: ManageClientProps) {
     title: '',
   });
   const [updateData, setUpdateData] = useState<ManageFormData>(
-    initializeUpdateFormData(initialData?.collection)
+    initializeUpdateFormData(null)
   );
   const [metadata, setMetadata] = useState<CollectionUpdateMetadata>({
-    tags: initialData?.tags || [],
-    people: initialData?.people || [],
-    cameras: initialData?.cameras || [],
-    lenses: initialData?.lenses || [],
-    filmTypes: initialData?.filmTypes || [],
-    filmFormats: initialData?.filmFormats || [],
-    collections: initialData?.collections || [],
+    tags: [],
+    people: [],
+    cameras: [],
+    lenses: [],
+    filmTypes: [],
+    filmFormats: [],
+    collections: [],
   });
 
   const {
@@ -100,7 +99,7 @@ export default function ManageClient({ initialData }: ManageClientProps) {
     [selectedImageIds, collection?.blocks]
   );
 
-  const isCreateMode = !initialData;
+  const isCreateMode = !slug;
 
   // Memoized derived values
   // TODO: Not working, returning
@@ -117,54 +116,83 @@ export default function ManageClient({ initialData }: ManageClientProps) {
     [collection, updateData.coverImageId]
   );
 
-  // Fetch full collection + metadata when component stays mounted after creation
-  // (only needed if component doesn't re-mount after router.push in handleCreate)
+  // OPTIMIZED: Cache-first data loading for UPDATE mode
+  // Checks sessionStorage cache before hitting API
   useEffect(() => {
-    if (!collection) return;
-    if (initialData) return; // Skip if server already provided full data
+    if (!slug) return; // CREATE mode - no data to fetch
 
-    // Component stayed mounted after client-side creation - need full collection + metadata
     const abortController = new AbortController();
     let isMounted = true;
 
-    const fetchFullData = async () => {
+    const loadCollectionData = async () => {
       try {
-        // Fetch BOTH collection and metadata (full update endpoint)
-        const response = await fetchCollectionUpdateMetadata(collection.slug);
+        setLoading(true);
 
-        // Only update state if component is still mounted and request wasn't aborted
-        if (isMounted && !abortController.signal.aborted) {
+        // Check cache first
+        const cachedCollection = collectionStorage.get(slug);
 
-          setCollection(response.collection);
-          setUpdateData(initializeUpdateFormData(response.collection));
-          setMetadata({
-            tags: response.tags || [],
-            people: response.people || [],
-            cameras: response.cameras || [],
-            lenses: response.lenses || [],
-            collections: response.collections || [],
-            filmTypes: response.filmTypes || [],
-            filmFormats: response.filmFormats || [],
-          });
+        if (cachedCollection) {
+          console.log('[ManageClient] Using cached collection, fetching metadata only');
+
+          // Use cached collection + fetch only metadata
+          // Convert cached base to full model (type compatibility)
+          const fullCollection = cachedCollection as unknown as ContentCollectionFullModel;
+
+          const metadataResponse = await fetchMetadataOnly();
+
+          if (isMounted && !abortController.signal.aborted) {
+            setCollection(fullCollection);
+            setUpdateData(initializeUpdateFormData(fullCollection));
+            setMetadata({
+              tags: metadataResponse.tags || [],
+              people: metadataResponse.people || [],
+              cameras: metadataResponse.cameras || [],
+              lenses: metadataResponse.lenses || [],
+              collections: metadataResponse.collections || [],
+              filmTypes: metadataResponse.filmTypes || [],
+              filmFormats: metadataResponse.filmFormats || [],
+            });
+          }
+        } else {
+          console.log('[ManageClient] No cache found, fetching full collection + metadata');
+
+          // Fallback: fetch everything (collection + metadata)
+          const response = await fetchCollectionUpdateMetadata(slug);
+
+          if (isMounted && !abortController.signal.aborted) {
+            setCollection(response.collection);
+            setUpdateData(initializeUpdateFormData(response.collection));
+            setMetadata({
+              tags: response.tags || [],
+              people: response.people || [],
+              cameras: response.cameras || [],
+              lenses: response.lenses || [],
+              collections: response.collections || [],
+              filmTypes: response.filmTypes || [],
+              filmFormats: response.filmFormats || [],
+            });
+          }
         }
       } catch (error) {
-        // Only set error if not aborted
         if (!abortController.signal.aborted && isMounted) {
-          console.error('Error fetching collection data:', error);
+          console.error('[ManageClient] Error loading collection data:', error);
           setError(handleApiError(error, 'Failed to load collection data'));
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
         }
       }
     };
 
-    fetchFullData();
+    loadCollectionData();
 
-    // Cleanup function to abort request and prevent state updates
+    // Cleanup
     return () => {
       isMounted = false;
       abortController.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-fetch when collection ID changes, skip if initialData exists
-  }, [collection?.id, initialData]);
+  }, [slug]);
 
   // Handle creating a new text block - immediately POST to backend
   const handleCreateNewTextBlock = async () => {
@@ -274,15 +302,22 @@ export default function ManageClient({ initialData }: ManageClientProps) {
       const hasContentBlockOperations =
         reorderOperations.length > 0 || contentBlockIdsToRemove.length > 0;
 
+      let updatedCollection: ContentCollectionFullModel;
+
       if (hasContentBlockOperations) {
         // Refetch collection to get updated blocks with proper ordering
         const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
+        updatedCollection = refreshedCollection;
         setCollection(refreshedCollection);
       } else {
         // Just sync metadata changes if no block operations
-        const updatedCollection = syncCollectionState(collection, response, updateData);
+        updatedCollection = syncCollectionState(collection, response, updateData);
         setCollection(updatedCollection);
       }
+
+      // CACHE OPTIMIZATION: Clear old cache and update with fresh data
+      collectionStorage.clear(collection.slug);
+      collectionStorage.update(collection.slug, updatedCollection);
 
       // Reset coverImageId and content block operations after successful update
       setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
@@ -317,6 +352,9 @@ export default function ManageClient({ initialData }: ManageClientProps) {
       // Re-fetch collection to get updated full model format
       const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
       setCollection(refreshedCollection);
+
+      // CACHE OPTIMIZATION: Update cache with new data
+      collectionStorage.update(collection.slug, refreshedCollection);
 
       // Clear the file input
       event.target.value = '';
@@ -555,32 +593,20 @@ export default function ManageClient({ initialData }: ManageClientProps) {
                       />
                     </div>
 
-                    {/* Collection Date */}
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Collection Date</label>
-                      <input
-                        type="date"
-                        value={updateData.collectionDate}
-                        onChange={e =>
-                          setUpdateData(prev => ({ ...prev, collectionDate: e.target.value }))
-                        }
-                        className={styles.formInput}
-                      />
-                    </div>
-
-                    {/* Location */}
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Location</label>
-                      <input
-                        type="text"
-                        value={updateData.location}
-                        onChange={e => setUpdateData(prev => ({ ...prev, location: e.target.value }))}
-                        className={styles.formInput}
-                      />
-                    </div>
-
-                    {/* Collection Type / Enable Home Card */}
+                    {/* Collection Date / Collection Type */}
                     <div className={styles.formGridHalf}>
+                      <div>
+                        <label className={styles.formLabel}>Collection Date</label>
+                        <input
+                          type="date"
+                          value={updateData.collectionDate}
+                          onChange={e =>
+                            setUpdateData(prev => ({ ...prev, collectionDate: e.target.value }))
+                          }
+                          className={styles.formInput}
+                        />
+                      </div>
+
                       <div>
                         <label className={styles.formLabel}>Collection Type</label>
                         <select
@@ -596,36 +622,21 @@ export default function ManageClient({ initialData }: ManageClientProps) {
                           <option value={CollectionType['client-gallery']}>Client Gallery</option>
                         </select>
                       </div>
-
-                      <div>
-                        <label className={styles.checkboxLabel}>
-                          <input
-                            type="checkbox"
-                            checked={updateData.homeCardEnabled}
-                            onChange={e =>
-                              setUpdateData(prev => ({ ...prev, homeCardEnabled: e.target.checked }))
-                            }
-                          />
-                          <span>Enable Home Card</span>
-                        </label>
-                      </div>
                     </div>
 
-                    {/* Visible / Priority */}
-                    <div className={styles.formGridHalf}>
-                      <div>
-                        <label className={styles.checkboxLabel}>
-                          <input
-                            type="checkbox"
-                            checked={updateData.visible}
-                            onChange={e =>
-                              setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
-                            }
-                          />
-                          <span>Visible</span>
-                        </label>
-                      </div>
+                    {/* Location */}
+                    <div className={styles.formGroup}>
+                      <label className={styles.formLabel}>Location</label>
+                      <input
+                        type="text"
+                        value={updateData.location}
+                        onChange={e => setUpdateData(prev => ({ ...prev, location: e.target.value }))}
+                        className={styles.formInput}
+                      />
+                    </div>
 
+                    {/* Priority / Visible & Enable Home Card */}
+                    <div className={styles.formGridHalf}>
                       <div>
                         <label className={styles.formLabel}>Priority</label>
                         <select
@@ -640,6 +651,29 @@ export default function ManageClient({ initialData }: ManageClientProps) {
                           <option value={3}>3 - Medium</option>
                           <option value={4}>4 - Low</option>
                         </select>
+                      </div>
+
+                      <div className={styles.checkboxGroup}>
+                        <label className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={updateData.visible}
+                            onChange={e =>
+                              setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
+                            }
+                          />
+                          <span>Visible</span>
+                        </label>
+                        <label className={styles.checkboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={updateData.homeCardEnabled}
+                            onChange={e =>
+                              setUpdateData(prev => ({ ...prev, homeCardEnabled: e.target.checked }))
+                            }
+                          />
+                          <span>Enable Home Card</span>
+                        </label>
                       </div>
                     </div>
 
@@ -675,6 +709,18 @@ export default function ManageClient({ initialData }: ManageClientProps) {
                           <option value="ORDERED">Ordered</option>
                         </select>
                       </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className={styles.formGroup}>
+                      <label className={styles.formLabel}>Description</label>
+                      <textarea
+                        value={updateData.description}
+                        onChange={e =>
+                          setUpdateData(prev => ({ ...prev, description: e.target.value }))
+                        }
+                        className={styles.formTextarea}
+                      />
                     </div>
                   </div>
 
@@ -727,18 +773,6 @@ export default function ManageClient({ initialData }: ManageClientProps) {
                       </div>
                     </div>
 
-                    {/* Description */}
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Description</label>
-                      <textarea
-                        value={updateData.description}
-                        onChange={e =>
-                          setUpdateData(prev => ({ ...prev, description: e.target.value }))
-                        }
-                        className={styles.formTextarea}
-                      />
-                    </div>
-
                     {/* Home Card Text */}
                     <div className={styles.formGroup}>
                       <label className={styles.formLabel}>Home Card Text</label>
@@ -755,34 +789,11 @@ export default function ManageClient({ initialData }: ManageClientProps) {
                   </div>
                 </div>
 
-                <button type="submit" disabled={loading} className={styles.submitButton}>
-                  {loading ? 'Updating...' : 'Update Metadata'}
-                </button>
-              </form>
-            </div>
+                <div className={styles.formActions}>
+                  <button type="submit" disabled={loading} className={styles.submitButton}>
+                    {loading ? 'Updating...' : 'Update Metadata'}
+                  </button>
 
-            {/* Collection Content */}
-            {collection.blocks && collection.blocks.length > 0 && (
-              <div className={pageStyles.blockGroup}>
-                <div className={styles.contentHeader}>
-                  <h3 className={styles.contentHeading}>
-                    Collection Content ({collection.blocks.length}
-                    {collection.pagination?.totalBlocks
-                      ? ` of ${collection.pagination.totalBlocks}`
-                      : ''}{' '}
-                    blocks)
-                    {isSelectingCoverImage && (
-                      <span className={styles.selectingNotice}>
-                        (Click any image to set as cover)
-                      </span>
-                    )}
-                    {selectedImageIds.length > 0 && (
-                      <span className={styles.selectingNotice}>
-                        ({selectedImageIds.length} image{selectedImageIds.length > 1 ? 's' : ''}{' '}
-                        selected)
-                      </span>
-                    )}
-                  </h3>
                   <div className={styles.bulkEditControls}>
                     {!isMultiSelectMode ? (
                       <button
@@ -816,6 +827,32 @@ export default function ManageClient({ initialData }: ManageClientProps) {
                       </>
                     )}
                   </div>
+                </div>
+              </form>
+            </div>
+
+            {/* Collection Content */}
+            {collection.blocks && collection.blocks.length > 0 && (
+              <div className={pageStyles.blockGroup}>
+                <div className={styles.contentHeader}>
+                  <h3 className={styles.contentHeading}>
+                    Collection Content ({collection.blocks.length}
+                    {collection.pagination?.totalBlocks
+                      ? ` of ${collection.pagination.totalBlocks}`
+                      : ''}{' '}
+                    blocks)
+                    {isSelectingCoverImage && (
+                      <span className={styles.selectingNotice}>
+                        (Click any image to set as cover)
+                      </span>
+                    )}
+                    {selectedImageIds.length > 0 && (
+                      <span className={styles.selectingNotice}>
+                        ({selectedImageIds.length} image{selectedImageIds.length > 1 ? 's' : ''}{' '}
+                        selected)
+                      </span>
+                    )}
+                  </h3>
                 </div>
                 <ContentBlockComponent
                   blocks={collection.blocks as AnyContentBlock[]}

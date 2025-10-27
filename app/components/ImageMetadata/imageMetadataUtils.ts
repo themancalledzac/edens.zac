@@ -73,9 +73,7 @@ export function getCommonValues(images: ImageContentBlock[]): Partial<ImageConte
 
   // Camera settings
   if (images.every(img => img.camera?.id === first.camera?.id)) common.camera = first.camera;
-  if (images.every(img => img.lensModel?.id === first.lensModel?.id))
-    common.lensModel = first.lensModel;
-  if (images.every(img => img.lens === first.lens)) common.lens = first.lens;
+  if (images.every(img => img.lens?.id === first.lens?.id)) common.lens = first.lens;
   if (images.every(img => img.iso === first.iso)) common.iso = first.iso;
   if (images.every(img => img.fstop === first.fstop)) common.fstop = first.fstop;
   if (images.every(img => img.shutterSpeed === first.shutterSpeed))

@@ -350,7 +350,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
             }}
             className={styles.cameraChangeButton}
           >
-            {isSelectingFromDropdown ? 'Cancel' : getButtonText()}
+            {isSelectingFromDropdown ? 'Close' : getButtonText()}
           </button>
           {allowAddNew && (
             <button
@@ -361,7 +361,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
               }}
               className={styles.cameraAddButton}
             >
-              {isAddingNew ? 'Cancel' : addNewButtonText}
+              {isAddingNew ? 'Close' : addNewButtonText}
             </button>
           )}
         </div>

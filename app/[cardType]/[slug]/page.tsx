@@ -147,6 +147,8 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
             priorityBlockIndex={0}
             enableFullScreenView
             initialPageSize={30}
+            collectionSlug={slug}
+            collectionData={content}
           />
         </div>
       </div>
