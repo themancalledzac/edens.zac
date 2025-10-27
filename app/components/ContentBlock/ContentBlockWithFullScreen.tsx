@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
+import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
+import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type AnyContentBlock,
   type ImageContentBlock,
@@ -17,20 +19,36 @@ interface ContentBlockWithFullScreenProps {
   priorityBlockIndex?: number;
   enableFullScreenView?: boolean;
   initialPageSize?: number; // How many blocks to show initially (default: show all)
+  // Collection caching for manage page optimization
+  collectionSlug?: string; // If provided, will cache collection data
+  collectionData?: ContentCollectionBase; // The full collection to cache
 }
 
 /**
  * Wrapper component that provides full screen image functionality
  * to ContentBlockComponent using the new simplified hook.
  * Supports client-side pagination for large collections.
+ *
+ * Performance Optimization:
+ * When collectionSlug and collectionData are provided, caches the collection
+ * in sessionStorage for fast loading in the manage page (avoids 6s refetch).
  */
 export default function ContentBlockWithFullScreen({
   blocks: allBlocks,
   priorityBlockIndex,
   enableFullScreenView,
-  initialPageSize
+  initialPageSize,
+  collectionSlug,
+  collectionData,
 }: ContentBlockWithFullScreenProps) {
   const { showImage, FullScreenModal } = useFullScreenImage();
+
+  // Cache collection data for manage page optimization
+  useEffect(() => {
+    if (collectionSlug && collectionData) {
+      collectionStorage.set(collectionSlug, collectionData);
+    }
+  }, [collectionSlug, collectionData]);
 
   // Extract all image blocks for navigation
   // TODO: why are we filtering by images? is this causing us to lose Text Blocks?

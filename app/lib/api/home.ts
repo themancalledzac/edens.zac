@@ -264,18 +264,78 @@ export async function fetchAllCollections(): Promise<HomeCardModel[] | null> {
 }
 
 /**
- * Response structure for collection update metadata endpoint
- * Contains the collection plus all available metadata for dropdowns
+ * General metadata DTO matching backend GeneralMetadataDTO
+ * Contains all available tags, people, cameras, lenses, film types, formats, and collections
  */
-export interface CollectionUpdateResponse {
-  collection: ContentCollectionFullModel;
+export interface GeneralMetadataDTO {
+  /** All available tags that can be assigned to content blocks */
   tags: CollectionUpdateMetadata['tags'];
+  /** All available people that can be tagged in content blocks */
   people: CollectionUpdateMetadata['people'];
-  cameras: CollectionUpdateMetadata['cameras'];
-  lenses: CollectionUpdateMetadata['lenses'];
-  filmTypes: CollectionUpdateMetadata['filmTypes'];
-  filmFormats: CollectionUpdateMetadata['filmFormats'];
+  /** All available collections in the system */
   collections: CollectionUpdateMetadata['collections'];
+  /** All available cameras for film photography metadata */
+  cameras: CollectionUpdateMetadata['cameras'];
+  /** All available lenses for film photography metadata */
+  lenses: CollectionUpdateMetadata['lenses'];
+  /** All available film types with their metadata (display name, default ISO) */
+  filmTypes: CollectionUpdateMetadata['filmTypes'];
+  /** All available film formats (35mm, 120, etc.) */
+  filmFormats: CollectionUpdateMetadata['filmFormats'];
+}
+
+/**
+ * Collection update response matching backend ContentCollectionUpdateResponseDTO
+ * Contains the collection plus all metadata (unwrapped via @JsonUnwrapped on backend)
+ */
+export interface CollectionUpdateResponse extends GeneralMetadataDTO {
+  /** The content collection with all its data */
+  collection: ContentCollectionFullModel;
+}
+
+/**
+ * Fetches ONLY metadata needed for manage page dropdowns (no collection data).
+ * Much faster than fetchCollectionUpdateMetadata since it doesn't include collection.
+ * Use this when you already have the collection cached client-side.
+ *
+ * Endpoint: GET /api/write/collections/metadata
+ *
+ * @returns All metadata for dropdowns (tags, people, cameras, etc.)
+ */
+export async function fetchMetadataOnly(): Promise<GeneralMetadataDTO> {
+  try {
+    const url = 'http://localhost:8080/api/write/collections/metadata';
+
+    console.log('[fetchMetadataOnly] Fetching from:', url);
+
+    const response = await fetch(url, {
+      cache: 'no-store', // Don't cache admin metadata
+    });
+
+    console.log('[fetchMetadataOnly] Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[fetchMetadataOnly] Error response:', errorText);
+      throw new Error(`API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('[fetchMetadataOnly] Received metadata');
+
+    return {
+      tags: data.tags,
+      people: data.people,
+      cameras: data.cameras,
+      lenses: data.lenses,
+      filmTypes: data.filmTypes,
+      filmFormats: data.filmFormats,
+      collections: data.collections,
+    };
+  } catch (error) {
+    console.error('[fetchMetadataOnly] Error:', error);
+    throw error;
+  }
 }
 
 /**

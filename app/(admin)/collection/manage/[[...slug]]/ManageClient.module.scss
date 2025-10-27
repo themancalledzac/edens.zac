@@ -226,6 +226,18 @@
   }
 }
 
+// Checkbox Group (for multiple checkboxes side by side)
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: 1.8rem; // Align with adjacent inputs
+
+  @media (max-width: 768px) {
+    padding-top: var(--space-2);
+  }
+}
+
 // Fieldset Styles
 .homeCardFieldset {
   margin-bottom: var(--space-4);
@@ -281,6 +293,14 @@
       cursor: text;
     }
   }
+}
+
+// Form Actions (Submit + Bulk Edit Controls)
+.formActions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 // Submit Button
