@@ -1,11 +1,11 @@
 import React from 'react';
 
-import { type CollectionType } from '@/app/types/ContentCollection';
+import { type CollectionType } from '@/app/types/Collection';
 
-import cbStyles from './ContentBlockComponent.module.scss';
+import cbStyles from './ContentComponent.module.scss';
 
 // Content types that can display badges
-export type BadgeContentType = 'collection' | 'contentBlock';
+export type BadgeContentType = 'collection' | 'content';
 
 // Badge overlay props with simplified API
 export interface BadgeOverlayProps {
@@ -18,7 +18,7 @@ export interface BadgeOverlayProps {
  * Automatically determines position based on badge value type
  */
 export function BadgeOverlay({
-  contentType = 'contentBlock',
+  contentType = 'content',
   badgeValue,
 }: BadgeOverlayProps): React.ReactElement | null {
   if (badgeValue === null) {
@@ -26,7 +26,7 @@ export function BadgeOverlay({
   }
 
   return (
-    <div className={contentType === 'contentBlock' ? cbStyles.dateBadge : cbStyles.cardTypeBadge}>
+    <div className={contentType === 'content' ? cbStyles.dateBadge : cbStyles.cardTypeBadge}>
       {badgeValue}
     </div>
   );

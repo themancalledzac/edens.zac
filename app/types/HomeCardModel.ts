@@ -1,4 +1,4 @@
-import { type CollectionType } from './ContentCollection';
+import { type CollectionType } from './Collection';
 
 export interface HomeCardModel {
   id: number;

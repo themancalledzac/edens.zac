@@ -1,39 +1,40 @@
 import Image from 'next/image';
 import React from 'react';
 
-import { type GifContentBlock } from '@/app/types/ContentBlock';
+import { type ImageContentModel } from '@/app/types/Content';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import {
   type BaseContentBlockRendererProps,
-  BlockWrapper,
-} from './BlockWrapper';
-import cbStyles from './ContentBlockComponent.module.scss';
+  ContentWrapper,
+} from './ContentWrapper';
+import cbStyles from './ContentComponent.module.scss';
 
 /**
- * Props for GifContentBlockRenderer
+ * Props for ImageContentBlockRenderer
  */
-export interface GifContentBlockRendererProps extends BaseContentBlockRendererProps {
-  block: GifContentBlock;
+export interface ImageContentBlockRendererProps extends BaseContentBlockRendererProps {
+  block: ImageContentModel;
 }
 
 /**
- * Specialized component for rendering GIF blocks with overlays and badges
+ * Specialized component for rendering image blocks with overlays and badges
  * Extends BaseContentBlockRenderer for consistent behavior
  */
-export function GifContentBlockRenderer({
+export function ImageContentBlockRenderer({
   block,
   width,
   height,
   className = '',
   isMobile = false,
   onClick,
-}: GifContentBlockRendererProps): React.ReactElement {
-  const renderGifContent = (gifBlock: GifContentBlock): React.ReactElement => {
-    const alt = gifBlock.alt || gifBlock.title || gifBlock.caption || 'animated gif';
+}: ImageContentBlockRendererProps): React.ReactElement {
+  const renderImageContent = (imageBlock: ImageContentModel): React.ReactElement => {
+    const alt = imageBlock.title || imageBlock.caption || 'image content';
 
     // Extract overlay and badge data
-    const { overlayText, cardTypeBadge, dateBadge, imageUrlWeb } = gifBlock;
+    const { overlayText, cardTypeBadge, dateBadge, imageUrlWeb, imageWidth, imageHeight } =
+      imageBlock;
     const hasOverlays = !!(overlayText || cardTypeBadge || dateBadge);
 
     // Configure image styling based on mobile/desktop
@@ -50,41 +51,40 @@ export function GifContentBlockRenderer({
         : {}),
     };
 
-    // Create the base gif element (using Image component for optimization)
-    const gifElement = (
+    // Create the base image element
+    const imageElement = (
       <Image
         src={imageUrlWeb}
         alt={alt}
-        width={width}
-        height={height}
+        width={imageWidth || width}
+        height={imageHeight || height}
         loading="lazy"
         style={imageStyle}
         onClick={onClick}
-        unoptimized // GIFs need to remain unoptimized to preserve animation
       />
     );
 
     // Render content based on whether overlays are needed
     return hasOverlays ? (
       <div className={cbStyles.imageWrapper}>
-        {gifElement}
+        {imageElement}
         {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
         <BadgeOverlay contentType="contentBlock" badgeValue={null} />
       </div>
     ) : (
-      gifElement
+      imageElement
     );
   };
 
   return (
-    <BlockWrapper
+    <ContentWrapper
       block={block}
       width={width}
       height={height}
       className={className}
       isMobile={isMobile}
       onClick={onClick}
-      renderContent={() => renderGifContent(block)}
+      renderContent={() => renderImageContent(block)}
     />
   );
 }

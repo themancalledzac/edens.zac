@@ -1,6 +1,6 @@
-import { type ImageContentBlock, type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
+import { type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
-import { isImageBlock } from '@/app/utils/contentBlockTypeGuards';
+import { isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
  * Create base parallax image properties
@@ -22,29 +22,29 @@ function createBaseParallaxProperties(
 }
 
 /**
- * Build Parallax Image Content Block from Image Data
+ * Build Parallax Image Content Model from Image Data
  *
- * Creates a synthetic parallax image block from specific image data. Adds
+ * Creates a synthetic parallax image model from specific image data. Adds
  * overlay text and card type badge for consistent display formatting.
  *
- * @param image - Image block data (either coverImage or first image block)
+ * @param image - Image model data (either coverImage or first image block)
  * @param collectionDate - Collection date for the image
  * @param type - Collection type for badge display
  * @param title - Collection title for overlay text
- * @returns Formatted parallax image block or null if no image available
+ * @returns Formatted parallax image model or null if no image available
  */
 export function buildParallaxImageContentBlock(
-  image: ImageContentBlock | undefined,
+  image: ImageContentModel | undefined,
   collectionDate: string,
   type: string,
   title: string
-): ParallaxImageContentBlock | null {
+): ParallaxImageContentModel | null {
   // If image exists and it's an image block, use it
-  if (image && isImageBlock(image)) {
+  if (image && isContentImage(image)) {
     return {
       ...image,
       ...createBaseParallaxProperties(title, type),
-      blockType: 'PARALLAX',
+      contentType: 'PARALLAX',
       title, // Override the image's title with the collection title
       collectionDate,
       type,
@@ -56,15 +56,15 @@ export function buildParallaxImageContentBlock(
 }
 
 /**
- * Build Parallax Image Content Block from Home Card Model
+ * Build Parallax Image Content Model from Home Card Model
  *
- * Converts a HomeCardModel to a ParallaxImageContentBlock for use in the grid system.
+ * Converts a HomeCardModel to a ParallaxImageContentModel for use in the grid system.
  * This enables unified parallax behavior between home page grid and collection pages.
  *
  * @param homeCard - Home card model data
- * @returns Formatted parallax image block
+ * @returns Formatted parallax image model
  */
-export function buildParallaxImageFromHomeCard(homeCard: HomeCardModel): ParallaxImageContentBlock {
+export function buildParallaxImageFromHomeCard(homeCard: HomeCardModel): ParallaxImageContentModel {
   // Defensive: ensure cardType exists
   const cardType = homeCard.cardType;
 
@@ -75,7 +75,7 @@ export function buildParallaxImageFromHomeCard(homeCard: HomeCardModel): Paralla
 
   return {
     id: homeCard.id,
-    blockType: 'PARALLAX',
+    contentType: 'PARALLAX',
     title: homeCard.title,
     imageUrlWeb: homeCard.coverImageUrl, // Use coverImageUrl for web display
     imageWidth: 800, // Default width for grid images

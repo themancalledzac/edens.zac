@@ -1,4 +1,4 @@
-import { CollectionType } from '@/app/types/ContentCollection';
+import { CollectionType } from '@/app/types/Collection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 
 import styles from '../../page.module.scss';
@@ -22,7 +22,7 @@ export function CardsGridSkeleton() {
   const skeletonCards: HomeCardModel[] = Array.from({ length: 6 }, (_, i) => ({
     id: i + 1,
     title: 'Loading...',
-    cardType: CollectionType.blogs, // Use proper CollectionType enum
+    cardType: CollectionType.BLOG, // Use proper CollectionType enum
     location: 'Loading...',
     priority: 1,
     coverImageUrl: '', // Empty since we'll show loading state

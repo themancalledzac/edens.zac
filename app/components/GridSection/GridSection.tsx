@@ -2,7 +2,7 @@
 
 import React from 'react';
 
-import { ParallaxImageRenderer } from '@/app/components/ContentBlock/ParallaxImageRenderer';
+import { ParallaxImageRenderer } from '@/app/components/Content/ParallaxImageRenderer';
 import pageStyles from '@/app/page.module.scss';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { buildParallaxImageFromHomeCard } from '@/app/utils/parallaxImageUtils';
@@ -65,8 +65,8 @@ export function GridSection({
     <div className={pageStyles.gridSection}>
       <a href={getHref()}>
         <ParallaxImageRenderer
-          block={parallaxBlock}
-          blockType="collection"
+          content={parallaxBlock}
+          contentType="collection"
           cardTypeBadge={card.cardType}
           priority={priority}
         />

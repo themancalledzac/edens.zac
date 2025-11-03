@@ -24,46 +24,15 @@
 import { notFound } from 'next/navigation';
 
 import { PAGINATION, TIMING } from '@/app/constants';
-import { type ContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
-import { type CollectionType, type DisplayMode } from '@/app/types/ContentCollection';
+import {
+  type CollectionModel,
+  type CollectionType,
+} from '@/app/types/Collection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isProduction } from '@/app/utils/environment';
 
-export interface ConfigJson {
-  showDates: boolean;
-  displayMode: string;
-}
-
-/**
- * Fully-hydrated collection returned from the backend read endpoints.
- */
-export interface ContentCollection {
-  id: number;
-  type: CollectionType;
-  title: string;
-  slug: string;
-  description?: string;
-  location?: string;
-  collectionDate?: string;
-  visible?: boolean;
-  priority?: number;
-  // Legacy: coverImageUrl has been replaced by coverImage
-  coverImageUrl?: string;
-  coverImage?: ImageContentBlock | null;
-  isPasswordProtected?: boolean;
-  hasAccess?: boolean;
-  displayMode?: DisplayMode;
-  configJson?: ConfigJson | string;
-  createdAt?: string;
-  updatedAt?: string;
-  blocksPerPage?: number;
-  totalBlocks?: number;
-  currentPage?: number;
-  totalPages?: number;
-  homeCardEnabled?: boolean;
-  homeCardText?: string;
-  contentBlocks: ContentBlock[];
-}
+// Re-export types from the single source of truth
+export type { CollectionModel, CollectionType, DisplayMode } from '@/app/types/Collection';
 
 /** Read-only fetch init with Next.js cache options. */
 type ReadonlyFetchInit = Omit<RequestInit, 'body' | 'method'> & {
@@ -137,10 +106,7 @@ function tagForType(type: CollectionType) {
  * Fetch a paginated list of collections.
  * Uses the collections-index cache tag.
  */
-export async function fetchCollections(page = 0, size = PAGINATION.homePageSize): Promise<ContentCollection[]> {
-  // Graceful degradation for local dev when backend is unavailable or misconfigured.
-  // If NEXT_PUBLIC_API_URL is not set or the endpoint returns 404, return an empty list
-  // instead of triggering a global 404 via notFound(). This keeps the home page usable.
+export async function fetchCollections(page = 0, size = PAGINATION.homePageSize): Promise<CollectionModel[]> {
   const url = toURL('/collections', { page, size });
   try {
     const res = await fetch(url, {
@@ -148,167 +114,62 @@ export async function fetchCollections(page = 0, size = PAGINATION.homePageSize)
     } as ReadonlyFetchInit);
     if (res.status === 404) return [];
 
-    // Parse once, then normalize shape. Backend may return an array or a paginated object.
     const data = await safeJson<unknown>(res);
 
-    // Dev-friendly logging without leaking secrets; helpful for shape debugging.
-    try {
-      const preview = typeof data === 'object' ? JSON.stringify(data).slice(0, 200) : String(data);
-      console.debug('[collections] parsed body preview:', preview);
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('[collections] preview logging failed', error instanceof Error ? error.message : String(error));
-      }
-    }
-
-    if (Array.isArray(data)) return data as ContentCollection[];
+    if (Array.isArray(data)) return data as CollectionModel[];
     if (data && typeof data === 'object') {
       const maybe = (data as Record<string, unknown>).content ?? (data as Record<string, unknown>).collections ?? (data as Record<string, unknown>).items ?? null;
-      if (Array.isArray(maybe)) return maybe as ContentCollection[];
+      if (Array.isArray(maybe)) return maybe as CollectionModel[];
     }
 
-    // Unknown shape; avoid crashing callers. Return empty list.
     return [];
   } catch {
-    // Network or parsing failure — prefer empty state on home rather than crashing.
     return [];
   }
 }
 
 /**
- * Base model for public-facing collection display pages.
- * Contains only fields needed for rendering collection content.
- */
-export interface ContentCollectionBase {
-  id: number;
-  title: string;
-  description?: string;
-  slug: string;
-  location?: string;
-  collectionDate?: string;
-  type: CollectionType;
-  // Legacy compatibility: keep coverImageUrl, but prefer coverImage object
-  coverImageUrl?: string;
-  coverImage?: ImageContentBlock | null;
-  displayMode?: DisplayMode;
-  blocks: ContentBlock[];
-  pagination: { currentPage: number; totalPages: number; totalBlocks: number; pageSize: number };
-}
-
-/**
- * Full collection model matching the complete backend API response.
- * Used by admin interfaces with all management fields.
- */
-export interface ContentCollectionModel extends ContentCollectionBase {
-  visible?: boolean;
-  priority?: number;
-  isPasswordProtected?: boolean;
-  hasAccess?: boolean;
-  homeCardEnabled?: boolean;
-  homeCardText?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  configJson?: ConfigJson | string;
-  blocksPerPage?: number;
-}
-
-/** Convert backend collection to the full model shape. */
-export function toModel(c: ContentCollection): ContentCollectionModel {
-  const cover = c.coverImage ?? null;
-  return {
-    id: c.id,
-    title: c.title,
-    description: c.description,
-    coverImageUrl: c.coverImageUrl,
-    coverImage: cover,
-    slug: c.slug,
-    location: c.location,
-    collectionDate: c.collectionDate,
-    type: c.type,
-    displayMode: c.displayMode,
-    visible: c.visible,
-    priority: c.priority,
-    isPasswordProtected: c.isPasswordProtected,
-    hasAccess: c.hasAccess,
-    homeCardEnabled: c.homeCardEnabled,
-    homeCardText: c.homeCardText,
-    createdAt: c.createdAt,
-    updatedAt: c.updatedAt,
-    configJson: c.configJson,
-    blocksPerPage: c.blocksPerPage,
-    blocks: c.contentBlocks ?? [],
-    pagination: {
-      currentPage: c.currentPage ?? 0,
-      totalPages: c.totalPages ?? 1,
-      totalBlocks: c.totalBlocks ?? (c.contentBlocks?.length ?? 0),
-      pageSize: c.blocksPerPage ?? PAGINATION.collectionPageSize,
-    },
-  };
-}
-
-/** Convert full model to base model by stripping admin-only fields. */
-function toBase(model: ContentCollectionModel): ContentCollectionBase {
-  return {
-    id: model.id,
-    title: model.title,
-    description: model.description,
-    slug: model.slug,
-    location: model.location,
-    collectionDate: model.collectionDate,
-    type: model.type,
-    coverImageUrl: model.coverImageUrl,
-    coverImage: model.coverImage,
-    displayMode: model.displayMode,
-    blocks: model.blocks,
-    pagination: model.pagination,
-  };
-}
-
-/**
  * Fetch a single collection by slug for public display pages.
  * Enforces access control via hasAccess check.
- * Returns base model with only public-facing fields.
  * Tagged with the per-slug cache tag for targeted revalidation after writes.
  */
 export async function fetchCollectionBySlug(
   slug: string,
   page = 0,
   size: number = PAGINATION.defaultPageSize
-): Promise<ContentCollectionBase> {
+): Promise<CollectionModel> {
   if (!slug) throw new Error('slug is required');
   const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });
   const res = await fetch(url, {
     next: { revalidate: 3600, tags: [tagForSlug(slug)] },
   } as ReadonlyFetchInit);
-  const raw = await safeJson<ContentCollection>(res);
-  const model = toModel(raw);
+  const raw = await safeJson<CollectionModel>(res);
 
   // Security: Enforce access control for public pages
-  if (!model.hasAccess) {
+  const hasAccess = (raw as CollectionModel & { hasAccess?: boolean }).hasAccess;
+  if (hasAccess === false) {
     notFound();
   }
 
-  return toBase(model);
+  return raw;
 }
 
 /**
  * Fetch a single collection by slug for admin pages.
  * No access control checks - admins can see everything.
- * Returns full model with all admin fields.
  * Tagged with the per-slug cache tag for targeted revalidation after writes.
  */
 export async function fetchCollectionBySlugAdmin(
   slug: string,
   page = 0,
   size: number = PAGINATION.defaultPageSize
-): Promise<ContentCollectionModel> {
+): Promise<CollectionModel> {
   if (!slug) throw new Error('slug is required');
   const url = toURL(`/collections/${encodeURIComponent(slug)}`, { page, size });
   const res = await fetch(url, {
     next: { revalidate: TIMING.revalidateCache, tags: [tagForSlug(slug)] },
   } as ReadonlyFetchInit);
-  const raw = await safeJson<ContentCollection>(res);
-  return toModel(raw);
+  return safeJson<CollectionModel>(res);
 }
 
 /**

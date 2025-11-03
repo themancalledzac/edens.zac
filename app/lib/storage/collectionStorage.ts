@@ -11,13 +11,13 @@
  * - Graceful degradation if storage unavailable or quota exceeded
  */
 
-import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
+import { type CollectionModel } from '@/app/types/Collection';
 
 const STORAGE_KEY_PREFIX = 'collection_cache_';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 interface CachedCollection {
-  data: ContentCollectionBase;
+  data: CollectionModel;
   timestamp: number;
   slug: string;
 }
@@ -35,7 +35,7 @@ export const collectionStorage = {
    * @param slug - Collection slug (used as key)
    * @param data - Collection data to cache
    */
-  set(slug: string, data: ContentCollectionBase): void {
+  set(slug: string, data: CollectionModel): void {
     if (typeof window === 'undefined') return;
 
     try {
@@ -58,7 +58,7 @@ export const collectionStorage = {
    * @param slug - Collection slug to retrieve
    * @returns Cached collection data or null if not found/expired
    */
-  get(slug: string): ContentCollectionBase | null {
+  get(slug: string): CollectionModel | null {
     if (typeof window === 'undefined') return null;
 
     try {
@@ -138,7 +138,7 @@ export const collectionStorage = {
    * @param slug - Collection slug
    * @param data - Updated collection data
    */
-  update(slug: string, data: ContentCollectionBase): void {
+  update(slug: string, data: CollectionModel): void {
     // Same as set - overwrites existing cache with new timestamp
     this.set(slug, data);
   },

@@ -3,15 +3,14 @@
  * Handles data normalization, state management, and type guards
  */
 
-import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
-import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
+import { type CollectionModel as ContentCollectionFullModel } from '@/app/lib/api/collections';
 import {
+  type CollectionModel,
   CollectionType,
-  type ContentBlockReorderOperation,
-  type ContentCollectionModel,
-  type ContentCollectionUpdateDTO,
+  type CollectionUpdateRequest,
   type DisplayMode,
-} from '@/app/types/ContentCollection';
+} from '@/app/types/Collection';
+import { type AnyContentModel, type ImageContentModel } from '@/app/types/Content';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
@@ -28,11 +27,7 @@ export interface ManageFormData {
   location: string;
   collectionDate: string;
   visible: boolean;
-  priority: number;
   displayMode: DisplayMode;
-  homeCardEnabled: boolean;
-  homeCardText: string;
-  blocksPerPage: number;
   coverImageId?: number;
 }
 
@@ -46,17 +41,13 @@ export function initializeUpdateFormData(
   console.log('[initializeUpdateFormData] collection.collectionDate:', collection?.collectionDate);
 
   const formData = {
-    type: collection?.type ?? CollectionType.portfolio,
+    type: collection?.type ?? CollectionType.PORTFOLIO,
     title: collection?.title || '',
     description: collection?.description || '',
     location: collection?.location || '',
     collectionDate: collection?.collectionDate || '',
     visible: collection?.visible ?? true,
-    priority: collection?.priority ?? 2,
     displayMode: collection?.displayMode ?? 'CHRONOLOGICAL',
-    homeCardEnabled: collection?.homeCardEnabled ?? false,
-    homeCardText: collection?.homeCardText || '',
-    blocksPerPage: collection?.pagination?.pageSize ?? DEFAULT_PAGE_SIZE,
     coverImageId: undefined,
   };
 
@@ -74,10 +65,12 @@ export function initializeUpdateFormData(
 export function buildUpdatePayload(
   formData: ManageFormData,
   originalCollection: ContentCollectionFullModel,
-  reorderOperations: ContentBlockReorderOperation[] = [],
-  contentBlockIdsToRemove: number[] = []
-): ContentCollectionUpdateDTO {
-  const payload: ContentCollectionUpdateDTO = {};
+  // reorderOperations: ContentReorderOperation[] = [],
+  // contentIdsToRemove: number[] = []
+): CollectionUpdateRequest {
+  const payload: CollectionUpdateRequest = {
+    id: originalCollection.id, // ID is required for updates
+  };
 
   // Field mappings: [formKey, originalValue]
   const fieldMappings: Array<{
@@ -90,21 +83,14 @@ export function buildUpdatePayload(
     { key: 'location', original: originalCollection.location || '' },
     { key: 'collectionDate', original: originalCollection.collectionDate || '' },
     { key: 'visible', original: originalCollection.visible },
-    { key: 'priority', original: originalCollection.priority },
     { key: 'displayMode', original: originalCollection.displayMode },
-    { key: 'homeCardEnabled', original: originalCollection.homeCardEnabled },
-    { key: 'homeCardText', original: originalCollection.homeCardText || '' },
-    {
-      key: 'blocksPerPage',
-      original: originalCollection.pagination?.pageSize ?? DEFAULT_PAGE_SIZE,
-    },
   ];
 
   // Only include fields that have actually changed
   for (const { key, original } of fieldMappings) {
     if (formData[key] !== original) {
       // Type assertion needed since we're iterating dynamically
-      (payload as Record<string, unknown>)[key] = formData[key];
+      (payload as unknown as Record<string, unknown>)[key] = formData[key];
     }
   }
 
@@ -113,13 +99,15 @@ export function buildUpdatePayload(
     payload.coverImageId = formData.coverImageId;
   }
 
-  // Content block operations - include if any are present
-  if (reorderOperations.length > 0) {
-    payload.reorderOperations = reorderOperations;
-  }
-  if (contentBlockIdsToRemove.length > 0) {
-    payload.contentBlockIdsToRemove = contentBlockIdsToRemove;
-  }
+  // Content operations - include if any are present
+  // TODO: Update location of Reorder operations: now take place in the Image Update endpoint, where we pass the images' collections.'prev(childCollection)'.orderIndex.
+  //  - This will be a SMALL api call, JUST with that orderIndex change, so that reorders are EACH an api call, making them much faster/instant.
+  // if (reorderOperations.length > 0) {
+  //   payload.reorderOperations = reorderOperations;
+  // }
+  // if (contentIdsToRemove.length > 0) {
+  //   payload.contentIdsToRemove = contentIdsToRemove; // Updated field name
+  // }
 
   return payload;
 }
@@ -130,7 +118,7 @@ export function buildUpdatePayload(
  */
 export function syncCollectionState(
   collection: ContentCollectionFullModel,
-  updateResponse: ContentCollectionModel,
+  updateResponse: CollectionModel,
   formData: ManageFormData
 ): ContentCollectionFullModel {
   return {
@@ -140,17 +128,14 @@ export function syncCollectionState(
     location: updateResponse.location || '',
     collectionDate: updateResponse.collectionDate || '',
     visible: formData.visible,
-    priority: formData.priority,
     displayMode: formData.displayMode,
-    homeCardEnabled: formData.homeCardEnabled,
-    homeCardText: formData.homeCardText || '',
   };
 }
 
 /**
  * Type guard to check if a block is an ImageContentBlock
  */
-export function isImageContentBlock(block: unknown): block is ImageContentBlock {
+export function isImageContentBlock(block: unknown): block is ImageContentModel {
   return (
     block !== null &&
     block !== undefined &&
@@ -166,9 +151,9 @@ export function isImageContentBlock(block: unknown): block is ImageContentBlock 
  * Returns the block if found and it's an image, otherwise undefined
  */
 export function findImageBlockById(
-  blocks: AnyContentBlock[] | undefined,
+  blocks: AnyContentModel[] | undefined,
   imageId: number | undefined
-): ImageContentBlock | undefined {
+): ImageContentModel | undefined {
   if (!blocks || !imageId) return undefined;
 
   const block = blocks.find(b => b.id === imageId);
@@ -181,14 +166,14 @@ export function findImageBlockById(
 export function getDisplayedCoverImage(
   collection: ContentCollectionFullModel | null,
   pendingCoverImageId: number | undefined
-): ImageContentBlock | null | undefined {
+): ImageContentModel | null | undefined {
   if (pendingCoverImageId) {
     // Type-safe check: only pass blocks if they exist and are the right type
-    const blocks = collection?.blocks;
+    const blocks = collection?.content;
     if (!blocks || !Array.isArray(blocks)) return undefined;
 
-    // Safe cast: ContentBlock[] from API response contains AnyContentBlock instances at runtime
-    return findImageBlockById(blocks as AnyContentBlock[], pendingCoverImageId);
+    // Safe cast: ContentBlock[] from API response contains AnyContentModel instances at runtime
+    return findImageBlockById(blocks as AnyContentModel[], pendingCoverImageId);
   }
   return collection?.coverImage;
 }
@@ -199,7 +184,7 @@ export function getDisplayedCoverImage(
  */
 export function validateCoverImageSelection(
   imageId: number | undefined,
-  blocks: AnyContentBlock[] | undefined
+  blocks: AnyContentModel[] | undefined
 ): boolean {
   if (!imageId || !blocks) return false;
   const imageBlock = findImageBlockById(blocks, imageId);

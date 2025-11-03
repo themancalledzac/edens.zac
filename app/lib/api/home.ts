@@ -4,61 +4,25 @@
 
 import { PAGINATION } from '@/app/constants';
 import {
-  type ContentCollectionBase,
-  type ContentCollectionModel as ContentCollectionFullModel,
+  type CollectionBase,
+  type CollectionModel as ContentCollectionFullModel,
   fetchCollectionBySlug as fetchCollectionBySlugPublic,
   fetchCollectionBySlugAdmin as fetchCollectionBySlugAdminInternal,
   toModel,
-} from '@/app/lib/api/contentCollections';
-import { fetchFormDataApi, fetchPostJsonApi, fetchPutJsonApi, fetchReadApi } from '@/app/lib/api/core';
+} from '@/app/lib/api/collections';
 import {
-  type ContentCollectionModel,
-  type ContentCollectionSimpleCreateDTO,
-  type ContentCollectionUpdateDTO,
-} from '@/app/types/ContentCollection';
+  fetchAdminGetApi,
+  fetchAdminPostJsonApi,
+  fetchAdminPutJsonApi,
+  fetchFormDataApi,
+} from '@/app/lib/api/core';
+import {
+  type CollectionModel,
+  type CollectionSimpleCreateDTO,
+  type CollectionUpdateRequest,
+} from '@/app/types/Collection';
 import { type HomeCardModel } from '@/app/types/HomeCardModel';
-import { type CollectionUpdateMetadata } from '@/app/types/ImageMetadata';
-
-/**
- * Backend response structure for home page
- */
-interface HomePageResponse {
-  items: HomeCardModel[];
-  count: number;
-  maxPriority: number;
-  generatedAt: string;
-}
-
-/**
- * Fetches the latest home page collections
- * Endpoint: GET /api/read/collections/homePage
- * Optional query params: maxPriority, limit
- *
- * @param params - Optional filters for priority and limit
- * @returns The latest home page layout cards or null on failure
- */
-export async function fetchHomePage(
-  params: { maxPriority?: number; limit?: number } = {}
-): Promise<HomeCardModel[] | null> {
-  try {
-    const { maxPriority = 2, limit } = params;
-    const search = new URLSearchParams();
-    if (maxPriority !== undefined) search.set('maxPriority', String(maxPriority));
-    if (limit !== undefined) search.set('limit', String(limit));
-
-    const endpoint = `/collections/homePage${search.toString() ? `?${search.toString()}` : ''}`;
-    const response = await fetchReadApi<HomePageResponse>(endpoint);
-
-    if (response && response.items && response.items.length > 0) {
-      return response.items;
-    }
-
-    return [];
-  } catch (error) {
-    console.error('Error fetching home page:', error);
-    return null;
-  }
-}
+import { type GeneralMetadataDTO as GeneralMetadata } from '@/app/types/ImageMetadata';
 
 /**
  * Fetches a content collection by slug for public display pages.
@@ -74,7 +38,7 @@ export async function fetchCollectionBySlug(
   slug: string,
   page = 0,
   size: number = PAGINATION.defaultPageSize
-): Promise<ContentCollectionBase> {
+): Promise<CollectionBase> {
   try {
     return await fetchCollectionBySlugPublic(slug, page, size);
   } catch (error) {
@@ -108,19 +72,31 @@ export async function fetchCollectionBySlugAdmin(
 
 /**
  * Creates a new content collection with simplified request (just type and title)
- * Endpoint: POST /api/write/collections/createCollection
+ * Endpoint: POST /api/admin/collections/createCollection
  *
  * @param createData - The simplified collection creation data
- * @returns The created collection (full model with all fields)
+ * @returns The created collection with all metadata (CollectionUpdateResponse)
  */
 export async function createContentCollectionSimple(
-  createData: ContentCollectionSimpleCreateDTO
-): Promise<ContentCollectionFullModel> {
+  createData: CollectionSimpleCreateDTO
+): Promise<CollectionUpdateResponse> {
   try {
-    return await fetchPostJsonApi<ContentCollectionFullModel>(
+    const data = await fetchAdminPostJsonApi<any>(
       '/collections/createCollection',
       createData
     );
+
+    // Transform backend response to match CollectionUpdateResponse format
+    return {
+      collection: toModel(data.collection),
+      tags: data.tags || [],
+      people: data.people || [],
+      cameras: data.cameras || [],
+      lenses: data.lenses || [],
+      filmTypes: data.filmTypes || [],
+      filmFormats: data.filmFormats || [],
+      collections: data.collections || [],
+    };
   } catch (error) {
     console.error('[createContentCollectionSimple] Error:', error);
     throw error;
@@ -129,7 +105,7 @@ export async function createContentCollectionSimple(
 
 /**
  * Updates an existing content collection metadata
- * Endpoint: PUT /api/write/collections/{id}
+ * Endpoint: PUT /api/admin/collections/{id}
  *
  * @param id - The collection ID
  * @param updateData - The collection update data
@@ -137,10 +113,10 @@ export async function createContentCollectionSimple(
  */
 export async function updateContentCollection(
   id: number,
-  updateData: ContentCollectionUpdateDTO
-): Promise<ContentCollectionModel> {
+  updateData: CollectionUpdateRequest
+): Promise<CollectionModel> {
   try {
-    return await fetchPutJsonApi<ContentCollectionModel>(
+    return await fetchAdminPutJsonApi<CollectionModel>(
       `/collections/${id}`,
       updateData
     );
@@ -152,19 +128,19 @@ export async function updateContentCollection(
 
 /**
  * Adds content blocks (images) to a collection
- * Endpoint: POST /api/write/collections/{id}/content
+ * Endpoint: POST /api/write/content/images/{collectionId}
  *
  * @param id - The collection ID
  * @param formData - FormData containing image files
- * @returns The updated collection with new content blocks
+ * @returns Array of created image content blocks
  */
 export async function addContentBlocks(
   id: number,
   formData: FormData
-): Promise<ContentCollectionModel> {
+): Promise<any> {
   try {
-    return await fetchFormDataApi<ContentCollectionModel>(
-      `/collections/${id}/content`,
+    return await fetchFormDataApi<any>(
+      `/content/images/${id}`,
       formData
     );
   } catch (error) {
@@ -177,7 +153,7 @@ export async function addContentBlocks(
  * Transform backend ContentCollectionModel to HomeCardModel
  * Maps collection data to the home card format with proper CollectionType
  */
-function mapCollectionToHomeCard(collection: ContentCollectionModel): HomeCardModel {
+function mapCollectionToHomeCard(collection: CollectionModel): HomeCardModel {
   // Extract cover image URL from the nested coverImage object
   // Backend returns coverImage.imageUrlWeb (webP optimized) as the primary image
   const coverImageUrl =
@@ -201,7 +177,7 @@ function mapCollectionToHomeCard(collection: ContentCollectionModel): HomeCardMo
 
 /**
  * Fetches all content collections (dev/admin only)
- * Endpoint: GET http://localhost:8080/api/write/collections/all
+ * Endpoint: GET /api/admin/collections/all
  *
  * Note: This is a dev-only endpoint that ALWAYS hits localhost.
  * Returns all collections regardless of visibility, priority, or access control.
@@ -210,33 +186,20 @@ function mapCollectionToHomeCard(collection: ContentCollectionModel): HomeCardMo
  */
 export async function fetchAllCollections(): Promise<HomeCardModel[] | null> {
   try {
-    // Dev-only: Always hit localhost
-    const url = 'http://localhost:8080/api/write/collections/all';
+    const rawData = await fetchAdminGetApi<CollectionModel[]>(
+      '/collections/all',
+      { cache: 'no-store' }
+    );
 
-    console.log('[fetchAllCollections] Fetching from:', url);
-
-    const response = await fetch(url, {
-      cache: 'no-store', // Dev endpoint, don't cache
-    });
-
-    console.log('[fetchAllCollections] Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[fetchAllCollections] Error response:', errorText);
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-
-    const rawData = await response.json();
     console.log('[fetchAllCollections] Received data:', Array.isArray(rawData) ? `Array with ${rawData.length} items` : typeof rawData);
 
-    let collections: ContentCollectionModel[] = [];
+    let collections: CollectionModel[] = [];
 
     // Handle both array and object responses
     if (Array.isArray(rawData)) {
       collections = rawData;
     } else if (rawData && typeof rawData === 'object') {
-      const items = rawData.items || rawData.collections || rawData.content;
+      const items = (rawData as any).items || (rawData as any).collections || (rawData as any).content;
       if (Array.isArray(items)) {
         collections = items;
       }
@@ -264,63 +227,34 @@ export async function fetchAllCollections(): Promise<HomeCardModel[] | null> {
 }
 
 /**
- * General metadata DTO matching backend GeneralMetadataDTO
- * Contains all available tags, people, cameras, lenses, film types, formats, and collections
- */
-export interface GeneralMetadataDTO {
-  /** All available tags that can be assigned to content blocks */
-  tags: CollectionUpdateMetadata['tags'];
-  /** All available people that can be tagged in content blocks */
-  people: CollectionUpdateMetadata['people'];
-  /** All available collections in the system */
-  collections: CollectionUpdateMetadata['collections'];
-  /** All available cameras for film photography metadata */
-  cameras: CollectionUpdateMetadata['cameras'];
-  /** All available lenses for film photography metadata */
-  lenses: CollectionUpdateMetadata['lenses'];
-  /** All available film types with their metadata (display name, default ISO) */
-  filmTypes: CollectionUpdateMetadata['filmTypes'];
-  /** All available film formats (35mm, 120, etc.) */
-  filmFormats: CollectionUpdateMetadata['filmFormats'];
-}
-
-/**
  * Collection update response matching backend ContentCollectionUpdateResponseDTO
  * Contains the collection plus all metadata (unwrapped via @JsonUnwrapped on backend)
+ * Now using GeneralMetadata imported from ImageMetadata types
  */
-export interface CollectionUpdateResponse extends GeneralMetadataDTO {
+export interface CollectionUpdateResponse extends GeneralMetadata {
   /** The content collection with all its data */
   collection: ContentCollectionFullModel;
 }
+
+// Re-export GeneralMetadataDTO for backwards compatibility
+export type { GeneralMetadata as GeneralMetadataDTO };
 
 /**
  * Fetches ONLY metadata needed for manage page dropdowns (no collection data).
  * Much faster than fetchCollectionUpdateMetadata since it doesn't include collection.
  * Use this when you already have the collection cached client-side.
  *
- * Endpoint: GET /api/write/collections/metadata
+ * Endpoint: GET /api/admin/collections/metadata
  *
  * @returns All metadata for dropdowns (tags, people, cameras, etc.)
  */
-export async function fetchMetadataOnly(): Promise<GeneralMetadataDTO> {
+export async function fetchMetadataOnly(): Promise<GeneralMetadata> {
   try {
-    const url = 'http://localhost:8080/api/write/collections/metadata';
+    const data = await fetchAdminGetApi<any>(
+      '/collections/metadata',
+      { cache: 'no-store' }
+    );
 
-    console.log('[fetchMetadataOnly] Fetching from:', url);
-
-    const response = await fetch(url, {
-      cache: 'no-store', // Don't cache admin metadata
-    });
-
-    console.log('[fetchMetadataOnly] Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[fetchMetadataOnly] Error response:', errorText);
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
     console.log('[fetchMetadataOnly] Received metadata');
 
     return {
@@ -343,7 +277,7 @@ export async function fetchMetadataOnly(): Promise<GeneralMetadataDTO> {
  * Returns the collection along with all available tags, people, cameras, and film metadata.
  * This single endpoint provides everything needed for the image management UI.
  *
- * Endpoint: GET /api/write/collections/{slug}/update
+ * Endpoint: GET /api/admin/collections/{slug}/update
  *
  * @param slug - The collection slug
  * @returns The collection and all metadata for dropdowns
@@ -352,24 +286,11 @@ export async function fetchCollectionUpdateMetadata(
   slug: string
 ): Promise<CollectionUpdateResponse> {
   try {
-    // This is a write API endpoint that includes all metadata
-    const url = `http://localhost:8080/api/write/collections/${encodeURIComponent(slug)}/update`;
+    const data = await fetchAdminGetApi<any>(
+      `/collections/${encodeURIComponent(slug)}/update`,
+      { cache: 'no-store' }
+    );
 
-    console.log('[fetchCollectionUpdateMetadata] Fetching from:', url);
-
-    const response = await fetch(url, {
-      cache: 'no-store', // Don't cache admin/update endpoints
-    });
-
-    console.log('[fetchCollectionUpdateMetadata] Response status:', response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[fetchCollectionUpdateMetadata] Error response:', errorText);
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
     console.log('[fetchCollectionUpdateMetadata] Received metadata');
 
     // Transform backend collection to frontend model (contentBlocks → blocks, add pagination)

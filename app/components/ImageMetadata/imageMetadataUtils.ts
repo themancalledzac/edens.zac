@@ -5,8 +5,7 @@
  * Used by ImageMetadataModal for both single and bulk editing.
  */
 
-import type { UpdateImageDTO } from '@/app/lib/api/images';
-import type { ImageCollection, ImageContentBlock } from '@/app/types/ContentBlock';
+import type { ImageCollection, ImageContentModel, UpdateImageDTO } from '@/app/types/Content';
 
 // ============================================================================
 // Pure Helper Functions
@@ -57,12 +56,12 @@ function getCommonArrayItems<T>(arrays: T[][], idKey: keyof T): T[] {
  * @param images - Array of images to compare
  * @returns Partial image object with only common values
  */
-export function getCommonValues(images: ImageContentBlock[]): Partial<ImageContentBlock> {
+export function getCommonValues(images: ImageContentModel[]): Partial<ImageContentModel> {
   if (images.length === 0) return {};
   if (images.length === 1) return images[0] || {};
 
   const first = images[0]!; // Safe: already checked length > 1
-  const common: Partial<ImageContentBlock> = {};
+  const common: Partial<ImageContentModel> = {};
 
   // String fields - check if all match
   if (images.every(img => img.title === first.title)) common.title = first.title;
@@ -75,7 +74,7 @@ export function getCommonValues(images: ImageContentBlock[]): Partial<ImageConte
   if (images.every(img => img.camera?.id === first.camera?.id)) common.camera = first.camera;
   if (images.every(img => img.lens?.id === first.lens?.id)) common.lens = first.lens;
   if (images.every(img => img.iso === first.iso)) common.iso = first.iso;
-  if (images.every(img => img.fstop === first.fstop)) common.fstop = first.fstop;
+  if (images.every(img => img.fStop === first.fStop)) common.fStop = first.fStop; // Fixed: fstop → fStop
   if (images.every(img => img.shutterSpeed === first.shutterSpeed))
     common.shutterSpeed = first.shutterSpeed;
   if (images.every(img => img.focalLength === first.focalLength))

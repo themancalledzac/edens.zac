@@ -4,13 +4,13 @@
 
 import { notFound } from 'next/navigation';
 
-import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
+import { type CollectionBase } from '@/app/lib/api/collections';
 import {
   type AnyContentBlock,
   type ImageContentBlock,
   type TextContentBlock,
 } from '@/app/types/ContentBlock';
-import { CollectionType } from '@/app/types/ContentCollection';
+import { CollectionType } from '@/app/types/Collection';
 
 import ContentCollectionPage from './page';
 
@@ -23,7 +23,7 @@ jest.mock('@/app/lib/api/home', () => ({
   fetchCollectionBySlug: jest.fn(),
 }));
 
-jest.mock('@/app/components/ContentBlock/ContentBlockWithFullScreen', () => {
+jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => {
   return function MockContentBlockWithFullScreen() {
     return <div data-testid="content-block-with-fullscreen" />;
   };
@@ -90,12 +90,12 @@ describe('ContentCollectionPage - Visibility Filtering', () => {
       ],
     };
 
-    const mockCollection: ContentCollectionBase = {
+    const mockCollection: CollectionBase = {
       id: 100,
       title: 'Test Collection',
       slug: 'test-collection',
       type: CollectionType.portfolio,
-      blocks: [mockImage1, mockImage2, mockImage3] as AnyContentBlock[],
+      content: [mockImage1, mockImage2, mockImage3] as AnyContentBlock[],
       pagination: {
         currentPage: 0,
         totalPages: 1,
@@ -128,12 +128,12 @@ describe('ContentCollectionPage - Visibility Filtering', () => {
       ],
     };
 
-    const mockCollection: ContentCollectionBase = {
+    const mockCollection: CollectionBase = {
       id: 100,
       title: 'Test Collection',
       slug: 'test-collection',
       type: CollectionType.portfolio,
-      blocks: [mockImage] as AnyContentBlock[],
+      content: [mockImage] as AnyContentBlock[],
       pagination: {
         currentPage: 0,
         totalPages: 1,
@@ -162,12 +162,12 @@ describe('ContentCollectionPage - Visibility Filtering', () => {
       ],
     };
 
-    const mockCollection: ContentCollectionBase = {
+    const mockCollection: CollectionBase = {
       id: 100,
       title: 'Test Collection',
       slug: 'test-collection',
       type: CollectionType.portfolio,
-      blocks: [mockImage] as AnyContentBlock[],
+      content: [mockImage] as AnyContentBlock[],
       pagination: {
         currentPage: 0,
         totalPages: 1,
@@ -194,12 +194,12 @@ describe('ContentCollectionPage - Visibility Filtering', () => {
       orderIndex: 0,
     };
 
-    const mockCollection: ContentCollectionBase = {
+    const mockCollection: CollectionBase = {
       id: 100,
       title: 'Test Collection',
       slug: 'test-collection',
       type: CollectionType.blogs,
-      blocks: [mockTextBlock] as AnyContentBlock[],
+      content: [mockTextBlock] as AnyContentBlock[],
       pagination: {
         currentPage: 0,
         totalPages: 1,
@@ -228,12 +228,12 @@ describe('ContentCollectionPage - Visibility Filtering', () => {
       ],
     };
 
-    const mockCollection: ContentCollectionBase = {
+    const mockCollection: CollectionBase = {
       id: 100, // Current collection is 100
       title: 'Test Collection',
       slug: 'test-collection',
       type: CollectionType.portfolio,
-      blocks: [mockImage] as AnyContentBlock[],
+      content: [mockImage] as AnyContentBlock[],
       pagination: {
         currentPage: 0,
         totalPages: 1,
@@ -261,7 +261,7 @@ describe('ContentCollectionPage - Visibility Filtering', () => {
   });
 
   it('should call notFound when collection is null', async () => {
-    fetchCollectionBySlug.mockResolvedValue(null as unknown as ContentCollectionBase);
+    fetchCollectionBySlug.mockResolvedValue(null as unknown as CollectionBase);
 
     const params = Promise.resolve({ cardType: 'portfolio', slug: 'null-collection' });
     await ContentCollectionPage({ params });

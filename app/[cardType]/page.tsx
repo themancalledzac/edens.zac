@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 
 import ContentCollectionPage from '@/app/components/ContentCollection/ContentCollectionPage';
-import { fetchCollectionsByType } from '@/app/lib/api/contentCollections';
-import { CollectionType } from '@/app/types/ContentCollection';
+import { fetchCollectionsByType } from '@/app/lib/api/collections';
+import { CollectionType } from '@/app/types/Collection';
 
 interface PageProps {
   params: Promise<{

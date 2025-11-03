@@ -1,11 +1,11 @@
 import React, { forwardRef } from 'react';
 
-import { type AnyContentBlock } from '@/app/types/ContentBlock';
+import { type AnyContentModel } from '@/app/types/Content';
 
-import cbStyles from './ContentBlockComponent.module.scss';
+import cbStyles from './ContentComponent.module.scss';
 
 export interface BaseContentBlockRendererProps {
-  block: AnyContentBlock;
+  block: AnyContentModel;
   width: number;
   height: number;
   className?: string;
@@ -22,8 +22,8 @@ export interface BlockWrapperProps {
   onClick?: () => void;
   hasOverlays?: boolean;
   isTextBlock?: boolean;
-  block?: AnyContentBlock;
-  renderContent?: (block: AnyContentBlock) => React.ReactElement;
+  block?: AnyContentModel;
+  renderContent?: (block: AnyContentModel) => React.ReactElement;
 }
 
 /**
@@ -31,7 +31,7 @@ export interface BlockWrapperProps {
  * Provides consistent sizing, padding, and click handling
  * Supports ref forwarding for parallax and other interactions
  */
-export const BlockWrapper = forwardRef<HTMLDivElement, BlockWrapperProps>(function BlockWrapper({
+export const ContentWrapper = forwardRef<HTMLDivElement, BlockWrapperProps>(function BlockWrapper({
   children,
   width,
   height,
@@ -46,7 +46,7 @@ export const BlockWrapper = forwardRef<HTMLDivElement, BlockWrapperProps>(functi
 }, ref) {
   // Auto-detect hasOverlays and isTextBlock if block is provided
   const finalHasOverlays = hasOverlays ?? (block ? !!(block.overlayText || block.cardTypeBadge || block.dateBadge) : false);
-  const finalIsTextBlock = isTextBlock ?? (block ? block.blockType === 'TEXT' : false);
+  const finalIsTextBlock = isTextBlock ?? (block ? block.contentType === 'TEXT' : false);
 
   // Calculate aspect ratio for mobile responsive sizing
   const aspectRatio = width / height;

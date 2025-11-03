@@ -2,16 +2,18 @@
  * Tests for Images API functions
  */
 
-import { type ImageCollection } from '@/app/types/ContentBlock';
-
 import * as core from './core';
-import { updateImage,type UpdateImageDTO } from './images';
+
+import { type ImageCollection } from '@/app/types/Content';
+import { updateImage, type UpdateImageDTO } from '@/app/types/Content';
 
 // Mock the core module
 jest.mock('./core');
 
 describe('updateImage', () => {
-  const mockFetchPutJsonApi = core.fetchPutJsonApi as jest.MockedFunction<typeof core.fetchPutJsonApi>;
+  const mockFetchPatchJsonApi = core.fetchPatchJsonApi as jest.MockedFunction<
+    typeof core.fetchPatchJsonApi
+  >;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -22,22 +24,22 @@ describe('updateImage', () => {
   });
 
   describe('validation', () => {
-    it('should throw error if imageId is not provided', async () => {
-      await expect(updateImage(0, { title: 'Test' })).rejects.toThrow('Valid imageId is required');
+    it('should throw error if id is not provided', async () => {
+      await expect(updateImage({ id: 0, title: 'Test' })).rejects.toThrow('Valid id is required');
     });
 
-    it('should throw error if imageId is negative', async () => {
-      await expect(updateImage(-1, { title: 'Test' })).rejects.toThrow('Valid imageId is required');
+    it('should throw error if id is negative', async () => {
+      await expect(updateImage({ id: -1, title: 'Test' })).rejects.toThrow('Valid id is required');
     });
 
-    it('should throw error if updates object is empty', async () => {
-      await expect(updateImage(123, {})).rejects.toThrow(
-        'Updates object must contain at least one field to update'
+    it('should throw error if updates object only contains id', async () => {
+      await expect(updateImage({ id: 123 })).rejects.toThrow(
+        'Updates object must contain at least one field to update besides id'
       );
     });
 
     it('should throw error if updates is null', async () => {
-      await expect(updateImage(123, null as unknown as UpdateImageDTO)).rejects.toThrow();
+      await expect(updateImage(null as unknown as UpdateImageDTO)).rejects.toThrow();
     });
   });
 
@@ -45,31 +47,33 @@ describe('updateImage', () => {
     it('should update image title and caption', async () => {
       const imageId = 123;
       const updates: UpdateImageDTO = {
+        id: imageId,
         title: 'Sunset over the mountains',
         caption: 'A beautiful sunset captured in the Rockies',
       };
       const mockResponse = { id: imageId, ...updates };
 
-      mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
+      mockFetchPatchJsonApi.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateImage(imageId, updates);
+      const result = await updateImage(updates);
 
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/123', updates);
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
       expect(result).toEqual(mockResponse);
     });
 
     it('should update single field', async () => {
       const imageId = 456;
       const updates: UpdateImageDTO = {
+        id: imageId,
         rating: 5,
       };
       const mockResponse = { id: imageId, rating: 5 };
 
-      mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
+      mockFetchPatchJsonApi.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateImage(imageId, updates);
+      const result = await updateImage(updates);
 
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/456', updates);
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
       expect(result).toEqual(mockResponse);
     });
 
@@ -90,37 +94,40 @@ describe('updateImage', () => {
         },
       ];
       const updates: UpdateImageDTO = {
+        id: imageId,
         collections: { prev: collections },
       };
       const mockResponse = { id: imageId, collections };
 
-      mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
+      mockFetchPatchJsonApi.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateImage(imageId, updates);
+      const result = await updateImage(updates);
 
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/789', updates);
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
       expect(result).toEqual(mockResponse);
     });
 
     it('should clear field by setting to null', async () => {
       const imageId = 101;
       const updates: UpdateImageDTO = {
+        id: imageId,
         caption: null,
         location: null,
       };
       const mockResponse = { id: imageId, caption: null, location: null };
 
-      mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
+      mockFetchPatchJsonApi.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateImage(imageId, updates);
+      const result = await updateImage(updates);
 
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/101', updates);
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
       expect(result).toEqual(mockResponse);
     });
 
     it('should update multiple metadata fields', async () => {
       const imageId = 202;
       const updates: UpdateImageDTO = {
+        id: imageId,
         author: 'John Doe',
         camera: { newValue: 'Canon EOS R5' },
         lens: { newValue: 'Canon RF 24-70mm f/2.8' },
@@ -133,11 +140,11 @@ describe('updateImage', () => {
       };
       const mockResponse = { id: imageId, ...updates };
 
-      mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
+      mockFetchPatchJsonApi.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateImage(imageId, updates);
+      const result = await updateImage(updates);
 
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/202', updates);
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
       expect(result).toEqual(mockResponse);
     });
   });
@@ -146,79 +153,101 @@ describe('updateImage', () => {
     it('should propagate API errors', async () => {
       const imageId = 999;
       const updates: UpdateImageDTO = {
+        id: imageId,
         title: 'Test',
       };
       const error = new Error('API Error: 500 Internal Server Error');
 
-      mockFetchPutJsonApi.mockRejectedValueOnce(error);
+      mockFetchPatchJsonApi.mockRejectedValueOnce(error);
 
-      await expect(updateImage(imageId, updates)).rejects.toThrow('API Error: 500 Internal Server Error');
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/999', updates);
+      await expect(updateImage(updates)).rejects.toThrow(
+        'API Error: 500 Internal Server Error'
+      );
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
     });
 
     it('should handle network errors', async () => {
       const imageId = 303;
       const updates: UpdateImageDTO = {
+        id: imageId,
         title: 'Test',
       };
       const error = new Error('Network error');
 
-      mockFetchPutJsonApi.mockRejectedValueOnce(error);
+      mockFetchPatchJsonApi.mockRejectedValueOnce(error);
 
-      await expect(updateImage(imageId, updates)).rejects.toThrow('Network error');
+      await expect(updateImage(updates)).rejects.toThrow('Network error');
     });
   });
 
   describe('collections updates', () => {
-    it('should handle empty collections', async () => {
+    it('should handle removing all collections', async () => {
       const imageId = 404;
       const updates: UpdateImageDTO = {
-        collections: [],
+        id: imageId,
+        collections: {
+          remove: [1, 2, 3],
+        },
       };
       const mockResponse = { id: imageId, collections: [] };
 
-      mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
+      mockFetchPatchJsonApi.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateImage(imageId, updates);
+      const result = await updateImage(updates);
 
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/404', updates);
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle collections with partial data', async () => {
+    it('should handle collections with prev pattern', async () => {
       const imageId = 505;
       const collections: ImageCollection[] = [
         {
           collectionId: 1,
           name: 'Test Collection',
-          // visible and orderIndex are optional
+          visible: true,
+          orderIndex: 0,
         },
       ];
       const updates: UpdateImageDTO = {
-        collections,
+        id: imageId,
+        collections: {
+          prev: collections,
+        },
       };
       const mockResponse = { id: imageId, collections };
 
-      mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
+      mockFetchPatchJsonApi.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateImage(imageId, updates);
+      const result = await updateImage(updates);
 
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/505', updates);
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
       expect(result).toEqual(mockResponse);
     });
 
-    it('should handle clearing collections', async () => {
+    it('should handle adding new collections', async () => {
       const imageId = 606;
+      const newCollections: ImageCollection[] = [
+        {
+          collectionId: 5,
+          name: 'New Collection',
+          visible: true,
+          orderIndex: 0,
+        },
+      ];
       const updates: UpdateImageDTO = {
-        collections: null,
+        id: imageId,
+        collections: {
+          newValue: newCollections,
+        },
       };
-      const mockResponse = { id: imageId, collections: null };
+      const mockResponse = { id: imageId, collections: newCollections };
 
-      mockFetchPutJsonApi.mockResolvedValueOnce(mockResponse);
+      mockFetchPatchJsonApi.mockResolvedValueOnce(mockResponse);
 
-      const result = await updateImage(imageId, updates);
+      const result = await updateImage(updates);
 
-      expect(mockFetchPutJsonApi).toHaveBeenCalledWith('/images/606', updates);
+      expect(mockFetchPatchJsonApi).toHaveBeenCalledWith('/content/images', [updates]);
       expect(result).toEqual(mockResponse);
     });
   });

@@ -1,15 +1,15 @@
 import { notFound } from 'next/navigation';
 
-import ContentBlockWithFullScreen from '@/app/components/ContentBlock/ContentBlockWithFullScreen';
+import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
+import { type CollectionModel } from '@/app/lib/api/collections';
 import { fetchCollectionBySlug } from '@/app/lib/api/home';
 import {
-  type AnyContentBlock,
-  type ImageContentBlock,
-  type ParallaxImageContentBlock,
-  type TextContentBlock,
-} from '@/app/types/ContentBlock';
+  type AnyContentModel,
+  type ImageContentModel,
+  type ParallaxImageContentModel,
+  type TextContentModel,
+} from '@/app/types/Content';
 import { buildParallaxImageContentBlock } from '@/app/utils/parallaxImageUtils';
 
 import styles from '../../page.module.scss';
@@ -33,9 +33,9 @@ interface ContentCollectionPageProps {
  * @returns Formatted metadata text block
  */
 function buildMetadataTextBlock(
-  content: ContentCollectionBase,
-  coverBlock: ParallaxImageContentBlock | null
-): TextContentBlock {
+  content: CollectionModel,
+  coverBlock: ParallaxImageContentModel | null
+): TextContentModel {
   const rows = [
     content.location ? `Location: ${content.location}` : undefined,
     content.description ? content.description : undefined,
@@ -52,7 +52,7 @@ function buildMetadataTextBlock(
 
   return {
     id: Number.MAX_SAFE_INTEGER,
-    blockType: 'TEXT',
+    type: 'TEXT',
     title: `${content.title} — Details`,
     content: rows.join('\n'),
     format: 'plain' as const,
@@ -89,7 +89,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
 
   // Server-side data fetching with proper error handling
   // Fetch ALL blocks (set high page size to get everything in one call)
-  let content: ContentCollectionBase;
+  let content: CollectionModel;
   try {
     content = await fetchCollectionBySlug(slug, 0, 1000);
   } catch {
@@ -101,11 +101,11 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
     return notFound();
   }
 
-  // Filter blocks to only show images visible in this collection
-  const filteredBlocks = (content.blocks as AnyContentBlock[])?.filter(block => {
+  // Filter content to only show images visible in this collection
+  const filteredContent = (content.content as AnyContentModel[])?.filter(content => {
     // Only filter IMAGE blocks that have collections metadata
-    if (block.blockType === 'IMAGE' && 'collections' in block) {
-      const imageBlock = block as ImageContentBlock;
+    if (content.contentType === 'IMAGE' && 'collections' in content) {
+      const imageBlock = content as ImageContentModel;
       // Find the collection relationship for the current collection
       const collectionRelation = imageBlock.collections?.find(
         c => c.collectionId === content.id
@@ -118,21 +118,21 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
   }) || [];
 
   // Build synthetic blocks for unified layout
-  const heroBlocks: AnyContentBlock[] = [];
+  const heroContent: AnyContentModel[] = [];
   const image =
     content.coverImage ||
-    (filteredBlocks.find(block => block.blockType === 'IMAGE') as ImageContentBlock | undefined);
+    (filteredContent.find(contentItem => contentItem.contentType === 'IMAGE') as ImageContentModel | undefined);
   const coverBlock = buildParallaxImageContentBlock(
     image,
     content.collectionDate ?? '',
     content.type,
     content.title
   );
-  if (coverBlock) heroBlocks.push(coverBlock);
-  heroBlocks.push(buildMetadataTextBlock(content, coverBlock));
-  const combinedBlocks: AnyContentBlock[] = [
-    ...heroBlocks,
-    ...filteredBlocks,
+  if (coverBlock) heroContent.push(coverBlock);
+  heroContent.push(buildMetadataTextBlock(content, coverBlock));
+  const combinedBlocks: AnyContentModel[] = [
+    ...heroContent,
+    ...filteredContent,
   ];
 
 
@@ -143,7 +143,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
       <div className={styles.contentPadding}>
         <div className={styles.blockGroup}>
           <ContentBlockWithFullScreen
-            blocks={combinedBlocks}
+            content={combinedBlocks}
             priorityBlockIndex={0}
             enableFullScreenView
             initialPageSize={30}

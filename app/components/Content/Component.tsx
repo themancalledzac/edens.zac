@@ -4,20 +4,18 @@ import React, { useMemo } from 'react';
 
 import { useViewport } from '@/app/hooks/useViewport';
 import {
-  type AnyContentBlock,
-  type ImageContentBlock,
-  type ParallaxImageContentBlock,
-} from '@/app/types/ContentBlock';
-import { processContentBlocksForDisplay } from '@/app/utils/contentBlockLayout';
+  type AnyContentModel,
+  type ImageContentModel,
+  type ParallaxImageContentModel,
+} from '@/app/types/Content';
+import { processContentForDisplay } from '@/app/utils/contentLayout';
 import {
-  isCodeBlock,
-  isGifBlock,
-  isImageBlock,
-  isParallaxImageBlock,
-  isTextBlock,
-} from '@/app/utils/contentBlockTypeGuards';
+  isGifContent,
+  isContentImage,
+  isParallaxImageContent,
+  isTextContent,
+} from '@/app/utils/contentTypeGuards';
 
-import { CodeContentBlockRenderer } from './CodeContentBlockRenderer';
 import cbStyles from './ContentBlockComponent.module.scss';
 import { GifContentBlockRenderer } from './GifContentBlockRenderer';
 import { ImageContentBlockRenderer } from './ImageBlockRenderer';
@@ -32,7 +30,7 @@ import { TextBlockRenderer } from './TextBlockRenderer';
  * @returns Object containing width, height, className, and block
  */
 function determineBaseProps(
-  item: { block: AnyContentBlock; width: number; height: number },
+  item: { content: AnyContentModel; width: number; height: number },
   totalInRow: number,
   index: number
 ) {
@@ -46,58 +44,58 @@ function determineBaseProps(
     width: Math.round(item.width),
     height: Math.round(item.height),
     className,
-    block: item.block,
+    content: item.content,
   };
 }
 
-export interface ContentBlockComponentProps {
-  blocks: AnyContentBlock[];
+export interface ContentComponentProps {
+  content: AnyContentModel[];
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
   onImageClick?: (imageId: number) => void;
   justClickedImageId?: number | null;
-  priorityBlockIndex?: number; // Index of block to prioritize for LCP (usually 0 for hero)
+  priorityIndex?: number; // Index of content to prioritize for LCP (usually 0 for hero)
   enableFullScreenView?: boolean; // Enable full-screen image viewing on click
-  onFullScreenImageClick?: (image: ImageContentBlock | ParallaxImageContentBlock) => void; // NEW SIMPLE VERSION
+  onFullScreenImageClick?: (image: ImageContentModel | ParallaxImageContentModel) => void; // NEW SIMPLE VERSION
   selectedImageIds?: number[]; // Array of selected image IDs for bulk editing
 }
 
 /**
- * Content Block Component
+ * Content  Component
  *
  * High-performance content rendering system that processes and displays
- * mixed content blocks (images, text, etc.) in optimized responsive layouts.
+ * mixed content (images, text, etc.) in optimized responsive layouts.
  * Features memoized calculations, responsive chunking, and type-safe specialized renderers.
  */
-export default function ContentBlockComponent({
-  blocks,
+export default function ContentComponent({
+  content,
   isSelectingCoverImage = false,
   currentCoverImageId,
   onImageClick,
   justClickedImageId,
-  priorityBlockIndex = 0,
+  priorityIndex = 0,
   enableFullScreenView = false,
   onFullScreenImageClick, // NEW SIMPLE VERSION
   selectedImageIds = [],
-}: ContentBlockComponentProps) {
+}: ContentComponentProps) {
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
 
   const rows = useMemo(() => {
-    if (!blocks || blocks.length === 0 || !contentWidth) {
+    if (!content || content.length === 0 || !contentWidth) {
       return [];
     }
 
     try {
-      return processContentBlocksForDisplay(blocks, contentWidth, chunkSize);
+      return processContentForDisplay(content, contentWidth, chunkSize);
     } catch (error) {
       // Only log in development
       if (process.env.NODE_ENV === 'development') {
-        console.error('ContentBlockComponent sizing error:', error);
+        console.error('ContentComponent sizing error:', error);
       }
       return [];
     }
-  }, [blocks, contentWidth, chunkSize]);
+  }, [content, contentWidth, chunkSize]);
 
   // Early return for empty state
   if (rows.length === 0) return <div />;
@@ -109,9 +107,9 @@ export default function ContentBlockComponent({
           const totalInRow = row.length;
 
           return (
-            <div key={`row-${row.map(item => item.block.id).join('-')}`} className={cbStyles.row}>
+            <div key={`row-${row.map(item => item.content.id).join('-')}`} className={cbStyles.row}>
               {row.map((item, index) => {
-                const { block, className, width, height } = determineBaseProps(
+                const { content: itemContent, className, width, height } = determineBaseProps(
                   item,
                   totalInRow,
                   index
@@ -119,14 +117,14 @@ export default function ContentBlockComponent({
 
                 // Determine if this block should have priority loading (for LCP optimization)
                 const shouldPrioritize =
-                  blocks.findIndex(b => b.id === block.id) === priorityBlockIndex;
+                  content.findIndex(c => c.id === itemContent.id) === priorityIndex;
 
                 // Renderer lookup map - check most specific types first
-                if (isParallaxImageBlock(block) && block.enableParallax) {
+                if (isParallaxImageContent(itemContent) && itemContent.enableParallax) {
                   // Handle parallax image with proper container structure for collections
                   return (
                     <div
-                      key={block.id}
+                      key={itemContent.id}
                       className={`${className} ${cbStyles.overlayContainer}`}
                       style={{
                         width: isMobile ? '100%' : width,
@@ -148,13 +146,13 @@ export default function ContentBlockComponent({
                         }}
                       >
                         <ParallaxImageRenderer
-                          block={block}
-                          blockType="contentBlock"
-                          cardTypeBadge={block.cardTypeBadge}
+                          content={itemContent}
+                          contentType="content"
+                          cardTypeBadge={itemContent.cardTypeBadge}
                           priority={shouldPrioritize}
                           onClick={
                             enableFullScreenView && onFullScreenImageClick
-                              ? () => onFullScreenImageClick(block)
+                              ? () => onFullScreenImageClick(itemContent)
                               : undefined
                           }
                         />
@@ -162,10 +160,10 @@ export default function ContentBlockComponent({
                     </div>
                   );
                 }
-                if (isImageBlock(block)) {
-                  const isCurrentCover = currentCoverImageId === block.id;
-                  const isJustClicked = justClickedImageId === block.id;
-                  const isSelected = selectedImageIds.includes(block.id);
+                if (isContentImage(itemContent)) {
+                  const isCurrentCover = currentCoverImageId === itemContent.id;
+                  const isJustClicked = justClickedImageId === itemContent.id;
+                  const isSelected = selectedImageIds.includes(itemContent.id);
                   const shouldShowOverlay =
                     (isSelectingCoverImage && isCurrentCover) || isJustClicked;
 
@@ -173,10 +171,10 @@ export default function ContentBlockComponent({
                   const handleClick = () => {
                     if (onImageClick) {
                       // Always use onImageClick if provided (for cover selection or metadata editing)
-                      onImageClick(block.id);
+                      onImageClick(itemContent.id);
                     } else if (enableFullScreenView && onFullScreenImageClick) {
                       // Fall back to fullscreen handler if no onImageClick provided
-                      onFullScreenImageClick(block);
+                      onFullScreenImageClick(itemContent);
                     }
                   };
 
@@ -184,7 +182,7 @@ export default function ContentBlockComponent({
 
                   return (
                     <div
-                      key={block.id}
+                      key={itemContent.id}
                       style={{
                         position: 'relative',
                         cursor: isClickable ? 'pointer' : 'default',
@@ -197,7 +195,7 @@ export default function ContentBlockComponent({
                         transition: 'opacity 0.2s ease',
                       }}>
                         <ImageContentBlockRenderer
-                          block={block}
+                          block={itemContent}
                           width={width}
                           height={height}
                           className={className}
@@ -269,33 +267,22 @@ export default function ContentBlockComponent({
                     </div>
                   );
                 }
-                if (isGifBlock(block))
+                if (isGifContent(itemContent))
                   return (
                     <GifContentBlockRenderer
-                      key={block.id}
-                      block={block}
+                      key={itemContent.id}
+                      block={itemContent}
                       width={width}
                       height={height}
                       className={className}
                       isMobile={isMobile}
                     />
                   );
-                if (isCodeBlock(block))
-                  return (
-                    <CodeContentBlockRenderer
-                      key={block.id}
-                      block={block}
-                      width={width}
-                      height={height}
-                      className={className}
-                      isMobile={isMobile}
-                    />
-                  );
-                if (isTextBlock(block))
+                if (isTextContent(itemContent))
                   return (
                     <TextBlockRenderer
-                      key={block.id}
-                      block={block}
+                      key={itemContent.id}
+                      block={itemContent}
                       width={width}
                       height={height}
                       className={className}

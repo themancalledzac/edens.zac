@@ -4,8 +4,8 @@ import Image from 'next/image';
 import { type FormEvent, useMemo, useState } from 'react';
 
 import { IMAGE } from '@/app/constants';
-import { type UpdateImageDTO, type UpdateImagesResponse, updateMultipleImages } from '@/app/lib/api/images';
-import type { ImageContentBlock } from '@/app/types/ContentBlock';
+import { type UpdateImagesResponse } from '@/app/lib/api/images';
+import { ImageContentModel, UpdateImageDTO, updateMultipleImages } from '@/app/types/Content';
 import type {
   CollectionListModel,
   ContentCameraModel,
@@ -42,7 +42,7 @@ interface ImageMetadataModalProps {
   availableFilmFormats?: FilmFormatModel[];
   availableCollections?: CollectionListModel[];
   selectedImageIds: number[]; // Array of selected image IDs (1 for single edit, N for bulk edit)
-  selectedImages: ImageContentBlock[]; // Images to edit (already filtered in parent)
+  selectedImages: ImageContentModel[]; // Images to edit (already filtered in parent)
 }
 
 /**
@@ -439,7 +439,7 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>F-Stop</label>
                 <input
                   type="text"
-                  value={getFormValue(updateImageDTO.fStop, initialValues.fstop, '') ?? ''}
+                  value={getFormValue(updateImageDTO.fStop, initialValues.fStop, '') ?? ''}
                   onChange={e => updateDTO({ fStop: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., f/2.8"

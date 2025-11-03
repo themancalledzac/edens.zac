@@ -3,11 +3,11 @@
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
-import ContentBlockComponent from '@/app/components/ContentBlock/ContentBlockComponent';
+import ContentComponent from '@/app/components/Content/Component';
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
-import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
+import { type CollectionModel as ContentCollectionFullModel } from '@/app/lib/api/collections';
 import {
   addContentBlocks,
   createContentCollectionSimple,
@@ -18,14 +18,13 @@ import {
 } from '@/app/lib/api/home';
 import { type UpdateImagesResponse } from '@/app/lib/api/images';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
-import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
 import {
+  type CollectionSimpleCreateDTO,
   CollectionType,
-  type ContentBlockReorderOperation,
-  type ContentCollectionSimpleCreateDTO,
   type DisplayMode,
-} from '@/app/types/ContentCollection';
-import { type CollectionUpdateMetadata } from '@/app/types/ImageMetadata';
+} from '@/app/types/Collection';
+import { type AnyContentModel, type ImageContentModel } from '@/app/types/Content';
+import { type GeneralMetadataDTO } from '@/app/types/ImageMetadata';
 
 import pageStyles from '../../../../page.module.scss';
 import styles from './ManageClient.module.scss';
@@ -55,16 +54,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
   const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
-  const [reorderOperations, setReorderOperations] = useState<ContentBlockReorderOperation[]>([]);
-  const [contentBlockIdsToRemove, setContentBlockIdsToRemove] = useState<number[]>([]);
-  const [createData, setCreateData] = useState<ContentCollectionSimpleCreateDTO>({
+
+  const [contentIdsToRemove, setContentIdsToRemove] = useState<number[]>([]); // Renamed from contentBlockIdsToRemove
+  const [createData, setCreateData] = useState<CollectionSimpleCreateDTO>({
     type: CollectionType.portfolio,
     title: '',
   });
   const [updateData, setUpdateData] = useState<ManageFormData>(
     initializeUpdateFormData(null)
   );
-  const [metadata, setMetadata] = useState<CollectionUpdateMetadata>({
+  const [metadata, setMetadata] = useState<GeneralMetadataDTO>({
     tags: [],
     people: [],
     cameras: [],
@@ -93,10 +92,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
   // Derive imagesToEdit from selectedImageIds (always in sync)
   const imagesToEdit = useMemo(
     () =>
-      (collection?.blocks?.filter(
+      (collection?.content?.filter(
         block => isImageContentBlock(block) && selectedImageIds.includes(block.id)
-      ) as ImageContentBlock[]) || [],
-    [selectedImageIds, collection?.blocks]
+      ) as ImageContentModel[]) || [],
+    [selectedImageIds, collection?.content]
   );
 
   const isCreateMode = !slug;
@@ -120,6 +119,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
   // Checks sessionStorage cache before hitting API
   useEffect(() => {
     if (!slug) return; // CREATE mode - no data to fetch
+
+    // Skip fetch if we already have this exact collection loaded
+    // This prevents unnecessary refetches after create or navigation within same collection
+    if (collection && collection.slug === slug) {
+      console.log('[ManageClient] Already have collection for slug:', slug, '- skipping fetch');
+      return;
+    }
 
     const abortController = new AbortController();
     let isMounted = true;
@@ -192,11 +198,14 @@ export default function ManageClient({ slug }: ManageClientProps) {
       isMounted = false;
       abortController.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Note: Only depend on `slug` - we intentionally check `collection` inside
+    // but don't want to re-run when collection changes (would cause refetch loops)
   }, [slug]);
 
   // Handle creating a new text block - immediately POST to backend
   const handleCreateNewTextBlock = async () => {
-    if (!collection?.blocks) return;
+    if (!collection?.content) return;
 
     const newText = prompt('Enter text for the new block:');
     if (!newText || !newText.trim()) return;
@@ -218,7 +227,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         content: newText.trim(),
         format: 'plain' as const,
         align: 'left' as const,
-        orderIndex: collection.blocks.length, // Add to end
+        orderIndex: collection.content.length, // Add to end
         rating: 3,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -227,7 +236,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Add mock block to collection
       const updatedCollection = {
         ...collection,
-        blocks: [...collection.blocks, mockTextBlock],
+        blocks: [...collection.content, mockTextBlock],
       };
 
       setCollection(updatedCollection);
@@ -247,7 +256,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
   };
 
   // Handle create form submission
-  // TODO: Handle Create is not returning our new item
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -260,16 +268,26 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setLoading(true);
       setError(null);
 
-      // Create endpoint now returns full collection model - no normalization needed
-      const newCollection = await createContentCollectionSimple(createData);
+      // Create endpoint returns collection + all metadata (CollectionUpdateResponse)
+      const response = await createContentCollectionSimple(createData);
 
-      setCollection(newCollection);
+      // Set both collection and metadata state from response
+      setCollection(response.collection);
+      setMetadata({
+        tags: response.tags || [],
+        people: response.people || [],
+        cameras: response.cameras || [],
+        lenses: response.lenses || [],
+        filmTypes: response.filmTypes || [],
+        filmFormats: response.filmFormats || [],
+        collections: response.collections || [],
+      });
 
       // Populate update form with created collection data using utility function
-      setUpdateData(initializeUpdateFormData(newCollection));
+      setUpdateData(initializeUpdateFormData(response.collection));
 
-      // Update URL to reflect the new collection using Next.js router
-      router.push(`/collection/manage/${newCollection.slug}`);
+      // Update URL to reflect the new collection using router.replace (avoids re-navigation)
+      router.replace(`/collection/manage/${response.collection.slug}`);
     } catch (error: unknown) {
       console.error('Error creating collection:', error);
       setError(handleApiError(error, 'Failed to create collection'));
@@ -288,29 +306,28 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setLoading(true);
       setError(null);
 
-      // Build payload with only changed fields and content block operations
+      // Build payload with only changed fields and content operations
       const payload = buildUpdatePayload(
         updateData,
-        collection,
-        reorderOperations,
-        contentBlockIdsToRemove
+        collection
       );
 
       const response = await updateContentCollection(collection.id, payload);
 
-      // If content block operations were performed, refetch to get updated blocks
-      const hasContentBlockOperations =
-        reorderOperations.length > 0 || contentBlockIdsToRemove.length > 0;
+      // If content operations were performed, refetch to get updated blocks
+      const hasContentOperations =
+        reorderOperations.length > 0 || contentIdsToRemove.length > 0; // Updated variable names
 
       let updatedCollection: ContentCollectionFullModel;
 
-      if (hasContentBlockOperations) {
+      if (hasContentOperations) {
         // Refetch collection to get updated blocks with proper ordering
+        // TODO: We shouldn't need to re fetch the collection if we are updating. REMOVE
         const refreshedCollection = await fetchCollectionBySlugAdmin(collection.slug);
         updatedCollection = refreshedCollection;
         setCollection(refreshedCollection);
       } else {
-        // Just sync metadata changes if no block operations
+        // Just sync metadata changes if no content operations
         updatedCollection = syncCollectionState(collection, response, updateData);
         setCollection(updatedCollection);
       }
@@ -319,10 +336,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
       collectionStorage.clear(collection.slug);
       collectionStorage.update(collection.slug, updatedCollection);
 
-      // Reset coverImageId and content block operations after successful update
+      // Reset coverImageId and content operations after successful update
       setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
-      setReorderOperations([]);
-      setContentBlockIdsToRemove([]);
+      setContentIdsToRemove([]); // Updated variable name
     } catch (error) {
       console.error('Error updating collection:', error);
       setError(handleApiError(error, 'Failed to update collection'));
@@ -370,7 +386,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const handleCoverImageClick = useCallback(
     (imageId: number) => {
       // Validate that the selected image exists and is an image block
-      if (!validateCoverImageSelection(imageId, collection?.blocks as AnyContentBlock[])) {
+      if (!validateCoverImageSelection(imageId, collection?.content as AnyContentModel[])) {
         setError('Invalid cover image selection. Please try again.');
         return;
       }
@@ -384,7 +400,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         setJustClickedImageId(null);
       }, COVER_IMAGE_FLASH_DURATION);
     },
-    [collection?.blocks]
+    [collection?.content]
   );
 
   // Handle multi-select toggle
@@ -401,12 +417,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   // Handle bulk edit - open modal with selected images
   const handleBulkEdit = useCallback(() => {
-    if (selectedImageIds.length === 0 || !collection?.blocks) return;
+    if (selectedImageIds.length === 0 || !collection?.content) return;
 
     // Get all selected image blocks
-    const selectedImages = collection.blocks.filter(
+    const selectedImages = collection.content.filter(
       block => isImageContentBlock(block) && selectedImageIds.includes(block.id)
-    ) as ImageContentBlock[];
+    ) as ImageContentModel[];
 
     const firstImage = selectedImages[0];
     if (firstImage) {
@@ -429,7 +445,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         handleMultiSelectToggle(imageId);
       } else {
         // Mode 3: Single image edit
-        const imageBlock = collection?.blocks.find(block => block.id === imageId);
+        const imageBlock = collection?.content.find(block => block.id === imageId);
         if (imageBlock && isImageContentBlock(imageBlock)) {
           // Set selectedImageIds for modal but stay in single-edit mode
           setSelectedImageIds([imageId]);
@@ -443,7 +459,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       isMultiSelectMode,
       handleCoverImageClick,
       handleMultiSelectToggle,
-      collection?.blocks,
+      collection?.content,
       openEditor,
     ]
   );
@@ -451,18 +467,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
   // Handle successful metadata save - update local state using response data
   const handleMetadataSaveSuccess = useCallback(
     async (response: UpdateImagesResponse) => {
-      if (!collection?.blocks) return;
+      if (!collection?.content) return;
 
       try {
         // 1. Replace updated images in collection.blocks
-        const updatedBlocks = collection.blocks.map(block => {
+        const updatedBlocks = collection.content.map(block => {
           const updatedImage = response.updatedImages.find(img => img.id === block.id);
           return updatedImage || block; // Replace if found, keep original if not
         });
 
         setCollection({
           ...collection,
-          blocks: updatedBlocks,
+          content: updatedBlocks,
         });
 
         // 2. Add new metadata entities to dropdown lists (only if any were created)
@@ -509,7 +525,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Append new blocks to existing blocks
       const updatedCollection = {
         ...collection,
-        blocks: [...collection.blocks, ...nextPageData.blocks],
+        blocks: [...collection.content, ...nextPageData.content],
         pagination: nextPageData.pagination,
       };
 
@@ -685,9 +701,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           type="number"
                           min="1"
                           max="200"
-                          value={updateData.blocksPerPage}
+                          value={updateData.contentPerPage}
                           onChange={e =>
-                            setUpdateData(prev => ({ ...prev, blocksPerPage: Number(e.target.value) }))
+                            setUpdateData(prev => ({ ...prev, contentPerPage: Number(e.target.value) }))
                           }
                           className={styles.formInput}
                         />
@@ -832,11 +848,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
             </div>
 
             {/* Collection Content */}
-            {collection.blocks && collection.blocks.length > 0 && (
+            {collection.content && collection.content.length > 0 && (
               <div className={pageStyles.blockGroup}>
                 <div className={styles.contentHeader}>
                   <h3 className={styles.contentHeading}>
-                    Collection Content ({collection.blocks.length}
+                    Collection Content ({collection.content.length}
                     {collection.pagination?.totalBlocks
                       ? ` of ${collection.pagination.totalBlocks}`
                       : ''}{' '}
@@ -854,8 +870,8 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     )}
                   </h3>
                 </div>
-                <ContentBlockComponent
-                  blocks={collection.blocks as AnyContentBlock[]}
+                <ContentComponent
+                  content={collection.content as AnyContentModel[]}
                   isSelectingCoverImage={isSelectingCoverImage}
                   currentCoverImageId={collection.coverImage?.id}
                   onImageClick={handleImageClick}

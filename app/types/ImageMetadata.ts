@@ -35,9 +35,12 @@ export type ContentLensModel = IdNameModel
 
 /**
  * Film Type - Represents film stock used
+ * Matches backend ContentFilmTypeModel.java
  */
 export interface FilmTypeModel extends IdNameModel {
+  filmTypeName?: string; // Technical name (e.g., "KODAK_PORTRA_400")
   defaultIso: number; // Default ISO for this film
+  contentImageIds?: number[]; // List of content image IDs using this film type
 }
 
 /**
@@ -54,9 +57,10 @@ export interface FilmFormatModel {
 export type CollectionListModel = IdNameModel
 
 /**
- * Collection Update Metadata Response
+ * Collection Update Metadata Response (legacy naming)
  * Response from the /api/write/collections/{slug}/update endpoint
  * Contains the collection plus all available metadata for dropdowns
+ * @deprecated Use GeneralMetadataDTO instead
  */
 export interface CollectionUpdateMetadata {
   tags: ContentTagModel[];
@@ -66,4 +70,28 @@ export interface CollectionUpdateMetadata {
   filmTypes: FilmTypeModel[];
   filmFormats: FilmFormatModel[];
   collections: CollectionListModel[];
+}
+
+/**
+ * General metadata DTO (backend: GeneralMetadataDTO)
+ * Contains all available metadata for dropdowns and selects
+ */
+export interface GeneralMetadataDTO {
+  tags: ContentTagModel[];
+  people: ContentPersonModel[];
+  cameras: ContentCameraModel[];
+  lenses: ContentLensModel[];
+  filmTypes: FilmTypeModel[];
+  filmFormats: FilmFormatModel[];
+  collections: CollectionListModel[];
+}
+
+/**
+ * Collection update response DTO (backend: CollectionUpdateResponseDTO)
+ * Combines collection data with general metadata for admin/update pages
+ * Note: In JSON response, metadata fields are unwrapped at top level
+ */
+export interface CollectionUpdateResponseDTO {
+  collection: any; // CollectionModel from ContentCollection types
+  metadata: GeneralMetadataDTO;
 }

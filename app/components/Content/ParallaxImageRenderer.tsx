@@ -4,7 +4,7 @@ import Image from 'next/image';
 import React from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
-import { type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
+import { type ParallaxImageContentModel } from '@/app/types/Content';
 
 import { type BadgeContentType, BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentBlockComponent.module.scss';
@@ -16,8 +16,8 @@ import variantStyles from './ParallaxImageRenderer.module.scss';
  * Handles all parallax logic, text overlays, and badge rendering internally
  */
 export interface ParallaxImageContentBlockRendererProps {
-  block: ParallaxImageContentBlock;
-  blockType?: BadgeContentType;
+  content: ParallaxImageContentModel;
+  contentType?: BadgeContentType;
   // Optional props for badge customization
   cardTypeBadge?: string;
   dateBadge?: string;
@@ -38,13 +38,13 @@ export interface ParallaxImageContentBlockRendererProps {
  * for above-the-fold images to improve LCP (Largest Contentful Paint).
  */
 export function ParallaxImageRenderer({
-  block,
-  blockType = 'contentBlock',
+  content,
+  contentType = 'content',
   cardTypeBadge,
   priority = false,
   onClick,
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
-  const { imageUrlWeb, overlayText, collectionDate, imageWidth, imageHeight } = block;
+  const { imageUrlWeb, overlayText, collectionDate, imageWidth, imageHeight } = content;
   const dateSimple = new Date(collectionDate || new Date()).toLocaleDateString();
 
   // Setup parallax effect for this image using defaults
@@ -77,8 +77,8 @@ export function ParallaxImageRenderer({
       )}
       {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
       <BadgeOverlay
-        contentType={blockType}
-        badgeValue={blockType === 'contentBlock' ? dateSimple : cardTypeBadge || ''}
+        contentType={contentType}
+        badgeValue={contentType === 'content' ? dateSimple : cardTypeBadge || ''}
       />
     </div>
   );
