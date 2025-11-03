@@ -10,15 +10,15 @@ import {
 } from '@/app/types/Content';
 import { processContentForDisplay } from '@/app/utils/contentLayout';
 import {
-  isGifContent,
   isContentImage,
+  isGifContent,
   isParallaxImageContent,
   isTextContent,
 } from '@/app/utils/contentTypeGuards';
 
 import cbStyles from './ContentBlockComponent.module.scss';
 import { GifContentBlockRenderer } from './GifContentBlockRenderer';
-import { ImageContentBlockRenderer } from './ImageBlockRenderer';
+import { ContentImageRenderer } from './ImageBlockRenderer';
 import { ParallaxImageRenderer } from './ParallaxImageRenderer';
 import { TextBlockRenderer } from './TextBlockRenderer';
 
@@ -194,7 +194,7 @@ export default function ContentComponent({
                         opacity: isSelected ? 0.6 : 1,
                         transition: 'opacity 0.2s ease',
                       }}>
-                        <ImageContentBlockRenderer
+                        <ContentImageRenderer
                           block={itemContent}
                           width={width}
                           height={height}

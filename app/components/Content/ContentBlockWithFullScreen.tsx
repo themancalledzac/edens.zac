@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
-import { type CollectionModel } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
+import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
   type ImageContentModel,

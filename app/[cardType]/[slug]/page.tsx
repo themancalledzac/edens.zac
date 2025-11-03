@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { type CollectionModel } from '@/app/lib/api/collections';
-import { fetchCollectionBySlug } from '@/app/lib/api/home';
+import { getCollectionBySlug } from '@/app/lib/api/collections.new';
+import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
   type ImageContentModel,
@@ -52,7 +52,7 @@ function buildMetadataTextBlock(
 
   return {
     id: Number.MAX_SAFE_INTEGER,
-    type: 'TEXT',
+    contentType: 'TEXT',
     title: `${content.title} — Details`,
     content: rows.join('\n'),
     format: 'plain' as const,
@@ -91,7 +91,7 @@ export default async function ContentCollectionPage({ params }: ContentCollectio
   // Fetch ALL blocks (set high page size to get everything in one call)
   let content: CollectionModel;
   try {
-    content = await fetchCollectionBySlug(slug, 0, 1000);
+    content = await getCollectionBySlug(slug, 0, 1000);
   } catch {
     // If fetch fails, return 404
     return notFound();

@@ -1,5 +1,4 @@
-import { CollectionType } from '@/app/types/Collection';
-import { type HomeCardModel } from '@/app/types/HomeCardModel';
+import { type CollectionContentModel } from '@/app/types/Content';
 
 import styles from '../../page.module.scss';
 import { GridSection } from '../GridSection/GridSection';
@@ -8,33 +7,36 @@ import { GridSection } from '../GridSection/GridSection';
  * Cards Grid Skeleton
  *
  * Loading state component that displays placeholder cards while content
- * is being fetched. Creates mock card data to maintain grid layout and
+ * is being fetched. Creates mock content blocks to maintain grid layout and
  * provides visual feedback during data loading.
  *
  * @dependencies
- * - HomeCardModel type for consistent card structure
+ * - CollectionContentModel type for consistent content structure
  * - GridSection component for rendering placeholder cards
  * - page.module.scss for grid container styling
  *
  * @returns React component displaying 6 skeleton loading cards
  */
 export function CardsGridSkeleton() {
-  const skeletonCards: HomeCardModel[] = Array.from({ length: 6 }, (_, i) => ({
+  const skeletonContent: CollectionContentModel[] = Array.from({ length: 6 }, (_, i) => ({
+    contentType: 'COLLECTION' as const,
     id: i + 1,
     title: 'Loading...',
-    cardType: CollectionType.BLOG, // Use proper CollectionType enum
-    location: 'Loading...',
-    priority: 1,
-    coverImageUrl: '', // Empty since we'll show loading state
-    slug: `loading-${i + 1}`
+    slug: `loading-${i + 1}`,
+    collectionType: 'BLOG',
+    orderIndex: i,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    imageUrl: null,
+    visible: true,
   }));
 
   return (
     <div className={styles.gridContainer}>
-      {skeletonCards.map((card, i) => (
+      {skeletonContent.map((content, i) => (
         <GridSection
-          key={`skeleton-${card.id}`}
-          card={card}
+          key={`skeleton-${content.id}`}
+          content={content}
           desktopRowIndex={Math.floor(i / 2)}
           mobileRowIndex={i}
         />

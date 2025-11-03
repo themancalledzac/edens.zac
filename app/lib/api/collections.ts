@@ -28,11 +28,7 @@ import {
   type CollectionModel,
   type CollectionType,
 } from '@/app/types/Collection';
-import { type HomeCardModel } from '@/app/types/HomeCardModel';
 import { isProduction } from '@/app/utils/environment';
-
-// Re-export types from the single source of truth
-export type { CollectionModel, CollectionType, DisplayMode } from '@/app/types/Collection';
 
 /** Read-only fetch init with Next.js cache options. */
 type ReadonlyFetchInit = Omit<RequestInit, 'body' | 'method'> & {
@@ -170,23 +166,6 @@ export async function fetchCollectionBySlugAdmin(
     next: { revalidate: TIMING.revalidateCache, tags: [tagForSlug(slug)] },
   } as ReadonlyFetchInit);
   return safeJson<CollectionModel>(res);
-}
-
-/**
- * Fetch collections by type with pagination.
- * Tagged with `collections-type-${type}` for precise revalidation.
- */
-export async function fetchCollectionsByType(
-  type: CollectionType,
-  page = 0,
-  size = PAGINATION.collectionPageSize
-): Promise<HomeCardModel[]> {
-  if (!type) throw new Error('type is required');
-  const url = toURL(`/collections/type/${type}`, { page, size });
-  const res = await fetch(url, {
-    next: { revalidate: TIMING.revalidateCache, tags: [tagForType(type)] },
-  } as ReadonlyFetchInit);
-  return safeJson<HomeCardModel[]>(res);
 }
 
 /** Response for client gallery access validation. */

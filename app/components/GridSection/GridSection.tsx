@@ -4,11 +4,11 @@ import React from 'react';
 
 import { ParallaxImageRenderer } from '@/app/components/Content/ParallaxImageRenderer';
 import pageStyles from '@/app/page.module.scss';
-import { type HomeCardModel } from '@/app/types/HomeCardModel';
-import { buildParallaxImageFromHomeCard } from '@/app/utils/parallaxImageUtils';
+import { type AnyContentModel } from '@/app/types/Content';
+import { buildParallaxImageFromContent } from '@/app/utils/parallaxImageUtils';
 
 interface GridSectionProps {
-  card: HomeCardModel;
+  content: AnyContentModel;
   desktopRowIndex: number;
   mobileRowIndex: number;
   priority?: boolean; // For LCP optimization of above-the-fold images
@@ -18,47 +18,60 @@ interface GridSectionProps {
  * Grid Section
  *
  * Individual card component with responsive design, parallax background effects,
- * and dynamic routing based on card type. Adapts layout and animations based
+ * and dynamic routing based on content type. Adapts layout and animations based
  * on screen size with debounced resize handling for performance.
  *
  * @dependencies
  * - Next.js Link for client-side navigation
  * - React hooks for state and lifecycle management
- * - HomeCardModel type for card data structure
+ * - AnyContentModel type for content data structure
  * - useParallax hook for scroll-based background animations
  * - page.module.scss for grid styling
  *
  * @param props - Component props object containing:
- * @param props.card - Home card data including title, image, and routing info
+ * @param props.content - Content block data (CollectionContentModel, ImageContentModel, etc.)
  * @param props.desktopRowIndex - Row position for desktop layout (2 columns)
  * @param props.mobileRowIndex - Row position for mobile layout (1 column)
  * @returns Client component rendering interactive card with parallax effects
  */
 export function GridSection({
-  card,
+  content,
   desktopRowIndex: _desktopRowIndex,
   mobileRowIndex: _mobileRowIndex,
   priority = false,
 }: GridSectionProps) {
-  // Convert HomeCardModel to ParallaxImageContentBlock
-  const parallaxBlock = buildParallaxImageFromHomeCard(card);
+  // Convert content to ParallaxImageContentBlock
+  const parallaxBlock = buildParallaxImageFromContent(content);
 
   const getHref = () => {
-    // Map CollectionType enum values to URL paths
-    // CollectionType enum keys are: portfolio, 'art-gallery', blogs, 'client-gallery'
-    switch (card.cardType) {
-      case 'BLOG':
-        return `/blogs/${card.slug}`;
-      case 'PORTFOLIO':
-        return `/portfolio/${card.slug}`;
-      case 'ART_GALLERY':
-        return `/art-gallery/${card.slug}`;
-      case 'CLIENT_GALLERY':
-        return `/client-gallery/${card.slug}`;
-      default:
-        // Fallback to lowercase version of the type
-        return `/${card.cardType.toLowerCase()}/${card.slug}`;
+    // Handle routing based on content type
+    if (content.contentType === 'COLLECTION') {
+      // Map CollectionType enum values to URL paths
+      switch (content.collectionType) {
+        case 'BLOG':
+          return `/blogs/${content.slug}`;
+        case 'PORTFOLIO':
+          return `/portfolio/${content.slug}`;
+        case 'ART_GALLERY':
+          return `/art-gallery/${content.slug}`;
+        case 'CLIENT_GALLERY':
+          return `/client-gallery/${content.slug}`;
+        default:
+          // Fallback to lowercase version of the type
+          return `/${content.collectionType.toLowerCase()}/${content.slug}`;
+      }
     }
+
+    // For IMAGE content, link to the image detail page (if applicable)
+    // TODO: Define routing strategy for standalone images
+    return '#';
+  };
+
+  const getCardTypeBadge = () => {
+    if (content.contentType === 'COLLECTION') {
+      return content.collectionType;
+    }
+    return content.contentType;
   };
 
   return (
@@ -66,8 +79,8 @@ export function GridSection({
       <a href={getHref()}>
         <ParallaxImageRenderer
           content={parallaxBlock}
-          contentType="collection"
-          cardTypeBadge={card.cardType}
+          contentType={content.contentType === 'COLLECTION' ? 'collection' : 'content'}
+          cardTypeBadge={getCardTypeBadge()}
           priority={priority}
         />
       </a>

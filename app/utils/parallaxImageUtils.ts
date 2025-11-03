@@ -1,5 +1,4 @@
-import { type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
-import { type HomeCardModel } from '@/app/types/HomeCardModel';
+import { type AnyContentModel, type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
 import { isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
@@ -56,37 +55,66 @@ export function buildParallaxImageContentBlock(
 }
 
 /**
- * Build Parallax Image Content Model from Home Card Model
+ * Build Parallax Image Content Model from any content type
  *
- * Converts a HomeCardModel to a ParallaxImageContentModel for use in the grid system.
+ * Converts any AnyContentModel to a ParallaxImageContentModel for use in the grid system.
  * This enables unified parallax behavior between home page grid and collection pages.
  *
- * @param homeCard - Home card model data
+ * @param content - Any content model (CollectionContentModel, ImageContentModel, etc.)
  * @returns Formatted parallax image model
  */
-export function buildParallaxImageFromHomeCard(homeCard: HomeCardModel): ParallaxImageContentModel {
-  // Defensive: ensure cardType exists
-  const cardType = homeCard.cardType;
+export function buildParallaxImageFromContent(content: AnyContentModel): ParallaxImageContentModel {
+  // Handle CollectionContentModel
+  if (content.contentType === 'COLLECTION') {
+    // Determine aspect ratio based on collection type
+    // BLOG uses 1.75:1 (457 height), everything else uses 1:1 (800 height)
+    const imageHeight = content.collectionType === 'BLOG' ? 457 : 800;
 
-  // TODO: Why are we assuming this? investigate
-  // Determine aspect ratio based on collection type
-  // BLOG uses 1.75:1 (457 height), everything else uses 1:1 (800 height)
-  const imageHeight = cardType === 'BLOG' ? 457 : 800;
+    return {
+      id: content.id,
+      contentType: 'PARALLAX',
+      title: content.title ?? 'Untitled',
+      imageUrlWeb: content.imageUrl ?? '',
+      imageWidth: 800, // Default width for grid images
+      imageHeight,
+      createdAt: content.createdAt,
+      updatedAt: content.updatedAt,
+      // Parallax-specific properties
+      ...createBaseParallaxProperties(
+        content.title ?? 'Untitled',
+        content.collectionType, // Already uppercase in CollectionType enum
+        content.orderIndex
+      ),
+    };
+  }
 
+  // Handle ImageContentModel
+  if (content.contentType === 'IMAGE') {
+    return {
+      ...content,
+      ...createBaseParallaxProperties(
+        content.title ?? 'Untitled Image',
+        'IMAGE',
+        content.orderIndex
+      ),
+      contentType: 'PARALLAX',
+    };
+  }
+
+  // Handle GIF or other content types - convert to basic parallax image
   return {
-    id: homeCard.id,
+    id: content.id,
     contentType: 'PARALLAX',
-    title: homeCard.title,
-    imageUrlWeb: homeCard.coverImageUrl, // Use coverImageUrl for web display
-    imageWidth: 800, // Default width for grid images
-    imageHeight,
-    createdAt: homeCard.date || new Date().toISOString(),
-    updatedAt: homeCard.date || new Date().toISOString(),
-    // Parallax-specific properties with custom order from priority
+    title: content.title ?? 'Untitled',
+    imageUrlWeb: content.imageUrl ?? '',
+    imageWidth: content.width ?? 800,
+    imageHeight: content.height ?? 800,
+    createdAt: content.createdAt,
+    updatedAt: content.updatedAt,
     ...createBaseParallaxProperties(
-      homeCard.title,
-      cardType, // Already uppercase in CollectionType enum
-      homeCard.priority
+      content.title ?? 'Untitled',
+      content.contentType,
+      content.orderIndex
     ),
   };
 }

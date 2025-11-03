@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
-import ContentCollectionPage from '@/app/components/ContentCollection/ContentCollectionPage';
-import { fetchCollectionsByType } from '@/app/lib/api/collections';
+import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
+import { getCollectionsByType } from '@/app/lib/api/collections.new';
 import { CollectionType } from '@/app/types/Collection';
 
 interface PageProps {
@@ -23,8 +23,8 @@ interface PageProps {
  * - /portfolio -> CollectionType.portfolio ('PORTFOLIO') collections
  *
  * @dependencies
- * - fetchCollectionsByType - API function for type-filtered content retrieval
- * - ContentCollectionPage - Shared component for displaying collections
+ * - getCollectionsByType - API function for type-filtered content retrieval
+ * - CollectionPage - Shared component for displaying collections
  *
  * @param params - Next.js dynamic route params containing cardType
  * @returns Server component displaying type-specific collections
@@ -38,7 +38,11 @@ export default async function DynamicCollectionPage({ params }: PageProps) {
   }
 
   const collectionType = CollectionType[cardType as keyof typeof CollectionType];
-  const cardsPromise = fetchCollectionsByType(collectionType).then(cards => cards || null);
+  const collections = await getCollectionsByType(collectionType);
 
-  return <ContentCollectionPage cardsPromise={cardsPromise} collectionType={collectionType} />;
+  if (!collections) {
+    notFound();
+  }
+
+  return <CollectionPage collection={collections} collectionType={collectionType} />;
 }

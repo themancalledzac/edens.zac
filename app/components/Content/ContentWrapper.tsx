@@ -4,7 +4,7 @@ import { type AnyContentModel } from '@/app/types/Content';
 
 import cbStyles from './ContentComponent.module.scss';
 
-export interface BaseContentBlockRendererProps {
+export interface BaseContentRendererProps {
   block: AnyContentModel;
   width: number;
   height: number;
@@ -13,7 +13,7 @@ export interface BaseContentBlockRendererProps {
   onClick?: () => void;
 }
 
-export interface BlockWrapperProps {
+export interface ContentWrapperProps {
   children?: React.ReactNode;
   width: number;
   height: number;
@@ -31,7 +31,7 @@ export interface BlockWrapperProps {
  * Provides consistent sizing, padding, and click handling
  * Supports ref forwarding for parallax and other interactions
  */
-export const ContentWrapper = forwardRef<HTMLDivElement, BlockWrapperProps>(function BlockWrapper({
+export const ContentWrapper = forwardRef<HTMLDivElement, ContentWrapperProps>(function BlockWrapper({
   children,
   width,
   height,

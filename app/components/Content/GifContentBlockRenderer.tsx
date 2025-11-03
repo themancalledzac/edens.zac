@@ -5,7 +5,7 @@ import { type GifContentModel } from '@/app/types/Content';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import {
-  type BaseContentBlockRendererProps,
+  type BaseContentRendererProps,
   ContentWrapper,
 } from './ContentWrapper';
 import cbStyles from './ContentComponent.module.scss';
@@ -13,7 +13,7 @@ import cbStyles from './ContentComponent.module.scss';
 /**
  * Props for GifContentBlockRenderer
  */
-export interface GifContentBlockRendererProps extends BaseContentBlockRendererProps {
+export interface GifContentBlockRendererProps extends BaseContentRendererProps {
   block: GifContentModel;
 }
 
@@ -33,7 +33,7 @@ export function GifContentBlockRenderer({
     const alt = gifBlock.alt || gifBlock.title || gifBlock.caption || 'animated gif';
 
     // Extract overlay and badge data
-    const { overlayText, cardTypeBadge, dateBadge, imageUrlWeb } = gifBlock;
+    const { overlayText, cardTypeBadge, dateBadge, gifUrl } = gifBlock;
     const hasOverlays = !!(overlayText || cardTypeBadge || dateBadge);
 
     // Configure image styling based on mobile/desktop
@@ -53,7 +53,7 @@ export function GifContentBlockRenderer({
     // Create the base gif element (using Image component for optimization)
     const gifElement = (
       <Image
-        src={imageUrlWeb}
+        src={gifUrl}
         alt={alt}
         width={width}
         height={height}
@@ -69,7 +69,7 @@ export function GifContentBlockRenderer({
       <div className={cbStyles.imageWrapper}>
         {gifElement}
         {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
-        <BadgeOverlay contentType="contentBlock" badgeValue={null} />
+        <BadgeOverlay contentType="content" badgeValue={null} />
       </div>
     ) : (
       gifElement

@@ -3,7 +3,7 @@ import React from 'react';
 import { type TextContentModel } from '@/app/types/Content';
 
 import {
-  type BaseContentBlockRendererProps,
+  type BaseContentRendererProps,
   ContentWrapper,
 } from './ContentWrapper';
 import cbStyles from './ContentComponent.module.scss';
@@ -11,7 +11,7 @@ import cbStyles from './ContentComponent.module.scss';
 /**
  * Props for TextContentBlockRenderer
  */
-export interface TextContentBlockRendererProps extends BaseContentBlockRendererProps {
+export interface TextContentBlockRendererProps extends BaseContentRendererProps {
   block: TextContentModel;
 }
 

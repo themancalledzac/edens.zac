@@ -46,11 +46,21 @@ export interface CollectionBaseModel {
 }
 
 /**
- * Simplified DTO for creating new content collections (matches backend ContentCollectionCreateRequest)
+ * Request DTO for creating new content collections
+ * Matches backend CollectionCreateRequest.java
  */
-export interface CollectionSimpleCreateDTO {
+export interface CollectionCreateRequest {
   type: CollectionType;
   title: string;
+}
+
+/**
+ * Collection list model for dropdown selections and simple references
+ * Matches backend CollectionListModel.java
+ */
+export interface CollectionListModel {
+  id: number;
+  name: string;
 }
 
 /**
@@ -197,4 +207,40 @@ export interface CollectionPageDTO extends CollectionBaseModel {
   coverImage?: ImageContentModel | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Re-export metadata types from ImageMetadata for convenience
+ * These are the source of truth - Collection.ts just re-exports them
+ */
+export type {
+  ContentCameraModel,
+  ContentFilmTypeModel,
+  ContentLensModel,
+  ContentPersonModel,
+  ContentTagModel,
+  FilmFormatDTO
+} from './ImageMetadata';
+
+/**
+ * General metadata DTO containing all available metadata for dropdowns
+ * Matches backend GeneralMetadataDTO.java
+ */
+export interface GeneralMetadataDTO {
+  tags: Array<{ id: number; name: string }>;
+  people: Array<{ id: number; name: string }>;
+  cameras: Array<{ id: number; name: string }>;
+  lenses: Array<{ id: number; name: string }>;
+  filmTypes: Array<{ id: number; filmTypeName?: string; name: string; defaultIso: number; contentImageIds?: number[] }>;
+  filmFormats: Array<{ name: string; displayName: string }>;
+  collections: CollectionListModel[];
+}
+
+/**
+ * Response DTO for collection update/manage endpoint
+ * Matches backend CollectionUpdateResponseDTO.java
+ */
+export interface CollectionUpdateResponseDTO {
+  collection: CollectionModel;
+  metadata: GeneralMetadataDTO;
 }

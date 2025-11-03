@@ -7,12 +7,12 @@
  */
 
 import { fetchPatchJsonApi } from '@/app/lib/api/core';
-import type { UpdateImagesResponse } from '@/app/lib/api/images';
 import type { SingleEntityUpdate } from '@/app/types/createTypes';
 
-import type { CollectionUpdate, PersonUpdate, TagUpdate } from './Collection';
+import type { ChildCollection, CollectionUpdate, PersonUpdate, TagUpdate } from './Collection';
 import type {
   ContentCameraModel,
+  ContentFilmTypeModel,
   ContentLensModel,
   ContentPersonModel,
   ContentTagModel,
@@ -20,34 +20,6 @@ import type {
 
 /** Content type discriminator - maps to backend Content contentType field */
 export type ContentType = 'IMAGE' | 'TEXT' | 'GIF' | 'PARALLAX' | 'COLLECTION';
-
-/**
- * ImageCollection - Represents the relationship between an image and a collection
- * Each image can belong to multiple collections with collection-specific metadata
- */
-export interface ImageCollection {
-  /**
-   * The ID of the collection
-   */
-  collectionId: number;
-
-  /**
-   * The name of the collection (for reference/validation)
-   */
-  name: string;
-
-  /**
-   * Whether the image is visible in this collection
-   * Defaults to true if not specified
-   */
-  visible?: boolean;
-
-  /**
-   * The order index of this image within this specific collection
-   * Each image/collection relationship has its own order_index
-   */
-  orderIndex?: number;
-}
 
 /**
  * Base Content interface - all content models extend this
@@ -118,8 +90,9 @@ export interface ImageContentModel extends Content {
    * List of collections this image belongs to
    * Each entry contains collection-specific metadata like visibility and order
    * Note: Backend returns this as 'collections' field
+   * Matches backend ContentImageModel.java which uses List<ChildCollection>
    */
-  collections?: ImageCollection[];
+  collections?: ChildCollection[];
 }
 
 /**
@@ -198,12 +171,14 @@ export type CameraUpdate = SingleEntityUpdate;
 export type LensUpdate = SingleEntityUpdate;
 /**
  * Request DTO for creating a new film type on the fly
+ * Matches backend NewFilmTypeRequest.java
  */
 export interface NewFilmTypeRequest {
   /**
    * Film type name (e.g., "Kodak Portra 400")
+   * Backend field name is filmTypeName
    */
-  name: string;
+  filmTypeName: string;
 
   /** Default ISO value for this film stock */
   defaultIso: number;
@@ -218,7 +193,7 @@ export interface NewFilmTypeRequest {
 export type FilmTypeUpdate = SingleEntityUpdate<NewFilmTypeRequest>;
 
 /**
- * DTO for updating an image
+ * Request DTO for updating image content blocks
  * All fields except 'id' are optional - only include fields you want to update
  *
  * Uses prev/newValue/remove pattern for entity relationships:
@@ -226,7 +201,7 @@ export type FilmTypeUpdate = SingleEntityUpdate<NewFilmTypeRequest>;
  * - Entity relationships use the update pattern objects
  * Matches backend ContentImageUpdateRequest.java
  */
-export interface UpdateImageDTO {
+export interface ContentImageUpdateRequest {
   /** Image ID - REQUIRED for backend to identify which image to update */
   id: number; // Required (matches @NotNull in backend)
 
@@ -292,10 +267,31 @@ export interface UpdateImageDTO {
 }
 
 /**
+ * Response DTO for batch image update operations
+ * Matches backend ContentImageUpdateResponse.java
+ */
+export interface ContentImageUpdateResponse {
+  /** Full image content blocks for all successfully updated images */
+  updatedImages: ImageContentModel[];
+
+  /** Metadata for newly created entities during the update operation */
+  newMetadata: {
+    tags?: ContentTagModel[];
+    people?: ContentPersonModel[];
+    cameras?: ContentCameraModel[];
+    lenses?: ContentLensModel[];
+    filmTypes?: ContentFilmTypeModel[];
+  };
+
+  /** List of error messages if any updates failed */
+  errors?: string[];
+}
+
+/**
  * Update an image with partial data
  *
  * Note: The backend expects an array of image updates, so we wrap the single update in an array
- * The UpdateImageDTO now requires the id field, so ensure updates includes it
+ * The ContentImageUpdateRequest requires the id field, so ensure updates includes it
  *
  * @param updates - Object containing the image ID and fields to update
  * @returns The updated image data
@@ -326,7 +322,7 @@ export interface UpdateImageDTO {
  * });
  */
 export async function updateImage<T = unknown>(
-  updates: UpdateImageDTO
+  updates: ContentImageUpdateRequest
 ): Promise<T> {
   if (!updates.id || updates.id <= 0) {
     throw new Error('Valid id is required in updates object');
@@ -345,7 +341,7 @@ export async function updateImage<T = unknown>(
 /**
  * Update multiple images with the same or different updates in a single API call
  *
- * @param imageUpdates - Array of UpdateImageDTO objects (each must include id)
+ * @param imageUpdates - Array of ContentImageUpdateRequest objects (each must include id)
  * @returns Promise with updated images and newly created metadata entities
  * @throws ApiError if the request fails
  *
@@ -360,8 +356,8 @@ export async function updateImage<T = unknown>(
  * // response.newMetadata contains any newly created tags, cameras, etc.
  */
 export async function updateMultipleImages(
-  imageUpdates: UpdateImageDTO[]
-): Promise<UpdateImagesResponse> {
+  imageUpdates: ContentImageUpdateRequest[]
+): Promise<ContentImageUpdateResponse> {
   if (!imageUpdates || imageUpdates.length === 0) {
     throw new Error('At least one image update is required');
   }
@@ -373,5 +369,5 @@ export async function updateMultipleImages(
     }
   }
 
-  return await fetchPatchJsonApi<UpdateImagesResponse>('/content/images', imageUpdates);
+  return await fetchPatchJsonApi<ContentImageUpdateResponse>('/content/images', imageUpdates);
 }

@@ -5,7 +5,7 @@ import { type ImageContentModel } from '@/app/types/Content';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import {
-  type BaseContentBlockRendererProps,
+  type BaseContentRendererProps,
   ContentWrapper,
 } from './ContentWrapper';
 import cbStyles from './ContentComponent.module.scss';
@@ -13,7 +13,7 @@ import cbStyles from './ContentComponent.module.scss';
 /**
  * Props for ImageContentBlockRenderer
  */
-export interface ImageContentBlockRendererProps extends BaseContentBlockRendererProps {
+export interface ContentImageRendererProps extends BaseContentRendererProps {
   block: ImageContentModel;
 }
 
@@ -21,14 +21,14 @@ export interface ImageContentBlockRendererProps extends BaseContentBlockRenderer
  * Specialized component for rendering image blocks with overlays and badges
  * Extends BaseContentBlockRenderer for consistent behavior
  */
-export function ImageContentBlockRenderer({
+export function ContentImageRenderer({
   block,
   width,
   height,
   className = '',
   isMobile = false,
   onClick,
-}: ImageContentBlockRendererProps): React.ReactElement {
+}: ContentImageRendererProps): React.ReactElement {
   const renderImageContent = (imageBlock: ImageContentModel): React.ReactElement => {
     const alt = imageBlock.title || imageBlock.caption || 'image content';
 
@@ -69,7 +69,7 @@ export function ImageContentBlockRenderer({
       <div className={cbStyles.imageWrapper}>
         {imageElement}
         {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
-        <BadgeOverlay contentType="contentBlock" badgeValue={null} />
+        <BadgeOverlay contentType="content" badgeValue={null} />
       </div>
     ) : (
       imageElement
