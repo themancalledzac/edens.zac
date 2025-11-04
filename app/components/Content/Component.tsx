@@ -16,7 +16,7 @@ import {
   isTextContent,
 } from '@/app/utils/contentTypeGuards';
 
-import cbStyles from './ContentBlockComponent.module.scss';
+import cbStyles from './ContentComponent.module.scss';
 import { GifContentBlockRenderer } from './GifContentBlockRenderer';
 import { ContentImageRenderer } from './ImageBlockRenderer';
 import { ParallaxImageRenderer } from './ParallaxImageRenderer';

@@ -7,7 +7,7 @@ import { useParallax } from '@/app/hooks/useParallax';
 import { type ParallaxImageContentModel } from '@/app/types/Content';
 
 import { type BadgeContentType, BadgeOverlay } from './BadgeOverlay';
-import cbStyles from './ContentBlockComponent.module.scss';
+import cbStyles from './ContentComponent.module.scss';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 
 

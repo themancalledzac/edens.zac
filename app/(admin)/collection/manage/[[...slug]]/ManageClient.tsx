@@ -5,6 +5,7 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 
 import ContentComponent from '@/app/components/Content/Component';
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
+import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
@@ -15,7 +16,6 @@ import {
   updateCollection,
 } from '@/app/lib/api/collections.new';
 import { createImages } from '@/app/lib/api/content';
-import { type UpdateImagesResponse } from '@/app/lib/api/images';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionCreateRequest,
@@ -25,13 +25,18 @@ import {
   type DisplayMode,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
-import { type AnyContentModel, type ImageContentModel } from '@/app/types/Content';
+import {
+  type AnyContentModel,
+  type ContentImageUpdateResponse,
+  type ImageContentModel,
+} from '@/app/types/Content';
 
 import pageStyles from '../../../../page.module.scss';
 import styles from './ManageClient.module.scss';
 import {
   buildUpdatePayload,
   COVER_IMAGE_FLASH_DURATION,
+  getCollectionContentAsSelections,
   getDisplayedCoverImage,
   handleApiError,
   initializeUpdateFormData,
@@ -99,7 +104,32 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   // Helper to set metadata from CollectionUpdateResponseDTO
   const setMetadataFromResponse = useCallback((response: CollectionUpdateResponseDTO) => {
-    setMetadata(response.metadata);
+    // Backend returns flat structure, not nested metadata object
+    // Extract metadata fields from root level of response
+    // TODO: FInd a way of minimizing this
+    const metadataFromResponse: GeneralMetadataDTO = {
+      tags:
+        ((response as unknown as Record<string, unknown>).tags as GeneralMetadataDTO['tags']) || [],
+      people:
+        ((response as unknown as Record<string, unknown>).people as GeneralMetadataDTO['people']) ||
+        [],
+      cameras:
+        ((response as unknown as Record<string, unknown>)
+          .cameras as GeneralMetadataDTO['cameras']) || [],
+      lenses:
+        ((response as unknown as Record<string, unknown>).lenses as GeneralMetadataDTO['lenses']) ||
+        [],
+      filmTypes:
+        ((response as unknown as Record<string, unknown>)
+          .filmTypes as GeneralMetadataDTO['filmTypes']) || [],
+      filmFormats:
+        ((response as unknown as Record<string, unknown>)
+          .filmFormats as GeneralMetadataDTO['filmFormats']) || [],
+      collections:
+        ((response as unknown as Record<string, unknown>)
+          .collections as GeneralMetadataDTO['collections']) || [],
+    };
+    setMetadata(metadataFromResponse);
   }, []);
 
   const displayedCoverImage = useMemo(
@@ -148,6 +178,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
           // Fallback: fetch everything (collection + metadata)
           const response = await getCollectionUpdateMetadata(slug);
+          console.log('getCollectionUpdateMetadata metadata:' + ' ' + response);
 
           if (isMounted && !abortController.signal.aborted) {
             setCollection(response.collection);
@@ -410,7 +441,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   // Handle successful metadata save - update local state using response data
   const handleMetadataSaveSuccess = useCallback(
-    async (response: UpdateImagesResponse) => {
+    async (response: ContentImageUpdateResponse) => {
       if (!collection?.content) return;
 
       try {
@@ -562,7 +593,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
                       <input
                         type="text"
                         value={updateData.location}
-                        onChange={e => setUpdateData(prev => ({ ...prev, location: e.target.value }))}
+                        onChange={e =>
+                          setUpdateData(prev => ({ ...prev, location: e.target.value }))
+                        }
                         className={styles.formInput}
                       />
                     </div>
@@ -660,6 +693,35 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           + Create New Text Block
                         </button>
                       </div>
+                    </div>
+                    <div className={styles.formSection}>
+                      <h3 className={styles.sectionHeading}>Child Collections</h3>
+
+                      <UnifiedMetadataSelector<{ id: number; name: string }>
+                        label="Collections"
+                        multiSelect
+                        options={metadata.collections}
+                        selectedValues={getCollectionContentAsSelections(collection.content)}
+                        onChange={value => {
+                          const collections =
+                            (value as Array<{ id: number; name: string }> | null) ?? [];
+                          setUpdateData(prev => ({
+                            ...prev,
+                            collections: {
+                              prev: collections.map((c, index) => ({
+                                collectionId: c.id,
+                                name: c.name,
+                                visible: true,
+                                orderIndex: index,
+                              })),
+                            },
+                          }));
+                        }}
+                        allowAddNew={false}
+                        getDisplayName={collectionItem => collectionItem.name}
+                        changeButtonText="Select More ▼"
+                        emptyText="No child collections"
+                      />
                     </div>
                   </div>
                 </div>

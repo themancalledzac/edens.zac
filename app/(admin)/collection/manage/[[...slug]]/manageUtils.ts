@@ -3,14 +3,13 @@
  * Handles data normalization, state management, and type guards
  */
 
-import { type CollectionModel as ContentCollectionFullModel } from '@/app/lib/api/collections';
 import {
   type CollectionModel,
   CollectionType,
   type CollectionUpdateRequest,
   type DisplayMode,
 } from '@/app/types/Collection';
-import { type AnyContentModel, type ImageContentModel } from '@/app/types/Content';
+import { type AnyContentModel, type CollectionContentModel, type ImageContentModel } from '@/app/types/Content';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
@@ -29,6 +28,16 @@ export interface ManageFormData {
   visible: boolean;
   displayMode: DisplayMode;
   coverImageId?: number;
+  collections?: {
+    prev?: Array<{
+      collectionId: number;
+      name: string;
+      visible?: boolean;
+      orderIndex?: number;
+    }>;
+  };
+//   tags?:{}
+//   people?:{}
 }
 
 /**
@@ -36,7 +45,7 @@ export interface ManageFormData {
  * Provides sensible defaults for all fields
  */
 export function initializeUpdateFormData(
-  collection?: ContentCollectionFullModel | null
+  collection?: CollectionModel | null
 ): ManageFormData {
   console.log('[initializeUpdateFormData] collection.collectionDate:', collection?.collectionDate);
 
@@ -64,7 +73,7 @@ export function initializeUpdateFormData(
  */
 export function buildUpdatePayload(
   formData: ManageFormData,
-  originalCollection: ContentCollectionFullModel,
+  originalCollection: CollectionModel,
   // reorderOperations: ContentReorderOperation[] = [],
   // contentIdsToRemove: number[] = []
 ): CollectionUpdateRequest {
@@ -99,6 +108,11 @@ export function buildUpdatePayload(
     payload.coverImageId = formData.coverImageId;
   }
 
+  // Handle collections separately - include if defined
+  if (formData.collections !== undefined) {
+    payload.collections = formData.collections;
+  }
+
   // Content operations - include if any are present
   // TODO: Update location of Reorder operations: now take place in the Image Update endpoint, where we pass the images' collections.'prev(childCollection)'.orderIndex.
   //  - This will be a SMALL api call, JUST with that orderIndex change, so that reorders are EACH an api call, making them much faster/instant.
@@ -117,10 +131,10 @@ export function buildUpdatePayload(
  * Updates the collection object with new values from the update response
  */
 export function syncCollectionState(
-  collection: ContentCollectionFullModel,
+  collection: CollectionModel,
   updateResponse: CollectionModel,
   formData: ManageFormData
-): ContentCollectionFullModel {
+): CollectionModel {
   return {
     ...collection,
     title: updateResponse.title,
@@ -129,6 +143,7 @@ export function syncCollectionState(
     collectionDate: updateResponse.collectionDate || '',
     visible: formData.visible,
     displayMode: formData.displayMode,
+    content: updateResponse.content || collection.content, // Sync content (includes updated child collections)
   };
 }
 
@@ -144,6 +159,42 @@ export function isImageContentBlock(block: unknown): block is ImageContentModel 
     (block as { blockType: string }).blockType === 'IMAGE' &&
     'imageUrlWeb' in block
   );
+}
+
+/**
+ * Type guard to check if a block is a CollectionContentModel
+ */
+export function isCollectionContentBlock(block: unknown): block is CollectionContentModel {
+  return (
+    block !== null &&
+    block !== undefined &&
+    typeof block === 'object' &&
+    'contentType' in block &&
+    (block as { contentType: string }).contentType === 'COLLECTION' &&
+    'slug' in block &&
+    'collectionType' in block
+  );
+}
+
+/**
+ * Extract collection content blocks from a content array
+ * Filters content to only CollectionContentModel items and maps to selector format
+ * TODO: Update to have another 'param' for 'current child collections'
+ *
+ * @param content - Array of content blocks from a collection
+ * @returns Array of {id, name} objects for use in UnifiedMetadataSelector
+ */
+export function getCollectionContentAsSelections(
+  content: AnyContentModel[] | undefined
+): Array<{ id: number; name: string }> {
+  if (!content) return [];
+
+  return content
+    .filter(isCollectionContentBlock)
+    .map(collection => ({
+      id: collection.id,
+      name: collection.title || collection.slug, // Use title if available, fallback to slug
+    }));
 }
 
 /**
@@ -164,7 +215,7 @@ export function findImageBlockById(
  * Get the displayed cover image - either pending selection or current
  */
 export function getDisplayedCoverImage(
-  collection: ContentCollectionFullModel | null,
+  collection: CollectionModel | null,
   pendingCoverImageId: number | undefined
 ): ImageContentModel | null | undefined {
   if (pendingCoverImageId) {

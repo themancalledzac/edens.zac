@@ -14,7 +14,7 @@
 
 // Update Mode Styles
 .updateContainer {
-  background: var(--color-bg-light);
+  background: var(--color-primary);
   border: 1px solid var(--color-border-medium);
   border-radius: var(--radius-2);
   padding: var(--space-5);
@@ -23,7 +23,7 @@
 
 .updateHeading {
   margin-bottom: var(--space-5);
-  color: var(--color-text-primary);
+  color: var(--color-bg-light);
 }
 
 // Left/Right Layout for Update Form
@@ -70,6 +70,7 @@
   display: block;
   margin-bottom: var(--space-2);
   font-weight: bold;
+  color: var(--color-bg-light);
 }
 
 .formInput {
