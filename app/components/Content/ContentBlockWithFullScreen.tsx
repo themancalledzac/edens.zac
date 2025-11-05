@@ -50,8 +50,8 @@ export default function ContentBlockWithFullScreen({
     }
   }, [collectionSlug, collectionData]);
 
-  // Extract all image blocks for navigation
-  // TODO: why are we filtering by images? is this causing us to lose Text Blocks?
+  // Extract all image blocks for fullscreen navigation
+  // Only IMAGE and PARALLAX blocks are included since text blocks don't support fullscreen viewing
   const imageBlocks = useMemo(() => {
     return allBlocks.filter(
       (block): block is ImageContentModel | ParallaxImageContentModel =>
@@ -73,7 +73,7 @@ export default function ContentBlockWithFullScreen({
   const [showButton, setShowButton] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // TODO: Do we really need 'visibleBLocks' or could we instead just have 'maxNumber' of blocks visible initially, and clicking the button just shows the rest?
+  // Slice blocks to show only the visible count for pagination
   const visibleBlocks = initialPageSize ? allBlocks.slice(0, visibleCount) : allBlocks;
   const hasMore = visibleCount < allBlocks.length;
 

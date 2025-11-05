@@ -186,11 +186,27 @@ export async function fetchAdminPostJsonApi<T>(endpoint: string, body: unknown):
 
 // For admin JSON-based updates (PUT)
 export async function fetchAdminPutJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
-  return await fetchAdminBase<T>(endpoint, {
+  const url = `${API_BASE_URL(ADMIN)}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+  const bodyString = JSON.stringify(body);
+  
+  console.log('📤 [fetchAdminPutJsonApi] Collection Update Request:', {
+    '1. Request URL (full)': url,
+    '2. Request Body (full)': JSON.parse(bodyString),
+    '2. Request Body (JSON string)': bodyString,
+  });
+
+  const result = await fetchAdminBase<T>(endpoint, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: bodyString,
   });
+
+  console.log('📥 [fetchAdminPutJsonApi] Collection Update Response:', {
+    '3. Response (full)': result,
+    '3. Response (JSON string)': JSON.stringify(result, null, 2),
+  });
+
+  return result;
 }
 
 // For admin deletes (DELETE)

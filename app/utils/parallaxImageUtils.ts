@@ -1,4 +1,9 @@
-import { type AnyContentModel, type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
+import {
+  type AnyContentModel,
+  type CollectionContentModel,
+  type ImageContentModel,
+  type ParallaxImageContentModel,
+} from '@/app/types/Content';
 import { isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
@@ -72,18 +77,24 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Paralla
 
   // Handle legacy CollectionContentModel (for backwards compatibility)
   if (content.contentType === 'COLLECTION') {
-    // For collections on home page, always use 1:1 square aspect ratio
-    // This matches the original home page behavior
-    const gridSize = 800; // Standard grid size for 1x1 aspect ratio
+    const collectionContent = content as CollectionContentModel;
+    
+    // TODO: Use coverImage dimensions (imageWidth/imageHeight) instead of hardcoded values
+    // This should match the same logic used in convertCollectionContentToParallax
+    // For now, use coverImage dimensions if available, otherwise fallback to hardcoded
+    const coverImage = collectionContent.coverImage;
+    const imageWidth = coverImage?.imageWidth ?? coverImage?.width ?? 800;
+    const imageHeight = coverImage?.imageHeight ?? coverImage?.height ?? 800;
 
     return {
       id: content.id,
       contentType: 'PARALLAX',
       title: content.title ?? 'Untitled',
-      imageUrl: content.imageUrl ?? '',
-      // Force 1x1 aspect ratio for all collections (home page style)
-      imageWidth: gridSize,
-      imageHeight: gridSize,
+      imageUrl: coverImage?.imageUrl ?? '',
+      imageWidth,
+      imageHeight,
+      width: imageWidth,
+      height: imageHeight,
       createdAt: content.createdAt,
       updatedAt: content.updatedAt,
       // Preserve collection-specific fields

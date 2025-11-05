@@ -142,11 +142,13 @@ export interface GifContentModel extends Content {
 /**
  * Collection content model - for hierarchical collections (collections containing other collections)
  * Extends Content to support nested collection structures
+ * Includes full coverImage object with dimensions for proper rendering
  */
 export interface CollectionContentModel extends Content {
   contentType: 'COLLECTION';
   slug: string;
   collectionType: 'BLOG' | 'PORTFOLIO' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'HOME' | 'MISC';
+  coverImage?: ImageContentModel | null; // Full image object with dimensions (matches CollectionModel.coverImage)
 }
 
 /**

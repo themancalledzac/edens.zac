@@ -1,5 +1,10 @@
-import { type AnyContentModel } from '@/app/types/Content';
-import { getContentDimensions, hasImage, isContentImage } from '@/app/utils/contentTypeGuards';
+import {
+  type AnyContentModel,
+  type CollectionContentModel,
+  type ImageContentModel,
+  type ParallaxImageContentModel,
+} from '@/app/types/Content';
+import { getContentDimensions, hasImage, isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
  * Simplified Layout utilities for Content system
@@ -131,4 +136,129 @@ export function processContentForDisplay(
 ): CalculatedContentSize[][] {
   const chunks = chunkContent(content, chunkSize);
   return chunks.map(chunk => calculateContentSizes(chunk, componentWidth));
+}
+
+/**
+ * Convert CollectionContentModel to ParallaxImageContentModel for unified rendering
+ * Used when processing content blocks from a collection that contain child collections
+ * Uses coverImage dimensions for accurate layout calculations
+ * 
+ * Used on public collection pages where collections should render as parallax images
+ */
+export function convertCollectionContentToParallax(col: CollectionContentModel): ParallaxImageContentModel {
+  // Extract dimensions from coverImage (prioritize imageWidth/imageHeight for accurate aspect ratios)
+  const imageWidth = col.coverImage?.imageWidth ?? col.coverImage?.width;
+  const imageHeight = col.coverImage?.imageHeight ?? col.coverImage?.height;
+  
+  return {
+    contentType: 'PARALLAX',
+    enableParallax: true,
+    id: col.id,
+    title: col.title,
+    slug: col.slug,
+    collectionType: col.collectionType,
+    description: col.description ?? null,
+    imageUrl: col.coverImage?.imageUrl ?? '', // Use coverImage.imageUrl only
+    overlayText: col.title || col.slug || '', // Display title on child collection cards
+    // Use explicit width/height from coverImage dimensions for proper chunking
+    // Prioritize imageWidth/imageHeight for accurate aspect ratio calculations
+    imageWidth,
+    imageHeight,
+    // Also set width/height on base Content interface for layout (fallback)
+    width: imageWidth,
+    height: imageHeight,
+    orderIndex: col.orderIndex,
+    visible: col.visible ?? true,
+    createdAt: col.createdAt,
+    updatedAt: col.updatedAt,
+  };
+}
+
+/**
+ * Convert CollectionContentModel to ImageContentModel for manage page rendering
+ * Used on admin/manage pages where collections should render as regular images (not parallax)
+ * Uses the collection's coverImage as the base for the ImageContentModel
+ */
+export function convertCollectionContentToImage(col: CollectionContentModel): ImageContentModel {
+  const coverImage = col.coverImage;
+  
+  // Extract dimensions from coverImage (prioritize imageWidth/imageHeight for accurate aspect ratios)
+  const imageWidth = coverImage?.imageWidth ?? coverImage?.width;
+  const imageHeight = coverImage?.imageHeight ?? coverImage?.height;
+  
+  // Create ImageContentModel from the coverImage, preserving collection metadata
+  return {
+    contentType: 'IMAGE',
+    id: col.id,
+    title: col.title,
+    description: col.description ?? null,
+    imageUrl: coverImage?.imageUrl ?? '',
+    imageUrlRaw: coverImage?.imageUrlRaw ?? null,
+    imageWidth,
+    imageHeight,
+    width: imageWidth,
+    height: imageHeight,
+    orderIndex: col.orderIndex,
+    visible: col.visible ?? true,
+    createdAt: col.createdAt,
+    updatedAt: col.updatedAt,
+    // Preserve image metadata from coverImage if available
+    iso: coverImage?.iso,
+    author: coverImage?.author ?? null,
+    rating: coverImage?.rating,
+    lens: coverImage?.lens ?? null,
+    blackAndWhite: coverImage?.blackAndWhite,
+    isFilm: coverImage?.isFilm,
+    shutterSpeed: coverImage?.shutterSpeed ?? null,
+    rawFileName: coverImage?.rawFileName ?? null,
+    camera: coverImage?.camera ?? null,
+    focalLength: coverImage?.focalLength ?? null,
+    location: coverImage?.location ?? null,
+    createDate: coverImage?.createDate ?? null,
+    fStop: coverImage?.fStop ?? null,
+    alt: col.title || col.slug || '',
+    aspectRatio: imageWidth && imageHeight ? imageWidth / imageHeight : undefined,
+    filmType: coverImage?.filmType ?? null,
+    filmFormat: coverImage?.filmFormat ?? null,
+    tags: coverImage?.tags ?? [],
+    people: coverImage?.people ?? [],
+    collections: coverImage?.collections ?? [],
+    // Use overlayText to show collection title on image
+    overlayText: col.title || col.slug || '',
+  };
+}
+
+/**
+ * Process content blocks for display, converting CollectionContentModel to ParallaxImageContentModel
+ * and ensuring PARALLAX blocks have proper dimensions
+ */
+export function processContentBlocks(content: AnyContentModel[]): AnyContentModel[] {
+  return content.map(block => {
+    // Convert any CollectionContentModel blocks to ParallaxImageContentModel
+    if (isCollectionContent(block)) {
+      const collectionBlock = block as CollectionContentModel;
+      // Debug: Log coverImage data to diagnose missing images
+      if (process.env.NODE_ENV === 'development' && !collectionBlock.coverImage) {
+        console.warn('[processContentBlocks] CollectionContentModel missing coverImage:', {
+          id: collectionBlock.id,
+          title: collectionBlock.title,
+          slug: collectionBlock.slug,
+          hasImageUrl: !!collectionBlock.imageUrl, // Check if old imageUrl field exists
+        });
+      }
+      return convertCollectionContentToParallax(collectionBlock);
+    }
+    // Ensure PARALLAX content blocks have imageWidth/imageHeight preserved
+    if (block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax) {
+      const parallaxBlock = block as ParallaxImageContentModel;
+      if (!parallaxBlock.imageWidth || !parallaxBlock.imageHeight) {
+        return {
+          ...parallaxBlock,
+          imageWidth: parallaxBlock.imageWidth || parallaxBlock.width,
+          imageHeight: parallaxBlock.imageHeight || parallaxBlock.height,
+        };
+      }
+    }
+    return block;
+  });
 }

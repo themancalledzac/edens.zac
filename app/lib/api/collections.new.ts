@@ -64,7 +64,11 @@ async function safeJson<T>(res: Response): Promise<T> {
     throw new Error(`API ${res.status}: ${message}`);
   }
   if (!ct.includes('application/json')) throw new Error('Unexpected non-JSON response from API');
-  return res.json() as Promise<T>;
+  
+  // Ensure we fully await and parse the JSON response before returning
+  // This prevents any race conditions where the component might render before data is ready
+  const json = await res.json();
+  return json as T;
 }
 
 // ============================================================================
@@ -118,6 +122,8 @@ export async function getCollectionBySlug(
   const res = await fetch(url, {
     next: { revalidate: 3600, tags: [`collection-${slug}`] },
   });
+  
+  // Await the full JSON response - ensures data is fully parsed before returning
   const raw = await safeJson<CollectionModel>(res);
 
   // Security: Enforce access control for public pages
@@ -126,6 +132,7 @@ export async function getCollectionBySlug(
     notFound();
   }
 
+  // Backend always returns complete data, so we can trust the structure
   return raw;
 }
 

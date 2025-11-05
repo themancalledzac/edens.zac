@@ -29,13 +29,17 @@ import {
 } from '@/app/types/Collection';
 import {
   type AnyContentModel,
+  type CollectionContentModel,
   type ContentImageUpdateResponse,
   type ImageContentModel,
 } from '@/app/types/Content';
+import { convertCollectionContentToImage } from '@/app/utils/contentLayout';
+import { isCollectionContent } from '@/app/utils/contentTypeGuards';
 
 import pageStyles from '../../../../page.module.scss';
 import styles from './ManageClient.module.scss';
 import {
+  buildCollectionsUpdate,
   buildUpdatePayload,
   COVER_IMAGE_FLASH_DURATION,
   getCollectionContentAsSelections,
@@ -93,6 +97,20 @@ export default function ManageClient({ slug }: ManageClientProps) {
     baseCloseEditor();
   }, [isMultiSelectMode, baseCloseEditor]);
 
+  // Convert CollectionContentModel blocks to ImageContentModel for rendering on manage page
+  // On manage page, collections should render as regular images (using coverImage), not parallax
+  const processedContent = useMemo(() => {
+    if (!collection?.content) return [];
+    return collection.content.map(block => {
+      // Convert CollectionContentModel to ImageContentModel for manage page display
+      if (isCollectionContent(block)) {
+        return convertCollectionContentToImage(block);
+      }
+      // Keep other content blocks as-is
+      return block;
+    });
+  }, [collection?.content]);
+
   // Derive imagesToEdit from selectedImageIds (always in sync)
   const imagesToEdit = useMemo(
     () =>
@@ -105,31 +123,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const isCreateMode = !slug;
 
   // Helper to set metadata from CollectionUpdateResponseDTO
+  // Backend returns flat structure with metadata fields at root level
   const setMetadataFromResponse = useCallback((response: CollectionUpdateResponseDTO) => {
-    // Backend returns flat structure, not nested metadata object
-    // Extract metadata fields from root level of response
-    // TODO: FInd a way of minimizing this
+    // Type-safe extraction of metadata from flat response structure
+    const flatResponse = response as unknown as Record<string, unknown>;
     const metadataFromResponse: GeneralMetadataDTO = {
-      tags:
-        ((response as unknown as Record<string, unknown>).tags as GeneralMetadataDTO['tags']) || [],
-      people:
-        ((response as unknown as Record<string, unknown>).people as GeneralMetadataDTO['people']) ||
-        [],
-      cameras:
-        ((response as unknown as Record<string, unknown>)
-          .cameras as GeneralMetadataDTO['cameras']) || [],
-      lenses:
-        ((response as unknown as Record<string, unknown>).lenses as GeneralMetadataDTO['lenses']) ||
-        [],
-      filmTypes:
-        ((response as unknown as Record<string, unknown>)
-          .filmTypes as GeneralMetadataDTO['filmTypes']) || [],
-      filmFormats:
-        ((response as unknown as Record<string, unknown>)
-          .filmFormats as GeneralMetadataDTO['filmFormats']) || [],
-      collections:
-        ((response as unknown as Record<string, unknown>)
-          .collections as GeneralMetadataDTO['collections']) || [],
+      tags: (flatResponse.tags as GeneralMetadataDTO['tags']) || [],
+      people: (flatResponse.people as GeneralMetadataDTO['people']) || [],
+      cameras: (flatResponse.cameras as GeneralMetadataDTO['cameras']) || [],
+      lenses: (flatResponse.lenses as GeneralMetadataDTO['lenses']) || [],
+      filmTypes: (flatResponse.filmTypes as GeneralMetadataDTO['filmTypes']) || [],
+      filmFormats: (flatResponse.filmFormats as GeneralMetadataDTO['filmFormats']) || [],
+      collections: (flatResponse.collections as GeneralMetadataDTO['collections']) || [],
     };
     setMetadata(metadataFromResponse);
   }, []);
@@ -406,7 +411,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   }, [selectedImageIds, collection, openEditor]);
 
-  // Handle image click - either set cover, multi-select, or open metadata editor
+  // Handle image click - either set cover, multi-select, open metadata editor, or navigate to collection
   const handleImageClick = useCallback(
     (imageId: number) => {
       if (isSelectingCoverImage) {
@@ -415,12 +420,24 @@ export default function ManageClient({ slug }: ManageClientProps) {
         return;
       }
 
+      // Check if this is a collection block (converted to ImageContentModel in processedContent)
+      // If so, navigate to that collection's manage page instead of editing
+      const originalBlock = collection?.content?.find(block => block.id === imageId);
+      if (originalBlock && isCollectionContent(originalBlock)) {
+        const collectionBlock = originalBlock as CollectionContentModel;
+        router.push(`/collection/manage/${collectionBlock.slug}`);
+        return;
+      }
+
       if (isMultiSelectMode) {
         // Mode 2: Multi-select toggle
         handleMultiSelectToggle(imageId);
       } else {
         // Mode 3: Single image edit
-        const imageBlock = collection?.content?.find(block => block.id === imageId);
+        // Find block in original content or processed content
+        const imageBlock = 
+          collection?.content?.find(block => block.id === imageId) ||
+          processedContent.find(block => block.id === imageId);
         if (imageBlock && isImageContentBlock(imageBlock)) {
           // Set selectedImageIds for modal but stay in single-edit mode
           setSelectedImageIds([imageId]);
@@ -435,7 +452,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
       handleCoverImageClick,
       handleMultiSelectToggle,
       collection?.content,
+      processedContent,
       openEditor,
+      router,
     ]
   );
 
@@ -482,24 +501,64 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [collection]
   );
 
-  // console.log('test metadata.collections: ' + JSON.stringify(metadata.collections));
-  // console.log(`updateData: ` + JSON.stringify(updateData));
-  // console.log("get selected collections " + getCollectionContentAsSelections(collection?.content))
 
-  // Derive current selected collections from updateData or original collection
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  const currentSelectedCollections: CollectionListModel[] = useMemo(() => {
-    // If we have pending changes in updateData, use those
-    if (updateData.collections?.newValue) {
-      return updateData.collections.newValue.map(c => ({
-        id: c.collectionId,
-        name: c.name,
-      }));
+  // Memoize original collection IDs (reused in multiple places)
+  const originalCollectionIds = useMemo(() => {
+    const ids = new Set<number>();
+    if (collection?.content) {
+      for (const block of collection.content) {
+        if (isCollectionContent(block)) {
+          ids.add(block.id);
+        }
+      }
     }
-    // Otherwise, use the original collection content
-    return getCollectionContentAsSelections(collection?.content);
+    return ids;
+  }, [collection?.content]);
+
+  // Derive current selected collections by applying changes to original collection
+  const currentSelectedCollections: CollectionListModel[] = useMemo(() => {
+    // Start with original collections
+    const selected = getCollectionContentAsSelections(collection?.content);
+
+    // Apply changes from updateData:
+    // - Remove collections that are in the remove list
+    const removeIds = new Set(updateData.collections?.remove || []);
+    const filtered = selected.filter(c => !removeIds.has(c.id));
+
+    // - Add collections from newValue
+    const newCollections = updateData.collections?.newValue || [];
+    for (const newCollection of newCollections) {
+      if (!filtered.some(c => c.id === newCollection.collectionId)) {
+        filtered.push({
+          id: newCollection.collectionId,
+          name: newCollection.name || '',
+        });
+      }
+    }
+
+    return filtered;
   }, [updateData.collections, collection?.content]);
+
+  // Handle collections selection changes - simple toggle logic
+  const handleCollectionsChange = useCallback(
+    (value: { id: number; name: string } | Array<{ id: number; name: string }> | null) => {
+      // UnifiedMetadataSelector always passes array for multiSelect
+      const selectedCollections = Array.isArray(value) ? value : [];
+
+      // Build the collections update using utility function
+      const collectionsUpdate = buildCollectionsUpdate(
+        selectedCollections,
+        originalCollectionIds,
+        updateData.collections
+      );
+
+      setUpdateData(prev => ({
+        ...prev,
+        collections: collectionsUpdate,
+      }));
+    },
+    [originalCollectionIds, updateData.collections]
+  );
 
   return (
     <div>
@@ -721,21 +780,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         multiSelect
                         options={metadata.collections}
                         selectedValues={currentSelectedCollections}
-                        onChange={value => {
-                          const collections = value as Array<{ id: number; name: string }> | null;
-                          setUpdateData(prev => ({
-                            ...prev,
-                            collections: {
-                              newValue:
-                                collections?.map((c, index) => ({
-                                  collectionId: c.id,
-                                  name: c.name,
-                                  visible: true,
-                                  orderIndex: index,
-                                })) ?? [],
-                            },
-                          }));
-                        }}
+                        onChange={handleCollectionsChange}
                         allowAddNew={false}
                         getDisplayName={collectionItem => collectionItem.name}
                         changeButtonText="Select More ▼"
@@ -788,11 +833,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
             </div>
 
             {/* Collection Content */}
-            {collection.content && collection.content.length > 0 && (
+            {processedContent && processedContent.length > 0 && (
               <div className={pageStyles.blockGroup}>
                 <div className={styles.contentHeader}>
                   <h3 className={styles.contentHeading}>
-                    Collection Content ({collection.content.length} items)
+                    Collection Content ({processedContent.length} items)
                     {isSelectingCoverImage && (
                       <span className={styles.selectingNotice}>
                         (Click any image to set as cover)
@@ -807,7 +852,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   </h3>
                 </div>
                 <Component
-                  content={collection.content as AnyContentModel[]}
+                  content={processedContent}
                   isSelectingCoverImage={isSelectingCoverImage}
                   currentCoverImageId={collection.coverImage?.id}
                   onImageClick={handleImageClick}

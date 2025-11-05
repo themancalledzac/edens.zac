@@ -121,9 +121,16 @@ export default function Component({
                 if (isParallaxImageContent(itemContent) && itemContent.enableParallax) {
                   // Check if this is a collection (has slug field) - navigate instead of fullscreen
                   const isCollection = !!('slug' in itemContent && itemContent.slug);
+                  // In manage/admin pages, navigate to manage page; otherwise navigate to public page
+                  // Check if we're in an admin context by checking if onImageClick is provided (manage page)
+                  const isAdminContext = !!onImageClick;
                   const handleClick = isCollection
                     ? () => {
-                        router.push(`/${itemContent.slug}`);
+                        if (isAdminContext) {
+                          router.push(`/collection/manage/${itemContent.slug}`);
+                        } else {
+                          router.push(`/${itemContent.slug}`);
+                        }
                       }
                     : (enableFullScreenView && onFullScreenImageClick
                         ? () => onFullScreenImageClick(itemContent)

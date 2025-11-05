@@ -77,11 +77,25 @@ export function getContentDimensions(block: Content, defaultWidth = 1300, defaul
     return { width, height };
   }
 
-  // For collection blocks, use explicit width/height if set (from coverImage dimensions)
+  // For collection blocks, use coverImage dimensions if available
   // This allows proper chunking based on actual cover image aspect ratio
   if (isCollectionContent(block)) {
-    // If width/height are set (from coverImage.imageWidth/imageHeight), use them
-    // Otherwise fall back to default aspect ratio
+    const collectionBlock = block as CollectionContentModel;
+    // Prioritize coverImage.imageWidth/imageHeight for accurate aspect ratios
+    if (collectionBlock.coverImage?.imageWidth && collectionBlock.coverImage?.imageHeight) {
+      return {
+        width: collectionBlock.coverImage.imageWidth,
+        height: collectionBlock.coverImage.imageHeight,
+      };
+    }
+    // Fallback to coverImage.width/height if imageWidth/imageHeight not available
+    if (collectionBlock.coverImage?.width && collectionBlock.coverImage?.height) {
+      return {
+        width: collectionBlock.coverImage.width,
+        height: collectionBlock.coverImage.height,
+      };
+    }
+    // Final fallback to default aspect ratio
     return { width: defaultWidth, height: Math.round(defaultWidth / defaultAspect) };
   }
 

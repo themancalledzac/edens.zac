@@ -4,46 +4,27 @@
  */
 
 import {
+  type ChildCollection,
   type CollectionModel,
   type CollectionUpdateRequest,
 } from '@/app/types/Collection';
-import { type AnyContentModel, type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
+import { type AnyContentModel, type CollectionContentModel, type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
+import { isCollectionContent } from '@/app/utils/contentTypeGuards';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
 
-// /**
-//  * Initialize form data from a collection
-//  * Provides sensible defaults for all fields
-//  */
-// export function initializeUpdateFormData(): CollectionUpdateRequest {
-//   return {
-//     type: CollectionType.PORTFOLIO,
-//     title: '',
-//     description: '',
-//     location: '',
-//     collectionDate: '',
-//     visible: true,
-//     displayMode: 'CHRONOLOGICAL',
-//     coverImageId: undefined,
-//     collections: [],
-//     tags: [],
-//     people: [],
-//   };
-// }
 
 /**
  * Build an update payload containing only changed fields
  * Compares form data with original collection and only includes differences
- * Includes content block operations (reorder, remove)
  * Note: New text blocks are added via separate POST endpoint, not through update
+ * Note: Content reordering is handled via Image Update endpoint where orderIndex is updated
  */
 export function buildUpdatePayload(
   formData: CollectionUpdateRequest,
-  originalCollection: CollectionModel,
-  // reorderOperations: ContentReorderOperation[] = [],
-  // contentIdsToRemove: number[] = []
+  originalCollection: CollectionModel
 ): CollectionUpdateRequest {
   const payload: CollectionUpdateRequest = {
     id: originalCollection.id, // ID is required for updates
@@ -81,15 +62,6 @@ export function buildUpdatePayload(
     payload.collections = formData.collections;
   }
 
-  // Content operations - include if any are present
-  // TODO: Update location of Reorder operations: now take place in the Image Update endpoint, where we pass the images' collections.'prev(childCollection)'.orderIndex.
-  //  - This will be a SMALL api call, JUST with that orderIndex change, so that reorders are EACH an api call, making them much faster/instant.
-  // if (reorderOperations.length > 0) {
-  //   payload.reorderOperations = reorderOperations;
-  // }
-  // if (contentIdsToRemove.length > 0) {
-  //   payload.contentIdsToRemove = contentIdsToRemove; // Updated field name
-  // }
 
   return payload;
 }
@@ -123,9 +95,9 @@ export function isImageContentBlock(block: unknown): block is ImageContentModel 
     block !== null &&
     block !== undefined &&
     typeof block === 'object' &&
-    'blockType' in block &&
-    (block as { blockType: string }).blockType === 'IMAGE' &&
-    'imageUrlWeb' in block
+    'contentType' in block &&
+    (block as { contentType: string }).contentType === 'IMAGE' &&
+    'imageUrl' in block
   );
 }
 
@@ -148,9 +120,8 @@ export function isCollectionContentBlock(block: unknown): block is ParallaxImage
 
 /**
  * Extract collection content blocks from a content array
- * Filters content to only ParallaxImageContentModel items with slug (collections) and maps to selector format
- * Collections are now Parallax type for unified rendering
- * TODO: Update to have another 'param' for 'current child collections'
+ * Filters content to only CollectionContentModel items (child collections) and maps to selector format
+ * Child collections are stored as COLLECTION type in the content array
  *
  * @param content - Array of content blocks from a collection
  * @returns Array of {id, name} objects for use in UnifiedMetadataSelector
@@ -161,8 +132,8 @@ export function getCollectionContentAsSelections(
   if (!content) return [];
 
   return content
-    .filter(isCollectionContentBlock)
-    .map(collection => ({
+    .filter(isCollectionContent)
+    .map((collection: CollectionContentModel) => ({
       id: collection.id,
       name: collection.title || collection.slug || '', // Use title if available, fallback to slug
     }));
@@ -255,4 +226,80 @@ export function handleApiError(error: unknown, defaultMessage: string): string {
 
   // Fallback to default message
   return defaultMessage;
+}
+
+/**
+ * Build collections update object from selection changes
+ * Implements simple toggle logic:
+ * - Collections in original: deselected -> add to remove, selected -> remove from remove
+ * - Collections NOT in original: selected -> add to newValue, deselected -> remove from newValue
+ *
+ * @param selectedCollections - Currently selected collections from the UI
+ * @param originalCollectionIds - Set of collection IDs that exist in the original collection
+ * @param currentCollectionsUpdate - Current collections update state from updateData
+ * @returns New collections update object for CollectionUpdateRequest
+ */
+export function buildCollectionsUpdate(
+  selectedCollections: Array<{ id: number; name: string }>,
+  originalCollectionIds: Set<number>,
+  currentCollectionsUpdate?: CollectionUpdateRequest['collections']
+): CollectionUpdateRequest['collections'] | undefined {
+  const selectedIds = new Set(selectedCollections.map(c => c.id));
+
+  // Get current state from updateData
+  const currentRemove = new Set(currentCollectionsUpdate?.remove || []);
+  const currentNewValue = currentCollectionsUpdate?.newValue || [];
+
+  // Build new state by comparing current selection with original
+  const newRemove = new Set<number>();
+  const newNewValue: ChildCollection[] = [];
+
+  // Process each selected collection
+  for (const [index, selected] of selectedCollections.entries()) {
+    // Collection does NOT exist in original - add to newValue
+    if (!originalCollectionIds.has(selected.id) && !currentNewValue.some(c => c.collectionId === selected.id)) {
+      newNewValue.push({
+        collectionId: selected.id,
+        name: selected.name,
+        visible: true,
+        orderIndex: index,
+      });
+    }
+    // If it exists in original, it stays in original (no action needed)
+  }
+
+  // Process collections that should be removed
+  for (const originalId of originalCollectionIds) {
+    // Original collection is not selected - should be in remove
+    if (!selectedIds.has(originalId) && !currentRemove.has(originalId)) {
+      newRemove.add(originalId);
+    }
+    // If selected, it stays in original (removed from remove list if it was there)
+  }
+
+  // Process collections that should be removed from newValue
+  for (const newCollection of currentNewValue) {
+    // Still selected - keep it
+    if (selectedIds.has(newCollection.collectionId) && !newNewValue.some(c => c.collectionId === newCollection.collectionId)) {
+      newNewValue.push(newCollection);
+    }
+    // If not selected, remove it (by not including in newNewValue)
+  }
+
+  // Build final state
+  const finalRemove = Array.from(new Set([...currentRemove, ...newRemove])).filter(id => {
+    // Only keep removals for collections that are still not selected
+    return !selectedIds.has(id);
+  });
+
+  // Build the update object
+  const collectionsUpdate: CollectionUpdateRequest['collections'] = {};
+  if (finalRemove.length > 0) {
+    collectionsUpdate.remove = finalRemove;
+  }
+  if (newNewValue.length > 0) {
+    collectionsUpdate.newValue = newNewValue;
+  }
+
+  return Object.keys(collectionsUpdate).length > 0 ? collectionsUpdate : undefined;
 }
