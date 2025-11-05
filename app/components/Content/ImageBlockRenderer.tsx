@@ -4,11 +4,11 @@ import React from 'react';
 import { type ImageContentModel } from '@/app/types/Content';
 
 import { BadgeOverlay } from './BadgeOverlay';
+import cbStyles from './ContentComponent.module.scss';
 import {
   type BaseContentRendererProps,
   ContentWrapper,
 } from './ContentWrapper';
-import cbStyles from './ContentComponent.module.scss';
 
 /**
  * Props for ImageContentBlockRenderer
@@ -33,7 +33,7 @@ export function ContentImageRenderer({
     const alt = imageBlock.title || imageBlock.caption || 'image content';
 
     // Extract overlay and badge data
-    const { overlayText, cardTypeBadge, dateBadge, imageUrlWeb, imageWidth, imageHeight } =
+    const { overlayText, cardTypeBadge, dateBadge, imageUrl, imageWidth, imageHeight } =
       imageBlock;
     const hasOverlays = !!(overlayText || cardTypeBadge || dateBadge);
 
@@ -54,7 +54,7 @@ export function ContentImageRenderer({
     // Create the base image element
     const imageElement = (
       <Image
-        src={imageUrlWeb}
+        src={imageUrl}
         alt={alt}
         width={imageWidth || width}
         height={imageHeight || height}

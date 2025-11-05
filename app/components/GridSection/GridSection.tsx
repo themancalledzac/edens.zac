@@ -45,21 +45,14 @@ export function GridSection({
 
   const getHref = () => {
     // Handle routing based on content type
-    if (content.contentType === 'COLLECTION') {
-      // Map CollectionType enum values to URL paths
-      switch (content.collectionType) {
-        case 'BLOG':
-          return `/blogs/${content.slug}`;
-        case 'PORTFOLIO':
-          return `/portfolio/${content.slug}`;
-        case 'ART_GALLERY':
-          return `/art-gallery/${content.slug}`;
-        case 'CLIENT_GALLERY':
-          return `/client-gallery/${content.slug}`;
-        default:
-          // Fallback to lowercase version of the type
-          return `/${content.collectionType.toLowerCase()}/${content.slug}`;
-      }
+    // Collections are now Parallax type with slug field
+    if (content.contentType === 'PARALLAX' && 'slug' in content && content.slug) {
+      // Collections now use slug-based routing without cardType prefix
+      return `/${content.slug}`;
+    }
+    // Legacy support for COLLECTION type
+    if (content.contentType === 'COLLECTION' && 'slug' in content) {
+      return `/${content.slug}`;
     }
 
     // For IMAGE content, link to the image detail page (if applicable)
@@ -68,18 +61,27 @@ export function GridSection({
   };
 
   const getCardTypeBadge = () => {
-    if (content.contentType === 'COLLECTION') {
+    // Collections are now Parallax type with collectionType field
+    if (content.contentType === 'PARALLAX' && 'collectionType' in content && content.collectionType) {
+      return content.collectionType;
+    }
+    // Legacy support for COLLECTION type
+    if (content.contentType === 'COLLECTION' && 'collectionType' in content) {
       return content.collectionType;
     }
     return content.contentType;
   };
+
+  const isCollection = 
+    (content.contentType === 'PARALLAX' && 'slug' in content && content.slug) ||
+    content.contentType === 'COLLECTION';
 
   return (
     <div className={pageStyles.gridSection}>
       <a href={getHref()}>
         <ParallaxImageRenderer
           content={parallaxBlock}
-          contentType={content.contentType === 'COLLECTION' ? 'collection' : 'content'}
+          contentType={isCollection ? 'collection' : 'content'}
           cardTypeBadge={getCardTypeBadge()}
           priority={priority}
         />

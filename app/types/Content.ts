@@ -54,7 +54,7 @@ export interface Content {
  */
 export interface ImageContentModel extends Content {
   contentType: 'IMAGE';
-  imageUrlWeb: string;
+  imageUrl: string;
   imageUrlRaw?: string | null;
   imageWidth?: number;
   imageHeight?: number;
@@ -98,6 +98,7 @@ export interface ImageContentModel extends Content {
 /**
  * Parallax-enabled image content model
  * Based on ImageContentModel with parallax functionality
+ * Can optionally include slug and collectionType for collection navigation
  */
 export interface ParallaxImageContentModel extends Omit<ImageContentModel, 'contentType'> {
   contentType: 'PARALLAX';
@@ -105,6 +106,9 @@ export interface ParallaxImageContentModel extends Omit<ImageContentModel, 'cont
   type?: string;
   enableParallax: true;
   parallaxSpeed?: number;
+  // Optional fields for collection navigation (when converted from CollectionContentModel)
+  slug?: string;
+  collectionType?: 'BLOG' | 'PORTFOLIO' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'HOME' | 'MISC';
 }
 
 /**

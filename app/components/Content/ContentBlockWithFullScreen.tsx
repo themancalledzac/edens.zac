@@ -11,7 +11,7 @@ import {
   type ParallaxImageContentModel,
 } from '@/app/types/Content';
 
-import ContentComponent from './Component';
+import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
 
 interface ContentBlockWithFullScreenProps {
@@ -106,7 +106,7 @@ export default function ContentBlockWithFullScreen({
 
   return (
     <>
-      <ContentComponent
+      <Component
         content={visibleBlocks}
         priorityIndex={priorityBlockIndex}
         enableFullScreenView={enableFullScreenView}

@@ -76,7 +76,7 @@ export async function createTextContent(request: {
   content: string;
   format?: 'plain' | 'markdown' | 'html';
   align?: 'left' | 'center' | 'right';
-}): Promise<any> {
+}): Promise<{ id: number; contentType: string }> {
   return fetchPostJsonApi('/content/content', request);
 }
 

@@ -2,11 +2,11 @@ import React from 'react';
 
 import { type TextContentModel } from '@/app/types/Content';
 
+import cbStyles from './ContentComponent.module.scss';
 import {
   type BaseContentRendererProps,
   ContentWrapper,
 } from './ContentWrapper';
-import cbStyles from './ContentComponent.module.scss';
 
 /**
  * Props for TextContentBlockRenderer

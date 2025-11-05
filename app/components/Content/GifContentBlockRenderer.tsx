@@ -4,11 +4,11 @@ import React from 'react';
 import { type GifContentModel } from '@/app/types/Content';
 
 import { BadgeOverlay } from './BadgeOverlay';
+import cbStyles from './ContentComponent.module.scss';
 import {
   type BaseContentRendererProps,
   ContentWrapper,
 } from './ContentWrapper';
-import cbStyles from './ContentComponent.module.scss';
 
 /**
  * Props for GifContentBlockRenderer

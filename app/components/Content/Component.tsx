@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { useMemo } from 'react';
 
 import { useViewport } from '@/app/hooks/useViewport';
@@ -66,18 +67,19 @@ export interface ContentComponentProps {
  * High-performance content rendering system that processes and displays
  * mixed content (images, text, etc.) in optimized responsive layouts.
  * Features memoized calculations, responsive chunking, and type-safe specialized renderers.
- */
-export default function ContentComponent({
+*/
+export default function Component({
   content,
   isSelectingCoverImage = false,
   currentCoverImageId,
   onImageClick,
   justClickedImageId,
-  priorityIndex = 0,
+  priorityIndex: _priorityIndex = 0,
   enableFullScreenView = false,
   onFullScreenImageClick, // NEW SIMPLE VERSION
   selectedImageIds = [],
 }: ContentComponentProps) {
+  const router = useRouter();
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
 
@@ -115,13 +117,19 @@ export default function ContentComponent({
                   index
                 );
 
-                // Determine if this block should have priority loading (for LCP optimization)
-                const shouldPrioritize =
-                  content.findIndex(c => c.id === itemContent.id) === priorityIndex;
-
                 // Renderer lookup map - check most specific types first
                 if (isParallaxImageContent(itemContent) && itemContent.enableParallax) {
-                  // Handle parallax image with proper container structure for collections
+                  // Check if this is a collection (has slug field) - navigate instead of fullscreen
+                  const isCollection = !!('slug' in itemContent && itemContent.slug);
+                  const handleClick = isCollection
+                    ? () => {
+                        router.push(`/${itemContent.slug}`);
+                      }
+                    : (enableFullScreenView && onFullScreenImageClick
+                        ? () => onFullScreenImageClick(itemContent)
+                        : undefined);
+
+                  // Use ParallaxImageRenderer with proper container structure for parallax effect
                   return (
                     <div
                       key={itemContent.id}
@@ -130,7 +138,7 @@ export default function ContentComponent({
                         width: isMobile ? '100%' : width,
                         height: isMobile ? 'auto' : height,
                         aspectRatio: isMobile ? width / height : undefined,
-                        cursor: 'default',
+                        cursor: handleClick ? 'pointer' : 'default',
                         boxSizing: 'border-box',
                         position: 'relative',
                       }}
@@ -147,14 +155,10 @@ export default function ContentComponent({
                       >
                         <ParallaxImageRenderer
                           content={itemContent}
-                          contentType="content"
-                          cardTypeBadge={itemContent.cardTypeBadge}
-                          priority={shouldPrioritize}
-                          onClick={
-                            enableFullScreenView && onFullScreenImageClick
-                              ? () => onFullScreenImageClick(itemContent)
-                              : undefined
-                          }
+                          contentType={isCollection ? 'collection' : 'content'}
+                          cardTypeBadge={isCollection && 'collectionType' in itemContent ? itemContent.collectionType : itemContent.cardTypeBadge}
+                          priority={false}
+                          onClick={handleClick}
                         />
                       </div>
                     </div>

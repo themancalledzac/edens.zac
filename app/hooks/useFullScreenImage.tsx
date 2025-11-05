@@ -5,12 +5,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { IMAGE, INTERACTION } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
-import type { ImageContentBlock, ParallaxImageContentBlock } from '@/app/types/ContentBlock';
+import type { ImageContentModel, ParallaxImageContentModel } from '@/app/types/Content';
 
 // Hook-specific constants
 const SCROLL_BLOCKING_KEYS = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'];
 
-type ImageBlock = ImageContentBlock | ParallaxImageContentBlock;
+type ImageBlock = ImageContentModel | ParallaxImageContentModel;
 
 type FullScreenState = {
   images: ImageBlock[];
@@ -163,7 +163,7 @@ export function useFullScreenImage() {
         <div className={styles.overlayContainer} onClick={hideImage}>
           <Image
             key={currentImage.id} // Force re-render on image change
-            src={currentImage.imageUrlWeb}
+            src={currentImage.imageUrl}
             alt={currentImage.title || currentImage.caption || 'Full screen image'}
             width={currentImage.imageWidth || IMAGE.defaultWidth}
             height={currentImage.imageHeight || IMAGE.defaultHeight}

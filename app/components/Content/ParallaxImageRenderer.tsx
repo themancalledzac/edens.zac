@@ -44,14 +44,17 @@ export function ParallaxImageRenderer({
   priority = false,
   onClick,
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
-  const { imageUrlWeb, overlayText, collectionDate, imageWidth, imageHeight } = content;
+  const { imageUrl, overlayText, collectionDate, imageWidth: contentImageWidth, imageHeight: contentImageHeight, width: contentWidth, height: contentHeight } = content;
+  // Ensure imageWidth/imageHeight are available - fall back to width/height if needed
+  const imageWidth = contentImageWidth || contentWidth;
+  const imageHeight = contentImageHeight || contentHeight;
   const dateSimple = new Date(collectionDate || new Date()).toLocaleDateString();
 
   // Setup parallax effect for this image using defaults
   const parallaxRef = useParallax();
 
   // Determine if we have a valid image URL
-  const hasValidImage = imageUrlWeb && imageUrlWeb.trim() !== '';
+  const hasValidImage = imageUrl && imageUrl.trim() !== '';
 
   // Complete parallax container with image, overlays, and badges
   return (
@@ -62,7 +65,7 @@ export function ParallaxImageRenderer({
     >
       {hasValidImage ? (
         <Image
-          src={imageUrlWeb}
+          src={imageUrl}
           alt={overlayText || 'Parallax image'}
           width={imageWidth || 1200}
           height={imageHeight || 800}

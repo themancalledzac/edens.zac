@@ -200,7 +200,7 @@ export default function ImageMetadataModal({
                   }}
                 >
                   <Image
-                    src={img.imageUrlWeb}
+                    src={img.imageUrl}
                     alt={img.alt || img.title || 'Selected image'}
                     fill
                     style={{
@@ -216,7 +216,7 @@ export default function ImageMetadataModal({
         ) : (
           // Single edit mode - show full image
           <Image
-            src={previewImage.imageUrlWeb}
+            src={previewImage.imageUrl}
             alt={previewImage.alt || previewImage.title || 'Image preview'}
             width={previewImage.imageWidth || IMAGE.defaultWidth}
             height={previewImage.imageHeight || IMAGE.defaultHeight}
@@ -556,7 +556,7 @@ export default function ImageMetadataModal({
                         {
                           field: 'filmType',
                           value: {
-                            newValue: { name: filmStock.name, defaultIso: filmStock.defaultIso },
+                            newValue: { filmTypeName: filmStock.name, defaultIso: filmStock.defaultIso },
                           },
                         },
                         updateDTO
@@ -566,10 +566,10 @@ export default function ImageMetadataModal({
                   }}
                   allowAddNew
                   onAddNew={data => {
-                    const name = data.name as string;
+                    const filmTypeName = data.name as string;
                     const defaultIso = data.defaultIso as number;
                     handleDropdownChange(
-                      { field: 'filmType', value: { newValue: { name, defaultIso } } },
+                      { field: 'filmType', value: { newValue: { filmTypeName, defaultIso } } },
                       updateDTO
                     );
                     updateDTO({ iso: defaultIso });

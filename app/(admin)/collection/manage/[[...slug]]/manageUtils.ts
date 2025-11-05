@@ -5,65 +5,33 @@
 
 import {
   type CollectionModel,
-  CollectionType,
   type CollectionUpdateRequest,
-  type DisplayMode,
 } from '@/app/types/Collection';
-import { type AnyContentModel, type CollectionContentModel, type ImageContentModel } from '@/app/types/Content';
+import { type AnyContentModel, type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
 
-/**
- * Form data type for managing collections
- * All fields are required/have defaults for form state management
- */
-export interface ManageFormData {
-  type: CollectionType;
-  title: string;
-  description: string;
-  location: string;
-  collectionDate: string;
-  visible: boolean;
-  displayMode: DisplayMode;
-  coverImageId?: number;
-  collections?: {
-    prev?: Array<{
-      collectionId: number;
-      name: string;
-      visible?: boolean;
-      orderIndex?: number;
-    }>;
-  };
-//   tags?:{}
-//   people?:{}
-}
-
-/**
- * Initialize form data from a collection
- * Provides sensible defaults for all fields
- */
-export function initializeUpdateFormData(
-  collection?: CollectionModel | null
-): ManageFormData {
-  console.log('[initializeUpdateFormData] collection.collectionDate:', collection?.collectionDate);
-
-  const formData = {
-    type: collection?.type ?? CollectionType.PORTFOLIO,
-    title: collection?.title || '',
-    description: collection?.description || '',
-    location: collection?.location || '',
-    collectionDate: collection?.collectionDate || '',
-    visible: collection?.visible ?? true,
-    displayMode: collection?.displayMode ?? 'CHRONOLOGICAL',
-    coverImageId: undefined,
-  };
-
-  console.log('[initializeUpdateFormData] formData.collectionDate:', formData.collectionDate);
-
-  return formData;
-}
+// /**
+//  * Initialize form data from a collection
+//  * Provides sensible defaults for all fields
+//  */
+// export function initializeUpdateFormData(): CollectionUpdateRequest {
+//   return {
+//     type: CollectionType.PORTFOLIO,
+//     title: '',
+//     description: '',
+//     location: '',
+//     collectionDate: '',
+//     visible: true,
+//     displayMode: 'CHRONOLOGICAL',
+//     coverImageId: undefined,
+//     collections: [],
+//     tags: [],
+//     people: [],
+//   };
+// }
 
 /**
  * Build an update payload containing only changed fields
@@ -72,7 +40,7 @@ export function initializeUpdateFormData(
  * Note: New text blocks are added via separate POST endpoint, not through update
  */
 export function buildUpdatePayload(
-  formData: ManageFormData,
+  formData: CollectionUpdateRequest,
   originalCollection: CollectionModel,
   // reorderOperations: ContentReorderOperation[] = [],
   // contentIdsToRemove: number[] = []
@@ -83,7 +51,7 @@ export function buildUpdatePayload(
 
   // Field mappings: [formKey, originalValue]
   const fieldMappings: Array<{
-    key: keyof ManageFormData;
+    key: keyof CollectionUpdateRequest;
     original: unknown;
   }> = [
     { key: 'type', original: originalCollection.type },
@@ -133,7 +101,7 @@ export function buildUpdatePayload(
 export function syncCollectionState(
   collection: CollectionModel,
   updateResponse: CollectionModel,
-  formData: ManageFormData
+  formData: CollectionUpdateRequest
 ): CollectionModel {
   return {
     ...collection,
@@ -162,23 +130,26 @@ export function isImageContentBlock(block: unknown): block is ImageContentModel 
 }
 
 /**
- * Type guard to check if a block is a CollectionContentModel
+ * Type guard to check if a block is a collection (ParallaxImageContentModel with slug)
+ * Collections are now converted to Parallax type for unified rendering
  */
-export function isCollectionContentBlock(block: unknown): block is CollectionContentModel {
+export function isCollectionContentBlock(block: unknown): block is ParallaxImageContentModel {
   return (
     block !== null &&
     block !== undefined &&
     typeof block === 'object' &&
     'contentType' in block &&
-    (block as { contentType: string }).contentType === 'COLLECTION' &&
+    (block as { contentType: string }).contentType === 'PARALLAX' &&
     'slug' in block &&
-    'collectionType' in block
+    typeof (block as { slug: unknown }).slug === 'string' &&
+    (block as { slug: string }).slug.length > 0
   );
 }
 
 /**
  * Extract collection content blocks from a content array
- * Filters content to only CollectionContentModel items and maps to selector format
+ * Filters content to only ParallaxImageContentModel items with slug (collections) and maps to selector format
+ * Collections are now Parallax type for unified rendering
  * TODO: Update to have another 'param' for 'current child collections'
  *
  * @param content - Array of content blocks from a collection
@@ -193,7 +164,7 @@ export function getCollectionContentAsSelections(
     .filter(isCollectionContentBlock)
     .map(collection => ({
       id: collection.id,
-      name: collection.title || collection.slug, // Use title if available, fallback to slug
+      name: collection.title || collection.slug || '', // Use title if available, fallback to slug
     }));
 }
 

@@ -11,12 +11,12 @@ import styles from './ImageMetadataModal.module.scss';
 /**
  * Generic metadata item interface
  * All metadata items must have an optional id and a name/displayName
+ * Additional properties are allowed for specialized items (e.g., defaultIso for film types)
  */
 export interface MetadataItem {
   id?: number;
   name?: string;
   displayName?: string;
-  [key: string]: any; // Allow additional properties for specialized items
 }
 
 /**
@@ -49,7 +49,7 @@ interface UnifiedMetadataSelectorProps<T extends MetadataItem> {
 
   // Add New functionality
   allowAddNew?: boolean;
-  onAddNew?: (data: Record<string, any>) => void;
+  onAddNew?: (data: Record<string, string | number | null>) => void;
   addNewFields?: AddNewField[];
 
   // Display customization
@@ -122,7 +122,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
 
   const [isSelectingFromDropdown, setIsSelectingFromDropdown] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, string>>({});
 
   // ============================================================================
   // Helper Functions
@@ -200,6 +200,8 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
         onChange(newSelection);
       } else {
         // Add to selection
+        console.log('Adding new item:', item);
+        console.log('Current values:', selectedValues);
         onChange([...selectedValues, item]);
       }
     } else {
@@ -229,7 +231,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
     // Validate all required fields
     const missingFields = addNewFields
       .filter(field => field.required)
-      .filter(field => !formData[field.name] || formData[field.name].toString().trim() === '');
+      .filter(field => !formData[field.name] || formData[field.name]?.toString().trim() === '');
 
     if (missingFields.length > 0) {
       return; // Button should be disabled, but this is extra safety
@@ -267,7 +269,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
           const numValue = Number.parseInt(value, 10);
           return !Number.isNaN(numValue) && numValue > 0;
         }
-        return value.toString().trim().length > 0;
+        return value?.toString().trim().length > 0;
       });
   };
 

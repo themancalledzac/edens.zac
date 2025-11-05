@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
-import ContentComponent from '@/app/components/Content/Component';
+import Component from '@/app/components/Content/Component';
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
@@ -19,8 +19,10 @@ import { createImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionCreateRequest,
+  type CollectionListModel,
   type CollectionModel,
   CollectionType,
+  type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type DisplayMode,
   type GeneralMetadataDTO,
@@ -39,9 +41,7 @@ import {
   getCollectionContentAsSelections,
   getDisplayedCoverImage,
   handleApiError,
-  initializeUpdateFormData,
   isImageContentBlock,
-  type ManageFormData,
   syncCollectionState,
   validateCoverImageSelection,
 } from './manageUtils';
@@ -64,7 +64,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
     type: CollectionType.PORTFOLIO,
     title: '',
   });
-  const [updateData, setUpdateData] = useState<ManageFormData>(initializeUpdateFormData(null));
+  const [updateData, setUpdateData] = useState<CollectionUpdateRequest>({
+    id: collection?.id || 0,
+  });
   const [metadata, setMetadata] = useState<GeneralMetadataDTO>({
     tags: [],
     people: [],
@@ -170,7 +172,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
           if (isMounted && !abortController.signal.aborted) {
             setCollection(fullCollection);
-            setUpdateData(initializeUpdateFormData(fullCollection));
             setMetadata(metadataResponse);
           }
         } else {
@@ -178,11 +179,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
           // Fallback: fetch everything (collection + metadata)
           const response = await getCollectionUpdateMetadata(slug);
-          console.log('getCollectionUpdateMetadata metadata:' + ' ' + response);
 
           if (isMounted && !abortController.signal.aborted) {
             setCollection(response.collection);
-            setUpdateData(initializeUpdateFormData(response.collection));
             setMetadataFromResponse(response);
           }
         }
@@ -277,7 +276,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setMetadataFromResponse(response);
 
       // Populate update form with created collection data using utility function
-      setUpdateData(initializeUpdateFormData(response.collection));
 
       // Update URL to reflect the new collection using router.replace (avoids re-navigation)
       router.replace(`/collection/manage/${response.collection.slug}`);
@@ -302,6 +300,8 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Build payload with only changed fields
       const payload = buildUpdatePayload(updateData, collection);
 
+      console.log('zac zac updateData: ' + JSON.stringify(updateData));
+      console.log('zac zac payload: ' + JSON.stringify(payload));
       const response = await updateCollection(collection.id, payload);
 
       // Sync metadata changes
@@ -482,6 +482,25 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [collection]
   );
 
+  // console.log('test metadata.collections: ' + JSON.stringify(metadata.collections));
+  // console.log(`updateData: ` + JSON.stringify(updateData));
+  // console.log("get selected collections " + getCollectionContentAsSelections(collection?.content))
+
+  // Derive current selected collections from updateData or original collection
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-expect-error
+  const currentSelectedCollections: CollectionListModel[] = useMemo(() => {
+    // If we have pending changes in updateData, use those
+    if (updateData.collections?.newValue) {
+      return updateData.collections.newValue.map(c => ({
+        id: c.collectionId,
+        name: c.name,
+      }));
+    }
+    // Otherwise, use the original collection content
+    return getCollectionContentAsSelections(collection?.content);
+  }, [updateData.collections, collection?.content]);
+
   return (
     <div>
       <SiteHeader pageType="manage" />
@@ -653,7 +672,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                       <label className={styles.formLabel}>Cover Image</label>
                       {displayedCoverImage && isImageContentBlock(displayedCoverImage) ? (
                         <div className={styles.coverImageWrapper}>
-                          <img src={displayedCoverImage.imageUrlWeb} alt="Cover" />
+                          <img src={displayedCoverImage.imageUrl} alt="Cover" />
                           <button
                             type="button"
                             onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
@@ -701,19 +720,19 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         label="Collections"
                         multiSelect
                         options={metadata.collections}
-                        selectedValues={getCollectionContentAsSelections(collection.content)}
+                        selectedValues={currentSelectedCollections}
                         onChange={value => {
-                          const collections =
-                            (value as Array<{ id: number; name: string }> | null) ?? [];
+                          const collections = value as Array<{ id: number; name: string }> | null;
                           setUpdateData(prev => ({
                             ...prev,
                             collections: {
-                              prev: collections.map((c, index) => ({
-                                collectionId: c.id,
-                                name: c.name,
-                                visible: true,
-                                orderIndex: index,
-                              })),
+                              newValue:
+                                collections?.map((c, index) => ({
+                                  collectionId: c.id,
+                                  name: c.name,
+                                  visible: true,
+                                  orderIndex: index,
+                                })) ?? [],
                             },
                           }));
                         }}
@@ -787,7 +806,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     )}
                   </h3>
                 </div>
-                <ContentComponent
+                <Component
                   content={collection.content as AnyContentModel[]}
                   isSelectingCoverImage={isSelectingCoverImage}
                   currentCoverImageId={collection.coverImage?.id}

@@ -14,6 +14,10 @@ import CollectionPage from '../../components/ContentCollection/CollectionPage';
  *
  * @returns React Server Component displaying all collections
  */
+
+// Force dynamic rendering - admin pages should never be statically generated
+export const dynamic = 'force-dynamic';
+
 export default async function AllCollectionsPage() {
   const allCollections = await getAllCollectionsAdmin();
 

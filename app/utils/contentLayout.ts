@@ -75,7 +75,7 @@ export interface CalculatedContentSize {
 /**
  * Calculate display sizes for a row of ContentModels so their heights match
  * and their widths sum to the component width
- * TODO: Image width have not been updated to our new '--page-max-width: 1300px;', meaning two images next to each other are not taking up the full width. they are based on the 'old' width
+ * Accounts for padding between images (.imageLeft padding-right: 0.4rem + .imageRight padding-left: 0.4rem = 0.8rem total)
  */
 export function calculateContentSizes(
   content: AnyContentModel[],
@@ -99,6 +99,8 @@ export function calculateContentSizes(
   }
 
   // Calculate ratios for all content
+  // Note: Padding (.imageLeft, .imageRight) is INSIDE the div width due to box-sizing: border-box
+  // So we don't subtract padding - the divs should sum to the full componentWidth
   const ratios = content.map(contentItem => {
     const { width, height } = getContentDimensions(contentItem);
     return width / Math.max(1, height);

@@ -5,6 +5,7 @@
  * Use these instead of runtime type checking or casting.
  */
 import {
+  type CollectionContentModel,
   type Content,
   type GifContentModel,
   type ImageContentModel,
@@ -41,6 +42,13 @@ export function isGifContent(block: Content): block is GifContentModel {
 }
 
 /**
+ * Type guard to check if a Content is a CollectionContentModel
+ */
+export function isCollectionContent(block: Content): block is CollectionContentModel {
+  return block.contentType === 'COLLECTION';
+}
+
+/**
  * Type guard to check if a Content has an image (IMAGE, PARALLAX, or GIF)
  */
 export function hasImage(block: Content): block is ImageContentModel | ParallaxImageContentModel | GifContentModel {
@@ -50,21 +58,38 @@ export function hasImage(block: Content): block is ImageContentModel | ParallaxI
 /**
  * Get the content width and height from any Content
  * Falls back to imageWidth/Height for image blocks, or default dimensions
+ * For parallax images, prioritizes imageWidth/imageHeight over width/height for accurate aspect ratios
  */
-export function getContentDimensions(block: Content, defaultWidth = 1300, defaultAspect = 2/3): { width: number; height: number } {
-  // Use explicit width/height if available
+export function getContentDimensions(block: Content, defaultWidth = 1300, defaultAspect = 3/2): { width: number; height: number } {
+  // For image blocks (including parallax), prioritize image dimensions for accurate aspect ratios
+  if (isContentImage(block) || isParallaxImageContent(block)) {
+    // Use imageWidth/imageHeight if available (most accurate for images)
+    if (block.imageWidth && block.imageHeight) {
+      return { width: block.imageWidth, height: block.imageHeight };
+    }
+    // Fall back to width/height if imageWidth/imageHeight not available
+    if (block.width && block.height) {
+      return { width: block.width, height: block.height };
+    }
+    // Final fallback to defaults
+    const width = defaultWidth;
+    const height = Math.round(width / defaultAspect);
+    return { width, height };
+  }
+
+  // For collection blocks, use explicit width/height if set (from coverImage dimensions)
+  // This allows proper chunking based on actual cover image aspect ratio
+  if (isCollectionContent(block)) {
+    // If width/height are set (from coverImage.imageWidth/imageHeight), use them
+    // Otherwise fall back to default aspect ratio
+    return { width: defaultWidth, height: Math.round(defaultWidth / defaultAspect) };
+  }
+
+  // For all other blocks, use explicit width/height if available, otherwise defaults
   if (block.width && block.height) {
     return { width: block.width, height: block.height };
   }
 
-  // For image blocks (including parallax), use image dimensions
-  if (isContentImage(block) || isParallaxImageContent(block)) {
-    const width = block.imageWidth || defaultWidth;
-    const height = block.imageHeight || Math.round(width / defaultAspect);
-    return { width, height };
-  }
-
-  // For all other blocks, use defaults
   return { width: defaultWidth, height: Math.round(defaultWidth / defaultAspect) };
 }
 

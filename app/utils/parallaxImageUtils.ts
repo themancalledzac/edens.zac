@@ -59,30 +59,40 @@ export function buildParallaxImageContentBlock(
  *
  * Converts any AnyContentModel to a ParallaxImageContentModel for use in the grid system.
  * This enables unified parallax behavior between home page grid and collection pages.
+ * Collections are now already Parallax type, but this function handles legacy COLLECTION type for backwards compatibility.
  *
- * @param content - Any content model (CollectionContentModel, ImageContentModel, etc.)
+ * @param content - Any content model (ParallaxImageContentModel, CollectionContentModel, ImageContentModel, etc.)
  * @returns Formatted parallax image model
  */
 export function buildParallaxImageFromContent(content: AnyContentModel): ParallaxImageContentModel {
-  // Handle CollectionContentModel
+  // If already Parallax type, return as-is (collections are now converted to Parallax earlier)
+  if (content.contentType === 'PARALLAX') {
+    return content as ParallaxImageContentModel;
+  }
+
+  // Handle legacy CollectionContentModel (for backwards compatibility)
   if (content.contentType === 'COLLECTION') {
-    // Determine aspect ratio based on collection type
-    // BLOG uses 1.75:1 (457 height), everything else uses 1:1 (800 height)
-    const imageHeight = content.collectionType === 'BLOG' ? 457 : 800;
+    // For collections on home page, always use 1:1 square aspect ratio
+    // This matches the original home page behavior
+    const gridSize = 800; // Standard grid size for 1x1 aspect ratio
 
     return {
       id: content.id,
       contentType: 'PARALLAX',
       title: content.title ?? 'Untitled',
-      imageUrlWeb: content.imageUrl ?? '',
-      imageWidth: 800, // Default width for grid images
-      imageHeight,
+      imageUrl: content.imageUrl ?? '',
+      // Force 1x1 aspect ratio for all collections (home page style)
+      imageWidth: gridSize,
+      imageHeight: gridSize,
       createdAt: content.createdAt,
       updatedAt: content.updatedAt,
+      // Preserve collection-specific fields
+      slug: 'slug' in content ? content.slug : undefined,
+      collectionType: 'collectionType' in content ? content.collectionType : undefined,
       // Parallax-specific properties
       ...createBaseParallaxProperties(
         content.title ?? 'Untitled',
-        content.collectionType, // Already uppercase in CollectionType enum
+        'collectionType' in content ? content.collectionType : 'MISC',
         content.orderIndex
       ),
     };
@@ -106,7 +116,7 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Paralla
     id: content.id,
     contentType: 'PARALLAX',
     title: content.title ?? 'Untitled',
-    imageUrlWeb: content.imageUrl ?? '',
+    imageUrl: content.imageUrl ?? '',
     imageWidth: content.width ?? 800,
     imageHeight: content.height ?? 800,
     createdAt: content.createdAt,
