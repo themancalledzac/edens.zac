@@ -2,10 +2,6 @@ import { notFound } from 'next/navigation';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { getCollectionBySlug } from '@/app/lib/api/collections.new';
-import {
-  handleCollectionError,
-  NotFoundError,
-} from '@/app/lib/utils/collectionErrorHandler';
 
 interface CollectionPageWrapperProps {
   slug: string;
@@ -33,13 +29,44 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
     // Backend guarantees complete data structure, so we can render directly
     return <CollectionPage collection={collection} />;
   } catch (error) {
-    // Handle 404 errors
-    if (error instanceof NotFoundError) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    console.error('[CollectionPageWrapper] Error loading collection:', {
+      slug,
+      error: errorMessage,
+    });
+
+    // Handle 404s
+    if (errorMessage.includes('404')) {
       notFound();
     }
 
-    // Handle all other errors (backend errors, unknown errors, etc.)
-    handleCollectionError(error, slug);
+    // Handle backend schema/database errors
+    // Common backend errors: JDBC exceptions, "Unknown column", database connection issues
+    const isBackendError =
+      errorMessage.includes('JDBC') ||
+      errorMessage.includes('Unknown column') ||
+      errorMessage.includes('API 500') ||
+      errorMessage.includes('Failed to retrieve collection');
+
+    if (isBackendError) {
+      console.warn(
+        '[CollectionPageWrapper] Backend schema/database error detected. ' +
+          'Page is force-dynamic so build will continue.',
+        { slug }
+      );
+
+      // For home page, re-throw (page is force-dynamic so this won't break build)
+      if (slug === 'home') {
+        throw error;
+      }
+
+      // For other collection pages, return notFound
+      notFound();
+    }
+
+    // Re-throw other errors so they can be handled by Next.js error boundary
+    throw error;
   }
 }
 
