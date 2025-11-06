@@ -1,23 +1,18 @@
-import { PAGINATION } from '@/app/constants';
-import { fetchHomePage } from '@/app/lib/api/home';
-
-import ContentCollectionPage from './components/ContentCollection/ContentCollectionPage';
+import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 
 /**
  * Home Page
  *
- * Main landing page component that displays a curated collection of content cards.
- * Fetches home page data with priority filtering and renders using the shared
- * ContentCollectionPage component.
- *
- * @dependencies
- * - fetchHomePage - API function for retrieving home page content
- * - ContentCollectionPage - Shared component for displaying content collections
+ * Main landing page component that displays the 'home' collection.
+ * Uses shared CollectionPageWrapper to eliminate code duplication.
  *
  * @returns React Server Component displaying home page content
  */
-export default function HomePage() {
-  const homeCardsPromise = fetchHomePage({ maxPriority: 2, limit: PAGINATION.homePageSize });
+// Temporarily force dynamic rendering until backend schema is fixed
+// TODO: Remove this once backend removes 'blocks_per_page' column reference
+// Once fixed, restore: export const revalidate = 3600; export const dynamic = 'error';
+export const dynamic = 'force-dynamic';
 
-  return <ContentCollectionPage cardsPromise={homeCardsPromise} />;
+export default async function HomePage() {
+  return <CollectionPageWrapper slug="home" />;
 }

@@ -1,18 +1,18 @@
 import React from 'react';
 
-import { type TextContentBlock } from '@/app/types/ContentBlock';
+import { type TextContentModel } from '@/app/types/Content';
 
+import cbStyles from './ContentComponent.module.scss';
 import {
-  type BaseContentBlockRendererProps,
-  BlockWrapper,
-} from './BlockWrapper';
-import cbStyles from './ContentBlockComponent.module.scss';
+  type BaseContentRendererProps,
+  ContentWrapper,
+} from './ContentWrapper';
 
 /**
  * Props for TextContentBlockRenderer
  */
-export interface TextContentBlockRendererProps extends BaseContentBlockRendererProps {
-  block: TextContentBlock;
+export interface TextContentBlockRendererProps extends BaseContentRendererProps {
+  block: TextContentModel;
 }
 
 /**
@@ -26,7 +26,7 @@ export function TextBlockRenderer({
   className = '',
   isMobile = false,
 }: TextContentBlockRendererProps): React.ReactElement {
-  const renderTextContent = (textBlock: TextContentBlock): React.ReactElement => {
+  const renderTextContent = (textBlock: TextContentModel): React.ReactElement => {
     // Extract text content - use content field from proper type
     const displayText = textBlock.content;
     const isLeftAligned = textBlock.align === 'left';
@@ -48,7 +48,7 @@ export function TextBlockRenderer({
   };
 
   return (
-    <BlockWrapper
+    <ContentWrapper
       block={block}
       width={width}
       height={height}

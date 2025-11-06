@@ -1,6 +1,6 @@
-import { fetchAllCollections } from '@/app/lib/api/home';
+import { getAllCollectionsAdmin } from '@/app/lib/api/collections.new';
 
-import ContentCollectionPage from '../../components/ContentCollection/ContentCollectionPage';
+import CollectionPage from '../../components/ContentCollection/CollectionPage';
 
 /**
  * All Collections Page (Dev/Admin Only)
@@ -9,13 +9,17 @@ import ContentCollectionPage from '../../components/ContentCollection/ContentCol
  * visibility, priority, or access control. Uses the dev-only write API endpoint.
  *
  * @dependencies
- * - fetchAllCollections - Dev API function for retrieving all collections
- * - ContentCollectionPage - Shared component for displaying content collections
+ * - getAllCollectionsAdmin - Dev API function for retrieving all collections
+ * - CollectionPage - Shared component for displaying content collections
  *
  * @returns React Server Component displaying all collections
  */
-export default function AllCollectionsPage() {
-  const allCardsPromise = fetchAllCollections();
 
-  return <ContentCollectionPage cardsPromise={allCardsPromise} />;
+// Force dynamic rendering - admin pages should never be statically generated
+export const dynamic = 'force-dynamic';
+
+export default async function AllCollectionsPage() {
+  const allCollections = await getAllCollectionsAdmin();
+
+  return <CollectionPage collection={allCollections} />;
 }

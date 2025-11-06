@@ -4,16 +4,20 @@ import Image from 'next/image';
 import { type FormEvent, useMemo, useState } from 'react';
 
 import { IMAGE } from '@/app/constants';
-import { type UpdateImageDTO, type UpdateImagesResponse, updateMultipleImages } from '@/app/lib/api/images';
-import type { ImageContentBlock } from '@/app/types/ContentBlock';
-import type {
-  CollectionListModel,
-  ContentCameraModel,
-  ContentLensModel,
-  ContentPersonModel,
-  ContentTagModel,
-  FilmFormatModel,
-  FilmTypeModel,
+import { type CollectionListModel } from '@/app/types/Collection';
+import {
+  type ContentImageUpdateRequest,
+  type ContentImageUpdateResponse,
+  type ImageContentModel,
+  updateMultipleImages,
+} from '@/app/types/Content';
+import {
+  type ContentCameraModel,
+  type ContentFilmTypeModel,
+  type ContentLensModel,
+  type ContentPersonModel,
+  type ContentTagModel,
+  type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
 
 import styles from './ImageMetadataModal.module.scss';
@@ -33,16 +37,16 @@ import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 interface ImageMetadataModalProps {
   scrollPosition: number;
   onClose: () => void;
-  onSaveSuccess?: (response: UpdateImagesResponse) => void;
+  onSaveSuccess?: (response: ContentImageUpdateResponse) => void;
   availableTags?: ContentTagModel[];
   availablePeople?: ContentPersonModel[];
   availableCameras?: ContentCameraModel[];
   availableLenses?: ContentLensModel[];
-  availableFilmTypes?: FilmTypeModel[];
-  availableFilmFormats?: FilmFormatModel[];
+  availableFilmTypes?: ContentFilmTypeModel[];
+  availableFilmFormats?: FilmFormatDTO[];
   availableCollections?: CollectionListModel[];
   selectedImageIds: number[]; // Array of selected image IDs (1 for single edit, N for bulk edit)
-  selectedImages: ImageContentBlock[]; // Images to edit (already filtered in parent)
+  selectedImages: ImageContentModel[]; // Images to edit (already filtered in parent)
 }
 
 /**
@@ -74,10 +78,32 @@ export default function ImageMetadataModal({
   const [error, setError] = useState<string | null>(null);
   const isBulkEdit = selectedImageIds.length > 1;
 
-  const [updateImageDTO, setUpdateImageDTO] = useState<UpdateImageDTO>({});
+  const [updateImageDTO, setUpdateImageDTO] = useState<ContentImageUpdateRequest>({
+    alt: undefined,
+    author: undefined,
+    blackAndWhite: undefined,
+    camera: undefined,
+    caption: undefined,
+    collections: undefined,
+    createDate: undefined,
+    fStop: undefined,
+    filmFormat: undefined,
+    filmType: undefined,
+    focalLength: undefined,
+    id: 0,
+    isFilm: undefined,
+    iso: undefined,
+    lens: undefined,
+    location: undefined,
+    people: undefined,
+    rating: undefined,
+    shutterSpeed: undefined,
+    tags: undefined,
+    title: undefined,
+  });
 
   // Helper to update DTO - provides consistent API for all metadata updates
-  const updateDTO = (updates: Partial<UpdateImageDTO>) => {
+  const updateDTO = (updates: Partial<ContentImageUpdateRequest>) => {
     setUpdateImageDTO(prev => ({ ...prev, ...updates }));
   };
 
@@ -103,12 +129,12 @@ export default function ImageMetadataModal({
       setLoading(true);
       setError(null);
 
-      const imageUpdates = selectedImageIds.map(imageId => ({
-        imageId,
-        updates: updateImageDTO,
+      const imageUpdates: ContentImageUpdateRequest[] = selectedImageIds.map(imageId => ({
+        ...updateImageDTO,
+        id: imageId,
       }));
 
-      const response = await updateMultipleImages(imageUpdates);
+      const response: ContentImageUpdateResponse = await updateMultipleImages(imageUpdates);
 
       // Check for validation/business logic errors from backend
       if (response.errors && response.errors.length > 0) {
@@ -174,7 +200,7 @@ export default function ImageMetadataModal({
                   }}
                 >
                   <Image
-                    src={img.imageUrlWeb}
+                    src={img.imageUrl}
                     alt={img.alt || img.title || 'Selected image'}
                     fill
                     style={{
@@ -190,7 +216,7 @@ export default function ImageMetadataModal({
         ) : (
           // Single edit mode - show full image
           <Image
-            src={previewImage.imageUrlWeb}
+            src={previewImage.imageUrl}
             alt={previewImage.alt || previewImage.title || 'Image preview'}
             width={previewImage.imageWidth || IMAGE.defaultWidth}
             height={previewImage.imageHeight || IMAGE.defaultHeight}
@@ -379,11 +405,7 @@ export default function ImageMetadataModal({
               label="Lens"
               multiSelect={false}
               options={availableLenses}
-              selectedValue={getDisplayLens(
-                updateImageDTO,
-                initialValues.lens,
-                availableLenses
-              )}
+              selectedValue={getDisplayLens(updateImageDTO, initialValues.lens, availableLenses)}
               onChange={value => {
                 const lens = Array.isArray(value) ? value[0] || null : value;
                 if (!lens) {
@@ -439,7 +461,7 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>F-Stop</label>
                 <input
                   type="text"
-                  value={getFormValue(updateImageDTO.fStop, initialValues.fstop, '') ?? ''}
+                  value={getFormValue(updateImageDTO.fStop, initialValues.fStop, '') ?? ''}
                   onChange={e => updateDTO({ fStop: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., f/2.8"
@@ -506,7 +528,7 @@ export default function ImageMetadataModal({
             {/* Film-specific fields - only shown when isFilm is true */}
             {getFormValue(updateImageDTO.isFilm, initialValues.isFilm, false) && (
               <div className={styles.formGrid2Col}>
-                <UnifiedMetadataSelector<FilmTypeModel>
+                <UnifiedMetadataSelector<ContentFilmTypeModel>
                   label="Film Stock"
                   multiSelect={false}
                   options={availableFilmTypes}
@@ -534,7 +556,7 @@ export default function ImageMetadataModal({
                         {
                           field: 'filmType',
                           value: {
-                            newValue: { name: filmStock.name, defaultIso: filmStock.defaultIso },
+                            newValue: { filmTypeName: filmStock.name, defaultIso: filmStock.defaultIso },
                           },
                         },
                         updateDTO
@@ -544,10 +566,10 @@ export default function ImageMetadataModal({
                   }}
                   allowAddNew
                   onAddNew={data => {
-                    const name = data.name as string;
+                    const filmTypeName = data.name as string;
                     const defaultIso = data.defaultIso as number;
                     handleDropdownChange(
-                      { field: 'filmType', value: { newValue: { name, defaultIso } } },
+                      { field: 'filmType', value: { newValue: { filmTypeName, defaultIso } } },
                       updateDTO
                     );
                     updateDTO({ iso: defaultIso });

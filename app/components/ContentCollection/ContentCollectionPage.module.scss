@@ -22,6 +22,14 @@
   }
 }
 
+.contentPadding {
+  padding: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding: var(--page-padding-desktop);
+  }
+}
+
 .gridContainer {
   display: grid;
 

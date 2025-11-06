@@ -1,6 +1,10 @@
-import { type ImageContentBlock, type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
-import { type HomeCardModel } from '@/app/types/HomeCardModel';
-import { isImageBlock } from '@/app/utils/contentBlockTypeGuards';
+import {
+  type AnyContentModel,
+  type CollectionContentModel,
+  type ImageContentModel,
+  type ParallaxImageContentModel,
+} from '@/app/types/Content';
+import { isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
  * Create base parallax image properties
@@ -22,29 +26,29 @@ function createBaseParallaxProperties(
 }
 
 /**
- * Build Parallax Image Content Block from Image Data
+ * Build Parallax Image Content Model from Image Data
  *
- * Creates a synthetic parallax image block from specific image data. Adds
+ * Creates a synthetic parallax image model from specific image data. Adds
  * overlay text and card type badge for consistent display formatting.
  *
- * @param image - Image block data (either coverImage or first image block)
+ * @param image - Image model data (either coverImage or first image block)
  * @param collectionDate - Collection date for the image
  * @param type - Collection type for badge display
  * @param title - Collection title for overlay text
- * @returns Formatted parallax image block or null if no image available
+ * @returns Formatted parallax image model or null if no image available
  */
 export function buildParallaxImageContentBlock(
-  image: ImageContentBlock | undefined,
+  image: ImageContentModel | undefined,
   collectionDate: string,
   type: string,
   title: string
-): ParallaxImageContentBlock | null {
+): ParallaxImageContentModel | null {
   // If image exists and it's an image block, use it
-  if (image && isImageBlock(image)) {
+  if (image && isContentImage(image)) {
     return {
       ...image,
       ...createBaseParallaxProperties(title, type),
-      blockType: 'PARALLAX',
+      contentType: 'PARALLAX',
       title, // Override the image's title with the collection title
       collectionDate,
       type,
@@ -56,37 +60,82 @@ export function buildParallaxImageContentBlock(
 }
 
 /**
- * Build Parallax Image Content Block from Home Card Model
+ * Build Parallax Image Content Model from any content type
  *
- * Converts a HomeCardModel to a ParallaxImageContentBlock for use in the grid system.
+ * Converts any AnyContentModel to a ParallaxImageContentModel for use in the grid system.
  * This enables unified parallax behavior between home page grid and collection pages.
+ * Collections are now already Parallax type, but this function handles legacy COLLECTION type for backwards compatibility.
  *
- * @param homeCard - Home card model data
- * @returns Formatted parallax image block
+ * @param content - Any content model (ParallaxImageContentModel, CollectionContentModel, ImageContentModel, etc.)
+ * @returns Formatted parallax image model
  */
-export function buildParallaxImageFromHomeCard(homeCard: HomeCardModel): ParallaxImageContentBlock {
-  // Defensive: ensure cardType exists
-  const cardType = homeCard.cardType;
+export function buildParallaxImageFromContent(content: AnyContentModel): ParallaxImageContentModel {
+  // If already Parallax type, return as-is (collections are now converted to Parallax earlier)
+  if (content.contentType === 'PARALLAX') {
+    return content as ParallaxImageContentModel;
+  }
 
-  // TODO: Why are we assuming this? investigate
-  // Determine aspect ratio based on collection type
-  // BLOG uses 1.75:1 (457 height), everything else uses 1:1 (800 height)
-  const imageHeight = cardType === 'BLOG' ? 457 : 800;
+  // Handle legacy CollectionContentModel (for backwards compatibility)
+  if (content.contentType === 'COLLECTION') {
+    const collectionContent = content as CollectionContentModel;
+    
+    // TODO: Use coverImage dimensions (imageWidth/imageHeight) instead of hardcoded values
+    // This should match the same logic used in convertCollectionContentToParallax
+    // For now, use coverImage dimensions if available, otherwise fallback to hardcoded
+    const coverImage = collectionContent.coverImage;
+    const imageWidth = coverImage?.imageWidth ?? coverImage?.width ?? 800;
+    const imageHeight = coverImage?.imageHeight ?? coverImage?.height ?? 800;
 
+    return {
+      id: content.id,
+      contentType: 'PARALLAX',
+      title: content.title ?? 'Untitled',
+      imageUrl: coverImage?.imageUrl ?? '',
+      imageWidth,
+      imageHeight,
+      width: imageWidth,
+      height: imageHeight,
+      createdAt: content.createdAt,
+      updatedAt: content.updatedAt,
+      // Preserve collection-specific fields
+      slug: 'slug' in content ? content.slug : undefined,
+      collectionType: 'collectionType' in content ? content.collectionType : undefined,
+      // Parallax-specific properties
+      ...createBaseParallaxProperties(
+        content.title ?? 'Untitled',
+        'collectionType' in content ? content.collectionType : 'MISC',
+        content.orderIndex
+      ),
+    };
+  }
+
+  // Handle ImageContentModel
+  if (content.contentType === 'IMAGE') {
+    return {
+      ...content,
+      ...createBaseParallaxProperties(
+        content.title ?? 'Untitled Image',
+        'IMAGE',
+        content.orderIndex
+      ),
+      contentType: 'PARALLAX',
+    };
+  }
+
+  // Handle GIF or other content types - convert to basic parallax image
   return {
-    id: homeCard.id,
-    blockType: 'PARALLAX',
-    title: homeCard.title,
-    imageUrlWeb: homeCard.coverImageUrl, // Use coverImageUrl for web display
-    imageWidth: 800, // Default width for grid images
-    imageHeight,
-    createdAt: homeCard.date || new Date().toISOString(),
-    updatedAt: homeCard.date || new Date().toISOString(),
-    // Parallax-specific properties with custom order from priority
+    id: content.id,
+    contentType: 'PARALLAX',
+    title: content.title ?? 'Untitled',
+    imageUrl: content.imageUrl ?? '',
+    imageWidth: content.width ?? 800,
+    imageHeight: content.height ?? 800,
+    createdAt: content.createdAt,
+    updatedAt: content.updatedAt,
     ...createBaseParallaxProperties(
-      homeCard.title,
-      cardType, // Already uppercase in CollectionType enum
-      homeCard.priority
+      content.title ?? 'Untitled',
+      content.contentType,
+      content.orderIndex
     ),
   };
 }

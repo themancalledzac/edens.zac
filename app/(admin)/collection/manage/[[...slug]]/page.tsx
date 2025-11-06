@@ -6,6 +6,9 @@ interface ManageCollectionPageProps {
   }>;
 }
 
+// Force dynamic rendering - admin pages should never be statically generated
+export const dynamic = 'force-dynamic';
+
 /**
  * Admin Collection Management Page (Server Component)
  *

@@ -3,85 +3,36 @@
  * Handles data normalization, state management, and type guards
  */
 
-import { type ContentCollectionModel as ContentCollectionFullModel } from '@/app/lib/api/contentCollections';
-import { type AnyContentBlock, type ImageContentBlock } from '@/app/types/ContentBlock';
 import {
-  CollectionType,
-  type ContentBlockReorderOperation,
-  type ContentCollectionModel,
-  type ContentCollectionUpdateDTO,
-  type DisplayMode,
-} from '@/app/types/ContentCollection';
+  type ChildCollection,
+  type CollectionModel,
+  type CollectionUpdateRequest,
+} from '@/app/types/Collection';
+import { type AnyContentModel, type CollectionContentModel, type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
+import { isCollectionContent } from '@/app/utils/contentTypeGuards';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
 
-/**
- * Form data type for managing collections
- * All fields are required/have defaults for form state management
- */
-export interface ManageFormData {
-  type: CollectionType;
-  title: string;
-  description: string;
-  location: string;
-  collectionDate: string;
-  visible: boolean;
-  priority: number;
-  displayMode: DisplayMode;
-  homeCardEnabled: boolean;
-  homeCardText: string;
-  blocksPerPage: number;
-  coverImageId?: number;
-}
-
-/**
- * Initialize form data from a collection
- * Provides sensible defaults for all fields
- */
-export function initializeUpdateFormData(
-  collection?: ContentCollectionFullModel | null
-): ManageFormData {
-  console.log('[initializeUpdateFormData] collection.collectionDate:', collection?.collectionDate);
-
-  const formData = {
-    type: collection?.type ?? CollectionType.portfolio,
-    title: collection?.title || '',
-    description: collection?.description || '',
-    location: collection?.location || '',
-    collectionDate: collection?.collectionDate || '',
-    visible: collection?.visible ?? true,
-    priority: collection?.priority ?? 2,
-    displayMode: collection?.displayMode ?? 'CHRONOLOGICAL',
-    homeCardEnabled: collection?.homeCardEnabled ?? false,
-    homeCardText: collection?.homeCardText || '',
-    blocksPerPage: collection?.pagination?.pageSize ?? DEFAULT_PAGE_SIZE,
-    coverImageId: undefined,
-  };
-
-  console.log('[initializeUpdateFormData] formData.collectionDate:', formData.collectionDate);
-
-  return formData;
-}
 
 /**
  * Build an update payload containing only changed fields
  * Compares form data with original collection and only includes differences
- * Includes content block operations (reorder, remove)
  * Note: New text blocks are added via separate POST endpoint, not through update
+ * Note: Content reordering is handled via Image Update endpoint where orderIndex is updated
  */
 export function buildUpdatePayload(
-  formData: ManageFormData,
-  originalCollection: ContentCollectionFullModel,
-  reorderOperations: ContentBlockReorderOperation[] = [],
-  contentBlockIdsToRemove: number[] = []
-): ContentCollectionUpdateDTO {
-  const payload: ContentCollectionUpdateDTO = {};
+  formData: CollectionUpdateRequest,
+  originalCollection: CollectionModel
+): CollectionUpdateRequest {
+  const payload: CollectionUpdateRequest = {
+    id: originalCollection.id, // ID is required for updates
+  };
 
   // Field mappings: [formKey, originalValue]
   const fieldMappings: Array<{
-    key: keyof ManageFormData;
+    key: keyof CollectionUpdateRequest;
     original: unknown;
   }> = [
     { key: 'type', original: originalCollection.type },
@@ -90,21 +41,14 @@ export function buildUpdatePayload(
     { key: 'location', original: originalCollection.location || '' },
     { key: 'collectionDate', original: originalCollection.collectionDate || '' },
     { key: 'visible', original: originalCollection.visible },
-    { key: 'priority', original: originalCollection.priority },
     { key: 'displayMode', original: originalCollection.displayMode },
-    { key: 'homeCardEnabled', original: originalCollection.homeCardEnabled },
-    { key: 'homeCardText', original: originalCollection.homeCardText || '' },
-    {
-      key: 'blocksPerPage',
-      original: originalCollection.pagination?.pageSize ?? DEFAULT_PAGE_SIZE,
-    },
   ];
 
   // Only include fields that have actually changed
   for (const { key, original } of fieldMappings) {
     if (formData[key] !== original) {
       // Type assertion needed since we're iterating dynamically
-      (payload as Record<string, unknown>)[key] = formData[key];
+      (payload as unknown as Record<string, unknown>)[key] = formData[key];
     }
   }
 
@@ -113,13 +57,11 @@ export function buildUpdatePayload(
     payload.coverImageId = formData.coverImageId;
   }
 
-  // Content block operations - include if any are present
-  if (reorderOperations.length > 0) {
-    payload.reorderOperations = reorderOperations;
+  // Handle collections separately - include if defined
+  if (formData.collections !== undefined) {
+    payload.collections = formData.collections;
   }
-  if (contentBlockIdsToRemove.length > 0) {
-    payload.contentBlockIdsToRemove = contentBlockIdsToRemove;
-  }
+
 
   return payload;
 }
@@ -129,10 +71,10 @@ export function buildUpdatePayload(
  * Updates the collection object with new values from the update response
  */
 export function syncCollectionState(
-  collection: ContentCollectionFullModel,
-  updateResponse: ContentCollectionModel,
-  formData: ManageFormData
-): ContentCollectionFullModel {
+  collection: CollectionModel,
+  updateResponse: CollectionModel,
+  formData: CollectionUpdateRequest
+): CollectionModel {
   return {
     ...collection,
     title: updateResponse.title,
@@ -140,25 +82,61 @@ export function syncCollectionState(
     location: updateResponse.location || '',
     collectionDate: updateResponse.collectionDate || '',
     visible: formData.visible,
-    priority: formData.priority,
     displayMode: formData.displayMode,
-    homeCardEnabled: formData.homeCardEnabled,
-    homeCardText: formData.homeCardText || '',
+    content: updateResponse.content || collection.content, // Sync content (includes updated child collections)
   };
 }
 
 /**
  * Type guard to check if a block is an ImageContentBlock
  */
-export function isImageContentBlock(block: unknown): block is ImageContentBlock {
+export function isImageContentBlock(block: unknown): block is ImageContentModel {
   return (
     block !== null &&
     block !== undefined &&
     typeof block === 'object' &&
-    'blockType' in block &&
-    (block as { blockType: string }).blockType === 'IMAGE' &&
-    'imageUrlWeb' in block
+    'contentType' in block &&
+    (block as { contentType: string }).contentType === 'IMAGE' &&
+    'imageUrl' in block
   );
+}
+
+/**
+ * Type guard to check if a block is a collection (ParallaxImageContentModel with slug)
+ * Collections are now converted to Parallax type for unified rendering
+ */
+export function isCollectionContentBlock(block: unknown): block is ParallaxImageContentModel {
+  return (
+    block !== null &&
+    block !== undefined &&
+    typeof block === 'object' &&
+    'contentType' in block &&
+    (block as { contentType: string }).contentType === 'PARALLAX' &&
+    'slug' in block &&
+    typeof (block as { slug: unknown }).slug === 'string' &&
+    (block as { slug: string }).slug.length > 0
+  );
+}
+
+/**
+ * Extract collection content blocks from a content array
+ * Filters content to only CollectionContentModel items (child collections) and maps to selector format
+ * Child collections are stored as COLLECTION type in the content array
+ *
+ * @param content - Array of content blocks from a collection
+ * @returns Array of {id, name} objects for use in UnifiedMetadataSelector
+ */
+export function getCollectionContentAsSelections(
+  content: AnyContentModel[] | undefined
+): Array<{ id: number; name: string }> {
+  if (!content) return [];
+
+  return content
+    .filter(isCollectionContent)
+    .map((collection: CollectionContentModel) => ({
+      id: collection.id,
+      name: collection.title || collection.slug || '', // Use title if available, fallback to slug
+    }));
 }
 
 /**
@@ -166,9 +144,9 @@ export function isImageContentBlock(block: unknown): block is ImageContentBlock 
  * Returns the block if found and it's an image, otherwise undefined
  */
 export function findImageBlockById(
-  blocks: AnyContentBlock[] | undefined,
+  blocks: AnyContentModel[] | undefined,
   imageId: number | undefined
-): ImageContentBlock | undefined {
+): ImageContentModel | undefined {
   if (!blocks || !imageId) return undefined;
 
   const block = blocks.find(b => b.id === imageId);
@@ -179,16 +157,16 @@ export function findImageBlockById(
  * Get the displayed cover image - either pending selection or current
  */
 export function getDisplayedCoverImage(
-  collection: ContentCollectionFullModel | null,
+  collection: CollectionModel | null,
   pendingCoverImageId: number | undefined
-): ImageContentBlock | null | undefined {
+): ImageContentModel | null | undefined {
   if (pendingCoverImageId) {
     // Type-safe check: only pass blocks if they exist and are the right type
-    const blocks = collection?.blocks;
+    const blocks = collection?.content;
     if (!blocks || !Array.isArray(blocks)) return undefined;
 
-    // Safe cast: ContentBlock[] from API response contains AnyContentBlock instances at runtime
-    return findImageBlockById(blocks as AnyContentBlock[], pendingCoverImageId);
+    // Safe cast: ContentBlock[] from API response contains AnyContentModel instances at runtime
+    return findImageBlockById(blocks as AnyContentModel[], pendingCoverImageId);
   }
   return collection?.coverImage;
 }
@@ -199,7 +177,7 @@ export function getDisplayedCoverImage(
  */
 export function validateCoverImageSelection(
   imageId: number | undefined,
-  blocks: AnyContentBlock[] | undefined
+  blocks: AnyContentModel[] | undefined
 ): boolean {
   if (!imageId || !blocks) return false;
   const imageBlock = findImageBlockById(blocks, imageId);
@@ -248,4 +226,80 @@ export function handleApiError(error: unknown, defaultMessage: string): string {
 
   // Fallback to default message
   return defaultMessage;
+}
+
+/**
+ * Build collections update object from selection changes
+ * Implements simple toggle logic:
+ * - Collections in original: deselected -> add to remove, selected -> remove from remove
+ * - Collections NOT in original: selected -> add to newValue, deselected -> remove from newValue
+ *
+ * @param selectedCollections - Currently selected collections from the UI
+ * @param originalCollectionIds - Set of collection IDs that exist in the original collection
+ * @param currentCollectionsUpdate - Current collections update state from updateData
+ * @returns New collections update object for CollectionUpdateRequest
+ */
+export function buildCollectionsUpdate(
+  selectedCollections: Array<{ id: number; name: string }>,
+  originalCollectionIds: Set<number>,
+  currentCollectionsUpdate?: CollectionUpdateRequest['collections']
+): CollectionUpdateRequest['collections'] | undefined {
+  const selectedIds = new Set(selectedCollections.map(c => c.id));
+
+  // Get current state from updateData
+  const currentRemove = new Set(currentCollectionsUpdate?.remove || []);
+  const currentNewValue = currentCollectionsUpdate?.newValue || [];
+
+  // Build new state by comparing current selection with original
+  const newRemove = new Set<number>();
+  const newNewValue: ChildCollection[] = [];
+
+  // Process each selected collection
+  for (const [index, selected] of selectedCollections.entries()) {
+    // Collection does NOT exist in original - add to newValue
+    if (!originalCollectionIds.has(selected.id) && !currentNewValue.some(c => c.collectionId === selected.id)) {
+      newNewValue.push({
+        collectionId: selected.id,
+        name: selected.name,
+        visible: true,
+        orderIndex: index,
+      });
+    }
+    // If it exists in original, it stays in original (no action needed)
+  }
+
+  // Process collections that should be removed
+  for (const originalId of originalCollectionIds) {
+    // Original collection is not selected - should be in remove
+    if (!selectedIds.has(originalId) && !currentRemove.has(originalId)) {
+      newRemove.add(originalId);
+    }
+    // If selected, it stays in original (removed from remove list if it was there)
+  }
+
+  // Process collections that should be removed from newValue
+  for (const newCollection of currentNewValue) {
+    // Still selected - keep it
+    if (selectedIds.has(newCollection.collectionId) && !newNewValue.some(c => c.collectionId === newCollection.collectionId)) {
+      newNewValue.push(newCollection);
+    }
+    // If not selected, remove it (by not including in newNewValue)
+  }
+
+  // Build final state
+  const finalRemove = Array.from(new Set([...currentRemove, ...newRemove])).filter(id => {
+    // Only keep removals for collections that are still not selected
+    return !selectedIds.has(id);
+  });
+
+  // Build the update object
+  const collectionsUpdate: CollectionUpdateRequest['collections'] = {};
+  if (finalRemove.length > 0) {
+    collectionsUpdate.remove = finalRemove;
+  }
+  if (newNewValue.length > 0) {
+    collectionsUpdate.newValue = newNewValue;
+  }
+
+  return Object.keys(collectionsUpdate).length > 0 ? collectionsUpdate : undefined;
 }

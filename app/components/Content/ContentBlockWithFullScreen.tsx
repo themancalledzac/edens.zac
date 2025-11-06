@@ -3,25 +3,25 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
-import { type ContentCollectionBase } from '@/app/lib/api/contentCollections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
+import { type CollectionModel } from '@/app/types/Collection';
 import {
-  type AnyContentBlock,
-  type ImageContentBlock,
-  type ParallaxImageContentBlock,
-} from '@/app/types/ContentBlock';
+  type AnyContentModel,
+  type ImageContentModel,
+  type ParallaxImageContentModel,
+} from '@/app/types/Content';
 
-import ContentBlockComponent from './ContentBlockComponent';
+import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
 
 interface ContentBlockWithFullScreenProps {
-  blocks: AnyContentBlock[];
+  content: AnyContentModel[];
   priorityBlockIndex?: number;
   enableFullScreenView?: boolean;
   initialPageSize?: number; // How many blocks to show initially (default: show all)
   // Collection caching for manage page optimization
   collectionSlug?: string; // If provided, will cache collection data
-  collectionData?: ContentCollectionBase; // The full collection to cache
+  collectionData?: CollectionModel; // The full collection to cache
 }
 
 /**
@@ -34,7 +34,7 @@ interface ContentBlockWithFullScreenProps {
  * in sessionStorage for fast loading in the manage page (avoids 6s refetch).
  */
 export default function ContentBlockWithFullScreen({
-  blocks: allBlocks,
+  content: allBlocks,
   priorityBlockIndex,
   enableFullScreenView,
   initialPageSize,
@@ -50,18 +50,18 @@ export default function ContentBlockWithFullScreen({
     }
   }, [collectionSlug, collectionData]);
 
-  // Extract all image blocks for navigation
-  // TODO: why are we filtering by images? is this causing us to lose Text Blocks?
+  // Extract all image blocks for fullscreen navigation
+  // Only IMAGE and PARALLAX blocks are included since text blocks don't support fullscreen viewing
   const imageBlocks = useMemo(() => {
     return allBlocks.filter(
-      (block): block is ImageContentBlock | ParallaxImageContentBlock =>
-        block.blockType === 'IMAGE' || block.blockType === 'PARALLAX'
+      (block): block is ImageContentModel | ParallaxImageContentModel =>
+        block.contentType === 'IMAGE' || block.contentType === 'PARALLAX'
     );
   }, [allBlocks]);
 
   // Wrapper function to pass all images for navigation
   const handleFullScreenImageClick = (
-    image: ImageContentBlock | ParallaxImageContentBlock
+    image: ImageContentModel | ParallaxImageContentModel
   ) => {
     showImage(image, imageBlocks);
   };
@@ -73,7 +73,7 @@ export default function ContentBlockWithFullScreen({
   const [showButton, setShowButton] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // TODO: Do we really need 'visibleBLocks' or could we instead just have 'maxNumber' of blocks visible initially, and clicking the button just shows the rest?
+  // Slice blocks to show only the visible count for pagination
   const visibleBlocks = initialPageSize ? allBlocks.slice(0, visibleCount) : allBlocks;
   const hasMore = visibleCount < allBlocks.length;
 
@@ -106,9 +106,9 @@ export default function ContentBlockWithFullScreen({
 
   return (
     <>
-      <ContentBlockComponent
-        blocks={visibleBlocks}
-        priorityBlockIndex={priorityBlockIndex}
+      <Component
+        content={visibleBlocks}
+        priorityIndex={priorityBlockIndex}
         enableFullScreenView={enableFullScreenView}
         onFullScreenImageClick={handleFullScreenImageClick}
       />

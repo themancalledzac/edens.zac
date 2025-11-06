@@ -4,10 +4,10 @@ import Image from 'next/image';
 import React from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
-import { type ParallaxImageContentBlock } from '@/app/types/ContentBlock';
+import { type ParallaxImageContentModel } from '@/app/types/Content';
 
 import { type BadgeContentType, BadgeOverlay } from './BadgeOverlay';
-import cbStyles from './ContentBlockComponent.module.scss';
+import cbStyles from './ContentComponent.module.scss';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 
 
@@ -16,8 +16,8 @@ import variantStyles from './ParallaxImageRenderer.module.scss';
  * Handles all parallax logic, text overlays, and badge rendering internally
  */
 export interface ParallaxImageContentBlockRendererProps {
-  block: ParallaxImageContentBlock;
-  blockType?: BadgeContentType;
+  content: ParallaxImageContentModel;
+  contentType?: BadgeContentType;
   // Optional props for badge customization
   cardTypeBadge?: string;
   dateBadge?: string;
@@ -38,20 +38,23 @@ export interface ParallaxImageContentBlockRendererProps {
  * for above-the-fold images to improve LCP (Largest Contentful Paint).
  */
 export function ParallaxImageRenderer({
-  block,
-  blockType = 'contentBlock',
+  content,
+  contentType = 'content',
   cardTypeBadge,
   priority = false,
   onClick,
 }: ParallaxImageContentBlockRendererProps): React.ReactElement {
-  const { imageUrlWeb, overlayText, collectionDate, imageWidth, imageHeight } = block;
+  const { imageUrl, overlayText, collectionDate, imageWidth: contentImageWidth, imageHeight: contentImageHeight, width: contentWidth, height: contentHeight } = content;
+  // Ensure imageWidth/imageHeight are available - fall back to width/height if needed
+  const imageWidth = contentImageWidth || contentWidth;
+  const imageHeight = contentImageHeight || contentHeight;
   const dateSimple = new Date(collectionDate || new Date()).toLocaleDateString();
 
   // Setup parallax effect for this image using defaults
   const parallaxRef = useParallax();
 
   // Determine if we have a valid image URL
-  const hasValidImage = imageUrlWeb && imageUrlWeb.trim() !== '';
+  const hasValidImage = imageUrl && imageUrl.trim() !== '';
 
   // Complete parallax container with image, overlays, and badges
   return (
@@ -62,7 +65,7 @@ export function ParallaxImageRenderer({
     >
       {hasValidImage ? (
         <Image
-          src={imageUrlWeb}
+          src={imageUrl}
           alt={overlayText || 'Parallax image'}
           width={imageWidth || 1200}
           height={imageHeight || 800}
@@ -77,8 +80,8 @@ export function ParallaxImageRenderer({
       )}
       {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
       <BadgeOverlay
-        contentType={blockType}
-        badgeValue={blockType === 'contentBlock' ? dateSimple : cardTypeBadge || ''}
+        contentType={contentType}
+        badgeValue={contentType === 'content' ? dateSimple : cardTypeBadge || ''}
       />
     </div>
   );

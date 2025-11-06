@@ -5,8 +5,7 @@
  * Used by ImageMetadataModal for both single and bulk editing.
  */
 
-import type { UpdateImageDTO } from '@/app/lib/api/images';
-import type { ImageCollection, ImageContentBlock } from '@/app/types/ContentBlock';
+import type { ContentImageUpdateRequest, ImageContentModel } from '@/app/types/Content';
 
 // ============================================================================
 // Pure Helper Functions
@@ -16,14 +15,14 @@ import type { ImageCollection, ImageContentBlock } from '@/app/types/ContentBloc
  * Get form value with fallback logic
  * Simplifies the repetitive pattern: DTO value → initial value → default value
  *
- * @param dtoValue - Value from updateImageDTO (undefined means not touched yet)
+ * @param dtoValue - Value from updateImage (undefined means not touched yet)
  * @param initialValue - Value from initialValues (what we started with)
  * @param defaultValue - Fallback if both are null/undefined
  * @returns The resolved value for form display
  *
  * @example
- * // Instead of: value={updateImageDTO.title !== undefined ? (updateImageDTO.title || '') : (initialValues.title || '')}
- * // Use: value={getFormValue(updateImageDTO.title, initialValues.title, '')}
+ * // Instead of: value={updateImage.title !== undefined ? (updateImage.title || '') : (initialValues.title || '')}
+ * // Use: value={getFormValue(updateImage.title, initialValues.title, '')}
  */
 export function getFormValue<T>(
   dtoValue: T | undefined,
@@ -57,12 +56,12 @@ function getCommonArrayItems<T>(arrays: T[][], idKey: keyof T): T[] {
  * @param images - Array of images to compare
  * @returns Partial image object with only common values
  */
-export function getCommonValues(images: ImageContentBlock[]): Partial<ImageContentBlock> {
+export function getCommonValues(images: ImageContentModel[]): Partial<ImageContentModel> {
   if (images.length === 0) return {};
   if (images.length === 1) return images[0] || {};
 
   const first = images[0]!; // Safe: already checked length > 1
-  const common: Partial<ImageContentBlock> = {};
+  const common: Partial<ImageContentModel> = {};
 
   // String fields - check if all match
   if (images.every(img => img.title === first.title)) common.title = first.title;
@@ -75,7 +74,7 @@ export function getCommonValues(images: ImageContentBlock[]): Partial<ImageConte
   if (images.every(img => img.camera?.id === first.camera?.id)) common.camera = first.camera;
   if (images.every(img => img.lens?.id === first.lens?.id)) common.lens = first.lens;
   if (images.every(img => img.iso === first.iso)) common.iso = first.iso;
-  if (images.every(img => img.fstop === first.fstop)) common.fstop = first.fstop;
+  if (images.every(img => img.fStop === first.fStop)) common.fStop = first.fStop; // Fixed: fstop → fStop
   if (images.every(img => img.shutterSpeed === first.shutterSpeed))
     common.shutterSpeed = first.shutterSpeed;
   if (images.every(img => img.focalLength === first.focalLength))
@@ -151,7 +150,7 @@ export function getDisplayItemsFromUpdate<T extends { id: number; name: string }
  * Get display tags from DTO or initialValues using prev/newValue pattern
  */
 export function getDisplayTags<T extends { id: number; name: string }>(
-  updateDTO: UpdateImageDTO,
+  updateDTO: ContentImageUpdateRequest,
   initialTags: T[] | undefined,
   availableTags: T[]
 ): T[] {
@@ -162,7 +161,7 @@ export function getDisplayTags<T extends { id: number; name: string }>(
  * Get display people from DTO or initialValues using prev/newValue pattern
  */
 export function getDisplayPeople<T extends { id: number; name: string }>(
-  updateDTO: UpdateImageDTO,
+  updateDTO: ContentImageUpdateRequest,
   initialPeople: T[] | undefined,
   availablePeople: T[]
 ): T[] {
@@ -173,15 +172,15 @@ export function getDisplayPeople<T extends { id: number; name: string }>(
  * Get display collections from DTO or initialValues using prev pattern
  */
 export function getDisplayCollections(
-  updateDTO: UpdateImageDTO,
-  initialCollections: ImageCollection[] | undefined
+  updateDTO: ContentImageUpdateRequest,
+  initialCollections: Array<{ collectionId: number; name?: string }> | undefined
 ): Array<{ id: number; name: string }> {
   const collections =
     updateDTO.collections?.prev !== undefined ? updateDTO.collections.prev : initialCollections;
   return collections
-    ? collections.map(c => ({
+    ? collections.map((c: { collectionId: number; name?: string }) => ({
         id: c.collectionId,
-        name: c.name,
+        name: c.name || '',
       }))
     : [];
 }
@@ -223,7 +222,7 @@ export function getDisplayItemFromUpdate<T extends { id?: number; name: string }
  * Get display camera from DTO or initialValues using prev/newValue/remove pattern
  */
 export function getDisplayCamera<T extends { id?: number; name: string }>(
-  updateDTO: UpdateImageDTO,
+  updateDTO: ContentImageUpdateRequest,
   initialCamera: T | null | undefined,
   availableCameras: T[]
 ): T | null {
@@ -234,7 +233,7 @@ export function getDisplayCamera<T extends { id?: number; name: string }>(
  * Get display lens from DTO or initialValues using prev/newValue/remove pattern
  */
 export function getDisplayLens<T extends { id?: number; name: string }>(
-  updateDTO: UpdateImageDTO,
+  updateDTO: ContentImageUpdateRequest,
   initialLens: T | null | undefined,
   availableLenses: T[]
 ): T | null {
@@ -245,7 +244,7 @@ export function getDisplayLens<T extends { id?: number; name: string }>(
  * Get display film stock from DTO or initialValues using prev/newValue/remove pattern
  */
 export function getDisplayFilmStock<T extends { id: number; name: string; defaultIso: number }>(
-  updateDTO: UpdateImageDTO,
+  updateDTO: ContentImageUpdateRequest,
   initialFilmType: string | null | undefined,
   availableFilmTypes: T[]
 ): T | null {
@@ -260,7 +259,7 @@ export function getDisplayFilmStock<T extends { id: number; name: string; defaul
   if (update?.newValue !== undefined && update.newValue !== null) {
     return {
       id: 0,
-      name: update.newValue.name,
+      name: update.newValue.filmTypeName,
       defaultIso: update.newValue.defaultIso,
     } as T;
   }
@@ -314,7 +313,7 @@ export function extractMultiSelectValues<T extends { id?: number; name: string }
  */
 export interface DropdownChangeParams {
   /** Field name in UpdateImageDTO (e.g., 'tags', 'camera', 'lens', 'people') */
-  field: keyof UpdateImageDTO;
+  field: keyof ContentImageUpdateRequest;
   /**
    * Raw value from the selector (can be single item, array, or null)
    * For multi-select with id/name pattern, extraction happens automatically
@@ -348,7 +347,7 @@ export interface DropdownChangeParams {
  */
 export function handleDropdownChange(
   params: DropdownChangeParams,
-  updateDTO: (updates: Partial<UpdateImageDTO>) => void
+  updateDTO: (updates: Partial<ContentImageUpdateRequest>) => void
 ): void {
   const { field, value } = params;
 
