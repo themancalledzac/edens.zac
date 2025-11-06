@@ -2,13 +2,14 @@
  * Content API - Mirrors backend ContentController endpoints
  *
  * Read endpoints: /api/read/content (Production)
- * Write endpoints: /api/write/content (Dev only)
+ * Admin endpoints: /api/admin/content (Dev only)
  */
 
 import {
-  fetchFormDataApi,
-  fetchPatchJsonApi,
-  fetchPostJsonApi,
+  fetchAdminFormDataApi,
+  fetchAdminGetApi,
+  fetchAdminPatchJsonApi,
+  fetchAdminPostJsonApi,
   fetchReadApi,
 } from '@/app/lib/api/core';
 import { type ContentImageUpdateRequest, type ImageContentModel } from '@/app/types/Content';
@@ -53,22 +54,22 @@ export async function getFilmMetadata(): Promise<{
 }
 
 // ============================================================================
-// WRITE Endpoints (Dev only - /api/write/content)
+// ADMIN Endpoints (Dev only - /api/admin/content)
 // ============================================================================
 
 /**
- * POST /api/write/content/images/{collectionId}
+ * POST /api/admin/content/images/{collectionId}
  * Create and upload images to a collection
  */
 export async function createImages(
   collectionId: number,
   formData: FormData
 ): Promise<ImageContentModel[]> {
-  return fetchFormDataApi<ImageContentModel[]>(`/content/images/${collectionId}`, formData);
+  return fetchAdminFormDataApi<ImageContentModel[]>(`/content/images/${collectionId}`, formData);
 }
 
 /**
- * POST /api/write/content/content
+ * POST /api/admin/content/content
  * Create text or code content
  */
 export async function createTextContent(request: {
@@ -77,11 +78,11 @@ export async function createTextContent(request: {
   format?: 'plain' | 'markdown' | 'html';
   align?: 'left' | 'center' | 'right';
 }): Promise<{ id: number; contentType: string }> {
-  return fetchPostJsonApi('/content/content', request);
+  return fetchAdminPostJsonApi('/content/content', request);
 }
 
 /**
- * PATCH /api/write/content/images
+ * PATCH /api/admin/content/images
  * Update one or more images
  */
 export async function updateImages(updates: ContentImageUpdateRequest[]): Promise<{
@@ -94,41 +95,41 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
     filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
   };
 }> {
-  return fetchPatchJsonApi('/content/images', updates);
+  return fetchAdminPatchJsonApi('/content/images', updates);
 }
 
 /**
- * GET /api/write/content/images
+ * GET /api/admin/content/images
  * Get all images ordered by date descending
  */
 export async function getAllImages(): Promise<ImageContentModel[]> {
-  return fetchReadApi('/content/images', { cache: 'no-store' });
+  return fetchAdminGetApi<ImageContentModel[]>('/content/images', { cache: 'no-store' });
 }
 
 /**
- * DELETE /api/write/content/images
+ * DELETE /api/admin/content/images
  * Delete one or more images
  */
 export async function deleteImages(imageIds: number[]): Promise<{ deletedIds: number[] }> {
-  return fetchPostJsonApi('/content/images', { imageIds });
+  return fetchAdminPostJsonApi('/content/images', { imageIds });
 }
 
 /**
- * POST /api/write/content/tags
+ * POST /api/admin/content/tags
  * Create a new tag
  */
 export async function createTag(request: {
   tagName: string;
 }): Promise<{ id: number; tagName: string }> {
-  return fetchPostJsonApi('/content/tags', request);
+  return fetchAdminPostJsonApi('/content/tags', request);
 }
 
 /**
- * POST /api/write/content/people
+ * POST /api/admin/content/people
  * Create a new person
  */
 export async function createPerson(request: {
   personName: string;
 }): Promise<{ id: number; personName: string }> {
-  return fetchPostJsonApi('/content/people', request);
+  return fetchAdminPostJsonApi('/content/people', request);
 }

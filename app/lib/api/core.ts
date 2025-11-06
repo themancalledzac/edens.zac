@@ -209,6 +209,23 @@ export async function fetchAdminPutJsonApi<T>(endpoint: string, body: unknown): 
   return result;
 }
 
+// For admin JSON-based partial updates (PATCH)
+export async function fetchAdminPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
+  return await fetchAdminBase<T>(endpoint, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+// For admin FormData-based creates (POST) - used for image uploads
+export async function fetchAdminFormDataApi<T>(endpoint: string, formData: FormData): Promise<T> {
+  return await fetchAdminBase<T>(endpoint, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
 // For admin deletes (DELETE)
 export async function fetchAdminDeleteApi<T>(endpoint: string): Promise<T> {
   return await fetchAdminBase<T>(endpoint, {
