@@ -31,11 +31,6 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    console.error('[CollectionPageWrapper] Error loading collection:', {
-      slug,
-      error: errorMessage,
-    });
-
     // Handle 404s
     if (errorMessage.includes('404')) {
       notFound();
@@ -50,12 +45,6 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
       errorMessage.includes('Failed to retrieve collection');
 
     if (isBackendError) {
-      console.warn(
-        '[CollectionPageWrapper] Backend schema/database error detected. ' +
-          'Page is force-dynamic so build will continue.',
-        { slug }
-      );
-
       // For home page, re-throw (page is force-dynamic so this won't break build)
       if (slug === 'home') {
         throw error;

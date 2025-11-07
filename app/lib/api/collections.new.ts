@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 
 import { PAGINATION, TIMING } from '@/app/constants';
 import {
+  buildApiUrl,
   fetchAdminDeleteApi,
   fetchAdminGetApi,
   fetchAdminPostJsonApi,
@@ -22,33 +23,10 @@ import {
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
-import { isProduction } from '@/app/utils/environment';
 
 // ============================================================================
 // URL Helpers
 // ============================================================================
-
-function getReadBaseUrl(): string {
-  const base =
-    isProduction() && process.env.NEXT_PUBLIC_API_URL
-      ? String(process.env.NEXT_PUBLIC_API_URL).replace(/\/+$/, '')
-      : 'http://localhost:8080';
-  return `${base}/api/read`;
-}
-
-function toURL(
-  base: string,
-  path: string,
-  params?: Record<string, string | number | boolean | undefined>
-) {
-  const url = new URL(`${base}${path.startsWith('/') ? path : '/' + path}`);
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      if (v !== undefined) url.searchParams.set(k, String(v));
-    }
-  }
-  return url.toString();
-}
 
 async function safeJson<T>(res: Response): Promise<T> {
   const ct = res.headers.get('content-type') || '';
@@ -83,7 +61,7 @@ export async function getAllCollections(
   page = 0,
   size = PAGINATION.homePageSize
 ): Promise<CollectionModel[]> {
-  const url = toURL(getReadBaseUrl(), '/collections', { page, size });
+  const url = buildApiUrl('read', '/collections', { page, size });
   try {
     const res = await fetch(url, {
       next: { revalidate: TIMING.revalidateCache, tags: ['collections-index'] },
@@ -118,7 +96,7 @@ export async function getCollectionBySlug(
   size: number = PAGINATION.defaultPageSize
 ): Promise<CollectionModel> {
   if (!slug) throw new Error('slug is required');
-  const url = toURL(getReadBaseUrl(), `/collections/${encodeURIComponent(slug)}`, { page, size });
+  const url = buildApiUrl('read', `/collections/${encodeURIComponent(slug)}`, { page, size });
   const res = await fetch(url, {
     next: { revalidate: 3600, tags: [`collection-${slug}`] },
   });
@@ -146,7 +124,7 @@ export async function getCollectionBySlugAdmin(
   size: number = PAGINATION.defaultPageSize
 ): Promise<CollectionModel> {
   if (!slug) throw new Error('slug is required');
-  const url = toURL(getReadBaseUrl(), `/collections/${encodeURIComponent(slug)}`, { page, size });
+  const url = buildApiUrl('read', `/collections/${encodeURIComponent(slug)}`, { page, size });
   const res = await fetch(url, {
     next: { revalidate: TIMING.revalidateCache, tags: [`collection-${slug}`] },
   });
@@ -163,7 +141,7 @@ export async function getCollectionsByType(
   size = PAGINATION.collectionPageSize
 ): Promise<CollectionModel[]> {
   if (!type) throw new Error('type is required');
-  const url = toURL(getReadBaseUrl(), `/collections/type/${type}`, { page, size });
+  const url = buildApiUrl('read', `/collections/type/${type}`, { page, size });
   const res = await fetch(url, {
     next: { revalidate: TIMING.revalidateCache, tags: [`collections-type-${type}`] },
   });
@@ -180,7 +158,7 @@ export async function validateClientGalleryAccess(
 ): Promise<{ hasAccess: boolean }> {
   if (!slug) throw new Error('slug is required');
   if (!password) throw new Error('password is required');
-  const url = toURL(getReadBaseUrl(), `/collections/${encodeURIComponent(slug)}/access`);
+  const url = buildApiUrl('read', `/collections/${encodeURIComponent(slug)}/access`);
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

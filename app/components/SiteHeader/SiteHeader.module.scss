@@ -38,7 +38,7 @@
     margin: 0;
 
     /* Mobile base font-size */
-    font-size: 1.5rem;
+    font-size: var(--text-xl);
     font-weight: 600;
     color: black;
     transition: color 0.2s ease;
@@ -58,15 +58,24 @@
 .menuWrapper {
   display: flex;
   align-items: center;
+  
+  /* Match menu icon size on mobile */
+  height: var(--space-6);
+  
+  /* Desktop version (enhancement): min-width 768px and up */
+  @media (width >= 768px) {
+    height: var(--text-3xl);
+  }
 }
 
 .menu {
-  /* Mobile base size smaller */
-  width: 2rem;
-  height: 2rem;
+  /* Mobile base size - was perfect at 2rem */
+  width: var(--space-6);
+  height: var(--space-6);
   cursor: pointer;
   color: black;
   transition: color 0.2s ease;
+  stroke-width: 2; /* Base stroke width for mobile */
 
   &:hover {
     color: #333;
@@ -74,7 +83,8 @@
 
   /* Desktop version (enhancement): min-width 768px and up */
   @media (width >= 768px) {
-    width: var(--space-8);
-    height: var(--space-8);
+    width: var(--text-3xl);
+    height: var(--text-3xl);
+    stroke-width: 2.5; /* Thicker bars for desktop to match larger icon */
   }
 }

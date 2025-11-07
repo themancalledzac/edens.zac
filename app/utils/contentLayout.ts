@@ -231,34 +231,68 @@ export function convertCollectionContentToImage(col: CollectionContentModel): Im
 /**
  * Process content blocks for display, converting CollectionContentModel to ParallaxImageContentModel
  * and ensuring PARALLAX blocks have proper dimensions
+ * Also filters out non-visible content blocks for public collection pages
+ * 
+ * @param content - Array of content blocks to process
+ * @param filterVisible - If true, filters out blocks where visible === false (default: true for public pages)
+ * @param collectionId - Optional collection ID to check collection-specific visibility
  */
-export function processContentBlocks(content: AnyContentModel[]): AnyContentModel[] {
-  return content.map(block => {
-    // Convert any CollectionContentModel blocks to ParallaxImageContentModel
-    if (isCollectionContent(block)) {
-      const collectionBlock = block as CollectionContentModel;
-      // Debug: Log coverImage data to diagnose missing images
-      if (process.env.NODE_ENV === 'development' && !collectionBlock.coverImage) {
-        console.warn('[processContentBlocks] CollectionContentModel missing coverImage:', {
-          id: collectionBlock.id,
-          title: collectionBlock.title,
-          slug: collectionBlock.slug,
-          hasImageUrl: !!collectionBlock.imageUrl, // Check if old imageUrl field exists
-        });
+export function processContentBlocks(
+  content: AnyContentModel[],
+  filterVisible: boolean = true,
+  collectionId?: number
+): AnyContentModel[] {
+  return content
+    .filter(block => {
+      // Ignore non-visible blocks if filtering is enabled
+      if (filterVisible) {
+        if (block.visible === false) return false;
+        
+        // For images, check collection-specific visibility
+        if (block.contentType === 'IMAGE' && collectionId) {
+          const imageBlock = block as ImageContentModel;
+          const collectionEntry = imageBlock.collections?.find(
+            c => c.collectionId === collectionId
+          );
+          if (collectionEntry?.visible === false) return false;
+        }
       }
-      return convertCollectionContentToParallax(collectionBlock);
-    }
-    // Ensure PARALLAX content blocks have imageWidth/imageHeight preserved
-    if (block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax) {
-      const parallaxBlock = block as ParallaxImageContentModel;
-      if (!parallaxBlock.imageWidth || !parallaxBlock.imageHeight) {
-        return {
-          ...parallaxBlock,
-          imageWidth: parallaxBlock.imageWidth || parallaxBlock.width,
-          imageHeight: parallaxBlock.imageHeight || parallaxBlock.height,
-        };
+      return true;
+    })
+    .map(block => {
+      // Convert any CollectionContentModel blocks to ParallaxImageContentModel
+      if (isCollectionContent(block)) {
+        const collectionBlock = block as CollectionContentModel;
+        return convertCollectionContentToParallax(collectionBlock);
       }
-    }
-    return block;
-  });
+      // For images, update orderIndex from collection-specific entry if collectionId is provided
+      if (block.contentType === 'IMAGE' && collectionId) {
+        const imageBlock = block as ImageContentModel;
+        const collectionEntry = imageBlock.collections?.find(
+          c => c.collectionId === collectionId
+        );
+        if (collectionEntry?.orderIndex !== undefined) {
+          return {
+            ...imageBlock,
+            orderIndex: collectionEntry.orderIndex,
+          };
+        }
+      }
+      // Ensure PARALLAX content blocks have imageWidth/imageHeight preserved
+      if (block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax) {
+        const parallaxBlock = block as ParallaxImageContentModel;
+        if (!parallaxBlock.imageWidth || !parallaxBlock.imageHeight) {
+          return {
+            ...parallaxBlock,
+            imageWidth: parallaxBlock.imageWidth || parallaxBlock.width,
+            imageHeight: parallaxBlock.imageHeight || parallaxBlock.height,
+          };
+        }
+      }
+      return block;
+    })
+    .sort((a, b) => {
+      // Sort by orderIndex (collection-specific for images)
+      return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+    });
 }

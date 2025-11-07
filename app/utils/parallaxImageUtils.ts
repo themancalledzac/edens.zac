@@ -79,9 +79,8 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Paralla
   if (content.contentType === 'COLLECTION') {
     const collectionContent = content as CollectionContentModel;
     
-    // TODO: Use coverImage dimensions (imageWidth/imageHeight) instead of hardcoded values
-    // This should match the same logic used in convertCollectionContentToParallax
-    // For now, use coverImage dimensions if available, otherwise fallback to hardcoded
+    // Use coverImage dimensions (imageWidth/imageHeight) if available, otherwise fallback to defaults
+    // This matches the same logic used in convertCollectionContentToParallax
     const coverImage = collectionContent.coverImage;
     const imageWidth = coverImage?.imageWidth ?? coverImage?.width ?? 800;
     const imageHeight = coverImage?.imageHeight ?? coverImage?.height ?? 800;

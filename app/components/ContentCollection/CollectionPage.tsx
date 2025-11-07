@@ -73,7 +73,7 @@ export default async function CollectionPage({
   // Get content blocks to display
   const contentBlocks: AnyContentModel[] = Array.isArray(collection)
     ? collection.map(collectionToContentModel)
-    : processContentBlocks(collection.content ?? []);
+    : processContentBlocks(collection.content ?? [], true, collection.id);
 
   // Determine if this is a single collection (for passing slug to SiteHeader)
   const singleCollection = Array.isArray(collection) ? null : collection;

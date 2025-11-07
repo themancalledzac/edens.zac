@@ -12,6 +12,7 @@
  */
 
 import { type CollectionModel } from '@/app/types/Collection';
+import { type ImageContentModel } from '@/app/types/Content';
 
 const STORAGE_KEY_PREFIX = 'collection_cache_';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -46,10 +47,8 @@ export const collectionStorage = {
       };
       const key = getStorageKey(slug);
       sessionStorage.setItem(key, JSON.stringify(cached));
-      console.log(`[collectionStorage.set] Cached collection "${slug}"`);
-    } catch (error) {
-      // Quota exceeded or storage unavailable - not critical, just log
-      console.warn('[collectionStorage.set] Failed to cache collection:', error);
+    } catch {
+      // Quota exceeded or storage unavailable - not critical, fail silently
     }
   },
 
@@ -70,7 +69,6 @@ export const collectionStorage = {
 
       // Verify this is the correct slug
       if (cached.slug !== slug) {
-        console.warn('[collectionStorage.get] Slug mismatch, clearing cache');
         sessionStorage.removeItem(key);
         return null;
       }
@@ -80,15 +78,12 @@ export const collectionStorage = {
       const isValid = age < CACHE_DURATION;
 
       if (!isValid) {
-        console.log(`[collectionStorage.get] Cache expired for "${slug}" (age: ${Math.round(age / 1000)}s)`);
         sessionStorage.removeItem(key);
         return null;
       }
 
-      console.log(`[collectionStorage.get] Cache hit for "${slug}" (age: ${Math.round(age / 1000)}s)`);
       return cached.data;
-    } catch (error) {
-      console.error('[collectionStorage.get] Error reading cache:', error);
+    } catch {
       return null;
     }
   },
@@ -104,9 +99,8 @@ export const collectionStorage = {
     try {
       const key = getStorageKey(slug);
       sessionStorage.removeItem(key);
-      console.log(`[collectionStorage.clear] Cleared cache for "${slug}"`);
-    } catch (error) {
-      console.error('[collectionStorage.clear] Error:', error);
+    } catch {
+      // Ignore errors when clearing cache
     }
   },
 
@@ -126,9 +120,8 @@ export const collectionStorage = {
       for (const key of keys) {
         sessionStorage.removeItem(key);
       }
-      console.log(`[collectionStorage.clearAll] Cleared ${keys.length} cached collections`);
-    } catch (error) {
-      console.error('[collectionStorage.clearAll] Error:', error);
+    } catch {
+      // Ignore errors when clearing cache
     }
   },
 
@@ -141,5 +134,62 @@ export const collectionStorage = {
   update(slug: string, data: CollectionModel): void {
     // Same as set - overwrites existing cache with new timestamp
     this.set(slug, data);
+  },
+
+  /**
+   * Update cached collection's content when images are updated
+   * Replaces updated images in the cached collection's content array
+   * This ensures the cache stays in sync when image metadata (like visibility) is changed
+   * 
+   * @param slug - Collection slug
+   * @param updatedImages - Array of updated image content models from the API response
+   */
+  updateImagesInCache(slug: string, updatedImages: ImageContentModel[]): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const cached = this.get(slug);
+      if (!cached) {
+        console.warn(`[collectionStorage] No cache found for slug: ${slug}`);
+        return; // No cache to update
+      }
+
+      // Create a map of updated images by ID for quick lookup
+      const updatedImagesMap = new Map(
+        updatedImages.map(img => [img.id, img])
+      );
+
+      // Update content array: replace images that were updated, keep others as-is
+      // Only updates IMAGE content types that match the updated images by ID
+      const updatedContent = cached.content?.map(block => {
+        // Match by ID and verify it's an IMAGE type (safety check)
+        if (block.contentType === 'IMAGE' && updatedImagesMap.has(block.id)) {
+          const updatedImage = updatedImagesMap.get(block.id)!;
+          console.log(`[collectionStorage] Updating image ${block.id} in cache:`, {
+            oldVisibility: (block as ImageContentModel).collections?.[0]?.visible,
+            newVisibility: updatedImage.collections?.[0]?.visible,
+            collections: updatedImage.collections,
+          });
+          return updatedImage;
+        }
+        return block;
+      });
+
+      // Update the cached collection with new content
+      const updatedCollection: CollectionModel = {
+        ...cached,
+        content: updatedContent || cached.content,
+      };
+
+      // Save updated collection back to cache with new timestamp
+      this.set(slug, updatedCollection);
+      console.log(`[collectionStorage] Cache updated for slug: ${slug}`, {
+        updatedImageIds: updatedImages.map(img => img.id),
+        totalContentBlocks: updatedCollection.content?.length,
+      });
+    } catch (error) {
+      console.error('[collectionStorage] Error updating cache:', error);
+      // Ignore errors when updating cache - fail silently to not break the UI
+    }
   },
 };
