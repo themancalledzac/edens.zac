@@ -11,14 +11,18 @@
 
 .main {
   flex: 1;
-
-  /* Container padding is handled by .contentPadding utility when needed */
-  padding: 0;
   margin: 0 auto;
   width: 100%;
+  max-width: var(--page-max-width);
+  position: relative; /* Allow dropdown to position relative to this container */
+
+  /* Container padding for left/right - shared by header and content */
+  padding-left: var(--page-padding-mobile);
+  padding-right: var(--page-padding-mobile);
 
   @media (width >= 768px) {
-    padding: var(--page-padding-desktop);
+    padding-left: var(--page-padding-desktop);
+    padding-right: var(--page-padding-desktop);
   }
 }
 

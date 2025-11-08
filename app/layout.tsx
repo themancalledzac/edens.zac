@@ -7,7 +7,6 @@
  *
  * @dependencies
  * - Inter font from Google Fonts
- * - Providers component for client-side context providers
  * - globals.css for application-wide styles
  *
  * @exports
@@ -22,8 +21,6 @@ import '@/app/styles/globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import React from 'react';
-
-import { Providers } from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -48,10 +45,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        {/* Keep global client providers isolated here. */}
-        <Providers>{children}</Providers>
-      </body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }

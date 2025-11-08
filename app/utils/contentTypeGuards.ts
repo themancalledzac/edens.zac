@@ -15,9 +15,12 @@ import {
 
 /**
  * Type guard to check if a Content is an ImageContentModel
+ * Accepts unknown to handle untyped data, but also works with Content type
  */
-export function isContentImage(block: Content): block is ImageContentModel {
-  return block.contentType === 'IMAGE';
+export function isContentImage(block: Content | unknown): block is ImageContentModel {
+  if (!block || typeof block !== 'object') return false;
+  const candidate = block as Record<string, unknown>;
+  return candidate.contentType === 'IMAGE' && 'imageUrl' in candidate;
 }
 
 /**

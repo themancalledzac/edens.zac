@@ -59,6 +59,7 @@ export interface ContentComponentProps {
   enableFullScreenView?: boolean; // Enable full-screen image viewing on click
   onFullScreenImageClick?: (image: ImageContentModel | ParallaxImageContentModel) => void; // NEW SIMPLE VERSION
   selectedImageIds?: number[]; // Array of selected image IDs for bulk editing
+  currentCollectionId?: number; // ID of current collection (for checking collection-specific visibility)
 }
 
 /**
@@ -78,6 +79,7 @@ export default function Component({
   enableFullScreenView = false,
   onFullScreenImageClick, // NEW SIMPLE VERSION
   selectedImageIds = [],
+  currentCollectionId,
 }: ContentComponentProps) {
   const router = useRouter();
   const chunkSize = 2;
@@ -90,11 +92,7 @@ export default function Component({
 
     try {
       return processContentForDisplay(content, contentWidth, chunkSize);
-    } catch (error) {
-      // Only log in development
-      if (process.env.NODE_ENV === 'development') {
-        console.error('ContentComponent sizing error:', error);
-      }
+    } catch {
       return [];
     }
   }, [content, contentWidth, chunkSize]);
@@ -177,6 +175,22 @@ export default function Component({
                   const isSelected = selectedImageIds.includes(itemContent.id);
                   const shouldShowOverlay =
                     (isSelectingCoverImage && isCurrentCover) || isJustClicked;
+                  
+                  // Check if image is not visible
+                  // Check direct visibility first, then collection-specific visibility if collectionId is provided
+                  // Note: For manage pages, we show all images but grey out non-visible ones
+                  // For public pages, non-visible images should be filtered out before reaching here
+                  let isNotVisible = itemContent.visible === false;
+                  
+                  // If we have a collection ID, also check collection-specific visibility
+                  if (!isNotVisible && currentCollectionId && itemContent.collections) {
+                    const collectionEntry = itemContent.collections.find(
+                      c => c.collectionId === currentCollectionId
+                    );
+                    if (collectionEntry?.visible === false) {
+                      isNotVisible = true;
+                    }
+                  }
 
                   // Determine which click handler to use
                   const handleClick = () => {
@@ -213,6 +227,21 @@ export default function Component({
                           isMobile={isMobile}
                         />
                       </div>
+                      {/* Grey opacity overlay for non-visible images */}
+                      {isNotVisible && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(128, 128, 128, 0.5)',
+                            pointerEvents: 'none',
+                            borderRadius: '4px',
+                          }}
+                        />
+                      )}
                       {shouldShowOverlay && (
                         <div
                           style={{

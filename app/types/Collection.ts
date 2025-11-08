@@ -240,7 +240,7 @@ export interface GeneralMetadataDTO {
  * Response DTO for collection update/manage endpoint
  * Matches backend CollectionUpdateResponseDTO.java
  *
- * NOTE: Backend returns a FLAT structure with metadata fields at root level:
+ * Backend returns a FLAT structure with metadata fields at root level (not nested):
  * {
  *   collection: {...},
  *   tags: [...],
@@ -251,11 +251,15 @@ export interface GeneralMetadataDTO {
  *   filmTypes: [...],
  *   filmFormats: [...]
  * }
- *
- * This interface defines the nested structure but callers must handle
- * the flat response format when extracting metadata fields.
  */
 export interface CollectionUpdateResponseDTO {
   collection: CollectionModel;
-  metadata: GeneralMetadataDTO;
+  // Metadata fields are at root level, not nested
+  tags?: GeneralMetadataDTO['tags'];
+  people?: GeneralMetadataDTO['people'];
+  cameras?: GeneralMetadataDTO['cameras'];
+  lenses?: GeneralMetadataDTO['lenses'];
+  filmTypes?: GeneralMetadataDTO['filmTypes'];
+  filmFormats?: GeneralMetadataDTO['filmFormats'];
+  collections?: GeneralMetadataDTO['collections'];
 }

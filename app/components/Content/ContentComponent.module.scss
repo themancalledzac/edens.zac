@@ -7,7 +7,7 @@
 
 .inner {
   width: 100%;
-  max-width: var(--page-max-width);
+  /* max-width is now handled by parent ContentCollectionPage.main */
   margin: 0 auto;
 }
 
@@ -173,18 +173,34 @@
 /* Position styles for content blocks in rows */
 .image {
   margin: 0;
+  /* Mobile base: images have border */
+  border-width: var(--space-mobile-border) 0 0 0;
+  border-style: solid;
+  border-color: white;
+  width: 100%;
+  height: auto;
+  padding: 0;
+
+  @media (width >= 768px) {
+    border-width: 0;
+    border-radius: 4px;
+  }
 }
 
 .imageLeft {
   @extend .image;
 
-  padding-right: 0.4rem;
+  @media (width >= 768px) {
+    padding-right: 0.4rem;
+  }
 }
 
 .imageRight {
   @extend .image;
 
-  padding-left: 0.4rem;
+  @media (width >= 768px) {
+    padding-left: 0.4rem;
+  }
 }
 
 .imageMiddle {
@@ -201,18 +217,6 @@
   padding-right: 0;
 }
 
-@media (width <= 768px) {
-  .image {
-    border-width: var(--space-mobile-border) 0 0 0;
-    border-style: solid;
-    border-color: white;
-    margin: 0;
-    width: 100%;
-    height: auto;
-    padding: 0;
-  }
-}
-
 /* Text overlay positioned over image - Mobile First */
 .textOverlay {
   position: absolute;
@@ -226,7 +230,7 @@
   background: rgba(89, 89, 89, 0.4);
   color: var(--color-white);
   font-family: var(--font-serif), serif; /* Dramatic, high-contrast serif */
-  font-size: 60px;
+  font-size: var(--collection-title);
   font-weight: 700;
   text-align: center;
   padding: 16px;
@@ -237,7 +241,6 @@
 /* Desktop styles */
 @media (width >= 768px) {
   .textOverlay {
-    font-size: 70px;
     padding: 20px;
   }
 }

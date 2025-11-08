@@ -8,6 +8,60 @@
 import type { ContentImageUpdateRequest, ImageContentModel } from '@/app/types/Content';
 
 // ============================================================================
+// Generic Update Utilities
+// ============================================================================
+
+/**
+ * Apply partial updates from a DTO to an existing object
+ * Only updates fields that are explicitly present in the DTO (not undefined)
+ * Useful for optimistic updates and applying API responses
+ * 
+ * Handles special cases:
+ * - `collections.prev` from DTO is transformed to `collections` in the model
+ * - All other fields are applied directly
+ * 
+ * @param original - The original object to update
+ * @param updates - The DTO containing only the fields to update
+ * @returns A new object with updates applied
+ * 
+ * @example
+ * const original = { id: 1, title: 'Old', visible: true };
+ * const updates = { id: 1, title: 'New' };
+ * const result = applyPartialUpdate(original, updates);
+ * // result = { id: 1, title: 'New', visible: true }
+ */
+export function applyPartialUpdate<T extends { id: number }>(
+  original: T,
+  updates: Partial<T> & { id: number } & { collections?: { prev?: unknown[] } }
+): T {
+  const result = { ...original };
+  
+  // Apply all fields from updates that are not undefined
+  // Skip 'id' as it's used for matching, not updating
+  for (const [key, value] of Object.entries(updates)) {
+    if (key === 'id') continue;
+    if (value === undefined) continue;
+    
+    // Special handling for collections.prev -> collections transformation
+    if (key === 'collections' && value && typeof value === 'object' && 'prev' in value) {
+      const collectionsValue = value as { prev?: unknown[] };
+      if (collectionsValue.prev !== undefined) {
+        // Replace the entire collections array with the updated one
+        (result as Record<string, unknown>).collections = collectionsValue.prev;
+        console.log('[applyPartialUpdate] Applied collections update:', {
+          originalCollections: (original as { collections?: unknown[] }).collections,
+          newCollections: collectionsValue.prev,
+        });
+      }
+    } else {
+      (result as Record<string, unknown>)[key] = value;
+    }
+  }
+  
+  return result;
+}
+
+// ============================================================================
 // Pure Helper Functions
 // ============================================================================
 
@@ -276,6 +330,154 @@ export function getDisplayFilmStock<T extends { id: number; name: string; defaul
   }
 
   return null;
+}
+
+// ============================================================================
+// Diff Utilities - Build minimal update payload from updateState vs currentState
+// ============================================================================
+
+/**
+ * Build a diff between updateState (what user edited) and currentState (original)
+ * Returns a ContentImageUpdateRequest with only changed fields
+ */
+export function buildImageUpdateDiff(
+  updateState: Partial<ImageContentModel> & { id: number },
+  currentState: ImageContentModel
+): ContentImageUpdateRequest {
+  const diff: ContentImageUpdateRequest = { id: updateState.id };
+
+  // Simple field comparisons
+  const simpleFields: Array<keyof ImageContentModel> = [
+    'title',
+    'caption',
+    'alt',
+    'author',
+    'rating',
+    'blackAndWhite',
+    'isFilm',
+    'shutterSpeed',
+    'focalLength',
+    'location',
+    'fStop',
+    'iso',
+    'filmFormat',
+    'createDate',
+  ];
+
+  for (const field of simpleFields) {
+    const updateValue = updateState[field];
+    const currentValue = currentState[field];
+    
+    // Only include if changed (handling null/undefined)
+    if (updateValue !== currentValue) {
+      (diff as unknown as Record<string, unknown>)[field] = updateValue ?? null;
+    }
+  }
+
+  // Handle camera (prev/newValue/remove pattern)
+  if (updateState.camera?.id !== currentState.camera?.id) {
+    if (!updateState.camera) {
+      diff.camera = { remove: true };
+    } else if (updateState.camera.id && updateState.camera.id > 0) {
+      diff.camera = { prev: updateState.camera.id };
+    } else {
+      diff.camera = { newValue: updateState.camera.name };
+    }
+  }
+
+  // Handle lens (prev/newValue/remove pattern)
+  if (updateState.lens?.id !== currentState.lens?.id) {
+    if (!updateState.lens) {
+      diff.lens = { remove: true };
+    } else if (updateState.lens.id && updateState.lens.id > 0) {
+      diff.lens = { prev: updateState.lens.id };
+    } else {
+      diff.lens = { newValue: updateState.lens.name };
+    }
+  }
+
+  // Handle filmType (prev/newValue/remove pattern)
+  const updateFilmType = updateState.filmType;
+  const currentFilmType = currentState.filmType;
+  if (updateFilmType !== currentFilmType) {
+    if (!updateFilmType) {
+      diff.filmType = { remove: true };
+    } else {
+      // For filmType, we need to find it in available types or create new
+      // This will be handled by the component passing the right structure
+      // For now, we'll need the component to handle this
+    }
+  }
+
+  // Handle tags (prev/newValue/remove pattern)
+  const updateTags = updateState.tags || [];
+  const currentTags = currentState.tags || [];
+  const updateTagIds = updateTags.filter(t => t.id && t.id > 0).map(t => t.id!);
+  const currentTagIds = currentTags.filter(t => t.id && t.id > 0).map(t => t.id!);
+  const updateTagNames = updateTags.filter(t => !t.id || t.id === 0).map(t => t.name);
+  
+  const addedTagIds = updateTagIds.filter(id => !currentTagIds.includes(id));
+  const removedTagIds = currentTagIds.filter(id => !updateTagIds.includes(id));
+  const hasNewTagNames = updateTagNames.length > 0;
+
+  if (addedTagIds.length > 0 || removedTagIds.length > 0 || hasNewTagNames) {
+    diff.tags = {};
+    if (updateTagIds.length > 0) {
+      diff.tags.prev = updateTagIds;
+    }
+    if (updateTagNames.length > 0) {
+      diff.tags.newValue = updateTagNames;
+    }
+    if (removedTagIds.length > 0) {
+      diff.tags.remove = removedTagIds;
+    }
+  }
+
+  // Handle people (prev/newValue/remove pattern)
+  const updatePeople = updateState.people || [];
+  const currentPeople = currentState.people || [];
+  const updatePeopleIds = updatePeople.filter(p => p.id && p.id > 0).map(p => p.id!);
+  const currentPeopleIds = currentPeople.filter(p => p.id && p.id > 0).map(p => p.id!);
+  const updatePeopleNames = updatePeople.filter(p => !p.id || p.id === 0).map(p => p.name);
+  
+  const addedPeopleIds = updatePeopleIds.filter(id => !currentPeopleIds.includes(id));
+  const removedPeopleIds = currentPeopleIds.filter(id => !updatePeopleIds.includes(id));
+  const hasNewPeopleNames = updatePeopleNames.length > 0;
+
+  if (addedPeopleIds.length > 0 || removedPeopleIds.length > 0 || hasNewPeopleNames) {
+    diff.people = {};
+    if (updatePeopleIds.length > 0) {
+      diff.people.prev = updatePeopleIds;
+    }
+    if (updatePeopleNames.length > 0) {
+      diff.people.newValue = updatePeopleNames;
+    }
+    if (removedPeopleIds.length > 0) {
+      diff.people.remove = removedPeopleIds;
+    }
+  }
+
+  // Handle collections (prev/newValue/remove pattern)
+  const updateCollections = updateState.collections || [];
+  const currentCollections = currentState.collections || [];
+  
+  // Compare collections arrays - if different, include the update
+  const collectionsEqual = 
+    updateCollections.length === currentCollections.length &&
+    updateCollections.every((uc, idx) => {
+      const cc = currentCollections[idx];
+      return (
+        uc.collectionId === cc?.collectionId &&
+        uc.visible === cc?.visible &&
+        uc.orderIndex === cc?.orderIndex
+      );
+    });
+
+  if (!collectionsEqual) {
+    diff.collections = { prev: updateCollections };
+  }
+
+  return diff;
 }
 
 // ============================================================================

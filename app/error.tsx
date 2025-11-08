@@ -28,7 +28,6 @@ export default function GlobalError({
 }) {
   React.useEffect(() => {
     // Optionally report error to monitoring service
-    // console.error(error);
   }, [error]);
 
   return (

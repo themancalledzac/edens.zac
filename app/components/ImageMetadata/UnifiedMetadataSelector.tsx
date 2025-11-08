@@ -200,8 +200,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
         onChange(newSelection);
       } else {
         // Add to selection
-        console.log('Adding new item:', item);
-        console.log('Current values:', selectedValues);
         onChange([...selectedValues, item]);
       }
     } else {

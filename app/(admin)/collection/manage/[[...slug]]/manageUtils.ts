@@ -9,7 +9,7 @@ import {
   type CollectionUpdateRequest,
 } from '@/app/types/Collection';
 import { type AnyContentModel, type CollectionContentModel, type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
-import { isCollectionContent } from '@/app/utils/contentTypeGuards';
+import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
@@ -89,32 +89,26 @@ export function syncCollectionState(
 
 /**
  * Type guard to check if a block is an ImageContentBlock
+ * @deprecated Use isContentImage from @/app/utils/contentTypeGuards instead
  */
 export function isImageContentBlock(block: unknown): block is ImageContentModel {
-  return (
-    block !== null &&
-    block !== undefined &&
-    typeof block === 'object' &&
-    'contentType' in block &&
-    (block as { contentType: string }).contentType === 'IMAGE' &&
-    'imageUrl' in block
-  );
+  // Re-export from contentTypeGuards for backward compatibility
+  return isContentImage(block);
 }
 
 /**
  * Type guard to check if a block is a collection (ParallaxImageContentModel with slug)
  * Collections are now converted to Parallax type for unified rendering
+ * This is different from isCollectionContent which checks for COLLECTION type
  */
 export function isCollectionContentBlock(block: unknown): block is ParallaxImageContentModel {
+  if (!block || typeof block !== 'object') return false;
+  const candidate = block as Record<string, unknown>;
   return (
-    block !== null &&
-    block !== undefined &&
-    typeof block === 'object' &&
-    'contentType' in block &&
-    (block as { contentType: string }).contentType === 'PARALLAX' &&
-    'slug' in block &&
-    typeof (block as { slug: unknown }).slug === 'string' &&
-    (block as { slug: string }).slug.length > 0
+    candidate.contentType === 'PARALLAX' &&
+    'slug' in candidate &&
+    typeof candidate.slug === 'string' &&
+    candidate.slug.length > 0
   );
 }
 

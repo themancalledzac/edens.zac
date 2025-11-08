@@ -51,7 +51,6 @@ export function useParallax(options: ParallaxOptions = {}) {
     const parallaxBg = element.querySelector(selector) as HTMLElement;
 
     if (!parallaxBg) {
-      console.warn(`useParallax: Element with selector "${selector}" not found`);
       return;
     }
 
