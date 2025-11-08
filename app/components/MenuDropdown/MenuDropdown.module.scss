@@ -7,11 +7,12 @@
 .dropdown {
   position: absolute;
   top: 0;
-  right: var(--page-padding-mobile); /* Align with content area, accounting for padding */
+  left: 0;
+  right: 0;
   z-index: var(--z-dropdown);
 
-  /* Mobile: Full width of content area, full height */
-  width: calc(100% - var(--page-padding-mobile) * 2);
+  /* Mobile: Full screen width, full height */
+  width: 100%;
   height: 100vh;
   background-color: rgba(255, 255, 255, 0.95);
   display: flex;
@@ -20,6 +21,7 @@
 
   /* Desktop: Narrower width, full white background - positioned at right edge of content area */
   @media (width >= 768px) {
+    left: auto;
     right: var(--page-padding-desktop);
     width: min(400px, calc(100% - var(--page-padding-desktop) * 2));
     background-color: white;
@@ -30,14 +32,10 @@
 .dropdownCloseButtonWrapper {
   display: flex;
   justify-content: flex-end;
-  padding-top: var(--page-padding-mobile);
-  padding-bottom: var(--page-padding-mobile);
-  padding-left: 0;
-  padding-right: 0;
+  padding: var(--page-padding-mobile);
 
   @media (width >= 768px) {
-    padding-top: var(--page-padding-desktop);
-    padding-bottom: var(--page-padding-desktop);
+    padding: var(--page-padding-desktop) 0;
   }
 }
 

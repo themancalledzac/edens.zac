@@ -29,10 +29,11 @@ export function About({ onBack: _onBack }: AboutProps) {
       <div className={styles.contentWrapper}>
         <div className={styles.imageContainer}>
           <Image
-            src="/profile-portrait.jpg"
+            src="/_DSC0145.jpg"
             alt="Zechariah Edens - Portrait"
-            width={300}
-            height={400}
+            width={1000}
+            height={1000}
+            unoptimized
             className={styles.profileImage}
           />
         </div>

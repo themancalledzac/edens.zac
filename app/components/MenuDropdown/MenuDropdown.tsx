@@ -44,11 +44,6 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
-  // Show Update button only on localhost and for collectionsCollection pages
-  const showUpdateButton = isLocalEnvironment() && pageType === 'collection';
-
-   // Show Create button only on localhost and for home page
-  const showCreateButton = isLocalEnvironment() && pageType === 'default';
 
   // Navigation handlers with automatic close
   const handleNavigation = {
@@ -61,7 +56,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
       onClose();
     },
     blogs: () => {
-      window.location.href = '/blogs';
+      window.location.href = '/collectionType/blogs';
       onClose();
     },
     instagram: () => {
@@ -153,7 +148,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
-        {showCreateButton && (
+        {isLocalEnvironment() && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
             <h2
               className={styles.dropdownMenuOptions}
@@ -164,7 +159,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
           </div>
         )}
 
-        {showUpdateButton && (
+        {isLocalEnvironment() && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
             <h2
               className={styles.dropdownMenuOptions}

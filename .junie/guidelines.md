@@ -63,7 +63,7 @@ if (!data) {
 - **Directories**: lowercase with dashes (`components/auth-wizard`)
 - **Components**: PascalCase (`UserProfile.tsx`)
 - **CSS Modules**: Component name + `.module.scss` (`UserProfile.module.scss`)
-- **API files**: camelCase (`contentCollections.ts`)
+- **API files**: camelCase (`collections.ts`)
 
 ### Import Organization
 ```typescript
@@ -263,7 +263,7 @@ Based on current state, prioritize tests for:
 - [ ] `lib/api/home.ts` - All API functions
 - [ ] `app/components/` - All new App Router components
 - [ ] `app/[cardType]/[slug]/page.tsx` - Dynamic route components
-- [ ] `types/ContentCollection.ts` - Type validation
+- [ ] `types/Collection.ts` - Type validation
 - [ ] New utility functions and processing logic
 
 ## Methodology

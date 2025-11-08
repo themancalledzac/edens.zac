@@ -1,9 +1,13 @@
 /* Full Screen Image Modal Styles */
 
 /* Main wrapper positioned at current scroll position */
+/* Rendered via portal at body level, so position: fixed works relative to viewport */
 .imageFullScreenWrapper {
-  position: absolute;
-  inset: 0; /* Shorthand for left: 0, right: 0, top: 0, bottom: 0 */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* top is set inline to scroll position */
   width: 100vw;
   height: 100vh;
   display: flex;

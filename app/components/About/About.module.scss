@@ -16,12 +16,15 @@
 .contentWrapper {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   width: 100%;
   overflow-y: auto;
+  gap: var(--space-4);
 
   @media (width >= 768px) {
     padding-right: var(--space-4);
+    gap: var(--space-6);
   }
 }
 
@@ -31,15 +34,18 @@
   margin-bottom: var(--space-6);
 }
 
+.imageContainer {
+  width: 100%;
+}
+
 .profileImage {
-  width: 33.333%; /* 1/3rd of available width */
+  width: 100%;
   height: auto;
-  border-radius: var(--radius-2);
-  object-fit: cover;
 }
 
 .textContainer {
   flex: 1;
+  min-width: 200px;
 
   p {
     font-size: var(--text-md);
