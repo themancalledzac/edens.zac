@@ -5,23 +5,23 @@
 */
 
 .dropdown {
-  position: fixed;
+  position: absolute;
   top: 0;
-  right: 0;
+  right: var(--page-padding-mobile); /* Align with content area, accounting for padding */
   z-index: var(--z-dropdown);
 
-  /* Mobile: Full width, full height */
-  width: 100vw;
+  /* Mobile: Full width of content area, full height */
+  width: calc(100% - var(--page-padding-mobile) * 2);
   height: 100vh;
   background-color: rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
 
-  /* Desktop: Narrower width, full white background */
+  /* Desktop: Narrower width, full white background - positioned at right edge of content area */
   @media (width >= 768px) {
-    max-width: 400px;
-    width: 400px;
+    right: var(--page-padding-desktop);
+    width: min(400px, calc(100% - var(--page-padding-desktop) * 2));
     background-color: white;
     box-shadow: -8px 0 16px -8px rgba(0, 0, 0, 0.2);
   }
@@ -30,27 +30,33 @@
 .dropdownCloseButtonWrapper {
   display: flex;
   justify-content: flex-end;
-  padding: var(--page-padding-mobile);
+  padding-top: var(--page-padding-mobile);
+  padding-bottom: var(--page-padding-mobile);
+  padding-left: 0;
+  padding-right: 0;
 
   @media (width >= 768px) {
-    padding: var(--page-padding-desktop);
+    padding-top: var(--page-padding-desktop);
+    padding-bottom: var(--page-padding-desktop);
   }
 }
 
 .dropdownCloseButton {
-  width: 2rem;
-  height: 2rem;
+  width: var(--space-6); /* Match hamburger menu size on mobile */
+  height: var(--space-6);
   cursor: pointer;
   color: black;
   transition: color 0.2s ease;
+  stroke-width: 2; /* Base stroke width for mobile */
 
   &:hover {
     color: #333;
   }
 
   @media (width >= 768px) {
-    width: 4rem;
-    height: 4rem;
+    width: 2.75rem; /* Match hamburger menu size on desktop */
+    height: 2.75rem;
+    stroke-width: 3; /* Match hamburger menu stroke width on desktop */
   }
 }
 
@@ -63,7 +69,8 @@
   padding: 0 var(--page-padding-mobile);
 
   @media (width >= 768px) {
-    padding: 0 var(--page-padding-desktop);
+    padding: 0;
+    //padding: 0 var(--page-padding-desktop);
   }
 }
 
@@ -80,7 +87,7 @@
   }
 
   @media (width >= 768px) {
-    padding-right: var(--space-4);
+    padding-right: 0;
   }
 }
 
@@ -91,7 +98,7 @@
   height: 72px;
   cursor: pointer;
   margin: 0;
-  font-size: 1.5rem;
+  font-size: var(--heading-2);
   font-weight: 500;
   color: black;
   transition: color 0.2s ease;
@@ -101,7 +108,6 @@
   }
 
   @media (width >= 768px) {
-    font-size: var(--text-2xl);
     font-weight: 600;
   }
 }

@@ -62,6 +62,11 @@ html,
   --text-2xl: 1.875rem;
   --text-3xl: 2.25rem;
 
+  /* Default heading sizes */
+  --header-1: 2rem; /* Header title (name) - mobile */
+  --heading-2: 1.75rem; /* Menu dropdown items - mobile */
+  --collection-title: 3rem; /* Collection titles on contentCollection items - mobile */
+
   /* Font families */
   --font-serif: 'Big Caslon', 'Book Antiqua', serif;
   --font-sans:
@@ -94,6 +99,15 @@ html,
   --z-modal: 1000; /* Modal backdrops */
   --z-modal-controls: 1002; /* Modal close buttons */
   --z-fullscreen: 9999; /* Fullscreen overlays */
+}
+
+/* Desktop heading sizes */
+@media (width >= 768px) {
+  :root {
+    --header-1: 2.25rem; /* Header title (name) - desktop */
+    --heading-2: 2rem; /* Menu dropdown items - desktop */
+    --collection-title: 3.5rem; /* Collection titles on contentCollection items - desktop */
+  }
 }
 
 body {

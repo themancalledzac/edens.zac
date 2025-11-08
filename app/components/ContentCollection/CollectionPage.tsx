@@ -81,8 +81,8 @@ export default async function CollectionPage({
 
   return (
     <div className={styles.container}>
-      <SiteHeader pageType={singleCollection ? 'collection' : 'default'} collectionSlug={collectionSlug} />
       <main className={styles.main}>
+        <SiteHeader pageType={singleCollection ? 'collection' : 'default'} collectionSlug={collectionSlug} />
         {contentBlocks && contentBlocks.length > 0 ? (
           <ContentBlockWithFullScreen
             content={contentBlocks}
