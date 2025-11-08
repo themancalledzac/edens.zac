@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
-import Component from '@/app/components/Content/Component';
+import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
@@ -879,14 +879,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     )}
                   </h3>
                 </div>
-                <Component
+                <ContentBlockWithFullScreen
                   content={processedContent}
+                  priorityBlockIndex={0}
+                  enableFullScreenView={false}
                   isSelectingCoverImage={isSelectingCoverImage}
                   currentCoverImageId={collection.coverImage?.id}
                   onImageClick={handleImageClick}
                   justClickedImageId={justClickedImageId}
                   selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
                   currentCollectionId={collection.id}
+                  collectionSlug={collection.slug}
+                  collectionData={collection}
                 />
               </div>
             )}
