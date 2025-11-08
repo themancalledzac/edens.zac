@@ -11,7 +11,6 @@ import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
   createCollection,
-  getCollectionBySlugAdmin,
   getCollectionUpdateMetadata,
   getMetadata,
   updateCollection,
