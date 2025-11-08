@@ -107,6 +107,10 @@ export const Z_INDEX = {
 /**
  * Calculate content width based on viewport width and mobile state
  * Used by useViewport hook
+ * 
+ * For desktop: Accounts for container padding (64px total) on both sides.
+ * The container has max-width: 1300px with 32px padding on each side,
+ * so the actual content width is 1300 - 64 = 1236px.
  */
 export const getContentWidth = (viewportWidth: number, isMobile: boolean): number => {
   if (isMobile) {
@@ -114,7 +118,7 @@ export const getContentWidth = (viewportWidth: number, isMobile: boolean): numbe
   }
   return Math.max(
     0,
-    Math.min(viewportWidth - LAYOUT.desktopPadding, LAYOUT.pageMaxWidth)
+    Math.min(viewportWidth - LAYOUT.desktopPadding, LAYOUT.pageMaxWidth - LAYOUT.desktopPadding)
   );
 };
 

@@ -461,20 +461,46 @@ export function buildImageUpdateDiff(
   const updateCollections = updateState.collections || [];
   const currentCollections = currentState.collections || [];
   
-  // Compare collections arrays - if different, include the update
-  const collectionsEqual = 
-    updateCollections.length === currentCollections.length &&
-    updateCollections.every((uc, idx) => {
-      const cc = currentCollections[idx];
-      return (
-        uc.collectionId === cc?.collectionId &&
-        uc.visible === cc?.visible &&
-        uc.orderIndex === cc?.orderIndex
-      );
-    });
-
-  if (!collectionsEqual) {
-    diff.collections = { prev: updateCollections };
+  // Build maps for easier lookup
+  const currentCollectionsMap = new Map(
+    currentCollections.map(c => [c.collectionId, c])
+  );
+  const updateCollectionsMap = new Map(
+    updateCollections.map(c => [c.collectionId, c])
+  );
+  
+  // Find collections that are new (in update but not in current)
+  const newCollections = updateCollections.filter(
+    uc => !currentCollectionsMap.has(uc.collectionId)
+  );
+  
+  // Find collections that are removed (in current but not in update)
+  const removedCollectionIds = currentCollections
+    .filter(cc => !updateCollectionsMap.has(cc.collectionId))
+    .map(cc => cc.collectionId);
+  
+  // Find collections that are modified (same collectionId but different visible/orderIndex)
+  const modifiedCollections = updateCollections.filter(uc => {
+    const current = currentCollectionsMap.get(uc.collectionId);
+    if (!current) return false; // Already handled as new
+    return (
+      uc.visible !== current.visible ||
+      uc.orderIndex !== current.orderIndex
+    );
+  });
+  
+  // Only include collections update if there are actual changes
+  if (newCollections.length > 0 || removedCollectionIds.length > 0 || modifiedCollections.length > 0) {
+    diff.collections = {};
+    if (modifiedCollections.length > 0) {
+      diff.collections.prev = modifiedCollections;
+    }
+    if (newCollections.length > 0) {
+      diff.collections.newValue = newCollections;
+    }
+    if (removedCollectionIds.length > 0) {
+      diff.collections.remove = removedCollectionIds;
+    }
   }
 
   return diff;

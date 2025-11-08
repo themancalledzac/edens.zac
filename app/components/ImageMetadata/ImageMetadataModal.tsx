@@ -93,16 +93,20 @@ export default function ImageMetadataModal({
     if (selectedImages.length === 1) {
       const img = selectedImages[0]!;
       const { id, ...rest } = img;
-      setUpdateState({
+      const newState = {
         id,
         ...rest,
-      });
+      };
+      
+      setUpdateState(newState);
     } else {
       const common = getCommonValues(selectedImages);
-      setUpdateState({
+      const newState = {
         id: 0,
         ...common,
-      });
+      };
+      
+      setUpdateState(newState);
     }
   }, [selectedImages]);
 
