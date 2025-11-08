@@ -130,6 +130,10 @@
   bottom: 0;
   padding: 0;
   margin: 0;
+  /* Ensure serif font and typography are maintained */
+  font-family: var(--font-serif), serif;
+  font-size: var(--collection-title);
+  font-weight: 700;
 }
 
 .imageWrapper .cardTypeBadge,

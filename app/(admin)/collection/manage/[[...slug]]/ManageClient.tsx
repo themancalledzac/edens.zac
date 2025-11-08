@@ -12,7 +12,6 @@ import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
   createCollection,
   getCollectionUpdateMetadata,
-  getMetadata,
   updateCollection,
 } from '@/app/lib/api/collections.new';
 import { createImages, createTextContent } from '@/app/lib/api/content';
@@ -20,7 +19,6 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionCreateRequest,
   type CollectionListModel,
-  type CollectionModel,
   CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
@@ -33,7 +31,7 @@ import {
   type ImageContentModel,
 } from '@/app/types/Content';
 import { convertCollectionContentToImage } from '@/app/utils/contentLayout';
-import { isCollectionContent } from '@/app/utils/contentTypeGuards';
+import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
 
 import pageStyles from '../../../../page.module.scss';
 import styles from './ManageClient.module.scss';
@@ -57,10 +55,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [loading, setLoading] = useState(!!slug);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Single source of truth: CollectionUpdateResponseDTO contains collection + all metadata
   const [currentState, setCurrentState] = useState<CollectionUpdateResponseDTO | null>(null);
-  
+
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
@@ -70,7 +68,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     type: CollectionType.PORTFOLIO,
     title: '',
   });
-  
+
   const {
     editingImage,
     scrollPosition,
@@ -95,16 +93,25 @@ export default function ManageClient({ slug }: ManageClientProps) {
     if (collection) {
       return {
         id: collection.id,
-        type: collection.type,
-        title: collection.title,
+        type: collection.type || CollectionType.PORTFOLIO,
+        title: collection.title || '',
         description: collection.description || '',
         location: collection.location || '',
         collectionDate: collection.collectionDate || '',
-        visible: collection.visible,
-        displayMode: collection.displayMode,
+        visible: collection.visible ?? true,
+        displayMode: collection.displayMode || 'CHRONOLOGICAL',
       };
     }
-    return { id: 0 };
+    return {
+      id: 0,
+      type: CollectionType.PORTFOLIO,
+      title: '',
+      description: '',
+      location: '',
+      collectionDate: '',
+      visible: true,
+      displayMode: 'CHRONOLOGICAL',
+    };
   });
 
   // Reset updateData when collection loads/changes
@@ -112,33 +119,52 @@ export default function ManageClient({ slug }: ManageClientProps) {
     if (collection) {
       setUpdateData({
         id: collection.id,
-        type: collection.type,
-        title: collection.title,
+        type: collection.type || CollectionType.PORTFOLIO,
+        title: collection.title || '',
         description: collection.description || '',
         location: collection.location || '',
         collectionDate: collection.collectionDate || '',
-        visible: collection.visible,
-        displayMode: collection.displayMode,
+        visible: collection.visible ?? true,
+        displayMode: collection.displayMode || 'CHRONOLOGICAL',
       });
     }
   }, [collection]);
 
   // Convert CollectionContentModel blocks to ImageContentModel for rendering on manage page
+  // Apply collection-specific orderIndex and sort, similar to processContentBlocks
   const processedContent = useMemo(() => {
     if (!collection?.content) return [];
-    return collection.content.map(block => {
-      if (isCollectionContent(block)) {
-        return convertCollectionContentToImage(block);
-      }
-      return block;
-    });
-  }, [collection?.content]);
+    return collection.content
+      .map(block => {
+        if (isCollectionContent(block)) {
+          return convertCollectionContentToImage(block);
+        }
+        // For images, update orderIndex from collection-specific entry
+        if (block.contentType === 'IMAGE' && collection.id) {
+          const imageBlock = block as ImageContentModel;
+          const collectionEntry = imageBlock.collections?.find(
+            c => c.collectionId === collection.id
+          );
+          if (collectionEntry?.orderIndex !== undefined) {
+            return {
+              ...imageBlock,
+              orderIndex: collectionEntry.orderIndex,
+            };
+          }
+        }
+        return block;
+      })
+      .sort((a, b) => {
+        // Sort by orderIndex (collection-specific for images)
+        return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+      });
+  }, [collection?.content, collection?.id]);
 
   // Derive imagesToEdit from selectedImageIds
   const imagesToEdit = useMemo(
     () =>
       (collection?.content?.filter(
-        contentItem => isImageContentBlock(contentItem) && selectedImageIds.includes(contentItem.id)
+        contentItem => isContentImage(contentItem) && selectedImageIds.includes(contentItem.id)
       ) as ImageContentModel[]) || [],
     [selectedImageIds, collection?.content]
   );
@@ -164,24 +190,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
       try {
         setLoading(true);
 
-        // Check cache first
-        const cachedCollection = collectionStorage.get(slug);
+        // Always fetch fresh data in manage page to ensure we have complete collection data
+        // (including collections arrays on content items)
+        const response = await getCollectionUpdateMetadata(slug);
 
-        if (cachedCollection) {
-          // Use cached collection + fetch only metadata
-          const metadataResponse = await getMetadata();
-          if (isMounted && !abortController.signal.aborted) {
-            setCurrentState({
-              collection: cachedCollection as unknown as CollectionModel,
-              ...metadataResponse,
-            });
-          }
-        } else {
-          // Fetch everything (collection + metadata)
-          const response = await getCollectionUpdateMetadata(slug);
-          if (isMounted && !abortController.signal.aborted) {
-            setCurrentState(response);
-          }
+        if (isMounted && !abortController.signal.aborted) {
+          setCurrentState(response);
+
+          // Update cache with complete data (includes collections arrays on content items)
+          collectionStorage.update(slug, response.collection);
         }
       } catch (error) {
         if (!abortController.signal.aborted && isMounted) {
@@ -223,7 +240,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
       // Re-fetch collection using admin endpoint to get full data with collections arrays
       const response = await getCollectionUpdateMetadata(collection.slug);
-      
+
       // Update currentState with refreshed collection (keep existing metadata)
       setCurrentState(prev => ({
         ...prev!,
@@ -323,7 +340,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
       // Re-fetch collection using admin endpoint to get full data with collections arrays
       const response = await getCollectionUpdateMetadata(collection.slug);
-      
+
       // Update currentState with refreshed collection (keep existing metadata)
       setCurrentState(prev => ({
         ...prev!,
@@ -415,7 +432,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       } else {
         // Mode 3: Single image edit
         // Find block in original content or processed content
-        const imageBlock = 
+        const imageBlock =
           collection?.content?.find(block => block.id === imageId) ||
           processedContent.find(block => block.id === imageId);
         if (imageBlock && isImageContentBlock(imageBlock)) {
@@ -461,7 +478,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           await fetch('/api/revalidate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               tag: `collection-${currentState.collection.slug}`,
               path: `/${currentState.collection.slug}`,
             }),
@@ -492,7 +509,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     },
     [currentState]
   );
-
 
   // Derive original collection IDs from currentState
   const originalCollectionIds = useMemo(() => {
@@ -549,8 +565,8 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   return (
     <div>
-      <SiteHeader pageType="manage" />
       <div className={pageStyles.contentPadding}>
+        <SiteHeader pageType="manage" />
         {/* CREATE MODE */}
         {isCreateMode && !collection && (
           <div className={styles.createContainer}>
@@ -599,7 +615,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         {collection && (
           <>
             <div className={styles.updateContainer}>
-              <h2 
+              <h2
                 className={styles.updateHeading}
                 onClick={() => router.push(`/${collection.slug}`)}
               >
@@ -733,7 +749,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           </button>
                         </div>
                       ) : (
-                        <div className={styles.noCoverImage}>No cover image</div>
+                        <div className={styles.noCoverImage}>
+                          <div>No cover image</div>
+                          <button
+                            type="button"
+                            onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                            className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
+                          >
+                            {isSelectingCoverImage ? 'Cancel Selection' : 'Select Cover Image'}
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -783,7 +808,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 </div>
 
                 <div className={styles.formActions}>
-                  <button type="submit" disabled={saving || loading} className={styles.submitButton}>
+                  <button
+                    type="submit"
+                    disabled={saving || loading}
+                    className={styles.submitButton}
+                  >
                     {saving ? (
                       <>
                         <LoadingSpinner size="small" color="white" />

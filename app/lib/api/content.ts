@@ -95,7 +95,28 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
     filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
   };
 }> {
-  return fetchAdminPatchJsonApi('/content/images', updates);
+  // DEBUG: Log the call
+  console.log('[updateImages] Called with:', {
+    updatesCount: updates.length,
+    updates: updates,
+    updatesJSON: JSON.stringify(updates, null, 2),
+  });
+  
+  const result = await fetchAdminPatchJsonApi<{
+    updatedImages: ImageContentModel[];
+    newMetadata?: {
+      tags?: Array<{ id: number; tagName: string }>;
+      people?: Array<{ id: number; personName: string }>;
+      cameras?: Array<{ id: number; cameraName: string }>;
+      lenses?: Array<{ id: number; lensName: string }>;
+      filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
+    };
+  }>('/content/images', updates);
+  
+  // DEBUG: Log the response
+  console.log('[updateImages] Response received:', result);
+  
+  return result;
 }
 
 /**
