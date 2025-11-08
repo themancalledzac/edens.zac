@@ -17,8 +17,8 @@
   position: relative; /* Allow dropdown to position relative to this container */
 
   /* Container padding for left/right - shared by header and content */
-  padding-left: var(--page-padding-mobile);
-  padding-right: var(--page-padding-mobile);
+  padding-left: 0;
+  padding-right: 0;
 
   @media (width >= 768px) {
     padding-left: var(--page-padding-desktop);

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { IMAGE, INTERACTION } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
@@ -151,7 +152,7 @@ export function useFullScreenImage() {
     const currentImage = fullScreenState.images[fullScreenState.currentIndex];
     if (!currentImage) return null;
 
-    return (
+    const modalContent = (
       <div
         className={styles.imageFullScreenWrapper}
         style={{
@@ -188,6 +189,12 @@ export function useFullScreenImage() {
         </button>
       </div>
     );
+
+    // Render modal at body level using portal to avoid parent container positioning issues
+    if (typeof document !== 'undefined') {
+      return createPortal(modalContent, document.body);
+    }
+    return null;
   })() : null;
 
   return {
