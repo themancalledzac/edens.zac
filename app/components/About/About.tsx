@@ -32,7 +32,7 @@ export function About({ onBack: _onBack }: AboutProps) {
             src="/_DSC0145.jpg"
             alt="Zechariah Edens - Portrait"
             width={1000}
-            height={1000}
+            height={500}
             unoptimized
             className={styles.profileImage}
           />

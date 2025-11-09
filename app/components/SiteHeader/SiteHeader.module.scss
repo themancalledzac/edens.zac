@@ -23,14 +23,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  /* Only top/bottom padding - left/right padding is handled by parent container */
-  padding: var(--page-padding-mobile) 0;
   margin: 0 auto;
 
   /* Desktop version (enhancement): min-width 768px and up */
   @media (width >= 768px) {
-    padding-top: var(--page-padding-desktop);
     padding-bottom: var(--page-padding-desktop);
   }
 }
@@ -84,7 +80,7 @@
   cursor: pointer;
   color: black;
   transition: color 0.2s ease;
-  stroke-width: 2; /* Base stroke width for mobile */
+  stroke-width: 2.5; /* Base stroke width for mobile */
 
   &:hover {
     color: #333;

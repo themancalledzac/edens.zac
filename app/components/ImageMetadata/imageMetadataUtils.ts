@@ -48,10 +48,6 @@ export function applyPartialUpdate<T extends { id: number }>(
       if (collectionsValue.prev !== undefined) {
         // Replace the entire collections array with the updated one
         (result as Record<string, unknown>).collections = collectionsValue.prev;
-        console.log('[applyPartialUpdate] Applied collections update:', {
-          originalCollections: (original as { collections?: unknown[] }).collections,
-          newCollections: collectionsValue.prev,
-        });
       }
     } else {
       (result as Record<string, unknown>)[key] = value;
@@ -103,6 +99,27 @@ function getCommonArrayItems<T>(arrays: T[][], idKey: keyof T): T[] {
 }
 
 /**
+ * Check if all items in an array have the same value for a given field
+ * 
+ * @param items - Array of items to compare
+ * @param getValue - Function to extract the value to compare from each item
+ * @returns True if all items have the same value, false otherwise
+ * 
+ * @example
+ * areAllEqual(images, img => img.title) // Check if all images have same title
+ * areAllEqual(images, img => img.camera?.id) // Check if all images have same camera ID
+ */
+function areAllEqual<T>(
+  items: T[],
+  getValue: (item: T) => unknown
+): boolean {
+  if (items.length <= 1) return true;
+  
+  const firstValue = getValue(items[0]!);
+  return items.every(item => getValue(item) === firstValue);
+}
+
+/**
  * Extract common values from multiple images for bulk editing
  * Only returns fields where ALL images have identical values
  * For arrays (tags, people), returns intersection (items present in ALL images)
@@ -118,33 +135,34 @@ export function getCommonValues(images: ImageContentModel[]): Partial<ImageConte
   const common: Partial<ImageContentModel> = {};
 
   // String fields - check if all match
-  if (images.every(img => img.title === first.title)) common.title = first.title;
-  if (images.every(img => img.caption === first.caption)) common.caption = first.caption;
-  if (images.every(img => img.alt === first.alt)) common.alt = first.alt;
-  if (images.every(img => img.author === first.author)) common.author = first.author;
-  if (images.every(img => img.location === first.location)) common.location = first.location;
+  if (areAllEqual(images, img => img.title)) common.title = first.title;
+  if (areAllEqual(images, img => img.caption)) common.caption = first.caption;
+  if (areAllEqual(images, img => img.alt)) common.alt = first.alt;
+  if (areAllEqual(images, img => img.author)) common.author = first.author;
+  if (areAllEqual(images, img => img.location)) common.location = first.location;
 
   // Camera settings
-  if (images.every(img => img.camera?.id === first.camera?.id)) common.camera = first.camera;
-  if (images.every(img => img.lens?.id === first.lens?.id)) common.lens = first.lens;
-  if (images.every(img => img.iso === first.iso)) common.iso = first.iso;
-  if (images.every(img => img.fStop === first.fStop)) common.fStop = first.fStop; // Fixed: fstop → fStop
-  if (images.every(img => img.shutterSpeed === first.shutterSpeed))
-    common.shutterSpeed = first.shutterSpeed;
-  if (images.every(img => img.focalLength === first.focalLength))
-    common.focalLength = first.focalLength;
+  if (areAllEqual(images, img => img.camera?.id)) common.camera = first.camera;
+  if (areAllEqual(images, img => img.lens?.id)) common.lens = first.lens;
+  if (areAllEqual(images, img => img.iso)) common.iso = first.iso;
+  if (areAllEqual(images, img => img.fStop)) common.fStop = first.fStop;
+  if (areAllEqual(images, img => img.shutterSpeed)) common.shutterSpeed = first.shutterSpeed;
+  if (areAllEqual(images, img => img.focalLength)) common.focalLength = first.focalLength;
 
   // Booleans - only if ALL true
-  if (images.every(img => img.blackAndWhite === true)) common.blackAndWhite = true;
-  if (images.every(img => img.isFilm === true)) common.isFilm = true;
+  if (areAllEqual(images, img => img.blackAndWhite) && first.blackAndWhite === true) {
+    common.blackAndWhite = true;
+  }
+  if (areAllEqual(images, img => img.isFilm) && first.isFilm === true) {
+    common.isFilm = true;
+  }
 
   // Film settings
-  if (images.every(img => img.filmType === first.filmType)) common.filmType = first.filmType;
-  if (images.every(img => img.filmFormat === first.filmFormat))
-    common.filmFormat = first.filmFormat;
+  if (areAllEqual(images, img => img.filmType)) common.filmType = first.filmType;
+  if (areAllEqual(images, img => img.filmFormat)) common.filmFormat = first.filmFormat;
 
   // Rating
-  if (images.every(img => img.rating === first.rating)) common.rating = first.rating;
+  if (areAllEqual(images, img => img.rating)) common.rating = first.rating;
 
   // Arrays - intersection (tags/people/collections present in ALL images)
   common.tags = getCommonArrayItems(
@@ -337,84 +355,126 @@ export function getDisplayFilmStock<T extends { id: number; name: string; defaul
 // ============================================================================
 
 /**
- * Build a diff between updateState (what user edited) and currentState (original)
- * Returns a ContentImageUpdateRequest with only changed fields
+ * Build diff for simple fields (string, number, boolean)
+ * Only includes field if value has changed AND was explicitly provided in updateState
  */
-export function buildImageUpdateDiff(
-  updateState: Partial<ImageContentModel> & { id: number },
-  currentState: ImageContentModel
-): ContentImageUpdateRequest {
-  const diff: ContentImageUpdateRequest = { id: updateState.id };
-
-  // Simple field comparisons
-  const simpleFields: Array<keyof ImageContentModel> = [
-    'title',
-    'caption',
-    'alt',
-    'author',
-    'rating',
-    'blackAndWhite',
-    'isFilm',
-    'shutterSpeed',
-    'focalLength',
-    'location',
-    'fStop',
-    'iso',
-    'filmFormat',
-    'createDate',
-  ];
-
-  for (const field of simpleFields) {
-    const updateValue = updateState[field];
-    const currentValue = currentState[field];
-    
-    // Only include if changed (handling null/undefined)
-    if (updateValue !== currentValue) {
-      (diff as unknown as Record<string, unknown>)[field] = updateValue ?? null;
-    }
+function buildSimpleFieldDiff(
+  field: keyof ImageContentModel,
+  updateValue: unknown,
+  currentValue: unknown,
+  diff: ContentImageUpdateRequest,
+  fieldExistsInUpdateState: boolean
+): void {
+  // Only process if the field was explicitly provided in updateState
+  if (!fieldExistsInUpdateState) {
+    return;
   }
+  
+  // Compare values directly (null !== undefined, so they're considered different)
+  // But normalize undefined to null in the output
+  if (updateValue !== currentValue) {
+    (diff as unknown as Record<string, unknown>)[field] = updateValue === undefined ? null : (updateValue ?? null);
+  }
+}
 
-  // Handle camera (prev/newValue/remove pattern)
-  if (updateState.camera?.id !== currentState.camera?.id) {
-    if (!updateState.camera) {
+/**
+ * Build diff for camera field using prev/newValue/remove pattern
+ */
+function buildCameraDiff(
+  updateCamera: ImageContentModel['camera'],
+  currentCamera: ImageContentModel['camera'],
+  diff: ContentImageUpdateRequest
+): void {
+  if (updateCamera?.id !== currentCamera?.id) {
+    if (!updateCamera) {
       diff.camera = { remove: true };
-    } else if (updateState.camera.id && updateState.camera.id > 0) {
-      diff.camera = { prev: updateState.camera.id };
+    } else if (updateCamera.id && updateCamera.id > 0) {
+      diff.camera = { prev: updateCamera.id };
     } else {
-      diff.camera = { newValue: updateState.camera.name };
+      diff.camera = { newValue: updateCamera.name };
     }
   }
+}
 
-  // Handle lens (prev/newValue/remove pattern)
-  if (updateState.lens?.id !== currentState.lens?.id) {
-    if (!updateState.lens) {
+/**
+ * Build diff for lens field using prev/newValue/remove pattern
+ */
+function buildLensDiff(
+  updateLens: ImageContentModel['lens'],
+  currentLens: ImageContentModel['lens'],
+  diff: ContentImageUpdateRequest
+): void {
+  if (updateLens?.id !== currentLens?.id) {
+    if (!updateLens) {
       diff.lens = { remove: true };
-    } else if (updateState.lens.id && updateState.lens.id > 0) {
-      diff.lens = { prev: updateState.lens.id };
+    } else if (updateLens.id && updateLens.id > 0) {
+      diff.lens = { prev: updateLens.id };
     } else {
-      diff.lens = { newValue: updateState.lens.name };
+      diff.lens = { newValue: updateLens.name };
     }
   }
+}
 
-  // Handle filmType (prev/newValue/remove pattern)
-  const updateFilmType = updateState.filmType;
-  const currentFilmType = currentState.filmType;
+/**
+ * Build diff for filmType field using prev/newValue/remove pattern
+ * 
+ * @param updateFilmType - Film type name from updateState (string or null)
+ * @param currentFilmType - Film type name from currentState (string or null)
+ * @param updateIso - ISO value from updateState (used for new film types)
+ * @param availableFilmTypes - Optional list of available film types to determine if filmType is existing or new
+ * @param diff - The diff object to update
+ */
+function buildFilmTypeDiff(
+  updateFilmType: string | null | undefined,
+  currentFilmType: string | null | undefined,
+  updateIso: number | undefined,
+  availableFilmTypes: Array<{ id: number; name: string; filmTypeName?: string }> | undefined,
+  diff: ContentImageUpdateRequest
+): void {
   if (updateFilmType !== currentFilmType) {
     if (!updateFilmType) {
       diff.filmType = { remove: true };
+    } else if (availableFilmTypes) {
+      // Check if this film type exists in available types
+      const existingFilmType = availableFilmTypes.find(
+        f => f.name === updateFilmType || f.filmTypeName === updateFilmType
+      );
+      
+      // Existing film type - use prev pattern, otherwise use newValue pattern for new film type
+      diff.filmType = existingFilmType
+        ? { prev: existingFilmType.id }
+        : {
+            newValue: {
+              filmTypeName: updateFilmType,
+              defaultIso: updateIso ?? 400,
+            },
+          };
     } else {
-      // For filmType, we need to find it in available types or create new
-      // This will be handled by the component passing the right structure
-      // For now, we'll need the component to handle this
+      // No availableFilmTypes provided - assume it's a new film type
+      // This is a fallback for when availableFilmTypes is not available
+      diff.filmType = {
+        newValue: {
+          filmTypeName: updateFilmType,
+          defaultIso: updateIso ?? 400,
+        },
+      };
     }
   }
+}
 
-  // Handle tags (prev/newValue/remove pattern)
-  const updateTags = updateState.tags || [];
-  const currentTags = currentState.tags || [];
-  const updateTagIds = updateTags.filter(t => t.id && t.id > 0).map(t => t.id!);
-  const currentTagIds = currentTags.filter(t => t.id && t.id > 0).map(t => t.id!);
-  const updateTagNames = updateTags.filter(t => !t.id || t.id === 0).map(t => t.name);
+/**
+ * Build diff for tags field using prev/newValue/remove pattern
+ */
+function buildTagsDiff(
+  updateTags: ImageContentModel['tags'],
+  currentTags: ImageContentModel['tags'],
+  diff: ContentImageUpdateRequest
+): void {
+  const updateTagsArray = updateTags || [];
+  const currentTagsArray = currentTags || [];
+  const updateTagIds = updateTagsArray.filter(t => t.id && t.id > 0).map(t => t.id!);
+  const currentTagIds = currentTagsArray.filter(t => t.id && t.id > 0).map(t => t.id!);
+  const updateTagNames = updateTagsArray.filter(t => !t.id || t.id === 0).map(t => t.name);
   
   const addedTagIds = updateTagIds.filter(id => !currentTagIds.includes(id));
   const removedTagIds = currentTagIds.filter(id => !updateTagIds.includes(id));
@@ -432,13 +492,21 @@ export function buildImageUpdateDiff(
       diff.tags.remove = removedTagIds;
     }
   }
+}
 
-  // Handle people (prev/newValue/remove pattern)
-  const updatePeople = updateState.people || [];
-  const currentPeople = currentState.people || [];
-  const updatePeopleIds = updatePeople.filter(p => p.id && p.id > 0).map(p => p.id!);
-  const currentPeopleIds = currentPeople.filter(p => p.id && p.id > 0).map(p => p.id!);
-  const updatePeopleNames = updatePeople.filter(p => !p.id || p.id === 0).map(p => p.name);
+/**
+ * Build diff for people field using prev/newValue/remove pattern
+ */
+function buildPeopleDiff(
+  updatePeople: ImageContentModel['people'],
+  currentPeople: ImageContentModel['people'],
+  diff: ContentImageUpdateRequest
+): void {
+  const updatePeopleArray = updatePeople || [];
+  const currentPeopleArray = currentPeople || [];
+  const updatePeopleIds = updatePeopleArray.filter(p => p.id && p.id > 0).map(p => p.id!);
+  const currentPeopleIds = currentPeopleArray.filter(p => p.id && p.id > 0).map(p => p.id!);
+  const updatePeopleNames = updatePeopleArray.filter(p => !p.id || p.id === 0).map(p => p.name);
   
   const addedPeopleIds = updatePeopleIds.filter(id => !currentPeopleIds.includes(id));
   const removedPeopleIds = currentPeopleIds.filter(id => !updatePeopleIds.includes(id));
@@ -456,33 +524,41 @@ export function buildImageUpdateDiff(
       diff.people.remove = removedPeopleIds;
     }
   }
+}
 
-  // Handle collections (prev/newValue/remove pattern)
-  const updateCollections = updateState.collections || [];
-  const currentCollections = currentState.collections || [];
+/**
+ * Build diff for collections field using prev/newValue/remove pattern
+ */
+function buildCollectionsDiff(
+  updateCollections: ImageContentModel['collections'],
+  currentCollections: ImageContentModel['collections'],
+  diff: ContentImageUpdateRequest
+): void {
+  const updateCollectionsArray = updateCollections || [];
+  const currentCollectionsArray = currentCollections || [];
   
   // Build maps for easier lookup
   const currentCollectionsMap = new Map(
-    currentCollections.map(c => [c.collectionId, c])
+    currentCollectionsArray.map(c => [c.collectionId, c])
   );
   const updateCollectionsMap = new Map(
-    updateCollections.map(c => [c.collectionId, c])
+    updateCollectionsArray.map(c => [c.collectionId, c])
   );
   
   // Find collections that are new (in update but not in current)
-  const newCollections = updateCollections.filter(
+  const newCollections = updateCollectionsArray.filter(
     uc => !currentCollectionsMap.has(uc.collectionId)
   );
   
   // Find collections that are removed (in current but not in update)
-  const removedCollectionIds = currentCollections
+  const removedCollectionIds = currentCollectionsArray
     .filter(cc => !updateCollectionsMap.has(cc.collectionId))
     .map(cc => cc.collectionId);
   
   // Find collections that are modified (same collectionId but different visible)
   // NOTE: We intentionally exclude orderIndex from this check - orderIndex should only
   // be updated via explicit reordering operations, not when adding collections or changing visibility
-  const modifiedCollections = updateCollections.filter(uc => {
+  const modifiedCollections = updateCollectionsArray.filter(uc => {
     const current = currentCollectionsMap.get(uc.collectionId);
     if (!current) return false; // Already handled as new
     // Only check visibility changes, NOT orderIndex changes
@@ -514,6 +590,64 @@ export function buildImageUpdateDiff(
       diff.collections.remove = removedCollectionIds;
     }
   }
+}
+
+/**
+ * Build a diff between updateState (what user edited) and currentState (original)
+ * Returns a ContentImageUpdateRequest with only changed fields
+ * 
+ * @param updateState - The updated state from the form
+ * @param currentState - The original state before edits
+ * @param availableFilmTypes - Optional list of available film types to determine if filmType is existing or new
+ */
+export function buildImageUpdateDiff(
+  updateState: Partial<ImageContentModel> & { id: number },
+  currentState: ImageContentModel,
+  availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
+): ContentImageUpdateRequest {
+  const diff: ContentImageUpdateRequest = { id: updateState.id };
+
+  // Simple field comparisons
+  const simpleFields: Array<keyof ImageContentModel> = [
+    'title',
+    'caption',
+    'alt',
+    'author',
+    'rating',
+    'blackAndWhite',
+    'isFilm',
+    'shutterSpeed',
+    'focalLength',
+    'location',
+    'fStop',
+    'iso',
+    'filmFormat',
+    'createDate',
+  ];
+
+  for (const field of simpleFields) {
+    buildSimpleFieldDiff(
+      field,
+      updateState[field],
+      currentState[field],
+      diff,
+      field in updateState
+    );
+  }
+
+  // Handle complex fields using specialized builders
+  buildCameraDiff(updateState.camera, currentState.camera, diff);
+  buildLensDiff(updateState.lens, currentState.lens, diff);
+  buildFilmTypeDiff(
+    updateState.filmType,
+    currentState.filmType,
+    updateState.iso,
+    availableFilmTypes,
+    diff
+  );
+  buildTagsDiff(updateState.tags, currentState.tags, diff);
+  buildPeopleDiff(updateState.people, currentState.people, diff);
+  buildCollectionsDiff(updateState.collections, currentState.collections, diff);
 
   return diff;
 }
@@ -562,8 +696,54 @@ export interface DropdownChangeParams {
 }
 
 /**
+ * Handle multi-select dropdown changes (tags, people)
+ * Extracts prevIds and newNames from array of items with id/name pattern
+ * 
+ * @param field - Field name ('tags' or 'people')
+ * @param value - Array of items from selector (can have id: 0 for new items)
+ * @param updateDTO - Function to update the DTO state
+ */
+function handleMultiSelectChange(
+  field: 'tags' | 'people',
+  value: Array<{ id?: number; name: string }> | null | undefined,
+  updateDTO: (updates: Partial<ContentImageUpdateRequest>) => void
+): void {
+  const { prevIds, newNames } = extractMultiSelectValues(value);
+
+  const update: Record<string, unknown> = {};
+  if (prevIds !== null) {
+    update.prev = prevIds;
+  }
+  if (newNames !== null) {
+    update.newValue = newNames;
+  }
+
+  // Only update if we have at least one field defined
+  if (Object.keys(update).length > 0) {
+    updateDTO({ [field]: update });
+  }
+}
+
+/**
+ * Handle single-select dropdown changes (camera, lens, collections)
+ * Value is already a formatted update object with prev/newValue/remove pattern
+ * 
+ * @param field - Field name ('camera', 'lens', or 'collections')
+ * @param value - Formatted update object (e.g., { prev: 1 }, { newValue: 'name' }, { remove: true })
+ * @param updateDTO - Function to update the DTO state
+ */
+function handleSingleSelectChange(
+  field: 'camera' | 'lens' | 'collections',
+  value: Record<string, unknown>,
+  updateDTO: (updates: Partial<ContentImageUpdateRequest>) => void
+): void {
+  // Value is already a formatted update object
+  updateDTO({ [field]: value });
+}
+
+/**
  * Generic handler for all dropdown changes
- * Automatically extracts prevIds/newNames for multi-select fields with id/name pattern
+ * Determines field type and delegates to appropriate handler
  *
  * @param params - Dropdown change parameters with raw value
  * @param updateDTO - Function to update the DTO state
@@ -591,30 +771,16 @@ export function handleDropdownChange(
 ): void {
   const { field, value } = params;
 
-  // Check if this is a multi-select field with id/name pattern (tags, people)
-  const isMultiSelectWithIdName = field === 'tags' || field === 'people';
-
-  let update: Record<string, unknown> = {};
-
-  if (isMultiSelectWithIdName && (Array.isArray(value) || value === null || value === undefined)) {
-    // Auto-extract prevIds and newNames for multi-select fields
-    const { prevIds, newNames } = extractMultiSelectValues(
-      value as Array<{ id?: number; name: string }> | null | undefined
+  // Determine field type and delegate to appropriate handler
+  if ((field === 'tags' || field === 'people') && (Array.isArray(value) || value === null || value === undefined)) {
+    // Multi-select fields with id/name pattern
+    handleMultiSelectChange(
+      field,
+      value as Array<{ id?: number; name: string }> | null | undefined,
+      updateDTO
     );
-
-    if (prevIds !== null) {
-      update.prev = prevIds;
-    }
-    if (newNames !== null) {
-      update.newValue = newNames;
-    }
-  } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-    // Value is already a formatted update object (for custom handling like camera, lens, collections)
-    update = value as Record<string, unknown>;
-  }
-
-  // Only update if we have at least one field defined
-  if (Object.keys(update).length > 0) {
-    updateDTO({ [field]: update });
+  } else if ((field === 'camera' || field === 'lens' || field === 'collections') && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    // Single-select fields with prev/newValue/remove pattern
+    handleSingleSelectChange(field, value as Record<string, unknown>, updateDTO);
   }
 }

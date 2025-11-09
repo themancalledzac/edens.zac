@@ -168,11 +168,11 @@ export default function ImageMetadataModal({
           if (!currentImage) {
             throw new Error(`Image ${imageId} not found in selectedImages`);
           }
-          return buildImageUpdateDiff({ ...updateState, id: imageId }, currentImage);
+          return buildImageUpdateDiff({ ...updateState, id: imageId }, currentImage, availableFilmTypes);
         } else {
           // For single edit, diff updateState against original image
           const originalImage = selectedImages[0]!;
-          return buildImageUpdateDiff(updateState as ImageContentModel, originalImage);
+          return buildImageUpdateDiff(updateState as ImageContentModel, originalImage, availableFilmTypes);
         }
       });
 

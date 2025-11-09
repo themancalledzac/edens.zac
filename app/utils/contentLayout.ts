@@ -229,70 +229,139 @@ export function convertCollectionContentToImage(col: CollectionContentModel): Im
 }
 
 /**
+ * Filter visible content blocks
+ * Removes blocks where visible === false, and for images, checks collection-specific visibility
+ * 
+ * @param content - Array of content blocks to filter
+ * @param filterVisible - If true, filters out non-visible blocks
+ * @param collectionId - Optional collection ID to check collection-specific visibility for images
+ * @returns Filtered array of content blocks
+ */
+function filterVisibleBlocks(
+  content: AnyContentModel[],
+  filterVisible: boolean,
+  collectionId?: number
+): AnyContentModel[] {
+  if (!filterVisible) return content;
+  
+  return content.filter(block => {
+    if (block.visible === false) return false;
+    
+    // For images, check collection-specific visibility
+    if (block.contentType === 'IMAGE' && collectionId) {
+      const imageBlock = block as ImageContentModel;
+      const collectionEntry = imageBlock.collections?.find(
+        c => c.collectionId === collectionId
+      );
+      if (collectionEntry?.visible === false) return false;
+    }
+    
+    return true;
+  });
+}
+
+/**
+ * Transform CollectionContentModel blocks to ParallaxImageContentModel
+ * 
+ * @param content - Array of content blocks to transform
+ * @returns Array with CollectionContentModel blocks converted to ParallaxImageContentModel
+ */
+function transformCollectionBlocks(content: AnyContentModel[]): AnyContentModel[] {
+  return content.map(block => {
+    if (isCollectionContent(block)) {
+      const collectionBlock = block as CollectionContentModel;
+      return convertCollectionContentToParallax(collectionBlock);
+    }
+    return block;
+  });
+}
+
+/**
+ * Update orderIndex for image blocks from collection-specific entry
+ * 
+ * @param content - Array of content blocks to update
+ * @param collectionId - Collection ID to look up collection-specific orderIndex
+ * @returns Array with updated orderIndex for image blocks
+ */
+function updateImageOrderIndex(
+  content: AnyContentModel[],
+  collectionId?: number
+): AnyContentModel[] {
+  if (!collectionId) return content;
+  
+  return content.map(block => {
+    if (block.contentType === 'IMAGE') {
+      const imageBlock = block as ImageContentModel;
+      const collectionEntry = imageBlock.collections?.find(
+        c => c.collectionId === collectionId
+      );
+      if (collectionEntry?.orderIndex !== undefined) {
+        return {
+          ...imageBlock,
+          orderIndex: collectionEntry.orderIndex,
+        };
+      }
+    }
+    return block;
+  });
+}
+
+/**
+ * Ensure PARALLAX content blocks have proper imageWidth/imageHeight dimensions
+ * 
+ * @param content - Array of content blocks to process
+ * @returns Array with PARALLAX blocks having proper dimensions
+ */
+function ensureParallaxDimensions(content: AnyContentModel[]): AnyContentModel[] {
+  return content.map(block => {
+    if (block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax) {
+      const parallaxBlock = block as ParallaxImageContentModel;
+      if (!parallaxBlock.imageWidth || !parallaxBlock.imageHeight) {
+        return {
+          ...parallaxBlock,
+          imageWidth: parallaxBlock.imageWidth || parallaxBlock.width,
+          imageHeight: parallaxBlock.imageHeight || parallaxBlock.height,
+        };
+      }
+    }
+    return block;
+  });
+}
+
+/**
+ * Sort content blocks by orderIndex
+ * 
+ * @param content - Array of content blocks to sort
+ * @returns Sorted array by orderIndex (ascending)
+ */
+function sortContentByOrderIndex(content: AnyContentModel[]): AnyContentModel[] {
+  return [...content].sort((a, b) => {
+    return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+  });
+}
+
+/**
  * Process content blocks for display, converting CollectionContentModel to ParallaxImageContentModel
  * and ensuring PARALLAX blocks have proper dimensions
  * Also filters out non-visible content blocks for public collection pages
  * 
+ * Pipeline: filter → transform → update → ensure → sort
+ * 
  * @param content - Array of content blocks to process
  * @param filterVisible - If true, filters out blocks where visible === false (default: true for public pages)
  * @param collectionId - Optional collection ID to check collection-specific visibility
+ * @returns Processed and sorted array of content blocks
  */
 export function processContentBlocks(
   content: AnyContentModel[],
   filterVisible: boolean = true,
   collectionId?: number
 ): AnyContentModel[] {
-  return content
-    .filter(block => {
-      // Ignore non-visible blocks if filtering is enabled
-      if (filterVisible) {
-        if (block.visible === false) return false;
-        
-        // For images, check collection-specific visibility
-        if (block.contentType === 'IMAGE' && collectionId) {
-          const imageBlock = block as ImageContentModel;
-          const collectionEntry = imageBlock.collections?.find(
-            c => c.collectionId === collectionId
-          );
-          if (collectionEntry?.visible === false) return false;
-        }
-      }
-      return true;
-    })
-    .map(block => {
-      // Convert any CollectionContentModel blocks to ParallaxImageContentModel
-      if (isCollectionContent(block)) {
-        const collectionBlock = block as CollectionContentModel;
-        return convertCollectionContentToParallax(collectionBlock);
-      }
-      // For images, update orderIndex from collection-specific entry if collectionId is provided
-      if (block.contentType === 'IMAGE' && collectionId) {
-        const imageBlock = block as ImageContentModel;
-        const collectionEntry = imageBlock.collections?.find(
-          c => c.collectionId === collectionId
-        );
-        if (collectionEntry?.orderIndex !== undefined) {
-          return {
-            ...imageBlock,
-            orderIndex: collectionEntry.orderIndex,
-          };
-        }
-      }
-      // Ensure PARALLAX content blocks have imageWidth/imageHeight preserved
-      if (block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax) {
-        const parallaxBlock = block as ParallaxImageContentModel;
-        if (!parallaxBlock.imageWidth || !parallaxBlock.imageHeight) {
-          return {
-            ...parallaxBlock,
-            imageWidth: parallaxBlock.imageWidth || parallaxBlock.width,
-            imageHeight: parallaxBlock.imageHeight || parallaxBlock.height,
-          };
-        }
-      }
-      return block;
-    })
-    .sort((a, b) => {
-      // Sort by orderIndex (collection-specific for images)
-      return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
-    });
+  let processed = filterVisibleBlocks(content, filterVisible, collectionId);
+  processed = transformCollectionBlocks(processed);
+  processed = updateImageOrderIndex(processed, collectionId);
+  processed = ensureParallaxDimensions(processed);
+  processed = sortContentByOrderIndex(processed);
+  
+  return processed;
 }

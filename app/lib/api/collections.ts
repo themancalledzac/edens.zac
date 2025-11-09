@@ -50,6 +50,45 @@ async function safeJson<T>(res: Response): Promise<T> {
 }
 
 // ============================================================================
+// Response Parsing Helpers
+// ============================================================================
+
+/**
+ * Parse collection array response from API
+ * Handles multiple response formats with fallback logic
+ * 
+ * @param data - Raw response data from API (unknown type)
+ * @returns Array of CollectionModel, or empty array if parsing fails
+ * 
+ * @example
+ * // Direct array response
+ * parseCollectionArrayResponse([{ id: 1, ... }]) // Returns array
+ * 
+ * // Wrapped in object
+ * parseCollectionArrayResponse({ content: [{ id: 1, ... }] }) // Returns array
+ * parseCollectionArrayResponse({ collections: [{ id: 1, ... }] }) // Returns array
+ * parseCollectionArrayResponse({ items: [{ id: 1, ... }] }) // Returns array
+ * 
+ * // Invalid formats
+ * parseCollectionArrayResponse(null) // Returns []
+ * parseCollectionArrayResponse({}) // Returns []
+ */
+export function parseCollectionArrayResponse(data: unknown): CollectionModel[] {
+  if (Array.isArray(data)) return data as CollectionModel[];
+  
+  if (data && typeof data === 'object') {
+    const maybe =
+      (data as Record<string, unknown>).content ??
+      (data as Record<string, unknown>).collections ??
+      (data as Record<string, unknown>).items ??
+      null;
+    if (Array.isArray(maybe)) return maybe as CollectionModel[];
+  }
+
+  return [];
+}
+
+// ============================================================================
 // READ Endpoints (Production - /api/read/collections)
 // ============================================================================
 
@@ -69,18 +108,7 @@ export async function getAllCollections(
     if (res.status === 404) return [];
 
     const data = await safeJson<unknown>(res);
-
-    if (Array.isArray(data)) return data as CollectionModel[];
-    if (data && typeof data === 'object') {
-      const maybe =
-        (data as Record<string, unknown>).content ??
-        (data as Record<string, unknown>).collections ??
-        (data as Record<string, unknown>).items ??
-        null;
-      if (Array.isArray(maybe)) return maybe as CollectionModel[];
-    }
-
-    return [];
+    return parseCollectionArrayResponse(data);
   } catch {
     return [];
   }

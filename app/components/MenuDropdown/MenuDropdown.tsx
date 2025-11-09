@@ -148,28 +148,6 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
-        {isLocalEnvironment() && pageType === 'collection' && (
-          <div className={styles.dropdownMenuItem}>
-            <h2
-              className={styles.dropdownMenuOptions}
-              onClick={handleNavigation.create}
-            >
-              Create
-            </h2>
-          </div>
-        )}
-
-        {isLocalEnvironment() && pageType === 'collection' && (
-          <div className={styles.dropdownMenuItem}>
-            <h2
-              className={styles.dropdownMenuOptions}
-              onClick={handleNavigation.update}
-            >
-              Update
-            </h2>
-          </div>
-        )}
-
         <div className={styles.dropdownMenuItem}>
           <h2
             className={styles.dropdownMenuOptions}
@@ -208,17 +186,39 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
           </h2>
         </div>
 
-        <div className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons}`}>
-          <InstagramIcon
-            size={32}
-            onClick={handleNavigation.instagram}
-          />
-          <GitHubIcon
-            size={32}
-            onClick={handleNavigation.github}
-            className={styles.githubIcon}
-          />
-        </div>
+        {isLocalEnvironment() && pageType === 'collection' && (
+          <div className={styles.dropdownMenuItem}>
+            <h2
+              className={styles.dropdownMenuOptions}
+              onClick={handleNavigation.create}
+            >
+              Create
+            </h2>
+          </div>
+        )}
+
+        {isLocalEnvironment() && pageType === 'collection' && (
+          <div className={styles.dropdownMenuItem}>
+            <h2
+              className={styles.dropdownMenuOptions}
+              onClick={handleNavigation.update}
+            >
+              Update
+            </h2>
+          </div>
+        )}
+      </div>
+
+      <div className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}>
+        <InstagramIcon
+          size={32}
+          onClick={handleNavigation.instagram}
+        />
+        <GitHubIcon
+          size={32}
+          onClick={handleNavigation.github}
+          className={styles.githubIcon}
+        />
       </div>
     </div>
   );
