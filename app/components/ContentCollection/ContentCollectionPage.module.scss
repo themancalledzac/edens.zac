@@ -16,13 +16,15 @@
   max-width: var(--page-max-width);
   position: relative; /* Allow dropdown to position relative to this container */
 
-  /* Container padding for left/right - shared by header and content */
+  /* Container padding for left/right and top - shared by header and content */
   padding-left: 0;
   padding-right: 0;
+  padding-top: var(--page-padding-mobile);
 
   @media (width >= 768px) {
-    padding-left: var(--page-padding-desktop);
-    padding-right: var(--page-padding-desktop);
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+    padding-top: 0.8rem;
   }
 }
 

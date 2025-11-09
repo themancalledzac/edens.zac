@@ -22,7 +22,7 @@ export const LAYOUT = {
   contentMinWidth: 766,      // CSS: --content-min-width
 
   // Padding values (in pixels)
-  desktopPadding: 64,        // 2rem each side at ≥768px (2 * 32px)
+  desktopPadding: 25.6,     // 0.8rem each side at ≥768px (0.8 * 16px * 2 = 25.6px)
   mobilePadding: 40,         // mobile full-bleed minus 40px
 } as const;
 
@@ -108,9 +108,9 @@ export const Z_INDEX = {
  * Calculate content width based on viewport width and mobile state
  * Used by useViewport hook
  * 
- * For desktop: Accounts for container padding (64px total) on both sides.
- * The container has max-width: 1300px with 32px padding on each side,
- * so the actual content width is 1300 - 64 = 1236px.
+ * For desktop: Accounts for container padding (25.6px total) on both sides.
+ * The container has max-width: 1300px with 0.8rem (12.8px) padding on each side,
+ * so the actual content width is 1300 - 25.6 = 1274.4px.
  */
 export const getContentWidth = (viewportWidth: number, isMobile: boolean): number => {
   if (isMobile) {

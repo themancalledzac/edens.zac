@@ -1,3 +1,17 @@
+// Container padding to match main collections page
+.container {
+  /* Mobile base: no padding */
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding-left: 0.8rem;
+    padding-right: 0.8rem;
+    padding-top: 0.8rem;
+  }
+}
+
 // Create Mode Styles
 .createContainer {
   background: var(--color-bg-light);

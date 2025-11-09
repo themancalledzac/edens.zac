@@ -1,4 +1,4 @@
-import { getAllCollectionsAdmin } from '@/app/lib/api/collections.new';
+import { getAllCollectionsAdmin } from '@/app/lib/api/collections';
 
 import CollectionPage from '../../components/ContentCollection/CollectionPage';
 

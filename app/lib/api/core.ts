@@ -64,26 +64,38 @@ export class ApiError extends Error {
 }
 
 /**
- * Shared error handling for API responses
- * Extracts error message from response or provides default
+ * Unified error handling for API requests
+ * Handles both Response errors and catch block errors
+ *
+ * @param error - Error to handle (can be Response, Error, ApiError, or unknown)
+ * @param response - Optional Response object (if error is a Response, this should be the same)
+ * @returns Never (always throws ApiError)
+ * @throws ApiError with appropriate message and status code
  */
-async function handleApiResponseError(response: Response): Promise<never> {
-  const errorData = await response.json().catch(() => null);
-  throw new ApiError(
-    errorData?.message || `API error: ${response.status} ${response.statusText}`,
-    response.status
-  );
-}
-
-/**
- * Shared error handling for catch blocks
- * Converts unknown errors to ApiError
- */
-function handleApiCatchError(error: unknown): never {
+async function handleApiError(error: unknown, response?: Response): Promise<never> {
+  // If it's already an ApiError, re-throw it
   if (error instanceof ApiError) {
     throw error;
   }
-  throw new ApiError(error instanceof Error ? error.message : 'Unknown error occurred', 500);
+
+  // If we have a Response object (either as error or parameter), extract error from it
+  // Use duck typing instead of instanceof since Response may not be available in all environments
+  const responseObj = (error && typeof error === 'object' && 'status' in error && 'statusText' in error && 'json' in error)
+    ? error as Response
+    : response;
+  if (responseObj) {
+    const errorData = await responseObj.json().catch(() => null);
+    throw new ApiError(
+      errorData?.message || `API error: ${responseObj.status} ${responseObj.statusText}`,
+      responseObj.status
+    );
+  }
+
+  // Otherwise, convert the error to ApiError
+  throw new ApiError(
+    error instanceof Error ? error.message : 'Unknown error occurred',
+    500
+  );
 }
 
 /**
@@ -99,16 +111,16 @@ export async function fetchReadApi<T>(endpoint: string, options: RequestInit = {
     const url = buildSimpleApiUrl(READ, endpoint);
 
     const response = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      ...options,
     });
 
     // For non-OK responses, throw an ApiError
     if (!response.ok) {
-      await handleApiResponseError(response);
+      await handleApiError(response);
     }
 
     // For 204 no content responses, return null
@@ -119,17 +131,31 @@ export async function fetchReadApi<T>(endpoint: string, options: RequestInit = {
     // Parse and return the response data
     return await response.json();
   } catch (error) {
-    handleApiCatchError(error);
+    return await handleApiError(error);
   }
 }
 
-const fetchWriteBase = async <T>(endpoint: string, options: RequestInit): Promise<T> => {
+/**
+ * Base function for making API requests to write or admin endpoints
+ * Handles URL building, error handling, and response parsing
+ *
+ * @param endpointType - Type of endpoint ('write' or 'admin')
+ * @param endpoint - API endpoint path (without the base URL)
+ * @param options - Fetch options
+ * @returns The parsed response data
+ * @throws ApiError if the request fails
+ */
+const fetchBase = async <T>(
+  endpointType: 'write' | 'admin',
+  endpoint: string,
+  options: RequestInit
+): Promise<T> => {
   try {
-    const url = buildSimpleApiUrl(WRITE, endpoint);
+    const url = buildSimpleApiUrl(endpointType === 'write' ? WRITE : ADMIN, endpoint);
     const response = await fetch(url, options);
 
     if (!response.ok) {
-      await handleApiResponseError(response);
+      await handleApiError(response);
     }
 
     // Return parsed response
@@ -139,13 +165,13 @@ const fetchWriteBase = async <T>(endpoint: string, options: RequestInit): Promis
 
     return await response.json();
   } catch (error) {
-    handleApiCatchError(error);
+    return await handleApiError(error);
   }
 };
 
 // For JSON-based updates (PUT)
 export async function fetchPutJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
-  return await fetchWriteBase<T>(endpoint, {
+  return await fetchBase<T>('write', endpoint, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -154,7 +180,7 @@ export async function fetchPutJsonApi<T>(endpoint: string, body: unknown): Promi
 
 // For JSON-based partial updates (PATCH)
 export async function fetchPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
-  return await fetchWriteBase<T>(endpoint, {
+  return await fetchBase<T>('write', endpoint, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -163,7 +189,7 @@ export async function fetchPatchJsonApi<T>(endpoint: string, body: unknown): Pro
 
 // For JSON-based creates (POST)
 export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
-  return await fetchWriteBase<T>(endpoint, {
+  return await fetchBase<T>('write', endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -172,7 +198,7 @@ export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Prom
 
 // For FormData-based creates (POST) - used for image uploads
 export async function fetchFormDataApi<T>(endpoint: string, formData: FormData): Promise<T> {
-  return await fetchWriteBase<T>(endpoint, {
+  return await fetchBase<T>('write', endpoint, {
     method: 'POST',
     body: formData,
   });
@@ -182,29 +208,9 @@ export async function fetchFormDataApi<T>(endpoint: string, formData: FormData):
 // Admin API Functions (for collection management)
 // ============================================================================
 
-const fetchAdminBase = async <T>(endpoint: string, options: RequestInit): Promise<T> => {
-  try {
-    const url = buildSimpleApiUrl(ADMIN, endpoint);
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      await handleApiResponseError(response);
-    }
-
-    // Return parsed response
-    if (response.status === 204) {
-      return null as unknown as T;
-    }
-
-    return await response.json();
-  } catch (error) {
-    handleApiCatchError(error);
-  }
-};
-
 // For admin JSON-based creates (POST)
 export async function fetchAdminPostJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
-  return await fetchAdminBase<T>(endpoint, {
+  return await fetchBase<T>('admin', endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -213,7 +219,7 @@ export async function fetchAdminPostJsonApi<T>(endpoint: string, body: unknown):
 
 // For admin JSON-based updates (PUT)
 export async function fetchAdminPutJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
-  return await fetchAdminBase<T>(endpoint, {
+  return await fetchBase<T>('admin', endpoint, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -222,7 +228,7 @@ export async function fetchAdminPutJsonApi<T>(endpoint: string, body: unknown): 
 
 // For admin JSON-based partial updates (PATCH)
 export async function fetchAdminPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
-  return await fetchAdminBase<T>(endpoint, {
+  return await fetchBase<T>('admin', endpoint, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -231,7 +237,7 @@ export async function fetchAdminPatchJsonApi<T>(endpoint: string, body: unknown)
 
 // For admin FormData-based creates (POST) - used for image uploads
 export async function fetchAdminFormDataApi<T>(endpoint: string, formData: FormData): Promise<T> {
-  return await fetchAdminBase<T>(endpoint, {
+  return await fetchBase<T>('admin', endpoint, {
     method: 'POST',
     body: formData,
   });
@@ -239,7 +245,7 @@ export async function fetchAdminFormDataApi<T>(endpoint: string, formData: FormD
 
 // For admin deletes (DELETE)
 export async function fetchAdminDeleteApi<T>(endpoint: string): Promise<T> {
-  return await fetchAdminBase<T>(endpoint, {
+  return await fetchBase<T>('admin', endpoint, {
     method: 'DELETE',
   });
 }
@@ -250,15 +256,15 @@ export async function fetchAdminGetApi<T>(endpoint: string, options: RequestInit
     const url = buildSimpleApiUrl(ADMIN, endpoint);
 
     const response = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      ...options,
     });
 
     if (!response.ok) {
-      await handleApiResponseError(response);
+      await handleApiError(response);
     }
 
     if (response.status === 204) {
@@ -267,6 +273,6 @@ export async function fetchAdminGetApi<T>(endpoint: string, options: RequestInit
 
     return await response.json();
   } catch (error) {
-    handleApiCatchError(error);
+    return await handleApiError(error);
   }
 }

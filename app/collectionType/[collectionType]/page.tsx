@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
-import { getCollectionsByType } from '@/app/lib/api/collections.new';
+import { getCollectionsByType } from '@/app/lib/api/collections';
 import { CollectionType } from '@/app/types/Collection';
 
 interface CollectionTypePageProps {

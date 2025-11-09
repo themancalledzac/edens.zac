@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
-import { getCollectionBySlug } from '@/app/lib/api/collections.new';
+import { getCollectionBySlug } from '@/app/lib/api/collections';
 
 interface CollectionPageWrapperProps {
   slug: string;

@@ -20,11 +20,14 @@ import {
   type ContentTagModel,
   type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
+import { hasObjectChanges } from '@/app/utils/objectComparison';
 
 import styles from './ImageMetadataModal.module.scss';
 import {
-  buildImageUpdateDiff,
+  buildImageUpdateForSingleEdit,
+  buildImageUpdatesForBulkEdit,
   getCommonValues,
+  mapUpdateResponseToFrontend,
 } from './imageMetadataUtils';
 import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 
@@ -120,15 +123,11 @@ export default function ImageMetadataModal({
     if (isBulkEdit) {
       // For bulk, check if updateState differs from common values
       const common = getCommonValues(selectedImages);
-      const { id: _commonId, ...commonRest } = { id: 0, ...common };
-      const { id: _updateId, ...updateRest } = updateState;
-      return JSON.stringify(updateRest) !== JSON.stringify(commonRest);
+      return hasObjectChanges(updateState, { id: 0, ...common });
     } else {
       // For single, check if updateState differs from original image
       const original = selectedImages[0]!;
-      const { id: _originalId, ...originalRest } = original;
-      const { id: _updateId, ...updateRest } = updateState;
-      return JSON.stringify(updateRest) !== JSON.stringify(originalRest);
+      return hasObjectChanges(updateState, original);
     }
   }, [updateState, selectedImages, isBulkEdit]);
 
@@ -160,50 +159,15 @@ export default function ImageMetadataModal({
       setSaving(true);
       setError(null);
 
-      // Build diff for each image
-      const imageUpdates: ContentImageUpdateRequest[] = selectedImageIds.map(imageId => {
-        if (isBulkEdit) {
-          // For bulk edit, diff updateState (common values) against each image's current state
-          const currentImage = selectedImages.find(img => img.id === imageId);
-          if (!currentImage) {
-            throw new Error(`Image ${imageId} not found in selectedImages`);
-          }
-          return buildImageUpdateDiff({ ...updateState, id: imageId }, currentImage);
-        } else {
-          // For single edit, diff updateState against original image
-          const originalImage = selectedImages[0]!;
-          return buildImageUpdateDiff(updateState as ImageContentModel, originalImage);
-        }
-      });
+      // Build diff for each image using appropriate builder
+      const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
+        ? buildImageUpdatesForBulkEdit(updateState, selectedImages, selectedImageIds, availableFilmTypes)
+        : [buildImageUpdateForSingleEdit(updateState as ImageContentModel, selectedImages[0]!, availableFilmTypes)];
 
       const response = await updateImages(imageUpdates);
 
       // Convert response to ContentImageUpdateResponse format
-      // Map backend response format (tagName, personName, etc.) to frontend format (name)
-      const updateResponse: ContentImageUpdateResponse = {
-        updatedImages: response.updatedImages,
-        newMetadata: response.newMetadata
-          ? {
-              tags: response.newMetadata.tags?.map(t => ({ id: t.id, name: t.tagName })),
-              people: response.newMetadata.people?.map(p => ({ id: p.id, name: p.personName })),
-              cameras: response.newMetadata.cameras?.map(c => ({ id: c.id, name: c.cameraName })),
-              lenses: response.newMetadata.lenses?.map(l => ({ id: l.id, name: l.lensName })),
-              filmTypes: response.newMetadata.filmTypes?.map(f => ({
-                id: f.id,
-                name: f.filmTypeName || '',
-                filmTypeName: f.filmTypeName,
-                defaultIso: f.defaultIso,
-              })),
-            }
-          : {
-              tags: undefined,
-              people: undefined,
-              cameras: undefined,
-              lenses: undefined,
-              filmTypes: undefined,
-            },
-        errors: undefined, // updateImages doesn't return errors in the same format
-      };
+      const updateResponse = mapUpdateResponseToFrontend(response);
 
       onSaveSuccess?.(updateResponse);
       onClose();

@@ -47,6 +47,9 @@ html,
   --page-padding-mobile: var(--space-4);
   --page-padding-desktop: var(--space-6);
 
+  /* Menu item height */
+  --menu-item-height: 50px;
+
   /* Radii */
   --radius-0: 0;
   --radius-1: 4px;

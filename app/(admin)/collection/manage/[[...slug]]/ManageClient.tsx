@@ -8,12 +8,14 @@ import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModa
 import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
+import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
   createCollection,
   getCollectionUpdateMetadata,
   updateCollection,
-} from '@/app/lib/api/collections.new';
+} from '@/app/lib/api/collections';
 import { createImages, createTextContent } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
@@ -24,13 +26,8 @@ import {
   type CollectionUpdateResponseDTO,
   type DisplayMode,
 } from '@/app/types/Collection';
-import {
-  type AnyContentModel,
-  type CollectionContentModel,
-  type ContentImageUpdateResponse,
-  type ImageContentModel,
-} from '@/app/types/Content';
-import { convertCollectionContentToImage } from '@/app/utils/contentLayout';
+import { type ContentImageUpdateResponse, type ImageContentModel } from '@/app/types/Content';
+import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
 
 import pageStyles from '../../../../page.module.scss';
@@ -39,11 +36,19 @@ import {
   buildCollectionsUpdate,
   buildUpdatePayload,
   COVER_IMAGE_FLASH_DURATION,
-  getCollectionContentAsSelections,
+  getCurrentSelectedCollections,
   getDisplayedCoverImage,
   handleApiError,
-  isImageContentBlock,
-  validateCoverImageSelection,
+  handleCollectionNavigation,
+  handleCoverImageSelection,
+  handleMultiSelectToggle as handleMultiSelectToggleUtil,
+  handleSingleImageEdit,
+  mergeNewMetadata,
+  refreshCollectionAfterOperation,
+  refreshCollectionData,
+  revalidateCollectionCache,
+  updateCollectionCache,
+  updateCollectionState,
 } from './manageUtils';
 
 interface ManageClientProps {
@@ -52,17 +57,35 @@ interface ManageClientProps {
 
 export default function ManageClient({ slug }: ManageClientProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(!!slug);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Single source of truth: CollectionUpdateResponseDTO contains collection + all metadata
   const [currentState, setCurrentState] = useState<CollectionUpdateResponseDTO | null>(null);
+
+  // Use custom hook for loading collection data
+  const { loading, error: loadError } = useCollectionData(
+    slug,
+    currentState?.collection.slug,
+    useCallback((data: CollectionUpdateResponseDTO) => {
+      setCurrentState(data);
+    }, [])
+  );
+
+  // Separate loading state for operations (create, update, upload, etc.)
+  const [operationLoading, setOperationLoading] = useState(false);
+  
+  // Combine loading error with component error state
+  const [error, setError] = useState<string | null>(null);
+  const displayError = error || loadError;
+  
+  // Combined loading state (initial load or operation)
+  const isLoading = loading || operationLoading;
 
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
   const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
+  const [isTextBlockModalOpen, setIsTextBlockModalOpen] = useState(false);
 
   const [createData, setCreateData] = useState<CollectionCreateRequest>({
     type: CollectionType.PORTFOLIO,
@@ -84,6 +107,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
     baseCloseEditor();
   }, [isMultiSelectMode, baseCloseEditor]);
+
+  // Clear selectedImageIds when editor closes (handles Escape key and other close methods)
+  useEffect(() => {
+    if (!editingImage && !isMultiSelectMode) {
+      setSelectedImageIds([]);
+    }
+  }, [editingImage, isMultiSelectMode]);
 
   const isCreateMode = !slug;
   const collection = currentState?.collection ?? null;
@@ -130,35 +160,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   }, [collection]);
 
-  // Convert CollectionContentModel blocks to ImageContentModel for rendering on manage page
-  // Apply collection-specific orderIndex and sort, similar to processContentBlocks
-  const processedContent = useMemo(() => {
-    if (!collection?.content) return [];
-    return collection.content
-      .map(block => {
-        if (isCollectionContent(block)) {
-          return convertCollectionContentToImage(block);
-        }
-        // For images, update orderIndex from collection-specific entry
-        if (block.contentType === 'IMAGE' && collection.id) {
-          const imageBlock = block as ImageContentModel;
-          const collectionEntry = imageBlock.collections?.find(
-            c => c.collectionId === collection.id
-          );
-          if (collectionEntry?.orderIndex !== undefined) {
-            return {
-              ...imageBlock,
-              orderIndex: collectionEntry.orderIndex,
-            };
-          }
-        }
-        return block;
-      })
-      .sort((a, b) => {
-        // Sort by orderIndex (collection-specific for images)
-        return (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
-      });
-  }, [collection?.content, collection?.id]);
+  // Process content blocks for display - same as collection page but without visibility filtering
+  // Collections are converted to ParallaxImageContentModel, images get collection-specific orderIndex
+  const processedContent = useMemo(
+    () => processContentBlocks(collection?.content ?? [], false, collection?.id),
+    [collection?.content, collection?.id]
+  );
 
   // Derive imagesToEdit from selectedImageIds
   const imagesToEdit = useMemo(
@@ -174,72 +181,44 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [collection, updateData.coverImageId]
   );
 
-  // Load collection data for UPDATE mode
-  useEffect(() => {
-    if (!slug) return; // CREATE mode - no data to fetch
+  // Collection data loading is now handled by useCollectionData hook
 
-    // Skip fetch if we already have this exact collection loaded
-    if (currentState?.collection.slug === slug) {
-      return;
-    }
+  /**
+   * Handle opening the text block creation modal
+   */
+  const handleCreateNewTextBlock = () => {
+    if (!collection) return;
+    setIsTextBlockModalOpen(true);
+  };
 
-    const abortController = new AbortController();
-    let isMounted = true;
-
-    const loadCollectionData = async () => {
-      try {
-        setLoading(true);
-
-        // Always fetch fresh data in manage page to ensure we have complete collection data
-        // (including collections arrays on content items)
-        const response = await getCollectionUpdateMetadata(slug);
-
-        if (isMounted && !abortController.signal.aborted) {
-          setCurrentState(response);
-
-          // Update cache with complete data (includes collections arrays on content items)
-          collectionStorage.update(slug, response.collection);
-        }
-      } catch (error) {
-        if (!abortController.signal.aborted && isMounted) {
-          setError(handleApiError(error, 'Failed to load collection data'));
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadCollectionData();
-
-    return () => {
-      isMounted = false;
-      abortController.abort();
-    };
-  }, [slug, currentState?.collection.slug]);
-
-  // Handle creating a new text block - immediately POST to backend
-  const handleCreateNewTextBlock = async () => {
+  /**
+   * Handle text block creation submission from modal
+   */
+  const handleTextBlockSubmit = async (data: {
+    content: string;
+    format: 'plain' | 'markdown' | 'html';
+    align: 'left' | 'center' | 'right';
+  }) => {
     if (!collection) return;
 
-    const newText = prompt('Enter text for the new block:');
-    if (!newText || !newText.trim()) return;
-
     try {
-      setLoading(true);
+      setOperationLoading(true);
       setError(null);
 
-      // Create text content via API
-      await createTextContent({
-        collectionId: collection.id,
-        content: newText.trim(),
-        format: 'plain',
-        align: 'left',
-      });
-
-      // Re-fetch collection using admin endpoint to get full data with collections arrays
-      const response = await getCollectionUpdateMetadata(collection.slug);
+      // Execute operation and refresh collection
+      const response = await refreshCollectionAfterOperation(
+        collection.slug,
+        async () => {
+          await createTextContent({
+            collectionId: collection.id,
+            content: data.content,
+            format: data.format,
+            align: data.align,
+          });
+        },
+        getCollectionUpdateMetadata,
+        collectionStorage
+      );
 
       // Update currentState with refreshed collection (keep existing metadata)
       setCurrentState(prev => ({
@@ -247,12 +226,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collection: response.collection,
       }));
 
-      // Update cache with full admin data (includes collections arrays)
-      collectionStorage.update(collection.slug, response.collection);
+      // Close modal after successful creation
+      setIsTextBlockModalOpen(false);
     } catch (error) {
       setError(handleApiError(error, 'Failed to create text block'));
+      throw error; // Re-throw so modal can handle it
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   };
 
@@ -266,7 +246,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
 
     try {
-      setLoading(true);
+      setOperationLoading(true);
       setError(null);
 
       // Create endpoint returns CollectionUpdateResponseDTO
@@ -280,7 +260,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     } catch (error: unknown) {
       setError(handleApiError(error, 'Failed to create collection'));
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   };
 
@@ -325,7 +305,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     if (!collection || !event.target.files || event.target.files.length === 0) return;
 
     try {
-      setLoading(true);
+      setOperationLoading(true);
       setError(null);
 
       const files = Array.from(event.target.files);
@@ -336,10 +316,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
         formData.append('files', file); // Backend expects 'files' field
       }
 
-      await createImages(collection.id, formData);
-
-      // Re-fetch collection using admin endpoint to get full data with collections arrays
-      const response = await getCollectionUpdateMetadata(collection.slug);
+      // Execute operation and refresh collection
+      const response = await refreshCollectionAfterOperation(
+        collection.slug,
+        async () => {
+          await createImages(collection.id, formData);
+        },
+        getCollectionUpdateMetadata,
+        collectionStorage
+      );
 
       // Update currentState with refreshed collection (keep existing metadata)
       setCurrentState(prev => ({
@@ -347,32 +332,30 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collection: response.collection,
       }));
 
-      // Update cache with full admin data (includes collections arrays)
-      collectionStorage.update(collection.slug, response.collection);
-
       // Clear the file input
       event.target.value = '';
     } catch (error) {
       setError(handleApiError(error, 'Failed to upload images'));
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   };
 
   // Handle cover image selection
   const handleCoverImageClick = useCallback(
     (imageId: number) => {
-      // Validate that the selected image exists and is an image block
-      if (!validateCoverImageSelection(imageId, collection?.content as AnyContentModel[])) {
-        setError('Invalid cover image selection. Please try again.');
+      const result = handleCoverImageSelection(imageId, collection?.content);
+
+      if (!result.success) {
+        setError(result.error);
         return;
       }
 
-      setUpdateData(prev => ({ ...prev, coverImageId: imageId }));
+      setUpdateData(prev => ({ ...prev, coverImageId: result.coverImageId }));
       setIsSelectingCoverImage(false);
 
       // Show temporary red overlay on newly selected image
-      setJustClickedImageId(imageId);
+      setJustClickedImageId(result.coverImageId);
       setTimeout(() => {
         setJustClickedImageId(null);
       }, COVER_IMAGE_FLASH_DURATION);
@@ -382,14 +365,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   // Handle multi-select toggle
   const handleMultiSelectToggle = useCallback((imageId: number) => {
-    setSelectedImageIds(prev => {
-      if (prev.includes(imageId)) {
-        // Deselect
-        return prev.filter(id => id !== imageId);
-      }
-      // Select
-      return [...prev, imageId];
-    });
+    setSelectedImageIds(prev => handleMultiSelectToggleUtil(imageId, prev));
   }, []);
 
   // Handle bulk edit - open modal with selected images
@@ -398,7 +374,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
     // Get all selected image blocks
     const selectedImages = collection.content.filter(
-      block => isImageContentBlock(block) && selectedImageIds.includes(block.id)
+      block => isContentImage(block) && selectedImageIds.includes(block.id)
     ) as ImageContentModel[];
 
     const firstImage = selectedImages[0];
@@ -417,25 +393,20 @@ export default function ManageClient({ slug }: ManageClientProps) {
         return;
       }
 
-      // Check if this is a collection block (converted to ImageContentModel in processedContent)
-      // If so, navigate to that collection's manage page instead of editing
-      const originalBlock = collection?.content?.find(block => block.id === imageId);
-      if (originalBlock && isCollectionContent(originalBlock)) {
-        const collectionBlock = originalBlock as CollectionContentModel;
-        router.push(`/collection/manage/${collectionBlock.slug}`);
+      // Mode 2: Collection navigation
+      const collectionSlug = handleCollectionNavigation(imageId, collection?.content);
+      if (collectionSlug) {
+        router.push(`/collection/manage/${collectionSlug}`);
         return;
       }
 
       if (isMultiSelectMode) {
-        // Mode 2: Multi-select toggle
+        // Mode 3: Multi-select toggle
         handleMultiSelectToggle(imageId);
       } else {
-        // Mode 3: Single image edit
-        // Find block in original content or processed content
-        const imageBlock =
-          collection?.content?.find(block => block.id === imageId) ||
-          processedContent.find(block => block.id === imageId);
-        if (imageBlock && isImageContentBlock(imageBlock)) {
+        // Mode 4: Single image edit
+        const imageBlock = handleSingleImageEdit(imageId, collection?.content, processedContent);
+        if (imageBlock) {
           // Set selectedImageIds for modal but stay in single-edit mode
           setSelectedImageIds([imageId]);
           setIsMultiSelectMode(false);
@@ -455,52 +426,36 @@ export default function ManageClient({ slug }: ManageClientProps) {
     ]
   );
 
-  // Handle successful metadata save - update currentState with API response
+  /**
+   * Handle successful metadata save - updates currentState with API response
+   *
+   * Orchestrates the following steps in sequence:
+   * 1. Re-fetch collection data with full metadata using admin endpoint
+   * 2. Update currentState with full response (includes collections arrays)
+   * 3. Update sessionStorage cache with full admin data
+   * 4. Revalidate Next.js cache for the collection
+   * 5. Merge new metadata entities (tags, people, cameras, lenses, filmTypes) into currentState
+   * 6. Clear selected images and exit multi-select mode
+   *
+   * @param response - ContentImageUpdateResponse from image metadata update API
+   */
   const handleMetadataSaveSuccess = useCallback(
     async (response: ContentImageUpdateResponse) => {
       if (!currentState?.collection.content || !currentState.collection.slug) return;
 
       try {
-        // Re-fetch using admin endpoint to get full data with collections arrays
-        const fullResponse = await getCollectionUpdateMetadata(currentState.collection.slug);
+        const slug = currentState.collection.slug;
 
-        // Update currentState with full response (includes collections arrays)
-        setCurrentState(prev => ({
-          ...prev!,
-          collection: fullResponse.collection,
-        }));
+        const fullResponse = await refreshCollectionData(slug, getCollectionUpdateMetadata);
+        setCurrentState(updateCollectionState(fullResponse));
+        updateCollectionCache(slug, fullResponse.collection, collectionStorage);
+        await revalidateCollectionCache(slug);
 
-        // Update cache with full admin data (includes collections arrays)
-        collectionStorage.update(currentState.collection.slug, fullResponse.collection);
-
-        // Revalidate Next.js cache
-        try {
-          await fetch('/api/revalidate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              tag: `collection-${currentState.collection.slug}`,
-              path: `/${currentState.collection.slug}`,
-            }),
-          });
-        } catch (error) {
-          console.warn('[ManageClient] Failed to revalidate cache:', error);
+        const metadataUpdater = mergeNewMetadata(response, currentState);
+        if (metadataUpdater) {
+          setCurrentState(metadataUpdater);
         }
 
-        // Add new metadata entities to currentState
-        const { newMetadata } = response;
-        if (newMetadata && Object.values(newMetadata).some(arr => arr && arr.length > 0)) {
-          setCurrentState(prev => ({
-            ...prev!,
-            tags: [...(prev?.tags || []), ...(newMetadata.tags || [])],
-            people: [...(prev?.people || []), ...(newMetadata.people || [])],
-            cameras: [...(prev?.cameras || []), ...(newMetadata.cameras || [])],
-            lenses: [...(prev?.lenses || []), ...(newMetadata.lenses || [])],
-            filmTypes: [...(prev?.filmTypes || []), ...(newMetadata.filmTypes || [])],
-          }));
-        }
-
-        // Clear selected images and exit multi-select mode
         setSelectedImageIds([]);
         setIsMultiSelectMode(false);
       } catch (error) {
@@ -524,23 +479,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, [collection?.content]);
 
   // Derive current selected collections by applying changes to original collection
-  const currentSelectedCollections: CollectionListModel[] = useMemo(() => {
-    const selected = getCollectionContentAsSelections(collection?.content);
-    const removeIds = new Set(updateData.collections?.remove || []);
-    const filtered = selected.filter(c => !removeIds.has(c.id));
-
-    const newCollections = updateData.collections?.newValue || [];
-    for (const newCollection of newCollections) {
-      if (!filtered.some(c => c.id === newCollection.collectionId)) {
-        filtered.push({
-          id: newCollection.collectionId,
-          name: newCollection.name || '',
-        });
-      }
-    }
-
-    return filtered;
-  }, [updateData.collections, collection?.content]);
+  const currentSelectedCollections: CollectionListModel[] = useMemo(
+    () => getCurrentSelectedCollections(collection?.content, updateData.collections),
+    [updateData.collections, collection?.content]
+  );
 
   // Handle collections selection changes - simple toggle logic
   const handleCollectionsChange = useCallback(
@@ -565,14 +507,14 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   return (
     <div>
-      <div className={pageStyles.contentPadding}>
+      <div className={styles.container}>
         <SiteHeader pageType="manage" />
         {/* CREATE MODE */}
         {isCreateMode && !collection && (
           <div className={styles.createContainer}>
             <h2 className={styles.createHeading}>Create New Collection</h2>
 
-            {error && <div className={styles.errorMessage}>{error}</div>}
+            {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
             <form onSubmit={handleCreate}>
               <div className={styles.formGroup}>
@@ -604,9 +546,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 />
               </div>
 
-              <button type="submit" disabled={loading} className={styles.submitButton}>
-                {loading ? 'Creating...' : 'Create Collection'}
-              </button>
+                  <button type="submit" disabled={isLoading} className={styles.submitButton}>
+                    {isLoading ? 'Creating...' : 'Create Collection'}
+                  </button>
             </form>
           </div>
         )}
@@ -622,7 +564,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 {collection.title}
               </h2>
 
-              {error && <div className={styles.errorMessage}>{error}</div>}
+              {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
               <form onSubmit={handleUpdate}>
                 <div className={styles.updateFormLayout}>
@@ -737,7 +679,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     {/* Cover Image */}
                     <div className={styles.coverImageSection}>
                       <label className={styles.formLabel}>Cover Image</label>
-                      {displayedCoverImage && isImageContentBlock(displayedCoverImage) ? (
+                      {displayedCoverImage && isContentImage(displayedCoverImage) ? (
                         <div className={styles.coverImageWrapper}>
                           <img src={displayedCoverImage.imageUrl} alt="Cover" />
                           <button
@@ -771,10 +713,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           multiple
                           accept="image/*"
                           onChange={handleImageUpload}
-                          disabled={loading}
+                          disabled={isLoading}
                           className={styles.uploadInput}
                         />
-                        {loading && <div className={styles.uploadingText}>Uploading...</div>}
+                        {isLoading && <div className={styles.uploadingText}>Uploading...</div>}
                       </div>
 
                       <div className={styles.textBlockSection}>
@@ -782,7 +724,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         <button
                           type="button"
                           onClick={handleCreateNewTextBlock}
-                          disabled={loading}
+                          disabled={isLoading}
                           className={styles.addTextBlockButton}
                         >
                           + Create New Text Block
@@ -810,7 +752,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 <div className={styles.formActions}>
                   <button
                     type="submit"
-                    disabled={saving || loading}
+                    disabled={saving || isLoading}
                     className={styles.submitButton}
                   >
                     {saving ? (
@@ -914,6 +856,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
           selectedImageIds={selectedImageIds}
           selectedImages={imagesToEdit}
           currentCollectionId={collection?.id}
+        />
+      )}
+
+      {/* Text Block Create Modal */}
+      {isTextBlockModalOpen && (
+        <TextBlockCreateModal
+          scrollPosition={scrollPosition}
+          onClose={() => setIsTextBlockModalOpen(false)}
+          onSubmit={handleTextBlockSubmit}
         />
       )}
     </div>

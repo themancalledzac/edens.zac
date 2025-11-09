@@ -7,8 +7,15 @@ import {
   type ChildCollection,
   type CollectionModel,
   type CollectionUpdateRequest,
+  type CollectionUpdateResponseDTO,
 } from '@/app/types/Collection';
-import { type AnyContentModel, type CollectionContentModel, type ImageContentModel, type ParallaxImageContentModel } from '@/app/types/Content';
+import {
+  type AnyContentModel,
+  type CollectionContentModel,
+  type ContentImageUpdateResponse,
+  type ImageContentModel,
+  type ParallaxImageContentModel,
+} from '@/app/types/Content';
 import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
 
 // Constants
@@ -131,6 +138,39 @@ export function getCollectionContentAsSelections(
       id: collection.id,
       name: collection.title || collection.slug || '', // Use title if available, fallback to slug
     }));
+}
+
+/**
+ * Get current selected collections by applying changes to original collection
+ * Combines original collections (minus removals) with newly added collections
+ *
+ * @param collectionContent - Array of content blocks from the collection (to extract original collections)
+ * @param updateDataCollections - Collections update object with remove and newValue arrays
+ * @returns Array of currently selected collections for display in UI
+ */
+export function getCurrentSelectedCollections(
+  collectionContent: AnyContentModel[] | undefined,
+  updateDataCollections: CollectionUpdateRequest['collections'] | undefined
+): Array<{ id: number; name: string }> {
+  // Get original collections from collection content
+  const selected = getCollectionContentAsSelections(collectionContent);
+  
+  // Filter out collections that are marked for removal
+  const removeIds = new Set(updateDataCollections?.remove || []);
+  const filtered = selected.filter(c => !removeIds.has(c.id));
+
+  // Add new collections from newValue that aren't already in the filtered list
+  const newCollections = updateDataCollections?.newValue || [];
+  for (const newCollection of newCollections) {
+    if (!filtered.some(c => c.id === newCollection.collectionId)) {
+      filtered.push({
+        id: newCollection.collectionId,
+        name: newCollection.name || '',
+      });
+    }
+  }
+
+  return filtered;
 }
 
 /**
@@ -297,3 +337,230 @@ export function buildCollectionsUpdate(
 
   return Object.keys(collectionsUpdate).length > 0 ? collectionsUpdate : undefined;
 }
+
+/**
+ * Handle cover image selection
+ * Validates the selection and returns the result
+ *
+ * @param imageId - ID of the image to set as cover
+ * @param content - Array of content blocks from the collection
+ * @returns Object with success status and coverImageId if valid, or error message if invalid
+ */
+export function handleCoverImageSelection(
+  imageId: number,
+  content: AnyContentModel[] | undefined
+): { success: true; coverImageId: number } | { success: false; error: string } {
+  // Validate that the selected image exists and is an image block
+  if (!validateCoverImageSelection(imageId, content)) {
+    return {
+      success: false,
+      error: 'Invalid cover image selection. Please try again.',
+    };
+  }
+
+  return {
+    success: true,
+    coverImageId: imageId,
+  };
+}
+
+/**
+ * Handle collection navigation
+ * Finds the collection block and returns the navigation path
+ *
+ * @param imageId - ID of the clicked image (which may be a collection block)
+ * @param content - Array of content blocks from the collection
+ * @returns Collection slug if found, null otherwise
+ */
+export function handleCollectionNavigation(
+  imageId: number,
+  content: AnyContentModel[] | undefined
+): string | null {
+  const originalBlock = content?.find(block => block.id === imageId);
+  if (originalBlock && isCollectionContent(originalBlock)) {
+    const collectionBlock = originalBlock as CollectionContentModel;
+    return collectionBlock.slug || null;
+  }
+  return null;
+}
+
+/**
+ * Handle multi-select toggle
+ * Returns the new array of selected image IDs after toggling
+ *
+ * @param imageId - ID of the image to toggle
+ * @param currentSelectedIds - Current array of selected image IDs
+ * @returns New array of selected image IDs
+ */
+export function handleMultiSelectToggle(
+  imageId: number,
+  currentSelectedIds: number[]
+): number[] {
+  if (currentSelectedIds.includes(imageId)) {
+    // Deselect
+    return currentSelectedIds.filter(id => id !== imageId);
+  }
+  // Select
+  return [...currentSelectedIds, imageId];
+}
+
+/**
+ * Handle single image edit
+ * Finds the image block and returns it for editing
+ *
+ * @param imageId - ID of the image to edit
+ * @param content - Array of content blocks from the collection
+ * @param processedContent - Processed content array (may contain converted collection blocks)
+ * @returns Image block if found, null otherwise
+ */
+export function handleSingleImageEdit(
+  imageId: number,
+  content: AnyContentModel[] | undefined,
+  processedContent: AnyContentModel[]
+): ImageContentModel | null {
+  // Find block in original content or processed content
+  const imageBlock =
+    content?.find(block => block.id === imageId) ||
+    processedContent.find(block => block.id === imageId);
+  
+  if (imageBlock && isImageContentBlock(imageBlock)) {
+    return imageBlock;
+  }
+  
+  return null;
+}
+
+/**
+ * Refresh collection data by fetching from the API
+ * Re-fetches collection with full metadata using admin endpoint
+ *
+ * @param slug - Collection slug to fetch
+ * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
+ * @returns Promise with CollectionUpdateResponseDTO containing collection and metadata
+ */
+export async function refreshCollectionData(
+  slug: string,
+  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>
+): Promise<CollectionUpdateResponseDTO> {
+  return await getCollectionUpdateMetadata(slug);
+}
+
+/**
+ * Build updated collection state from API response
+ * Returns a function that can be used with setState to update the collection
+ *
+ * @param response - CollectionUpdateResponseDTO from API
+ * @returns State updater function for React setState
+ */
+export function updateCollectionState(
+  response: CollectionUpdateResponseDTO
+): (prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO {
+  return (prev: CollectionUpdateResponseDTO | null) => ({
+    ...prev!,
+    collection: response.collection,
+  });
+}
+
+/**
+ * Update collection cache storage
+ * Updates the sessionStorage cache with new collection data
+ *
+ * @param slug - Collection slug
+ * @param collection - Updated collection data
+ * @param collectionStorage - Collection storage instance (injected for testability)
+ */
+export function updateCollectionCache(
+  slug: string,
+  collection: CollectionModel,
+  collectionStorage: { update: (slug: string, collection: CollectionModel) => void }
+): void {
+  collectionStorage.update(slug, collection);
+}
+
+/**
+ * Revalidate Next.js cache for a collection
+ * Calls the revalidate API endpoint to invalidate Next.js cache
+ *
+ * @param slug - Collection slug to revalidate
+ * @returns Promise that resolves when revalidation is complete (or fails silently)
+ */
+export async function revalidateCollectionCache(slug: string): Promise<void> {
+  try {
+    await fetch('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: `collection-${slug}`,
+        path: `/${slug}`,
+      }),
+    });
+  } catch (error) {
+    // Fail silently - revalidation is not critical for functionality
+    console.warn('[manageUtils] Failed to revalidate cache:', error);
+  }
+}
+
+/**
+ * Merge new metadata entities into current state
+ * Combines new metadata from API response with existing metadata in state
+ *
+ * @param response - ContentImageUpdateResponse containing newMetadata
+ * @param _currentState - Current CollectionUpdateResponseDTO state (unused, kept for API compatibility)
+ * @returns State updater function for React setState, or null if no new metadata
+ */
+export function mergeNewMetadata(
+  response: ContentImageUpdateResponse,
+  _currentState: CollectionUpdateResponseDTO | null
+): ((prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO) | null {
+  const { newMetadata } = response;
+  
+  // Check if there's any new metadata to merge
+  if (!newMetadata || !Object.values(newMetadata).some(arr => arr && arr.length > 0)) {
+    return null;
+  }
+
+  return (prev: CollectionUpdateResponseDTO | null) => ({
+    ...prev!,
+    tags: [...(prev?.tags || []), ...(newMetadata.tags || [])],
+    people: [...(prev?.people || []), ...(newMetadata.people || [])],
+    cameras: [...(prev?.cameras || []), ...(newMetadata.cameras || [])],
+    lenses: [...(prev?.lenses || []), ...(newMetadata.lenses || [])],
+    filmTypes: [...(prev?.filmTypes || []), ...(newMetadata.filmTypes || [])],
+  });
+}
+
+/**
+ * Refresh collection data after an operation
+ * Common pattern used by handleImageUpload, handleTextBlockSubmit, etc.
+ * 
+ * Pattern:
+ * 1. Execute the operation (async function)
+ * 2. Re-fetch collection using admin endpoint
+ * 3. Update state with refreshed collection (preserving metadata)
+ * 4. Update cache with full admin data
+ * 
+ * @param slug - Collection slug
+ * @param operation - Async function to execute before refresh
+ * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
+ * @param collectionStorage - Collection storage instance (injected for testability)
+ * @returns Promise that resolves with the refreshed CollectionUpdateResponseDTO
+ * @throws Error if operation or refresh fails
+ */
+export async function refreshCollectionAfterOperation(
+  slug: string,
+  operation: () => Promise<void>,
+  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>,
+  collectionStorage: { update: (slug: string, collection: CollectionModel) => void }
+): Promise<CollectionUpdateResponseDTO> {
+  // Execute the operation first
+  await operation();
+
+  // Re-fetch collection using admin endpoint to get full data with collections arrays
+  const response = await getCollectionUpdateMetadata(slug);
+
+  // Update cache with full admin data (includes collections arrays)
+  collectionStorage.update(slug, response.collection);
+
+  return response;
+}
+
