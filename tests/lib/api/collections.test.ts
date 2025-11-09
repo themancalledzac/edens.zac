@@ -94,7 +94,7 @@ describe('parseCollectionArrayResponse', () => {
     });
 
     it('should return empty array when data is undefined', () => {
-      const result = parseCollectionArrayResponse(undefined);
+      const result = parseCollectionArrayResponse();
       expect(result).toEqual([]);
     });
 

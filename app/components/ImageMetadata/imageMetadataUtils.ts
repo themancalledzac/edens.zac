@@ -5,7 +5,11 @@
  * Used by ImageMetadataModal for both single and bulk editing.
  */
 
-import type { ContentImageUpdateRequest, ImageContentModel } from '@/app/types/Content';
+import type {
+  ContentImageUpdateRequest,
+  ContentImageUpdateResponse,
+  ImageContentModel,
+} from '@/app/types/Content';
 
 // ============================================================================
 // Generic Update Utilities
@@ -783,4 +787,130 @@ export function handleDropdownChange(
     // Single-select fields with prev/newValue/remove pattern
     handleSingleSelectChange(field, value as Record<string, unknown>, updateDTO);
   }
+}
+
+// ============================================================================
+// Image Update Builders for Modal
+// ============================================================================
+
+/**
+ * Build image updates for bulk edit mode
+ * Creates a diff for each selected image by comparing updateState (common values) against each image's current state
+ *
+ * @param updateState - Common update state containing shared values to apply to all images
+ * @param selectedImages - Array of all selected images to update
+ * @param selectedImageIds - Array of image IDs to update (must match selectedImages)
+ * @param availableFilmTypes - Optional list of available film types for filmType validation
+ * @returns Array of ContentImageUpdateRequest objects, one for each image
+ * @throws Error if an image ID is not found in selectedImages
+ */
+export function buildImageUpdatesForBulkEdit(
+  updateState: Partial<ImageContentModel> & { id: number },
+  selectedImages: ImageContentModel[],
+  selectedImageIds: number[],
+  availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
+): ContentImageUpdateRequest[] {
+  // Get original common values to identify which people/tags were originally common
+  const originalCommon = getCommonValues(selectedImages);
+  const originalCommonPeopleIds = new Set(
+    (originalCommon.people || []).map(p => p.id).filter((id): id is number => id !== undefined && id > 0)
+  );
+  const originalCommonTagIds = new Set(
+    (originalCommon.tags || []).map(t => t.id).filter((id): id is number => id !== undefined && id > 0)
+  );
+
+  return selectedImageIds.map(imageId => {
+    // Find the current image state
+    const currentImage = selectedImages.find(img => img.id === imageId);
+    if (!currentImage) {
+      throw new Error(`Image ${imageId} not found in selectedImages`);
+    }
+
+    // For bulk edit, merge updateState.people and updateState.tags with image-specific items
+    // This preserves image-specific items while allowing additions/removals of common items
+    const mergedUpdateState = { ...updateState, id: imageId };
+    
+    if (updateState.people !== undefined) {
+      // Get image-specific people (people in current image but not in original common set)
+      const imageSpecificPeople = (currentImage.people || []).filter(
+        p => p.id && p.id > 0 && !originalCommonPeopleIds.has(p.id)
+      );
+      
+      // Merge: updateState people (common + new) + image-specific people
+      mergedUpdateState.people = [...updateState.people, ...imageSpecificPeople];
+    }
+
+    if (updateState.tags !== undefined) {
+      // Get image-specific tags (tags in current image but not in original common set)
+      const imageSpecificTags = (currentImage.tags || []).filter(
+        t => t.id && t.id > 0 && !originalCommonTagIds.has(t.id)
+      );
+      
+      // Merge: updateState tags (common + new) + image-specific tags
+      mergedUpdateState.tags = [...updateState.tags, ...imageSpecificTags];
+    }
+
+    // Build diff: merged updateState against currentImage (individual state)
+    return buildImageUpdateDiff(mergedUpdateState, currentImage, availableFilmTypes);
+  });
+}
+
+/**
+ * Build image update for single edit mode
+ * Creates a diff by comparing updateState against the original image
+ *
+ * @param updateState - Update state containing edited values
+ * @param originalImage - Original image state before edits
+ * @param availableFilmTypes - Optional list of available film types for filmType validation
+ * @returns ContentImageUpdateRequest object for the single image
+ */
+export function buildImageUpdateForSingleEdit(
+  updateState: ImageContentModel,
+  originalImage: ImageContentModel,
+  availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
+): ContentImageUpdateRequest {
+  return buildImageUpdateDiff(updateState, originalImage, availableFilmTypes);
+}
+
+/**
+ * Map backend update response to frontend ContentImageUpdateResponse format
+ * Converts backend field names (tagName, personName, etc.) to frontend format (name)
+ *
+ * @param response - Backend response from updateImages API
+ * @returns ContentImageUpdateResponse with properly formatted metadata
+ */
+export function mapUpdateResponseToFrontend(response: {
+  updatedImages: ImageContentModel[];
+  newMetadata?: {
+    tags?: Array<{ id: number; tagName: string }>;
+    people?: Array<{ id: number; personName: string }>;
+    cameras?: Array<{ id: number; cameraName: string }>;
+    lenses?: Array<{ id: number; lensName: string }>;
+    filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
+  };
+}): ContentImageUpdateResponse {
+  return {
+    updatedImages: response.updatedImages,
+    newMetadata: response.newMetadata
+      ? {
+          tags: response.newMetadata.tags?.map(t => ({ id: t.id, name: t.tagName })),
+          people: response.newMetadata.people?.map(p => ({ id: p.id, name: p.personName })),
+          cameras: response.newMetadata.cameras?.map(c => ({ id: c.id, name: c.cameraName })),
+          lenses: response.newMetadata.lenses?.map(l => ({ id: l.id, name: l.lensName })),
+          filmTypes: response.newMetadata.filmTypes?.map(f => ({
+            id: f.id,
+            name: f.filmTypeName || '',
+            filmTypeName: f.filmTypeName,
+            defaultIso: f.defaultIso,
+          })),
+        }
+      : {
+          tags: undefined,
+          people: undefined,
+          cameras: undefined,
+          lenses: undefined,
+          filmTypes: undefined,
+        },
+    errors: undefined, // updateImages doesn't return errors in the same format
+  };
 }

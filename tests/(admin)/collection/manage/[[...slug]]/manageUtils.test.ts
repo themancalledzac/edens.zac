@@ -4,6 +4,26 @@
  */
 
 import {
+  buildCollectionsUpdate,
+  buildUpdatePayload,
+  findImageBlockById,
+  getCollectionContentAsSelections,
+  getCurrentSelectedCollections,
+  getDisplayedCoverImage,
+  handleApiError,
+  handleCollectionNavigation,
+  handleCoverImageSelection,
+  handleMultiSelectToggle,
+  handleSingleImageEdit,
+  mergeNewMetadata,
+  refreshCollectionAfterOperation,
+  refreshCollectionData,
+  revalidateCollectionCache,
+  updateCollectionCache,
+  updateCollectionState,
+  validateCoverImageSelection,
+} from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+import {
   type CollectionModel,
   CollectionType,
   type CollectionUpdateRequest,
@@ -16,25 +36,6 @@ import {
   type ImageContentModel,
   type TextContentModel,
 } from '@/app/types/Content';
-
-import {
-  buildCollectionsUpdate,
-  buildUpdatePayload,
-  findImageBlockById,
-  getCollectionContentAsSelections,
-  getDisplayedCoverImage,
-  handleApiError,
-  handleCollectionNavigation,
-  handleCoverImageSelection,
-  handleMultiSelectToggle,
-  handleSingleImageEdit,
-  mergeNewMetadata,
-  refreshCollectionData,
-  revalidateCollectionCache,
-  updateCollectionCache,
-  updateCollectionState,
-  validateCoverImageSelection,
-} from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 
 // Test fixtures
 const createImageContent = (id: number, overrides?: Partial<ImageContentModel>): ImageContentModel => ({
@@ -980,6 +981,239 @@ describe('getCollectionContentAsSelections', () => {
   });
 });
 
+describe('getCurrentSelectedCollections', () => {
+  // Testing Strategy:
+  // Passing test cases:
+  // - Returns original collections when no updates
+  // - Filters out collections in remove array
+  // - Adds new collections from newValue array
+  // - Doesn't add duplicate collections (already in original)
+  // - Doesn't add duplicate collections (already in newValue)
+  // - Handles empty collectionContent
+  // - Handles undefined collectionContent
+  // - Handles undefined updateDataCollections
+  // - Handles empty remove array
+  // - Handles empty newValue array
+  // - Handles collections with missing names (uses empty string)
+  //
+  // Edge cases:
+  // - Collection in both remove and newValue (remove takes precedence, then newValue adds it back)
+  // - Multiple collections with same ID (shouldn't happen, but handles gracefully)
+
+  const collection1 = createCollectionContent(1, 'collection-1', { title: 'Collection 1' });
+  const collection2 = createCollectionContent(2, 'collection-2', { title: 'Collection 2' });
+  const collection3 = createCollectionContent(3, 'collection-3', { title: 'Collection 3' });
+
+  describe('passing cases', () => {
+    it('should return original collections when no updates', () => {
+      const content: AnyContentModel[] = [collection1, collection2];
+      // eslint-disable-next-line unicorn/no-useless-undefined
+      const result = getCurrentSelectedCollections(content, undefined);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 2, name: 'Collection 2' },
+      ]);
+    });
+
+    it('should filter out collections in remove array', () => {
+      const content: AnyContentModel[] = [collection1, collection2, collection3];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        remove: [2],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 3, name: 'Collection 3' },
+      ]);
+    });
+
+    it('should add new collections from newValue array', () => {
+      const content: AnyContentModel[] = [collection1];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        newValue: [
+          { collectionId: 4, name: 'New Collection 4' },
+          { collectionId: 5, name: 'New Collection 5' },
+        ],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 4, name: 'New Collection 4' },
+        { id: 5, name: 'New Collection 5' },
+      ]);
+    });
+
+    it('should combine removals and new collections', () => {
+      const content: AnyContentModel[] = [collection1, collection2, collection3];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        remove: [2],
+        newValue: [
+          { collectionId: 4, name: 'New Collection 4' },
+        ],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 3, name: 'Collection 3' },
+        { id: 4, name: 'New Collection 4' },
+      ]);
+    });
+
+    it('should not add duplicate collections that are already in original', () => {
+      const content: AnyContentModel[] = [collection1, collection2];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        newValue: [
+          { collectionId: 1, name: 'Collection 1 Duplicate' },
+        ],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      // Should not add duplicate, original should remain
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 2, name: 'Collection 2' },
+      ]);
+    });
+
+    it('should not add duplicate collections within newValue', () => {
+      const content: AnyContentModel[] = [collection1];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        newValue: [
+          { collectionId: 4, name: 'New Collection 4' },
+          { collectionId: 4, name: 'New Collection 4 Duplicate' },
+        ],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      // Should only add once (first occurrence)
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 4, name: 'New Collection 4' },
+      ]);
+    });
+
+    it('should handle empty collectionContent', () => {
+      const result = getCurrentSelectedCollections([], {
+        newValue: [{ collectionId: 1, name: 'New Collection' }],
+      });
+
+      expect(result).toEqual([{ id: 1, name: 'New Collection' }]);
+    });
+
+    it('should handle undefined collectionContent', () => {
+      const result = getCurrentSelectedCollections(undefined, {
+        newValue: [{ collectionId: 1, name: 'New Collection' }],
+      });
+
+      expect(result).toEqual([{ id: 1, name: 'New Collection' }]);
+    });
+
+    it('should handle undefined updateDataCollections', () => {
+      const content: AnyContentModel[] = [collection1, collection2];
+      // eslint-disable-next-line unicorn/no-useless-undefined
+      const result = getCurrentSelectedCollections(content, undefined);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 2, name: 'Collection 2' },
+      ]);
+    });
+
+    it('should handle empty remove array', () => {
+      const content: AnyContentModel[] = [collection1, collection2];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        remove: [],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 2, name: 'Collection 2' },
+      ]);
+    });
+
+    it('should handle empty newValue array', () => {
+      const content: AnyContentModel[] = [collection1, collection2];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        newValue: [],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 2, name: 'Collection 2' },
+      ]);
+    });
+
+    it('should handle collections with missing names (uses empty string)', () => {
+      const content: AnyContentModel[] = [collection1];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        newValue: [
+          { collectionId: 4 }, // No name
+        ],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 4, name: '' },
+      ]);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle collection removed then added back in newValue', () => {
+      const content: AnyContentModel[] = [collection1, collection2];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        remove: [1],
+        newValue: [
+          { collectionId: 1, name: 'Collection 1 Re-added' },
+        ],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      // Remove happens first, then newValue adds it back
+      expect(result).toEqual([
+        { id: 2, name: 'Collection 2' },
+        { id: 1, name: 'Collection 1 Re-added' },
+      ]);
+    });
+
+    it('should handle multiple removals', () => {
+      const content: AnyContentModel[] = [collection1, collection2, collection3];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        remove: [1, 3],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      expect(result).toEqual([{ id: 2, name: 'Collection 2' }]);
+    });
+
+    it('should handle multiple new collections', () => {
+      const content: AnyContentModel[] = [collection1];
+      const updateDataCollections: CollectionUpdateRequest['collections'] = {
+        newValue: [
+          { collectionId: 4, name: 'New Collection 4' },
+          { collectionId: 5, name: 'New Collection 5' },
+          { collectionId: 6, name: 'New Collection 6' },
+        ],
+      };
+      const result = getCurrentSelectedCollections(content, updateDataCollections);
+
+      expect(result).toEqual([
+        { id: 1, name: 'Collection 1' },
+        { id: 4, name: 'New Collection 4' },
+        { id: 5, name: 'New Collection 5' },
+        { id: 6, name: 'New Collection 6' },
+      ]);
+    });
+  });
+});
+
 describe('buildCollectionsUpdate', () => {
   describe('passing cases', () => {
     it('should add new collection to newValue when not in original', () => {
@@ -1646,3 +1880,122 @@ describe('mergeNewMetadata', () => {
  * - currentState is null -> still works (uses prev in updater)
  * - Duplicate metadata items -> appends duplicates (no deduplication)
  */
+
+describe('refreshCollectionAfterOperation', () => {
+  // Testing Strategy:
+  // Passing test cases:
+  // - Executes operation successfully and refreshes collection
+  // - Updates cache with refreshed collection data
+  // - Returns refreshed CollectionUpdateResponseDTO
+  // - Handles operation that returns void
+  // - Handles operation that returns a value
+  //
+  // Failing test cases:
+  // - Throws error if operation fails
+  // - Throws error if refresh fails
+  // - Error from operation is propagated correctly
+  // - Error from refresh is propagated correctly
+
+  const mockSlug = 'test-collection';
+  const mockCollectionData: CollectionUpdateResponseDTO = {
+    collection: {
+      id: 1,
+      slug: mockSlug,
+      title: 'Test Collection',
+      type: CollectionType.PORTFOLIO,
+      visible: true,
+      displayMode: 'CHRONOLOGICAL',
+      content: [],
+      createdAt: '2024-01-01T00:00:00Z',
+      updatedAt: '2024-01-01T00:00:00Z',
+    },
+    tags: [],
+    people: [],
+    cameras: [],
+    lenses: [],
+    filmTypes: [],
+    filmFormats: [],
+    collections: [],
+  };
+
+  const mockGetCollectionUpdateMetadata = jest.fn();
+  const mockCollectionStorage = {
+    update: jest.fn(),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetCollectionUpdateMetadata.mockResolvedValue(mockCollectionData);
+  });
+
+  it('should execute operation and refresh collection successfully', async () => {
+    const operation = jest.fn().mockResolvedValue(void 0);
+
+    const result = await refreshCollectionAfterOperation(
+      mockSlug,
+      operation,
+      mockGetCollectionUpdateMetadata,
+      mockCollectionStorage
+    );
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(mockSlug);
+    expect(mockCollectionStorage.update).toHaveBeenCalledWith(
+      mockSlug,
+      mockCollectionData.collection
+    );
+    expect(result).toEqual(mockCollectionData);
+  });
+
+  it('should handle operation that returns a value', async () => {
+    const operation = jest.fn().mockResolvedValue('operation-result');
+
+    const result = await refreshCollectionAfterOperation(
+      mockSlug,
+      operation,
+      mockGetCollectionUpdateMetadata,
+      mockCollectionStorage
+    );
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(mockSlug);
+    expect(result).toEqual(mockCollectionData);
+  });
+
+  it('should throw error if operation fails', async () => {
+    const operationError = new Error('Operation failed');
+    const operation = jest.fn().mockRejectedValue(operationError);
+
+    await expect(
+      refreshCollectionAfterOperation(
+        mockSlug,
+        operation,
+        mockGetCollectionUpdateMetadata,
+        mockCollectionStorage
+      )
+    ).rejects.toThrow('Operation failed');
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockGetCollectionUpdateMetadata).not.toHaveBeenCalled();
+    expect(mockCollectionStorage.update).not.toHaveBeenCalled();
+  });
+
+  it('should throw error if refresh fails', async () => {
+    const refreshError = new Error('Refresh failed');
+    const operation = jest.fn().mockResolvedValue(void 0);
+    mockGetCollectionUpdateMetadata.mockRejectedValue(refreshError);
+
+    await expect(
+      refreshCollectionAfterOperation(
+        mockSlug,
+        operation,
+        mockGetCollectionUpdateMetadata,
+        mockCollectionStorage
+      )
+    ).rejects.toThrow('Refresh failed');
+
+    expect(operation).toHaveBeenCalledTimes(1);
+    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(mockSlug);
+    expect(mockCollectionStorage.update).not.toHaveBeenCalled();
+  });
+});

@@ -139,6 +139,23 @@ export function processContentForDisplay(
 }
 
 /**
+ * Extract image dimensions from a cover image
+ * Prioritizes imageWidth/imageHeight over width/height for accurate aspect ratios
+ *
+ * @param coverImage - The cover image to extract dimensions from
+ * @returns Object with imageWidth and imageHeight (may be undefined)
+ */
+function extractCollectionDimensions(coverImage?: ImageContentModel | null): {
+  imageWidth?: number;
+  imageHeight?: number;
+} {
+  return {
+    imageWidth: coverImage?.imageWidth ?? coverImage?.width,
+    imageHeight: coverImage?.imageHeight ?? coverImage?.height,
+  };
+}
+
+/**
  * Convert CollectionContentModel to ParallaxImageContentModel for unified rendering
  * Used when processing content blocks from a collection that contain child collections
  * Uses coverImage dimensions for accurate layout calculations
@@ -147,8 +164,7 @@ export function processContentForDisplay(
  */
 export function convertCollectionContentToParallax(col: CollectionContentModel): ParallaxImageContentModel {
   // Extract dimensions from coverImage (prioritize imageWidth/imageHeight for accurate aspect ratios)
-  const imageWidth = col.coverImage?.imageWidth ?? col.coverImage?.width;
-  const imageHeight = col.coverImage?.imageHeight ?? col.coverImage?.height;
+  const { imageWidth, imageHeight } = extractCollectionDimensions(col.coverImage);
   
   return {
     contentType: 'PARALLAX',
@@ -183,8 +199,7 @@ export function convertCollectionContentToImage(col: CollectionContentModel): Im
   const coverImage = col.coverImage;
   
   // Extract dimensions from coverImage (prioritize imageWidth/imageHeight for accurate aspect ratios)
-  const imageWidth = coverImage?.imageWidth ?? coverImage?.width;
-  const imageHeight = coverImage?.imageHeight ?? coverImage?.height;
+  const { imageWidth, imageHeight } = extractCollectionDimensions(coverImage);
   
   // Create ImageContentModel from the coverImage, preserving collection metadata
   return {

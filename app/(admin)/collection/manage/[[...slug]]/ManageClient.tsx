@@ -9,6 +9,7 @@ import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetad
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
+import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
   createCollection,
@@ -35,7 +36,7 @@ import {
   buildCollectionsUpdate,
   buildUpdatePayload,
   COVER_IMAGE_FLASH_DURATION,
-  getCollectionContentAsSelections,
+  getCurrentSelectedCollections,
   getDisplayedCoverImage,
   handleApiError,
   handleCollectionNavigation,
@@ -43,6 +44,7 @@ import {
   handleMultiSelectToggle as handleMultiSelectToggleUtil,
   handleSingleImageEdit,
   mergeNewMetadata,
+  refreshCollectionAfterOperation,
   refreshCollectionData,
   revalidateCollectionCache,
   updateCollectionCache,
@@ -55,12 +57,29 @@ interface ManageClientProps {
 
 export default function ManageClient({ slug }: ManageClientProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(!!slug);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Single source of truth: CollectionUpdateResponseDTO contains collection + all metadata
   const [currentState, setCurrentState] = useState<CollectionUpdateResponseDTO | null>(null);
+
+  // Use custom hook for loading collection data
+  const { loading, error: loadError } = useCollectionData(
+    slug,
+    currentState?.collection.slug,
+    useCallback((data: CollectionUpdateResponseDTO) => {
+      setCurrentState(data);
+    }, [])
+  );
+
+  // Separate loading state for operations (create, update, upload, etc.)
+  const [operationLoading, setOperationLoading] = useState(false);
+  
+  // Combine loading error with component error state
+  const [error, setError] = useState<string | null>(null);
+  const displayError = error || loadError;
+  
+  // Combined loading state (initial load or operation)
+  const isLoading = loading || operationLoading;
 
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -88,6 +107,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
     baseCloseEditor();
   }, [isMultiSelectMode, baseCloseEditor]);
+
+  // Clear selectedImageIds when editor closes (handles Escape key and other close methods)
+  useEffect(() => {
+    if (!editingImage && !isMultiSelectMode) {
+      setSelectedImageIds([]);
+    }
+  }, [editingImage, isMultiSelectMode]);
 
   const isCreateMode = !slug;
   const collection = currentState?.collection ?? null;
@@ -155,50 +181,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [collection, updateData.coverImageId]
   );
 
-  // Load collection data for UPDATE mode
-  useEffect(() => {
-    if (!slug) return; // CREATE mode - no data to fetch
-
-    // Skip fetch if we already have this exact collection loaded
-    if (currentState?.collection.slug === slug) {
-      return;
-    }
-
-    const abortController = new AbortController();
-    let isMounted = true;
-
-    const loadCollectionData = async () => {
-      try {
-        setLoading(true);
-
-        // Always fetch fresh data in manage page to ensure we have complete collection data
-        // (including collections arrays on content items)
-        const response = await getCollectionUpdateMetadata(slug);
-
-        if (isMounted && !abortController.signal.aborted) {
-          setCurrentState(response);
-
-          // Update cache with complete data (includes collections arrays on content items)
-          collectionStorage.update(slug, response.collection);
-        }
-      } catch (error) {
-        if (!abortController.signal.aborted && isMounted) {
-          setError(handleApiError(error, 'Failed to load collection data'));
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadCollectionData();
-
-    return () => {
-      isMounted = false;
-      abortController.abort();
-    };
-  }, [slug, currentState?.collection.slug]);
+  // Collection data loading is now handled by useCollectionData hook
 
   /**
    * Handle opening the text block creation modal
@@ -219,19 +202,23 @@ export default function ManageClient({ slug }: ManageClientProps) {
     if (!collection) return;
 
     try {
-      setLoading(true);
+      setOperationLoading(true);
       setError(null);
 
-      // Create text content via API
-      await createTextContent({
-        collectionId: collection.id,
-        content: data.content,
-        format: data.format,
-        align: data.align,
-      });
-
-      // Re-fetch collection using admin endpoint to get full data with collections arrays
-      const response = await getCollectionUpdateMetadata(collection.slug);
+      // Execute operation and refresh collection
+      const response = await refreshCollectionAfterOperation(
+        collection.slug,
+        async () => {
+          await createTextContent({
+            collectionId: collection.id,
+            content: data.content,
+            format: data.format,
+            align: data.align,
+          });
+        },
+        getCollectionUpdateMetadata,
+        collectionStorage
+      );
 
       // Update currentState with refreshed collection (keep existing metadata)
       setCurrentState(prev => ({
@@ -239,16 +226,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collection: response.collection,
       }));
 
-      // Update cache with full admin data (includes collections arrays)
-      collectionStorage.update(collection.slug, response.collection);
-
       // Close modal after successful creation
       setIsTextBlockModalOpen(false);
     } catch (error) {
       setError(handleApiError(error, 'Failed to create text block'));
       throw error; // Re-throw so modal can handle it
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   };
 
@@ -262,7 +246,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
 
     try {
-      setLoading(true);
+      setOperationLoading(true);
       setError(null);
 
       // Create endpoint returns CollectionUpdateResponseDTO
@@ -276,7 +260,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     } catch (error: unknown) {
       setError(handleApiError(error, 'Failed to create collection'));
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   };
 
@@ -321,7 +305,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     if (!collection || !event.target.files || event.target.files.length === 0) return;
 
     try {
-      setLoading(true);
+      setOperationLoading(true);
       setError(null);
 
       const files = Array.from(event.target.files);
@@ -332,10 +316,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
         formData.append('files', file); // Backend expects 'files' field
       }
 
-      await createImages(collection.id, formData);
-
-      // Re-fetch collection using admin endpoint to get full data with collections arrays
-      const response = await getCollectionUpdateMetadata(collection.slug);
+      // Execute operation and refresh collection
+      const response = await refreshCollectionAfterOperation(
+        collection.slug,
+        async () => {
+          await createImages(collection.id, formData);
+        },
+        getCollectionUpdateMetadata,
+        collectionStorage
+      );
 
       // Update currentState with refreshed collection (keep existing metadata)
       setCurrentState(prev => ({
@@ -343,15 +332,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collection: response.collection,
       }));
 
-      // Update cache with full admin data (includes collections arrays)
-      collectionStorage.update(collection.slug, response.collection);
-
       // Clear the file input
       event.target.value = '';
     } catch (error) {
       setError(handleApiError(error, 'Failed to upload images'));
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   };
 
@@ -493,23 +479,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, [collection?.content]);
 
   // Derive current selected collections by applying changes to original collection
-  const currentSelectedCollections: CollectionListModel[] = useMemo(() => {
-    const selected = getCollectionContentAsSelections(collection?.content);
-    const removeIds = new Set(updateData.collections?.remove || []);
-    const filtered = selected.filter(c => !removeIds.has(c.id));
-
-    const newCollections = updateData.collections?.newValue || [];
-    for (const newCollection of newCollections) {
-      if (!filtered.some(c => c.id === newCollection.collectionId)) {
-        filtered.push({
-          id: newCollection.collectionId,
-          name: newCollection.name || '',
-        });
-      }
-    }
-
-    return filtered;
-  }, [updateData.collections, collection?.content]);
+  const currentSelectedCollections: CollectionListModel[] = useMemo(
+    () => getCurrentSelectedCollections(collection?.content, updateData.collections),
+    [updateData.collections, collection?.content]
+  );
 
   // Handle collections selection changes - simple toggle logic
   const handleCollectionsChange = useCallback(
@@ -534,14 +507,14 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   return (
     <div>
-      <div className={pageStyles.contentPadding}>
+      <div className={styles.container}>
         <SiteHeader pageType="manage" />
         {/* CREATE MODE */}
         {isCreateMode && !collection && (
           <div className={styles.createContainer}>
             <h2 className={styles.createHeading}>Create New Collection</h2>
 
-            {error && <div className={styles.errorMessage}>{error}</div>}
+            {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
             <form onSubmit={handleCreate}>
               <div className={styles.formGroup}>
@@ -573,9 +546,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 />
               </div>
 
-              <button type="submit" disabled={loading} className={styles.submitButton}>
-                {loading ? 'Creating...' : 'Create Collection'}
-              </button>
+                  <button type="submit" disabled={isLoading} className={styles.submitButton}>
+                    {isLoading ? 'Creating...' : 'Create Collection'}
+                  </button>
             </form>
           </div>
         )}
@@ -591,7 +564,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 {collection.title}
               </h2>
 
-              {error && <div className={styles.errorMessage}>{error}</div>}
+              {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
               <form onSubmit={handleUpdate}>
                 <div className={styles.updateFormLayout}>
@@ -740,10 +713,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           multiple
                           accept="image/*"
                           onChange={handleImageUpload}
-                          disabled={loading}
+                          disabled={isLoading}
                           className={styles.uploadInput}
                         />
-                        {loading && <div className={styles.uploadingText}>Uploading...</div>}
+                        {isLoading && <div className={styles.uploadingText}>Uploading...</div>}
                       </div>
 
                       <div className={styles.textBlockSection}>
@@ -751,7 +724,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         <button
                           type="button"
                           onClick={handleCreateNewTextBlock}
-                          disabled={loading}
+                          disabled={isLoading}
                           className={styles.addTextBlockButton}
                         >
                           + Create New Text Block
@@ -779,7 +752,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 <div className={styles.formActions}>
                   <button
                     type="submit"
-                    disabled={saving || loading}
+                    disabled={saving || isLoading}
                     className={styles.submitButton}
                   >
                     {saving ? (

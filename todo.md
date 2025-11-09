@@ -27,6 +27,12 @@
 - **Text/Code content**: Database storage as `@Lob` fields (no S3 needed)
 - **Metadata**: Database with proper indexing for performance
 
+### Code Reuse & Consistency
+- **Check existing utilities first**: Before creating new utility functions, check if similar functionality already exists (e.g., `processContentBlocks` in `contentLayout.ts`)
+- **Consistency across pages**: Admin/manage pages should use the same processing logic as public pages when displaying the same content types
+- **Collection rendering**: Collections should be converted to `ParallaxImageContentModel` (not `ImageContentModel`) for consistency with collection page rendering
+- **Shared components**: Both collection page and manage page use `ContentBlockWithFullScreen`, so content processing should be compatible
+
 ---
 
 ## Function Analysis: Improvements Needed
@@ -42,12 +48,14 @@ All refactoring work should follow these principles:
 
 #### 2. Extract to Utility Files
 - **Move logic outside React components whenever possible** - Extract to utility files, hooks, or pure functions
+- **Check for existing utilities first** - Before creating new utility functions, search the codebase for similar functionality (e.g., `processContentBlocks` already existed in `contentLayout.ts`)
 - Utility files should be organized by domain:
-  - `app/utils/` - General utilities (object comparison, data transformation)
+  - `app/utils/` - General utilities (object comparison, data transformation, content processing)
   - `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts` - Manage page specific utilities
   - `app/components/ImageMetadata/imageMetadataUtils.ts` - Image metadata specific utilities
   - `app/lib/api/` - API utilities
 - Pure functions are easier to test, reuse, and reason about
+- **Prefer reusing existing utilities** over creating duplicates - maintains consistency and reduces maintenance burden
 
 #### 3. Single Responsibility Principle
 - **Each function should do ONE thing well** - If a function handles multiple concerns, split it
@@ -146,30 +154,41 @@ describe('handleCoverImageSelection', () => {
   - Return type documentation
   - Usage examples if complex
 - Refactor notes in todo.md should link to the test file where testing strategy is documented
+- **Prefer docblocks over inline comments** - For complex functions like `handleMetadataSaveSuccess`, use a JSDoc docblock at the top listing all steps rather than inline comments throughout the function body
+
+#### 8. Modal Component Pattern
+- **Replace browser prompts/alerts with proper modals** - Use React modal components with proper form validation
+- **Modal components should**:
+  - Accept `scrollPosition` prop to position correctly
+  - Handle form validation and error display
+  - Provide loading states during async operations
+  - Support backdrop click to close (optional)
+  - Use consistent styling with existing modals (e.g., `ImageMetadataModal.module.scss` as reference)
+- **Example**: `TextBlockCreateModal` replaced `prompt()` with a proper form modal
 
 ---
 
 ### 1. Functions That Could Be Simplified
 
 #### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
-- [ ] `handleImageClick` (lines 412-456) - **Too complex** - Handles 4 different modes (cover selection, collection navigation, multi-select, single edit). **Refactor approach**: Use switch case pattern to determine action type, then delegate to focused handlers:
+- [x] `handleImageClick` (lines 412-456) - **Too complex** - Handles 4 different modes (cover selection, collection navigation, multi-select, single edit). **Refactor approach**: Use switch case pattern to determine action type, then delegate to focused handlers:
   - `handleCoverImageSelection(imageId)` - Cover image selection logic
   - `handleCollectionNavigation(imageId)` - Navigate to collection manage page
   - `handleMultiSelectToggle(imageId)` - Multi-select toggle (already exists)
   - `handleSingleImageEdit(imageId)` - Open metadata editor for single image
   - Main `handleImageClick` becomes a simple router: determines mode → calls appropriate handler
-- [ ] `handleMetadataSaveSuccess` (lines 459-511) - **Too complex** - Does multiple things: re-fetch, update state, update cache, revalidate, merge metadata. **Refactor approach**: Split into focused functions:
+- [x] `handleMetadataSaveSuccess` (lines 459-511) - **Too complex** - Does multiple things: re-fetch, update state, update cache, revalidate, merge metadata. **Refactor approach**: Split into focused functions:
   - `refreshCollectionData(slug)` - Re-fetch collection with metadata
   - `updateCollectionState(response)` - Update currentState with response
   - `updateCollectionCache(slug, collection)` - Update cache storage
   - `revalidateCollectionCache(slug)` - Revalidate Next.js cache
   - `mergeNewMetadata(response, currentState)` - Merge new metadata entities
   - Main `handleMetadataSaveSuccess` orchestrates these in sequence
-- [ ] `processedContent` useMemo (lines 135-161) - **Could be simplified** - Complex transformation logic. **Refactor approach**: Extract to `manageUtils.ts` as pure function `processContentForManagePage(content, collectionId)` - easier to test and reuse.
-- [ ] `handleCreateNewTextBlock` (lines 223-257) - **Uses prompt()** - Should use a proper modal/form component instead of browser prompt. **Refactor approach**: Create `TextBlockCreateModal` component with proper form validation.
+- [x] `processedContent` useMemo (lines 135-161) - **COMPLETED** - Now uses `processContentBlocks` from `contentLayout.ts` to match collection page behavior. Collections are converted to ParallaxImageContentModel, keeping consistency across pages. **Learning**: Check for existing utilities before creating new ones - `processContentBlocks` already existed and was the correct solution. Initially created `processContentForManagePage` but removed it after realizing the existing utility was better.
+- [x] `handleCreateNewTextBlock` (lines 223-257) - **COMPLETED** - Replaced `prompt()` with `TextBlockCreateModal` component. Modal includes form validation, format selector (plain/markdown/html), alignment selector (left/center/right), and proper error handling.
 
 #### `app/components/ImageMetadata/imageMetadataUtils.ts`
-- [ ] `buildImageUpdateDiff` (lines 343-519) - **Very complex** - 176 lines handling multiple field types. **Refactor approach**: Split into focused field-specific builders:
+- [x] `buildImageUpdateDiff` (lines 343-519) - **COMPLETED** - Refactored into focused field-specific builders:
   - `buildSimpleFieldDiff(field, updateValue, currentValue)` - For string/number/boolean fields
   - `buildCameraDiff(update, current)` - Camera prev/newValue/remove pattern
   - `buildLensDiff(update, current)` - Lens prev/newValue/remove pattern
@@ -178,44 +197,43 @@ describe('handleCoverImageSelection', () => {
   - `buildPeopleDiff(update, current)` - People prev/newValue/remove pattern
   - `buildCollectionsDiff(update, current)` - Collections prev/newValue/remove pattern
   - Main `buildImageUpdateDiff` orchestrates by calling appropriate builder per field
-- [ ] `getCommonValues` (lines 113-164) - **Repetitive** - Multiple similar checks. **Refactor approach**: Extract comparison logic to helper `areAllEqual<T>(items: T[], getValue: (item: T) => T[keyof T])` to reduce duplication.
-- [ ] `handleDropdownChange` (lines 588-620) - **Complex conditional logic** - **Refactor approach**: Use strategy pattern with field-specific handlers:
+  - Comprehensive tests added in `tests/components/ImageMetadata/imageMetadataUtils.test.ts`
+- [x] `getCommonValues` (lines 113-164) - **COMPLETED** - Extracted comparison logic to helper `areAllEqual<T>(items: T[], getValue: (item: T) => unknown)` to reduce duplication. All field comparisons now use this helper function, making the code more maintainable.
+- [x] `handleDropdownChange` (lines 588-620) - **COMPLETED** - Refactored using strategy pattern with field-specific handlers:
   - `handleMultiSelectChange(field, value, updateDTO)` - For tags/people (prev/newValue pattern)
-  - `handleSingleSelectChange(field, value, updateDTO)` - For camera/lens (prev/newValue/remove pattern)
+  - `handleSingleSelectChange(field, value, updateDTO)` - For camera/lens/collections (prev/newValue/remove pattern)
   - Main `handleDropdownChange` determines field type → calls appropriate handler
 
-#### `app/lib/api/collections.new.ts`
-- [ ] `getAllCollections` (lines 60-87) - **Complex response parsing** - Multiple fallback checks. **Refactor approach**: Extract response parsing to helper `parseCollectionArrayResponse(data: unknown): CollectionModel[]` - handles all fallback logic in one place, easier to test.
+#### `app/lib/api/collections.ts`
+- [x] `getAllCollections` (lines 60-87) - **COMPLETED** - Extracted response parsing to helper `parseCollectionArrayResponse(data: unknown): CollectionModel[]` that handles all fallback logic in one place. The function now handles direct array responses, wrapped object responses (content/collections/items), and invalid formats, making it easier to test and maintain.
 
 #### `app/utils/contentLayout.ts`
-- [ ] `processContentBlocks` (lines 240-298) - **Does too much** - Filters, maps, transforms, and sorts. **Refactor approach**: Split into focused pipeline functions:
+- [x] `processContentBlocks` (lines 240-298) - **COMPLETED** - Split into focused pipeline functions:
   - `filterVisibleBlocks(content, filterVisible, collectionId)` - Filter visibility logic
   - `transformCollectionBlocks(content)` - Convert CollectionContentModel to ParallaxImageContentModel
   - `updateImageOrderIndex(content, collectionId)` - Update orderIndex from collection-specific entry
   - `ensureParallaxDimensions(content)` - Ensure PARALLAX blocks have proper dimensions
   - `sortContentByOrderIndex(content)` - Sort by orderIndex
   - Main `processContentBlocks` orchestrates: filter → transform → update → ensure → sort
+  - Each function has a single responsibility, making the code easier to test and maintain
 
 ### 2. Functions That Could Be Refactored
 
 #### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
-- [ ] `loadCollectionData` (inside useEffect, lines 189-212) - **Should be extracted** - **Refactor approach**: Move to custom hook `useCollectionData(slug)` that handles loading, error states, and data fetching. Returns `{ collection, loading, error, refetch }`.
-- [ ] `handleImageUpload` (lines 324-360) - **Repeated pattern** - Similar to `handleCreateNewTextBlock` - both re-fetch after operation. **Refactor approach**: Extract common pattern to `useCollectionRefresh(slug)` hook or `refreshCollectionAfterOperation(slug, operation)` utility that handles: operation → re-fetch → update state → update cache.
-- [ ] `currentSelectedCollections` useMemo (lines 527-543) - **Complex logic** - **Refactor approach**: Move to `manageUtils.ts` as pure function `getCurrentSelectedCollections(collectionContent, updateDataCollections, originalCollectionIds)` - easier to test.
+- [x] `loadCollectionData` (inside useEffect, lines 189-212) - **COMPLETED** - Extracted to custom hook `useCollectionData(slug, currentSlug, onLoadSuccess)` that handles loading, error states, and data fetching. Hook uses callback pattern to notify parent of successful loads. Tests added in `tests/hooks/useCollectionData.test.tsx`. Fixed bug where loading state wasn't set to false when skipping fetch.
+- [x] `handleImageUpload` (lines 324-360) - **COMPLETED** - Extracted common refresh pattern to `refreshCollectionAfterOperation` utility in `manageUtils.ts`. Both `handleImageUpload` and `handleTextBlockSubmit` now use this utility which handles: operation → re-fetch → update cache. Tests added in `manageUtils.test.ts`.
+- [x] `currentSelectedCollections` useMemo (lines 527-543) - **COMPLETED** - Extracted to pure function `getCurrentSelectedCollections(collectionContent, updateDataCollections)` in `manageUtils.ts`. Function combines original collections (minus removals) with newly added collections. Tests added in `manageUtils.test.ts`.
 
 #### `app/components/ImageMetadata/ImageMetadataModal.tsx`
-- [ ] `handleSubmit` (lines 151-177) - **Complex diff building** - The bulk vs single edit logic should be extracted to a helper function. **Refactor approach**: Extract to focused functions:
-  - `buildImageUpdatesForBulkEdit(updateState, selectedImages)` - Build updates for each image in bulk edit
-  - `buildImageUpdateForSingleEdit(updateState, originalImage)` - Build single image update
-  - Main `handleSubmit` determines edit mode → calls appropriate builder → calls API
-- [ ] `hasChanges` useMemo (lines 119-133) - **JSON.stringify comparison** - Inefficient and fragile. **Refactor approach**: Extract to utility `hasObjectChanges(updateState, currentState)` using field-by-field comparison or proper deep equality check (move to `app/utils/objectComparison.ts`).
+- [x] `handleSubmit` (lines 151-177) - **COMPLETED** - Extracted diff building logic to focused functions in `imageMetadataUtils.ts`: `buildImageUpdatesForBulkEdit` for bulk edits, `buildImageUpdateForSingleEdit` for single edits, and `mapUpdateResponseToFrontend` for response mapping. Main `handleSubmit` now simply determines edit mode → calls appropriate builder → calls API → maps response. Tests added in `imageMetadataUtils.test.ts`.
+- [x] `hasChanges` useMemo (lines 119-133) - **COMPLETED** - Extracted to `hasObjectChanges` utility in `app/utils/objectComparison.ts` using proper deep equality check. Replaced inefficient JSON.stringify comparison with field-by-field deep comparison that handles nested objects, arrays, null/undefined correctly. Also created `deepEqual` function for general deep equality checks. Tests added in `tests/utils/objectComparison.test.ts`.
 
 #### `app/lib/api/core.ts`
-- [ ] `fetchWriteBase` and `fetchAdminBase` - **Duplication** - Very similar functions. **Refactor approach**: Combine into single `fetchBase(endpointType: 'write' | 'admin', endpoint: string, options: RequestInit)` function with endpoint type parameter - eliminates duplication.
-- [ ] `handleApiResponseError` and `handleApiCatchError` - **Could be combined** - Both handle errors, could be unified. **Refactor approach**: Create unified `handleApiError(error: unknown, response?: Response): ApiError` that handles both response errors and catch errors in one place.
+- [x] `fetchWriteBase` and `fetchAdminBase` - **COMPLETED** - Combined into single `fetchBase(endpointType: 'write' | 'admin', endpoint, options)` function. Eliminates duplication - both functions were identical except for endpoint type. All callers updated to use the unified function.
+- [x] `handleApiResponseError` and `handleApiCatchError` - **COMPLETED** - Combined into unified `handleApiError(error: unknown, response?: Response)` function. Handles both Response errors (extracts message from response) and catch block errors (converts to ApiError). All callers updated to use the unified function.
 
 #### `app/utils/contentLayout.ts`
-- [ ] `convertCollectionContentToParallax` and `convertCollectionContentToImage` - **Similar logic** - **Refactor approach**: Extract common dimension extraction to helper `extractCollectionDimensions(coverImage)` that returns `{ imageWidth, imageHeight }`. Both conversion functions use this helper.
+- [x] `convertCollectionContentToParallax` and `convertCollectionContentToImage` - **COMPLETED** - Extracted common dimension extraction to helper `extractCollectionDimensions(coverImage)` that returns `{ imageWidth, imageHeight }`. Both conversion functions now use this helper, eliminating duplication.
 
 ### 3. Functions With Potential Errors/Bugs
 
@@ -231,7 +249,7 @@ describe('handleCoverImageSelection', () => {
 #### `app/lib/api/content.ts`
 - [ ] `updateImages` (lines 98-103, 116-117) - **Debug console.logs** - Should be removed or use proper logging.
 
-#### `app/lib/api/collections.new.ts`
+#### `app/lib/api/collections.ts`
 - [ ] `safeJson` (line 48) - **Potential race condition** - Calls `res.json()` twice (line 36 and 48). Should cache the result.
 
 #### `app/utils/contentLayout.ts`
@@ -285,7 +303,7 @@ describe('handleCoverImageSelection', () => {
 - [ ] Response mapping logic (lines 183-197) - **Move to** `app/components/ImageMetadata/imageMetadataUtils.ts` as `mapUpdateResponseToFrontend`
 - [ ] `hasChanges` comparison logic - **Move to** `app/utils/objectComparison.ts` as `deepEqual` or `hasObjectChanges`
 
-#### From `collections.new.ts`:
+#### From `collections.ts`:
 - [ ] `safeJson` - **Move to** `app/lib/api/core.ts` as it's a shared utility
 - [ ] Response parsing logic from `getAllCollections` - **Move to** `app/lib/api/core.ts` as `parseCollectionArrayResponse`
 
@@ -307,7 +325,7 @@ describe('handleCoverImageSelection', () => {
 
 ### API Layer Tests
 
-#### `app/lib/api/collections.new.test.ts`
+#### `app/lib/api/collections.test.ts`
 **Functions to test:**
 - `getAllCollections` - Test pagination, response parsing, error handling
 - `getCollectionBySlug` - Test slug encoding, access control, caching
@@ -557,9 +575,11 @@ describe('handleCoverImageSelection', () => {
    - Improve error messages
 
 4. **Add test utilities:**
-   - Create test fixtures for common data structures
+   - Create test fixtures for common data structures (e.g., `createImageContent`, `createCollectionContent`, `createCollectionModel`)
+   - Test fixtures should accept `overrides` parameter for flexibility
    - Add helper functions for common test patterns
    - Set up MSW for API mocking
+   - **Fixture pattern**: Use factory functions like `createImageContent(id, overrides?)` that return properly typed objects with sensible defaults
 
 5. **Improve type safety:**
    - Ensure all functions have proper return types

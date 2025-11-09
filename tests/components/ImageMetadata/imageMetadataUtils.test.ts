@@ -5,9 +5,12 @@
 
 import {
   buildImageUpdateDiff,
+  buildImageUpdateForSingleEdit,
+  buildImageUpdatesForBulkEdit,
   extractMultiSelectValues,
   getCommonValues,
   handleDropdownChange,
+  mapUpdateResponseToFrontend,
 } from '@/app/components/ImageMetadata/imageMetadataUtils';
 import type { ImageContentModel } from '@/app/types/Content';
 import type { ContentFilmTypeModel } from '@/app/types/ImageMetadata';
@@ -1269,6 +1272,561 @@ describe('handleDropdownChange', () => {
       handleDropdownChange({ field: 'tags', value: null }, updateDTO);
       expect(updateDTO).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('buildImageUpdatesForBulkEdit', () => {
+  // Testing Strategy:
+  // Passing test cases:
+  // - Builds updates for all selected image IDs
+  // - Each update contains diff between updateState and individual image state
+  // - Handles multiple images correctly
+  // - Uses correct image ID for each update
+  // - Passes availableFilmTypes to buildImageUpdateDiff
+  //
+  // Failing test cases:
+  // - Throws error if image ID not found in selectedImages
+  // - Handles empty selectedImageIds array
+  // - Handles empty selectedImages array
+
+  const image1 = createImageContent(1, { title: 'Image 1', location: 'Location 1' });
+  const image2 = createImageContent(2, { title: 'Image 2', location: 'Location 2' });
+  const image3 = createImageContent(3, { title: 'Image 3', location: 'Location 3' });
+
+  const availableFilmTypes = [
+    createFilmType(1, 'Kodak Portra 400'),
+    createFilmType(2, 'Fuji Pro 400H'),
+  ];
+
+  it('should build updates for all selected image IDs', () => {
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0, // Will be replaced per image
+      title: 'Updated Title',
+      location: 'Updated Location',
+    };
+
+    const selectedImages = [image1, image2, image3];
+    const selectedImageIds = [1, 2, 3];
+
+    const result = buildImageUpdatesForBulkEdit(
+      updateState,
+      selectedImages,
+      selectedImageIds,
+      availableFilmTypes
+    );
+
+    expect(result).toHaveLength(3);
+    expect(result[0]?.id).toBe(1);
+    expect(result[1]?.id).toBe(2);
+    expect(result[2]?.id).toBe(3);
+  });
+
+  it('should create diff for each image using updateState vs individual image state', () => {
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0,
+      title: 'Updated Title',
+    };
+
+    const selectedImages = [image1, image2];
+    const selectedImageIds = [1, 2];
+
+    const result = buildImageUpdatesForBulkEdit(
+      updateState,
+      selectedImages,
+      selectedImageIds,
+      availableFilmTypes
+    );
+
+    // Each update should contain only changed fields
+    expect(result[0]?.title).toBe('Updated Title');
+    expect(result[1]?.title).toBe('Updated Title');
+  });
+
+  it('should throw error if image ID not found in selectedImages', () => {
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0,
+      title: 'Updated Title',
+    };
+
+    const selectedImages = [image1, image2];
+    const selectedImageIds = [1, 999]; // 999 doesn't exist
+
+    expect(() => {
+      buildImageUpdatesForBulkEdit(updateState, selectedImages, selectedImageIds, availableFilmTypes);
+    }).toThrow('Image 999 not found in selectedImages');
+  });
+
+  it('should handle empty selectedImageIds array', () => {
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0,
+      title: 'Updated Title',
+    };
+
+    const selectedImages = [image1];
+    const selectedImageIds: number[] = [];
+
+    const result = buildImageUpdatesForBulkEdit(
+      updateState,
+      selectedImages,
+      selectedImageIds,
+      availableFilmTypes
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it('should use correct image ID for each update', () => {
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0,
+      title: 'Updated Title',
+    };
+
+    const selectedImages = [image1, image2, image3];
+    const selectedImageIds = [3, 1, 2]; // Out of order
+
+    const result = buildImageUpdatesForBulkEdit(
+      updateState,
+      selectedImages,
+      selectedImageIds,
+      availableFilmTypes
+    );
+
+    expect(result[0]?.id).toBe(3);
+    expect(result[1]?.id).toBe(1);
+    expect(result[2]?.id).toBe(2);
+  });
+
+  it('should preserve image-specific people when adding new people in bulk edit', () => {
+    // Scenario: Image 1 has Person A, Images 2-3 have no people
+    // User adds Person B to all images
+    // Expected: Image 1 should have both Person A and Person B, Images 2-3 should have Person B
+    const imageWithPerson = createImageContent(1, {
+      people: [{ id: 1, name: 'Person A' }],
+    });
+    const imageWithoutPeople = createImageContent(2, {
+      people: [],
+    });
+    const imageWithoutPeople2 = createImageContent(3, {
+      people: [],
+    });
+
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0,
+      people: [{ id: 0, name: 'Person B' }], // New person added
+    };
+
+    const selectedImages = [imageWithPerson, imageWithoutPeople, imageWithoutPeople2];
+    const selectedImageIds = [1, 2, 3];
+
+    const result = buildImageUpdatesForBulkEdit(
+      updateState,
+      selectedImages,
+      selectedImageIds,
+      availableFilmTypes
+    );
+
+    // Image 1: Should add Person B, but NOT remove Person A
+    expect(result[0]?.id).toBe(1);
+    expect(result[0]?.people).toEqual({
+      prev: [1], // Person A should be preserved
+      newValue: ['Person B'], // Person B should be added
+    });
+    expect(result[0]?.people?.remove).toBeUndefined(); // Person A should NOT be removed
+
+    // Image 2: Should only add Person B
+    expect(result[1]?.id).toBe(2);
+    expect(result[1]?.people).toEqual({
+      newValue: ['Person B'],
+    });
+
+    // Image 3: Should only add Person B
+    expect(result[2]?.id).toBe(3);
+    expect(result[2]?.people).toEqual({
+      newValue: ['Person B'],
+    });
+  });
+
+  it('should only update prev array when adding existing person in bulk edit', () => {
+    // Scenario: Image 1 has Person A (id: 1), Images 2-3 have no people
+    // User adds existing Person B (id: 2) to all images
+    // Expected: Only prev array should be updated, no remove array
+    const imageWithPerson = createImageContent(1, {
+      people: [{ id: 1, name: 'Person A' }],
+    });
+    const imageWithoutPeople = createImageContent(2, {
+      people: [],
+    });
+    const imageWithoutPeople2 = createImageContent(3, {
+      people: [],
+    });
+
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0,
+      people: [{ id: 2, name: 'Person B' }], // Existing person (id: 2) added
+    };
+
+    const selectedImages = [imageWithPerson, imageWithoutPeople, imageWithoutPeople2];
+    const selectedImageIds = [1, 2, 3];
+
+    const result = buildImageUpdatesForBulkEdit(
+      updateState,
+      selectedImages,
+      selectedImageIds,
+      availableFilmTypes
+    );
+
+    // Image 1: Should add Person B (id: 2) via prev, preserve Person A (id: 1)
+    expect(result[0]?.id).toBe(1);
+    expect(result[0]?.people).toEqual({
+      prev: [2, 1], // Person B added, Person A preserved
+    });
+    expect(result[0]?.people?.newValue).toBeUndefined(); // No new people
+    expect(result[0]?.people?.remove).toBeUndefined(); // Person A should NOT be removed
+
+    // Image 2: Should only add Person B via prev
+    expect(result[1]?.id).toBe(2);
+    expect(result[1]?.people).toEqual({
+      prev: [2], // Only Person B
+    });
+    expect(result[1]?.people?.remove).toBeUndefined();
+
+    // Image 3: Should only add Person B via prev
+    expect(result[2]?.id).toBe(3);
+    expect(result[2]?.people).toEqual({
+      prev: [2], // Only Person B
+    });
+    expect(result[2]?.people?.remove).toBeUndefined();
+  });
+
+  it('should only remove people if they were common to all images and deselected', () => {
+    // Scenario: All images have Person B (id: 2) - it's common
+    // User deselects Person B (removes from updateState)
+    // Expected: Person B should be in remove array for all images
+    const image1 = createImageContent(1, {
+      people: [{ id: 2, name: 'Person B' }],
+    });
+    const image2 = createImageContent(2, {
+      people: [{ id: 2, name: 'Person B' }],
+    });
+    const image3 = createImageContent(3, {
+      people: [{ id: 2, name: 'Person B' }],
+    });
+
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0,
+      people: [], // Person B deselected
+    };
+
+    const selectedImages = [image1, image2, image3];
+    const selectedImageIds = [1, 2, 3];
+
+    const result = buildImageUpdatesForBulkEdit(
+      updateState,
+      selectedImages,
+      selectedImageIds,
+      availableFilmTypes
+    );
+
+    // All images: Person B should be removed (it was common and deselected)
+    expect(result[0]?.id).toBe(1);
+    expect(result[0]?.people).toEqual({
+      remove: [2], // Person B removed
+    });
+    expect(result[0]?.people?.prev).toBeUndefined();
+    expect(result[0]?.people?.newValue).toBeUndefined();
+
+    expect(result[1]?.id).toBe(2);
+    expect(result[1]?.people).toEqual({
+      remove: [2],
+    });
+
+    expect(result[2]?.id).toBe(3);
+    expect(result[2]?.people).toEqual({
+      remove: [2],
+    });
+  });
+
+  it('should preserve image-specific tags when adding new tags in bulk edit', () => {
+    // Scenario: Image 1 has Tag A, Images 2-3 have no tags
+    // User adds Tag B to all images
+    // Expected: Image 1 should have both Tag A and Tag B, Images 2-3 should have Tag B
+    const imageWithTag = createImageContent(1, {
+      tags: [{ id: 1, name: 'Tag A' }],
+    });
+    const imageWithoutTags = createImageContent(2, {
+      tags: [],
+    });
+    const imageWithoutTags2 = createImageContent(3, {
+      tags: [],
+    });
+
+    const updateState: Partial<ImageContentModel> & { id: number } = {
+      id: 0,
+      tags: [{ id: 0, name: 'Tag B' }], // New tag added
+    };
+
+    const selectedImages = [imageWithTag, imageWithoutTags, imageWithoutTags2];
+    const selectedImageIds = [1, 2, 3];
+
+    const result = buildImageUpdatesForBulkEdit(
+      updateState,
+      selectedImages,
+      selectedImageIds,
+      availableFilmTypes
+    );
+
+    // Image 1: Should add Tag B, but NOT remove Tag A
+    expect(result[0]?.id).toBe(1);
+    expect(result[0]?.tags).toEqual({
+      prev: [1], // Tag A should be preserved
+      newValue: ['Tag B'], // Tag B should be added
+    });
+    expect(result[0]?.tags?.remove).toBeUndefined(); // Tag A should NOT be removed
+
+    // Image 2: Should only add Tag B
+    expect(result[1]?.id).toBe(2);
+    expect(result[1]?.tags).toEqual({
+      newValue: ['Tag B'],
+    });
+
+    // Image 3: Should only add Tag B
+    expect(result[2]?.id).toBe(3);
+    expect(result[2]?.tags).toEqual({
+      newValue: ['Tag B'],
+    });
+  });
+});
+
+describe('buildImageUpdateForSingleEdit', () => {
+  // Testing Strategy:
+  // Passing test cases:
+  // - Builds single update from updateState vs originalImage
+  // - Returns ContentImageUpdateRequest with correct id
+  // - Passes availableFilmTypes to buildImageUpdateDiff
+  // - Creates diff with only changed fields
+  //
+  // Edge cases:
+  // - Handles updateState with all fields changed
+  // - Handles updateState with no fields changed (empty diff)
+
+  const originalImage = createImageContent(1, {
+    title: 'Original Title',
+    location: 'Original Location',
+    rating: 3,
+  });
+
+  const availableFilmTypes = [createFilmType(1, 'Kodak Portra 400')];
+
+  it('should build single update from updateState vs originalImage', () => {
+    const updateState: ImageContentModel = {
+      ...originalImage,
+      title: 'Updated Title',
+    };
+
+    const result = buildImageUpdateForSingleEdit(updateState, originalImage, availableFilmTypes);
+
+    expect(result.id).toBe(1);
+    expect(result.title).toBe('Updated Title');
+    expect(result.location).toBeUndefined(); // Not changed, so not in diff
+  });
+
+  it('should return ContentImageUpdateRequest with correct id', () => {
+    const updateState: ImageContentModel = {
+      ...originalImage,
+      rating: 5,
+    };
+
+    const result = buildImageUpdateForSingleEdit(updateState, originalImage, availableFilmTypes);
+
+    expect(result.id).toBe(1);
+    expect(result.rating).toBe(5);
+  });
+
+  it('should create diff with only changed fields', () => {
+    const updateState: ImageContentModel = {
+      ...originalImage,
+      title: 'New Title',
+      location: 'New Location',
+    };
+
+    const result = buildImageUpdateForSingleEdit(updateState, originalImage, availableFilmTypes);
+
+    expect(result.title).toBe('New Title');
+    expect(result.location).toBe('New Location');
+    expect(result.rating).toBeUndefined(); // Not changed
+  });
+
+  it('should handle updateState with no fields changed', () => {
+    const updateState: ImageContentModel = originalImage;
+
+    const result = buildImageUpdateForSingleEdit(updateState, originalImage, availableFilmTypes);
+
+    // Should only have id field
+    expect(result.id).toBe(1);
+    expect(Object.keys(result).length).toBe(1);
+  });
+});
+
+describe('mapUpdateResponseToFrontend', () => {
+  // Testing Strategy:
+  // Passing test cases:
+  // - Maps backend response with newMetadata to frontend format
+  // - Converts tagName to name for tags
+  // - Converts personName to name for people
+  // - Converts cameraName to name for cameras
+  // - Converts lensName to name for lenses
+  // - Converts filmTypeName to name for filmTypes
+  // - Preserves filmTypeName and defaultIso for filmTypes
+  // - Handles response without newMetadata
+  // - Handles response with empty newMetadata
+  // - Preserves updatedImages array
+  //
+  // Edge cases:
+  // - Handles undefined metadata arrays
+  // - Handles empty metadata arrays
+  // - Handles filmTypeName that is undefined (uses empty string)
+
+  const updatedImage1 = createImageContent(1);
+  const updatedImage2 = createImageContent(2);
+
+  it('should map backend response with newMetadata to frontend format', () => {
+    const backendResponse = {
+      updatedImages: [updatedImage1, updatedImage2],
+      newMetadata: {
+        tags: [{ id: 1, tagName: 'Nature' }],
+        people: [{ id: 1, personName: 'John Doe' }],
+        cameras: [{ id: 1, cameraName: 'Canon EOS R5' }],
+        lenses: [{ id: 1, lensName: '24-70mm f/2.8' }],
+        filmTypes: [{ id: 1, filmTypeName: 'KODAK_PORTRA_400', defaultIso: 400 }],
+      },
+    };
+
+    const result = mapUpdateResponseToFrontend(backendResponse);
+
+    expect(result.updatedImages).toEqual([updatedImage1, updatedImage2]);
+    expect(result.newMetadata?.tags).toEqual([{ id: 1, name: 'Nature' }]);
+    expect(result.newMetadata?.people).toEqual([{ id: 1, name: 'John Doe' }]);
+    expect(result.newMetadata?.cameras).toEqual([{ id: 1, name: 'Canon EOS R5' }]);
+    expect(result.newMetadata?.lenses).toEqual([{ id: 1, name: '24-70mm f/2.8' }]);
+    expect(result.newMetadata?.filmTypes).toEqual([
+      { id: 1, name: 'KODAK_PORTRA_400', filmTypeName: 'KODAK_PORTRA_400', defaultIso: 400 },
+    ]);
+  });
+
+  it('should handle response without newMetadata', () => {
+    const backendResponse = {
+      updatedImages: [updatedImage1],
+    };
+
+    const result = mapUpdateResponseToFrontend(backendResponse);
+
+    expect(result.updatedImages).toEqual([updatedImage1]);
+    expect(result.newMetadata).toEqual({
+      tags: undefined,
+      people: undefined,
+      cameras: undefined,
+      lenses: undefined,
+      filmTypes: undefined,
+    });
+  });
+
+  it('should handle response with empty newMetadata', () => {
+    const backendResponse = {
+      updatedImages: [updatedImage1],
+      newMetadata: {},
+    };
+
+    const result = mapUpdateResponseToFrontend(backendResponse);
+
+    expect(result.updatedImages).toEqual([updatedImage1]);
+    expect(result.newMetadata).toEqual({
+      tags: undefined,
+      people: undefined,
+      cameras: undefined,
+      lenses: undefined,
+      filmTypes: undefined,
+    });
+  });
+
+  it('should handle undefined metadata arrays', () => {
+    const backendResponse = {
+      updatedImages: [updatedImage1],
+      newMetadata: {
+        tags: undefined,
+        people: undefined,
+        cameras: undefined,
+        lenses: undefined,
+        filmTypes: undefined,
+      },
+    };
+
+    const result = mapUpdateResponseToFrontend(backendResponse);
+
+    expect(result.newMetadata).toEqual({
+      tags: undefined,
+      people: undefined,
+      cameras: undefined,
+      lenses: undefined,
+      filmTypes: undefined,
+    });
+  });
+
+  it('should handle empty metadata arrays', () => {
+    const backendResponse = {
+      updatedImages: [updatedImage1],
+      newMetadata: {
+        tags: [],
+        people: [],
+        cameras: [],
+        lenses: [],
+        filmTypes: [],
+      },
+    };
+
+    const result = mapUpdateResponseToFrontend(backendResponse);
+
+    expect(result.newMetadata?.tags).toEqual([]);
+    expect(result.newMetadata?.people).toEqual([]);
+    expect(result.newMetadata?.cameras).toEqual([]);
+    expect(result.newMetadata?.lenses).toEqual([]);
+    expect(result.newMetadata?.filmTypes).toEqual([]);
+  });
+
+  it('should handle filmTypeName that is undefined (uses empty string)', () => {
+    const backendResponse = {
+      updatedImages: [updatedImage1],
+      newMetadata: {
+        filmTypes: [{ id: 1, filmTypeName: undefined as unknown as string, defaultIso: 400 }],
+      },
+    };
+
+    const result = mapUpdateResponseToFrontend(backendResponse);
+
+    expect(result.newMetadata?.filmTypes).toEqual([
+      { id: 1, name: '', filmTypeName: undefined, defaultIso: 400 },
+    ]);
+  });
+
+  it('should preserve updatedImages array', () => {
+    const backendResponse = {
+      updatedImages: [updatedImage1, updatedImage2],
+      newMetadata: undefined,
+    };
+
+    const result = mapUpdateResponseToFrontend(backendResponse);
+
+    expect(result.updatedImages).toEqual([updatedImage1, updatedImage2]);
+    expect(result.updatedImages).toHaveLength(2);
+  });
+
+  it('should set errors to undefined', () => {
+    const backendResponse = {
+      updatedImages: [updatedImage1],
+    };
+
+    const result = mapUpdateResponseToFrontend(backendResponse);
+
+    expect(result.errors).toBeUndefined();
   });
 });
 

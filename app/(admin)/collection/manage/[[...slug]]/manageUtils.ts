@@ -141,6 +141,39 @@ export function getCollectionContentAsSelections(
 }
 
 /**
+ * Get current selected collections by applying changes to original collection
+ * Combines original collections (minus removals) with newly added collections
+ *
+ * @param collectionContent - Array of content blocks from the collection (to extract original collections)
+ * @param updateDataCollections - Collections update object with remove and newValue arrays
+ * @returns Array of currently selected collections for display in UI
+ */
+export function getCurrentSelectedCollections(
+  collectionContent: AnyContentModel[] | undefined,
+  updateDataCollections: CollectionUpdateRequest['collections'] | undefined
+): Array<{ id: number; name: string }> {
+  // Get original collections from collection content
+  const selected = getCollectionContentAsSelections(collectionContent);
+  
+  // Filter out collections that are marked for removal
+  const removeIds = new Set(updateDataCollections?.remove || []);
+  const filtered = selected.filter(c => !removeIds.has(c.id));
+
+  // Add new collections from newValue that aren't already in the filtered list
+  const newCollections = updateDataCollections?.newValue || [];
+  for (const newCollection of newCollections) {
+    if (!filtered.some(c => c.id === newCollection.collectionId)) {
+      filtered.push({
+        id: newCollection.collectionId,
+        name: newCollection.name || '',
+      });
+    }
+  }
+
+  return filtered;
+}
+
+/**
  * Find an image block by ID from the collection's blocks
  * Returns the block if found and it's an image, otherwise undefined
  */
@@ -494,5 +527,40 @@ export function mergeNewMetadata(
     lenses: [...(prev?.lenses || []), ...(newMetadata.lenses || [])],
     filmTypes: [...(prev?.filmTypes || []), ...(newMetadata.filmTypes || [])],
   });
+}
+
+/**
+ * Refresh collection data after an operation
+ * Common pattern used by handleImageUpload, handleTextBlockSubmit, etc.
+ * 
+ * Pattern:
+ * 1. Execute the operation (async function)
+ * 2. Re-fetch collection using admin endpoint
+ * 3. Update state with refreshed collection (preserving metadata)
+ * 4. Update cache with full admin data
+ * 
+ * @param slug - Collection slug
+ * @param operation - Async function to execute before refresh
+ * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
+ * @param collectionStorage - Collection storage instance (injected for testability)
+ * @returns Promise that resolves with the refreshed CollectionUpdateResponseDTO
+ * @throws Error if operation or refresh fails
+ */
+export async function refreshCollectionAfterOperation(
+  slug: string,
+  operation: () => Promise<void>,
+  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>,
+  collectionStorage: { update: (slug: string, collection: CollectionModel) => void }
+): Promise<CollectionUpdateResponseDTO> {
+  // Execute the operation first
+  await operation();
+
+  // Re-fetch collection using admin endpoint to get full data with collections arrays
+  const response = await getCollectionUpdateMetadata(slug);
+
+  // Update cache with full admin data (includes collections arrays)
+  collectionStorage.update(slug, response.collection);
+
+  return response;
 }
 
