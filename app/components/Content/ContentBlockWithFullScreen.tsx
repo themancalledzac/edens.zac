@@ -22,6 +22,13 @@ interface ContentBlockWithFullScreenProps {
   // Collection caching for manage page optimization
   collectionSlug?: string; // If provided, will cache collection data
   collectionData?: CollectionModel; // The full collection to cache
+  // Manage page props (optional, for admin/manage pages)
+  isSelectingCoverImage?: boolean;
+  currentCoverImageId?: number;
+  onImageClick?: (imageId: number) => void;
+  justClickedImageId?: number | null;
+  selectedImageIds?: number[];
+  currentCollectionId?: number;
 }
 
 /**
@@ -40,6 +47,12 @@ export default function ContentBlockWithFullScreen({
   initialPageSize,
   collectionSlug,
   collectionData,
+  isSelectingCoverImage,
+  currentCoverImageId,
+  onImageClick,
+  justClickedImageId,
+  selectedImageIds,
+  currentCollectionId,
 }: ContentBlockWithFullScreenProps) {
   const { showImage, FullScreenModal } = useFullScreenImage();
 
@@ -111,6 +124,12 @@ export default function ContentBlockWithFullScreen({
         priorityIndex={priorityBlockIndex}
         enableFullScreenView={enableFullScreenView}
         onFullScreenImageClick={handleFullScreenImageClick}
+        isSelectingCoverImage={isSelectingCoverImage}
+        currentCoverImageId={currentCoverImageId}
+        onImageClick={onImageClick}
+        justClickedImageId={justClickedImageId}
+        selectedImageIds={selectedImageIds}
+        currentCollectionId={currentCollectionId}
       />
 
       {hasMore && (
