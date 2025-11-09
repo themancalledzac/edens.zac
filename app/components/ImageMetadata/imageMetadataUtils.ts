@@ -479,24 +479,36 @@ export function buildImageUpdateDiff(
     .filter(cc => !updateCollectionsMap.has(cc.collectionId))
     .map(cc => cc.collectionId);
   
-  // Find collections that are modified (same collectionId but different visible/orderIndex)
+  // Find collections that are modified (same collectionId but different visible)
+  // NOTE: We intentionally exclude orderIndex from this check - orderIndex should only
+  // be updated via explicit reordering operations, not when adding collections or changing visibility
   const modifiedCollections = updateCollections.filter(uc => {
     const current = currentCollectionsMap.get(uc.collectionId);
     if (!current) return false; // Already handled as new
-    return (
-      uc.visible !== current.visible ||
-      uc.orderIndex !== current.orderIndex
-    );
+    // Only check visibility changes, NOT orderIndex changes
+    return uc.visible !== current.visible;
   });
   
   // Only include collections update if there are actual changes
   if (newCollections.length > 0 || removedCollectionIds.length > 0 || modifiedCollections.length > 0) {
     diff.collections = {};
     if (modifiedCollections.length > 0) {
-      diff.collections.prev = modifiedCollections;
+      // Exclude orderIndex from modified collections - only send visibility changes
+      diff.collections.prev = modifiedCollections.map(uc => ({
+        collectionId: uc.collectionId,
+        name: uc.name,
+        visible: uc.visible,
+        // Explicitly exclude orderIndex
+      }));
     }
     if (newCollections.length > 0) {
-      diff.collections.newValue = newCollections;
+      // Exclude orderIndex from new collections - only send collectionId, name, and visible
+      diff.collections.newValue = newCollections.map(uc => ({
+        collectionId: uc.collectionId,
+        name: uc.name,
+        visible: uc.visible,
+        // Explicitly exclude orderIndex
+      }));
     }
     if (removedCollectionIds.length > 0) {
       diff.collections.remove = removedCollectionIds;
