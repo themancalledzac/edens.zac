@@ -20,6 +20,7 @@ import {
   type ContentTagModel,
   type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
+import { isLocalEnvironment } from '@/app/utils/environment';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
 import styles from './ImageMetadataModal.module.scss';
@@ -139,7 +140,9 @@ export default function ImageMetadataModal({
   const previewImage = selectedImages[0];
   
   if (!previewImage) {
-    console.error('[ImageMetadataModal] No images selected:', { selectedImages, selectedImageIds });
+    if (isLocalEnvironment()) {
+      console.error('[ImageMetadataModal] No images selected:', { selectedImages, selectedImageIds });
+    }
     return null;
   }
 

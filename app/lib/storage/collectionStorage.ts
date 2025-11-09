@@ -13,6 +13,7 @@
 
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ImageContentModel } from '@/app/types/Content';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 const STORAGE_KEY_PREFIX = 'collection_cache_';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -150,7 +151,9 @@ export const collectionStorage = {
     try {
       const cached = this.get(slug);
       if (!cached) {
-        console.warn(`[collectionStorage] No cache found for slug: ${slug}`);
+        if (isLocalEnvironment()) {
+          console.warn(`[collectionStorage] No cache found for slug: ${slug}`);
+        }
         return; // No cache to update
       }
 
@@ -165,11 +168,13 @@ export const collectionStorage = {
         // Match by ID and verify it's an IMAGE type (safety check)
         if (block.contentType === 'IMAGE' && updatedImagesMap.has(block.id)) {
           const updatedImage = updatedImagesMap.get(block.id)!;
-          console.log(`[collectionStorage] Updating image ${block.id} in cache:`, {
-            oldVisibility: (block as ImageContentModel).collections?.[0]?.visible,
-            newVisibility: updatedImage.collections?.[0]?.visible,
-            collections: updatedImage.collections,
-          });
+          if (isLocalEnvironment()) {
+            console.log(`[collectionStorage] Updating image ${block.id} in cache:`, {
+              oldVisibility: (block as ImageContentModel).collections?.[0]?.visible,
+              newVisibility: updatedImage.collections?.[0]?.visible,
+              collections: updatedImage.collections,
+            });
+          }
           return updatedImage;
         }
         return block;
@@ -183,12 +188,16 @@ export const collectionStorage = {
 
       // Save updated collection back to cache with new timestamp
       this.set(slug, updatedCollection);
-      console.log(`[collectionStorage] Cache updated for slug: ${slug}`, {
-        updatedImageIds: updatedImages.map(img => img.id),
-        totalContentBlocks: updatedCollection.content?.length,
-      });
+      if (isLocalEnvironment()) {
+        console.log(`[collectionStorage] Cache updated for slug: ${slug}`, {
+          updatedImageIds: updatedImages.map(img => img.id),
+          totalContentBlocks: updatedCollection.content?.length,
+        });
+      }
     } catch (error) {
-      console.error('[collectionStorage] Error updating cache:', error);
+      if (isLocalEnvironment()) {
+        console.error('[collectionStorage] Error updating cache:', error);
+      }
       // Ignore errors when updating cache - fail silently to not break the UI
     }
   },

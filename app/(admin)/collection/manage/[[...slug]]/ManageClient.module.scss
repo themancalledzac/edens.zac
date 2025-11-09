@@ -6,9 +6,9 @@
   padding-top: var(--page-padding-mobile);
 
   @media (width >= 768px) {
-    padding-left: 0.8rem;
-    padding-right: 0.8rem;
-    padding-top: 0.8rem;
+    padding-left: var(--default-padding);
+    padding-right: var(--default-padding);
+    padding-top: var(--default-padding);
   }
 }
 

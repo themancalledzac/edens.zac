@@ -13,6 +13,7 @@ import {
   fetchReadApi,
 } from '@/app/lib/api/core';
 import { type ContentImageUpdateRequest, type ImageContentModel } from '@/app/types/Content';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 // ============================================================================
 // READ Endpoints (Production - /api/read/content)
@@ -95,12 +96,14 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
     filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
   };
 }> {
-  // DEBUG: Log the call
-  console.log('[updateImages] Called with:', {
-    updatesCount: updates.length,
-    updates: updates,
-    updatesJSON: JSON.stringify(updates, null, 2),
-  });
+  // DEBUG: Log the call (development only)
+  if (isLocalEnvironment()) {
+    console.log('[updateImages] Called with:', {
+      updatesCount: updates.length,
+      updates: updates,
+      updatesJSON: JSON.stringify(updates, null, 2),
+    });
+  }
   
   const result = await fetchAdminPatchJsonApi<{
     updatedImages: ImageContentModel[];
@@ -113,8 +116,10 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
     };
   }>('/content/images', updates);
   
-  // DEBUG: Log the response
-  console.log('[updateImages] Response received:', result);
+  // DEBUG: Log the response (development only)
+  if (isLocalEnvironment()) {
+    console.log('[updateImages] Response received:', result);
+  }
   
   return result;
 }

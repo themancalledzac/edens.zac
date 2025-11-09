@@ -17,6 +17,7 @@ import {
   type ParallaxImageContentModel,
 } from '@/app/types/Content';
 import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
@@ -496,7 +497,9 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
     });
   } catch (error) {
     // Fail silently - revalidation is not critical for functionality
-    console.warn('[manageUtils] Failed to revalidate cache:', error);
+    if (isLocalEnvironment()) {
+      console.warn('[manageUtils] Failed to revalidate cache:', error);
+    }
   }
 }
 

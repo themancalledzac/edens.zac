@@ -238,22 +238,28 @@ describe('handleCoverImageSelection', () => {
 ### 3. Functions With Potential Errors/Bugs
 
 #### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
-- [ ] `handleCreateNewTextBlock` (line 226) - **Uses `prompt()`** - Blocking UI, poor UX. Also no validation of input.
-- [ ] `handleImageClick` (line 422) - **Potential bug** - Checks `isCollectionContent` on original block but uses `processedContent` for image lookup. Could cause mismatch.
-- [ ] `handleMetadataSaveSuccess` (line 477) - **Silent failure** - Revalidation wrapped in try-catch with only console.warn. Should handle errors properly.
+- [x] `handleCreateNewTextBlock` (line 189) - **FIXED** - Now uses `TextBlockCreateModal` component instead of `prompt()`. Modal includes form validation, format selector, and proper error handling.
+- [ ] `handleImageClick` (line 388) - **Verified: Not a bug** - Logic is correct: `handleCollectionNavigation` uses `collection?.content` (original blocks), and `handleSingleImageEdit` checks both original and processed content as fallback. The implementation correctly handles both cases. However, could be clearer - consider documenting why both are checked.
+- [ ] `handleMetadataSaveSuccess` (line 442) - **Silent failure in revalidation** - `revalidateCollectionCache` (called at line 452) fails silently with only `console.warn` in `manageUtils.ts` line 500-502. Console statement now wrapped with `isLocalEnvironment()` check. This is intentional (revalidation is not critical), but could be improved to log to error tracking service in production.
 
 #### `app/components/ImageMetadata/imageMetadataUtils.ts`
-- [ ] `buildImageUpdateDiff` (line 408) - **Incomplete** - FilmType diff building is incomplete (has TODO comment).
-- [ ] `applyPartialUpdate` (line 51) - **Console.log in production code** - Should be removed or use proper logging.
+- [x] `buildImageUpdateDiff` (line 607) - **FIXED** - FilmType diff building is now complete. `buildFilmTypeDiff` function (lines 431-467) handles remove, existing film types (prev pattern), and new film types (newValue pattern) correctly.
+- [x] `applyPartialUpdate` (line 37) - **FIXED** - No console.log statements found. Code is clean.
 
 #### `app/lib/api/content.ts`
-- [ ] `updateImages` (lines 98-103, 116-117) - **Debug console.logs** - Should be removed or use proper logging.
+- [x] `updateImages` (lines 99-106, 119-122) - **FIXED** - Debug `console.log` statements now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
 
 #### `app/lib/api/collections.ts`
-- [ ] `safeJson` (line 48) - **Potential race condition** - Calls `res.json()` twice (line 36 and 48). Should cache the result.
+- [ ] `safeJson` (line 31) - **Code clarity issue** - Not actually a bug: `res.json()` is only called once per execution path (error path on line 36 OR success path on line 48, never both). However, the code structure could be clearer by caching the parsed JSON result to avoid confusion. Consider refactoring for better readability.
 
 #### `app/utils/contentLayout.ts`
-- [ ] `convertCollectionContentToImage` (line 220) - **Potential undefined** - Uses `col.title || col.slug || ''` but if both are undefined, could cause issues.
+- [x] `convertCollectionContentToImage` (line 198) - **Not a bug** - Uses `col.title || col.slug || ''` which correctly returns empty string if both are undefined. This is safe and intentional.
+
+#### `app/lib/storage/collectionStorage.ts`
+- [x] `updateImagesInCache` (lines 154-156, 171-177, 191-196, 198-200) - **FIXED** - All console statements (`console.warn`, `console.log`, `console.error`) now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
+
+#### `app/components/ImageMetadata/ImageMetadataModal.tsx`
+- [x] `handleSubmit` (line 143-145) - **FIXED** - `console.error` now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
 
 ### 4. Functions That Could Be Combined
 

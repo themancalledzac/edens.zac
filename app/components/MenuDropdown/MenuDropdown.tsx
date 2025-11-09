@@ -186,7 +186,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
           </h2>
         </div>
 
-        {isLocalEnvironment() && pageType === 'collection' && (
+        {isLocalEnvironment() && (pageType === 'collection' || pageType === 'collectionsCollection') && (
           <div className={styles.dropdownMenuItem}>
             <h2
               className={styles.dropdownMenuOptions}

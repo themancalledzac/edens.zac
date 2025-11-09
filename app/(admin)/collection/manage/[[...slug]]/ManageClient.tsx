@@ -430,12 +430,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
    * Handle successful metadata save - updates currentState with API response
    *
    * Orchestrates the following steps in sequence:
-   * 1. Re-fetch collection data with full metadata using admin endpoint
-   * 2. Update currentState with full response (includes collections arrays)
-   * 3. Update sessionStorage cache with full admin data
-   * 4. Revalidate Next.js cache for the collection
-   * 5. Merge new metadata entities (tags, people, cameras, lenses, filmTypes) into currentState
-   * 6. Clear selected images and exit multi-select mode
+   * 1. Immediately update cache with updated images (optimistic update)
+   * 2. Re-fetch collection data with full metadata using admin endpoint
+   * 3. Update currentState with full response (includes collections arrays)
+   * 4. Update sessionStorage cache with full admin data (ensures consistency)
+   * 5. Revalidate Next.js cache for the collection
+   * 6. Merge new metadata entities (tags, people, cameras, lenses, filmTypes) into currentState
+   * 7. Clear selected images and exit multi-select mode
    *
    * @param response - ContentImageUpdateResponse from image metadata update API
    */
@@ -446,6 +447,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
       try {
         const slug = currentState.collection.slug;
 
+        // Optimistically update cache with changed images immediately
+        if (response.updatedImages && response.updatedImages.length > 0) {
+          collectionStorage.updateImagesInCache(slug, response.updatedImages);
+        }
+
+        // Re-fetch full collection for state consistency
         const fullResponse = await refreshCollectionData(slug, getCollectionUpdateMetadata);
         setCurrentState(updateCollectionState(fullResponse));
         updateCollectionCache(slug, fullResponse.collection, collectionStorage);
