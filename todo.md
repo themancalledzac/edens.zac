@@ -1,148 +1,10 @@
 # TODO
 
 ---
-## Phase 1: Content Creation & Management
-- [ ] **Edit Image Modal**
-- [ ] **Get All images endpoint / page**
-- [ ] **edit image endpoint**
-- [ ] **Add existing images to collection**
-- [ ] **Add existing images to collection** aka, 'getAllImages -> display images by date/location/etc'
-- [ ] **Display Metadata on images**
-- [ ] **Clickable metadata on images to go to 'tags'**
-- [ ] **Tag page**
-- [ ] **all images page**
-  - Includes 'filter by'
-  - Includes 'order by'
-  - Includes a 'add to collection' button
-    - Allows us to select multiple to add to
-  - Includes a 'upload images(not to collection)'
-  - Includes 'update metadata' where we can update multiple
-    - i.e., update location - select all 'seattle'
-  - Includes updating tags ( type tag, select all that apply?)
 
-### Notes
-- **Do NOT combine Image/GIF renderers** - GIF component is still in development
-- **Keep Image/GIF styles separate** - Different optimization requirements
-- **Preserve ParallaxImageRenderer special styling** - Mobile/desktop wrapper logic must stay in ContentBlockComponent
-
-### Phase 3: Architecture Improvements (Medium Priority)
-- [ ] **Implement renderer registry pattern**
-  - Replace inline type checking (lines 91-133) with registry map
-  - Create `RENDERERS` object mapping block types to components
-  - Simplify ContentBlockComponent render logic
-
-- [ ] **Move parallax wrapper logic to ParallaxImageRenderer**
-  - Remove special-case inline JSX from ContentBlockComponent (lines 94-125)
-  - Move wrapper divs and styling into ParallaxImageRenderer component
-  - Make all renderers follow consistent pattern
-
-- [ ] **Simplify hasOverlays detection**
-  - Remove duplicate overlay calculations in individual renderers
-  - Centralize overlay detection since only ParallaxImageRenderer has text overlays currently
-
-- [ ] **Create responsive styles hook**
-  - Extract mobile/desktop logic into `useResponsiveBlockStyles` hook
-  - Centralize responsive calculations for reuse across components
-  - Keep special ParallaxImageRenderer wrapper styling in ContentBlockComponent
-
-
-## Overview
-
-
-## Phase 4: Ultra-fast Initial Home Page
-
-### 4.1 Goals & Metrics
-- [ ] First Contentful Paint < 1s on fast 4G, LCP < 2.5s
-- [ ] JS shipped < 50KB on initial home route; CSS < 20KB critical
-- [ ] 100 Lighthouse Performance on desktop; 90+ on mobile
-
-### 4.2 Implementation Plan (RSC-first)
-- [ ] Server-render above-the-fold content; no client providers on home unless needed
-- [ ] Use CSS Modules with minimal rules; remove heavy parallax on first load or lazy-load it
-- [ ] Replace image components with `next/image` using WebP/AVIF, width/height, lazy loading
-- [ ] Add skeletons/placeholders for hero cards; defer non-critical sections with `Suspense`
-- [ ] Dynamic import heavy components with `ssr: false` only if unavoidable
-- [ ] Use `preload` for critical fonts/assets; avoid large font files
-- [ ] Cache home data at the edge (Next cache route or `revalidate`), enable `stale-while-revalidate`
-
-### 4.3 Verification
-- [ ] Add a `scripts/perf/home-lh.mjs` to run Lighthouse CI locally
-- [ ] Track metrics in README/todo; include before/after numbers
-
----
-
----
-
----
-
-## Phase 3: Testing Strategy & Validation
-
-### 3.1 Current Test Files and Required Coverage (be explicit)
-- tests/lib/api/contentCollections.test.ts
-  - Functions to cover:
-    - fetchCollections, fetchCollectionBySlug, fetchCollectionsByType, fetchHomePageCollections, validateClientGalleryAccess
-  - General instructions:
-    - Mock global.fetch. Assert Next.js cache tags in init.next.tags and revalidate values where applicable.
-    - Verify 404 triggers notFound() for slug detail. Verify non-JSON responses throw a descriptive error.
-    - Normalize shapes: test array and paginated object responses for fetchCollections and fetchHomePageCollections.
-
-- tests/lib/server/collections.test.ts
-  - Functions to cover:
-    - createCollection, updateCollection, deleteCollection, uploadContentFiles
-  - General instructions:
-    - Mock global.fetch and next/cache revalidateTag/revalidatePath. Ensure correct tags are revalidated per operation.
-    - Validate required argument guard clauses (e.g., missing id/slug/password) throw early.
-    - For uploadContentFiles, ensure FormData is constructed and at least one file is required.
-
-- tests/url-state/selectable-wrapper.test.tsx
-  - Behaviors to cover:
-    - Renders child, computes href with image selection, fires router.push on click (mock).
-  - Instructions:
-    - Mock next/navigation hooks (useRouter/usePathname/useSearchParams). Use RTL render/fireEvent.
-
-- New tests to add (files to create):
-  - tests/app/home.page.test.tsx
-    - Cover RSC fallback behavior by using experimental-server mocks or treat as integration via route handler.
-    - Verify minimal list rendering when fetchHomePageCollections returns [] and when it returns data.
-  - tests/Components/content-collection/*.test.tsx (one per view)
-    - blog-view, art-gallery-view, portfolio-view, client-gallery-view
-    - Mount with minimal collection fixture and assert block rendering via ContentBlockRenderer.
-  - tests/Components/content-blocks/content-block-renderer.test.tsx
-    - Given blocks of type IMAGE/TEXT/CODE/GIF, dispatches to correct subcomponent.
-
-### 3.2 Test Data and Fixtures
-- Create lightweight fixtures for ContentCollectionNormalized and ContentBlock variants in tests/_fixtures.ts.
-- Provide helper to build URLSearchParams for pagination queries.
-
-### 3.3 Tooling and Commands
-- Ensure npx jest runs with jsdom for component tests and node for API tests (already configured in jest.config.mjs).
-- Add npm scripts: "test:watch", "test:ci" with --runInBand for CI.
-
-### 3.4 Performance/Lighthouse (deferred until Home UI is ready)
-- Add scripts/perf/home-lh.mjs to run Lighthouse locally against / (once Home UI is more complete).
-- Capture metrics in README with before/after snaps.
-
----
-
-## Notes for Future Development
-
-### What We Need
-- **Flexible content system** supporting four collection types (blog, art_gallery, client_gallery, portfolio)
-- **Ordered content blocks** (images, text, code, gifs) with pagination for performance
-- **Optimized SSR/client-side balance** - minimize context usage, keep components server-side when possible
-- **Comprehensive testing strategy** - unit tests, component tests, integration tests
-- **Migration path** from existing Catalog system without breaking current functionality
-- **Simple client gallery security** (password protection) with future extensibility
-
-### What We Don't Need
-- **Complex permissions system** initially (simple passwords sufficient)
-- **Flyway migrations** immediately (can add later, new system is parallel)
-- **Separate environments** initially (production-only acceptable for solo developer)
-- **Advanced client gallery features** (user accounts, JWT tokens) in Phase 1
-- **Real-time collaboration** or advanced CMS features initially
+## Development Principles
 
 ### Key Technical Principles
-- **Build in parallel**: Don't modify existing Catalog/Image system until ready
 - **SSR-first approach**: Minimize client-side context usage, keep components server-side when possible
 - **Pagination from start**: Design for collections with 200+ content blocks
 - **Test as you build**: Add unit and component tests throughout development
@@ -164,21 +26,544 @@
 - **Images/GIFs**: S3 storage with CloudFront CDN (existing pattern)
 - **Text/Code content**: Database storage as `@Lob` fields (no S3 needed)
 - **Metadata**: Database with proper indexing for performance
-- **Client passwords**: Currently SHA-256 hashing (TODO: migrate to BCrypt before client gallery frontend work)
 
+---
 
-- [ ] **Touch interaction optimization** - test scroll smoothness on actual mobile devices
+## Function Analysis: Improvements Needed
 
-### 5.4 Lessons Learned
-- ✅ **Incremental changes**: Test one change at a time, not everything at once
-- ✅ **Preserve working functionality**: Don't fix what isn't broken
-- ✅ **Performance vs UX trade-offs**: Address separately, not simultaneously
-- ✅ **Testing is critical**: Especially for visual effects like parallax
+### Refactoring Principles & Guidelines
 
+All refactoring work should follow these principles:
 
-### Future Thoughts
-- ** Add Image to other collection
-- ** Get all Collection Names endpoint - simply array of name/slug of all collections
-- ** Update Image Metadata endpoint and frontend logic
+#### 1. Preserve Existing Logic
+- **All refactors must keep logic the same** - Refactoring is about improving structure, not changing behavior
+- If logic needs to change due to a bug fix or improvement, document it explicitly in the refactor notes
+- Any logic changes that fix previous errors should be clearly mentioned in the refactor description
+
+#### 2. Extract to Utility Files
+- **Move logic outside React components whenever possible** - Extract to utility files, hooks, or pure functions
+- Utility files should be organized by domain:
+  - `app/utils/` - General utilities (object comparison, data transformation)
+  - `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts` - Manage page specific utilities
+  - `app/components/ImageMetadata/imageMetadataUtils.ts` - Image metadata specific utilities
+  - `app/lib/api/` - API utilities
+- Pure functions are easier to test, reuse, and reason about
+
+#### 3. Single Responsibility Principle
+- **Each function should do ONE thing well** - If a function handles multiple concerns, split it
+- Functions should be small and focused (aim for < 50 lines when possible)
+- Complex functions should be broken into a "router" function that orchestrates smaller, focused handlers
+- Example pattern: `handleImageClick` → determines action type → calls appropriate handler (`handleCoverImageSelection`, `handleCollectionNavigation`, etc.)
+
+#### 4. Testing Strategy Requirements
+- **Every refactored function must have a testing strategy** documented in its associated test file
+- Testing strategy should be written in pseudo-code format for now, including:
+  - **All passing test cases** - Happy path scenarios, edge cases, boundary conditions
+  - **All failing test cases** - Error scenarios, invalid inputs, network failures, etc.
+- Test files should be organized to match the utility file structure:
+  - `app/utils/contentLayout.test.ts` for `contentLayout.ts`
+  - `app/(admin)/collection/manage/[[...slug]]/manageUtils.test.ts` for `manageUtils.ts`
+  - etc.
+
+#### 5. Component Simplification Goal
+- **Simplify React component files as much as possible** - Components should primarily:
+  - Render UI
+  - Handle user interactions (delegate to handlers)
+  - Manage local UI state (loading, error states)
+- Business logic should live in:
+  - Utility functions (pure functions)
+  - Custom hooks (stateful logic)
+  - API layer (data fetching)
+- **Make it easy and simple to see what logic is happening** - Clear function names, good organization, minimal nesting
+
+#### 6. Refactoring Pattern Example
+
+**Before (Complex Component Logic):**
+```typescript
+const handleImageClick = useCallback((imageId: number) => {
+  if (isSelectingCoverImage) {
+    // 20 lines of cover image logic
+  } else if (isCollectionContent) {
+    // 15 lines of navigation logic
+  } else if (isMultiSelectMode) {
+    // 10 lines of multi-select logic
+  } else {
+    // 25 lines of single edit logic
+  }
+}, [dependencies]);
+```
+
+**After (Extracted to Utilities):**
+```typescript
+// In manageUtils.ts - Pure functions, easy to test
+export function handleCoverImageSelection(imageId: number, collection: CollectionModel, ...) { }
+export function handleCollectionNavigation(imageId: number, collection: CollectionModel, router: Router) { }
+export function handleMultiSelectToggle(imageId: number, selectedIds: number[], setSelectedIds: ...) { }
+export function handleSingleImageEdit(imageId: number, collection: CollectionModel, openEditor: ...) { }
+
+// In ManageClient.tsx - Simple router, easy to understand
+const handleImageClick = useCallback((imageId: number) => {
+  if (isSelectingCoverImage) {
+    return handleCoverImageSelection(imageId, collection, ...);
+  }
+  
+  const originalBlock = collection?.content?.find(block => block.id === imageId);
+  if (originalBlock && isCollectionContent(originalBlock)) {
+    return handleCollectionNavigation(imageId, originalBlock, router);
+  }
+  
+  if (isMultiSelectMode) {
+    return handleMultiSelectToggle(imageId, selectedImageIds, setSelectedImageIds);
+  }
+  
+  return handleSingleImageEdit(imageId, collection, processedContent, openEditor, setSelectedImageIds);
+}, [dependencies]);
+```
+
+**Test File (manageUtils.test.ts):**
+```typescript
+// Testing Strategy (Pseudo-code):
+describe('handleCoverImageSelection', () => {
+  // Passing test cases:
+  // - Valid image ID exists in collection
+  // - Image is an IMAGE content type
+  // - Updates updateData with coverImageId
+  // - Sets isSelectingCoverImage to false
+  // - Shows flash animation on selected image
+  
+  // Failing test cases:
+  // - Image ID doesn't exist in collection
+  // - Image ID points to non-image content (TEXT, GIF, etc.)
+  // - Collection is null/undefined
+  // - Image ID is invalid (0, negative, NaN)
+});
+```
+
+#### 7. Documentation Requirements
+- Each refactored function should have:
+  - Clear JSDoc comments explaining purpose
+  - Parameter descriptions
+  - Return type documentation
+  - Usage examples if complex
+- Refactor notes in todo.md should link to the test file where testing strategy is documented
+
+---
+
+### 1. Functions That Could Be Simplified
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+- [ ] `handleImageClick` (lines 412-456) - **Too complex** - Handles 4 different modes (cover selection, collection navigation, multi-select, single edit). **Refactor approach**: Use switch case pattern to determine action type, then delegate to focused handlers:
+  - `handleCoverImageSelection(imageId)` - Cover image selection logic
+  - `handleCollectionNavigation(imageId)` - Navigate to collection manage page
+  - `handleMultiSelectToggle(imageId)` - Multi-select toggle (already exists)
+  - `handleSingleImageEdit(imageId)` - Open metadata editor for single image
+  - Main `handleImageClick` becomes a simple router: determines mode → calls appropriate handler
+- [ ] `handleMetadataSaveSuccess` (lines 459-511) - **Too complex** - Does multiple things: re-fetch, update state, update cache, revalidate, merge metadata. **Refactor approach**: Split into focused functions:
+  - `refreshCollectionData(slug)` - Re-fetch collection with metadata
+  - `updateCollectionState(response)` - Update currentState with response
+  - `updateCollectionCache(slug, collection)` - Update cache storage
+  - `revalidateCollectionCache(slug)` - Revalidate Next.js cache
+  - `mergeNewMetadata(response, currentState)` - Merge new metadata entities
+  - Main `handleMetadataSaveSuccess` orchestrates these in sequence
+- [ ] `processedContent` useMemo (lines 135-161) - **Could be simplified** - Complex transformation logic. **Refactor approach**: Extract to `manageUtils.ts` as pure function `processContentForManagePage(content, collectionId)` - easier to test and reuse.
+- [ ] `handleCreateNewTextBlock` (lines 223-257) - **Uses prompt()** - Should use a proper modal/form component instead of browser prompt. **Refactor approach**: Create `TextBlockCreateModal` component with proper form validation.
+
+#### `app/components/ImageMetadata/imageMetadataUtils.ts`
+- [ ] `buildImageUpdateDiff` (lines 343-519) - **Very complex** - 176 lines handling multiple field types. **Refactor approach**: Split into focused field-specific builders:
+  - `buildSimpleFieldDiff(field, updateValue, currentValue)` - For string/number/boolean fields
+  - `buildCameraDiff(update, current)` - Camera prev/newValue/remove pattern
+  - `buildLensDiff(update, current)` - Lens prev/newValue/remove pattern
+  - `buildFilmTypeDiff(update, current)` - FilmType prev/newValue/remove pattern
+  - `buildTagsDiff(update, current)` - Tags prev/newValue/remove pattern
+  - `buildPeopleDiff(update, current)` - People prev/newValue/remove pattern
+  - `buildCollectionsDiff(update, current)` - Collections prev/newValue/remove pattern
+  - Main `buildImageUpdateDiff` orchestrates by calling appropriate builder per field
+- [ ] `getCommonValues` (lines 113-164) - **Repetitive** - Multiple similar checks. **Refactor approach**: Extract comparison logic to helper `areAllEqual<T>(items: T[], getValue: (item: T) => T[keyof T])` to reduce duplication.
+- [ ] `handleDropdownChange` (lines 588-620) - **Complex conditional logic** - **Refactor approach**: Use strategy pattern with field-specific handlers:
+  - `handleMultiSelectChange(field, value, updateDTO)` - For tags/people (prev/newValue pattern)
+  - `handleSingleSelectChange(field, value, updateDTO)` - For camera/lens (prev/newValue/remove pattern)
+  - Main `handleDropdownChange` determines field type → calls appropriate handler
+
+#### `app/lib/api/collections.new.ts`
+- [ ] `getAllCollections` (lines 60-87) - **Complex response parsing** - Multiple fallback checks. **Refactor approach**: Extract response parsing to helper `parseCollectionArrayResponse(data: unknown): CollectionModel[]` - handles all fallback logic in one place, easier to test.
+
+#### `app/utils/contentLayout.ts`
+- [ ] `processContentBlocks` (lines 240-298) - **Does too much** - Filters, maps, transforms, and sorts. **Refactor approach**: Split into focused pipeline functions:
+  - `filterVisibleBlocks(content, filterVisible, collectionId)` - Filter visibility logic
+  - `transformCollectionBlocks(content)` - Convert CollectionContentModel to ParallaxImageContentModel
+  - `updateImageOrderIndex(content, collectionId)` - Update orderIndex from collection-specific entry
+  - `ensureParallaxDimensions(content)` - Ensure PARALLAX blocks have proper dimensions
+  - `sortContentByOrderIndex(content)` - Sort by orderIndex
+  - Main `processContentBlocks` orchestrates: filter → transform → update → ensure → sort
+
+### 2. Functions That Could Be Refactored
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+- [ ] `loadCollectionData` (inside useEffect, lines 189-212) - **Should be extracted** - **Refactor approach**: Move to custom hook `useCollectionData(slug)` that handles loading, error states, and data fetching. Returns `{ collection, loading, error, refetch }`.
+- [ ] `handleImageUpload` (lines 324-360) - **Repeated pattern** - Similar to `handleCreateNewTextBlock` - both re-fetch after operation. **Refactor approach**: Extract common pattern to `useCollectionRefresh(slug)` hook or `refreshCollectionAfterOperation(slug, operation)` utility that handles: operation → re-fetch → update state → update cache.
+- [ ] `currentSelectedCollections` useMemo (lines 527-543) - **Complex logic** - **Refactor approach**: Move to `manageUtils.ts` as pure function `getCurrentSelectedCollections(collectionContent, updateDataCollections, originalCollectionIds)` - easier to test.
+
+#### `app/components/ImageMetadata/ImageMetadataModal.tsx`
+- [ ] `handleSubmit` (lines 151-177) - **Complex diff building** - The bulk vs single edit logic should be extracted to a helper function. **Refactor approach**: Extract to focused functions:
+  - `buildImageUpdatesForBulkEdit(updateState, selectedImages)` - Build updates for each image in bulk edit
+  - `buildImageUpdateForSingleEdit(updateState, originalImage)` - Build single image update
+  - Main `handleSubmit` determines edit mode → calls appropriate builder → calls API
+- [ ] `hasChanges` useMemo (lines 119-133) - **JSON.stringify comparison** - Inefficient and fragile. **Refactor approach**: Extract to utility `hasObjectChanges(updateState, currentState)` using field-by-field comparison or proper deep equality check (move to `app/utils/objectComparison.ts`).
+
+#### `app/lib/api/core.ts`
+- [ ] `fetchWriteBase` and `fetchAdminBase` - **Duplication** - Very similar functions. **Refactor approach**: Combine into single `fetchBase(endpointType: 'write' | 'admin', endpoint: string, options: RequestInit)` function with endpoint type parameter - eliminates duplication.
+- [ ] `handleApiResponseError` and `handleApiCatchError` - **Could be combined** - Both handle errors, could be unified. **Refactor approach**: Create unified `handleApiError(error: unknown, response?: Response): ApiError` that handles both response errors and catch errors in one place.
+
+#### `app/utils/contentLayout.ts`
+- [ ] `convertCollectionContentToParallax` and `convertCollectionContentToImage` - **Similar logic** - **Refactor approach**: Extract common dimension extraction to helper `extractCollectionDimensions(coverImage)` that returns `{ imageWidth, imageHeight }`. Both conversion functions use this helper.
+
+### 3. Functions With Potential Errors/Bugs
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+- [ ] `handleCreateNewTextBlock` (line 226) - **Uses `prompt()`** - Blocking UI, poor UX. Also no validation of input.
+- [ ] `handleImageClick` (line 422) - **Potential bug** - Checks `isCollectionContent` on original block but uses `processedContent` for image lookup. Could cause mismatch.
+- [ ] `handleMetadataSaveSuccess` (line 477) - **Silent failure** - Revalidation wrapped in try-catch with only console.warn. Should handle errors properly.
+
+#### `app/components/ImageMetadata/imageMetadataUtils.ts`
+- [ ] `buildImageUpdateDiff` (line 408) - **Incomplete** - FilmType diff building is incomplete (has TODO comment).
+- [ ] `applyPartialUpdate` (line 51) - **Console.log in production code** - Should be removed or use proper logging.
+
+#### `app/lib/api/content.ts`
+- [ ] `updateImages` (lines 98-103, 116-117) - **Debug console.logs** - Should be removed or use proper logging.
+
+#### `app/lib/api/collections.new.ts`
+- [ ] `safeJson` (line 48) - **Potential race condition** - Calls `res.json()` twice (line 36 and 48). Should cache the result.
+
+#### `app/utils/contentLayout.ts`
+- [ ] `convertCollectionContentToImage` (line 220) - **Potential undefined** - Uses `col.title || col.slug || ''` but if both are undefined, could cause issues.
+
+### 4. Functions That Could Be Combined
+
+#### `app/lib/api/core.ts`
+- [ ] `fetchWriteBase` and `fetchAdminBase` - **Nearly identical** - Should be combined into a single `fetchBase` function with endpoint type parameter.
+- [ ] `fetchPutJsonApi`, `fetchPatchJsonApi`, `fetchPostJsonApi` - **Similar pattern** - Could use a generic `fetchJsonApi(method, endpoint, body)` helper.
+
+#### `app/components/ImageMetadata/imageMetadataUtils.ts`
+- [ ] `getDisplayTags`, `getDisplayPeople` - **Wrappers around same function** - Could be combined into single `getDisplayItems` with type parameter.
+- [ ] `getDisplayCamera`, `getDisplayLens` - **Identical logic** - Should be combined into single function.
+
+#### `app/utils/contentTypeGuards.ts`
+- [ ] `isContentImage`, `isParallaxImageContent`, `isTextContent`, `isGifContent`, `isCollectionContent` - **Could use factory** - All follow same pattern. Could use a factory function to reduce duplication.
+
+### 5. Functions Too Complex for Unit Tests (Need Refactoring First)
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+- [ ] `ManageClient` component - **922 lines** - Entire component is too large. Should be split into smaller components:
+  - `CreateCollectionForm`
+  - `UpdateCollectionForm`
+  - `CollectionContentList`
+  - `CoverImageSelector`
+- [ ] `handleImageClick` - **Multiple responsibilities** - **Refactor approach**: Split into switch case pattern with focused handlers (see "Functions That Could Be Simplified" section above). After refactoring, test each handler individually.
+- [ ] `handleMetadataSaveSuccess` - **Too many side effects** - Should be split into smaller, testable functions.
+
+#### `app/components/ImageMetadata/ImageMetadataModal.tsx`
+- [ ] `ImageMetadataModal` component - **~776 lines** - Too large. Should split into:
+  - `ImagePreview` component
+  - `MetadataForm` component
+  - `BulkEditIndicator` component
+- [ ] `handleSubmit` - **Complex async logic** - **Refactor approach**: Extract diff building to `buildImageUpdatesForBulkEdit` and `buildImageUpdateForSingleEdit` (see "Functions That Could Be Refactored" section). Extract API call to separate function. After refactoring, test each part independently.
+
+#### `app/components/ImageMetadata/imageMetadataUtils.ts`
+- [ ] `buildImageUpdateDiff` - **176 lines, handles 15+ field types** - Should be split into per-field-type functions.
+
+#### `app/utils/contentLayout.ts`
+- [ ] `processContentBlocks` - **58 lines, multiple transformations** - Should be split into: `filterVisibleBlocks`, `transformCollectionBlocks`, `updateImageOrderIndex`, `sortByOrderIndex`.
+
+### 6. Functions That Need to Be Moved to Utils
+
+#### From `ManageClient.tsx`:
+- [ ] `loadCollectionData` logic - **Move to** `app/lib/utils/collectionDataLoader.ts` or custom hook
+- [ ] `processedContent` transformation - **Move to** `app/utils/contentLayout.ts` as `processContentForManagePage`
+- [ ] `currentSelectedCollections` logic - **Move to** `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts`
+
+#### From `ImageMetadataModal.tsx`:
+- [ ] Response mapping logic (lines 183-197) - **Move to** `app/components/ImageMetadata/imageMetadataUtils.ts` as `mapUpdateResponseToFrontend`
+- [ ] `hasChanges` comparison logic - **Move to** `app/utils/objectComparison.ts` as `deepEqual` or `hasObjectChanges`
+
+#### From `collections.new.ts`:
+- [ ] `safeJson` - **Move to** `app/lib/api/core.ts` as it's a shared utility
+- [ ] Response parsing logic from `getAllCollections` - **Move to** `app/lib/api/core.ts` as `parseCollectionArrayResponse`
+
+### 7. Functions That Might Not Be Needed
+
+#### `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts`
+- [ ] `syncCollectionState` (lines 73-88) - **Unused?** - Check if this is actually called anywhere. If not, remove.
+- [ ] `isImageContentBlock` (lines 94-97) - **Deprecated** - Marked as deprecated, uses `isContentImage`. Should be removed if not used.
+
+#### `app/utils/contentLayout.ts`
+- [ ] `processContentForDisplay` (lines 132-139) - **Thin wrapper** - Just calls `chunkContent` then `calculateContentSizes`. May not need separate function if only used in one place.
+
+#### `app/components/ImageMetadata/imageMetadataUtils.ts`
+- [ ] `getDisplayTags` and `getDisplayPeople` - **Thin wrappers** - If only used once, could inline the call to `getDisplayItemsFromUpdate`.
+
+---
+
+## Unit Test Files Needed
+
+### API Layer Tests
+
+#### `app/lib/api/collections.new.test.ts`
+**Functions to test:**
+- `getAllCollections` - Test pagination, response parsing, error handling
+- `getCollectionBySlug` - Test slug encoding, access control, caching
+- `getCollectionBySlugAdmin` - Test admin access, error handling
+- `getCollectionsByType` - Test type filtering, pagination
+- `validateClientGalleryAccess` - Test password validation, error cases
+- `createCollection` - Test request building, response handling
+- `updateCollection` - Test partial updates, error handling
+- `deleteCollection` - Test deletion, error handling
+- `getAllCollectionsAdmin` - Test admin endpoint
+- `getCollectionUpdateMetadata` - Test metadata fetching
+- `getMetadata` - Test general metadata fetching
+- `safeJson` - Test JSON parsing, error handling, 404 handling
+
+**Considerations:**
+- Mock `fetch` globally
+- Test error cases (network errors, 404, 500, malformed JSON)
+- Test Next.js cache tags and revalidation
+- Extract `safeJson` to shared utility for easier testing
+- Consider using MSW (Mock Service Worker) for API mocking
+
+#### `app/lib/api/content.test.ts`
+**Functions to test:**
+- `getAllTags` - Test response parsing, caching
+- `getAllPeople` - Test response parsing, caching
+- `getAllCameras` - Test response parsing, caching
+- `getFilmMetadata` - Test response structure
+- `createImages` - Test FormData building, file upload
+- `createTextContent` - Test request building
+- `updateImages` - Test bulk updates, response mapping
+- `getAllImages` - Test admin endpoint
+- `deleteImages` - Test deletion
+- `createTag` - Test tag creation
+- `createPerson` - Test person creation
+
+**Considerations:**
+- Remove debug `console.log` statements before testing
+- Mock FormData for image upload tests
+- Test bulk update scenarios (1 image, multiple images)
+- Test error handling for each endpoint
+
+#### `app/lib/api/core.test.ts`
+**Functions to test:**
+- `buildApiUrl` - Test URL building with/without params, encoding
+- `getApiBaseUrl` (if exported) - Test environment-based URLs
+- `fetchReadApi` - Test GET requests, error handling, 204 responses
+- `fetchAdminGetApi` - Test admin GET requests
+- `fetchAdminPostJsonApi` - Test POST with JSON
+- `fetchAdminPutJsonApi` - Test PUT with JSON
+- `fetchAdminPatchJsonApi` - Test PATCH with JSON
+- `fetchAdminFormDataApi` - Test FormData uploads
+- `fetchAdminDeleteApi` - Test DELETE requests
+- `ApiError` class - Test error creation, status codes
+- `handleApiResponseError` - Test error extraction
+- `handleApiCatchError` - Test error conversion
+
+**Considerations:**
+- Refactor `fetchWriteBase` and `fetchAdminBase` to reduce duplication before testing
+- Test all error paths (network errors, HTTP errors, JSON parse errors)
+- Test environment switching (production vs localhost)
+- Consider extracting shared fetch logic to reduce test duplication
+
+### Utility Function Tests
+
+#### `app/utils/contentLayout.test.ts`
+**Functions to test:**
+- `chunkContent` - Test chunking logic, standalone items, edge cases
+- `shouldBeStandalone` - Test panorama detection, high-rated images, vertical images
+- `calculateContentSizes` - Test size calculations, single item, multiple items, aspect ratios
+- `processContentForDisplay` - Test full pipeline
+- `convertCollectionContentToParallax` - Test conversion, dimension extraction
+- `convertCollectionContentToImage` - Test conversion, metadata preservation
+- `processContentBlocks` - Test filtering, transformation, sorting
+
+**Considerations:**
+- Split `processContentBlocks` into smaller functions first (see refactoring section)
+- Test edge cases (empty arrays, missing dimensions, null values)
+- Test aspect ratio calculations with various image dimensions
+- Mock `getContentDimensions` if needed
+
+#### `app/utils/contentTypeGuards.test.ts`
+**Functions to test:**
+- `isContentImage` - Test type checking, edge cases
+- `isParallaxImageContent` - Test parallax detection
+- `isTextContent` - Test text content detection
+- `isGifContent` - Test GIF detection
+- `isCollectionContent` - Test collection detection
+- `hasImage` - Test image content detection
+- `getContentDimensions` - Test dimension extraction, fallbacks
+- `validateContentBlock` - Test validation logic
+
+**Considerations:**
+- Test with various content types
+- Test edge cases (null, undefined, malformed objects)
+- Test dimension fallback logic thoroughly
+- Consider using test fixtures for content models
+
+#### `app/(admin)/collection/manage/[[...slug]]/manageUtils.test.ts`
+**Functions to test:**
+- `buildUpdatePayload` - Test field comparison, change detection
+- `syncCollectionState` - Test state synchronization (if still used)
+- `getCollectionContentAsSelections` - Test collection extraction
+- `findImageBlockById` - Test image finding, type checking
+- `getDisplayedCoverImage` - Test cover image selection logic
+- `validateCoverImageSelection` - Test validation
+- `handleApiError` - Test error message extraction
+- `buildCollectionsUpdate` - Test complex toggle logic
+
+**Considerations:**
+- Remove or update `syncCollectionState` if unused
+- Test `buildCollectionsUpdate` with various scenarios (add, remove, toggle)
+- Test error handling edge cases
+- Mock type guards if needed
+
+#### `app/components/ImageMetadata/imageMetadataUtils.test.ts`
+**Functions to test:**
+- `applyPartialUpdate` - Test partial updates, collections transformation
+- `getFormValue` - Test fallback logic
+- `getCommonValues` - Test intersection logic, various field types
+- `getDisplayItemsFromUpdate` - Test prev/newValue pattern
+- `getDisplayItemFromUpdate` - Test single-select pattern
+- `buildImageUpdateDiff` - **After refactoring** - Test each field type separately
+- `extractMultiSelectValues` - Test ID/name extraction
+- `handleDropdownChange` - Test multi-select and single-select handling
+
+**Considerations:**
+- **Refactor `buildImageUpdateDiff` first** - Split into smaller functions (see refactoring section)
+- Test prev/newValue/remove patterns thoroughly
+- Test edge cases (empty arrays, null values, undefined fields)
+- Consider extracting field-specific diff builders for easier testing
+
+### Component Tests
+
+#### `app/components/Content/ContentWrapper.test.tsx`
+**Component to test:**
+- `ContentWrapper` - Test rendering, ref forwarding, click handling, overlay detection
+
+**Considerations:**
+- Test with various content types
+- Test mobile vs desktop rendering
+- Test overlay positioning
+- Mock `useViewport` if needed
+
+#### `app/components/Content/ImageBlockRenderer.test.tsx`
+**Component to test:**
+- `ContentImageRenderer` - Test image rendering, dimensions, click handling
+
+**Considerations:**
+- Mock Next.js Image component
+- Test with/without overlays
+- Test error states
+
+#### `app/components/ImageMetadata/ImageMetadataModal.test.tsx`
+**Component to test:**
+- `ImageMetadataModal` - Test single edit, bulk edit, form submission, error handling
+
+**Considerations:**
+- **Refactor component first** - Split into smaller components (see refactoring section)
+- Mock `updateImages` API call
+- Test form state management
+- Test hasChanges detection (after refactoring to use proper comparison)
+- Test response mapping
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.test.tsx`
+**Component to test:**
+- `ManageClient` - Test create mode, update mode, form submission, image upload, metadata editing
+
+**Considerations:**
+- **Major refactoring needed first** - Component is 922 lines, split into smaller components
+- Extract handlers to testable functions
+- Mock all API calls
+- Test state management
+- Test error handling
+- Test cover image selection
+- Test multi-select mode
+
+### Hook Tests
+
+#### `app/hooks/useImageMetadataEditor.test.tsx`
+**Hook to test:**
+- `useImageMetadataEditor` - Test open/close, scroll position, body scroll prevention, Escape key
+
+**Considerations:**
+- Test cleanup on unmount
+- Test Escape key handler
+- Mock `window.scrollY`
+
+#### `app/hooks/useFullScreenImage.test.tsx`
+**Hook to test:**
+- `useFullScreenImage` - Test fullscreen state, enter/exit, keyboard handlers
+
+**Considerations:**
+- Mock Fullscreen API
+- Test keyboard navigation
+- Test cleanup
+
+#### `app/hooks/useParallax.test.tsx`
+**Hook to test:**
+- `useParallax` - Test parallax calculations, scroll handling
+
+**Considerations:**
+- Mock scroll events
+- Test with various options
+- Test cleanup
+
+#### `app/hooks/useViewport.test.tsx`
+**Hook to test:**
+- `useViewport` - Test viewport dimensions, resize handling
+
+**Considerations:**
+- Mock window resize events
+- Test mobile vs desktop detection
+
+### Integration Tests
+
+#### `app/lib/api/integration.test.ts`
+**Scenarios to test:**
+- Collection CRUD flow (create, read, update, delete)
+- Image upload and metadata update flow
+- Content pagination
+- Error recovery
+
+**Considerations:**
+- Use MSW for API mocking
+- Test real-world user flows
+- Test error scenarios
+
+---
+
+## Testing Infrastructure Improvements
+
+### Before Writing Tests
+
+1. **Remove debug code:**
+   - Remove all `console.log` statements from production code
+   - Remove debug comments
+   - Use proper logging library if needed
+
+2. **Refactor complex functions:**
+   - Split large functions into smaller, testable units
+   - Extract business logic from components
+   - Reduce function complexity (aim for < 50 lines per function)
+
+3. **Improve error handling:**
+   - Standardize error types
+   - Add proper error boundaries
+   - Improve error messages
+
+4. **Add test utilities:**
+   - Create test fixtures for common data structures
+   - Add helper functions for common test patterns
+   - Set up MSW for API mocking
+
+5. **Improve type safety:**
+   - Ensure all functions have proper return types
+   - Add runtime validation where needed
+   - Use discriminated unions for better type narrowing
 
 ---
