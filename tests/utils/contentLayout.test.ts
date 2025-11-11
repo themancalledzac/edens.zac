@@ -37,7 +37,7 @@ const createParallaxContent = (
   overrides?: Partial<ContentParallaxImageModel>
 ): ContentParallaxImageModel => ({
   id,
-  contentType: 'PARALLAX',
+  contentType: 'IMAGE',
   orderIndex: id,
   visible: true,
   imageUrl: `https://example.com/image-${id}.jpg`,
@@ -144,7 +144,7 @@ describe('processContentBlocks', () => {
         createCollectionContent(1),
       ];
       const result = processContentBlocks(content);
-      expect(result[0]?.contentType).toBe('PARALLAX');
+      expect(result[0]?.contentType).toBe('IMAGE');
       expect((result[0] as ContentParallaxImageModel).enableParallax).toBe(true);
     });
 
@@ -360,8 +360,10 @@ describe('processContentBlocks', () => {
       // Should be filtered (visible: false removed)
       expect(result).toHaveLength(3);
       
-      // Collection should be converted to parallax
-      expect(result.find(b => b.id === 1 && b.contentType === 'PARALLAX')).toBeDefined();
+      // Collection should be converted to parallax (check enableParallax flag instead of contentType)
+      const parallaxBlock = result.find(b => b.id === 1 && b.contentType === 'IMAGE');
+      expect(parallaxBlock).toBeDefined();
+      expect((parallaxBlock as ContentParallaxImageModel).enableParallax).toBe(true);
       
       // Image with collection orderIndex should be updated
       const imageWithCollection = result.find(b => b.id === 2);

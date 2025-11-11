@@ -167,7 +167,7 @@ export function convertCollectionContentToParallax(col: ContentCollectionModel):
   const { imageWidth, imageHeight } = extractCollectionDimensions(col.coverImage);
   
   return {
-    contentType: 'PARALLAX',
+    contentType: 'IMAGE',
     enableParallax: true,
     id: col.id,
     title: col.title,
@@ -322,14 +322,15 @@ function updateImageOrderIndex(
 }
 
 /**
- * Ensure PARALLAX content blocks have proper imageWidth/imageHeight dimensions
+ * Ensure content blocks with parallax enabled have proper imageWidth/imageHeight dimensions
  * 
  * @param content - Array of content blocks to process
- * @returns Array with PARALLAX blocks having proper dimensions
+ * @returns Array with parallax-enabled blocks having proper dimensions
  */
 function ensureParallaxDimensions(content: AnyContentModel[]): AnyContentModel[] {
   return content.map(block => {
-    if (block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax) {
+    // Check for enableParallax flag instead of contentType
+    if ('enableParallax' in block && block.enableParallax && block.contentType === 'IMAGE') {
       const parallaxBlock = block as ContentParallaxImageModel;
       if (!parallaxBlock.imageWidth || !parallaxBlock.imageHeight) {
         return {

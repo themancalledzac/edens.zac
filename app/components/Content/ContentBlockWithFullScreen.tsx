@@ -79,11 +79,11 @@ export default function ContentBlockWithFullScreen({
   }, [collectionSlug, collectionData]);
 
   // Extract all image blocks for fullscreen navigation
-  // Only IMAGE and PARALLAX blocks are included since text blocks don't support fullscreen viewing
+  // Only IMAGE blocks (including those with parallax enabled) are included since text blocks don't support fullscreen viewing
   const imageBlocks = useMemo(() => {
     return allBlocks.filter(
       (block): block is ContentImageModel | ContentParallaxImageModel =>
-        block.contentType === 'IMAGE' || block.contentType === 'PARALLAX'
+        block.contentType === 'IMAGE'
     );
   }, [allBlocks]);
 

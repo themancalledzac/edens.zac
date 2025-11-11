@@ -6,7 +6,5 @@
  */
 
 export { BadgeOverlay } from './BadgeOverlay';
-export { ContentWrapper } from './ContentWrapper';
-export { ContentImageRenderer } from './ImageBlockRenderer';
-export { ParallaxImageRenderer } from './ParallaxImageRenderer';
-export { TextBlockRenderer } from './TextBlockRenderer';
+export { default as CollectionContentRenderer } from './CollectionContentRenderer';
+export { ImageOverlays } from './ImageOverlays';

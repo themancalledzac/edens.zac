@@ -24,7 +24,7 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
   const imageHeight = col.coverImage?.imageHeight;
   
   return {
-    contentType: 'PARALLAX',
+    contentType: 'IMAGE',
     enableParallax: true,
     id: col.id,
     title: col.title,
