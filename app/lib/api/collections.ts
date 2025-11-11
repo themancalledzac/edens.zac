@@ -117,7 +117,8 @@ export async function getAllCollections(
 
 /**
  * GET /api/read/collections/{slug}
- * Get collection by slug with paginated content (only returns visible collections)
+ * Get collection by slug with paginated content
+ * Note: Returns collection regardless of visible flag (visible only affects listings/searches)
  */
 export async function getCollectionBySlug(
   slug: string,
@@ -131,15 +132,7 @@ export async function getCollectionBySlug(
   });
 
   // Await the full JSON response - ensures data is fully parsed before returning
-  const raw = await safeJson<CollectionModel>(res);
-
-  // Only load collections that are visible
-  if (raw.visible !== true) {
-    notFound();
-  }
-
-  // Backend always returns complete data, so we can trust the structure
-  return raw;
+  return await safeJson<CollectionModel>(res);
 }
 
 /**
