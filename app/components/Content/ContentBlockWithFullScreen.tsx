@@ -7,8 +7,8 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
-  type ImageContentModel,
-  type ParallaxImageContentModel,
+  type ContentImageModel,
+  type ContentParallaxImageModel,
 } from '@/app/types/Content';
 
 import Component from './Component';
@@ -29,6 +29,14 @@ interface ContentBlockWithFullScreenProps {
   justClickedImageId?: number | null;
   selectedImageIds?: number[];
   currentCollectionId?: number;
+  // Drag-and-drop props for reordering
+  enableDragAndDrop?: boolean;
+  draggedImageId?: number | null;
+  dragOverImageId?: number | null;
+  onDragStart?: (imageId: number) => void;
+  onDragOver?: (e: React.DragEvent, imageId: number) => void;
+  onDrop?: (e: React.DragEvent, imageId: number) => void;
+  onDragEnd?: () => void;
 }
 
 /**
@@ -53,6 +61,13 @@ export default function ContentBlockWithFullScreen({
   justClickedImageId,
   selectedImageIds,
   currentCollectionId,
+  enableDragAndDrop = false,
+  draggedImageId,
+  dragOverImageId,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: ContentBlockWithFullScreenProps) {
   const { showImage, FullScreenModal } = useFullScreenImage();
 
@@ -67,14 +82,14 @@ export default function ContentBlockWithFullScreen({
   // Only IMAGE and PARALLAX blocks are included since text blocks don't support fullscreen viewing
   const imageBlocks = useMemo(() => {
     return allBlocks.filter(
-      (block): block is ImageContentModel | ParallaxImageContentModel =>
+      (block): block is ContentImageModel | ContentParallaxImageModel =>
         block.contentType === 'IMAGE' || block.contentType === 'PARALLAX'
     );
   }, [allBlocks]);
 
   // Wrapper function to pass all images for navigation
   const handleFullScreenImageClick = (
-    image: ImageContentModel | ParallaxImageContentModel
+    image: ContentImageModel | ContentParallaxImageModel
   ) => {
     showImage(image, imageBlocks);
   };
@@ -130,6 +145,13 @@ export default function ContentBlockWithFullScreen({
         justClickedImageId={justClickedImageId}
         selectedImageIds={selectedImageIds}
         currentCollectionId={currentCollectionId}
+        enableDragAndDrop={enableDragAndDrop}
+        draggedImageId={draggedImageId}
+        dragOverImageId={dragOverImageId}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
       />
 
       {hasMore && (

@@ -23,6 +23,7 @@ import {
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
+import { type ContentImageModel } from '@/app/types/Content';
 
 // ============================================================================
 // URL Helpers
@@ -42,7 +43,7 @@ async function safeJson<T>(res: Response): Promise<T> {
     throw new Error(`API ${res.status}: ${message}`);
   }
   if (!ct.includes('application/json')) throw new Error('Unexpected non-JSON response from API');
-  
+
   // Ensure we fully await and parse the JSON response before returning
   // This prevents any race conditions where the component might render before data is ready
   const json = await res.json();
@@ -56,26 +57,26 @@ async function safeJson<T>(res: Response): Promise<T> {
 /**
  * Parse collection array response from API
  * Handles multiple response formats with fallback logic
- * 
+ *
  * @param data - Raw response data from API (unknown type)
  * @returns Array of CollectionModel, or empty array if parsing fails
- * 
+ *
  * @example
  * // Direct array response
  * parseCollectionArrayResponse([{ id: 1, ... }]) // Returns array
- * 
+ *
  * // Wrapped in object
  * parseCollectionArrayResponse({ content: [{ id: 1, ... }] }) // Returns array
  * parseCollectionArrayResponse({ collections: [{ id: 1, ... }] }) // Returns array
  * parseCollectionArrayResponse({ items: [{ id: 1, ... }] }) // Returns array
- * 
+ *
  * // Invalid formats
  * parseCollectionArrayResponse(null) // Returns []
  * parseCollectionArrayResponse({}) // Returns []
  */
 export function parseCollectionArrayResponse(data: unknown): CollectionModel[] {
   if (Array.isArray(data)) return data as CollectionModel[];
-  
+
   if (data && typeof data === 'object') {
     const maybe =
       (data as Record<string, unknown>).content ??
@@ -128,13 +129,13 @@ export async function getCollectionBySlug(
   const res = await fetch(url, {
     next: { revalidate: 3600, tags: [`collection-${slug}`] },
   });
-  
+
   // Await the full JSON response - ensures data is fully parsed before returning
   const raw = await safeJson<CollectionModel>(res);
 
   // Security: Enforce access control for public pages
   const hasAccess = (raw as CollectionModel & { hasAccess?: boolean }).hasAccess;
-  if (hasAccess === false) {
+  if (!hasAccess) {
     notFound();
   }
 
@@ -260,4 +261,18 @@ export async function getCollectionUpdateMetadata(
  */
 export async function getMetadata(): Promise<GeneralMetadataDTO> {
   return fetchAdminGetApi<GeneralMetadataDTO>('/collections/metadata', { cache: 'no-store' });
+}
+
+/**
+ * POST /api/admin/collections/{collectionId}/reorder
+ * Reorder images in a collection
+ */
+export async function reorderCollectionImages(
+  collectionId: number,
+  reorders: Array<{ imageId: number; newOrderIndex: number }>
+): Promise<{ updatedImages: ContentImageModel[] }> {
+  return fetchAdminPostJsonApi<{ updatedImages: ContentImageModel[] }>(
+    `/collections/${collectionId}/reorder`,
+    { reorders }
+  );
 }

@@ -238,22 +238,28 @@ describe('handleCoverImageSelection', () => {
 ### 3. Functions With Potential Errors/Bugs
 
 #### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
-- [ ] `handleCreateNewTextBlock` (line 226) - **Uses `prompt()`** - Blocking UI, poor UX. Also no validation of input.
-- [ ] `handleImageClick` (line 422) - **Potential bug** - Checks `isCollectionContent` on original block but uses `processedContent` for image lookup. Could cause mismatch.
-- [ ] `handleMetadataSaveSuccess` (line 477) - **Silent failure** - Revalidation wrapped in try-catch with only console.warn. Should handle errors properly.
+- [x] `handleCreateNewTextBlock` (line 189) - **FIXED** - Now uses `TextBlockCreateModal` component instead of `prompt()`. Modal includes form validation, format selector, and proper error handling.
+- [ ] `handleImageClick` (line 388) - **Verified: Not a bug** - Logic is correct: `handleCollectionNavigation` uses `collection?.content` (original blocks), and `handleSingleImageEdit` checks both original and processed content as fallback. The implementation correctly handles both cases. However, could be clearer - consider documenting why both are checked.
+- [ ] `handleMetadataSaveSuccess` (line 442) - **Silent failure in revalidation** - `revalidateCollectionCache` (called at line 452) fails silently with only `console.warn` in `manageUtils.ts` line 500-502. Console statement now wrapped with `isLocalEnvironment()` check. This is intentional (revalidation is not critical), but could be improved to log to error tracking service in production.
 
 #### `app/components/ImageMetadata/imageMetadataUtils.ts`
-- [ ] `buildImageUpdateDiff` (line 408) - **Incomplete** - FilmType diff building is incomplete (has TODO comment).
-- [ ] `applyPartialUpdate` (line 51) - **Console.log in production code** - Should be removed or use proper logging.
+- [x] `buildImageUpdateDiff` (line 607) - **FIXED** - FilmType diff building is now complete. `buildFilmTypeDiff` function (lines 431-467) handles remove, existing film types (prev pattern), and new film types (newValue pattern) correctly.
+- [x] `applyPartialUpdate` (line 37) - **FIXED** - No console.log statements found. Code is clean.
 
 #### `app/lib/api/content.ts`
-- [ ] `updateImages` (lines 98-103, 116-117) - **Debug console.logs** - Should be removed or use proper logging.
+- [x] `updateImages` (lines 99-106, 119-122) - **FIXED** - Debug `console.log` statements now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
 
 #### `app/lib/api/collections.ts`
-- [ ] `safeJson` (line 48) - **Potential race condition** - Calls `res.json()` twice (line 36 and 48). Should cache the result.
+- [ ] `safeJson` (line 31) - **Code clarity issue** - Not actually a bug: `res.json()` is only called once per execution path (error path on line 36 OR success path on line 48, never both). However, the code structure could be clearer by caching the parsed JSON result to avoid confusion. Consider refactoring for better readability.
 
 #### `app/utils/contentLayout.ts`
-- [ ] `convertCollectionContentToImage` (line 220) - **Potential undefined** - Uses `col.title || col.slug || ''` but if both are undefined, could cause issues.
+- [x] `convertCollectionContentToImage` (line 198) - **Not a bug** - Uses `col.title || col.slug || ''` which correctly returns empty string if both are undefined. This is safe and intentional.
+
+#### `app/lib/storage/collectionStorage.ts`
+- [x] `updateImagesInCache` (lines 154-156, 171-177, 191-196, 198-200) - **FIXED** - All console statements (`console.warn`, `console.log`, `console.error`) now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
+
+#### `app/components/ImageMetadata/ImageMetadataModal.tsx`
+- [x] `handleSubmit` (line 143-145) - **FIXED** - `console.error` now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
 
 ### 4. Functions That Could Be Combined
 
@@ -585,5 +591,208 @@ describe('handleCoverImageSelection', () => {
    - Ensure all functions have proper return types
    - Add runtime validation where needed
    - Use discriminated unions for better type narrowing
+
+---
+
+## Click-and-Drag Refactoring: Code Review Issues
+
+This section documents all issues found in the click-and-drag refactoring work, including refactor opportunities, simplifications, bad code/logic, code duplication, incorrect implementations, and errors.
+
+### 4. Simplification Opportunities
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [x] **State management complexity** - The component manages many related state variables:
+  - `draggedImageId`, `dragOverImageId`, `pendingReorderChanges`
+  - `selectedImageIds`, `isMultiSelectMode`, `justClickedImageId`
+  - `isSelectingCoverImage`, `currentState`, `updateData`
+  
+  **Analysis**: After critical review, custom hooks would add unnecessary abstraction. The states are simple and used independently. However, `draggedImageId` and `dragOverImageId` are always set/cleared together - they can be combined into a single state object `{ draggedId: number | null; dragOverId: number | null }` to reduce state variables.
+  
+  ✅ **SIMPLIFIED** - Combined `draggedImageId` and `dragOverImageId` into single `dragState` object. This reduces state variables while keeping the logic simple and clear.
+
+- [x] **`pendingReorderChanges` state structure** - Currently an array of `{ imageId: number; newOrderIndex: number }[]`. The field name `imageId` is misleading since it can also be a collection ID. **Simplification approach**: Rename to `contentId` for clarity, or create a type alias `type ReorderChange = { contentId: number; newOrderIndex: number }`.
+  
+  ✅ **FIXED** - Created `ReorderChange` type alias with `contentId` field. Updated all usages throughout the codebase for type safety and clarity.
+
+- [x] **Multiple `useMemo` hooks for derived state** - Lines 180-197 have several `useMemo` hooks that derive state from `currentState` and `collection`. **Analysis**: These are independent derived values with different dependencies. Combining them would create unnecessary re-renders when only one dependency changes. Current approach is optimal - no changes needed.
+  
+  ✅ **VERIFIED** - No changes needed. Current approach is optimal.
+
+#### `app/utils/contentComponentHandlers.ts`
+
+- [x] **`hasSlug` function (lines 52-54)** - **Overly complex check** - Uses `!!('slug' in itemContent && itemContent.slug)` when `!!itemContent.slug` would suffice if we know the object has a slug property. **Simplification approach**: Simplify to `(itemContent: { slug?: string }): boolean => !!itemContent.slug`.
+  
+  ✅ **SIMPLIFIED** - Changed to `!!itemContent.slug`. The `'slug' in itemContent` check was redundant since TypeScript already ensures the property exists via the type annotation.
+
+- [ ] **`determineImageClickAction` (lines 64-76)** - **Good function** - Simple and clear. No changes needed.
+
+### 5. Bad Code / Bad Logic
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [ ] **`applyReorderLocally` - Pending changes merging logic (lines 579-598)** - **Potential bug** - The logic for merging pending changes creates a `Map` and then converts it back to an array. However, the merging logic might not correctly handle all edge cases. **Issue**: If a content item is moved multiple times in quick succession, the latest change should win, which the current implementation does correctly. However, the logic could be clearer. **Fix**: Add comments explaining the merge strategy, or extract to a well-documented function `mergeReorderChanges(existing: ReorderChange[], newChanges: ReorderChange[]): ReorderChange[]`.
+
+- [ ] **`applyReorderLocally` - State update after reorder (lines 634-637)** - **Potential issue** - The function updates `currentState` with the updated collection, but it doesn't clear `pendingReorderChanges` until after `handleSaveOrder` succeeds. This means if the user makes multiple reorders before saving, the pending changes accumulate. **Question**: Is this the intended behavior? If so, it should be documented. If not, we might need to handle the case where pending changes conflict with new changes.
+
+- [ ] **`handleDrop` - Early return conditions (line 724)** - **Good** - Correctly handles edge cases (no dragged item, same item, missing collection/state). No issues.
+
+- [ ] **`handleDragOver` - Missing validation** - **Minor issue** - The function doesn't check if `collection.displayMode === 'ORDERED'` before allowing drag over. However, `handleDragStart` does check this, so it's probably fine. **Consideration**: Should we add the same check here for consistency?
+
+#### `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts`
+
+- [ ] **`applyReorderChangesLocally` - Image block update (lines 947-964)** - **Potential issue** - The function updates both `collections` array entry AND top-level `orderIndex`. The comment says "Also update top-level orderIndex for consistency" but this might cause confusion if the top-level `orderIndex` is used elsewhere. **Question**: Is the top-level `orderIndex` actually used, or is it always read from the `collections` array entry? If it's not used, we should remove this line to avoid confusion.
+
+- [ ] **`calculateForwardReorderChanges` and `calculateBackwardReorderChanges` - Index calculation** - **Logic verification needed** - The logic for calculating which blocks to shift looks correct, but should be tested with edge cases:
+  - Dragging first item to last position
+  - Dragging last item to first position
+  - Dragging to adjacent position
+  - Dragging with gaps in orderIndex values
+
+- [ ] **`getContentOrderIndex` - Fallback to 0** - **Potential issue** - In `calculateForwardReorderChanges` and `calculateBackwardReorderChanges`, when `getContentOrderIndex` returns `undefined`, it falls back to `0` (line 737, 772). This might cause incorrect reordering if some blocks have `undefined` orderIndex. **Fix**: Should we filter out blocks with undefined orderIndex before calculating changes, or assign a default orderIndex? This needs to be verified against the actual data structure.
+
+#### `app/utils/contentComponentHandlers.ts`
+
+- [ ] **`createDragEndHandler` - setTimeout usage (lines 196-209)** - **Potential race condition** - Uses `setTimeout(() => { isDraggingRef.current = false; onDragEnd(); }, 0)` to allow drop event to fire first. This is a common pattern but could be fragile. **Consideration**: Is this necessary? The `createDropHandler` already sets `isDraggingRef.current = false` (line 186), so the setTimeout might be redundant. **Investigation needed**: Test if removing the setTimeout causes any issues.
+
+- [ ] **`prepareCollectionContentRender` - Missing error handling** - **Minor issue** - The function doesn't handle the case where `convertCollectionContentToParallax` might fail or return invalid data. **Fix**: Add validation or error handling.
+
+### 6. Code Duplication
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [ ] **Debug logging pattern** - Lines 618-632, 703-710, and 745-760 all have similar debug logging patterns that extract block names and log reorder information. **Duplication**: Extract to a utility function:
+  ```typescript
+  function getContentBlockName(block: ImageContentModel | CollectionContentModel): string {
+    if (isContentImage(block)) {
+      return block.rawFileName || block.imageUrl?.split('/').pop() || `Image ${block.id}`;
+    }
+    return block.title || `Collection ${block.id}`;
+  }
+  
+  function logReorderInfo(operation: string, draggedBlock: ..., targetBlock: ..., collection: ...) {
+    if (!isLocalEnvironment()) return;
+    console.log(`[${operation}]`, { dragged: ..., target: ... });
+  }
+  ```
+
+- [ ] **Block finding and name extraction** - Lines 738-743 (in `handleDrop`) duplicate the logic for extracting block names that's also used in `handleDragStart` (lines 699-701). **Duplication**: Extract to utility function as shown above.
+
+#### `app/utils/contentComponentHandlers.ts` and `app/components/Content/Component.tsx`
+
+- [ ] **Drag handler creation** - The pattern of creating drag handlers is repeated in multiple places in `Component.tsx` (lines 218-232, 293-307, and in `renderCollectionContent`). However, they all use `createDragHandlers` from `contentComponentHandlers.ts`, which is good. **No duplication** - The handlers utility is properly extracted.
+
+### 7. Code That Exists Elsewhere (Reuse Opportunities)
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [ ] **Block name extraction** - The logic for extracting a display name from a content block (lines 611-616, 699-701, 738-743) could potentially be reused. **Check**: Is there a utility function elsewhere that does this? If not, create one in `contentComponentHandlers.ts` or `manageUtils.ts`.
+
+- [ ] **Content block type checking** - The code uses `isContentImage()` and checks for collection content in multiple places. This is already using the utility functions correctly, so no issue here.
+
+#### `app/utils/contentLayout.ts`
+
+- [ ] **`convertCollectionContentToParallax`** - This function exists in `contentLayout.ts` (line 165) and is used in `contentComponentHandlers.ts` (line 357). **Good reuse** - No duplication.
+
+### 8. Code That Isn't Correct / Needs to Be Redone
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [ ] **`applyReorderLocally` - State update timing** - **Potential issue** - The function updates `currentState` immediately (lines 634-637), but the pending changes are stored separately. This means the UI shows the reordered state, but if the user discards changes, we need to revert. **Question**: Does `handleDiscardOrder` correctly revert to the original state? It calls `refreshCollectionData`, which should work, but we should verify that pending changes don't interfere with the revert.
+
+- [ ] **`handleDiscardOrder` - Error handling** - **Needs improvement** - Uses `.then().catch()` instead of async/await, and error handling just sets an error message. Should show user feedback (toast notification) and handle the error more gracefully.
+
+- [ ] **Missing validation in drag handlers** - **Minor issue** - `handleDragStart` checks `collection.displayMode !== 'ORDERED'` but `handleDragOver` and `handleDrop` don't. While `handleDragStart` prevents dragging from starting, it would be more defensive to check in all handlers.
+
+#### `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts`
+
+- [ ] **`executeReorderOperation` - Missing cache update** - **Bug found!** - Line 845 calls `updateCollectionCache` but the function signature shows it should be called. However, looking at line 845, it seems the cache update might be missing. **Verification needed**: Check if `updateCollectionCache` is actually being called. Looking at the code, line 845 should have the call, but I need to verify the actual implementation.
+
+  **Update after review**: Line 845 shows `updateCollectionCache(slug, fullResponse.collection, collectionStorage);` - this looks correct. However, the function is called but the result isn't checked. **No bug** - the cache update is there.
+
+- [ ] **`applyReorderChangesLocally` - Type safety** - **Minor issue** - The function uses type assertions (`as ImageContentModel`, `as CollectionContentModel`) which is fine, but we could improve type safety by using type guards more consistently.
+
+#### `app/components/Content/Component.tsx`
+
+- [ ] **`renderCollectionContent` - Inline function** - **Not incorrect, but suboptimal** - The function is defined inside the component, causing it to be recreated on every render. This is a performance issue, not a correctness issue. **Fix**: Move outside component or wrap with `useCallback`.
+
+- [ ] **Missing `dragOverImageId` usage** - **Potential bug** - The prop `dragOverImageId` is passed to the component (line 102, renamed to `_dragOverImageId`), but it's never used. The drag over visual feedback might be missing. **Investigation needed**: Check if drag-over styling is handled elsewhere or if this is intentional.
+
+### 9. Type Safety Issues
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [ ] **`pendingReorderChanges` type** - Uses `{ imageId: number; newOrderIndex: number }[]` but `imageId` can be a collection ID too. **Type safety issue**: Should be `{ contentId: number; newOrderIndex: number }[]` or create a type alias.
+
+- [ ] **Type assertions in `applyReorderLocally`** - Lines 611-616 use type narrowing with `isContentImage()`, which is good. No issues.
+
+#### `app/utils/contentComponentHandlers.ts`
+
+- [ ] **`prepareCollectionContentRender` return type** - **Missing explicit return type** - The function returns an object but doesn't have an explicit return type annotation. **Fix**: Add return type for better type safety and documentation.
+
+### 10. Performance Issues
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [ ] **`applyReorderLocally` - Multiple state updates** - **Potential performance issue** - The function updates `pendingReorderChanges` and `currentState` separately (lines 598 and 634-637). This causes two re-renders. **Optimization**: Could use a single state update with a reducer or combine the updates, but this might not be worth it unless there are performance problems.
+
+- [ ] **Debug logging in render path** - **Performance issue in development** - The extensive debug logging (lines 618-632, 703-710, 745-760) runs during drag operations, which could impact performance. **Fix**: Wrap all debug logging with `isLocalEnvironment()` checks or remove entirely.
+
+#### `app/components/Content/Component.tsx`
+
+- [ ] **`renderCollectionContent` - Recreated on every render** - **Performance issue** - The function is defined inside the component, so it's recreated on every render. **Fix**: Move outside component or wrap with `useCallback` if it needs access to props/state.
+
+### 11. Missing Error Handling
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [ ] **`applyReorderLocally` - No error handling** - **Missing** - The function doesn't handle errors if `getReorderableBlocks`, `findContentById`, or `calculateReorderChanges` fail. **Fix**: Add try-catch or validate inputs.
+
+- [ ] **`handleSaveOrder` - Error handling** - **Good** - Has try-catch and error handling. No issues.
+
+- [ ] **`handleDiscardOrder` - Error handling** - **Needs improvement** - Uses `.catch()` but only sets error message. Should provide better user feedback.
+
+#### `app/utils/contentComponentHandlers.ts`
+
+- [ ] **`prepareCollectionContentRender` - No error handling** - **Missing** - Doesn't handle errors from `convertCollectionContentToParallax` or other operations. **Fix**: Add error handling or validation.
+
+### 12. Documentation Issues
+
+#### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+
+- [ ] **`applyReorderLocally` - Missing JSDoc** - **Missing** - The function is complex but doesn't have comprehensive JSDoc documentation explaining the merge strategy for pending changes. **Fix**: Add detailed JSDoc explaining:
+  - What the function does
+  - How it merges pending changes
+  - When it should be called
+  - What side effects it has
+
+- [ ] **`pendingReorderChanges` state - Missing documentation** - **Missing** - The state variable and its structure should be documented. Why is it called `imageId` when it can be a collection ID?
+
+#### `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts`
+
+- [ ] **`applyReorderChangesLocally` - JSDoc exists but could be clearer** - **Good** - Has JSDoc, but could explain the dual update (collections array + top-level orderIndex) more clearly.
+
+### Summary of Critical Issues (Must Fix)
+
+1. **Linter errors** - Remove unused imports (`findImageById`, `getImageBlocksForReorder`, `getImageOrderIndex`)
+2. **Console statements** - Wrap all `console.log` statements with `isLocalEnvironment()` checks or remove them
+3. **Type safety** - Rename `imageId` to `contentId` in `pendingReorderChanges` type
+4. **Error handling** - Add error handling to `applyReorderLocally` and `handleDiscardOrder`
+5. **Performance** - Move `renderCollectionContent` outside component or wrap with `useCallback`
+
+### Summary of Important Issues (Should Fix)
+
+1. **Code duplication** - Extract debug logging and block name extraction to utility functions
+2. **Function complexity** - Split `applyReorderLocally` into smaller functions
+3. **Parameter count** - Reduce `prepareCollectionContentRender` parameters using a config object
+4. **Documentation** - Add comprehensive JSDoc to complex functions
+5. **State management** - Consider custom hooks for drag-and-drop and selection state
+
+### Summary of Nice-to-Have Improvements
+
+1. **Code organization** - Extract `renderCollectionContent` to separate file
+2. **Type improvements** - Add explicit return types where missing
+3. **Validation** - Add displayMode checks to all drag handlers for consistency
+4. **User feedback** - Add toast notifications for save/discard operations
 
 ---

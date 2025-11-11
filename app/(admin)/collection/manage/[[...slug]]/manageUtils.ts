@@ -3,6 +3,7 @@
  * Handles data normalization, state management, and type guards
  */
 
+import { reorderCollectionImages } from '@/app/lib/api/collections';
 import {
   type ChildCollection,
   type CollectionModel,
@@ -11,12 +12,12 @@ import {
 } from '@/app/types/Collection';
 import {
   type AnyContentModel,
-  type CollectionContentModel,
+  type ContentCollectionModel,
+  type ContentImageModel,
   type ContentImageUpdateResponse,
-  type ImageContentModel,
-  type ParallaxImageContentModel,
 } from '@/app/types/Content';
-import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
+import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
@@ -53,9 +54,37 @@ export function buildUpdatePayload(
 
   // Only include fields that have actually changed
   for (const { key, original } of fieldMappings) {
-    if (formData[key] !== original) {
+    const formValue = formData[key];
+    // Handle undefined/null comparison - treat undefined and null as equivalent
+    // Also normalize empty strings for string fields
+    const normalizedOriginal = original === null || original === undefined ? undefined : original;
+    const normalizedFormValue = formValue === null || formValue === undefined ? undefined : formValue;
+    
+    if (normalizedFormValue !== normalizedOriginal) {
       // Type assertion needed since we're iterating dynamically
       (payload as unknown as Record<string, unknown>)[key] = formData[key];
+      
+      // DEBUG: Log displayMode changes specifically
+      if (key === 'displayMode' && isLocalEnvironment()) {
+        console.log('[buildUpdatePayload] displayMode change detected:', {
+          key,
+          original,
+          formValue,
+          normalizedOriginal,
+          normalizedFormValue,
+          willInclude: true,
+        });
+      }
+    } else if (key === 'displayMode' && isLocalEnvironment()) {
+      // DEBUG: Log when displayMode is NOT included
+      console.log('[buildUpdatePayload] displayMode NOT changed (not included):', {
+        key,
+        original,
+        formValue,
+        normalizedOriginal,
+        normalizedFormValue,
+        areEqual: normalizedFormValue === normalizedOriginal,
+      });
     }
   }
 
@@ -74,52 +103,6 @@ export function buildUpdatePayload(
 }
 
 /**
- * Sync collection state after an update
- * Updates the collection object with new values from the update response
- */
-export function syncCollectionState(
-  collection: CollectionModel,
-  updateResponse: CollectionModel,
-  formData: CollectionUpdateRequest
-): CollectionModel {
-  return {
-    ...collection,
-    title: updateResponse.title,
-    description: updateResponse.description || '',
-    location: updateResponse.location || '',
-    collectionDate: updateResponse.collectionDate || '',
-    visible: formData.visible,
-    displayMode: formData.displayMode,
-    content: updateResponse.content || collection.content, // Sync content (includes updated child collections)
-  };
-}
-
-/**
- * Type guard to check if a block is an ImageContentBlock
- * @deprecated Use isContentImage from @/app/utils/contentTypeGuards instead
- */
-export function isImageContentBlock(block: unknown): block is ImageContentModel {
-  // Re-export from contentTypeGuards for backward compatibility
-  return isContentImage(block);
-}
-
-/**
- * Type guard to check if a block is a collection (ParallaxImageContentModel with slug)
- * Collections are now converted to Parallax type for unified rendering
- * This is different from isCollectionContent which checks for COLLECTION type
- */
-export function isCollectionContentBlock(block: unknown): block is ParallaxImageContentModel {
-  if (!block || typeof block !== 'object') return false;
-  const candidate = block as Record<string, unknown>;
-  return (
-    candidate.contentType === 'PARALLAX' &&
-    'slug' in candidate &&
-    typeof candidate.slug === 'string' &&
-    candidate.slug.length > 0
-  );
-}
-
-/**
  * Extract collection content blocks from a content array
  * Filters content to only CollectionContentModel items (child collections) and maps to selector format
  * Child collections are stored as COLLECTION type in the content array
@@ -133,8 +116,8 @@ export function getCollectionContentAsSelections(
   if (!content) return [];
 
   return content
-    .filter(isCollectionContent)
-    .map((collection: CollectionContentModel) => ({
+    .filter(isContentCollection)
+    .map((collection: ContentCollectionModel) => ({
       id: collection.id,
       name: collection.title || collection.slug || '', // Use title if available, fallback to slug
     }));
@@ -180,11 +163,11 @@ export function getCurrentSelectedCollections(
 export function findImageBlockById(
   blocks: AnyContentModel[] | undefined,
   imageId: number | undefined
-): ImageContentModel | undefined {
+): ContentImageModel | undefined {
   if (!blocks || !imageId) return undefined;
 
   const block = blocks.find(b => b.id === imageId);
-  return block && isImageContentBlock(block) ? block : undefined;
+  return block && isContentImage(block) ? block : undefined;
 }
 
 /**
@@ -193,7 +176,7 @@ export function findImageBlockById(
 export function getDisplayedCoverImage(
   collection: CollectionModel | null,
   pendingCoverImageId: number | undefined
-): ImageContentModel | null | undefined {
+): ContentImageModel | null | undefined {
   if (pendingCoverImageId) {
     // Type-safe check: only pass blocks if they exist and are the right type
     const blocks = collection?.content;
@@ -377,8 +360,8 @@ export function handleCollectionNavigation(
   content: AnyContentModel[] | undefined
 ): string | null {
   const originalBlock = content?.find(block => block.id === imageId);
-  if (originalBlock && isCollectionContent(originalBlock)) {
-    const collectionBlock = originalBlock as CollectionContentModel;
+  if (originalBlock && isContentCollection(originalBlock)) {
+    const collectionBlock = originalBlock as ContentCollectionModel;
     return collectionBlock.slug || null;
   }
   return null;
@@ -417,64 +400,17 @@ export function handleSingleImageEdit(
   imageId: number,
   content: AnyContentModel[] | undefined,
   processedContent: AnyContentModel[]
-): ImageContentModel | null {
+): ContentImageModel | null {
   // Find block in original content or processed content
   const imageBlock =
     content?.find(block => block.id === imageId) ||
     processedContent.find(block => block.id === imageId);
   
-  if (imageBlock && isImageContentBlock(imageBlock)) {
+  if (imageBlock && isContentImage(imageBlock)) {
     return imageBlock;
   }
   
   return null;
-}
-
-/**
- * Refresh collection data by fetching from the API
- * Re-fetches collection with full metadata using admin endpoint
- *
- * @param slug - Collection slug to fetch
- * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
- * @returns Promise with CollectionUpdateResponseDTO containing collection and metadata
- */
-export async function refreshCollectionData(
-  slug: string,
-  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>
-): Promise<CollectionUpdateResponseDTO> {
-  return await getCollectionUpdateMetadata(slug);
-}
-
-/**
- * Build updated collection state from API response
- * Returns a function that can be used with setState to update the collection
- *
- * @param response - CollectionUpdateResponseDTO from API
- * @returns State updater function for React setState
- */
-export function updateCollectionState(
-  response: CollectionUpdateResponseDTO
-): (prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO {
-  return (prev: CollectionUpdateResponseDTO | null) => ({
-    ...prev!,
-    collection: response.collection,
-  });
-}
-
-/**
- * Update collection cache storage
- * Updates the sessionStorage cache with new collection data
- *
- * @param slug - Collection slug
- * @param collection - Updated collection data
- * @param collectionStorage - Collection storage instance (injected for testability)
- */
-export function updateCollectionCache(
-  slug: string,
-  collection: CollectionModel,
-  collectionStorage: { update: (slug: string, collection: CollectionModel) => void }
-): void {
-  collectionStorage.update(slug, collection);
 }
 
 /**
@@ -496,7 +432,9 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
     });
   } catch (error) {
     // Fail silently - revalidation is not critical for functionality
-    console.warn('[manageUtils] Failed to revalidate cache:', error);
+    if (isLocalEnvironment()) {
+      console.warn('[manageUtils] Failed to revalidate cache:', error);
+    }
   }
 }
 
@@ -563,4 +501,223 @@ export async function refreshCollectionAfterOperation(
 
   return response;
 }
+
+// ============================================================================
+// Reorder Utilities
+// ============================================================================
+
+/**
+ * Type for reorder changes (contentId can be image or collection ID)
+ */
+export type ReorderChange = { contentId: number; newOrderIndex: number };
+
+/**
+ * Calculate which images need to be reordered when dragging one image to another's position
+ * Returns array of changes needed for the API call
+ * 
+ * Simple logic:
+ * - If moving FORWARD (lower index → higher index): dragged item takes target position, 
+ *   all items between (including target) move BACK by 1
+ * - If moving BACKWARD (higher index → lower index): dragged item takes target position,
+ *   all items between (including target) move FORWARD by 1
+ * 
+ * @param draggedContentId - ID of the content being dragged
+ * @param targetContentId - ID of the content being dropped on
+ * @param collection - Current collection state
+ * @param collectionId - Collection ID
+ * @returns Array of reorder changes to send to API
+ */
+export function calculateReorderChanges(
+  draggedContentId: number,
+  targetContentId: number,
+  collection: CollectionModel,
+  collectionId: number
+): ReorderChange[] {
+  const blocks = collection.content || [];
+  const draggedBlock = blocks.find(b => b.id === draggedContentId);
+  const targetBlock = blocks.find(b => b.id === targetContentId);
+
+  if (!draggedBlock || !targetBlock) return [];
+
+  const originalIndex = getContentOrderIndex(draggedBlock, collectionId);
+  const targetIndex = getContentOrderIndex(targetBlock, collectionId);
+
+  if (originalIndex === undefined || targetIndex === undefined) return [];
+  if (originalIndex === targetIndex) return []; // No change needed
+
+  const changes: ReorderChange[] = [];
+
+  if (originalIndex < targetIndex) {
+    // Moving FORWARD (e.g., position 2 → position 5)
+    // Dragged item takes target position
+    changes.push({ contentId: draggedContentId, newOrderIndex: targetIndex });
+    
+    // All items between original and target (including target) move BACK by 1
+    for (let i = originalIndex + 1; i <= targetIndex; i++) {
+      const block = blocks.find(b => getContentOrderIndex(b, collectionId) === i);
+      if (block) {
+        changes.push({ contentId: block.id, newOrderIndex: i - 1 });
+      }
+    }
+  } else {
+    // Moving BACKWARD (e.g., position 5 → position 2)
+    // Dragged item takes target position
+    changes.push({ contentId: draggedContentId, newOrderIndex: targetIndex });
+    
+    // All items between target and original (including target) move FORWARD by 1
+    for (let i = targetIndex; i < originalIndex; i++) {
+      const block = blocks.find(b => getContentOrderIndex(b, collectionId) === i);
+      if (block) {
+        changes.push({ contentId: block.id, newOrderIndex: i + 1 });
+      }
+    }
+  }
+
+  return changes;
+}
+
+/**
+ * Apply reorder changes directly to a collection model (for optimistic updates)
+ * Simply updates each block's orderIndex according to the provided changes
+ * 
+ * @param collection - Collection model to update
+ * @param reorders - Array of ReorderChange with new orderIndex values
+ * @param collectionId - Collection ID for updating image collection entries
+ * @returns Updated collection model with new orderIndex values
+ */
+export function applyReorderChangesOptimistically(
+  collection: CollectionModel,
+  reorders: ReorderChange[],
+  collectionId: number
+): CollectionModel {
+  if (reorders.length === 0) return collection;
+
+  // Create a map of contentId -> newOrderIndex for quick lookup
+  const reorderMap = new Map(reorders.map(r => [r.contentId, r.newOrderIndex]));
+
+  // Update all content blocks with new orderIndex values
+  const updatedContent = (collection.content || []).map(block => {
+    const newOrderIndex = reorderMap.get(block.id);
+    
+    // If this block is not in the reorder map, return as-is
+    if (newOrderIndex === undefined) return block;
+
+    // All content types have orderIndex in collections array (collection-specific)
+    return updateBlockOrderIndex(block, collectionId, newOrderIndex);
+  });
+
+  return {
+    ...collection,
+    content: updatedContent,
+  };
+}
+
+
+
+/**
+ * Get the orderIndex for a content block
+ * All content types have orderIndex in collections array (collection-specific)
+ *
+ * @param block - Content block (any type)
+ * @param collectionId - ID of the collection to get orderIndex for
+ * @returns orderIndex value, or undefined if not found
+ */
+export function getContentOrderIndex(
+  block: AnyContentModel,
+  collectionId: number
+): number | undefined {
+  // All content has orderIndex in collections array (collection-specific)
+  // Type assertion needed since not all content types have collections in their type definition
+  const blockWithCollections = block as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number }> };
+  const collectionEntry = blockWithCollections.collections?.find((c: { collectionId: number }) => c.collectionId === collectionId);
+  return collectionEntry?.orderIndex;
+}
+
+
+
+
+/**
+ * Execute reorder operation
+ * Calls the API and refreshes collection data
+ *
+ * @param collectionId - ID of the collection
+ * @param reorders - Array of reorder changes (ReorderChange format)
+ * @param slug - Collection slug for cache refresh
+ * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
+ * @param collectionStorage - Collection storage instance (injected for testability)
+ * @returns Promise that resolves with refreshed CollectionUpdateResponseDTO
+ */
+export async function executeReorderOperation(
+  collectionId: number,
+  reorders: ReorderChange[],
+  slug: string,
+  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>,
+  collectionStorage: { update: (slug: string, collection: CollectionModel) => void }
+): Promise<CollectionUpdateResponseDTO> {
+  // Convert to API format and call the reorder API
+  await reorderCollectionImages(collectionId, reorders.map(change => ({
+    imageId: change.contentId,
+    newOrderIndex: change.newOrderIndex,
+  })));
+
+  // Refresh collection data to get updated orderIndex values
+  const fullResponse = await getCollectionUpdateMetadata(slug);
+
+  // Update cache
+  collectionStorage.update(slug, fullResponse.collection);
+  await revalidateCollectionCache(slug);
+
+  return fullResponse;
+}
+
+/**
+ * Update orderIndex for a content block
+ * Updates the collection entry in the collections array (collection-specific)
+ * @param block - Content block (any type) to update
+ * @param collectionId - Collection ID to find the correct collection entry
+ * @param newOrderIndex - New orderIndex value
+ * @returns Updated content block
+ */
+export function updateBlockOrderIndex(
+  block: AnyContentModel,
+  collectionId: number,
+  newOrderIndex: number
+): AnyContentModel {
+  // All content has orderIndex in collections array (collection-specific)
+  // Type assertion needed since not all content types have collections in their type definition
+  const blockWithCollections = block as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number; name?: string; visible?: boolean; [key: string]: unknown }> };
+  const existingCollections = blockWithCollections.collections || [];
+  
+  // Check if collection entry already exists
+  const existingIndex = existingCollections.findIndex(
+    (entry: { collectionId: number }) => entry.collectionId === collectionId
+  );
+
+  // Update existing entry or create new one if it doesn't exist
+  const updatedCollections: Array<{ collectionId: number; orderIndex?: number; name?: string; visible?: boolean; [key: string]: unknown }> = existingIndex >= 0
+    ? existingCollections.map((collectionEntry, index) => {
+        if (index === existingIndex) {
+          return {
+            ...collectionEntry,
+            orderIndex: newOrderIndex,
+          };
+        }
+        return collectionEntry;
+      })
+    : [
+        ...existingCollections,
+        {
+          collectionId,
+          orderIndex: newOrderIndex,
+          name: '',
+          visible: true,
+        },
+      ];
+
+  return {
+    ...block,
+    collections: updatedCollections,
+  } as AnyContentModel;
+}
+
 

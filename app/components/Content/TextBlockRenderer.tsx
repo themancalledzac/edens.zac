@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { type TextContentModel } from '@/app/types/Content';
+import { type ContentTextModel } from '@/app/types/Content';
 
 import cbStyles from './ContentComponent.module.scss';
 import {
@@ -12,7 +12,7 @@ import {
  * Props for TextContentBlockRenderer
  */
 export interface TextContentBlockRendererProps extends BaseContentRendererProps {
-  block: TextContentModel;
+  block: ContentTextModel;
 }
 
 /**
@@ -26,7 +26,7 @@ export function TextBlockRenderer({
   className = '',
   isMobile = false,
 }: TextContentBlockRendererProps): React.ReactElement {
-  const renderTextContent = (textBlock: TextContentModel): React.ReactElement => {
+  const renderTextContent = (textBlock: ContentTextModel): React.ReactElement => {
     // Extract text content - use content field from proper type
     const displayText = textBlock.content;
     const isLeftAligned = textBlock.align === 'left';

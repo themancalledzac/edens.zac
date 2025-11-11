@@ -46,6 +46,7 @@ html,
   /* Page-level padding */
   --page-padding-mobile: var(--space-4);
   --page-padding-desktop: var(--space-6);
+  --default-padding: 0.8rem;
 
   /* Menu item height */
   --menu-item-height: 50px;

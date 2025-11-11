@@ -1,7 +1,7 @@
 import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
-  type ParallaxImageContentModel,
+  type ContentParallaxImageModel,
 } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 
@@ -18,7 +18,7 @@ interface ContentCollectionPageProps {
  * Converts collections to Parallax type for unified rendering using the proven parallax path
  * Includes all necessary fields for proper positioning, aspect ratio, and parallax effects
  */
-function collectionToContentModel(col: CollectionModel): ParallaxImageContentModel {
+function collectionToContentModel(col: CollectionModel): ContentParallaxImageModel {
   // Extract dimensions from coverImage - prioritize imageWidth/imageHeight for accurate aspect ratios
   const imageWidth = col.coverImage?.imageWidth;
   const imageHeight = col.coverImage?.imageHeight;
@@ -73,7 +73,7 @@ export default async function CollectionPage({
   // Get content blocks to display
   const contentBlocks: AnyContentModel[] = Array.isArray(collection)
     ? collection.map(collectionToContentModel)
-    : processContentBlocks(collection.content ?? [], true, collection.id);
+    : processContentBlocks(collection.content ?? [], true, collection.id, collection.displayMode);
 
   // Determine if this is a single collection (for passing slug to SiteHeader)
   const singleCollection = Array.isArray(collection) ? null : collection;
@@ -82,7 +82,7 @@ export default async function CollectionPage({
   return (
     <div className={styles.container}>
       <main className={styles.main}>
-        <SiteHeader pageType={singleCollection ? 'collection' : 'default'} collectionSlug={collectionSlug} />
+        <SiteHeader pageType={singleCollection ? 'collection' : 'collectionsCollection'} collectionSlug={collectionSlug} />
         {contentBlocks && contentBlocks.length > 0 ? (
           <ContentBlockWithFullScreen
             content={contentBlocks}

@@ -12,7 +12,8 @@ import {
   fetchAdminPostJsonApi,
   fetchReadApi,
 } from '@/app/lib/api/core';
-import { type ContentImageUpdateRequest, type ImageContentModel } from '@/app/types/Content';
+import { type ContentImageModel,type ContentImageUpdateRequest } from '@/app/types/Content';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 // ============================================================================
 // READ Endpoints (Production - /api/read/content)
@@ -64,8 +65,8 @@ export async function getFilmMetadata(): Promise<{
 export async function createImages(
   collectionId: number,
   formData: FormData
-): Promise<ImageContentModel[]> {
-  return fetchAdminFormDataApi<ImageContentModel[]>(`/content/images/${collectionId}`, formData);
+): Promise<ContentImageModel[]> {
+  return fetchAdminFormDataApi<ContentImageModel[]>(`/content/images/${collectionId}`, formData);
 }
 
 /**
@@ -86,7 +87,7 @@ export async function createTextContent(request: {
  * Update one or more images
  */
 export async function updateImages(updates: ContentImageUpdateRequest[]): Promise<{
-  updatedImages: ImageContentModel[];
+  updatedImages: ContentImageModel[];
   newMetadata?: {
     tags?: Array<{ id: number; tagName: string }>;
     people?: Array<{ id: number; personName: string }>;
@@ -95,15 +96,17 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
     filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
   };
 }> {
-  // DEBUG: Log the call
-  console.log('[updateImages] Called with:', {
-    updatesCount: updates.length,
-    updates: updates,
-    updatesJSON: JSON.stringify(updates, null, 2),
-  });
+  // DEBUG: Log the call (development only)
+  if (isLocalEnvironment()) {
+    console.log('[updateImages] Called with:', {
+      updatesCount: updates.length,
+      updates: updates,
+      updatesJSON: JSON.stringify(updates, null, 2),
+    });
+  }
   
   const result = await fetchAdminPatchJsonApi<{
-    updatedImages: ImageContentModel[];
+    updatedImages: ContentImageModel[];
     newMetadata?: {
       tags?: Array<{ id: number; tagName: string }>;
       people?: Array<{ id: number; personName: string }>;
@@ -113,8 +116,10 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
     };
   }>('/content/images', updates);
   
-  // DEBUG: Log the response
-  console.log('[updateImages] Response received:', result);
+  // DEBUG: Log the response (development only)
+  if (isLocalEnvironment()) {
+    console.log('[updateImages] Response received:', result);
+  }
   
   return result;
 }
@@ -123,8 +128,8 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
  * GET /api/admin/content/images
  * Get all images ordered by date descending
  */
-export async function getAllImages(): Promise<ImageContentModel[]> {
-  return fetchAdminGetApi<ImageContentModel[]>('/content/images', { cache: 'no-store' });
+export async function getAllImages(): Promise<ContentImageModel[]> {
+  return fetchAdminGetApi<ContentImageModel[]>('/content/images', { cache: 'no-store' });
 }
 
 /**

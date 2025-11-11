@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import React from 'react';
 
-import { type ImageContentModel } from '@/app/types/Content';
+import { type ContentImageModel } from '@/app/types/Content';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
@@ -14,7 +14,7 @@ import {
  * Props for ImageContentBlockRenderer
  */
 export interface ContentImageRendererProps extends BaseContentRendererProps {
-  block: ImageContentModel;
+  block: ContentImageModel;
 }
 
 /**
@@ -29,7 +29,7 @@ export function ContentImageRenderer({
   isMobile = false,
   onClick,
 }: ContentImageRendererProps): React.ReactElement {
-  const renderImageContent = (imageBlock: ImageContentModel): React.ReactElement => {
+  const renderImageContent = (imageBlock: ContentImageModel): React.ReactElement => {
     const alt = imageBlock.title || imageBlock.caption || 'image content';
 
     // Extract overlay and badge data

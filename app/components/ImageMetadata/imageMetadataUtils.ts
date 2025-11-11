@@ -6,9 +6,9 @@
  */
 
 import type {
+  ContentImageModel,
   ContentImageUpdateRequest,
   ContentImageUpdateResponse,
-  ImageContentModel,
 } from '@/app/types/Content';
 
 // ============================================================================
@@ -131,12 +131,12 @@ function areAllEqual<T>(
  * @param images - Array of images to compare
  * @returns Partial image object with only common values
  */
-export function getCommonValues(images: ImageContentModel[]): Partial<ImageContentModel> {
+export function getCommonValues(images: ContentImageModel[]): Partial<ContentImageModel> {
   if (images.length === 0) return {};
   if (images.length === 1) return images[0] || {};
 
   const first = images[0]!; // Safe: already checked length > 1
-  const common: Partial<ImageContentModel> = {};
+  const common: Partial<ContentImageModel> = {};
 
   // String fields - check if all match
   if (areAllEqual(images, img => img.title)) common.title = first.title;
@@ -363,7 +363,7 @@ export function getDisplayFilmStock<T extends { id: number; name: string; defaul
  * Only includes field if value has changed AND was explicitly provided in updateState
  */
 function buildSimpleFieldDiff(
-  field: keyof ImageContentModel,
+  field: keyof ContentImageModel,
   updateValue: unknown,
   currentValue: unknown,
   diff: ContentImageUpdateRequest,
@@ -385,8 +385,8 @@ function buildSimpleFieldDiff(
  * Build diff for camera field using prev/newValue/remove pattern
  */
 function buildCameraDiff(
-  updateCamera: ImageContentModel['camera'],
-  currentCamera: ImageContentModel['camera'],
+  updateCamera: ContentImageModel['camera'],
+  currentCamera: ContentImageModel['camera'],
   diff: ContentImageUpdateRequest
 ): void {
   if (updateCamera?.id !== currentCamera?.id) {
@@ -404,8 +404,8 @@ function buildCameraDiff(
  * Build diff for lens field using prev/newValue/remove pattern
  */
 function buildLensDiff(
-  updateLens: ImageContentModel['lens'],
-  currentLens: ImageContentModel['lens'],
+  updateLens: ContentImageModel['lens'],
+  currentLens: ContentImageModel['lens'],
   diff: ContentImageUpdateRequest
 ): void {
   if (updateLens?.id !== currentLens?.id) {
@@ -470,8 +470,8 @@ function buildFilmTypeDiff(
  * Build diff for tags field using prev/newValue/remove pattern
  */
 function buildTagsDiff(
-  updateTags: ImageContentModel['tags'],
-  currentTags: ImageContentModel['tags'],
+  updateTags: ContentImageModel['tags'],
+  currentTags: ContentImageModel['tags'],
   diff: ContentImageUpdateRequest
 ): void {
   const updateTagsArray = updateTags || [];
@@ -502,8 +502,8 @@ function buildTagsDiff(
  * Build diff for people field using prev/newValue/remove pattern
  */
 function buildPeopleDiff(
-  updatePeople: ImageContentModel['people'],
-  currentPeople: ImageContentModel['people'],
+  updatePeople: ContentImageModel['people'],
+  currentPeople: ContentImageModel['people'],
   diff: ContentImageUpdateRequest
 ): void {
   const updatePeopleArray = updatePeople || [];
@@ -534,8 +534,8 @@ function buildPeopleDiff(
  * Build diff for collections field using prev/newValue/remove pattern
  */
 function buildCollectionsDiff(
-  updateCollections: ImageContentModel['collections'],
-  currentCollections: ImageContentModel['collections'],
+  updateCollections: ContentImageModel['collections'],
+  currentCollections: ContentImageModel['collections'],
   diff: ContentImageUpdateRequest
 ): void {
   const updateCollectionsArray = updateCollections || [];
@@ -605,14 +605,14 @@ function buildCollectionsDiff(
  * @param availableFilmTypes - Optional list of available film types to determine if filmType is existing or new
  */
 export function buildImageUpdateDiff(
-  updateState: Partial<ImageContentModel> & { id: number },
-  currentState: ImageContentModel,
+  updateState: Partial<ContentImageModel> & { id: number },
+  currentState: ContentImageModel,
   availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
 ): ContentImageUpdateRequest {
   const diff: ContentImageUpdateRequest = { id: updateState.id };
 
   // Simple field comparisons
-  const simpleFields: Array<keyof ImageContentModel> = [
+  const simpleFields: Array<keyof ContentImageModel> = [
     'title',
     'caption',
     'alt',
@@ -805,8 +805,8 @@ export function handleDropdownChange(
  * @throws Error if an image ID is not found in selectedImages
  */
 export function buildImageUpdatesForBulkEdit(
-  updateState: Partial<ImageContentModel> & { id: number },
-  selectedImages: ImageContentModel[],
+  updateState: Partial<ContentImageModel> & { id: number },
+  selectedImages: ContentImageModel[],
   selectedImageIds: number[],
   availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
 ): ContentImageUpdateRequest[] {
@@ -865,8 +865,8 @@ export function buildImageUpdatesForBulkEdit(
  * @returns ContentImageUpdateRequest object for the single image
  */
 export function buildImageUpdateForSingleEdit(
-  updateState: ImageContentModel,
-  originalImage: ImageContentModel,
+  updateState: ContentImageModel,
+  originalImage: ContentImageModel,
   availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
 ): ContentImageUpdateRequest {
   return buildImageUpdateDiff(updateState, originalImage, availableFilmTypes);
@@ -880,7 +880,7 @@ export function buildImageUpdateForSingleEdit(
  * @returns ContentImageUpdateResponse with properly formatted metadata
  */
 export function mapUpdateResponseToFrontend(response: {
-  updatedImages: ImageContentModel[];
+  updatedImages: ContentImageModel[];
   newMetadata?: {
     tags?: Array<{ id: number; tagName: string }>;
     people?: Array<{ id: number; personName: string }>;

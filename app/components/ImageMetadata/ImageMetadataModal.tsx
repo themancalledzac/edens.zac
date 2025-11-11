@@ -8,9 +8,9 @@ import { IMAGE } from '@/app/constants';
 import { updateImages } from '@/app/lib/api/content';
 import { type CollectionListModel } from '@/app/types/Collection';
 import {
+  type ContentImageModel,
   type ContentImageUpdateRequest,
   type ContentImageUpdateResponse,
-  type ImageContentModel,
 } from '@/app/types/Content';
 import {
   type ContentCameraModel,
@@ -20,6 +20,7 @@ import {
   type ContentTagModel,
   type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
+import { isLocalEnvironment } from '@/app/utils/environment';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
 import styles from './ImageMetadataModal.module.scss';
@@ -43,7 +44,7 @@ interface ImageMetadataModalProps {
   availableFilmFormats?: FilmFormatDTO[];
   availableCollections?: CollectionListModel[];
   selectedImageIds: number[]; // Array of selected image IDs (1 for single edit, N for bulk edit)
-  selectedImages: ImageContentModel[]; // Images to edit (already filtered in parent)
+  selectedImages: ContentImageModel[]; // Images to edit (already filtered in parent)
   currentCollectionId?: number; // ID of the collection being edited (for visibility checkbox)
 }
 
@@ -72,7 +73,7 @@ export default function ImageMetadataModal({
   const isBulkEdit = selectedImageIds.length > 1;
 
   // Update state: starts as copy of image data (full image for single, common for bulk)
-  const [updateState, setUpdateState] = useState<Partial<ImageContentModel> & { id: number }>(() => {
+  const [updateState, setUpdateState] = useState<Partial<ContentImageModel> & { id: number }>(() => {
     if (selectedImages.length === 1) {
       // Single edit: copy full image
       const img = selectedImages[0]!;
@@ -114,7 +115,7 @@ export default function ImageMetadataModal({
   }, [selectedImages]);
 
   // Simple update function - update the state directly
-  const updateStateField = (updates: Partial<ImageContentModel>) => {
+  const updateStateField = (updates: Partial<ContentImageModel>) => {
     setUpdateState(prev => ({ ...prev, ...updates }));
   };
 
@@ -139,7 +140,9 @@ export default function ImageMetadataModal({
   const previewImage = selectedImages[0];
   
   if (!previewImage) {
-    console.error('[ImageMetadataModal] No images selected:', { selectedImages, selectedImageIds });
+    if (isLocalEnvironment()) {
+      console.error('[ImageMetadataModal] No images selected:', { selectedImages, selectedImageIds });
+    }
     return null;
   }
 
@@ -162,7 +165,7 @@ export default function ImageMetadataModal({
       // Build diff for each image using appropriate builder
       const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
         ? buildImageUpdatesForBulkEdit(updateState, selectedImages, selectedImageIds, availableFilmTypes)
-        : [buildImageUpdateForSingleEdit(updateState as ImageContentModel, selectedImages[0]!, availableFilmTypes)];
+        : [buildImageUpdateForSingleEdit(updateState as ContentImageModel, selectedImages[0]!, availableFilmTypes)];
 
       const response = await updateImages(imageUpdates);
 

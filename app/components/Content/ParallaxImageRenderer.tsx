@@ -4,7 +4,7 @@ import Image from 'next/image';
 import React from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
-import { type ParallaxImageContentModel } from '@/app/types/Content';
+import { type ContentParallaxImageModel } from '@/app/types/Content';
 
 import { type BadgeContentType, BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
@@ -16,7 +16,7 @@ import variantStyles from './ParallaxImageRenderer.module.scss';
  * Handles all parallax logic, text overlays, and badge rendering internally
  */
 export interface ParallaxImageContentBlockRendererProps {
-  content: ParallaxImageContentModel;
+  content: ContentParallaxImageModel;
   contentType?: BadgeContentType;
   // Optional props for badge customization
   cardTypeBadge?: string;
