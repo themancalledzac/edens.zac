@@ -24,13 +24,6 @@ export function isContentImage(block: Content | unknown): block is ContentImageM
 }
 
 /**
- * Type guard to check if a Content is a ParallaxImageContentModel
- */
-export function isParallaxImageContent(block: Content): block is ContentParallaxImageModel {
-  return block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax === true;
-}
-
-/**
  * Type guard to check if a Content is a TextContentModel
  */
 export function isTextContent(block: Content): block is ContentTextModel {
@@ -52,20 +45,21 @@ export function isContentCollection(block: Content): block is ContentCollectionM
 }
 
 /**
- * Type guard to check if a Content has an image (IMAGE, PARALLAX, or GIF)
+ * Type guard to check if a Content has an image (IMAGE or GIF)
+ * Note: PARALLAX is no longer a separate contentType - it's just a boolean flag
  */
 export function hasImage(block: Content): block is ContentImageModel | ContentParallaxImageModel | ContentGifModel {
-  return isContentImage(block) || isParallaxImageContent(block) || isGifContent(block);
+  return isContentImage(block) || isGifContent(block);
 }
 
 /**
  * Get the content width and height from any Content
  * Falls back to imageWidth/Height for image blocks, or default dimensions
- * For parallax images, prioritizes imageWidth/imageHeight over width/height for accurate aspect ratios
+ * Prioritizes imageWidth/imageHeight over width/height for accurate aspect ratios
  */
 export function getContentDimensions(block: Content, defaultWidth = 1300, defaultAspect = 3/2): { width: number; height: number } {
-  // For image blocks (including parallax), prioritize image dimensions for accurate aspect ratios
-  if (isContentImage(block) || isParallaxImageContent(block)) {
+  // For image blocks, prioritize image dimensions for accurate aspect ratios
+  if (isContentImage(block)) {
     // Use imageWidth/imageHeight if available (most accurate for images)
     if (block.imageWidth && block.imageHeight) {
       return { width: block.imageWidth, height: block.imageHeight };
@@ -121,7 +115,7 @@ export function validateContentBlock(block: unknown): block is Content {
   return (
     typeof candidate.id === 'number' &&
     typeof candidate.contentType === 'string' &&
-    ['IMAGE', 'TEXT', 'GIF', 'PARALLAX', 'COLLECTION'].includes(candidate.contentType) &&
+    ['IMAGE', 'TEXT', 'GIF', 'COLLECTION'].includes(candidate.contentType) &&
     typeof candidate.orderIndex === 'number'
   );
 }

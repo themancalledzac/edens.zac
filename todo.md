@@ -35,6 +35,112 @@
 
 ---
 
+## Active Refactoring Tasks
+
+#### 1. Refactoring Content Renderer ✅ **COMPLETE**
+
+**Goal**: Consolidate all content renderers (ImageBlockRenderer, ParallaxImageRenderer, CollectionContentRenderer, GifContentBlockRenderer, TextBlockRenderer) into a single `CollectionContentRenderer` that handles all content types with normalized props.
+
+**Key Principles**:
+- Remove PARALLAX as a separate contentType - it's just a boolean `enableParallax` flag
+- Normalize all content types to simple props in `Component.tsx` before passing to renderer
+- Move all comparison/normalization logic to utils files
+- Preserve all existing styling and behavior exactly
+
+**Implementation Steps**:
+
+1. ✅ **Create ContentRendererProps type** (`app/types/ContentRenderer.ts`)
+   - Defined normalized props interface for renderer
+   - Includes: contentId, className, width, height, imageUrl, imageWidth, imageHeight, alt, overlayText, cardTypeBadge, enableParallax, hasSlug, isCollection, contentType (IMAGE|TEXT|GIF|COLLECTION - NO PARALLAX), textContent, textAlign, isGif
+   - Handler props extend this base interface
+
+2. ✅ **Update contentTypeGuards.ts** - Remove all PARALLAX references
+   - Removed `isParallaxImageContent()` function entirely
+   - Removed `contentType === 'PARALLAX'` checks from `hasImage()` and `getContentDimensions()`
+   - Removed 'PARALLAX' from `validateContentBlock()` array
+   - Updated `hasImage()` to only check IMAGE and GIF
+   - Updated `getContentDimensions()` to only check `isContentImage()`
+
+3. ✅ **Create contentRendererUtils.ts** (`app/utils/contentRendererUtils.ts`)
+   - `determinePositionClassName()` - REPLACES Component.tsx lines 46-50 logic exactly
+     - Takes totalInRow, index, styles object
+     - Returns: imageSingle | imageLeft | imageRight | imageMiddle
+   - `normalizeContentToRendererProps()` - Normalizes any content type to ContentRendererProps
+     - Handles COLLECTION (uses coverImage, enableParallax=true)
+     - Handles IMAGE (enableParallax=false, but can be enabled later)
+     - Handles legacy PARALLAX (converts to IMAGE with enableParallax=true)
+     - Handles GIF (uses gifUrl, isGif=true)
+     - Handles TEXT (textContent, textAlign)
+   - `determineContentRendererProps()` - REPLACES determineBaseProps entirely
+     - Combines position logic + content normalization
+     - Takes item, totalInRow, index, isMobile, styles
+     - Returns complete ContentRendererProps
+
+4. ✅ **Update Component.tsx**
+   - Removed `determineBaseProps()` function entirely
+   - Imported `determineContentRendererProps` from utils
+   - In rows.map, calls `determineContentRendererProps()` once per item
+   - Passes all handler props to CollectionContentRenderer
+   - Removed all type checking logic (isContentCollection, isParallaxImageContent, etc.)
+   - Single renderer call for ALL content types
+
+5. ✅ **Update CollectionContentRenderer.tsx**
+   - Accepts `ContentRendererProps` interface (extends with handler props)
+   - Removed all content type checking (no isContentCollection, isParallaxImageContent, etc.)
+   - Uses `enableParallax` boolean prop directly (no type checks)
+   - Conditionally uses `useParallax()` hook based on `enableParallax` prop
+   - Renders proper wrapper structure matching ContentWrapper for non-parallax images
+   - Handles TEXT content rendering (blockContainer, blockInner)
+   - Handles image content rendering (Image component, overlays, badges)
+   - Handles image-specific overlays (visibility, cover selection, selected indicator)
+   - **Styling verified** - matches original exactly
+
+6. ⏳ **Remove old renderer files** (ready for deletion after final verification)
+   - Delete `ImageBlockRenderer.tsx`
+   - Delete `ParallaxImageRenderer.tsx`
+   - Delete `GifContentBlockRenderer.tsx`
+   - Delete `TextBlockRenderer.tsx`
+   - Delete `ContentWrapper.tsx` (functionality moved into CollectionContentRenderer)
+
+7. ✅ **SCSS** (`ContentComponent.module.scss`)
+   - Position classes (imageLeft/imageRight/imageSingle/imageMiddle) work correctly
+   - Overlay positioning works with proper wrapper structure
+   - Mobile responsiveness maintained
+
+8. ✅ **Testing & Verification**
+   - ✅ Styling matches exactly (verified by user)
+   - ✅ All content types working: IMAGE, COLLECTION, GIF, TEXT
+   - ✅ Parallax effect working on collections
+   - ✅ Proper spacing and overlay alignment
+   - ⏳ Final verification needed: drag-and-drop, click handlers, image overlays, mobile responsiveness
+
+**Files to Create**:
+- `app/types/ContentRenderer.ts` - ContentRendererProps interface
+- `app/utils/contentRendererUtils.ts` - Normalization functions
+
+**Files to Modify**:
+- `app/utils/contentTypeGuards.ts` - Remove PARALLAX references
+- `app/components/Content/Component.tsx` - Use new normalization function
+- `app/components/Content/CollectionContentRenderer.tsx` - Handle all content types
+- `app/components/Content/ContentComponent.module.scss` - Verify styling works with single wrapper
+
+**Files to Delete** (after testing):
+- `app/components/Content/ImageBlockRenderer.tsx`
+- `app/components/Content/ParallaxImageRenderer.tsx`
+- `app/components/Content/GifContentBlockRenderer.tsx`
+- `app/components/Content/TextBlockRenderer.tsx`
+- `app/components/Content/ContentWrapper.tsx`
+
+**Key Benefits**:
+- Single source of truth for content rendering
+- Easier to add parallax to any image (just set enableParallax=true)
+- Consistent behavior across all content types
+- Reduced prop drilling
+- Simpler maintenance
+- Fewer wrapper divs (better performance)
+
+---
+
 ## Function Analysis: Improvements Needed
 
 ### Refactoring Principles & Guidelines
