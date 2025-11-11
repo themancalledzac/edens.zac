@@ -117,7 +117,7 @@ export async function getAllCollections(
 
 /**
  * GET /api/read/collections/{slug}
- * Get collection by slug with paginated content (PUBLIC - enforces access control)
+ * Get collection by slug with paginated content (only returns visible collections)
  */
 export async function getCollectionBySlug(
   slug: string,
@@ -133,9 +133,8 @@ export async function getCollectionBySlug(
   // Await the full JSON response - ensures data is fully parsed before returning
   const raw = await safeJson<CollectionModel>(res);
 
-  // Security: Enforce access control for public pages
-  const hasAccess = (raw as CollectionModel & { hasAccess?: boolean }).hasAccess;
-  if (!hasAccess) {
+  // Only load collections that are visible
+  if (raw.visible !== true) {
     notFound();
   }
 
