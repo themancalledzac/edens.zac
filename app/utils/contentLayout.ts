@@ -1,10 +1,10 @@
 import {
   type AnyContentModel,
-  type CollectionContentModel,
-  type ImageContentModel,
-  type ParallaxImageContentModel,
+  type ContentCollectionModel,
+  type ContentImageModel,
+  type ContentParallaxImageModel,
 } from '@/app/types/Content';
-import { getContentDimensions, hasImage, isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
+import { getContentDimensions, hasImage, isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
  * Simplified Layout utilities for Content system
@@ -145,7 +145,7 @@ export function processContentForDisplay(
  * @param coverImage - The cover image to extract dimensions from
  * @returns Object with imageWidth and imageHeight (may be undefined)
  */
-function extractCollectionDimensions(coverImage?: ImageContentModel | null): {
+function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
   imageWidth?: number;
   imageHeight?: number;
 } {
@@ -162,7 +162,7 @@ function extractCollectionDimensions(coverImage?: ImageContentModel | null): {
  * 
  * Used on public collection pages where collections should render as parallax images
  */
-export function convertCollectionContentToParallax(col: CollectionContentModel): ParallaxImageContentModel {
+export function convertCollectionContentToParallax(col: ContentCollectionModel): ContentParallaxImageModel {
   // Extract dimensions from coverImage (prioritize imageWidth/imageHeight for accurate aspect ratios)
   const { imageWidth, imageHeight } = extractCollectionDimensions(col.coverImage);
   
@@ -195,7 +195,7 @@ export function convertCollectionContentToParallax(col: CollectionContentModel):
  * Used on admin/manage pages where collections should render as regular images (not parallax)
  * Uses the collection's coverImage as the base for the ImageContentModel
  */
-export function convertCollectionContentToImage(col: CollectionContentModel): ImageContentModel {
+export function convertCollectionContentToImage(col: ContentCollectionModel): ContentImageModel {
   const coverImage = col.coverImage;
   
   // Extract dimensions from coverImage (prioritize imageWidth/imageHeight for accurate aspect ratios)
@@ -264,7 +264,7 @@ function filterVisibleBlocks(
     
     // For images, check collection-specific visibility
     if (block.contentType === 'IMAGE' && collectionId) {
-      const imageBlock = block as ImageContentModel;
+      const imageBlock = block as ContentImageModel;
       const collectionEntry = imageBlock.collections?.find(
         c => c.collectionId === collectionId
       );
@@ -283,8 +283,8 @@ function filterVisibleBlocks(
  */
 function transformCollectionBlocks(content: AnyContentModel[]): AnyContentModel[] {
   return content.map(block => {
-    if (isCollectionContent(block)) {
-      const collectionBlock = block as CollectionContentModel;
+    if (isContentCollection(block)) {
+      const collectionBlock = block as ContentCollectionModel;
       return convertCollectionContentToParallax(collectionBlock);
     }
     return block;
@@ -306,7 +306,7 @@ function updateImageOrderIndex(
   
   return content.map(block => {
     if (block.contentType === 'IMAGE') {
-      const imageBlock = block as ImageContentModel;
+      const imageBlock = block as ContentImageModel;
       const collectionEntry = imageBlock.collections?.find(
         c => c.collectionId === collectionId
       );
@@ -330,7 +330,7 @@ function updateImageOrderIndex(
 function ensureParallaxDimensions(content: AnyContentModel[]): AnyContentModel[] {
   return content.map(block => {
     if (block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax) {
-      const parallaxBlock = block as ParallaxImageContentModel;
+      const parallaxBlock = block as ContentParallaxImageModel;
       if (!parallaxBlock.imageWidth || !parallaxBlock.imageHeight) {
         return {
           ...parallaxBlock,

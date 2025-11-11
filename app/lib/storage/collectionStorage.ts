@@ -12,7 +12,7 @@
  */
 
 import { type CollectionModel } from '@/app/types/Collection';
-import { type ImageContentModel } from '@/app/types/Content';
+import { type ContentImageModel } from '@/app/types/Content';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 const STORAGE_KEY_PREFIX = 'collection_cache_';
@@ -114,9 +114,7 @@ export const collectionStorage = {
 
     try {
       // Find all keys with our prefix
-      const keys = Object.keys(sessionStorage).filter(key =>
-        key.startsWith(STORAGE_KEY_PREFIX)
-      );
+      const keys = Object.keys(sessionStorage).filter(key => key.startsWith(STORAGE_KEY_PREFIX));
 
       for (const key of keys) {
         sessionStorage.removeItem(key);
@@ -141,11 +139,11 @@ export const collectionStorage = {
    * Update cached collection's content when images are updated
    * Replaces updated images in the cached collection's content array
    * This ensures the cache stays in sync when image metadata (like visibility) is changed
-   * 
+   *
    * @param slug - Collection slug
    * @param updatedImages - Array of updated image content models from the API response
    */
-  updateImagesInCache(slug: string, updatedImages: ImageContentModel[]): void {
+  updateImagesInCache(slug: string, updatedImages: ContentImageModel[]): void {
     if (typeof window === 'undefined') return;
 
     try {
@@ -158,9 +156,7 @@ export const collectionStorage = {
       }
 
       // Create a map of updated images by ID for quick lookup
-      const updatedImagesMap = new Map(
-        updatedImages.map(img => [img.id, img])
-      );
+      const updatedImagesMap = new Map(updatedImages.map(img => [img.id, img]));
 
       // Update content array: replace images that were updated, keep others as-is
       // Only updates IMAGE content types that match the updated images by ID
@@ -170,7 +166,7 @@ export const collectionStorage = {
           const updatedImage = updatedImagesMap.get(block.id)!;
           if (isLocalEnvironment()) {
             console.log(`[collectionStorage] Updating image ${block.id} in cache:`, {
-              oldVisibility: (block as ImageContentModel).collections?.[0]?.visible,
+              oldVisibility: (block as ContentImageModel).collections?.[0]?.visible,
               newVisibility: updatedImage.collections?.[0]?.visible,
               collections: updatedImage.collections,
             });

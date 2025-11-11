@@ -4,7 +4,7 @@
  */
 
 import type { ChildCollection } from '@/app/types/Collection';
-import type { ImageContentModel } from '@/app/types/Content';
+import type { ContentImageModel } from '@/app/types/Content';
 import {
   checkImageVisibility,
   createDragEndHandler,
@@ -22,8 +22,8 @@ import {
 // Test fixtures
 const createImageContent = (
   id: number,
-  overrides?: Partial<ImageContentModel>
-): ImageContentModel => ({
+  overrides?: Partial<ContentImageModel>
+): ContentImageModel => ({
   id,
   contentType: 'IMAGE',
   orderIndex: id,

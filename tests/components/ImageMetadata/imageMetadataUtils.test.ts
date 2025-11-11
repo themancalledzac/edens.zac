@@ -12,14 +12,14 @@ import {
   handleDropdownChange,
   mapUpdateResponseToFrontend,
 } from '@/app/components/ImageMetadata/imageMetadataUtils';
-import type { ImageContentModel } from '@/app/types/Content';
+import type { ContentImageModel } from '@/app/types/Content';
 import type { ContentFilmTypeModel } from '@/app/types/ImageMetadata';
 
 // Test fixtures
 const createImageContent = (
   id: number,
-  overrides?: Partial<ImageContentModel>
-): ImageContentModel => ({
+  overrides?: Partial<ContentImageModel>
+): ContentImageModel => ({
   id,
   contentType: 'IMAGE',
   orderIndex: id,
@@ -1299,7 +1299,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
   ];
 
   it('should build updates for all selected image IDs', () => {
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0, // Will be replaced per image
       title: 'Updated Title',
       location: 'Updated Location',
@@ -1322,7 +1322,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
   });
 
   it('should create diff for each image using updateState vs individual image state', () => {
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       title: 'Updated Title',
     };
@@ -1343,7 +1343,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
   });
 
   it('should throw error if image ID not found in selectedImages', () => {
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       title: 'Updated Title',
     };
@@ -1357,7 +1357,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
   });
 
   it('should handle empty selectedImageIds array', () => {
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       title: 'Updated Title',
     };
@@ -1376,7 +1376,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
   });
 
   it('should use correct image ID for each update', () => {
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       title: 'Updated Title',
     };
@@ -1410,7 +1410,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
       people: [],
     });
 
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       people: [{ id: 0, name: 'Person B' }], // New person added
     };
@@ -1460,7 +1460,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
       people: [],
     });
 
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       people: [{ id: 2, name: 'Person B' }], // Existing person (id: 2) added
     };
@@ -1512,7 +1512,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
       people: [{ id: 2, name: 'Person B' }],
     });
 
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       people: [], // Person B deselected
     };
@@ -1560,7 +1560,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
       tags: [],
     });
 
-    const updateState: Partial<ImageContentModel> & { id: number } = {
+    const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       tags: [{ id: 0, name: 'Tag B' }], // New tag added
     };
@@ -1618,7 +1618,7 @@ describe('buildImageUpdateForSingleEdit', () => {
   const availableFilmTypes = [createFilmType(1, 'Kodak Portra 400')];
 
   it('should build single update from updateState vs originalImage', () => {
-    const updateState: ImageContentModel = {
+    const updateState: ContentImageModel = {
       ...originalImage,
       title: 'Updated Title',
     };
@@ -1631,7 +1631,7 @@ describe('buildImageUpdateForSingleEdit', () => {
   });
 
   it('should return ContentImageUpdateRequest with correct id', () => {
-    const updateState: ImageContentModel = {
+    const updateState: ContentImageModel = {
       ...originalImage,
       rating: 5,
     };
@@ -1643,7 +1643,7 @@ describe('buildImageUpdateForSingleEdit', () => {
   });
 
   it('should create diff with only changed fields', () => {
-    const updateState: ImageContentModel = {
+    const updateState: ContentImageModel = {
       ...originalImage,
       title: 'New Title',
       location: 'New Location',
@@ -1657,9 +1657,9 @@ describe('buildImageUpdateForSingleEdit', () => {
   });
 
   it('should handle updateState with no fields changed', () => {
-    const updateState: ImageContentModel = originalImage;
 
-    const result = buildImageUpdateForSingleEdit(updateState, originalImage, availableFilmTypes);
+
+    const result = buildImageUpdateForSingleEdit(originalImage, originalImage, availableFilmTypes);
 
     // Should only have id field
     expect(result.id).toBe(1);

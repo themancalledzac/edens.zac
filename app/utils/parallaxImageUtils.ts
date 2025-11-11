@@ -1,8 +1,8 @@
 import {
   type AnyContentModel,
-  type CollectionContentModel,
-  type ImageContentModel,
-  type ParallaxImageContentModel,
+  type ContentCollectionModel,
+  type ContentImageModel,
+  type ContentParallaxImageModel,
 } from '@/app/types/Content';
 import { isContentImage } from '@/app/utils/contentTypeGuards';
 
@@ -38,11 +38,11 @@ function createBaseParallaxProperties(
  * @returns Formatted parallax image model or null if no image available
  */
 export function buildParallaxImageContentBlock(
-  image: ImageContentModel | undefined,
+  image: ContentImageModel | undefined,
   collectionDate: string,
   type: string,
   title: string
-): ParallaxImageContentModel | null {
+): ContentParallaxImageModel | null {
   // If image exists and it's an image block, use it
   if (image && isContentImage(image)) {
     return {
@@ -69,15 +69,15 @@ export function buildParallaxImageContentBlock(
  * @param content - Any content model (ParallaxImageContentModel, CollectionContentModel, ImageContentModel, etc.)
  * @returns Formatted parallax image model
  */
-export function buildParallaxImageFromContent(content: AnyContentModel): ParallaxImageContentModel {
+export function buildParallaxImageFromContent(content: AnyContentModel): ContentParallaxImageModel {
   // If already Parallax type, return as-is (collections are now converted to Parallax earlier)
   if (content.contentType === 'PARALLAX') {
-    return content as ParallaxImageContentModel;
+    return content as ContentParallaxImageModel;
   }
 
   // Handle legacy CollectionContentModel (for backwards compatibility)
   if (content.contentType === 'COLLECTION') {
-    const collectionContent = content as CollectionContentModel;
+    const collectionContent = content as ContentCollectionModel;
     
     // Use coverImage dimensions (imageWidth/imageHeight) if available, otherwise fallback to defaults
     // This matches the same logic used in convertCollectionContentToParallax

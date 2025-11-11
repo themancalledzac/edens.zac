@@ -52,7 +52,7 @@ export interface Content {
 /**
  * Image content model - displays images from S3/CloudFront
  */
-export interface ImageContentModel extends Content {
+export interface ContentImageModel extends Content {
   contentType: 'IMAGE';
   imageUrl: string;
   imageUrlRaw?: string | null;
@@ -100,7 +100,7 @@ export interface ImageContentModel extends Content {
  * Based on ImageContentModel with parallax functionality
  * Can optionally include slug and collectionType for collection navigation
  */
-export interface ParallaxImageContentModel extends Omit<ImageContentModel, 'contentType'> {
+export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'contentType'> {
   contentType: 'PARALLAX';
   collectionDate?: string;
   type?: string;
@@ -114,7 +114,7 @@ export interface ParallaxImageContentModel extends Omit<ImageContentModel, 'cont
 /**
  * Text content model - displays formatted text content
  */
-export interface TextContentModel extends Content {
+export interface ContentTextModel extends Content {
   contentType: 'TEXT';
   content: string; // Frontend field for text content
   textContent?: string; // Backend field name (maps to content during transformation)
@@ -127,7 +127,7 @@ export interface TextContentModel extends Content {
  * GIF content model - displays animated GIFs
  * Matches backend ContentGifModel.java
  */
-export interface GifContentModel extends Content {
+export interface ContentGifModel extends Content {
   contentType: 'GIF';
   gifUrl: string; // Backend field name (was imageUrlWeb)
   thumbnailUrl?: string | null; // Backend field name (was imageUrlRaw)
@@ -140,15 +140,15 @@ export interface GifContentModel extends Content {
 }
 
 /**
- * Collection content model - for hierarchical collections (collections containing other collections)
+ * Content Collection model - for hierarchical collections (collections containing other collections)
  * Extends Content to support nested collection structures
  * Includes full coverImage object with dimensions for proper rendering
  */
-export interface CollectionContentModel extends Content {
+export interface ContentCollectionModel extends Content {
   contentType: 'COLLECTION';
   slug: string;
   collectionType: 'BLOG' | 'PORTFOLIO' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'HOME' | 'MISC';
-  coverImage?: ImageContentModel | null; // Full image object with dimensions (matches CollectionModel.coverImage)
+  coverImage?: ContentImageModel | null; // Full image object with dimensions (matches CollectionModel.coverImage)
 }
 
 /**
@@ -156,11 +156,11 @@ export interface CollectionContentModel extends Content {
  * Use this for type-safe rendering and processing
  */
 export type AnyContentModel =
-  | ImageContentModel
-  | ParallaxImageContentModel
-  | TextContentModel
-  | GifContentModel
-  | CollectionContentModel;
+  | ContentImageModel
+  | ContentParallaxImageModel
+  | ContentTextModel
+  | ContentGifModel
+  | ContentCollectionModel;
 /**
  * Camera update using prev/newValue/remove pattern
  * - prev: ID of existing camera to use
@@ -278,7 +278,7 @@ export interface ContentImageUpdateRequest {
  */
 export interface ContentImageUpdateResponse {
   /** Full image content blocks for all successfully updated images */
-  updatedImages: ImageContentModel[];
+  updatedImages: ContentImageModel[];
 
   /** Metadata for newly created entities during the update operation */
   newMetadata: {

@@ -5,10 +5,10 @@
 
 import type {
   AnyContentModel,
-  CollectionContentModel,
-  ImageContentModel,
-  ParallaxImageContentModel,
-  TextContentModel,
+  ContentCollectionModel,
+  ContentImageModel,
+  ContentParallaxImageModel,
+  ContentTextModel,
 } from '@/app/types/Content';
 import {
   convertCollectionContentToImage,
@@ -19,8 +19,8 @@ import {
 // Test fixtures
 const createImageContent = (
   id: number,
-  overrides?: Partial<ImageContentModel>
-): ImageContentModel => ({
+  overrides?: Partial<ContentImageModel>
+): ContentImageModel => ({
   id,
   contentType: 'IMAGE',
   orderIndex: id,
@@ -34,8 +34,8 @@ const createImageContent = (
 
 const createParallaxContent = (
   id: number,
-  overrides?: Partial<ParallaxImageContentModel>
-): ParallaxImageContentModel => ({
+  overrides?: Partial<ContentParallaxImageModel>
+): ContentParallaxImageModel => ({
   id,
   contentType: 'PARALLAX',
   orderIndex: id,
@@ -52,8 +52,8 @@ const createParallaxContent = (
 
 const createTextContent = (
   id: number,
-  overrides?: Partial<TextContentModel>
-): TextContentModel => ({
+  overrides?: Partial<ContentTextModel>
+): ContentTextModel => ({
   id,
   contentType: 'TEXT',
   orderIndex: id,
@@ -66,8 +66,8 @@ const createTextContent = (
 
 const createCollectionContent = (
   id: number,
-  overrides?: Partial<CollectionContentModel>
-): CollectionContentModel => ({
+  overrides?: Partial<ContentCollectionModel>
+): ContentCollectionModel => ({
   id,
   contentType: 'COLLECTION',
   orderIndex: id,
@@ -145,7 +145,7 @@ describe('processContentBlocks', () => {
       ];
       const result = processContentBlocks(content);
       expect(result[0]?.contentType).toBe('PARALLAX');
-      expect((result[0] as ParallaxImageContentModel).enableParallax).toBe(true);
+      expect((result[0] as ContentParallaxImageModel).enableParallax).toBe(true);
     });
 
     it('should preserve collection metadata in parallax conversion', () => {
@@ -155,7 +155,7 @@ describe('processContentBlocks', () => {
       });
       const content: AnyContentModel[] = [collection];
       const result = processContentBlocks(content);
-      const parallax = result[0] as ParallaxImageContentModel;
+      const parallax = result[0] as ContentParallaxImageModel;
       expect(parallax.title).toBe('Test Collection');
       expect(parallax.imageUrl).toBe('https://example.com/cover-1.jpg');
     });
@@ -253,7 +253,7 @@ describe('processContentBlocks', () => {
         }),
       ];
       const result = processContentBlocks(content);
-      const parallax = result[0] as ParallaxImageContentModel;
+      const parallax = result[0] as ContentParallaxImageModel;
       expect(parallax.imageWidth).toBe(1920);
       expect(parallax.imageHeight).toBe(1080);
     });
@@ -268,7 +268,7 @@ describe('processContentBlocks', () => {
         }),
       ];
       const result = processContentBlocks(content);
-      const parallax = result[0] as ParallaxImageContentModel;
+      const parallax = result[0] as ContentParallaxImageModel;
       expect(parallax.imageWidth).toBe(1920);
       expect(parallax.imageHeight).toBe(1080);
     });
@@ -291,7 +291,7 @@ describe('processContentBlocks', () => {
         }),
       ];
       const result = processContentBlocks(content);
-      const parallax = result[0] as ParallaxImageContentModel;
+      const parallax = result[0] as ContentParallaxImageModel;
       expect(parallax.imageWidth).toBeUndefined();
     });
   });

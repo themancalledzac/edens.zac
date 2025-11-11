@@ -6,12 +6,12 @@ import { createPortal } from 'react-dom';
 
 import { IMAGE, INTERACTION } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
-import type { ImageContentModel, ParallaxImageContentModel } from '@/app/types/Content';
+import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 
 // Hook-specific constants
 const SCROLL_BLOCKING_KEYS = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'];
 
-type ImageBlock = ImageContentModel | ParallaxImageContentModel;
+type ImageBlock = ContentImageModel | ContentParallaxImageModel;
 
 type FullScreenState = {
   images: ImageBlock[];

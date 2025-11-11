@@ -6,8 +6,8 @@ import React, { useMemo, useRef } from 'react';
 import { useViewport } from '@/app/hooks/useViewport';
 import {
   type AnyContentModel,
-  type ImageContentModel,
-  type ParallaxImageContentModel,
+  type ContentImageModel,
+  type ContentParallaxImageModel,
 } from '@/app/types/Content';
 import {
   checkImageVisibility,
@@ -17,7 +17,7 @@ import {
 } from '@/app/utils/contentComponentHandlers';
 import { processContentForDisplay } from '@/app/utils/contentLayout';
 import {
-  isCollectionContent,
+  isContentCollection,
   isContentImage,
   isGifContent,
   isParallaxImageContent,
@@ -65,7 +65,7 @@ export interface ContentComponentProps {
   justClickedImageId?: number | null;
   priorityIndex?: number; // Index of content to prioritize for LCP (usually 0 for hero)
   enableFullScreenView?: boolean; // Enable full-screen image viewing on click
-  onFullScreenImageClick?: (image: ImageContentModel | ParallaxImageContentModel) => void; // NEW SIMPLE VERSION
+  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void; // NEW SIMPLE VERSION
   selectedImageIds?: number[]; // Array of selected image IDs for bulk editing
   currentCollectionId?: number; // ID of current collection (for checking collection-specific visibility)
   // Drag-and-drop props for reordering
@@ -84,7 +84,7 @@ export interface ContentComponentProps {
  * High-performance content rendering system that processes and displays
  * mixed content (images, text, etc.) in optimized responsive layouts.
  * Features memoized calculations, responsive chunking, and type-safe specialized renderers.
-*/
+ */
 export default function Component({
   content,
   isSelectingCoverImage = false,
@@ -121,7 +121,6 @@ export default function Component({
     }
   }, [content, contentWidth, chunkSize]);
 
-
   // Early return for empty state
   if (rows.length === 0) return <div />;
 
@@ -134,14 +133,15 @@ export default function Component({
           return (
             <div key={`row-${row.map(item => item.content.id).join('-')}`} className={cbStyles.row}>
               {row.map((item, index) => {
-                const { content: itemContent, className, width, height } = determineBaseProps(
-                  item,
-                  totalInRow,
-                  index
-                );
+                const {
+                  content: itemContent,
+                  className,
+                  width,
+                  height,
+                } = determineBaseProps(item, totalInRow, index);
 
                 // Renderer lookup map - check most specific types first
-                if (isCollectionContent(itemContent)) {
+                if (isContentCollection(itemContent)) {
                   return (
                     <CollectionContentRenderer
                       key={itemContent.id}
@@ -197,7 +197,9 @@ export default function Component({
                     isMobile ? cbStyles.mobile : cbStyles.desktop,
                     isDragged ? cbStyles.dragging : '',
                     enableDragAndDrop ? '' : (handleClick ? cbStyles.clickable : cbStyles.default),
-                  ].filter(Boolean).join(' ');
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
 
                   return (
                     <div
@@ -215,14 +217,15 @@ export default function Component({
                         aspectRatio: isMobile ? width / height : undefined,
                       }}
                     >
-                      <div
-                        className={cbStyles.imageWrapper}
-                        onClick={handleClick}
-                      >
+                      <div className={cbStyles.imageWrapper} onClick={handleClick}>
                         <ParallaxImageRenderer
                           content={itemContent}
                           contentType={isCollection ? 'collection' : 'content'}
-                          cardTypeBadge={isCollection && 'collectionType' in itemContent ? itemContent.collectionType : itemContent.cardTypeBadge}
+                          cardTypeBadge={
+                            isCollection && 'collectionType' in itemContent
+                              ? itemContent.collectionType
+                              : itemContent.cardTypeBadge
+                          }
                           priority={false}
                           onClick={handleClick}
                         />
@@ -267,13 +270,17 @@ export default function Component({
                     cbStyles.dragContainer,
                     isDragged ? cbStyles.dragging : '',
                     enableDragAndDrop ? '' : (isClickable ? cbStyles.clickable : cbStyles.default),
-                  ].filter(Boolean).join(' ');
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
 
                   const imageWrapperClass = [
                     cbStyles.imageContentWrapper,
                     isClickable ? '' : cbStyles.default,
                     isSelected ? cbStyles.selected : '',
-                  ].filter(Boolean).join(' ');
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
 
                   return (
                     <div
@@ -296,9 +303,7 @@ export default function Component({
                         />
                       </div>
                       {/* Grey opacity overlay for non-visible images */}
-                      {isNotVisible && (
-                        <div className={cbStyles.visibilityOverlay} />
-                      )}
+                      {isNotVisible && <div className={cbStyles.visibilityOverlay} />}
                       {shouldShowOverlay && (
                         <div className={cbStyles.coverImageOverlay}>
                           <svg className={cbStyles.coverImageCheckmark} viewBox="0 0 24 24">

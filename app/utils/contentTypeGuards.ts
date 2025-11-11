@@ -5,19 +5,19 @@
  * Use these instead of runtime type checking or casting.
  */
 import {
-  type CollectionContentModel,
   type Content,
-  type GifContentModel,
-  type ImageContentModel,
-  type ParallaxImageContentModel,
-  type TextContentModel,
+  type ContentCollectionModel,
+  type ContentGifModel,
+  type ContentImageModel,
+  type ContentParallaxImageModel,
+  type ContentTextModel,
 } from '@/app/types/Content';
 
 /**
  * Type guard to check if a Content is an ImageContentModel
  * Accepts unknown to handle untyped data, but also works with Content type
  */
-export function isContentImage(block: Content | unknown): block is ImageContentModel {
+export function isContentImage(block: Content | unknown): block is ContentImageModel {
   if (!block || typeof block !== 'object') return false;
   const candidate = block as Record<string, unknown>;
   return candidate.contentType === 'IMAGE' && 'imageUrl' in candidate;
@@ -26,35 +26,35 @@ export function isContentImage(block: Content | unknown): block is ImageContentM
 /**
  * Type guard to check if a Content is a ParallaxImageContentModel
  */
-export function isParallaxImageContent(block: Content): block is ParallaxImageContentModel {
+export function isParallaxImageContent(block: Content): block is ContentParallaxImageModel {
   return block.contentType === 'PARALLAX' && 'enableParallax' in block && block.enableParallax === true;
 }
 
 /**
  * Type guard to check if a Content is a TextContentModel
  */
-export function isTextContent(block: Content): block is TextContentModel {
+export function isTextContent(block: Content): block is ContentTextModel {
   return block.contentType === 'TEXT';
 }
 
 /**
  * Type guard to check if a Content is a GifContentModel
  */
-export function isGifContent(block: Content): block is GifContentModel {
+export function isGifContent(block: Content): block is ContentGifModel {
   return block.contentType === 'GIF';
 }
 
 /**
  * Type guard to check if a Content is a CollectionContentModel
  */
-export function isCollectionContent(block: Content): block is CollectionContentModel {
+export function isContentCollection(block: Content): block is ContentCollectionModel {
   return block.contentType === 'COLLECTION';
 }
 
 /**
  * Type guard to check if a Content has an image (IMAGE, PARALLAX, or GIF)
  */
-export function hasImage(block: Content): block is ImageContentModel | ParallaxImageContentModel | GifContentModel {
+export function hasImage(block: Content): block is ContentImageModel | ContentParallaxImageModel | ContentGifModel {
   return isContentImage(block) || isParallaxImageContent(block) || isGifContent(block);
 }
 
@@ -82,8 +82,8 @@ export function getContentDimensions(block: Content, defaultWidth = 1300, defaul
 
   // For collection blocks, use coverImage dimensions if available
   // This allows proper chunking based on actual cover image aspect ratio
-  if (isCollectionContent(block)) {
-    const collectionBlock = block as CollectionContentModel;
+  if (isContentCollection(block)) {
+    const collectionBlock = block as ContentCollectionModel;
     // Prioritize coverImage.imageWidth/imageHeight for accurate aspect ratios
     if (collectionBlock.coverImage?.imageWidth && collectionBlock.coverImage?.imageHeight) {
       return {

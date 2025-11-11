@@ -37,14 +37,14 @@ import {
 } from '@/app/types/Collection';
 import {
   type AnyContentModel,
-  type CollectionContentModel,
+  type ContentCollectionModel,
+  type ContentImageModel,
   type ContentImageUpdateResponse,
-  type ImageContentModel,
-  type TextContentModel,
+  type ContentTextModel,
 } from '@/app/types/Content';
 
 // Test fixtures
-const createImageContent = (id: number, overrides?: Partial<ImageContentModel>): ImageContentModel => ({
+const createImageContent = (id: number, overrides?: Partial<ContentImageModel>): ContentImageModel => ({
   id,
   contentType: 'IMAGE',
   orderIndex: id,
@@ -54,7 +54,7 @@ const createImageContent = (id: number, overrides?: Partial<ImageContentModel>):
   ...overrides,
 });
 
-const createTextContent = (id: number, overrides?: Partial<TextContentModel>): TextContentModel => ({
+const createTextContent = (id: number, overrides?: Partial<ContentTextModel>): ContentTextModel => ({
   id,
   contentType: 'TEXT',
   orderIndex: id,
@@ -67,8 +67,8 @@ const createTextContent = (id: number, overrides?: Partial<TextContentModel>): T
 const createCollectionContent = (
   id: number,
   slug: string,
-  overrides?: Partial<CollectionContentModel>
-): CollectionContentModel => ({
+  overrides?: Partial<ContentCollectionModel>
+): ContentCollectionModel => ({
   id,
   contentType: 'COLLECTION',
   orderIndex: id,
@@ -1831,7 +1831,7 @@ describe('getContentOrderIndex', () => {
   const collectionId = 1;
 
   it('should return orderIndex from collections array for image content', () => {
-    const imageBlock: ImageContentModel = {
+    const imageBlock: ContentImageModel = {
       id: 1,
       contentType: 'IMAGE',
       orderIndex: 0,
@@ -1865,7 +1865,7 @@ describe('getContentOrderIndex', () => {
   });
 
   it('should return undefined when collection entry not found', () => {
-    const imageBlock: ImageContentModel = {
+    const imageBlock: ContentImageModel = {
       id: 1,
       contentType: 'IMAGE',
       orderIndex: 0,
@@ -1881,7 +1881,7 @@ describe('getContentOrderIndex', () => {
   });
 
   it('should return undefined when collections array is undefined', () => {
-    const imageBlock: ImageContentModel = {
+    const imageBlock: ContentImageModel = {
       id: 1,
       contentType: 'IMAGE',
       orderIndex: 0,
@@ -1898,7 +1898,7 @@ describe('updateBlockOrderIndex', () => {
   const collectionId = 1;
 
   it('should update orderIndex in collections array for image content', () => {
-    const imageBlock: ImageContentModel = {
+    const imageBlock: ContentImageModel = {
       id: 1,
       contentType: 'IMAGE',
       orderIndex: 0,
@@ -1936,7 +1936,7 @@ describe('updateBlockOrderIndex', () => {
   });
 
   it('should create collections array if it does not exist', () => {
-    const imageBlock: ImageContentModel = {
+    const imageBlock: ContentImageModel = {
       id: 1,
       contentType: 'IMAGE',
       orderIndex: 0,

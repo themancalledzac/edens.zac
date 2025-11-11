@@ -10,9 +10,9 @@
 
 import {
   type AnyContentModel,
-  type CollectionContentModel,
-  type ImageContentModel,
-  type ParallaxImageContentModel,
+  type ContentCollectionModel,
+  type ContentImageModel,
+  type ContentParallaxImageModel,
 } from '@/app/types/Content';
 import { convertCollectionContentToParallax } from '@/app/utils/contentLayout';
 
@@ -23,7 +23,7 @@ import { convertCollectionContentToParallax } from '@/app/utils/contentLayout';
  * @returns true if the image is not visible
  */
 export function checkImageVisibility(
-  itemContent: ImageContentModel,
+  itemContent: ContentImageModel,
   currentCollectionId?: number
 ): boolean {
   // Check direct visibility first
@@ -64,7 +64,7 @@ export function hasSlug(itemContent: { slug?: string }): boolean {
 export function determineImageClickAction(
   onImageClick?: (imageId: number) => void,
   enableFullScreenView?: boolean,
-  onFullScreenImageClick?: (image: ImageContentModel) => void
+  onFullScreenImageClick?: (image: ContentImageModel) => void
 ): 'imageClick' | 'fullscreen' | 'none' {
   if (onImageClick) {
     return 'imageClick';
@@ -87,11 +87,11 @@ export function determineImageClickAction(
  * @returns Click handler function or undefined
  */
 export function createImageClickHandler(
-  itemContent: ImageContentModel,
+  itemContent: ContentImageModel,
   isDraggingRef: React.MutableRefObject<boolean>,
   onImageClick?: (imageId: number) => void,
   enableFullScreenView?: boolean,
-  onFullScreenImageClick?: (image: ImageContentModel) => void
+  onFullScreenImageClick?: (image: ContentImageModel) => void
 ): (() => void) | undefined {
   const action = determineImageClickAction(onImageClick, enableFullScreenView, onFullScreenImageClick);
   
@@ -272,7 +272,7 @@ export function createParallaxImageClickHandler(
   itemContent: { slug?: string },
   onImageClick?: (imageId: number) => void,
   enableFullScreenView?: boolean,
-  onFullScreenImageClick?: (image: ImageContentModel | ParallaxImageContentModel) => void,
+  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void,
   routerPush?: (path: string) => void
 ): (() => void) | undefined {
   const isCollection = hasSlug(itemContent);
@@ -285,7 +285,7 @@ export function createParallaxImageClickHandler(
   
   if (enableFullScreenView && onFullScreenImageClick) {
     return () => {
-      onFullScreenImageClick(itemContent as ImageContentModel | ParallaxImageContentModel);
+      onFullScreenImageClick(itemContent as ContentImageModel | ContentParallaxImageModel);
     };
   }
   
@@ -313,7 +313,7 @@ export function createParallaxImageClickHandler(
  * @returns Object containing all data needed to render the collection content
  */
 export function prepareCollectionContentRender(
-  itemContent: CollectionContentModel,
+  itemContent: ContentCollectionModel,
   width: number,
   height: number,
   isMobile: boolean,
@@ -322,7 +322,7 @@ export function prepareCollectionContentRender(
   isDraggingRef: React.MutableRefObject<boolean>,
   onImageClick?: (imageId: number) => void,
   enableFullScreenView?: boolean,
-  onFullScreenImageClick?: (image: ImageContentModel | ParallaxImageContentModel) => void,
+  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void,
   routerPush?: (path: string) => void,
   onDragStart?: (contentId: number) => void,
   onDragOver?: (e: React.DragEvent, contentId: number) => void,

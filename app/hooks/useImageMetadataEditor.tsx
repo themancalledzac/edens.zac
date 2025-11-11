@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import type { ImageContentModel } from '@/app/types/Content';
+import type { ContentImageModel } from '@/app/types/Content';
 
 /**
  * Hook for managing image metadata editor state
@@ -15,13 +15,13 @@ import type { ImageContentModel } from '@/app/types/Content';
  * @returns Editor state and control functions
  */
 export function useImageMetadataEditor() {
-  const [editingImage, setEditingImage] = useState<ImageContentModel | null>(null);
+  const [editingImage, setEditingImage] = useState<ContentImageModel | null>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
 
   /**
    * Open the metadata editor for a specific image
    */
-  const openEditor = useCallback((image: ImageContentModel) => {
+  const openEditor = useCallback((image: ContentImageModel) => {
     // Capture current scroll position BEFORE opening editor
     const currentScroll = window.scrollY;
     setScrollPosition(currentScroll);

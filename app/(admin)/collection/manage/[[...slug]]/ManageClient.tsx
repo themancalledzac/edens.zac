@@ -26,9 +26,9 @@ import {
   type CollectionUpdateResponseDTO,
   type DisplayMode,
 } from '@/app/types/Collection';
-import { type ContentImageUpdateResponse, type ImageContentModel } from '@/app/types/Content';
+import { type ContentImageModel,type ContentImageUpdateResponse } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
-import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
+import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 import pageStyles from '../../../../page.module.scss';
@@ -178,7 +178,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     () =>
       (collection?.content?.filter(
         contentItem => isContentImage(contentItem) && selectedImageIds.includes(contentItem.id)
-      ) as ImageContentModel[]) || [],
+      ) as ContentImageModel[]) || [],
     [selectedImageIds, collection?.content]
   );
 
@@ -391,7 +391,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     // Get all selected image blocks
     const selectedImages = collection.content.filter(
       block => isContentImage(block) && selectedImageIds.includes(block.id)
-    ) as ImageContentModel[];
+    ) as ContentImageModel[];
 
     const firstImage = selectedImages[0];
     if (firstImage) {
@@ -493,7 +493,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     const ids = new Set<number>();
     if (collection?.content) {
       for (const block of collection.content) {
-        if (isCollectionContent(block)) {
+        if (isContentCollection(block)) {
           ids.add(block.id);
         }
       }

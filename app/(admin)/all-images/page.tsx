@@ -1,7 +1,7 @@
 import { getAllImages } from '@/app/lib/api/content';
 import type { CollectionModel } from '@/app/types/Collection';
 import { CollectionType } from '@/app/types/Collection';
-import type { ImageContentModel } from '@/app/types/Content';
+import type { ContentImageModel } from '@/app/types/Content';
 
 import CollectionPage from '../../components/ContentCollection/CollectionPage';
 
@@ -28,7 +28,7 @@ export const dynamic = 'force-dynamic';
 /**
  * Create a mock collection from the images list
  */
-function createMockCollection(images: ImageContentModel[]): CollectionModel {
+function createMockCollection(images: ContentImageModel[]): CollectionModel {
   return {
     id: 0, // Mock ID
     type: CollectionType.MISC,

@@ -1,7 +1,7 @@
 import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
-  type ParallaxImageContentModel,
+  type ContentParallaxImageModel,
 } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 
@@ -18,7 +18,7 @@ interface ContentCollectionPageProps {
  * Converts collections to Parallax type for unified rendering using the proven parallax path
  * Includes all necessary fields for proper positioning, aspect ratio, and parallax effects
  */
-function collectionToContentModel(col: CollectionModel): ParallaxImageContentModel {
+function collectionToContentModel(col: CollectionModel): ContentParallaxImageModel {
   // Extract dimensions from coverImage - prioritize imageWidth/imageHeight for accurate aspect ratios
   const imageWidth = col.coverImage?.imageWidth;
   const imageHeight = col.coverImage?.imageHeight;

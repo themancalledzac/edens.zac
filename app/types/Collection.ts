@@ -3,7 +3,7 @@
  * Single source of truth for Collection types
  */
 
-import type { AnyContentModel, ImageContentModel } from './Content';
+import type { AnyContentModel, ContentImageModel } from './Content';
 
 /**
  * Collection type enum - matches backend CollectionType
@@ -159,7 +159,7 @@ export interface CollectionModel extends CollectionBaseModel {
   totalPages?: number;
 
   // Cover image
-  coverImage?: ImageContentModel | null;
+  coverImage?: ContentImageModel | null;
 
   // Tags
   tags?: string[];
@@ -204,7 +204,7 @@ export interface CollectionPageDTO extends CollectionBaseModel {
 
   // Additional fields
   displayMode?: DisplayMode;
-  coverImage?: ImageContentModel | null;
+  coverImage?: ContentImageModel | null;
   createdAt: string;
   updatedAt: string;
 }

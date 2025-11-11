@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import React from 'react';
 
-import { type GifContentModel } from '@/app/types/Content';
+import { type ContentGifModel } from '@/app/types/Content';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
@@ -14,7 +14,7 @@ import {
  * Props for GifContentBlockRenderer
  */
 export interface GifContentBlockRendererProps extends BaseContentRendererProps {
-  block: GifContentModel;
+  block: ContentGifModel;
 }
 
 /**
@@ -29,7 +29,7 @@ export function GifContentBlockRenderer({
   isMobile = false,
   onClick,
 }: GifContentBlockRendererProps): React.ReactElement {
-  const renderGifContent = (gifBlock: GifContentModel): React.ReactElement => {
+  const renderGifContent = (gifBlock: ContentGifModel): React.ReactElement => {
     const alt = gifBlock.alt || gifBlock.title || gifBlock.caption || 'animated gif';
 
     // Extract overlay and badge data

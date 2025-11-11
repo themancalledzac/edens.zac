@@ -12,11 +12,11 @@ import {
 } from '@/app/types/Collection';
 import {
   type AnyContentModel,
-  type CollectionContentModel,
+  type ContentCollectionModel,
+  type ContentImageModel,
   type ContentImageUpdateResponse,
-  type ImageContentModel,
 } from '@/app/types/Content';
-import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
+import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 // Constants
@@ -116,8 +116,8 @@ export function getCollectionContentAsSelections(
   if (!content) return [];
 
   return content
-    .filter(isCollectionContent)
-    .map((collection: CollectionContentModel) => ({
+    .filter(isContentCollection)
+    .map((collection: ContentCollectionModel) => ({
       id: collection.id,
       name: collection.title || collection.slug || '', // Use title if available, fallback to slug
     }));
@@ -163,7 +163,7 @@ export function getCurrentSelectedCollections(
 export function findImageBlockById(
   blocks: AnyContentModel[] | undefined,
   imageId: number | undefined
-): ImageContentModel | undefined {
+): ContentImageModel | undefined {
   if (!blocks || !imageId) return undefined;
 
   const block = blocks.find(b => b.id === imageId);
@@ -176,7 +176,7 @@ export function findImageBlockById(
 export function getDisplayedCoverImage(
   collection: CollectionModel | null,
   pendingCoverImageId: number | undefined
-): ImageContentModel | null | undefined {
+): ContentImageModel | null | undefined {
   if (pendingCoverImageId) {
     // Type-safe check: only pass blocks if they exist and are the right type
     const blocks = collection?.content;
@@ -360,8 +360,8 @@ export function handleCollectionNavigation(
   content: AnyContentModel[] | undefined
 ): string | null {
   const originalBlock = content?.find(block => block.id === imageId);
-  if (originalBlock && isCollectionContent(originalBlock)) {
-    const collectionBlock = originalBlock as CollectionContentModel;
+  if (originalBlock && isContentCollection(originalBlock)) {
+    const collectionBlock = originalBlock as ContentCollectionModel;
     return collectionBlock.slug || null;
   }
   return null;
@@ -400,7 +400,7 @@ export function handleSingleImageEdit(
   imageId: number,
   content: AnyContentModel[] | undefined,
   processedContent: AnyContentModel[]
-): ImageContentModel | null {
+): ContentImageModel | null {
   // Find block in original content or processed content
   const imageBlock =
     content?.find(block => block.id === imageId) ||

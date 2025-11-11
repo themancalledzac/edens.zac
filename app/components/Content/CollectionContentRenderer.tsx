@@ -4,14 +4,14 @@ import { useRouter } from 'next/navigation';
 import React, { useRef } from 'react';
 
 import { useViewport } from '@/app/hooks/useViewport';
-import { type CollectionContentModel } from '@/app/types/Content';
+import { type ContentCollectionModel } from '@/app/types/Content';
 import { prepareCollectionContentRender } from '@/app/utils/contentComponentHandlers';
 
 import cbStyles from './ContentComponent.module.scss';
 import { ParallaxImageRenderer } from './ParallaxImageRenderer';
 
 export interface CollectionContentRendererProps {
-  itemContent: CollectionContentModel;
+  itemContent: ContentCollectionModel;
   className: string;
   width: number;
   height: number;
@@ -70,7 +70,9 @@ export default function CollectionContentRenderer({
     isMobile ? cbStyles.mobile : cbStyles.desktop,
     renderData.isDragged ? cbStyles.dragging : '',
     enableDragAndDrop ? '' : (renderData.handleClick ? cbStyles.clickable : cbStyles.default),
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div
@@ -88,10 +90,7 @@ export default function CollectionContentRenderer({
         aspectRatio: isMobile ? width / height : undefined,
       }}
     >
-      <div
-        className={cbStyles.imageWrapper}
-        onClick={renderData.handleClick}
-      >
+      <div className={cbStyles.imageWrapper} onClick={renderData.handleClick}>
         <ParallaxImageRenderer
           content={renderData.parallaxContent}
           contentType="collection"
@@ -103,4 +102,3 @@ export default function CollectionContentRenderer({
     </div>
   );
 }
-
