@@ -13,9 +13,14 @@ import {
   createImageClickHandler,
   createParallaxImageClickHandler,
 } from '@/app/utils/contentComponentHandlers';
+import {
+  buildParallaxWrapperClassName,
+  buildWrapperClassName,
+} from '@/app/utils/contentRendererUtils';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
+import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 
 export default function CollectionContentRenderer({
@@ -110,26 +115,21 @@ export default function CollectionContentRenderer({
     onDragEnd
   );
   
-  // Build wrapper class - position class always first, then conditional classes
-  const buildWrapperClass = (includeDragContainer: boolean) => {
-    return [
-      className, // Position class (imageLeft/imageRight/imageSingle/imageMiddle) - MUST be first
-      includeDragContainer ? cbStyles.dragContainer : '',
-      enableParallax ? cbStyles.parallaxContainer : '',
-      enableParallax ? cbStyles.overlayContainer : '',
-      isMobile ? cbStyles.mobile : '',
-      isDragged ? cbStyles.dragging : '',
-      enableDragAndDrop ? '' : (handleClick ? cbStyles.clickable : cbStyles.default),
-      contentType === 'IMAGE' && selectedImageIds.includes(contentId) ? cbStyles.selected : '',
-    ].filter(Boolean).join(' ');
-  };
   
   // Render TEXT content
   if (contentType === 'TEXT' && textContent) {
     return (
       <div
         key={contentId}
-        className={buildWrapperClass(false)}
+        className={buildWrapperClassName(className, cbStyles, {
+          includeDragContainer: false,
+          enableParallax: false,
+          isMobile,
+          isDragged,
+          enableDragAndDrop,
+          hasClickHandler: false,
+          isSelected: false,
+        })}
         style={{
           width: isMobile ? '100%' : width,
           height: isMobile ? 'auto' : height,
@@ -150,6 +150,42 @@ export default function CollectionContentRenderer({
   
   // Render image content (IMAGE, COLLECTION, GIF)
   const hasValidImage = imageUrl && imageUrl.trim() !== '';
+  
+  // Early return for invalid images - render placeholder
+  if (!hasValidImage) {
+    // Default aspect ratio 3:2 if dimensions don't exist
+    const placeholderWidth = width || 300;
+    const placeholderHeight = height || (placeholderWidth * 2 / 3);
+    
+    return (
+      <div
+        key={contentId}
+        className={buildWrapperClassName(className, cbStyles, {
+          includeDragContainer: false,
+          enableParallax: false,
+          isMobile,
+          isDragged,
+          enableDragAndDrop,
+          hasClickHandler: false,
+          isSelected: false,
+        })}
+        style={{
+          width: isMobile ? '100%' : placeholderWidth,
+          height: isMobile ? 'auto' : placeholderHeight,
+          aspectRatio: isMobile ? '3/2' : undefined,
+          boxSizing: 'border-box',
+          position: 'relative',
+          backgroundColor: '#e0e0e0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#757575',
+        }}
+      >
+        No Image
+      </div>
+    );
+  }
   
   // Image-specific overlays (only for IMAGE type)
   const isCurrentCover = contentType === 'IMAGE' && currentCoverImageId === contentId;
@@ -173,151 +209,105 @@ export default function CollectionContentRenderer({
   // Determine if we have overlays (for imageWrapper structure)
   const hasOverlays = !!(overlayText || cardTypeBadge);
   
-  // For non-parallax images, use ContentWrapper structure
-  if (!enableParallax && contentType !== 'TEXT') {
-    return (
-      <div
-        key={contentId}
-        draggable={enableDragAndDrop && !!onDragStart}
-        onDragStart={dragHandlers.handleDragStartEvent}
-        onDragOver={dragHandlers.handleDragOverEvent}
-        onDrop={dragHandlers.handleDropEvent}
-        onDragEnd={dragHandlers.handleDragEndEvent}
-        onClick={handleClick}
-        className={buildWrapperClass(enableDragAndDrop)}
-        style={{
-          // ContentWrapper structure: outer div with position class and dimensions
-          width: isMobile ? (hasOverlays ? '100%' : undefined) : width,
-          height: isMobile ? undefined : height,
-          aspectRatio: isMobile && hasOverlays ? width / height : undefined,
-          cursor: handleClick ? 'pointer' : 'default',
-          boxSizing: 'border-box',
-        }}
-      >
-        {/* Inner container to constrain content within padding boundaries (from ContentWrapper) */}
-        <div style={{ width: '100%', height: '100%', boxSizing: 'border-box' }}>
-          {hasOverlays ? (
-            // Add imageWrapper for proper overlay positioning on images with overlays
-            <div className={cbStyles.imageWrapper}>
-              {hasValidImage && (
-                <Image
-                  src={imageUrl}
-                  alt={alt}
-                  width={imageWidth}
-                  height={imageHeight}
-                  loading="lazy"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    display: 'block',
-                    cursor: handleClick ? 'pointer' : 'default',
-                    ...(isMobile ? { height: 'auto' } : {}),
-                  }}
-                  onClick={handleClick}
-                  unoptimized={isGif}
-                />
-              )}
-              {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
-              {cardTypeBadge && (
-                <BadgeOverlay
-                  contentType={isCollection ? 'collection' : 'content'}
-                  badgeValue={cardTypeBadge}
-                />
-              )}
-            </div>
-          ) : (
-            // No overlays - render image directly
-            hasValidImage && (
-              <Image
-                src={imageUrl}
-                alt={alt}
-                width={imageWidth}
-                height={imageHeight}
-                loading="lazy"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                  cursor: handleClick ? 'pointer' : 'default',
-                  ...(isMobile ? { height: 'auto' } : {}),
-                }}
-                onClick={handleClick}
-                unoptimized={isGif}
-              />
-            )
-          )}
-          
-          {/* Image-specific overlays (only for IMAGE type) */}
-          {contentType === 'IMAGE' && (
-            <>
-              {isNotVisible && <div className={cbStyles.visibilityOverlay} />}
-              {shouldShowOverlay && (
-                <div className={cbStyles.coverImageOverlay}>
-                  <svg className={cbStyles.coverImageCheckmark} viewBox="0 0 24 24">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-              )}
-              {isSelected && (
-                <div className={cbStyles.selectedIndicator}>
-                  <svg className={cbStyles.selectedIndicatorX} viewBox="0 0 24 24">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // Determine if we need imageWrapper (for overlays OR parallax)
+  const needsImageWrapper = hasOverlays || enableParallax;
   
-  // For parallax images (collections), use parallax structure
+  // Unified Image component props - conditionally includes parallax className or inline styles
+  const imageProps = {
+    src: imageUrl,
+    alt,
+    width: imageWidth,
+    height: imageHeight,
+    loading: 'lazy' as const,
+    unoptimized: isGif,
+    // Parallax: use CSS classes, no inline styles
+    // Non-parallax: use inline styles for sizing/objectFit
+    ...(enableParallax
+      ? {
+          className: `parallax-bg ${variantStyles.parallaxImage}`,
+        }
+      : {
+          style: {
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover' as const,
+            display: 'block' as const,
+            cursor: handleClick ? 'pointer' as const : 'default' as const,
+            ...(isMobile ? { height: 'auto' } : {}),
+          },
+          onClick: handleClick,
+        }),
+  };
+  
+  // Common imageWrapper content (Image + overlays) - used by both parallax and non-parallax
+  const imageWrapperContent = (
+    <>
+      <Image {...imageProps} />
+      {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
+      {cardTypeBadge && (
+        <BadgeOverlay
+          contentType={isCollection ? 'collection' : 'content'}
+          badgeValue={cardTypeBadge}
+        />
+      )}
+    </>
+  );
+  
+  // Unified wrapper props - works for both parallax and non-parallax
+  // Note: key is passed directly to JSX (React requirement)
+  const wrapperProps = {
+    draggable: enableDragAndDrop && !!onDragStart,
+    onDragStart: dragHandlers.handleDragStartEvent,
+    onDragOver: dragHandlers.handleDragOverEvent,
+    onDrop: dragHandlers.handleDropEvent,
+    onDragEnd: dragHandlers.handleDragEndEvent,
+    className: enableParallax
+      ? buildParallaxWrapperClassName(className, cbStyles, {
+          isMobile,
+          isDragged,
+          isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
+        })
+      : buildWrapperClassName(className, cbStyles, {
+          includeDragContainer: enableDragAndDrop && !enableParallax,
+          enableParallax,
+          isMobile,
+          isDragged,
+          enableDragAndDrop,
+          hasClickHandler: !!handleClick,
+          isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
+        }),
+    style: {
+      width: isMobile ? (needsImageWrapper ? '100%' : undefined) : width,
+      height: isMobile ? (enableParallax ? 'auto' : undefined) : height,
+      aspectRatio: isMobile && needsImageWrapper ? width / height : undefined,
+      boxSizing: 'border-box' as const,
+      position: 'relative' as const,
+      cursor: handleClick ? 'pointer' : 'default',
+    },
+    ...(enableParallax && { ref: parallaxRef }),
+    ...(!enableParallax && handleClick && { onClick: handleClick }),
+  };
+  
+  
+  // Render image content (IMAGE, COLLECTION, GIF)
+  // Unified structure for both parallax and non-parallax
   return (
-    <div
-      key={contentId}
-      ref={parallaxRef}
-      draggable={enableDragAndDrop && !!onDragStart}
-      onDragStart={dragHandlers.handleDragStartEvent}
-      onDragOver={dragHandlers.handleDragOverEvent}
-      onDrop={dragHandlers.handleDropEvent}
-      onDragEnd={dragHandlers.handleDragEndEvent}
-      className={buildWrapperClass(false)}
-      style={{
-        width: isMobile ? '100%' : width,
-        height: isMobile ? 'auto' : height,
-        aspectRatio: isMobile ? width / height : undefined,
-        boxSizing: 'border-box',
-        position: 'relative',
-      }}
-    >
-      <div className={cbStyles.imageWrapper} onClick={handleClick}>
-        {hasValidImage ? (
-          <Image
-            src={imageUrl}
-            alt={alt}
-            width={imageWidth}
-            height={imageHeight}
-            loading="lazy"
-            className={`parallax-bg ${variantStyles.parallaxImage}`}
-            priority={false}
-          />
-        ) : (
-          <div className={`parallax-bg ${variantStyles.parallaxImage} ${variantStyles.placeholderImage}`}>
-            No Image
-          </div>
-        )}
-        {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
-        {cardTypeBadge && (
-          <BadgeOverlay
-            contentType={isCollection ? 'collection' : 'content'}
-            badgeValue={cardTypeBadge}
-          />
-        )}
-      </div>
+    <div key={contentId} {...wrapperProps}>
+      {needsImageWrapper ? (
+        <div className={cbStyles.imageWrapper} onClick={handleClick}>
+          {imageWrapperContent}
+        </div>
+      ) : (
+        <Image {...imageProps} />
+      )}
+      {!enableParallax && (
+        <ImageOverlays
+          contentType={contentType}
+          isNotVisible={isNotVisible}
+          shouldShowOverlay={shouldShowOverlay}
+          isSelected={isSelected}
+        />
+      )}
     </div>
   );
 }

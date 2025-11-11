@@ -48,7 +48,7 @@ export function buildParallaxImageContentBlock(
     return {
       ...image,
       ...createBaseParallaxProperties(title, type),
-      contentType: 'PARALLAX',
+      contentType: 'IMAGE',
       title, // Override the image's title with the collection title
       collectionDate,
       type,
@@ -70,8 +70,8 @@ export function buildParallaxImageContentBlock(
  * @returns Formatted parallax image model
  */
 export function buildParallaxImageFromContent(content: AnyContentModel): ContentParallaxImageModel {
-  // If already Parallax type, return as-is (collections are now converted to Parallax earlier)
-  if (content.contentType === 'PARALLAX') {
+  // If already has parallax enabled, return as-is (collections are now converted to Parallax earlier)
+  if ('enableParallax' in content && content.enableParallax && content.contentType === 'IMAGE') {
     return content as ContentParallaxImageModel;
   }
 
@@ -87,7 +87,7 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Content
 
     return {
       id: content.id,
-      contentType: 'PARALLAX',
+      contentType: 'IMAGE',
       title: content.title ?? 'Untitled',
       imageUrl: coverImage?.imageUrl ?? '',
       imageWidth,
@@ -117,14 +117,14 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Content
         'IMAGE',
         content.orderIndex
       ),
-      contentType: 'PARALLAX',
+      contentType: 'IMAGE',
     };
   }
 
   // Handle GIF or other content types - convert to basic parallax image
   return {
     id: content.id,
-    contentType: 'PARALLAX',
+    contentType: 'IMAGE',
     title: content.title ?? 'Untitled',
     imageUrl: content.imageUrl ?? '',
     imageWidth: content.width ?? 800,

@@ -19,7 +19,7 @@ import type {
 } from './ImageMetadata';
 
 /** Content type discriminator - maps to backend Content contentType field */
-export type ContentType = 'IMAGE' | 'TEXT' | 'GIF' | 'PARALLAX' | 'COLLECTION';
+export type ContentType = 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION';
 
 /**
  * Base Content interface - all content models extend this
@@ -101,7 +101,7 @@ export interface ContentImageModel extends Content {
  * Can optionally include slug and collectionType for collection navigation
  */
 export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'contentType'> {
-  contentType: 'PARALLAX';
+  contentType: 'IMAGE';
   collectionDate?: string;
   type?: string;
   enableParallax: true;
