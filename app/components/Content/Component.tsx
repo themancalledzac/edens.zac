@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 
 import { useViewport } from '@/app/hooks/useViewport';
 import {
@@ -9,14 +9,22 @@ import {
   type ImageContentModel,
   type ParallaxImageContentModel,
 } from '@/app/types/Content';
+import {
+  checkImageVisibility,
+  createDragHandlers,
+  createImageClickHandler,
+  createParallaxImageClickHandler,
+} from '@/app/utils/contentComponentHandlers';
 import { processContentForDisplay } from '@/app/utils/contentLayout';
 import {
+  isCollectionContent,
   isContentImage,
   isGifContent,
   isParallaxImageContent,
   isTextContent,
 } from '@/app/utils/contentTypeGuards';
 
+import CollectionContentRenderer from './CollectionContentRenderer';
 import cbStyles from './ContentComponent.module.scss';
 import { GifContentBlockRenderer } from './GifContentBlockRenderer';
 import { ContentImageRenderer } from './ImageBlockRenderer';
@@ -60,6 +68,14 @@ export interface ContentComponentProps {
   onFullScreenImageClick?: (image: ImageContentModel | ParallaxImageContentModel) => void; // NEW SIMPLE VERSION
   selectedImageIds?: number[]; // Array of selected image IDs for bulk editing
   currentCollectionId?: number; // ID of current collection (for checking collection-specific visibility)
+  // Drag-and-drop props for reordering
+  enableDragAndDrop?: boolean;
+  draggedImageId?: number | null;
+  dragOverImageId?: number | null;
+  onDragStart?: (imageId: number) => void;
+  onDragOver?: (e: React.DragEvent, imageId: number) => void;
+  onDrop?: (e: React.DragEvent, imageId: number) => void;
+  onDragEnd?: () => void;
 }
 
 /**
@@ -80,10 +96,18 @@ export default function Component({
   onFullScreenImageClick, // NEW SIMPLE VERSION
   selectedImageIds = [],
   currentCollectionId,
+  enableDragAndDrop = false,
+  draggedImageId,
+  dragOverImageId: _dragOverImageId,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: ContentComponentProps) {
   const router = useRouter();
   const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
+  const isDraggingRef = useRef(false);
 
   const rows = useMemo(() => {
     if (!content || content.length === 0 || !contentWidth) {
@@ -96,6 +120,7 @@ export default function Component({
       return [];
     }
   }, [content, contentWidth, chunkSize]);
+
 
   // Early return for empty state
   if (rows.length === 0) return <div />;
@@ -116,47 +141,83 @@ export default function Component({
                 );
 
                 // Renderer lookup map - check most specific types first
+                if (isCollectionContent(itemContent)) {
+                  return (
+                    <CollectionContentRenderer
+                      key={itemContent.id}
+                      itemContent={itemContent}
+                      className={className}
+                      width={width}
+                      height={height}
+                      enableDragAndDrop={enableDragAndDrop}
+                      draggedImageId={draggedImageId}
+                      onImageClick={onImageClick}
+                      enableFullScreenView={enableFullScreenView}
+                      onFullScreenImageClick={onFullScreenImageClick}
+                      onDragStart={onDragStart}
+                      onDragOver={onDragOver}
+                      onDrop={onDrop}
+                      onDragEnd={onDragEnd}
+                    />
+                  );
+                }
                 if (isParallaxImageContent(itemContent) && itemContent.enableParallax) {
-                  // Check if this is a collection (has slug field) - navigate instead of fullscreen
                   const isCollection = !!('slug' in itemContent && itemContent.slug);
-                  // In manage/admin pages, navigate to manage page; otherwise navigate to public page
-                  // Check if we're in an admin context by checking if onImageClick is provided (manage page)
-                  const isAdminContext = !!onImageClick;
-                  const handleClick = isCollection
-                    ? () => {
-                        if (isAdminContext) {
-                          router.push(`/collection/manage/${itemContent.slug}`);
-                        } else {
-                          router.push(`/${itemContent.slug}`);
-                        }
-                      }
-                    : (enableFullScreenView && onFullScreenImageClick
-                        ? () => onFullScreenImageClick(itemContent)
-                        : undefined);
+                  const handleClick = createParallaxImageClickHandler(
+                    itemContent,
+                    onImageClick,
+                    enableFullScreenView,
+                    onFullScreenImageClick,
+                    router.push
+                  );
+
+                  // Add drag handlers for reordering (works for both regular parallax and collection content)
+                  const isDragged = enableDragAndDrop && draggedImageId === itemContent.id;
+                  const {
+                    handleDragStartEvent,
+                    handleDragOverEvent,
+                    handleDropEvent,
+                    handleDragEndEvent,
+                  } = createDragHandlers(
+                    itemContent,
+                    enableDragAndDrop,
+                    draggedImageId,
+                    isDraggingRef,
+                    onDragStart,
+                    onDragOver,
+                    onDrop,
+                    onDragEnd
+                  );
 
                   // Use ParallaxImageRenderer with proper container structure for parallax effect
+                  const parallaxContainerClass = [
+                    className,
+                    cbStyles.overlayContainer,
+                    cbStyles.parallaxContainer,
+                    isMobile ? cbStyles.mobile : cbStyles.desktop,
+                    isDragged ? cbStyles.dragging : '',
+                    enableDragAndDrop ? '' : (handleClick ? cbStyles.clickable : cbStyles.default),
+                  ].filter(Boolean).join(' ');
+
                   return (
                     <div
                       key={itemContent.id}
-                      className={`${className} ${cbStyles.overlayContainer}`}
+                      draggable={enableDragAndDrop && !!onDragStart}
+                      onDragStart={handleDragStartEvent}
+                      onDragOver={handleDragOverEvent}
+                      onDrop={handleDropEvent}
+                      onDragEnd={handleDragEndEvent}
+                      className={parallaxContainerClass}
                       style={{
+                        // Dynamic styles that depend on content dimensions
                         width: isMobile ? '100%' : width,
                         height: isMobile ? 'auto' : height,
                         aspectRatio: isMobile ? width / height : undefined,
-                        cursor: handleClick ? 'pointer' : 'default',
-                        boxSizing: 'border-box',
-                        position: 'relative',
                       }}
                     >
                       <div
                         className={cbStyles.imageWrapper}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          boxSizing: 'border-box',
-                          position: 'relative',
-                          overflow: 'hidden',
-                        }}
+                        onClick={handleClick}
                       >
                         <ParallaxImageRenderer
                           content={itemContent}
@@ -175,50 +236,57 @@ export default function Component({
                   const isSelected = selectedImageIds.includes(itemContent.id);
                   const shouldShowOverlay =
                     (isSelectingCoverImage && isCurrentCover) || isJustClicked;
-                  
-                  // Check if image is not visible
-                  // Check direct visibility first, then collection-specific visibility if collectionId is provided
-                  // Note: For manage pages, we show all images but grey out non-visible ones
-                  // For public pages, non-visible images should be filtered out before reaching here
-                  let isNotVisible = itemContent.visible === false;
-                  
-                  // If we have a collection ID, also check collection-specific visibility
-                  if (!isNotVisible && currentCollectionId && itemContent.collections) {
-                    const collectionEntry = itemContent.collections.find(
-                      c => c.collectionId === currentCollectionId
-                    );
-                    if (collectionEntry?.visible === false) {
-                      isNotVisible = true;
-                    }
-                  }
-
-                  // Determine which click handler to use
-                  const handleClick = () => {
-                    if (onImageClick) {
-                      // Always use onImageClick if provided (for cover selection or metadata editing)
-                      onImageClick(itemContent.id);
-                    } else if (enableFullScreenView && onFullScreenImageClick) {
-                      // Fall back to fullscreen handler if no onImageClick provided
-                      onFullScreenImageClick(itemContent);
-                    }
-                  };
-
+                  const isDragged = enableDragAndDrop && draggedImageId === itemContent.id;
+                  const isNotVisible = checkImageVisibility(itemContent, currentCollectionId);
+                  const handleClick = createImageClickHandler(
+                    itemContent,
+                    isDraggingRef,
+                    onImageClick,
+                    enableFullScreenView,
+                    onFullScreenImageClick
+                  );
                   const isClickable = !!onImageClick || enableFullScreenView;
+
+                  const {
+                    handleDragStartEvent,
+                    handleDragOverEvent,
+                    handleDropEvent,
+                    handleDragEndEvent,
+                  } = createDragHandlers(
+                    itemContent,
+                    enableDragAndDrop,
+                    draggedImageId,
+                    isDraggingRef,
+                    onDragStart,
+                    onDragOver,
+                    onDrop,
+                    onDragEnd
+                  );
+
+                  const dragContainerClass = [
+                    cbStyles.dragContainer,
+                    isDragged ? cbStyles.dragging : '',
+                    enableDragAndDrop ? '' : (isClickable ? cbStyles.clickable : cbStyles.default),
+                  ].filter(Boolean).join(' ');
+
+                  const imageWrapperClass = [
+                    cbStyles.imageContentWrapper,
+                    isClickable ? '' : cbStyles.default,
+                    isSelected ? cbStyles.selected : '',
+                  ].filter(Boolean).join(' ');
 
                   return (
                     <div
                       key={itemContent.id}
-                      style={{
-                        position: 'relative',
-                        cursor: isClickable ? 'pointer' : 'default',
-                      }}
+                      draggable={enableDragAndDrop && !!onDragStart}
+                      onDragStart={handleDragStartEvent}
+                      onDragOver={handleDragOverEvent}
+                      onDrop={handleDropEvent}
+                      onDragEnd={handleDragEndEvent}
+                      className={dragContainerClass}
                       onClick={handleClick}
                     >
-                      <div style={{
-                        cursor: isClickable ? 'pointer' : 'default',
-                        opacity: isSelected ? 0.6 : 1,
-                        transition: 'opacity 0.2s ease',
-                      }}>
+                      <div className={imageWrapperClass}>
                         <ContentImageRenderer
                           block={itemContent}
                           width={width}
@@ -229,76 +297,18 @@ export default function Component({
                       </div>
                       {/* Grey opacity overlay for non-visible images */}
                       {isNotVisible && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(128, 128, 128, 0.5)',
-                            pointerEvents: 'none',
-                            borderRadius: '4px',
-                          }}
-                        />
+                        <div className={cbStyles.visibilityOverlay} />
                       )}
                       {shouldShowOverlay && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                            pointerEvents: 'none',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <svg
-                            width="60"
-                            height="60"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="white"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
+                        <div className={cbStyles.coverImageOverlay}>
+                          <svg className={cbStyles.coverImageCheckmark} viewBox="0 0 24 24">
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         </div>
                       )}
                       {isSelected && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            width: '32px',
-                            height: '32px',
-                            backgroundColor: 'rgba(220, 38, 38, 0.9)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            pointerEvents: 'none',
-                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-                          }}
-                        >
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="white"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
+                        <div className={cbStyles.selectedIndicator}>
+                          <svg className={cbStyles.selectedIndicatorX} viewBox="0 0 24 24">
                             <line x1="18" y1="6" x2="6" y2="18" />
                             <line x1="6" y1="6" x2="18" y2="18" />
                           </svg>

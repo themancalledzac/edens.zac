@@ -3,11 +3,18 @@
  * Tests all utility functions used by ManageClient component
  */
 
+// Mock the collections API module
+jest.mock('@/app/lib/api/collections');
+
 import {
+  applyReorderChangesOptimistically,
   buildCollectionsUpdate,
   buildUpdatePayload,
+  calculateReorderChanges,
+  executeReorderOperation,
   findImageBlockById,
   getCollectionContentAsSelections,
+  getContentOrderIndex,
   getCurrentSelectedCollections,
   getDisplayedCoverImage,
   handleApiError,
@@ -17,12 +24,11 @@ import {
   handleSingleImageEdit,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
-  refreshCollectionData,
   revalidateCollectionCache,
-  updateCollectionCache,
-  updateCollectionState,
+  updateBlockOrderIndex,
   validateCoverImageSelection,
 } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+import * as collectionsApi from '@/app/lib/api/collections';
 import {
   type CollectionModel,
   CollectionType,
@@ -1392,138 +1398,6 @@ describe('handleApiError', () => {
   });
 });
 
-describe('refreshCollectionData', () => {
-  it('should call getCollectionUpdateMetadata with correct slug and return response', async () => {
-    const slug = 'test-collection';
-    const mockResponse = createCollectionUpdateResponse();
-    const mockGetCollectionUpdateMetadata = jest.fn().mockResolvedValue(mockResponse);
-
-    const result = await refreshCollectionData(slug, mockGetCollectionUpdateMetadata);
-
-    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(slug);
-    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledTimes(1);
-    expect(result).toEqual(mockResponse);
-  });
-
-  it('should propagate error when getCollectionUpdateMetadata throws', async () => {
-    const slug = 'test-collection';
-    const mockError = new Error('API Error');
-    const mockGetCollectionUpdateMetadata = jest.fn().mockRejectedValue(mockError);
-
-    await expect(refreshCollectionData(slug, mockGetCollectionUpdateMetadata)).rejects.toThrow(
-      'API Error'
-    );
-  });
-
-  it('should work with empty string slug', async () => {
-    const slug = '';
-    const mockResponse = createCollectionUpdateResponse();
-    const mockGetCollectionUpdateMetadata = jest.fn().mockResolvedValue(mockResponse);
-
-    await refreshCollectionData(slug, mockGetCollectionUpdateMetadata);
-
-    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith('');
-  });
-});
-
-describe('updateCollectionState', () => {
-  it('should return function that updates collection field correctly', () => {
-    const response = createCollectionUpdateResponse({
-      collection: createCollectionModel({ title: 'Updated Title' }),
-    });
-    const updater = updateCollectionState(response);
-    const prev = createCollectionUpdateResponse({
-      collection: createCollectionModel({ title: 'Original Title' }),
-    });
-
-    const result = updater(prev);
-
-    expect(result.collection.title).toBe('Updated Title');
-  });
-
-  it('should preserve all other fields from prev state', () => {
-    const response = createCollectionUpdateResponse({
-      collection: createCollectionModel({ title: 'Updated Title' }),
-    });
-    const prev = createCollectionUpdateResponse({
-      tags: [{ id: 1, name: 'Tag 1' }],
-      people: [{ id: 1, name: 'Person 1' }],
-    });
-    const updater = updateCollectionState(response);
-
-    const result = updater(prev);
-
-    expect(result.tags).toEqual([{ id: 1, name: 'Tag 1' }]);
-    expect(result.people).toEqual([{ id: 1, name: 'Person 1' }]);
-  });
-
-  it('should work when prev is null', () => {
-    const response = createCollectionUpdateResponse();
-    const updater = updateCollectionState(response);
-
-    const result = updater(null);
-
-    expect(result.collection).toEqual(response.collection);
-  });
-
-  it('should preserve existing metadata when updating collection', () => {
-    const response = createCollectionUpdateResponse({
-      collection: createCollectionModel({ title: 'New Title' }),
-    });
-    const prev = createCollectionUpdateResponse({
-      tags: [{ id: 1, name: 'Existing Tag' }],
-      cameras: [{ id: 1, name: 'Existing Camera' }],
-    });
-    const updater = updateCollectionState(response);
-
-    const result = updater(prev);
-
-    expect(result.collection.title).toBe('New Title');
-    expect(result.tags).toEqual([{ id: 1, name: 'Existing Tag' }]);
-    expect(result.cameras).toEqual([{ id: 1, name: 'Existing Camera' }]);
-  });
-});
-
-describe('updateCollectionCache', () => {
-  it('should call collectionStorage.update with correct slug and collection', () => {
-    const slug = 'test-collection';
-    const collection = createCollectionModel();
-    const mockCollectionStorage = {
-      update: jest.fn(),
-    };
-
-    updateCollectionCache(slug, collection, mockCollectionStorage);
-
-    expect(mockCollectionStorage.update).toHaveBeenCalledWith(slug, collection);
-    expect(mockCollectionStorage.update).toHaveBeenCalledTimes(1);
-  });
-
-  it('should propagate error when collectionStorage.update throws', () => {
-    const slug = 'test-collection';
-    const collection = createCollectionModel();
-    const mockCollectionStorage = {
-      update: jest.fn().mockImplementation(() => {
-        throw new Error('Storage error');
-      }),
-    };
-
-    expect(() => updateCollectionCache(slug, collection, mockCollectionStorage)).toThrow(
-      'Storage error'
-    );
-  });
-
-  it('should work with empty string slug', () => {
-    const slug = '';
-    const collection = createCollectionModel();
-    const mockCollectionStorage = {
-      update: jest.fn(),
-    };
-
-    updateCollectionCache(slug, collection, mockCollectionStorage);
-
-    expect(mockCollectionStorage.update).toHaveBeenCalledWith('', collection);
-  });
-});
 
 describe('revalidateCollectionCache', () => {
   beforeEach(() => {
@@ -1559,6 +1433,9 @@ describe('revalidateCollectionCache', () => {
 
   it('should fail silently when revalidation fails', async () => {
     const slug = 'test-collection';
+    // Mock isLocalEnvironment to return true so console.warn is called
+    const originalEnv = process.env.NEXT_PUBLIC_ENV;
+    process.env.NEXT_PUBLIC_ENV = 'local';
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
     (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
@@ -1569,6 +1446,11 @@ describe('revalidateCollectionCache', () => {
     );
 
     consoleWarnSpy.mockRestore();
+    if (originalEnv) {
+      process.env.NEXT_PUBLIC_ENV = originalEnv;
+    } else {
+      delete process.env.NEXT_PUBLIC_ENV;
+    }
   });
 
   it('should fail silently when API returns error status', async () => {
@@ -1774,61 +1656,6 @@ describe('mergeNewMetadata', () => {
 });
 
 /**
- * Testing Strategy for refreshCollectionData
- * 
- * Function: refreshCollectionData(slug: string, getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>)
- * Returns: Promise<CollectionUpdateResponseDTO>
- * 
- * Passing test cases:
- * - Valid slug calls getCollectionUpdateMetadata with correct slug
- * - Returns the response from getCollectionUpdateMetadata
- * - Works with different slug formats
- * 
- * Failing test cases:
- * - getCollectionUpdateMetadata throws error -> propagates error
- * - Slug is empty string -> still calls function (no validation)
- * - Slug is invalid format -> propagates error from API
- * - Network error -> propagates error
- */
-
-/**
- * Testing Strategy for updateCollectionState
- * 
- * Function: updateCollectionState(response: CollectionUpdateResponseDTO)
- * Returns: (prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO
- * 
- * Passing test cases:
- * - Returns function that updates collection field correctly
- * - Preserves all other fields from prev state
- * - Works when prev is null -> creates new state with collection
- * - Works when prev has existing metadata -> preserves metadata
- * - Works when prev has existing collection -> replaces collection
- * 
- * Failing test cases:
- * - Response is null/undefined -> should handle gracefully
- * - Response.collection is missing -> should handle gracefully
- * - Response has partial metadata -> preserves what exists
- */
-
-/**
- * Testing Strategy for updateCollectionCache
- * 
- * Function: updateCollectionCache(slug: string, collection: CollectionModel, collectionStorage: { update: (slug: string, collection: CollectionModel) => void })
- * Returns: void
- * 
- * Passing test cases:
- * - Calls collectionStorage.update with correct slug and collection
- * - Works with valid slug and collection
- * - Works with different slug formats
- * 
- * Failing test cases:
- * - collectionStorage.update throws error -> propagates error
- * - Slug is empty string -> still calls function (no validation)
- * - Collection is null/undefined -> propagates error from storage
- * - collectionStorage is null/undefined -> throws error
- */
-
-/**
  * Testing Strategy for revalidateCollectionCache
  * 
  * Function: revalidateCollectionCache(slug: string)
@@ -1997,5 +1824,329 @@ describe('refreshCollectionAfterOperation', () => {
     expect(operation).toHaveBeenCalledTimes(1);
     expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(mockSlug);
     expect(mockCollectionStorage.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('getContentOrderIndex', () => {
+  const collectionId = 1;
+
+  it('should return orderIndex from collections array for image content', () => {
+    const imageBlock: ImageContentModel = {
+      id: 1,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'test.jpg',
+      collections: [
+        { collectionId: 1, name: 'Collection 1', visible: true, orderIndex: 5 },
+      ],
+    };
+
+    const result = getContentOrderIndex(imageBlock, collectionId);
+
+    expect(result).toBe(5);
+  });
+
+  it('should return orderIndex from collections array for text content', () => {
+    const textBlock = {
+      id: 2,
+      contentType: 'TEXT' as const,
+      orderIndex: 0,
+      content: 'Test',
+      format: 'plain' as const,
+      align: 'left' as const,
+      collections: [
+        { collectionId: 1, name: 'Collection 1', visible: true, orderIndex: 3 },
+      ],
+    } as AnyContentModel;
+
+    const result = getContentOrderIndex(textBlock, collectionId);
+
+    expect(result).toBe(3);
+  });
+
+  it('should return undefined when collection entry not found', () => {
+    const imageBlock: ImageContentModel = {
+      id: 1,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'test.jpg',
+      collections: [
+        { collectionId: 2, name: 'Collection 2', visible: true, orderIndex: 5 },
+      ],
+    };
+
+    const result = getContentOrderIndex(imageBlock, collectionId);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should return undefined when collections array is undefined', () => {
+    const imageBlock: ImageContentModel = {
+      id: 1,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'test.jpg',
+    };
+
+    const result = getContentOrderIndex(imageBlock, collectionId);
+
+    expect(result).toBeUndefined();
+  });
+});
+
+describe('updateBlockOrderIndex', () => {
+  const collectionId = 1;
+
+  it('should update orderIndex in collections array for image content', () => {
+    const imageBlock: ImageContentModel = {
+      id: 1,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'test.jpg',
+      collections: [
+        { collectionId: 1, name: 'Collection 1', visible: true, orderIndex: 5 },
+        { collectionId: 2, name: 'Collection 2', visible: true, orderIndex: 3 },
+      ],
+    };
+
+    const result = updateBlockOrderIndex(imageBlock, collectionId, 10);
+
+    const resultWithCollections = result as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number }> };
+    expect(resultWithCollections.collections?.[0]?.orderIndex).toBe(10);
+    expect(resultWithCollections.collections?.[1]?.orderIndex).toBe(3); // Unchanged
+  });
+
+  it('should update orderIndex in collections array for text content', () => {
+    const textBlock = {
+      id: 2,
+      contentType: 'TEXT' as const,
+      orderIndex: 0,
+      content: 'Test',
+      format: 'plain' as const,
+      align: 'left' as const,
+      collections: [
+        { collectionId: 1, name: 'Collection 1', visible: true, orderIndex: 3 },
+      ],
+    } as AnyContentModel;
+
+    const result = updateBlockOrderIndex(textBlock, collectionId, 7);
+
+    const resultWithCollections = result as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number }> };
+    expect(resultWithCollections.collections?.[0]?.orderIndex).toBe(7);
+  });
+
+  it('should create collections array if it does not exist', () => {
+    const imageBlock: ImageContentModel = {
+      id: 1,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: 'test.jpg',
+    };
+
+    const result = updateBlockOrderIndex(imageBlock, collectionId, 5);
+
+    const resultWithCollections = result as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number }> };
+    expect(resultWithCollections.collections).toBeDefined();
+    expect(resultWithCollections.collections?.[0]?.collectionId).toBe(collectionId);
+    expect(resultWithCollections.collections?.[0]?.orderIndex).toBe(5);
+  });
+});
+
+describe('calculateReorderChanges', () => {
+  const collectionId = 1;
+
+  it('should calculate changes when moving forward (lower index to higher)', () => {
+    const collection = createCollectionModel({
+      id: collectionId,
+      content: [
+        createImageContent(1, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
+        }),
+        createImageContent(2, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 1 }],
+        }),
+        createImageContent(3, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 2 }],
+        }),
+      ],
+    });
+
+    const result = calculateReorderChanges(1, 3, collection, collectionId);
+
+    expect(result).toEqual([
+      { contentId: 1, newOrderIndex: 2 },
+      { contentId: 2, newOrderIndex: 0 },
+      { contentId: 3, newOrderIndex: 1 },
+    ]);
+  });
+
+  it('should calculate changes when moving backward (higher index to lower)', () => {
+    const collection = createCollectionModel({
+      id: collectionId,
+      content: [
+        createImageContent(1, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
+        }),
+        createImageContent(2, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 1 }],
+        }),
+        createImageContent(3, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 2 }],
+        }),
+      ],
+    });
+
+    const result = calculateReorderChanges(3, 1, collection, collectionId);
+
+    expect(result).toEqual([
+      { contentId: 3, newOrderIndex: 0 },
+      { contentId: 1, newOrderIndex: 1 },
+      { contentId: 2, newOrderIndex: 2 },
+    ]);
+  });
+
+  it('should return empty array when dragged and target are the same', () => {
+    const collection = createCollectionModel({
+      id: collectionId,
+      content: [
+        createImageContent(1, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
+        }),
+      ],
+    });
+
+    const result = calculateReorderChanges(1, 1, collection, collectionId);
+
+    expect(result).toEqual([]);
+  });
+
+  it('should return empty array when dragged content not found', () => {
+    const collection = createCollectionModel({
+      id: collectionId,
+      content: [
+        createImageContent(1, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
+        }),
+      ],
+    });
+
+    const result = calculateReorderChanges(999, 1, collection, collectionId);
+
+    expect(result).toEqual([]);
+  });
+});
+
+describe('applyReorderChangesOptimistically', () => {
+  const collectionId = 1;
+
+  it('should update orderIndex in collections array for all affected blocks', () => {
+    const collection = createCollectionModel({
+      id: collectionId,
+      content: [
+        createImageContent(1, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
+        }),
+        createImageContent(2, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 1 }],
+        }),
+        createImageContent(3, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 2 }],
+        }),
+      ],
+    });
+
+    const reorders = [
+      { contentId: 1, newOrderIndex: 2 },
+      { contentId: 2, newOrderIndex: 0 },
+      { contentId: 3, newOrderIndex: 1 },
+    ];
+
+    const result = applyReorderChangesOptimistically(collection, reorders, collectionId);
+
+    expect(result.content).toBeDefined();
+    expect(getContentOrderIndex(result.content![0]!, collectionId)).toBe(2);
+    expect(getContentOrderIndex(result.content![1]!, collectionId)).toBe(0);
+    expect(getContentOrderIndex(result.content![2]!, collectionId)).toBe(1);
+  });
+
+  it('should return unchanged collection when reorders is empty', () => {
+    const collection = createCollectionModel({
+      id: collectionId,
+      content: [
+        createImageContent(1, {
+          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
+        }),
+      ],
+    });
+
+    const result = applyReorderChangesOptimistically(collection, [], collectionId);
+
+    expect(result).toEqual(collection);
+  });
+});
+
+describe('executeReorderOperation', () => {
+  const collectionId = 1;
+  const slug = 'test-collection';
+  const mockReorders = [
+    { contentId: 1, newOrderIndex: 2 },
+    { contentId: 2, newOrderIndex: 0 },
+  ];
+
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('should call reorder API, refresh collection, and update cache', async () => {
+    const mockResponse = createCollectionUpdateResponse();
+    const mockGetCollectionUpdateMetadata = jest.fn().mockResolvedValue(mockResponse);
+    const mockCollectionStorage = { update: jest.fn() };
+    
+    // Mock reorderCollectionImages API function
+    jest.mocked(collectionsApi.reorderCollectionImages).mockResolvedValue({
+      updatedImages: [],
+    });
+    
+    // Mock fetch for revalidateCollectionCache
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    const result = await executeReorderOperation(
+      collectionId,
+      mockReorders,
+      slug,
+      mockGetCollectionUpdateMetadata,
+      mockCollectionStorage
+    );
+
+    expect(collectionsApi.reorderCollectionImages).toHaveBeenCalledWith(collectionId, [
+      { imageId: 1, newOrderIndex: 2 },
+      { imageId: 2, newOrderIndex: 0 },
+    ]);
+    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(slug);
+    expect(mockCollectionStorage.update).toHaveBeenCalledWith(slug, mockResponse.collection);
+    expect(result).toEqual(mockResponse);
+  });
+
+  it('should propagate error when API call fails', async () => {
+    const mockError = new Error('API Error');
+    const mockGetCollectionUpdateMetadata = jest.fn();
+    const mockCollectionStorage = { update: jest.fn() };
+    
+    // Mock reorderCollectionImages to throw error
+    jest.mocked(collectionsApi.reorderCollectionImages).mockRejectedValue(mockError);
+
+    await expect(
+      executeReorderOperation(
+        collectionId,
+        mockReorders,
+        slug,
+        mockGetCollectionUpdateMetadata,
+        mockCollectionStorage
+      )
+    ).rejects.toThrow('API Error');
   });
 });

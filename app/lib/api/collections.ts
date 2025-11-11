@@ -23,6 +23,7 @@ import {
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
+import { type ImageContentModel } from '@/app/types/Content';
 
 // ============================================================================
 // URL Helpers
@@ -260,4 +261,18 @@ export async function getCollectionUpdateMetadata(
  */
 export async function getMetadata(): Promise<GeneralMetadataDTO> {
   return fetchAdminGetApi<GeneralMetadataDTO>('/collections/metadata', { cache: 'no-store' });
+}
+
+/**
+ * POST /api/admin/collections/{collectionId}/reorder
+ * Reorder images in a collection
+ */
+export async function reorderCollectionImages(
+  collectionId: number,
+  reorders: Array<{ imageId: number; newOrderIndex: number }>
+): Promise<{ updatedImages: ImageContentModel[] }> {
+  return fetchAdminPostJsonApi<{ updatedImages: ImageContentModel[] }>(
+    `/collections/${collectionId}/reorder`,
+    { reorders }
+  );
 }

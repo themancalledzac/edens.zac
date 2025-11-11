@@ -30,6 +30,9 @@ export function useFullScreenImage() {
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const isSwiping = useRef<boolean>(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const showImage = useCallback((
     image: ImageBlock,
@@ -73,7 +76,7 @@ export function useFullScreenImage() {
     }
   }, [fullScreenState]);
 
-  // Keyboard, scroll prevention, and touch events
+  // Keyboard and scroll prevention
   useEffect(() => {
     if (!fullScreenState) return;
 
@@ -97,22 +100,48 @@ export function useFullScreenImage() {
 
     const preventScroll = (e: Event) => e.preventDefault();
 
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('wheel', preventScroll, { passive: false });
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('wheel', preventScroll);
+    };
+  }, [fullScreenState, navigateToNext, navigateToPrevious]);
+
+  // Touch event handlers attached directly to modal element
+  useEffect(() => {
+    if (!fullScreenState || !modalRef.current) return;
+
+    const modalElement = modalRef.current;
+
     // Touch event handlers for swipe detection
     const handleTouchStart = (e: TouchEvent) => {
       if (!e.touches[0]) return;
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
+      isSwiping.current = false;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      // Prevent default to avoid scrolling while swiping
-      if ((e.target as HTMLElement).closest(`.${styles.overlayContainer}`)) {
+      if (!e.touches[0]) return;
+      
+      const currentX = e.touches[0].clientX;
+      const currentY = e.touches[0].clientY;
+      const deltaX = currentX - touchStartX.current;
+      const deltaY = currentY - touchStartY.current;
+
+      // If horizontal movement is significant, prevent default and mark as swiping
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+        isSwiping.current = true;
         e.preventDefault();
       }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (!e.changedTouches[0]) return;
+      
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
 
@@ -121,7 +150,7 @@ export function useFullScreenImage() {
 
       // Only trigger swipe if horizontal movement is greater than vertical
       // This prevents accidental swipes when user tries to zoom/scroll
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > INTERACTION.swipeThreshold) {
+      if (isSwiping.current && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > INTERACTION.swipeThreshold) {
         if (deltaX > 0) {
           // Swiped right - go to previous image
           navigateToPrevious();
@@ -129,22 +158,29 @@ export function useFullScreenImage() {
           // Swiped left - go to next image
           navigateToNext();
         }
+        // Prevent click event from firing after swipe
+        if (overlayRef.current) {
+          overlayRef.current.style.pointerEvents = 'none';
+          setTimeout(() => {
+            if (overlayRef.current) {
+              overlayRef.current.style.pointerEvents = '';
+            }
+          }, 300);
+        }
       }
+      
+      isSwiping.current = false;
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('wheel', preventScroll, { passive: false });
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    // Attach touch handlers directly to modal element
+    modalElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+    modalElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+    modalElement.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
-      document.body.style.overflow = originalOverflow;
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('wheel', preventScroll);
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
+      modalElement.removeEventListener('touchstart', handleTouchStart);
+      modalElement.removeEventListener('touchmove', handleTouchMove);
+      modalElement.removeEventListener('touchend', handleTouchEnd);
     };
   }, [fullScreenState, navigateToNext, navigateToPrevious]);
 
@@ -154,6 +190,7 @@ export function useFullScreenImage() {
 
     const modalContent = (
       <div
+        ref={modalRef}
         className={styles.imageFullScreenWrapper}
         style={{
           top: `${fullScreenState.scrollPosition}px`, // Position at captured scroll position
@@ -161,7 +198,7 @@ export function useFullScreenImage() {
         role="dialog"
         aria-modal="true"
       >
-        <div className={styles.overlayContainer} onClick={hideImage}>
+        <div ref={overlayRef} className={styles.overlayContainer} onClick={hideImage}>
           <Image
             key={currentImage.id} // Force re-render on image change
             src={currentImage.imageUrl}

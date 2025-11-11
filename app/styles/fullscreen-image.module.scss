@@ -24,7 +24,7 @@
 
   /* Prevent scrolling interactions */
   overscroll-behavior: none;
-  touch-action: none;
+  touch-action: none; /* Prevent default touch behaviors, handle swipes in JS */
 
   @media (width <= 768px) {
     flex-direction: column;

@@ -29,13 +29,18 @@ import {
 import { type ContentImageUpdateResponse, type ImageContentModel } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isCollectionContent, isContentImage } from '@/app/utils/contentTypeGuards';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 import pageStyles from '../../../../page.module.scss';
 import styles from './ManageClient.module.scss';
 import {
+  applyReorderChangesOptimistically,
   buildCollectionsUpdate,
   buildUpdatePayload,
+  calculateReorderChanges,
   COVER_IMAGE_FLASH_DURATION,
+  executeReorderOperation,
+  getContentOrderIndex,
   getCurrentSelectedCollections,
   getDisplayedCoverImage,
   handleApiError,
@@ -45,10 +50,7 @@ import {
   handleSingleImageEdit,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
-  refreshCollectionData,
   revalidateCollectionCache,
-  updateCollectionCache,
-  updateCollectionState,
 } from './manageUtils';
 
 interface ManageClientProps {
@@ -86,6 +88,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
   const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
   const [isTextBlockModalOpen, setIsTextBlockModalOpen] = useState(false);
+  const [dragState, setDragState] = useState<{ draggedId: number | null; dragOverId: number | null }>({
+    draggedId: null,
+    dragOverId: null,
+  });
 
   const [createData, setCreateData] = useState<CollectionCreateRequest>({
     type: CollectionType.PORTFOLIO,
@@ -163,8 +169,8 @@ export default function ManageClient({ slug }: ManageClientProps) {
   // Process content blocks for display - same as collection page but without visibility filtering
   // Collections are converted to ParallaxImageContentModel, images get collection-specific orderIndex
   const processedContent = useMemo(
-    () => processContentBlocks(collection?.content ?? [], false, collection?.id),
-    [collection?.content, collection?.id]
+    () => processContentBlocks(collection?.content ?? [], false, collection?.id, collection?.displayMode),
+    [collection?.content, collection?.id, collection?.displayMode]
   );
 
   // Derive imagesToEdit from selectedImageIds
@@ -276,6 +282,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
       // Build payload with only changed fields
       const payload = buildUpdatePayload(updateData, collection);
+
+      // DEBUG: Log the payload to verify displayMode is included
+      if (isLocalEnvironment()) {
+        console.log('[handleUpdate] Payload being sent:', {
+          payload,
+          updateDataDisplayMode: updateData.displayMode,
+          collectionDisplayMode: collection.displayMode,
+          payloadJSON: JSON.stringify(payload, null, 2),
+        });
+      }
 
       await updateCollection(collection.id, payload);
 
@@ -453,9 +469,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
         }
 
         // Re-fetch full collection for state consistency
-        const fullResponse = await refreshCollectionData(slug, getCollectionUpdateMetadata);
-        setCurrentState(updateCollectionState(fullResponse));
-        updateCollectionCache(slug, fullResponse.collection, collectionStorage);
+        const fullResponse = await getCollectionUpdateMetadata(slug);
+        setCurrentState(fullResponse);
+        collectionStorage.update(slug, fullResponse.collection);
         await revalidateCollectionCache(slug);
 
         const metadataUpdater = mergeNewMetadata(response, currentState);
@@ -511,6 +527,138 @@ export default function ManageClient({ slug }: ManageClientProps) {
     },
     [originalCollectionIds, updateData.collections]
   );
+
+  // Drag handlers for reordering (supports both IMAGE and COLLECTION content)
+  const handleDragStart = useCallback((contentId: number) => {
+    if (!collection || collection.displayMode !== 'ORDERED' || !currentState) return;
+    
+    // Log which image is clicked
+    const blocks = currentState.collection.content || [];
+    const draggedBlock = blocks.find(b => b.id === contentId);
+    if (draggedBlock) {
+      const currentOrderIndex = getContentOrderIndex(draggedBlock, currentState.collection.id);
+      console.log('[Drag Start] Clicked image:', {
+        imageID: contentId,
+        currentOrderIndex: currentOrderIndex ?? 'undefined',
+      });
+    }
+    
+    setDragState({ draggedId: contentId, dragOverId: null });
+  }, [collection, currentState]);
+
+  const handleDragOver = useCallback((e: React.DragEvent, contentId: number) => {
+    if (!collection || collection.displayMode !== 'ORDERED' || !dragState.draggedId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragState(prev => ({ ...prev, dragOverId: contentId }));
+  }, [collection, dragState.draggedId]);
+
+  const handleDrop = useCallback(async (e: React.DragEvent, targetContentId: number) => {
+    e.preventDefault();
+    if (!dragState.draggedId || dragState.draggedId === targetContentId || !collection || !currentState) {
+      setDragState({ draggedId: null, dragOverId: null });
+      return;
+    }
+    
+    // Log drop target before reorder
+    const blocks = currentState.collection.content || [];
+    const draggedBlock = blocks.find(b => b.id === dragState.draggedId);
+    const targetBlock = blocks.find(b => b.id === targetContentId);
+    
+    if (draggedBlock && targetBlock) {
+      const draggedCurrentIndex = getContentOrderIndex(draggedBlock, currentState.collection.id);
+      const targetCurrentIndex = getContentOrderIndex(targetBlock, currentState.collection.id);
+      
+      console.log('[Drop] Dropping on image:', {
+        draggedImageID: dragState.draggedId,
+        draggedCurrentOrderIndex: draggedCurrentIndex ?? 'undefined',
+        targetImageID: targetContentId,
+        targetCurrentOrderIndex: targetCurrentIndex ?? 'undefined',
+      });
+    }
+    
+    // Calculate which images need to be reordered
+    const reorderChanges = calculateReorderChanges(
+      dragState.draggedId,
+      targetContentId,
+      currentState.collection,
+      collection.id
+    );
+
+    console.log('[Drop] Calculated reorder changes:', reorderChanges);
+
+    if (reorderChanges.length === 0) {
+      setDragState({ draggedId: null, dragOverId: null });
+      return;
+    }
+
+    // Store IDs before clearing drag state (needed for logging)
+    const draggedId = dragState.draggedId;
+
+    // OPTIMISTIC UPDATE: Immediately update UI to show the new order
+    const optimisticallyUpdatedCollection = applyReorderChangesOptimistically(
+      currentState.collection,
+      reorderChanges,
+      collection.id
+    );
+    
+    setCurrentState(prev => prev ? {
+      ...prev,
+      collection: optimisticallyUpdatedCollection,
+    } : null);
+    
+    // Clear drag state immediately so UI updates
+    setDragState({ draggedId: null, dragOverId: null });
+
+    // Now call API in the background
+    try {
+      setOperationLoading(true);
+      setError(null);
+
+      const response = await executeReorderOperation(
+        collection.id,
+        reorderChanges,
+        collection.slug,
+        getCollectionUpdateMetadata,
+        collectionStorage
+      );
+
+      if (response) {
+        // Update state with response from API (should match optimistic update)
+        setCurrentState(response);
+        
+        // Log final locations
+        const updatedBlocks = response.collection.content || [];
+        const finalDraggedBlock = updatedBlocks.find(b => b.id === draggedId);
+        const finalTargetBlock = updatedBlocks.find(b => b.id === targetContentId);
+        
+        if (finalDraggedBlock && finalTargetBlock) {
+          const finalDraggedIndex = getContentOrderIndex(finalDraggedBlock, collection.id);
+          const finalTargetIndex = getContentOrderIndex(finalTargetBlock, collection.id);
+          
+          console.log('[After API] Final locations:', {
+            draggedImageID: draggedId,
+            draggedFinalOrderIndex: finalDraggedIndex ?? 'undefined',
+            targetImageID: targetContentId,
+            targetFinalOrderIndex: finalTargetIndex ?? 'undefined',
+          });
+        }
+      } else {
+        // API failed - reload page to get correct state
+        window.location.reload();
+      }
+    } catch (error) {
+      // API failed - reload page to get correct state
+      console.error('Reorder failed:', error);
+      window.location.reload();
+    } finally {
+      setOperationLoading(false);
+    }
+  }, [dragState.draggedId, collection, currentState]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragState({ draggedId: null, dragOverId: null });
+  }, []);
 
   return (
     <div>
@@ -826,6 +974,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         selected)
                       </span>
                     )}
+                    {collection.displayMode === 'ORDERED' && !isSelectingCoverImage && selectedImageIds.length === 0 && (
+                      <span className={styles.selectingNotice}>
+                        (Drag and drop images to reorder)
+                      </span>
+                    )}
                   </h3>
                 </div>
                 <ContentBlockWithFullScreen
@@ -840,6 +993,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   currentCollectionId={collection.id}
                   collectionSlug={collection.slug}
                   collectionData={collection}
+                  enableDragAndDrop={collection.displayMode === 'ORDERED'}
+                  draggedImageId={dragState.draggedId}
+                  dragOverImageId={dragState.dragOverId}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragEnd={handleDragEnd}
                 />
               </div>
             )}

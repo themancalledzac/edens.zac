@@ -29,6 +29,14 @@ interface ContentBlockWithFullScreenProps {
   justClickedImageId?: number | null;
   selectedImageIds?: number[];
   currentCollectionId?: number;
+  // Drag-and-drop props for reordering
+  enableDragAndDrop?: boolean;
+  draggedImageId?: number | null;
+  dragOverImageId?: number | null;
+  onDragStart?: (imageId: number) => void;
+  onDragOver?: (e: React.DragEvent, imageId: number) => void;
+  onDrop?: (e: React.DragEvent, imageId: number) => void;
+  onDragEnd?: () => void;
 }
 
 /**
@@ -53,6 +61,13 @@ export default function ContentBlockWithFullScreen({
   justClickedImageId,
   selectedImageIds,
   currentCollectionId,
+  enableDragAndDrop = false,
+  draggedImageId,
+  dragOverImageId,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: ContentBlockWithFullScreenProps) {
   const { showImage, FullScreenModal } = useFullScreenImage();
 
@@ -130,6 +145,13 @@ export default function ContentBlockWithFullScreen({
         justClickedImageId={justClickedImageId}
         selectedImageIds={selectedImageIds}
         currentCollectionId={currentCollectionId}
+        enableDragAndDrop={enableDragAndDrop}
+        draggedImageId={draggedImageId}
+        dragOverImageId={dragOverImageId}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
       />
 
       {hasMore && (

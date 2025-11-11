@@ -356,6 +356,20 @@ function sortContentByOrderIndex(content: AnyContentModel[]): AnyContentModel[] 
 }
 
 /**
+ * Sort content blocks by createdAt date (chronological)
+ * 
+ * @param content - Array of content blocks to sort
+ * @returns Sorted array by createdAt (ascending - oldest first)
+ */
+function sortContentByCreatedAt(content: AnyContentModel[]): AnyContentModel[] {
+  return [...content].sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateA - dateB;
+  });
+}
+
+/**
  * Process content blocks for display, converting CollectionContentModel to ParallaxImageContentModel
  * and ensuring PARALLAX blocks have proper dimensions
  * Also filters out non-visible content blocks for public collection pages
@@ -365,18 +379,23 @@ function sortContentByOrderIndex(content: AnyContentModel[]): AnyContentModel[] 
  * @param content - Array of content blocks to process
  * @param filterVisible - If true, filters out blocks where visible === false (default: true for public pages)
  * @param collectionId - Optional collection ID to check collection-specific visibility
+ * @param displayMode - Display mode: 'CHRONOLOGICAL' sorts by createdAt, 'ORDERED' sorts by orderIndex
  * @returns Processed and sorted array of content blocks
  */
 export function processContentBlocks(
   content: AnyContentModel[],
   filterVisible: boolean = true,
-  collectionId?: number
+  collectionId?: number,
+  displayMode?: 'CHRONOLOGICAL' | 'ORDERED'
 ): AnyContentModel[] {
   let processed = filterVisibleBlocks(content, filterVisible, collectionId);
   processed = transformCollectionBlocks(processed);
   processed = updateImageOrderIndex(processed, collectionId);
   processed = ensureParallaxDimensions(processed);
-  processed = sortContentByOrderIndex(processed);
-  
+  // Sort based on display mode using a ternary expression
+  processed = displayMode === 'CHRONOLOGICAL'
+    ? sortContentByCreatedAt(processed)
+    : sortContentByOrderIndex(processed);
+
   return processed;
 }
