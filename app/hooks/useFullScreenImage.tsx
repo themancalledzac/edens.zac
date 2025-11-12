@@ -28,6 +28,7 @@ type FullScreenState = {
  */
 export function useFullScreenImage() {
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
+  const [showMetadata, setShowMetadata] = useState(false);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -52,6 +53,7 @@ export function useFullScreenImage() {
       currentIndex: currentIndex !== -1 ? currentIndex : 0,
       scrollPosition: currentScroll
     });
+    setShowMetadata(false); // Reset metadata visibility when showing new image
   }, []);
 
   const hideImage = () => {
@@ -184,6 +186,11 @@ export function useFullScreenImage() {
     };
   }, [fullScreenState, navigateToNext, navigateToPrevious]);
 
+  const toggleMetadata = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMetadata(prev => !prev);
+  };
+
   const FullScreenModal = fullScreenState ? (() => {
     const currentImage = fullScreenState.images[fullScreenState.currentIndex];
     if (!currentImage) return null;
@@ -199,22 +206,84 @@ export function useFullScreenImage() {
         aria-modal="true"
       >
         <div ref={overlayRef} className={styles.overlayContainer} onClick={hideImage}>
-          <Image
-            key={currentImage.id} // Force re-render on image change
-            src={currentImage.imageUrl}
-            alt={currentImage.title || currentImage.caption || 'Full screen image'}
-            width={currentImage.imageWidth || IMAGE.defaultWidth}
-            height={currentImage.imageHeight || IMAGE.defaultHeight}
-            style={{
-              maxWidth: '100%',
-              maxHeight: '100%',
-              width: 'auto',
-              height: 'auto',
-              objectFit: 'contain',
-            }}
-            priority
-            unoptimized
-          />
+          <div className={styles.imageWrapper}>
+            <Image
+              key={currentImage.id} // Force re-render on image change
+              src={currentImage.imageUrl}
+              alt={currentImage.title || currentImage.caption || 'Full screen image'}
+              width={currentImage.imageWidth || IMAGE.defaultWidth}
+              height={currentImage.imageHeight || IMAGE.defaultHeight}
+              className={styles.fullScreenImage}
+              priority
+              unoptimized
+            />
+            
+            <div
+              className={`${styles.metadataOverlay} ${showMetadata ? styles.metadataOverlayVisible : ''}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Metadata toggle button - always visible */}
+              <button
+                className={styles.metadataToggle}
+                onClick={toggleMetadata}
+                aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
+                aria-expanded={showMetadata}
+              >
+                <span aria-hidden="true">{showMetadata ? '↑' : '↓'}</span>
+              </button>
+
+              {/* Metadata content - only visible when showMetadata is true */}
+              {showMetadata && (
+                <div className={styles.metadataContent}>
+                  {currentImage.title && (
+                    <div className={styles.metadataTitle}>{currentImage.title}</div>
+                  )}
+                  {currentImage.author && (
+                    <div className={styles.metadataItem}>{currentImage.author}</div>
+                  )}
+                  {(currentImage.camera || currentImage.lens) && (
+                    <div className={styles.metadataItem}>
+                      {currentImage.camera && <span>{currentImage.camera.name}</span>}
+                      {currentImage.camera && currentImage.lens && <span className={styles.metadataSeparator}> / </span>}
+                      {currentImage.lens && <span>{currentImage.lens.name}</span>}
+                    </div>
+                  )}
+                  {(currentImage.iso || currentImage.fStop || currentImage.shutterSpeed || currentImage.focalLength) && (
+                    <div className={styles.metadataSettingsRow}>
+                      {currentImage.iso && <span>{currentImage.iso}</span>}
+                      {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
+                      {currentImage.fStop && <span>{currentImage.fStop}</span>}
+                      {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
+                    </div>
+                  )}
+                  {currentImage.people && currentImage.people.length > 0 && (
+                    <div className={styles.metadataSection}>
+                      <div className={styles.metadataSectionHeader}>People</div>
+                      <div className={styles.metadataSectionItems}>
+                        {currentImage.people.map((p, index) => (
+                          <div key={p.id || index} className={styles.metadataSectionItem}>
+                            {p.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {currentImage.collections && currentImage.collections.length > 0 && (
+                    <div className={styles.metadataSection}>
+                      <div className={styles.metadataSectionHeader}>Collections</div>
+                      <div className={styles.metadataSectionItems}>
+                        {currentImage.collections.map((c, index) => (
+                          <div key={c.collectionId || index} className={styles.metadataSectionItem}>
+                            {c.name || `Collection ${c.collectionId}`}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <button
