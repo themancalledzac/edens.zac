@@ -222,17 +222,19 @@ export function useFullScreenImage() {
               className={`${styles.metadataOverlay} ${showMetadata ? styles.metadataOverlayVisible : ''}`}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Metadata toggle button - always visible */}
               <button
                 className={styles.metadataToggle}
-                onClick={toggleMetadata}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMetadata(e);
+                }}
                 aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
                 aria-expanded={showMetadata}
+                type="button"
               >
-                <span aria-hidden="true">{showMetadata ? '↑' : '↓'}</span>
+                <span aria-hidden="true">{showMetadata ? '↓' : '↑'}</span>
               </button>
 
-              {/* Metadata content - only visible when showMetadata is true */}
               {showMetadata && (
                 <div className={styles.metadataContent}>
                   {currentImage.title && (

@@ -79,6 +79,7 @@
   flex-direction: column;
   align-items: flex-end;
   padding: 10px;
+  z-index: 10;
 
   @media (width > 768px) {
     padding: 20px;
@@ -91,7 +92,9 @@
 
 /* Metadata toggle button */
 .metadataToggle {
-  position: relative;
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
   width: 36px;
   height: 36px;
   border: none;
@@ -104,19 +107,25 @@
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s;
-  pointer-events: auto;
-  z-index: 1;
-  margin-bottom: 8px;
+  pointer-events: auto !important;
+  z-index: 11;
+  flex-shrink: 0;
 
   @media (width > 768px) {
+    bottom: 20px;
+    right: 20px;
     width: 40px;
     height: 40px;
     font-size: 20px;
-    margin-bottom: 12px;
   }
 
   &:hover {
     background-color: rgba(0, 0, 0, 0.8);
+  }
+
+  &:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline-offset: 2px;
   }
 }
 
@@ -126,17 +135,32 @@
   background: rgba(0, 0, 0, 0.8);
   border-radius: 8px;
   padding: 12px;
+  padding-bottom: 56px;
   color: white;
   font-size: 14px;
   line-height: 1.5;
   pointer-events: auto;
   max-height: 50vh;
   overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+  margin-bottom: 0;
 
   @media (width > 768px) {
     padding: 16px;
+    padding-bottom: 72px;
     font-size: 15px;
     max-height: 60vh;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
