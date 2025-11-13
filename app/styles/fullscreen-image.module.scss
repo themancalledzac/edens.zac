@@ -70,14 +70,21 @@
   bottom: var(--default-padding);
   pointer-events: none;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-direction: row; // Change to row so content and button are horizontal
+  align-items: flex-end; // Keep items aligned to bottom
+  justify-content: flex-end; // Align to the right side
   padding: 0;
   z-index: 10;
+  opacity: 0; // Start hidden
+  transition: opacity 0.1s ease-in; // Fade in transition
 }
 
 .metadataOverlayVisible {
   pointer-events: auto;
+}
+
+.metadataOverlayLoaded {
+  opacity: 1; // Show when loaded
 }
 
 .metadataToggle {
@@ -121,12 +128,12 @@
   }
 }
 
+/* Metadata content container */
 .metadataContent {
   width: 100%;
   background: rgba(0, 0, 0, 0.8);
   border-radius: 0;
-  padding: 12px;
-  padding-bottom: 56px;
+  padding: 12px 48px 12px 12px;
   color: white;
   font-size: 12px;
   line-height: 1.5;
@@ -135,10 +142,10 @@
   overflow-y: auto;
   animation: slideUp 0.15s ease-out;
   margin-bottom: 0;
+  margin-right: 0; // Ensure no margin
 
   @media (width > 768px) {
-    padding: 16px;
-    padding-bottom: 72px;
+    padding: 16px 56px 16px 16px;
     font-size: 13px;
     max-height: 60vh;
   }
@@ -211,17 +218,29 @@
   }
 }
 
+.metadataSectionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  @media (width > 768px) {
+    gap: 10px;
+  }
+}
+
 .metadataSectionHeader {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 8px;
+  margin-bottom: 0; // Remove bottom margin
+  flex-shrink: 0; // Prevent header from shrinking
 
   @media (width > 768px) {
     font-size: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 0; // Remove bottom margin
   }
 }
 
@@ -229,6 +248,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center; // Align items with header
 
   @media (width > 768px) {
     gap: 10px;
@@ -245,6 +265,15 @@
   @media (width > 768px) {
     padding: 6px 10px;
     font-size: 12px;
+  }
+}
+
+.metadataSectionItemClickable {
+  cursor: pointer;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.2);
   }
 }
 

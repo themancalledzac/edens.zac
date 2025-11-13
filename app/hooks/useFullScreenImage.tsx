@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -27,8 +28,10 @@ type FullScreenState = {
  * - FullScreenModal: component to render (or null if no image selected)
  */
 export function useFullScreenImage() {
+  const router = useRouter();
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
   const [showMetadata, setShowMetadata] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false); // Add image load state
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -54,6 +57,7 @@ export function useFullScreenImage() {
       scrollPosition: currentScroll
     });
     setShowMetadata(false); // Reset metadata visibility when showing new image
+    setImageLoaded(false); // Reset image load state when changing images
   }, []);
 
   const hideImage = () => {
@@ -216,25 +220,17 @@ export function useFullScreenImage() {
               className={styles.fullScreenImage}
               priority
               unoptimized
+              onLoad={() => setImageLoaded(true)} // Track when image loads
             />
             
             <div
               className={`${styles.metadataOverlay} ${showMetadata ? styles.metadataOverlayVisible : ''}`}
               onClick={(e) => e.stopPropagation()}
+              style={{
+                opacity: imageLoaded ? 1 : 0, // Fade in when image is loaded
+                transition: 'opacity 0.1s ease-in',
+              }}
             >
-              <button
-                className={styles.metadataToggle}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleMetadata(e);
-                }}
-                aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
-                aria-expanded={showMetadata}
-                type="button"
-              >
-                <span aria-hidden="true">{showMetadata ? '✕' : '↖'}</span>
-              </button>
-
               {showMetadata && (
                 <div className={styles.metadataContent}>
                   {currentImage.title && (
@@ -260,30 +256,76 @@ export function useFullScreenImage() {
                   )}
                   {currentImage.people && currentImage.people.length > 0 && (
                     <div className={styles.metadataSection}>
-                      <div className={styles.metadataSectionHeader}>People</div>
-                      <div className={styles.metadataSectionItems}>
-                        {currentImage.people.map((p, index) => (
-                          <div key={p.id || index} className={styles.metadataSectionItem}>
-                            {p.name}
-                          </div>
-                        ))}
+                      <div className={styles.metadataSectionRow}>
+                        <div className={styles.metadataSectionHeader}>People</div>
+                        <div className={styles.metadataSectionItems}>
+                          {currentImage.people.map((p, index) => (
+                            <div key={p.id || index} className={styles.metadataSectionItem}>
+                              {p.name}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
                   {currentImage.collections && currentImage.collections.length > 0 && (
                     <div className={styles.metadataSection}>
+                      <div className={styles.metadataSectionRow}>
+                        <div className={styles.metadataSectionHeader}>Collections</div>
+                        <div className={styles.metadataSectionItems}>
+                          {currentImage.collections.map((c, index) => (
+                            <div 
+                              key={c.collectionId || index} 
+                              className={`${styles.metadataSectionItem} ${c.slug ? styles.metadataSectionItemClickable : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (c.slug) {
+                                  hideImage(); // Close the fullscreen modal first
+                                  router.push(`/${c.slug}`);
+                                }
+                              }}
+                            >
+                              {c.name || `Collection ${c.collectionId}`}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Debug: Show if collections field exists but is empty */}
+                  {currentImage.collections && currentImage.collections.length === 0 && (
+                    <div className={styles.metadataSection}>
                       <div className={styles.metadataSectionHeader}>Collections</div>
-                      <div className={styles.metadataSectionItems}>
-                        {currentImage.collections.map((c, index) => (
-                          <div key={c.collectionId || index} className={styles.metadataSectionItem}>
-                            {c.name || `Collection ${c.collectionId}`}
-                          </div>
-                        ))}
+                      <div className={styles.metadataItem} style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                        (No collections - array is empty)
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Debug: Show if collections field doesn't exist */}
+                  {!currentImage.collections && (
+                    <div className={styles.metadataSection}>
+                      <div className={styles.metadataSectionHeader}>Collections</div>
+                      <div className={styles.metadataItem} style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                        (No collections field on image)
                       </div>
                     </div>
                   )}
                 </div>
               )}
+              <button
+                className={styles.metadataToggle}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMetadata(e);
+                }}
+                aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
+                aria-expanded={showMetadata}
+                type="button"
+              >
+                <span aria-hidden="true">{showMetadata ? '✕' : '↖'}</span>
+              </button>
             </div>
           </div>
         </div>
