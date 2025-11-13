@@ -232,7 +232,7 @@ export function useFullScreenImage() {
                 aria-expanded={showMetadata}
                 type="button"
               >
-                <span aria-hidden="true">{showMetadata ? '↓' : '↑'}</span>
+                <span aria-hidden="true">{showMetadata ? '✕' : '↖'}</span>
               </button>
 
               {showMetadata && (

@@ -1,13 +1,8 @@
-/* Full Screen Image Modal Styles */
-
-/* Main wrapper positioned at current scroll position */
-/* Rendered via portal at body level, so position: fixed works relative to viewport */
 .imageFullScreenWrapper {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  /* top is set inline to scroll position */
   width: 100vw;
   height: 100vh;
   display: flex;
@@ -16,39 +11,35 @@
   z-index: var(--z-fullscreen);
   overflow: hidden;
 
-  /* Reset inherited styles - these need !important to override global styles */
   margin: 0 !important;
   padding: 0 !important;
-  transform: none !important; /* Override body's 3D transform context */
-  perspective: none !important; /* Override body's parallax perspective */
+  transform: none !important;
+  perspective: none !important;
 
-  /* Prevent scrolling interactions */
   overscroll-behavior: none;
-  touch-action: none; /* Prevent default touch behaviors, handle swipes in JS */
+  touch-action: none;
 
   @media (width > 768px) {
     flex-direction: row;
   }
 }
 
-/* Container for the image with centering */
 .overlayContainer {
   flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 10px;
+  padding: var(--default-padding) 0;
   width: 100%;
   height: 100%;
   max-width: 100%;
   max-height: 100%;
 
   @media (width > 768px) {
-    padding: 20px;
+    padding: var(--default-padding);
   }
 }
 
-/* Wrapper for image and metadata overlay - sizes to the actual image */
 .imageWrapper {
   position: relative;
   display: inline-flex;
@@ -58,28 +49,25 @@
   max-height: 100%;
 }
 
-/* Full screen image styling */
 .fullScreenImage {
-  /* Constrain relative to viewport, accounting for overlayContainer padding */
-  max-width: calc(100vw - 20px); /* 10px padding on each side */
-  max-height: calc(100vh - 20px); /* 10px padding on top and bottom */
+  max-width: 100vw;
+  max-height: calc(100vh - calc(var(--default-padding) * 2));
   width: auto;
   height: auto;
   object-fit: contain;
   display: block;
 
   @media (width > 768px) {
-    max-width: calc(100vw - 40px); /* 20px padding on each side */
-    max-height: calc(100vh - 40px); /* 20px padding on top and bottom */
+    max-width: calc(100vw - calc(var(--default-padding) * 2));
+    max-height: calc(100vh - calc(var(--default-padding) * 2));
   }
 }
 
-/* Metadata overlay container */
 .metadataOverlay {
   position: absolute;
-  left: var(--default-padding);   /* 0.8rem from image left edge */
-  right: var(--default-padding);  /* 0.8rem from image right edge */
-  bottom: var(--default-padding); /* 0.8rem above image bottom */
+  left: var(--default-padding);
+  right: var(--default-padding);
+  bottom: var(--default-padding);
   pointer-events: none;
   display: flex;
   flex-direction: column;
@@ -92,18 +80,17 @@
   pointer-events: auto;
 }
 
-/* Metadata toggle button */
 .metadataToggle {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
+  bottom: 0;
+  right: 0;
   width: 36px;
   height: 36px;
   border: none;
   background: rgba(0, 0, 0, 0.6);
   color: white;
   font-size: 18px;
-  border-radius: 50%;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -112,10 +99,9 @@
   pointer-events: auto !important;
   z-index: 11;
   flex-shrink: 0;
+  outline: none;
 
   @media (width > 768px) {
-    bottom: 20px;
-    right: 20px;
     width: 40px;
     height: 40px;
     font-size: 20px;
@@ -125,32 +111,35 @@
     background-color: rgba(0, 0, 0, 0.8);
   }
 
-  &:focus {
+  &:focus-visible {
     outline: 2px solid rgba(255, 255, 255, 0.5);
     outline-offset: 2px;
   }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
-/* Metadata content container */
 .metadataContent {
   width: 100%;
   background: rgba(0, 0, 0, 0.8);
-  border-radius: 8px;
+  border-radius: 0;
   padding: 12px;
   padding-bottom: 56px;
   color: white;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.5;
   pointer-events: auto;
   max-height: 50vh;
   overflow-y: auto;
-  animation: slideUp 0.3s ease-out;
+  animation: slideUp 0.15s ease-out;
   margin-bottom: 0;
 
   @media (width > 768px) {
     padding: 16px;
     padding-bottom: 72px;
-    font-size: 15px;
+    font-size: 13px;
     max-height: 60vh;
   }
 }
@@ -166,20 +155,18 @@
   }
 }
 
-/* Metadata title */
 .metadataTitle {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
   margin-bottom: 8px;
   color: white;
 
   @media (width > 768px) {
-    font-size: 20px;
+    font-size: 17px;
     margin-bottom: 10px;
   }
 }
 
-/* Metadata item */
 .metadataItem {
   margin-bottom: 6px;
   color: rgba(255, 255, 255, 0.9);
@@ -189,13 +176,11 @@
   }
 }
 
-/* Metadata separator */
 .metadataSeparator {
   color: rgba(255, 255, 255, 0.5);
   margin: 0 4px;
 }
 
-/* Metadata settings row (ISO, shutter speed, etc.) */
 .metadataSettingsRow {
   display: flex;
   flex-wrap: wrap;
@@ -215,7 +200,6 @@
   }
 }
 
-/* Metadata section (People, Collections) */
 .metadataSection {
   margin-top: 12px;
   padding-top: 12px;
@@ -227,9 +211,8 @@
   }
 }
 
-/* Metadata section header */
 .metadataSectionHeader {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -237,12 +220,11 @@
   margin-bottom: 8px;
 
   @media (width > 768px) {
-    font-size: 14px;
+    font-size: 12px;
     margin-bottom: 10px;
   }
 }
 
-/* Metadata section items container */
 .metadataSectionItems {
   display: flex;
   flex-wrap: wrap;
@@ -253,21 +235,19 @@
   }
 }
 
-/* Metadata section item */
 .metadataSectionItem {
   padding: 4px 8px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.9);
 
   @media (width > 768px) {
     padding: 6px 10px;
-    font-size: 14px;
+    font-size: 12px;
   }
 }
 
-/* Close button styled as circle with X */
 .closeButton {
   position: absolute;
   top: 20px;
