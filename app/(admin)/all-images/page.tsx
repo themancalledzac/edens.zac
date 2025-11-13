@@ -38,6 +38,8 @@ function createMockCollection(images: ContentImageModel[]): CollectionModel {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     visible: true,
+    displayMode: 'CHRONOLOGICAL', // Order by creation date
+    contentPerPage: 200, // Show 200 images per page
     content: images,
     contentCount: images.length,
   };
@@ -49,6 +51,11 @@ export default async function AllImagesPage() {
   // Create a mock collection structure that CollectionPage can process
   const mockCollection = createMockCollection(allImages);
 
-  return <CollectionPage collection={mockCollection} />;
+  return <CollectionPage collection={mockCollection} chunkSize={4} />;
 }
+
+// TODO: Future implementation - Person page
+// Create app/(admin)/person/[personId]/page.tsx
+// Endpoint: GET /api/admin/content/images/person/{personId}
+// Reuse same pattern: createMockCollection(images) -> CollectionPage
 

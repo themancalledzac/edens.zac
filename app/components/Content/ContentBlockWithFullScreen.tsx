@@ -19,6 +19,7 @@ interface ContentBlockWithFullScreenProps {
   priorityBlockIndex?: number;
   enableFullScreenView?: boolean;
   initialPageSize?: number; // How many blocks to show initially (default: show all)
+  chunkSize?: number; // Number of images per row (default: 2)
   // Collection caching for manage page optimization
   collectionSlug?: string; // If provided, will cache collection data
   collectionData?: CollectionModel; // The full collection to cache
@@ -53,6 +54,7 @@ export default function ContentBlockWithFullScreen({
   priorityBlockIndex,
   enableFullScreenView,
   initialPageSize,
+  chunkSize,
   collectionSlug,
   collectionData,
   isSelectingCoverImage,
@@ -145,6 +147,7 @@ export default function ContentBlockWithFullScreen({
         justClickedImageId={justClickedImageId}
         selectedImageIds={selectedImageIds}
         currentCollectionId={currentCollectionId}
+        chunkSize={chunkSize}
         enableDragAndDrop={enableDragAndDrop}
         draggedImageId={draggedImageId}
         dragOverImageId={dragOverImageId}

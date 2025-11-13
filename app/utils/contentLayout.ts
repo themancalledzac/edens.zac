@@ -12,7 +12,7 @@ import { getContentDimensions, hasImage, isContentCollection, isContentImage } f
  */
 
 /**
- * Chunk ContentModels based on standalone rules (panorama, high-rated horizontals)
+ * Chunk ContentModels based on standalone rules (panorama) and slot width system (rated images)
  */
 export function chunkContent(
   content: AnyContentModel[],
@@ -21,52 +21,103 @@ export function chunkContent(
   if (!content || content.length === 0) return [];
 
   const result: AnyContentModel[][] = [];
-  let currentChunk: AnyContentModel[] = [];
+  let currentRow: AnyContentModel[] = [];
+  let currentRowSlots: number = 0;
 
   for (const contentItem of content) {
-    // Check if this contentItem should be standalone
-    if (shouldBeStandalone(contentItem)) {
-      // Finish current chunk if it has content
-      if (currentChunk.length > 0) {
-        result.push([...currentChunk]);
-        currentChunk = [];
+    const slotWidth = getSlotWidth(contentItem, chunkSize);
+    
+    // Standalone items (panoramas) get their own row
+    if (slotWidth === Infinity) {
+      // Finish current row if it has content
+      if (currentRow.length > 0) {
+        result.push([...currentRow]);
+        currentRow = [];
+        currentRowSlots = 0;
       }
       // Add as standalone
       result.push([contentItem]);
       continue;
     }
 
-    // Add to current chunk
-    currentChunk.push(contentItem);
-    if (currentChunk.length === chunkSize) {
-      result.push([...currentChunk]);
-      currentChunk = [];
+    // If item needs more slots than available, make it standalone
+    if (slotWidth > chunkSize) {
+      // Finish current row if it has content
+      if (currentRow.length > 0) {
+        result.push([...currentRow]);
+        currentRow = [];
+        currentRowSlots = 0;
+      }
+      result.push([contentItem]);
+      continue;
+    }
+
+    // Check if item fits in current row
+    if (currentRowSlots + slotWidth <= chunkSize) {
+      currentRow.push(contentItem);
+      currentRowSlots += slotWidth;
+      
+      // Row is full, start new row
+      if (currentRowSlots === chunkSize) {
+        result.push([...currentRow]);
+        currentRow = [];
+        currentRowSlots = 0;
+      }
+    } else {
+      // Item doesn't fit, finish current row and start new one
+      if (currentRow.length > 0) {
+        result.push([...currentRow]);
+      }
+      currentRow = [contentItem];
+      currentRowSlots = slotWidth;
     }
   }
 
   // Add remaining content if any
-  if (currentChunk.length > 0) {
-    result.push(currentChunk);
+  if (currentRow.length > 0) {
+    result.push(currentRow);
   }
 
   return result;
 }
 
 /**
+ * Get the slot width for a content item
+ * @returns slot width: 1 (normal), 2 (4-star), 3 (5-star), or Infinity (standalone/panorama)
+ */
+function getSlotWidth(
+  contentItem: AnyContentModel,
+  _chunkSize: number
+): number {
+  if (!hasImage(contentItem)) return 1;
+
+  // Panoramas are always standalone (full width)
+  const { width, height } = getContentDimensions(contentItem);
+  const aspectRatio = width / Math.max(1, height);
+  const isPanorama = aspectRatio >= 2;
+  if (isPanorama) return Infinity;
+
+  // Rating-based slot width (only for images)
+  // Only apply to images that are wider than tall (aspect ratio >= 1.0)
+  // Taller images (aspect ratio < 1.0) don't get slot width to prevent taking too much horizontal space
+  if (isContentImage(contentItem)) {
+    const rating = contentItem.rating;
+    const isWiderThanTall = aspectRatio >= 1.0;
+    
+    if (isWiderThanTall) {
+      if (rating === 5) return 3; // 5-star = 3 slots
+      if (rating === 4) return 2; // 4-star = 2 slots
+    }
+  }
+
+  return 1; // Normal = 1 slot
+}
+
+/**
  * Determine if a Content should be rendered standalone
  */
 export function shouldBeStandalone(contentItem: AnyContentModel): boolean {
-  if (!hasImage(contentItem)) return false;
-
-  const { width, height } = getContentDimensions(contentItem);
-  const ratio = width / Math.max(1, height);
-  const isPanorama = ratio >= 2;
-  const isVertical = height > width;
-
-  // Check for high rating (5-star) if it's an image contentItem
-  const isHighRated = isContentImage(contentItem) && contentItem.rating === 5;
-
-  return isPanorama || (isHighRated && !isVertical);
+  return getSlotWidth(contentItem, 2) === Infinity; // chunkSize doesn't matter for standalone check
 }
 
 // ===================== Content sizing =====================
@@ -81,10 +132,12 @@ export interface CalculatedContentSize {
  * Calculate display sizes for a row of ContentModels so their heights match
  * and their widths sum to the component width
  * Accounts for padding between images (.imageLeft padding-right: 0.4rem + .imageRight padding-left: 0.4rem = 0.8rem total)
+ * Accounts for slot width: rated images (4-5 star) take 2-3x the proportional space
  */
 export function calculateContentSizes(
   content: AnyContentModel[],
-  componentWidth: number
+  componentWidth: number,
+  chunkSize: number = 2
 ): CalculatedContentSize[] {
   if (!content || content.length === 0) return [];
 
@@ -93,8 +146,28 @@ export function calculateContentSizes(
     if (!contentElement) return [];
 
     const { width, height } = getContentDimensions(contentElement);
+    
+    // Validate dimensions
+    if (width <= 0 || height <= 0) {
+      // Fallback to default aspect ratio
+      return [{
+        content: contentElement,
+        width: componentWidth,
+        height: componentWidth / 1.5, // Default 3:2 aspect ratio
+      }];
+    }
+    
     const ratio = width / Math.max(1, height);
     const displayHeight = componentWidth / ratio;
+
+    // Validate calculated height
+    if (!Number.isFinite(displayHeight) || displayHeight <= 0) {
+      return [{
+        content: contentElement,
+        width: componentWidth,
+        height: componentWidth / 1.5, // Fallback to default aspect ratio
+      }];
+    }
 
     return [{
       content: contentElement,
@@ -103,25 +176,97 @@ export function calculateContentSizes(
     }];
   }
 
-  // Calculate ratios for all content
+  // Calculate ratios for all content, using effective dimensions for rated images
+  // For 4-5 star images, scale BOTH width and height by slot width to get effective dimensions
+  // This preserves aspect ratio while giving them 2-3x the space
   // Note: Padding (.imageLeft, .imageRight) is INSIDE the div width due to box-sizing: border-box
   // So we don't subtract padding - the divs should sum to the full componentWidth
   const ratios = content.map(contentItem => {
     const { width, height } = getContentDimensions(contentItem);
-    return width / Math.max(1, height);
+    const slotWidth = getSlotWidth(contentItem, chunkSize);
+    
+    // Guard: Standalone items (Infinity slot width) should never reach here
+    // If they do, treat as normal (1 slot) to prevent NaN calculations
+    if (slotWidth === Infinity) {
+      const baseRatio = width / Math.max(1, height);
+      return baseRatio;
+    }
+    
+    // Validate dimensions to prevent division by zero or invalid calculations
+    if (width <= 0 || height <= 0) {
+      // Fallback to default aspect ratio if dimensions are invalid
+      return 1.5; // Default 3:2 aspect ratio
+    }
+    
+    // For rated images, scale both dimensions by slot width to get effective dimensions
+    // This means a 4-star image (2 slots) is treated as 2x larger in both dimensions
+    // Example: 640x180 becomes 1280x360 for space calculation (same ratio, 2x size)
+    const effectiveWidth = width * slotWidth;
+    const effectiveHeight = height * slotWidth;
+    const effectiveRatio = effectiveWidth / Math.max(1, effectiveHeight);
+    
+    return effectiveRatio;
   });
 
-  const ratioSum = ratios.reduce((sum, ratio) => sum + ratio, 0);
+  const ratioSum = ratios.reduce((sum, ratio) => {
+    // Filter out invalid ratios (NaN, Infinity, or 0)
+    if (!Number.isFinite(ratio) || ratio <= 0) return sum;
+    return sum + ratio;
+  }, 0);
+  
+  // Guard against division by zero
+  if (ratioSum === 0 || !Number.isFinite(ratioSum)) {
+    // Fallback: distribute width equally among all items
+    const equalWidth = componentWidth / content.length;
+    return content.map(contentItem => {
+      const { width, height } = getContentDimensions(contentItem);
+      const ratio = width / Math.max(1, height);
+      const calculatedHeight = equalWidth / ratio;
+      return {
+        content: contentItem,
+        width: equalWidth,
+        height: calculatedHeight,
+      };
+    });
+  }
+  
   const commonHeight = componentWidth / ratioSum;
 
   return content.map((contentItem, idx) => {
     const ratio = ratios[idx];
-    if (!ratio) return { content: contentItem, width: 0, height: 0 };
+    if (!ratio || !Number.isFinite(ratio) || ratio <= 0) {
+      return { content: contentItem, width: 0, height: 0 };
+    }
+
+    // Calculate width from effective ratio (gives 2-3x space for rated images)
+    const calculatedWidth = ratio * commonHeight;
+    
+    // Calculate height to preserve the ORIGINAL aspect ratio (not effective)
+    // We use the original dimensions, not the effective ones, for the final height
+    const { width: originalWidth, height: originalHeight } = getContentDimensions(contentItem);
+    
+    // Validate original dimensions
+    if (originalWidth <= 0 || originalHeight <= 0) {
+      // Fallback: use calculated width with default aspect ratio
+      return {
+        content: contentItem,
+        width: calculatedWidth,
+        height: calculatedWidth / 1.5, // Default 3:2 aspect ratio
+      };
+    }
+    
+    const originalRatio = originalWidth / Math.max(1, originalHeight);
+    const calculatedHeight = calculatedWidth / originalRatio;
+
+    // Validate calculated dimensions
+    if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight) || calculatedWidth <= 0 || calculatedHeight <= 0) {
+      return { content: contentItem, width: 0, height: 0 };
+    }
 
     return {
       content: contentItem,
-      width: ratio * commonHeight,
-      height: commonHeight,
+      width: calculatedWidth,
+      height: calculatedHeight,
     };
   });
 }
@@ -135,7 +280,7 @@ export function processContentForDisplay(
   chunkSize: number = 2
 ): CalculatedContentSize[][] {
   const chunks = chunkContent(content, chunkSize);
-  return chunks.map(chunk => calculateContentSizes(chunk, componentWidth));
+  return chunks.map(chunk => calculateContentSizes(chunk, componentWidth, chunkSize));
 }
 
 /**

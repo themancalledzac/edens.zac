@@ -22,6 +22,7 @@ export interface ContentComponentProps {
   onFullScreenImageClick?: (image: any) => void; // Accepts any image type (normalized in renderer)
   selectedImageIds?: number[]; // Array of selected image IDs for bulk editing
   currentCollectionId?: number; // ID of current collection (for checking collection-specific visibility)
+  chunkSize?: number; // Number of images per row (default: 2)
   // Drag-and-drop props for reordering
   enableDragAndDrop?: boolean;
   draggedImageId?: number | null;
@@ -50,6 +51,7 @@ export default function Component({
   onFullScreenImageClick,
   selectedImageIds = [],
   currentCollectionId,
+  chunkSize = 2,
   enableDragAndDrop = false,
   draggedImageId,
   dragOverImageId: _dragOverImageId,
@@ -58,7 +60,6 @@ export default function Component({
   onDrop,
   onDragEnd,
 }: ContentComponentProps) {
-  const chunkSize = 2;
   const { contentWidth, isMobile } = useViewport();
 
   const rows = useMemo(() => {
