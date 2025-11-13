@@ -35,109 +35,106 @@
 
 ---
 
-## Active Refactoring Tasks
+## High Priority Features (Next Up)
 
-#### 1. Refactoring Content Renderer ✅ **COMPLETE**
+#### 1. Image Metadata Dropdown on Full Screen Image
+- Add clickable button/icon to show/hide metadata panel in fullscreen view
+- Display: other collections, people, camera, lens, fstop/aperture, shutter speed, ISO, etc.
+- Reuse existing metadata structure from `ImageMetadataModal`
+- Consider creating `FullScreenImageMetadata` component
+- Easy win: Extract metadata display logic from `ImageMetadataModal` into reusable component
 
-**Goal**: Consolidate all content renderers (ImageBlockRenderer, ParallaxImageRenderer, CollectionContentRenderer, GifContentBlockRenderer, TextBlockRenderer) into a single `CollectionContentRenderer` that handles all content types with normalized props.
+**Implementation Findings:**
+- **Fullscreen Component**: `app/hooks/useFullScreenImage.tsx` - renders modal via portal at body level ( this should already be done )
+- **Current Layout**: Mobile-first flexbox - defaults to `flex-direction: column` (mobile), switches to `flex-direction: row` only on desktop when width is super wide (16:9 or 2:1 aspect ratio)
+- **Styles**: `app/styles/fullscreen-image.module.scss` - image centered in `overlayContainer`
+- **Metadata Source**: `ContentImageModel` type contains all metadata fields (title, caption, camera, lens, ISO, f-stop, shutter speed, tags, people, collections, etc.)
+- **Metadata Display Logic**: `ImageMetadataModal.tsx` has all the form rendering logic - need to extract read-only display version
+- **Implementation Plan**:
+  1. Create `FullScreenImageMetadata.tsx` component (read-only metadata display)
+  2. Extract metadata rendering from `ImageMetadataModal` - create reusable `MetadataDisplay` component or utility
+  3. Add toggle button with down arrow (↓) at bottom of image (default mobile layout), positioned on right side only on wide desktop screens
+  4. Arrow flips to up arrow (↑) when metadata is visible
+  5. Add hover effect on arrow (slight highlight/glow)
+  6. Implement slide-in animation (0.2s transition):
+     - Default (mobile): Slide down from bottom of image
+     - Wide desktop only: Slide in from right side
+  7. Ensure image container has enough space - metadata should not push image around
+  8. Update `useFullScreenImage` hook to accept and pass image metadata
+  9. Responsive breakpoint: Use 16:9 or 2:1 aspect ratio check for wide desktop layout (metadata on right) - mobile-first means this is an enhancement, not the default
+- **Key Files to Modify**:
+  - `app/hooks/useFullScreenImage.tsx` - add metadata panel state and rendering
+  - `app/styles/fullscreen-image.module.scss` - add metadata panel styles and animations
+  - `app/components/ImageMetadata/` - create new `FullScreenImageMetadata.tsx` component
+  - `app/components/Content/ContentBlockWithFullScreen.tsx` - ensure image metadata is passed to fullscreen hook
 
-**Key Principles**:
-- Remove PARALLAX as a separate contentType - it's just a boolean `enableParallax` flag
-- Normalize all content types to simple props in `Component.tsx` before passing to renderer
-- Move all comparison/normalization logic to utils files
-- Preserve all existing styling and behavior exactly
+#### 2. People Page
+- New route/page for viewing images by person
+- Click person name from metadata (step 1) → navigate to people page
+- Backend: New endpoint `getImagesByPerson(personId)` - returns images where person is tagged
+- Reuse `CollectionPage`/`ContentBlockWithFullScreen` logic (same pattern as collections)
+- URL structure: `/people/[personId]` or `/people/[personSlug]`
+- Easy win: Create `PeoplePage.tsx` component that mirrors `CollectionPage.tsx` structure
 
-**Implementation Steps**:
+#### 3. Admin getAllImages Endpoint
+- Option A: Separate admin endpoint `getAllImagesAdmin()` that returns all images (including non-visible)
+- Option B: Enhance existing `getAllImages()` to check admin status - return all if admin, only visible if public
+- Consider: Add `isAdmin` check in API route handler
+- Easy win: Add visibility filter parameter to existing endpoint
 
-1. ✅ **Create ContentRendererProps type** (`app/types/ContentRenderer.ts`)
-   - Defined normalized props interface for renderer
-   - Includes: contentId, className, width, height, imageUrl, imageWidth, imageHeight, alt, overlayText, cardTypeBadge, enableParallax, hasSlug, isCollection, contentType (IMAGE|TEXT|GIF|COLLECTION - NO PARALLAX), textContent, textAlign, isGif
-   - Handler props extend this base interface
+#### 4. Image Filter Bar
+- Add filter UI component at top of getAllImages page
+- Filter by: tags, people, location, camera, lens, date range, etc.
+- Reusable component for future use on other pages (collections, people page, etc.)
+- Create `ImageFilterBar` component in `app/components/ImageFilter/`
+- Backend: Add filter parameters to `getAllImages` endpoint
+- Easy win: Start with simple tag/people filters, expand later
 
-2. ✅ **Update contentTypeGuards.ts** - Remove all PARALLAX references
-   - Removed `isParallaxImageContent()` function entirely
-   - Removed `contentType === 'PARALLAX'` checks from `hasImage()` and `getContentDimensions()`
-   - Removed 'PARALLAX' from `validateContentBlock()` array
-   - Updated `hasImage()` to only check IMAGE and GIF
-   - Updated `getContentDimensions()` to only check `isContentImage()`
+#### 5. Collection Top Bar with Parallax Cover Image
+- Add header section to collection pages with:
+  - Parallax cover image (reuse existing parallax logic)
+  - Text box overlay with collection metadata: Title, Location, Description, Date, etc.
+- Create `CollectionHeader` component
+- Position above `ContentBlockWithFullScreen` in `CollectionPage`
+- Easy win: Reuse `CollectionContentRenderer` parallax image logic for cover
 
-3. ✅ **Create contentRendererUtils.ts** (`app/utils/contentRendererUtils.ts`)
-   - `determinePositionClassName()` - REPLACES Component.tsx lines 46-50 logic exactly
-     - Takes totalInRow, index, styles object
-     - Returns: imageSingle | imageLeft | imageRight | imageMiddle
-   - `normalizeContentToRendererProps()` - Normalizes any content type to ContentRendererProps
-     - Handles COLLECTION (uses coverImage, enableParallax=true)
-     - Handles IMAGE (enableParallax=false, but can be enabled later)
-     - Handles legacy PARALLAX (converts to IMAGE with enableParallax=true)
-     - Handles GIF (uses gifUrl, isGif=true)
-     - Handles TEXT (textContent, textAlign)
-   - `determineContentRendererProps()` - REPLACES determineBaseProps entirely
-     - Combines position logic + content normalization
-     - Takes item, totalInRow, index, isMobile, styles
-     - Returns complete ContentRendererProps
+#### 6. Blog Page Integration Strategy
+- Analyze how blog pages differ from standard collections:
+  - Text-heavy content blocks
+  - Different layout requirements
+  - Reading flow vs. gallery browsing
+- Consider: Separate `BlogPage` component or enhanced `CollectionPage` with `displayMode: 'BLOG'`
+- Research: How should blog navigation work? Table of contents? Previous/Next post?
+- Easy win: Document differences first, then implement
 
-4. ✅ **Update Component.tsx**
-   - Removed `determineBaseProps()` function entirely
-   - Imported `determineContentRendererProps` from utils
-   - In rows.map, calls `determineContentRendererProps()` once per item
-   - Passes all handler props to CollectionContentRenderer
-   - Removed all type checking logic (isContentCollection, isParallaxImageContent, etc.)
-   - Single renderer call for ALL content types
+#### 7. iOS/Android Image File Format Support
+- Add support for HEIC/HEIF (iOS) and WebP (Android) image formats
+- Backend: Ensure image processing pipeline handles these formats
+- Frontend: Display these formats correctly in image components
+- Consider: Conversion to standard formats for compatibility
+- Easy win: Check Next.js Image component support for these formats
 
-5. ✅ **Update CollectionContentRenderer.tsx**
-   - Accepts `ContentRendererProps` interface (extends with handler props)
-   - Removed all content type checking (no isContentCollection, isParallaxImageContent, etc.)
-   - Uses `enableParallax` boolean prop directly (no type checks)
-   - Conditionally uses `useParallax()` hook based on `enableParallax` prop
-   - Renders proper wrapper structure matching ContentWrapper for non-parallax images
-   - Handles TEXT content rendering (blockContainer, blockInner)
-   - Handles image content rendering (Image component, overlays, badges)
-   - Handles image-specific overlays (visibility, cover selection, selected indicator)
-   - **Styling verified** - matches original exactly
+#### 8. Authentication / Login Logic
+- Set up OAuth or Auth0 (free tier) for authentication
+- Research free options: Auth0 free tier, Clerk free tier, NextAuth.js (self-hosted)
+- Implement login/logout flow
+- Protect admin routes (manage pages, API endpoints)
+- Add user session management
+- Easy win: Start with NextAuth.js for self-hosted solution (no 3rd party dependency)
 
-6. ⏳ **Remove old renderer files** (ready for deletion after final verification)
-   - Delete `ImageBlockRenderer.tsx`
-   - Delete `ParallaxImageRenderer.tsx`
-   - Delete `GifContentBlockRenderer.tsx`
-   - Delete `TextBlockRenderer.tsx`
-   - Delete `ContentWrapper.tsx` (functionality moved into CollectionContentRenderer)
-
-7. ✅ **SCSS** (`ContentComponent.module.scss`)
-   - Position classes (imageLeft/imageRight/imageSingle/imageMiddle) work correctly
-   - Overlay positioning works with proper wrapper structure
-   - Mobile responsiveness maintained
-
-8. ✅ **Testing & Verification**
-   - ✅ Styling matches exactly (verified by user)
-   - ✅ All content types working: IMAGE, COLLECTION, GIF, TEXT
-   - ✅ Parallax effect working on collections
-   - ✅ Proper spacing and overlay alignment
-   - ⏳ Final verification needed: drag-and-drop, click handlers, image overlays, mobile responsiveness
-
-**Files to Create**:
-- `app/types/ContentRenderer.ts` - ContentRendererProps interface
-- `app/utils/contentRendererUtils.ts` - Normalization functions
-
-**Files to Modify**:
-- `app/utils/contentTypeGuards.ts` - Remove PARALLAX references
-- `app/components/Content/Component.tsx` - Use new normalization function
-- `app/components/Content/CollectionContentRenderer.tsx` - Handle all content types
-- `app/components/Content/ContentComponent.module.scss` - Verify styling works with single wrapper
-
-**Files to Delete** (after testing):
-- `app/components/Content/ImageBlockRenderer.tsx`
-- `app/components/Content/ParallaxImageRenderer.tsx`
-- `app/components/Content/GifContentBlockRenderer.tsx`
-- `app/components/Content/TextBlockRenderer.tsx`
-- `app/components/Content/ContentWrapper.tsx`
-
-**Key Benefits**:
-- Single source of truth for content rendering
-- Easier to add parallax to any image (just set enableParallax=true)
-- Consistent behavior across all content types
-- Reduced prop drilling
-- Simpler maintenance
-- Fewer wrapper divs (better performance)
+#### 9. Update Manage Page - Collection Metadata Section
+- **Width consistency**: Make metadata section same width as rest of page content
+- **Reformat metadata layout**:
+  - Reorder fields for better readability
+  - Adjust field sizes (some smaller, some much smaller)
+  - Improve visual hierarchy
+- **Mobile-first design**:
+  - Design for mobile first (default layout)
+  - Ensure metadata looks good on mobile screens
+  - Responsive layout that enhances on larger screens
+  - Consider collapsible sections for mobile (default behavior)
+- **Location**: `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
+- Easy win: Start with width consistency, then work on field sizing and ordering
 
 ---
 
@@ -277,100 +274,59 @@ describe('handleCoverImageSelection', () => {
 ### 1. Functions That Could Be Simplified
 
 #### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
-- [x] `handleImageClick` (lines 412-456) - **Too complex** - Handles 4 different modes (cover selection, collection navigation, multi-select, single edit). **Refactor approach**: Use switch case pattern to determine action type, then delegate to focused handlers:
-  - `handleCoverImageSelection(imageId)` - Cover image selection logic
-  - `handleCollectionNavigation(imageId)` - Navigate to collection manage page
-  - `handleMultiSelectToggle(imageId)` - Multi-select toggle (already exists)
-  - `handleSingleImageEdit(imageId)` - Open metadata editor for single image
-  - Main `handleImageClick` becomes a simple router: determines mode → calls appropriate handler
-- [x] `handleMetadataSaveSuccess` (lines 459-511) - **Too complex** - Does multiple things: re-fetch, update state, update cache, revalidate, merge metadata. **Refactor approach**: Split into focused functions:
-  - `refreshCollectionData(slug)` - Re-fetch collection with metadata
-  - `updateCollectionState(response)` - Update currentState with response
-  - `updateCollectionCache(slug, collection)` - Update cache storage
-  - `revalidateCollectionCache(slug)` - Revalidate Next.js cache
-  - `mergeNewMetadata(response, currentState)` - Merge new metadata entities
-  - Main `handleMetadataSaveSuccess` orchestrates these in sequence
-- [x] `processedContent` useMemo (lines 135-161) - **COMPLETED** - Now uses `processContentBlocks` from `contentLayout.ts` to match collection page behavior. Collections are converted to ParallaxImageContentModel, keeping consistency across pages. **Learning**: Check for existing utilities before creating new ones - `processContentBlocks` already existed and was the correct solution. Initially created `processContentForManagePage` but removed it after realizing the existing utility was better.
-- [x] `handleCreateNewTextBlock` (lines 223-257) - **COMPLETED** - Replaced `prompt()` with `TextBlockCreateModal` component. Modal includes form validation, format selector (plain/markdown/html), alignment selector (left/center/right), and proper error handling.
+- No pending refactoring tasks
 
 #### `app/components/ImageMetadata/imageMetadataUtils.ts`
-- [x] `buildImageUpdateDiff` (lines 343-519) - **COMPLETED** - Refactored into focused field-specific builders:
-  - `buildSimpleFieldDiff(field, updateValue, currentValue)` - For string/number/boolean fields
-  - `buildCameraDiff(update, current)` - Camera prev/newValue/remove pattern
-  - `buildLensDiff(update, current)` - Lens prev/newValue/remove pattern
-  - `buildFilmTypeDiff(update, current)` - FilmType prev/newValue/remove pattern
-  - `buildTagsDiff(update, current)` - Tags prev/newValue/remove pattern
-  - `buildPeopleDiff(update, current)` - People prev/newValue/remove pattern
-  - `buildCollectionsDiff(update, current)` - Collections prev/newValue/remove pattern
-  - Main `buildImageUpdateDiff` orchestrates by calling appropriate builder per field
-  - Comprehensive tests added in `tests/components/ImageMetadata/imageMetadataUtils.test.ts`
-- [x] `getCommonValues` (lines 113-164) - **COMPLETED** - Extracted comparison logic to helper `areAllEqual<T>(items: T[], getValue: (item: T) => unknown)` to reduce duplication. All field comparisons now use this helper function, making the code more maintainable.
-- [x] `handleDropdownChange` (lines 588-620) - **COMPLETED** - Refactored using strategy pattern with field-specific handlers:
-  - `handleMultiSelectChange(field, value, updateDTO)` - For tags/people (prev/newValue pattern)
-  - `handleSingleSelectChange(field, value, updateDTO)` - For camera/lens/collections (prev/newValue/remove pattern)
-  - Main `handleDropdownChange` determines field type → calls appropriate handler
+- No pending refactoring tasks
 
 #### `app/lib/api/collections.ts`
-- [x] `getAllCollections` (lines 60-87) - **COMPLETED** - Extracted response parsing to helper `parseCollectionArrayResponse(data: unknown): CollectionModel[]` that handles all fallback logic in one place. The function now handles direct array responses, wrapped object responses (content/collections/items), and invalid formats, making it easier to test and maintain.
+- No pending refactoring tasks
 
 #### `app/utils/contentLayout.ts`
-- [x] `processContentBlocks` (lines 240-298) - **COMPLETED** - Split into focused pipeline functions:
-  - `filterVisibleBlocks(content, filterVisible, collectionId)` - Filter visibility logic
-  - `transformCollectionBlocks(content)` - Convert CollectionContentModel to ParallaxImageContentModel
-  - `updateImageOrderIndex(content, collectionId)` - Update orderIndex from collection-specific entry
-  - `ensureParallaxDimensions(content)` - Ensure PARALLAX blocks have proper dimensions
-  - `sortContentByOrderIndex(content)` - Sort by orderIndex
-  - Main `processContentBlocks` orchestrates: filter → transform → update → ensure → sort
-  - Each function has a single responsibility, making the code easier to test and maintain
+- No pending refactoring tasks
 
 ### 2. Functions That Could Be Refactored
 
 #### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
-- [x] `loadCollectionData` (inside useEffect, lines 189-212) - **COMPLETED** - Extracted to custom hook `useCollectionData(slug, currentSlug, onLoadSuccess)` that handles loading, error states, and data fetching. Hook uses callback pattern to notify parent of successful loads. Tests added in `tests/hooks/useCollectionData.test.tsx`. Fixed bug where loading state wasn't set to false when skipping fetch.
-- [x] `handleImageUpload` (lines 324-360) - **COMPLETED** - Extracted common refresh pattern to `refreshCollectionAfterOperation` utility in `manageUtils.ts`. Both `handleImageUpload` and `handleTextBlockSubmit` now use this utility which handles: operation → re-fetch → update cache. Tests added in `manageUtils.test.ts`.
-- [x] `currentSelectedCollections` useMemo (lines 527-543) - **COMPLETED** - Extracted to pure function `getCurrentSelectedCollections(collectionContent, updateDataCollections)` in `manageUtils.ts`. Function combines original collections (minus removals) with newly added collections. Tests added in `manageUtils.test.ts`.
+- No pending refactoring tasks
 
 #### `app/components/ImageMetadata/ImageMetadataModal.tsx`
-- [x] `handleSubmit` (lines 151-177) - **COMPLETED** - Extracted diff building logic to focused functions in `imageMetadataUtils.ts`: `buildImageUpdatesForBulkEdit` for bulk edits, `buildImageUpdateForSingleEdit` for single edits, and `mapUpdateResponseToFrontend` for response mapping. Main `handleSubmit` now simply determines edit mode → calls appropriate builder → calls API → maps response. Tests added in `imageMetadataUtils.test.ts`.
-- [x] `hasChanges` useMemo (lines 119-133) - **COMPLETED** - Extracted to `hasObjectChanges` utility in `app/utils/objectComparison.ts` using proper deep equality check. Replaced inefficient JSON.stringify comparison with field-by-field deep comparison that handles nested objects, arrays, null/undefined correctly. Also created `deepEqual` function for general deep equality checks. Tests added in `tests/utils/objectComparison.test.ts`.
+- No pending refactoring tasks
 
 #### `app/lib/api/core.ts`
-- [x] `fetchWriteBase` and `fetchAdminBase` - **COMPLETED** - Combined into single `fetchBase(endpointType: 'write' | 'admin', endpoint, options)` function. Eliminates duplication - both functions were identical except for endpoint type. All callers updated to use the unified function.
-- [x] `handleApiResponseError` and `handleApiCatchError` - **COMPLETED** - Combined into unified `handleApiError(error: unknown, response?: Response)` function. Handles both Response errors (extracts message from response) and catch block errors (converts to ApiError). All callers updated to use the unified function.
+- No pending refactoring tasks
 
 #### `app/utils/contentLayout.ts`
-- [x] `convertCollectionContentToParallax` and `convertCollectionContentToImage` - **COMPLETED** - Extracted common dimension extraction to helper `extractCollectionDimensions(coverImage)` that returns `{ imageWidth, imageHeight }`. Both conversion functions now use this helper, eliminating duplication.
+- No pending refactoring tasks
 
 ### 3. Functions With Potential Errors/Bugs
 
 #### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
-- [x] `handleCreateNewTextBlock` (line 189) - **FIXED** - Now uses `TextBlockCreateModal` component instead of `prompt()`. Modal includes form validation, format selector, and proper error handling.
+- No pending bug fixes
 - [ ] `handleImageClick` (line 388) - **Verified: Not a bug** - Logic is correct: `handleCollectionNavigation` uses `collection?.content` (original blocks), and `handleSingleImageEdit` checks both original and processed content as fallback. The implementation correctly handles both cases. However, could be clearer - consider documenting why both are checked.
 - [ ] `handleMetadataSaveSuccess` (line 442) - **Silent failure in revalidation** - `revalidateCollectionCache` (called at line 452) fails silently with only `console.warn` in `manageUtils.ts` line 500-502. Console statement now wrapped with `isLocalEnvironment()` check. This is intentional (revalidation is not critical), but could be improved to log to error tracking service in production.
 
 #### `app/components/ImageMetadata/imageMetadataUtils.ts`
-- [x] `buildImageUpdateDiff` (line 607) - **FIXED** - FilmType diff building is now complete. `buildFilmTypeDiff` function (lines 431-467) handles remove, existing film types (prev pattern), and new film types (newValue pattern) correctly.
-- [x] `applyPartialUpdate` (line 37) - **FIXED** - No console.log statements found. Code is clean.
+- No pending bug fixes
 
 #### `app/lib/api/content.ts`
-- [x] `updateImages` (lines 99-106, 119-122) - **FIXED** - Debug `console.log` statements now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
+- No pending bug fixes
 
 #### `app/lib/api/collections.ts`
 - [ ] `safeJson` (line 31) - **Code clarity issue** - Not actually a bug: `res.json()` is only called once per execution path (error path on line 36 OR success path on line 48, never both). However, the code structure could be clearer by caching the parsed JSON result to avoid confusion. Consider refactoring for better readability.
 
 #### `app/utils/contentLayout.ts`
-- [x] `convertCollectionContentToImage` (line 198) - **Not a bug** - Uses `col.title || col.slug || ''` which correctly returns empty string if both are undefined. This is safe and intentional.
+- No pending bug fixes
 
 #### `app/lib/storage/collectionStorage.ts`
-- [x] `updateImagesInCache` (lines 154-156, 171-177, 191-196, 198-200) - **FIXED** - All console statements (`console.warn`, `console.log`, `console.error`) now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
+- No pending bug fixes
 
 #### `app/components/ImageMetadata/ImageMetadataModal.tsx`
-- [x] `handleSubmit` (line 143-145) - **FIXED** - `console.error` now wrapped with `isLocalEnvironment()` check. Only logs in development/local environment.
+- No pending bug fixes
 
 ### 4. Functions That Could Be Combined
 
 #### `app/lib/api/core.ts`
-- [ ] `fetchWriteBase` and `fetchAdminBase` - **Nearly identical** - Should be combined into a single `fetchBase` function with endpoint type parameter.
 - [ ] `fetchPutJsonApi`, `fetchPatchJsonApi`, `fetchPostJsonApi` - **Similar pattern** - Could use a generic `fetchJsonApi(method, endpoint, body)` helper.
 
 #### `app/components/ImageMetadata/imageMetadataUtils.ts`
@@ -571,24 +527,19 @@ describe('handleCoverImageSelection', () => {
 
 ### Component Tests
 
-#### `app/components/Content/ContentWrapper.test.tsx`
+#### `app/components/Content/CollectionContentRenderer.test.tsx`
 **Component to test:**
-- `ContentWrapper` - Test rendering, ref forwarding, click handling, overlay detection
+- `CollectionContentRenderer` - Test unified content rendering (IMAGE, TEXT, GIF, COLLECTION), parallax effects, click handling, drag and drop
 
 **Considerations:**
-- Test with various content types
-- Test mobile vs desktop rendering
-- Test overlay positioning
-- Mock `useViewport` if needed
-
-#### `app/components/Content/ImageBlockRenderer.test.tsx`
-**Component to test:**
-- `ContentImageRenderer` - Test image rendering, dimensions, click handling
-
-**Considerations:**
+- Test with various content types (IMAGE, TEXT, GIF, COLLECTION)
+- Test parallax vs non-parallax rendering
+- Test default mobile rendering, then wide desktop rendering
+- Test overlay positioning and badges
+- Test drag and drop functionality
 - Mock Next.js Image component
-- Test with/without overlays
-- Test error states
+- Mock `useParallax` hook
+- Test error states and placeholder rendering
 
 #### `app/components/ImageMetadata/ImageMetadataModal.test.tsx`
 **Component to test:**
@@ -649,7 +600,7 @@ describe('handleCoverImageSelection', () => {
 
 **Considerations:**
 - Mock window resize events
-- Test mobile vs desktop detection
+- Test default mobile detection, then wide desktop detection
 
 ### Integration Tests
 
@@ -707,31 +658,10 @@ This section documents all issues found in the click-and-drag refactoring work, 
 ### 4. Simplification Opportunities
 
 #### `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`
-
-- [x] **State management complexity** - The component manages many related state variables:
-  - `draggedImageId`, `dragOverImageId`, `pendingReorderChanges`
-  - `selectedImageIds`, `isMultiSelectMode`, `justClickedImageId`
-  - `isSelectingCoverImage`, `currentState`, `updateData`
-  
-  **Analysis**: After critical review, custom hooks would add unnecessary abstraction. The states are simple and used independently. However, `draggedImageId` and `dragOverImageId` are always set/cleared together - they can be combined into a single state object `{ draggedId: number | null; dragOverId: number | null }` to reduce state variables.
-  
-  ✅ **SIMPLIFIED** - Combined `draggedImageId` and `dragOverImageId` into single `dragState` object. This reduces state variables while keeping the logic simple and clear.
-
-- [x] **`pendingReorderChanges` state structure** - Currently an array of `{ imageId: number; newOrderIndex: number }[]`. The field name `imageId` is misleading since it can also be a collection ID. **Simplification approach**: Rename to `contentId` for clarity, or create a type alias `type ReorderChange = { contentId: number; newOrderIndex: number }`.
-  
-  ✅ **FIXED** - Created `ReorderChange` type alias with `contentId` field. Updated all usages throughout the codebase for type safety and clarity.
-
-- [x] **Multiple `useMemo` hooks for derived state** - Lines 180-197 have several `useMemo` hooks that derive state from `currentState` and `collection`. **Analysis**: These are independent derived values with different dependencies. Combining them would create unnecessary re-renders when only one dependency changes. Current approach is optimal - no changes needed.
-  
-  ✅ **VERIFIED** - No changes needed. Current approach is optimal.
+- No pending simplifications
 
 #### `app/utils/contentComponentHandlers.ts`
-
-- [x] **`hasSlug` function (lines 52-54)** - **Overly complex check** - Uses `!!('slug' in itemContent && itemContent.slug)` when `!!itemContent.slug` would suffice if we know the object has a slug property. **Simplification approach**: Simplify to `(itemContent: { slug?: string }): boolean => !!itemContent.slug`.
-  
-  ✅ **SIMPLIFIED** - Changed to `!!itemContent.slug`. The `'slug' in itemContent` check was redundant since TypeScript already ensures the property exists via the type annotation.
-
-- [ ] **`determineImageClickAction` (lines 64-76)** - **Good function** - Simple and clear. No changes needed.
+- No pending simplifications
 
 ### 5. Bad Code / Bad Logic
 
@@ -877,6 +807,63 @@ This section documents all issues found in the click-and-drag refactoring work, 
 #### `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts`
 
 - [ ] **`applyReorderChangesLocally` - JSDoc exists but could be clearer** - **Good** - Has JSDoc, but could explain the dual update (collections array + top-level orderIndex) more clearly.
+
+## Code Quality & Cleanup Tasks
+
+### Critical Issues (Must Fix)
+
+1. **Console statements not wrapped** - `app/(admin)/collection/manage/[[...slug]]/ManageClient.tsx`:
+   - Lines 540, 572, 588, 639, 652: `console.log` and `console.error` not wrapped with `isLocalEnvironment()`
+   - These should only log in development/local environment
+
+2. **Linter errors** - Check for unused imports across codebase
+
+3. **Type safety** - Ensure all functions have explicit return types where missing
+
+4. **Error handling** - Add error handling to functions that currently lack it
+
+### Code Cleanup (High Priority)
+
+1. **Remove unnecessary inline comments** - Scan for comments that don't add value:
+   - Remove obvious comments like `// Render image content` when function name is clear
+   - Keep docblocks but make them concise
+   - Remove commented-out code
+   - Keep only comments that explain "why", not "what"
+
+2. **Test coverage gaps** - Missing test files for:
+   - `app/utils/debounce.ts` - `useDebounce` hook
+   - `app/utils/environment.ts` - `isLocalEnvironment`, `isProduction`
+   - `app/utils/admin.ts` - Admin utility functions
+   - `app/utils/parallaxImageUtils.ts` - Parallax utility functions
+   - `app/components/Content/ImageOverlays.tsx` - New component
+   - `app/components/Content/BadgeOverlay.tsx` - Badge component
+   - `app/components/Content/Component.tsx` - Main content component
+   - `app/components/Content/ContentBlockWithFullScreen.tsx` - Fullscreen component
+   - `app/components/ContentCollection/CollectionPage.tsx` - Collection page
+   - `app/hooks/useParallax.ts` - Parallax hook
+   - `app/hooks/useFullScreenImage.tsx` - Fullscreen hook
+
+3. **Component simplification** - Large components that could be split:
+   - `ManageClient.tsx` (922 lines) - Split into smaller components
+   - `ImageMetadataModal.tsx` (~776 lines) - Split into sub-components
+
+4. **Unused/deprecated code** - Check and remove:
+   - `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts` - `syncCollectionState` (if unused)
+   - `app/(admin)/collection/manage/[[...slug]]/manageUtils.ts` - `isImageContentBlock` (deprecated)
+   - `app/utils/parallaxImageUtils.ts` - `buildParallaxImageFromContent` (not imported anywhere)
+
+### Refactoring Opportunities
+
+1. **Code duplication** - Extract common patterns:
+   - Debug logging pattern in `ManageClient.tsx` (lines 540, 572, 588, 639)
+   - Block name extraction logic (used in multiple places)
+
+2. **Function complexity** - Functions that need splitting:
+   - `applyReorderLocally` in `ManageClient.tsx` - Too many responsibilities
+   - Consider extracting merge logic for pending changes
+
+3. **Missing explicit return types** - Add return types to:
+   - `prepareCollectionContentRender` in `contentComponentHandlers.ts`
 
 ### Summary of Critical Issues (Must Fix)
 

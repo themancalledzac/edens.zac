@@ -70,6 +70,7 @@ export interface CollectionListModel {
 export interface ChildCollection {
   collectionId: number;
   name?: string;
+  slug?: string; // Add this field for navigation
   coverImageUrl?: string;
   visible?: boolean;
   orderIndex?: number;

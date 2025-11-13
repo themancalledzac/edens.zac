@@ -214,8 +214,10 @@
 .imageMiddle {
   @extend .image;
 
-  padding-left: 0.4rem;
-  padding-right: 0.4rem;
+  @media (width >= 768px) {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+  }
 }
 
 .imageSingle {

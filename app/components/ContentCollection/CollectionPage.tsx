@@ -11,6 +11,7 @@ import styles from './ContentCollectionPage.module.scss';
 
 interface ContentCollectionPageProps {
   collection: CollectionModel | CollectionModel[];
+  chunkSize?: number; // Number of images per row (default: 2)
 }
 
 /**
@@ -69,6 +70,7 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
  */
 export default async function CollectionPage({
   collection,
+  chunkSize,
 }: ContentCollectionPageProps) {
   // Get content blocks to display
   const contentBlocks: AnyContentModel[] = Array.isArray(collection)
@@ -78,6 +80,9 @@ export default async function CollectionPage({
   // Determine if this is a single collection (for passing slug to SiteHeader)
   const singleCollection = Array.isArray(collection) ? null : collection;
   const collectionSlug = singleCollection?.slug;
+  
+  // Use contentPerPage from collection if available, otherwise default to 30
+  const pageSize = singleCollection?.contentPerPage ?? 30;
 
   return (
     <div className={styles.container}>
@@ -88,7 +93,8 @@ export default async function CollectionPage({
             content={contentBlocks}
             priorityBlockIndex={0}
             enableFullScreenView
-            initialPageSize={30}
+            initialPageSize={pageSize}
+            chunkSize={chunkSize}
             collectionSlug={collectionSlug}
             collectionData={singleCollection ?? undefined}
           />
