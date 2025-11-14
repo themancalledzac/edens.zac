@@ -75,7 +75,7 @@
   justify-content: flex-end; // Align to the right side
   padding: 0;
   z-index: 10;
-  opacity: 0; // Start hidden
+  opacity: 1; // Changed from 0 - overlay should be visible so button is always visible
   transition: opacity 0.1s ease-in; // Fade in transition
 }
 

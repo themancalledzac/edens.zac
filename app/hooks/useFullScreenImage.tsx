@@ -31,21 +31,23 @@ export function useFullScreenImage() {
   const router = useRouter();
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
   const [showMetadata, setShowMetadata] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false); // Add image load state
+  const [imageLoaded, setImageLoaded] = useState(false);
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+  
+  const resetImageState = useCallback(() => {
+    setShowMetadata(false);
+    setImageLoaded(false);
+  }, []);
 
   const showImage = useCallback((
     image: ImageBlock,
     allImages?: ImageBlock[]
   ) => {
-    // Capture current scroll position BEFORE showing image
     const currentScroll = window.scrollY;
-
-    // If allImages provided, find index of current image, otherwise single image mode
     const images = allImages || [image];
     const currentIndex = allImages
       ? allImages.findIndex(img => img.id === image.id)
@@ -56,9 +58,8 @@ export function useFullScreenImage() {
       currentIndex: currentIndex !== -1 ? currentIndex : 0,
       scrollPosition: currentScroll
     });
-    setShowMetadata(false); // Reset metadata visibility when showing new image
-    setImageLoaded(false); // Reset image load state when changing images
-  }, []);
+    resetImageState();
+  }, [resetImageState]);
 
   const hideImage = () => {
     setFullScreenState(null);
@@ -66,21 +67,21 @@ export function useFullScreenImage() {
 
   const navigateToNext = useCallback(() => {
     if (!fullScreenState) return;
-
     const nextIndex = fullScreenState.currentIndex + 1;
     if (nextIndex < fullScreenState.images.length) {
+      resetImageState();
       setFullScreenState(prev => prev ? { ...prev, currentIndex: nextIndex } : null);
     }
-  }, [fullScreenState]);
+  }, [fullScreenState, resetImageState]);
 
   const navigateToPrevious = useCallback(() => {
     if (!fullScreenState) return;
-
     const prevIndex = fullScreenState.currentIndex - 1;
     if (prevIndex >= 0) {
+      resetImageState();
       setFullScreenState(prev => prev ? { ...prev, currentIndex: prevIndex } : null);
     }
-  }, [fullScreenState]);
+  }, [fullScreenState, resetImageState]);
 
   // Keyboard and scroll prevention
   useEffect(() => {
@@ -116,29 +117,36 @@ export function useFullScreenImage() {
     };
   }, [fullScreenState, navigateToNext, navigateToPrevious]);
 
+  // Helper: Check if touch target is metadata control
+  const isMetadataControl = useCallback((target: HTMLElement | null): boolean => {
+    if (!target) return false;
+    return !!(
+      target.closest(`.${styles.metadataToggle}`) || 
+      target.closest(`.${styles.metadataOverlay}`)
+    );
+  }, []);
+
   // Touch event handlers attached directly to modal element
   useEffect(() => {
     if (!fullScreenState || !modalRef.current) return;
 
     const modalElement = modalRef.current;
 
-    // Touch event handlers for swipe detection
     const handleTouchStart = (e: TouchEvent) => {
-      if (!e.touches[0]) return;
+      if (!e.touches[0] || isMetadataControl(e.target as HTMLElement)) return;
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
       isSwiping.current = false;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!e.touches[0]) return;
+      if (!e.touches[0] || isMetadataControl(e.target as HTMLElement)) return;
       
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
       const deltaX = currentX - touchStartX.current;
       const deltaY = currentY - touchStartY.current;
 
-      // If horizontal movement is significant, prevent default and mark as swiping
       if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
         isSwiping.current = true;
         e.preventDefault();
@@ -148,20 +156,20 @@ export function useFullScreenImage() {
     const handleTouchEnd = (e: TouchEvent) => {
       if (!e.changedTouches[0]) return;
       
+      if (isMetadataControl(e.target as HTMLElement)) {
+        isSwiping.current = false;
+        return;
+      }
+      
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
-
       const deltaX = touchEndX - touchStartX.current;
       const deltaY = touchEndY - touchStartY.current;
 
-      // Only trigger swipe if horizontal movement is greater than vertical
-      // This prevents accidental swipes when user tries to zoom/scroll
       if (isSwiping.current && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > INTERACTION.swipeThreshold) {
         if (deltaX > 0) {
-          // Swiped right - go to previous image
           navigateToPrevious();
         } else {
-          // Swiped left - go to next image
           navigateToNext();
         }
         // Prevent click event from firing after swipe
@@ -178,7 +186,6 @@ export function useFullScreenImage() {
       isSwiping.current = false;
     };
 
-    // Attach touch handlers directly to modal element
     modalElement.addEventListener('touchstart', handleTouchStart, { passive: true });
     modalElement.addEventListener('touchmove', handleTouchMove, { passive: false });
     modalElement.addEventListener('touchend', handleTouchEnd, { passive: true });
@@ -188,7 +195,7 @@ export function useFullScreenImage() {
       modalElement.removeEventListener('touchmove', handleTouchMove);
       modalElement.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [fullScreenState, navigateToNext, navigateToPrevious]);
+  }, [fullScreenState, navigateToNext, navigateToPrevious, isMetadataControl]);
 
   const toggleMetadata = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -203,16 +210,14 @@ export function useFullScreenImage() {
       <div
         ref={modalRef}
         className={styles.imageFullScreenWrapper}
-        style={{
-          top: `${fullScreenState.scrollPosition}px`, // Position at captured scroll position
-        }}
+        style={{ top: `${fullScreenState.scrollPosition}px` }}
         role="dialog"
         aria-modal="true"
       >
         <div ref={overlayRef} className={styles.overlayContainer} onClick={hideImage}>
           <div className={styles.imageWrapper}>
             <Image
-              key={currentImage.id} // Force re-render on image change
+              key={currentImage.id}
               src={currentImage.imageUrl}
               alt={currentImage.title || currentImage.caption || 'Full screen image'}
               width={currentImage.imageWidth || IMAGE.defaultWidth}
@@ -220,19 +225,18 @@ export function useFullScreenImage() {
               className={styles.fullScreenImage}
               priority
               unoptimized
-              onLoad={() => setImageLoaded(true)} // Track when image loads
+              onLoad={() => setImageLoaded(true)}
             />
             
             <div
-              className={`${styles.metadataOverlay} ${showMetadata ? styles.metadataOverlayVisible : ''}`}
+              className={styles.metadataOverlay}
               onClick={(e) => e.stopPropagation()}
               style={{
-                opacity: imageLoaded ? 1 : 0, // Fade in when image is loaded
-                transition: 'opacity 0.1s ease-in',
+                opacity: imageLoaded ? 1 : 0.7, // Make overlay visible so button is always visible
               }}
             >
-              {showMetadata && (
-                <div className={styles.metadataContent}>
+              {showMetadata && imageLoaded && (
+                <div className={`${styles.metadataContent} ${styles.metadataOverlayVisible}`}>
                   {currentImage.title && (
                     <div className={styles.metadataTitle}>{currentImage.title}</div>
                   )}
@@ -280,7 +284,7 @@ export function useFullScreenImage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (c.slug) {
-                                  hideImage(); // Close the fullscreen modal first
+                                  hideImage();
                                   router.push(`/${c.slug}`);
                                 }
                               }}
@@ -316,10 +320,7 @@ export function useFullScreenImage() {
               )}
               <button
                 className={styles.metadataToggle}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleMetadata(e);
-                }}
+                onClick={toggleMetadata}
                 aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
                 aria-expanded={showMetadata}
                 type="button"
@@ -340,7 +341,6 @@ export function useFullScreenImage() {
       </div>
     );
 
-    // Render modal at body level using portal to avoid parent container positioning issues
     if (typeof document !== 'undefined') {
       return createPortal(modalContent, document.body);
     }
