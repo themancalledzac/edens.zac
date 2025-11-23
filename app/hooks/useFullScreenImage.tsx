@@ -1,93 +1,101 @@
 'use client';
 
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 
-import { IMAGE, INTERACTION } from '@/app/constants';
+import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
+import { INTERACTION } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 
-// Hook-specific constants
 const SCROLL_BLOCKING_KEYS = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'];
 
-type ImageBlock = ContentImageModel | ContentParallaxImageModel;
+export type ImageBlock = ContentImageModel | ContentParallaxImageModel;
 
-type FullScreenState = {
+export type FullScreenState = {
   images: ImageBlock[];
   currentIndex: number;
   scrollPosition: number;
 } | null;
 
-/**
- * Full screen image hook with navigation and swipe support
- *
- * Returns:
- * - showImage: function to show an image in full screen with optional navigation through all images
- * - FullScreenModal: component to render (or null if no image selected)
- */
 export function useFullScreenImage() {
   const router = useRouter();
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
   const [showMetadata, setShowMetadata] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [loadedImageIds, setLoadedImageIds] = useState<Set<number>>(new Set());
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  
-  const resetImageState = useCallback(() => {
-    setShowMetadata(false);
-    setImageLoaded(false);
-  }, []);
 
   const showImage = useCallback((
     image: ImageBlock,
     allImages?: ImageBlock[]
   ) => {
-    const currentScroll = window.scrollY;
     const images = allImages || [image];
-    const currentIndex = allImages
-      ? allImages.findIndex(img => img.id === image.id)
-      : 0;
+    const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
 
     setFullScreenState({
       images,
       currentIndex: currentIndex !== -1 ? currentIndex : 0,
-      scrollPosition: currentScroll
+      scrollPosition: window.scrollY
     });
-    resetImageState();
-  }, [resetImageState]);
+  }, []);
 
   const hideImage = () => {
     setFullScreenState(null);
+    setShowMetadata(false);
   };
 
-  const navigateToNext = useCallback(() => {
-    if (!fullScreenState) return;
-    const nextIndex = fullScreenState.currentIndex + 1;
-    if (nextIndex < fullScreenState.images.length) {
-      resetImageState();
-      setFullScreenState(prev => prev ? { ...prev, currentIndex: nextIndex } : null);
-    }
-  }, [fullScreenState, resetImageState]);
+  const isOpen = !!fullScreenState;
 
-  const navigateToPrevious = useCallback(() => {
-    if (!fullScreenState) return;
-    const prevIndex = fullScreenState.currentIndex - 1;
-    if (prevIndex >= 0) {
-      resetImageState();
-      setFullScreenState(prev => prev ? { ...prev, currentIndex: prevIndex } : null);
-    }
-  }, [fullScreenState, resetImageState]);
+  const navigate = useCallback((direction: 'next' | 'previous') => {
+    setFullScreenState(prev => {
+      if (!prev) return null;
+      const delta = direction === 'next' ? 1 : -1;
+      const newIndex = prev.currentIndex + delta;
+      
+      // Check bounds
+      if (newIndex >= 0 && newIndex < prev.images.length) {
+        return { ...prev, currentIndex: newIndex };
+      }
+      return prev;
+    });
+  }, []);
 
-  // Keyboard and scroll prevention
+  const navigateToNext = useCallback(() => navigate('next'), [navigate]);
+  const navigateToPrevious = useCallback(() => navigate('previous'), [navigate]);
+
   useEffect(() => {
     if (!fullScreenState) return;
+    const currentImage = fullScreenState.images[fullScreenState.currentIndex];
+    if (!currentImage) return;
+    
+    const checkImageLoaded = () => {
+      const imgElement = document.querySelector(
+        `img[src="${currentImage.imageUrl}"]`
+      ) as HTMLImageElement;
+      
+      if (imgElement?.complete && imgElement?.naturalHeight !== 0) {
+        setLoadedImageIds(prev => {
+          if (prev.has(currentImage.id)) return prev;
+          const newSet = new Set(prev);
+          newSet.add(currentImage.id);
+          return newSet;
+        });
+      }
+    };
 
-    // Prevent body scrolling while modal is open - CRITICAL for positioning
+    checkImageLoaded();
+    const timeoutId = setTimeout(checkImageLoaded, 100);
+    
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullScreenState?.currentIndex]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
@@ -115,20 +123,18 @@ export function useFullScreenImage() {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('wheel', preventScroll);
     };
-  }, [fullScreenState, navigateToNext, navigateToPrevious]);
+  }, [isOpen, navigateToNext, navigateToPrevious]);
 
-  // Helper: Check if touch target is metadata control
   const isMetadataControl = useCallback((target: HTMLElement | null): boolean => {
     if (!target) return false;
     return !!(
       target.closest(`.${styles.metadataToggle}`) || 
-      target.closest(`.${styles.metadataOverlay}`)
+      target.closest(`.${styles.metadataContent}`)
     );
   }, []);
 
-  // Touch event handlers attached directly to modal element
   useEffect(() => {
-    if (!fullScreenState || !modalRef.current) return;
+    if (!isOpen || !modalRef.current) return;
 
     const modalElement = modalRef.current;
 
@@ -172,15 +178,6 @@ export function useFullScreenImage() {
         } else {
           navigateToNext();
         }
-        // Prevent click event from firing after swipe
-        if (overlayRef.current) {
-          overlayRef.current.style.pointerEvents = 'none';
-          setTimeout(() => {
-            if (overlayRef.current) {
-              overlayRef.current.style.pointerEvents = '';
-            }
-          }, 300);
-        }
       }
       
       isSwiping.current = false;
@@ -195,160 +192,37 @@ export function useFullScreenImage() {
       modalElement.removeEventListener('touchmove', handleTouchMove);
       modalElement.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [fullScreenState, navigateToNext, navigateToPrevious, isMetadataControl]);
+  }, [isOpen, navigateToNext, navigateToPrevious, isMetadataControl]);
 
-  const toggleMetadata = (e: React.MouseEvent) => {
+  const toggleMetadata = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     setShowMetadata(prev => !prev);
-  };
+  }, []);
 
-  const FullScreenModal = fullScreenState ? (() => {
-    const currentImage = fullScreenState.images[fullScreenState.currentIndex];
-    if (!currentImage) return null;
+  const toggleMetadataTouch = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setShowMetadata(prev => !prev);
+  }, []);
 
-    const modalContent = (
-      <div
-        ref={modalRef}
-        className={styles.imageFullScreenWrapper}
-        style={{ top: `${fullScreenState.scrollPosition}px` }}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div ref={overlayRef} className={styles.overlayContainer} onClick={hideImage}>
-          <div className={styles.imageWrapper}>
-            <Image
-              key={currentImage.id}
-              src={currentImage.imageUrl}
-              alt={currentImage.title || currentImage.caption || 'Full screen image'}
-              width={currentImage.imageWidth || IMAGE.defaultWidth}
-              height={currentImage.imageHeight || IMAGE.defaultHeight}
-              className={styles.fullScreenImage}
-              priority
-              unoptimized
-              onLoad={() => setImageLoaded(true)}
-            />
-            
-            <div
-              className={styles.metadataOverlay}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                opacity: imageLoaded ? 1 : 0.7, // Make overlay visible so button is always visible
-              }}
-            >
-              {showMetadata && imageLoaded && (
-                <div className={`${styles.metadataContent} ${styles.metadataOverlayVisible}`}>
-                  {currentImage.title && (
-                    <div className={styles.metadataTitle}>{currentImage.title}</div>
-                  )}
-                  {currentImage.author && (
-                    <div className={styles.metadataItem}>{currentImage.author}</div>
-                  )}
-                  {(currentImage.camera || currentImage.lens) && (
-                    <div className={styles.metadataItem}>
-                      {currentImage.camera && <span>{currentImage.camera.name}</span>}
-                      {currentImage.camera && currentImage.lens && <span className={styles.metadataSeparator}> / </span>}
-                      {currentImage.lens && <span>{currentImage.lens.name}</span>}
-                    </div>
-                  )}
-                  {(currentImage.iso || currentImage.fStop || currentImage.shutterSpeed || currentImage.focalLength) && (
-                    <div className={styles.metadataSettingsRow}>
-                      {currentImage.iso && <span>{currentImage.iso}</span>}
-                      {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
-                      {currentImage.fStop && <span>{currentImage.fStop}</span>}
-                      {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
-                    </div>
-                  )}
-                  {currentImage.people && currentImage.people.length > 0 && (
-                    <div className={styles.metadataSection}>
-                      <div className={styles.metadataSectionRow}>
-                        <div className={styles.metadataSectionHeader}>People</div>
-                        <div className={styles.metadataSectionItems}>
-                          {currentImage.people.map((p, index) => (
-                            <div key={p.id || index} className={styles.metadataSectionItem}>
-                              {p.name}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {currentImage.collections && currentImage.collections.length > 0 && (
-                    <div className={styles.metadataSection}>
-                      <div className={styles.metadataSectionRow}>
-                        <div className={styles.metadataSectionHeader}>Collections</div>
-                        <div className={styles.metadataSectionItems}>
-                          {currentImage.collections.map((c, index) => (
-                            <div 
-                              key={c.collectionId || index} 
-                              className={`${styles.metadataSectionItem} ${c.slug ? styles.metadataSectionItemClickable : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (c.slug) {
-                                  hideImage();
-                                  router.push(`/${c.slug}`);
-                                }
-                              }}
-                            >
-                              {c.name || `Collection ${c.collectionId}`}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Debug: Show if collections field exists but is empty */}
-                  {currentImage.collections && currentImage.collections.length === 0 && (
-                    <div className={styles.metadataSection}>
-                      <div className={styles.metadataSectionHeader}>Collections</div>
-                      <div className={styles.metadataItem} style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        (No collections - array is empty)
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Debug: Show if collections field doesn't exist */}
-                  {!currentImage.collections && (
-                    <div className={styles.metadataSection}>
-                      <div className={styles.metadataSectionHeader}>Collections</div>
-                      <div className={styles.metadataItem} style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-                        (No collections field on image)
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              <button
-                className={styles.metadataToggle}
-                onClick={toggleMetadata}
-                aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
-                aria-expanded={showMetadata}
-                type="button"
-              >
-                <span aria-hidden="true">{showMetadata ? '✕' : '↖'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <button
-          className={styles.closeButton}
-          onClick={hideImage}
-          aria-label="Close fullscreen image"
-        >
-          <span aria-hidden="true">&#10005;</span>
-        </button>
-      </div>
-    );
-
-    if (typeof document !== 'undefined') {
-      return createPortal(modalContent, document.body);
-    }
-    return null;
-  })() : null;
+  const Modal = () => (
+    <FullScreenModal
+      fullScreenState={fullScreenState}
+      loadedImageIds={loadedImageIds}
+      setLoadedImageIds={setLoadedImageIds}
+      modalRef={modalRef}
+      hideImage={hideImage}
+      isSwiping={isSwiping}
+      showMetadata={showMetadata}
+      toggleMetadata={toggleMetadata}
+      toggleMetadataTouch={toggleMetadataTouch}
+      router={router}
+    />
+  );
 
   return {
     showImage,
-    FullScreenModal
+    FullScreenModal: Modal,
+    isOpen: !!fullScreenState
   };
 }
