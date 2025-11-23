@@ -27,6 +27,7 @@ export function useFullScreenImage() {
   const touchStartY = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
+  const metadataToggleHandled = useRef<boolean>(false);
 
   const showImage = useCallback((
     image: ImageBlock,
@@ -42,10 +43,11 @@ export function useFullScreenImage() {
     });
   }, []);
 
-  const hideImage = () => {
+  const hideImage = useCallback(() => {
     setFullScreenState(null);
     setShowMetadata(false);
-  };
+    setLoadedImageIds(new Set());
+  }, []);
 
   const isOpen = !!fullScreenState;
 
@@ -101,7 +103,7 @@ export function useFullScreenImage() {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setFullScreenState(null);
+        hideImage();
       } else if (event.key === 'ArrowLeft') {
         event.preventDefault();
         navigateToPrevious();
@@ -123,7 +125,7 @@ export function useFullScreenImage() {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('wheel', preventScroll);
     };
-  }, [isOpen, navigateToNext, navigateToPrevious]);
+  }, [isOpen, navigateToNext, navigateToPrevious, hideImage]);
 
   const isMetadataControl = useCallback((target: HTMLElement | null): boolean => {
     if (!target) return false;
@@ -180,7 +182,9 @@ export function useFullScreenImage() {
         }
       }
       
-      isSwiping.current = false;
+      setTimeout(() => {
+        isSwiping.current = false;
+      }, 50);
     };
 
     modalElement.addEventListener('touchstart', handleTouchStart, { passive: true });
@@ -196,13 +200,23 @@ export function useFullScreenImage() {
 
   const toggleMetadata = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    if (metadataToggleHandled.current) {
+      metadataToggleHandled.current = false;
+      return;
+    }
+    
     setShowMetadata(prev => !prev);
   }, []);
 
   const toggleMetadataTouch = useCallback((e: React.TouchEvent) => {
     e.stopPropagation();
-    e.preventDefault();
+    metadataToggleHandled.current = true;
+    
     setShowMetadata(prev => !prev);
+    setTimeout(() => {
+      metadataToggleHandled.current = false;
+    }, 300);
   }, []);
 
   const Modal = () => (
