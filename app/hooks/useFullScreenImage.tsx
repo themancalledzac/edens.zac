@@ -140,9 +140,9 @@ export function useFullScreenImage() {
     const modalElement = modalRef.current;
 
     const handleTouchStart = (e: TouchEvent) => {
-      if (!e.touches[0] || isMetadataControl(e.target as HTMLElement)) return;
+      if (!e.touches[0]) return;
       
-      e.preventDefault();
+      // Don't preventDefault here - let buttons work normally
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
       isSwiping.current = false;
@@ -164,11 +164,6 @@ export function useFullScreenImage() {
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (!e.changedTouches[0]) return;
-      
-      if (isMetadataControl(e.target as HTMLElement)) {
-        isSwiping.current = false;
-        return;
-      }
       
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
