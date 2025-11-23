@@ -155,7 +155,7 @@ export function FullScreenModal({
               <button
                 className={styles.metadataToggle}
                 onClick={toggleMetadata}
-                onTouchEnd={toggleMetadataTouch}
+                onTouchStart={toggleMetadataTouch}
                 aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
                 aria-expanded={showMetadata}
                 type="button"
