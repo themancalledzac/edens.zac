@@ -17,7 +17,7 @@
   perspective: none !important;
 
   overscroll-behavior: none;
-  touch-action: none;
+  touch-action: pan-x;
 
   @media (width > 768px) {
     flex-direction: row;
