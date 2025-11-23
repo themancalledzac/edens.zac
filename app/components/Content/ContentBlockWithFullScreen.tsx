@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -61,7 +62,18 @@ export default function ContentBlockWithFullScreen({
   onDrop,
   onDragEnd,
 }: ContentBlockWithFullScreenProps) {
-  const { showImage, FullScreenModal } = useFullScreenImage();
+  const {
+    showImage,
+    fullScreenState,
+    loadedImageIds,
+    setLoadedImageIds,
+    modalRef,
+    hideImage,
+    isSwiping,
+    showMetadata,
+    toggleMetadata,
+    router
+  } = useFullScreenImage();
 
   useEffect(() => {
     if (collectionSlug && collectionData) {
@@ -157,7 +169,17 @@ export default function ContentBlockWithFullScreen({
         </div>
       )}
 
-      <FullScreenModal />
+      <FullScreenModal
+        fullScreenState={fullScreenState}
+        loadedImageIds={loadedImageIds}
+        setLoadedImageIds={setLoadedImageIds}
+        modalRef={modalRef}
+        hideImage={hideImage}
+        isSwiping={isSwiping}
+        showMetadata={showMetadata}
+        toggleMetadata={toggleMetadata}
+        router={router}
+      />
     </>
   );
 }
