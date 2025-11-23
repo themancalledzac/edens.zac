@@ -70,21 +70,17 @@
   bottom: var(--default-padding);
   pointer-events: none;
   display: flex;
-  flex-direction: row; // Change to row so content and button are horizontal
-  align-items: flex-end; // Keep items aligned to bottom
-  justify-content: flex-end; // Align to the right side
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: flex-end;
   padding: 0;
   z-index: 10;
-  opacity: 1; // Changed from 0 - overlay should be visible so button is always visible
-  transition: opacity 0.1s ease-in; // Fade in transition
-}
-
-.metadataOverlayVisible {
-  pointer-events: auto;
+  opacity: 0.7;
+  transition: opacity 0.2s ease-in;
 }
 
 .metadataOverlayLoaded {
-  opacity: 1; // Show when loaded
+  opacity: 1;
 }
 
 .metadataToggle {
@@ -107,6 +103,11 @@
   z-index: 11;
   flex-shrink: 0;
   outline: none;
+  
+  /* Mobile-specific touch optimizations */
+  touch-action: manipulation; /* Prevents double-tap zoom, ensures reliable touch */
+  user-select: none; /* Prevents text selection on mobile */
+  -webkit-tap-highlight-color: transparent; /* Removes iOS tap highlight */
 
   @media (width > 768px) {
     width: 40px;
@@ -142,7 +143,7 @@
   overflow-y: auto;
   animation: slideUp 0.15s ease-out;
   margin-bottom: 0;
-  margin-right: 0; // Ensure no margin
+  margin-right: 0;
 
   @media (width > 768px) {
     padding: 16px 56px 16px 16px;
@@ -235,12 +236,12 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 0; // Remove bottom margin
-  flex-shrink: 0; // Prevent header from shrinking
+  margin-bottom: 0; 
+  flex-shrink: 0; 
 
   @media (width > 768px) {
     font-size: 12px;
-    margin-bottom: 0; // Remove bottom margin
+    margin-bottom: 0; 
   }
 }
 
@@ -248,7 +249,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: center; // Align items with header
+  align-items: center;
 
   @media (width > 768px) {
     gap: 10px;
@@ -261,6 +262,7 @@
   border-radius: 4px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.9);
+  user-select: none;
 
   @media (width > 768px) {
     padding: 6px 10px;
@@ -270,10 +272,20 @@
 
 .metadataSectionItemClickable {
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
+  pointer-events: auto;
+  
+  /* Mobile touch optimizations */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   &:hover {
     background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  &:active {
+    transform: scale(0.98);
+    background-color: rgba(255, 255, 255, 0.25);
   }
 }
 
