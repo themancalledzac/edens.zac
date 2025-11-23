@@ -2,6 +2,7 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
+import React from 'react';
 import { createPortal } from 'react-dom';
 
 import { IMAGE } from '@/app/constants';
@@ -25,7 +26,6 @@ interface FullScreenModalProps {
   isSwiping: React.MutableRefObject<boolean>;
   showMetadata: boolean;
   toggleMetadata: (e: React.MouseEvent) => void;
-  toggleMetadataTouch: (e: React.TouchEvent) => void;
   router: AppRouterInstance;
 }
 
@@ -38,7 +38,6 @@ export function FullScreenModal({
   isSwiping,
   showMetadata,
   toggleMetadata,
-  toggleMetadataTouch,
   router
 }: FullScreenModalProps) {
   if (!fullScreenState) return null;
@@ -137,7 +136,6 @@ export function FullScreenModal({
                             onClick={(e) => {
                               e.stopPropagation();
                               if (c.slug) {
-                                console.log('👆 Pushing to collection:', c.slug);
                                 hideImage();
                                 router.push(`/${c.slug}`);
                               }
@@ -155,7 +153,6 @@ export function FullScreenModal({
               <button
                 className={styles.metadataToggle}
                 onClick={toggleMetadata}
-                onTouchStart={toggleMetadataTouch}
                 aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
                 aria-expanded={showMetadata}
                 type="button"

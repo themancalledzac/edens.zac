@@ -1,9 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
 import { INTERACTION } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
@@ -27,7 +27,6 @@ export function useFullScreenImage() {
   const touchStartY = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
-  const metadataToggleHandled = useRef<boolean>(false);
 
   const showImage = useCallback((
     image: ImageBlock,
@@ -142,6 +141,8 @@ export function useFullScreenImage() {
 
     const handleTouchStart = (e: TouchEvent) => {
       if (!e.touches[0] || isMetadataControl(e.target as HTMLElement)) return;
+      
+      e.preventDefault();
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
       isSwiping.current = false;
@@ -187,9 +188,9 @@ export function useFullScreenImage() {
       }, 50);
     };
 
-    modalElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+    modalElement.addEventListener('touchstart', handleTouchStart, { passive: false });
     modalElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-    modalElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+    modalElement.addEventListener('touchend', handleTouchEnd, { passive: false });
 
     return () => {
       modalElement.removeEventListener('touchstart', handleTouchStart);
@@ -200,43 +201,21 @@ export function useFullScreenImage() {
 
   const toggleMetadata = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    if (metadataToggleHandled.current) {
-      metadataToggleHandled.current = false;
-      return;
-    }
-    
+    e.preventDefault();
     setShowMetadata(prev => !prev);
   }, []);
-
-  const toggleMetadataTouch = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
-    metadataToggleHandled.current = true;
-    
-    setShowMetadata(prev => !prev);
-    setTimeout(() => {
-      metadataToggleHandled.current = false;
-    }, 300);
-  }, []);
-
-  const Modal = () => (
-    <FullScreenModal
-      fullScreenState={fullScreenState}
-      loadedImageIds={loadedImageIds}
-      setLoadedImageIds={setLoadedImageIds}
-      modalRef={modalRef}
-      hideImage={hideImage}
-      isSwiping={isSwiping}
-      showMetadata={showMetadata}
-      toggleMetadata={toggleMetadata}
-      toggleMetadataTouch={toggleMetadataTouch}
-      router={router}
-    />
-  );
 
   return {
+    fullScreenState,
+    loadedImageIds,
+    showMetadata,
+    modalRef,
+    isSwiping,
     showImage,
-    FullScreenModal: Modal,
+    hideImage,
+    toggleMetadata,
+    setLoadedImageIds,
+    router,
     isOpen: !!fullScreenState
   };
 }
