@@ -39,8 +39,7 @@ export default function CollectionContentRenderer({
   hasSlug,
   isCollection = false,
   contentType,
-  textContent,
-  textAlign,
+  textItems,
   isGif = false,
   enableDragAndDrop = false,
   draggedImageId,
@@ -117,7 +116,11 @@ export default function CollectionContentRenderer({
   
   
   // Render TEXT content
-  if (contentType === 'TEXT' && textContent) {
+  if (contentType === 'TEXT') {
+    if (!textItems || textItems.length === 0) {
+      return null;
+    }
+    
     return (
       <div
         key={contentId}
@@ -137,10 +140,17 @@ export default function CollectionContentRenderer({
         }}
       >
         <div className={cbStyles.blockContainer}>
-          <div className={textAlign === 'left' ? cbStyles.blockInnerLeft : cbStyles.blockInner}>
-            {textContent.split('\n').map((line, idx) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <div key={`text-line-${contentId}-${idx}`} style={{ width: '100%' }}>{line}</div>
+          <div className={cbStyles.metadataBlockInner}>
+            {textItems.map((item) => (
+              <div 
+                key={`text-item-${contentId}-${item.type}-${item.value.slice(0, 20)}`}
+                className={cbStyles[`textItem-${item.type}`] || cbStyles.textItem || ''}
+              >
+                {item.label && (
+                  <span className={cbStyles.textItemLabel || ''}>{item.label}: </span>
+                )}
+                <span>{item.value}</span>
+              </div>
             ))}
           </div>
         </div>

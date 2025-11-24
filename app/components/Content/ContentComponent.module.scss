@@ -42,7 +42,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #111;
+  color: var(--color-black);
   overflow: hidden;
   width: 100%;
   height: auto;
@@ -56,7 +56,7 @@
 /* Desktop styles for text blocks */
 @media (width >= 768px) {
   .blockContainer {
-    border-radius: 4px;
+    border-radius: var(--radius-1);
     border-width: 0;
 
     /* Desktop specific styles can be added here */
@@ -64,40 +64,40 @@
 }
 
 .blockInner {
-  padding: 16px;
+  padding: var(--space-4);
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 
 .blockInnerLeft {
-  padding: 16px;
+  padding: var(--space-4);
   width: 100%;
   height: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1.4;
   flex-direction: column;
 }
 
 /* Left-aligned text block with date badge - extra top padding to clear the badge */
 .blockInnerLeftWithBadge {
-  padding: 47px 16px 16px;
+  padding: 47px var(--space-4) var(--space-4);
   width: 100%;
   height: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--text-sm);
   line-height: 1.4;
   flex-direction: column;
 }
@@ -152,7 +152,7 @@
   top: 0;
   left: 0;
   background-color: rgba(0, 0, 0, 0.9);
-  color: #fff;
+  color: var(--color-white);
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-xs);
   font-weight: 600;
@@ -168,7 +168,7 @@
   top: 0;
   right: 0;
   background-color: rgba(0, 0, 0, 0.9);
-  color: #fff;
+  color: var(--color-white);
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-xs);
   font-weight: 600;
@@ -191,7 +191,7 @@
 
   @media (width >= 768px) {
     border-width: 0;
-    border-radius: 4px;
+    border-radius: var(--radius-1);
   }
 }
 
@@ -239,11 +239,11 @@
   justify-content: center;
   background: rgba(89, 89, 89, 0.4);
   color: var(--color-white);
-  font-family: var(--font-serif), serif; /* Dramatic, high-contrast serif */
+  font-family: var(--font-serif), serif;
   font-size: var(--collection-title);
   font-weight: 700;
   text-align: center;
-  padding: 16px;
+  padding: var(--space-4);
   pointer-events: none;
   z-index: var(--z-content); /* Ensure text overlay appears above parallax image (z-index: base) */
 }
@@ -251,7 +251,7 @@
 /* Desktop styles */
 @media (width >= 768px) {
   .textOverlay {
-    padding: 20px;
+    padding: var(--space-5);
   }
 }
 
@@ -263,7 +263,7 @@
   right: 0;
   bottom: 0;
   pointer-events: none;
-  border-radius: 4px;
+  border-radius: var(--radius-1);
 }
 
 /* Visibility overlay for non-visible images */
@@ -294,8 +294,8 @@
 /* Selected image indicator */
 .selectedIndicator {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: var(--space-2);
+  right: var(--space-2);
   width: 32px;
   height: 32px;
   background-color: rgba(220, 38, 38, 0.9);
@@ -356,6 +356,114 @@
   
   &.mobile {
     width: 100%;
+    height: auto;
+  }
+}
+
+/* Metadata block inner container - minimal padding for collection metadata */
+.metadataBlockInner {
+  padding: var(--space-2) var(--space-4);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  flex-direction: column;
+}
+
+/* Text block item styles */
+.textItem {
+  margin-bottom: var(--space-2);
+  line-height: 1.6;
+  width: 100%;
+}
+
+.textItem-date {
+  font-weight: 700;
+  color: var(--color-black);
+}
+
+.textItem-location {
+  font-weight: 700;
+  color: var(--color-black);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-3);
+}
+
+.textItem-description {
+  margin-top: 0;
+  line-height: 1.8;
+  font-weight: 400;
+}
+
+.textItemLabel {
+  font-weight: 600;
+  margin-right: var(--space-1);
+}
+
+/* Text content wrapper styles - mobile first */
+.textContentWrapper {
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+}
+
+/* Placeholder styles for missing images - mobile first */
+.placeholderImage {
+  box-sizing: border-box;
+  position: relative;
+  background-color: var(--color-border-medium);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3/2;
+}
+
+/* Non-parallax image styles - mobile first */
+.nonParallaxImage {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  display: block;
+  
+  &.clickable {
+    cursor: pointer;
+  }
+  
+  &.notClickable {
+    cursor: default;
+  }
+}
+
+/* Desktop styles for non-parallax images */
+@media (width >= 768px) {
+  .nonParallaxImage {
+    height: 100%;
+  }
+}
+
+/* Content wrapper sizing - mobile first */
+.contentWrapper {
+  box-sizing: border-box;
+  position: relative;
+  width: 100%;
+  
+  &.clickable {
+    cursor: pointer;
+  }
+  
+  &.notClickable {
+    cursor: default;
+  }
+  
+  &.parallax {
     height: auto;
   }
 }

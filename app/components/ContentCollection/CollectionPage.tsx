@@ -3,7 +3,7 @@ import {
   type AnyContentModel,
   type ContentParallaxImageModel,
 } from '@/app/types/Content';
-import { processContentBlocks } from '@/app/utils/contentLayout';
+import { injectTopRow, processContentBlocks } from '@/app/utils/contentLayout';
 
 import ContentBlockWithFullScreen from '../Content/ContentBlockWithFullScreen';
 import SiteHeader from '../SiteHeader/SiteHeader';
@@ -75,7 +75,10 @@ export default async function CollectionPage({
   // Get content blocks to display
   const contentBlocks: AnyContentModel[] = Array.isArray(collection)
     ? collection.map(collectionToContentModel)
-    : processContentBlocks(collection.content ?? [], true, collection.id, collection.displayMode);
+    : [
+        ...injectTopRow(collection), // Inject header row (cover + metadata)
+        ...processContentBlocks(collection.content ?? [], true, collection.id, collection.displayMode)
+      ];
 
   // Determine if this is a single collection (for passing slug to SiteHeader)
   const singleCollection = Array.isArray(collection) ? null : collection;

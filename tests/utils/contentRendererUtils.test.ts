@@ -93,7 +93,7 @@ const createTextContent = (
   contentType: 'TEXT',
   orderIndex: id,
   visible: true,
-  content: `Text content ${id}`,
+  items: [{ type: 'text', value: `Text content ${id}` }],
   format: 'plain',
   align: 'left',
   width: 800,
@@ -465,8 +465,7 @@ describe('contentRendererUtils', () => {
         expect(result.imageWidth).toBe(800);
         expect(result.imageHeight).toBe(200);
         expect(result.alt).toBe('');
-        expect(result.textContent).toBe('Text content 1');
-        expect(result.textAlign).toBe('left');
+        expect(result.textItems).toEqual([{ type: 'text', value: 'Text content 1' }]);
         expect(result.enableParallax).toBe(false);
         expect(result.isCollection).toBe(false);
       });
@@ -486,19 +485,6 @@ describe('contentRendererUtils', () => {
 
         expect(result.imageWidth).toBe(800);
         expect(result.imageHeight).toBe(200); // Default text height
-      });
-
-      it('should preserve text alignment', () => {
-        const text = createTextContent(1, { align: 'center' });
-        const result = normalizeContentToRendererProps(
-          text,
-          500,
-          200,
-          'imageRight',
-          false
-        );
-
-        expect(result.textAlign).toBe('center');
       });
     });
 
@@ -644,7 +630,7 @@ describe('contentRendererUtils', () => {
       );
 
       expect(result.contentType).toBe('TEXT');
-      expect(result.textContent).toBe('Text content 1');
+      expect(result.textItems).toEqual([{ type: 'text', value: 'Text content 1' }]);
       expect(result.className).toBe('imageRight');
       expect(result.isMobile).toBe(true);
     });
