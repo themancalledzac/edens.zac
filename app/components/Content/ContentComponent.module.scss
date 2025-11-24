@@ -151,7 +151,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: var(--color-badge-bg);
   color: var(--color-white);
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-xs);
@@ -167,7 +167,7 @@
   position: absolute;
   top: 0;
   right: 0;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: var(--color-badge-bg);
   color: var(--color-white);
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-xs);
@@ -237,7 +237,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(89, 89, 89, 0.4);
+  background: var(--color-text-overlay-bg);
   color: var(--color-white);
   font-family: var(--font-serif), serif;
   font-size: var(--collection-title);
@@ -269,13 +269,13 @@
 /* Visibility overlay for non-visible images */
 .visibilityOverlay {
   @extend .overlay;
-  background-color: rgba(128, 128, 128, 0.5);
+  background-color: var(--color-visibility-overlay);
 }
 
 /* Cover image selection overlay */
 .coverImageOverlay {
   @extend .overlay;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--color-cover-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,13 +298,13 @@
   right: var(--space-2);
   width: 32px;
   height: 32px;
-  background-color: rgba(220, 38, 38, 0.9);
+  background-color: var(--color-selected-indicator);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px var(--color-shadow);
 }
 
 .selectedIndicatorX {
