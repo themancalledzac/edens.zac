@@ -112,12 +112,22 @@ export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'cont
 }
 
 /**
- * Text content model - displays formatted text content
+ * Text block item - represents a single piece of structured text
+ * Text blocks are composed of multiple items for semantic editing
+ */
+export interface TextBlockItem {
+  type: 'date' | 'location' | 'description' | 'text';
+  value: string;
+  label?: string; // Optional display label (e.g., "Date:", "Location:")
+}
+
+/**
+ * Text content model - displays structured text content as items
+ * Each text block contains an array of items that can be individually styled/edited
  */
 export interface ContentTextModel extends Content {
   contentType: 'TEXT';
-  content: string; // Frontend field for text content
-  textContent?: string; // Backend field name (maps to content during transformation)
+  items: TextBlockItem[]; // Array of text items (required)
   format: 'plain' | 'markdown' | 'html'; // Frontend format type
   formatType?: 'plain' | 'markdown' | 'html' | 'js' | 'css' | 'json'; // Backend field (maps to format)
   align: 'left' | 'center' | 'right';

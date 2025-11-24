@@ -1,8 +1,11 @@
+import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
   type ContentCollectionModel,
   type ContentImageModel,
   type ContentParallaxImageModel,
+  type ContentTextModel,
+  type TextBlockItem,
 } from '@/app/types/Content';
 import { getContentDimensions, hasImage, isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 
@@ -13,6 +16,9 @@ import { getContentDimensions, hasImage, isContentCollection, isContentImage } f
 
 /**
  * Chunk ContentModels based on standalone rules (panorama) and slot width system (rated images)
+ * @param content - Array of content blocks to chunk into rows
+ * @param chunkSize - Number of normal-width items per row (default: 2)
+ * @returns Array of content rows
  */
 export function chunkContent(
   content: AnyContentModel[],
@@ -82,8 +88,8 @@ export function chunkContent(
 }
 
 /**
- * Get the slot width for a content item
- * @returns slot width: 1 (normal), 2 (4-star), 3 (5-star), or Infinity (standalone/panorama)
+ * Get slot width for content item based on aspect ratio and rating
+ * Returns 1 (normal), 2 (4-star), 3 (5-star), or Infinity (standalone panorama)
  */
 function getSlotWidth(
   contentItem: AnyContentModel,
@@ -114,10 +120,10 @@ function getSlotWidth(
 }
 
 /**
- * Determine if a Content should be rendered standalone
+ * Determine if content should be rendered standalone (panorama images)
  */
 export function shouldBeStandalone(contentItem: AnyContentModel): boolean {
-  return getSlotWidth(contentItem, 2) === Infinity; // chunkSize doesn't matter for standalone check
+  return getSlotWidth(contentItem, 2) === Infinity;
 }
 
 // ===================== Content sizing =====================
@@ -129,10 +135,12 @@ export interface CalculatedContentSize {
 }
 
 /**
- * Calculate display sizes for a row of ContentModels so their heights match
- * and their widths sum to the component width
- * Accounts for padding between images (.imageLeft padding-right: 0.4rem + .imageRight padding-left: 0.4rem = 0.8rem total)
- * Accounts for slot width: rated images (4-5 star) take 2-3x the proportional space
+ * Calculate display sizes for row of content to match heights and sum to component width
+ * Accounts for slot width where rated images (4-5 star) take 2-3x proportional space
+ * @param content - Array of content blocks in a single row
+ * @param componentWidth - Total available width for the row
+ * @param chunkSize - Number of normal-width items per row (default: 2)
+ * @returns Array of content blocks with calculated display dimensions
  */
 export function calculateContentSizes(
   content: AnyContentModel[],
@@ -272,7 +280,11 @@ export function calculateContentSizes(
 }
 
 /**
- * Complete pipeline: chunk ContentModels then calculate sizes for each chunk
+ * Chunk content into rows and calculate display sizes for each chunk
+ * @param content - Array of content blocks to process
+ * @param componentWidth - Total available width for display
+ * @param chunkSize - Number of normal-width items per row (default: 2)
+ * @returns Array of rows, each containing sized content blocks
  */
 export function processContentForDisplay(
   content: AnyContentModel[],
@@ -284,11 +296,7 @@ export function processContentForDisplay(
 }
 
 /**
- * Extract image dimensions from a cover image
- * Prioritizes imageWidth/imageHeight over width/height for accurate aspect ratios
- *
- * @param coverImage - The cover image to extract dimensions from
- * @returns Object with imageWidth and imageHeight (may be undefined)
+ * Extract image dimensions from cover image with fallback to width/height properties
  */
 function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
   imageWidth?: number;
@@ -301,14 +309,11 @@ function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
 }
 
 /**
- * Convert CollectionContentModel to ParallaxImageContentModel for unified rendering
- * Used when processing content blocks from a collection that contain child collections
- * Uses coverImage dimensions for accurate layout calculations
- * 
- * Used on public collection pages where collections should render as parallax images
+ * Convert collection to parallax image for unified rendering on public pages
+ * @param col - Collection content model to convert
+ * @returns Parallax image model with collection metadata
  */
 export function convertCollectionContentToParallax(col: ContentCollectionModel): ContentParallaxImageModel {
-  // Extract dimensions from coverImage (prioritize imageWidth/imageHeight for accurate aspect ratios)
   const { imageWidth, imageHeight } = extractCollectionDimensions(col.coverImage);
   
   return {
@@ -319,13 +324,10 @@ export function convertCollectionContentToParallax(col: ContentCollectionModel):
     slug: col.slug,
     collectionType: col.collectionType,
     description: col.description ?? null,
-    imageUrl: col.coverImage?.imageUrl ?? '', // Use coverImage.imageUrl only
-    overlayText: col.title || col.slug || '', // Display title on child collection cards
-    // Use explicit width/height from coverImage dimensions for proper chunking
-    // Prioritize imageWidth/imageHeight for accurate aspect ratio calculations
+    imageUrl: col.coverImage?.imageUrl ?? '',
+    overlayText: col.title || col.slug || '',
     imageWidth,
     imageHeight,
-    // Also set width/height on base Content interface for layout (fallback)
     width: imageWidth,
     height: imageHeight,
     orderIndex: col.orderIndex,
@@ -336,17 +338,14 @@ export function convertCollectionContentToParallax(col: ContentCollectionModel):
 }
 
 /**
- * Convert CollectionContentModel to ImageContentModel for manage page rendering
- * Used on admin/manage pages where collections should render as regular images (not parallax)
- * Uses the collection's coverImage as the base for the ImageContentModel
+ * Convert collection to regular image for admin/manage page rendering
+ * @param col - Collection content model to convert
+ * @returns Image model with collection metadata
  */
 export function convertCollectionContentToImage(col: ContentCollectionModel): ContentImageModel {
   const coverImage = col.coverImage;
-  
-  // Extract dimensions from coverImage (prioritize imageWidth/imageHeight for accurate aspect ratios)
   const { imageWidth, imageHeight } = extractCollectionDimensions(coverImage);
   
-  // Create ImageContentModel from the coverImage, preserving collection metadata
   return {
     contentType: 'IMAGE',
     id: col.id,
@@ -362,7 +361,6 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
     visible: col.visible ?? true,
     createdAt: col.createdAt,
     updatedAt: col.updatedAt,
-    // Preserve image metadata from coverImage if available
     iso: coverImage?.iso,
     author: coverImage?.author ?? null,
     rating: coverImage?.rating,
@@ -383,19 +381,12 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
     tags: coverImage?.tags ?? [],
     people: coverImage?.people ?? [],
     collections: coverImage?.collections ?? [],
-    // Use overlayText to show collection title on image
     overlayText: col.title || col.slug || '',
   };
 }
 
 /**
- * Filter visible content blocks
- * Removes blocks where visible === false, and for images, checks collection-specific visibility
- * 
- * @param content - Array of content blocks to filter
- * @param filterVisible - If true, filters out non-visible blocks
- * @param collectionId - Optional collection ID to check collection-specific visibility for images
- * @returns Filtered array of content blocks
+ * Filter out non-visible content blocks and check collection-specific visibility for images
  */
 function filterVisibleBlocks(
   content: AnyContentModel[],
@@ -407,7 +398,6 @@ function filterVisibleBlocks(
   return content.filter(block => {
     if (block.visible === false) return false;
     
-    // For images, check collection-specific visibility
     if (block.contentType === 'IMAGE' && collectionId) {
       const imageBlock = block as ContentImageModel;
       const collectionEntry = imageBlock.collections?.find(
@@ -421,10 +411,7 @@ function filterVisibleBlocks(
 }
 
 /**
- * Transform CollectionContentModel blocks to ParallaxImageContentModel
- * 
- * @param content - Array of content blocks to transform
- * @returns Array with CollectionContentModel blocks converted to ParallaxImageContentModel
+ * Convert collection content blocks to parallax image blocks for unified rendering
  */
 function transformCollectionBlocks(content: AnyContentModel[]): AnyContentModel[] {
   return content.map(block => {
@@ -437,11 +424,7 @@ function transformCollectionBlocks(content: AnyContentModel[]): AnyContentModel[
 }
 
 /**
- * Update orderIndex for image blocks from collection-specific entry
- * 
- * @param content - Array of content blocks to update
- * @param collectionId - Collection ID to look up collection-specific orderIndex
- * @returns Array with updated orderIndex for image blocks
+ * Update orderIndex for image blocks using collection-specific values
  */
 function updateImageOrderIndex(
   content: AnyContentModel[],
@@ -467,14 +450,10 @@ function updateImageOrderIndex(
 }
 
 /**
- * Ensure content blocks with parallax enabled have proper imageWidth/imageHeight dimensions
- * 
- * @param content - Array of content blocks to process
- * @returns Array with parallax-enabled blocks having proper dimensions
+ * Ensure parallax blocks have proper imageWidth/imageHeight dimensions with fallback
  */
 function ensureParallaxDimensions(content: AnyContentModel[]): AnyContentModel[] {
   return content.map(block => {
-    // Check for enableParallax flag instead of contentType
     if ('enableParallax' in block && block.enableParallax && block.contentType === 'IMAGE') {
       const parallaxBlock = block as ContentParallaxImageModel;
       if (!parallaxBlock.imageWidth || !parallaxBlock.imageHeight) {
@@ -490,10 +469,7 @@ function ensureParallaxDimensions(content: AnyContentModel[]): AnyContentModel[]
 }
 
 /**
- * Sort content blocks by orderIndex
- * 
- * @param content - Array of content blocks to sort
- * @returns Sorted array by orderIndex (ascending)
+ * Sort content blocks by orderIndex in ascending order
  */
 function sortContentByOrderIndex(content: AnyContentModel[]): AnyContentModel[] {
   return [...content].sort((a, b) => {
@@ -502,10 +478,7 @@ function sortContentByOrderIndex(content: AnyContentModel[]): AnyContentModel[] 
 }
 
 /**
- * Sort content blocks by createdAt date (chronological)
- * 
- * @param content - Array of content blocks to sort
- * @returns Sorted array by createdAt (ascending - oldest first)
+ * Sort content blocks by createdAt date in chronological order (oldest first)
  */
 function sortContentByCreatedAt(content: AnyContentModel[]): AnyContentModel[] {
   return [...content].sort((a, b) => {
@@ -516,17 +489,31 @@ function sortContentByCreatedAt(content: AnyContentModel[]): AnyContentModel[] {
 }
 
 /**
- * Process content blocks for display, converting CollectionContentModel to ParallaxImageContentModel
- * and ensuring PARALLAX blocks have proper dimensions
- * Also filters out non-visible content blocks for public collection pages
- * 
- * Pipeline: filter → transform → update → ensure → sort
- * 
+ * Reorder content to show images/text/gifs first, then collections
+ */
+function reorderImagesBeforeCollections(content: AnyContentModel[]): AnyContentModel[] {
+  const nonCollections: AnyContentModel[] = [];
+  const collections: AnyContentModel[] = [];
+  
+  for (const block of content) {
+    if (block.contentType === 'COLLECTION') {
+      collections.push(block);
+    } else {
+      nonCollections.push(block);
+    }
+  }
+  
+  return [...nonCollections, ...collections];
+}
+
+/**
+ * Process content blocks through filtering, sorting, and transformation pipeline
+ * Converts collections to parallax images and ensures proper dimensions
  * @param content - Array of content blocks to process
- * @param filterVisible - If true, filters out blocks where visible === false (default: true for public pages)
- * @param collectionId - Optional collection ID to check collection-specific visibility
- * @param displayMode - Display mode: 'CHRONOLOGICAL' sorts by createdAt, 'ORDERED' sorts by orderIndex
- * @returns Processed and sorted array of content blocks
+ * @param filterVisible - Whether to filter out non-visible blocks (default: true)
+ * @param collectionId - Collection ID for checking image visibility
+ * @param displayMode - Sort by 'CHRONOLOGICAL' or 'ORDERED' (default: ORDERED)
+ * @returns Processed and sorted content blocks
  */
 export function processContentBlocks(
   content: AnyContentModel[],
@@ -535,13 +522,136 @@ export function processContentBlocks(
   displayMode?: 'CHRONOLOGICAL' | 'ORDERED'
 ): AnyContentModel[] {
   let processed = filterVisibleBlocks(content, filterVisible, collectionId);
-  processed = transformCollectionBlocks(processed);
   processed = updateImageOrderIndex(processed, collectionId);
   processed = ensureParallaxDimensions(processed);
-  // Sort based on display mode using a ternary expression
   processed = displayMode === 'CHRONOLOGICAL'
     ? sortContentByCreatedAt(processed)
     : sortContentByOrderIndex(processed);
+  
+  processed = reorderImagesBeforeCollections(processed);
+  processed = transformCollectionBlocks(processed);
 
   return processed;
+}
+
+// ===================== Collection Header Row Injection =====================
+
+/**
+ * Build metadata items array from collection fields
+ */
+function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
+  const items: TextBlockItem[] = [];
+  
+  if (collection.collectionDate) {
+    items.push({
+      type: 'date',
+      value: collection.collectionDate,
+    });
+  }
+  
+  if (collection.location) {
+    items.push({
+      type: 'location',
+      value: collection.location,
+    });
+  }
+  
+  if (collection.description) {
+    items.push({
+      type: 'description',
+      value: collection.description,
+    });
+  }
+  
+  return items;
+}
+
+/**
+ * Create metadata text block with same dimensions as cover image for equal row sizing
+ */
+function createMetadataTextBlock(
+  items: TextBlockItem[],
+  width?: number,
+  height?: number
+): ContentTextModel | null {
+  if (items.length === 0 || !width || !height) {
+    return null;
+  }
+  
+  return {
+    contentType: 'TEXT',
+    id: -2,
+    items,
+    format: 'plain',
+    formatType: 'plain',
+    align: 'left',
+    orderIndex: -1,
+    visible: true,
+    width,
+    height,
+  };
+}
+
+/**
+ * Create parallax cover image block with title overlay
+ */
+function createCoverImageBlock(collection: CollectionModel): ContentParallaxImageModel {
+  const coverImage = collection.coverImage!;
+  const { imageWidth, imageHeight } = extractCollectionDimensions(coverImage);
+  
+  return {
+    contentType: 'IMAGE',
+    enableParallax: true,
+    id: -1,
+    title: collection.title,
+    imageUrl: coverImage.imageUrl,
+    overlayText: collection.title,
+    imageWidth,
+    imageHeight,
+    width: imageWidth,
+    height: imageHeight,
+    orderIndex: -2,
+    visible: true,
+    createdAt: collection.createdAt,
+    updatedAt: collection.updatedAt,
+  };
+}
+
+/**
+ * Inject header row with cover image and metadata at the top of collection content
+ * 
+ * Creates two blocks that form the first row:
+ * - Cover image with title overlay (parallax-enabled)
+ * - Metadata text block (date, location, description)
+ * 
+ * Both blocks share the same dimensions for equal 50/50 width split on desktop.
+ * Returns empty array if cover image missing or has no dimensions.
+ * @param collection - Collection model with cover image and metadata
+ * @returns Array of header blocks (empty if no cover image or dimensions)
+ */
+export function injectTopRow(collection: CollectionModel): AnyContentModel[] {
+  if (!collection.coverImage) {
+    return [];
+  }
+  
+  const coverBlock = createCoverImageBlock(collection);
+  
+  if (!coverBlock.imageWidth || !coverBlock.imageHeight) {
+    return [];
+  }
+  
+  const headerBlocks: AnyContentModel[] = [coverBlock];
+  
+  const metadataItems = buildMetadataItems(collection);
+  const metadataBlock = createMetadataTextBlock(
+    metadataItems,
+    coverBlock.imageWidth,
+    coverBlock.imageHeight
+  );
+  
+  if (metadataBlock) {
+    headerBlocks.push(metadataBlock);
+  }
+  
+  return headerBlocks;
 }

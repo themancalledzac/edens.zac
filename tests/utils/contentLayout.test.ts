@@ -3,16 +3,19 @@
  * Tests content processing and layout utilities
  */
 
+import type { CollectionModel } from '@/app/types/Collection';
 import type {
   AnyContentModel,
   ContentCollectionModel,
   ContentImageModel,
   ContentParallaxImageModel,
   ContentTextModel,
+  TextBlockItem,
 } from '@/app/types/Content';
 import {
   convertCollectionContentToImage,
   convertCollectionContentToParallax,
+  injectTopRow,
   processContentBlocks,
 } from '@/app/utils/contentLayout';
 
@@ -58,9 +61,9 @@ const createTextContent = (
   contentType: 'TEXT',
   orderIndex: id,
   visible: true,
-  text: `Text content ${id}`,
+  items: [{ type: 'text', value: `Text content ${id}` }],
   format: 'plain',
-  alignment: 'left',
+  align: 'left',
   ...overrides,
 });
 
@@ -72,15 +75,43 @@ const createCollectionContent = (
   contentType: 'COLLECTION',
   orderIndex: id,
   visible: true,
-  collectionId: id,
   title: `Collection ${id}`,
   slug: `collection-${id}`,
+  collectionType: 'PORTFOLIO',
   coverImage: {
     id: id * 10,
+    contentType: 'IMAGE',
+    orderIndex: 0,
     imageUrl: `https://example.com/cover-${id}.jpg`,
     imageWidth: 1920,
     imageHeight: 1080,
+    visible: true,
   },
+  ...overrides,
+});
+
+const createCollectionModel = (
+  id: number,
+  overrides?: Partial<CollectionModel>
+): CollectionModel => ({
+  id,
+  type: 'PORTFOLIO',
+  title: `Collection ${id}`,
+  slug: `collection-${id}`,
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-01T00:00:00Z',
+  coverImage: {
+    id: id * 10,
+    contentType: 'IMAGE',
+    orderIndex: 0,
+    imageUrl: `https://example.com/cover-${id}.jpg`,
+    imageWidth: 1920,
+    imageHeight: 1080,
+    visible: true,
+  },
+  collectionDate: '2024-01-01',
+  location: 'Seattle, WA',
+  description: 'A beautiful collection description',
   ...overrides,
 });
 
@@ -330,6 +361,134 @@ describe('processContentBlocks', () => {
     });
   });
 
+  describe('Reordering images before collections', () => {
+    it('should place images before collections', () => {
+      const content: AnyContentModel[] = [
+        createCollectionContent(1, { orderIndex: 1 }),
+        createImageContent(2, { orderIndex: 2 }),
+        createImageContent(3, { orderIndex: 3 }),
+        createCollectionContent(4, { orderIndex: 4 }),
+      ];
+      const result = processContentBlocks(content);
+      
+      // First two should be images (IDs 2 and 3)
+      expect(result[0]?.id).toBe(2);
+      expect(result[1]?.id).toBe(3);
+      
+      // Last two should be collections (IDs 1 and 4, converted to parallax)
+      expect(result[2]?.id).toBe(1);
+      expect(result[3]?.id).toBe(4);
+      // After transformation, they should be parallax images with slug
+      expect((result[2] as ContentParallaxImageModel).enableParallax).toBe(true);
+      expect((result[3] as ContentParallaxImageModel).enableParallax).toBe(true);
+      expect((result[2] as ContentParallaxImageModel).slug).toBe('collection-1');
+      expect((result[3] as ContentParallaxImageModel).slug).toBe('collection-4');
+    });
+
+    it('should preserve relative order within images and collections groups', () => {
+      const content: AnyContentModel[] = [
+        createCollectionContent(1, { orderIndex: 1 }),
+        createImageContent(2, { orderIndex: 2 }),
+        createCollectionContent(3, { orderIndex: 3 }),
+        createImageContent(4, { orderIndex: 4 }),
+        createImageContent(5, { orderIndex: 5 }),
+        createCollectionContent(6, { orderIndex: 6 }),
+      ];
+      const result = processContentBlocks(content);
+      
+      // Images should come first in their order: 2, 4, 5
+      expect(result[0]?.id).toBe(2);
+      expect(result[1]?.id).toBe(4);
+      expect(result[2]?.id).toBe(5);
+      
+      // Collections should come after in their order: 1, 3, 6
+      expect(result[3]?.id).toBe(1);
+      expect(result[4]?.id).toBe(3);
+      expect(result[5]?.id).toBe(6);
+    });
+
+    it('should handle content with only images', () => {
+      const content: AnyContentModel[] = [
+        createImageContent(1, { orderIndex: 1 }),
+        createImageContent(2, { orderIndex: 2 }),
+        createImageContent(3, { orderIndex: 3 }),
+      ];
+      const result = processContentBlocks(content);
+      
+      expect(result).toHaveLength(3);
+      expect(result[0]?.id).toBe(1);
+      expect(result[1]?.id).toBe(2);
+      expect(result[2]?.id).toBe(3);
+    });
+
+    it('should handle content with only collections', () => {
+      const content: AnyContentModel[] = [
+        createCollectionContent(1, { orderIndex: 1 }),
+        createCollectionContent(2, { orderIndex: 2 }),
+        createCollectionContent(3, { orderIndex: 3 }),
+      ];
+      const result = processContentBlocks(content);
+      
+      expect(result).toHaveLength(3);
+      expect(result[0]?.id).toBe(1);
+      expect(result[1]?.id).toBe(2);
+      expect(result[2]?.id).toBe(3);
+      // All should be converted to parallax images with slugs
+      result.forEach(item => {
+        expect((item as ContentParallaxImageModel).enableParallax).toBe(true);
+        expect((item as ContentParallaxImageModel).slug).toBeDefined();
+      });
+    });
+
+    it('should work with text and other content types', () => {
+      const content: AnyContentModel[] = [
+        createCollectionContent(1, { orderIndex: 1 }),
+        createTextContent(2, { orderIndex: 2 }),
+        createImageContent(3, { orderIndex: 3 }),
+      ];
+      const result = processContentBlocks(content);
+      
+      // Text and image should come first (non-collections)
+      expect(result[0]?.id).toBe(2);
+      expect(result[1]?.id).toBe(3);
+      
+      // Collection should come last (converted to parallax with slug)
+      expect(result[2]?.id).toBe(1);
+      expect((result[2] as ContentParallaxImageModel).enableParallax).toBe(true);
+      expect((result[2] as ContentParallaxImageModel).slug).toBe('collection-1');
+    });
+
+    it('should work with chronological display mode', () => {
+      const content: AnyContentModel[] = [
+        createCollectionContent(1, { 
+          orderIndex: 1,
+          createdAt: '2023-01-01T00:00:00Z'
+        }),
+        createImageContent(2, { 
+          orderIndex: 2,
+          createdAt: '2023-01-03T00:00:00Z'
+        }),
+        createImageContent(3, { 
+          orderIndex: 3,
+          createdAt: '2023-01-02T00:00:00Z'
+        }),
+        createCollectionContent(4, { 
+          orderIndex: 4,
+          createdAt: '2023-01-04T00:00:00Z'
+        }),
+      ];
+      const result = processContentBlocks(content, true, undefined, 'CHRONOLOGICAL');
+      
+      // Images should come first, sorted by createdAt: 3 (Jan 2), 2 (Jan 3)
+      expect(result[0]?.id).toBe(3);
+      expect(result[1]?.id).toBe(2);
+      
+      // Collections should come after, sorted by createdAt: 1 (Jan 1), 4 (Jan 4)
+      expect(result[2]?.id).toBe(1);
+      expect(result[3]?.id).toBe(4);
+    });
+  });
+
   describe('Full pipeline integration', () => {
     it('should apply all transformations in correct order', () => {
       const content: AnyContentModel[] = [
@@ -349,7 +508,7 @@ describe('processContentBlocks', () => {
             },
           ],
         }),
-        createCollectionContent(1),
+        createCollectionContent(1, { orderIndex: 0 }),
         createImageContent(1, {
           visible: true,
           orderIndex: 1,
@@ -357,21 +516,28 @@ describe('processContentBlocks', () => {
       ];
       const result = processContentBlocks(content, true, 1);
       
-      // Should be filtered (visible: false removed)
+      // Should be filtered (visible: false removed) - 3 items remain
       expect(result).toHaveLength(3);
       
-      // Collection should be converted to parallax (check enableParallax flag instead of contentType)
-      const parallaxBlock = result.find(b => b.id === 1 && b.contentType === 'IMAGE');
-      expect(parallaxBlock).toBeDefined();
-      expect((parallaxBlock as ContentParallaxImageModel).enableParallax).toBe(true);
+      // Images should come before collections
+      // After sorting by orderIndex: image(1), image(5), collection(0)
+      // After reordering: images first [image(1), image(5)], then collections [collection(0)]
+      const firstTwoItems = result.slice(0, 2);
+      const lastItem = result[2];
+      
+      // First two items should be regular images (without slug)
+      firstTwoItems.forEach(item => {
+        expect((item as ContentParallaxImageModel).slug).toBeUndefined();
+      });
+      
+      // Last item should be the converted collection (with slug and enableParallax)
+      expect((lastItem as ContentParallaxImageModel).enableParallax).toBe(true);
+      expect((lastItem as ContentParallaxImageModel).slug).toBe('collection-1');
+      expect(lastItem?.id).toBe(1); // This is the collection
       
       // Image with collection orderIndex should be updated
       const imageWithCollection = result.find(b => b.id === 2);
       expect(imageWithCollection?.orderIndex).toBe(5);
-      
-      // Should be sorted by orderIndex
-      const orderIndices = result.map(b => b.orderIndex ?? 0);
-      expect(orderIndices).toEqual([...orderIndices].sort((a, b) => a - b));
     });
 
     it('should handle empty array', () => {
@@ -534,6 +700,294 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
       const result = convertCollectionContentToImage(collection);
       expect(result.imageWidth).toBeUndefined();
       expect(result.imageHeight).toBeUndefined();
+    });
+  });
+});
+
+describe('injectTopRow', () => {
+  describe('Normal cases with full metadata', () => {
+    it('should create two blocks: cover image and metadata text block', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      
+      expect(result).toHaveLength(2);
+      expect(result[0]?.contentType).toBe('IMAGE');
+      expect(result[1]?.contentType).toBe('TEXT');
+    });
+
+    it('should create cover image block with correct properties', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      const coverBlock = result[0] as ContentParallaxImageModel;
+      
+      expect(coverBlock.id).toBe(-1);
+      expect(coverBlock.contentType).toBe('IMAGE');
+      expect(coverBlock.enableParallax).toBe(true);
+      expect(coverBlock.imageUrl).toBe('https://example.com/cover-1.jpg');
+      expect(coverBlock.overlayText).toBe('Collection 1');
+      expect(coverBlock.title).toBe('Collection 1');
+      expect(coverBlock.orderIndex).toBe(-2);
+      expect(coverBlock.imageWidth).toBe(1920);
+      expect(coverBlock.imageHeight).toBe(1080);
+      expect(coverBlock.width).toBe(1920);
+      expect(coverBlock.height).toBe(1080);
+    });
+
+    it('should create metadata block with all metadata items', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      const metadataBlock = result[1] as ContentTextModel;
+      
+      expect(metadataBlock.id).toBe(-2);
+      expect(metadataBlock.contentType).toBe('TEXT');
+      expect(metadataBlock.items).toHaveLength(3);
+      expect(metadataBlock.items?.[0]).toEqual({
+        type: 'date',
+        value: '2024-01-01',
+      });
+      expect(metadataBlock.items?.[1]).toEqual({
+        type: 'location',
+        value: 'Seattle, WA',
+      });
+      expect(metadataBlock.items?.[2]).toEqual({
+        type: 'description',
+        value: 'A beautiful collection description',
+      });
+    });
+
+    it('should give metadata block same dimensions as cover image', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      const coverBlock = result[0];
+      const metadataBlock = result[1] as ContentTextModel;
+      
+      expect(metadataBlock.width).toBe(coverBlock?.imageWidth);
+      expect(metadataBlock.height).toBe(coverBlock?.imageHeight);
+      expect(metadataBlock.width).toBe(1920);
+      expect(metadataBlock.height).toBe(1080);
+    });
+  });
+
+  describe('Partial metadata cases', () => {
+    it('should create metadata block with only date', () => {
+      const collection = createCollectionModel(1, {
+        location: undefined,
+        description: undefined,
+      });
+      const result = injectTopRow(collection);
+      const metadataBlock = result[1] as ContentTextModel;
+      
+      expect(metadataBlock.items).toHaveLength(1);
+      expect(metadataBlock.items?.[0]).toEqual({
+        type: 'date',
+        value: '2024-01-01',
+      });
+    });
+
+    it('should create metadata block with only location', () => {
+      const collection = createCollectionModel(1, {
+        collectionDate: undefined,
+        description: undefined,
+      });
+      const result = injectTopRow(collection);
+      const metadataBlock = result[1] as ContentTextModel;
+      
+      expect(metadataBlock.items).toHaveLength(1);
+      expect(metadataBlock.items?.[0]).toEqual({
+        type: 'location',
+        value: 'Seattle, WA',
+      });
+    });
+
+    it('should create metadata block with only description', () => {
+      const collection = createCollectionModel(1, {
+        collectionDate: undefined,
+        location: undefined,
+      });
+      const result = injectTopRow(collection);
+      const metadataBlock = result[1] as ContentTextModel;
+      
+      expect(metadataBlock.items).toHaveLength(1);
+      expect(metadataBlock.items?.[0]).toEqual({
+        type: 'description',
+        value: 'A beautiful collection description',
+      });
+    });
+
+    it('should create metadata block with date and location only', () => {
+      const collection = createCollectionModel(1, {
+        description: undefined,
+      });
+      const result = injectTopRow(collection);
+      const metadataBlock = result[1] as ContentTextModel;
+      
+      expect(metadataBlock.items).toHaveLength(2);
+      expect(metadataBlock.items?.[0]?.type).toBe('date');
+      expect(metadataBlock.items?.[1]?.type).toBe('location');
+    });
+  });
+
+  describe('No metadata case', () => {
+    it('should only create cover image block when no metadata exists', () => {
+      const collection = createCollectionModel(1, {
+        collectionDate: undefined,
+        location: undefined,
+        description: undefined,
+      });
+      const result = injectTopRow(collection);
+      
+      expect(result).toHaveLength(1);
+      expect(result[0]?.contentType).toBe('IMAGE');
+    });
+  });
+
+  describe('Missing cover image cases', () => {
+    it('should return empty array when coverImage is null', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: null,
+      });
+      const result = injectTopRow(collection);
+      
+      expect(result).toHaveLength(0);
+    });
+
+    it('should return empty array when coverImage is undefined', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: undefined,
+      });
+      const result = injectTopRow(collection);
+      
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('Missing dimensions cases', () => {
+    it('should return empty array when cover image has no imageWidth', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover-1.jpg',
+          imageWidth: undefined,
+          imageHeight: 1080,
+          visible: true,
+        },
+      });
+      const result = injectTopRow(collection);
+      
+      expect(result).toHaveLength(0);
+    });
+
+    it('should return empty array when cover image has no imageHeight', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover-1.jpg',
+          imageWidth: 1920,
+          imageHeight: undefined,
+          visible: true,
+        },
+      });
+      const result = injectTopRow(collection);
+      
+      expect(result).toHaveLength(0);
+    });
+
+    it('should return empty array when cover image has no dimensions at all', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover-1.jpg',
+          imageWidth: undefined,
+          imageHeight: undefined,
+          visible: true,
+        },
+      });
+      const result = injectTopRow(collection);
+      
+      expect(result).toHaveLength(0);
+    });
+
+    it('should use width/height fallback from coverImage', () => {
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover-1.jpg',
+          imageWidth: undefined,
+          imageHeight: undefined,
+          width: 1600,
+          height: 900,
+          visible: true,
+        },
+      });
+      const result = injectTopRow(collection);
+      const coverBlock = result[0];
+      const metadataBlock = result[1] as ContentTextModel;
+      
+      expect(result).toHaveLength(2);
+      expect(coverBlock?.imageWidth).toBe(1600);
+      expect(coverBlock?.imageHeight).toBe(900);
+      expect(metadataBlock.width).toBe(1600);
+      expect(metadataBlock.height).toBe(900);
+    });
+  });
+
+  describe('Synthetic IDs', () => {
+    it('should use -1 for cover image block ID', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      
+      expect(result[0]?.id).toBe(-1);
+    });
+
+    it('should use -2 for metadata text block ID', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      
+      expect(result[1]?.id).toBe(-2);
+    });
+  });
+
+  describe('OrderIndex values', () => {
+    it('should use -2 for cover image orderIndex', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      
+      expect(result[0]?.orderIndex).toBe(-2);
+    });
+
+    it('should use -1 for metadata block orderIndex', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      
+      expect(result[1]?.orderIndex).toBe(-1);
+    });
+  });
+
+  describe('Metadata block properties', () => {
+    it('should set correct format properties', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      const metadataBlock = result[1] as ContentTextModel;
+      
+      expect(metadataBlock.format).toBe('plain');
+      expect(metadataBlock.formatType).toBe('plain');
+      expect(metadataBlock.align).toBe('left');
+    });
+
+    it('should set visible to true', () => {
+      const collection = createCollectionModel(1);
+      const result = injectTopRow(collection);
+      
+      expect(result[0]?.visible).toBe(true);
+      expect(result[1]?.visible).toBe(true);
     });
   });
 });

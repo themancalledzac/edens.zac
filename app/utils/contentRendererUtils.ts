@@ -212,8 +212,7 @@ export function normalizeContentToRendererProps(
       enableParallax: false,
       isCollection: false,
       contentType: 'TEXT',
-      textContent: content.content,
-      textAlign: content.align,
+      textItems: content.items,
     };
   }
 

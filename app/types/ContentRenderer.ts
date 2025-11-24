@@ -4,7 +4,7 @@
  * This eliminates the need for type checking inside the renderer component
  */
 
-import { type ContentImageModel, type ContentParallaxImageModel } from './Content';
+import { type ContentImageModel, type ContentParallaxImageModel, type TextBlockItem } from './Content';
 
 /**
  * Base props that all content renderers receive
@@ -43,8 +43,7 @@ export interface ContentRendererProps {
   contentType: 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION';
   
   // TEXT-specific
-  textContent?: string;
-  textAlign?: 'left' | 'center' | 'right';
+  textItems?: TextBlockItem[];
   
   // GIF-specific
   isGif?: boolean; // For unoptimized flag
