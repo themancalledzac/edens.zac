@@ -22,9 +22,9 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
   }
 
   try {
-    // Await the collection data - backend always returns complete data
-    // This ensures we have the full response before rendering
-    const collection = await getCollectionBySlug(slug, 0, 50);
+    // Fetch a larger batch or implement proper pagination
+    // Option 1: Increase size to handle most collections
+    const collection = await getCollectionBySlug(slug, 0, 500);
 
     // Backend guarantees complete data structure, so we can render directly
     return <CollectionPage collection={collection} />;
