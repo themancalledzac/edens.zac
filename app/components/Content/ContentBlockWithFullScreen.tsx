@@ -91,6 +91,9 @@ export default function ContentBlockWithFullScreen({
   const handleFullScreenImageClick = (
     image: ContentImageModel | ContentParallaxImageModel
   ) => {
+    // Don't open fullscreen for cover image (id: -1)
+    if (image.id === -1) return;
+    
     showImage(image, imageBlocks);
   };
 

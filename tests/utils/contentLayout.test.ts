@@ -3,16 +3,17 @@
  * Tests content processing and layout utilities
  */
 
-import type { CollectionModel } from '@/app/types/Collection';
+import { type CollectionModel,CollectionType } from '@/app/types/Collection';
 import type {
   AnyContentModel,
   ContentCollectionModel,
   ContentImageModel,
   ContentParallaxImageModel,
   ContentTextModel,
-  TextBlockItem,
 } from '@/app/types/Content';
 import {
+  calculateContentSizes,
+  chunkContent,
   convertCollectionContentToImage,
   convertCollectionContentToParallax,
   injectTopRow,
@@ -95,7 +96,7 @@ const createCollectionModel = (
   overrides?: Partial<CollectionModel>
 ): CollectionModel => ({
   id,
-  type: 'PORTFOLIO',
+  type: CollectionType.PORTFOLIO,
   title: `Collection ${id}`,
   slug: `collection-${id}`,
   createdAt: '2024-01-01T00:00:00Z',
@@ -314,16 +315,15 @@ describe('processContentBlocks', () => {
       expect(result[1]?.contentType).toBe('TEXT');
     });
 
-    it('should not modify parallax blocks without enableParallax', () => {
+    it('should not modify non-parallax image blocks', () => {
       const content: AnyContentModel[] = [
-        createParallaxContent(1, {
-          enableParallax: false,
+        createImageContent(1, {
           imageWidth: undefined,
         }),
       ];
       const result = processContentBlocks(content);
-      const parallax = result[0] as ContentParallaxImageModel;
-      expect(parallax.imageWidth).toBeUndefined();
+      const image = result[0] as ContentImageModel;
+      expect(image.imageWidth).toBeUndefined();
     });
   });
 
@@ -434,10 +434,10 @@ describe('processContentBlocks', () => {
       expect(result[1]?.id).toBe(2);
       expect(result[2]?.id).toBe(3);
       // All should be converted to parallax images with slugs
-      result.forEach(item => {
+      for (const item of result) {
         expect((item as ContentParallaxImageModel).enableParallax).toBe(true);
         expect((item as ContentParallaxImageModel).slug).toBeDefined();
-      });
+      }
     });
 
     it('should work with text and other content types', () => {
@@ -526,9 +526,9 @@ describe('processContentBlocks', () => {
       const lastItem = result[2];
       
       // First two items should be regular images (without slug)
-      firstTwoItems.forEach(item => {
+      for (const item of firstTwoItems) {
         expect((item as ContentParallaxImageModel).slug).toBeUndefined();
-      });
+      }
       
       // Last item should be the converted collection (with slug and enableParallax)
       expect((lastItem as ContentParallaxImageModel).enableParallax).toBe(true);
@@ -758,11 +758,11 @@ describe('injectTopRow', () => {
     it('should give metadata block same dimensions as cover image', () => {
       const collection = createCollectionModel(1);
       const result = injectTopRow(collection);
-      const coverBlock = result[0];
+      const coverBlock = result[0] as ContentParallaxImageModel;
       const metadataBlock = result[1] as ContentTextModel;
       
-      expect(metadataBlock.width).toBe(coverBlock?.imageWidth);
-      expect(metadataBlock.height).toBe(coverBlock?.imageHeight);
+      expect(metadataBlock.width).toBe(coverBlock.imageWidth);
+      expect(metadataBlock.height).toBe(coverBlock.imageHeight);
       expect(metadataBlock.width).toBe(1920);
       expect(metadataBlock.height).toBe(1080);
     });
@@ -928,12 +928,12 @@ describe('injectTopRow', () => {
         },
       });
       const result = injectTopRow(collection);
-      const coverBlock = result[0];
+      const coverBlock = result[0] as ContentParallaxImageModel;
       const metadataBlock = result[1] as ContentTextModel;
       
       expect(result).toHaveLength(2);
-      expect(coverBlock?.imageWidth).toBe(1600);
-      expect(coverBlock?.imageHeight).toBe(900);
+      expect(coverBlock.imageWidth).toBe(1600);
+      expect(coverBlock.imageHeight).toBe(900);
       expect(metadataBlock.width).toBe(1600);
       expect(metadataBlock.height).toBe(900);
     });
@@ -989,6 +989,337 @@ describe('injectTopRow', () => {
       expect(result[0]?.visible).toBe(true);
       expect(result[1]?.visible).toBe(true);
     });
+  });
+});
+
+describe('chunkContent', () => {
+  // Helper: create horizontal image (1920x1080, ratio ~1.78)
+  const createHorizontalImage = (id: number, rating?: number): ContentImageModel =>
+    createImageContent(id, {
+      imageWidth: 1920,
+      imageHeight: 1080,
+      rating,
+    });
+
+  // Helper: create vertical image (1080x1920, ratio ~0.56)
+  const createVerticalImage = (id: number, rating?: number): ContentImageModel =>
+    createImageContent(id, {
+      imageWidth: 1080,
+      imageHeight: 1920,
+      rating,
+    });
+
+  // Helper: create square image (1080x1080, ratio 1.0)
+  const createSquareImage = (id: number, rating?: number): ContentImageModel =>
+    createImageContent(id, {
+      imageWidth: 1080,
+      imageHeight: 1080,
+      rating,
+    });
+
+  // Helper: create wide panorama (3000x1000, ratio 3.0)
+  const createWidePanorama = (id: number): ContentImageModel =>
+    createImageContent(id, {
+      imageWidth: 3000,
+      imageHeight: 1000,
+    });
+
+  // Helper: create tall panorama (1000x3000, ratio ~0.33)
+  const createTallPanorama = (id: number): ContentImageModel =>
+    createImageContent(id, {
+      imageWidth: 1000,
+      imageHeight: 3000,
+    });
+
+  describe('Empty and edge cases', () => {
+    it('should return empty array for empty input', () => {
+      expect(chunkContent([])).toEqual([]);
+    });
+
+    it('should return empty array for null/undefined input', () => {
+      expect(chunkContent(null as unknown as ContentImageModel[])).toEqual([]);
+      expect(chunkContent(undefined as unknown as ContentImageModel[])).toEqual([]);
+    });
+
+    it('should enforce minimum chunkSize of 2', () => {
+      // With chunkSize=1, halfSlot would be 0 without protection
+      // A 3-star image gets halfSlot, so with minimum enforcement it should work
+      const content = [createHorizontalImage(1, 3)];
+      const result = chunkContent(content, 1);
+      // Should still work (not crash or infinite loop)
+      expect(result.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('5-star horizontal images (standalone)', () => {
+    it('should place 5-star horizontal image in its own row', () => {
+      const content = [
+        createHorizontalImage(1, 5),
+        createHorizontalImage(2, 1),
+      ];
+      const result = chunkContent(content);
+      
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveLength(1);
+      expect(result[0]?.[0]?.id).toBe(1);
+    });
+
+    it('should place multiple 5-star horizontal images in separate rows', () => {
+      const content = [
+        createHorizontalImage(1, 5),
+        createHorizontalImage(2, 5),
+        createHorizontalImage(3, 5),
+      ];
+      const result = chunkContent(content);
+      
+      expect(result).toHaveLength(3);
+      for (const row of result) {
+        expect(row).toHaveLength(1);
+      }
+    });
+  });
+
+  describe('4-star horizontal images (context-dependent)', () => {
+    it('should place 4-star horizontal alone when no adjacent verticals', () => {
+      const content = [
+        createHorizontalImage(1, 4),
+        createHorizontalImage(2, 1),
+      ];
+      const result = chunkContent(content);
+      
+      // 4-star alone gets standalone row
+      expect(result[0]).toHaveLength(1);
+      expect(result[0]?.[0]?.id).toBe(1);
+    });
+
+    it('should pair 4-star horizontal with adjacent vertical', () => {
+      const content = [
+        createHorizontalImage(1, 4),
+        createVerticalImage(2, 3),
+      ];
+      const result = chunkContent(content);
+      
+      // Should pair together (both get halfSlot)
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(2);
+    });
+
+    it('should pair 4-star horizontal with preceding vertical', () => {
+      const content = [
+        createVerticalImage(1, 3),
+        createHorizontalImage(2, 4),
+      ];
+      const result = chunkContent(content);
+      
+      // Should pair together
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(2);
+    });
+  });
+
+  describe('Vertical images', () => {
+    it('should treat square images as vertical (ratio = 1.0)', () => {
+      const content = [
+        createSquareImage(1, 3),
+        createSquareImage(2, 3),
+      ];
+      const result = chunkContent(content);
+      
+      // Two 3-star squares should pair (each gets halfSlot = 2)
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(2);
+    });
+
+    it('should pair vertical 3+ star images together', () => {
+      const content = [
+        createVerticalImage(1, 3),
+        createVerticalImage(2, 4),
+      ];
+      const result = chunkContent(content);
+      
+      // Both get halfSlot, should pair
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(2);
+    });
+
+    it('should fit 4 low-star vertical images in one row', () => {
+      const content = [
+        createVerticalImage(1, 1),
+        createVerticalImage(2, 2),
+        createVerticalImage(3, 1),
+        createVerticalImage(4, 2),
+      ];
+      const result = chunkContent(content, 4);
+      
+      // 1-2 star verticals get slot=1, so 4 fit in chunkSize=4
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(4);
+    });
+  });
+
+  describe('3-star images (half slot)', () => {
+    it('should pair two 3-star horizontal images', () => {
+      const content = [
+        createHorizontalImage(1, 3),
+        createHorizontalImage(2, 3),
+      ];
+      const result = chunkContent(content);
+      
+      // Both get halfSlot (2), total 4 = chunkSize
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(2);
+    });
+
+    it('should pair 3-star horizontal with 3-star vertical', () => {
+      const content = [
+        createHorizontalImage(1, 3),
+        createVerticalImage(2, 3),
+      ];
+      const result = chunkContent(content);
+      
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(2);
+    });
+  });
+
+  describe('Panorama images', () => {
+    it('should place wide panorama in standalone row', () => {
+      const content = [
+        createHorizontalImage(1, 1),
+        createWidePanorama(2),
+        createHorizontalImage(3, 1),
+      ];
+      const result = chunkContent(content);
+      
+      // Wide panorama (ratio >= 2) gets Infinity slot → standalone
+      expect(result.some(row => row.length === 1 && row[0]?.id === 2)).toBe(true);
+    });
+
+    it('should treat tall panorama as normal slot', () => {
+      const content = [
+        createTallPanorama(1),
+        createTallPanorama(2),
+        createTallPanorama(3),
+        createTallPanorama(4),
+      ];
+      const result = chunkContent(content, 4);
+      
+      // Tall panorama (ratio <= 0.5) gets slot=1, so 4 fit in chunkSize=4
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(4);
+    });
+  });
+
+  describe('Header items (cover image and metadata)', () => {
+    it('should pair header items together', () => {
+      const headerCover = createImageContent(-1); // Cover image
+      const headerMetadata: ContentTextModel = {
+        id: -2,
+        contentType: 'TEXT',
+        orderIndex: -1,
+        visible: true,
+        items: [{ type: 'text', value: 'Description' }],
+        format: 'plain',
+        align: 'left',
+      };
+      
+      const content = [headerCover, headerMetadata];
+      const result = chunkContent(content);
+      
+      // Both header items get halfSlot, should pair in one row
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(2);
+    });
+  });
+
+  describe('Collection cards (slug property)', () => {
+    it('should pair collection cards together', () => {
+      const collections = [
+        createCollectionContent(1),
+        createCollectionContent(2),
+      ];
+      // Process to get parallax images with slugs
+      const processed = processContentBlocks(collections);
+      const result = chunkContent(processed);
+      
+      // Collection cards get halfSlot, 2 should pair
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveLength(2);
+    });
+
+    it('should fit 2 collection cards per row', () => {
+      const collections = [
+        createCollectionContent(1),
+        createCollectionContent(2),
+        createCollectionContent(3),
+        createCollectionContent(4),
+      ];
+      const processed = processContentBlocks(collections);
+      const result = chunkContent(processed);
+      
+      // 4 collections = 2 rows of 2
+      expect(result).toHaveLength(2);
+      expect(result[0]).toHaveLength(2);
+      expect(result[1]).toHaveLength(2);
+    });
+  });
+
+  describe('Lonely vertical reordering', () => {
+    it('should swap lonely vertical + 5-star horizontal', () => {
+      // Input: [V, 5H] where V has no partner before it
+      const content = [
+        createVerticalImage(1, 3),
+        createHorizontalImage(2, 5),
+      ];
+      const result = chunkContent(content);
+      
+      // After reorder: [5H, V]
+      // 5H is standalone, V is alone
+      expect(result[0]).toHaveLength(1);
+      expect(result[0]?.[0]?.id).toBe(2); // 5H first
+      expect(result[1]?.[0]?.id).toBe(1); // V second
+    });
+
+    it('should NOT swap when vertical can pair with previous', () => {
+      // Input: [4H, V, 5H] - V can pair with 4H
+      const content = [
+        createHorizontalImage(1, 4),
+        createVerticalImage(2, 3),
+        createHorizontalImage(3, 5),
+      ];
+      const result = chunkContent(content);
+      
+      // No swap needed: 4H+V pair, 5H standalone
+      // Check that 4H and V are together
+      const firstRow = result[0];
+      expect(firstRow).toHaveLength(2);
+      expect(firstRow?.some(item => item.id === 1)).toBe(true);
+      expect(firstRow?.some(item => item.id === 2)).toBe(true);
+    });
+  });
+});
+
+describe('calculateContentSizes', () => {
+  it('should return empty array for empty input', () => {
+    expect(calculateContentSizes([], 1000)).toEqual([]);
+  });
+
+  it('should handle single image', () => {
+    const content = [createImageContent(1)];
+    const result = calculateContentSizes(content, 1000);
+    
+    expect(result).toHaveLength(1);
+    expect(result[0]?.width).toBe(1000);
+    expect(result[0]?.height).toBeGreaterThan(0);
+  });
+
+  it('should enforce minimum chunkSize of 2', () => {
+    // With chunkSize=1, calculation should still work
+    const content = [createImageContent(1, { rating: 3 })];
+    const result = calculateContentSizes(content, 1000, 1);
+    
+    expect(result).toHaveLength(1);
+    expect(result[0]?.width).toBe(1000);
   });
 });
 
