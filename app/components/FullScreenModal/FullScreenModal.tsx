@@ -62,14 +62,14 @@ export function FullScreenModal({
       aria-modal="true"
     >
       <div className={styles.overlayContainer} onClick={handleOverlayClick}>
-        <div className={styles.imageWrapper}>
+        <div className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}>
           <Image
             key={currentImage.id}
             src={currentImage.imageUrl}
             alt={currentImage.title || currentImage.caption || 'Full screen image'}
             width={currentImage.imageWidth || IMAGE.defaultWidth}
             height={currentImage.imageHeight || IMAGE.defaultHeight}
-            className={styles.fullScreenImage}
+            className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
             priority
             unoptimized
             onLoad={() => {
