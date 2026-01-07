@@ -1,3 +1,4 @@
+import { LAYOUT } from '@/app/constants';
 import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
@@ -14,41 +15,112 @@ import { getContentDimensions, hasImage, isContentCollection, isContentImage } f
  * Direct processing without complex normalization - works with proper Content types
  */
 
+// ===================== Image Classification Helpers =====================
+
 /**
- * Chunk ContentModels based on standalone rules (panorama) and slot width system (rated images)
+ * Check if content is a vertical/square image (aspect ratio <= 1.0, excluding tall panoramas)
+ */
+function isVerticalImage(item: AnyContentModel | undefined): boolean {
+  if (!item || !hasImage(item)) return false;
+  const { width, height } = getContentDimensions(item);
+  const ratio = width / Math.max(1, height);
+  return ratio <= 1.0 && ratio > 0.5; // Vertical or square, but not a tall panorama
+}
+
+/**
+ * Check if content is a 5-star horizontal image (standalone)
+ * Note: Square (1:1) is considered vertical, so horizontal means ratio > 1.0
+ */
+function isFiveStarHorizontal(item: AnyContentModel | undefined): boolean {
+  if (!item || !hasImage(item) || !isContentImage(item)) return false;
+  const { width, height } = getContentDimensions(item);
+  const ratio = width / Math.max(1, height);
+  return ratio > 1.0 && item.rating === 5;
+}
+
+/**
+ * Reorder lonely verticals followed by 5-star horizontals
+ * A vertical is "lonely" if previous item can't pair with it (nothing or 5-star horizontal)
+ */
+function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
+  if (content.length < 2) return content;
+  
+  const result = [...content];
+  let i = 0;
+  
+  while (i < result.length - 1) {
+    const current = result[i];
+    const next = result[i + 1];
+    
+    if (current && next && isVerticalImage(current) && isFiveStarHorizontal(next)) {
+      const prev = i > 0 ? result[i - 1] : undefined;
+      // Lonely if nothing before, or previous is 5-star horizontal (can't pair)
+      const isLonely = !prev || isFiveStarHorizontal(prev);
+      
+      if (isLonely) {
+        // Swap: [V, 5H] → [5H, V]
+        result[i] = next;
+        result[i + 1] = current;
+        i += 2;
+        continue;
+      }
+    }
+    i++;
+  }
+  
+  return result;
+}
+
+// ===================== Chunking =====================
+
+/**
+ * Chunk ContentModels based on rating-aware slot system
+ * - 5-star horizontal: standalone
+ * - 4-star horizontal: standalone unless adjacent to vertical (then pairs)
+ * - 3+ star: half-width slots (chunkSize/2)
+ * - 1-2 star: normal slots (1)
  * @param content - Array of content blocks to chunk into rows
  * @param chunkSize - Number of normal-width items per row (default: 2)
  * @returns Array of content rows
  */
 export function chunkContent(
   content: AnyContentModel[],
-  chunkSize: number = 2
+  chunkSize: number = LAYOUT.defaultChunkSize
 ): AnyContentModel[][] {
   if (!content || content.length === 0) return [];
+  
+  // Enforce minimum chunk size to ensure halfSlot is at least 1
+  const effectiveChunkSize = Math.max(chunkSize, LAYOUT.minChunkSize);
+
+  // Reorder to handle lonely verticals followed by 5-star horizontals
+  const reordered = reorderLonelyVerticals(content);
 
   const result: AnyContentModel[][] = [];
   let currentRow: AnyContentModel[] = [];
   let currentRowSlots: number = 0;
 
-  for (const contentItem of content) {
-    const slotWidth = getSlotWidth(contentItem, chunkSize);
+  for (let i = 0; i < reordered.length; i++) {
+    const contentItem = reordered[i];
+    if (!contentItem) continue;
     
-    // Standalone items (panoramas) get their own row
+    const prevItem = i > 0 ? reordered[i - 1] : undefined;
+    const nextItem = i < reordered.length - 1 ? reordered[i + 1] : undefined;
+    
+    const slotWidth = getSlotWidth(contentItem, effectiveChunkSize, prevItem, nextItem);
+    
+    // Standalone items get their own row
     if (slotWidth === Infinity) {
-      // Finish current row if it has content
       if (currentRow.length > 0) {
         result.push([...currentRow]);
         currentRow = [];
         currentRowSlots = 0;
       }
-      // Add as standalone
       result.push([contentItem]);
       continue;
     }
 
     // If item needs more slots than available, make it standalone
-    if (slotWidth > chunkSize) {
-      // Finish current row if it has content
+    if (slotWidth > effectiveChunkSize) {
       if (currentRow.length > 0) {
         result.push([...currentRow]);
         currentRow = [];
@@ -59,18 +131,16 @@ export function chunkContent(
     }
 
     // Check if item fits in current row
-    if (currentRowSlots + slotWidth <= chunkSize) {
+    if (currentRowSlots + slotWidth <= effectiveChunkSize) {
       currentRow.push(contentItem);
       currentRowSlots += slotWidth;
       
-      // Row is full, start new row
-      if (currentRowSlots === chunkSize) {
+      if (currentRowSlots === effectiveChunkSize) {
         result.push([...currentRow]);
         currentRow = [];
         currentRowSlots = 0;
       }
     } else {
-      // Item doesn't fit, finish current row and start new one
       if (currentRow.length > 0) {
         result.push([...currentRow]);
       }
@@ -79,7 +149,6 @@ export function chunkContent(
     }
   }
 
-  // Add remaining content if any
   if (currentRow.length > 0) {
     result.push(currentRow);
   }
@@ -88,42 +157,82 @@ export function chunkContent(
 }
 
 /**
- * Get slot width for content item based on aspect ratio and rating
- * Returns 1 (normal), 2 (4-star), 3 (5-star), or Infinity (standalone panorama)
+ * Get slot width for content item based on aspect ratio, rating, and adjacency context
+ * 
+ * Slot width rules:
+ * - Header items (id: -1, -2): chunkSize/2 (always pair to fill row)
+ * - Collection cards (has slug): chunkSize/2 (pair up on catalog pages)
+ * - Wide panorama (ratio ≥ 2): Infinity (standalone)
+ * - Tall panorama (ratio ≤ 0.5): 1 (normal)
+ * - 5-star horizontal: Infinity (standalone)
+ * - 4-star horizontal: Infinity, unless adjacent to vertical then chunkSize/2
+ * - 3-star (any orientation): chunkSize/2
+ * - Vertical 4-5 star: chunkSize/2
+ * - Vertical 1-2 star: 1 (normal)
+ * - Horizontal 1-2 star: 1 (normal)
  */
 function getSlotWidth(
   contentItem: AnyContentModel,
-  _chunkSize: number
+  chunkSize: number,
+  prevItem?: AnyContentModel,
+  nextItem?: AnyContentModel
 ): number {
+  const halfSlot = Math.floor(chunkSize / 2);
+  
+  // Header items (cover image & metadata) always fill half the row each
+  // This ensures they pair together without other content joining
+  if (contentItem.id === -1 || contentItem.id === -2) {
+    return halfSlot;
+  }
+  
+  // Collection cards (with slug for navigation) get half slot
+  // This ensures 2 collections per row on home/catalog pages
+  if ('slug' in contentItem && contentItem.slug) {
+    return halfSlot;
+  }
+  
   if (!hasImage(contentItem)) return 1;
 
-  // Panoramas are always standalone (full width)
   const { width, height } = getContentDimensions(contentItem);
-  const aspectRatio = width / Math.max(1, height);
-  const isPanorama = aspectRatio >= 2;
-  if (isPanorama) return Infinity;
+  const ratio = width / Math.max(1, height);
+  const isHorizontal = ratio > 1.0; // Square (1:1) is considered vertical
+  
+  // Wide panorama → standalone
+  if (ratio >= 2) return Infinity;
+  
+  // Tall panorama → normal slot
+  if (ratio <= 0.5) return 1;
 
-  // Rating-based slot width (only for images)
-  // Only apply to images that are wider than tall (aspect ratio >= 1.0)
-  // Taller images (aspect ratio < 1.0) don't get slot width to prevent taking too much horizontal space
+  // Rating-based logic (only for images with ratings)
   if (isContentImage(contentItem)) {
-    const rating = contentItem.rating;
-    const isWiderThanTall = aspectRatio >= 1.0;
+    const rating = contentItem.rating || 0;
     
-    if (isWiderThanTall) {
-      if (rating === 5) return 3; // 5-star = 3 slots
-      if (rating === 4) return 2; // 4-star = 2 slots
+    if (isHorizontal) {
+      // 5-star horizontal → always standalone
+      if (rating === 5) return Infinity;
+      
+      // 4-star horizontal → standalone unless adjacent to vertical
+      if (rating === 4) {
+        const adjacentToVertical = isVerticalImage(prevItem) || isVerticalImage(nextItem);
+        return adjacentToVertical ? halfSlot : Infinity;
+      }
+      
+      // 3-star horizontal → half slot
+      if (rating === 3) return halfSlot;
+      
+      // 1-2 star horizontal → normal
+      return 1;
+    } else {
+      // Vertical images
+      // 3+ star vertical → half slot
+      if (rating >= 3) return halfSlot;
+      
+      // 1-2 star vertical → normal
+      return 1;
     }
   }
 
-  return 1; // Normal = 1 slot
-}
-
-/**
- * Determine if content should be rendered standalone (panorama images)
- */
-export function shouldBeStandalone(contentItem: AnyContentModel): boolean {
-  return getSlotWidth(contentItem, 2) === Infinity;
+  return 1;
 }
 
 // ===================== Content sizing =====================
@@ -136,7 +245,9 @@ export interface CalculatedContentSize {
 
 /**
  * Calculate display sizes for row of content to match heights and sum to component width
- * Accounts for slot width where rated images (4-5 star) take 2-3x proportional space
+ * Uses slot width for proportional space allocation:
+ * - 3+ star images get chunkSize/2 slots (more visual space)
+ * - Normal images get 1 slot
  * @param content - Array of content blocks in a single row
  * @param componentWidth - Total available width for the row
  * @param chunkSize - Number of normal-width items per row (default: 2)
@@ -145,9 +256,12 @@ export interface CalculatedContentSize {
 export function calculateContentSizes(
   content: AnyContentModel[],
   componentWidth: number,
-  chunkSize: number = 2
+  chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
   if (!content || content.length === 0) return [];
+  
+  // Enforce minimum chunk size
+  const effectiveChunkSize = Math.max(chunkSize, LAYOUT.minChunkSize);
 
   if (content.length === 1) {
     const contentElement = content[0];
@@ -184,36 +298,29 @@ export function calculateContentSizes(
     }];
   }
 
-  // Calculate ratios for all content, using effective dimensions for rated images
-  // For 4-5 star images, scale BOTH width and height by slot width to get effective dimensions
-  // This preserves aspect ratio while giving them 2-3x the space
-  // Note: Padding (.imageLeft, .imageRight) is INSIDE the div width due to box-sizing: border-box
-  // So we don't subtract padding - the divs should sum to the full componentWidth
+  // Calculate ratios for all content, using effective dimensions based on slot width
+  // Higher slot widths (3+ star images) get proportionally more visual space
+  // Note: Padding is INSIDE the div width due to box-sizing: border-box
   const ratios = content.map(contentItem => {
     const { width, height } = getContentDimensions(contentItem);
-    const slotWidth = getSlotWidth(contentItem, chunkSize);
+    const slotWidth = getSlotWidth(contentItem, effectiveChunkSize);
     
     // Guard: Standalone items (Infinity slot width) should never reach here
-    // If they do, treat as normal (1 slot) to prevent NaN calculations
     if (slotWidth === Infinity) {
-      const baseRatio = width / Math.max(1, height);
-      return baseRatio;
+      return width / Math.max(1, height);
     }
     
-    // Validate dimensions to prevent division by zero or invalid calculations
+    // Validate dimensions
     if (width <= 0 || height <= 0) {
-      // Fallback to default aspect ratio if dimensions are invalid
       return 1.5; // Default 3:2 aspect ratio
     }
     
-    // For rated images, scale both dimensions by slot width to get effective dimensions
-    // This means a 4-star image (2 slots) is treated as 2x larger in both dimensions
-    // Example: 640x180 becomes 1280x360 for space calculation (same ratio, 2x size)
+    // Scale by slot width for proportional space allocation
+    // Example: slot=2 means 2x visual space compared to slot=1
     const effectiveWidth = width * slotWidth;
     const effectiveHeight = height * slotWidth;
-    const effectiveRatio = effectiveWidth / Math.max(1, effectiveHeight);
     
-    return effectiveRatio;
+    return effectiveWidth / Math.max(1, effectiveHeight);
   });
 
   const ratioSum = ratios.reduce((sum, ratio) => {
@@ -289,7 +396,7 @@ export function calculateContentSizes(
 export function processContentForDisplay(
   content: AnyContentModel[],
   componentWidth: number,
-  chunkSize: number = 2
+  chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[][] {
   const chunks = chunkContent(content, chunkSize);
   return chunks.map(chunk => calculateContentSizes(chunk, componentWidth, chunkSize));

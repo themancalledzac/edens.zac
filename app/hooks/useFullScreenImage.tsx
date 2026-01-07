@@ -35,14 +35,23 @@ export function useFullScreenImage() {
     const images = allImages || [image];
     const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
 
+    // Disable 3D perspective before modal renders - fixes mobile fixed positioning
+    // With perspective disabled, position: fixed works correctly relative to viewport
+    document.body.style.perspective = 'none';
+    document.body.style.transformStyle = 'flat';
+
     setFullScreenState({
       images,
       currentIndex: currentIndex !== -1 ? currentIndex : 0,
-      scrollPosition: window.scrollY
+      scrollPosition: window.scrollY // Stored for potential future use (scroll restoration)
     });
   }, []);
 
   const hideImage = useCallback(() => {
+    // Restore 3D perspective for parallax effects
+    document.body.style.perspective = '1px';
+    document.body.style.transformStyle = 'preserve-3d';
+    
     setFullScreenState(null);
     setShowMetadata(false);
     setLoadedImageIds(new Set());

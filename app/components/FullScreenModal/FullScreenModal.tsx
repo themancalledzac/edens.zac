@@ -57,7 +57,6 @@ export function FullScreenModal({
     <div
       ref={modalRef}
       className={styles.imageFullScreenWrapper}
-      style={{ top: `${fullScreenState.scrollPosition}px` }}
       role="dialog"
       aria-modal="true"
     >

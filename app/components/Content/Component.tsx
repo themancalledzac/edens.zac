@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 
+import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type AnyContentModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
@@ -51,7 +52,7 @@ export default function Component({
   onFullScreenImageClick,
   selectedImageIds = [],
   currentCollectionId,
-  chunkSize = 2,
+  chunkSize = LAYOUT.defaultChunkSize,
   enableDragAndDrop = false,
   draggedImageId,
   dragOverImageId: _dragOverImageId,
