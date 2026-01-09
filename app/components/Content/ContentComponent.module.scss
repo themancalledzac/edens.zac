@@ -379,6 +379,7 @@
   margin-bottom: var(--space-2);
   line-height: 1.6;
   width: 100%;
+  white-space: pre-wrap; /* Preserve newlines and wrap text */
 }
 
 .textItem-date {
@@ -398,6 +399,11 @@
   margin-top: 0;
   line-height: 1.8;
   font-weight: 400;
+  white-space: pre-wrap; /* Preserve newlines in descriptions */
+}
+
+.textItem-text {
+  white-space: pre-wrap; /* Preserve newlines in plain text blocks */
 }
 
 .textItemLabel {

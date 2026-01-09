@@ -1828,150 +1828,135 @@ describe('refreshCollectionAfterOperation', () => {
 });
 
 describe('getContentOrderIndex', () => {
-  const collectionId = 1;
-
-  it('should return orderIndex from collections array for image content', () => {
+  it('should return direct orderIndex for image content', () => {
     const imageBlock: ContentImageModel = {
       id: 1,
       contentType: 'IMAGE',
-      orderIndex: 0,
+      orderIndex: 5,
       imageUrl: 'test.jpg',
-      collections: [
-        { collectionId: 1, name: 'Collection 1', visible: true, orderIndex: 5 },
-      ],
     };
 
-    const result = getContentOrderIndex(imageBlock, collectionId);
+    const result = getContentOrderIndex(imageBlock);
 
     expect(result).toBe(5);
   });
 
-  it('should return orderIndex from collections array for text content', () => {
+  it('should return direct orderIndex for text content', () => {
     const textBlock = {
       id: 2,
       contentType: 'TEXT' as const,
-      orderIndex: 0,
+      orderIndex: 3,
       content: 'Test',
       format: 'plain' as const,
       align: 'left' as const,
-      collections: [
-        { collectionId: 1, name: 'Collection 1', visible: true, orderIndex: 3 },
-      ],
     } as AnyContentModel;
 
-    const result = getContentOrderIndex(textBlock, collectionId);
+    const result = getContentOrderIndex(textBlock);
 
     expect(result).toBe(3);
   });
 
-  it('should return undefined when collection entry not found', () => {
-    const imageBlock: ContentImageModel = {
-      id: 1,
-      contentType: 'IMAGE',
-      orderIndex: 0,
-      imageUrl: 'test.jpg',
-      collections: [
-        { collectionId: 2, name: 'Collection 2', visible: true, orderIndex: 5 },
-      ],
-    };
+  it('should return direct orderIndex for collection content', () => {
+    const collectionBlock = {
+      id: 3,
+      contentType: 'COLLECTION' as const,
+      orderIndex: 7,
+      slug: 'test-collection',
+      collectionType: 'BLOG' as const,
+    } as AnyContentModel;
 
-    const result = getContentOrderIndex(imageBlock, collectionId);
+    const result = getContentOrderIndex(collectionBlock);
 
-    expect(result).toBeUndefined();
+    expect(result).toBe(7);
   });
 
-  it('should return undefined when collections array is undefined', () => {
-    const imageBlock: ContentImageModel = {
+  it('should return undefined when orderIndex is undefined', () => {
+    const imageBlock = {
       id: 1,
       contentType: 'IMAGE',
-      orderIndex: 0,
       imageUrl: 'test.jpg',
-    };
+    } as ContentImageModel;
 
-    const result = getContentOrderIndex(imageBlock, collectionId);
+    const result = getContentOrderIndex(imageBlock);
 
     expect(result).toBeUndefined();
   });
 });
 
 describe('updateBlockOrderIndex', () => {
-  const collectionId = 1;
-
-  it('should update orderIndex in collections array for image content', () => {
+  it('should update direct orderIndex for image content', () => {
     const imageBlock: ContentImageModel = {
       id: 1,
       contentType: 'IMAGE',
-      orderIndex: 0,
+      orderIndex: 5,
       imageUrl: 'test.jpg',
-      collections: [
-        { collectionId: 1, name: 'Collection 1', visible: true, orderIndex: 5 },
-        { collectionId: 2, name: 'Collection 2', visible: true, orderIndex: 3 },
-      ],
     };
 
-    const result = updateBlockOrderIndex(imageBlock, collectionId, 10);
+    const result = updateBlockOrderIndex(imageBlock, 10);
 
-    const resultWithCollections = result as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number }> };
-    expect(resultWithCollections.collections?.[0]?.orderIndex).toBe(10);
-    expect(resultWithCollections.collections?.[1]?.orderIndex).toBe(3); // Unchanged
+    expect(result.orderIndex).toBe(10);
   });
 
-  it('should update orderIndex in collections array for text content', () => {
+  it('should update direct orderIndex for text content', () => {
     const textBlock = {
       id: 2,
       contentType: 'TEXT' as const,
-      orderIndex: 0,
+      orderIndex: 3,
       content: 'Test',
       format: 'plain' as const,
       align: 'left' as const,
-      collections: [
-        { collectionId: 1, name: 'Collection 1', visible: true, orderIndex: 3 },
-      ],
     } as AnyContentModel;
 
-    const result = updateBlockOrderIndex(textBlock, collectionId, 7);
+    const result = updateBlockOrderIndex(textBlock, 7);
 
-    const resultWithCollections = result as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number }> };
-    expect(resultWithCollections.collections?.[0]?.orderIndex).toBe(7);
+    expect(result.orderIndex).toBe(7);
   });
 
-  it('should create collections array if it does not exist', () => {
+  it('should update direct orderIndex for collection content', () => {
+    const collectionBlock = {
+      id: 3,
+      contentType: 'COLLECTION' as const,
+      orderIndex: 0,
+      slug: 'test-collection',
+      collectionType: 'BLOG' as const,
+    } as AnyContentModel;
+
+    const result = updateBlockOrderIndex(collectionBlock, 5);
+
+    expect(result.orderIndex).toBe(5);
+  });
+
+  it('should preserve other properties when updating orderIndex', () => {
     const imageBlock: ContentImageModel = {
       id: 1,
       contentType: 'IMAGE',
       orderIndex: 0,
       imageUrl: 'test.jpg',
+      title: 'Test Image',
+      rating: 5,
     };
 
-    const result = updateBlockOrderIndex(imageBlock, collectionId, 5);
+    const result = updateBlockOrderIndex(imageBlock, 10);
 
-    const resultWithCollections = result as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number }> };
-    expect(resultWithCollections.collections).toBeDefined();
-    expect(resultWithCollections.collections?.[0]?.collectionId).toBe(collectionId);
-    expect(resultWithCollections.collections?.[0]?.orderIndex).toBe(5);
+    expect(result.orderIndex).toBe(10);
+    expect(result.id).toBe(1);
+    expect((result as ContentImageModel).title).toBe('Test Image');
+    expect((result as ContentImageModel).rating).toBe(5);
   });
 });
 
 describe('calculateReorderChanges', () => {
-  const collectionId = 1;
-
   it('should calculate changes when moving forward (lower index to higher)', () => {
     const collection = createCollectionModel({
-      id: collectionId,
+      id: 1,
       content: [
-        createImageContent(1, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
-        }),
-        createImageContent(2, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 1 }],
-        }),
-        createImageContent(3, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 2 }],
-        }),
+        createImageContent(1, { orderIndex: 0 }),
+        createImageContent(2, { orderIndex: 1 }),
+        createImageContent(3, { orderIndex: 2 }),
       ],
     });
 
-    const result = calculateReorderChanges(1, 3, collection, collectionId);
+    const result = calculateReorderChanges(1, 3, collection);
 
     expect(result).toEqual([
       { contentId: 1, newOrderIndex: 2 },
@@ -1982,21 +1967,15 @@ describe('calculateReorderChanges', () => {
 
   it('should calculate changes when moving backward (higher index to lower)', () => {
     const collection = createCollectionModel({
-      id: collectionId,
+      id: 1,
       content: [
-        createImageContent(1, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
-        }),
-        createImageContent(2, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 1 }],
-        }),
-        createImageContent(3, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 2 }],
-        }),
+        createImageContent(1, { orderIndex: 0 }),
+        createImageContent(2, { orderIndex: 1 }),
+        createImageContent(3, { orderIndex: 2 }),
       ],
     });
 
-    const result = calculateReorderChanges(3, 1, collection, collectionId);
+    const result = calculateReorderChanges(3, 1, collection);
 
     expect(result).toEqual([
       { contentId: 3, newOrderIndex: 0 },
@@ -2007,51 +1986,39 @@ describe('calculateReorderChanges', () => {
 
   it('should return empty array when dragged and target are the same', () => {
     const collection = createCollectionModel({
-      id: collectionId,
+      id: 1,
       content: [
-        createImageContent(1, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
-        }),
+        createImageContent(1, { orderIndex: 0 }),
       ],
     });
 
-    const result = calculateReorderChanges(1, 1, collection, collectionId);
+    const result = calculateReorderChanges(1, 1, collection);
 
     expect(result).toEqual([]);
   });
 
   it('should return empty array when dragged content not found', () => {
     const collection = createCollectionModel({
-      id: collectionId,
+      id: 1,
       content: [
-        createImageContent(1, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
-        }),
+        createImageContent(1, { orderIndex: 0 }),
       ],
     });
 
-    const result = calculateReorderChanges(999, 1, collection, collectionId);
+    const result = calculateReorderChanges(999, 1, collection);
 
     expect(result).toEqual([]);
   });
 });
 
 describe('applyReorderChangesOptimistically', () => {
-  const collectionId = 1;
-
-  it('should update orderIndex in collections array for all affected blocks', () => {
+  it('should update direct orderIndex for all affected blocks', () => {
     const collection = createCollectionModel({
-      id: collectionId,
+      id: 1,
       content: [
-        createImageContent(1, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
-        }),
-        createImageContent(2, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 1 }],
-        }),
-        createImageContent(3, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 2 }],
-        }),
+        createImageContent(1, { orderIndex: 0 }),
+        createImageContent(2, { orderIndex: 1 }),
+        createImageContent(3, { orderIndex: 2 }),
       ],
     });
 
@@ -2061,25 +2028,23 @@ describe('applyReorderChangesOptimistically', () => {
       { contentId: 3, newOrderIndex: 1 },
     ];
 
-    const result = applyReorderChangesOptimistically(collection, reorders, collectionId);
+    const result = applyReorderChangesOptimistically(collection, reorders);
 
     expect(result.content).toBeDefined();
-    expect(getContentOrderIndex(result.content![0]!, collectionId)).toBe(2);
-    expect(getContentOrderIndex(result.content![1]!, collectionId)).toBe(0);
-    expect(getContentOrderIndex(result.content![2]!, collectionId)).toBe(1);
+    expect(getContentOrderIndex(result.content![0]!)).toBe(2);
+    expect(getContentOrderIndex(result.content![1]!)).toBe(0);
+    expect(getContentOrderIndex(result.content![2]!)).toBe(1);
   });
 
   it('should return unchanged collection when reorders is empty', () => {
     const collection = createCollectionModel({
-      id: collectionId,
+      id: 1,
       content: [
-        createImageContent(1, {
-          collections: [{ collectionId, name: 'Collection', visible: true, orderIndex: 0 }],
-        }),
+        createImageContent(1, { orderIndex: 0 }),
       ],
     });
 
-    const result = applyReorderChangesOptimistically(collection, [], collectionId);
+    const result = applyReorderChangesOptimistically(collection, []);
 
     expect(result).toEqual(collection);
   });
@@ -2101,52 +2066,33 @@ describe('executeReorderOperation', () => {
     jest.restoreAllMocks();
   });
 
-  it('should call reorder API, refresh collection, and update cache', async () => {
-    const mockResponse = createCollectionUpdateResponse();
-    const mockGetCollectionUpdateMetadata = jest.fn().mockResolvedValue(mockResponse);
-    const mockCollectionStorage = { update: jest.fn() };
-    
-    // Mock reorderCollectionImages API function
-    jest.mocked(collectionsApi.reorderCollectionImages).mockResolvedValue({
-      updatedImages: [],
-    });
-    
-    // Mock fetch for revalidateCollectionCache
+  it('should call reorder API and return updated collection', async () => {
+    const mockCollection = { id: collectionId, title: 'Test', slug } as any;
+    jest.mocked(collectionsApi.reorderCollectionContent).mockResolvedValue(mockCollection);
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
-    const result = await executeReorderOperation(
-      collectionId,
-      mockReorders,
-      slug,
-      mockGetCollectionUpdateMetadata,
-      mockCollectionStorage
-    );
+    const result = await executeReorderOperation(collectionId, mockReorders, slug);
 
-    expect(collectionsApi.reorderCollectionImages).toHaveBeenCalledWith(collectionId, [
-      { imageId: 1, newOrderIndex: 2 },
-      { imageId: 2, newOrderIndex: 0 },
+    expect(collectionsApi.reorderCollectionContent).toHaveBeenCalledWith(collectionId, [
+      { contentId: 1, newOrderIndex: 2 },
+      { contentId: 2, newOrderIndex: 0 },
     ]);
-    expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith(slug);
-    expect(mockCollectionStorage.update).toHaveBeenCalledWith(slug, mockResponse.collection);
-    expect(result).toEqual(mockResponse);
+    expect(result).toEqual(mockCollection);
   });
 
   it('should propagate error when API call fails', async () => {
-    const mockError = new Error('API Error');
-    const mockGetCollectionUpdateMetadata = jest.fn();
-    const mockCollectionStorage = { update: jest.fn() };
-    
-    // Mock reorderCollectionImages to throw error
-    jest.mocked(collectionsApi.reorderCollectionImages).mockRejectedValue(mockError);
+    jest.mocked(collectionsApi.reorderCollectionContent).mockRejectedValue(new Error('API Error'));
 
-    await expect(
-      executeReorderOperation(
-        collectionId,
-        mockReorders,
-        slug,
-        mockGetCollectionUpdateMetadata,
-        mockCollectionStorage
-      )
-    ).rejects.toThrow('API Error');
+    await expect(executeReorderOperation(collectionId, mockReorders, slug)).rejects.toThrow('API Error');
+  });
+
+  it('should call revalidateCollectionCache after successful reorder', async () => {
+    const mockCollection = { id: collectionId, title: 'Test', slug } as any;
+    jest.mocked(collectionsApi.reorderCollectionContent).mockResolvedValue(mockCollection);
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+
+    await executeReorderOperation(collectionId, mockReorders, slug);
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', expect.any(Object));
   });
 });

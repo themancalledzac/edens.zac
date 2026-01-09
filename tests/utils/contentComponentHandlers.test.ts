@@ -4,17 +4,15 @@
  */
 
 import type { ChildCollection } from '@/app/types/Collection';
-import type { ContentImageModel } from '@/app/types/Content';
+import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 import {
   checkImageVisibility,
+  createContentClickHandler,
   createDragEndHandler,
   createDragHandlers,
   createDragOverHandler,
   createDragStartHandler,
   createDropHandler,
-  createImageClickHandler,
-  createParallaxImageClickHandler,
-  determineImageClickAction,
   getCollectionNavigationPath,
   hasSlug,
 } from '@/app/utils/contentComponentHandlers';
@@ -150,122 +148,139 @@ describe('hasSlug', () => {
   });
 });
 
-describe('determineImageClickAction', () => {
-  it('should return "imageClick" when onImageClick is provided', () => {
-    const onImageClick = jest.fn();
-    expect(determineImageClickAction(onImageClick)).toBe('imageClick');
-  });
+describe('createContentClickHandler', () => {
+  const createFullScreenContent = (id: number): ContentImageModel | ContentParallaxImageModel => ({
+    id,
+    contentType: 'IMAGE',
+    imageUrl: `https://example.com/image-${id}.jpg`,
+    title: `Image ${id}`,
+    orderIndex: 0,
+    visible: true,
+  }) as ContentImageModel;
 
-  it('should return "fullscreen" when enableFullScreenView and onFullScreenImageClick are provided', () => {
-    const onFullScreenImageClick = jest.fn();
-    expect(
-      determineImageClickAction(undefined, true, onFullScreenImageClick)
-    ).toBe('fullscreen');
-  });
-
-  it('should return "none" when no handlers are provided', () => {
-    expect(determineImageClickAction()).toBe('none');
-  });
-
-  it('should prioritize onImageClick over fullscreen', () => {
-    const onImageClick = jest.fn();
-    const onFullScreenImageClick = jest.fn();
-    expect(
-      determineImageClickAction(
-        onImageClick,
-        true,
-        onFullScreenImageClick
-      )
-    ).toBe('imageClick');
-  });
-
-  it('should return "none" when enableFullScreenView is false', () => {
-    const onFullScreenImageClick = jest.fn();
-    expect(
-      determineImageClickAction(undefined, false, onFullScreenImageClick)
-    ).toBe('none');
-  });
-
-  it('should return "none" when onFullScreenImageClick is undefined', () => {
-    expect(determineImageClickAction(undefined, true)).toBe('none');
-  });
-});
-
-describe('createImageClickHandler', () => {
   it('should return undefined when no handlers are provided', () => {
     const isDraggingRef = { current: false };
-    const handler = createImageClickHandler(
-      createImageContent(1),
+    const handler = createContentClickHandler(
+      1,
       isDraggingRef
     );
     expect(handler).toBeUndefined();
   });
 
-  it('should call onImageClick when provided and not dragging', () => {
+  it('should call onContentClick when provided and not dragging', () => {
     const isDraggingRef = { current: false };
-    const onImageClick = jest.fn();
-    const image = createImageContent(1);
-    const handler = createImageClickHandler(
-      image,
+    const onContentClick = jest.fn();
+    const handler = createContentClickHandler(
+      1,
       isDraggingRef,
-      onImageClick
+      onContentClick
     );
 
     expect(handler).toBeDefined();
     handler?.();
-    expect(onImageClick).toHaveBeenCalledWith(1);
+    expect(onContentClick).toHaveBeenCalledWith(1);
   });
 
-  it('should not call onImageClick when dragging', () => {
+  it('should not call onContentClick when dragging', () => {
     const isDraggingRef = { current: true };
-    const onImageClick = jest.fn();
-    const image = createImageContent(1);
-    const handler = createImageClickHandler(
-      image,
+    const onContentClick = jest.fn();
+    const handler = createContentClickHandler(
+      1,
       isDraggingRef,
-      onImageClick
+      onContentClick
     );
 
     expect(handler).toBeDefined();
     handler?.();
-    expect(onImageClick).not.toHaveBeenCalled();
+    expect(onContentClick).not.toHaveBeenCalled();
     expect(isDraggingRef.current).toBe(false);
   });
 
-  it('should call onFullScreenImageClick when onImageClick is not provided', () => {
+  it('should call onFullScreenClick when onContentClick is not provided', () => {
     const isDraggingRef = { current: false };
-    const onFullScreenImageClick = jest.fn();
-    const image = createImageContent(1);
-    const handler = createImageClickHandler(
-      image,
+    const onFullScreenClick = jest.fn();
+    const fullScreenContent = createFullScreenContent(1);
+    const handler = createContentClickHandler(
+      1,
       isDraggingRef,
       undefined,
       true,
-      onFullScreenImageClick
+      onFullScreenClick,
+      fullScreenContent
     );
 
     expect(handler).toBeDefined();
     handler?.();
-    expect(onFullScreenImageClick).toHaveBeenCalledWith(image);
+    expect(onFullScreenClick).toHaveBeenCalledWith(fullScreenContent);
   });
 
-  it('should prioritize onImageClick over onFullScreenImageClick', () => {
-    const isDraggingRef = { current: false };
-    const onImageClick = jest.fn();
-    const onFullScreenImageClick = jest.fn();
-    const image = createImageContent(1);
-    const handler = createImageClickHandler(
-      image,
+  it('should not call onFullScreenClick when dragging', () => {
+    const isDraggingRef = { current: true };
+    const onFullScreenClick = jest.fn();
+    const fullScreenContent = createFullScreenContent(1);
+    const handler = createContentClickHandler(
+      1,
       isDraggingRef,
-      onImageClick,
+      undefined,
       true,
-      onFullScreenImageClick
+      onFullScreenClick,
+      fullScreenContent
     );
 
     expect(handler).toBeDefined();
     handler?.();
-    expect(onImageClick).toHaveBeenCalledWith(1);
-    expect(onFullScreenImageClick).not.toHaveBeenCalled();
+    expect(onFullScreenClick).not.toHaveBeenCalled();
+    expect(isDraggingRef.current).toBe(false);
+  });
+
+  it('should prioritize onContentClick over onFullScreenClick', () => {
+    const isDraggingRef = { current: false };
+    const onContentClick = jest.fn();
+    const onFullScreenClick = jest.fn();
+    const fullScreenContent = createFullScreenContent(1);
+    const handler = createContentClickHandler(
+      1,
+      isDraggingRef,
+      onContentClick,
+      true,
+      onFullScreenClick,
+      fullScreenContent
+    );
+
+    expect(handler).toBeDefined();
+    handler?.();
+    expect(onContentClick).toHaveBeenCalledWith(1);
+    expect(onFullScreenClick).not.toHaveBeenCalled();
+  });
+
+  it('should return undefined when enableFullScreenView is false and no onContentClick', () => {
+    const isDraggingRef = { current: false };
+    const onFullScreenClick = jest.fn();
+    const fullScreenContent = createFullScreenContent(1);
+    const handler = createContentClickHandler(
+      1,
+      isDraggingRef,
+      undefined,
+      false,
+      onFullScreenClick,
+      fullScreenContent
+    );
+    expect(handler).toBeUndefined();
+  });
+
+  it('should return undefined when fullScreenContent is not provided', () => {
+    const isDraggingRef = { current: false };
+    const onFullScreenClick = jest.fn();
+    // Omit fullScreenContent to test the undefined case
+    const handler = createContentClickHandler(
+      1,
+      isDraggingRef,
+      /* onContentClick */ undefined,
+      /* enableFullScreenView */ true,
+      onFullScreenClick
+      // fullScreenContent omitted
+    );
+    expect(handler).toBeUndefined();
   });
 });
 
@@ -358,7 +373,7 @@ describe('createDropHandler', () => {
     expect(handler).toBeUndefined();
   });
 
-  it('should create handler that calls onDrop and sets isDraggingRef to false', () => {
+  it('should create handler that calls onDrop but NOT reset isDraggingRef (dragEnd handles that)', () => {
     const isDraggingRef = { current: true };
     const onDrop = jest.fn();
     const image = createImageContent(1);
@@ -372,7 +387,9 @@ describe('createDropHandler', () => {
 
     expect(mockEvent.preventDefault).toHaveBeenCalled();
     expect(onDrop).toHaveBeenCalledWith(mockEvent, 1);
-    expect(isDraggingRef.current).toBe(false);
+    // isDraggingRef should still be true - dragEnd handler resets it with setTimeout
+    // This allows click events (which fire after drop) to see isDraggingRef.current = true
+    expect(isDraggingRef.current).toBe(true);
   });
 });
 
@@ -453,85 +470,4 @@ describe('getCollectionNavigationPath', () => {
   });
 });
 
-describe('createParallaxImageClickHandler', () => {
-  it('should return undefined when no handlers are provided', () => {
-    const handler = createParallaxImageClickHandler({});
-    expect(handler).toBeUndefined();
-  });
-
-  it('should return collection navigation handler when slug is provided', () => {
-    const routerPush = jest.fn();
-    const handler = createParallaxImageClickHandler(
-      { slug: 'test-collection' },
-      undefined,
-      false,
-      undefined,
-      routerPush
-    );
-
-    expect(handler).toBeDefined();
-    handler?.();
-    expect(routerPush).toHaveBeenCalledWith('/test-collection');
-  });
-
-  it('should return admin collection navigation handler when slug and onImageClick are provided', () => {
-    const routerPush = jest.fn();
-    const onImageClick = jest.fn();
-    const handler = createParallaxImageClickHandler(
-      { slug: 'test-collection' },
-      onImageClick,
-      false,
-      undefined,
-      routerPush
-    );
-
-    expect(handler).toBeDefined();
-    handler?.();
-    expect(routerPush).toHaveBeenCalledWith('/collection/manage/test-collection');
-  });
-
-  it('should return fullscreen handler when enableFullScreenView is true', () => {
-    const onFullScreenImageClick = jest.fn();
-    const itemContent = { slug: undefined };
-    const handler = createParallaxImageClickHandler(
-      itemContent,
-      undefined,
-      true,
-      onFullScreenImageClick
-    );
-
-    expect(handler).toBeDefined();
-    handler?.();
-    expect(onFullScreenImageClick).toHaveBeenCalled();
-  });
-
-  it('should prioritize collection navigation over fullscreen', () => {
-    const routerPush = jest.fn();
-    const onFullScreenImageClick = jest.fn();
-    const handler = createParallaxImageClickHandler(
-      { slug: 'test-collection' },
-      undefined,
-      true,
-      onFullScreenImageClick,
-      routerPush
-    );
-
-    expect(handler).toBeDefined();
-    handler?.();
-    expect(routerPush).toHaveBeenCalledWith('/test-collection');
-    expect(onFullScreenImageClick).not.toHaveBeenCalled();
-  });
-
-  it('should return undefined when slug is empty string', () => {
-    const routerPush = jest.fn();
-    const handler = createParallaxImageClickHandler(
-      { slug: '' },
-      undefined,
-      false,
-      undefined,
-      routerPush
-    );
-    expect(handler).toBeUndefined();
-  });
-});
 
