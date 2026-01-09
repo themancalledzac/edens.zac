@@ -3,7 +3,7 @@
  * Handles data normalization, state management, and type guards
  */
 
-import { reorderCollectionImages } from '@/app/lib/api/collections';
+import { reorderCollectionContent } from '@/app/lib/api/collections';
 import {
   type ChildCollection,
   type CollectionModel,
@@ -524,14 +524,12 @@ export type ReorderChange = { contentId: number; newOrderIndex: number };
  * @param draggedContentId - ID of the content being dragged
  * @param targetContentId - ID of the content being dropped on
  * @param collection - Current collection state
- * @param collectionId - Collection ID
  * @returns Array of reorder changes to send to API
  */
 export function calculateReorderChanges(
   draggedContentId: number,
   targetContentId: number,
-  collection: CollectionModel,
-  collectionId: number
+  collection: CollectionModel
 ): ReorderChange[] {
   const blocks = collection.content || [];
   const draggedBlock = blocks.find(b => b.id === draggedContentId);
@@ -539,8 +537,8 @@ export function calculateReorderChanges(
 
   if (!draggedBlock || !targetBlock) return [];
 
-  const originalIndex = getContentOrderIndex(draggedBlock, collectionId);
-  const targetIndex = getContentOrderIndex(targetBlock, collectionId);
+  const originalIndex = getContentOrderIndex(draggedBlock);
+  const targetIndex = getContentOrderIndex(targetBlock);
 
   if (originalIndex === undefined || targetIndex === undefined) return [];
   if (originalIndex === targetIndex) return []; // No change needed
@@ -554,7 +552,7 @@ export function calculateReorderChanges(
     
     // All items between original and target (including target) move BACK by 1
     for (let i = originalIndex + 1; i <= targetIndex; i++) {
-      const block = blocks.find(b => getContentOrderIndex(b, collectionId) === i);
+      const block = blocks.find(b => getContentOrderIndex(b) === i);
       if (block) {
         changes.push({ contentId: block.id, newOrderIndex: i - 1 });
       }
@@ -566,7 +564,7 @@ export function calculateReorderChanges(
     
     // All items between target and original (including target) move FORWARD by 1
     for (let i = targetIndex; i < originalIndex; i++) {
-      const block = blocks.find(b => getContentOrderIndex(b, collectionId) === i);
+      const block = blocks.find(b => getContentOrderIndex(b) === i);
       if (block) {
         changes.push({ contentId: block.id, newOrderIndex: i + 1 });
       }
@@ -582,13 +580,11 @@ export function calculateReorderChanges(
  * 
  * @param collection - Collection model to update
  * @param reorders - Array of ReorderChange with new orderIndex values
- * @param collectionId - Collection ID for updating image collection entries
  * @returns Updated collection model with new orderIndex values
  */
 export function applyReorderChangesOptimistically(
   collection: CollectionModel,
-  reorders: ReorderChange[],
-  collectionId: number
+  reorders: ReorderChange[]
 ): CollectionModel {
   if (reorders.length === 0) return collection;
 
@@ -603,7 +599,7 @@ export function applyReorderChangesOptimistically(
     if (newOrderIndex === undefined) return block;
 
     // All content types have orderIndex in collections array (collection-specific)
-    return updateBlockOrderIndex(block, collectionId, newOrderIndex);
+    return updateBlockOrderIndex(block, newOrderIndex);
   });
 
   return {
@@ -616,108 +612,54 @@ export function applyReorderChangesOptimistically(
 
 /**
  * Get the orderIndex for a content block
- * All content types have orderIndex in collections array (collection-specific)
+ * Uses direct orderIndex property - works for all content types (images, collections, text, GIFs)
  *
  * @param block - Content block (any type)
- * @param collectionId - ID of the collection to get orderIndex for
  * @returns orderIndex value, or undefined if not found
  */
-export function getContentOrderIndex(
-  block: AnyContentModel,
-  collectionId: number
-): number | undefined {
-  // All content has orderIndex in collections array (collection-specific)
-  // Type assertion needed since not all content types have collections in their type definition
-  const blockWithCollections = block as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number }> };
-  const collectionEntry = blockWithCollections.collections?.find((c: { collectionId: number }) => c.collectionId === collectionId);
-  return collectionEntry?.orderIndex;
+export function getContentOrderIndex(block: AnyContentModel): number | undefined {
+  return block.orderIndex;
 }
 
 
 
 
 /**
- * Execute reorder operation
- * Calls the API and refreshes collection data
- *
+ * Execute reorder operation - calls the API and returns the updated collection
  * @param collectionId - ID of the collection
- * @param reorders - Array of reorder changes (ReorderChange format)
- * @param slug - Collection slug for cache refresh
- * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
- * @param collectionStorage - Collection storage instance (injected for testability)
- * @returns Promise that resolves with refreshed CollectionUpdateResponseDTO
+ * @param reorders - Array of {contentId, newOrderIndex} changes
+ * @param slug - Collection slug for cache revalidation
  */
 export async function executeReorderOperation(
   collectionId: number,
   reorders: ReorderChange[],
-  slug: string,
-  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>,
-  collectionStorage: { update: (slug: string, collection: CollectionModel) => void }
-): Promise<CollectionUpdateResponseDTO> {
-  // Convert to API format and call the reorder API
-  await reorderCollectionImages(collectionId, reorders.map(change => ({
-    imageId: change.contentId,
+  slug: string
+): Promise<CollectionModel> {
+  const response = await reorderCollectionContent(collectionId, reorders.map(change => ({
+    contentId: change.contentId,
     newOrderIndex: change.newOrderIndex,
   })));
 
-  // Refresh collection data to get updated orderIndex values
-  const fullResponse = await getCollectionUpdateMetadata(slug);
+  revalidateCollectionCache(slug);
 
-  // Update cache
-  collectionStorage.update(slug, fullResponse.collection);
-  await revalidateCollectionCache(slug);
-
-  return fullResponse;
+  return response;
 }
 
 /**
  * Update orderIndex for a content block
- * Updates the collection entry in the collections array (collection-specific)
+ * Updates the direct orderIndex property - works for all content types
  * @param block - Content block (any type) to update
- * @param collectionId - Collection ID to find the correct collection entry
  * @param newOrderIndex - New orderIndex value
  * @returns Updated content block
  */
 export function updateBlockOrderIndex(
   block: AnyContentModel,
-  collectionId: number,
   newOrderIndex: number
 ): AnyContentModel {
-  // All content has orderIndex in collections array (collection-specific)
-  // Type assertion needed since not all content types have collections in their type definition
-  const blockWithCollections = block as AnyContentModel & { collections?: Array<{ collectionId: number; orderIndex?: number; name?: string; visible?: boolean; [key: string]: unknown }> };
-  const existingCollections = blockWithCollections.collections || [];
-  
-  // Check if collection entry already exists
-  const existingIndex = existingCollections.findIndex(
-    (entry: { collectionId: number }) => entry.collectionId === collectionId
-  );
-
-  // Update existing entry or create new one if it doesn't exist
-  const updatedCollections: Array<{ collectionId: number; orderIndex?: number; name?: string; visible?: boolean; [key: string]: unknown }> = existingIndex >= 0
-    ? existingCollections.map((collectionEntry, index) => {
-        if (index === existingIndex) {
-          return {
-            ...collectionEntry,
-            orderIndex: newOrderIndex,
-          };
-        }
-        return collectionEntry;
-      })
-    : [
-        ...existingCollections,
-        {
-          collectionId,
-          orderIndex: newOrderIndex,
-          name: '',
-          visible: true,
-        },
-      ];
-
   return {
     ...block,
-    collections: updatedCollections,
-  } as AnyContentModel;
+    orderIndex: newOrderIndex,
+  };
 }
 
 

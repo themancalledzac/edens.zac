@@ -40,7 +40,6 @@ import {
   calculateReorderChanges,
   COVER_IMAGE_FLASH_DURATION,
   executeReorderOperation,
-  getContentOrderIndex,
   getCurrentSelectedCollections,
   getDisplayedCoverImage,
   handleApiError,
@@ -285,11 +284,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
       // DEBUG: Log the payload to verify displayMode is included
       if (isLocalEnvironment()) {
-        console.log('[handleUpdate] Payload being sent:', {
-          payload,
-          updateDataDisplayMode: updateData.displayMode,
-          collectionDisplayMode: collection.displayMode,
-          payloadJSON: JSON.stringify(payload, null, 2),
+        console.log('[handleUpdate] ===== UPDATE DEBUG START =====');
+        console.log('[handleUpdate] Original collection:', {
+          id: collection.id,
+          title: collection.title,
+          description: collection.description?.slice(0, 50),
+          contentCount: collection.content?.length || 0,
+        });
+        console.log('[handleUpdate] Form updateData:', {
+          ...updateData,
+          description: updateData.description?.slice(0, 50),
         });
       }
 
@@ -357,26 +361,55 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   };
 
-  // Handle cover image selection
+  // Handle cover image selection - makes immediate API call
   const handleCoverImageClick = useCallback(
-    (imageId: number) => {
-      const result = handleCoverImageSelection(imageId, collection?.content);
+    async (imageId: number) => {
+      if (!collection) return;
+
+      const result = handleCoverImageSelection(imageId, collection.content);
 
       if (!result.success) {
         setError(result.error);
         return;
       }
 
-      setUpdateData(prev => ({ ...prev, coverImageId: result.coverImageId }));
+      // Show temporary overlay on newly selected image
+      setJustClickedImageId(result.coverImageId);
       setIsSelectingCoverImage(false);
 
-      // Show temporary red overlay on newly selected image
-      setJustClickedImageId(result.coverImageId);
-      setTimeout(() => {
-        setJustClickedImageId(null);
-      }, COVER_IMAGE_FLASH_DURATION);
+      // Make immediate API call to update cover image
+      try {
+        setOperationLoading(true);
+        setError(null);
+
+        await updateCollection(collection.id, { 
+          id: collection.id, 
+          coverImageId: result.coverImageId 
+        });
+
+        // Re-fetch collection to get updated cover image
+        const response = await getCollectionUpdateMetadata(collection.slug);
+        setCurrentState(prev => ({
+          ...prev!,
+          collection: response.collection,
+        }));
+
+        // Update cache
+        collectionStorage.update(collection.slug, response.collection);
+
+        if (isLocalEnvironment()) {
+          console.log('[handleCoverImageClick] Cover image updated successfully:', result.coverImageId);
+        }
+      } catch (error) {
+        setError(handleApiError(error, 'Failed to update cover image'));
+      } finally {
+        setOperationLoading(false);
+        setTimeout(() => {
+          setJustClickedImageId(null);
+        }, COVER_IMAGE_FLASH_DURATION);
+      }
     },
-    [collection?.content]
+    [collection]
   );
 
   // Handle multi-select toggle
@@ -530,21 +563,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   // Drag handlers for reordering (supports both IMAGE and COLLECTION content)
   const handleDragStart = useCallback((contentId: number) => {
-    if (!collection || collection.displayMode !== 'ORDERED' || !currentState) return;
-    
-    // Log which image is clicked
-    const blocks = currentState.collection.content || [];
-    const draggedBlock = blocks.find(b => b.id === contentId);
-    if (draggedBlock) {
-      const currentOrderIndex = getContentOrderIndex(draggedBlock, currentState.collection.id);
-      console.log('[Drag Start] Clicked image:', {
-        imageID: contentId,
-        currentOrderIndex: currentOrderIndex ?? 'undefined',
-      });
-    }
-    
+    if (!collection || collection.displayMode !== 'ORDERED') return;
     setDragState({ draggedId: contentId, dragOverId: null });
-  }, [collection, currentState]);
+  }, [collection]);
 
   const handleDragOver = useCallback((e: React.DragEvent, contentId: number) => {
     if (!collection || collection.displayMode !== 'ORDERED' || !dragState.draggedId) return;
@@ -560,46 +581,22 @@ export default function ManageClient({ slug }: ManageClientProps) {
       return;
     }
     
-    // Log drop target before reorder
-    const blocks = currentState.collection.content || [];
-    const draggedBlock = blocks.find(b => b.id === dragState.draggedId);
-    const targetBlock = blocks.find(b => b.id === targetContentId);
-    
-    if (draggedBlock && targetBlock) {
-      const draggedCurrentIndex = getContentOrderIndex(draggedBlock, currentState.collection.id);
-      const targetCurrentIndex = getContentOrderIndex(targetBlock, currentState.collection.id);
-      
-      console.log('[Drop] Dropping on image:', {
-        draggedImageID: dragState.draggedId,
-        draggedCurrentOrderIndex: draggedCurrentIndex ?? 'undefined',
-        targetImageID: targetContentId,
-        targetCurrentOrderIndex: targetCurrentIndex ?? 'undefined',
-      });
-    }
-    
-    // Calculate which images need to be reordered
+    // Calculate which content items need to be reordered
     const reorderChanges = calculateReorderChanges(
       dragState.draggedId,
       targetContentId,
-      currentState.collection,
-      collection.id
+      currentState.collection
     );
-
-    console.log('[Drop] Calculated reorder changes:', reorderChanges);
 
     if (reorderChanges.length === 0) {
       setDragState({ draggedId: null, dragOverId: null });
       return;
     }
 
-    // Store IDs before clearing drag state (needed for logging)
-    const draggedId = dragState.draggedId;
-
     // OPTIMISTIC UPDATE: Immediately update UI to show the new order
     const optimisticallyUpdatedCollection = applyReorderChangesOptimistically(
       currentState.collection,
-      reorderChanges,
-      collection.id
+      reorderChanges
     );
     
     setCurrentState(prev => prev ? {
@@ -610,47 +607,28 @@ export default function ManageClient({ slug }: ManageClientProps) {
     // Clear drag state immediately so UI updates
     setDragState({ draggedId: null, dragOverId: null });
 
-    // Now call API in the background
+    // Call API in the background - optimistic update is already showing the correct state
     try {
       setOperationLoading(true);
       setError(null);
 
-      const response = await executeReorderOperation(
+      await executeReorderOperation(
         collection.id,
         reorderChanges,
-        collection.slug,
-        getCollectionUpdateMetadata,
-        collectionStorage
+        collection.slug
       );
-
-      if (response) {
-        // Update state with response from API (should match optimistic update)
-        setCurrentState(response);
-        
-        // Log final locations
-        const updatedBlocks = response.collection.content || [];
-        const finalDraggedBlock = updatedBlocks.find(b => b.id === draggedId);
-        const finalTargetBlock = updatedBlocks.find(b => b.id === targetContentId);
-        
-        if (finalDraggedBlock && finalTargetBlock) {
-          const finalDraggedIndex = getContentOrderIndex(finalDraggedBlock, collection.id);
-          const finalTargetIndex = getContentOrderIndex(finalTargetBlock, collection.id);
-          
-          console.log('[After API] Final locations:', {
-            draggedImageID: draggedId,
-            draggedFinalOrderIndex: finalDraggedIndex ?? 'undefined',
-            targetImageID: targetContentId,
-            targetFinalOrderIndex: finalTargetIndex ?? 'undefined',
-          });
-        }
-      } else {
-        // API failed - reload page to get correct state
-        window.location.reload();
-      }
+      
+      // Success - optimistic update is already correct, nothing more to do
     } catch (error) {
-      // API failed - reload page to get correct state
-      console.error('Reorder failed:', error);
-      window.location.reload();
+      setError(handleApiError(error, 'Failed to reorder content. The server may not support reordering this content type.'));
+      
+      // Re-fetch to restore correct state (reverts optimistic update)
+      try {
+        const response = await getCollectionUpdateMetadata(collection.slug);
+        setCurrentState(prev => prev ? { ...prev, collection: response.collection } : null);
+      } catch {
+        // Silent fail - user already sees the reorder error
+      }
     } finally {
       setOperationLoading(false);
     }
@@ -899,6 +877,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         getDisplayName={collectionItem => collectionItem.name}
                         changeButtonText="Select More ▼"
                         emptyText="No child collections"
+                        simpleChips
                       />
                     </div>
                   </div>

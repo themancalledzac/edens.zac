@@ -530,31 +530,6 @@ function transformCollectionBlocks(content: AnyContentModel[]): AnyContentModel[
   });
 }
 
-/**
- * Update orderIndex for image blocks using collection-specific values
- */
-function updateImageOrderIndex(
-  content: AnyContentModel[],
-  collectionId?: number
-): AnyContentModel[] {
-  if (!collectionId) return content;
-  
-  return content.map(block => {
-    if (block.contentType === 'IMAGE') {
-      const imageBlock = block as ContentImageModel;
-      const collectionEntry = imageBlock.collections?.find(
-        c => c.collectionId === collectionId
-      );
-      if (collectionEntry?.orderIndex !== undefined) {
-        return {
-          ...imageBlock,
-          orderIndex: collectionEntry.orderIndex,
-        };
-      }
-    }
-    return block;
-  });
-}
 
 /**
  * Ensure parallax blocks have proper imageWidth/imageHeight dimensions with fallback
@@ -629,7 +604,7 @@ export function processContentBlocks(
   displayMode?: 'CHRONOLOGICAL' | 'ORDERED'
 ): AnyContentModel[] {
   let processed = filterVisibleBlocks(content, filterVisible, collectionId);
-  processed = updateImageOrderIndex(processed, collectionId);
+  // Note: We now use block.orderIndex directly instead of collections[].orderIndex
   processed = ensureParallaxDimensions(processed);
   processed = displayMode === 'CHRONOLOGICAL'
     ? sortContentByCreatedAt(processed)

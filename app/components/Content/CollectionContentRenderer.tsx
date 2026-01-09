@@ -1,17 +1,15 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import React, { useMemo, useRef } from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
-import { type ContentImageModel } from '@/app/types/Content';
+import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import {
   checkImageVisibility,
+  createContentClickHandler,
   createDragHandlers,
-  createImageClickHandler,
-  createParallaxImageClickHandler,
 } from '@/app/utils/contentComponentHandlers';
 import {
   buildParallaxWrapperClassName,
@@ -36,7 +34,7 @@ export default function CollectionContentRenderer({
   overlayText,
   cardTypeBadge,
   enableParallax,
-  hasSlug,
+  hasSlug: _hasSlug, // Preserved for potential future use; navigation now handled by parent
   isCollection = false,
   contentType,
   textItems,
@@ -56,44 +54,39 @@ export default function CollectionContentRenderer({
   onDrop,
   onDragEnd,
 }: CollectionContentRendererProps) {
-  const router = useRouter();
   const isDraggingRef = useRef(false);
   
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
   
-  // Click handler - based on hasSlug (collection navigation) or image click
+  // Unified click handler - delegates to parent via onImageClick callback
+  // Parent component (ManageClient) decides: navigate for collections, edit for images
+  // For public pages without onImageClick, falls back to fullscreen view
   const handleClick = useMemo(() => {
-    if (hasSlug) {
-      // Collection navigation
-      return createParallaxImageClickHandler(
-        { slug: hasSlug },
-        onImageClick,
-        enableFullScreenView,
-        onFullScreenImageClick,
-        router.push
-      );
+    // TEXT content is not clickable
+    if (contentType === 'TEXT') {
+      return;
     }
     
-    if (contentType === 'IMAGE' || contentType === 'GIF') {
-      // Image click (metadata or fullscreen)
-      // Create minimal content object for handler
-      const imageContent = {
-        id: contentId,
-        contentType: contentType === 'GIF' ? 'GIF' : 'IMAGE',
-        imageUrl,
-        title: alt,
-      } as ContentImageModel;
-      
-      return createImageClickHandler(
-        imageContent,
-        isDraggingRef,
-        onImageClick,
-        enableFullScreenView,
-        onFullScreenImageClick
-      );
-    }
-  }, [hasSlug, contentType, contentId, imageUrl, alt, onImageClick, enableFullScreenView, onFullScreenImageClick, router]);
+    // Create minimal content object for fullscreen fallback (public pages)
+    const fullScreenContent: ContentImageModel | ContentParallaxImageModel = {
+      id: contentId,
+      contentType: contentType === 'GIF' ? 'GIF' : 'IMAGE',
+      imageUrl: imageUrl || '',
+      title: alt,
+      orderIndex: 0,
+      visible: true,
+    } as ContentImageModel;
+    
+    return createContentClickHandler(
+      contentId,
+      isDraggingRef,
+      onImageClick,
+      enableFullScreenView,
+      onFullScreenImageClick,
+      fullScreenContent
+    );
+  }, [contentId, contentType, imageUrl, alt, onImageClick, enableFullScreenView, onFullScreenImageClick]);
   
   // Drag handlers
   const isDragged = enableDragAndDrop && draggedImageId === contentId;

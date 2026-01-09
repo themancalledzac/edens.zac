@@ -23,7 +23,6 @@ import {
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
-import { type ContentImageModel } from '@/app/types/Content';
 
 // ============================================================================
 // URL Helpers
@@ -257,13 +256,13 @@ export async function getMetadata(): Promise<GeneralMetadataDTO> {
 
 /**
  * POST /api/admin/collections/{collectionId}/reorder
- * Reorder images in a collection
+ * Reorder content in a collection (supports all content types: IMAGE, COLLECTION, TEXT, GIF)
  */
-export async function reorderCollectionImages(
+export async function reorderCollectionContent(
   collectionId: number,
-  reorders: Array<{ imageId: number; newOrderIndex: number }>
-): Promise<{ updatedImages: ContentImageModel[] }> {
-  return fetchAdminPostJsonApi<{ updatedImages: ContentImageModel[] }>(
+  reorders: Array<{ contentId: number; newOrderIndex: number }>
+): Promise<CollectionModel> {
+  return fetchAdminPostJsonApi<CollectionModel>(
     `/collections/${collectionId}/reorder`,
     { reorders }
   );

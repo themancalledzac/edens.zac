@@ -54,64 +54,59 @@ export function hasSlug(itemContent: { slug?: string }): boolean {
 }
 
 /**
- * Determine which click action to use for an image
- * Pure function - no side effects
- * @param onImageClick - Optional handler for image clicks
- * @param enableFullScreenView - Whether fullscreen view is enabled
- * @param onFullScreenImageClick - Optional handler for fullscreen image clicks
- * @returns 'imageClick' | 'fullscreen' | 'none'
- */
-export function determineImageClickAction(
-  onImageClick?: (imageId: number) => void,
-  enableFullScreenView?: boolean,
-  onFullScreenImageClick?: (image: ContentImageModel) => void
-): 'imageClick' | 'fullscreen' | 'none' {
-  if (onImageClick) {
-    return 'imageClick';
-  }
-  if (enableFullScreenView && onFullScreenImageClick) {
-    return 'fullscreen';
-  }
-  return 'none';
-}
-
-/**
- * Create a click handler for image content
- * Handles drag state checking and routes to appropriate handler
+ * Create a unified click handler for any content type (IMAGE, COLLECTION, GIF, TEXT)
+ * Handles drag state checking and delegates to parent via onContentClick callback.
+ * Navigation/editing decisions are made by the parent component (ManageClient).
+ * 
+ * Priority:
+ * 1. If onContentClick is provided (admin/manage pages) -> call it with contentId
+ * 2. If fullscreen is enabled (public collection pages) -> call fullscreen handler
+ * 3. Otherwise -> no click handler
+ * 
  * Note: This function has side effects (mutates ref and calls callbacks) as required by React
- * @param itemContent - The image content being clicked
+ * 
+ * @param contentId - The content ID being clicked
  * @param isDraggingRef - Ref to track if dragging is in progress
- * @param onImageClick - Optional handler for image clicks (cover selection, metadata editing)
- * @param enableFullScreenView - Whether fullscreen view is enabled
- * @param onFullScreenImageClick - Optional handler for fullscreen image clicks
+ * @param onContentClick - Handler for content clicks (parent decides what to do based on content type)
+ * @param enableFullScreenView - Whether fullscreen view is enabled (fallback for public pages)
+ * @param onFullScreenClick - Optional handler for fullscreen (fallback for public pages)
+ * @param fullScreenContent - Content to pass to fullscreen handler
  * @returns Click handler function or undefined
  */
-export function createImageClickHandler(
-  itemContent: ContentImageModel,
+export function createContentClickHandler(
+  contentId: number,
   isDraggingRef: React.MutableRefObject<boolean>,
-  onImageClick?: (imageId: number) => void,
+  onContentClick?: (contentId: number) => void,
   enableFullScreenView?: boolean,
-  onFullScreenImageClick?: (image: ContentImageModel) => void
+  onFullScreenClick?: (content: ContentImageModel | ContentParallaxImageModel) => void,
+  fullScreenContent?: ContentImageModel | ContentParallaxImageModel
 ): (() => void) | undefined {
-  const action = determineImageClickAction(onImageClick, enableFullScreenView, onFullScreenImageClick);
-  
-  if (action === 'none') {
-    return undefined;
+  // Priority 1: Parent-provided click handler (manage pages)
+  // Parent component decides: navigate for collection, edit metadata for image
+  if (onContentClick) {
+    return () => {
+      // Don't trigger click if we just finished dragging
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        return;
+      }
+      onContentClick(contentId);
+    };
   }
-
-  return () => {
-    // Don't trigger click if we just finished dragging
-    if (isDraggingRef.current) {
-      isDraggingRef.current = false;
-      return;
-    }
-    
-    if (action === 'imageClick' && onImageClick) {
-      onImageClick(itemContent.id);
-    } else if (action === 'fullscreen' && onFullScreenImageClick) {
-      onFullScreenImageClick(itemContent);
-    }
-  };
+  
+  // Priority 2: Fullscreen view (public collection pages)
+  if (enableFullScreenView && onFullScreenClick && fullScreenContent) {
+    return () => {
+      // Don't trigger click if we just finished dragging
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        return;
+      }
+      onFullScreenClick(fullScreenContent);
+    };
+  }
+  
+  return undefined;
 }
 
 /**
@@ -181,9 +176,8 @@ export function createDropHandler(
   }
 
   return (e: React.DragEvent) => {
-    e.preventDefault(); // Required for drop to work
+    e.preventDefault();
     onDrop(e, itemContent.id);
-    isDraggingRef.current = false;
   };
 }
 
@@ -259,40 +253,6 @@ export function getCollectionNavigationPath(slug: string, isAdminContext: boolea
 }
 
 /**
- * Create click handler for parallax image content
- * Note: This function has side effects (calls callbacks) as required by React
- * @param itemContent - The parallax image content
- * @param onImageClick - Optional handler for image clicks (used to detect admin context)
- * @param enableFullScreenView - Whether fullscreen view is enabled
- * @param onFullScreenImageClick - Optional handler for fullscreen image clicks
- * @param routerPush - Function to navigate (router.push)
- * @returns Click handler function or undefined
- */
-export function createParallaxImageClickHandler(
-  itemContent: { slug?: string },
-  onImageClick?: (imageId: number) => void,
-  enableFullScreenView?: boolean,
-  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void,
-  routerPush?: (path: string) => void
-): (() => void) | undefined {
-  const isCollection = hasSlug(itemContent);
-  const isAdmin = !!onImageClick;
-  
-  if (isCollection && routerPush && itemContent.slug) {
-    const path = getCollectionNavigationPath(itemContent.slug, isAdmin);
-    return () => routerPush(path);
-  }
-  
-  if (enableFullScreenView && onFullScreenImageClick) {
-    return () => {
-      onFullScreenImageClick(itemContent as ContentImageModel | ContentParallaxImageModel);
-    };
-  }
-  
-  return undefined;
-}
-
-/**
  * Prepare all data and handlers needed to render COLLECTION content
  * Extracts all logic from React component
  * @param itemContent - The collection content to prepare
@@ -302,10 +262,9 @@ export function createParallaxImageClickHandler(
  * @param enableDragAndDrop - Whether drag-and-drop is enabled
  * @param draggedImageId - ID of content currently being dragged
  * @param isDraggingRef - Ref to track if dragging is in progress
- * @param onImageClick - Optional handler for image clicks
+ * @param onContentClick - Optional handler for content clicks (parent decides what to do)
  * @param enableFullScreenView - Whether fullscreen view is enabled
- * @param onFullScreenImageClick - Optional handler for fullscreen image clicks
- * @param routerPush - Function to navigate (router.push)
+ * @param onFullScreenClick - Optional handler for fullscreen clicks
  * @param onDragStart - Handler for drag start events
  * @param onDragOver - Handler for drag over events
  * @param onDrop - Handler for drop events
@@ -320,21 +279,25 @@ export function prepareCollectionContentRender(
   enableDragAndDrop: boolean,
   draggedImageId: number | null | undefined,
   isDraggingRef: React.MutableRefObject<boolean>,
-  onImageClick?: (imageId: number) => void,
+  onContentClick?: (contentId: number) => void,
   enableFullScreenView?: boolean,
-  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void,
-  routerPush?: (path: string) => void,
+  onFullScreenClick?: (image: ContentImageModel | ContentParallaxImageModel) => void,
   onDragStart?: (contentId: number) => void,
   onDragOver?: (e: React.DragEvent, contentId: number) => void,
   onDrop?: (e: React.DragEvent, contentId: number) => void,
   onDragEnd?: () => void
 ) {
-  const handleClick = createParallaxImageClickHandler(
-    itemContent,
-    onImageClick,
+  // Convert to parallax content for display
+  const parallaxContent = convertCollectionContentToParallax(itemContent);
+  
+  // Create unified click handler - delegates to parent via callback
+  const handleClick = createContentClickHandler(
+    itemContent.id,
+    isDraggingRef,
+    onContentClick,
     enableFullScreenView,
-    onFullScreenImageClick,
-    routerPush
+    onFullScreenClick,
+    parallaxContent
   );
 
   const isDragged = enableDragAndDrop && draggedImageId === itemContent.id;
@@ -353,8 +316,6 @@ export function prepareCollectionContentRender(
     onDrop,
     onDragEnd
   );
-
-  const parallaxContent = convertCollectionContentToParallax(itemContent);
 
   return {
     handleClick,

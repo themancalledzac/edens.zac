@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+
+import { useClickOutsideMultiple } from '@/app/hooks/useClickOutside';
 
 import styles from './ImageMetadataModal.module.scss';
 
@@ -62,6 +64,7 @@ interface UnifiedMetadataSelectorProps<T extends MetadataItem> {
   // Behavior
   showNewIndicator?: boolean; // Show "🔴 Will be added" for items not in database
   placeholder?: string; // Placeholder for add new inputs
+  simpleChips?: boolean; // Use simplified chip style (click to remove, no × button)
 }
 
 /**
@@ -115,14 +118,32 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
   addNewButtonText = '+ Add New',
   showNewIndicator = false,
   placeholder,
+  simpleChips = false,
 }: UnifiedMetadataSelectorProps<T>) {
   // ============================================================================
-  // State
+  // Refs & State
   // ============================================================================
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isSelectingFromDropdown, setIsSelectingFromDropdown] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
+
+  // ============================================================================
+  // Click Outside & Escape Key Handling (using reusable hook)
+  // ============================================================================
+
+  const handleCloseAll = useCallback(() => {
+    setIsSelectingFromDropdown(false);
+    setIsAddingNew(false);
+    setFormData({});
+  }, []);
+
+  useClickOutsideMultiple(
+    containerRef,
+    [isSelectingFromDropdown, isAddingNew],
+    handleCloseAll
+  );
 
   // ============================================================================
   // Helper Functions
@@ -298,7 +319,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
   // ============================================================================
 
   return (
-    <div className={styles.formGroup}>
+    <div className={styles.formGroup} ref={containerRef}>
       <label className={styles.formLabel}>{label}</label>
 
       {/* Current Selection Display */}
@@ -324,17 +345,33 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
             ) : (
               <div className={styles.selectedChips}>
                 {selectedValues.map(item => (
-                  <div key={getKey(item)} className={styles.chip}>
-                    <span>{getItemDisplayName(item)}</span>
-                    <button
-                      type="button"
+                  simpleChips ? (
+                    // Simplified chip: click entire chip to remove, no × button
+                    <div 
+                      key={getKey(item)} 
+                      className={styles.chipSimple}
                       onClick={() => handleRemoveItem(item)}
-                      className={styles.chipRemove}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && handleRemoveItem(item)}
                       aria-label={`Remove ${getItemDisplayName(item)}`}
                     >
-                      ×
-                    </button>
-                  </div>
+                      {getItemDisplayName(item)}
+                    </div>
+                  ) : (
+                    // Standard chip with × button
+                    <div key={getKey(item)} className={styles.chip}>
+                      <span>{getItemDisplayName(item)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(item)}
+                        className={styles.chipRemove}
+                        aria-label={`Remove ${getItemDisplayName(item)}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )
                 ))}
               </div>
             ))}
