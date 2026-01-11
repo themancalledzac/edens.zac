@@ -63,6 +63,7 @@
     "@types/react-dom": "^18.3.0",
     "aws-cdk": "^2.1003.0",
     "aws-cdk-lib": "^2.203.0",
+    "baseline-browser-mapping": "^2.9.14",
     "constructs": "^10.4.2",
     "esbuild": "^0.25.2",
     "eslint": "^9.36.0",

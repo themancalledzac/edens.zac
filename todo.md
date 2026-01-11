@@ -27,6 +27,131 @@
 
 These inline styles are **REQUIRED** for mobile to work correctly. Do NOT move to CSS or remove `isMobile` checks:
 
+#### 1. collection Manage page get call is re calling the ENTIRE collection, rather than reusing our in memory cache collection
+- The initial purpose is to pass the collection from the collection page, to the collection manage page
+- Any MISSING data would be coming from the backend in the form of the 'Get Update Collection' endpoint, which, unfortunately, is also returning ALL the data, including the collection.
+- Need a new endpoint for the 'MINIMAL' required data for the manage page
+  - Would not need to include any data coming from the original collection request/local cache
+  - Could be Lazy Loaded, as none of this is REQUIRED for the initial manage page render
+  - Would only include things like 'tags', 'people', 'cameras', 'lenses', 'filmTYpe', etc
+  - This could ALSO be added to the local cache, as it is an abstract 'all extra data' endpoint
+  - WOuld probably be called 'getMetadata'
+- Backend will require a new 'minimal' api endpoint, a 'GetMetadata'
+- Frontend will need to:
+  - Reuse 'Getcollection' endpoint cache FOR the manage page
+  - Lazy Load call the 'getMetadata' endpoint, if not existing in cache
+  - immediately cache the 'getMetadata' response
+  - On collection page, if any 'getMetadata' items are added, we must RE CALL 'getMetadata' and re-update the cache
+
+#### 2. Collection Update updated to, as we ONLY send what is being updated, we only should get back what we updated.
+- Example: update order or two images for collection? we send those 2 image order changes
+  - Backend only returns those 2 images with their 'new' data, aka their new orderIndex
+  - Frontend receives that '200' response, and checks that the returned data is the same as we had before.
+    - If so. success. If not, we need an 'error' message pop-up, and on 'accept', we'd need to FULLY reload the page.
+
+#### 3. Text Block Update
+- Text Block needs to properly work on backend
+- Need to verify what data a content textBlock would have
+  - 'name', 'id', 'description', 'location', 'date', 'people', 'tags'
+  - Backend would only need to store `name`, `id`, `description`
+  - Frontend would populate the `location`, `date`, `people`, `tags` from the collection endpoint
+- Pt 2: Logic/Organize/Filter logic
+  - With the update to include things like 'date' 'people' and 'tags', we need to have a 'filter' and 'reorder' helper functions
+    - Filter: be able to select, or deselect a tag or person from a dropdown list (populated by what is a PART of this collection)
+      - Would either need the backend to provide this list from now on, or, we would need to create it on the fly, aka pull them from the list of images
+    - Reorder: Be able to order by date(asc/desc),
+
+#### 4. Collections: What, and How do we organize them>
+- Collections are as follows:
+  - Outdoors
+    - {hiking trip name}
+    - {specific outdoor location}
+    - enchantments
+  - Event
+    - show specific events?
+    - Filter options: by year, by location, by people, by tags, etc.
+    - Reorder: by date(asc/desc/not)
+  - Film
+    - {location on film}
+    - Filter options: camera, lens, people, tags, etc.
+    - Reorder: by date(asc/desc/not)
+  - Blogs
+    - Fairly static page, just blogs in order of post date. 
+    - Reorder: could technically reorder by 'post date' vs 'collection date'?
+  - Cities
+    - Filter options: by year, by people, tags, etc
+    - Reorder: by date(asc/desc/not)
+
+#### 9. Add Collection page 'filter' options in Text box in header
+- Example: On a page like 'Enchantments', I would want a filter for each 'date', or 'collection' within this collection, such as 'Enchantments 2023', 'Enchantments 2024', etc
+- People in Collection (with more than 5-10% images) should show up as 'filters'
+- Tags in Collection (with more than 5-10% images) should show up as 'filters'
+- If enough images in collection have 'film=true', we could have a filter for 'film'
+
+#### 10. Add Collection page 'Associated Collections' in the Text box in the header
+- Example: 'Enchantments 2023' would have 'Enchantments', 'Enchantments on Film', 'Enchantments 2024', etc
+- Need to determine what 'Similar' collections are, and how to add them
+- On 'Blog' pages, the Header Text box should include a 'previous/next post' links, as Blogs are in order by collection date
+
+---
+
+### 📋 Collection Header "Text Box" Design (#9 + #10)
+
+**Problem:** The collection page header needs more than just a text box. It should be a structured **Header Metadata Panel** with multiple optional sections.
+
+**Proposed Structure (top to bottom):**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ COLLECTION TITLE (already exists in SiteHeader)                 │
+├─────────────────────────────────────────────────────────────────┤
+│ 📅 Date: Sept 2023  |  📍 Location: The Enchantments, WA       │  <- Row 1: Date + Location
+├─────────────────────────────────────────────────────────────────┤
+│ Description text goes here. Can be multiple lines.              │  <- Row 2: Description (should probably be on bottom)
+│ Only shows if collection.description exists.                    │
+├─────────────────────────────────────────────────────────────────┤
+│ 🔍 Filters: [2023] [2024] [Film] [John] [Landscape]            │  <- Row 3: Filter chips (clickable)
+├─────────────────────────────────────────────────────────────────┤
+│ 📎 Related: Enchantments on Film | Enchantments 2024            │  <- Row 4: Related collections
+│    (For Blogs: ← Previous Post | Next Post →)                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Visibility Rules:**
+- Date: Show if `collection.collectionDate` exists
+- Location: Show if `collection.location` exists  
+- Description: Show if `collection.description` exists
+- Filters: Show if collection has filterable content (>5-10% threshold)
+- Related: Show if related collections exist or blog has prev/next
+
+**Filter Types (auto-detected from collection content):**
+1. **Child Collections** - If collection contains sub-collections
+2. **Dates** - Grouped by year from `createDate` of images
+3. **People** - From image `people` associations (threshold: >5%)
+4. **Tags** - From image `tags` associations (threshold: >5%)
+5. **Film** - If significant % of images have `isFilm: true`
+
+**Related Collections Algorithm:**
+1. **Same parent** - Collections with same parent collection
+2. **Sibling by tag** - Collections sharing significant tags
+3. **Manual curation** - Allow manual "related" assignments (future)
+4. **For Blogs:** Use `collectionDate` ordering for prev/next
+
+**Backend Requirements:**
+- New field on `CollectionModel`: `relatedCollections?: CollectionListModel[]`
+- New field for blogs: `previousCollection?: { slug, title }`, `nextCollection?: { slug, title }`
+- New endpoint: `GET /api/read/collections/{slug}/filters` returning filterable metadata with counts
+
+**Files to Create/Modify:**
+- `app/components/CollectionHeader/CollectionHeader.tsx` (NEW)
+- `app/components/CollectionHeader/CollectionHeader.module.scss` (NEW)
+- `app/components/ContentCollection/CollectionPage.tsx` - Use new header component
+- `app/types/Collection.ts` - Add new fields to CollectionModel
+- Backend: Add filter aggregation endpoint
+
+**Difficulty:** 🟡 Medium-High (requires backend + frontend coordination)
+
+
 #### 1. TEXT Content (Metadata Blocks) - Lines ~118-159
 ```typescript
 style={{

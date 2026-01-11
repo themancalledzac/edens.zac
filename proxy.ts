@@ -4,12 +4,12 @@ import { hasValidAdminAuth,isAdminRoutesEnabled } from '@/app/utils/admin';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 /**
- * Global Next.js Middleware
+ * Global Next.js Proxy
  * - Protects admin App Router routes (create/edit collections)
  * - Maintains legacy local-only protection for /cdn tooling routes
  * - Supports feature flags and simple token-based authorization for gradual rollout
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1) Legacy protection for /cdn tools — allow only in local/dev

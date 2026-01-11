@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     // Revalidate cache tag if provided
     if (tag && typeof tag === 'string') {
-      revalidateTag(tag);
+      revalidateTag(tag, 'default');
     }
 
     // Revalidate path if provided
