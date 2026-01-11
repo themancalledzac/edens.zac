@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import React, { useMemo, useRef } from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
@@ -34,7 +35,7 @@ export default function CollectionContentRenderer({
   overlayText,
   cardTypeBadge,
   enableParallax,
-  hasSlug: _hasSlug, // Preserved for potential future use; navigation now handled by parent
+  hasSlug: _hasSlug, // Used for collection navigation on public pages
   isCollection = false,
   contentType,
   textItems,
@@ -55,6 +56,7 @@ export default function CollectionContentRenderer({
   onDragEnd,
 }: CollectionContentRendererProps) {
   const isDraggingRef = useRef(false);
+  const router = useRouter();
   
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
@@ -62,10 +64,23 @@ export default function CollectionContentRenderer({
   // Unified click handler - delegates to parent via onImageClick callback
   // Parent component (ManageClient) decides: navigate for collections, edit for images
   // For public pages without onImageClick, falls back to fullscreen view
+  // Collections with slug navigate to collection page instead of fullscreen
   const handleClick = useMemo(() => {
     // TEXT content is not clickable
     if (contentType === 'TEXT') {
       return;
+    }
+    
+    // Collections with slug should navigate to collection page, not open fullscreen
+    // This handles public pages where collections are displayed (e.g., home page)
+    if (_hasSlug && !onImageClick) {
+      return () => {
+        if (isDraggingRef.current) {
+          isDraggingRef.current = false;
+          return;
+        }
+        router.push(`/${_hasSlug}`);
+      };
     }
     
     // Create minimal content object for fullscreen fallback (public pages)
@@ -77,7 +92,7 @@ export default function CollectionContentRenderer({
       orderIndex: 0,
       visible: true,
     } as ContentImageModel;
-    
+      
     return createContentClickHandler(
       contentId,
       isDraggingRef,
@@ -86,7 +101,7 @@ export default function CollectionContentRenderer({
       onFullScreenImageClick,
       fullScreenContent
     );
-  }, [contentId, contentType, imageUrl, alt, onImageClick, enableFullScreenView, onFullScreenImageClick]);
+  }, [contentId, contentType, imageUrl, alt, onImageClick, enableFullScreenView, onFullScreenImageClick, _hasSlug, router]);
   
   // Drag handlers
   const isDragged = enableDragAndDrop && draggedImageId === contentId;

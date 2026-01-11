@@ -14,17 +14,22 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
-    domains: [
-      'localhost',
-      `${process.env.AWS_CLOUDFRONT_DOMAIN_NAME}.cloudfront.net`,
-      // Add your domain here
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+      {
+        protocol: 'https',
+        hostname: `${process.env.AWS_CLOUDFRONT_DOMAIN_NAME}.cloudfront.net`,
+      },
     ],
     formats: ['image/avif', 'image/webp'],
-    // remotePatterns
   },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
+  turbopack: {},
   // Add webpack configuration to handle caching
   webpack: (config) => {
     // Custom webpack config if needed
