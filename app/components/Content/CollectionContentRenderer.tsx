@@ -128,6 +128,11 @@ export default function CollectionContentRenderer({
     if (!textItems || textItems.length === 0) {
       return null;
     }
+
+    const dateItem = textItems.find(item => item.type === 'date');
+    const locationItem = textItems.find(item => item.type === 'location');
+    const descriptionItem = textItems.find(item => item.type === 'description');
+    const filterItems = textItems.filter(item => item.type === 'text');
     
     return (
       <div
@@ -149,17 +154,44 @@ export default function CollectionContentRenderer({
       >
         <div className={cbStyles.blockContainer}>
           <div className={cbStyles.metadataBlockInner}>
-            {textItems.map((item) => (
-              <div 
-                key={`text-item-${contentId}-${item.type}-${item.value.slice(0, 20)}`}
-                className={cbStyles[`textItem-${item.type}`] || cbStyles.textItem || ''}
-              >
-                {item.label && (
-                  <span className={cbStyles.textItemLabel || ''}>{item.label}: </span>
+            {/* Top Row: Date and Location */}
+            {(dateItem || locationItem) && (
+              <div className={cbStyles.metadataHeaderRow}>
+                {dateItem && (
+                  <div className={cbStyles[`textItem-${dateItem.type}`]}>
+                    {dateItem.value}
+                  </div>
                 )}
-                <span>{item.value}</span>
+                {locationItem && (
+                  <div className={cbStyles[`textItem-${locationItem.type}`]}>
+                    {locationItem.value}
+                  </div>
+                )}
               </div>
-            ))}
+            )}
+
+            {/* Middle: Filters (Tags/People) */}
+            {filterItems.length > 0 && (
+              <div className={cbStyles.metadataFilters}>
+                {filterItems.map((item) => (
+                  <div 
+                    key={`filter-${contentId}-${item.type}-${item.value}`}
+                    className={cbStyles.filterItem}
+                  >
+                    {item.value}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Bottom: Description */}
+            {descriptionItem && (
+              <div className={cbStyles.metadataDescriptionContainer}>
+                <div className={cbStyles[`textItem-${descriptionItem.type}`]}>
+                  {descriptionItem.value}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -227,9 +259,6 @@ export default function CollectionContentRenderer({
   // Determine if we have overlays (for imageWrapper structure)
   const hasOverlays = !!(overlayText || cardTypeBadge);
   
-  // Determine if we need imageWrapper (for overlays OR parallax)
-  const needsImageWrapper = hasOverlays || enableParallax;
-  
   // Unified Image component props - conditionally includes parallax className or inline styles
   const imageProps = {
     src: imageUrl,
@@ -245,13 +274,9 @@ export default function CollectionContentRenderer({
           className: `parallax-bg ${variantStyles.parallaxImage}`,
         }
       : {
+          className: cbStyles.nonParallaxImage,
           style: {
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover' as const,
-            display: 'block' as const,
             cursor: handleClick ? 'pointer' as const : 'default' as const,
-            ...(isMobile ? { height: 'auto' } : {}),
           },
           onClick: handleClick,
         }),
@@ -295,9 +320,9 @@ export default function CollectionContentRenderer({
           isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
         }),
     style: {
-      width: isMobile ? (needsImageWrapper ? '100%' : undefined) : width,
-      height: isMobile ? (enableParallax ? 'auto' : undefined) : height,
-      aspectRatio: isMobile && needsImageWrapper ? width / height : undefined,
+      width: isMobile ? '100%' : width,
+      height: isMobile ? 'auto' : height,
+      aspectRatio: width / height,
       boxSizing: 'border-box' as const,
       position: 'relative' as const,
       cursor: handleClick ? 'pointer' : 'default',
@@ -311,13 +336,9 @@ export default function CollectionContentRenderer({
   // Unified structure for both parallax and non-parallax
   return (
     <div key={contentId} {...wrapperProps}>
-      {needsImageWrapper ? (
-        <div className={cbStyles.imageWrapper} onClick={handleClick}>
-          {imageWrapperContent}
-        </div>
-      ) : (
-        <Image {...imageProps} />
-      )}
+      <div className={cbStyles.imageWrapper} onClick={handleClick}>
+        {imageWrapperContent}
+      </div>
       {!enableParallax && (
         <ImageOverlays
           contentType={contentType}

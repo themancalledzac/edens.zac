@@ -38,7 +38,7 @@
   
   touch-action: pan-x;
 
-  @media (width > 768px) {
+  @media (width >= 768px) {
     padding: var(--default-padding);
   }
 }
@@ -64,11 +64,11 @@
 
 // White frame and padding appear only after image loads
 .imageWrapperLoaded {
-  padding: 8px; // Smaller border on mobile
+  padding: 8px; // Base padding
   background-color: white;
   
-  // Only apply larger padding on true desktop (wider AND taller screens)
-  @media (width > 1024px) and (height > 600px) {
+  // Use consistent padding for all screens larger than mobile
+  @media (width >= 768px) {
     padding: 40px;
   }
 }
@@ -95,7 +95,7 @@
   user-select: none;           /* Standard - prevents selection */
   pointer-events: auto;        /* Keep interactions enabled for swipe detection */
 
-  @media (width > 1024px) and (height > 600px) {
+  @media (width >= 768px) {
     max-width: calc(100vw - calc(var(--default-padding) * 2));
     max-height: calc(100vh - calc(var(--default-padding) * 2));
   }
@@ -107,8 +107,8 @@
   max-width: calc(100vw - 16px); // 8px padding * 2 for frame
   max-height: calc(100vh - calc(var(--default-padding) * 2) - 16px);
 
-  @media (width > 1024px) and (height > 600px) {
-    max-width: calc(100vw - calc(var(--default-padding) * 2) - 80px); // 40px padding * 2 for frame
+  @media (width >= 768px) {
+    max-width: calc(100vw - calc(var(--default-padding) * 2) - 80px); // 40px padding * 2
     max-height: calc(100vh - calc(var(--default-padding) * 2) - 80px);
   }
 }

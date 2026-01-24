@@ -644,7 +644,18 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
       value: collection.description,
     });
   }
-  
+
+  // Add tags
+  if (collection.tags && collection.tags.length > 0) {
+    for (const tag of collection.tags) {
+      items.push({
+        type: 'text',
+        value: tag,
+        label: 'tag',
+      });
+    }
+  }
+
   return items;
 }
 
