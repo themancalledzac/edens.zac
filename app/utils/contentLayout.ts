@@ -290,7 +290,7 @@ export function calculateContentSizes(
   }
 
   const commonHeight = componentWidth / ratioSum;
-  
+
   // DEBUG: Log if invalid
   if (!Number.isFinite(commonHeight) || commonHeight <= 0) {
     console.error('[calculateContentSizes] Invalid commonHeight:', {
@@ -301,7 +301,7 @@ export function calculateContentSizes(
       contentLength: content.length,
     });
   }
-  
+
   // Validate commonHeight - if invalid, use equal width distribution fallback
   if (!Number.isFinite(commonHeight) || commonHeight <= 0) {
     // Use existing fallback logic - equal width distribution
@@ -310,7 +310,7 @@ export function calculateContentSizes(
       const { width, height } = getContentDimensions(contentItem);
       const ratio = width / Math.max(1, height);
       const calculatedHeight = equalWidth / ratio;
-      
+
       // Validate calculated height
       if (!Number.isFinite(calculatedHeight) || calculatedHeight <= 0) {
         return {
@@ -319,7 +319,7 @@ export function calculateContentSizes(
           height: equalWidth / 1.5, // Default 3:2 aspect ratio
         };
       }
-      
+
       return {
         content: contentItem,
         width: equalWidth,
@@ -551,6 +551,28 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
 }
 
 /**
+ * Check if content is visible in a specific collection
+ * Checks both global visibility (block.visible) and collection-specific visibility for images
+ * @param block - Content block to check
+ * @param collectionId - Optional collection ID for checking collection-specific visibility
+ * @returns true if content is visible, false otherwise
+ */
+export function isContentVisibleInCollection(
+  block: AnyContentModel,
+  collectionId?: number
+): boolean {
+  if (block.visible === false) return false;
+
+  if (block.contentType === 'IMAGE' && collectionId) {
+    const imageBlock = block as ContentImageModel;
+    const entry = imageBlock.collections?.find(c => c.collectionId === collectionId);
+    if (entry?.visible === false) return false;
+  }
+
+  return true;
+}
+
+/**
  * Filter out non-visible content blocks and check collection-specific visibility for images
  */
 function filterVisibleBlocks(
@@ -560,17 +582,7 @@ function filterVisibleBlocks(
 ): AnyContentModel[] {
   if (!filterVisible) return content;
 
-  return content.filter(block => {
-    if (block.visible === false) return false;
-
-    if (block.contentType === 'IMAGE' && collectionId) {
-      const imageBlock = block as ContentImageModel;
-      const collectionEntry = imageBlock.collections?.find(c => c.collectionId === collectionId);
-      if (collectionEntry?.visible === false) return false;
-    }
-
-    return true;
-  });
+  return content.filter(block => isContentVisibleInCollection(block, collectionId));
 }
 
 /**
@@ -626,6 +638,28 @@ function sortContentByCreatedAt(content: AnyContentModel[]): AnyContentModel[] {
 }
 
 /**
+ * Stable sort: visible content first, non-visible content last
+ * Preserves relative order within visible and non-visible groups
+ */
+function sortNonVisibleToBottom(
+  content: AnyContentModel[],
+  collectionId?: number
+): AnyContentModel[] {
+  const visible: AnyContentModel[] = [];
+  const nonVisible: AnyContentModel[] = [];
+
+  for (const block of content) {
+    if (isContentVisibleInCollection(block, collectionId)) {
+      visible.push(block);
+    } else {
+      nonVisible.push(block);
+    }
+  }
+
+  return [...visible, ...nonVisible];
+}
+
+/**
  * Reorder content to show images/text/gifs first, then collections
  */
 function reorderImagesBeforeCollections(content: AnyContentModel[]): AnyContentModel[] {
@@ -661,10 +695,18 @@ export function processContentBlocks(
   let processed = filterVisibleBlocks(content, filterVisible, collectionId);
   // Note: We now use block.orderIndex directly instead of collections[].orderIndex
   processed = ensureParallaxDimensions(processed);
+
+  // Sort by orderIndex or createdAt first (before visibility sorting)
   processed =
     displayMode === 'CHRONOLOGICAL'
       ? sortContentByCreatedAt(processed)
       : sortContentByOrderIndex(processed);
+
+  // When filterVisible is false (manage page), sort non-visible content to bottom
+  // This happens after orderIndex/chronological sorting to preserve relative order within groups
+  if (!filterVisible) {
+    processed = sortNonVisibleToBottom(processed, collectionId);
+  }
 
   processed = reorderImagesBeforeCollections(processed);
   processed = transformCollectionBlocks(processed);

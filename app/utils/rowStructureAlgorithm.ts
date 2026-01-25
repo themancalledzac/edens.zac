@@ -278,7 +278,7 @@ function invertFraction(f: Fraction): Fraction {
 /**
  * Create a box directly from AnyContentModel
  * Applies slot width scaling to create "effective" aspect ratio for proportional space allocation
- * 
+ *
  * Note: Standalone items should be handled by calculateStandaloneSizes, not this function.
  * This function is used for items in multi-item patterns (main-stacked, standard, etc.)
  */
@@ -371,7 +371,7 @@ function combineBoxes(boxes: Box[], direction: 'horizontal' | 'vertical'): Box {
  */
 function scaleSolvedBoxWidths(box: SolvedBox, scaleFactor: number): SolvedBox {
   const scaledWidth = box.width * scaleFactor;
-  
+
   // Validate scaled width
   if (!Number.isFinite(scaledWidth) || scaledWidth <= 0) {
     console.error('[scaleSolvedBoxWidths] Invalid scaled width:', {
@@ -387,7 +387,7 @@ function scaleSolvedBoxWidths(box: SolvedBox, scaleFactor: number): SolvedBox {
       children: box.children?.map(child => scaleSolvedBoxWidths(child, scaleFactor)),
     };
   }
-  
+
   return {
     ...box,
     width: scaledWidth,
@@ -467,7 +467,7 @@ function solveBox(
 
   if (direction === 'horizontal') {
     const calculatedWidth = solvedChildren.reduce((sum, child) => sum + child.width, 0);
-    
+
     // DEBUG: Log values to trace issue
     if (!Number.isFinite(calculatedWidth) || calculatedWidth === 0) {
       console.error('[solveBox] Invalid calculatedWidth:', {
@@ -478,7 +478,7 @@ function solveBox(
         direction,
       });
     }
-    
+
     // Validate before division - if invalid, distribute width equally
     if (!calculatedWidth || !Number.isFinite(calculatedWidth) || calculatedWidth <= 0) {
       // Fallback: distribute width equally among children (don't scale)
@@ -489,11 +489,11 @@ function solveBox(
       }));
       return { width: containerSize, height: sharedDimension, children: scaledChildren };
     }
-    
+
     // Scale widths proportionally to ensure total equals containerSize
     // This handles any rounding errors from fraction math
     const scaleFactor = containerSize / calculatedWidth;
-    
+
     // Validate scaleFactor before using it
     if (!Number.isFinite(scaleFactor) || scaleFactor <= 0) {
       console.error('[solveBox] Invalid scaleFactor:', {
@@ -505,7 +505,7 @@ function solveBox(
       // Use scaleFactor = 1 (no scaling) as fallback
       return { width: containerSize, height: sharedDimension, children: solvedChildren };
     }
-    
+
     const scaledChildren = solvedChildren.map(child => scaleSolvedBoxWidths(child, scaleFactor));
     return { width: containerSize, height: sharedDimension, children: scaledChildren };
   } else {
@@ -599,6 +599,15 @@ function extractCalculatedSizes(solved: SolvedBox): CalculatedContentSize[] {
  * - Stacked container's padding-left: OUTSIDE stacked items, INSIDE container
  *
  * So stacked items' widths must be reduced by the container's padding-left (half-gap).
+ *
+ * TODO: Verify gap math works correctly when main is positioned on the right.
+ * When mainPosition === 'right', the layout is flipped:
+ * - Main image (right): has padding-left (inside its border-box width)
+ * - Stacked container (left): has padding-right instead of padding-left
+ * The box model should work the same way (just flipped), but verify that:
+ * 1. Stacked items' widths are correctly reduced by container's padding-right (halfGap)
+ * 2. Main image width calculation accounts for padding-left instead of padding-right
+ * If issues arise, we may need to pass mainPosition to this function and adjust the gap math.
  */
 function calculateMainStackedSizes(
   items: AnyContentModel[],

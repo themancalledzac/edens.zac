@@ -9,6 +9,7 @@ import { type AnyContentModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import {
   type CalculatedContentSize,
+  isContentVisibleInCollection,
   processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
@@ -92,6 +93,38 @@ export default function Component({
       return [];
     }
   }, [content, contentWidth, chunkSize, isMobile, collectionData]);
+
+  // Find the first row index that contains non-visible content
+  // Only check if we're on the manage page (currentCollectionId is provided)
+  // Must be called before early return to satisfy React Hooks rules
+  const firstNonVisibleRowIndex = useMemo(() => {
+    if (!currentCollectionId || rows.length === 0) return -1; // Not on manage page or no rows, no separator needed
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row) continue;
+
+      // Check if any item in this row is non-visible
+      const hasNonVisible = row.items.some(
+        item => !isContentVisibleInCollection(item.content, currentCollectionId)
+      );
+
+      if (hasNonVisible) {
+        // Only show separator if there's at least one visible row before this one
+        // This prevents showing separator at the very top if all content is non-visible
+        if (i > 0) {
+          return i;
+        }
+        // For the first row: only show separator if it's mixed (has both visible and non-visible)
+        const hasVisible = row.items.some(item =>
+          isContentVisibleInCollection(item.content, currentCollectionId)
+        );
+        return hasVisible ? i : -1;
+      }
+    }
+
+    return -1; // All content is visible, no separator needed
+  }, [rows, currentCollectionId]);
 
   // Early return for empty state
   if (rows.length === 0) return <div />;
@@ -228,7 +261,26 @@ export default function Component({
 
   return (
     <div className={cbStyles.wrapper}>
-      <div className={cbStyles.inner}>{rows.map(row => renderRow(row))}</div>
+      <div className={cbStyles.inner}>
+        {rows.map((row, rowIndex) => {
+          const shouldShowSeparator =
+            firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
+          const rowKey = `row-${row.items.map(item => item.content.id).join('-')}`;
+
+          return (
+            <React.Fragment key={rowKey}>
+              {shouldShowSeparator && (
+                <div className={cbStyles.visibilitySeparator}>
+                  <div className={cbStyles.separatorLine} />
+                  <div className={cbStyles.separatorLabel}>Non-Visible Content</div>
+                  <div className={cbStyles.separatorLine} />
+                </div>
+              )}
+              {renderRow(row)}
+            </React.Fragment>
+          );
+        })}
+      </div>
     </div>
   );
 }

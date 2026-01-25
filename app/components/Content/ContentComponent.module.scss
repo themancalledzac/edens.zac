@@ -526,3 +526,30 @@
     height: auto;
   }
 }
+
+/* Visibility separator - shown between visible and non-visible content on manage page */
+.visibilitySeparator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: var(--space-8) 0;
+  gap: var(--space-4);
+}
+
+.separatorLine {
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-gray-300, #d1d5db);
+  max-width: 200px;
+}
+
+.separatorLabel {
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--color-gray-600, #4b5563);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  padding: 0 var(--space-2);
+}

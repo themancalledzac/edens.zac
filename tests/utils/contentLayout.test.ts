@@ -140,6 +140,76 @@ describe('processContentBlocks', () => {
       expect(result).toHaveLength(2);
     });
 
+    it('should sort non-visible content to bottom when filterVisible is false', () => {
+      const content: AnyContentModel[] = [
+        createImageContent(1, { visible: false, orderIndex: 1 }),
+        createImageContent(2, { visible: true, orderIndex: 2 }),
+        createImageContent(3, { visible: false, orderIndex: 3 }),
+        createImageContent(4, { visible: true, orderIndex: 4 }),
+      ];
+      const result = processContentBlocks(content, false);
+
+      // All items should be present
+      expect(result).toHaveLength(4);
+
+      // Visible items should come first (sorted by orderIndex)
+      expect(result[0]?.id).toBe(2);
+      expect(result[1]?.id).toBe(4);
+
+      // Non-visible items should come last (preserving relative order)
+      expect(result[2]?.id).toBe(1);
+      expect(result[3]?.id).toBe(3);
+    });
+
+    it('should sort non-visible content to bottom with collection-specific visibility', () => {
+      const content: AnyContentModel[] = [
+        createImageContent(1, {
+          visible: true,
+          orderIndex: 1,
+          collections: [{ collectionId: 1, name: 'Collection 1', visible: false }],
+        }),
+        createImageContent(2, {
+          visible: true,
+          orderIndex: 2,
+          collections: [{ collectionId: 1, name: 'Collection 1', visible: true }],
+        }),
+        createImageContent(3, {
+          visible: true,
+          orderIndex: 3,
+          collections: [{ collectionId: 1, name: 'Collection 1', visible: false }],
+        }),
+      ];
+      const result = processContentBlocks(content, false, 1);
+
+      // All items should be present
+      expect(result).toHaveLength(3);
+
+      // Visible item should come first
+      expect(result[0]?.id).toBe(2);
+
+      // Non-visible items (collection-specific) should come last
+      expect(result[1]?.id).toBe(1);
+      expect(result[2]?.id).toBe(3);
+    });
+
+    it('should preserve relative order within visible and non-visible groups', () => {
+      const content: AnyContentModel[] = [
+        createImageContent(1, { visible: false, orderIndex: 3 }),
+        createImageContent(2, { visible: true, orderIndex: 1 }),
+        createImageContent(3, { visible: false, orderIndex: 1 }),
+        createImageContent(4, { visible: true, orderIndex: 2 }),
+      ];
+      const result = processContentBlocks(content, false);
+
+      // Visible items first, sorted by orderIndex: 2, 4
+      expect(result[0]?.id).toBe(2);
+      expect(result[1]?.id).toBe(4);
+
+      // Non-visible items last, sorted by orderIndex: 3, 1
+      expect(result[2]?.id).toBe(3);
+      expect(result[3]?.id).toBe(1);
+    });
+
     it('should filter image blocks with collection-specific visibility', () => {
       const content: AnyContentModel[] = [
         createImageContent(1, {
