@@ -26,6 +26,21 @@
   }
 }
 
+/* Stacked container for main-stacked patterns (main image + vertically stacked secondaries) */
+.stackedContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+
+  /* Desktop: stacked items form a vertical column next to main image */
+  @media (width >= 768px) {
+    /* Width is determined by the calculated sizes from the algorithm */
+    /* Height matches the main image (sum of stacked item heights + gaps) */
+    padding-left: 0.4rem; /* Match imageRight padding - contributes to horizontal gap */
+    gap: 0.8rem; /* Vertical gap between stacked items (must match LAYOUT.gridGap = 12.8px) */
+  }
+}
+
 /* Remove side padding from first/last items from Home.module.scss when inside our rows */
 .row :global(.imageLeft),
 .row :global(.imageSingle) {

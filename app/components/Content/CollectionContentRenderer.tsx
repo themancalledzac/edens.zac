@@ -57,10 +57,10 @@ export default function CollectionContentRenderer({
 }: CollectionContentRendererProps) {
   const isDraggingRef = useRef(false);
   const router = useRouter();
-  
+
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
-  
+
   // Unified click handler - delegates to parent via onImageClick callback
   // Parent component (ManageClient) decides: navigate for collections, edit for images
   // For public pages without onImageClick, falls back to fullscreen view
@@ -70,7 +70,7 @@ export default function CollectionContentRenderer({
     if (contentType === 'TEXT') {
       return;
     }
-    
+
     // Collections with slug should navigate to collection page, not open fullscreen
     // This handles public pages where collections are displayed (e.g., home page)
     if (_hasSlug && !onImageClick) {
@@ -82,7 +82,7 @@ export default function CollectionContentRenderer({
         router.push(`/${_hasSlug}`);
       };
     }
-    
+
     // Create minimal content object for fullscreen fallback (public pages)
     const fullScreenContent: ContentImageModel | ContentParallaxImageModel = {
       id: contentId,
@@ -92,7 +92,7 @@ export default function CollectionContentRenderer({
       orderIndex: 0,
       visible: true,
     } as ContentImageModel;
-      
+
     return createContentClickHandler(
       contentId,
       isDraggingRef,
@@ -101,18 +101,22 @@ export default function CollectionContentRenderer({
       onFullScreenImageClick,
       fullScreenContent
     );
-  }, [contentId, contentType, imageUrl, alt, onImageClick, enableFullScreenView, onFullScreenImageClick, _hasSlug, router]);
-  
+  }, [
+    contentId,
+    contentType,
+    imageUrl,
+    alt,
+    onImageClick,
+    enableFullScreenView,
+    onFullScreenImageClick,
+    _hasSlug,
+    router,
+  ]);
+
   // Drag handlers
   const isDragged = enableDragAndDrop && draggedImageId === contentId;
-  // Create minimal content object for drag handlers (only needs id and contentType)
-  const minimalContent = {
-    id: contentId,
-    contentType: contentType as 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION',
-    orderIndex: 0,
-  } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
   const dragHandlers = createDragHandlers(
-    minimalContent,
+    { id: contentId },
     enableDragAndDrop,
     draggedImageId,
     isDraggingRef,
@@ -121,8 +125,7 @@ export default function CollectionContentRenderer({
     onDrop,
     onDragEnd
   );
-  
-  
+
   // Render TEXT content
   if (contentType === 'TEXT') {
     if (!textItems || textItems.length === 0) {
@@ -133,7 +136,7 @@ export default function CollectionContentRenderer({
     const locationItem = textItems.find(item => item.type === 'location');
     const descriptionItem = textItems.find(item => item.type === 'description');
     const filterItems = textItems.filter(item => item.type === 'text');
-    
+
     return (
       <div
         key={contentId}
@@ -147,8 +150,8 @@ export default function CollectionContentRenderer({
           isSelected: false,
         })}
         style={{
-          width: isMobile ? '100%' : width,
-          height: isMobile ? 'auto' : height,
+          width: isMobile ? '100%' : Number.isFinite(width) ? width : 300,
+          height: isMobile ? 'auto' : Number.isFinite(height) ? height : 'auto',
           boxSizing: 'border-box',
         }}
       >
@@ -158,9 +161,7 @@ export default function CollectionContentRenderer({
             {(dateItem || locationItem) && (
               <div className={cbStyles.metadataHeaderRow}>
                 {dateItem && (
-                  <div className={cbStyles[`textItem-${dateItem.type}`]}>
-                    {dateItem.value}
-                  </div>
+                  <div className={cbStyles[`textItem-${dateItem.type}`]}>{dateItem.value}</div>
                 )}
                 {locationItem && (
                   <div className={cbStyles[`textItem-${locationItem.type}`]}>
@@ -173,8 +174,8 @@ export default function CollectionContentRenderer({
             {/* Middle: Filters (Tags/People) */}
             {filterItems.length > 0 && (
               <div className={cbStyles.metadataFilters}>
-                {filterItems.map((item) => (
-                  <div 
+                {filterItems.map(item => (
+                  <div
                     key={`filter-${contentId}-${item.type}-${item.value}`}
                     className={cbStyles.filterItem}
                   >
@@ -197,16 +198,16 @@ export default function CollectionContentRenderer({
       </div>
     );
   }
-  
+
   // Render image content (IMAGE, COLLECTION, GIF)
   const hasValidImage = imageUrl && imageUrl.trim() !== '';
-  
+
   // Early return for invalid images - render placeholder
   if (!hasValidImage) {
     // Default aspect ratio 3:2 if dimensions don't exist
     const placeholderWidth = width || 300;
-    const placeholderHeight = height || (placeholderWidth * 2 / 3);
-    
+    const placeholderHeight = height || (placeholderWidth * 2) / 3;
+
     return (
       <div
         key={contentId}
@@ -236,29 +237,33 @@ export default function CollectionContentRenderer({
       </div>
     );
   }
-  
+
   // Image-specific overlays (only for IMAGE type)
   const isCurrentCover = contentType === 'IMAGE' && currentCoverImageId === contentId;
   const isJustClicked = contentType === 'IMAGE' && justClickedImageId === contentId;
   const isSelected = contentType === 'IMAGE' && selectedImageIds.includes(contentId);
-  const shouldShowOverlay = contentType === 'IMAGE' && ((isSelectingCoverImage && isCurrentCover) || isJustClicked);
-  
+  const shouldShowOverlay =
+    contentType === 'IMAGE' && ((isSelectingCoverImage && isCurrentCover) || isJustClicked);
+
   // For IMAGE type, check visibility (need to create minimal content object)
-  const isNotVisible = contentType === 'IMAGE' && checkImageVisibility(
-    {
-      id: contentId,
-      contentType: 'IMAGE',
-      imageUrl: imageUrl || '',
-      orderIndex: 0,
-      collections: [],
-      visible: true,
-    } as ContentImageModel,
-    currentCollectionId
-  );
-  
+  const isNotVisible =
+    contentType === 'IMAGE' &&
+    checkImageVisibility(
+      {
+        id: contentId,
+        contentType: 'IMAGE',
+        imageUrl: imageUrl || '',
+        orderIndex: 0,
+        collections: [],
+        visible: true,
+      } as ContentImageModel,
+      currentCollectionId
+    );
+
   // Determine if we have overlays (for imageWrapper structure)
-  const hasOverlays = !!(overlayText || cardTypeBadge);
-  
+  // Note: Currently unused but kept for potential future use
+  const _hasOverlays = !!(overlayText || cardTypeBadge);
+
   // Unified Image component props - conditionally includes parallax className or inline styles
   const imageProps = {
     src: imageUrl,
@@ -276,12 +281,12 @@ export default function CollectionContentRenderer({
       : {
           className: cbStyles.nonParallaxImage,
           style: {
-            cursor: handleClick ? 'pointer' as const : 'default' as const,
+            cursor: handleClick ? ('pointer' as const) : ('default' as const),
           },
           onClick: handleClick,
         }),
   };
-  
+
   // Common imageWrapper content (Image + overlays) - used by both parallax and non-parallax
   const imageWrapperContent = (
     <>
@@ -295,9 +300,64 @@ export default function CollectionContentRenderer({
       )}
     </>
   );
-  
+
   // Unified wrapper props - works for both parallax and non-parallax
   // Note: key is passed directly to JSX (React requirement)
+
+  // DEBUG: Check for NaN values before creating wrapperProps
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    console.error('[CollectionContentRenderer] NaN detected in props:', {
+      contentId,
+      contentType,
+      width,
+      height,
+      imageWidth,
+      imageHeight,
+      isMobile,
+      enableParallax,
+    });
+  }
+
+  // TODO: This feels obtuse/a hack. We should be able to just use the width and height props.
+  // Calculate fallback values if NaN detected
+  let validWidth = width;
+  let validHeight = height;
+
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    // Calculate fallback from image dimensions if available
+    if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
+      if (!Number.isFinite(width) && Number.isFinite(height)) {
+        // Width is NaN, height is valid - calculate width from aspect ratio
+        validWidth = (height * imageWidth) / imageHeight;
+      } else if (!Number.isFinite(height) && Number.isFinite(width)) {
+        // Height is NaN, width is valid - calculate height from aspect ratio
+        validHeight = (width * imageHeight) / imageWidth;
+      } else {
+        // Both are NaN - use default aspect ratio (3:2)
+        validWidth = 300;
+        validHeight = 200;
+      }
+    } else {
+      // No image dimensions available - use default aspect ratio (3:2)
+      if (!Number.isFinite(width)) {
+        validWidth = Number.isFinite(height) ? height * 1.5 : 300;
+      }
+      if (!Number.isFinite(height)) {
+        validHeight = Number.isFinite(width) ? width / 1.5 : 200;
+      }
+      if (!Number.isFinite(validWidth) && !Number.isFinite(validHeight)) {
+        validWidth = 300;
+        validHeight = 200;
+      }
+    }
+  }
+
+  // Calculate aspectRatio only if both values are valid
+  const aspectRatioValue =
+    Number.isFinite(validWidth) && Number.isFinite(validHeight) && validHeight > 0
+      ? validWidth / validHeight
+      : undefined;
+
   const wrapperProps = {
     draggable: enableDragAndDrop && !!onDragStart,
     onDragStart: dragHandlers.handleDragStartEvent,
@@ -320,9 +380,9 @@ export default function CollectionContentRenderer({
           isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
         }),
     style: {
-      width: isMobile ? '100%' : width,
-      height: isMobile ? 'auto' : height,
-      aspectRatio: width / height,
+      width: isMobile ? '100%' : validWidth,
+      height: isMobile ? 'auto' : validHeight,
+      ...(aspectRatioValue !== undefined && { aspectRatio: aspectRatioValue }),
       boxSizing: 'border-box' as const,
       position: 'relative' as const,
       cursor: handleClick ? 'pointer' : 'default',
@@ -330,8 +390,7 @@ export default function CollectionContentRenderer({
     ...(enableParallax && { ref: parallaxRef }),
     ...(!enableParallax && handleClick && { onClick: handleClick }),
   };
-  
-  
+
   // Render image content (IMAGE, COLLECTION, GIF)
   // Unified structure for both parallax and non-parallax
   return (

@@ -63,10 +63,11 @@ export interface PatternMatcher {
 // ===================== Pattern Helpers =====================
 
 /**
- * Validate movement constraints (items can move max 2 positions)
+ * Validate movement constraints (items can move max patternMaxMovement positions)
  */
 function validateMovementConstraints(indices: number[], windowStart: number): boolean {
   const sortedIndices = [...indices].sort((a, b) => a - b);
+  const maxWindowIdx = LAYOUT.patternWindowSize - 1;
 
   for (let finalPos = 0; finalPos < indices.length; finalPos++) {
     const idx = indices[finalPos];
@@ -76,9 +77,9 @@ function validateMovementConstraints(indices: number[], windowStart: number): bo
     const movement = Math.abs(finalPos - originalPos);
 
     const originalWindowPos = idx - windowStart;
-    if (originalWindowPos < 0 || originalWindowPos > 4) return false;
+    if (originalWindowPos < 0 || originalWindowPos > maxWindowIdx) return false;
 
-    if (movement > 2) return false;
+    if (movement > LAYOUT.patternMaxMovement) return false;
   }
 
   return true;
@@ -90,7 +91,7 @@ function validateMovementConstraints(indices: number[], windowStart: number): bo
 function findCandidatesWithinDistance(
   windowItems: WindowItem[],
   mainIdx: number,
-  maxDistance: number = 2
+  maxDistance: number = LAYOUT.patternMaxMovement
 ): WindowItem[] {
   const candidates: WindowItem[] = [];
   for (let i = 0; i < windowItems.length; i++) {
@@ -108,7 +109,9 @@ function findCandidatesWithinDistance(
 
 /**
  * Standalone: Single item that takes full width
- * Triggers: 5-star horizontal, wide panorama 3+ star
+ * Triggers: 5-star horizontal, wide panorama, 4-star horizontal (unless adjacent to vertical)
+ * 
+ * Now detects standalone items by properties directly, not by slotWidth === Infinity
  */
 const standaloneMatcher: PatternMatcher = {
   name: 'standalone',
@@ -118,13 +121,51 @@ const standaloneMatcher: PatternMatcher = {
 
   canMatch(windowItems) {
     const first = windowItems[0];
-    return !!first && first.slotWidth === Infinity;
+    if (!first) return false;
+
+    // Wide panorama → always standalone
+    if (first.isWidePanorama) return true;
+
+    // 5-star horizontal → always standalone
+    if (first.rating === 5 && first.isHorizontal) return true;
+
+    // 4-star horizontal → standalone unless adjacent to vertical
+    if (first.rating === 4 && first.isHorizontal) {
+      // Check if there's a vertical item in the window (adjacent context)
+      const hasVerticalInWindow = windowItems.some(
+        (w, idx) => idx !== 0 && w.isVertical
+      );
+      return !hasVerticalInWindow;
+    }
+
+    return false;
   },
 
   match(windowItems) {
     const first = windowItems[0];
-    if (!first || first.slotWidth !== Infinity) return null;
-    return { type: 'standalone', indices: [first.originalIndex] };
+    if (!first) return null;
+
+    // Wide panorama → standalone
+    if (first.isWidePanorama) {
+      return { type: 'standalone', indices: [first.originalIndex] };
+    }
+
+    // 5-star horizontal → standalone
+    if (first.rating === 5 && first.isHorizontal) {
+      return { type: 'standalone', indices: [first.originalIndex] };
+    }
+
+    // 4-star horizontal → standalone unless adjacent to vertical
+    if (first.rating === 4 && first.isHorizontal) {
+      const hasVerticalInWindow = windowItems.some(
+        (w, idx) => idx !== 0 && w.isVertical
+      );
+      if (!hasVerticalInWindow) {
+        return { type: 'standalone', indices: [first.originalIndex] };
+      }
+    }
+
+    return null;
   },
 };
 

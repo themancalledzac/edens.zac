@@ -1,9 +1,6 @@
 import { type CollectionModel } from '@/app/types/Collection';
-import {
-  type AnyContentModel,
-  type ContentParallaxImageModel,
-} from '@/app/types/Content';
-import { injectTopRow, processContentBlocks } from '@/app/utils/contentLayout';
+import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
+import { processContentBlocks } from '@/app/utils/contentLayout';
 
 import ContentBlockWithFullScreen from '../Content/ContentBlockWithFullScreen';
 import SiteHeader from '../SiteHeader/SiteHeader';
@@ -23,7 +20,7 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
   // Extract dimensions from coverImage - prioritize imageWidth/imageHeight for accurate aspect ratios
   const imageWidth = col.coverImage?.imageWidth;
   const imageHeight = col.coverImage?.imageHeight;
-  
+
   return {
     contentType: 'IMAGE',
     enableParallax: true,
@@ -49,7 +46,6 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
   };
 }
 
-
 /**
  * Content Collection Page
  *
@@ -73,24 +69,26 @@ export default async function CollectionPage({
   chunkSize,
 }: ContentCollectionPageProps) {
   // Get content blocks to display
+  // Note: Header row (cover image + metadata) is now created in processContentForDisplay()
+  // via collectionData prop, not injected into the content array
   const contentBlocks: AnyContentModel[] = Array.isArray(collection)
     ? collection.map(collectionToContentModel)
-    : [
-        ...injectTopRow(collection), // Inject header row (cover + metadata)
-        ...processContentBlocks(collection.content ?? [], true, collection.id, collection.displayMode)
-      ];
+    : processContentBlocks(collection.content ?? [], true, collection.id, collection.displayMode);
 
   // Determine if this is a single collection (for passing slug to SiteHeader)
   const singleCollection = Array.isArray(collection) ? null : collection;
   const collectionSlug = singleCollection?.slug;
-  
+
   // Use contentPerPage from collection if available, otherwise default to 30
   const pageSize = singleCollection?.contentPerPage ?? 30;
 
   return (
     <div className={styles.container}>
       <main className={styles.main}>
-        <SiteHeader pageType={singleCollection ? 'collection' : 'collectionsCollection'} collectionSlug={collectionSlug} />
+        <SiteHeader
+          pageType={singleCollection ? 'collection' : 'collectionsCollection'}
+          collectionSlug={collectionSlug}
+        />
         {contentBlocks && contentBlocks.length > 0 ? (
           <ContentBlockWithFullScreen
             content={contentBlocks}

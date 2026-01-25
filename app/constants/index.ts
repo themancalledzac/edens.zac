@@ -28,6 +28,14 @@ export const LAYOUT = {
   // Content grid
   defaultChunkSize: 4,       // Max items per row (1-2 star images get 1 slot, 3+ star get 2 slots)
   minChunkSize: 2,           // Minimum chunk size (ensures halfSlot is at least 1)
+
+  // Grid gap between items (CSS: 0.4rem from each adjacent item = 0.8rem total)
+  // This is the visual gap between adjacent items in a row or stacked column
+  gridGap: 12.8,             // 0.8rem = 12.8px (0.4rem padding on each side)
+
+  // Pattern detection
+  patternWindowSize: 5,      // Items to look ahead for pattern detection
+  patternMaxMovement: 2,     // Max positions an item can move during pattern matching
 } as const;
 
 // =============================================================================

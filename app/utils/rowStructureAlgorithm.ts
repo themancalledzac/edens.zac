@@ -12,7 +12,13 @@
 import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
-import { getContentDimensions, hasImage, isContentImage } from '@/app/utils/contentTypeGuards';
+import {
+  getAspectRatio,
+  getContentDimensions,
+  getSlotWidth,
+  isContentImage,
+  isVerticalImage,
+} from '@/app/utils/contentTypeGuards';
 import {
   PATTERN_REGISTRY,
   type PatternResult,
@@ -32,95 +38,6 @@ export interface RowWithPattern {
 }
 
 // ===================== Helper Functions =====================
-
-/**
- * Get aspect ratio for content item
- */
-function getAspectRatio(item: AnyContentModel): number {
-  if (!hasImage(item)) return 1.0;
-
-  const { width, height } = getContentDimensions(item);
-  if (width <= 0 || height <= 0) return 1.0;
-
-  return width / height;
-}
-
-/**
- * Check if content is vertical/square (aspect ratio <= 1.0, excluding tall panoramas)
- */
-function isVertical(item: AnyContentModel): boolean {
-  const ratio = getAspectRatio(item);
-  return ratio <= 1.0 && ratio > 0.5;
-}
-
-/**
- * Get slot width for content item (based on rating, aspect ratio, and context)
- */
-function getSlotWidth(
-  item: AnyContentModel,
-  chunkSize: number,
-  prevItem?: AnyContentModel,
-  nextItem?: AnyContentModel
-): number {
-  const halfSlot = Math.floor(chunkSize / 2);
-
-  // Header items (cover image & metadata) always fill half the row each
-  if (item.id === -1 || item.id === -2) {
-    return halfSlot;
-  }
-
-  // Collection cards (with slug for navigation) get half slot
-  if ('slug' in item && item.slug) {
-    return halfSlot;
-  }
-
-  const ratio = getAspectRatio(item);
-  const isHoriz = ratio > 1.0;
-
-  // Wide panorama → standalone if 3+ star, halfSlot if 0-2 star
-  if (ratio >= 2) {
-    if (isContentImage(item)) {
-      const rating = item.rating || 0;
-      return rating >= 3 ? Infinity : halfSlot;
-    }
-    return Infinity;
-  }
-
-  // Tall panorama → normal slot
-  if (ratio <= 0.5) return 1;
-
-  // Rating-based logic (only for images with ratings)
-  if (isContentImage(item)) {
-    const rating = item.rating || 0;
-
-    if (isHoriz) {
-      // 5-star horizontal → always standalone
-      if (rating === 5) return Infinity;
-
-      // 4-star horizontal → standalone unless adjacent to vertical
-      if (rating === 4) {
-        const adjacentToVertical =
-          (prevItem && isVertical(prevItem)) || (nextItem && isVertical(nextItem));
-        return adjacentToVertical ? halfSlot : Infinity;
-      }
-
-      // 3-star horizontal → half slot
-      if (rating === 3) return halfSlot;
-
-      // 1-2 star horizontal → normal
-      return 1;
-    } else {
-      // Vertical images
-      // 3+ star vertical → half slot
-      if (rating >= 3) return halfSlot;
-
-      // 1-2 star vertical → normal
-      return 1;
-    }
-  }
-
-  return 1;
-}
 
 /**
  * Build window items with metadata
@@ -147,7 +64,7 @@ function buildWindowItems(
       isHorizontal: aspectRatio > 1.0,
       isWidePanorama: aspectRatio >= 2.0,
       isTallPanorama: aspectRatio <= 0.5,
-      rating: isContentImage(item) ? (item.rating || 0) : 0,
+      rating: isContentImage(item) ? item.rating || 0 : 0,
       slotWidth,
     };
   });
@@ -231,7 +148,7 @@ export function createRowsArray(
   let pointer = 0;
 
   while (pointer < content.length) {
-    const windowEnd = Math.min(content.length, pointer + 5);
+    const windowEnd = Math.min(content.length, pointer + LAYOUT.patternWindowSize);
     const window = content.slice(pointer, windowEnd);
 
     if (window.length === 0) break;
@@ -308,20 +225,30 @@ function createFraction(width: number, height: number): Fraction {
 }
 
 /**
- * Get fraction from content item using existing getContentDimensions
- */
-function getContentFraction(content: AnyContentModel): Fraction {
-  const { width, height } = getContentDimensions(content);
-  return createFraction(width, Math.max(1, height));
-}
-
-/**
  * Simplify a fraction to lowest terms
  */
 function simplifyFraction(f: Fraction): Fraction {
-  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  // Guard against invalid input
+  if (!Number.isFinite(f.numerator) || !Number.isFinite(f.denominator)) {
+    console.warn('Invalid fraction input:', f);
+    return { numerator: 1, denominator: 1 };
+  }
+
+  if (f.denominator === 0) {
+    console.warn('Division by zero in fraction:', f);
+    return { numerator: 1, denominator: 1 };
+  }
+
+  const gcd = (a: number, b: number): number => {
+    // Ensure we have valid finite numbers
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return 1;
+    if (b === 0) return a;
+    return gcd(b, a % b);
+  };
+
   const divisor = gcd(Math.abs(f.numerator), Math.abs(f.denominator));
-  if (divisor === 0) return f;
+  if (divisor === 0 || !Number.isFinite(divisor)) return f;
+
   return {
     numerator: f.numerator / divisor,
     denominator: f.denominator / divisor,
@@ -350,9 +277,42 @@ function invertFraction(f: Fraction): Fraction {
 
 /**
  * Create a box directly from AnyContentModel
+ * Applies slot width scaling to create "effective" aspect ratio for proportional space allocation
+ * 
+ * Note: Standalone items should be handled by calculateStandaloneSizes, not this function.
+ * This function is used for items in multi-item patterns (main-stacked, standard, etc.)
  */
-function createBoxFromContent(content: AnyContentModel): Box {
-  const ratio = getContentFraction(content);
+function createBoxFromContent(
+  content: AnyContentModel,
+  chunkSize: number,
+  prevItem?: AnyContentModel,
+  nextItem?: AnyContentModel
+): Box {
+  const { width, height } = getContentDimensions(content);
+  const slotWidth = getSlotWidth(content, chunkSize, prevItem, nextItem);
+
+  // Guard: Validate slotWidth is finite and reasonable
+  // If slotWidth is very large (>= chunkSize), it's likely a standalone item
+  // that should be handled by calculateStandaloneSizes instead
+  // Use original dimensions without scaling in this case
+  if (!Number.isFinite(slotWidth) || slotWidth <= 0 || slotWidth >= chunkSize) {
+    // Use original dimensions without slotWidth scaling
+    const ratio = createFraction(width, Math.max(1, height));
+    return {
+      type: 'single',
+      ratio,
+      content,
+    };
+  }
+
+  // Apply slot width scaling for proportional space allocation
+  // Items with slotWidth=2 (3+ star) get 2x the visual space compared to slotWidth=1
+  const effectiveWidth = width * slotWidth;
+  const effectiveHeight = height * slotWidth;
+
+  // Create fraction from effective dimensions
+  const ratio = createFraction(effectiveWidth, Math.max(1, effectiveHeight));
+
   return {
     type: 'single',
     ratio,
@@ -407,12 +367,59 @@ function combineBoxes(boxes: Box[], direction: 'horizontal' | 'vertical'): Box {
 }
 
 /**
+ * Recursively scale all widths in a SolvedBox tree by a factor
+ */
+function scaleSolvedBoxWidths(box: SolvedBox, scaleFactor: number): SolvedBox {
+  const scaledWidth = box.width * scaleFactor;
+  
+  // Validate scaled width
+  if (!Number.isFinite(scaledWidth) || scaledWidth <= 0) {
+    console.error('[scaleSolvedBoxWidths] Invalid scaled width:', {
+      originalWidth: box.width,
+      scaleFactor,
+      scaledWidth,
+      contentId: box.content?.id,
+    });
+    // Fallback: use original width if scaling produces invalid value
+    return {
+      ...box,
+      width: Number.isFinite(box.width) && box.width > 0 ? box.width : 0,
+      children: box.children?.map(child => scaleSolvedBoxWidths(child, scaleFactor)),
+    };
+  }
+  
+  return {
+    ...box,
+    width: scaledWidth,
+    children: box.children?.map(child => scaleSolvedBoxWidths(child, scaleFactor)),
+  };
+}
+
+/**
+ * Recursively scale both width and height in a SolvedBox tree by a factor
+ * This maintains aspect ratios while scaling the entire box proportionally
+ */
+function scaleSolvedBoxProportionally(box: SolvedBox, scaleFactor: number): SolvedBox {
+  return {
+    ...box,
+    width: box.width * scaleFactor,
+    height: box.height * scaleFactor,
+    children: box.children?.map(child => scaleSolvedBoxProportionally(child, scaleFactor)),
+  };
+}
+
+/**
  * Solve a box tree to get actual pixel dimensions
+ * @param box - The box tree to solve
+ * @param containerSize - Available size in the container direction
+ * @param containerDirection - Whether container constrains width ('horizontal') or height ('vertical')
+ * @param gap - Gap between children (for combined boxes)
  */
 function solveBox(
   box: Box,
   containerSize: number,
-  containerDirection: 'horizontal' | 'vertical' = 'horizontal'
+  containerDirection: 'horizontal' | 'vertical' = 'horizontal',
+  gap: number = 0
 ): SolvedBox {
   if (box.type === 'single') {
     const { numerator, denominator } = box.ratio;
@@ -420,19 +427,11 @@ function solveBox(
     if (containerDirection === 'horizontal') {
       const width = containerSize;
       const height = (containerSize * denominator) / numerator;
-      return {
-        width,
-        height,
-        content: box.content,
-      };
+      return { width, height, content: box.content };
     } else {
       const height = containerSize;
       const width = (containerSize * numerator) / denominator;
-      return {
-        width,
-        height,
-        content: box.content,
-      };
+      return { width, height, content: box.content };
     }
   }
 
@@ -442,6 +441,10 @@ function solveBox(
 
   const direction = box.direction!;
   const { numerator, denominator } = box.ratio;
+  const childCount = box.children.length;
+
+  // Calculate total gap space between children
+  const totalGapSpace = childCount > 1 ? (childCount - 1) * gap : 0;
 
   let sharedDimension: number;
 
@@ -454,18 +457,104 @@ function solveBox(
   }
 
   const solvedChildren = box.children.map(child => {
-    const childDirection = direction === 'horizontal' ? 'horizontal' : 'vertical';
-    return solveBox(child, sharedDimension, childDirection);
+    // When direction is 'horizontal', children share the same HEIGHT (sharedDimension)
+    // So we solve each child with 'vertical' constraint (height constraint)
+    // When direction is 'vertical', children share the same WIDTH (sharedDimension)
+    // So we solve each child with 'horizontal' constraint (width constraint)
+    const childDirection = direction === 'horizontal' ? 'vertical' : 'horizontal';
+    return solveBox(child, sharedDimension, childDirection, gap);
   });
 
   if (direction === 'horizontal') {
-    const width = solvedChildren.reduce((sum, child) => sum + child.width, 0);
-    const height = sharedDimension;
-    return { width, height, children: solvedChildren };
+    const calculatedWidth = solvedChildren.reduce((sum, child) => sum + child.width, 0);
+    
+    // DEBUG: Log values to trace issue
+    if (!Number.isFinite(calculatedWidth) || calculatedWidth === 0) {
+      console.error('[solveBox] Invalid calculatedWidth:', {
+        calculatedWidth,
+        containerSize,
+        childCount: solvedChildren.length,
+        childWidths: solvedChildren.map(c => c.width),
+        direction,
+      });
+    }
+    
+    // Validate before division - if invalid, distribute width equally
+    if (!calculatedWidth || !Number.isFinite(calculatedWidth) || calculatedWidth <= 0) {
+      // Fallback: distribute width equally among children (don't scale)
+      const equalWidth = containerSize / solvedChildren.length;
+      const scaledChildren = solvedChildren.map(child => ({
+        ...child,
+        width: equalWidth,
+      }));
+      return { width: containerSize, height: sharedDimension, children: scaledChildren };
+    }
+    
+    // Scale widths proportionally to ensure total equals containerSize
+    // This handles any rounding errors from fraction math
+    const scaleFactor = containerSize / calculatedWidth;
+    
+    // Validate scaleFactor before using it
+    if (!Number.isFinite(scaleFactor) || scaleFactor <= 0) {
+      console.error('[solveBox] Invalid scaleFactor:', {
+        scaleFactor,
+        containerSize,
+        calculatedWidth,
+        direction,
+      });
+      // Use scaleFactor = 1 (no scaling) as fallback
+      return { width: containerSize, height: sharedDimension, children: solvedChildren };
+    }
+    
+    const scaledChildren = solvedChildren.map(child => scaleSolvedBoxWidths(child, scaleFactor));
+    return { width: containerSize, height: sharedDimension, children: scaledChildren };
   } else {
     const width = sharedDimension;
-    const height = solvedChildren.reduce((sum, child) => sum + child.height, 0);
-    return { width, height, children: solvedChildren };
+    // For vertical stacks with gaps, scale down child heights so that:
+    // scaledHeightsSum + gaps = originalHeightsSum (total height stays same)
+    const rawChildHeightsSum = solvedChildren.reduce((sum, child) => sum + child.height, 0);
+
+    // Scale factor: we want (scaledSum + gaps) = rawSum, so scaledSum = rawSum - gaps
+    const targetHeightsSum = rawChildHeightsSum - totalGapSpace;
+    const gapScaleFactor =
+      totalGapSpace > 0 && rawChildHeightsSum > 0 ? targetHeightsSum / rawChildHeightsSum : 1;
+
+    // Scale down child heights (CSS gap will add the visual spacing)
+    let scaledChildren = solvedChildren.map(child => ({
+      ...child,
+      height: child.height * gapScaleFactor,
+    }));
+
+    // Calculate height after gap scaling
+    const scaledChildrenHeightsSum = scaledChildren.reduce((sum, child) => sum + child.height, 0);
+    const gapScaledHeight = scaledChildrenHeightsSum + totalGapSpace;
+
+    // If this vertical stack is part of a horizontal combination, we need to ensure
+    // its total height matches containerSize (the height constraint from parent)
+    // When containerDirection === 'horizontal' and direction === 'vertical',
+    // containerSize is the width constraint, but it's also the target height
+    // that the parent expects (since parent's sharedDimension = containerSize)
+    let finalHeight = gapScaledHeight;
+    if (containerDirection === 'horizontal') {
+      // This vertical stack is a child of a horizontal combination
+      // The parent expects all children to have height = containerSize
+      // Scale only the children's heights (gap space is fixed by CSS)
+      // Target: containerSize = scaledChildrenHeightsSum * heightScaleFactor + totalGapSpace
+      const targetChildrenHeightsSum = containerSize - totalGapSpace;
+      if (
+        scaledChildrenHeightsSum > 0 &&
+        Math.abs(targetChildrenHeightsSum - scaledChildrenHeightsSum) > 0.001
+      ) {
+        const heightScaleFactor = targetChildrenHeightsSum / scaledChildrenHeightsSum;
+        // Scale children proportionally (width and height to maintain aspect ratios)
+        scaledChildren = scaledChildren.map(child =>
+          scaleSolvedBoxProportionally(child, heightScaleFactor)
+        );
+        finalHeight = containerSize;
+      }
+    }
+
+    return { width, height: finalHeight, children: scaledChildren };
   }
 }
 
@@ -474,13 +563,17 @@ function solveBox(
  */
 function extractCalculatedSizes(solved: SolvedBox): CalculatedContentSize[] {
   if (solved.content) {
-    return [
-      {
-        content: solved.content,
+    const result = [{ content: solved.content, width: solved.width, height: solved.height }];
+    // DEBUG: Check for NaN
+    if (!Number.isFinite(solved.width) || !Number.isFinite(solved.height)) {
+      console.error('[extractCalculatedSizes] NaN from solved box:', {
+        contentId: solved.content.id,
+        contentType: solved.content.contentType,
         width: solved.width,
         height: solved.height,
-      },
-    ];
+      });
+    }
+    return result;
   }
 
   if (solved.children) {
@@ -495,28 +588,59 @@ function extractCalculatedSizes(solved: SolvedBox): CalculatedContentSize[] {
 /**
  * Calculate dimensions for main + stacked secondary layout
  * Used by: main-stacked, panorama-vertical, all 5-star vertical patterns
+ *
+ * Layout structure:
+ * - Main image (left): has padding-right (inside its border-box width)
+ * - Stacked container (right): has padding-left that constrains its children's widths
+ * - Stacked items: no side padding, must fit within container's content area
+ *
+ * The horizontal gap is created by:
+ * - Main's padding-right: inside main's width (border-box)
+ * - Stacked container's padding-left: OUTSIDE stacked items, INSIDE container
+ *
+ * So stacked items' widths must be reduced by the container's padding-left (half-gap).
  */
 function calculateMainStackedSizes(
   items: AnyContentModel[],
-  rowWidth: number
+  rowWidth: number,
+  chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
+  const gap = LAYOUT.gridGap;
+  const halfGap = gap / 2; // Container's padding-left = 0.4rem = 6.4px
   const main = items[0];
   const sec1 = items[1];
   const sec2 = items[2];
 
   if (!main || !sec1 || !sec2) {
-    return calculateStandardRowSizes(items, rowWidth);
+    return calculateStandardRowSizes(items, rowWidth, chunkSize);
   }
 
-  const mainBox = createBoxFromContent(main);
-  const sec1Box = createBoxFromContent(sec1);
-  const sec2Box = createBoxFromContent(sec2);
+  // For main-stacked patterns, items are already selected by pattern registry
+  // We don't have original prev/next context, so pass undefined
+  const mainBox = createBoxFromContent(main, chunkSize);
+  const sec1Box = createBoxFromContent(sec1, chunkSize);
+  const sec2Box = createBoxFromContent(sec2, chunkSize);
 
   const verticalStackBox = combineBoxes([sec1Box, sec2Box], 'vertical');
   const rowBox = combineBoxes([mainBox, verticalStackBox], 'horizontal');
-  const solved = solveBox(rowBox, rowWidth, 'horizontal');
+  // Solve with full rowWidth (main's padding-right is inside its border-box)
+  // Pass gap for vertical stack height calculations (CSS gap creates actual space between stacked items)
+  const solved = solveBox(rowBox, rowWidth, 'horizontal', gap);
 
-  return extractCalculatedSizes(solved);
+  const results = extractCalculatedSizes(solved);
+
+  // Reduce stacked items' widths by container's padding-left (halfGap)
+  // The first item is main (keep its width), remaining items are stacked (reduce widths)
+  const adjustedResults = results.map((item, index) => {
+    if (index === 0) {
+      // Main image - width is correct (padding-right is inside its border-box)
+      return item;
+    }
+    // Stacked items - reduce width to fit within container's content area
+    return { ...item, width: item.width - halfGap };
+  });
+
+  return adjustedResults;
 }
 
 /**
@@ -531,47 +655,79 @@ function calculateStandaloneSizes(
 
   const { width, height } = getContentDimensions(item);
   const ratio = width / Math.max(1, height);
+  const calculatedHeight = rowWidth / ratio;
+
+  // DEBUG: Check for NaN
+  if (!Number.isFinite(ratio) || !Number.isFinite(calculatedHeight)) {
+    console.error('[calculateStandaloneSizes] NaN detected:', {
+      contentId: item.id,
+      contentType: item.contentType,
+      width,
+      height,
+      ratio,
+      rowWidth,
+      calculatedHeight,
+    });
+  }
 
   return [
     {
       content: item,
       width: rowWidth,
-      height: rowWidth / ratio,
+      height: calculatedHeight,
     },
   ];
 }
 
 /**
  * Calculate dimensions for standard horizontal row
+ * Applies slot width scaling for proportional space allocation
+ *
+ * Note: Horizontal gaps are created by CSS padding INSIDE elements (box-sizing: border-box),
+ * so element widths should sum to rowWidth. No gap subtraction needed for horizontal rows.
  */
 function calculateStandardRowSizes(
   items: AnyContentModel[],
-  rowWidth: number
+  rowWidth: number,
+  chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
+  const gap = LAYOUT.gridGap;
+
   if (items.length === 0) return [];
 
   if (items.length === 1) {
     return calculateStandaloneSizes(items, rowWidth);
   }
 
-  const boxes = items.map(item => createBoxFromContent(item));
-  const rowBox = combineBoxes(boxes, 'horizontal');
-  const solved = solveBox(rowBox, rowWidth, 'horizontal');
+  // Create boxes with slot width scaling, using prev/next context for accurate slot width calculation
+  const boxes = items.map((item, index) => {
+    const prevItem = index > 0 ? items[index - 1] : undefined;
+    const nextItem = index < items.length - 1 ? items[index + 1] : undefined;
+    return createBoxFromContent(item, chunkSize, prevItem, nextItem);
+  });
 
+  const rowBox = combineBoxes(boxes, 'horizontal');
+  // Solve with full rowWidth (CSS padding is inside elements due to border-box)
+  // Pass gap for any nested vertical stacks that use CSS gap property
+  const solved = solveBox(rowBox, rowWidth, 'horizontal', gap);
   return extractCalculatedSizes(solved);
 }
 
 /**
  * Size calculator lookup by pattern type
+ * All calculators now accept chunkSize parameter for slot width calculation
  */
-const SIZE_CALCULATORS: Record<PatternType, (items: AnyContentModel[], rowWidth: number) => CalculatedContentSize[]> = {
-  'standalone': calculateStandaloneSizes,
+const SIZE_CALCULATORS: Record<
+  PatternType,
+  (items: AnyContentModel[], rowWidth: number, chunkSize?: number) => CalculatedContentSize[]
+> = {
+  standalone: calculateStandaloneSizes,
   'main-stacked': calculateMainStackedSizes,
   'panorama-vertical': calculateMainStackedSizes,
   'five-star-vertical-2v': calculateMainStackedSizes,
   'five-star-vertical-2h': calculateMainStackedSizes,
   'five-star-vertical-mixed': calculateMainStackedSizes,
-  'standard': calculateStandardRowSizes,
+  standard: calculateStandardRowSizes,
 };
 
 // ===================== Public API: Size Calculation =====================
@@ -582,14 +738,34 @@ const SIZE_CALCULATORS: Record<PatternType, (items: AnyContentModel[], rowWidth:
  *
  * @param row - Row with pattern metadata
  * @param rowWidth - Total available width for the row
+ * @param chunkSize - Number of normal-width items per row (default: 4)
  * @returns Calculated dimensions for all items in the row
  */
 export function calculateRowSizesFromPattern(
   row: RowWithPattern,
-  rowWidth: number
+  rowWidth: number,
+  chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
   const calculator = SIZE_CALCULATORS[row.pattern.type];
-  return calculator(row.items, rowWidth);
+  const results = calculator(row.items, rowWidth, chunkSize);
+
+  // DEBUG: Check for NaN in results
+  for (const [idx, result] of results.entries()) {
+    if (!Number.isFinite(result.width) || !Number.isFinite(result.height)) {
+      console.error('[calculateRowSizesFromPattern] NaN in result:', {
+        patternType: row.pattern.type,
+        contentId: result.content.id,
+        contentType: result.content.contentType,
+        width: result.width,
+        height: result.height,
+        index: idx,
+        rowWidth,
+        chunkSize,
+      });
+    }
+  }
+
+  return results;
 }
 
 /**
@@ -598,11 +774,13 @@ export function calculateRowSizesFromPattern(
  *
  * @param row - Array of content items in the row
  * @param rowWidth - Total available width for the row
+ * @param chunkSize - Number of normal-width items per row (default: 4)
  * @returns Calculated dimensions for all items in the row
  */
 export function calculateRowSizes(
   row: AnyContentModel[],
-  rowWidth: number
+  rowWidth: number,
+  chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
   if (row.length === 0) return [];
 
@@ -612,11 +790,11 @@ export function calculateRowSizes(
     if (main && isContentImage(main)) {
       const rating = main.rating || 0;
       // 5-star vertical patterns or 3-4 star main-stacked
-      if ((rating === 5 && isVertical(main)) || (rating >= 3 && rating <= 4)) {
-        return calculateMainStackedSizes(row, rowWidth);
+      if ((rating === 5 && isVerticalImage(main)) || (rating >= 3 && rating <= 4)) {
+        return calculateMainStackedSizes(row, rowWidth, chunkSize);
       }
     }
   }
 
-  return calculateStandardRowSizes(row, rowWidth);
+  return calculateStandardRowSizes(row, rowWidth, chunkSize);
 }
