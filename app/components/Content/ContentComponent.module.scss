@@ -41,6 +41,14 @@
   }
 }
 
+/* Stacked container when main is positioned on the right */
+.stackedContainerRight {
+  @media (width >= 768px) {
+    padding-left: 0; /* No left padding when main is on right */
+    padding-right: 0.4rem; /* Right padding instead - contributes to horizontal gap */
+  }
+}
+
 /* Remove side padding from first/last items from Home.module.scss when inside our rows */
 .row :global(.imageLeft),
 .row :global(.imageSingle) {

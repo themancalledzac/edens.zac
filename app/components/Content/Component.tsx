@@ -159,23 +159,58 @@ export default function Component({
         return null;
       }
 
-      const mainProps = buildRendererProps(mainItem, 2, 0, cbStyles.imageLeft);
+      // Check if main should be positioned on the right
+      const isMainOnRight =
+        pattern.type === 'main-stacked' &&
+        'mainPosition' in pattern &&
+        pattern.mainPosition === 'right';
+
+      const mainProps = buildRendererProps(
+        mainItem,
+        2,
+        0,
+        isMainOnRight ? cbStyles.imageRight : cbStyles.imageLeft
+      );
+
+      const stackedContainerClass = isMainOnRight
+        ? `${cbStyles.stackedContainer} ${cbStyles.stackedContainerRight}`
+        : cbStyles.stackedContainer;
 
       return (
         <div key={rowKey} className={cbStyles.row}>
-          <CollectionContentRenderer {...mainProps} />
-          <div className={cbStyles.stackedContainer}>
-            {stackedItems.map((item, stackIndex) => {
-              // All stacked items share the same column (no left/right padding needed)
-              const stackedProps = buildRendererProps(
-                item,
-                stackedItems.length,
-                stackIndex,
-                cbStyles.imageSingle
-              );
-              return <CollectionContentRenderer key={item.content.id} {...stackedProps} />;
-            })}
-          </div>
+          {isMainOnRight ? (
+            // Flipped layout: stacked container first, then main
+            <>
+              <div className={stackedContainerClass}>
+                {stackedItems.map((item, stackIndex) => {
+                  const stackedProps = buildRendererProps(
+                    item,
+                    stackedItems.length,
+                    stackIndex,
+                    cbStyles.imageSingle
+                  );
+                  return <CollectionContentRenderer key={item.content.id} {...stackedProps} />;
+                })}
+              </div>
+              <CollectionContentRenderer {...mainProps} />
+            </>
+          ) : (
+            // Normal layout: main first, then stacked container
+            <>
+              <CollectionContentRenderer {...mainProps} />
+              <div className={stackedContainerClass}>
+                {stackedItems.map((item, stackIndex) => {
+                  const stackedProps = buildRendererProps(
+                    item,
+                    stackedItems.length,
+                    stackIndex,
+                    cbStyles.imageSingle
+                  );
+                  return <CollectionContentRenderer key={item.content.id} {...stackedProps} />;
+                })}
+              </div>
+            </>
+          )}
         </div>
       );
     }

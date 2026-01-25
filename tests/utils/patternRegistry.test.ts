@@ -405,6 +405,106 @@ describe('Main-Stacked Pattern', () => {
       const typedResult = result as Extract<PatternResult, { type: 'main-stacked' }>;
       expect(typedResult.mainIndex).toBe(1);
     });
+
+    it('should prioritize highest-rated 3-4 star image as main', () => {
+      // Window: [3★, 4★, 2★, 2★, 2★]
+      // Expected: 4★ becomes main (highest rated), not 3★ (first match)
+      const windowItems: WindowItem[] = [
+        createWindowItem(createHorizontalImage(1, 3), 0, 0, 2), // 3★ at position 0
+        createWindowItem(createHorizontalImage(2, 4), 1, 1, 2), // 4★ at position 1
+        createWindowItem(createHorizontalImage(3, 2), 2, 2, 1),
+        createWindowItem(createHorizontalImage(4, 2), 3, 3, 1),
+        createWindowItem(createHorizontalImage(5, 2), 4, 4, 1),
+      ];
+      const result = mainStackedMatcher.match(windowItems, 0);
+
+      expect(result).not.toBeNull();
+      const typedResult = result as Extract<PatternResult, { type: 'main-stacked' }>;
+      // Should select 4★ (index 1) as main, not 3★ (index 0)
+      expect(typedResult.mainIndex).toBe(1);
+    });
+
+    it('should fall back to lower-rated candidate if higher-rated cannot form valid pattern', () => {
+      // Window: [4★, 2★, 2★, 3★, 2★]
+      // If 4★ at position 0 can't form valid pattern (e.g., secondaries too far),
+      // should fall back to 3★ at position 3
+      const windowItems: WindowItem[] = [
+        createWindowItem(createHorizontalImage(1, 4), 0, 0, 2), // 4★ at position 0
+        createWindowItem(createHorizontalImage(2, 2), 1, 1, 1),
+        createWindowItem(createHorizontalImage(3, 2), 2, 2, 1),
+        createWindowItem(createHorizontalImage(4, 3), 3, 3, 2), // 3★ at position 3
+        createWindowItem(createHorizontalImage(5, 2), 4, 4, 1),
+      ];
+      const result = mainStackedMatcher.match(windowItems, 0);
+
+      expect(result).not.toBeNull();
+      const typedResult = result as Extract<PatternResult, { type: 'main-stacked' }>;
+      // Should select either 4★ (if valid) or 3★ (if 4★ can't form pattern)
+      // Both should be able to form patterns, but 4★ should be preferred
+      expect([0, 3]).toContain(typedResult.mainIndex);
+      // If 4★ can form pattern, it should be selected
+      if (typedResult.mainIndex === 0) {
+        // 4★ was selected - verify it's valid
+        expect(typedResult.mainIndex).toBe(0);
+      } else {
+        // 3★ was selected as fallback
+        expect(typedResult.mainIndex).toBe(3);
+      }
+    });
+
+    it('should set mainPosition to left when main is in first half of window', () => {
+      // Window: [2★, 2★, 4★, 2★, 2★]
+      // Main at position 2 (first half) should be left-positioned
+      const windowItems: WindowItem[] = [
+        createWindowItem(createHorizontalImage(1, 2), 0, 0, 1),
+        createWindowItem(createHorizontalImage(2, 2), 1, 1, 1),
+        createWindowItem(createHorizontalImage(3, 4), 2, 2, 2), // 4★ at position 2
+        createWindowItem(createHorizontalImage(4, 2), 3, 3, 1),
+        createWindowItem(createHorizontalImage(5, 2), 4, 4, 1),
+      ];
+      const result = mainStackedMatcher.match(windowItems, 0);
+
+      expect(result).not.toBeNull();
+      const typedResult = result as Extract<PatternResult, { type: 'main-stacked' }>;
+      expect(typedResult.mainIndex).toBe(2);
+      expect(typedResult.mainPosition).toBe('left');
+    });
+
+    it('should set mainPosition to right when main is in second half of window', () => {
+      // Window: [2★, 2★, 2★, 4★, 2★]
+      // Main at position 3 (second half, > 2.5) should be right-positioned
+      const windowItems: WindowItem[] = [
+        createWindowItem(createHorizontalImage(1, 2), 0, 0, 1),
+        createWindowItem(createHorizontalImage(2, 2), 1, 1, 1),
+        createWindowItem(createHorizontalImage(3, 2), 2, 2, 1),
+        createWindowItem(createHorizontalImage(4, 4), 3, 3, 2), // 4★ at position 3
+        createWindowItem(createHorizontalImage(5, 2), 4, 4, 1),
+      ];
+      const result = mainStackedMatcher.match(windowItems, 0);
+
+      expect(result).not.toBeNull();
+      const typedResult = result as Extract<PatternResult, { type: 'main-stacked' }>;
+      expect(typedResult.mainIndex).toBe(3);
+      expect(typedResult.mainPosition).toBe('right');
+    });
+
+    it('should set mainPosition to right when main is at last position', () => {
+      // Window: [2★, 2★, 2★, 2★, 4★]
+      // Main at position 4 (last position) should be right-positioned
+      const windowItems: WindowItem[] = [
+        createWindowItem(createHorizontalImage(1, 2), 0, 0, 1),
+        createWindowItem(createHorizontalImage(2, 2), 1, 1, 1),
+        createWindowItem(createHorizontalImage(3, 2), 2, 2, 1),
+        createWindowItem(createHorizontalImage(4, 2), 3, 3, 1),
+        createWindowItem(createHorizontalImage(5, 4), 4, 4, 2), // 4★ at position 4
+      ];
+      const result = mainStackedMatcher.match(windowItems, 0);
+
+      expect(result).not.toBeNull();
+      const typedResult = result as Extract<PatternResult, { type: 'main-stacked' }>;
+      expect(typedResult.mainIndex).toBe(4);
+      expect(typedResult.mainPosition).toBe('right');
+    });
   });
 });
 

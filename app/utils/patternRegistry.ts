@@ -20,11 +20,37 @@ import { LAYOUT } from '@/app/constants';
  */
 export type PatternResult =
   | { type: 'standalone'; indices: [number] }
-  | { type: 'main-stacked'; mainIndex: number; secondaryIndices: [number, number]; indices: number[] }
-  | { type: 'panorama-vertical'; mainIndex: number; secondaryIndices: [number, number]; indices: number[] }
-  | { type: 'five-star-vertical-2v'; mainIndex: number; secondaryIndices: [number, number]; indices: number[] }
-  | { type: 'five-star-vertical-2h'; mainIndex: number; secondaryIndices: [number, number]; indices: number[] }
-  | { type: 'five-star-vertical-mixed'; mainIndex: number; secondaryIndices: [number, number]; indices: number[] }
+  | {
+      type: 'main-stacked';
+      mainIndex: number;
+      secondaryIndices: [number, number];
+      indices: number[];
+      mainPosition?: 'left' | 'right'; // Position of main image: left (default) or right
+    }
+  | {
+      type: 'panorama-vertical';
+      mainIndex: number;
+      secondaryIndices: [number, number];
+      indices: number[];
+    }
+  | {
+      type: 'five-star-vertical-2v';
+      mainIndex: number;
+      secondaryIndices: [number, number];
+      indices: number[];
+    }
+  | {
+      type: 'five-star-vertical-2h';
+      mainIndex: number;
+      secondaryIndices: [number, number];
+      indices: number[];
+    }
+  | {
+      type: 'five-star-vertical-mixed';
+      mainIndex: number;
+      secondaryIndices: [number, number];
+      indices: number[];
+    }
   | { type: 'standard'; indices: number[] };
 
 /**
@@ -110,7 +136,7 @@ function findCandidatesWithinDistance(
 /**
  * Standalone: Single item that takes full width
  * Triggers: 5-star horizontal, wide panorama, 4-star horizontal (unless adjacent to vertical)
- * 
+ *
  * Now detects standalone items by properties directly, not by slotWidth === Infinity
  */
 const standaloneMatcher: PatternMatcher = {
@@ -132,9 +158,7 @@ const standaloneMatcher: PatternMatcher = {
     // 4-star horizontal → standalone unless adjacent to vertical
     if (first.rating === 4 && first.isHorizontal) {
       // Check if there's a vertical item in the window (adjacent context)
-      const hasVerticalInWindow = windowItems.some(
-        (w, idx) => idx !== 0 && w.isVertical
-      );
+      const hasVerticalInWindow = windowItems.some((w, idx) => idx !== 0 && w.isVertical);
       return !hasVerticalInWindow;
     }
 
@@ -157,9 +181,7 @@ const standaloneMatcher: PatternMatcher = {
 
     // 4-star horizontal → standalone unless adjacent to vertical
     if (first.rating === 4 && first.isHorizontal) {
-      const hasVerticalInWindow = windowItems.some(
-        (w, idx) => idx !== 0 && w.isVertical
-      );
+      const hasVerticalInWindow = windowItems.some((w, idx) => idx !== 0 && w.isVertical);
       if (!hasVerticalInWindow) {
         return { type: 'standalone', indices: [first.originalIndex] };
       }
@@ -294,12 +316,18 @@ const fiveStarVerticalMixedMatcher: PatternMatcher = {
 
       const candidates = findCandidatesWithinDistance(windowItems, mainIdx);
 
-      const verticalCandidate = candidates.find(c => c.isVertical && c.rating >= 3 && c.rating <= 4);
+      const verticalCandidate = candidates.find(
+        c => c.isVertical && c.rating >= 3 && c.rating <= 4
+      );
       const horizontalCandidate = candidates.find(c => c.isHorizontal && c.rating < 3);
 
       if (!verticalCandidate || !horizontalCandidate) continue;
 
-      const indices = [main.originalIndex, verticalCandidate.originalIndex, horizontalCandidate.originalIndex];
+      const indices = [
+        main.originalIndex,
+        verticalCandidate.originalIndex,
+        horizontalCandidate.originalIndex,
+      ];
 
       if (validateMovementConstraints(indices, windowStart)) {
         return {
@@ -328,9 +356,23 @@ const mainStackedMatcher: PatternMatcher = {
   },
 
   match(windowItems, windowStart) {
-    for (let mainIdx = 0; mainIdx < windowItems.length; mainIdx++) {
-      const main = windowItems[mainIdx];
-      if (!main || main.rating < 3 || main.rating > 4) continue;
+    // Collect ALL valid main candidates (rating 3-4) and sort by rating descending
+    // For same rating, prefer earlier in window (stable sort)
+    const mainCandidates = windowItems
+      .map((item, idx) => ({ item, windowIndex: idx }))
+      .filter(({ item }) => item && item.rating >= 3 && item.rating <= 4)
+      .sort((a, b) => {
+        // Primary sort: rating descending (highest first)
+        if (b.item.rating !== a.item.rating) {
+          return b.item.rating - a.item.rating;
+        }
+        // Secondary sort: position ascending (earlier in window first)
+        return a.windowIndex - b.windowIndex;
+      });
+
+    // Try each candidate starting from highest rated
+    for (const { item: main, windowIndex: mainIdx } of mainCandidates) {
+      if (!main) continue;
 
       const candidates = findCandidatesWithinDistance(windowItems, mainIdx);
       if (candidates.length < 2) continue;
@@ -353,11 +395,17 @@ const mainStackedMatcher: PatternMatcher = {
       const indices = [main.originalIndex, sec1.originalIndex, sec2.originalIndex];
 
       if (validateMovementConstraints(indices, windowStart)) {
+        // Determine main position: right if main is closer to end than start
+        // For 5-item window: mainIdx > 2.5 means mainIdx >= 3 (last 2 positions)
+        const mainPosition: 'left' | 'right' =
+          mainIdx > windowItems.length / 2 ? 'right' : 'left';
+
         return {
           type: 'main-stacked',
           mainIndex: main.originalIndex,
           secondaryIndices: [sec1.originalIndex, sec2.originalIndex],
           indices: [...indices].sort((a, b) => a - b),
+          mainPosition,
         };
       }
     }
