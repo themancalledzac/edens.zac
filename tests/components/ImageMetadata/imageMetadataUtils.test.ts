@@ -36,7 +36,7 @@ const createImageContent = (
   shutterSpeed: '1/125',
   focalLength: '50mm',
   location: 'Location',
-  fStop: 'f/2.8',
+  fstop: 'f/2.8',
   iso: 400,
   filmFormat: null,
   createDate: '2024-01-01',
@@ -702,7 +702,7 @@ describe('buildImageUpdateDiff', () => {
  * Returns: ContentImageUpdateRequest
  *
  * Passing test cases:
- * - Simple fields: title, caption, alt, author, rating, blackAndWhite, isFilm, shutterSpeed, focalLength, location, fStop, iso, filmFormat, createDate
+ * - Simple fields: title, caption, alt, author, rating, blackAndWhite, isFilm, shutterSpeed, focalLength, location, fstop, iso, filmFormat, createDate
  *   - Field changed -> included in diff
  *   - Field unchanged -> not included
  *   - Null to undefined -> handled correctly
@@ -870,12 +870,12 @@ describe('getCommonValues', () => {
 
     it('should check multiple numeric fields', () => {
       const images = [
-        createImageContent(1, { iso: 400, fStop: 'f/2.8', shutterSpeed: '1/125' }),
-        createImageContent(2, { iso: 400, fStop: 'f/2.8', shutterSpeed: '1/125' }),
+        createImageContent(1, { iso: 400, fstop: 'f/2.8', shutterSpeed: '1/125' }),
+        createImageContent(2, { iso: 400, fstop: 'f/2.8', shutterSpeed: '1/125' }),
       ];
       const result = getCommonValues(images);
       expect(result.iso).toBe(400);
-      expect(result.fStop).toBe('f/2.8');
+      expect(result.fstop).toBe('f/2.8');
       expect(result.shutterSpeed).toBe('1/125');
     });
   });

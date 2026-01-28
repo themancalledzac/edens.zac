@@ -25,6 +25,7 @@ import {
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type DisplayMode,
+  type LocationModel,
 } from '@/app/types/Collection';
 import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
@@ -133,7 +134,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
         type: collection.type || CollectionType.PORTFOLIO,
         title: collection.title || '',
         description: collection.description || '',
-        location: collection.location || '',
         collectionDate: collection.collectionDate || '',
         visible: collection.visible ?? true,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
@@ -144,7 +144,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       type: CollectionType.PORTFOLIO,
       title: '',
       description: '',
-      location: '',
       collectionDate: '',
       visible: true,
       displayMode: 'CHRONOLOGICAL',
@@ -159,7 +158,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
         type: collection.type || CollectionType.PORTFOLIO,
         title: collection.title || '',
         description: collection.description || '',
-        location: collection.location || '',
         collectionDate: collection.collectionDate || '',
         visible: collection.visible ?? true,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
@@ -551,6 +549,63 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [updateData.collections, collection?.content]
   );
 
+  // Derive current location from collection.location string and updateData.location
+  // Handles both original collection location and pending updates
+  const currentLocation: LocationModel | null = useMemo(() => {
+    const availableLocations = currentState?.locations || [];
+
+    // If there's a pending update in updateData, use that
+    const locationUpdate = updateData.location;
+    if (locationUpdate) {
+      if (locationUpdate.remove) {
+        // Location is being removed
+        return null;
+      }
+      if (locationUpdate.prev) {
+        // Existing location selected by ID
+        const location = availableLocations.find(loc => loc.id === locationUpdate.prev);
+        return location || null;
+      }
+      if (locationUpdate.newValue) {
+        // New location being created (temporary with id: 0)
+        return { id: 0, name: locationUpdate.newValue };
+      }
+    }
+
+    // No pending update - use original collection location
+    if (!collection?.location) return null;
+
+    // Try to find location by name (collection.location is a string)
+    const location = availableLocations.find(loc => loc.name === collection.location);
+
+    return location || null;
+  }, [collection?.location, currentState?.locations, updateData.location]);
+
+  // Handle location selection changes
+  const handleLocationChange = useCallback((value: LocationModel | LocationModel[] | null) => {
+    const location = Array.isArray(value) ? value[0] || null : value;
+
+    if (!location) {
+      // Clear location
+      setUpdateData(prev => ({
+        ...prev,
+        location: { remove: true },
+      }));
+    } else if (location.id && location.id > 0) {
+      // Existing location selected
+      setUpdateData(prev => ({
+        ...prev,
+        location: { prev: location.id },
+      }));
+    } else {
+      // New location to create
+      setUpdateData(prev => ({
+        ...prev,
+        location: { newValue: location.name },
+      }));
+    }
+  }, []);
+
   // Handle collections selection changes - simple toggle logic
   const handleCollectionsChange = useCallback(
     (value: { id: number; name: string } | Array<{ id: number; name: string }> | null) => {
@@ -782,17 +837,29 @@ export default function ManageClient({ slug }: ManageClientProps) {
                       </div>
 
                       {/* Location */}
-                      <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>Location</label>
-                        <input
-                          type="text"
-                          value={updateData.location}
-                          onChange={e =>
-                            setUpdateData(prev => ({ ...prev, location: e.target.value }))
-                          }
-                          className={styles.formInput}
-                        />
-                      </div>
+                      <UnifiedMetadataSelector<LocationModel>
+                        label="Location"
+                        multiSelect={false}
+                        options={currentState?.locations || []}
+                        selectedValue={currentLocation}
+                        onChange={handleLocationChange}
+                        allowAddNew
+                        onAddNew={data => {
+                          handleLocationChange({ id: 0, name: data.name as string });
+                        }}
+                        addNewFields={[
+                          {
+                            name: 'name',
+                            label: 'Location Name',
+                            type: 'text',
+                            placeholder: 'e.g., Seattle, WA',
+                            required: true,
+                          },
+                        ]}
+                        getDisplayName={location => location.name}
+                        showNewIndicator
+                        emptyText="No location set"
+                      />
 
                       {/* Visible Checkbox / Display Mode */}
                       <div className={styles.formGridHalf}>

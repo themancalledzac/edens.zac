@@ -226,18 +226,6 @@ export function calculateContentSizes(
         height: displayHeight,
       },
     ];
-    // DEBUG: Check for NaN
-    if (!Number.isFinite(displayHeight)) {
-      console.error('[calculateContentSizes] NaN height in single item:', {
-        contentId: contentElement.id,
-        contentType: contentElement.contentType,
-        componentWidth,
-        displayHeight,
-        originalWidth: width,
-        originalHeight: height,
-        ratio,
-      });
-    }
     return result;
   }
 
@@ -290,17 +278,6 @@ export function calculateContentSizes(
   }
 
   const commonHeight = componentWidth / ratioSum;
-
-  // DEBUG: Log if invalid
-  if (!Number.isFinite(commonHeight) || commonHeight <= 0) {
-    console.error('[calculateContentSizes] Invalid commonHeight:', {
-      commonHeight,
-      componentWidth,
-      ratioSum,
-      ratios,
-      contentLength: content.length,
-    });
-  }
 
   // Validate commonHeight - if invalid, use equal width distribution fallback
   if (!Number.isFinite(commonHeight) || commonHeight <= 0) {
@@ -364,27 +341,11 @@ export function calculateContentSizes(
       return { content: contentItem, width: 0, height: 0 };
     }
 
-    const result = {
+    return {
       content: contentItem,
       width: calculatedWidth,
       height: calculatedHeight,
     };
-    // DEBUG: Check for NaN
-    if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) {
-      console.error('[calculateContentSizes] NaN in multi-item calculation:', {
-        contentId: contentItem.id,
-        contentType: contentItem.contentType,
-        calculatedWidth,
-        calculatedHeight,
-        originalWidth,
-        originalHeight,
-        originalRatio,
-        ratio,
-        commonHeight,
-        idx,
-      });
-    }
-    return result;
   });
 }
 
@@ -445,6 +406,7 @@ export function processContentForDisplay(
       items: calculateContentSizes(chunk, componentWidth, chunkSize),
     }));
     result.push(...contentRows);
+
     return result;
   }
 
@@ -455,6 +417,7 @@ export function processContentForDisplay(
     items: calculateRowSizesFromPattern(row, componentWidth, chunkSize),
   }));
   result.push(...contentRows);
+
   return result;
 }
 
@@ -538,7 +501,7 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
     focalLength: coverImage?.focalLength ?? null,
     location: coverImage?.location ?? null,
     createDate: coverImage?.createDate ?? null,
-    fStop: coverImage?.fStop ?? null,
+    fstop: coverImage?.fstop ?? null,
     alt: col.title || col.slug || '',
     aspectRatio: imageWidth && imageHeight ? imageWidth / imageHeight : undefined,
     filmType: coverImage?.filmType ?? null,
@@ -649,7 +612,8 @@ function sortNonVisibleToBottom(
   const nonVisible: AnyContentModel[] = [];
 
   for (const block of content) {
-    if (isContentVisibleInCollection(block, collectionId)) {
+    const isVisible = isContentVisibleInCollection(block, collectionId);
+    if (isVisible) {
       visible.push(block);
     } else {
       nonVisible.push(block);

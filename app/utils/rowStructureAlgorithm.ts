@@ -2,29 +2,25 @@
  * Row Structure Algorithm
  *
  * Two-part layout system:
- * 1. createRowsArray() - Organizes content into rows based on patterns
+ * 1. createRowsArray() - Organizes content into rows based on star accumulation
  * 2. calculateRowSizes() - Calculates pixel dimensions for each row
  *
- * Uses a Pattern Registry for extensible pattern detection and
- * fraction-based box combination for precise aspect ratio calculations.
+ * Star-based accumulation system:
+ * - Processes items sequentially (no skipping)
+ * - Accumulates items until star count reaches 7-9 range
+ * - Arranges items by combining smallest to largest
  */
 
 import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
 import {
-  getAspectRatio,
   getContentDimensions,
   getSlotWidth,
   isContentImage,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
-import {
-  PATTERN_REGISTRY,
-  type PatternResult,
-  type PatternType,
-  type WindowItem,
-} from '@/app/utils/patternRegistry';
+import { type PatternResult, type PatternType } from '@/app/utils/patternRegistry';
 
 // Re-export types for consumers
 export type { PatternResult, PatternType };
@@ -40,92 +36,206 @@ export interface RowWithPattern {
 // ===================== Helper Functions =====================
 
 /**
- * Build window items with metadata
+ * Get rating or star value for an item
+ * - zeroOne=false (default): Returns raw rating (0-5), treats 0 as 0
+ * - zeroOne=true: Returns star value, converts 0 or 1 to 1, 2+ stays as rating
+ *
+ * @param item - Content item to get rating for
+ * @param zeroOne - If true, converts 0 to 1 (star value). If false, returns raw rating.
  */
-function buildWindowItems(
-  window: AnyContentModel[],
-  windowStart: number,
-  chunkSize: number
-): WindowItem[] {
-  return window.map((item, windowIdx) => {
-    const originalIdx = windowStart + windowIdx;
-    const prevItem = windowIdx > 0 ? window[windowIdx - 1] : undefined;
-    const nextItem = windowIdx < window.length - 1 ? window[windowIdx + 1] : undefined;
-
-    const aspectRatio = getAspectRatio(item);
-    const slotWidth = getSlotWidth(item, chunkSize, prevItem, nextItem);
-
-    return {
-      item,
-      windowIndex: windowIdx,
-      originalIndex: originalIdx,
-      aspectRatio,
-      isVertical: aspectRatio <= 1.0 && aspectRatio > 0.5,
-      isHorizontal: aspectRatio > 1.0,
-      isWidePanorama: aspectRatio >= 2.0,
-      isTallPanorama: aspectRatio <= 0.5,
-      rating: isContentImage(item) ? item.rating || 0 : 0,
-      slotWidth,
-    };
-  });
+function getRating(item: AnyContentModel, zeroOne: boolean = false): number {
+  if (!isContentImage(item)) {
+    return zeroOne ? 1 : 0; // Non-images: 1 star if zeroOne, 0 rating otherwise
+  }
+  const rating = item.rating || 0;
+  if (zeroOne) {
+    // Star value: 0 or 1 becomes 1, 2+ stays as rating
+    return rating === 0 || rating === 1 ? 1 : rating;
+  }
+  // Raw rating: return as-is (0 stays 0)
+  return rating;
 }
 
-// ===================== Pattern Detection =====================
-
 /**
- * Detect optimal pattern in window using the registry
+ * Accumulate items sequentially until star limit is reached
+ * Returns the accumulated items and the next starting index
  */
-function detectPatternInWindow(
-  window: AnyContentModel[],
-  windowStart: number,
-  chunkSize: number
-): PatternResult {
-  if (window.length === 0) {
-    throw new Error('Empty window');
-  }
+function accumulateRowByStars(
+  content: AnyContentModel[],
+  startIndex: number,
+  minStars: number = 7,
+  maxStars: number = 9
+): { items: AnyContentModel[]; nextIndex: number } {
+  const items: AnyContentModel[] = [];
+  let starCount = 0;
+  let i = startIndex;
 
-  const windowItems = buildWindowItems(window, windowStart, chunkSize);
+  while (i < content.length) {
+    const item = content[i];
+    if (!item) break;
 
-  // Try patterns in priority order
-  for (const matcher of PATTERN_REGISTRY) {
-    if (windowItems.length < matcher.minItems) continue;
-    if (!matcher.canMatch(windowItems)) continue;
+    const itemStars = getRating(item, true);
+    const newStarCount = starCount + itemStars;
 
-    const result = matcher.match(windowItems, windowStart);
-    if (result) {
-      return result;
+    // Special case: 5-star items are always standalone
+    if (itemStars === 5 && items.length > 0) {
+      break; // Don't add 5-star to existing row
+    }
+
+    // If adding this item would exceed max, stop (unless we haven't reached min yet)
+    if (newStarCount > maxStars && starCount >= minStars) {
+      break;
+    }
+
+    items.push(item);
+    starCount = newStarCount;
+    i++;
+
+    // If we've reached minimum and adding next would exceed max, stop
+    if (starCount >= minStars && i < content.length) {
+      const nextItem = content[i];
+      if (nextItem) {
+        const nextItemStars = getRating(nextItem, true);
+        if (starCount + nextItemStars > maxStars) {
+          break;
+        }
+      }
     }
   }
 
-  // Should never reach here since standard always matches
-  throw new Error('No pattern matched - this should not happen');
+  return { items, nextIndex: i };
 }
 
 /**
- * Build row items from pattern result
+ * Calculate combined rating when two items are combined
+ * Rules: (0+0||0+1||1+1)==2, (2+2)==3, (3+3)==4
+ * Reserved for future combination logic implementation
+ *
+ * @param item1 - First item
+ * @param item2 - Second item
+ * @returns Combined rating value
  */
-function buildRowFromPattern(
-  content: AnyContentModel[],
-  pattern: PatternResult
-): AnyContentModel[] {
-  // For patterns with main + secondaries, preserve that order
-  if ('mainIndex' in pattern && 'secondaryIndices' in pattern) {
-    const main = content[pattern.mainIndex];
-    const sec1 = content[pattern.secondaryIndices[0]];
-    const sec2 = content[pattern.secondaryIndices[1]];
+function _getCombinedRating(item1: AnyContentModel, item2: AnyContentModel): number {
+  // Get star values (zeroOne=true) for combination logic
+  const star1 = getRating(item1, true);
+  const star2 = getRating(item2, true);
 
-    const items: AnyContentModel[] = [];
-    if (main) items.push(main);
-    if (sec1) items.push(sec1);
-    if (sec2) items.push(sec2);
-    return items;
+  // Same rating combinations
+  if (star1 === star2) {
+    if (star1 === 1) return 2; // (0+0||0+1||1+1) == 2
+    if (star1 === 2) return 3; // (2+2) == 3
+    if (star1 === 3) return 4; // (3+3) == 4
   }
 
-  // For standalone and standard, use indices order
-  return pattern.indices
-    .map(idx => content[idx])
-    .filter((item): item is AnyContentModel => item !== undefined);
+  // Different ratings - return the higher one (no combination benefit)
+  return Math.max(star1, star2);
 }
+
+/**
+ * Group items by their star value for combination processing
+ * Reserved for future combination logic implementation
+ */
+function _groupItemsByStarValue(items: AnyContentModel[]): Map<number, AnyContentModel[]> {
+  const groups = new Map<number, AnyContentModel[]>();
+
+  for (const item of items) {
+    const starValue = getRating(item, true);
+    if (!groups.has(starValue)) {
+      groups.set(starValue, []);
+    }
+    groups.get(starValue)!.push(item);
+  }
+
+  return groups;
+}
+
+/**
+ * Arrange items into a pattern, processing from smallest to largest
+ * Combines items according to rules: (0+0||0+1||1+1)==2, (2+2)==3, (3+3)==4
+ * For even numbers ≥4 of same rating, splits into two groups
+ *
+ * Goal: End up with at most one large image per row
+ */
+function arrangeItemsIntoPattern(items: AnyContentModel[], startIndex: number): PatternResult {
+  if (items.length === 0) {
+    throw new Error('Cannot arrange empty items array');
+  }
+
+  // Single item - standalone
+  if (items.length === 1) {
+    return {
+      type: 'standalone',
+      indices: [startIndex],
+    };
+  }
+
+  // Two items - standard (side by side)
+  if (items.length === 2) {
+    return {
+      type: 'standard',
+      indices: [startIndex, startIndex + 1],
+    };
+  }
+
+  // For 3 items: check if we should use main-stacked with highest-rated as main
+  if (items.length === 3) {
+    // Get ratings for all items
+    const itemsWithRatings = items.map((item, idx) => ({
+      item,
+      index: startIndex + idx,
+      rating: getRating(item),
+      starValue: getRating(item, true),
+    }));
+
+    // Sort by rating descending
+    const sorted = [...itemsWithRatings].sort((a, b) => b.rating - a.rating);
+    const highestRating = sorted[0]?.rating ?? 0;
+    const secondHighestRating = sorted[1]?.rating ?? 0;
+
+    // Use main-stacked if:
+    // 1. Highest rating is 3+ (significant enough to be main)
+    // 2. There's a clear highest (at least 1 point higher than second)
+    if (highestRating >= 3 && highestRating > secondHighestRating) {
+      const mainItem = sorted[0]!;
+      const sec1Item = sorted[1]!;
+      const sec2Item = sorted[2]!;
+
+      // Find original positions in the items array
+      const mainOriginalIdx = items.findIndex(i => i.id === mainItem.item.id);
+      const sec1OriginalIdx = items.findIndex(i => i.id === sec1Item.item.id);
+      const sec2OriginalIdx = items.findIndex(i => i.id === sec2Item.item.id);
+
+      if (mainOriginalIdx !== -1 && sec1OriginalIdx !== -1 && sec2OriginalIdx !== -1) {
+        return {
+          type: 'main-stacked',
+          mainIndex: startIndex + mainOriginalIdx,
+          secondaryIndices: [startIndex + sec1OriginalIdx, startIndex + sec2OriginalIdx] as [
+            number,
+            number,
+          ],
+          indices: [startIndex, startIndex + 1, startIndex + 2].sort((a, b) => a - b),
+          mainPosition: 'left',
+        };
+      }
+    }
+  }
+
+  // For 4+ items: implement combination logic
+  // Group items by star value and process from smallest to largest
+  // TODO: Implement full combination logic for 4+ items
+  // Future: Handle even numbers ≥4 of same rating by splitting into two groups
+  // For now, use standard pattern
+
+  // Default: standard pattern (all items side by side)
+  return {
+    type: 'standard',
+    indices: items.map((_, idx) => startIndex + idx),
+  };
+}
+
+// ===================== Pattern Detection (Legacy - Not Used) =====================
+// NOTE: Pattern detection is replaced by star-based accumulation
+// Keeping this code commented for reference, may be removed later
 
 // ===================== Public API: Row Creation =====================
 
@@ -140,7 +250,7 @@ function buildRowFromPattern(
  */
 export function createRowsArray(
   content: AnyContentModel[],
-  chunkSize: number = LAYOUT.defaultChunkSize
+  _chunkSize: number = LAYOUT.defaultChunkSize
 ): RowWithPattern[] {
   if (!content || content.length === 0) return [];
 
@@ -148,23 +258,31 @@ export function createRowsArray(
   let pointer = 0;
 
   while (pointer < content.length) {
-    const windowEnd = Math.min(content.length, pointer + LAYOUT.patternWindowSize);
-    const window = content.slice(pointer, windowEnd);
+    // Accumulate items by star count (7-9 stars per row)
+    const { items, nextIndex } = accumulateRowByStars(content, pointer, 7, 9);
 
-    if (window.length === 0) break;
+    if (items.length === 0) break;
 
-    const pattern = detectPatternInWindow(window, pointer, chunkSize);
-    const items = buildRowFromPattern(content, pattern);
+    // Arrange items into a pattern
+    const pattern = arrangeItemsIntoPattern(items, pointer);
 
-    if (items.length > 0) {
-      result.push({ pattern, items });
+    // Reorder items array to match pattern order for main-stacked
+    // calculateMainStackedSizes expects items[0] to be main, items[1] and items[2] to be secondaries
+    let orderedItems = items;
+    if (pattern.type === 'main-stacked') {
+      const mainItem = items.find((_, idx) => pointer + idx === pattern.mainIndex);
+      const sec1Item = items.find((_, idx) => pointer + idx === pattern.secondaryIndices[0]);
+      const sec2Item = items.find((_, idx) => pointer + idx === pattern.secondaryIndices[1]);
+
+      if (mainItem && sec1Item && sec2Item) {
+        orderedItems = [mainItem, sec1Item, sec2Item];
+      }
     }
 
-    // Advance pointer past consumed items
-    const consumedIndices = [...pattern.indices].sort((a, b) => a - b);
-    const lastConsumedIndex = consumedIndices[consumedIndices.length - 1];
-    if (lastConsumedIndex === undefined) break;
-    pointer = lastConsumedIndex + 1;
+    result.push({ pattern, items: orderedItems });
+
+    // Advance pointer
+    pointer = nextIndex;
   }
 
   return result;
@@ -230,12 +348,10 @@ function createFraction(width: number, height: number): Fraction {
 function simplifyFraction(f: Fraction): Fraction {
   // Guard against invalid input
   if (!Number.isFinite(f.numerator) || !Number.isFinite(f.denominator)) {
-    console.warn('Invalid fraction input:', f);
     return { numerator: 1, denominator: 1 };
   }
 
   if (f.denominator === 0) {
-    console.warn('Division by zero in fraction:', f);
     return { numerator: 1, denominator: 1 };
   }
 
@@ -374,12 +490,6 @@ function scaleSolvedBoxWidths(box: SolvedBox, scaleFactor: number): SolvedBox {
 
   // Validate scaled width
   if (!Number.isFinite(scaledWidth) || scaledWidth <= 0) {
-    console.error('[scaleSolvedBoxWidths] Invalid scaled width:', {
-      originalWidth: box.width,
-      scaleFactor,
-      scaledWidth,
-      contentId: box.content?.id,
-    });
     // Fallback: use original width if scaling produces invalid value
     return {
       ...box,
@@ -468,17 +578,6 @@ function solveBox(
   if (direction === 'horizontal') {
     const calculatedWidth = solvedChildren.reduce((sum, child) => sum + child.width, 0);
 
-    // DEBUG: Log values to trace issue
-    if (!Number.isFinite(calculatedWidth) || calculatedWidth === 0) {
-      console.error('[solveBox] Invalid calculatedWidth:', {
-        calculatedWidth,
-        containerSize,
-        childCount: solvedChildren.length,
-        childWidths: solvedChildren.map(c => c.width),
-        direction,
-      });
-    }
-
     // Validate before division - if invalid, distribute width equally
     if (!calculatedWidth || !Number.isFinite(calculatedWidth) || calculatedWidth <= 0) {
       // Fallback: distribute width equally among children (don't scale)
@@ -496,12 +595,6 @@ function solveBox(
 
     // Validate scaleFactor before using it
     if (!Number.isFinite(scaleFactor) || scaleFactor <= 0) {
-      console.error('[solveBox] Invalid scaleFactor:', {
-        scaleFactor,
-        containerSize,
-        calculatedWidth,
-        direction,
-      });
       // Use scaleFactor = 1 (no scaling) as fallback
       return { width: containerSize, height: sharedDimension, children: solvedChildren };
     }
@@ -563,17 +656,7 @@ function solveBox(
  */
 function extractCalculatedSizes(solved: SolvedBox): CalculatedContentSize[] {
   if (solved.content) {
-    const result = [{ content: solved.content, width: solved.width, height: solved.height }];
-    // DEBUG: Check for NaN
-    if (!Number.isFinite(solved.width) || !Number.isFinite(solved.height)) {
-      console.error('[extractCalculatedSizes] NaN from solved box:', {
-        contentId: solved.content.id,
-        contentType: solved.content.contentType,
-        width: solved.width,
-        height: solved.height,
-      });
-    }
-    return result;
+    return [{ content: solved.content, width: solved.width, height: solved.height }];
   }
 
   if (solved.children) {
@@ -666,19 +749,6 @@ function calculateStandaloneSizes(
   const ratio = width / Math.max(1, height);
   const calculatedHeight = rowWidth / ratio;
 
-  // DEBUG: Check for NaN
-  if (!Number.isFinite(ratio) || !Number.isFinite(calculatedHeight)) {
-    console.error('[calculateStandaloneSizes] NaN detected:', {
-      contentId: item.id,
-      contentType: item.contentType,
-      width,
-      height,
-      ratio,
-      rowWidth,
-      calculatedHeight,
-    });
-  }
-
   return [
     {
       content: item,
@@ -756,25 +826,7 @@ export function calculateRowSizesFromPattern(
   chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
   const calculator = SIZE_CALCULATORS[row.pattern.type];
-  const results = calculator(row.items, rowWidth, chunkSize);
-
-  // DEBUG: Check for NaN in results
-  for (const [idx, result] of results.entries()) {
-    if (!Number.isFinite(result.width) || !Number.isFinite(result.height)) {
-      console.error('[calculateRowSizesFromPattern] NaN in result:', {
-        patternType: row.pattern.type,
-        contentId: result.content.id,
-        contentType: result.content.contentType,
-        width: result.width,
-        height: result.height,
-        index: idx,
-        rowWidth,
-        chunkSize,
-      });
-    }
-  }
-
-  return results;
+  return calculator(row.items, rowWidth, chunkSize);
 }
 
 /**

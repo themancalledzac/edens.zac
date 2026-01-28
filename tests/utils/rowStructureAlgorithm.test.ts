@@ -87,10 +87,7 @@ describe('createRowsArray', () => {
 
   describe('Standalone pattern detection', () => {
     it('should detect 5-star horizontal as standalone', () => {
-      const content = [
-        createHorizontalImage(1, 5),
-        createHorizontalImage(2, 2),
-      ];
+      const content = [createHorizontalImage(1, 5), createHorizontalImage(2, 2)];
       const result = createRowsArray(content);
 
       expect(result).toHaveLength(2);
@@ -100,10 +97,7 @@ describe('createRowsArray', () => {
     });
 
     it('should detect wide panorama (3+ star) as standalone', () => {
-      const content = [
-        createWidePanorama(1, 3),
-        createHorizontalImage(2, 2),
-      ];
+      const content = [createWidePanorama(1, 3), createHorizontalImage(2, 2)];
       const result = createRowsArray(content);
 
       expect(result).toHaveLength(2);
@@ -262,15 +256,64 @@ describe('createRowsArray', () => {
     });
 
     it('should preserve indices in pattern result', () => {
-      const content = [
-        createHorizontalImage(1, 2),
-        createHorizontalImage(2, 2),
-      ];
+      const content = [createHorizontalImage(1, 2), createHorizontalImage(2, 2)];
       const result = createRowsArray(content);
 
       expect(result[0]?.pattern.type).toBe('standard');
       expect(result[0]?.pattern.indices).toContain(0);
       expect(result[0]?.pattern.indices).toContain(1);
+    });
+  });
+
+  describe('Non-consecutive pattern indices (bug fix)', () => {
+    it('should not skip items when patterns select non-consecutive indices', () => {
+      // Create a scenario where pattern detection might select non-consecutive items
+      // This tests the fix for the bug where items were skipped when patterns
+      // selected indices like [0, 2, 4] instead of [0, 1, 2]
+      const content = [
+        createVerticalImage(1, 5), // Index 0: 5-star vertical (could be main)
+        createHorizontalImage(2, 2), // Index 1: Should NOT be skipped
+        createVerticalImage(3, 3), // Index 2: Could be secondary
+        createHorizontalImage(4, 2), // Index 3: Should NOT be skipped
+        createVerticalImage(5, 4), // Index 4: Could be secondary
+        createHorizontalImage(6, 2), // Index 5: Should be processed
+        createHorizontalImage(7, 2), // Index 6: Should be processed
+      ];
+
+      const result = createRowsArray(content);
+
+      // Verify all items are included in the result
+      const allItemIds = new Set(result.flatMap(row => row.items.map(item => item.id)));
+      expect(allItemIds.size).toBe(7); // All 7 items should be present
+      expect(allItemIds.has(1)).toBe(true);
+      expect(allItemIds.has(2)).toBe(true);
+      expect(allItemIds.has(3)).toBe(true);
+      expect(allItemIds.has(4)).toBe(true);
+      expect(allItemIds.has(5)).toBe(true);
+      expect(allItemIds.has(6)).toBe(true);
+      expect(allItemIds.has(7)).toBe(true);
+    });
+
+    it('should process items in order when pattern selects non-consecutive indices', () => {
+      // Test that items are processed sequentially, not skipped
+      const content = [
+        createHorizontalImage(1, 2), // Index 0
+        createHorizontalImage(2, 2), // Index 1
+        createHorizontalImage(3, 2), // Index 2
+        createHorizontalImage(4, 2), // Index 3
+        createHorizontalImage(5, 2), // Index 4
+      ];
+
+      const result = createRowsArray(content);
+
+      // All items should be in result
+      const allItemIds = result.flatMap(row => row.items.map(item => item.id));
+      expect(allItemIds).toHaveLength(5);
+      expect(allItemIds).toContain(1);
+      expect(allItemIds).toContain(2);
+      expect(allItemIds).toContain(3);
+      expect(allItemIds).toContain(4);
+      expect(allItemIds).toContain(5);
     });
   });
 });
@@ -279,10 +322,7 @@ describe('createRowsArray', () => {
 
 describe('createRowsArrayLegacy', () => {
   it('should return array of arrays (no pattern metadata)', () => {
-    const content = [
-      createHorizontalImage(1, 2),
-      createHorizontalImage(2, 2),
-    ];
+    const content = [createHorizontalImage(1, 2), createHorizontalImage(2, 2)];
     const result = createRowsArrayLegacy(content);
 
     expect(Array.isArray(result)).toBe(true);
@@ -381,10 +421,7 @@ describe('calculateRowSizesFromPattern', () => {
     it('should calculate proportional widths', () => {
       const row: RowWithPattern = {
         pattern: { type: 'standard', indices: [0, 1] },
-        items: [
-          createHorizontalImage(1, 2),
-          createHorizontalImage(2, 2),
-        ],
+        items: [createHorizontalImage(1, 2), createHorizontalImage(2, 2)],
       };
       const result = calculateRowSizesFromPattern(row, rowWidth);
 
@@ -399,7 +436,7 @@ describe('calculateRowSizesFromPattern', () => {
         pattern: { type: 'standard', indices: [0, 1] },
         items: [
           createHorizontalImage(1, 2), // 1920x1080 (ratio ~1.78)
-          createVerticalImage(2, 2),   // 1080x1920 (ratio ~0.56)
+          createVerticalImage(2, 2), // 1080x1920 (ratio ~0.56)
         ],
       };
       const result = calculateRowSizesFromPattern(row, rowWidth);
@@ -433,11 +470,7 @@ describe('calculateRowSizesFromPattern', () => {
           secondaryIndices: [1, 2],
           indices: [0, 1, 2],
         },
-        items: [
-          createVerticalImage(1, 5),
-          createVerticalImage(2, 3),
-          createVerticalImage(3, 4),
-        ],
+        items: [createVerticalImage(1, 5), createVerticalImage(2, 3), createVerticalImage(3, 4)],
       };
       const result = calculateRowSizesFromPattern(row, rowWidth);
 
@@ -492,10 +525,7 @@ describe('calculateRowSizes', () => {
   });
 
   it('should use standard layout for low-rated items', () => {
-    const row = [
-      createHorizontalImage(1, 2),
-      createHorizontalImage(2, 2),
-    ];
+    const row = [createHorizontalImage(1, 2), createHorizontalImage(2, 2)];
     const result = calculateRowSizes(row, rowWidth);
 
     expect(result).toHaveLength(2);
@@ -553,7 +583,7 @@ describe('Full pipeline integration', () => {
   it('should handle mixed content types gracefully', () => {
     const content = [
       createHorizontalImage(1, 5), // Standalone
-      createVerticalImage(2, 5),   // Could be 5-star vertical pattern
+      createVerticalImage(2, 5), // Could be 5-star vertical pattern
       createVerticalImage(3, 3),
       createVerticalImage(4, 4),
       createHorizontalImage(5, 2), // Standard

@@ -46,7 +46,6 @@ export function buildUpdatePayload(
     { key: 'type', original: originalCollection.type },
     { key: 'title', original: originalCollection.title },
     { key: 'description', original: originalCollection.description || '' },
-    { key: 'location', original: originalCollection.location || '' },
     { key: 'collectionDate', original: originalCollection.collectionDate || '' },
     { key: 'visible', original: originalCollection.visible },
     { key: 'displayMode', original: originalCollection.displayMode },
@@ -98,6 +97,10 @@ export function buildUpdatePayload(
     payload.collections = formData.collections;
   }
 
+  // Handle location separately - include if defined (uses LocationUpdate pattern)
+  if (formData.location !== undefined) {
+    payload.location = formData.location;
+  }
 
   return payload;
 }
@@ -461,6 +464,7 @@ export function mergeNewMetadata(
     ...prev!,
     tags: [...(prev?.tags || []), ...(newMetadata.tags || [])],
     people: [...(prev?.people || []), ...(newMetadata.people || [])],
+    locations: [...(prev?.locations || []), ...(newMetadata.locations || [])],
     cameras: [...(prev?.cameras || []), ...(newMetadata.cameras || [])],
     lenses: [...(prev?.lenses || []), ...(newMetadata.lenses || [])],
     filmTypes: [...(prev?.filmTypes || []), ...(newMetadata.filmTypes || [])],

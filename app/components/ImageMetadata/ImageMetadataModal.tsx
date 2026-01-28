@@ -483,8 +483,8 @@ export default function ImageMetadataModal({
                 <label className={styles.formLabel}>F-Stop</label>
                 <input
                   type="text"
-                  value={updateState.fStop ?? ''}
-                  onChange={e => updateStateField({ fStop: e.target.value || null })}
+                  value={updateState.fstop ?? ''}
+                  onChange={e => updateStateField({ fstop: e.target.value || null })}
                   className={styles.formInput}
                   placeholder="e.g., f/2.8"
                 />
