@@ -30,7 +30,10 @@ import {
 import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
-import { isLocalEnvironment } from '@/app/utils/environment';
+import {
+  convertLocationStringToModel,
+  createLocationUpdateFromModel,
+} from '@/app/utils/locationUtils';
 
 import styles from './ManageClient.module.scss';
 import {
@@ -288,21 +291,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Build payload with only changed fields
       const payload = buildUpdatePayload(updateData, collection);
 
-      // DEBUG: Log the payload to verify displayMode is included
-      if (isLocalEnvironment()) {
-        console.log('[handleUpdate] ===== UPDATE DEBUG START =====');
-        console.log('[handleUpdate] Original collection:', {
-          id: collection.id,
-          title: collection.title,
-          description: collection.description?.slice(0, 50),
-          contentCount: collection.content?.length || 0,
-        });
-        console.log('[handleUpdate] Form updateData:', {
-          ...updateData,
-          description: updateData.description?.slice(0, 50),
-        });
-      }
-
       await updateCollection(collection.id, payload);
 
       // Re-fetch using admin endpoint to get full data with collections arrays
@@ -402,13 +390,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
         // Update cache
         collectionStorage.update(collection.slug, response.collection);
-
-        if (isLocalEnvironment()) {
-          console.log(
-            '[handleCoverImageClick] Cover image updated successfully:',
-            result.coverImageId
-          );
-        }
       } catch (error) {
         setError(handleApiError(error, 'Failed to update cover image'));
       } finally {
@@ -573,37 +554,32 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
 
     // No pending update - use original collection location
-    if (!collection?.location) return null;
-
-    // Try to find location by name (collection.location is a string)
-    const location = availableLocations.find(loc => loc.name === collection.location);
-
-    return location || null;
+    // Handle both object format (new API) and string format (legacy)
+    const collectionLocation = collection?.location;
+    
+    // If location is already an object with id and name, use it directly
+    if (collectionLocation && typeof collectionLocation === 'object' && 'id' in collectionLocation && 'name' in collectionLocation) {
+      // It's already a LocationModel - find it in availableLocations to ensure we have the correct reference
+      const location = availableLocations.find(loc => loc.id === (collectionLocation as LocationModel).id);
+      return location || (collectionLocation as LocationModel);
+    }
+    
+    // Otherwise, treat it as a string and convert
+    return convertLocationStringToModel(
+      typeof collectionLocation === 'string' ? collectionLocation : null,
+      availableLocations
+    );
   }, [collection?.location, currentState?.locations, updateData.location]);
 
   // Handle location selection changes
   const handleLocationChange = useCallback((value: LocationModel | LocationModel[] | null) => {
     const location = Array.isArray(value) ? value[0] || null : value;
+    const locationUpdate = createLocationUpdateFromModel(location);
 
-    if (!location) {
-      // Clear location
-      setUpdateData(prev => ({
-        ...prev,
-        location: { remove: true },
-      }));
-    } else if (location.id && location.id > 0) {
-      // Existing location selected
-      setUpdateData(prev => ({
-        ...prev,
-        location: { prev: location.id },
-      }));
-    } else {
-      // New location to create
-      setUpdateData(prev => ({
-        ...prev,
-        location: { newValue: location.name },
-      }));
-    }
+    setUpdateData(prev => ({
+      ...prev,
+      location: locationUpdate,
+    }));
   }, []);
 
   // Handle collections selection changes - simple toggle logic
@@ -856,7 +832,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             required: true,
                           },
                         ]}
-                        getDisplayName={location => location.name}
+                        getDisplayName={location => location?.name || ''}
                         showNewIndicator
                         emptyText="No location set"
                       />
@@ -1102,6 +1078,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           availableFilmTypes={currentState?.filmTypes || []}
           availableFilmFormats={currentState?.filmFormats || []}
           availableCollections={currentState?.collections || []}
+          availableLocations={currentState?.locations || []}
           selectedImageIds={selectedImageIds}
           selectedImages={imagesToEdit}
           currentCollectionId={collection?.id}

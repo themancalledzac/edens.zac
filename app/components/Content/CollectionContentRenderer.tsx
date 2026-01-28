@@ -150,8 +150,11 @@ export default function CollectionContentRenderer({
           isSelected: false,
         })}
         style={{
-          width: isMobile ? '100%' : Number.isFinite(width) ? width : 300,
-          height: isMobile ? 'auto' : Number.isFinite(height) ? height : 'auto',
+          // prettier-ignore
+          width: isMobile ? '100%' : (Number.isFinite(width) ? width : 300),
+
+          // prettier-ignore
+          height: isMobile ? 'auto' : (Number.isFinite(height) ? height : 'auto'),
           boxSizing: 'border-box',
         }}
       >

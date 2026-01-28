@@ -5,7 +5,11 @@ import React, { useMemo } from 'react';
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel } from '@/app/types/Collection';
-import { type AnyContentModel } from '@/app/types/Content';
+import {
+  type AnyContentModel,
+  type ContentImageModel,
+  type ContentParallaxImageModel,
+} from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import {
   type CalculatedContentSize,
@@ -26,7 +30,7 @@ export interface ContentComponentProps {
   justClickedImageId?: number | null;
   priorityIndex?: number; // Index of content to prioritize for LCP (usually 0 for hero)
   enableFullScreenView?: boolean; // Enable full-screen image viewing on click
-  onFullScreenImageClick?: (image: any) => void; // Accepts any image type (normalized in renderer)
+  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void; // Accepts any image type (normalized in renderer)
   selectedImageIds?: number[]; // Array of selected image IDs for bulk editing
   currentCollectionId?: number; // ID of current collection (for checking collection-specific visibility)
   chunkSize?: number; // Number of images per row (default: 2)

@@ -9,7 +9,13 @@
 import { fetchPatchJsonApi } from '@/app/lib/api/core';
 import type { SingleEntityUpdate } from '@/app/types/createTypes';
 
-import type { ChildCollection, CollectionUpdate, PersonUpdate, TagUpdate } from './Collection';
+import type {
+  ChildCollection,
+  CollectionUpdate,
+  LocationUpdate,
+  PersonUpdate,
+  TagUpdate,
+} from './Collection';
 import type {
   ContentCameraModel,
   ContentFilmTypeModel,
@@ -68,7 +74,7 @@ export interface ContentImageModel extends Content {
   rawFileName?: string | null;
   camera?: ContentCameraModel | null;
   focalLength?: string | null;
-  location?: string | null;
+  location?: { id: number; name: string } | null;
   createDate?: string | null;
   fstop?: string | null;
   alt?: string;
@@ -213,8 +219,8 @@ export type FilmTypeUpdate = SingleEntityUpdate<NewFilmTypeRequest>;
  * All fields except 'id' are optional - only include fields you want to update
  *
  * Uses prev/newValue/remove pattern for entity relationships:
- * - Simple fields (title, location, etc.) are updated directly
- * - Entity relationships use the update pattern objects
+ * - Simple fields (title, etc.) are updated directly
+ * - Entity relationships (location, camera, lens, etc.) use the update pattern objects
  * Matches backend ContentImageUpdateRequest.java
  */
 export interface ContentImageUpdateRequest {
@@ -248,8 +254,8 @@ export interface ContentImageUpdateRequest {
   /** Focal length */
   focalLength?: string | null;
 
-  /** Location where photo was taken */
-  location?: string | null;
+  /** Location update using prev/newValue/remove pattern */
+  location?: LocationUpdate;
 
   /** F-stop value */
   fstop?: string | null;
@@ -337,9 +343,7 @@ export interface ContentImageUpdateResponse {
  *   caption: null
  * });
  */
-export async function updateImage<T = unknown>(
-  updates: ContentImageUpdateRequest
-): Promise<T> {
+export async function updateImage<T = unknown>(updates: ContentImageUpdateRequest): Promise<T> {
   if (!updates.id || updates.id <= 0) {
     throw new Error('Valid id is required in updates object');
   }

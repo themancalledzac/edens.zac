@@ -38,7 +38,7 @@ export interface CollectionBaseModel {
   title?: string;
   slug?: string;
   description?: string;
-  location?: string;
+  location?: string | LocationModel; // Can be string (legacy) or LocationModel (new API format)
   collectionDate?: string;
   visible?: boolean;
   displayMode?: DisplayMode;

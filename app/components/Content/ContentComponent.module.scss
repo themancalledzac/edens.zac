@@ -344,15 +344,15 @@
 .dragContainer {
   position: relative;
   cursor: grab;
-  
+
   &.dragging {
     opacity: 0.5;
   }
-  
+
   &.clickable {
     cursor: pointer;
   }
-  
+
   &.default {
     cursor: default;
   }
@@ -362,11 +362,11 @@
 .imageContentWrapper {
   cursor: pointer;
   transition: opacity 0.2s ease;
-  
+
   &.selected {
     opacity: 0.6;
   }
-  
+
   &.default {
     cursor: default;
   }
@@ -376,7 +376,7 @@
 .parallaxContainer {
   box-sizing: border-box;
   position: relative;
-  
+
   &.mobile {
     width: 100%;
     height: auto;
@@ -491,11 +491,11 @@
   height: auto;
   object-fit: cover;
   display: block;
-  
+
   &.clickable {
     cursor: pointer;
   }
-  
+
   &.notClickable {
     cursor: default;
   }
@@ -513,15 +513,15 @@
   box-sizing: border-box;
   position: relative;
   width: 100%;
-  
+
   &.clickable {
     cursor: pointer;
   }
-  
+
   &.notClickable {
     cursor: default;
   }
-  
+
   &.parallax {
     height: auto;
   }

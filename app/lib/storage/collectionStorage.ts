@@ -164,13 +164,6 @@ export const collectionStorage = {
         // Match by ID and verify it's an IMAGE type (safety check)
         if (block.contentType === 'IMAGE' && updatedImagesMap.has(block.id)) {
           const updatedImage = updatedImagesMap.get(block.id)!;
-          if (isLocalEnvironment()) {
-            console.log(`[collectionStorage] Updating image ${block.id} in cache:`, {
-              oldVisibility: (block as ContentImageModel).collections?.[0]?.visible,
-              newVisibility: updatedImage.collections?.[0]?.visible,
-              collections: updatedImage.collections,
-            });
-          }
           return updatedImage;
         }
         return block;
@@ -184,12 +177,6 @@ export const collectionStorage = {
 
       // Save updated collection back to cache with new timestamp
       this.set(slug, updatedCollection);
-      if (isLocalEnvironment()) {
-        console.log(`[collectionStorage] Cache updated for slug: ${slug}`, {
-          updatedImageIds: updatedImages.map(img => img.id),
-          totalContentBlocks: updatedCollection.content?.length,
-        });
-      }
     } catch (error) {
       if (isLocalEnvironment()) {
         console.error('[collectionStorage] Error updating cache:', error);

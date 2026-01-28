@@ -139,11 +139,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
     setFormData({});
   }, []);
 
-  useClickOutsideMultiple(
-    containerRef,
-    [isSelectingFromDropdown, isAddingNew],
-    handleCloseAll
-  );
+  useClickOutsideMultiple(containerRef, [isSelectingFromDropdown, isAddingNew], handleCloseAll);
 
   // ============================================================================
   // Helper Functions
@@ -152,9 +148,16 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
   /**
    * Get display name for an item
    * Uses custom getter if provided, otherwise falls back to displayName or name
+   * Always returns a string, never an object
    */
-  const getItemDisplayName = (item: T): string => {
-    if (getDisplayName) return getDisplayName(item);
+  const getItemDisplayName = (item: T | null | undefined): string => {
+    if (!item) return '';
+    if (getDisplayName) {
+      const result = getDisplayName(item);
+      // Ensure we always return a string, never an object
+      if (typeof result === 'string') return result;
+      return '';
+    }
     return item.displayName || item.name || '';
   };
 
@@ -191,7 +194,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
     if (selectedValue.id && item.id) return selectedValue.id === item.id;
     return getItemDisplayName(selectedValue) === getItemDisplayName(item);
   };
-
 
   /**
    * Determine button text based on mode
@@ -344,16 +346,16 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
               <span className={styles.cameraEmpty}>{emptyText}</span>
             ) : (
               <div className={styles.selectedChips}>
-                {selectedValues.map(item => (
+                {selectedValues.map(item =>
                   simpleChips ? (
                     // Simplified chip: click entire chip to remove, no × button
-                    <div 
-                      key={getKey(item)} 
+                    <div
+                      key={getKey(item)}
                       className={styles.chipSimple}
                       onClick={() => handleRemoveItem(item)}
                       role="button"
                       tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && handleRemoveItem(item)}
+                      onKeyDown={e => e.key === 'Enter' && handleRemoveItem(item)}
                       aria-label={`Remove ${getItemDisplayName(item)}`}
                     >
                       {getItemDisplayName(item)}
@@ -372,7 +374,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
                       </button>
                     </div>
                   )
-                ))}
+                )}
               </div>
             ))}
         </div>
@@ -444,7 +446,9 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
                 value={formData[field.name] || ''}
                 onChange={e => handleFieldChange(field.name, e.target.value)}
                 onKeyDown={handleFieldKeyDown}
-                placeholder={field.placeholder || placeholder || `Enter ${field.label.toLowerCase()}`}
+                placeholder={
+                  field.placeholder || placeholder || `Enter ${field.label.toLowerCase()}`
+                }
                 className={styles.formInput}
                 min={field.type === 'number' ? field.min : undefined}
                 autoFocus={index === 0}

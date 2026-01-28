@@ -62,28 +62,6 @@ export function buildUpdatePayload(
     if (normalizedFormValue !== normalizedOriginal) {
       // Type assertion needed since we're iterating dynamically
       (payload as unknown as Record<string, unknown>)[key] = formData[key];
-      
-      // DEBUG: Log displayMode changes specifically
-      if (key === 'displayMode' && isLocalEnvironment()) {
-        console.log('[buildUpdatePayload] displayMode change detected:', {
-          key,
-          original,
-          formValue,
-          normalizedOriginal,
-          normalizedFormValue,
-          willInclude: true,
-        });
-      }
-    } else if (key === 'displayMode' && isLocalEnvironment()) {
-      // DEBUG: Log when displayMode is NOT included
-      console.log('[buildUpdatePayload] displayMode NOT changed (not included):', {
-        key,
-        original,
-        formValue,
-        normalizedOriginal,
-        normalizedFormValue,
-        areEqual: normalizedFormValue === normalizedOriginal,
-      });
     }
   }
 

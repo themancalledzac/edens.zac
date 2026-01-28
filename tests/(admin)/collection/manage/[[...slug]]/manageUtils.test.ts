@@ -44,7 +44,10 @@ import {
 } from '@/app/types/Content';
 
 // Test fixtures
-const createImageContent = (id: number, overrides?: Partial<ContentImageModel>): ContentImageModel => ({
+const createImageContent = (
+  id: number,
+  overrides?: Partial<ContentImageModel>
+): ContentImageModel => ({
   id,
   contentType: 'IMAGE',
   orderIndex: id,
@@ -54,11 +57,14 @@ const createImageContent = (id: number, overrides?: Partial<ContentImageModel>):
   ...overrides,
 });
 
-const createTextContent = (id: number, overrides?: Partial<ContentTextModel>): ContentTextModel => ({
+const createTextContent = (
+  id: number,
+  overrides?: Partial<ContentTextModel>
+): ContentTextModel => ({
   id,
   contentType: 'TEXT',
   orderIndex: id,
-  content: `Text content ${id}`,
+  items: [{ type: 'text', value: `Text content ${id}` }],
   format: 'plain',
   align: 'left',
   ...overrides,
@@ -585,7 +591,6 @@ describe('buildUpdatePayload', () => {
         type: CollectionType.PORTFOLIO,
         title: 'Original Title',
         description: 'Original Description',
-        location: 'Original Location',
         collectionDate: '2024-01-01',
         visible: true,
         displayMode: 'CHRONOLOGICAL',
@@ -1056,9 +1061,7 @@ describe('getCurrentSelectedCollections', () => {
       const content: AnyContentModel[] = [collection1, collection2, collection3];
       const updateDataCollections: CollectionUpdateRequest['collections'] = {
         remove: [2],
-        newValue: [
-          { collectionId: 4, name: 'New Collection 4' },
-        ],
+        newValue: [{ collectionId: 4, name: 'New Collection 4' }],
       };
       const result = getCurrentSelectedCollections(content, updateDataCollections);
 
@@ -1072,9 +1075,7 @@ describe('getCurrentSelectedCollections', () => {
     it('should not add duplicate collections that are already in original', () => {
       const content: AnyContentModel[] = [collection1, collection2];
       const updateDataCollections: CollectionUpdateRequest['collections'] = {
-        newValue: [
-          { collectionId: 1, name: 'Collection 1 Duplicate' },
-        ],
+        newValue: [{ collectionId: 1, name: 'Collection 1 Duplicate' }],
       };
       const result = getCurrentSelectedCollections(content, updateDataCollections);
 
@@ -1176,9 +1177,7 @@ describe('getCurrentSelectedCollections', () => {
       const content: AnyContentModel[] = [collection1, collection2];
       const updateDataCollections: CollectionUpdateRequest['collections'] = {
         remove: [1],
-        newValue: [
-          { collectionId: 1, name: 'Collection 1 Re-added' },
-        ],
+        newValue: [{ collectionId: 1, name: 'Collection 1 Re-added' }],
       };
       const result = getCurrentSelectedCollections(content, updateDataCollections);
 
@@ -1397,7 +1396,6 @@ describe('handleApiError', () => {
     });
   });
 });
-
 
 describe('revalidateCollectionCache', () => {
   beforeEach(() => {
@@ -1657,17 +1655,17 @@ describe('mergeNewMetadata', () => {
 
 /**
  * Testing Strategy for revalidateCollectionCache
- * 
+ *
  * Function: revalidateCollectionCache(slug: string)
  * Returns: Promise<void>
- * 
+ *
  * Passing test cases:
  * - Calls /api/revalidate with correct tag and path
  * - Request body contains correct tag format: `collection-${slug}`
  * - Request body contains correct path format: `/${slug}`
  * - Resolves successfully when revalidation succeeds
  * - Fails silently when revalidation fails (catches error, logs warning)
- * 
+ *
  * Failing test cases:
  * - Slug is empty string -> still makes request (no validation)
  * - Network error -> fails silently, logs warning
@@ -1677,10 +1675,10 @@ describe('mergeNewMetadata', () => {
 
 /**
  * Testing Strategy for mergeNewMetadata
- * 
+ *
  * Function: mergeNewMetadata(response: ContentImageUpdateResponse, currentState: CollectionUpdateResponseDTO | null)
  * Returns: ((prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO) | null
- * 
+ *
  * Passing test cases:
  * - Returns null when newMetadata is undefined
  * - Returns null when newMetadata exists but all arrays are empty
@@ -1700,7 +1698,7 @@ describe('mergeNewMetadata', () => {
  * - Works when prev has existing metadata -> appends to existing arrays
  * - Works when prev has no metadata -> creates new arrays
  * - Preserves existing metadata that's not in newMetadata
- * 
+ *
  * Failing test cases:
  * - Response is null/undefined -> returns null
  * - Response.newMetadata is null -> returns null
@@ -1846,7 +1844,7 @@ describe('getContentOrderIndex', () => {
       id: 2,
       contentType: 'TEXT' as const,
       orderIndex: 3,
-      content: 'Test',
+      items: [{ type: 'text' as const, value: 'Test' }],
       format: 'plain' as const,
       align: 'left' as const,
     } as AnyContentModel;
@@ -1902,7 +1900,7 @@ describe('updateBlockOrderIndex', () => {
       id: 2,
       contentType: 'TEXT' as const,
       orderIndex: 3,
-      content: 'Test',
+      items: [{ type: 'text' as const, value: 'Test' }],
       format: 'plain' as const,
       align: 'left' as const,
     } as AnyContentModel;
@@ -1987,9 +1985,7 @@ describe('calculateReorderChanges', () => {
   it('should return empty array when dragged and target are the same', () => {
     const collection = createCollectionModel({
       id: 1,
-      content: [
-        createImageContent(1, { orderIndex: 0 }),
-      ],
+      content: [createImageContent(1, { orderIndex: 0 })],
     });
 
     const result = calculateReorderChanges(1, 1, collection);
@@ -2000,9 +1996,7 @@ describe('calculateReorderChanges', () => {
   it('should return empty array when dragged content not found', () => {
     const collection = createCollectionModel({
       id: 1,
-      content: [
-        createImageContent(1, { orderIndex: 0 }),
-      ],
+      content: [createImageContent(1, { orderIndex: 0 })],
     });
 
     const result = calculateReorderChanges(999, 1, collection);
@@ -2039,9 +2033,7 @@ describe('applyReorderChangesOptimistically', () => {
   it('should return unchanged collection when reorders is empty', () => {
     const collection = createCollectionModel({
       id: 1,
-      content: [
-        createImageContent(1, { orderIndex: 0 }),
-      ],
+      content: [createImageContent(1, { orderIndex: 0 })],
     });
 
     const result = applyReorderChangesOptimistically(collection, []);
@@ -2067,7 +2059,7 @@ describe('executeReorderOperation', () => {
   });
 
   it('should call reorder API and return updated collection', async () => {
-    const mockCollection = { id: collectionId, title: 'Test', slug } as any;
+    const mockCollection = { id: collectionId, title: 'Test', slug } as CollectionModel;
     jest.mocked(collectionsApi.reorderCollectionContent).mockResolvedValue(mockCollection);
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
@@ -2083,11 +2075,13 @@ describe('executeReorderOperation', () => {
   it('should propagate error when API call fails', async () => {
     jest.mocked(collectionsApi.reorderCollectionContent).mockRejectedValue(new Error('API Error'));
 
-    await expect(executeReorderOperation(collectionId, mockReorders, slug)).rejects.toThrow('API Error');
+    await expect(executeReorderOperation(collectionId, mockReorders, slug)).rejects.toThrow(
+      'API Error'
+    );
   });
 
   it('should call revalidateCollectionCache after successful reorder', async () => {
-    const mockCollection = { id: collectionId, title: 'Test', slug } as any;
+    const mockCollection = { id: collectionId, title: 'Test', slug } as CollectionModel;
     jest.mocked(collectionsApi.reorderCollectionContent).mockResolvedValue(mockCollection);
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 

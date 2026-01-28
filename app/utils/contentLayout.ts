@@ -696,7 +696,10 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   if (collection.location) {
     items.push({
       type: 'location',
-      value: collection.location,
+      value:
+        typeof collection.location === 'string'
+          ? collection.location
+          : (collection.location as { name: string }).name,
     });
   }
 

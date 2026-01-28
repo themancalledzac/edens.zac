@@ -6,7 +6,7 @@ import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { IMAGE } from '@/app/constants';
 import { updateImages } from '@/app/lib/api/content';
-import { type CollectionListModel } from '@/app/types/Collection';
+import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import {
   type ContentImageModel,
   type ContentImageUpdateRequest,
@@ -21,6 +21,7 @@ import {
   type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
 import { isLocalEnvironment } from '@/app/utils/environment';
+import { convertLocationStringToModel } from '@/app/utils/locationUtils';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
 import styles from './ImageMetadataModal.module.scss';
@@ -31,6 +32,12 @@ import {
   mapUpdateResponseToFrontend,
 } from './imageMetadataUtils';
 import UnifiedMetadataSelector from './UnifiedMetadataSelector';
+
+// Type for updateState that allows location to be LocationModel instead of string
+type ImageUpdateState = Omit<Partial<ContentImageModel>, 'location'> & {
+  id: number;
+  location?: LocationModel | null;
+};
 
 interface ImageMetadataModalProps {
   scrollPosition: number;
@@ -43,6 +50,7 @@ interface ImageMetadataModalProps {
   availableFilmTypes?: ContentFilmTypeModel[];
   availableFilmFormats?: FilmFormatDTO[];
   availableCollections?: CollectionListModel[];
+  availableLocations?: LocationModel[];
   selectedImageIds: number[]; // Array of selected image IDs (1 for single edit, N for bulk edit)
   selectedImages: ContentImageModel[]; // Images to edit (already filtered in parent)
   currentCollectionId?: number; // ID of the collection being edited (for visibility checkbox)
@@ -66,6 +74,7 @@ export default function ImageMetadataModal({
   availableFilmTypes = [],
   availableFilmFormats = [],
   availableCollections = [],
+  availableLocations = [],
   selectedImageIds,
   selectedImages,
   currentCollectionId,
@@ -73,21 +82,24 @@ export default function ImageMetadataModal({
   const isBulkEdit = selectedImageIds.length > 1;
 
   // Update state: starts as copy of image data (full image for single, common for bulk)
-  const [updateState, setUpdateState] = useState<Partial<ContentImageModel> & { id: number }>(() => {
+  // Location is stored as LocationModel for UI (object with id and name)
+  const [updateState, setUpdateState] = useState<ImageUpdateState>(() => {
     if (selectedImages.length === 1) {
       // Single edit: copy full image
       const img = selectedImages[0]!;
-      const { id, ...rest } = img;
+      const { id, location, ...rest } = img;
       return {
         id,
         ...rest,
+        location: convertLocationStringToModel(location, availableLocations),
       };
     } else {
       // Bulk edit: use common values
       const common = getCommonValues(selectedImages);
       return {
         id: 0, // Will be set per image on submit
-        ...common,
+        ...(common as Omit<Partial<ContentImageModel>, 'location'>),
+        location: convertLocationStringToModel(common.location, availableLocations),
       };
     }
   });
@@ -96,26 +108,29 @@ export default function ImageMetadataModal({
   useEffect(() => {
     if (selectedImages.length === 1) {
       const img = selectedImages[0]!;
-      const { id, ...rest } = img;
-      const newState = {
+      const { id, location, ...rest } = img;
+      const newState: ImageUpdateState = {
         id,
-        ...rest,
+        ...(rest as Omit<Partial<ContentImageModel>, 'location'>),
+        location: convertLocationStringToModel(location, availableLocations),
       };
-      
+
       setUpdateState(newState);
     } else {
       const common = getCommonValues(selectedImages);
-      const newState = {
+      const { location, ...rest } = common;
+      const newState: ImageUpdateState = {
         id: 0,
-        ...common,
+        ...(rest as Omit<Partial<ContentImageModel>, 'location'>),
+        location: convertLocationStringToModel(location, availableLocations),
       };
-      
+
       setUpdateState(newState);
     }
-  }, [selectedImages]);
+  }, [selectedImages, availableLocations]);
 
   // Simple update function - update the state directly
-  const updateStateField = (updates: Partial<ContentImageModel>) => {
+  const updateStateField = (updates: Partial<ImageUpdateState>) => {
     setUpdateState(prev => ({ ...prev, ...updates }));
   };
 
@@ -138,10 +153,13 @@ export default function ImageMetadataModal({
   // Get first image for preview and callback - always safe since selectedImages.length > 0
   // Ensure we have at least one image for preview
   const previewImage = selectedImages[0];
-  
+
   if (!previewImage) {
     if (isLocalEnvironment()) {
-      console.error('[ImageMetadataModal] No images selected:', { selectedImages, selectedImageIds });
+      console.error('[ImageMetadataModal] No images selected:', {
+        selectedImages,
+        selectedImageIds,
+      });
     }
     return null;
   }
@@ -164,8 +182,22 @@ export default function ImageMetadataModal({
 
       // Build diff for each image using appropriate builder
       const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
-        ? buildImageUpdatesForBulkEdit(updateState, selectedImages, selectedImageIds, availableFilmTypes)
-        : [buildImageUpdateForSingleEdit(updateState as ContentImageModel, selectedImages[0]!, availableFilmTypes)];
+        ? buildImageUpdatesForBulkEdit(
+            updateState as Partial<ContentImageModel> & {
+              id: number;
+              location?: LocationModel | null;
+            },
+            selectedImages,
+            selectedImageIds,
+            availableFilmTypes
+          )
+        : [
+            buildImageUpdateForSingleEdit(
+              updateState as ContentImageModel & { location?: LocationModel | null },
+              selectedImages[0]!,
+              availableFilmTypes
+            ),
+          ];
 
       const response = await updateImages(imageUpdates);
 
@@ -323,23 +355,42 @@ export default function ImageMetadataModal({
               />
             </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Location</label>
-              <input
-                type="text"
-                value={updateState.location ?? ''}
-                onChange={e => updateStateField({ location: e.target.value || null })}
-                className={styles.formInput}
-                placeholder="Where was this taken?"
-              />
-            </div>
+            <UnifiedMetadataSelector<LocationModel>
+              label="Location"
+              multiSelect={false}
+              options={availableLocations}
+              selectedValue={updateState.location || null}
+              onChange={value => {
+                const location = Array.isArray(value) ? value[0] || null : value;
+                updateStateField({ location });
+              }}
+              allowAddNew
+              onAddNew={data => {
+                const newLocation = { id: 0, name: data.name as string };
+                updateStateField({ location: newLocation });
+              }}
+              addNewFields={[
+                {
+                  name: 'name',
+                  label: 'Location Name',
+                  type: 'text',
+                  placeholder: 'e.g., Seattle, WA',
+                  required: true,
+                },
+              ]}
+              getDisplayName={location => location?.name || ''}
+              showNewIndicator
+              emptyText="No location set"
+            />
 
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Rating</label>
               <select
                 value={updateState.rating?.toString() || ''}
                 onChange={e =>
-                  updateStateField({ rating: e.target.value ? Number.parseInt(e.target.value, 10) : undefined })
+                  updateStateField({
+                    rating: e.target.value ? Number.parseInt(e.target.value, 10) : undefined,
+                  })
                 }
                 className={styles.formSelect}
               >
@@ -370,14 +421,14 @@ export default function ImageMetadataModal({
                       const collectionIndex = currentCollections.findIndex(
                         c => c.collectionId === currentCollectionId
                       );
-                      
+
                       let updatedCollections: Array<{
                         collectionId: number;
                         name?: string;
                         visible?: boolean;
                         orderIndex?: number;
                       }>;
-                      
+
                       if (collectionIndex >= 0) {
                         updatedCollections = currentCollections.map((c, idx) =>
                           idx === collectionIndex ? { ...c, visible: e.target.checked } : c
@@ -396,7 +447,7 @@ export default function ImageMetadataModal({
                           },
                         ];
                       }
-                      
+
                       updateStateField({ collections: updatedCollections });
                     }}
                   />
@@ -471,7 +522,9 @@ export default function ImageMetadataModal({
                   type="number"
                   value={updateState.iso?.toString() || ''}
                   onChange={e =>
-                    updateStateField({ iso: e.target.value ? Number.parseInt(e.target.value, 10) : undefined })
+                    updateStateField({
+                      iso: e.target.value ? Number.parseInt(e.target.value, 10) : undefined,
+                    })
                   }
                   className={styles.formInput}
                   placeholder="e.g., 800"
