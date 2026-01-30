@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
+import { LAYOUT } from '@/app/constants';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 
 interface CollectionPageWrapperProps {
@@ -26,8 +27,11 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
     // Option 1: Increase size to handle most collections
     const collection = await getCollectionBySlug(slug, 0, 500);
 
+    // Use rowsWide from collection data if available, otherwise use default chunk size
+    const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
+
     // Backend guarantees complete data structure, so we can render directly
-    return <CollectionPage collection={collection} />;
+    return <CollectionPage collection={collection} chunkSize={chunkSize} />;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -58,4 +62,3 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
     throw error;
   }
 }
-
