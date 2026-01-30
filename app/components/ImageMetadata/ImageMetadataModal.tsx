@@ -403,8 +403,8 @@ export default function ImageMetadataModal({
               </select>
             </div>
 
-            {/* Collection Visibility - Only for single image edit */}
-            {!isBulkEdit && currentCollectionId && (
+            {/* Collection Visibility - Available for both single and bulk edit */}
+            {currentCollectionId && (
               <div className={styles.checkboxGroup}>
                 <label className={styles.checkboxLabel}>
                   <input

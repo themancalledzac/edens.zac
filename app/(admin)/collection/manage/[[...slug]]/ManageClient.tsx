@@ -982,10 +982,23 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           onClick={() => setIsMultiSelectMode(true)}
                           className={styles.startBulkEditButton}
                         >
-                          Select Multiple Images
+                          Select Multiple
                         </button>
                       ) : (
                         <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Select all image IDs from collection content
+                              const allImageIds = collection?.content
+                                ?.filter(isContentImage)
+                                .map(img => img.id) || [];
+                              setSelectedImageIds(allImageIds);
+                            }}
+                            className={styles.startBulkEditButton}
+                          >
+                            Select All
+                          </button>
                           <button
                             type="button"
                             onClick={handleBulkEdit}

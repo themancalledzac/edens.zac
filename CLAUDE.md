@@ -1,310 +1,112 @@
-# Claude Development Guidelines - Portfolio Project
+---
+description: Frontend Portfolio Repository Rules for AI Agents
+globs:
+alwaysApply: true
+---
 
-You are an expert full-stack developer proficient in TypeScript, React, Next.js, with a backend in Java/Spring Boot/Hibernate/MySQL, and AWS (S3/EC2/RDS/CloudFront). Your task is to produce the most optimized and maintainable code following best practices and adhering to clean code principles.
+# Project Rules
 
-## Project Context
+## Critical Rules
 
-### Current Architecture
-- **Frontend**: Next.js 15 with App Router (migrating from Pages Router)
-- **Backend**: Java Spring Boot with Hibernate/JPA and MySQL RDS
-- **Storage**: S3 for media files with CloudFront CDN distribution
-- **Development**: Localhost development with access to both localhost backend and production RDS
-- **Content System**: Transitioning from legacy Catalog/Image system to new ContentCollection system
+- **Context First**: Always ask for more context when it will help make a better decision. Do this before writing code.
+- **App Router First**: All new features must use Next.js App Router (`app/` directory). Never modify legacy Pages Router files.
+- **Server Components Default**: Minimize `'use client'` usage. Prefer Server Components for data fetching and rendering.
+- **Type Safety**: No `any` types. Use strict TypeScript with proper type definitions from `app/types/`.
+- **Legacy Preservation**: Never modify files in legacy directories. Build new features in parallel.
+- **Testing Required**: All new API functions and utility functions must have corresponding tests in `tests/`.
 
-### Development Environment
-- **Default assumption**: Localhost development unless specified otherwise
-- **Backend access**: Both localhost Spring Boot server and production RDS available
-- **Port configuration**: Frontend typically runs on 3001, backend on 8080
+## File Naming Conventions
 
-## Core Principles
+- **Components**: PascalCase (`About.tsx`, `ContentComponent.tsx`)
+- **Utilities**: camelCase (`contentLayout.ts`, `rowStructureAlgorithm.ts`)
+- **SCSS Modules**: Component name + `.module.scss` (`About.module.scss`, `ContentComponent.module.scss`)
+- **Hooks**: camelCase with `use` prefix (`useViewport.ts`, `useCollectionData.tsx`)
+- **Types**: PascalCase (`Collection.ts`, `Content.ts`)
+- **API Functions**: camelCase (`collections.ts`, `content.ts`)
+- **Directories**: lowercase with dashes for route groups (`(admin)`, `all-collections`)
 
-### 1. Legacy Preservation & Migration Strategy
-- **CRITICAL**: Preserve all OLD functionality while migrating to App Router paradigm
-- **Never modify legacy files** in `pages-old/`, `Components/`, or existing catalog system
-- **Build in parallel**: Create new App Router features alongside existing Pages Router
-- **Gradual deprecation**: Keep legacy files operational until full migration is complete
-- **No breaking changes**: Maintain backwards compatibility during transition
+## Utils Imports Pattern
 
-### 2. App Router First
-- **All new features** must use App Router structure (`app/` directory)
-- **Favor Server Components**: Minimize `'use client'` usage
-- **Use RSC patterns**: Async data fetching, streaming, Suspense boundaries
-- **File organization**: Use route groups like `(admin)` for logical organization
+Import order:
 
-### 3. Performance & Best Practices
-- **SSR-first approach**: Keep components server-side when possible
-- **Minimize context usage**: Prefer URL state and RSC props over React Context
-- **Optimize images**: Use `next/image` with S3/CloudFront URLs, WebP/AVIF formats
-- **Code splitting**: Dynamic imports for heavy client-side components
-- **Mobile-first**: Responsive design with mobile-first approach
+1. React/Next.js imports
+2. Internal API/lib imports (`@/app/lib/api/*`)
+3. Type imports (`@/app/types/*`)
+4. Component imports (`@/app/components/*`)
+5. Utility imports (`@/app/utils/*`)
+6. Constants (`@/app/constants`)
+7. Styles (SCSS modules)
+8. Relative imports (same directory)
 
-## Code Standards
+## Common Mistakes to Avoid
 
-### TypeScript & Code Quality
-```typescript
-// Prefer functional and declarative patterns
-// Use descriptive variable names with auxiliary verbs
-const isLoading = true;
-const hasError = false;
-const shouldRender = data.length > 0;
+- ❌ Using `'use client'` unnecessarily - prefer Server Components
+- ❌ Importing from `pages/` or legacy directories
+- ❌ Using `any` type - always use proper TypeScript types
+- ❌ Creating components without corresponding SCSS modules
+- ❌ Mixing camelCase and PascalCase for similar file types
+- ❌ Forgetting to add tests for new utility functions
+- ❌ Using React Context when URL state would suffice
+- ❌ Not using `next/image` for images (always use CloudFront URLs)
 
-// Structure files: exports, subcomponents, helpers, types
-export default function Component() {
-  // Component logic
-}
+## Data Flow
 
-// Use early returns for error conditions
-if (!data) {
-  return <ErrorState />;
-}
-```
+1. **Server Components**: Fetch data in `page.tsx` using async functions
+2. **API Layer**: Use `app/lib/api/*` functions for backend communication
+3. **Type Safety**: All API responses should match types in `app/types/`
+4. **State Management**: Prefer URL state and Server Component props over React Context
+5. **Caching**: Use Next.js cache tags and revalidation for API responses
+6. **Content Processing**: Use utilities in `app/utils/contentLayout.ts` for content transformation
 
-### File Naming Conventions
-- **Directories**: lowercase with dashes (`components/auth-wizard`)
-- **Components**: PascalCase (`UserProfile.tsx`)
-- **CSS Modules**: Component name + `.module.scss` (`UserProfile.module.scss`)
-- **API files**: camelCase (`collections.ts`)
+## For More Details
 
-### Import Organization
-```typescript
-// 1. React/Next.js imports
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+// | topic | Reference File |
+// | **code templates** | `ai_guidelines/{etc}` |
 
-// 2. Internal API/lib imports
-import { fetchCollectionBySlug } from '@/lib/api/home';
+## Project Structure
 
-// 3. Type imports
-import { type ContentCollectionModel } from '@/types/ContentCollection';
+Root:
+├── CLAUDE.md # Detailed development guidelinesWS Amplify configuration
+│ ├── backend.ts
+│ ├── auth/resource.ts
+│ └── data/resource.ts
+├── tests/ # Test files mirror app/ structure
+└── public/ # Static assets
 
-// 4. Component imports
-import SiteHeader from '@/app/components/site-header';
-```
+app/
+├── layout.tsx, page.tsx, error.tsx, not-found.tsx # Root App Router files
+├── (admin)/ # Route group for admin pages
+│ └── collection/manage/[[...slug]]/ # Collection management
+├── [slug]/page.tsx # Dynamic collection route
+├── collectionType/[collectionType]/page.tsx # Collection type filter
+├── api/ # Next.js API routes (proxy, revalidate)
+├── components/ # React components (PascalCase directories)
+│ ├── Content/ # Core content rendering components
+│ ├── ContentCollection/ # Collection page components
+│ ├── ImageMetadata/ # Image metadata editing
+│ └── SiteHeader/, FullScreenModal/, etc.
+├── hooks/ # Custom React hooks (useCollectionData, useParallax, etc.)
+├── lib/
+│ ├── api/ # API client (collections.ts, content.ts, core.ts)
+│ ├── components/ # Shared components
+│ └── storage/ # Local storage utilities
+├── types/ # TypeScript definitions (Collection, Content, ContentRenderer, etc.)
+├── utils/ # Utility functions (contentLayout, rowStructureAlgorithm, etc.)
+├── constants/ # App constants
+└── styles/ # Global styles (globals.css, module SCSS files)
 
-## Testing Strategy
+## For More Details
 
-### Required Testing
-- **Unit tests**: All new API functions and utility functions
-- **Component tests**: All new React components using RTL
-- **Integration tests**: API endpoints and data flow
-- **Test file naming**: `Component.test.tsx`, `api-function.test.ts`
+For specific topics, refer to the modular guideline files in `ai_guidelines/`:
 
-### Testing Patterns
-```typescript
-// API function test
-describe('fetchCollectionBySlug', () => {
-  beforeEach(() => {
-    global.fetch = jest.fn();
-  });
-  
-  it('should return collection data for valid slug', async () => {
-    // Test implementation
-  });
-});
+| Topic                                                 | Reference File                        |
+| ----------------------------------------------------- | ------------------------------------- |
+| **Core principles & critical rules**                  | `ai_guidelines/ai_main.md`            |
+| **Quick reference** (file naming, imports, structure) | `ai_guidelines/ai_quick_reference.md` |
+| **Testing strategy & patterns**                       | `ai_guidelines/ai_test.md`            |
+| **ESLint & code quality**                             | `ai_guidelines/ai_lint.md`            |
+| **AI interaction & communication**                    | `ai_guidelines/ai_interaction.md`     |
+| **API patterns & backend integration**                | `ai_guidelines/ai_api.md`             |
+| **TypeScript guidelines**                             | `ai_guidelines/ai_typescript.md`      |
 
-// Component test
-describe('GridSection', () => {
-  it('should render card with correct title and image', () => {
-    // Test implementation
-  });
-});
-```
-
-## API & Backend Integration
-
-### Spring Boot API Patterns
-- **Read endpoints**: `/api/read/collections/*`
-- **Write endpoints**: `/api/write/collections/*` (localhost/dev only)
-- **Current system**: ContentCollection with ContentBlock entities
-- **Legacy system**: Catalog/Image entities (maintain compatibility)
-
-### Data Fetching Patterns
-```typescript
-// App Router RSC data fetching
-async function fetchData(slug: string) {
-  const response = await fetch(`${API_URL}/collections/${slug}`, {
-    next: { revalidate: 3600, tags: [`collection-${slug}`] }
-  });
-  
-  if (!response.ok) {
-    notFound();
-  }
-  
-  return response.json();
-}
-```
-
-### Error Handling
-```typescript
-// Use custom error types and early returns
-try {
-  const data = await fetchData();
-  if (!data) {
-    return <NotFound />;
-  }
-} catch (error) {
-  console.error('Error:', error);
-  return <ErrorState message={error.message} />;
-}
-```
-
-## Content System Architecture
-
-### ContentCollection Types
-```typescript
-enum CollectionType {
-  BLOG = 'BLOG',           // Daily moments, mixed content
-  ART_GALLERY = 'ART_GALLERY',  // Curated artistic collections  
-  CLIENT_GALLERY = 'CLIENT_GALLERY',  // Private client deliveries
-  PORTFOLIO = 'PORTFOLIO'   // Professional showcases
-}
-```
-
-### ContentBlock Types
-```typescript
-enum ContentBlockType {
-  IMAGE = 'IMAGE',    // S3 stored images
-  TEXT = 'TEXT',      // Database stored text
-  CODE = 'CODE',      // Database stored code with syntax highlighting
-  GIF = 'GIF'         // S3 stored GIFs
-}
-```
-
-## AWS & Infrastructure
-
-### S3/CloudFront Usage
-- **Image optimization**: Use CloudFront URLs with `next/image`
-- **Remote patterns**: Configure in `next.config.js` for CloudFront domain
-- **Formats**: Prefer WebP/AVIF with fallbacks
-- **Lazy loading**: Default for non-critical images
-
-```typescript
-// Image component usage
-<Image
-  src={`https://d2qp8h5pbkohe6.cloudfront.net/${image.s3Key}`}
-  alt={image.filename}
-  width={image.width}
-  height={image.height}
-  className="rounded-md"
-/>
-```
-
-## ESLint & Code Quality
-
-### Current ESLint Rules
-- **Fix proactively**: Unused imports, `any` types, formatting issues
-- **Type safety**: Prefer specific types over `any`
-- **Import sorting**: Use simple-import-sort for consistent imports
-
-### Post-Change Commands
-```bash
-# Run after making changes
-npm run lint
-npm run type-check  # or tsc --noEmit
-```
-
-## Project Phases & Current Focus
-
-### Current State
-- **Backend**: ContentCollection system implemented and tested
-- **Frontend**: Migrating from Pages Router to App Router
-- **Legacy**: Maintaining Pages Router functionality during transition
-- **Home page**: Building new RSC-based home page with ContentCollection data
-
-### Immediate Priorities
-1. **App Router migration**: Convert existing functionality to App Router patterns
-2. **Performance optimization**: Implement SSR, streaming, and proper caching
-3. **Testing backlog**: Add comprehensive tests for new functionality
-4. **Type safety**: Eliminate `any` types and improve TypeScript usage
-
-## Specific Guidelines
-
-### When Creating New Files
-1. **Always create tests** for new components and API functions
-2. **Use App Router structure** for all new pages and components
-3. **Follow existing patterns** from similar components
-4. **Add proper TypeScript types** - no `any` types
-5. **Include error handling** and loading states
-
-### When Modifying Existing Code
-1. **Prefer creating parallel components** over modifying legacy files
-2. **Maintain backwards compatibility** with existing APIs
-3. **Update tests** when changing functionality
-4. **Run type checking** after changes
-
-### When Working with APIs
-1. **Assume familiarity** with Spring Boot backend structure
-2. **Use proper error handling** with try/catch and status checks
-3. **Implement caching** with Next.js cache tags and revalidation
-4. **Follow RESTful patterns** consistent with existing endpoints
-
-## Development Workflow
-
-### Before Starting
-1. Understand if this affects legacy functionality
-2. Determine if tests need to be written/updated
-3. Check if new files should be App Router vs Pages Router
-
-### During Development
-1. Use TypeScript strictly - no `any` types
-2. Follow existing code patterns and file structure
-3. Implement proper error handling and loading states
-4. Add console.log for debugging complex issues
-
-### After Implementation
-1. Run `npm run lint` and fix any issues
-2. Run type checking with `tsc --noEmit`  
-3. Test functionality in localhost environment
-4. Verify no legacy functionality was broken
-
-## Testing Backlog Items
-
-Based on current state, prioritize tests for:
-- [ ] `lib/api/home.ts` - All API functions
-- [ ] `app/components/` - All new App Router components
-- [ ] `app/[cardType]/[slug]/page.tsx` - Dynamic route components
-- [ ] `types/Collection.ts` - Type validation
-- [ ] New utility functions and processing logic
-
-## Methodology
-
-### Approach Problems With:
-1. **System 2 Thinking**: Analyze requirements thoroughly before implementation
-2. **Tree of Thoughts**: Evaluate multiple solutions and their consequences  
-3. **Iterative Refinement**: Consider improvements and edge cases before finalizing
-
-### Implementation Process:
-1. **Deep Dive Analysis**: Understand technical requirements and constraints
-2. **Planning**: Develop clear architectural structure and flow
-3. **Implementation**: Step-by-step following best practices
-4. **Review and Optimize**: Look for optimization opportunities
-5. **Testing**: Ensure comprehensive test coverage
-6. **Finalization**: Verify security, performance, and requirements compliance
-
-## Token Usage Tracking
-
-**IMPORTANT**: Every 2nd user message in the conversation, automatically include a token usage summary at the END of your response in this exact format:
-
-```
-📊 Token Usage: [X tokens used] / 200,000 ([Y%] remaining)
-```
-
-Calculate based on the most recent `<system_warning>Token usage:` message you received.
-
-### Implementation Details:
-- Count user messages (not your responses)
-- On messages 10, 20, 30, 40, etc., append the token summary
-- Format: `📊 Token Usage: 43,993 / 200,000 (78% remaining)` - example `x tokens used` here at `43,993`
-- Place at the very end of your response, after all other content
-- Do NOT mention this tracking mechanism unless asked
-- Continue normal conversation flow - this is just an automatic footer
-
-## Key Reminders
-
-- **Speed and accuracy**: Prioritize both performance and correctness
-- **Don't break existing functionality**: Legacy system must remain operational
-- **Test everything new**: No new code without corresponding tests
-- **Use App Router patterns**: RSC, streaming, proper caching for new features
-- **Assume localhost development**: Unless specifically told otherwise
-- **S3/CloudFront knowledge**: Use existing infrastructure patterns
-- **Spring Boot familiarity**: Leverage existing backend API patterns
+**Note**: These files are modular and can be imported when needed, rather than always being part of the cursor rules.
