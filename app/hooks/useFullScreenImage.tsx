@@ -18,7 +18,19 @@ export type FullScreenState = {
   scrollPosition: number;
 } | null;
 
-export function useFullScreenImage() {
+export function useFullScreenImage(): {
+  fullScreenState: FullScreenState;
+  loadedImageIds: Set<number>;
+  showMetadata: boolean;
+  modalRef: React.RefObject<HTMLDivElement | null>;
+  isSwiping: React.RefObject<boolean>;
+  showImage: (image: ImageBlock, allImages?: ImageBlock[]) => void;
+  hideImage: (e?: React.MouseEvent) => void;
+  toggleMetadata: (e: React.MouseEvent) => void;
+  setLoadedImageIds: React.Dispatch<React.SetStateAction<Set<number>>>;
+  router: ReturnType<typeof useRouter>;
+  isOpen: boolean;
+} {
   const router = useRouter();
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
   const [showMetadata, setShowMetadata] = useState(false);

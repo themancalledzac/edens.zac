@@ -12,6 +12,7 @@ import type { SingleEntityUpdate } from '@/app/types/createTypes';
 import type {
   ChildCollection,
   CollectionUpdate,
+  LocationModel,
   LocationUpdate,
   PersonUpdate,
   TagUpdate,
@@ -300,6 +301,7 @@ export interface ContentImageUpdateResponse {
   newMetadata: {
     tags?: ContentTagModel[];
     people?: ContentPersonModel[];
+    locations?: LocationModel[];
     cameras?: ContentCameraModel[];
     lenses?: ContentLensModel[];
     filmTypes?: ContentFilmTypeModel[];

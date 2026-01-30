@@ -19,7 +19,7 @@ interface UseInViewportOptions {
  * @param options.rootMargin - Margin around root element
  * @returns Object with isVisible boolean and intersectionRatio (0-1)
  */
-export function useInViewport(ref: RefObject<Element>, options: UseInViewportOptions = {}) {
+export function useInViewport(ref: RefObject<Element | null>, options: UseInViewportOptions = {}) {
   const [isVisible, setIsVisible] = useState(false);
   const [intersectionRatio, setIntersectionRatio] = useState(0);
 
