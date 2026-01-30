@@ -21,9 +21,9 @@ interface FullScreenModalProps {
   fullScreenState: FullScreenState | null;
   loadedImageIds: Set<number>;
   setLoadedImageIds: React.Dispatch<React.SetStateAction<Set<number>>>;
-  modalRef: React.RefObject<HTMLDivElement>;
-  hideImage: () => void;
-  isSwiping: React.MutableRefObject<boolean>;
+  modalRef: React.RefObject<HTMLDivElement | null>;
+  hideImage: (e?: React.MouseEvent) => void;
+  isSwiping: React.RefObject<boolean>;
   showMetadata: boolean;
   toggleMetadata: (e: React.MouseEvent) => void;
   router: AppRouterInstance;
