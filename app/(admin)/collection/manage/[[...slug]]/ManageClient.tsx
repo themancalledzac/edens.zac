@@ -140,6 +140,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collectionDate: collection.collectionDate || '',
         visible: collection.visible ?? true,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
+        rowsWide: collection.rowsWide ?? undefined,
       };
     }
     return {
@@ -150,6 +151,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       collectionDate: '',
       visible: true,
       displayMode: 'CHRONOLOGICAL',
+      rowsWide: undefined,
     };
   });
 
@@ -164,6 +166,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collectionDate: collection.collectionDate || '',
         visible: collection.visible ?? true,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
+        rowsWide: collection.rowsWide ?? undefined,
       });
     }
   }, [collection]);
@@ -556,14 +559,21 @@ export default function ManageClient({ slug }: ManageClientProps) {
     // No pending update - use original collection location
     // Handle both object format (new API) and string format (legacy)
     const collectionLocation = collection?.location;
-    
+
     // If location is already an object with id and name, use it directly
-    if (collectionLocation && typeof collectionLocation === 'object' && 'id' in collectionLocation && 'name' in collectionLocation) {
+    if (
+      collectionLocation &&
+      typeof collectionLocation === 'object' &&
+      'id' in collectionLocation &&
+      'name' in collectionLocation
+    ) {
       // It's already a LocationModel - find it in availableLocations to ensure we have the correct reference
-      const location = availableLocations.find(loc => loc.id === (collectionLocation as LocationModel).id);
+      const location = availableLocations.find(
+        loc => loc.id === (collectionLocation as LocationModel).id
+      );
       return location || (collectionLocation as LocationModel);
     }
-    
+
     // Otherwise, treat it as a string and convert
     return convertLocationStringToModel(
       typeof collectionLocation === 'string' ? collectionLocation : null,
@@ -870,6 +880,57 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         </div>
                       </div>
 
+                      {/* Items Per Row (Rows Wide) */}
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>
+                          Items Per Row
+                          <span className={styles.formLabelHint}> (Default: 4)</span>
+                        </label>
+                        <div className={styles.numberStepperWrapper}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setUpdateData(prev => ({
+                                ...prev,
+                                rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
+                              }))
+                            }
+                            className={styles.stepperButton}
+                            disabled={(updateData.rowsWide ?? 4) <= 1}
+                          >
+                            ←
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            max="6"
+                            value={updateData.rowsWide ?? ''}
+                            placeholder="4"
+                            onChange={e => {
+                              const value =
+                                e.target.value === '' ? undefined : Number.parseInt(e.target.value);
+                              if (value === undefined || (value >= 1 && value <= 6)) {
+                                setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                              }
+                            }}
+                            className={styles.numberInput}
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setUpdateData(prev => ({
+                                ...prev,
+                                rowsWide: Math.min(6, (prev.rowsWide ?? 4) + 1),
+                              }))
+                            }
+                            className={styles.stepperButton}
+                            disabled={(updateData.rowsWide ?? 4) >= 6}
+                          >
+                            →
+                          </button>
+                        </div>
+                      </div>
+
                       {/* Description */}
                       <div className={styles.formGroup}>
                         <label className={styles.formLabel}>Description</label>
@@ -990,9 +1051,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             type="button"
                             onClick={() => {
                               // Select all image IDs from collection content
-                              const allImageIds = collection?.content
-                                ?.filter(isContentImage)
-                                .map(img => img.id) || [];
+                              const allImageIds =
+                                collection?.content?.filter(isContentImage).map(img => img.id) ||
+                                [];
                               setSelectedImageIds(allImageIds);
                             }}
                             className={styles.startBulkEditButton}

@@ -49,6 +49,7 @@ export function buildUpdatePayload(
     { key: 'collectionDate', original: originalCollection.collectionDate || '' },
     { key: 'visible', original: originalCollection.visible },
     { key: 'displayMode', original: originalCollection.displayMode },
+    { key: 'rowsWide', original: originalCollection.rowsWide },
   ];
 
   // Only include fields that have actually changed

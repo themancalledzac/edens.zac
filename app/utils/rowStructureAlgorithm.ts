@@ -36,14 +36,32 @@ export interface RowWithPattern {
 // ===================== Helper Functions =====================
 
 /**
+ * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel)
+ * Collection cards have collectionType set during conversion
+ */
+function isCollectionCard(item: AnyContentModel): boolean {
+  return 'collectionType' in item && !!item.collectionType;
+}
+
+/**
  * Get rating or star value for an item
  * - zeroOne=false (default): Returns raw rating (0-5), treats 0 as 0
  * - zeroOne=true: Returns star value, converts 0 or 1 to 1, 2+ stays as rating
+ *
+ * Special handling for collection cards:
+ * - Collection cards are treated as 4-star items to ensure 2-per-row layout
+ * - Two 4-star items = 8 stars (within 7-9 range) → natural 2-per-row grouping
  *
  * @param item - Content item to get rating for
  * @param zeroOne - If true, converts 0 to 1 (star value). If false, returns raw rating.
  */
 function getRating(item: AnyContentModel, zeroOne: boolean = false): number {
+  // Collection cards get effective rating of 4 for 2-per-row layout
+  // This ensures collections are displayed in pairs (4+4=8 stars, within 7-9 range)
+  if (isCollectionCard(item)) {
+    return 4;
+  }
+
   if (!isContentImage(item)) {
     return zeroOne ? 1 : 0; // Non-images: 1 star if zeroOne, 0 rating otherwise
   }

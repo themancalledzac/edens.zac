@@ -42,6 +42,7 @@ export interface CollectionBaseModel {
   collectionDate?: string;
   visible?: boolean;
   displayMode?: DisplayMode;
+  rowsWide?: number; // Number of items per row (chunk size for layout)
   createdAt?: string;
   updatedAt?: string;
 }
@@ -134,6 +135,7 @@ export interface CollectionUpdateRequest {
   collectionDate?: string;
   visible?: boolean;
   displayMode?: DisplayMode;
+  rowsWide?: number; // Number of items per row (chunk size for layout)
   password?: string;
   contentPerPage?: number;
   coverImageId?: number;
