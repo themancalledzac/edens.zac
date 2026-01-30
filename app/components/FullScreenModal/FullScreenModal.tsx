@@ -101,11 +101,11 @@ export function FullScreenModal({
                     {currentImage.lens && <span>{currentImage.lens.name}</span>}
                   </div>
                 )}
-                {(currentImage.iso || currentImage.fStop || currentImage.shutterSpeed || currentImage.focalLength) && (
+                {(currentImage.iso || currentImage.fstop || currentImage.shutterSpeed || currentImage.focalLength) && (
                   <div className={styles.metadataSettingsRow}>
                     {currentImage.iso && <span>{currentImage.iso}</span>}
                     {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
-                    {currentImage.fStop && <span>{currentImage.fStop}</span>}
+                    {currentImage.fstop && <span>{currentImage.fstop}</span>}
                     {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
                   </div>
                 )}

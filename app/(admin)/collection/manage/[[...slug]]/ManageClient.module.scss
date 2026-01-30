@@ -1,6 +1,17 @@
-// Container padding to match main collections page
 .container {
-  /* Mobile base: no padding */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  margin: 0 auto;
+  width: 100%;
+  max-width: var(--page-max-width);
+  position: relative; /* Allow dropdown to position relative to this container */
+
+  /* Container padding for left/right and top - shared by header and content */
   padding-left: 0;
   padding-right: 0;
   padding-top: var(--page-padding-mobile);

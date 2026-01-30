@@ -1,8 +1,8 @@
 /**
  * Tests for objectComparison.ts
- * 
+ *
  * Testing Strategy:
- * 
+ *
  * Passing test cases for deepEqual:
  * - Primitives: same values return true
  * - Primitives: different values return false
@@ -20,13 +20,13 @@
  * - Same reference: returns true
  * - Empty objects: both empty return true
  * - Empty arrays: both empty return true
- * 
+ *
  * Failing test cases for deepEqual:
  * - Different types return false
  * - Array vs object return false
  * - Object with extra keys return false
  * - Object with missing keys return false
- * 
+ *
  * Passing test cases for hasObjectChanges:
  * - Objects with different values return true
  * - Objects with same values return false
@@ -34,7 +34,7 @@
  * - Handles nested objects
  * - Handles arrays
  * - Handles undefined vs missing properties correctly
- * 
+ *
  * Failing test cases for hasObjectChanges:
  * - Only 'id' differs: returns false (id is ignored)
  * - Objects with same values except id: returns false
@@ -74,11 +74,15 @@ describe('deepEqual', () => {
     });
 
     it('should return true for same undefined values', () => {
-      expect(deepEqual(undefined, undefined)).toBe(true);
+      const a = undefined;
+      const b = undefined;
+      expect(deepEqual(a, b)).toBe(true);
     });
 
     it('should return false for null vs undefined', () => {
-      expect(deepEqual(null, undefined)).toBe(false);
+      const a = null;
+      const b = undefined;
+      expect(deepEqual(a, b)).toBe(false);
     });
 
     it('should return false for different types', () => {
@@ -106,11 +110,33 @@ describe('deepEqual', () => {
     });
 
     it('should return true for nested arrays', () => {
-      expect(deepEqual([[1, 2], [3, 4]], [[1, 2], [3, 4]])).toBe(true);
+      expect(
+        deepEqual(
+          [
+            [1, 2],
+            [3, 4],
+          ],
+          [
+            [1, 2],
+            [3, 4],
+          ]
+        )
+      ).toBe(true);
     });
 
     it('should return false for nested arrays with different values', () => {
-      expect(deepEqual([[1, 2], [3, 4]], [[1, 2], [3, 5]])).toBe(false);
+      expect(
+        deepEqual(
+          [
+            [1, 2],
+            [3, 4],
+          ],
+          [
+            [1, 2],
+            [3, 5],
+          ]
+        )
+      ).toBe(false);
     });
 
     it('should return false for array vs object', () => {
@@ -331,4 +357,3 @@ describe('hasObjectChanges', () => {
     });
   });
 });
-

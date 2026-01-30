@@ -24,7 +24,7 @@ html,
   --color-black: #111;
   --color-bg: var(--color-white);
   --color-fg: var(--color-black);
-  
+
   /* Badge and overlay colors */
   --color-badge-bg: rgba(0, 0, 0, 0.9);
   --color-text-overlay-bg: rgba(89, 89, 89, 0.4);

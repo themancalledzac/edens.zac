@@ -91,11 +91,71 @@ export function normalizeContentToRendererProps(
   positionClassName: string,
   isMobile: boolean
 ): ContentRendererProps {
+  // DEBUG: Check for NaN values
+  if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) {
+    console.error('[normalizeContentToRendererProps] NaN detected:', {
+      contentId: content.id,
+      contentType: content.contentType,
+      calculatedWidth,
+      calculatedHeight,
+      isNaNWidth: !Number.isFinite(calculatedWidth),
+      isNaNHeight: !Number.isFinite(calculatedHeight),
+    });
+  }
+  
+  // Calculate fallback values if NaN detected
+  let validWidth = calculatedWidth;
+  let validHeight = calculatedHeight;
+  
+  if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) {
+    // Try to get image dimensions to calculate fallback
+    let imageWidth: number | undefined;
+    let imageHeight: number | undefined;
+    
+    if (isContentImage(content)) {
+      imageWidth = content.imageWidth ?? content.width;
+      imageHeight = content.imageHeight ?? content.height;
+    } else if (isContentCollection(content)) {
+      imageWidth = content.coverImage?.imageWidth ?? content.coverImage?.width;
+      imageHeight = content.coverImage?.imageHeight ?? content.coverImage?.height;
+    } else if (isGifContent(content)) {
+      imageWidth = content.width;
+      imageHeight = content.height;
+    }
+    
+    // Calculate fallback from image dimensions if available
+    if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
+      if (!Number.isFinite(calculatedWidth) && Number.isFinite(calculatedHeight)) {
+        // Width is NaN, height is valid - calculate width from aspect ratio
+        validWidth = (calculatedHeight * imageWidth) / imageHeight;
+      } else if (!Number.isFinite(calculatedHeight) && Number.isFinite(calculatedWidth)) {
+        // Height is NaN, width is valid - calculate height from aspect ratio
+        validHeight = (calculatedWidth * imageHeight) / imageWidth;
+      } else {
+        // Both are NaN - use default aspect ratio (3:2)
+        validWidth = 300;
+        validHeight = 200;
+      }
+    } else {
+      // No image dimensions available - use default aspect ratio (3:2)
+      if (!Number.isFinite(calculatedWidth)) {
+        validWidth = Number.isFinite(calculatedHeight) ? (calculatedHeight * 1.5) : 300;
+      }
+      if (!Number.isFinite(calculatedHeight)) {
+        validHeight = Number.isFinite(calculatedWidth) ? (calculatedWidth / 1.5) : 200;
+      }
+      if (!Number.isFinite(validWidth) && !Number.isFinite(validHeight)) {
+        validWidth = 300;
+        validHeight = 200;
+      }
+    }
+  }
+  
   const baseProps: ContentRendererProps = {
     contentId: content.id,
     className: positionClassName,
-    width: Math.round(calculatedWidth),
-    height: Math.round(calculatedHeight),
+    width: Math.round(validWidth),
+    height: Math.round(validHeight),
     isMobile,
     imageUrl: '',
     imageWidth: 800,
@@ -315,6 +375,20 @@ export function determineContentRendererProps(
   isMobile: boolean,
   styles: { imageSingle: string; imageLeft: string; imageRight: string; imageMiddle: string }
 ): ContentRendererProps {
+  // DEBUG: Check for NaN values before normalization
+  if (!Number.isFinite(item.width) || !Number.isFinite(item.height)) {
+    console.error('[determineContentRendererProps] NaN detected:', {
+      contentId: item.content.id,
+      contentType: item.content.contentType,
+      itemWidth: item.width,
+      itemHeight: item.height,
+      isNaNWidth: !Number.isFinite(item.width),
+      isNaNHeight: !Number.isFinite(item.height),
+      totalInRow,
+      index,
+    });
+  }
+  
   // Determine position class (REPLACES Component.tsx determineBaseProps logic)
   const positionClassName = determinePositionClassName(totalInRow, index, styles);
   

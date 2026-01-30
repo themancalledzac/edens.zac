@@ -4,6 +4,7 @@
  */
 
 import type { AnyContentModel, ContentImageModel } from './Content';
+import type { SingleEntityUpdate } from './createTypes';
 
 /**
  * Collection type enum - matches backend CollectionType
@@ -14,7 +15,7 @@ export enum CollectionType {
   ART_GALLERY = 'ART_GALLERY',
   CLIENT_GALLERY = 'CLIENT_GALLERY',
   HOME = 'HOME',
-  MISC = 'MISC'
+  MISC = 'MISC',
 }
 
 /**
@@ -37,7 +38,7 @@ export interface CollectionBaseModel {
   title?: string;
   slug?: string;
   description?: string;
-  location?: string;
+  location?: string | LocationModel; // Can be string (legacy) or LocationModel (new API format)
   collectionDate?: string;
   visible?: boolean;
   displayMode?: DisplayMode;
@@ -129,7 +130,7 @@ export interface CollectionUpdateRequest {
   title?: string;
   slug?: string;
   description?: string;
-  location?: string;
+  location?: LocationUpdate;
   collectionDate?: string;
   visible?: boolean;
   displayMode?: DisplayMode;
@@ -220,8 +221,27 @@ export type {
   ContentLensModel,
   ContentPersonModel,
   ContentTagModel,
-  FilmFormatDTO
+  FilmFormatDTO,
 } from './ImageMetadata';
+
+/**
+ * Location Model - Represents a location that can be assigned to collections and content
+ * Matches backend LocationModel.java
+ */
+export interface LocationModel {
+  id: number;
+  name: string;
+}
+
+/**
+ * LocationUpdate - Update pattern for location assignment (single-select)
+ * Matches backend LocationUpdate.java
+ *
+ * - prev: ID of existing location to use
+ * - newValue: Name of new location to create
+ * - remove: true to remove location association
+ */
+export type LocationUpdate = SingleEntityUpdate;
 
 /**
  * General metadata DTO containing all available metadata for dropdowns
@@ -230,9 +250,16 @@ export type {
 export interface GeneralMetadataDTO {
   tags: Array<{ id: number; name: string }>;
   people: Array<{ id: number; name: string }>;
+  locations: LocationModel[];
   cameras: Array<{ id: number; name: string }>;
   lenses: Array<{ id: number; name: string }>;
-  filmTypes: Array<{ id: number; filmTypeName?: string; name: string; defaultIso: number; contentImageIds?: number[] }>;
+  filmTypes: Array<{
+    id: number;
+    filmTypeName?: string;
+    name: string;
+    defaultIso: number;
+    contentImageIds?: number[];
+  }>;
   filmFormats: Array<{ name: string; displayName: string }>;
   collections: CollectionListModel[];
 }
@@ -246,6 +273,7 @@ export interface GeneralMetadataDTO {
  *   collection: {...},
  *   tags: [...],
  *   people: [...],
+ *   locations: [...],
  *   collections: [...],
  *   cameras: [...],
  *   lenses: [...],
@@ -258,6 +286,7 @@ export interface CollectionUpdateResponseDTO {
   // Metadata fields are at root level, not nested
   tags?: GeneralMetadataDTO['tags'];
   people?: GeneralMetadataDTO['people'];
+  locations?: GeneralMetadataDTO['locations'];
   cameras?: GeneralMetadataDTO['cameras'];
   lenses?: GeneralMetadataDTO['lenses'];
   filmTypes?: GeneralMetadataDTO['filmTypes'];

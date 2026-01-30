@@ -10,7 +10,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig = {
   reactStrictMode: true,
   sassOptions: {
-    includePaths: [path.join( process.cwd(), 'styles' )],
+    includePaths: [path.join(process.cwd(), 'styles')],
   },
   images: {
     unoptimized: true,
@@ -29,9 +29,11 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
-  turbopack: {},
+  turbopack: {
+    root: process.cwd(),
+  },
   // Add webpack configuration to handle caching
-  webpack: (config) => {
+  webpack: config => {
     // Custom webpack config if needed
     return config;
   },

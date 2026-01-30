@@ -72,7 +72,7 @@ export default function ContentBlockWithFullScreen({
     isSwiping,
     showMetadata,
     toggleMetadata,
-    router
+    router,
   } = useFullScreenImage();
 
   useEffect(() => {
@@ -84,16 +84,11 @@ export default function ContentBlockWithFullScreen({
   const imageBlocks = useMemo(() => {
     return allBlocks.filter(
       (block): block is ContentImageModel | ContentParallaxImageModel =>
-        block.contentType === 'IMAGE' && block.id != -1 // Exclude cover image (id: -1)
+        block.contentType === 'IMAGE'
     );
   }, [allBlocks]);
 
-  const handleFullScreenImageClick = (
-    image: ContentImageModel | ContentParallaxImageModel
-  ) => {
-    // Don't open fullscreen for cover image (id: -1)
-    if (image.id === -1) return;
-    
+  const handleFullScreenImageClick = (image: ContentImageModel | ContentParallaxImageModel) => {
     showImage(image, imageBlocks);
   };
 
@@ -110,7 +105,7 @@ export default function ContentBlockWithFullScreen({
     if (!hasMore || !sentinelRef.current) return;
 
     const observer = new IntersectionObserver(
-      (entries) => {
+      entries => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
             setShowButton(true);
@@ -125,7 +120,9 @@ export default function ContentBlockWithFullScreen({
   }, [hasMore]);
 
   const handleLoadMore = () => {
-    setVisibleCount(prev => Math.min(prev + (initialPageSize || DEFAULT_CHUNK_SIZE), allBlocks.length));
+    setVisibleCount(prev =>
+      Math.min(prev + (initialPageSize || DEFAULT_CHUNK_SIZE), allBlocks.length)
+    );
     setShowButton(false);
   };
 
@@ -143,6 +140,7 @@ export default function ContentBlockWithFullScreen({
         selectedImageIds={selectedImageIds}
         currentCollectionId={currentCollectionId}
         chunkSize={chunkSize}
+        collectionData={collectionData}
         enableDragAndDrop={enableDragAndDrop}
         draggedImageId={draggedImageId}
         dragOverImageId={dragOverImageId}
@@ -157,11 +155,7 @@ export default function ContentBlockWithFullScreen({
           <div ref={sentinelRef} style={{ height: '1px', visibility: 'hidden' }} />
           {showButton && (
             <div className={styles.loadMoreContainer}>
-              <button
-                type="button"
-                onClick={handleLoadMore}
-                className={styles.loadMoreButton}
-              >
+              <button type="button" onClick={handleLoadMore} className={styles.loadMoreButton}>
                 Load More
               </button>
               <div className={styles.paginationInfo}>

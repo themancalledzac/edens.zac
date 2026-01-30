@@ -9,11 +9,15 @@
  */
 
 import {
-  type AnyContentModel,
   type ContentCollectionModel,
   type ContentImageModel,
   type ContentParallaxImageModel,
 } from '@/app/types/Content';
+
+/** Minimal content interface for drag operations (only needs id) */
+interface DragContentItem {
+  id: number;
+}
 import { convertCollectionContentToParallax } from '@/app/utils/contentLayout';
 
 /**
@@ -118,7 +122,7 @@ export function createContentClickHandler(
  * @returns Drag start handler function or undefined
  */
 export function createDragStartHandler(
-  itemContent: AnyContentModel,
+  itemContent: DragContentItem,
   isDraggingRef: React.MutableRefObject<boolean>,
   onDragStart?: (contentId: number) => void
 ): ((e: React.DragEvent) => void) | undefined {
@@ -142,7 +146,7 @@ export function createDragStartHandler(
  * @returns Drag over handler function or undefined
  */
 export function createDragOverHandler(
-  itemContent: AnyContentModel,
+  itemContent: DragContentItem,
   draggedContentId: number | null | undefined,
   onDragOver?: (e: React.DragEvent, contentId: number) => void
 ): ((e: React.DragEvent) => void) | undefined {
@@ -166,7 +170,7 @@ export function createDragOverHandler(
  * @returns Drop handler function or undefined
  */
 export function createDropHandler(
-  itemContent: AnyContentModel,
+  itemContent: DragContentItem,
   draggedContentId: number | null | undefined,
   isDraggingRef: React.MutableRefObject<boolean>,
   onDrop?: (e: React.DragEvent, contentId: number) => void
@@ -216,7 +220,7 @@ export function createDragEndHandler(
  * @returns Object containing all drag handlers or undefined handlers
  */
 export function createDragHandlers(
-  itemContent: AnyContentModel,
+  itemContent: DragContentItem,
   enableDragAndDrop: boolean,
   draggedContentId: number | null | undefined,
   isDraggingRef: React.MutableRefObject<boolean>,

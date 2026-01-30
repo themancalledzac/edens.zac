@@ -8,7 +8,24 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
-import { getContentDimensions, hasImage, isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
+import {
+  getAspectRatio,
+  getContentDimensions,
+  getSlotWidth,
+  hasImage,
+  isContentCollection,
+  isContentImage,
+  isVerticalImage,
+} from '@/app/utils/contentTypeGuards';
+import {
+  calculateRowSizesFromPattern,
+  createRowsArray,
+  type PatternResult,
+  type RowWithPattern,
+} from '@/app/utils/rowStructureAlgorithm';
+
+// Re-export for consumers
+export type { PatternResult, RowWithPattern };
 
 /**
  * Simplified Layout utilities for Content system
@@ -18,23 +35,12 @@ import { getContentDimensions, hasImage, isContentCollection, isContentImage } f
 // ===================== Image Classification Helpers =====================
 
 /**
- * Check if content is a vertical/square image (aspect ratio <= 1.0, excluding tall panoramas)
- */
-function isVerticalImage(item: AnyContentModel | undefined): boolean {
-  if (!item || !hasImage(item)) return false;
-  const { width, height } = getContentDimensions(item);
-  const ratio = width / Math.max(1, height);
-  return ratio <= 1.0 && ratio > 0.5; // Vertical or square, but not a tall panorama
-}
-
-/**
  * Check if content is a 5-star horizontal image (standalone)
  * Note: Square (1:1) is considered vertical, so horizontal means ratio > 1.0
  */
 function isFiveStarHorizontal(item: AnyContentModel | undefined): boolean {
   if (!item || !hasImage(item) || !isContentImage(item)) return false;
-  const { width, height } = getContentDimensions(item);
-  const ratio = width / Math.max(1, height);
+  const ratio = getAspectRatio(item);
   return ratio > 1.0 && item.rating === 5;
 }
 
@@ -44,19 +50,19 @@ function isFiveStarHorizontal(item: AnyContentModel | undefined): boolean {
  */
 function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
   if (content.length < 2) return content;
-  
+
   const result = [...content];
   let i = 0;
-  
+
   while (i < result.length - 1) {
     const current = result[i];
     const next = result[i + 1];
-    
+
     if (current && next && isVerticalImage(current) && isFiveStarHorizontal(next)) {
       const prev = i > 0 ? result[i - 1] : undefined;
       // Lonely if nothing before, or previous is 5-star horizontal (can't pair)
       const isLonely = !prev || isFiveStarHorizontal(prev);
-      
+
       if (isLonely) {
         // Swap: [V, 5H] → [5H, V]
         result[i] = next;
@@ -67,7 +73,7 @@ function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
     }
     i++;
   }
-  
+
   return result;
 }
 
@@ -75,10 +81,7 @@ function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
 
 /**
  * Chunk ContentModels based on rating-aware slot system
- * - 5-star horizontal: standalone
- * - 4-star horizontal: standalone unless adjacent to vertical (then pairs)
- * - 3+ star: half-width slots (chunkSize/2)
- * - 1-2 star: normal slots (1)
+ * Uses getSlotWidth from contentTypeGuards for consistent slot calculation
  * @param content - Array of content blocks to chunk into rows
  * @param chunkSize - Number of normal-width items per row (default: 2)
  * @returns Array of content rows
@@ -88,7 +91,7 @@ export function chunkContent(
   chunkSize: number = LAYOUT.defaultChunkSize
 ): AnyContentModel[][] {
   if (!content || content.length === 0) return [];
-  
+
   // Enforce minimum chunk size to ensure halfSlot is at least 1
   const effectiveChunkSize = Math.max(chunkSize, LAYOUT.minChunkSize);
 
@@ -102,25 +105,16 @@ export function chunkContent(
   for (let i = 0; i < reordered.length; i++) {
     const contentItem = reordered[i];
     if (!contentItem) continue;
-    
+
     const prevItem = i > 0 ? reordered[i - 1] : undefined;
     const nextItem = i < reordered.length - 1 ? reordered[i + 1] : undefined;
-    
-    const slotWidth = getSlotWidth(contentItem, effectiveChunkSize, prevItem, nextItem);
-    
-    // Standalone items get their own row
-    if (slotWidth === Infinity) {
-      if (currentRow.length > 0) {
-        result.push([...currentRow]);
-        currentRow = [];
-        currentRowSlots = 0;
-      }
-      result.push([contentItem]);
-      continue;
-    }
 
-    // If item needs more slots than available, make it standalone
-    if (slotWidth > effectiveChunkSize) {
+    const slotWidth = getSlotWidth(contentItem, effectiveChunkSize, prevItem, nextItem);
+
+    // Standalone items (slotWidth >= chunkSize) get their own row
+    // Note: Pattern registry now handles standalone detection, but chunkContent
+    // is still used for slot-based layout (mobile/fallback)
+    if (slotWidth >= effectiveChunkSize) {
       if (currentRow.length > 0) {
         result.push([...currentRow]);
         currentRow = [];
@@ -134,7 +128,7 @@ export function chunkContent(
     if (currentRowSlots + slotWidth <= effectiveChunkSize) {
       currentRow.push(contentItem);
       currentRowSlots += slotWidth;
-      
+
       if (currentRowSlots === effectiveChunkSize) {
         result.push([...currentRow]);
         currentRow = [];
@@ -156,91 +150,21 @@ export function chunkContent(
   return result;
 }
 
-/**
- * Get slot width for content item based on aspect ratio, rating, and adjacency context
- * 
- * Slot width rules:
- * - Header items (id: -1, -2): chunkSize/2 (always pair to fill row)
- * - Collection cards (has slug): chunkSize/2 (pair up on catalog pages)
- * - Wide panorama (ratio ≥ 2): Infinity (standalone)
- * - Tall panorama (ratio ≤ 0.5): 1 (normal)
- * - 5-star horizontal: Infinity (standalone)
- * - 4-star horizontal: Infinity, unless adjacent to vertical then chunkSize/2
- * - 3-star (any orientation): chunkSize/2
- * - Vertical 4-5 star: chunkSize/2
- * - Vertical 1-2 star: 1 (normal)
- * - Horizontal 1-2 star: 1 (normal)
- */
-function getSlotWidth(
-  contentItem: AnyContentModel,
-  chunkSize: number,
-  prevItem?: AnyContentModel,
-  nextItem?: AnyContentModel
-): number {
-  const halfSlot = Math.floor(chunkSize / 2);
-  
-  // Header items (cover image & metadata) always fill half the row each
-  // This ensures they pair together without other content joining
-  if (contentItem.id === -1 || contentItem.id === -2) {
-    return halfSlot;
-  }
-  
-  // Collection cards (with slug for navigation) get half slot
-  // This ensures 2 collections per row on home/catalog pages
-  if ('slug' in contentItem && contentItem.slug) {
-    return halfSlot;
-  }
-  
-  if (!hasImage(contentItem)) return 1;
-
-  const { width, height } = getContentDimensions(contentItem);
-  const ratio = width / Math.max(1, height);
-  const isHorizontal = ratio > 1.0; // Square (1:1) is considered vertical
-  
-  // Wide panorama → standalone
-  if (ratio >= 2) return Infinity;
-  
-  // Tall panorama → normal slot
-  if (ratio <= 0.5) return 1;
-
-  // Rating-based logic (only for images with ratings)
-  if (isContentImage(contentItem)) {
-    const rating = contentItem.rating || 0;
-    
-    if (isHorizontal) {
-      // 5-star horizontal → always standalone
-      if (rating === 5) return Infinity;
-      
-      // 4-star horizontal → standalone unless adjacent to vertical
-      if (rating === 4) {
-        const adjacentToVertical = isVerticalImage(prevItem) || isVerticalImage(nextItem);
-        return adjacentToVertical ? halfSlot : Infinity;
-      }
-      
-      // 3-star horizontal → half slot
-      if (rating === 3) return halfSlot;
-      
-      // 1-2 star horizontal → normal
-      return 1;
-    } else {
-      // Vertical images
-      // 3+ star vertical → half slot
-      if (rating >= 3) return halfSlot;
-      
-      // 1-2 star vertical → normal
-      return 1;
-    }
-  }
-
-  return 1;
-}
-
 // ===================== Content sizing =====================
 
 export interface CalculatedContentSize {
   content: AnyContentModel;
   width: number;
   height: number;
+}
+
+/**
+ * Row with pattern metadata and calculated sizes
+ * Used for rendering complex layouts (main-stacked, 5-star patterns, etc.)
+ */
+export interface RowWithPatternAndSizes {
+  pattern: PatternResult;
+  items: CalculatedContentSize[];
 }
 
 /**
@@ -259,7 +183,7 @@ export function calculateContentSizes(
   chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
   if (!content || content.length === 0) return [];
-  
+
   // Enforce minimum chunk size
   const effectiveChunkSize = Math.max(chunkSize, LAYOUT.minChunkSize);
 
@@ -268,34 +192,41 @@ export function calculateContentSizes(
     if (!contentElement) return [];
 
     const { width, height } = getContentDimensions(contentElement);
-    
+
     // Validate dimensions
     if (width <= 0 || height <= 0) {
       // Fallback to default aspect ratio
-      return [{
-        content: contentElement,
-        width: componentWidth,
-        height: componentWidth / 1.5, // Default 3:2 aspect ratio
-      }];
+      return [
+        {
+          content: contentElement,
+          width: componentWidth,
+          height: componentWidth / 1.5, // Default 3:2 aspect ratio
+        },
+      ];
     }
-    
+
     const ratio = width / Math.max(1, height);
     const displayHeight = componentWidth / ratio;
 
     // Validate calculated height
     if (!Number.isFinite(displayHeight) || displayHeight <= 0) {
-      return [{
-        content: contentElement,
-        width: componentWidth,
-        height: componentWidth / 1.5, // Fallback to default aspect ratio
-      }];
+      return [
+        {
+          content: contentElement,
+          width: componentWidth,
+          height: componentWidth / 1.5, // Fallback to default aspect ratio
+        },
+      ];
     }
 
-    return [{
-      content: contentElement,
-      width: componentWidth,
-      height: displayHeight,
-    }];
+    const result = [
+      {
+        content: contentElement,
+        width: componentWidth,
+        height: displayHeight,
+      },
+    ];
+    return result;
   }
 
   // Calculate ratios for all content, using effective dimensions based on slot width
@@ -304,22 +235,23 @@ export function calculateContentSizes(
   const ratios = content.map(contentItem => {
     const { width, height } = getContentDimensions(contentItem);
     const slotWidth = getSlotWidth(contentItem, effectiveChunkSize);
-    
-    // Guard: Standalone items (Infinity slot width) should never reach here
-    if (slotWidth === Infinity) {
-      return width / Math.max(1, height);
-    }
-    
+
     // Validate dimensions
     if (width <= 0 || height <= 0) {
       return 1.5; // Default 3:2 aspect ratio
     }
-    
+
+    // Guard: If slotWidth is very large (>= chunkSize), it's likely a standalone item
+    // Use original aspect ratio without scaling
+    if (!Number.isFinite(slotWidth) || slotWidth <= 0 || slotWidth >= effectiveChunkSize) {
+      return width / Math.max(1, height);
+    }
+
     // Scale by slot width for proportional space allocation
     // Example: slot=2 means 2x visual space compared to slot=1
     const effectiveWidth = width * slotWidth;
     const effectiveHeight = height * slotWidth;
-    
+
     return effectiveWidth / Math.max(1, effectiveHeight);
   });
 
@@ -328,7 +260,7 @@ export function calculateContentSizes(
     if (!Number.isFinite(ratio) || ratio <= 0) return sum;
     return sum + ratio;
   }, 0);
-  
+
   // Guard against division by zero
   if (ratioSum === 0 || !Number.isFinite(ratioSum)) {
     // Fallback: distribute width equally among all items
@@ -344,8 +276,34 @@ export function calculateContentSizes(
       };
     });
   }
-  
+
   const commonHeight = componentWidth / ratioSum;
+
+  // Validate commonHeight - if invalid, use equal width distribution fallback
+  if (!Number.isFinite(commonHeight) || commonHeight <= 0) {
+    // Use existing fallback logic - equal width distribution
+    const equalWidth = componentWidth / content.length;
+    return content.map(contentItem => {
+      const { width, height } = getContentDimensions(contentItem);
+      const ratio = width / Math.max(1, height);
+      const calculatedHeight = equalWidth / ratio;
+
+      // Validate calculated height
+      if (!Number.isFinite(calculatedHeight) || calculatedHeight <= 0) {
+        return {
+          content: contentItem,
+          width: equalWidth,
+          height: equalWidth / 1.5, // Default 3:2 aspect ratio
+        };
+      }
+
+      return {
+        content: contentItem,
+        width: equalWidth,
+        height: calculatedHeight,
+      };
+    });
+  }
 
   return content.map((contentItem, idx) => {
     const ratio = ratios[idx];
@@ -355,11 +313,11 @@ export function calculateContentSizes(
 
     // Calculate width from effective ratio (gives 2-3x space for rated images)
     const calculatedWidth = ratio * commonHeight;
-    
+
     // Calculate height to preserve the ORIGINAL aspect ratio (not effective)
     // We use the original dimensions, not the effective ones, for the final height
     const { width: originalWidth, height: originalHeight } = getContentDimensions(contentItem);
-    
+
     // Validate original dimensions
     if (originalWidth <= 0 || originalHeight <= 0) {
       // Fallback: use calculated width with default aspect ratio
@@ -369,12 +327,17 @@ export function calculateContentSizes(
         height: calculatedWidth / 1.5, // Default 3:2 aspect ratio
       };
     }
-    
+
     const originalRatio = originalWidth / Math.max(1, originalHeight);
     const calculatedHeight = calculatedWidth / originalRatio;
 
     // Validate calculated dimensions
-    if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight) || calculatedWidth <= 0 || calculatedHeight <= 0) {
+    if (
+      !Number.isFinite(calculatedWidth) ||
+      !Number.isFinite(calculatedHeight) ||
+      calculatedWidth <= 0 ||
+      calculatedHeight <= 0
+    ) {
       return { content: contentItem, width: 0, height: 0 };
     }
 
@@ -387,19 +350,75 @@ export function calculateContentSizes(
 }
 
 /**
- * Chunk content into rows and calculate display sizes for each chunk
- * @param content - Array of content blocks to process
+ * Options for content display processing
+ */
+export interface ProcessContentOptions {
+  /** Whether the viewport is mobile (disables pattern detection) */
+  isMobile?: boolean;
+  /** Enable pattern detection for advanced layouts (default: true on desktop) */
+  enablePatternDetection?: boolean;
+  /** Collection model for creating header row (cover image + metadata) */
+  collectionData?: CollectionModel;
+}
+
+/**
+ * Process content for display with full pattern metadata
+ *
+ * Supports two layout modes:
+ * 1. Pattern Detection (desktop default): Uses pattern registry to detect
+ *    optimal layouts like main-stacked, 5-star vertical patterns, etc.
+ * 2. Slot-Based (mobile/fallback): Simple slot-based chunking
+ *
+ * If collectionData is provided, creates a header row (cover image + metadata)
+ * as the first row, before processing regular content.
+ *
+ * @param content - Array of content blocks to process (should NOT include header items)
  * @param componentWidth - Total available width for display
  * @param chunkSize - Number of normal-width items per row (default: 2)
- * @returns Array of rows, each containing sized content blocks
+ * @param options - Processing options (isMobile, enablePatternDetection, collectionData)
+ * @returns Array of rows with pattern metadata and sized content blocks
  */
 export function processContentForDisplay(
   content: AnyContentModel[],
   componentWidth: number,
-  chunkSize: number = LAYOUT.defaultChunkSize
-): CalculatedContentSize[][] {
-  const chunks = chunkContent(content, chunkSize);
-  return chunks.map(chunk => calculateContentSizes(chunk, componentWidth, chunkSize));
+  chunkSize: number = LAYOUT.defaultChunkSize,
+  options?: ProcessContentOptions
+): RowWithPatternAndSizes[] {
+  const result: RowWithPatternAndSizes[] = [];
+
+  // Create header row first if collectionData is provided
+  if (options?.collectionData) {
+    const headerRow = createHeaderRow(options.collectionData, componentWidth, chunkSize);
+    if (headerRow) {
+      result.push(headerRow);
+    }
+  }
+
+  // Determine if pattern detection should be used
+  // Default: enabled on desktop, disabled on mobile
+  const usePatternDetection = options?.enablePatternDetection ?? !options?.isMobile;
+
+  // Mobile or pattern detection disabled → use simple slot-based system
+  if (options?.isMobile || !usePatternDetection) {
+    const chunks = chunkContent(content, chunkSize);
+    const contentRows = chunks.map(chunk => ({
+      pattern: { type: 'standard' as const, indices: chunk.map((_, i) => i) },
+      items: calculateContentSizes(chunk, componentWidth, chunkSize),
+    }));
+    result.push(...contentRows);
+
+    return result;
+  }
+
+  // Desktop with pattern detection → use pattern-based system
+  const rowsWithPatterns = createRowsArray(content, chunkSize);
+  const contentRows = rowsWithPatterns.map(row => ({
+    pattern: row.pattern,
+    items: calculateRowSizesFromPattern(row, componentWidth, chunkSize),
+  }));
+  result.push(...contentRows);
+
+  return result;
 }
 
 /**
@@ -420,9 +439,11 @@ function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
  * @param col - Collection content model to convert
  * @returns Parallax image model with collection metadata
  */
-export function convertCollectionContentToParallax(col: ContentCollectionModel): ContentParallaxImageModel {
+export function convertCollectionContentToParallax(
+  col: ContentCollectionModel
+): ContentParallaxImageModel {
   const { imageWidth, imageHeight } = extractCollectionDimensions(col.coverImage);
-  
+
   return {
     contentType: 'IMAGE',
     enableParallax: true,
@@ -452,7 +473,7 @@ export function convertCollectionContentToParallax(col: ContentCollectionModel):
 export function convertCollectionContentToImage(col: ContentCollectionModel): ContentImageModel {
   const coverImage = col.coverImage;
   const { imageWidth, imageHeight } = extractCollectionDimensions(coverImage);
-  
+
   return {
     contentType: 'IMAGE',
     id: col.id,
@@ -480,7 +501,7 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
     focalLength: coverImage?.focalLength ?? null,
     location: coverImage?.location ?? null,
     createDate: coverImage?.createDate ?? null,
-    fStop: coverImage?.fStop ?? null,
+    fstop: coverImage?.fstop ?? null,
     alt: col.title || col.slug || '',
     aspectRatio: imageWidth && imageHeight ? imageWidth / imageHeight : undefined,
     filmType: coverImage?.filmType ?? null,
@@ -493,6 +514,28 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
 }
 
 /**
+ * Check if content is visible in a specific collection
+ * Checks both global visibility (block.visible) and collection-specific visibility for images
+ * @param block - Content block to check
+ * @param collectionId - Optional collection ID for checking collection-specific visibility
+ * @returns true if content is visible, false otherwise
+ */
+export function isContentVisibleInCollection(
+  block: AnyContentModel,
+  collectionId?: number
+): boolean {
+  if (block.visible === false) return false;
+
+  if (block.contentType === 'IMAGE' && collectionId) {
+    const imageBlock = block as ContentImageModel;
+    const entry = imageBlock.collections?.find(c => c.collectionId === collectionId);
+    if (entry?.visible === false) return false;
+  }
+
+  return true;
+}
+
+/**
  * Filter out non-visible content blocks and check collection-specific visibility for images
  */
 function filterVisibleBlocks(
@@ -501,20 +544,8 @@ function filterVisibleBlocks(
   collectionId?: number
 ): AnyContentModel[] {
   if (!filterVisible) return content;
-  
-  return content.filter(block => {
-    if (block.visible === false) return false;
-    
-    if (block.contentType === 'IMAGE' && collectionId) {
-      const imageBlock = block as ContentImageModel;
-      const collectionEntry = imageBlock.collections?.find(
-        c => c.collectionId === collectionId
-      );
-      if (collectionEntry?.visible === false) return false;
-    }
-    
-    return true;
-  });
+
+  return content.filter(block => isContentVisibleInCollection(block, collectionId));
 }
 
 /**
@@ -529,7 +560,6 @@ function transformCollectionBlocks(content: AnyContentModel[]): AnyContentModel[
     return block;
   });
 }
-
 
 /**
  * Ensure parallax blocks have proper imageWidth/imageHeight dimensions with fallback
@@ -571,12 +601,35 @@ function sortContentByCreatedAt(content: AnyContentModel[]): AnyContentModel[] {
 }
 
 /**
+ * Stable sort: visible content first, non-visible content last
+ * Preserves relative order within visible and non-visible groups
+ */
+function sortNonVisibleToBottom(
+  content: AnyContentModel[],
+  collectionId?: number
+): AnyContentModel[] {
+  const visible: AnyContentModel[] = [];
+  const nonVisible: AnyContentModel[] = [];
+
+  for (const block of content) {
+    const isVisible = isContentVisibleInCollection(block, collectionId);
+    if (isVisible) {
+      visible.push(block);
+    } else {
+      nonVisible.push(block);
+    }
+  }
+
+  return [...visible, ...nonVisible];
+}
+
+/**
  * Reorder content to show images/text/gifs first, then collections
  */
 function reorderImagesBeforeCollections(content: AnyContentModel[]): AnyContentModel[] {
   const nonCollections: AnyContentModel[] = [];
   const collections: AnyContentModel[] = [];
-  
+
   for (const block of content) {
     if (block.contentType === 'COLLECTION') {
       collections.push(block);
@@ -584,7 +637,7 @@ function reorderImagesBeforeCollections(content: AnyContentModel[]): AnyContentM
       nonCollections.push(block);
     }
   }
-  
+
   return [...nonCollections, ...collections];
 }
 
@@ -606,10 +659,19 @@ export function processContentBlocks(
   let processed = filterVisibleBlocks(content, filterVisible, collectionId);
   // Note: We now use block.orderIndex directly instead of collections[].orderIndex
   processed = ensureParallaxDimensions(processed);
-  processed = displayMode === 'CHRONOLOGICAL'
-    ? sortContentByCreatedAt(processed)
-    : sortContentByOrderIndex(processed);
-  
+
+  // Sort by orderIndex or createdAt first (before visibility sorting)
+  processed =
+    displayMode === 'CHRONOLOGICAL'
+      ? sortContentByCreatedAt(processed)
+      : sortContentByOrderIndex(processed);
+
+  // When filterVisible is false (manage page), sort non-visible content to bottom
+  // This happens after orderIndex/chronological sorting to preserve relative order within groups
+  if (!filterVisible) {
+    processed = sortNonVisibleToBottom(processed, collectionId);
+  }
+
   processed = reorderImagesBeforeCollections(processed);
   processed = transformCollectionBlocks(processed);
 
@@ -623,28 +685,42 @@ export function processContentBlocks(
  */
 function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   const items: TextBlockItem[] = [];
-  
+
   if (collection.collectionDate) {
     items.push({
       type: 'date',
       value: collection.collectionDate,
     });
   }
-  
+
   if (collection.location) {
     items.push({
       type: 'location',
-      value: collection.location,
+      value:
+        typeof collection.location === 'string'
+          ? collection.location
+          : (collection.location as { name: string }).name,
     });
   }
-  
+
   if (collection.description) {
     items.push({
       type: 'description',
       value: collection.description,
     });
   }
-  
+
+  // Add tags
+  if (collection.tags && collection.tags.length > 0) {
+    for (const tag of collection.tags) {
+      items.push({
+        type: 'text',
+        value: tag,
+        label: 'tag',
+      });
+    }
+  }
+
   return items;
 }
 
@@ -659,7 +735,7 @@ function createMetadataTextBlock(
   if (items.length === 0 || !width || !height) {
     return null;
   }
-  
+
   return {
     contentType: 'TEXT',
     id: -2,
@@ -680,7 +756,7 @@ function createMetadataTextBlock(
 function createCoverImageBlock(collection: CollectionModel): ContentParallaxImageModel {
   const coverImage = collection.coverImage!;
   const { imageWidth, imageHeight } = extractCollectionDimensions(coverImage);
-  
+
   return {
     contentType: 'IMAGE',
     enableParallax: true,
@@ -701,39 +777,98 @@ function createCoverImageBlock(collection: CollectionModel): ContentParallaxImag
 
 /**
  * Inject header row with cover image and metadata at the top of collection content
- * 
+ *
  * Creates two blocks that form the first row:
  * - Cover image with title overlay (parallax-enabled)
  * - Metadata text block (date, location, description)
- * 
+ *
  * Both blocks share the same dimensions for equal 50/50 width split on desktop.
  * Returns empty array if cover image missing or has no dimensions.
  * @param collection - Collection model with cover image and metadata
  * @returns Array of header blocks (empty if no cover image or dimensions)
+ * @deprecated Use createHeaderRow() instead, which returns a RowWithPatternAndSizes directly
  */
 export function injectTopRow(collection: CollectionModel): AnyContentModel[] {
   if (!collection.coverImage) {
     return [];
   }
-  
+
   const coverBlock = createCoverImageBlock(collection);
-  
+
   if (!coverBlock.imageWidth || !coverBlock.imageHeight) {
     return [];
   }
-  
+
   const headerBlocks: AnyContentModel[] = [coverBlock];
-  
+
   const metadataItems = buildMetadataItems(collection);
   const metadataBlock = createMetadataTextBlock(
     metadataItems,
     coverBlock.imageWidth,
     coverBlock.imageHeight
   );
-  
+
   if (metadataBlock) {
     headerBlocks.push(metadataBlock);
   }
-  
+
   return headerBlocks;
+}
+
+/**
+ * Create header row with cover image and metadata as a RowWithPatternAndSizes
+ *
+ * Creates a header row that will be prepended to regular content rows.
+ * The header row contains:
+ * - Cover image with title overlay (parallax-enabled)
+ * - Metadata text block (date, location, description) - if metadata exists
+ *
+ * Both blocks share the same dimensions for equal 50/50 width split on desktop.
+ * Returns null if cover image missing or has no dimensions.
+ * @param collection - Collection model with cover image and metadata
+ * @param componentWidth - Total available width for the row
+ * @param chunkSize - Number of normal-width items per row (default: 4)
+ * @returns RowWithPatternAndSizes with header items, or null if no cover image
+ */
+export function createHeaderRow(
+  collection: CollectionModel,
+  componentWidth: number,
+  chunkSize: number = LAYOUT.defaultChunkSize
+): RowWithPatternAndSizes | null {
+  if (!collection.coverImage) {
+    return null;
+  }
+
+  const coverBlock = createCoverImageBlock(collection);
+
+  if (!coverBlock.imageWidth || !coverBlock.imageHeight) {
+    return null;
+  }
+
+  const headerBlocks: AnyContentModel[] = [coverBlock];
+
+  const metadataItems = buildMetadataItems(collection);
+  const metadataBlock = createMetadataTextBlock(
+    metadataItems,
+    coverBlock.imageWidth,
+    coverBlock.imageHeight
+  );
+
+  if (metadataBlock) {
+    headerBlocks.push(metadataBlock);
+  }
+
+  // Calculate sizes using standard row calculation (50/50 split for 2 items)
+  const calculatedSizes = calculateContentSizes(headerBlocks, componentWidth, chunkSize);
+
+  // Create pattern result with 'standard' type
+  const pattern: PatternResult = {
+    type: 'standard',
+    indices: headerBlocks.map((_, index) => index),
+  };
+
+  return {
+    pattern,
+    items: calculatedSizes,
+  };
 }

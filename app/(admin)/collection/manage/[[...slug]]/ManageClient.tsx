@@ -25,13 +25,16 @@ import {
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type DisplayMode,
+  type LocationModel,
 } from '@/app/types/Collection';
-import { type ContentImageModel,type ContentImageUpdateResponse } from '@/app/types/Content';
+import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
-import { isLocalEnvironment } from '@/app/utils/environment';
+import {
+  convertLocationStringToModel,
+  createLocationUpdateFromModel,
+} from '@/app/utils/locationUtils';
 
-import pageStyles from '../../../../page.module.scss';
 import styles from './ManageClient.module.scss';
 import {
   applyReorderChangesOptimistically,
@@ -74,11 +77,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   // Separate loading state for operations (create, update, upload, etc.)
   const [operationLoading, setOperationLoading] = useState(false);
-  
+
   // Combine loading error with component error state
   const [error, setError] = useState<string | null>(null);
   const displayError = error || loadError;
-  
+
   // Combined loading state (initial load or operation)
   const isLoading = loading || operationLoading;
 
@@ -87,7 +90,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
   const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
   const [isTextBlockModalOpen, setIsTextBlockModalOpen] = useState(false);
-  const [dragState, setDragState] = useState<{ draggedId: number | null; dragOverId: number | null }>({
+  const [dragState, setDragState] = useState<{
+    draggedId: number | null;
+    dragOverId: number | null;
+  }>({
     draggedId: null,
     dragOverId: null,
   });
@@ -131,7 +137,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
         type: collection.type || CollectionType.PORTFOLIO,
         title: collection.title || '',
         description: collection.description || '',
-        location: collection.location || '',
         collectionDate: collection.collectionDate || '',
         visible: collection.visible ?? true,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
@@ -142,7 +147,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       type: CollectionType.PORTFOLIO,
       title: '',
       description: '',
-      location: '',
       collectionDate: '',
       visible: true,
       displayMode: 'CHRONOLOGICAL',
@@ -157,7 +161,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
         type: collection.type || CollectionType.PORTFOLIO,
         title: collection.title || '',
         description: collection.description || '',
-        location: collection.location || '',
         collectionDate: collection.collectionDate || '',
         visible: collection.visible ?? true,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
@@ -168,7 +171,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
   // Process content blocks for display - same as collection page but without visibility filtering
   // Collections are converted to ParallaxImageContentModel, images get collection-specific orderIndex
   const processedContent = useMemo(
-    () => processContentBlocks(collection?.content ?? [], false, collection?.id, collection?.displayMode),
+    () =>
+      processContentBlocks(
+        collection?.content ?? [],
+        false,
+        collection?.id,
+        collection?.displayMode
+      ),
     [collection?.content, collection?.id, collection?.displayMode]
   );
 
@@ -282,21 +291,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Build payload with only changed fields
       const payload = buildUpdatePayload(updateData, collection);
 
-      // DEBUG: Log the payload to verify displayMode is included
-      if (isLocalEnvironment()) {
-        console.log('[handleUpdate] ===== UPDATE DEBUG START =====');
-        console.log('[handleUpdate] Original collection:', {
-          id: collection.id,
-          title: collection.title,
-          description: collection.description?.slice(0, 50),
-          contentCount: collection.content?.length || 0,
-        });
-        console.log('[handleUpdate] Form updateData:', {
-          ...updateData,
-          description: updateData.description?.slice(0, 50),
-        });
-      }
-
       await updateCollection(collection.id, payload);
 
       // Re-fetch using admin endpoint to get full data with collections arrays
@@ -382,9 +376,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
         setOperationLoading(true);
         setError(null);
 
-        await updateCollection(collection.id, { 
-          id: collection.id, 
-          coverImageId: result.coverImageId 
+        await updateCollection(collection.id, {
+          id: collection.id,
+          coverImageId: result.coverImageId,
         });
 
         // Re-fetch collection to get updated cover image
@@ -396,10 +390,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
         // Update cache
         collectionStorage.update(collection.slug, response.collection);
-
-        if (isLocalEnvironment()) {
-          console.log('[handleCoverImageClick] Cover image updated successfully:', result.coverImageId);
-        }
       } catch (error) {
         setError(handleApiError(error, 'Failed to update cover image'));
       } finally {
@@ -540,6 +530,58 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [updateData.collections, collection?.content]
   );
 
+  // Derive current location from collection.location string and updateData.location
+  // Handles both original collection location and pending updates
+  const currentLocation: LocationModel | null = useMemo(() => {
+    const availableLocations = currentState?.locations || [];
+
+    // If there's a pending update in updateData, use that
+    const locationUpdate = updateData.location;
+    if (locationUpdate) {
+      if (locationUpdate.remove) {
+        // Location is being removed
+        return null;
+      }
+      if (locationUpdate.prev) {
+        // Existing location selected by ID
+        const location = availableLocations.find(loc => loc.id === locationUpdate.prev);
+        return location || null;
+      }
+      if (locationUpdate.newValue) {
+        // New location being created (temporary with id: 0)
+        return { id: 0, name: locationUpdate.newValue };
+      }
+    }
+
+    // No pending update - use original collection location
+    // Handle both object format (new API) and string format (legacy)
+    const collectionLocation = collection?.location;
+    
+    // If location is already an object with id and name, use it directly
+    if (collectionLocation && typeof collectionLocation === 'object' && 'id' in collectionLocation && 'name' in collectionLocation) {
+      // It's already a LocationModel - find it in availableLocations to ensure we have the correct reference
+      const location = availableLocations.find(loc => loc.id === (collectionLocation as LocationModel).id);
+      return location || (collectionLocation as LocationModel);
+    }
+    
+    // Otherwise, treat it as a string and convert
+    return convertLocationStringToModel(
+      typeof collectionLocation === 'string' ? collectionLocation : null,
+      availableLocations
+    );
+  }, [collection?.location, currentState?.locations, updateData.location]);
+
+  // Handle location selection changes
+  const handleLocationChange = useCallback((value: LocationModel | LocationModel[] | null) => {
+    const location = Array.isArray(value) ? value[0] || null : value;
+    const locationUpdate = createLocationUpdateFromModel(location);
+
+    setUpdateData(prev => ({
+      ...prev,
+      location: locationUpdate,
+    }));
+  }, []);
+
   // Handle collections selection changes - simple toggle logic
   const handleCollectionsChange = useCallback(
     (value: { id: number; name: string } | Array<{ id: number; name: string }> | null) => {
@@ -562,77 +604,96 @@ export default function ManageClient({ slug }: ManageClientProps) {
   );
 
   // Drag handlers for reordering (supports both IMAGE and COLLECTION content)
-  const handleDragStart = useCallback((contentId: number) => {
-    if (!collection || collection.displayMode !== 'ORDERED') return;
-    setDragState({ draggedId: contentId, dragOverId: null });
-  }, [collection]);
+  const handleDragStart = useCallback(
+    (contentId: number) => {
+      if (!collection || collection.displayMode !== 'ORDERED') return;
+      setDragState({ draggedId: contentId, dragOverId: null });
+    },
+    [collection]
+  );
 
-  const handleDragOver = useCallback((e: React.DragEvent, contentId: number) => {
-    if (!collection || collection.displayMode !== 'ORDERED' || !dragState.draggedId) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDragState(prev => ({ ...prev, dragOverId: contentId }));
-  }, [collection, dragState.draggedId]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, contentId: number) => {
+      if (!collection || collection.displayMode !== 'ORDERED' || !dragState.draggedId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      setDragState(prev => ({ ...prev, dragOverId: contentId }));
+    },
+    [collection, dragState.draggedId]
+  );
 
-  const handleDrop = useCallback(async (e: React.DragEvent, targetContentId: number) => {
-    e.preventDefault();
-    if (!dragState.draggedId || dragState.draggedId === targetContentId || !collection || !currentState) {
-      setDragState({ draggedId: null, dragOverId: null });
-      return;
-    }
-    
-    // Calculate which content items need to be reordered
-    const reorderChanges = calculateReorderChanges(
-      dragState.draggedId,
-      targetContentId,
-      currentState.collection
-    );
-
-    if (reorderChanges.length === 0) {
-      setDragState({ draggedId: null, dragOverId: null });
-      return;
-    }
-
-    // OPTIMISTIC UPDATE: Immediately update UI to show the new order
-    const optimisticallyUpdatedCollection = applyReorderChangesOptimistically(
-      currentState.collection,
-      reorderChanges
-    );
-    
-    setCurrentState(prev => prev ? {
-      ...prev,
-      collection: optimisticallyUpdatedCollection,
-    } : null);
-    
-    // Clear drag state immediately so UI updates
-    setDragState({ draggedId: null, dragOverId: null });
-
-    // Call API in the background - optimistic update is already showing the correct state
-    try {
-      setOperationLoading(true);
-      setError(null);
-
-      await executeReorderOperation(
-        collection.id,
-        reorderChanges,
-        collection.slug
-      );
-      
-      // Success - optimistic update is already correct, nothing more to do
-    } catch (error) {
-      setError(handleApiError(error, 'Failed to reorder content. The server may not support reordering this content type.'));
-      
-      // Re-fetch to restore correct state (reverts optimistic update)
-      try {
-        const response = await getCollectionUpdateMetadata(collection.slug);
-        setCurrentState(prev => prev ? { ...prev, collection: response.collection } : null);
-      } catch {
-        // Silent fail - user already sees the reorder error
+  const handleDrop = useCallback(
+    async (e: React.DragEvent, targetContentId: number) => {
+      e.preventDefault();
+      if (
+        !dragState.draggedId ||
+        dragState.draggedId === targetContentId ||
+        !collection ||
+        !currentState
+      ) {
+        setDragState({ draggedId: null, dragOverId: null });
+        return;
       }
-    } finally {
-      setOperationLoading(false);
-    }
-  }, [dragState.draggedId, collection, currentState]);
+
+      // Calculate which content items need to be reordered
+      const reorderChanges = calculateReorderChanges(
+        dragState.draggedId,
+        targetContentId,
+        currentState.collection
+      );
+
+      if (reorderChanges.length === 0) {
+        setDragState({ draggedId: null, dragOverId: null });
+        return;
+      }
+
+      // OPTIMISTIC UPDATE: Immediately update UI to show the new order
+      const optimisticallyUpdatedCollection = applyReorderChangesOptimistically(
+        currentState.collection,
+        reorderChanges
+      );
+
+      setCurrentState(prev =>
+        prev
+          ? {
+              ...prev,
+              collection: optimisticallyUpdatedCollection,
+            }
+          : null
+      );
+
+      // Clear drag state immediately so UI updates
+      setDragState({ draggedId: null, dragOverId: null });
+
+      // Call API in the background - optimistic update is already showing the correct state
+      try {
+        setOperationLoading(true);
+        setError(null);
+
+        await executeReorderOperation(collection.id, reorderChanges, collection.slug);
+
+        // Success - optimistic update is already correct, nothing more to do
+      } catch (error) {
+        setError(
+          handleApiError(
+            error,
+            'Failed to reorder content. The server may not support reordering this content type.'
+          )
+        );
+
+        // Re-fetch to restore correct state (reverts optimistic update)
+        try {
+          const response = await getCollectionUpdateMetadata(collection.slug);
+          setCurrentState(prev => (prev ? { ...prev, collection: response.collection } : null));
+        } catch {
+          // Silent fail - user already sees the reorder error
+        }
+      } finally {
+        setOperationLoading(false);
+      }
+    },
+    [dragState.draggedId, collection, currentState]
+  );
 
   const handleDragEnd = useCallback(() => {
     setDragState({ draggedId: null, dragOverId: null });
@@ -641,349 +702,380 @@ export default function ManageClient({ slug }: ManageClientProps) {
   return (
     <div>
       <div className={styles.container}>
-        <SiteHeader pageType="manage" />
-        {/* CREATE MODE */}
-        {isCreateMode && !collection && (
-          <div className={styles.createContainer}>
-            <h2 className={styles.createHeading}>Create New Collection</h2>
-
-            {displayError && <div className={styles.errorMessage}>{displayError}</div>}
-
-            <form onSubmit={handleCreate}>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Collection Type *</label>
-                <select
-                  value={createData.type}
-                  onChange={e =>
-                    setCreateData(prev => ({ ...prev, type: e.target.value as CollectionType }))
-                  }
-                  className={styles.formSelect}
-                  required
-                >
-                  <option value={CollectionType.PORTFOLIO}>Portfolio</option>
-                  <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
-                  <option value={CollectionType.BLOG}>Blog</option>
-                  <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
-                </select>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Title *</label>
-                <input
-                  type="text"
-                  value={createData.title}
-                  onChange={e => setCreateData(prev => ({ ...prev, title: e.target.value }))}
-                  className={styles.formInput}
-                  required
-                  placeholder="e.g., Film Pack 002"
-                />
-              </div>
-
-                  <button type="submit" disabled={isLoading} className={styles.submitButton}>
-                    {isLoading ? 'Creating...' : 'Create Collection'}
-                  </button>
-            </form>
-          </div>
-        )}
-
-        {/* UPDATE MODE */}
-        {collection && (
-          <>
-            <div className={styles.updateContainer}>
-              <h2
-                className={styles.updateHeading}
-                onClick={() => router.push(`/${collection.slug}`)}
-              >
-                {collection.title}
-              </h2>
+        <main className={styles.main}>
+          <SiteHeader pageType="manage" />
+          {/* CREATE MODE */}
+          {isCreateMode && !collection && (
+            <div className={styles.createContainer}>
+              <h2 className={styles.createHeading}>Create New Collection</h2>
 
               {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
-              <form onSubmit={handleUpdate}>
-                <div className={styles.updateFormLayout}>
-                  {/* LEFT SECTION */}
-                  <div className={styles.leftSection}>
-                    {/* Title */}
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Title</label>
-                      <input
-                        type="text"
-                        value={updateData.title}
-                        onChange={e => setUpdateData(prev => ({ ...prev, title: e.target.value }))}
-                        className={styles.formInput}
-                      />
-                    </div>
+              <form onSubmit={handleCreate}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Collection Type *</label>
+                  <select
+                    value={createData.type}
+                    onChange={e =>
+                      setCreateData(prev => ({ ...prev, type: e.target.value as CollectionType }))
+                    }
+                    className={styles.formSelect}
+                    required
+                  >
+                    <option value={CollectionType.PORTFOLIO}>Portfolio</option>
+                    <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
+                    <option value={CollectionType.BLOG}>Blog</option>
+                    <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
+                  </select>
+                </div>
 
-                    {/* Collection Date / Collection Type */}
-                    <div className={styles.formGridHalf}>
-                      <div>
-                        <label className={styles.formLabel}>Collection Date</label>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Title *</label>
+                  <input
+                    type="text"
+                    value={createData.title}
+                    onChange={e => setCreateData(prev => ({ ...prev, title: e.target.value }))}
+                    className={styles.formInput}
+                    required
+                    placeholder="e.g., Film Pack 002"
+                  />
+                </div>
+
+                <button type="submit" disabled={isLoading} className={styles.submitButton}>
+                  {isLoading ? 'Creating...' : 'Create Collection'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* UPDATE MODE */}
+          {collection && (
+            <>
+              <div className={styles.updateContainer}>
+                <h2
+                  className={styles.updateHeading}
+                  onClick={() => router.push(`/${collection.slug}`)}
+                >
+                  {collection.title}
+                </h2>
+
+                {displayError && <div className={styles.errorMessage}>{displayError}</div>}
+
+                <form onSubmit={handleUpdate}>
+                  <div className={styles.updateFormLayout}>
+                    {/* LEFT SECTION */}
+                    <div className={styles.leftSection}>
+                      {/* Title */}
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Title</label>
                         <input
-                          type="date"
-                          value={updateData.collectionDate}
+                          type="text"
+                          value={updateData.title}
                           onChange={e =>
-                            setUpdateData(prev => ({ ...prev, collectionDate: e.target.value }))
+                            setUpdateData(prev => ({ ...prev, title: e.target.value }))
                           }
                           className={styles.formInput}
                         />
                       </div>
 
-                      <div>
-                        <label className={styles.formLabel}>Collection Type</label>
-                        <select
-                          value={updateData.type}
-                          onChange={e =>
-                            setUpdateData(prev => ({
-                              ...prev,
-                              type: e.target.value as CollectionType,
-                            }))
-                          }
-                          className={styles.formSelect}
-                        >
-                          <option value={CollectionType.PORTFOLIO}>Portfolio</option>
-                          <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
-                          <option value={CollectionType.BLOG}>Blog</option>
-                          <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Location */}
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Location</label>
-                      <input
-                        type="text"
-                        value={updateData.location}
-                        onChange={e =>
-                          setUpdateData(prev => ({ ...prev, location: e.target.value }))
-                        }
-                        className={styles.formInput}
-                      />
-                    </div>
-
-                    {/* Visible Checkbox / Display Mode */}
-                    <div className={styles.formGridHalf}>
-                      <div className={styles.checkboxGroup}>
-                        <label className={styles.checkboxLabel}>
+                      {/* Collection Date / Collection Type */}
+                      <div className={styles.formGridHalf}>
+                        <div>
+                          <label className={styles.formLabel}>Collection Date</label>
                           <input
-                            type="checkbox"
-                            checked={updateData.visible}
+                            type="date"
+                            value={updateData.collectionDate}
                             onChange={e =>
-                              setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
+                              setUpdateData(prev => ({ ...prev, collectionDate: e.target.value }))
                             }
+                            className={styles.formInput}
                           />
-                          <span>Visible</span>
-                        </label>
+                        </div>
+
+                        <div>
+                          <label className={styles.formLabel}>Collection Type</label>
+                          <select
+                            value={updateData.type}
+                            onChange={e =>
+                              setUpdateData(prev => ({
+                                ...prev,
+                                type: e.target.value as CollectionType,
+                              }))
+                            }
+                            className={styles.formSelect}
+                          >
+                            <option value={CollectionType.PORTFOLIO}>Portfolio</option>
+                            <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
+                            <option value={CollectionType.BLOG}>Blog</option>
+                            <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
+                          </select>
+                        </div>
                       </div>
 
-                      <div>
-                        <label className={styles.formLabel}>Display Mode</label>
-                        <select
-                          value={updateData.displayMode}
+                      {/* Location */}
+                      <UnifiedMetadataSelector<LocationModel>
+                        label="Location"
+                        multiSelect={false}
+                        options={currentState?.locations || []}
+                        selectedValue={currentLocation}
+                        onChange={handleLocationChange}
+                        allowAddNew
+                        onAddNew={data => {
+                          handleLocationChange({ id: 0, name: data.name as string });
+                        }}
+                        addNewFields={[
+                          {
+                            name: 'name',
+                            label: 'Location Name',
+                            type: 'text',
+                            placeholder: 'e.g., Seattle, WA',
+                            required: true,
+                          },
+                        ]}
+                        getDisplayName={location => location?.name || ''}
+                        showNewIndicator
+                        emptyText="No location set"
+                      />
+
+                      {/* Visible Checkbox / Display Mode */}
+                      <div className={styles.formGridHalf}>
+                        <div className={styles.checkboxGroup}>
+                          <label className={styles.checkboxLabel}>
+                            <input
+                              type="checkbox"
+                              checked={updateData.visible}
+                              onChange={e =>
+                                setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
+                              }
+                            />
+                            <span>Visible</span>
+                          </label>
+                        </div>
+
+                        <div>
+                          <label className={styles.formLabel}>Display Mode</label>
+                          <select
+                            value={updateData.displayMode}
+                            onChange={e =>
+                              setUpdateData(prev => ({
+                                ...prev,
+                                displayMode: e.target.value as DisplayMode,
+                              }))
+                            }
+                            className={styles.formSelect}
+                          >
+                            <option value="CHRONOLOGICAL">Chronological</option>
+                            <option value="ORDERED">Ordered</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Description</label>
+                        <textarea
+                          value={updateData.description}
                           onChange={e =>
-                            setUpdateData(prev => ({
-                              ...prev,
-                              displayMode: e.target.value as DisplayMode,
-                            }))
+                            setUpdateData(prev => ({ ...prev, description: e.target.value }))
                           }
-                          className={styles.formSelect}
-                        >
-                          <option value="CHRONOLOGICAL">Chronological</option>
-                          <option value="ORDERED">Ordered</option>
-                        </select>
+                          className={styles.formTextarea}
+                        />
                       </div>
                     </div>
 
-                    {/* Description */}
-                    <div className={styles.formGroup}>
-                      <label className={styles.formLabel}>Description</label>
-                      <textarea
-                        value={updateData.description}
-                        onChange={e =>
-                          setUpdateData(prev => ({ ...prev, description: e.target.value }))
-                        }
-                        className={styles.formTextarea}
-                      />
+                    {/* RIGHT SECTION */}
+                    <div className={styles.rightSection}>
+                      {/* Cover Image */}
+                      <div className={styles.coverImageSection}>
+                        <label className={styles.formLabel}>Cover Image</label>
+                        {displayedCoverImage && isContentImage(displayedCoverImage) ? (
+                          <div className={styles.coverImageWrapper}>
+                            <img src={displayedCoverImage.imageUrl} alt="Cover" />
+                            <button
+                              type="button"
+                              onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                              className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
+                            >
+                              {isSelectingCoverImage ? 'Cancel Selection' : 'Update Cover Image'}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className={styles.noCoverImage}>
+                            <div>No cover image</div>
+                            <button
+                              type="button"
+                              onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                              className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
+                            >
+                              {isSelectingCoverImage ? 'Cancel Selection' : 'Select Cover Image'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Upload Images / Add Text Block */}
+                      <div className={styles.mediaSection}>
+                        <div className={styles.uploadSection}>
+                          <label className={styles.formLabel}>Upload Images</label>
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={isLoading}
+                            className={styles.uploadInput}
+                          />
+                          {isLoading && <div className={styles.uploadingText}>Uploading...</div>}
+                        </div>
+
+                        <div className={styles.textBlockSection}>
+                          <label className={styles.formLabel}>Add Text Block</label>
+                          <button
+                            type="button"
+                            onClick={handleCreateNewTextBlock}
+                            disabled={isLoading}
+                            className={styles.addTextBlockButton}
+                          >
+                            + Create New Text Block
+                          </button>
+                        </div>
+                      </div>
+                      <div className={styles.formSection}>
+                        <h3 className={styles.sectionHeading}>Child Collections</h3>
+
+                        <UnifiedMetadataSelector<{ id: number; name: string }>
+                          label="Collections"
+                          multiSelect
+                          options={currentState?.collections || []}
+                          selectedValues={currentSelectedCollections}
+                          onChange={handleCollectionsChange}
+                          allowAddNew={false}
+                          getDisplayName={collectionItem => collectionItem.name}
+                          changeButtonText="Select More ▼"
+                          emptyText="No child collections"
+                          simpleChips
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* RIGHT SECTION */}
-                  <div className={styles.rightSection}>
-                    {/* Cover Image */}
-                    <div className={styles.coverImageSection}>
-                      <label className={styles.formLabel}>Cover Image</label>
-                      {displayedCoverImage && isContentImage(displayedCoverImage) ? (
-                        <div className={styles.coverImageWrapper}>
-                          <img src={displayedCoverImage.imageUrl} alt="Cover" />
-                          <button
-                            type="button"
-                            onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                            className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
-                          >
-                            {isSelectingCoverImage ? 'Cancel Selection' : 'Update Cover Image'}
-                          </button>
-                        </div>
+                  <div className={styles.formActions}>
+                    <button
+                      type="submit"
+                      disabled={saving || isLoading}
+                      className={styles.submitButton}
+                    >
+                      {saving ? (
+                        <>
+                          <LoadingSpinner size="small" color="white" />
+                          <span style={{ marginLeft: '8px' }}>Updating...</span>
+                        </>
                       ) : (
-                        <div className={styles.noCoverImage}>
-                          <div>No cover image</div>
+                        'Update Metadata'
+                      )}
+                    </button>
+
+                    <div className={styles.bulkEditControls}>
+                      {!isMultiSelectMode ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsMultiSelectMode(true)}
+                          className={styles.startBulkEditButton}
+                        >
+                          Select Multiple
+                        </button>
+                      ) : (
+                        <>
                           <button
                             type="button"
-                            onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                            className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
+                            onClick={() => {
+                              // Select all image IDs from collection content
+                              const allImageIds = collection?.content
+                                ?.filter(isContentImage)
+                                .map(img => img.id) || [];
+                              setSelectedImageIds(allImageIds);
+                            }}
+                            className={styles.startBulkEditButton}
                           >
-                            {isSelectingCoverImage ? 'Cancel Selection' : 'Select Cover Image'}
+                            Select All
                           </button>
-                        </div>
+                          <button
+                            type="button"
+                            onClick={handleBulkEdit}
+                            className={styles.bulkEditButton}
+                            disabled={selectedImageIds.length === 0}
+                          >
+                            Edit {selectedImageIds.length} Image
+                            {selectedImageIds.length > 1 ? 's' : ''}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedImageIds([]);
+                              setIsMultiSelectMode(false);
+                            }}
+                            className={styles.cancelBulkEditButton}
+                          >
+                            Cancel Selection
+                          </button>
+                        </>
                       )}
                     </div>
-
-                    {/* Upload Images / Add Text Block */}
-                    <div className={styles.mediaSection}>
-                      <div className={styles.uploadSection}>
-                        <label className={styles.formLabel}>Upload Images</label>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          disabled={isLoading}
-                          className={styles.uploadInput}
-                        />
-                        {isLoading && <div className={styles.uploadingText}>Uploading...</div>}
-                      </div>
-
-                      <div className={styles.textBlockSection}>
-                        <label className={styles.formLabel}>Add Text Block</label>
-                        <button
-                          type="button"
-                          onClick={handleCreateNewTextBlock}
-                          disabled={isLoading}
-                          className={styles.addTextBlockButton}
-                        >
-                          + Create New Text Block
-                        </button>
-                      </div>
-                    </div>
-                    <div className={styles.formSection}>
-                      <h3 className={styles.sectionHeading}>Child Collections</h3>
-
-                      <UnifiedMetadataSelector<{ id: number; name: string }>
-                        label="Collections"
-                        multiSelect
-                        options={currentState?.collections || []}
-                        selectedValues={currentSelectedCollections}
-                        onChange={handleCollectionsChange}
-                        allowAddNew={false}
-                        getDisplayName={collectionItem => collectionItem.name}
-                        changeButtonText="Select More ▼"
-                        emptyText="No child collections"
-                        simpleChips
-                      />
-                    </div>
                   </div>
-                </div>
-
-                <div className={styles.formActions}>
-                  <button
-                    type="submit"
-                    disabled={saving || isLoading}
-                    className={styles.submitButton}
-                  >
-                    {saving ? (
-                      <>
-                        <LoadingSpinner size="small" color="white" />
-                        <span style={{ marginLeft: '8px' }}>Updating...</span>
-                      </>
-                    ) : (
-                      'Update Metadata'
-                    )}
-                  </button>
-
-                  <div className={styles.bulkEditControls}>
-                    {!isMultiSelectMode ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsMultiSelectMode(true)}
-                        className={styles.startBulkEditButton}
-                      >
-                        Select Multiple Images
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={handleBulkEdit}
-                          className={styles.bulkEditButton}
-                          disabled={selectedImageIds.length === 0}
-                        >
-                          Edit {selectedImageIds.length} Image
-                          {selectedImageIds.length > 1 ? 's' : ''}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedImageIds([]);
-                            setIsMultiSelectMode(false);
-                          }}
-                          className={styles.cancelBulkEditButton}
-                        >
-                          Cancel Selection
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </form>
-            </div>
-
-            {/* Collection Content */}
-            {processedContent && processedContent.length > 0 && (
-              <div className={pageStyles.blockGroup}>
-                <div className={styles.contentHeader}>
-                  <h3 className={styles.contentHeading}>
-                    Collection Content ({processedContent.length} items)
-                    {isSelectingCoverImage && (
-                      <span className={styles.selectingNotice}>
-                        (Click any image to set as cover)
-                      </span>
-                    )}
-                    {selectedImageIds.length > 0 && (
-                      <span className={styles.selectingNotice}>
-                        ({selectedImageIds.length} image{selectedImageIds.length > 1 ? 's' : ''}{' '}
-                        selected)
-                      </span>
-                    )}
-                    {collection.displayMode === 'ORDERED' && !isSelectingCoverImage && selectedImageIds.length === 0 && (
-                      <span className={styles.selectingNotice}>
-                        (Drag and drop images to reorder)
-                      </span>
-                    )}
-                  </h3>
-                </div>
-                <ContentBlockWithFullScreen
-                  content={processedContent}
-                  priorityBlockIndex={0}
-                  enableFullScreenView={false}
-                  isSelectingCoverImage={isSelectingCoverImage}
-                  currentCoverImageId={collection.coverImage?.id}
-                  onImageClick={handleImageClick}
-                  justClickedImageId={justClickedImageId}
-                  selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
-                  currentCollectionId={collection.id}
-                  collectionSlug={collection.slug}
-                  collectionData={collection}
-                  enableDragAndDrop={collection.displayMode === 'ORDERED'}
-                  draggedImageId={dragState.draggedId}
-                  dragOverImageId={dragState.dragOverId}
-                  onDragStart={handleDragStart}
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  onDragEnd={handleDragEnd}
-                />
+                </form>
               </div>
-            )}
-          </>
-        )}
+
+              {/* Collection Content */}
+              {processedContent && processedContent.length > 0 && (
+                <>
+                  <div className={styles.contentHeader}>
+                    <h3 className={styles.contentHeading}>
+                      Collection Content ({processedContent.length} items)
+                      {isSelectingCoverImage && (
+                        <span className={styles.selectingNotice}>
+                          (Click any image to set as cover)
+                        </span>
+                      )}
+                      {selectedImageIds.length > 0 && (
+                        <span className={styles.selectingNotice}>
+                          ({selectedImageIds.length} image{selectedImageIds.length > 1 ? 's' : ''}{' '}
+                          selected)
+                        </span>
+                      )}
+                      {collection.displayMode === 'ORDERED' &&
+                        !isSelectingCoverImage &&
+                        selectedImageIds.length === 0 && (
+                          <span className={styles.selectingNotice}>
+                            (Drag and drop images to reorder)
+                          </span>
+                        )}
+                    </h3>
+                  </div>
+                  <ContentBlockWithFullScreen
+                    content={processedContent}
+                    priorityBlockIndex={0}
+                    enableFullScreenView={false}
+                    isSelectingCoverImage={isSelectingCoverImage}
+                    currentCoverImageId={collection.coverImage?.id}
+                    onImageClick={handleImageClick}
+                    justClickedImageId={justClickedImageId}
+                    selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
+                    currentCollectionId={collection.id}
+                    collectionSlug={collection.slug}
+                    collectionData={collection}
+                    enableDragAndDrop={collection.displayMode === 'ORDERED'}
+                    draggedImageId={dragState.draggedId}
+                    dragOverImageId={dragState.dragOverId}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onDragEnd={handleDragEnd}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </main>
       </div>
 
       {/* Image Metadata Editor Modal */}
@@ -999,6 +1091,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           availableFilmTypes={currentState?.filmTypes || []}
           availableFilmFormats={currentState?.filmFormats || []}
           availableCollections={currentState?.collections || []}
+          availableLocations={currentState?.locations || []}
           selectedImageIds={selectedImageIds}
           selectedImages={imagesToEdit}
           currentCollectionId={collection?.id}

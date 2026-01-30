@@ -8,11 +8,11 @@
   position: relative;
   background-color: transparent;
   border-bottom: none;
-  
+
   /* Mobile: Add left/right padding since parent container has none */
   padding-left: var(--page-padding-mobile);
   padding-right: var(--page-padding-mobile);
-  
+
   @media (width >= 768px) {
     padding-left: 0;
     padding-right: 0;
@@ -63,10 +63,10 @@
 .menuWrapper {
   display: flex;
   align-items: center;
-  
+
   /* Match menu icon size on mobile */
   height: var(--space-6);
-  
+
   /* Desktop version (enhancement): min-width 768px and up */
   @media (width >= 768px) {
     height: 2.75rem; /* Larger than text-3xl (2.25rem) */
