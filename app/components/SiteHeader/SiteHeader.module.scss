@@ -50,7 +50,7 @@
     transition: color 0.2s ease;
 
     &:hover {
-      color: #333;
+      color: var(--color-hover-grey);
     }
 
     /* Desktop version (enhancement): min-width 768px and up */
@@ -83,7 +83,7 @@
   stroke-width: 2.5; /* Base stroke width for mobile */
 
   &:hover {
-    color: #333;
+    color: var(--color-hover-grey);
   }
 
   /* Desktop version (enhancement): min-width 768px and up */

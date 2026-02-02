@@ -1,3 +1,5 @@
+import { notFound } from 'next/navigation';
+
 import { getAllImages } from '@/app/lib/api/content';
 import type { CollectionModel } from '@/app/types/Collection';
 import { CollectionType } from '@/app/types/Collection';
@@ -46,16 +48,27 @@ function createMockCollection(images: ContentImageModel[]): CollectionModel {
 }
 
 export default async function AllImagesPage() {
-  const allImages = await getAllImages();
+  try {
+    const allImages = await getAllImages();
 
-  // Create a mock collection structure that CollectionPage can process
-  const mockCollection = createMockCollection(allImages);
+    // Create a mock collection structure that CollectionPage can process
+    const mockCollection = createMockCollection(allImages);
 
-  return <CollectionPage collection={mockCollection} chunkSize={4} />;
+    return <CollectionPage collection={mockCollection} chunkSize={4} />;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Handle 404s
+    if (errorMessage.includes('404')) {
+      notFound();
+    }
+
+    // Re-throw other errors for admin visibility
+    throw error;
+  }
 }
 
 // TODO: Future implementation - Person page
 // Create app/(admin)/person/[personId]/page.tsx
 // Endpoint: GET /api/admin/content/images/person/{personId}
 // Reuse same pattern: createMockCollection(images) -> CollectionPage
-

@@ -9,6 +9,44 @@ import type { AnyContentModel } from '@/app/types/Content';
 import { getAspectRatio, hasImage, isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
+ * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel)
+ * Collection cards have collectionType set during conversion
+ */
+export function isCollectionCard(item: AnyContentModel): boolean {
+  return 'collectionType' in item && !!item.collectionType;
+}
+
+/**
+ * Get rating or star value for an item
+ *
+ * @param item - Content item to get rating for
+ * @param asStarValue - If true, returns star value (0 or 1 → 1, 2+ stays as rating).
+ *                      If false (default), returns raw rating (0-5).
+ *
+ * Special handling for collection cards:
+ * - Collection cards are treated as 4-star items to ensure 2-per-row layout
+ * - Two 4-star items = 8 stars (within 7-9 range) → natural 2-per-row grouping
+ */
+export function getRating(item: AnyContentModel, asStarValue: boolean = false): number {
+  // Collection cards get effective rating of 4 for 2-per-row layout
+  // This ensures collections are displayed in pairs (4+4=8 stars, within 7-9 range)
+  if (isCollectionCard(item)) {
+    return 4;
+  }
+
+  if (!isContentImage(item)) {
+    return asStarValue ? 1 : 0; // Non-images: 1 star if asStarValue, 0 rating otherwise
+  }
+  const rating = item.rating || 0;
+  if (asStarValue) {
+    // Star value: 0 or 1 becomes 1, 2+ stays as rating
+    return rating === 0 || rating === 1 ? 1 : rating;
+  }
+  // Raw rating: return as-is (0 stays 0)
+  return rating;
+}
+
+/**
  * Check if an item should be standalone (take full row width)
  *
  * Standalone candidates:

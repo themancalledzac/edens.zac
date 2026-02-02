@@ -1,3 +1,5 @@
+import { notFound } from 'next/navigation';
+
 import { getAllCollectionsAdmin } from '@/app/lib/api/collections';
 
 import CollectionPage from '../../components/ContentCollection/CollectionPage';
@@ -19,7 +21,18 @@ import CollectionPage from '../../components/ContentCollection/CollectionPage';
 export const dynamic = 'force-dynamic';
 
 export default async function AllCollectionsPage() {
-  const allCollections = await getAllCollectionsAdmin();
+  try {
+    const allCollections = await getAllCollectionsAdmin();
+    return <CollectionPage collection={allCollections} />;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
-  return <CollectionPage collection={allCollections} />;
+    // Handle 404s
+    if (errorMessage.includes('404')) {
+      notFound();
+    }
+
+    // Re-throw other errors for admin visibility
+    throw error;
+  }
 }

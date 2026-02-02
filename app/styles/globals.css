@@ -87,6 +87,8 @@ html,
 
   /* Admin/Form Colors */
   --color-bg-light: #f8f9fa;
+  --color-bg-medium: #e9ecef;
+  --color-bg-dark: #dee2e6;
   --color-border-light: #ccc;
   --color-border-medium: #dee2e6;
   --color-text-primary: #333;
@@ -96,9 +98,24 @@ html,
   --color-error-border: #fcc;
   --color-error-text: #c33;
   --color-primary: #212226;
+  --color-primary-dark: #1a1b1e;
   --color-secondary: #6c757d;
+  --color-secondary-dark: #5a6268;
+  --color-success: #22c55e;
+  --color-success-dark: #16a34a;
   --color-danger: #dc3545;
   --color-disabled: #ccc;
+
+  /* Additional overlay variations */
+  --color-overlay-light-10: rgba(255, 255, 255, 0.1);
+  --color-overlay-light-20: rgba(255, 255, 255, 0.2);
+  --color-overlay-light-30: rgba(255, 255, 255, 0.3);
+
+  /* Hover state */
+  --color-hover-grey: #333;
+
+  /* Border variations */
+  --color-border-dark: #adb5bd;
 
   /* Z-Index Layers - Systematic stacking order */
 

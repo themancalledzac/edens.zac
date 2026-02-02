@@ -4,7 +4,12 @@
  */
 
 import type { ContentImageModel } from '@/app/types/Content';
-import { isStandaloneItem, isFiveStarHorizontal } from '@/app/utils/contentRatingUtils';
+import {
+  getRating,
+  isCollectionCard,
+  isFiveStarHorizontal,
+  isStandaloneItem,
+} from '@/app/utils/contentRatingUtils';
 
 // ===================== Test Fixtures =====================
 
@@ -124,7 +129,7 @@ describe('isStandaloneItem', () => {
 
   describe('edge cases', () => {
     it('should return false for undefined', () => {
-      expect(isStandaloneItem(undefined)).toBe(false);
+      expect(isStandaloneItem()).toBe(false);
     });
 
     it('should return false for non-image content', () => {
@@ -162,6 +167,94 @@ describe('isFiveStarHorizontal (deprecated)', () => {
   });
 
   it('should return false for undefined', () => {
-    expect(isFiveStarHorizontal(undefined)).toBe(false);
+    expect(isFiveStarHorizontal()).toBe(false);
+  });
+});
+
+// ===================== isCollectionCard Tests =====================
+
+describe('isCollectionCard', () => {
+  it('should return true for items with collectionType', () => {
+    const collectionCard = {
+      id: 1,
+      contentType: 'PARALLAX' as const,
+      collectionType: 'TRAVEL',
+    };
+    expect(isCollectionCard(collectionCard as never)).toBe(true);
+  });
+
+  it('should return false for regular images', () => {
+    const image = createHorizontalImage(1, 3);
+    expect(isCollectionCard(image)).toBe(false);
+  });
+
+  it('should return false for items with empty collectionType', () => {
+    const item = {
+      id: 1,
+      contentType: 'PARALLAX' as const,
+      collectionType: '',
+    };
+    expect(isCollectionCard(item as never)).toBe(false);
+  });
+});
+
+// ===================== getRating Tests =====================
+
+describe('getRating', () => {
+  describe('raw rating mode (asStarValue=false)', () => {
+    it('should return raw rating for images', () => {
+      expect(getRating(createHorizontalImage(1, 0))).toBe(0);
+      expect(getRating(createHorizontalImage(1, 3))).toBe(3);
+      expect(getRating(createHorizontalImage(1, 5))).toBe(5);
+    });
+
+    it('should return 0 for non-images', () => {
+      const textContent = {
+        id: 1,
+        contentType: 'TEXT' as const,
+        textBlock: { title: 'Test' },
+      };
+      expect(getRating(textContent as never)).toBe(0);
+    });
+
+    it('should return 4 for collection cards (2-per-row layout)', () => {
+      const collectionCard = {
+        id: 1,
+        contentType: 'PARALLAX' as const,
+        collectionType: 'TRAVEL',
+      };
+      expect(getRating(collectionCard as never)).toBe(4);
+    });
+  });
+
+  describe('star value mode (asStarValue=true)', () => {
+    it('should convert 0 and 1 ratings to 1 star', () => {
+      expect(getRating(createHorizontalImage(1, 0), true)).toBe(1);
+      expect(getRating(createHorizontalImage(1, 1), true)).toBe(1);
+    });
+
+    it('should keep 2+ ratings as-is', () => {
+      expect(getRating(createHorizontalImage(1, 2), true)).toBe(2);
+      expect(getRating(createHorizontalImage(1, 3), true)).toBe(3);
+      expect(getRating(createHorizontalImage(1, 5), true)).toBe(5);
+    });
+
+    it('should return 1 for non-images', () => {
+      const textContent = {
+        id: 1,
+        contentType: 'TEXT' as const,
+        textBlock: { title: 'Test' },
+      };
+      expect(getRating(textContent as never, true)).toBe(1);
+    });
+
+    it('should return 4 for collection cards', () => {
+      const collectionCard = {
+        id: 1,
+        contentType: 'PARALLAX' as const,
+        collectionType: 'TRAVEL',
+      };
+      expect(getRating(collectionCard as never, true)).toBe(4);
+    });
   });
 });

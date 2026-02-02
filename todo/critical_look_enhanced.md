@@ -3,82 +3,711 @@
 > **Date**: February 2026
 > **Branch**: 0102-refactor-part-01
 > **Purpose**: Comprehensive review with additional context and clarifications
-> **Status**: Section 1 (Row Layout) COMPLETED ✅ | Focus on remaining priorities
+> **Status**: Section 1 (Row Layout) NEEDS MAJOR REFACTOR 🔴 | Deep dive completed
 
 ---
 
 ## Quick Reference - What's Next?
 
-**Last Completed**: Section 1 - Row Layout Logic (Branch: `0102-refactor-part-01`)
-**Next Priority**: Section 3 - Error Handling (CRITICAL - 2 admin pages need error handling)
+**Current Focus**: Section 1 - Row Layout Logic (Deep Dive & Simplification)
+**Next Priority**: Implement simplified layout algorithm before other refactors
 
 ### 🏗️ Current Status
 
 ```
-Progress: ██████░░░░░░░░░░░░░░ 30% (1 of 6 sections complete)
+Progress: █████░░░░░░░░░░░░░░░ 25% (Organization done, actual simplification pending)
 ```
 
-| Section                   | Status      | Next Action                                                |
-| ------------------------- | ----------- | ---------------------------------------------------------- |
-| 1️⃣ Row Layout Logic       | ✅ DONE     | Dead code removed, tests added, utils unified              |
-| 2️⃣ ManageClient Component | 🔄 TODO     | Extract 3 hooks to reduce complexity                       |
-| 3️⃣ Error Handling         | 🔴 **NEXT** | Add try-catch to 2 admin pages (30min)                     |
-| 4️⃣ CSS/SCSS               | 🔄 TODO     | Add 5 missing CSS variables, replace 160+ hardcoded colors |
-| 5️⃣ Image Metadata         | ℹ️ DEFER    | Large but well-organized, split only if needed             |
-| 6️⃣ Documentation          | 🔄 TODO     | Delete 8 outdated files, archive 3 reference files         |
+| Section                   | Status          | Next Action                                                 |
+| ------------------------- | --------------- | ----------------------------------------------------------- |
+| 1️⃣ Row Layout Logic       | 🔴 **REFACTOR** | ~2,400 lines → target ~500 lines (organization ✅, simplification pending) |
+| 2️⃣ ManageClient Component | 🔄 TODO         | Extract 3 hooks to reduce complexity                        |
+| 3️⃣ Error Handling         | ✅ DONE         | Added try-catch to 2 admin pages                            |
+| 4️⃣ CSS/SCSS               | ✅ DONE         | Added 6 missing CSS variables (replace hardcoded pending)   |
+| 5️⃣ Image Metadata         | ℹ️ DEFER        | Large but well-organized, split only if needed              |
+| 6️⃣ Documentation          | ✅ DONE         | Deleted 8 files, archived 3 reference files                 |
 
-**Jump to**: [Section 3 - Error Handling](#3-error-handling-critical---upgraded) | [Priority Matrix](#7-priority-matrix---updated) | [Next Steps](#next-steps-updated-february-2026)
+**Recent Changes (Feb 2026):**
+- ✅ Extracted fraction math to `fractionMath.ts` (organization, not simplification)
+- ✅ Consolidated rating logic in `contentRatingUtils.ts` (92 lines)
+- ⏳ Next: Replace fraction math with floating-point OR build unified layout system
+
+**Jump to**: [Complete Workflow](#11-complete-data-flow-a--b--c--d--e--f) | [Industry Best Practices](#15-industry-best-practices) | [Simplification Plan](#17-simplification-roadmap)
 
 ---
 
 ## Executive Summary
 
-This document tracks the critical analysis and refactoring of the edens.zac codebase. Section 1 (Row Layout Logic) has been completed. This document now focuses on remaining priorities.
+This document tracks the critical analysis and refactoring of the edens.zac codebase. **Section 1 (Row Layout Logic) has been deeply analyzed** and found to be significantly over-engineered. This section now contains the complete workflow documentation and a simplification roadmap.
+
+### Key Finding: 2,333 Lines for a ~100 Line Problem
+
+The current row layout system spans 5 files totaling **2,351 lines**:
+
+| File | Lines | Purpose | Status |
+|------|-------|---------|--------|
+| [rowStructureAlgorithm.ts](app/utils/rowStructureAlgorithm.ts) | 774 | Star-based row creation | 🔴 Needs simplification |
+| [contentLayout.ts](app/utils/contentLayout.ts) | 887 | Slot-based + header rows + sizing | 🔴 Needs simplification |
+| [patternRegistry.ts](app/utils/patternRegistry.ts) | 521 | Pattern matchers (7 patterns) | 🔴 Needs simplification |
+| [contentRatingUtils.ts](app/utils/contentRatingUtils.ts) | 91 | Rating utilities (consolidated) | ✅ Organized |
+| [fractionMath.ts](app/utils/fractionMath.ts) | 78 | Fraction-based aspect ratios | 🟡 Extracted, replace with floats |
+
+**Target**: Refactor existing logic from 2,351 lines to ~500 lines while preserving all current functionality and improving maintainability.
 
 ---
 
-## 1. Row Layout Logic - ✅ COMPLETED
+## 1. Row Layout Logic - 🔴 NEEDS MAJOR REFACTOR
 
-**Completion Date**: February 2026
-**Branch**: 0102-refactor-part-01
+### 1.0 Previous Work (Organization Only - Not Simplification)
 
-### Summary of Completed Work
+| Task | Status | Details |
+|------|--------|---------|
+| Dead code removal | ✅ | Removed 4 functions |
+| Unified rating utils | ✅ | Created `isStandaloneItem()`, consolidated in `contentRatingUtils.ts` |
+| Fraction math extraction | ✅ | Moved to `fractionMath.ts` (79 lines) - **still needs replacement with floats** |
+| Rating logic consolidation | ✅ | Moved `getRating()`, `isCollectionCard()` to `contentRatingUtils.ts` |
+| Fraction math tests | ✅ | 20 unit tests added |
+| Test coverage | ✅ | 73 tests passing |
 
-| Task                 | Status | Details                                                                                                              |
-| -------------------- | ------ | -------------------------------------------------------------------------------------------------------------------- |
-| Dead code removal    | ✅     | Removed 4 functions: `_getCombinedRating()`, `_groupItemsByStarValue()`, `createRowsArrayLegacy()`, `injectTopRow()` |
-| Unified rating utils | ✅     | Created [contentRatingUtils.ts](app/utils/contentRatingUtils.ts) with `isStandaloneItem()`                           |
-| Fraction math tests  | ✅     | Added 20 unit tests for fraction arithmetic edge cases                                                               |
-| Test coverage        | ✅     | 73 tests passing (56 existing + 17 new)                                                                              |
-| Code reduction       | ✅     | -60 lines from rowStructureAlgorithm.ts                                                                              |
+**Important**: This was **organizational refactoring only** - better separation of concerns, but zero net reduction in code. The fundamental architecture still needs simplification:
+- Fraction math should be replaced with simple floating-point division
+- Two layout systems (slot-based + star-based) should be unified
+- Pattern matchers should be config-driven instead of class-based
 
-### Files Changed
+---
 
-- [app/utils/rowStructureAlgorithm.ts](app/utils/rowStructureAlgorithm.ts) - Removed dead code + local `isStandaloneCandidate`
-- [app/utils/contentLayout.ts](app/utils/contentLayout.ts) - Updated to use unified `isStandaloneItem()`
-- [app/utils/contentRatingUtils.ts](app/utils/contentRatingUtils.ts) - NEW - Unified standalone detection utility
-- [tests/utils/rowStructureAlgorithm.test.ts](tests/utils/rowStructureAlgorithm.test.ts) - Added fraction math tests
-- [tests/utils/contentRatingUtils.test.ts](tests/utils/contentRatingUtils.test.ts) - NEW - 17 tests for rating utils
+### 1.1 Complete Data Flow (A → B → C → D → E → F)
 
-### Key Improvements
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        ROW LAYOUT SYSTEM DATA FLOW                           │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-1. **Reduced duplication** - `isStandaloneItem()` is now the single source of truth
-2. **Cleaner codebase** - Removed 4 dead/deprecated functions
-3. **Better test coverage** - Fraction math edge cases now tested (zero, Infinity, NaN, negative)
-4. **Improved maintainability** - Rating logic centralized in dedicated utility file
+┌───────────────┐
+│ A. RAW INPUT  │  Content[] from API (images, collections, text blocks)
+└───────┬───────┘
+        │
+        ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ B. PREPROCESSING (processContentBlocks)                                    │
+│    Location: contentLayout.ts:641-667                                      │
+│    ┌─────────────────────────────────────────────────────────────────────┐ │
+│    │ B1. filterVisibleBlocks()        → Remove hidden content            │ │
+│    │ B2. ensureParallaxDimensions()   → Add fallback dimensions          │ │
+│    │ B3. sortContentByOrderIndex()    → Order by position                │ │
+│    │ B4. sortNonVisibleToBottom()     → Stable sort: visible first       │ │
+│    │ B5. reorderImagesBeforeCollections() → Content type ordering        │ │
+│    │ B6. transformCollectionBlocks()  → Convert collections → parallax   │ │
+│    └─────────────────────────────────────────────────────────────────────┘ │
+└───────┬───────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ C. ROUTING DECISION (processContentForDisplay)                             │
+│    Location: contentLayout.ts:369-410                                      │
+│    ┌─────────────────────────────────────────────────────────────────────┐ │
+│    │ IF collectionData provided → Create header row (C1)                 │ │
+│    │ THEN branch:                                                         │ │
+│    │   • Mobile OR patternDetection=false → SLOT-BASED (D1)              │ │
+│    │   • Desktop AND patternDetection=true → STAR-BASED (D2)             │ │
+│    └─────────────────────────────────────────────────────────────────────┘ │
+└───────┬───────────────────────────────────────────────────────────────────┘
+        │
+        ├──────────────────────────────────────┐
+        ▼                                      ▼
+┌───────────────────────────────┐  ┌───────────────────────────────────────┐
+│ D1. SLOT-BASED SYSTEM         │  │ D2. STAR-BASED SYSTEM                 │
+│ (Mobile Fallback)             │  │ (Desktop Pattern Detection)           │
+│ Location: contentLayout.ts    │  │ Location: rowStructureAlgorithm.ts    │
+│                               │  │                                       │
+│ chunkContent():77-139         │  │ createRowsArray():247-285             │
+│ ┌───────────────────────────┐ │  │ ┌───────────────────────────────────┐ │
+│ │ • reorderLonelyVerticals()│ │  │ │ WHILE items remain:               │ │
+│ │ • getSlotWidth() per item │ │  │ │   accumulateRowByStars()          │ │
+│ │ • Fill slots until full   │ │  │ │   (collect 7-9 stars worth)       │ │
+│ │ • Simple, predictable     │ │  │ │                                   │ │
+│ └───────────────────────────┘ │  │ │   arrangeItemsIntoPattern()       │ │
+│                               │  │ │   (detect main-stacked, etc)      │ │
+│ Output: AnyContentModel[][]   │  │ │                                   │ │
+│ (simple arrays of items)      │  │ │   Reorder for pattern if needed   │ │
+│                               │  │ └───────────────────────────────────┘ │
+│                               │  │                                       │
+│                               │  │ Output: RowWithPattern[]              │
+│                               │  │ (items + pattern metadata)            │
+└───────────────┬───────────────┘  └───────────────────┬───────────────────┘
+                │                                      │
+                ▼                                      ▼
+┌───────────────────────────────┐  ┌───────────────────────────────────────┐
+│ E1. SLOT-BASED SIZING         │  │ E2. PATTERN-BASED SIZING              │
+│                               │  │                                       │
+│ calculateContentSizes()       │  │ calculateRowSizesFromPattern():823    │
+│ :168-338                      │  │ Routes to SIZE_CALCULATORS:           │
+│                               │  │                                       │
+│ ┌───────────────────────────┐ │  │ ┌───────────────────────────────────┐ │
+│ │ • getContentDimensions()  │ │  │ │ • standalone → full width         │ │
+│ │ • getSlotWidth() again    │ │  │ │ • main-stacked → box solver       │ │
+│ │ • Proportional height     │ │  │ │ • panorama-vertical → box solver  │ │
+│ │ • Simple math             │ │  │ │ • five-star-* → box solver        │ │
+│ └───────────────────────────┘ │  │ │ • standard → proportional         │ │
+│                               │  │ └───────────────────────────────────┘ │
+│                               │  │                                       │
+│                               │  │ BOX SOLVER (solveBox: 512-636):       │
+│                               │  │ ┌───────────────────────────────────┐ │
+│                               │  │ │ • Fraction-based aspect ratios    │ │
+│                               │  │ │ • Recursive tree solving          │ │
+│                               │  │ │ • Gap compensation                │ │
+│                               │  │ │ • 125 lines of complex math       │ │
+│                               │  │ └───────────────────────────────────┘ │
+└───────────────┬───────────────┘  └───────────────────┬───────────────────┘
+                │                                      │
+                └──────────────────┬───────────────────┘
+                                   ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ F. FINAL OUTPUT                                                            │
+│                                                                            │
+│ RowWithPatternAndSizes[] = [                                               │
+│   {                                                                        │
+│     pattern: { type: 'main-stacked', mainIndex: 0, ... },                 │
+│     items: [                                                               │
+│       { content: AnyContentModel, width: 780, height: 520 },              │
+│       { content: AnyContentModel, width: 250, height: 256 },              │
+│       { content: AnyContentModel, width: 250, height: 256 },              │
+│     ]                                                                      │
+│   },                                                                       │
+│   { pattern: { type: 'standard', ... }, items: [...] },                   │
+│   ...                                                                      │
+│ ]                                                                          │
+│                                                                            │
+│ Rendered by: Component.tsx:renderRow():186                                 │
+└───────────────────────────────────────────────────────────────────────────┘
+```
 
-### Architecture Notes (Preserved)
+---
 
-The two-system architecture (slot-based vs star-accumulation) is **intentional** and should be preserved:
+### 1.2 Step-by-Step Function Analysis
 
-- **Slot-based** ([contentLayout.ts](app/utils/contentLayout.ts)): Mobile/fallback, simpler deterministic layout
-- **Star-accumulation** ([rowStructureAlgorithm.ts](app/utils/rowStructureAlgorithm.ts)): Desktop pattern detection, sophisticated grouping
+#### STEP A: Raw Input
+**No code** - Content comes from API as `AnyContentModel[]`
 
-The fraction-based box solver is **justified** for:
+#### STEP B: Preprocessing (`processContentBlocks`)
+**Location**: [contentLayout.ts:641-667](app/utils/contentLayout.ts#L641-L667)
+**Lines**: 27
+**Importance**: ⭐⭐⭐ ESSENTIAL
 
-1. CSS gap compensation between stacked items
-2. Pixel-perfect calculations avoiding floating point errors
-3. Complex main-stacked layouts with different aspect ratios
+| Sub-step | Function | Lines | Importance | Notes |
+|----------|----------|-------|------------|-------|
+| B1 | `filterVisibleBlocks()` | 529-537 | ⭐⭐⭐ | Keep - essential filtering |
+| B2 | `ensureParallaxDimensions()` | 555-569 | ⭐⭐ | Keep - handles missing data |
+| B3 | `sortContentByOrderIndex()` | 574-578 | ⭐⭐⭐ | Keep - user ordering |
+| B4 | `sortNonVisibleToBottom()` | 595-612 | ⭐ | **QUESTIONABLE** - why show hidden? |
+| B5 | `reorderImagesBeforeCollections()` | 617-630 | ⭐ | **QUESTIONABLE** - hardcoded order |
+| B6 | `transformCollectionBlocks()` | 542-550 | ⭐⭐⭐ | Keep - necessary conversion |
+
+#### STEP C: Routing Decision (`processContentForDisplay`)
+**Location**: [contentLayout.ts:369-410](app/utils/contentLayout.ts#L369-L410)
+**Lines**: 42
+**Importance**: ⭐⭐⭐ ESSENTIAL
+
+```typescript
+// Current routing logic (simplified):
+if (collectionData) {
+  rows.push(createHeaderRow(collectionData, componentWidth));
+}
+
+if (isMobile || !enablePatternDetection) {
+  return chunkContent(content).map(chunk =>
+    calculateContentSizes(chunk, componentWidth)
+  );
+} else {
+  return createRowsArray(content, chunkSize).map(row =>
+    calculateRowSizesFromPattern(row, componentWidth, gridGap)
+  );
+}
+```
+
+**Issue**: Two completely separate code paths that should be unified.
+
+#### STEP D1: Slot-Based System (Mobile)
+**Location**: [contentLayout.ts:77-139](app/utils/contentLayout.ts#L77-L139)
+**Lines**: 63
+**Importance**: ⭐⭐ NECESSARY for mobile
+
+```typescript
+function chunkContent(content: AnyContentModel[]): AnyContentModel[][] {
+  // 1. Swap lonely verticals before standalone items
+  const reordered = reorderLonelyVerticals(content);
+
+  // 2. Fill rows by slot width (verticals=1, horizontals=2, panoramas=4)
+  const rows: AnyContentModel[][] = [];
+  let currentRow: AnyContentModel[] = [];
+  let currentSlots = 0;
+
+  for (const item of reordered) {
+    const slotWidth = getSlotWidth(item);
+    if (currentSlots + slotWidth > 4) {
+      rows.push(currentRow);
+      currentRow = [item];
+      currentSlots = slotWidth;
+    } else {
+      currentRow.push(item);
+      currentSlots += slotWidth;
+    }
+  }
+  if (currentRow.length) rows.push(currentRow);
+
+  return rows;
+}
+```
+
+**Verdict**: This is actually simple and reasonable. ~60 lines for slot-based grouping.
+
+#### STEP D2: Star-Based System (Desktop)
+**Location**: [rowStructureAlgorithm.ts:247-285](app/utils/rowStructureAlgorithm.ts#L247-L285)
+**Lines**: 39 (but calls complex helpers)
+**Importance**: ⭐⭐⭐ CORE ALGORITHM - but over-engineered
+
+```typescript
+function createRowsArray(content: AnyContentModel[], chunkSize = 4): RowWithPattern[] {
+  const result: RowWithPattern[] = [];
+  let pointer = 0;
+
+  while (pointer < content.length) {
+    // Accumulate 7-9 stars worth of items
+    const { items, nextIndex } = accumulateRowByStars(
+      content, pointer, 7, 9
+    );
+
+    // Detect pattern for these items
+    const pattern = arrangeItemsIntoPattern(items, pointer);
+
+    // Reorder items for main-stacked if needed
+    if (pattern.type === 'main-stacked') {
+      items = reorderForMainStacked(items, pattern);
+    }
+
+    result.push({ pattern, items });
+    pointer = nextIndex;
+  }
+
+  return result;
+}
+```
+
+**Supporting Functions**:
+
+| Function | Lines | Complexity | Notes |
+|----------|-------|------------|-------|
+| `accumulateRowByStars()` | 87-137 (51) | Medium | Greedy accumulation |
+| `getRating()` | 59-76 (18) | Low | Rating extraction |
+| `arrangeItemsIntoPattern()` | 146-230 (85) | High | Pattern detection |
+| `isCollectionCard()` | 43-45 (3) | Low | Type check |
+
+**Total for D2**: ~200 lines
+
+#### STEP E2: Pattern-Based Sizing
+**Location**: [rowStructureAlgorithm.ts:679-830](app/utils/rowStructureAlgorithm.ts#L679-L830)
+**Lines**: ~150
+**Importance**: ⭐⭐ NECESSARY but over-complex
+
+| Calculator | Lines | Complexity | Notes |
+|------------|-------|------------|-------|
+| `calculateStandaloneSizes()` | 725-743 (19) | Low | Simple full-width |
+| `calculateMainStackedSizes()` | 679-720 (42) | High | Box solver needed |
+| `calculateStandardRowSizes()` | 752-793 (42) | Medium | Proportional |
+
+**The Box Solver** (the real complexity):
+
+| Function | Lines | Complexity | Notes |
+|----------|-------|------------|-------|
+| `createFraction()` | 322-327 (6) | Low | Aspect ratio |
+| `simplifyFraction()` | 332-356 (25) | Medium | GCD reduction |
+| `addFractions()` | 361-366 (6) | Low | Math |
+| `invertFraction()` | 371-376 (6) | Low | Flip for vertical |
+| `combineBoxes()` | 427-467 (41) | High | Tree building |
+| `solveBox()` | 512-636 (125) | **VERY HIGH** | Recursive solver |
+
+**Total for E2**: ~300 lines of complex math
+
+---
+
+### 1.3 Pattern Registry Deep Dive
+**Location**: [patternRegistry.ts](app/utils/patternRegistry.ts)
+**Lines**: 521
+**Importance**: ⭐⭐ MEDIUM - enables visual variety
+
+#### Registered Patterns (7 total)
+
+| Pattern | Priority | Min/Max | Lines | Description |
+|---------|----------|---------|-------|-------------|
+| `standalone` | 100 | 1/1 | 51 | 5★ horizontal, panorama |
+| `five-star-vertical-2v` | 95 | 3/3 | 44 | 5★ vert + 2 non-5★ verts |
+| `five-star-vertical-2h` | 94 | 3/3 | 44 | 5★ vert + 2 ≤3★ horizontals |
+| `five-star-vertical-mixed` | 93 | 3/3 | 45 | 5★ vert + 3-4★ vert + <3★ horiz |
+| `main-stacked` | 80 | 3/3 | 67 | 3-4★ main + 2 secondaries |
+| `panorama-vertical` | 75 | 3/3 | 44 | Vertical + 2 wide panoramas |
+| `standard` | 0 | 1/∞ | 33 | Fallback: equal widths |
+
+**Issue**: 521 lines for 7 patterns = ~74 lines per pattern average. This is excessive.
+
+#### Pattern Matcher Interface
+```typescript
+interface PatternMatcher {
+  readonly name: PatternType;
+  readonly priority: number;
+  readonly minItems: number;
+  readonly maxItems: number;
+  canMatch(windowItems: WindowItem[]): boolean;
+  match(windowItems: WindowItem[], windowStart: number): PatternResult | null;
+}
+```
+
+**Observation**: The interface is well-designed, but each matcher has too much boilerplate.
+
+---
+
+### 1.4 What's IMPORTANT vs What's DUPLICATE vs What's UNNECESSARY
+
+#### ⭐⭐⭐ IMPORTANT (Keep/Refactor)
+
+| Component | Location | Why Important |
+|-----------|----------|---------------|
+| Content preprocessing | `processContentBlocks()` | Filtering, sorting, transformations |
+| Routing decision | `processContentForDisplay()` | Mobile vs desktop branching |
+| Star-based accumulation | `accumulateRowByStars()` | Core grouping algorithm |
+| Aspect ratio preservation | Size calculators | Prevents image distortion |
+| Header row creation | `createHeaderRow()` | Collection page hero |
+
+#### 🔄 DUPLICATE (Consolidate)
+
+| Issue | Locations | Impact |
+|-------|-----------|--------|
+| Two layout systems | `chunkContent()` vs `createRowsArray()` | Same problem solved twice |
+| Slot width calculation | `getSlotWidth()` called in multiple places | Repeated logic |
+| Dimension extraction | `getContentDimensions()` vs inline checks | Inconsistent approach |
+| Rating logic | `getRating()` with `zeroOne` parameter | Confusing mode switching |
+
+#### ❌ UNNECESSARY (Remove/Simplify)
+
+| Component | Location | Why Unnecessary |
+|-----------|----------|-----------------|
+| Fraction math | `Fraction`, `simplifyFraction()`, etc | Floating point is fine for pixels |
+| 6+ pattern matchers | `patternRegistry.ts` | Could be 2-3 with config |
+| Movement constraints | `validateMovementConstraints()` | Over-engineering |
+| `zeroOne` mode in rating | `getRating()` | Creates confusion |
+| Separate `RowWithPattern` type | Throughout | Could use simpler structure |
+
+---
+
+### 1.5 Refactoring Strategy for Existing Layout System
+
+#### Current Algorithm Analysis
+
+**What we have (Star-Based Greedy Accumulation)**:
+```
+1. Accumulate 7-9 stars worth of items for each row
+2. Detect pattern for accumulated items
+3. Reorder items if needed for pattern (e.g., main-stacked)
+4. Calculate sizes based on pattern
+```
+
+**Problems with current approach**:
+- Two separate systems (slot-based and star-based) solving the same problem
+- Star accumulation is greedy (locally optimal, not globally optimal)
+- Fraction math adds unnecessary complexity for pixel calculations
+- Pattern matching is verbose (521 lines for 7 patterns)
+- No row-level caching or incremental updates
+
+#### Improved Algorithm Approach (Without External Libraries)
+
+**Refactored approach using existing concepts**:
+
+```
+1. Unified preprocessing (keep existing logic)
+2. Improved row breaking algorithm:
+   - Consider multiple possible break points
+   - Score each possible row configuration
+   - Prefer rows with consistent heights
+   - Handle standalone items and patterns gracefully
+3. Simplified pattern detection (config-based)
+4. Streamlined size calculation (replace fraction math with floats)
+```
+
+**Why this is better for our codebase**:
+- Unifies slot-based and star-based into one algorithm
+- Uses standard JavaScript math (no fraction objects)
+- Pattern definitions become data-driven config
+- Easier to test and maintain
+- Preserves all existing functionality and patterns
+- Reduces code from 2,333 lines to ~500 lines
+
+#### Key Improvements to Make
+
+1. **Unify Layout Systems**: Merge slot-based (mobile) and star-based (desktop) into single configurable algorithm
+2. **Remove Fraction Math**: Replace with standard floating point (64-bit precision is sufficient for pixels)
+3. **Simplify Pattern Matchers**: Convert from 7 verbose classes to data-driven configuration
+4. **Add Row Caching**: Implement memoization to avoid recomputing unchanged rows
+5. **Incremental Updates**: Only recompute rows affected by rating/reorder changes
+
+---
+
+### 1.6 Reactivity Requirements
+
+The user needs the layout to recompute on:
+
+| Trigger | Current Handling | Ideal Handling |
+|---------|------------------|----------------|
+| Items per row change | Full recompute | Full recompute (correct) |
+| Display mode change | Full recompute | Full recompute (correct) |
+| Rating change | Full recompute | **Incremental** - only affected rows |
+| Content reorder | Full recompute | **Incremental** - only affected rows |
+| Content removal | Full recompute | **Incremental** - only affected rows |
+| Window resize | Full recompute | Sizes only (rows stable) |
+
+#### Can We Only Re-render Specific Rows?
+
+**Current**: No. The entire layout recomputes on any change.
+
+**Possible**: Yes, with these changes:
+
+1. **Stable Row IDs**: Give each row a deterministic ID based on content
+2. **Memoization**: Cache row groupings, only recompute when content changes
+3. **Incremental Updates**: For rating/reorder, determine which rows are affected
+4. **Virtualization**: Only render visible rows (already partially done)
+
+**Implementation sketch**:
+```typescript
+// Generate stable row ID from content
+function getRowId(items: AnyContentModel[]): string {
+  return items.map(i => i.id).sort().join('-');
+}
+
+// Memoize row groupings
+const rowCache = new Map<string, RowWithPattern>();
+
+function createRowsWithCache(content: AnyContentModel[]): RowWithPattern[] {
+  const contentHash = getContentHash(content);
+  if (rowCache.has(contentHash)) {
+    return rowCache.get(contentHash)!;
+  }
+  // ... compute and cache
+}
+```
+
+---
+
+### 1.7 Simplification Roadmap
+
+#### Phase 1: Unified Algorithm (~200 lines target)
+
+Replace both systems with a single, configurable algorithm:
+
+```typescript
+interface LayoutConfig {
+  targetRowHeight: number;      // Default: 300px
+  maxRowHeight: number;         // Default: 400px
+  containerWidth: number;       // From viewport
+  gap: number;                  // CSS gap
+  patterns: PatternDefinition[]; // Configurable patterns
+}
+
+function createRows(
+  content: AnyContentModel[],
+  config: LayoutConfig
+): RowWithSizes[] {
+  // 1. Preprocess (keep existing, ~30 lines)
+  const processed = preprocessContent(content);
+
+  // 2. Group into rows using improved break-finding algorithm (~80 lines)
+  const rowBreaks = findOptimalBreaks(processed, config);
+
+  // 3. Apply patterns to each row (~40 lines)
+  const patterned = rowBreaks.map(row => detectPattern(row, config.patterns));
+
+  // 4. Calculate sizes (~50 lines)
+  return patterned.map(row => calculateSizes(row, config));
+}
+```
+
+#### Phase 2: Simplified Patterns (~100 lines target)
+
+Replace 7 pattern matchers with configuration:
+
+```typescript
+const PATTERNS: PatternDefinition[] = [
+  {
+    name: 'standalone',
+    match: (items) => items.length === 1 && isStandaloneItem(items[0]),
+    layout: (items, width) => [{ ...items[0], width, height: width / getAspectRatio(items[0]) }]
+  },
+  {
+    name: 'main-stacked',
+    match: (items) => items.length === 3 && hasHighRatedMain(items),
+    layout: (items, width, gap) => layoutMainStacked(items, width, gap)
+  },
+  {
+    name: 'standard',
+    match: () => true, // Fallback
+    layout: (items, width, gap) => layoutProportional(items, width, gap)
+  }
+];
+```
+
+#### Phase 3: Remove Fraction Math (~-150 lines)
+
+Replace with simple floating point:
+
+```typescript
+// BEFORE (25+ lines for fraction math)
+const aspectRatio = createFraction(width, height);
+const simplified = simplifyFraction(aspectRatio);
+// ... complex operations
+
+// AFTER (2 lines)
+const aspectRatio = width / height;
+// ... simple operations
+```
+
+**Why this is safe**: We're calculating pixel values. Floating point precision (15+ significant digits) is more than enough for screen coordinates.
+
+#### Phase 4: Incremental Updates (~50 lines)
+
+Add row-level caching and incremental updates:
+
+```typescript
+function updateLayout(
+  prevRows: RowWithSizes[],
+  change: LayoutChange
+): RowWithSizes[] {
+  switch (change.type) {
+    case 'rating':
+      return updateRowsForRatingChange(prevRows, change);
+    case 'reorder':
+      return updateRowsForReorder(prevRows, change);
+    case 'remove':
+      return updateRowsForRemoval(prevRows, change);
+    default:
+      return createRows(change.content, change.config);
+  }
+}
+```
+
+---
+
+### 1.8 Recommended Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        SIMPLIFIED ROW LAYOUT SYSTEM                          │
+│                              Target: ~500 lines                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+app/utils/
+├── layout/
+│   ├── index.ts              (~30 lines)  - Public API exports
+│   ├── createRows.ts         (~150 lines) - Main algorithm
+│   ├── patterns.ts           (~100 lines) - Pattern definitions + matchers
+│   ├── sizing.ts             (~100 lines) - Size calculations
+│   ├── preprocessing.ts      (~80 lines)  - Content transformation
+│   └── cache.ts              (~50 lines)  - Row caching + incremental updates
+│
+└── contentRatingUtils.ts     (~50 lines)  - Keep as-is (already clean)
+
+TOTAL: ~560 lines (down from 2,333 = 76% reduction)
+```
+
+---
+
+### 1.9 Migration Strategy
+
+#### Step 1: Create New System in Parallel
+- Build `app/utils/layout/` alongside existing code
+- Add feature flag: `useNewLayoutSystem`
+- Test with visual regression tests
+
+#### Step 2: Gradual Migration
+- Start with simple pages (home page)
+- Add pattern support incrementally
+- Monitor for visual differences
+
+#### Step 3: Remove Old System
+- Once all pages migrated
+- Delete `rowStructureAlgorithm.ts`, `patternRegistry.ts`
+- Simplify `contentLayout.ts` to just exports
+
+#### Step 4: Optimize
+- Add row caching
+- Add incremental updates
+- Add virtualization improvements
+
+---
+
+### 1.10 Files to Change
+
+| File | Action | Notes |
+|------|--------|-------|
+| [rowStructureAlgorithm.ts](app/utils/rowStructureAlgorithm.ts) | DELETE | Replace with `createRows.ts` |
+| [patternRegistry.ts](app/utils/patternRegistry.ts) | DELETE | Replace with `patterns.ts` |
+| [contentLayout.ts](app/utils/contentLayout.ts) | MAJOR REFACTOR | Keep preprocessing, remove duplication |
+| [contentRatingUtils.ts](app/utils/contentRatingUtils.ts) | KEEP | Already clean |
+| `app/utils/layout/` | CREATE | New unified system |
+
+---
+
+### 1.11 Success Metrics
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| Total lines of code | 2,333 | ~500 |
+| Number of files | 4 | 6 (but smaller) |
+| Pattern definitions | 7 (verbose) | 3-5 (config-based) |
+| Test coverage | 73 tests | 100+ tests |
+| Re-render scope | Full page | Per-row |
+| Algorithm | Greedy (7-9 stars) | Improved with lookahead |
+
+---
+
+### 1.12 Architecture Decision Records
+
+#### ADR-001: REVISED - Single Unified Layout System
+
+**Context**: Two parallel systems (slot-based, star-based) create maintenance burden.
+
+**Decision**: Replace with single configurable system.
+
+**Rationale**:
+- Same problem shouldn't be solved twice
+- Mobile/desktop difference is just config (smaller row height on mobile)
+- Reduces code by ~1,500 lines
+
+**Status**: Proposed
+
+#### ADR-002: REVISED - Remove Fraction Math
+
+**Context**: Fraction-based arithmetic adds complexity for pixel calculations.
+
+**Decision**: Use standard floating point math.
+
+**Rationale**:
+- 64-bit floats have 15+ significant digits
+- Screen coordinates are integers anyway (final rounding)
+- Simplifies code significantly
+
+**Status**: Proposed
+
+#### ADR-003: NEW - Improve Row Breaking Algorithm
+
+**Context**: Current greedy star accumulation (7-9 stars per row) doesn't always produce optimal results.
+
+**Decision**: Enhance our existing row breaking logic to consider multiple break points and score configurations.
+
+**Rationale**:
+- Preserves our existing star-based rating system
+- Improves consistency of row heights
+- Allows lookahead to avoid orphaned items
+- No external dependencies or major architecture changes
+- Maintains all current pattern detection functionality
+
+**Status**: Proposed
 
 ---
 
@@ -412,7 +1041,7 @@ Z_INDEX = { base: 1, dropdown: 100, modal: 1000, fullscreen: 9999 }
 
 ## 7. Priority Matrix - UPDATED
 
-### ✅ COMPLETED
+### ✅ COMPLETED (Surface Cleanup)
 
 | Task                             | Status  | Branch                |
 | -------------------------------- | ------- | --------------------- |
@@ -424,10 +1053,11 @@ Z_INDEX = { base: 1, dropdown: 100, modal: 1000, fullscreen: 9999 }
 
 ### 🔴 CRITICAL (Do First)
 
-| Task                              | Effort | Impact           | Files                                                                                                      |
-| --------------------------------- | ------ | ---------------- | ---------------------------------------------------------------------------------------------------------- |
-| Add error handling to admin pages | 30min  | Prevents crashes | [all-collections](<app/(admin)/all-collections/page.tsx>), [all-images](<app/(admin)/all-images/page.tsx>) |
-| Add missing CSS variables         | 30min  | Enables cleanup  | [globals.css](app/styles/globals.css)                                                                      |
+| Task                                     | Effort  | Impact                 | Files                                                                                                      |
+| ---------------------------------------- | ------- | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Simplify row layout system**           | 2-3 wks | -1,800 lines, better UX | Create `app/utils/layout/`, delete old files                                                               |
+| ~~Add error handling to admin pages~~    | ✅ Done | Prevents crashes       | [all-collections](<app/(admin)/all-collections/page.tsx>), [all-images](<app/(admin)/all-images/page.tsx>) |
+| ~~Add missing CSS variables~~            | ✅ Done | Enables cleanup        | [globals.css](app/styles/globals.css)                                                                      |
 
 ---
 
@@ -455,8 +1085,8 @@ Z_INDEX = { base: 1, dropdown: 100, modal: 1000, fullscreen: 9999 }
 
 | Task                        | Effort | Impact            | Files                      |
 | --------------------------- | ------ | ----------------- | -------------------------- |
-| Delete outdated MD files    | 5min   | Reduces confusion | 8 files (see Section 9.4)  |
-| Archive reference files     | 2min   | Organization      | 3 files to `todo/archive/` |
+| ~~Delete outdated MD files~~| ✅ Done| Reduces confusion | 8 files (see Section 9.4)  |
+| ~~Archive reference files~~ | ✅ Done| Organization      | 3 files to `todo/archive/` |
 | Split ManageClient fully    | 8-10h  | Maintainability   | Many new files             |
 | Split imageMetadataUtils    | 4h     | Moderate          | 3-4 new files              |
 | Create shared button module | 3h     | DRY               | New SCSS file              |
@@ -465,32 +1095,51 @@ Z_INDEX = { base: 1, dropdown: 100, modal: 1000, fullscreen: 9999 }
 
 ## 8. Architectural Decisions to Document
 
-### ADR-001: Why Two Row Layout Systems?
+### ADR-001: REVISED - Single Unified Layout System
 
-**Context**: The codebase has two row layout systems - slot-based and star-based.
+**Context**: The codebase has two row layout systems - slot-based and star-based, totaling 2,333 lines.
 
-**Decision**: Keep both systems for different use cases.
+**Decision**: Replace with single configurable system (~500 lines).
 
 **Rationale**:
 
-- **Slot-based** (mobile): Simpler, predictable, works well at narrow widths
-- **Star-based** (desktop): Sophisticated pattern detection, better visual hierarchy
+- Same problem shouldn't be solved twice
+- Mobile/desktop difference is just config (smaller row height on mobile)
+- Improved algorithm considers multiple break points for better results
+- Reduces code by ~1,800 lines (76% reduction)
 
-**Status**: Accepted, needs documentation.
+**Status**: Proposed (see Section 1.7-1.9 for implementation plan).
 
-### ADR-002: Fraction-Based Box Solver
+### ADR-002: REVISED - Remove Fraction Math
 
 **Context**: Size calculation uses fraction arithmetic instead of floating point.
 
-**Decision**: Keep the fraction-based approach.
+**Decision**: Replace fraction math with standard floating point.
 
 **Rationale**:
 
-- Avoids floating point rounding errors
-- Enables exact gap compensation
-- Handles complex main-stacked layouts precisely
+- 64-bit floats have 15+ significant digits (more than enough for pixels)
+- Screen coordinates are integers anyway (final rounding)
+- Simplifies code significantly (~150 lines saved)
+- Fraction math was premature optimization
 
-**Status**: Accepted, needs unit tests for edge cases.
+**Status**: Proposed (part of Section 1 refactor).
+
+### ADR-003: NEW - Improve Row Breaking Algorithm
+
+**Context**: Current greedy star accumulation (7-9 stars per row) doesn't always produce optimal results.
+
+**Decision**: Enhance our existing row breaking logic to consider multiple break points and score configurations.
+
+**Rationale**:
+
+- Preserves our existing star-based rating system
+- Improves consistency of row heights
+- Allows lookahead to avoid orphaned items
+- No external dependencies or major architecture changes
+- Maintains all current pattern detection functionality
+
+**Status**: Proposed (see Section 1.5 for implementation approach).
 
 ---
 
@@ -498,13 +1147,14 @@ Z_INDEX = { base: 1, dropdown: 100, modal: 1000, fullscreen: 9999 }
 
 ### Files by Size (Updated)
 
-| Size  | File                                                                          | Status     | Notes                                  |
-| ----- | ----------------------------------------------------------------------------- | ---------- | -------------------------------------- |
-| 1,173 | [ManageClient.tsx](app/components/ManageClient/ManageClient.tsx)              | 🔄 TODO    | God component - needs splitting        |
-| 967   | [imageMetadataUtils.ts](app/utils/imageMetadataUtils.ts)                      | ℹ️ DEFER   | Well-organized, optional split         |
-| ~880  | [rowStructureAlgorithm.ts](app/utils/rowStructureAlgorithm.ts)                | ✅ CLEANED | Was 938, removed 60 lines of dead code |
-| ~850  | [contentLayout.ts](app/utils/contentLayout.ts)                                | ✅ CLEANED | Was 899, removed dead code             |
-| 795   | [ImageMetadataModal.tsx](app/components/ImageMetadata/ImageMetadataModal.tsx) | ℹ️ DEFER   | Large but cohesive                     |
+| Size  | File                                                                          | Status           | Notes                                                |
+| ----- | ----------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------- |
+| 1,173 | [ManageClient.tsx](app/components/ManageClient/ManageClient.tsx)              | 🔄 TODO          | God component - needs splitting                      |
+| 967   | [imageMetadataUtils.ts](app/utils/imageMetadataUtils.ts)                      | ℹ️ DEFER         | Well-organized, optional split                       |
+| 872   | [rowStructureAlgorithm.ts](app/utils/rowStructureAlgorithm.ts)                | 🔴 **REFACTOR**  | Target: Delete + replace with ~150 line alternative  |
+| 887   | [contentLayout.ts](app/utils/contentLayout.ts)                                | 🔴 **REFACTOR**  | Target: Simplify to ~100 lines (keep preprocessing)  |
+| 795   | [ImageMetadataModal.tsx](app/components/ImageMetadata/ImageMetadataModal.tsx) | ℹ️ DEFER         | Large but cohesive                                   |
+| 521   | [patternRegistry.ts](app/utils/patternRegistry.ts)                            | 🔴 **REFACTOR**  | Target: Delete + replace with ~100 line config-based |
 
 ### ~~Dead Code to Remove~~ ✅ COMPLETED
 
@@ -614,19 +1264,91 @@ These items have been added to the "Row Layout System" section of `todo.md`.
 
 ## Next Steps (Updated February 2026)
 
-### Phase 1: Row Layout - ✅ COMPLETED
+### Phase 0: Row Layout Organization - ✅ COMPLETED
 
 - ✅ Dead code removal (4 functions)
-- ✅ Unified rating utilities (contentRatingUtils.ts)
+- ✅ Unified rating utilities (`contentRatingUtils.ts` - 92 lines)
+- ✅ Extracted fraction math (`fractionMath.ts` - 79 lines)
 - ✅ Fraction math unit tests (20 new tests)
 - ✅ Test coverage improved (73 total tests)
 
-### Phase 2: Critical Fixes - 🔴 IN PROGRESS
+**Note**: This was **organizational only** - better file structure, but zero net line reduction. The code just moved between files.
 
-**Next immediate actions:**
+---
 
-1. 🔴 Add error handling to admin pages (30min)
-2. 🔴 Add missing CSS variables to globals.css (30min)
+### Phase 1: Row Layout System Simplification - 🔴 **NEXT PRIORITY**
+
+**Choose one of these approaches:**
+
+#### Option A: Quick Win - Replace Fraction Math with Floats (~2-3 hours)
+**Low risk, immediate simplification**
+
+Replace the `fractionMath.ts` functions with simple floating-point math:
+
+```typescript
+// BEFORE (fractionMath.ts - 79 lines)
+const ratio = createFraction(1920, 1080);  // { numerator: 1920, denominator: 1080 }
+const simplified = simplifyFraction(ratio); // GCD calculation
+const combined = addFractions(r1, r2);      // Cross-multiplication
+
+// AFTER (~5 lines inline)
+const ratio = 1920 / 1080;  // 1.777...
+const combined = r1 + r2;   // Just addition
+```
+
+**Why this is safe**: JavaScript floats have 15+ significant digits. We're calculating pixels (max ~8000). Final values get `Math.round()` anyway.
+
+**Impact**: Delete `fractionMath.ts`, simplify `rowStructureAlgorithm.ts` by ~50-80 lines
+
+#### Option B: Full System Rewrite (~2-3 weeks)
+**High effort, maximum simplification**
+
+Build new unified system in `app/utils/layout/`:
+1. Merge slot-based (mobile) and star-based (desktop) into single algorithm
+2. Replace fraction math with standard floats
+3. Convert pattern matchers from 7 classes to config-driven definitions
+4. Add row-level caching for incremental updates
+
+**Impact**: ~2,400 lines → ~500 lines
+
+#### Option C: Incremental Approach (Recommended)
+**Balance of progress and risk**
+
+1. **Step 1**: Replace fraction math with floats (Option A)
+2. **Step 2**: Simplify pattern matchers to config-based (reduce ~400 lines)
+3. **Step 3**: Unify slot-based and star-based systems
+4. **Step 4**: Add caching/incremental updates
+
+Each step is independently testable and reversible.
+
+---
+
+### What is "Float" vs "Fraction" Math?
+
+**Current (Fraction objects)**:
+```typescript
+interface Fraction { numerator: number; denominator: number; }
+
+// Aspect ratio 16:9 becomes { numerator: 16, denominator: 9 }
+// To combine ratios: cross-multiply, find GCD, simplify
+// ~79 lines of helper functions
+```
+
+**Proposed (Floating point)**:
+```typescript
+// Aspect ratio 16:9 becomes 1.777...
+// To combine ratios: just add
+// ~3 lines total
+```
+
+**Why fractions exist**: Historical concern about floating-point precision errors. But JavaScript's 64-bit floats have 15+ significant digits - far more than needed for pixel math.
+
+### Phase 2: Critical Fixes - 🟡 DEFERRED
+
+**Will address after row layout refactor:**
+
+1. 🟡 Add error handling to admin pages (30min)
+2. 🟡 Add missing CSS variables to globals.css (30min)
 3. 🟡 Extract error handling utility (1h)
 
 ### Phase 3: ManageClient Refactor - 🟡 PLANNED
@@ -649,27 +1371,97 @@ These items have been added to the "Row Layout System" section of `todo.md`.
 
 ## Conclusion
 
-**Section 1 (Row Layout Logic) is complete.** The codebase is **well-architected** at its core, with the following remaining priorities:
+**Section 1 (Row Layout Logic) requires actual simplification, not just reorganization.** Previous session extracted code to separate files but achieved zero net reduction. The 2,351 lines can still be reduced to ~500 lines.
 
-### Remaining Issues (Prioritized)
+### What Was Done vs What Needs Done
 
-1. 🔴 **CRITICAL**: Missing error handling in 2 admin pages
-2. 🔴 **CRITICAL**: Missing CSS variables (5 undefined variables)
-3. 🟡 **HIGH**: ManageClient complexity (1,173 lines)
-4. 🟢 **MEDIUM**: 160+ hardcoded CSS color values
-5. ⚪ **LOW**: Documentation debt (8 files to delete/archive)
+| Aspect | Done | Still Needed |
+|--------|------|--------------|
+| Fraction math | ✅ Extracted to `fractionMath.ts` | 🔴 Replace with float division |
+| Rating logic | ✅ Consolidated in `contentRatingUtils.ts` | ✅ Complete |
+| Pattern matchers | ❌ Not started | 🔴 Convert 7 classes → config |
+| Dual systems | ❌ Not started | 🔴 Unify slot + star based |
+| Row caching | ❌ Not started | 🟡 Add after simplification |
 
-The refactoring approach:
+### Critical Issues (Re-Prioritized)
 
-1. ✅ ~~Clean up row layout logic~~ (COMPLETED)
-2. 🔴 Fix critical gaps (error handling, CSS variables) - NEXT
+1. 🔴 **CRITICAL**: Row layout over-engineering (2,351 lines → target ~500 lines)
+   - Two duplicate systems solving the same problem
+   - Unnecessary fraction math (78 lines) - **extracted but not simplified**
+   - Over-complex pattern matchers (521 lines for 7 patterns)
+   - Greedy algorithm without lookahead for better row breaking
+
+2. 🟡 **HIGH**: ManageClient complexity (1,173 lines)
+3. 🟡 **MEDIUM**: Missing error handling in 2 admin pages
+4. 🟡 **MEDIUM**: Missing CSS variables (5 undefined variables)
+5. 🟢 **LOW**: 160+ hardcoded CSS color values
+6. ⚪ **LOW**: Documentation debt (8 files to delete/archive)
+
+### Recommended Next Action
+
+**Start with Option A or C from Phase 1** (see "Next Steps" section above):
+
+| Option | Effort | Risk | Impact |
+|--------|--------|------|--------|
+| A: Replace fraction→float | 2-3 hours | Low | Delete 78 lines, simplify ~50 more |
+| B: Full rewrite | 2-3 weeks | High | 2,351 → ~500 lines |
+| C: Incremental (recommended) | Days per step | Low | Steady progress, each step testable |
+
+**Quick win**: Option A (fraction→float) can be done today and provides immediate simplification with minimal risk.
+
+The full refactoring approach:
+
+1. 🔴 **Simplify row layout system** - **TOP PRIORITY**
+   - Step 1: Replace fraction math with floats (immediate)
+   - Step 2: Convert pattern matchers to config-based
+   - Step 3: Unify slot-based and star-based systems
+   - Target: 2,351 lines → ~500 lines
+2. 🟡 Fix critical gaps (error handling, CSS variables)
 3. 🟡 Extract ManageClient responsibilities gradually
 4. 🟢 Standardize CSS variables and button components
 5. ⚪ Complete documentation cleanup
 
+### Why This Changes Everything
+
+The row layout system is the **core** of this application. Every collection page, every image gallery, every user interaction with content flows through these 2,333 lines. Fixing this foundation first will:
+
+- Make all future refactoring easier
+- Improve performance and UX immediately
+- Reduce maintenance burden significantly
+- Establish patterns for simplifying other areas
+
 ## Side Notes
 
-### Links
+### Implementation References
 
-- https://blog.vjeux.com/2014/image/google-plus-layout-find-best-breaks.html
-- https://blog.vjeux.com/2012/image/image-layout-algorithm-google-plus.html
+**Fraction Math Replacement (Quick Reference)**
+
+Current usage in `rowStructureAlgorithm.ts`:
+- Line 302: `createFraction(width, height)` for aspect ratios
+- Line 316: `createFraction(effectiveWidth, effectiveHeight)`
+- Lines 347-360: `addFractions()` and `invertFraction()` for combining boxes
+
+Replace with:
+```typescript
+// Instead of:
+const ratio = createFraction(width, height);
+// Use:
+const ratio = width / height;
+
+// Instead of:
+const combined = addFractions(r1, r2);
+// Use:
+const combined = r1 + r2;
+
+// Instead of:
+const inverted = invertFraction(ratio);
+// Use:
+const inverted = 1 / ratio;
+```
+
+### Key Areas for Improvement
+
+1. **Size Calculation**: Replace fraction-based math with standard floating point (immediate)
+2. **Pattern Matching**: Convert verbose class-based matchers to config-driven definitions
+3. **Row Breaking**: Add lookahead to avoid orphaned items and improve row height consistency
+4. **System Unification**: Merge slot-based (mobile) and star-based (desktop) into single algorithm

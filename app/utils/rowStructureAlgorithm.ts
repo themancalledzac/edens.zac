@@ -14,14 +14,21 @@
 import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
+import { getRating, isStandaloneItem } from '@/app/utils/contentRatingUtils';
 import {
   getContentDimensions,
   getSlotWidth,
   isContentImage,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
+import {
+  addFractions,
+  createFraction,
+  type Fraction,
+  invertFraction,
+  simplifyFraction,
+} from '@/app/utils/fractionMath';
 import { type PatternResult, type PatternType } from '@/app/utils/patternRegistry';
-import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
 
 // Re-export types for consumers
 export type { PatternResult, PatternType };
@@ -35,45 +42,6 @@ export interface RowWithPattern {
 }
 
 // ===================== Helper Functions =====================
-
-/**
- * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel)
- * Collection cards have collectionType set during conversion
- */
-function isCollectionCard(item: AnyContentModel): boolean {
-  return 'collectionType' in item && !!item.collectionType;
-}
-
-/**
- * Get rating or star value for an item
- * - zeroOne=false (default): Returns raw rating (0-5), treats 0 as 0
- * - zeroOne=true: Returns star value, converts 0 or 1 to 1, 2+ stays as rating
- *
- * Special handling for collection cards:
- * - Collection cards are treated as 4-star items to ensure 2-per-row layout
- * - Two 4-star items = 8 stars (within 7-9 range) → natural 2-per-row grouping
- *
- * @param item - Content item to get rating for
- * @param zeroOne - If true, converts 0 to 1 (star value). If false, returns raw rating.
- */
-function getRating(item: AnyContentModel, zeroOne: boolean = false): number {
-  // Collection cards get effective rating of 4 for 2-per-row layout
-  // This ensures collections are displayed in pairs (4+4=8 stars, within 7-9 range)
-  if (isCollectionCard(item)) {
-    return 4;
-  }
-
-  if (!isContentImage(item)) {
-    return zeroOne ? 1 : 0; // Non-images: 1 star if zeroOne, 0 rating otherwise
-  }
-  const rating = item.rating || 0;
-  if (zeroOne) {
-    // Star value: 0 or 1 becomes 1, 2+ stays as rating
-    return rating === 0 || rating === 1 ? 1 : rating;
-  }
-  // Raw rating: return as-is (0 stays 0)
-  return rating;
-}
 
 /**
  * Accumulate items sequentially until star limit is reached
@@ -286,14 +254,6 @@ export function createRowsArray(
 
 // ===================== Part 2: Calculate Row Sizes =====================
 
-/**
- * Fraction representation: { numerator, denominator }
- * Always represents width/height ratio (horizontal aspect ratio)
- */
-interface Fraction {
-  numerator: number;
-  denominator: number;
-}
 
 /**
  * Box descriptor with fraction-based aspect ratios
@@ -316,64 +276,6 @@ interface SolvedBox {
   children?: SolvedBox[];
 }
 
-/**
- * Create a fraction from width and height
- */
-function createFraction(width: number, height: number): Fraction {
-  return {
-    numerator: width,
-    denominator: height,
-  };
-}
-
-/**
- * Simplify a fraction to lowest terms
- */
-function simplifyFraction(f: Fraction): Fraction {
-  // Guard against invalid input
-  if (!Number.isFinite(f.numerator) || !Number.isFinite(f.denominator)) {
-    return { numerator: 1, denominator: 1 };
-  }
-
-  if (f.denominator === 0) {
-    return { numerator: 1, denominator: 1 };
-  }
-
-  const gcd = (a: number, b: number): number => {
-    // Ensure we have valid finite numbers
-    if (!Number.isFinite(a) || !Number.isFinite(b)) return 1;
-    if (b === 0) return a;
-    return gcd(b, a % b);
-  };
-
-  const divisor = gcd(Math.abs(f.numerator), Math.abs(f.denominator));
-  if (divisor === 0 || !Number.isFinite(divisor)) return f;
-
-  return {
-    numerator: f.numerator / divisor,
-    denominator: f.denominator / divisor,
-  };
-}
-
-/**
- * Add two fractions: a/b + c/d = (ad + bc) / bd
- */
-function addFractions(f1: Fraction, f2: Fraction): Fraction {
-  return simplifyFraction({
-    numerator: f1.numerator * f2.denominator + f2.numerator * f1.denominator,
-    denominator: f1.denominator * f2.denominator,
-  });
-}
-
-/**
- * Invert a fraction: a/b -> b/a (flip for vertical direction)
- */
-function invertFraction(f: Fraction): Fraction {
-  return {
-    numerator: f.denominator,
-    denominator: f.numerator,
-  };
-}
 
 /**
  * Create a box directly from AnyContentModel
