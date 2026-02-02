@@ -15,13 +15,13 @@ import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
 import {
-  getAspectRatio,
   getContentDimensions,
   getSlotWidth,
   isContentImage,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
 import { type PatternResult, type PatternType } from '@/app/utils/patternRegistry';
+import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
 
 // Re-export types for consumers
 export type { PatternResult, PatternType };
@@ -76,28 +76,6 @@ function getRating(item: AnyContentModel, zeroOne: boolean = false): number {
 }
 
 /**
- * Check if an item should be standalone (take full row width)
- * Standalone candidates: 5-star horizontal, wide panorama
- * Note: 5-star verticals should NOT be standalone - they pair with other images
- */
-function isStandaloneCandidate(item: AnyContentModel): boolean {
-  if (!isContentImage(item)) return false;
-
-  const rating = item.rating || 0;
-  const ratio = getAspectRatio(item);
-  const isHorizontal = ratio > 1.0;
-  const isWidePanorama = ratio >= 2.0;
-
-  // Wide panorama → always standalone
-  if (isWidePanorama) return true;
-
-  // 5-star horizontal → always standalone
-  if (rating === 5 && isHorizontal) return true;
-
-  return false;
-}
-
-/**
  * Accumulate items sequentially until star limit is reached
  * Returns the accumulated items and the next starting index
  *
@@ -124,7 +102,7 @@ function accumulateRowByStars(
     const newStarCount = starCount + itemStars;
 
     // Special case: Don't add standalone candidates (5-star horizontal, panorama) to existing row
-    if (isStandaloneCandidate(item) && items.length > 0) {
+    if (isStandaloneItem(item) && items.length > 0) {
       break;
     }
 
@@ -139,7 +117,7 @@ function accumulateRowByStars(
 
     // If we just added a standalone candidate, close the row immediately
     // This ensures 5-star horizontals and panoramas get their own row
-    if (isStandaloneCandidate(item)) {
+    if (isStandaloneItem(item)) {
       break;
     }
 
@@ -156,49 +134,6 @@ function accumulateRowByStars(
   }
 
   return { items, nextIndex: i };
-}
-
-/**
- * Calculate combined rating when two items are combined
- * Rules: (0+0||0+1||1+1)==2, (2+2)==3, (3+3)==4
- * Reserved for future combination logic implementation
- *
- * @param item1 - First item
- * @param item2 - Second item
- * @returns Combined rating value
- */
-function _getCombinedRating(item1: AnyContentModel, item2: AnyContentModel): number {
-  // Get star values (zeroOne=true) for combination logic
-  const star1 = getRating(item1, true);
-  const star2 = getRating(item2, true);
-
-  // Same rating combinations
-  if (star1 === star2) {
-    if (star1 === 1) return 2; // (0+0||0+1||1+1) == 2
-    if (star1 === 2) return 3; // (2+2) == 3
-    if (star1 === 3) return 4; // (3+3) == 4
-  }
-
-  // Different ratings - return the higher one (no combination benefit)
-  return Math.max(star1, star2);
-}
-
-/**
- * Group items by their star value for combination processing
- * Reserved for future combination logic implementation
- */
-function _groupItemsByStarValue(items: AnyContentModel[]): Map<number, AnyContentModel[]> {
-  const groups = new Map<number, AnyContentModel[]>();
-
-  for (const item of items) {
-    const starValue = getRating(item, true);
-    if (!groups.has(starValue)) {
-      groups.set(starValue, []);
-    }
-    groups.get(starValue)!.push(item);
-  }
-
-  return groups;
 }
 
 /**
@@ -347,18 +282,6 @@ export function createRowsArray(
   }
 
   return result;
-}
-
-/**
- * Legacy API: Create array of rows without pattern metadata
- * @deprecated Use createRowsArray() which returns RowWithPattern[] instead
- */
-export function createRowsArrayLegacy(
-  content: AnyContentModel[],
-  chunkSize: number = LAYOUT.defaultChunkSize
-): AnyContentModel[][] {
-  const rowsWithPatterns = createRowsArray(content, chunkSize);
-  return rowsWithPatterns.map(row => row.items);
 }
 
 // ===================== Part 2: Calculate Row Sizes =====================
@@ -936,3 +859,14 @@ export function calculateRowSizes(
 
   return calculateStandardRowSizes(row, rowWidth, chunkSize);
 }
+
+// ===================== Test Exports =====================
+// These functions are exported for unit testing purposes only.
+// They are internal implementation details and should not be used directly.
+
+export const __testing = {
+  createFraction,
+  simplifyFraction,
+  addFractions,
+  invertFraction,
+};

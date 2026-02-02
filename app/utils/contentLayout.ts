@@ -9,14 +9,12 @@ import {
   type TextBlockItem,
 } from '@/app/types/Content';
 import {
-  getAspectRatio,
   getContentDimensions,
   getSlotWidth,
-  hasImage,
   isContentCollection,
-  isContentImage,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
+import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
 import {
   calculateRowSizesFromPattern,
   createRowsArray,
@@ -35,18 +33,8 @@ export type { PatternResult, RowWithPattern };
 // ===================== Image Classification Helpers =====================
 
 /**
- * Check if content is a 5-star horizontal image (standalone)
- * Note: Square (1:1) is considered vertical, so horizontal means ratio > 1.0
- */
-function isFiveStarHorizontal(item: AnyContentModel | undefined): boolean {
-  if (!item || !hasImage(item) || !isContentImage(item)) return false;
-  const ratio = getAspectRatio(item);
-  return ratio > 1.0 && item.rating === 5;
-}
-
-/**
- * Reorder lonely verticals followed by 5-star horizontals
- * A vertical is "lonely" if previous item can't pair with it (nothing or 5-star horizontal)
+ * Reorder lonely verticals followed by standalone items (5-star horizontals, panoramas)
+ * A vertical is "lonely" if previous item can't pair with it (nothing or standalone item)
  */
 function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
   if (content.length < 2) return content;
@@ -58,10 +46,10 @@ function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
     const current = result[i];
     const next = result[i + 1];
 
-    if (current && next && isVerticalImage(current) && isFiveStarHorizontal(next)) {
+    if (current && next && isVerticalImage(current) && isStandaloneItem(next)) {
       const prev = i > 0 ? result[i - 1] : undefined;
-      // Lonely if nothing before, or previous is 5-star horizontal (can't pair)
-      const isLonely = !prev || isFiveStarHorizontal(prev);
+      // Lonely if nothing before, or previous is standalone (can't pair)
+      const isLonely = !prev || isStandaloneItem(prev);
 
       if (isLonely) {
         // Swap: [V, 5H] → [5H, V]
