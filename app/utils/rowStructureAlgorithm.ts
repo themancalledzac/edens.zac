@@ -15,6 +15,7 @@ import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
 import {
+  getAspectRatio,
   getContentDimensions,
   getSlotWidth,
   isContentImage,
@@ -75,8 +76,35 @@ function getRating(item: AnyContentModel, zeroOne: boolean = false): number {
 }
 
 /**
+ * Check if an item should be standalone (take full row width)
+ * Standalone candidates: 5-star horizontal, wide panorama
+ * Note: 5-star verticals should NOT be standalone - they pair with other images
+ */
+function isStandaloneCandidate(item: AnyContentModel): boolean {
+  if (!isContentImage(item)) return false;
+
+  const rating = item.rating || 0;
+  const ratio = getAspectRatio(item);
+  const isHorizontal = ratio > 1.0;
+  const isWidePanorama = ratio >= 2.0;
+
+  // Wide panorama → always standalone
+  if (isWidePanorama) return true;
+
+  // 5-star horizontal → always standalone
+  if (rating === 5 && isHorizontal) return true;
+
+  return false;
+}
+
+/**
  * Accumulate items sequentially until star limit is reached
  * Returns the accumulated items and the next starting index
+ *
+ * Standalone rules:
+ * - 5-star HORIZONTAL images are standalone (full row)
+ * - Wide panoramas are standalone (full row)
+ * - 5-star VERTICAL images should pair with other images (NOT standalone)
  */
 function accumulateRowByStars(
   content: AnyContentModel[],
@@ -95,9 +123,9 @@ function accumulateRowByStars(
     const itemStars = getRating(item, true);
     const newStarCount = starCount + itemStars;
 
-    // Special case: 5-star items are always standalone
-    if (itemStars === 5 && items.length > 0) {
-      break; // Don't add 5-star to existing row
+    // Special case: Don't add standalone candidates (5-star horizontal, panorama) to existing row
+    if (isStandaloneCandidate(item) && items.length > 0) {
+      break;
     }
 
     // If adding this item would exceed max, stop (unless we haven't reached min yet)
@@ -108,6 +136,12 @@ function accumulateRowByStars(
     items.push(item);
     starCount = newStarCount;
     i++;
+
+    // If we just added a standalone candidate, close the row immediately
+    // This ensures 5-star horizontals and panoramas get their own row
+    if (isStandaloneCandidate(item)) {
+      break;
+    }
 
     // If we've reached minimum and adding next would exceed max, stop
     if (starCount >= minStars && i < content.length) {
@@ -179,8 +213,17 @@ function arrangeItemsIntoPattern(items: AnyContentModel[], startIndex: number): 
     throw new Error('Cannot arrange empty items array');
   }
 
-  // Single item - standalone
+  // Single item - check if it should be standalone or standard
   if (items.length === 1) {
+    const item = items[0];
+    // 5-star verticals should NOT be standalone - they should get half width
+    // This treats them similar to 4-star horizontal images adjacent to vertical
+    if (item && isContentImage(item) && item.rating === 5 && isVerticalImage(item)) {
+      return {
+        type: 'standard',
+        indices: [startIndex],
+      };
+    }
     return {
       type: 'standalone',
       indices: [startIndex],
@@ -793,6 +836,22 @@ function calculateStandardRowSizes(
   if (items.length === 0) return [];
 
   if (items.length === 1) {
+    const item = items[0];
+    // 5-star verticals should NOT take full width - they get half width
+    // This treats them similar to 4-star horizontal images adjacent to vertical
+    if (item && isContentImage(item) && item.rating === 5 && isVerticalImage(item)) {
+      const { width: imgWidth, height: imgHeight } = getContentDimensions(item);
+      const ratio = imgWidth / Math.max(1, imgHeight);
+      const halfRowWidth = rowWidth / 2;
+      const calculatedHeight = halfRowWidth / ratio;
+      return [
+        {
+          content: item,
+          width: halfRowWidth,
+          height: calculatedHeight,
+        },
+      ];
+    }
     return calculateStandaloneSizes(items, rowWidth);
   }
 

@@ -36,6 +36,11 @@ export const LAYOUT = {
   // Pattern detection
   patternWindowSize: 5,      // Items to look ahead for pattern detection
   patternMaxMovement: 2,     // Max positions an item can move during pattern matching
+
+  // Header row constraints (cover image + description block)
+  headerRowHeightRatio: 0.45,   // Max row height as ratio of componentWidth (e.g., 0.45 = 45%)
+  headerCoverMinRatio: 0.30,   // Minimum cover image width as ratio of row width
+  headerCoverMaxRatio: 0.50,   // Maximum cover image width as ratio of row width
 } as const;
 
 // =============================================================================
