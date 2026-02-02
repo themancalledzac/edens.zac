@@ -1099,8 +1099,128 @@ describe('createHeaderRow', () => {
       expect(result?.items[1]?.width).toBeGreaterThan(0);
       expect(result?.items[1]?.height).toBeGreaterThan(0);
 
-      // Both items should have equal widths (50/50 split)
-      expect(result?.items[0]?.width).toBeCloseTo(result?.items[1]?.width || 0, 1);
+      // Cover + description widths should sum to componentWidth
+      const totalWidth = (result?.items[0]?.width || 0) + (result?.items[1]?.width || 0);
+      expect(totalWidth).toBeCloseTo(componentWidth, 1);
+    });
+  });
+
+  describe('Height-constrained sizing', () => {
+    it('should give horizontal cover ~50% width (clamped to max)', () => {
+      // Horizontal: 1920x1080 = 1.78 aspect ratio
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover.jpg',
+          imageWidth: 1920,
+          imageHeight: 1080,
+          visible: true,
+        },
+      });
+      const result = createHeaderRow(collection, componentWidth, chunkSize);
+
+      // Horizontal images hit the 50% max cap
+      const coverWidth = result?.items[0]?.width || 0;
+      const maxCoverWidth = componentWidth * 0.5;
+      expect(coverWidth).toBeCloseTo(maxCoverWidth, 1);
+    });
+
+    it('should give vertical cover narrower width (~30-33%)', () => {
+      // Vertical: 1080x1920 = 0.5625 aspect ratio
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover.jpg',
+          imageWidth: 1080,
+          imageHeight: 1920,
+          visible: true,
+        },
+      });
+      const result = createHeaderRow(collection, componentWidth, chunkSize);
+
+      const coverWidth = result?.items[0]?.width || 0;
+      const minCoverWidth = componentWidth * 0.3;
+
+      // Vertical images should be near the minimum (30%)
+      expect(coverWidth).toBeCloseTo(minCoverWidth, 1);
+    });
+
+    it('should give square cover intermediate width (~45%)', () => {
+      // Square: 1000x1000 = 1.0 aspect ratio
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover.jpg',
+          imageWidth: 1000,
+          imageHeight: 1000,
+          visible: true,
+        },
+      });
+      const result = createHeaderRow(collection, componentWidth, chunkSize);
+
+      const coverWidth = result?.items[0]?.width || 0;
+      const minCoverWidth = componentWidth * 0.3;
+      const maxCoverWidth = componentWidth * 0.5;
+
+      // Square should be between min and max
+      expect(coverWidth).toBeGreaterThan(minCoverWidth);
+      expect(coverWidth).toBeLessThan(maxCoverWidth);
+    });
+
+    it('should produce shorter row for vertical covers than 50/50 split would', () => {
+      // Vertical: 1080x1920 = 0.5625 aspect ratio
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover.jpg',
+          imageWidth: 1080,
+          imageHeight: 1920,
+          visible: true,
+        },
+      });
+      const result = createHeaderRow(collection, componentWidth, chunkSize);
+
+      const rowHeight = result?.items[0]?.height || 0;
+
+      // Without height constraint, a 50% width vertical would produce:
+      // height = (componentWidth * 0.5) / 0.5625 = 400 / 0.5625 = 711px
+      // With constraint, using 30% min width:
+      // height = (componentWidth * 0.3) / 0.5625 = 240 / 0.5625 = 427px
+      // So the row is ~40% shorter than it would be without the constraint
+      const heightWithout50Split = (componentWidth * 0.5) / (1080 / 1920);
+      expect(rowHeight).toBeLessThan(heightWithout50Split);
+    });
+
+    it('should give description block more width when cover is vertical', () => {
+      // Vertical cover
+      const collection = createCollectionModel(1, {
+        coverImage: {
+          id: 10,
+          contentType: 'IMAGE',
+          orderIndex: 0,
+          imageUrl: 'https://example.com/cover.jpg',
+          imageWidth: 1080,
+          imageHeight: 1920,
+          visible: true,
+        },
+      });
+      const result = createHeaderRow(collection, componentWidth, chunkSize);
+
+      const coverWidth = result?.items[0]?.width || 0;
+      const descWidth = result?.items[1]?.width || 0;
+
+      // Description should be wider than cover for vertical images
+      expect(descWidth).toBeGreaterThan(coverWidth);
+      // Description should get ~70% when cover is at minimum 30%
+      expect(descWidth).toBeCloseTo(componentWidth * 0.7, 1);
     });
   });
 

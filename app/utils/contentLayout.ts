@@ -823,17 +823,22 @@ export function injectTopRow(collection: CollectionModel): AnyContentModel[] {
  * - Cover image with title overlay (parallax-enabled)
  * - Metadata text block (date, location, description) - if metadata exists
  *
- * Both blocks share the same dimensions for equal 50/50 width split on desktop.
+ * Uses height-constrained sizing to prevent vertical cover images from
+ * creating excessively tall rows:
+ * - Max row height is derived from componentWidth (headerRowHeightRatio)
+ * - Cover width is calculated to achieve max height, then clamped to min/max ratios
+ * - Vertical covers get narrower width (~30-33%), horizontal covers get ~50%
+ *
  * Returns null if cover image missing or has no dimensions.
  * @param collection - Collection model with cover image and metadata
  * @param componentWidth - Total available width for the row
- * @param chunkSize - Number of normal-width items per row (default: 4)
+ * @param _chunkSize - Number of normal-width items per row (unused, kept for API compatibility)
  * @returns RowWithPatternAndSizes with header items, or null if no cover image
  */
 export function createHeaderRow(
   collection: CollectionModel,
   componentWidth: number,
-  chunkSize: number = LAYOUT.defaultChunkSize
+  _chunkSize: number = LAYOUT.defaultChunkSize
 ): RowWithPatternAndSizes | null {
   if (!collection.coverImage) {
     return null;
@@ -845,8 +850,29 @@ export function createHeaderRow(
     return null;
   }
 
-  const headerBlocks: AnyContentModel[] = [coverBlock];
+  // Height-constrained sizing for header row
+  const maxRowHeight = componentWidth * LAYOUT.headerRowHeightRatio;
+  const minCoverWidth = componentWidth * LAYOUT.headerCoverMinRatio;
+  const maxCoverWidth = componentWidth * LAYOUT.headerCoverMaxRatio;
 
+  const coverAspectRatio = coverBlock.imageWidth / coverBlock.imageHeight;
+
+  // Calculate cover width needed to achieve maxRowHeight
+  // height = width / aspectRatio, so width = height * aspectRatio
+  let coverWidth = maxRowHeight * coverAspectRatio;
+
+  // Clamp cover width between min and max ratios
+  coverWidth = Math.max(minCoverWidth, Math.min(maxCoverWidth, coverWidth));
+
+  // Calculate actual row height based on clamped cover width
+  const rowHeight = coverWidth / coverAspectRatio;
+
+  // Build calculated sizes starting with cover image
+  const calculatedSizes: CalculatedContentSize[] = [
+    { content: coverBlock, width: coverWidth, height: rowHeight },
+  ];
+
+  // Add metadata block if it has content
   const metadataItems = buildMetadataItems(collection);
   const metadataBlock = createMetadataTextBlock(
     metadataItems,
@@ -855,16 +881,15 @@ export function createHeaderRow(
   );
 
   if (metadataBlock) {
-    headerBlocks.push(metadataBlock);
+    // Description gets remaining width, same height as cover
+    const descWidth = componentWidth - coverWidth;
+    calculatedSizes.push({ content: metadataBlock, width: descWidth, height: rowHeight });
   }
-
-  // Calculate sizes using standard row calculation (50/50 split for 2 items)
-  const calculatedSizes = calculateContentSizes(headerBlocks, componentWidth, chunkSize);
 
   // Create pattern result with 'standard' type
   const pattern: PatternResult = {
     type: 'standard',
-    indices: headerBlocks.map((_, index) => index),
+    indices: calculatedSizes.map((_, index) => index),
   };
 
   return {

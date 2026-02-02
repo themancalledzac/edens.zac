@@ -81,7 +81,8 @@ describe('createRowsArray', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]?.items).toHaveLength(1);
-      expect(result[0]?.pattern.type).toBe('standard');
+      // Single non-5-star-vertical items are standalone (take full width)
+      expect(result[0]?.pattern.type).toBe('standalone');
     });
   });
 
@@ -94,6 +95,21 @@ describe('createRowsArray', () => {
       expect(result[0]?.pattern.type).toBe('standalone');
       expect(result[0]?.items).toHaveLength(1);
       expect(result[0]?.items[0]?.id).toBe(1);
+    });
+
+    it('should NOT detect 5-star vertical as standalone (should be standard)', () => {
+      // 5-star verticals should be treated like 4-star horizontals adjacent to vertical
+      // They should get half width, not full width
+      const content = [createVerticalImage(1, 5), createHorizontalImage(2, 5)];
+      const result = createRowsArray(content);
+
+      expect(result).toHaveLength(2);
+      // 5-star vertical should be 'standard' pattern, not 'standalone'
+      expect(result[0]?.pattern.type).toBe('standard');
+      expect(result[0]?.items).toHaveLength(1);
+      expect(result[0]?.items[0]?.id).toBe(1);
+      // 5-star horizontal should still be standalone
+      expect(result[1]?.pattern.type).toBe('standalone');
     });
 
     it('should detect wide panorama (3+ star) as standalone', () => {
@@ -120,8 +136,10 @@ describe('createRowsArray', () => {
     });
   });
 
-  describe('Five-star vertical pattern detection', () => {
-    it('should detect 5-star vertical + 2 non-5-star verticals', () => {
+  describe('Five-star vertical grouping (star-based accumulation)', () => {
+    it('should group 5-star vertical with lower-rated images up to star limit', () => {
+      // Star accumulation: 5 + 3 = 8 stars (within 7-9 range)
+      // Adding 4-star would be 12, exceeds max, so it goes to next row
       const content = [
         createVerticalImage(1, 5),
         createVerticalImage(2, 3),
@@ -129,12 +147,17 @@ describe('createRowsArray', () => {
       ];
       const result = createRowsArray(content);
 
-      expect(result).toHaveLength(1);
-      expect(result[0]?.pattern.type).toBe('five-star-vertical-2v');
-      expect(result[0]?.items).toHaveLength(3);
+      // Row 1: [V5*, V3*] = 8 stars, Row 2: [V4*] = 4 stars (alone)
+      expect(result).toHaveLength(2);
+      expect(result[0]?.items).toHaveLength(2);
+      expect(result[0]?.pattern.type).toBe('standard');
+      // Second row has single 4-star vertical (not 5-star, so standalone)
+      expect(result[1]?.items).toHaveLength(1);
     });
 
-    it('should detect 5-star vertical + 2 low-rated horizontals', () => {
+    it('should group 5-star vertical with low-rated horizontals', () => {
+      // Star accumulation: 5 + 2 = 7 stars (at minimum)
+      // Adding 3-star would be 10 > 9, so it goes to next row
       const content = [
         createVerticalImage(1, 5),
         createHorizontalImage(2, 2),
@@ -142,12 +165,13 @@ describe('createRowsArray', () => {
       ];
       const result = createRowsArray(content);
 
-      expect(result).toHaveLength(1);
-      expect(result[0]?.pattern.type).toBe('five-star-vertical-2h');
-      expect(result[0]?.items).toHaveLength(3);
+      // Row 1: [V5*, H2*] = 7 stars
+      expect(result[0]?.items).toHaveLength(2);
+      expect(result[0]?.pattern.type).toBe('standard');
     });
 
-    it('should detect 5-star vertical + 3-4 star vertical + <3 star horizontal', () => {
+    it('should group 5-star vertical with 4-star vertical within star limit', () => {
+      // Star accumulation: 5 + 4 = 9 stars (at max, within 7-9 range)
       const content = [
         createVerticalImage(1, 5),
         createVerticalImage(2, 4),
@@ -155,9 +179,9 @@ describe('createRowsArray', () => {
       ];
       const result = createRowsArray(content);
 
-      expect(result).toHaveLength(1);
-      expect(result[0]?.pattern.type).toBe('five-star-vertical-mixed');
-      expect(result[0]?.items).toHaveLength(3);
+      // Row 1: [V5*, V4*] = 9 stars (at max)
+      expect(result[0]?.items).toHaveLength(2);
+      expect(result[0]?.pattern.type).toBe('standard');
     });
   });
 
@@ -191,9 +215,10 @@ describe('createRowsArray', () => {
     });
   });
 
-  describe('Panorama-vertical pattern detection', () => {
-    it('should detect vertical + 2 wide panoramas when vertical is low-rated', () => {
-      // Use low-rated vertical (1-2 star) so it doesn't match main-stacked first
+  describe('Panorama standalone behavior', () => {
+    it('should treat wide panoramas as standalone (separate rows)', () => {
+      // Wide panoramas (ratio >= 2.0) are standalone candidates
+      // Each panorama gets its own row
       const content = [
         createVerticalImage(1, 2), // Low-rated vertical
         createWidePanorama(2, 2),
@@ -201,13 +226,15 @@ describe('createRowsArray', () => {
       ];
       const result = createRowsArray(content);
 
-      expect(result).toHaveLength(1);
-      expect(result[0]?.pattern.type).toBe('panorama-vertical');
-      expect(result[0]?.items).toHaveLength(3);
+      // Each item should be in its own row since panoramas are standalone
+      expect(result).toHaveLength(3);
+      expect(result[0]?.pattern.type).toBe('standalone'); // vertical alone
+      expect(result[1]?.pattern.type).toBe('standalone'); // panorama 1
+      expect(result[2]?.pattern.type).toBe('standalone'); // panorama 2
     });
 
-    it('should prefer main-stacked over panorama-vertical for 3+ star vertical', () => {
-      // 3-star vertical triggers main-stacked (higher priority than panorama-vertical)
+    it('should treat 3+ star vertical alone as standalone when followed by panoramas', () => {
+      // 3-star vertical alone becomes standalone, panoramas are also standalone
       const content = [
         createVerticalImage(1, 3),
         createWidePanorama(2, 2),
@@ -215,8 +242,10 @@ describe('createRowsArray', () => {
       ];
       const result = createRowsArray(content);
 
-      // main-stacked has priority 80, panorama-vertical has 75
-      expect(result[0]?.pattern.type).toBe('main-stacked');
+      expect(result).toHaveLength(3);
+      expect(result[0]?.pattern.type).toBe('standalone'); // 3-star vertical alone
+      expect(result[1]?.pattern.type).toBe('standalone'); // panorama 1
+      expect(result[2]?.pattern.type).toBe('standalone'); // panorama 2
     });
   });
 
@@ -491,6 +520,23 @@ describe('calculateRowSizesFromPattern', () => {
       const secRatio = sec1.width / sec1.height;
       expect(mainRatio).toBeCloseTo(secRatio, 1);
     });
+
+    it('should calculate half-width for single 5-star vertical (not full width)', () => {
+      // When a 5-star vertical ends up alone in a row, it should get half width
+      // This treats it similar to a 4-star horizontal adjacent to vertical
+      const row: RowWithPattern = {
+        pattern: { type: 'standard', indices: [0] },
+        items: [createVerticalImage(1, 5)],
+      };
+      const result = calculateRowSizesFromPattern(row, rowWidth);
+
+      expect(result).toHaveLength(1);
+      const item = result[0]!;
+
+      // Width should be half of rowWidth, not full width
+      expect(item.width).toBe(rowWidth / 2);
+      expect(item.height).toBeGreaterThan(0);
+    });
   });
 });
 
@@ -574,10 +620,14 @@ describe('Full pipeline integration', () => {
     ];
 
     const rows = createRowsArray(content);
-    expect(rows).toHaveLength(1);
+    // Star accumulation: 5 + 3 = 8 stars, then 4-star goes to next row
+    expect(rows).toHaveLength(2);
 
-    // First item should be the 5-star (main)
+    // First row: [V5*, V3*] - order preserved
     expect(rows[0]?.items[0]?.id).toBe(1);
+    expect(rows[0]?.items[1]?.id).toBe(2);
+    // Second row: [V4*]
+    expect(rows[1]?.items[0]?.id).toBe(3);
   });
 
   it('should handle mixed content types gracefully', () => {
@@ -598,5 +648,69 @@ describe('Full pipeline integration', () => {
       expect(row.items.length).toBeGreaterThan(0);
       expect(row.pattern.type).toBeDefined();
     }
+  });
+
+  it('should correctly handle H5* V3* V5* H5* scenario (user reported issue)', () => {
+    // User scenario: H5* should be standalone, verticals should be grouped
+    // Expected:
+    // - row 1: H5* (standalone)
+    // - row 2: V3* - V5* (grouped together, 3+5=8 stars)
+    // - row 3: H5* (standalone)
+    const content = [
+      createHorizontalImage(1, 5), // H5* - should be standalone
+      createVerticalImage(2, 3), // V3* - should group with V5*
+      createVerticalImage(3, 5), // V5* - should group with V3*
+      createHorizontalImage(4, 5), // H5* - should be standalone
+    ];
+
+    const rows = createRowsArray(content);
+
+    expect(rows).toHaveLength(3);
+
+    // Row 1: H5* standalone
+    expect(rows[0]?.items).toHaveLength(1);
+    expect(rows[0]?.items[0]?.id).toBe(1);
+    expect(rows[0]?.pattern.type).toBe('standalone');
+
+    // Row 2: V3* + V5* grouped (3+5=8 stars)
+    expect(rows[1]?.items).toHaveLength(2);
+    expect(rows[1]?.items[0]?.id).toBe(2); // V3*
+    expect(rows[1]?.items[1]?.id).toBe(3); // V5*
+    expect(rows[1]?.pattern.type).toBe('standard');
+
+    // Row 3: H5* standalone
+    expect(rows[2]?.items).toHaveLength(1);
+    expect(rows[2]?.items[0]?.id).toBe(4);
+    expect(rows[2]?.pattern.type).toBe('standalone');
+  });
+
+  it('should handle H5* V3* V4* H5* scenario (with V4* instead of V5*)', () => {
+    // Same scenario but with V4* instead of V5*
+    // Expected:
+    // - row 1: H5* (standalone)
+    // - row 2: V3* - V4* (grouped together, 3+4=7 stars)
+    // - row 3: H5* (standalone)
+    const content = [
+      createHorizontalImage(1, 5), // H5* - should be standalone
+      createVerticalImage(2, 3), // V3* - should group with V4*
+      createVerticalImage(3, 4), // V4* - should group with V3*
+      createHorizontalImage(4, 5), // H5* - should be standalone
+    ];
+
+    const rows = createRowsArray(content);
+
+    expect(rows).toHaveLength(3);
+
+    // Row 1: H5* standalone
+    expect(rows[0]?.items).toHaveLength(1);
+    expect(rows[0]?.pattern.type).toBe('standalone');
+
+    // Row 2: V3* + V4* grouped (3+4=7 stars)
+    expect(rows[1]?.items).toHaveLength(2);
+    expect(rows[1]?.pattern.type).toBe('standard');
+
+    // Row 3: H5* standalone
+    expect(rows[2]?.items).toHaveLength(1);
+    expect(rows[2]?.pattern.type).toBe('standalone');
   });
 });
