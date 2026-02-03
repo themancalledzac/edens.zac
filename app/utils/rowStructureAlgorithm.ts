@@ -21,13 +21,6 @@ import {
   isContentImage,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
-import {
-  addFractions,
-  createFraction,
-  type Fraction,
-  invertFraction,
-  simplifyFraction,
-} from '@/app/utils/fractionMath';
 import { type PatternResult, type PatternType } from '@/app/utils/patternRegistry';
 
 // Re-export types for consumers
@@ -256,12 +249,13 @@ export function createRowsArray(
 
 
 /**
- * Box descriptor with fraction-based aspect ratios
+ * Box descriptor with float-based aspect ratios
+ * ratio = width / height (e.g., 1.78 for 16:9, 0.56 for 9:16)
  */
 interface Box {
   type: 'single' | 'combined';
   direction?: 'horizontal' | 'vertical';
-  ratio: Fraction;
+  ratio: number;
   content?: AnyContentModel;
   children?: Box[];
 }
@@ -278,11 +272,7 @@ interface SolvedBox {
 
 
 /**
- * Create a box directly from AnyContentModel
- * Applies slot width scaling to create "effective" aspect ratio for proportional space allocation
- *
- * Note: Standalone items should be handled by calculateStandaloneSizes, not this function.
- * This function is used for items in multi-item patterns (main-stacked, standard, etc.)
+ * Create a box from content with slot width scaling for proportional space allocation
  */
 function createBoxFromContent(
   content: AnyContentModel,
@@ -293,38 +283,26 @@ function createBoxFromContent(
   const { width, height } = getContentDimensions(content);
   const slotWidth = getSlotWidth(content, chunkSize, prevItem, nextItem);
 
-  // Guard: Validate slotWidth is finite and reasonable
-  // If slotWidth is very large (>= chunkSize), it's likely a standalone item
-  // that should be handled by calculateStandaloneSizes instead
-  // Use original dimensions without scaling in this case
   if (!Number.isFinite(slotWidth) || slotWidth <= 0 || slotWidth >= chunkSize) {
-    // Use original dimensions without slotWidth scaling
-    const ratio = createFraction(width, Math.max(1, height));
     return {
       type: 'single',
-      ratio,
+      ratio: width / Math.max(1, height),
       content,
     };
   }
 
-  // Apply slot width scaling for proportional space allocation
-  // Items with slotWidth=2 (3+ star) get 2x the visual space compared to slotWidth=1
   const effectiveWidth = width * slotWidth;
   const effectiveHeight = height * slotWidth;
 
-  // Create fraction from effective dimensions
-  const ratio = createFraction(effectiveWidth, Math.max(1, effectiveHeight));
-
   return {
     type: 'single',
-    ratio,
+    ratio: effectiveWidth / Math.max(1, effectiveHeight),
     content,
   };
 }
 
 /**
  * Combine multiple boxes into a single box
- * Single function that handles both horizontal and vertical combination
  */
 function combineBoxes(boxes: Box[], direction: 'horizontal' | 'vertical'): Box {
   if (boxes.length === 0) {
@@ -339,25 +317,13 @@ function combineBoxes(boxes: Box[], direction: 'horizontal' | 'vertical'): Box {
     return firstBox;
   }
 
-  let combinedRatio: Fraction;
+  let combinedRatio: number;
 
   if (direction === 'horizontal') {
-    combinedRatio = boxes.reduce(
-      (sum, box) => {
-        return addFractions(sum, box.ratio);
-      },
-      createFraction(0, 1)
-    );
+    combinedRatio = boxes.reduce((sum, box) => sum + box.ratio, 0);
   } else {
-    const invertedSum = boxes.reduce(
-      (sum, box) => {
-        const inverted = invertFraction(box.ratio);
-        return addFractions(sum, inverted);
-      },
-      createFraction(0, 1)
-    );
-
-    combinedRatio = invertFraction(invertedSum);
+    const inverseSum = boxes.reduce((sum, box) => sum + 1 / box.ratio, 0);
+    combinedRatio = 1 / inverseSum;
   }
 
   return {
@@ -417,16 +383,16 @@ function solveBox(
   containerDirection: 'horizontal' | 'vertical' = 'horizontal',
   gap: number = 0
 ): SolvedBox {
-  if (box.type === 'single') {
-    const { numerator, denominator } = box.ratio;
+  const ratio = box.ratio; // width / height
 
+  if (box.type === 'single') {
     if (containerDirection === 'horizontal') {
       const width = containerSize;
-      const height = (containerSize * denominator) / numerator;
+      const height = containerSize / ratio;
       return { width, height, content: box.content };
     } else {
       const height = containerSize;
-      const width = (containerSize * numerator) / denominator;
+      const width = containerSize * ratio;
       return { width, height, content: box.content };
     }
   }
@@ -436,7 +402,6 @@ function solveBox(
   }
 
   const direction = box.direction!;
-  const { numerator, denominator } = box.ratio;
   const childCount = box.children.length;
 
   // Calculate total gap space between children
@@ -445,11 +410,11 @@ function solveBox(
   let sharedDimension: number;
 
   if (containerDirection === 'horizontal') {
-    sharedDimension =
-      direction === 'horizontal' ? (containerSize * denominator) / numerator : containerSize;
+    // Container constrains width. For horizontal children, they share height = width / ratio
+    sharedDimension = direction === 'horizontal' ? containerSize / ratio : containerSize;
   } else {
-    sharedDimension =
-      direction === 'horizontal' ? containerSize : (containerSize * numerator) / denominator;
+    // Container constrains height. For vertical children, they share width = height * ratio
+    sharedDimension = direction === 'horizontal' ? containerSize : containerSize * ratio;
   }
 
   const solvedChildren = box.children.map(child => {
@@ -476,7 +441,7 @@ function solveBox(
     }
 
     // Scale widths proportionally to ensure total equals containerSize
-    // This handles any rounding errors from fraction math
+    // This handles any minor floating-point rounding
     const scaleFactor = containerSize / calculatedWidth;
 
     // Validate scaleFactor before using it
@@ -762,13 +727,3 @@ export function calculateRowSizes(
   return calculateStandardRowSizes(row, rowWidth, chunkSize);
 }
 
-// ===================== Test Exports =====================
-// These functions are exported for unit testing purposes only.
-// They are internal implementation details and should not be used directly.
-
-export const __testing = {
-  createFraction,
-  simplifyFraction,
-  addFractions,
-  invertFraction,
-};

@@ -3,9 +3,13 @@
  * Tests unified standalone detection logic
  */
 
+import { LAYOUT } from '@/app/constants';
 import type { ContentImageModel } from '@/app/types/Content';
 import {
+  getEffectiveRating,
+  getItemSlotCost,
   getRating,
+  getSlotCost,
   isCollectionCard,
   isFiveStarHorizontal,
   isStandaloneItem,
@@ -255,6 +259,191 @@ describe('getRating', () => {
         collectionType: 'TRAVEL',
       };
       expect(getRating(collectionCard as never, true)).toBe(4);
+    });
+  });
+});
+
+// ===================== getEffectiveRating Tests =====================
+
+describe('getEffectiveRating', () => {
+  describe('horizontal images (no penalty)', () => {
+    it('should return raw rating for horizontal images', () => {
+      expect(getEffectiveRating(createHorizontalImage(1, 5))).toBe(5);
+      expect(getEffectiveRating(createHorizontalImage(1, 4))).toBe(4);
+      expect(getEffectiveRating(createHorizontalImage(1, 3))).toBe(3);
+      expect(getEffectiveRating(createHorizontalImage(1, 2))).toBe(2);
+      expect(getEffectiveRating(createHorizontalImage(1, 1))).toBe(1);
+      expect(getEffectiveRating(createHorizontalImage(1, 0))).toBe(0);
+    });
+  });
+
+  describe('vertical images (penalty -1)', () => {
+    it('should return rating - 1 for vertical images', () => {
+      expect(getEffectiveRating(createVerticalImage(1, 5))).toBe(4); // V5★ → H4★ equivalent
+      expect(getEffectiveRating(createVerticalImage(1, 4))).toBe(3); // V4★ → H3★ equivalent
+      expect(getEffectiveRating(createVerticalImage(1, 3))).toBe(2); // V3★ → H2★ equivalent
+      expect(getEffectiveRating(createVerticalImage(1, 2))).toBe(1); // V2★ → H1★ equivalent
+    });
+
+    it('should not go below 0 for low-rated verticals', () => {
+      expect(getEffectiveRating(createVerticalImage(1, 1))).toBe(0); // V1★ → 0 (clamped)
+      expect(getEffectiveRating(createVerticalImage(1, 0))).toBe(0); // V0★ → 0 (clamped)
+    });
+  });
+
+  describe('square images (treated as vertical)', () => {
+    it('should apply vertical penalty to square images', () => {
+      expect(getEffectiveRating(createSquareImage(1, 5))).toBe(4);
+      expect(getEffectiveRating(createSquareImage(1, 3))).toBe(2);
+    });
+  });
+
+  describe('panoramas', () => {
+    it('should return raw rating for panoramas (they are horizontal)', () => {
+      expect(getEffectiveRating(createPanorama(1, 5))).toBe(5);
+      expect(getEffectiveRating(createPanorama(1, 3))).toBe(3);
+      expect(getEffectiveRating(createPanorama(1, 0))).toBe(0);
+    });
+  });
+
+  describe('collection cards', () => {
+    it('should return fixed rating of 4 for collection cards', () => {
+      const collectionCard = {
+        id: 1,
+        contentType: 'IMAGE' as const,
+        imageUrl: '/test.jpg',
+        collectionType: 'TRAVEL',
+      };
+      expect(getEffectiveRating(collectionCard as never)).toBe(4);
+    });
+  });
+
+  describe('non-image content', () => {
+    it('should return 1 for non-image content', () => {
+      const textContent = {
+        id: 1,
+        contentType: 'TEXT' as const,
+        textBlock: { title: 'Test' },
+      };
+      expect(getEffectiveRating(textContent as never)).toBe(1);
+    });
+  });
+
+  describe('slotWidth parameter (unused in effective rating)', () => {
+    // Note: slotWidth doesn't affect effective rating calculation
+    // It's passed for future extensibility but currently unused
+    it('should return same effective rating regardless of slotWidth', () => {
+      const image = createHorizontalImage(1, 4);
+      expect(getEffectiveRating(image, 5)).toBe(4);
+      expect(getEffectiveRating(image, 2)).toBe(4);
+    });
+  });
+});
+
+// ===================== getSlotCost Tests =====================
+
+describe('getSlotCost', () => {
+  const DESKTOP_SLOTS = LAYOUT.desktopSlotWidth; // 5
+  const MOBILE_SLOTS = LAYOUT.mobileSlotWidth; // 2
+
+  describe('desktop layout (5 slots)', () => {
+    it('should return 5 slots for 5★ (full width, 1 per row)', () => {
+      expect(getSlotCost(5, DESKTOP_SLOTS)).toBe(5);
+    });
+
+    it('should return 2.5 slots for 4★ (2 per row)', () => {
+      expect(getSlotCost(4, DESKTOP_SLOTS)).toBe(2.5);
+    });
+
+    it('should return ~1.67 slots for 3★ (3 per row)', () => {
+      expect(getSlotCost(3, DESKTOP_SLOTS)).toBeCloseTo(5 / 3, 5);
+    });
+
+    it('should return 1.25 slots for 2★ (4 per row)', () => {
+      expect(getSlotCost(2, DESKTOP_SLOTS)).toBe(1.25);
+    });
+
+    it('should return 1 slot for 1★ (5 per row)', () => {
+      expect(getSlotCost(1, DESKTOP_SLOTS)).toBe(1);
+    });
+
+    it('should return 1 slot for 0★ (5 per row, clamped)', () => {
+      expect(getSlotCost(0, DESKTOP_SLOTS)).toBe(1);
+    });
+  });
+
+  describe('mobile layout (2 slots)', () => {
+    it('should return 2 slots (full width) for 3-5★', () => {
+      expect(getSlotCost(5, MOBILE_SLOTS)).toBe(2);
+      expect(getSlotCost(4, MOBILE_SLOTS)).toBe(2);
+      expect(getSlotCost(3, MOBILE_SLOTS)).toBe(2);
+    });
+
+    it('should return 1 slot (half width) for 0-2★', () => {
+      expect(getSlotCost(2, MOBILE_SLOTS)).toBe(1);
+      expect(getSlotCost(1, MOBILE_SLOTS)).toBe(1);
+      expect(getSlotCost(0, MOBILE_SLOTS)).toBe(1);
+    });
+  });
+
+  describe('default parameter', () => {
+    it('should use desktop slot width by default', () => {
+      expect(getSlotCost(4)).toBe(2.5); // Same as getSlotCost(4, 5)
+    });
+  });
+});
+
+// ===================== getItemSlotCost Tests =====================
+
+describe('getItemSlotCost', () => {
+  const DESKTOP_SLOTS = LAYOUT.desktopSlotWidth;
+  const MOBILE_SLOTS = LAYOUT.mobileSlotWidth;
+
+  describe('combines getEffectiveRating and getSlotCost', () => {
+    it('should return correct slot cost for 5★ horizontal on desktop', () => {
+      const image = createHorizontalImage(1, 5);
+      // Effective rating: 5, Slot cost: 5
+      expect(getItemSlotCost(image, DESKTOP_SLOTS)).toBe(5);
+    });
+
+    it('should return correct slot cost for 5★ vertical on desktop', () => {
+      const image = createVerticalImage(1, 5);
+      // Effective rating: 4 (vertical penalty), Slot cost: 2.5
+      expect(getItemSlotCost(image, DESKTOP_SLOTS)).toBe(2.5);
+    });
+
+    it('should return correct slot cost for 4★ horizontal on mobile', () => {
+      const image = createHorizontalImage(1, 4);
+      // Effective rating: 4, Slot cost: 2 (full width on mobile for 3+)
+      expect(getItemSlotCost(image, MOBILE_SLOTS)).toBe(2);
+    });
+
+    it('should return correct slot cost for 3★ vertical on mobile', () => {
+      const image = createVerticalImage(1, 3);
+      // Effective rating: 2 (vertical penalty), Slot cost: 1 (half width on mobile for 0-2)
+      expect(getItemSlotCost(image, MOBILE_SLOTS)).toBe(1);
+    });
+
+    it('should return correct slot cost for 2★ horizontal on desktop', () => {
+      const image = createHorizontalImage(1, 2);
+      // Effective rating: 2, Slot cost: 1.25
+      expect(getItemSlotCost(image, DESKTOP_SLOTS)).toBe(1.25);
+    });
+  });
+
+  describe('worked example from documentation', () => {
+    // From 01-row-layout.md: V4* takes the same slot width as H3*
+    it('V4★ should have same effective rating as H3★', () => {
+      const v4 = createVerticalImage(1, 4);
+      const h3 = createHorizontalImage(2, 3);
+
+      // V4★ effective = 3, H3★ effective = 3
+      expect(getEffectiveRating(v4)).toBe(3);
+      expect(getEffectiveRating(h3)).toBe(3);
+
+      // Same slot cost on desktop
+      expect(getItemSlotCost(v4, DESKTOP_SLOTS)).toBeCloseTo(5 / 3, 5);
+      expect(getItemSlotCost(h3, DESKTOP_SLOTS)).toBeCloseTo(5 / 3, 5);
     });
   });
 });

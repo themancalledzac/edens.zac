@@ -5,6 +5,7 @@
  * Used by both contentLayout.ts (mobile/fallback) and rowStructureAlgorithm.ts (desktop).
  */
 
+import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import { getAspectRatio, hasImage, isContentImage } from '@/app/utils/contentTypeGuards';
 
@@ -88,4 +89,107 @@ export function isFiveStarHorizontal(item: AnyContentModel | undefined): boolean
   if (!item || !hasImage(item) || !isContentImage(item)) return false;
   const ratio = getAspectRatio(item);
   return ratio > 1.0 && item.rating === 5;
+}
+
+// =============================================================================
+// EFFECTIVE RATING SYSTEM
+// =============================================================================
+
+/**
+ * Get the effective rating of an item based on its orientation and slot width.
+ *
+ * The effective rating accounts for:
+ * 1. **Vertical penalty**: Vertical images are treated as one rating lower than horizontal
+ *    (V5★ → H4★ equivalent, V4★ → H3★ equivalent, etc.)
+ * 2. **Dynamic scaling**: On narrower viewports (fewer slots), ratings "collapse upward"
+ *    because there's less resolution to distinguish them.
+ *
+ * Examples:
+ * - H5★ on desktop (5 slots) → effectiveRating 5
+ * - V5★ on desktop (5 slots) → effectiveRating 4 (vertical penalty)
+ * - H3★ on mobile (2 slots) → effectiveRating 3 (unchanged, but slot cost will be full width)
+ *
+ * @param item - The content item to evaluate
+ * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
+ * @returns The effective rating (0-5) after applying orientation penalty
+ */
+export function getEffectiveRating(item: AnyContentModel, slotWidth: number = LAYOUT.desktopSlotWidth): number {
+  // Collection cards get fixed effective rating of 4
+  if (isCollectionCard(item)) {
+    return 4;
+  }
+
+  // Non-images get minimum rating
+  if (!isContentImage(item)) {
+    return 1;
+  }
+
+  const baseRating = item.rating || 0;
+  const ratio = getAspectRatio(item);
+  const isVertical = ratio <= 1.0;
+
+  // Apply vertical penalty: verticals are treated as one rating lower
+  // V5★ → 4, V4★ → 3, V3★ → 2, V2★ → 1, V1★ → 1, V0★ → 0
+  const effectiveRating = isVertical ? Math.max(baseRating - 1, 0) : baseRating;
+
+  // Note: Dynamic scaling for mobile is handled in getSlotCost()
+  // The effective rating remains the same; the slot cost interpretation changes.
+  // This keeps the rating semantic while allowing flexible slot allocation.
+
+  // Ensure rating stays in bounds (0-5)
+  return Math.min(Math.max(effectiveRating, 0), 5);
+}
+
+/**
+ * Convert an effective rating to a slot cost based on the slot width.
+ *
+ * Slot cost represents how many "slots" an item should occupy in a row.
+ * The calculation varies based on slot width (desktop vs mobile):
+ *
+ * **Desktop (5 slots):**
+ * - 5★ = 5 slots (full width, 1 per row)
+ * - 4★ = 2.5 slots (2 per row)
+ * - 3★ = 1.67 slots (3 per row)
+ * - 2★ = 1.25 slots (4 per row)
+ * - 0-1★ = 1 slot (5 per row)
+ *
+ * **Mobile (2 slots):**
+ * - 3-5★ = 2 slots (full width, ratings "collapse" upward)
+ * - 0-2★ = 1 slot (2 per row)
+ *
+ * @param effectiveRating - The effective rating (0-5) from getEffectiveRating()
+ * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
+ * @returns The slot cost (number of slots this item should occupy)
+ */
+export function getSlotCost(effectiveRating: number, slotWidth: number = LAYOUT.desktopSlotWidth): number {
+  // Mobile layout (2 slots): binary decision
+  // 3+ star → full width (2 slots), 0-2 star → half width (1 slot)
+  if (slotWidth <= LAYOUT.mobileSlotWidth) {
+    return effectiveRating >= 3 ? slotWidth : 1;
+  }
+
+  // Desktop layout (5 slots): proportional scaling
+  // Formula: slotCost = slotWidth / itemsPerRow
+  // itemsPerRow = 6 - effectiveRating (clamped to [1, slotWidth])
+  // - 5★: 6-5=1 item per row → 5/1 = 5 slots
+  // - 4★: 6-4=2 items per row → 5/2 = 2.5 slots
+  // - 3★: 6-3=3 items per row → 5/3 ≈ 1.67 slots
+  // - 2★: 6-2=4 items per row → 5/4 = 1.25 slots
+  // - 1★: 6-1=5 items per row → 5/5 = 1 slot
+  // - 0★: 6-0=6, clamped to 5 → 5/5 = 1 slot
+  const itemsPerRow = Math.min(Math.max(6 - effectiveRating, 1), slotWidth);
+  return slotWidth / itemsPerRow;
+}
+
+/**
+ * Convenience function: Get slot cost directly from an item.
+ * Combines getEffectiveRating() and getSlotCost() in one call.
+ *
+ * @param item - The content item to evaluate
+ * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
+ * @returns The slot cost for this item
+ */
+export function getItemSlotCost(item: AnyContentModel, slotWidth: number = LAYOUT.desktopSlotWidth): number {
+  const effectiveRating = getEffectiveRating(item, slotWidth);
+  return getSlotCost(effectiveRating, slotWidth);
 }

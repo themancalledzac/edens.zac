@@ -8,13 +8,13 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
+import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
 import {
   getContentDimensions,
   getSlotWidth,
   isContentCollection,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
-import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
 import {
   calculateRowSizesFromPattern,
   createRowsArray,
@@ -29,6 +29,51 @@ export type { PatternResult, RowWithPattern };
  * Simplified Layout utilities for Content system
  * Direct processing without complex normalization - works with proper Content types
  */
+
+// ===================== Unified Layout Types =====================
+
+/**
+ * Configuration for the unified layout system.
+ * The slot-based system uses abstract "slots" to determine row composition:
+ * - Desktop (5 slots): Finer-grained layout with 5-star full row, 4-star ~2.5 slots, etc.
+ * - Mobile (2 slots): Binary layout - either full width or half width
+ */
+export interface LayoutConfig {
+  /** Total available width in pixels */
+  containerWidth: number;
+  /** Number of abstract slots per row (Desktop: 5, Mobile: 2) */
+  slotWidth: number;
+  /** Grid gap between items in pixels */
+  gap: number;
+}
+
+/**
+ * Direction of combination for grouped items.
+ * - 'vertical': Items stacked on top of each other (notation: `/`)
+ * - 'horizontal': Items placed side by side (notation: `-`)
+ */
+export type CombineDirection = 'vertical' | 'horizontal';
+
+/**
+ * Represents a combined block of items that have been grouped together.
+ * Combined blocks "level up" in effective rating when items are combined.
+ *
+ * Combination examples:
+ * - H2* / H2* (vertical stack) → V3* equivalent block
+ * - V3* - V3* (horizontal pair) → H4* equivalent block
+ */
+export interface CombinedBlock {
+  /** The items that make up this combined block */
+  items: AnyContentModel[];
+  /** Direction of combination: vertical (/) or horizontal (-) */
+  direction: CombineDirection;
+  /** Effective rating after combination (levels up by 1) */
+  effectiveRating: number;
+  /** Whether this block is treated as vertical for slot calculations */
+  isVertical: boolean;
+  /** Slot cost of this block based on effective rating */
+  slotCost: number;
+}
 
 // ===================== Image Classification Helpers =====================
 

@@ -6,8 +6,8 @@
  *
  * To add a new pattern:
  * 1. Add the pattern type to PatternResult discriminated union
- * 2. Create a PatternMatcher implementation
- * 3. Add it to PATTERN_REGISTRY with appropriate priority
+ * 2. Add pattern config to PATTERN_CONFIGS (for main+secondary patterns) OR create custom matcher
+ * 3. Registry is auto-built and sorted by priority
  */
 
 import { LAYOUT } from '@/app/constants';
@@ -25,7 +25,7 @@ export type PatternResult =
       mainIndex: number;
       secondaryIndices: [number, number];
       indices: number[];
-      mainPosition?: 'left' | 'right'; // Position of main image: left (default) or right
+      mainPosition?: 'left' | 'right';
     }
   | {
       type: 'panorama-vertical';
@@ -131,13 +131,249 @@ function findCandidatesWithinDistance(
   return candidates;
 }
 
-// ===================== Pattern Definitions =====================
+// ===================== Pattern Configuration System =====================
+
+/**
+ * Configuration for main+secondary patterns (the most common pattern type)
+ * This enables adding new patterns with minimal code
+ */
+interface MainSecondaryPatternConfig {
+  name: PatternType;
+  priority: number;
+  /** Predicate to identify the main item */
+  isMain: (item: WindowItem) => boolean;
+  /** Check if window has potential for this pattern (quick filter) */
+  canMatchWindow: (items: WindowItem[]) => boolean;
+  /** Filter for valid secondary candidates */
+  filterSecondaries: (candidate: WindowItem, main: WindowItem) => boolean;
+  /** How many secondaries are required */
+  requiredSecondaries: number;
+  /** Optional: scoring function for secondaries (lower = better) */
+  scoreSecondary?: (candidate: WindowItem, main: WindowItem) => number;
+  /** Optional: whether to use "pair" matching (find one of each type) vs "count" matching */
+  matchMode?: 'count' | 'pair';
+  /** Optional: for pair mode, filters for each secondary type */
+  secondaryFilters?: Array<(candidate: WindowItem) => boolean>;
+  /** Optional: include mainPosition in result (for main-stacked) */
+  includeMainPosition?: boolean;
+  /** Optional: scoring function for main candidates (lower = better, tried first) */
+  scoreMain?: (item: WindowItem, windowIndex: number) => number;
+}
+
+/**
+ * Default secondary scoring: prefer closer items, then lower ratings
+ */
+function defaultSecondaryScore(candidate: WindowItem, main: WindowItem): number {
+  const distance = Math.abs(candidate.windowIndex - main.windowIndex);
+  return distance * 10 + candidate.rating;
+}
+
+/**
+ * Factory function to create main+secondary pattern matchers
+ * This eliminates ~90% of the duplication across similar patterns
+ */
+function createMainSecondaryMatcher(config: MainSecondaryPatternConfig): PatternMatcher {
+  const {
+    name,
+    priority,
+    isMain,
+    canMatchWindow,
+    filterSecondaries,
+    requiredSecondaries,
+    scoreSecondary = defaultSecondaryScore,
+    matchMode = 'count',
+    secondaryFilters,
+    includeMainPosition = false,
+    scoreMain,
+  } = config;
+
+  return {
+    name,
+    priority,
+    minItems: 1 + requiredSecondaries,
+    maxItems: 1 + requiredSecondaries,
+
+    canMatch(windowItems: WindowItem[]): boolean {
+      return canMatchWindow(windowItems);
+    },
+
+    match(windowItems: WindowItem[], windowStart: number): PatternResult | null {
+      // Find all main candidates
+      let mainCandidates = windowItems
+        .map((item, idx) => ({ item, windowIndex: idx }))
+        .filter(({ item }) => isMain(item));
+
+      // Sort main candidates if scoring function provided
+      if (scoreMain) {
+        mainCandidates = mainCandidates.sort(
+          (a, b) => scoreMain(a.item, a.windowIndex) - scoreMain(b.item, b.windowIndex)
+        );
+      }
+
+      for (const { item: main, windowIndex: mainIdx } of mainCandidates) {
+        const candidates = findCandidatesWithinDistance(windowItems, mainIdx);
+
+        let selectedSecondaries: WindowItem[];
+
+        if (matchMode === 'pair' && secondaryFilters) {
+          // Pair mode: find one item matching each filter
+          const found: WindowItem[] = [];
+          for (const filter of secondaryFilters) {
+            const match = candidates.find(c => filter(c) && !found.includes(c));
+            if (match) found.push(match);
+          }
+          if (found.length < requiredSecondaries) continue;
+          selectedSecondaries = found;
+        } else {
+          // Count mode: find N items matching the filter, sorted by score
+          const filtered = candidates
+            .filter(c => filterSecondaries(c, main))
+            .sort((a, b) => scoreSecondary(a, main) - scoreSecondary(b, main));
+
+          if (filtered.length < requiredSecondaries) continue;
+          selectedSecondaries = filtered.slice(0, requiredSecondaries);
+        }
+
+        const indices = [
+          main.originalIndex,
+          ...selectedSecondaries.map(s => s.originalIndex),
+        ];
+
+        if (validateMovementConstraints(indices, windowStart)) {
+          const result: PatternResult = {
+            type: name,
+            mainIndex: main.originalIndex,
+            secondaryIndices: [
+              selectedSecondaries[0]!.originalIndex,
+              selectedSecondaries[1]!.originalIndex,
+            ] as [number, number],
+            indices: [...indices].sort((a, b) => a - b),
+          } as PatternResult;
+
+          // Add mainPosition for main-stacked pattern
+          if (includeMainPosition && name === 'main-stacked') {
+            (result as Extract<PatternResult, { type: 'main-stacked' }>).mainPosition =
+              mainIdx > windowItems.length / 2 ? 'right' : 'left';
+          }
+
+          return result;
+        }
+      }
+      return null;
+    },
+  };
+}
+
+// ===================== Pattern Configurations =====================
+
+/**
+ * Pattern configurations - add new patterns here!
+ *
+ * Each config defines:
+ * - name: Pattern type (must exist in PatternResult union)
+ * - priority: Higher = tried first (100=standalone, 0=fallback)
+ * - isMain: How to identify the main item
+ * - canMatchWindow: Quick check if pattern is possible
+ * - filterSecondaries: Which items can be secondaries
+ * - requiredSecondaries: How many secondaries needed
+ */
+const PATTERN_CONFIGS: MainSecondaryPatternConfig[] = [
+  // 5★ Vertical + 2 Non-5★ Verticals
+  {
+    name: 'five-star-vertical-2v',
+    priority: 95,
+    isMain: item => item.isVertical && item.rating === 5,
+    canMatchWindow: items => {
+      const has5StarVertical = items.some(w => w.isVertical && w.rating === 5);
+      const otherVerticals = items.filter(w => w.isVertical && w.rating !== 5);
+      return has5StarVertical && otherVerticals.length >= 2;
+    },
+    filterSecondaries: candidate => candidate.isVertical && candidate.rating !== 5,
+    requiredSecondaries: 2,
+  },
+
+  // 5★ Vertical + 2 Horizontal (≤3★)
+  {
+    name: 'five-star-vertical-2h',
+    priority: 94,
+    isMain: item => item.isVertical && item.rating === 5,
+    canMatchWindow: items => {
+      const has5StarVertical = items.some(w => w.isVertical && w.rating === 5);
+      const lowRatedHorizontals = items.filter(w => w.isHorizontal && w.rating <= 3);
+      return has5StarVertical && lowRatedHorizontals.length >= 2;
+    },
+    filterSecondaries: candidate => candidate.isHorizontal && candidate.rating <= 3,
+    requiredSecondaries: 2,
+  },
+
+  // 5★ Vertical + 3-4★ Vertical + <3★ Horizontal (mixed)
+  {
+    name: 'five-star-vertical-mixed',
+    priority: 93,
+    isMain: item => item.isVertical && item.rating === 5,
+    canMatchWindow: items => {
+      const has5StarVertical = items.some(w => w.isVertical && w.rating === 5);
+      const has34Vertical = items.some(w => w.isVertical && w.rating >= 3 && w.rating <= 4);
+      const hasLowHorizontal = items.some(w => w.isHorizontal && w.rating < 3);
+      return has5StarVertical && has34Vertical && hasLowHorizontal;
+    },
+    filterSecondaries: () => true, // We use pair mode instead
+    requiredSecondaries: 2,
+    matchMode: 'pair',
+    secondaryFilters: [
+      c => c.isVertical && c.rating >= 3 && c.rating <= 4,
+      c => c.isHorizontal && c.rating < 3,
+    ],
+  },
+
+  // Main-Stacked: 3-4★ main with 2 secondaries stacked
+  {
+    name: 'main-stacked',
+    priority: 80,
+    isMain: item => item.rating >= 3 && item.rating <= 4,
+    canMatchWindow: items => items.some(w => w.rating >= 3 && w.rating <= 4),
+    filterSecondaries: () => true, // All items can be secondaries
+    requiredSecondaries: 2,
+    // Prefer higher-rated mains first, then earlier in window
+    scoreMain: (item, windowIndex) => -item.rating * 10 + windowIndex,
+    scoreSecondary: (candidate, main) => {
+      let score = 0;
+      // Prefer lower-rated secondaries
+      score += candidate.rating >= main.rating ? 100 : candidate.rating * 10;
+      // Slight penalty for verticals as secondaries
+      if (candidate.isVertical) score -= 5;
+      // Distance penalty
+      const distance = Math.abs(candidate.windowIndex - main.windowIndex);
+      score += distance * 2;
+      // Bonus for close items
+      if (distance <= 2) score -= 10;
+      return score;
+    },
+    includeMainPosition: true,
+  },
+
+  // Panorama-Vertical: Vertical image + 2 wide panoramas stacked
+  {
+    name: 'panorama-vertical',
+    priority: 75,
+    isMain: item => item.isVertical,
+    canMatchWindow: items => {
+      const hasVertical = items.some(w => w.isVertical);
+      const panoramas = items.filter(w => w.isWidePanorama);
+      return hasVertical && panoramas.length >= 2;
+    },
+    filterSecondaries: candidate => candidate.isWidePanorama,
+    requiredSecondaries: 2,
+  },
+];
+
+// ===================== Special Pattern Definitions =====================
 
 /**
  * Standalone: Single item that takes full width
  * Triggers: 5-star horizontal, wide panorama, 4-star horizontal (unless adjacent to vertical)
  *
- * Now detects standalone items by properties directly, not by slotWidth === Infinity
+ * This pattern is special and doesn't fit the main+secondary model
  */
 const standaloneMatcher: PatternMatcher = {
   name: 'standalone',
@@ -157,7 +393,6 @@ const standaloneMatcher: PatternMatcher = {
 
     // 4-star horizontal → standalone unless adjacent to vertical
     if (first.rating === 4 && first.isHorizontal) {
-      // Check if there's a vertical item in the window (adjacent context)
       const hasVerticalInWindow = windowItems.some((w, idx) => idx !== 0 && w.isVertical);
       return !hasVerticalInWindow;
     }
@@ -192,277 +427,9 @@ const standaloneMatcher: PatternMatcher = {
 };
 
 /**
- * 5★ Vertical + 2 Non-5★ Verticals
- * Main: 5★ vertical (full height, ~50% width)
- * Secondaries: 2 non-5★ vertical images (each half height, stacked)
- */
-const fiveStarVertical2VMatcher: PatternMatcher = {
-  name: 'five-star-vertical-2v',
-  priority: 95,
-  minItems: 3,
-  maxItems: 3,
-
-  canMatch(windowItems) {
-    const has5StarVertical = windowItems.some(w => w.isVertical && w.rating === 5);
-    const otherVerticals = windowItems.filter(w => w.isVertical && w.rating !== 5);
-    return has5StarVertical && otherVerticals.length >= 2;
-  },
-
-  match(windowItems, windowStart) {
-    for (let mainIdx = 0; mainIdx < windowItems.length; mainIdx++) {
-      const main = windowItems[mainIdx];
-      if (!main || !main.isVertical || main.rating !== 5) continue;
-
-      const candidates = findCandidatesWithinDistance(windowItems, mainIdx)
-        .filter(c => c.isVertical && c.rating !== 5)
-        .sort((a, b) => {
-          const distA = Math.abs(a.windowIndex - mainIdx);
-          const distB = Math.abs(b.windowIndex - mainIdx);
-          if (distA !== distB) return distA - distB;
-          return a.rating - b.rating;
-        });
-
-      if (candidates.length < 2) continue;
-
-      const sec1 = candidates[0]!;
-      const sec2 = candidates[1]!;
-      const indices = [main.originalIndex, sec1.originalIndex, sec2.originalIndex];
-
-      if (validateMovementConstraints(indices, windowStart)) {
-        return {
-          type: 'five-star-vertical-2v',
-          mainIndex: main.originalIndex,
-          secondaryIndices: [sec1.originalIndex, sec2.originalIndex],
-          indices: [...indices].sort((a, b) => a - b),
-        };
-      }
-    }
-    return null;
-  },
-};
-
-/**
- * 5★ Vertical + 2 Horizontal (≤3★)
- * Main: 5★ vertical (full height, ~50% width)
- * Secondaries: 2 horizontal images rated ≤3 stars (each half height, stacked)
- */
-const fiveStarVertical2HMatcher: PatternMatcher = {
-  name: 'five-star-vertical-2h',
-  priority: 94,
-  minItems: 3,
-  maxItems: 3,
-
-  canMatch(windowItems) {
-    const has5StarVertical = windowItems.some(w => w.isVertical && w.rating === 5);
-    const lowRatedHorizontals = windowItems.filter(w => w.isHorizontal && w.rating <= 3);
-    return has5StarVertical && lowRatedHorizontals.length >= 2;
-  },
-
-  match(windowItems, windowStart) {
-    for (let mainIdx = 0; mainIdx < windowItems.length; mainIdx++) {
-      const main = windowItems[mainIdx];
-      if (!main || !main.isVertical || main.rating !== 5) continue;
-
-      const candidates = findCandidatesWithinDistance(windowItems, mainIdx)
-        .filter(c => c.isHorizontal && c.rating <= 3)
-        .sort((a, b) => {
-          const distA = Math.abs(a.windowIndex - mainIdx);
-          const distB = Math.abs(b.windowIndex - mainIdx);
-          if (distA !== distB) return distA - distB;
-          return a.rating - b.rating;
-        });
-
-      if (candidates.length < 2) continue;
-
-      const sec1 = candidates[0]!;
-      const sec2 = candidates[1]!;
-      const indices = [main.originalIndex, sec1.originalIndex, sec2.originalIndex];
-
-      if (validateMovementConstraints(indices, windowStart)) {
-        return {
-          type: 'five-star-vertical-2h',
-          mainIndex: main.originalIndex,
-          secondaryIndices: [sec1.originalIndex, sec2.originalIndex],
-          indices: [...indices].sort((a, b) => a - b),
-        };
-      }
-    }
-    return null;
-  },
-};
-
-/**
- * 5★ Vertical + 3-4★ Vertical + <3★ Horizontal
- * Main: 5★ vertical (full height, ~50% width)
- * Secondaries: one 3-4★ vertical + one <3★ horizontal (stacked)
- */
-const fiveStarVerticalMixedMatcher: PatternMatcher = {
-  name: 'five-star-vertical-mixed',
-  priority: 93,
-  minItems: 3,
-  maxItems: 3,
-
-  canMatch(windowItems) {
-    const has5StarVertical = windowItems.some(w => w.isVertical && w.rating === 5);
-    const has34Vertical = windowItems.some(w => w.isVertical && w.rating >= 3 && w.rating <= 4);
-    const hasLowHorizontal = windowItems.some(w => w.isHorizontal && w.rating < 3);
-    return has5StarVertical && has34Vertical && hasLowHorizontal;
-  },
-
-  match(windowItems, windowStart) {
-    for (let mainIdx = 0; mainIdx < windowItems.length; mainIdx++) {
-      const main = windowItems[mainIdx];
-      if (!main || !main.isVertical || main.rating !== 5) continue;
-
-      const candidates = findCandidatesWithinDistance(windowItems, mainIdx);
-
-      const verticalCandidate = candidates.find(
-        c => c.isVertical && c.rating >= 3 && c.rating <= 4
-      );
-      const horizontalCandidate = candidates.find(c => c.isHorizontal && c.rating < 3);
-
-      if (!verticalCandidate || !horizontalCandidate) continue;
-
-      const indices = [
-        main.originalIndex,
-        verticalCandidate.originalIndex,
-        horizontalCandidate.originalIndex,
-      ];
-
-      if (validateMovementConstraints(indices, windowStart)) {
-        return {
-          type: 'five-star-vertical-mixed',
-          mainIndex: main.originalIndex,
-          secondaryIndices: [verticalCandidate.originalIndex, horizontalCandidate.originalIndex],
-          indices: [...indices].sort((a, b) => a - b),
-        };
-      }
-    }
-    return null;
-  },
-};
-
-/**
- * Main-Stacked: 3-4★ main with 2 secondaries stacked
- */
-const mainStackedMatcher: PatternMatcher = {
-  name: 'main-stacked',
-  priority: 80,
-  minItems: 3,
-  maxItems: 3,
-
-  canMatch(windowItems) {
-    return windowItems.some(w => w.rating >= 3 && w.rating <= 4);
-  },
-
-  match(windowItems, windowStart) {
-    // Collect ALL valid main candidates (rating 3-4) and sort by rating descending
-    // For same rating, prefer earlier in window (stable sort)
-    const mainCandidates = windowItems
-      .map((item, idx) => ({ item, windowIndex: idx }))
-      .filter(({ item }) => item && item.rating >= 3 && item.rating <= 4)
-      .sort((a, b) => {
-        // Primary sort: rating descending (highest first)
-        if (b.item.rating !== a.item.rating) {
-          return b.item.rating - a.item.rating;
-        }
-        // Secondary sort: position ascending (earlier in window first)
-        return a.windowIndex - b.windowIndex;
-      });
-
-    // Try each candidate starting from highest rated
-    for (const { item: main, windowIndex: mainIdx } of mainCandidates) {
-      if (!main) continue;
-
-      const candidates = findCandidatesWithinDistance(windowItems, mainIdx);
-      if (candidates.length < 2) continue;
-
-      const scored = candidates.map(candidate => {
-        let score = 0;
-        score += candidate.rating >= main.rating ? 100 : candidate.rating * 10;
-        if (candidate.isVertical) score -= 5;
-        const distance = Math.abs(candidate.windowIndex - main.windowIndex);
-        score += distance * 2;
-        if (distance <= 2) score -= 10;
-        return { candidate, score };
-      });
-
-      scored.sort((a, b) => a.score - b.score);
-      if (scored.length < 2) continue;
-
-      const sec1 = scored[0]!.candidate;
-      const sec2 = scored[1]!.candidate;
-      const indices = [main.originalIndex, sec1.originalIndex, sec2.originalIndex];
-
-      if (validateMovementConstraints(indices, windowStart)) {
-        // Determine main position: right if main is closer to end than start
-        // For 5-item window: mainIdx > 2.5 means mainIdx >= 3 (last 2 positions)
-        const mainPosition: 'left' | 'right' =
-          mainIdx > windowItems.length / 2 ? 'right' : 'left';
-
-        return {
-          type: 'main-stacked',
-          mainIndex: main.originalIndex,
-          secondaryIndices: [sec1.originalIndex, sec2.originalIndex],
-          indices: [...indices].sort((a, b) => a - b),
-          mainPosition,
-        };
-      }
-    }
-    return null;
-  },
-};
-
-/**
- * Panorama-Vertical: Vertical image + 2 wide panoramas stacked
- */
-const panoramaVerticalMatcher: PatternMatcher = {
-  name: 'panorama-vertical',
-  priority: 75,
-  minItems: 3,
-  maxItems: 3,
-
-  canMatch(windowItems) {
-    const hasVertical = windowItems.some(w => w.isVertical);
-    const panoramas = windowItems.filter(w => w.isWidePanorama);
-    return hasVertical && panoramas.length >= 2;
-  },
-
-  match(windowItems, windowStart) {
-    for (let vertIdx = 0; vertIdx < windowItems.length; vertIdx++) {
-      const vertical = windowItems[vertIdx];
-      if (!vertical || !vertical.isVertical) continue;
-
-      const panoramas = findCandidatesWithinDistance(windowItems, vertIdx)
-        .filter(c => c.isWidePanorama)
-        .sort((a, b) => {
-          const aDist = Math.abs(a.windowIndex - vertical.windowIndex);
-          const bDist = Math.abs(b.windowIndex - vertical.windowIndex);
-          if (aDist !== bDist) return aDist - bDist;
-          return a.rating - b.rating;
-        });
-
-      if (panoramas.length < 2) continue;
-
-      const p1 = panoramas[0]!;
-      const p2 = panoramas[1]!;
-      const indices = [vertical.originalIndex, p1.originalIndex, p2.originalIndex];
-
-      if (validateMovementConstraints(indices, windowStart)) {
-        return {
-          type: 'panorama-vertical',
-          mainIndex: vertical.originalIndex,
-          secondaryIndices: [p1.originalIndex, p2.originalIndex],
-          indices: [...indices].sort((a, b) => a - b),
-        };
-      }
-    }
-    return null;
-  },
-};
-
-/**
  * Standard: Slot-based layout (fallback)
+ *
+ * This pattern is special - it's the catch-all that always matches
  */
 const standardMatcher: PatternMatcher = {
   name: 'standard',
@@ -501,6 +468,11 @@ const standardMatcher: PatternMatcher = {
 // ===================== Registry =====================
 
 /**
+ * Build pattern matchers from configs
+ */
+const configBasedMatchers = PATTERN_CONFIGS.map(config => createMainSecondaryMatcher(config));
+
+/**
  * Pattern registry - sorted by priority (highest first)
  *
  * Priority guide:
@@ -509,13 +481,21 @@ const standardMatcher: PatternMatcher = {
  * - 80-89: Main-stacked patterns (high-rated content)
  * - 70-79: Special combination patterns (panorama-vertical)
  * - 0: Standard fallback (always matches)
+ *
+ * To add a new pattern:
+ * 1. Add to PatternResult type union at top of file
+ * 2. Add config to PATTERN_CONFIGS array
+ * 3. That's it! The registry auto-builds and sorts by priority
  */
 export const PATTERN_REGISTRY: PatternMatcher[] = [
   standaloneMatcher,
-  fiveStarVertical2VMatcher,
-  fiveStarVertical2HMatcher,
-  fiveStarVerticalMixedMatcher,
-  mainStackedMatcher,
-  panoramaVerticalMatcher,
+  ...configBasedMatchers,
   standardMatcher,
 ].sort((a, b) => b.priority - a.priority);
+
+// ===================== Export Pattern Configs for Extension =====================
+
+/**
+ * Export for testing and potential runtime pattern additions
+ */
+export { createMainSecondaryMatcher, type MainSecondaryPatternConfig };
