@@ -5,14 +5,11 @@
 
 import type { ContentImageModel } from '@/app/types/Content';
 import {
-  __testing,
   calculateRowSizes,
   calculateRowSizesFromPattern,
   createRowsArray,
   type RowWithPattern,
 } from '@/app/utils/rowStructureAlgorithm';
-
-const { createFraction, simplifyFraction, addFractions, invertFraction } = __testing;
 
 // ===================== Test Fixtures =====================
 
@@ -699,141 +696,5 @@ describe('Full pipeline integration', () => {
     // Row 3: H5* standalone
     expect(rows[2]?.items).toHaveLength(1);
     expect(rows[2]?.pattern.type).toBe('standalone');
-  });
-});
-
-// ===================== Fraction Math Unit Tests =====================
-
-describe('Fraction Math Functions', () => {
-  describe('createFraction', () => {
-    it('should create a fraction from width and height', () => {
-      const result = createFraction(16, 9);
-      expect(result).toEqual({ numerator: 16, denominator: 9 });
-    });
-
-    it('should handle zero numerator', () => {
-      const result = createFraction(0, 10);
-      expect(result).toEqual({ numerator: 0, denominator: 10 });
-    });
-
-    it('should handle equal numerator and denominator', () => {
-      const result = createFraction(5, 5);
-      expect(result).toEqual({ numerator: 5, denominator: 5 });
-    });
-  });
-
-  describe('simplifyFraction', () => {
-    it('should simplify 6/8 to 3/4', () => {
-      const result = simplifyFraction({ numerator: 6, denominator: 8 });
-      expect(result).toEqual({ numerator: 3, denominator: 4 });
-    });
-
-    it('should simplify 100/50 to 2/1', () => {
-      const result = simplifyFraction({ numerator: 100, denominator: 50 });
-      expect(result).toEqual({ numerator: 2, denominator: 1 });
-    });
-
-    it('should handle already simplified fractions', () => {
-      const result = simplifyFraction({ numerator: 3, denominator: 4 });
-      expect(result).toEqual({ numerator: 3, denominator: 4 });
-    });
-
-    it('should handle zero numerator (simplifies to 0/1)', () => {
-      // gcd(0, 10) = 10, so 0/10 simplifies to 0/1
-      const result = simplifyFraction({ numerator: 0, denominator: 10 });
-      expect(result).toEqual({ numerator: 0, denominator: 1 });
-    });
-
-    it('should handle zero denominator by returning fallback', () => {
-      const result = simplifyFraction({ numerator: 5, denominator: 0 });
-      expect(result).toEqual({ numerator: 1, denominator: 1 });
-    });
-
-    it('should handle non-finite numerator by returning fallback', () => {
-      const result = simplifyFraction({ numerator: Infinity, denominator: 10 });
-      expect(result).toEqual({ numerator: 1, denominator: 1 });
-    });
-
-    it('should handle non-finite denominator by returning fallback', () => {
-      const result = simplifyFraction({ numerator: 10, denominator: Number.NaN });
-      expect(result).toEqual({ numerator: 1, denominator: 1 });
-    });
-
-    it('should handle equal numerator and denominator', () => {
-      const result = simplifyFraction({ numerator: 7, denominator: 7 });
-      expect(result).toEqual({ numerator: 1, denominator: 1 });
-    });
-
-    it('should handle large numbers', () => {
-      const result = simplifyFraction({ numerator: 1920, denominator: 1080 });
-      expect(result).toEqual({ numerator: 16, denominator: 9 });
-    });
-  });
-
-  describe('addFractions', () => {
-    it('should add 1/2 + 1/2 = 1/1', () => {
-      const result = addFractions(
-        { numerator: 1, denominator: 2 },
-        { numerator: 1, denominator: 2 }
-      );
-      expect(result).toEqual({ numerator: 1, denominator: 1 });
-    });
-
-    it('should add 1/4 + 1/4 = 1/2', () => {
-      const result = addFractions(
-        { numerator: 1, denominator: 4 },
-        { numerator: 1, denominator: 4 }
-      );
-      expect(result).toEqual({ numerator: 1, denominator: 2 });
-    });
-
-    it('should add 1/3 + 1/6 = 1/2', () => {
-      const result = addFractions(
-        { numerator: 1, denominator: 3 },
-        { numerator: 1, denominator: 6 }
-      );
-      expect(result).toEqual({ numerator: 1, denominator: 2 });
-    });
-
-    it('should add fractions with different denominators', () => {
-      const result = addFractions(
-        { numerator: 2, denominator: 3 },
-        { numerator: 3, denominator: 4 }
-      );
-      // 2/3 + 3/4 = 8/12 + 9/12 = 17/12
-      expect(result).toEqual({ numerator: 17, denominator: 12 });
-    });
-
-    it('should handle zero fraction', () => {
-      const result = addFractions(
-        { numerator: 0, denominator: 1 },
-        { numerator: 3, denominator: 4 }
-      );
-      expect(result).toEqual({ numerator: 3, denominator: 4 });
-    });
-  });
-
-  describe('invertFraction', () => {
-    it('should invert 16/9 to 9/16', () => {
-      const result = invertFraction({ numerator: 16, denominator: 9 });
-      expect(result).toEqual({ numerator: 9, denominator: 16 });
-    });
-
-    it('should invert 1/1 to 1/1', () => {
-      const result = invertFraction({ numerator: 1, denominator: 1 });
-      expect(result).toEqual({ numerator: 1, denominator: 1 });
-    });
-
-    it('should invert 3/4 to 4/3', () => {
-      const result = invertFraction({ numerator: 3, denominator: 4 });
-      expect(result).toEqual({ numerator: 4, denominator: 3 });
-    });
-
-    it('should handle inversion twice to return original', () => {
-      const original = { numerator: 16, denominator: 9 };
-      const inverted = invertFraction(original);
-      const restored = invertFraction(inverted);
-      expect(restored).toEqual(original);
-    });
   });
 });

@@ -20,6 +20,7 @@ import {
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
 import {
+  type BoxTree,
   buildRows,
   CombinationPattern,
   getOrientation,
@@ -163,6 +164,7 @@ export interface CalculatedContentSize {
 export interface RowWithPatternAndSizes {
   pattern: PatternResult;
   items: CalculatedContentSize[];
+  boxTree: import('./rowCombination').BoxTree; // Recursive rendering tree (replaces pattern-specific rendering)
 }
 
 /**
@@ -397,9 +399,7 @@ function logNewAlgorithm(rows: RowResult[], rowWidth: number): void {
     const items = row.components.map(c => summarizeItem(c, rowWidth)).join(' + ');
     const totalCV = row.components.reduce((s, c) => s + getItemComponentValue(c, rowWidth), 0);
     const fillPct = ((totalCV / rowWidth) * 100).toFixed(0);
-    console.log(
-      `  Row ${i + 1} [${row.patternName}]: ${items} → ${fillPct}% fill`
-    );
+    console.log(`  Row ${i + 1} [${row.patternName}]: ${items} → ${fillPct}% fill`);
   }
   console.groupEnd();
 }
@@ -412,9 +412,7 @@ function logOldAlgorithm(rows: RowWithPattern[], rowWidth: number): void {
     const items = row.items.map(c => summarizeItem(c, rowWidth)).join(' + ');
     const totalCV = row.items.reduce((s, c) => s + getItemComponentValue(c, rowWidth), 0);
     const fillPct = ((totalCV / rowWidth) * 100).toFixed(0);
-    console.log(
-      `  Row ${i + 1} [${row.pattern.type}]: ${items} → ${fillPct}% fill`
-    );
+    console.log(`  Row ${i + 1} [${row.pattern.type}]: ${items} → ${fillPct}% fill`);
   }
   console.groupEnd();
 }
@@ -512,61 +510,115 @@ function detectMainStackedFallback(
 }
 
 /**
+ * Create a simple horizontal BoxTree from a list of content items.
+ * Used for mobile/simple layouts where all items are arranged horizontally.
+ */
+function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
+  if (items.length === 0) {
+    throw new Error('Cannot create BoxTree from empty items array');
+  }
+
+  if (items.length === 1) {
+    return { type: 'leaf', content: items[0]! };
+  }
+
+  // For 2 items: simple horizontal pair
+  if (items.length === 2) {
+    return {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [
+        { type: 'leaf', content: items[0]! },
+        { type: 'leaf', content: items[1]! }
+      ]
+    };
+  }
+
+  // For 3+ items: build left-associative tree (((a | b) | c) | d)
+  let tree: BoxTree = {
+    type: 'combined',
+    direction: 'horizontal',
+    children: [
+      { type: 'leaf', content: items[0]! },
+      { type: 'leaf', content: items[1]! }
+    ]
+  };
+
+  for (let i = 2; i < items.length; i++) {
+    tree = {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [
+        tree,
+        { type: 'leaf', content: items[i]! }
+      ]
+    };
+  }
+
+  return tree;
+}
+
+/**
  * Map a CombinationPattern RowResult from buildRows() to a RowWithPattern
  * compatible with calculateRowSizesFromPattern().
  *
- * Patterns like DOMINANT_VERTICAL_PAIR and DOMINANT_SECONDARY produce
- * main-stacked layouts (one dominant image + vertically stacked secondaries).
- * Without this mapping, the renderer treats everything as 'standard' (side-by-side)
- * and the stacked DOM structure is never created.
+ * Uses the layout metadata from RowResult.layout to determine rendering strategy:
+ * - 'main-stacked': One dominant image + vertically stacked secondaries
+ * - 'horizontal': Standard side-by-side layout
+ *
+ * This replaces the old pattern-based switch logic with a simpler layout-driven approach.
  */
 function mapRowResultToRowWithPattern(row: RowResult): RowWithPattern {
   const indices = row.components.map((_, i) => i);
 
-  switch (row.patternName) {
-    case CombinationPattern.STANDALONE:
-      return {
-        pattern: { type: 'standalone', indices: [0] as [number] },
-        items: row.components,
-      };
-
-    case CombinationPattern.DOMINANT_VERTICAL_PAIR:
-      // 3-item: dominant horizontal + 2 vertical secondaries → main-stacked
-      return {
-        pattern: {
-          type: 'main-stacked',
-          mainIndex: 0,
-          secondaryIndices: [1, 2] as [number, number],
-          indices,
-          mainPosition: 'left',
-        },
-        items: row.components,
-      };
-
-    case CombinationPattern.DOMINANT_SECONDARY:
-      // 2-item: dominant horizontal + 1 vertical secondary
-      // Only use main-stacked when there are 3+ items (needs stacking)
-      // For 2-item rows, standard side-by-side is correct
-      return {
-        pattern: { type: 'standard', indices },
-        items: row.components,
-      };
-
-    default:
-      // VERTICAL_PAIR, TRIPLE_HORIZONTAL, MULTI_SMALL, force-fill
-      // Smart fallback: detect if a FORCE_FILL row should be main-stacked
-      if (row.patternName === CombinationPattern.FORCE_FILL && row.components.length === 3) {
-        const mainStackedPattern = detectMainStackedFallback(row.components, indices);
-        if (mainStackedPattern) {
-          return mainStackedPattern;
-        }
-      }
-
-      return {
-        pattern: { type: 'standard', indices },
-        items: row.components,
-      };
+  // Handle STANDALONE pattern specially (single item full-width)
+  if (row.patternName === CombinationPattern.STANDALONE) {
+    return {
+      pattern: { type: 'standalone', indices: [0] as [number] },
+      items: row.components,
+    };
   }
+
+  // Use the layout descriptor from the row result
+  if (row.layout.type === 'main-stacked') {
+    return {
+      pattern: {
+        type: 'main-stacked',
+        mainIndex: row.layout.mainIndex,
+        secondaryIndices: row.layout.stackedIndices,
+        indices,
+        mainPosition: 'left',
+      },
+      items: row.components,
+    };
+  }
+
+  if (row.layout.type === 'nested-quad') {
+    return {
+      pattern: {
+        type: 'nested-quad',
+        mainIndex: row.layout.mainIndex,
+        topPairIndices: row.layout.topPairIndices,
+        bottomIndex: row.layout.bottomIndex,
+        indices,
+      },
+      items: row.components,
+    };
+  }
+
+  // Default: standard horizontal layout
+  // Smart fallback: detect if a FORCE_FILL row should be main-stacked
+  if (row.patternName === CombinationPattern.FORCE_FILL && row.components.length === 3) {
+    const mainStackedPattern = detectMainStackedFallback(row.components, indices);
+    if (mainStackedPattern) {
+      return mainStackedPattern;
+    }
+  }
+
+  return {
+    pattern: { type: 'standard', indices },
+    items: row.components,
+  };
 }
 
 /**
@@ -612,6 +664,7 @@ export function processContentForDisplay(
     const contentRows = chunks.map(chunk => ({
       pattern: { type: 'standard' as const, indices: chunk.map((_, i) => i) },
       items: calculateContentSizes(chunk, componentWidth, chunkSize),
+      boxTree: createSimpleHorizontalBoxTree(chunk),
     }));
     result.push(...contentRows);
 
@@ -638,6 +691,7 @@ export function processContentForDisplay(
     return {
       pattern: rowWithPattern.pattern,
       items: calculateRowSizesFromPattern(rowWithPattern, componentWidth, chunkSize),
+      boxTree: row.boxTree, // NEW: Pass boxTree for rendering
     };
   });
   result.push(...contentRows);
@@ -1076,8 +1130,12 @@ export function createHeaderRow(
     indices: calculatedSizes.map((_, index) => index),
   };
 
+  // Create boxTree from the calculated items (cover image + metadata block if present)
+  const boxTreeItems = calculatedSizes.map(item => item.content);
+
   return {
     pattern,
     items: calculatedSizes,
+    boxTree: createSimpleHorizontalBoxTree(boxTreeItems),
   };
 }

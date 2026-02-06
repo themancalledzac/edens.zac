@@ -51,6 +51,13 @@ export type PatternResult =
       secondaryIndices: [number, number];
       indices: number[];
     }
+  | {
+      type: 'nested-quad';
+      mainIndex: number;
+      topPairIndices: [number, number];
+      bottomIndex: number;
+      indices: number[];
+    }
   | { type: 'standard'; indices: number[] };
 
 /**

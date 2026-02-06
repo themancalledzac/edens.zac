@@ -262,78 +262,6 @@ describe('processContentBlocks', () => {
     });
   });
 
-  describe('Updating image orderIndex', () => {
-    it('should update orderIndex from collection-specific entry', () => {
-      const content: AnyContentModel[] = [
-        createImageContent(1, {
-          orderIndex: 0,
-          collections: [
-            {
-              collectionId: 1,
-              name: 'Collection 1',
-              visible: true,
-              orderIndex: 5,
-            },
-          ],
-        }),
-      ];
-      const result = processContentBlocks(content, true, 1);
-      expect(result[0]?.orderIndex).toBe(5);
-    });
-
-    it('should not update orderIndex when collectionId is not provided', () => {
-      const content: AnyContentModel[] = [
-        createImageContent(1, {
-          orderIndex: 0,
-          collections: [
-            {
-              collectionId: 1,
-              name: 'Collection 1',
-              visible: true,
-              orderIndex: 5,
-            },
-          ],
-        }),
-      ];
-      const result = processContentBlocks(content);
-      expect(result[0]?.orderIndex).toBe(0);
-    });
-
-    it('should not update orderIndex when collection entry not found', () => {
-      const content: AnyContentModel[] = [
-        createImageContent(1, {
-          orderIndex: 0,
-          collections: [
-            {
-              collectionId: 2,
-              name: 'Collection 2',
-              visible: true,
-              orderIndex: 5,
-            },
-          ],
-        }),
-      ];
-      const result = processContentBlocks(content, true, 1);
-      expect(result[0]?.orderIndex).toBe(0);
-    });
-
-    it('should not update when orderIndex is undefined in collection entry', () => {
-      const content: AnyContentModel[] = [
-        createImageContent(1, {
-          orderIndex: 0,
-          collections: [
-            {
-              collectionId: 1,
-              name: 'Collection 1',
-              visible: true,
-            },
-          ],
-        }),
-      ];
-      const result = processContentBlocks(content, true, 1);
-      expect(result[0]?.orderIndex).toBe(0);
-    });
-  });
 
   describe('Ensuring parallax dimensions', () => {
     it('should preserve imageWidth and imageHeight when present', () => {
@@ -555,14 +483,6 @@ describe('processContentBlocks', () => {
         createImageContent(2, {
           visible: true,
           orderIndex: 2,
-          collections: [
-            {
-              collectionId: 1,
-              name: 'Collection 1',
-              visible: true,
-              orderIndex: 5,
-            },
-          ],
         }),
         createCollectionContent(1, { orderIndex: 0 }),
         createImageContent(1, {
@@ -576,8 +496,8 @@ describe('processContentBlocks', () => {
       expect(result).toHaveLength(3);
 
       // Images should come before collections
-      // After sorting by orderIndex: image(1), image(5), collection(0)
-      // After reordering: images first [image(1), image(5)], then collections [collection(0)]
+      // After sorting by orderIndex: image(1), image(2), collection(0)
+      // After reordering: images first [image(1), image(2)], then collections [collection(0)]
       const firstTwoItems = result.slice(0, 2);
       const lastItem = result[2];
 
@@ -591,9 +511,9 @@ describe('processContentBlocks', () => {
       expect((lastItem as ContentParallaxImageModel).slug).toBe('collection-1');
       expect(lastItem?.id).toBe(1); // This is the collection
 
-      // Image with collection orderIndex should be updated
-      const imageWithCollection = result.find(b => b.id === 2);
-      expect(imageWithCollection?.orderIndex).toBe(5);
+      // Verify the images are in the correct order (1, then 2)
+      expect(firstTwoItems[0]?.id).toBe(1);
+      expect(firstTwoItems[1]?.id).toBe(2);
     });
 
     it('should handle empty array', () => {

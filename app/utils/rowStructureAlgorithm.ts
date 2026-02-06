@@ -431,8 +431,9 @@ function solveBox(
 
     // Validate before division - if invalid, distribute width equally
     if (!calculatedWidth || !Number.isFinite(calculatedWidth) || calculatedWidth <= 0) {
-      // Fallback: distribute width equally among children (don't scale)
-      const equalWidth = containerSize / solvedChildren.length;
+      // Fallback: distribute width equally among children, accounting for gaps
+      const availableWidth = containerSize - totalGapSpace;
+      const equalWidth = availableWidth / solvedChildren.length;
       const scaledChildren = solvedChildren.map(child => ({
         ...child,
         width: equalWidth,
@@ -440,9 +441,10 @@ function solveBox(
       return { width: containerSize, height: sharedDimension, children: scaledChildren };
     }
 
-    // Scale widths proportionally to ensure total equals containerSize
-    // This handles any minor floating-point rounding
-    const scaleFactor = containerSize / calculatedWidth;
+    // Scale widths proportionally to ensure total equals containerSize minus gaps
+    // CSS gap property will add the visual spacing between children
+    const targetWidthsSum = containerSize - totalGapSpace;
+    const scaleFactor = targetWidthsSum / calculatedWidth;
 
     // Validate scaleFactor before using it
     if (!Number.isFinite(scaleFactor) || scaleFactor <= 0) {
@@ -550,7 +552,6 @@ function calculateMainStackedSizes(
   mainIndex: number = 0
 ): CalculatedContentSize[] {
   const gap = LAYOUT.gridGap;
-  const halfGap = gap / 2; // Container's padding-left = 0.4rem = 6.4px
 
   // Pick main and secondaries based on mainIndex
   const main = items[mainIndex];
@@ -578,11 +579,85 @@ function calculateMainStackedSizes(
   for (let i = 0; i < items.length; i++) {
     if (i !== mainIndex) {
       const size = solvedSizes[1 + secIdx]!;
-      // Stacked items — reduce width for container's padding
-      results[i] = { ...size, width: size.width - halfGap };
+      // Stacked items use solved size directly — CSS gap handles spacing
+      results[i] = size;
       secIdx++;
     }
   }
+
+  return results;
+}
+
+/**
+ * Calculate dimensions for nested quad layout
+ *
+ * Layout structure:
+ * ┌──────────┬───────────┐
+ * │          │  T1 │ T2  │  ← Top pair (horizontal combination)
+ * │   Main   ├───────────┤
+ * │          │  Bottom   │  ← Bottom single
+ * └──────────┴───────────┘
+ *
+ * Box algebra:
+ * 1. Combine top pair horizontally: [T1, T2] → topPairBox
+ * 2. Combine topPairBox + bottom vertically: [topPairBox, bottom] → stackedGroup
+ * 3. Combine main + stackedGroup horizontally: [main, stackedGroup] → final row
+ *
+ * @param items - All 4 items in the row
+ * @param rowWidth - Row width budget
+ * @param chunkSize - Slot width for rating-based scaling
+ * @param layout - NestedQuadLayout descriptor with indices
+ * @returns Calculated sizes for each item in original order
+ */
+function calculateNestedQuadSizes(
+  items: AnyContentModel[],
+  rowWidth: number,
+  chunkSize: number = LAYOUT.defaultChunkSize,
+  layout: { mainIndex: number; topPairIndices: [number, number]; bottomIndex: number }
+): CalculatedContentSize[] {
+  const gap = LAYOUT.gridGap;
+
+  if (items.length !== 4) {
+    console.warn('calculateNestedQuadSizes called with != 4 items, falling back');
+    return calculateStandardRowSizes(items, rowWidth, chunkSize);
+  }
+
+  // Extract items by role
+  const main = items[layout.mainIndex];
+  const top1 = items[layout.topPairIndices[0]];
+  const top2 = items[layout.topPairIndices[1]];
+  const bottom = items[layout.bottomIndex];
+
+  if (!main || !top1 || !top2 || !bottom) {
+    return calculateStandardRowSizes(items, rowWidth, chunkSize);
+  }
+
+  // Build box structure
+  const mainBox = createBoxFromContent(main, chunkSize);
+  const top1Box = createBoxFromContent(top1, chunkSize);
+  const top2Box = createBoxFromContent(top2, chunkSize);
+  const bottomBox = createBoxFromContent(bottom, chunkSize);
+
+  // 1. Combine top pair horizontally
+  const topPairBox = combineBoxes([top1Box, top2Box], 'horizontal');
+
+  // 2. Combine top pair + bottom vertically
+  const stackedGroupBox = combineBoxes([topPairBox, bottomBox], 'vertical');
+
+  // 3. Combine main + stacked group horizontally
+  const rowBox = combineBoxes([mainBox, stackedGroupBox], 'horizontal');
+
+  // Solve the entire row
+  const solved = solveBox(rowBox, rowWidth, 'horizontal', gap);
+  const flatSizes = extractCalculatedSizes(solved);
+
+  // flatSizes order: [main, top1, top2, bottom]
+  // Map back to original item order — CSS gap handles spacing
+  const results: CalculatedContentSize[] = Array.from({ length: 4 }) as CalculatedContentSize[];
+  results[layout.mainIndex] = flatSizes[0]!;
+  results[layout.topPairIndices[0]] = flatSizes[1]!;
+  results[layout.topPairIndices[1]] = flatSizes[2]!;
+  results[layout.bottomIndex] = flatSizes[3]!;
 
   return results;
 }
@@ -663,9 +738,10 @@ function calculateStandardRowSizes(
 /**
  * Size calculator lookup by pattern type
  * All calculators now accept chunkSize parameter for slot width calculation
+ * Note: 'nested-quad' is handled specially in calculateRowSizesFromPattern, not in this lookup
  */
 const SIZE_CALCULATORS: Record<
-  PatternType,
+  Exclude<PatternType, 'nested-quad'>,
   (items: AnyContentModel[], rowWidth: number, chunkSize?: number) => CalculatedContentSize[]
 > = {
   standalone: calculateStandaloneSizes,
@@ -693,6 +769,15 @@ export function calculateRowSizesFromPattern(
   rowWidth: number,
   chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
+  // For nested-quad patterns, use specialized calculator
+  if (row.pattern.type === 'nested-quad') {
+    return calculateNestedQuadSizes(row.items, rowWidth, chunkSize, {
+      mainIndex: row.pattern.mainIndex,
+      topPairIndices: row.pattern.topPairIndices,
+      bottomIndex: row.pattern.bottomIndex,
+    });
+  }
+
   // For main-stacked patterns, pass mainIndex so the calculator picks the right dominant image
   if ('mainIndex' in row.pattern) {
     return calculateMainStackedSizes(row.items, rowWidth, chunkSize, row.pattern.mainIndex);

@@ -355,12 +355,6 @@ export default function CollectionContentRenderer({
     }
   }
 
-  // Calculate aspectRatio only if both values are valid
-  const aspectRatioValue =
-    Number.isFinite(validWidth) && Number.isFinite(validHeight) && validHeight > 0
-      ? validWidth / validHeight
-      : undefined;
-
   const wrapperProps = {
     draggable: enableDragAndDrop && !!onDragStart,
     onDragStart: dragHandlers.handleDragStartEvent,
@@ -385,7 +379,6 @@ export default function CollectionContentRenderer({
     style: {
       width: isMobile ? '100%' : validWidth,
       height: isMobile ? 'auto' : validHeight,
-      ...(aspectRatioValue !== undefined && { aspectRatio: aspectRatioValue }),
       boxSizing: 'border-box' as const,
       position: 'relative' as const,
       cursor: handleClick ? 'pointer' : 'default',
