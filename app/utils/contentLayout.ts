@@ -8,13 +8,23 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
-import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
+import {
+  getEffectiveRating,
+  getItemComponentValue,
+  isStandaloneItem,
+} from '@/app/utils/contentRatingUtils';
 import {
   getContentDimensions,
   getSlotWidth,
   isContentCollection,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
+import {
+  buildRows,
+  CombinationPattern,
+  getOrientation,
+  type RowResult,
+} from '@/app/utils/rowCombination';
 import {
   calculateRowSizesFromPattern,
   createRowsArray,
@@ -29,51 +39,6 @@ export type { PatternResult, RowWithPattern };
  * Simplified Layout utilities for Content system
  * Direct processing without complex normalization - works with proper Content types
  */
-
-// ===================== Unified Layout Types =====================
-
-/**
- * Configuration for the unified layout system.
- * The slot-based system uses abstract "slots" to determine row composition:
- * - Desktop (5 slots): Finer-grained layout with 5-star full row, 4-star ~2.5 slots, etc.
- * - Mobile (2 slots): Binary layout - either full width or half width
- */
-export interface LayoutConfig {
-  /** Total available width in pixels */
-  containerWidth: number;
-  /** Number of abstract slots per row (Desktop: 5, Mobile: 2) */
-  slotWidth: number;
-  /** Grid gap between items in pixels */
-  gap: number;
-}
-
-/**
- * Direction of combination for grouped items.
- * - 'vertical': Items stacked on top of each other (notation: `/`)
- * - 'horizontal': Items placed side by side (notation: `-`)
- */
-export type CombineDirection = 'vertical' | 'horizontal';
-
-/**
- * Represents a combined block of items that have been grouped together.
- * Combined blocks "level up" in effective rating when items are combined.
- *
- * Combination examples:
- * - H2* / H2* (vertical stack) → V3* equivalent block
- * - V3* - V3* (horizontal pair) → H4* equivalent block
- */
-export interface CombinedBlock {
-  /** The items that make up this combined block */
-  items: AnyContentModel[];
-  /** Direction of combination: vertical (/) or horizontal (-) */
-  direction: CombineDirection;
-  /** Effective rating after combination (levels up by 1) */
-  effectiveRating: number;
-  /** Whether this block is treated as vertical for slot calculations */
-  isVertical: boolean;
-  /** Slot cost of this block based on effective rating */
-  slotCost: number;
-}
 
 // ===================== Image Classification Helpers =====================
 
@@ -394,6 +359,216 @@ export interface ProcessContentOptions {
   collectionData?: CollectionModel;
 }
 
+// ===================== Algorithm Comparison Logging =====================
+
+/** Summarize a single content item for logging */
+function summarizeItem(item: AnyContentModel, rowWidth: number): string {
+  const orientation = getOrientation(item);
+  const tag = orientation === 'horizontal' ? 'H' : 'V';
+  const effRating = getEffectiveRating(item, rowWidth);
+  const compValue = getItemComponentValue(item, rowWidth);
+  const title = ('title' in item && item.title) || `id:${item.id}`;
+  const shortTitle = typeof title === 'string' ? title.slice(0, 20) : String(title);
+  return `${tag}${effRating}★(cv:${compValue.toFixed(2)}) "${shortTitle}"`;
+}
+
+/** Log the initial input array */
+function logInitialState(content: AnyContentModel[], rowWidth: number): void {
+  console.group('%c[LAYOUT] Initial State', 'color: #4CAF50; font-weight: bold');
+  console.log(`${content.length} items, rowWidth=${rowWidth}`);
+  console.table(
+    content.map((item, i) => ({
+      index: i,
+      id: item.id,
+      title: ('title' in item && item.title) || '',
+      orientation: getOrientation(item),
+      effectiveRating: getEffectiveRating(item, rowWidth),
+      componentValue: getItemComponentValue(item, rowWidth).toFixed(2),
+    }))
+  );
+  console.groupEnd();
+}
+
+/** Log the new buildRows() output */
+function logNewAlgorithm(rows: RowResult[], rowWidth: number): void {
+  console.group('%c[LAYOUT] NEW Algorithm (buildRows)', 'color: #2196F3; font-weight: bold');
+  console.log(`${rows.length} rows`);
+  for (const [i, row] of rows.entries()) {
+    const items = row.components.map(c => summarizeItem(c, rowWidth)).join(' + ');
+    const totalCV = row.components.reduce((s, c) => s + getItemComponentValue(c, rowWidth), 0);
+    const fillPct = ((totalCV / rowWidth) * 100).toFixed(0);
+    console.log(
+      `  Row ${i + 1} [${row.patternName}]: ${items} → ${fillPct}% fill`
+    );
+  }
+  console.groupEnd();
+}
+
+/** Log the old createRowsArray() output */
+function logOldAlgorithm(rows: RowWithPattern[], rowWidth: number): void {
+  console.group('%c[LAYOUT] OLD Algorithm (createRowsArray)', 'color: #FF9800; font-weight: bold');
+  console.log(`${rows.length} rows`);
+  for (const [i, row] of rows.entries()) {
+    const items = row.items.map(c => summarizeItem(c, rowWidth)).join(' + ');
+    const totalCV = row.items.reduce((s, c) => s + getItemComponentValue(c, rowWidth), 0);
+    const fillPct = ((totalCV / rowWidth) * 100).toFixed(0);
+    console.log(
+      `  Row ${i + 1} [${row.pattern.type}]: ${items} → ${fillPct}% fill`
+    );
+  }
+  console.groupEnd();
+}
+
+// ===================== RowResult → RowWithPattern Mapping =====================
+
+/**
+ * Detect if a 3-item FORCE_FILL row should use main-stacked layout.
+ *
+ * Main-stacked is appropriate when:
+ * - There's one dominant item (higher rating/component value)
+ * - Two smaller items that can be stacked vertically beside it
+ *
+ * Heuristic: If one item has significantly higher component value than the others,
+ * and the other two are similar to each other, use main-stacked.
+ */
+function detectMainStackedFallback(
+  components: AnyContentModel[],
+  indices: number[]
+): RowWithPattern | null {
+  if (components.length !== 3) return null;
+
+  const rowWidth = LAYOUT.desktopSlotWidth;
+
+  // Get component values for all three items
+  const values = components.map(item => getItemComponentValue(item, rowWidth));
+  const ratings = components.map(item => getEffectiveRating(item, rowWidth));
+  const orientations = components.map(item => getOrientation(item));
+
+  // Ensure all values are valid
+  if (values.length !== 3 || ratings.length !== 3 || orientations.length !== 3) {
+    return null;
+  }
+
+  // Find the item with the HIGHEST RATING (not component value!)
+  // The highest-rated image should be the dominant/main image
+  const maxRating = Math.max(...ratings);
+  const maxIndex = ratings.indexOf(maxRating);
+
+  // Get the other two indices
+  const otherIndices = [0, 1, 2].filter(i => i !== maxIndex);
+
+  // Ensure we have exactly 2 other indices
+  if (otherIndices.length !== 2) return null;
+
+  const otherValues = otherIndices.map(i => values[i]!);
+
+  // Main-stacked criteria:
+  // 1. Dominant item has rating >= 3 OR component value >= 40% of row
+  // 2. Dominant item's value is at least 1.3x larger than either secondary
+  // 3. The two secondaries combined should roughly balance the dominant
+  const dominantRating = ratings[maxIndex]!;
+  const dominantValue = values[maxIndex]!;
+  const secondariesTotal = otherValues[0]! + otherValues[1]!;
+
+  const isDominant = dominantRating >= 3 || dominantValue >= rowWidth * 0.4;
+  const isSignificantlyLarger = dominantValue >= Math.max(...otherValues) * 1.3;
+  const isBalanced = secondariesTotal >= dominantValue * 0.6; // Secondaries should be substantial
+
+  // Prefer horizontal dominant with vertical secondaries, but not strictly required
+  const dominantOrientation = orientations[maxIndex];
+  const hasVerticalSecondaries = otherIndices.some(i => orientations[i] === 'vertical');
+
+  // Bonus: give preference if the dominant is horizontal and secondaries are vertical
+  const classicMainStacked = dominantOrientation === 'horizontal' && hasVerticalSecondaries;
+
+  if (isDominant && isSignificantlyLarger && (isBalanced || classicMainStacked)) {
+    // Rule 3: Group the secondaries (lower-rated items) together.
+    // The dominant stays at whichever end is nearest to its original position.
+    let orderedItems = components;
+    let mainPos: 'left' | 'right' = maxIndex <= 1 ? 'left' : 'right';
+    let finalMainIndex = maxIndex;
+
+    if (maxIndex === 1) {
+      // Dominant is in the middle — move it to the front so secondaries are adjacent
+      orderedItems = [components[1]!, components[0]!, components[2]!];
+      finalMainIndex = 0;
+      mainPos = 'left';
+    }
+    // maxIndex 0 or 2: dominant is already at an end, secondaries are already adjacent
+
+    return {
+      pattern: {
+        type: 'main-stacked',
+        mainIndex: finalMainIndex,
+        secondaryIndices: (finalMainIndex === 0 ? [1, 2] : [0, 1]) as [number, number],
+        indices,
+        mainPosition: mainPos,
+      },
+      items: orderedItems,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Map a CombinationPattern RowResult from buildRows() to a RowWithPattern
+ * compatible with calculateRowSizesFromPattern().
+ *
+ * Patterns like DOMINANT_VERTICAL_PAIR and DOMINANT_SECONDARY produce
+ * main-stacked layouts (one dominant image + vertically stacked secondaries).
+ * Without this mapping, the renderer treats everything as 'standard' (side-by-side)
+ * and the stacked DOM structure is never created.
+ */
+function mapRowResultToRowWithPattern(row: RowResult): RowWithPattern {
+  const indices = row.components.map((_, i) => i);
+
+  switch (row.patternName) {
+    case CombinationPattern.STANDALONE:
+      return {
+        pattern: { type: 'standalone', indices: [0] as [number] },
+        items: row.components,
+      };
+
+    case CombinationPattern.DOMINANT_VERTICAL_PAIR:
+      // 3-item: dominant horizontal + 2 vertical secondaries → main-stacked
+      return {
+        pattern: {
+          type: 'main-stacked',
+          mainIndex: 0,
+          secondaryIndices: [1, 2] as [number, number],
+          indices,
+          mainPosition: 'left',
+        },
+        items: row.components,
+      };
+
+    case CombinationPattern.DOMINANT_SECONDARY:
+      // 2-item: dominant horizontal + 1 vertical secondary
+      // Only use main-stacked when there are 3+ items (needs stacking)
+      // For 2-item rows, standard side-by-side is correct
+      return {
+        pattern: { type: 'standard', indices },
+        items: row.components,
+      };
+
+    default:
+      // VERTICAL_PAIR, TRIPLE_HORIZONTAL, MULTI_SMALL, force-fill
+      // Smart fallback: detect if a FORCE_FILL row should be main-stacked
+      if (row.patternName === CombinationPattern.FORCE_FILL && row.components.length === 3) {
+        const mainStackedPattern = detectMainStackedFallback(row.components, indices);
+        if (mainStackedPattern) {
+          return mainStackedPattern;
+        }
+      }
+
+      return {
+        pattern: { type: 'standard', indices },
+        items: row.components,
+      };
+  }
+}
+
 /**
  * Process content for display with full pattern metadata
  *
@@ -443,12 +618,28 @@ export function processContentForDisplay(
     return result;
   }
 
-  // Desktop with pattern detection → use pattern-based system
-  const rowsWithPatterns = createRowsArray(content, chunkSize);
-  const contentRows = rowsWithPatterns.map(row => ({
-    pattern: row.pattern,
-    items: calculateRowSizesFromPattern(row, componentWidth, chunkSize),
-  }));
+  // Desktop with pattern detection
+  const rowWidth = LAYOUT.desktopSlotWidth;
+
+  // ===== LOGGING: Initial state =====
+  logInitialState(content, rowWidth);
+
+  // ===== NEW ALGORITHM: buildRows() =====
+  const newRows = buildRows(content, rowWidth);
+  logNewAlgorithm(newRows, rowWidth);
+
+  // ===== OLD ALGORITHM: createRowsArray() (for comparison) =====
+  const oldRowsWithPatterns = createRowsArray(content, chunkSize);
+  logOldAlgorithm(oldRowsWithPatterns, rowWidth);
+
+  // ===== USE NEW ALGORITHM for rendering =====
+  const contentRows = newRows.map(row => {
+    const rowWithPattern = mapRowResultToRowWithPattern(row);
+    return {
+      pattern: rowWithPattern.pattern,
+      items: calculateRowSizesFromPattern(rowWithPattern, componentWidth, chunkSize),
+    };
+  });
   result.push(...contentRows);
 
   return result;
@@ -806,46 +997,6 @@ function createCoverImageBlock(collection: CollectionModel): ContentParallaxImag
     createdAt: collection.createdAt,
     updatedAt: collection.updatedAt,
   };
-}
-
-/**
- * Inject header row with cover image and metadata at the top of collection content
- *
- * Creates two blocks that form the first row:
- * - Cover image with title overlay (parallax-enabled)
- * - Metadata text block (date, location, description)
- *
- * Both blocks share the same dimensions for equal 50/50 width split on desktop.
- * Returns empty array if cover image missing or has no dimensions.
- * @param collection - Collection model with cover image and metadata
- * @returns Array of header blocks (empty if no cover image or dimensions)
- * @deprecated Use createHeaderRow() instead, which returns a RowWithPatternAndSizes directly
- */
-export function injectTopRow(collection: CollectionModel): AnyContentModel[] {
-  if (!collection.coverImage) {
-    return [];
-  }
-
-  const coverBlock = createCoverImageBlock(collection);
-
-  if (!coverBlock.imageWidth || !coverBlock.imageHeight) {
-    return [];
-  }
-
-  const headerBlocks: AnyContentModel[] = [coverBlock];
-
-  const metadataItems = buildMetadataItems(collection);
-  const metadataBlock = createMetadataTextBlock(
-    metadataItems,
-    coverBlock.imageWidth,
-    coverBlock.imageHeight
-  );
-
-  if (metadataBlock) {
-    headerBlocks.push(metadataBlock);
-  }
-
-  return headerBlocks;
 }
 
 /**

@@ -546,44 +546,45 @@ function extractCalculatedSizes(solved: SolvedBox): CalculatedContentSize[] {
 function calculateMainStackedSizes(
   items: AnyContentModel[],
   rowWidth: number,
-  chunkSize: number = LAYOUT.defaultChunkSize
+  chunkSize: number = LAYOUT.defaultChunkSize,
+  mainIndex: number = 0
 ): CalculatedContentSize[] {
   const gap = LAYOUT.gridGap;
   const halfGap = gap / 2; // Container's padding-left = 0.4rem = 6.4px
-  const main = items[0];
-  const sec1 = items[1];
-  const sec2 = items[2];
+
+  // Pick main and secondaries based on mainIndex
+  const main = items[mainIndex];
+  const secondaries = items.filter((_, i) => i !== mainIndex);
+  const sec1 = secondaries[0];
+  const sec2 = secondaries[1];
 
   if (!main || !sec1 || !sec2) {
     return calculateStandardRowSizes(items, rowWidth, chunkSize);
   }
 
-  // For main-stacked patterns, items are already selected by pattern registry
-  // We don't have original prev/next context, so pass undefined
   const mainBox = createBoxFromContent(main, chunkSize);
   const sec1Box = createBoxFromContent(sec1, chunkSize);
   const sec2Box = createBoxFromContent(sec2, chunkSize);
 
   const verticalStackBox = combineBoxes([sec1Box, sec2Box], 'vertical');
   const rowBox = combineBoxes([mainBox, verticalStackBox], 'horizontal');
-  // Solve with full rowWidth (main's padding-right is inside its border-box)
-  // Pass gap for vertical stack height calculations (CSS gap creates actual space between stacked items)
   const solved = solveBox(rowBox, rowWidth, 'horizontal', gap);
 
-  const results = extractCalculatedSizes(solved);
-
-  // Reduce stacked items' widths by container's padding-left (halfGap)
-  // The first item is main (keep its width), remaining items are stacked (reduce widths)
-  const adjustedResults = results.map((item, index) => {
-    if (index === 0) {
-      // Main image - width is correct (padding-right is inside its border-box)
-      return item;
+  // Results are in [main, sec1, sec2] order — map back to original item positions
+  const solvedSizes = extractCalculatedSizes(solved);
+  const results: CalculatedContentSize[] = Array.from({ length: items.length }) as CalculatedContentSize[];
+  results[mainIndex] = solvedSizes[0]!;
+  let secIdx = 0;
+  for (let i = 0; i < items.length; i++) {
+    if (i !== mainIndex) {
+      const size = solvedSizes[1 + secIdx]!;
+      // Stacked items — reduce width for container's padding
+      results[i] = { ...size, width: size.width - halfGap };
+      secIdx++;
     }
-    // Stacked items - reduce width to fit within container's content area
-    return { ...item, width: item.width - halfGap };
-  });
+  }
 
-  return adjustedResults;
+  return results;
 }
 
 /**
@@ -692,6 +693,10 @@ export function calculateRowSizesFromPattern(
   rowWidth: number,
   chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
+  // For main-stacked patterns, pass mainIndex so the calculator picks the right dominant image
+  if ('mainIndex' in row.pattern) {
+    return calculateMainStackedSizes(row.items, rowWidth, chunkSize, row.pattern.mainIndex);
+  }
   const calculator = SIZE_CALCULATORS[row.pattern.type];
   return calculator(row.items, rowWidth, chunkSize);
 }

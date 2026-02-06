@@ -189,8 +189,9 @@ export default function Component({
 
     // Stacked patterns: main image + vertically stacked secondaries
     if (isStackedPattern(pattern.type) && items.length >= 3) {
-      const mainItem = items[0];
-      const stackedItems = items.slice(1);
+      const mainIdx = 'mainIndex' in pattern ? pattern.mainIndex : 0;
+      const mainItem = items[mainIdx];
+      const stackedItems = items.filter((_, i) => i !== mainIdx);
 
       if (!mainItem) {
         return null;
@@ -267,6 +268,8 @@ export default function Component({
     <div className={cbStyles.wrapper}>
       <div className={cbStyles.inner}>
         {rows.map((row, rowIndex) => {
+          // TODO: Should we be doing 'logic' here, or should we pull this into a helper function outside of the react code
+          //  - 
           const shouldShowSeparator =
             firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
           const rowKey = `row-${row.items.map(item => item.content.id).join('-')}`;

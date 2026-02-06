@@ -77,20 +77,6 @@ export function isStandaloneItem(item: AnyContentModel | undefined): boolean {
   return false;
 }
 
-/**
- * Check if content is a 5-star horizontal image specifically
- * This is a subset of isStandaloneItem - only checks 5-star horizontals, not panoramas.
- *
- * @deprecated Use isStandaloneItem() instead for full standalone detection
- * @param item - Content item to check
- * @returns true if item is a 5-star horizontal image
- */
-export function isFiveStarHorizontal(item: AnyContentModel | undefined): boolean {
-  if (!item || !hasImage(item) || !isContentImage(item)) return false;
-  const ratio = getAspectRatio(item);
-  return ratio > 1.0 && item.rating === 5;
-}
-
 // =============================================================================
 // EFFECTIVE RATING SYSTEM
 // =============================================================================
@@ -113,7 +99,7 @@ export function isFiveStarHorizontal(item: AnyContentModel | undefined): boolean
  * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
  * @returns The effective rating (0-5) after applying orientation penalty
  */
-export function getEffectiveRating(item: AnyContentModel, slotWidth: number = LAYOUT.desktopSlotWidth): number {
+export function getEffectiveRating(item: AnyContentModel, _slotWidth: number = LAYOUT.desktopSlotWidth): number {
   // Collection cards get fixed effective rating of 4
   if (isCollectionCard(item)) {
     return 4;
@@ -132,7 +118,7 @@ export function getEffectiveRating(item: AnyContentModel, slotWidth: number = LA
   // V5★ → 4, V4★ → 3, V3★ → 2, V2★ → 1, V1★ → 1, V0★ → 0
   const effectiveRating = isVertical ? Math.max(baseRating - 1, 0) : baseRating;
 
-  // Note: Dynamic scaling for mobile is handled in getSlotCost()
+  // Note: Dynamic scaling for mobile is handled in getComponentValue()
   // The effective rating remains the same; the slot cost interpretation changes.
   // This keeps the rating semantic while allowing flexible slot allocation.
 
@@ -141,10 +127,34 @@ export function getEffectiveRating(item: AnyContentModel, slotWidth: number = LA
 }
 
 /**
- * Convert an effective rating to a slot cost based on the slot width.
+ * Derive an effective rating from an aspect ratio.
  *
- * Slot cost represents how many "slots" an item should occupy in a row.
- * The calculation varies based on slot width (desktop vs mobile):
+ * Used for combined components where the rating is determined by the
+ * resulting geometry rather than the original image ratings.
+ *
+ * Thresholds:
+ * - AR >= 2.0  → 5 (wide panoramic)
+ * - AR >= 1.5  → 4 (standard horizontal)
+ * - AR >= 1.0  → 3 (square-ish)
+ * - AR >= 0.75 → 2 (slightly vertical)
+ * - AR < 0.75  → 1 (tall vertical)
+ *
+ * @param ar - The aspect ratio (width / height)
+ * @returns The effective rating (1-5)
+ */
+export function getEffectiveRatingFromAspectRatio(ar: number): number {
+  if (ar >= 2.0) return 5;
+  if (ar >= 1.5) return 4;
+  if (ar >= 1.0) return 3;
+  if (ar >= 0.75) return 2;
+  return 1;
+}
+
+/**
+ * Convert an effective rating to a component value based on the row width.
+ *
+ * Component value represents the proportion of a row an item should occupy.
+ * The calculation varies based on row width (desktop vs mobile):
  *
  * **Desktop (5 slots):**
  * - 5★ = 5 slots (full width, 1 per row)
@@ -159,9 +169,9 @@ export function getEffectiveRating(item: AnyContentModel, slotWidth: number = LA
  *
  * @param effectiveRating - The effective rating (0-5) from getEffectiveRating()
  * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
- * @returns The slot cost (number of slots this item should occupy)
+ * @returns The component value (how much of the row this item occupies)
  */
-export function getSlotCost(effectiveRating: number, slotWidth: number = LAYOUT.desktopSlotWidth): number {
+export function getComponentValue(effectiveRating: number, slotWidth: number = LAYOUT.desktopSlotWidth): number {
   // Mobile layout (2 slots): binary decision
   // 3+ star → full width (2 slots), 0-2 star → half width (1 slot)
   if (slotWidth <= LAYOUT.mobileSlotWidth) {
@@ -182,14 +192,14 @@ export function getSlotCost(effectiveRating: number, slotWidth: number = LAYOUT.
 }
 
 /**
- * Convenience function: Get slot cost directly from an item.
- * Combines getEffectiveRating() and getSlotCost() in one call.
+ * Convenience function: Get component value directly from an item.
+ * Combines getEffectiveRating() and getComponentValue() in one call.
  *
  * @param item - The content item to evaluate
  * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
- * @returns The slot cost for this item
+ * @returns The component value for this item
  */
-export function getItemSlotCost(item: AnyContentModel, slotWidth: number = LAYOUT.desktopSlotWidth): number {
+export function getItemComponentValue(item: AnyContentModel, slotWidth: number = LAYOUT.desktopSlotWidth): number {
   const effectiveRating = getEffectiveRating(item, slotWidth);
-  return getSlotCost(effectiveRating, slotWidth);
+  return getComponentValue(effectiveRating, slotWidth);
 }

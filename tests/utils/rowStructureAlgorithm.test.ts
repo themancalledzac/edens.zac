@@ -5,11 +5,11 @@
 
 import type { ContentImageModel } from '@/app/types/Content';
 import {
+  __testing,
   calculateRowSizes,
   calculateRowSizesFromPattern,
   createRowsArray,
   type RowWithPattern,
-  __testing,
 } from '@/app/utils/rowStructureAlgorithm';
 
 const { createFraction, simplifyFraction, addFractions, invertFraction } = __testing;
@@ -755,7 +755,7 @@ describe('Fraction Math Functions', () => {
     });
 
     it('should handle non-finite denominator by returning fallback', () => {
-      const result = simplifyFraction({ numerator: 10, denominator: NaN });
+      const result = simplifyFraction({ numerator: 10, denominator: Number.NaN });
       expect(result).toEqual({ numerator: 1, denominator: 1 });
     });
 

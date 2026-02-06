@@ -173,7 +173,7 @@ export interface ContentCollectionModel extends Content {
  * Use this for type-safe rendering and processing
  */
 export type AnyContentModel =
-  | ContentImageModel
+| ContentImageModel
   | ContentParallaxImageModel
   | ContentTextModel
   | ContentGifModel
