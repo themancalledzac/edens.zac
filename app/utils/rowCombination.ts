@@ -59,7 +59,14 @@ export interface NestedQuadLayout {
   bottomIndex: number; // Index of the bottom item
 }
 
-export type LayoutDescriptor = HorizontalLayout | MainStackedLayout | NestedQuadLayout;
+export interface CompoundHeroLayout {
+  type: 'compound-hero';
+  heroIndex: number; // Index of the H5★ hero image (full width)
+  heroPosition: 'top' | 'bottom'; // Where hero appears in the compound row
+  supportingIndices: number[]; // Indices of supporting items (horizontal row)
+}
+
+export type LayoutDescriptor = HorizontalLayout | MainStackedLayout | NestedQuadLayout | CompoundHeroLayout;
 
 /** Defines a known-good combination pattern */
 export interface PatternDef {
@@ -89,6 +96,7 @@ export interface MatchResult {
 
 export enum CombinationPattern {
   STANDALONE = 'STANDALONE',
+  COMPOUND_HERO = 'COMPOUND_HERO',
   HORIZONTAL_PAIR = 'HORIZONTAL_PAIR',
   VERTICAL_PAIR = 'VERTICAL_PAIR',
   DOMINANT_SECONDARY = 'DOMINANT_SECONDARY',
@@ -102,10 +110,6 @@ export enum CombinationPattern {
 // PATTERN TABLE
 // =============================================================================
 
-// TODO: Notes:
-//  - Do we need a 'default of none' for things like `minRowWidth`?
-//  - 
-
 /** Patterns that can be matched by the pattern matcher (excludes FORCE_FILL) */
 export type MatchablePattern = Exclude<CombinationPattern, CombinationPattern.FORCE_FILL>;
 
@@ -114,6 +118,18 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
     requires: [{ orientation: 'horizontal', minRating: 5 }],
     direction: null,
     layout: { type: 'horizontal' },
+    minRowWidth: 5,
+  },
+
+  [CombinationPattern.COMPOUND_HERO]: {
+    requires: [
+      { orientation: 'horizontal', minRating: 5 }, // H5★ hero (can be anywhere in match)
+      { minRating: 0, maxRating: 3 }, // Supporting items (3 low-rated items needed for ~90%+ fill)
+      { minRating: 0, maxRating: 3 },
+      { minRating: 0, maxRating: 3 },
+    ],
+    direction: null, // Compound layout (vertical stack with hero + horizontal row)
+    layout: { type: 'compound-hero', heroIndex: 0, heroPosition: 'top', supportingIndices: [1, 2, 3] },
     minRowWidth: 5,
   },
 
@@ -193,7 +209,8 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
 
 /** Patterns ordered by priority (highest value first, Rule 1 gates all) */
 export const PATTERNS_BY_PRIORITY: MatchablePattern[] = [
-  CombinationPattern.STANDALONE,
+  CombinationPattern.COMPOUND_HERO,        // H5★ + 3 supporting (specific use of H5★)
+  CombinationPattern.STANDALONE,           // H5★ alone (generic fallback)
   CombinationPattern.HORIZONTAL_PAIR,
   CombinationPattern.DOMINANT_VERTICAL_PAIR,
   CombinationPattern.DOMINANT_SECONDARY,
@@ -241,6 +258,8 @@ export const MAX_FILL_RATIO = 1.15;
  * The lower bound allows small gaps rather than forcing exact fits.
  * The upper bound prevents items from being squeezed far smaller than intended
  * (e.g., 150% fill means each item loses ~1/3 of its intended size).
+ *
+ * NOTE: COMPOUND_HERO pattern uses custom validation (see buildRows)
  *
  * @param components - Items to check
  * @param rowWidth - Row width budget (e.g., 5 for desktop)
@@ -317,22 +336,53 @@ export function matchPattern(
   // Quick exit: row width too narrow for this pattern
   if (rowWidth < pattern.minRowWidth) return null;
 
+  // CRITICAL: Determine start position for sequential matching
+  // By default, start from position 0 (first item in window)
+  // EXCEPTION: STANDALONE can skip position 0 if it's low-rated (≤2★)
+  let startPosition = 0;
+
+  if (patternName === CombinationPattern.STANDALONE && window[0]) {
+    const item0Rating = getItemRating(window[0], rowWidth);
+    const LOW_RATED_THRESHOLD = 2;
+
+    // Allow skipping position 0 if it's low-rated (rating ≤ 2)
+    // This prevents bad pairings like H5★+V1★ when H5★ should be standalone
+    if (item0Rating <= LOW_RATED_THRESHOLD) {
+      startPosition = 1; // Start searching from position 1
+    }
+  }
+
+  // CRITICAL: Create candidate window from startPosition with size limit
+  // STANDALONE can search a limited distance ahead (3 positions max)
+  // This prevents long-distance grabs while still allowing reasonable lookahead
+  // For all other patterns, allow searching pattern.requires.length + 3 positions ahead
+  //
+  // NOTE: window is already limited to 5 items, so candidateWindow can never
+  // exceed that boundary regardless of maxWindowSize value
+  const maxWindowSize =
+    patternName === CombinationPattern.STANDALONE
+      ? 3 // STANDALONE searches up to 3 positions (balances flexibility vs locality)
+      : pattern.requires.length + 3; // Other patterns → reasonable search window
+
+  const candidateWindow = window.slice(startPosition, startPosition + maxWindowSize);
+  if (candidateWindow.length < pattern.requires.length) return null;
+
   const used = new Set<number>();
-  const matchedIndices: number[] = [];
+  const matchedIndices: number[] = []; // Relative to candidateWindow
   const matchedItems: AnyContentModel[] = [];
 
-  // For each requirement, find the first matching unassigned item
+  // For each requirement, find the first matching unassigned item in candidateWindow
   for (const req of pattern.requires) {
     let found = false;
-    for (let i = 0; i < window.length; i++) {
+    for (let i = 0; i < candidateWindow.length; i++) {
       if (used.has(i)) continue;
 
-      const item = window[i];
+      const item = candidateWindow[i];
       if (!item) continue;
 
       if (itemSatisfiesRequirement(item, req, rowWidth)) {
         used.add(i);
-        matchedIndices.push(i);
+        matchedIndices.push(i); // Index in candidateWindow
         matchedItems.push(item);
         found = true;
         break;
@@ -341,31 +391,22 @@ export function matchPattern(
     if (!found) return null;
   }
 
-  // CRITICAL: Enforce sequential processing (fix Issue 1)
-  // Only accept patterns that include item 0 (first item in window).
-  // This prevents patterns from "jumping the queue" and skipping earlier items.
-  //
-  // EXCEPTION (Issue 8): STANDALONE pattern is allowed to skip a low-rated item
-  // at position 0 if the effective rating is ≤ 2 (e.g., V1★, V2★, H2★, V3★).
-  // This prevents bad pairings like H5★+V1★ = 120% when H5★ should be standalone.
-  // Using rating instead of componentValue makes this threshold work correctly
-  // at any rowWidth (rating is semantic, componentValue changes with rowWidth).
-  if (!matchedIndices.includes(0)) {
-    // Check if this is STANDALONE and item 0 is low-rated
-    if (patternName === CombinationPattern.STANDALONE && window[0]) {
-      const item0Rating = getItemRating(window[0], rowWidth);
-      const LOW_RATED_THRESHOLD = 2;
+  // CRITICAL: If startPosition=0, matched items MUST include position 0
+  // This prevents patterns from skipping position 0 when it's not low-rated
+  // Example: Window [H4★, H5★] - STANDALONE cannot skip H4★ to grab H5★
+  if (startPosition === 0 && !matchedIndices.includes(0)) {
+    return null;
+  }
 
-      // Allow skipping item 0 if it's low-rated (rating ≤ 2)
-      if (item0Rating <= LOW_RATED_THRESHOLD) {
-        // Pattern matched — item 0 will be left for the next row
-        // Continue to proximity check
-      } else {
-        // Item 0 is not low-rated — cannot skip it
-        return null;
-      }
-    } else {
-      // Not STANDALONE or no special case — enforce position-0 rule
+  // CRITICAL: Enforce contiguous consumption within candidateWindow
+  // Matched items must form a continuous range (no gaps)
+  // Example: Can match [0, 1, 2] but NOT [0, 1, 4] (gap at 2-3)
+  const sortedIndices = [...matchedIndices].sort((a, b) => a - b);
+  for (let i = 1; i < sortedIndices.length; i++) {
+    const current = sortedIndices[i];
+    const previous = sortedIndices[i - 1];
+    if (current === undefined || previous === undefined || current !== previous + 1) {
+      // Non-contiguous match (has gaps) → reject pattern
       return null;
     }
   }
@@ -380,9 +421,12 @@ export function matchPattern(
     }
   }
 
+  // Convert matched indices back to original window positions
+  const globalIndices = matchedIndices.map(idx => idx + startPosition);
+
   return {
     patternName,
-    usedIndices: matchedIndices,
+    usedIndices: globalIndices,
     components: matchedItems,
     direction: pattern.direction,
   };
@@ -762,6 +806,80 @@ function createBoxTreeFromPattern(
     return { type: 'leaf', content: components[0]! };
   }
 
+  // COMPOUND_HERO: hero (full width) + supporting items (horizontal row)
+  // Stacked vertically: hero at top or bottom based on original sequence
+  if (pattern === CombinationPattern.COMPOUND_HERO && layout.type === 'compound-hero') {
+    const { heroIndex, supportingIndices, heroPosition } = layout;
+    const hero = components[heroIndex]!;
+    const supporting = supportingIndices.map(idx => components[idx]!);
+
+    console.log('[COMPOUND_HERO BoxTree] Building tree for', supporting.length, 'supporting items');
+    console.log('[COMPOUND_HERO BoxTree] Hero position:', heroPosition);
+    console.log('[COMPOUND_HERO BoxTree] Supporting IDs:', supporting.map(s => s.id));
+
+    // Build left-heavy horizontal tree for supporting items: (((A + B) + C) + D) ...
+    const buildHorizontalTree = (items: AnyContentModel[]): BoxTree => {
+      if (items.length === 1) {
+        return { type: 'leaf', content: items[0]! };
+      }
+      if (items.length === 2) {
+        return {
+          type: 'combined',
+          direction: 'horizontal',
+          children: [
+            { type: 'leaf', content: items[0]! },
+            { type: 'leaf', content: items[1]! }
+          ]
+        };
+      }
+      // 3+ items: build left-heavy tree by adding items one at a time
+      // Result: (((A + B) + C) + D) + E ...
+      let tree: BoxTree = {
+        type: 'combined',
+        direction: 'horizontal',
+        children: [
+          { type: 'leaf', content: items[0]! },
+          { type: 'leaf', content: items[1]! }
+        ]
+      };
+
+      for (let i = 2; i < items.length; i++) {
+        tree = {
+          type: 'combined',
+          direction: 'horizontal',
+          children: [tree, { type: 'leaf', content: items[i]! }]
+        };
+      }
+
+      return tree;
+    };
+
+    const heroLeaf: BoxTree = { type: 'leaf', content: hero };
+    const supportingTree = buildHorizontalTree(supporting);
+
+    // Debug: Print tree structure
+    const printTree = (tree: BoxTree, depth: number = 0): string => {
+      const indent = '  '.repeat(depth);
+      if (tree.type === 'leaf') {
+        return `${indent}LEAF(${tree.content.id})`;
+      }
+      return `${indent}${tree.direction}\n${printTree(tree.children[0], depth + 1)}\n${printTree(tree.children[1], depth + 1)}`;
+    };
+    console.log('[COMPOUND_HERO BoxTree] Supporting tree structure:\n' + printTree(supportingTree));
+
+    // Stack vertically: hero at top or bottom
+    const result: BoxTree = {
+      type: 'combined' as const,
+      direction: 'vertical' as const,
+      children: (heroPosition === 'top'
+        ? [heroLeaf, supportingTree]
+        : [supportingTree, heroLeaf]) as [BoxTree, BoxTree]
+    };
+
+    console.log('[COMPOUND_HERO BoxTree] Final tree structure:\n' + printTree(result));
+    return result;
+  }
+
   // HORIZONTAL_PAIR: two leaves side-by-side
   if (pattern === CombinationPattern.HORIZONTAL_PAIR) {
     return {
@@ -958,22 +1076,83 @@ export function buildRows(
 
       const match = matchPattern(patternName, pattern, window, rowWidth);
 
+      // Debug: Log COMPOUND_HERO attempts
+      if (patternName === CombinationPattern.COMPOUND_HERO) {
+        console.log('[COMPOUND_HERO Debug] Match result:', match ? 'MATCHED' : 'NULL', {
+          windowIds: window.map(w => w.id),
+          windowRatings: window.map(w => getItemRating(w, rowWidth)),
+        });
+      }
+
       // RULE 1 gate: Only accept if row is complete
-      if (match && isRowComplete(match.components, rowWidth)) {
+      // SPECIAL: COMPOUND_HERO validates supporting row separately
+      let isComplete = false;
+      if (match) {
+        if (match.patternName === CombinationPattern.COMPOUND_HERO) {
+          // For COMPOUND_HERO: hero is always 100% (H5★), only validate supporting items
+          const heroIndex = match.components.findIndex(
+            item => getOrientation(item) === 'horizontal' && getItemRating(item, rowWidth) === 5
+          );
+          const supporting = match.components.filter((_, idx) => idx !== heroIndex);
+          isComplete = supporting.length === 3 && isRowComplete(supporting, rowWidth);
+        } else {
+          isComplete = isRowComplete(match.components, rowWidth);
+        }
+      }
+
+      if (match && isComplete) {
         console.log('[buildRows] Pattern matched:', patternName, 'with', match.components.length, 'items');
+
+        // COMPOUND_HERO: Dynamically determine hero position based on sequence
+        let customLayout: LayoutDescriptor = pattern.layout;
+        if (match.patternName === CombinationPattern.COMPOUND_HERO) {
+          // Find H5★ hero in matched components
+          const heroIndex = match.components.findIndex(
+            item => getOrientation(item) === 'horizontal' && getItemRating(item, rowWidth) === 5
+          );
+
+          if (heroIndex !== -1) {
+            const supportingIndices = match.components
+              .map((_, idx) => idx)
+              .filter(idx => idx !== heroIndex);
+
+            // Determine position based on hero's original window position
+            const heroWindowIndex = match.usedIndices[heroIndex] || 0;
+            const minUsedIndex = Math.min(...match.usedIndices);
+
+            // Hero at start of consumed range → top; hero at end → bottom
+            const isHeroAtStart = heroWindowIndex === minUsedIndex;
+            const heroPosition: 'top' | 'bottom' = isHeroAtStart ? 'top' : 'bottom';
+
+            customLayout = {
+              type: 'compound-hero',
+              heroIndex,
+              heroPosition,
+              supportingIndices,
+            };
+
+            console.log('[buildRows] 🎯 COMPOUND_HERO matched!', {
+              heroIndex,
+              heroPosition,
+              supportingCount: supportingIndices.length,
+              usedIndices: match.usedIndices,
+              componentRatings: match.components.map(c => getItemRating(c, rowWidth)),
+            });
+          }
+        }
 
         // Generate BoxTree for rendering
         const boxTree = createBoxTreeFromPattern(
           match.patternName,
           match.components,
-          pattern.layout
+          customLayout
         );
 
         rows.push({
           components: match.components,
           direction: match.direction,
           patternName: match.patternName,
-          layout: pattern.layout,
+          layout: customLayout,
           boxTree,
         });
 

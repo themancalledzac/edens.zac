@@ -27,8 +27,7 @@ import {
   type RowResult,
 } from '@/app/utils/rowCombination';
 import {
-  calculateRowSizesFromPattern,
-  createRowsArray,
+  calculateSizesFromBoxTree,
   type PatternResult,
   type RowWithPattern,
 } from '@/app/utils/rowStructureAlgorithm';
@@ -164,7 +163,7 @@ export interface CalculatedContentSize {
 export interface RowWithPatternAndSizes {
   pattern: PatternResult;
   items: CalculatedContentSize[];
-  boxTree: import('./rowCombination').BoxTree; // Recursive rendering tree (replaces pattern-specific rendering)
+  boxTree: BoxTree; // Recursive rendering tree (replaces pattern-specific rendering)
 }
 
 /**
@@ -361,62 +360,6 @@ export interface ProcessContentOptions {
   collectionData?: CollectionModel;
 }
 
-// ===================== Algorithm Comparison Logging =====================
-
-/** Summarize a single content item for logging */
-function summarizeItem(item: AnyContentModel, rowWidth: number): string {
-  const orientation = getOrientation(item);
-  const tag = orientation === 'horizontal' ? 'H' : 'V';
-  const effRating = getEffectiveRating(item, rowWidth);
-  const compValue = getItemComponentValue(item, rowWidth);
-  const title = ('title' in item && item.title) || `id:${item.id}`;
-  const shortTitle = typeof title === 'string' ? title.slice(0, 20) : String(title);
-  return `${tag}${effRating}★(cv:${compValue.toFixed(2)}) "${shortTitle}"`;
-}
-
-/** Log the initial input array */
-function logInitialState(content: AnyContentModel[], rowWidth: number): void {
-  console.group('%c[LAYOUT] Initial State', 'color: #4CAF50; font-weight: bold');
-  console.log(`${content.length} items, rowWidth=${rowWidth}`);
-  console.table(
-    content.map((item, i) => ({
-      index: i,
-      id: item.id,
-      title: ('title' in item && item.title) || '',
-      orientation: getOrientation(item),
-      effectiveRating: getEffectiveRating(item, rowWidth),
-      componentValue: getItemComponentValue(item, rowWidth).toFixed(2),
-    }))
-  );
-  console.groupEnd();
-}
-
-/** Log the new buildRows() output */
-function logNewAlgorithm(rows: RowResult[], rowWidth: number): void {
-  console.group('%c[LAYOUT] NEW Algorithm (buildRows)', 'color: #2196F3; font-weight: bold');
-  console.log(`${rows.length} rows`);
-  for (const [i, row] of rows.entries()) {
-    const items = row.components.map(c => summarizeItem(c, rowWidth)).join(' + ');
-    const totalCV = row.components.reduce((s, c) => s + getItemComponentValue(c, rowWidth), 0);
-    const fillPct = ((totalCV / rowWidth) * 100).toFixed(0);
-    console.log(`  Row ${i + 1} [${row.patternName}]: ${items} → ${fillPct}% fill`);
-  }
-  console.groupEnd();
-}
-
-/** Log the old createRowsArray() output */
-function logOldAlgorithm(rows: RowWithPattern[], rowWidth: number): void {
-  console.group('%c[LAYOUT] OLD Algorithm (createRowsArray)', 'color: #FF9800; font-weight: bold');
-  console.log(`${rows.length} rows`);
-  for (const [i, row] of rows.entries()) {
-    const items = row.items.map(c => summarizeItem(c, rowWidth)).join(' + ');
-    const totalCV = row.items.reduce((s, c) => s + getItemComponentValue(c, rowWidth), 0);
-    const fillPct = ((totalCV / rowWidth) * 100).toFixed(0);
-    console.log(`  Row ${i + 1} [${row.pattern.type}]: ${items} → ${fillPct}% fill`);
-  }
-  console.groupEnd();
-}
-
 // ===================== RowResult → RowWithPattern Mapping =====================
 
 /**
@@ -529,8 +472,8 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
       direction: 'horizontal',
       children: [
         { type: 'leaf', content: items[0]! },
-        { type: 'leaf', content: items[1]! }
-      ]
+        { type: 'leaf', content: items[1]! },
+      ],
     };
   }
 
@@ -540,18 +483,15 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
     direction: 'horizontal',
     children: [
       { type: 'leaf', content: items[0]! },
-      { type: 'leaf', content: items[1]! }
-    ]
+      { type: 'leaf', content: items[1]! },
+    ],
   };
 
   for (let i = 2; i < items.length; i++) {
     tree = {
       type: 'combined',
       direction: 'horizontal',
-      children: [
-        tree,
-        { type: 'leaf', content: items[i]! }
-      ]
+      children: [tree, { type: 'leaf', content: items[i]! }],
     };
   }
 
@@ -600,6 +540,19 @@ function mapRowResultToRowWithPattern(row: RowResult): RowWithPattern {
         mainIndex: row.layout.mainIndex,
         topPairIndices: row.layout.topPairIndices,
         bottomIndex: row.layout.bottomIndex,
+        indices,
+      },
+      items: row.components,
+    };
+  }
+
+  if (row.layout.type === 'compound-hero') {
+    return {
+      pattern: {
+        type: 'compound-hero',
+        heroIndex: row.layout.heroIndex,
+        heroPosition: row.layout.heroPosition,
+        supportingIndices: row.layout.supportingIndices,
         indices,
       },
       items: row.components,
@@ -674,24 +627,52 @@ export function processContentForDisplay(
   // Desktop with pattern detection
   const rowWidth = LAYOUT.desktopSlotWidth;
 
-  // ===== LOGGING: Initial state =====
-  logInitialState(content, rowWidth);
+  // Use buildRows() for pattern-based layout
+  const rows = buildRows(content, rowWidth);
 
-  // ===== NEW ALGORITHM: buildRows() =====
-  const newRows = buildRows(content, rowWidth);
-  logNewAlgorithm(newRows, rowWidth);
-
-  // ===== OLD ALGORITHM: createRowsArray() (for comparison) =====
-  const oldRowsWithPatterns = createRowsArray(content, chunkSize);
-  logOldAlgorithm(oldRowsWithPatterns, rowWidth);
-
-  // ===== USE NEW ALGORITHM for rendering =====
-  const contentRows = newRows.map(row => {
+  const contentRows = rows.map((row, rowIndex) => {
     const rowWithPattern = mapRowResultToRowWithPattern(row);
+
+    // Use BoxTree-based size calculation (generic, follows tree structure)
+    const items = calculateSizesFromBoxTree(
+      row.boxTree,
+      componentWidth,
+      LAYOUT.gridGap,
+      rowWidth // Pass chunkSize for slot width scaling
+    );
+
+    // Helper to calculate actual rendered width (accounts for tree structure + visual gaps)
+    const getRenderedWidth = (tree: BoxTree, sizes: CalculatedContentSize[]): number => {
+      if (tree.type === 'leaf') {
+        const size = sizes.find(s => s.content === tree.content);
+        return size?.width ?? 0;
+      }
+      return tree.direction === 'horizontal'
+        ? getRenderedWidth(tree.children[0], sizes) +
+            LAYOUT.gridGap +
+            getRenderedWidth(tree.children[1], sizes)
+        : Math.max(
+            getRenderedWidth(tree.children[0], sizes),
+            getRenderedWidth(tree.children[1], sizes)
+          );
+    };
+
+    const renderedWidth = getRenderedWidth(row.boxTree, items);
+    const widths = items.map(item => item.width.toFixed(1));
+    console.log(`[Row ${rowIndex}] Pattern: ${rowWithPattern.pattern.type}`);
+    console.log(`  Target width: ${componentWidth.toFixed(1)}px`);
+    console.log(`  All image widths: [${widths.join(', ')}]`);
+    console.log(
+      `  Actual rendered width: ${renderedWidth.toFixed(1)}px (accounts for vertical stacking)`
+    );
+    console.log(
+      `  Difference: ${(componentWidth - renderedWidth).toFixed(1)}px (should be ~0 + CSS gaps)`
+    );
+
     return {
       pattern: rowWithPattern.pattern,
-      items: calculateRowSizesFromPattern(rowWithPattern, componentWidth, chunkSize),
-      boxTree: row.boxTree, // NEW: Pass boxTree for rendering
+      items,
+      boxTree: row.boxTree, // Pass boxTree for rendering
     };
   });
   result.push(...contentRows);

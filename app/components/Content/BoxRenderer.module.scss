@@ -1,11 +1,11 @@
 .hbox {
   display: flex;
   flex-direction: row;
-  gap: 0.8rem; /* Match LAYOUT.gridGap = 12.8px */
+  gap: 0.8rem;
 }
 
 .vbox {
   display: flex;
   flex-direction: column;
-  gap: 0.8rem; /* Match LAYOUT.gridGap = 12.8px */
+  gap: 0.8rem;
 }

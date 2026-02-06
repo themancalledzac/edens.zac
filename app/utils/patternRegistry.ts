@@ -58,6 +58,13 @@ export type PatternResult =
       bottomIndex: number;
       indices: number[];
     }
+  | {
+      type: 'compound-hero';
+      heroIndex: number;
+      heroPosition: 'top' | 'bottom';
+      supportingIndices: number[];
+      indices: number[];
+    }
   | { type: 'standard'; indices: number[] };
 
 /**

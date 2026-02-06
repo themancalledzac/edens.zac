@@ -5,8 +5,11 @@
 
 import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel, ContentImageModel } from '@/app/types/Content';
+import { getItemComponentValue } from '@/app/utils/contentRatingUtils';
 import {
+  buildRows,
   CombinationPattern,
+  forceCompleteRow,
   getOrientation,
   isRowComplete,
   matchPattern,
@@ -175,8 +178,8 @@ describe('PATTERNS_BY_PRIORITY', () => {
     expect(PATTERNS_BY_PRIORITY).not.toContain(CombinationPattern.FORCE_FILL);
   });
 
-  it('should have STANDALONE first (highest priority)', () => {
-    expect(PATTERNS_BY_PRIORITY[0]).toBe(CombinationPattern.STANDALONE);
+  it('should have COMPOUND_HERO first (highest priority)', () => {
+    expect(PATTERNS_BY_PRIORITY[0]).toBe(CombinationPattern.COMPOUND_HERO);
   });
 
   it('should have MULTI_SMALL last (lowest priority)', () => {
@@ -624,11 +627,15 @@ describe('matchPattern', () => {
       expect(result).not.toBeNull();
     });
 
-    it('should find items in any order within window', () => {
+    it('should match contiguous items only (rejects non-contiguous [0, 2])', () => {
+      // Window: [V2★, H3★, H4★] at positions [0, 1, 2]
+      // DOMINANT_SECONDARY needs [H4+, V0-3★]
+      // Pattern would try to match [0, 2] (V2★, H4★) but that has gap at position 1
+      // Should be REJECTED due to contiguous consumption rule
       const window = [
-        createVerticalImage(1, 2),
-        createHorizontalImage(2, 3),
-        createHorizontalImage(3, 4),
+        createVerticalImage(1, 2),    // V2★ (effective 1) at position 0
+        createHorizontalImage(2, 3),  // H3★ at position 1
+        createHorizontalImage(3, 4),  // H4★ at position 2
       ];
       const result = matchPattern(
         CombinationPattern.DOMINANT_SECONDARY,
@@ -636,9 +643,8 @@ describe('matchPattern', () => {
         window,
         DESKTOP
       );
-      expect(result).not.toBeNull();
-      expect(result!.usedIndices).toContain(2); // H4* at index 2
-      expect(result!.usedIndices).toContain(0); // V2* at index 0
+      // Should reject because [0, 2] is non-contiguous (gap at position 1)
+      expect(result).toBeNull();
     });
   });
 
@@ -893,6 +899,116 @@ describe('matchPattern', () => {
     });
   });
 
+  describe('COMPOUND_HERO pattern', () => {
+    it('should match H5★ at start + 3 low-rated items', () => {
+      const window = [
+        createHorizontalImage(1, 5), // H5★ hero at start
+        createVerticalImage(2, 1),   // V1★
+        createVerticalImage(3, 2),   // V2★
+        createHorizontalImage(4, 2), // H2★
+      ];
+      const result = matchPattern(
+        CombinationPattern.COMPOUND_HERO,
+        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
+        window,
+        DESKTOP
+      );
+      expect(result).not.toBeNull();
+      expect(result!.components).toHaveLength(4);
+      expect(result!.components[0]!.id).toBe(1); // H5★ first
+    });
+
+    it('should match H5★ at end + 3 low-rated items', () => {
+      const window = [
+        createVerticalImage(1, 1),   // V1★
+        createVerticalImage(2, 2),   // V2★
+        createVerticalImage(3, 3),   // V3★ (effective 2)
+        createHorizontalImage(4, 5), // H5★ hero at end
+      ];
+      const result = matchPattern(
+        CombinationPattern.COMPOUND_HERO,
+        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
+        window,
+        DESKTOP
+      );
+      expect(result).not.toBeNull();
+      expect(result!.components).toHaveLength(4);
+      // Hero should be found (pattern matches H5★ first in requirements)
+      const hasH5Star = result!.components.some(c => c.id === 4);
+      expect(hasH5Star).toBe(true);
+      // Original window positions should be tracked
+      expect(result!.usedIndices).toContain(3); // H5★ was at window index 3
+    });
+
+    it('should match H5★ in middle + 3 low-rated items', () => {
+      const window = [
+        createVerticalImage(1, 1),   // V1★
+        createVerticalImage(2, 2),   // V2★
+        createHorizontalImage(3, 5), // H5★ in middle
+        createHorizontalImage(4, 3), // H3★
+      ];
+      const result = matchPattern(
+        CombinationPattern.COMPOUND_HERO,
+        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
+        window,
+        DESKTOP
+      );
+      expect(result).not.toBeNull();
+      expect(result!.components).toHaveLength(4);
+      // Hero found somewhere in the match
+      const hasH5Star = result!.components.some(c => c.id === 3);
+      expect(hasH5Star).toBe(true);
+    });
+
+    it('should NOT match with only 2 supporting items', () => {
+      const window = [
+        createHorizontalImage(1, 5), // H5★
+        createVerticalImage(2, 1),   // V1★
+        createVerticalImage(3, 2),   // V2★
+        // Only 2 supporting items, pattern requires 3
+      ];
+      const result = matchPattern(
+        CombinationPattern.COMPOUND_HERO,
+        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
+        window,
+        DESKTOP
+      );
+      expect(result).toBeNull();
+    });
+
+    it('should NOT match if no H5★ present', () => {
+      const window = [
+        createHorizontalImage(1, 4), // H4★ not enough
+        createVerticalImage(2, 1),
+        createVerticalImage(3, 2),
+        createHorizontalImage(4, 2),
+      ];
+      const result = matchPattern(
+        CombinationPattern.COMPOUND_HERO,
+        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
+        window,
+        DESKTOP
+      );
+      expect(result).toBeNull();
+    });
+
+    it('should NOT match if supporting items too high-rated', () => {
+      const window = [
+        createHorizontalImage(1, 5), // H5★
+        createHorizontalImage(2, 4), // H4★ too high (>3)
+        createHorizontalImage(3, 4), // H4★ too high (>3)
+        createHorizontalImage(4, 4), // H4★ too high (>3)
+      ];
+      const result = matchPattern(
+        CombinationPattern.COMPOUND_HERO,
+        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
+        window,
+        DESKTOP
+      );
+      expect(result).toBeNull();
+    });
+  });
+
   describe('edge cases', () => {
     it('should return null for empty window', () => {
       const result = matchPattern(
@@ -916,16 +1032,19 @@ describe('matchPattern', () => {
       expect(result).toBeNull();
     });
 
-    it('should pick items from a larger window correctly (must include index 0)', () => {
+    it('should match contiguous items from start of window (must include index 0)', () => {
+      // Window: [H5★, V4★ (eff 3), H2★, H4★, V3★ (eff 2)]
+      // DOMINANT_SECONDARY needs [H4+, V0-3★]
+      // Should match positions [0, 1] (H5★, V4★) - contiguous from start
       const window = [
-        createHorizontalImage(1, 5),  // H5* at index 0 - satisfies dominant requirement
-        createHorizontalImage(2, 2),
-        createVerticalImage(3, 4),   // V4* (effective 3) - satisfies secondary
-        createHorizontalImage(4, 4),
-        createVerticalImage(5, 3),   // V3* (effective 2) - also satisfies secondary
+        createHorizontalImage(1, 5),  // H5★ at index 0 - satisfies dominant requirement
+        createVerticalImage(2, 4),    // V4★ (effective 3) at index 1 - satisfies secondary
+        createHorizontalImage(3, 2),  // H2★ at index 2
+        createHorizontalImage(4, 4),  // H4★ at index 3
+        createVerticalImage(5, 3),    // V3★ (effective 2) at index 4
       ];
       // DOMINANT_SECONDARY: needs H(4+) + V(0-3)
-      // Should match H5* (index 0) + V4* (index 2, effective=3)
+      // Should match H5★ (index 0) + V4★ (index 1, effective=3)
       const result = matchPattern(
         CombinationPattern.DOMINANT_SECONDARY,
         PATTERN_TABLE[CombinationPattern.DOMINANT_SECONDARY],
@@ -934,7 +1053,80 @@ describe('matchPattern', () => {
       );
       expect(result).not.toBeNull();
       expect(result!.components).toHaveLength(2);
-      expect(result!.usedIndices).toContain(0); // Must include index 0
+      expect(result!.usedIndices).toEqual([0, 1]); // Must be contiguous from index 0
+    });
+  });
+
+  describe('Contiguous Consumption (Commit 1.5 - Issue 14 fix)', () => {
+    it('should REJECT non-contiguous matches with gaps (e.g., positions [0, 1, 4])', () => {
+      // Window: [V1★, V2★, V3★, H3★, H4★] at positions [0, 1, 2, 3, 4]
+      // DOMINANT_VERTICAL_PAIR needs [H4+, 0-3★, 0-3★]
+      // Without contiguous check: would match positions [4, 0, 1] → sorted [0, 1, 4] (gap at 2-3)
+      // With contiguous check: should REJECT because [0, 1, 4] has gaps
+      const window = [
+        createVerticalImage(1, 1),    // V1★ (effective 0) at position 0
+        createVerticalImage(2, 2),    // V2★ (effective 1) at position 1
+        createVerticalImage(3, 3),    // V3★ (effective 2) at position 2
+        createHorizontalImage(4, 3),  // H3★ at position 3
+        createHorizontalImage(5, 4),  // H4★ at position 4
+      ];
+
+      const result = matchPattern(
+        CombinationPattern.DOMINANT_VERTICAL_PAIR,
+        PATTERN_TABLE[CombinationPattern.DOMINANT_VERTICAL_PAIR],
+        window,
+        DESKTOP
+      );
+
+      // Should reject because matched items [4, 0, 1] are not contiguous
+      expect(result).toBeNull();
+    });
+
+    it('should ACCEPT contiguous matches (e.g., positions [0, 1, 2])', () => {
+      // Window: [H4★, V2★, V3★, H3★, H5★]
+      // DOMINANT_VERTICAL_PAIR needs [H4+, 0-3★, 0-3★]
+      // Should match positions [0, 1, 2] (contiguous) → [H4★, V2★, V3★]
+      const window = [
+        createHorizontalImage(1, 4),  // H4★ at position 0
+        createVerticalImage(2, 2),    // V2★ (effective 1) at position 1
+        createVerticalImage(3, 3),    // V3★ (effective 2) at position 2
+        createHorizontalImage(4, 3),  // H3★ at position 3
+        createHorizontalImage(5, 5),  // H5★ at position 4
+      ];
+
+      const result = matchPattern(
+        CombinationPattern.DOMINANT_VERTICAL_PAIR,
+        PATTERN_TABLE[CombinationPattern.DOMINANT_VERTICAL_PAIR],
+        window,
+        DESKTOP
+      );
+
+      expect(result).not.toBeNull();
+      expect(result!.usedIndices).toEqual([0, 1, 2]); // Contiguous range
+      expect(result!.components).toHaveLength(3);
+    });
+
+    it('should REJECT matches that skip middle items (real Row 15 case)', () => {
+      // Real scenario from Row 15: window has [V1★, V2★, V3★, H3★, H4★]
+      // Pattern would try to match [H4★, V1★, V2★] at positions [4, 0, 1]
+      // This should be rejected because it skips positions 2 and 3
+      const window = [
+        createVerticalImage(14, 1),   // V1★ DSC_6412 at position 0
+        createVerticalImage(16, 2),   // V2★ DSC_6422 at position 1
+        createVerticalImage(17, 3),   // V3★ DSC_6432 at position 2
+        createHorizontalImage(19, 3), // H3★ DSC_6457 at position 3
+        createHorizontalImage(25, 4), // H4★ DSC_6557 at position 4
+      ];
+
+      const result = matchPattern(
+        CombinationPattern.DOMINANT_VERTICAL_PAIR,
+        PATTERN_TABLE[CombinationPattern.DOMINANT_VERTICAL_PAIR],
+        window,
+        DESKTOP
+      );
+
+      // Should reject: would match [4, 0, 1] which is non-contiguous
+      expect(result).toBeNull();
     });
   });
 });
@@ -942,8 +1134,6 @@ describe('matchPattern', () => {
 // ===================== forceCompleteRow Tests =====================
 
 describe('forceCompleteRow', () => {
-  // Need to import forceCompleteRow
-  const { forceCompleteRow } = require('@/app/utils/rowCombination');
 
   it('should take items until row is complete', () => {
     const window = [
@@ -1137,8 +1327,6 @@ describe('forceCompleteRow', () => {
 // ===================== buildRows Tests =====================
 
 describe('buildRows', () => {
-  // Need to import buildRows
-  const { buildRows } = require('@/app/utils/rowCombination');
 
   it('should create a single row from one H5* image', () => {
     const items = [createHorizontalImage(1, 5)];
@@ -1463,11 +1651,10 @@ describe('buildRows', () => {
         createVerticalImage(9, 2),
       ];
       const rows = buildRows(items, DESKTOP);
-      const { getItemComponentValue } = require('@/app/utils/contentRatingUtils');
       for (const row of rows) {
         if (row.patternName === CombinationPattern.FORCE_FILL) continue;
         const totalCV = row.components.reduce(
-          (sum: number, item: ContentImageModel) => sum + getItemComponentValue(item, DESKTOP),
+          (sum: number, item: AnyContentModel) => sum + getItemComponentValue(item, DESKTOP),
           0
         );
         const fill = totalCV / DESKTOP;
@@ -1487,10 +1674,9 @@ describe('buildRows', () => {
         createVerticalImage(6, 3),
       ];
       const rows = buildRows(items, DESKTOP);
-      const { getItemComponentValue } = require('@/app/utils/contentRatingUtils');
       for (const row of rows) {
         const totalCV = row.components.reduce(
-          (sum: number, item: ContentImageModel) => sum + getItemComponentValue(item, DESKTOP),
+          (sum: number, item: AnyContentModel) => sum + getItemComponentValue(item, DESKTOP),
           0
         );
         const fill = totalCV / DESKTOP;

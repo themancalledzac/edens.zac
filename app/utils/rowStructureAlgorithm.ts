@@ -16,12 +16,14 @@ import type { AnyContentModel } from '@/app/types/Content';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
 import { getRating, isStandaloneItem } from '@/app/utils/contentRatingUtils';
 import {
+  getAspectRatio,
   getContentDimensions,
   getSlotWidth,
   isContentImage,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
 import { type PatternResult, type PatternType } from '@/app/utils/patternRegistry';
+import { type BoxTree } from '@/app/utils/rowCombination';
 
 // Re-export types for consumers
 export type { PatternResult, PatternType };
@@ -177,13 +179,8 @@ function arrangeItemsIntoPattern(items: AnyContentModel[], startIndex: number): 
     }
   }
 
-  // For 4+ items: implement combination logic
-  // Group items by star value and process from smallest to largest
-  // TODO: Implement full combination logic for 4+ items
-  // Future: Handle even numbers ≥4 of same rating by splitting into two groups
-  // For now, use standard pattern
-
-  // Default: standard pattern (all items side by side)
+  // For 4+ items: use standard pattern (all items side by side)
+  // Default: standard pattern
   return {
     type: 'standard',
     indices: items.map((_, idx) => startIndex + idx),
@@ -247,7 +244,6 @@ export function createRowsArray(
 
 // ===================== Part 2: Calculate Row Sizes =====================
 
-
 /**
  * Box descriptor with float-based aspect ratios
  * ratio = width / height (e.g., 1.78 for 16:9, 0.56 for 9:16)
@@ -269,7 +265,6 @@ interface SolvedBox {
   content?: AnyContentModel;
   children?: SolvedBox[];
 }
-
 
 /**
  * Create a box from content with slot width scaling for proportional space allocation
@@ -535,15 +530,6 @@ function extractCalculatedSizes(solved: SolvedBox): CalculatedContentSize[] {
  * - Stacked container's padding-left: OUTSIDE stacked items, INSIDE container
  *
  * So stacked items' widths must be reduced by the container's padding-left (half-gap).
- *
- * TODO: Verify gap math works correctly when main is positioned on the right.
- * When mainPosition === 'right', the layout is flipped:
- * - Main image (right): has padding-left (inside its border-box width)
- * - Stacked container (left): has padding-right instead of padding-left
- * The box model should work the same way (just flipped), but verify that:
- * 1. Stacked items' widths are correctly reduced by container's padding-right (halfGap)
- * 2. Main image width calculation accounts for padding-left instead of padding-right
- * If issues arise, we may need to pass mainPosition to this function and adjust the gap math.
  */
 function calculateMainStackedSizes(
   items: AnyContentModel[],
@@ -573,7 +559,9 @@ function calculateMainStackedSizes(
 
   // Results are in [main, sec1, sec2] order — map back to original item positions
   const solvedSizes = extractCalculatedSizes(solved);
-  const results: CalculatedContentSize[] = Array.from({ length: items.length }) as CalculatedContentSize[];
+  const results: CalculatedContentSize[] = Array.from({
+    length: items.length,
+  }) as CalculatedContentSize[];
   results[mainIndex] = solvedSizes[0]!;
   let secIdx = 0;
   for (let i = 0; i < items.length; i++) {
@@ -738,10 +726,10 @@ function calculateStandardRowSizes(
 /**
  * Size calculator lookup by pattern type
  * All calculators now accept chunkSize parameter for slot width calculation
- * Note: 'nested-quad' is handled specially in calculateRowSizesFromPattern, not in this lookup
+ * Note: 'nested-quad' and 'compound-hero' are handled specially in calculateRowSizesFromPattern, not in this lookup
  */
 const SIZE_CALCULATORS: Record<
-  Exclude<PatternType, 'nested-quad'>,
+  Exclude<PatternType, 'nested-quad' | 'compound-hero'>,
   (items: AnyContentModel[], rowWidth: number, chunkSize?: number) => CalculatedContentSize[]
 > = {
   standalone: calculateStandaloneSizes,
@@ -752,6 +740,174 @@ const SIZE_CALCULATORS: Record<
   'five-star-vertical-mixed': calculateMainStackedSizes,
   standard: calculateStandardRowSizes,
 };
+
+/**
+ * Calculate dimensions for compound hero layout
+ *
+ * Layout structure (hero at bottom):
+ * ┌─────────────────────────┐
+ * │   Supporting Items      │  ← Full width horizontal row
+ * ├─────────────────────────┤
+ * │      Hero (H5★)         │  ← Full width
+ * └─────────────────────────┘
+ *
+ * Calculation strategy:
+ * - Hero: Full width, height based on aspect ratio
+ * - Supporting: Full width, distributed proportionally
+ *
+ * @param items - All items in the row (hero + supporting)
+ * @param rowWidth - Row width budget
+ * @param chunkSize - Slot width for rating-based scaling
+ * @param layout - CompoundHeroLayout descriptor
+ * @returns Calculated sizes for each item in original order
+ */
+function calculateCompoundHeroSizes(
+  items: AnyContentModel[],
+  rowWidth: number,
+  chunkSize: number = LAYOUT.defaultChunkSize,
+  layout: { heroIndex: number; supportingIndices: number[]; heroPosition: 'top' | 'bottom' }
+): CalculatedContentSize[] {
+  const hero = items[layout.heroIndex];
+  const supporting = layout.supportingIndices.map(idx => items[idx]!);
+
+  if (!hero || supporting.length === 0) {
+    console.warn('calculateCompoundHeroSizes: missing hero or supporting items');
+    return calculateStandardRowSizes(items, rowWidth, chunkSize);
+  }
+
+  // Calculate hero size (full width, maintain aspect ratio)
+  const heroAspectRatio = getAspectRatio(hero);
+  const heroWidth = rowWidth;
+  const heroHeight = heroWidth / heroAspectRatio;
+
+  // Calculate supporting items sizes (standard horizontal distribution)
+  const supportingSizes = calculateStandardRowSizes(supporting, rowWidth, chunkSize);
+
+  // Map sizes back to original item positions
+  const results: CalculatedContentSize[] = Array.from({
+    length: items.length,
+  }) as CalculatedContentSize[];
+
+  // Set hero size
+  results[layout.heroIndex] = {
+    content: hero,
+    width: heroWidth,
+    height: heroHeight,
+  };
+
+  // Set supporting sizes
+  for (const [supportingIdx, originalIdx] of layout.supportingIndices.entries()) {
+    results[originalIdx] = supportingSizes[supportingIdx]!;
+  }
+
+  return results;
+}
+
+// ===================== BoxTree-Based Size Calculation =====================
+
+/**
+ * Calculate the combined aspect ratio of a BoxTree with slot width scaling
+ * - For leaf: return item's aspect ratio scaled by slot width (rating-based)
+ * - For horizontal: sum of aspect ratios (children side-by-side)
+ * - For vertical: reciprocal of sum of reciprocals (children stacked)
+ *
+ * @param tree - BoxTree to calculate aspect ratio for
+ * @param chunkSize - Number of normal-width items per row (for slot width calculation)
+ */
+function calculateBoxTreeAspectRatio(tree: BoxTree, chunkSize: number): number {
+  if (tree.type === 'leaf') {
+    // Apply slot width scaling like old algorithm
+    const { width, height } = getContentDimensions(tree.content);
+    // Use simplified slot width (no prev/next context in BoxTree)
+    const slotWidth = getSlotWidth(tree.content, chunkSize);
+    const effectiveWidth = width * slotWidth;
+    const effectiveHeight = height * slotWidth;
+    return effectiveWidth / effectiveHeight;
+  }
+
+  const leftAR = calculateBoxTreeAspectRatio(tree.children[0], chunkSize);
+  const rightAR = calculateBoxTreeAspectRatio(tree.children[1], chunkSize);
+
+  return tree.direction === 'horizontal'
+    ? leftAR + rightAR
+    : 1 / (1 / leftAR + 1 / rightAR);
+}
+
+/**
+ * Calculate sizes from BoxTree structure
+ * Generic recursive algorithm that follows the tree structure
+ *
+ * @param tree - BoxTree encoding how items are combined
+ * @param targetWidth - Available width for this subtree
+ * @param gap - Gap between adjacent items (default: LAYOUT.gridGap = 12.8px)
+ * @param chunkSize - Number of normal-width items per row (for slot width scaling)
+ * @returns Array of sizes in tree traversal order (left-to-right, top-to-bottom)
+ */
+export function calculateSizesFromBoxTree(
+  tree: BoxTree,
+  targetWidth: number,
+  gap: number = LAYOUT.gridGap,
+  chunkSize: number = 4
+): CalculatedContentSize[] {
+  // Base case: leaf node
+  if (tree.type === 'leaf') {
+    const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+    const height = targetWidth / ar;
+    return [{ content: tree.content, width: targetWidth, height }];
+  }
+
+  // Recursive case: combined node
+  const leftAR = calculateBoxTreeAspectRatio(tree.children[0], chunkSize);
+  const rightAR = calculateBoxTreeAspectRatio(tree.children[1], chunkSize);
+
+  if (tree.direction === 'horizontal') {
+    // Binary tree always has 2 children = 1 gap
+    const totalGapSpace = gap;
+    const availableWidth = targetWidth - totalGapSpace;
+
+    const totalAR = leftAR + rightAR;
+    const leftWidth = availableWidth * (leftAR / totalAR);
+    const rightWidth = availableWidth * (rightAR / totalAR);
+
+    const leftSizes = calculateSizesFromBoxTree(tree.children[0], leftWidth, gap, chunkSize);
+    const rightSizes = calculateSizesFromBoxTree(tree.children[1], rightWidth, gap, chunkSize);
+
+    return [...leftSizes, ...rightSizes];
+  } else {
+    // Vertical: binary tree always has 2 direct children, so only 1 gap between them
+    const totalGapSpace = gap; // Always 1 gap for binary tree (2 children)
+
+    // Recursively calculate sizes for both children with full width
+    const leftSizes = calculateSizesFromBoxTree(tree.children[0], targetWidth, gap, chunkSize);
+    const rightSizes = calculateSizesFromBoxTree(tree.children[1], targetWidth, gap, chunkSize);
+
+    // Calculate total raw height
+    const leftHeight = leftSizes.reduce((sum, s) => sum + s.height, 0);
+    const rightHeight = rightSizes.reduce((sum, s) => sum + s.height, 0);
+    const rawTotalHeight = leftHeight + rightHeight;
+
+    // Scale down so that: scaledHeight + gap = rawHeight
+    const targetHeightsSum = rawTotalHeight - totalGapSpace;
+    const scaleFactor = rawTotalHeight > 0 ? targetHeightsSum / rawTotalHeight : 1;
+
+    // Scale heights only - widths should fill the allocated space
+    // Scaling widths would make the vertical stack narrower than allocated,
+    // causing width calculation errors in parent horizontal combinations
+    const scaledLeftSizes = leftSizes.map(s => ({
+      ...s,
+      width: s.width, // Keep original width
+      height: s.height * scaleFactor,
+    }));
+
+    const scaledRightSizes = rightSizes.map(s => ({
+      ...s,
+      width: s.width, // Keep original width
+      height: s.height * scaleFactor,
+    }));
+
+    return [...scaledLeftSizes, ...scaledRightSizes];
+  }
+}
 
 // ===================== Public API: Size Calculation =====================
 
@@ -769,6 +925,15 @@ export function calculateRowSizesFromPattern(
   rowWidth: number,
   chunkSize: number = LAYOUT.defaultChunkSize
 ): CalculatedContentSize[] {
+  // For compound-hero patterns, use specialized calculator
+  if (row.pattern.type === 'compound-hero') {
+    return calculateCompoundHeroSizes(row.items, rowWidth, chunkSize, {
+      heroIndex: row.pattern.heroIndex,
+      supportingIndices: row.pattern.supportingIndices,
+      heroPosition: row.pattern.heroPosition,
+    });
+  }
+
   // For nested-quad patterns, use specialized calculator
   if (row.pattern.type === 'nested-quad') {
     return calculateNestedQuadSizes(row.items, rowWidth, chunkSize, {
@@ -816,4 +981,3 @@ export function calculateRowSizes(
 
   return calculateStandardRowSizes(row, rowWidth, chunkSize);
 }
-
