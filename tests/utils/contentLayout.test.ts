@@ -14,6 +14,7 @@ import type {
 import {
   calculateContentSizes,
   chunkContent,
+  clampParallaxDimensions,
   convertCollectionContentToImage,
   convertCollectionContentToParallax,
   createHeaderRow,
@@ -535,41 +536,43 @@ describe('processContentBlocks', () => {
 describe('extractCollectionDimensions (tested via convertCollectionContentToParallax and convertCollectionContentToImage)', () => {
   describe('dimension extraction', () => {
     it('should prioritize imageWidth/imageHeight over width/height in convertCollectionContentToParallax', () => {
+      // Use dimensions within the parallax AR clamp range [4:5, 5:4] to isolate priority behavior
       const collection = createCollectionContent(1, {
         coverImage: {
           id: 10,
           contentType: 'IMAGE',
           orderIndex: 0,
           imageUrl: 'https://example.com/cover.jpg',
-          imageWidth: 1920,
-          imageHeight: 1080,
+          imageWidth: 1200,
+          imageHeight: 1000,
           width: 800, // Should be ignored
-          height: 600, // Should be ignored
+          height: 700, // Should be ignored
         },
       });
       const result = convertCollectionContentToParallax(collection);
-      expect(result.imageWidth).toBe(1920);
-      expect(result.imageHeight).toBe(1080);
-      expect(result.width).toBe(1920);
-      expect(result.height).toBe(1080);
+      expect(result.imageWidth).toBe(1200);
+      expect(result.imageHeight).toBe(1000);
+      expect(result.width).toBe(1200);
+      expect(result.height).toBe(1000);
     });
 
     it('should fall back to width/height when imageWidth/imageHeight are missing in convertCollectionContentToParallax', () => {
+      // Use dimensions within the parallax AR clamp range [4:5, 5:4] to isolate fallback behavior
       const collection = createCollectionContent(1, {
         coverImage: {
           id: 10,
           contentType: 'IMAGE',
           orderIndex: 0,
           imageUrl: 'https://example.com/cover.jpg',
-          width: 800,
-          height: 600,
+          width: 1000,
+          height: 900,
         },
       });
       const result = convertCollectionContentToParallax(collection);
-      expect(result.imageWidth).toBe(800);
-      expect(result.imageHeight).toBe(600);
-      expect(result.width).toBe(800);
-      expect(result.height).toBe(600);
+      expect(result.imageWidth).toBe(1000);
+      expect(result.imageHeight).toBe(900);
+      expect(result.width).toBe(1000);
+      expect(result.height).toBe(900);
     });
 
     it('should prioritize imageWidth/imageHeight over width/height in convertCollectionContentToImage', () => {
@@ -680,6 +683,101 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
   });
 });
 
+describe('clampParallaxDimensions', () => {
+  it('should clamp excessively tall images to 4:5 aspect ratio', () => {
+    // 1000x2000 is 1:2 AR — should be clamped to 1000x1250 (4:5)
+    const result = clampParallaxDimensions(1000, 2000);
+    expect(result.imageWidth).toBe(1000);
+    expect(result.imageHeight).toBe(1250);
+  });
+
+  it('should clamp excessively wide images to 5:4 aspect ratio', () => {
+    // 2000x1000 is 2:1 AR — should be clamped to 2000x1600 (5:4)
+    const result = clampParallaxDimensions(2000, 1000);
+    expect(result.imageWidth).toBe(2000);
+    expect(result.imageHeight).toBe(1600);
+  });
+
+  it('should not clamp images within the 4:5 to 5:4 range', () => {
+    // 1200x1000 is 1.2 AR — within [0.8, 1.25]
+    const result = clampParallaxDimensions(1200, 1000);
+    expect(result.imageWidth).toBe(1200);
+    expect(result.imageHeight).toBe(1000);
+  });
+
+  it('should not clamp images exactly at 4:5', () => {
+    const result = clampParallaxDimensions(800, 1000);
+    expect(result.imageWidth).toBe(800);
+    expect(result.imageHeight).toBe(1000);
+  });
+
+  it('should not clamp images exactly at 5:4', () => {
+    const result = clampParallaxDimensions(1000, 800);
+    expect(result.imageWidth).toBe(1000);
+    expect(result.imageHeight).toBe(800);
+  });
+
+  it('should not clamp square images', () => {
+    const result = clampParallaxDimensions(1000, 1000);
+    expect(result.imageWidth).toBe(1000);
+    expect(result.imageHeight).toBe(1000);
+  });
+
+  it('should pass through undefined dimensions unchanged', () => {
+    const result = clampParallaxDimensions();
+    expect(result.imageWidth).toBeUndefined();
+    expect(result.imageHeight).toBeUndefined();
+  });
+
+  it('should clamp a tall cover image via convertCollectionContentToParallax', () => {
+    const collection = createCollectionContent(1, {
+      coverImage: {
+        id: 10,
+        contentType: 'IMAGE',
+        orderIndex: 0,
+        imageUrl: 'https://example.com/tall.jpg',
+        imageWidth: 1000,
+        imageHeight: 2000,
+      },
+    });
+    const result = convertCollectionContentToParallax(collection);
+    expect(result.imageWidth).toBe(1000);
+    expect(result.imageHeight).toBe(1250); // clamped from 2000
+  });
+
+  it('should clamp a wide cover image via convertCollectionContentToParallax', () => {
+    const collection = createCollectionContent(1, {
+      coverImage: {
+        id: 10,
+        contentType: 'IMAGE',
+        orderIndex: 0,
+        imageUrl: 'https://example.com/wide.jpg',
+        imageWidth: 2000,
+        imageHeight: 1000,
+      },
+    });
+    const result = convertCollectionContentToParallax(collection);
+    expect(result.imageWidth).toBe(2000);
+    expect(result.imageHeight).toBe(1600); // clamped from 1000
+  });
+
+  it('should NOT clamp dimensions in convertCollectionContentToImage (admin path)', () => {
+    const collection = createCollectionContent(1, {
+      coverImage: {
+        id: 10,
+        contentType: 'IMAGE',
+        orderIndex: 0,
+        imageUrl: 'https://example.com/tall.jpg',
+        imageWidth: 1000,
+        imageHeight: 2000,
+      },
+    });
+    const result = convertCollectionContentToImage(collection);
+    expect(result.imageWidth).toBe(1000);
+    expect(result.imageHeight).toBe(2000); // NOT clamped
+  });
+});
+
 describe('createHeaderRow', () => {
   const componentWidth = 800;
   const chunkSize = 4;
@@ -758,8 +856,8 @@ describe('createHeaderRow', () => {
       expect(coverWidth).toBeCloseTo(maxCoverWidth, 1);
     });
 
-    it('should give vertical cover narrower width (~30-33%)', () => {
-      // Vertical: 1080x1920 = 0.5625 aspect ratio
+    it('should give vertical cover narrower width (~36%)', () => {
+      // Vertical: 1080x1920, clamped to 1080x1350 (AR 0.8) by parallax AR clamp
       const collection = createCollectionModel(1, {
         coverImage: {
           id: 10,
@@ -775,9 +873,12 @@ describe('createHeaderRow', () => {
 
       const coverWidth = result?.items[0]?.width || 0;
       const minCoverWidth = componentWidth * 0.3;
+      const maxCoverWidth = componentWidth * 0.5;
 
-      // Vertical images should be near the minimum (30%)
-      expect(coverWidth).toBeCloseTo(minCoverWidth, 1);
+      // Clamped AR (0.8) produces coverWidth = maxRowHeight * 0.8 = 360 * 0.8 = 288
+      expect(coverWidth).toBeGreaterThan(minCoverWidth);
+      expect(coverWidth).toBeLessThan(maxCoverWidth);
+      expect(coverWidth).toBeCloseTo(288, 0);
     });
 
     it('should give square cover intermediate width (~45%)', () => {
@@ -850,8 +951,8 @@ describe('createHeaderRow', () => {
 
       // Description should be wider than cover for vertical images
       expect(descWidth).toBeGreaterThan(coverWidth);
-      // Description should get ~70% when cover is at minimum 30%
-      expect(descWidth).toBeCloseTo(componentWidth * 0.7, 1);
+      // With clamped AR (0.8), cover = 288, desc = 800 - 288 = 512
+      expect(descWidth).toBeCloseTo(512, 0);
     });
   });
 

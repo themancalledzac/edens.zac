@@ -1,6 +1,6 @@
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
-import { processContentBlocks } from '@/app/utils/contentLayout';
+import { clampParallaxDimensions, processContentBlocks } from '@/app/utils/contentLayout';
 
 import ContentBlockWithFullScreen from '../Content/ContentBlockWithFullScreen';
 import SiteHeader from '../SiteHeader/SiteHeader';
@@ -17,9 +17,11 @@ interface ContentCollectionPageProps {
  * Includes all necessary fields for proper positioning, aspect ratio, and parallax effects
  */
 function collectionToContentModel(col: CollectionModel): ContentParallaxImageModel {
-  // Extract dimensions from coverImage - prioritize imageWidth/imageHeight for accurate aspect ratios
-  const imageWidth = col.coverImage?.imageWidth;
-  const imageHeight = col.coverImage?.imageHeight;
+  // Extract dimensions from coverImage, clamped to min 4:5 AR for parallax
+  const { imageWidth, imageHeight } = clampParallaxDimensions(
+    col.coverImage?.imageWidth,
+    col.coverImage?.imageHeight
+  );
 
   return {
     contentType: 'IMAGE',
@@ -31,11 +33,8 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
     description: col.description ?? null,
     imageUrl: col.coverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '', // Display title on collection cards
-    // Use explicit width/height from coverImage dimensions for proper chunking
-    // Prioritize imageWidth/imageHeight for accurate aspect ratio calculations
     imageWidth,
     imageHeight,
-    // Also set width/height on base Content interface for layout (fallback)
     width: imageWidth,
     height: imageHeight,
     orderIndex: 0,
