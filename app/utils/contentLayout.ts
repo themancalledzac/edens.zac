@@ -1,4 +1,4 @@
-import { LAYOUT } from '@/app/constants';
+import { IMAGE, LAYOUT } from '@/app/constants';
 import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
@@ -497,6 +497,27 @@ function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
 }
 
 /**
+ * Clamp dimensions so the aspect ratio stays within [minParallaxAR, maxParallaxAR].
+ * Prevents excessively tall OR wide cover images on parallax collection cards.
+ * Crops equally via object-fit: cover + default center positioning.
+ */
+export function clampParallaxDimensions(
+  width?: number,
+  height?: number
+): { imageWidth?: number; imageHeight?: number } {
+  if (width && height) {
+    const ar = width / height;
+    if (ar < IMAGE.minParallaxAR) {
+      return { imageWidth: width, imageHeight: Math.round(width / IMAGE.minParallaxAR) };
+    }
+    if (ar > IMAGE.maxParallaxAR) {
+      return { imageWidth: width, imageHeight: Math.round(width / IMAGE.maxParallaxAR) };
+    }
+  }
+  return { imageWidth: width, imageHeight: height };
+}
+
+/**
  * Convert collection to parallax image for unified rendering on public pages
  * @param col - Collection content model to convert
  * @returns Parallax image model with collection metadata
@@ -504,7 +525,8 @@ function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel
 ): ContentParallaxImageModel {
-  const { imageWidth, imageHeight } = extractCollectionDimensions(col.coverImage);
+  const raw = extractCollectionDimensions(col.coverImage);
+  const { imageWidth, imageHeight } = clampParallaxDimensions(raw.imageWidth, raw.imageHeight);
 
   return {
     contentType: 'IMAGE',
@@ -817,7 +839,8 @@ function createMetadataTextBlock(
  */
 function createCoverImageBlock(collection: CollectionModel): ContentParallaxImageModel {
   const coverImage = collection.coverImage!;
-  const { imageWidth, imageHeight } = extractCollectionDimensions(coverImage);
+  const raw = extractCollectionDimensions(coverImage);
+  const { imageWidth, imageHeight } = clampParallaxDimensions(raw.imageWidth, raw.imageHeight);
 
   return {
     contentType: 'IMAGE',

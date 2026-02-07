@@ -75,6 +75,11 @@ export const IMAGE = {
   defaultWidth: 1300, // Matches pageMaxWidth
   defaultHeight: 867, // Maintains ~3:2 aspect ratio with defaultWidth
 
+  // Aspect ratio (w/h) bounds for parallax collection covers
+  // Clamps cover images to a [4:5, 5:4] range so they're never too tall or too wide
+  minParallaxAR: 4 / 5, // 0.8 — never taller than 5:4
+  maxParallaxAR: 5 / 4, // 1.25 — never wider than 5:4
+
   // Grid/thumbnail dimensions
   gridWidth: 800,
   gridHeightCatalog: 800, // 1:1 for catalog cards
