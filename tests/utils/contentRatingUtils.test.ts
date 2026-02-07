@@ -133,6 +133,7 @@ describe('isStandaloneItem', () => {
 
   describe('edge cases', () => {
     it('should return false for undefined', () => {
+      // eslint-disable-next-line unicorn/no-useless-undefined
       expect(isStandaloneItem(undefined)).toBe(false);
     });
 

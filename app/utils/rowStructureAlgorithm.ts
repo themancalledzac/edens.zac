@@ -7,7 +7,6 @@
  */
 
 import { LAYOUT } from '@/app/constants';
-import type { AnyContentModel } from '@/app/types/Content';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
 import {
   getContentDimensions,
