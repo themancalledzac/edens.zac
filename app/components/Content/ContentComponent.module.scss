@@ -121,6 +121,7 @@
   height: 100%;
   box-sizing: border-box;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 /* Ensure overlay only covers the image, not any padding */
@@ -135,11 +136,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 0;
+  padding: 5px;
   margin: 0;
   /* Ensure serif font and typography are maintained */
   font-family: var(--font-serif), serif;
-  font-size: var(--collection-title);
   font-weight: 700;
 }
 
@@ -242,15 +242,17 @@
   font-size: var(--collection-title);
   font-weight: 700;
   text-align: center;
-  padding: var(--space-4);
+  padding: 5px;
+  overflow-wrap: break-word;
+  word-break: break-word;
   pointer-events: none;
   z-index: var(--z-content); /* Ensure text overlay appears above parallax image (z-index: base) */
 }
 
-/* Desktop styles */
-@media (width >= 768px) {
+/* Scale title font relative to card width using container queries */
+@container (width > 0) {
   .textOverlay {
-    padding: var(--space-5);
+    font-size: clamp(1.25rem, 18cqi, 3rem);
   }
 }
 

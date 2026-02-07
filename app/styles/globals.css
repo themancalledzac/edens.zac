@@ -77,7 +77,7 @@ html,
   /* Default heading sizes */
   --header-1: 2rem; /* Header title (name) - mobile */
   --heading-2: 1.75rem; /* Menu dropdown items - mobile */
-  --collection-title: 3rem; /* Collection titles on contentCollection items - mobile */
+  --collection-title: 3rem; /* Collection titles - fallback, overridden by container query */
 
   /* Font families */
   --font-serif: 'Big Caslon', 'Book Antiqua', serif;
@@ -135,7 +135,7 @@ html,
   :root {
     --header-1: 2.25rem; /* Header title (name) - desktop */
     --heading-2: 2rem; /* Menu dropdown items - desktop */
-    --collection-title: 3.5rem; /* Collection titles on contentCollection items - desktop */
+    --collection-title: 3.5rem; /* Collection titles - fallback, overridden by container query */
   }
 }
 
