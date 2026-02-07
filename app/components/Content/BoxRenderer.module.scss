@@ -1,0 +1,20 @@
+.hbox {
+  display: flex;
+  flex-direction: row;
+  gap: 0.4rem;
+
+  @media (width >= 768px) {
+    gap: 0.8rem;
+  }
+}
+
+
+.vbox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  @media (width >= 768px) {
+    gap: 0.8rem;
+  }
+}

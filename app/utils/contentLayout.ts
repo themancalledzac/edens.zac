@@ -8,24 +8,15 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
+import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
 import {
-  getAspectRatio,
   getContentDimensions,
   getSlotWidth,
-  hasImage,
   isContentCollection,
-  isContentImage,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
-import {
-  calculateRowSizesFromPattern,
-  createRowsArray,
-  type PatternResult,
-  type RowWithPattern,
-} from '@/app/utils/rowStructureAlgorithm';
-
-// Re-export for consumers
-export type { PatternResult, RowWithPattern };
+import { type BoxTree, buildRows, type CombinationPattern } from '@/app/utils/rowCombination';
+import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
 
 /**
  * Simplified Layout utilities for Content system
@@ -35,18 +26,8 @@ export type { PatternResult, RowWithPattern };
 // ===================== Image Classification Helpers =====================
 
 /**
- * Check if content is a 5-star horizontal image (standalone)
- * Note: Square (1:1) is considered vertical, so horizontal means ratio > 1.0
- */
-function isFiveStarHorizontal(item: AnyContentModel | undefined): boolean {
-  if (!item || !hasImage(item) || !isContentImage(item)) return false;
-  const ratio = getAspectRatio(item);
-  return ratio > 1.0 && item.rating === 5;
-}
-
-/**
- * Reorder lonely verticals followed by 5-star horizontals
- * A vertical is "lonely" if previous item can't pair with it (nothing or 5-star horizontal)
+ * Reorder lonely verticals followed by standalone items (5-star horizontals, panoramas)
+ * A vertical is "lonely" if previous item can't pair with it (nothing or standalone item)
  */
 function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
   if (content.length < 2) return content;
@@ -58,10 +39,10 @@ function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
     const current = result[i];
     const next = result[i + 1];
 
-    if (current && next && isVerticalImage(current) && isFiveStarHorizontal(next)) {
+    if (current && next && isVerticalImage(current) && isStandaloneItem(next)) {
       const prev = i > 0 ? result[i - 1] : undefined;
-      // Lonely if nothing before, or previous is 5-star horizontal (can't pair)
-      const isLonely = !prev || isFiveStarHorizontal(prev);
+      // Lonely if nothing before, or previous is standalone (can't pair)
+      const isLonely = !prev || isStandaloneItem(prev);
 
       if (isLonely) {
         // Swap: [V, 5H] → [5H, V]
@@ -159,12 +140,13 @@ export interface CalculatedContentSize {
 }
 
 /**
- * Row with pattern metadata and calculated sizes
- * Used for rendering complex layouts (main-stacked, 5-star patterns, etc.)
+ * Row with calculated sizes and rendering tree
+ * Used for rendering content layouts
  */
 export interface RowWithPatternAndSizes {
-  pattern: PatternResult;
+  patternName: CombinationPattern | 'standard' | 'header';
   items: CalculatedContentSize[];
+  boxTree: BoxTree;
 }
 
 /**
@@ -362,6 +344,52 @@ export interface ProcessContentOptions {
 }
 
 /**
+ * Create a simple horizontal BoxTree from a list of content items.
+ * Used for mobile/simple layouts where all items are arranged horizontally.
+ */
+function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
+  if (items.length === 0) {
+    throw new Error('Cannot create BoxTree from empty items array');
+  }
+
+  if (items.length === 1) {
+    return { type: 'leaf', content: items[0]! };
+  }
+
+  // For 2 items: simple horizontal pair
+  if (items.length === 2) {
+    return {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [
+        { type: 'leaf', content: items[0]! },
+        { type: 'leaf', content: items[1]! },
+      ],
+    };
+  }
+
+  // For 3+ items: build left-associative tree (((a | b) | c) | d)
+  let tree: BoxTree = {
+    type: 'combined',
+    direction: 'horizontal',
+    children: [
+      { type: 'leaf', content: items[0]! },
+      { type: 'leaf', content: items[1]! },
+    ],
+  };
+
+  for (let i = 2; i < items.length; i++) {
+    tree = {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [tree, { type: 'leaf', content: items[i]! }],
+    };
+  }
+
+  return tree;
+}
+
+/**
  * Process content for display with full pattern metadata
  *
  * Supports two layout modes:
@@ -386,11 +414,16 @@ export function processContentForDisplay(
 ): RowWithPatternAndSizes[] {
   const result: RowWithPatternAndSizes[] = [];
 
-  // Create header row first if collectionData is provided
+  // Create header row(s) first if collectionData is provided
+  // On mobile, returns separate rows for cover image and metadata
   if (options?.collectionData) {
-    const headerRow = createHeaderRow(options.collectionData, componentWidth, chunkSize);
-    if (headerRow) {
-      result.push(headerRow);
+    const headerRows = createHeaderRow(options.collectionData, componentWidth, chunkSize, options?.isMobile);
+    if (headerRows) {
+      if (Array.isArray(headerRows)) {
+        result.push(...headerRows);
+      } else {
+        result.push(headerRows);
+      }
     }
   }
 
@@ -400,22 +433,51 @@ export function processContentForDisplay(
 
   // Mobile or pattern detection disabled → use simple slot-based system
   if (options?.isMobile || !usePatternDetection) {
-    const chunks = chunkContent(content, chunkSize);
-    const contentRows = chunks.map(chunk => ({
-      pattern: { type: 'standard' as const, indices: chunk.map((_, i) => i) },
-      items: calculateContentSizes(chunk, componentWidth, chunkSize),
-    }));
+    // On mobile, override chunkSize to mobileSlotWidth (2) so items are
+    // grouped correctly for a narrow viewport instead of using desktop's 4-slot width
+    const effectiveChunkSize = options?.isMobile ? LAYOUT.mobileSlotWidth : chunkSize;
+    const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
+    const chunks = chunkContent(content, effectiveChunkSize);
+    const contentRows = chunks.map(chunk => {
+      const boxTree = createSimpleHorizontalBoxTree(chunk);
+      const items = calculateSizesFromBoxTree(
+        boxTree,
+        componentWidth,
+        effectiveGap,
+        effectiveChunkSize
+      );
+      return {
+        patternName: 'standard' as const,
+        items,
+        boxTree,
+      };
+    });
     result.push(...contentRows);
 
     return result;
   }
 
-  // Desktop with pattern detection → use pattern-based system
-  const rowsWithPatterns = createRowsArray(content, chunkSize);
-  const contentRows = rowsWithPatterns.map(row => ({
-    pattern: row.pattern,
-    items: calculateRowSizesFromPattern(row, componentWidth, chunkSize),
-  }));
+  // Desktop with pattern detection
+  const rowWidth = LAYOUT.desktopSlotWidth;
+
+  // Use buildRows() for pattern-based layout
+  const rows = buildRows(content, rowWidth);
+
+  const contentRows = rows.map(row => {
+    // Use BoxTree-based size calculation (generic, follows tree structure)
+    const items = calculateSizesFromBoxTree(
+      row.boxTree,
+      componentWidth,
+      LAYOUT.gridGap,
+      rowWidth // Pass chunkSize for slot width scaling
+    );
+
+    return {
+      patternName: row.patternName,
+      items,
+      boxTree: row.boxTree,
+    };
+  });
   result.push(...contentRows);
 
   return result;
@@ -776,46 +838,6 @@ function createCoverImageBlock(collection: CollectionModel): ContentParallaxImag
 }
 
 /**
- * Inject header row with cover image and metadata at the top of collection content
- *
- * Creates two blocks that form the first row:
- * - Cover image with title overlay (parallax-enabled)
- * - Metadata text block (date, location, description)
- *
- * Both blocks share the same dimensions for equal 50/50 width split on desktop.
- * Returns empty array if cover image missing or has no dimensions.
- * @param collection - Collection model with cover image and metadata
- * @returns Array of header blocks (empty if no cover image or dimensions)
- * @deprecated Use createHeaderRow() instead, which returns a RowWithPatternAndSizes directly
- */
-export function injectTopRow(collection: CollectionModel): AnyContentModel[] {
-  if (!collection.coverImage) {
-    return [];
-  }
-
-  const coverBlock = createCoverImageBlock(collection);
-
-  if (!coverBlock.imageWidth || !coverBlock.imageHeight) {
-    return [];
-  }
-
-  const headerBlocks: AnyContentModel[] = [coverBlock];
-
-  const metadataItems = buildMetadataItems(collection);
-  const metadataBlock = createMetadataTextBlock(
-    metadataItems,
-    coverBlock.imageWidth,
-    coverBlock.imageHeight
-  );
-
-  if (metadataBlock) {
-    headerBlocks.push(metadataBlock);
-  }
-
-  return headerBlocks;
-}
-
-/**
  * Create header row with cover image and metadata as a RowWithPatternAndSizes
  *
  * Creates a header row that will be prepended to regular content rows.
@@ -833,13 +855,14 @@ export function injectTopRow(collection: CollectionModel): AnyContentModel[] {
  * @param collection - Collection model with cover image and metadata
  * @param componentWidth - Total available width for the row
  * @param _chunkSize - Number of normal-width items per row (unused, kept for API compatibility)
- * @returns RowWithPatternAndSizes with header items, or null if no cover image
+ * @returns RowWithPatternAndSizes (or array on mobile) with header items, or null if no cover image
  */
 export function createHeaderRow(
   collection: CollectionModel,
   componentWidth: number,
-  _chunkSize: number = LAYOUT.defaultChunkSize
-): RowWithPatternAndSizes | null {
+  _chunkSize: number = LAYOUT.defaultChunkSize,
+  isMobile: boolean = false
+): RowWithPatternAndSizes | RowWithPatternAndSizes[] | null {
   if (!collection.coverImage) {
     return null;
   }
@@ -850,12 +873,48 @@ export function createHeaderRow(
     return null;
   }
 
-  // Height-constrained sizing for header row
+  const coverAspectRatio = coverBlock.imageWidth / coverBlock.imageHeight;
+
+  // Add metadata block if it has content
+  const metadataItems = buildMetadataItems(collection);
+  const metadataBlock = createMetadataTextBlock(
+    metadataItems,
+    coverBlock.imageWidth,
+    coverBlock.imageHeight
+  );
+
+  // Mobile: each header item is its own full-width row
+  // Cover image is sized via calculateSizesFromBoxTree (respects aspect ratio)
+  // Metadata text block only takes the height its content needs
+  if (isMobile) {
+    const rows: RowWithPatternAndSizes[] = [];
+
+    // Cover image row — sized exactly like a single-item content row
+    const coverTree: BoxTree = { type: 'leaf', content: coverBlock };
+    const coverItems = calculateSizesFromBoxTree(
+      coverTree,
+      componentWidth,
+      LAYOUT.mobileGridGap,
+      LAYOUT.mobileSlotWidth
+    );
+    rows.push({ patternName: 'header' as const, items: coverItems, boxTree: coverTree });
+
+    // Metadata row — full width, auto height (rendered via text block)
+    if (metadataBlock) {
+      const metaTree: BoxTree = { type: 'leaf', content: metadataBlock };
+      const metaItems: CalculatedContentSize[] = [
+        { content: metadataBlock, width: componentWidth, height: 0 },
+      ];
+      rows.push({ patternName: 'header' as const, items: metaItems, boxTree: metaTree });
+    }
+
+    return rows;
+  }
+
+  // Desktop: side-by-side layout with height-constrained sizing
   const maxRowHeight = componentWidth * LAYOUT.headerRowHeightRatio;
   const minCoverWidth = componentWidth * LAYOUT.headerCoverMinRatio;
   const maxCoverWidth = componentWidth * LAYOUT.headerCoverMaxRatio;
-
-  const coverAspectRatio = coverBlock.imageWidth / coverBlock.imageHeight;
 
   // Calculate cover width needed to achieve maxRowHeight
   // height = width / aspectRatio, so width = height * aspectRatio
@@ -872,28 +931,18 @@ export function createHeaderRow(
     { content: coverBlock, width: coverWidth, height: rowHeight },
   ];
 
-  // Add metadata block if it has content
-  const metadataItems = buildMetadataItems(collection);
-  const metadataBlock = createMetadataTextBlock(
-    metadataItems,
-    coverBlock.imageWidth,
-    coverBlock.imageHeight
-  );
-
   if (metadataBlock) {
     // Description gets remaining width, same height as cover
     const descWidth = componentWidth - coverWidth;
     calculatedSizes.push({ content: metadataBlock, width: descWidth, height: rowHeight });
   }
 
-  // Create pattern result with 'standard' type
-  const pattern: PatternResult = {
-    type: 'standard',
-    indices: calculatedSizes.map((_, index) => index),
-  };
+  // Create boxTree from the calculated items (cover image + metadata block if present)
+  const boxTreeItems = calculatedSizes.map(item => item.content);
 
   return {
-    pattern,
+    patternName: 'header' as const,
     items: calculatedSizes,
+    boxTree: createSimpleHorizontalBoxTree(boxTreeItems),
   };
 }

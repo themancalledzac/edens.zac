@@ -10,16 +10,15 @@ import {
   type ContentImageModel,
   type ContentParallaxImageModel,
 } from '@/app/types/Content';
-import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import {
   type CalculatedContentSize,
   isContentVisibleInCollection,
   processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
-import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
+import { type BoxTree } from '@/app/utils/rowCombination';
 
-import CollectionContentRenderer from './CollectionContentRenderer';
+import { BoxRenderer } from './BoxRenderer';
 import cbStyles from './ContentComponent.module.scss';
 
 export interface ContentComponentProps {
@@ -133,132 +132,80 @@ export default function Component({
   // Early return for empty state
   if (rows.length === 0) return <div />;
 
-  // Helper to build full props for a renderer
-  const buildRendererProps = (
-    item: CalculatedContentSize,
-    totalInRow: number,
-    index: number,
-    positionOverride?: string
-  ): CollectionContentRendererProps => {
-    const rendererProps = determineContentRendererProps(item, totalInRow, index, isMobile, {
-      imageSingle: cbStyles.imageSingle || '',
-      imageLeft: cbStyles.imageLeft || '',
-      imageRight: cbStyles.imageRight || '',
-      imageMiddle: cbStyles.imageMiddle || '',
-    });
+  // Create a simple horizontal BoxTree from content items as fallback
+  const createSimpleBoxTree = (items: CalculatedContentSize[]): BoxTree => {
+    const contents = items.map(item => item.content);
 
-    // Apply position override if provided (for stacked layouts)
-    if (positionOverride) {
-      rendererProps.className = positionOverride;
+    if (contents.length === 1) {
+      return { type: 'leaf' as const, content: contents[0]! };
     }
 
-    return {
-      ...rendererProps,
-      enableDragAndDrop,
-      draggedImageId,
-      onImageClick,
-      enableFullScreenView,
-      onFullScreenImageClick,
-      selectedImageIds,
-      currentCollectionId,
-      isSelectingCoverImage,
-      currentCoverImageId,
-      justClickedImageId,
-      onDragStart,
-      onDragOver,
-      onDrop,
-      onDragEnd,
+    if (contents.length === 2) {
+      return {
+        type: 'combined' as const,
+        direction: 'horizontal' as const,
+        children: [
+          { type: 'leaf' as const, content: contents[0]! },
+          { type: 'leaf' as const, content: contents[1]! }
+        ]
+      };
+    }
+
+    // For 3+ items: build left-associative tree
+    let tree: BoxTree = {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [
+        { type: 'leaf', content: contents[0]! },
+        { type: 'leaf', content: contents[1]! }
+      ]
     };
+
+    for (let i = 2; i < contents.length; i++) {
+      tree = {
+        type: 'combined',
+        direction: 'horizontal',
+        children: [tree, { type: 'leaf', content: contents[i]! }]
+      };
+    }
+
+    return tree;
   };
 
-  // Check if pattern requires stacked layout (main + stacked secondaries)
-  const isStackedPattern = (patternType: string): boolean => {
-    return [
-      'main-stacked',
-      'panorama-vertical',
-      'five-star-vertical-2v',
-      'five-star-vertical-2h',
-      'five-star-vertical-mixed',
-    ].includes(patternType);
-  };
-
-  // Render a row based on its pattern type
+  // Render a row using BoxRenderer (generic recursive renderer)
   const renderRow = (row: RowWithPatternAndSizes) => {
-    const { pattern, items } = row;
+    const { patternName, items, boxTree } = row;
     const rowKey = `row-${items.map(item => item.content.id).join('-')}`;
 
-    // Stacked patterns: main image + vertically stacked secondaries
-    if (isStackedPattern(pattern.type) && items.length >= 3) {
-      const mainItem = items[0];
-      const stackedItems = items.slice(1);
+    // Safety: If boxTree is missing (shouldn't happen), create a fallback
+    const tree = boxTree || createSimpleBoxTree(items);
 
-      if (!mainItem) {
-        return null;
-      }
+    // Build sizes map from items (convert ID to string for Map key)
+    const sizesMap = new Map(
+      items.map(item => [String(item.content.id), { width: item.width, height: item.height }])
+    );
 
-      // Check if main should be positioned on the right
-      const isMainOnRight =
-        pattern.type === 'main-stacked' &&
-        'mainPosition' in pattern &&
-        pattern.mainPosition === 'right';
-
-      const mainProps = buildRendererProps(
-        mainItem,
-        2,
-        0,
-        isMainOnRight ? cbStyles.imageRight : cbStyles.imageLeft
-      );
-
-      const stackedContainerClass = isMainOnRight
-        ? `${cbStyles.stackedContainer} ${cbStyles.stackedContainerRight}`
-        : cbStyles.stackedContainer;
-
-      return (
-        <div key={rowKey} className={cbStyles.row}>
-          {isMainOnRight ? (
-            // Flipped layout: stacked container first, then main
-            <>
-              <div className={stackedContainerClass}>
-                {stackedItems.map((item, stackIndex) => {
-                  const stackedProps = buildRendererProps(
-                    item,
-                    stackedItems.length,
-                    stackIndex,
-                    cbStyles.imageSingle
-                  );
-                  return <CollectionContentRenderer key={item.content.id} {...stackedProps} />;
-                })}
-              </div>
-              <CollectionContentRenderer {...mainProps} />
-            </>
-          ) : (
-            // Normal layout: main first, then stacked container
-            <>
-              <CollectionContentRenderer {...mainProps} />
-              <div className={stackedContainerClass}>
-                {stackedItems.map((item, stackIndex) => {
-                  const stackedProps = buildRendererProps(
-                    item,
-                    stackedItems.length,
-                    stackIndex,
-                    cbStyles.imageSingle
-                  );
-                  return <CollectionContentRenderer key={item.content.id} {...stackedProps} />;
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      );
-    }
-
-    // Standard/standalone patterns: horizontal layout
     return (
-      <div key={rowKey} className={cbStyles.row}>
-        {items.map((item, index) => {
-          const fullProps = buildRendererProps(item, items.length, index);
-          return <CollectionContentRenderer key={item.content.id} {...fullProps} />;
-        })}
+      <div key={rowKey} className={cbStyles.row} data-pattern={patternName}>
+        <BoxRenderer
+          tree={tree}
+          sizes={sizesMap}
+          isMobile={isMobile}
+          enableDragAndDrop={enableDragAndDrop}
+          draggedImageId={draggedImageId}
+          onImageClick={onImageClick}
+          enableFullScreenView={enableFullScreenView}
+          onFullScreenImageClick={onFullScreenImageClick}
+          selectedImageIds={selectedImageIds}
+          currentCollectionId={currentCollectionId}
+          isSelectingCoverImage={isSelectingCoverImage}
+          currentCoverImageId={currentCoverImageId}
+          justClickedImageId={justClickedImageId}
+          onDragStart={onDragStart}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          onDragEnd={onDragEnd}
+        />
       </div>
     );
   };
@@ -267,6 +214,8 @@ export default function Component({
     <div className={cbStyles.wrapper}>
       <div className={cbStyles.inner}>
         {rows.map((row, rowIndex) => {
+          // TODO: Should we be doing 'logic' here, or should we pull this into a helper function outside of the react code
+          //  - 
           const shouldShowSeparator =
             firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
           const rowKey = `row-${row.items.map(item => item.content.id).join('-')}`;

@@ -32,15 +32,15 @@
 
 /* Color variants */
 .white {
-  color: #fff;
+  color: var(--color-white);
 }
 
 .dark {
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .grey {
-  color: #888;
+  color: var(--color-text-muted);
 }
 
 @keyframes spin {
