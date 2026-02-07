@@ -150,11 +150,8 @@ export default function CollectionContentRenderer({
           isSelected: false,
         })}
         style={{
-          // prettier-ignore
-          width: isMobile ? '100%' : (Number.isFinite(width) ? width : 300),
-
-          // prettier-ignore
-          height: isMobile ? 'auto' : (Number.isFinite(height) ? height : 'auto'),
+          width: Number.isFinite(width) ? width : 300,
+          height: height > 0 ? height : 'auto',
           boxSizing: 'border-box',
         }}
       >
@@ -224,9 +221,8 @@ export default function CollectionContentRenderer({
           isSelected: false,
         })}
         style={{
-          width: isMobile ? '100%' : placeholderWidth,
-          height: isMobile ? 'auto' : placeholderHeight,
-          aspectRatio: isMobile ? '3/2' : undefined,
+          width: placeholderWidth,
+          height: placeholderHeight,
           boxSizing: 'border-box',
           position: 'relative',
           backgroundColor: '#e0e0e0',
@@ -377,8 +373,8 @@ export default function CollectionContentRenderer({
           isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
         }),
     style: {
-      width: isMobile ? '100%' : validWidth,
-      height: isMobile ? 'auto' : validHeight,
+      width: validWidth,
+      height: validHeight,
       boxSizing: 'border-box' as const,
       position: 'relative' as const,
       cursor: handleClick ? 'pointer' : 'default',

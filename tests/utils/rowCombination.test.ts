@@ -178,8 +178,8 @@ describe('PATTERNS_BY_PRIORITY', () => {
     expect(PATTERNS_BY_PRIORITY).not.toContain(CombinationPattern.FORCE_FILL);
   });
 
-  it('should have COMPOUND_HERO first (highest priority)', () => {
-    expect(PATTERNS_BY_PRIORITY[0]).toBe(CombinationPattern.COMPOUND_HERO);
+  it('should have STANDALONE first (highest priority)', () => {
+    expect(PATTERNS_BY_PRIORITY[0]).toBe(CombinationPattern.STANDALONE);
   });
 
   it('should have MULTI_SMALL last (lowest priority)', () => {
@@ -899,116 +899,6 @@ describe('matchPattern', () => {
     });
   });
 
-  describe('COMPOUND_HERO pattern', () => {
-    it('should match H5★ at start + 3 low-rated items', () => {
-      const window = [
-        createHorizontalImage(1, 5), // H5★ hero at start
-        createVerticalImage(2, 1),   // V1★
-        createVerticalImage(3, 2),   // V2★
-        createHorizontalImage(4, 2), // H2★
-      ];
-      const result = matchPattern(
-        CombinationPattern.COMPOUND_HERO,
-        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
-        window,
-        DESKTOP
-      );
-      expect(result).not.toBeNull();
-      expect(result!.components).toHaveLength(4);
-      expect(result!.components[0]!.id).toBe(1); // H5★ first
-    });
-
-    it('should match H5★ at end + 3 low-rated items', () => {
-      const window = [
-        createVerticalImage(1, 1),   // V1★
-        createVerticalImage(2, 2),   // V2★
-        createVerticalImage(3, 3),   // V3★ (effective 2)
-        createHorizontalImage(4, 5), // H5★ hero at end
-      ];
-      const result = matchPattern(
-        CombinationPattern.COMPOUND_HERO,
-        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
-        window,
-        DESKTOP
-      );
-      expect(result).not.toBeNull();
-      expect(result!.components).toHaveLength(4);
-      // Hero should be found (pattern matches H5★ first in requirements)
-      const hasH5Star = result!.components.some(c => c.id === 4);
-      expect(hasH5Star).toBe(true);
-      // Original window positions should be tracked
-      expect(result!.usedIndices).toContain(3); // H5★ was at window index 3
-    });
-
-    it('should match H5★ in middle + 3 low-rated items', () => {
-      const window = [
-        createVerticalImage(1, 1),   // V1★
-        createVerticalImage(2, 2),   // V2★
-        createHorizontalImage(3, 5), // H5★ in middle
-        createHorizontalImage(4, 3), // H3★
-      ];
-      const result = matchPattern(
-        CombinationPattern.COMPOUND_HERO,
-        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
-        window,
-        DESKTOP
-      );
-      expect(result).not.toBeNull();
-      expect(result!.components).toHaveLength(4);
-      // Hero found somewhere in the match
-      const hasH5Star = result!.components.some(c => c.id === 3);
-      expect(hasH5Star).toBe(true);
-    });
-
-    it('should NOT match with only 2 supporting items', () => {
-      const window = [
-        createHorizontalImage(1, 5), // H5★
-        createVerticalImage(2, 1),   // V1★
-        createVerticalImage(3, 2),   // V2★
-        // Only 2 supporting items, pattern requires 3
-      ];
-      const result = matchPattern(
-        CombinationPattern.COMPOUND_HERO,
-        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
-        window,
-        DESKTOP
-      );
-      expect(result).toBeNull();
-    });
-
-    it('should NOT match if no H5★ present', () => {
-      const window = [
-        createHorizontalImage(1, 4), // H4★ not enough
-        createVerticalImage(2, 1),
-        createVerticalImage(3, 2),
-        createHorizontalImage(4, 2),
-      ];
-      const result = matchPattern(
-        CombinationPattern.COMPOUND_HERO,
-        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
-        window,
-        DESKTOP
-      );
-      expect(result).toBeNull();
-    });
-
-    it('should NOT match if supporting items too high-rated', () => {
-      const window = [
-        createHorizontalImage(1, 5), // H5★
-        createHorizontalImage(2, 4), // H4★ too high (>3)
-        createHorizontalImage(3, 4), // H4★ too high (>3)
-        createHorizontalImage(4, 4), // H4★ too high (>3)
-      ];
-      const result = matchPattern(
-        CombinationPattern.COMPOUND_HERO,
-        PATTERN_TABLE[CombinationPattern.COMPOUND_HERO],
-        window,
-        DESKTOP
-      );
-      expect(result).toBeNull();
-    });
-  });
-
   describe('edge cases', () => {
     it('should return null for empty window', () => {
       const result = matchPattern(
@@ -1652,7 +1542,10 @@ describe('buildRows', () => {
       ];
       const rows = buildRows(items, DESKTOP);
       for (const row of rows) {
-        if (row.patternName === CombinationPattern.FORCE_FILL) continue;
+        // Skip FORCE_FILL (may exceed normal fill bounds)
+        if (row.patternName === CombinationPattern.FORCE_FILL) {
+          continue;
+        }
         const totalCV = row.components.reduce(
           (sum: number, item: AnyContentModel) => sum + getItemComponentValue(item, DESKTOP),
           0
@@ -1700,73 +1593,8 @@ describe('buildRows', () => {
     });
   });
 
-  describe('layout metadata (Issue 9)', () => {
-    it('should set layout type to horizontal for STANDALONE pattern', () => {
-      const items = [createHorizontalImage(1, 5)];
-      const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.layout).toEqual({ type: 'horizontal' });
-    });
-
-    it('should set layout type to horizontal for HORIZONTAL_PAIR pattern', () => {
-      const items = [createHorizontalImage(1, 4), createHorizontalImage(2, 4)];
-      const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.layout).toEqual({ type: 'horizontal' });
-    });
-
-    it('should set layout type to horizontal for VERTICAL_PAIR pattern', () => {
-      const items = [createVerticalImage(1, 3), createVerticalImage(2, 3)];
-      const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.layout).toEqual({ type: 'horizontal' });
-    });
-
-    it('should set layout type to main-stacked for DOMINANT_VERTICAL_PAIR pattern', () => {
-      const items = [
-        createHorizontalImage(1, 4),
-        createVerticalImage(2, 3),
-        createVerticalImage(3, 3),
-      ];
-      const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.layout).toEqual({
-        type: 'main-stacked',
-        mainIndex: 0,
-        stackedIndices: [1, 2],
-      });
-    });
-
-    it('should set layout type to horizontal for DOMINANT_SECONDARY pattern', () => {
-      const items = [createHorizontalImage(1, 4), createVerticalImage(2, 2)];
-      const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.layout).toEqual({ type: 'horizontal' });
-    });
-
-    it('should set layout type to horizontal for TRIPLE_HORIZONTAL pattern', () => {
-      const items = [
-        createHorizontalImage(1, 3),
-        createHorizontalImage(2, 3),
-        createHorizontalImage(3, 3),
-      ];
-      const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.layout).toEqual({ type: 'horizontal' });
-    });
-
-    it('should set layout type to horizontal for MULTI_SMALL pattern', () => {
-      const items = [
-        createVerticalImage(1, 1),
-        createVerticalImage(2, 1),
-        createVerticalImage(3, 1),
-      ];
-      const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.layout).toEqual({ type: 'horizontal' });
-    });
-
-    it('should set layout type to horizontal for FORCE_FILL pattern', () => {
-      const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 4)];
-      const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.FORCE_FILL);
-      expect(rows[0]?.layout).toEqual({ type: 'horizontal' });
-    });
-
-    it('should preserve layout metadata through multiple rows', () => {
+  describe('pattern names in buildRows output', () => {
+    it('should produce correct patternName for each pattern type', () => {
       const items = [
         createHorizontalImage(1, 4),  // H4★ (cv 2.5)
         createVerticalImage(2, 3),    // V3★ (effective 2, cv 1.25)
@@ -1780,25 +1608,28 @@ describe('buildRows', () => {
 
       expect(rows.length).toBe(3);
 
-      // Row 1: H4★ + V3★ + V3★ → DOMINANT_VERTICAL_PAIR (main-stacked)
+      // Row 1: H4★ + V3★ + V3★ → DOMINANT_VERTICAL_PAIR
       expect(rows[0]?.patternName).toBe(CombinationPattern.DOMINANT_VERTICAL_PAIR);
-      expect(rows[0]?.layout.type).toBe('main-stacked');
       expect(rows[0]?.components.length).toBe(3);
 
-      // Row 2: H5★ → STANDALONE (horizontal)
+      // Row 2: H5★ → STANDALONE
       expect(rows[1]?.patternName).toBe(CombinationPattern.STANDALONE);
-      expect(rows[1]?.layout.type).toBe('horizontal');
       expect(rows[1]?.components.length).toBe(1);
 
-      // Row 3: H3★ + H3★ + H3★ → TRIPLE_HORIZONTAL (horizontal)
+      // Row 3: H3★ + H3★ + H3★ → TRIPLE_HORIZONTAL
       expect(rows[2]?.patternName).toBe(CombinationPattern.TRIPLE_HORIZONTAL);
-      expect(rows[2]?.layout.type).toBe('horizontal');
       expect(rows[2]?.components.length).toBe(3);
+    });
+
+    it('should produce FORCE_FILL for unmatched combinations', () => {
+      const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 4)];
+      const rows = buildRows(items, DESKTOP);
+      expect(rows[0]?.patternName).toBe(CombinationPattern.FORCE_FILL);
     });
   });
 
   describe('nested quad layout', () => {
-    it('should detect nested-quad layout for 4-item FORCE_FILL with dominant vertical', () => {
+    it('should detect nested-quad boxTree for 4-item FORCE_FILL with dominant vertical', () => {
       // Real Row 15 scenario: V1★, V2★, V4★, H3★
       // V4★ base rating 4 → effective rating 3 (vertical penalty)
       const v1 = createVerticalImage(1, 1); // V1★ → effective 1
@@ -1811,41 +1642,43 @@ describe('buildRows', () => {
 
       expect(rows).toHaveLength(1);
       expect(rows[0]?.patternName).toBe(CombinationPattern.FORCE_FILL);
-      expect(rows[0]?.layout.type).toBe('nested-quad');
 
-      const layout = rows[0]?.layout;
-      if (layout && layout.type === 'nested-quad') {
-        // V4★ should be the main (highest effective rating among verticals)
-        expect(rows[0]?.components[layout.mainIndex]).toEqual(v4);
-
-        // V1★ and V2★ should be the top pair (2 lowest verticals)
-        const topPair = [
-          rows[0]?.components[layout.topPairIndices[0]],
-          rows[0]?.components[layout.topPairIndices[1]],
-        ];
-        expect(topPair).toContain(v1);
-        expect(topPair).toContain(v2);
-
-        // H3★ should be the bottom
-        expect(rows[0]?.components[layout.bottomIndex]).toEqual(h3);
+      // BoxTree should be nested-quad structure: main | (topPair / bottom)
+      const boxTree = rows[0]?.boxTree;
+      expect(boxTree?.type).toBe('combined');
+      if (boxTree?.type === 'combined') {
+        expect(boxTree.direction).toBe('horizontal');
+        // Left child should be the main (V4★)
+        expect(boxTree.children[0].type).toBe('leaf');
+        if (boxTree.children[0].type === 'leaf') {
+          expect(boxTree.children[0].content).toEqual(v4);
+        }
+        // Right child should be vertical stack
+        expect(boxTree.children[1].type).toBe('combined');
+        if (boxTree.children[1].type === 'combined') {
+          expect(boxTree.children[1].direction).toBe('vertical');
+        }
       }
     });
 
     it('should NOT use nested-quad for 4 items without enough verticals', () => {
       // 4 items but only 1 vertical - can't form top pair
-      // Use low ratings so first 3 items don't fill the row (need all 4)
-      const h1a = createHorizontalImage(1, 1);  // cv = 1.00
-      const h1b = createHorizontalImage(2, 1);  // cv = 1.00
-      const h2 = createHorizontalImage(3, 2);   // cv = 1.25
-      const v1 = createVerticalImage(4, 1);     // cv = 1.00
-      // Total: 1.00 + 1.00 + 1.25 + 1.00 = 4.25 → 85% fill (under 90%, but with 4 items)
+      const h1a = createHorizontalImage(1, 1);
+      const h1b = createHorizontalImage(2, 1);
+      const h2 = createHorizontalImage(3, 2);
+      const v1 = createVerticalImage(4, 1);
 
       const items = [h1a, h1b, h2, v1];
       const rows = buildRows(items, 5);
 
       expect(rows).toHaveLength(1);
       expect(rows[0]?.patternName).toBe(CombinationPattern.FORCE_FILL);
-      expect(rows[0]?.layout.type).toBe('horizontal'); // Falls back to standard horizontal (only 1 vertical)
+      // BoxTree should be flat horizontal (no vertical stacking)
+      const boxTree = rows[0]?.boxTree;
+      expect(boxTree?.type).toBe('combined');
+      if (boxTree?.type === 'combined') {
+        expect(boxTree.direction).toBe('horizontal');
+      }
     });
 
     it('should NOT use nested-quad for 3 items', () => {
@@ -1857,8 +1690,8 @@ describe('buildRows', () => {
       const rows = buildRows(items, 5);
 
       expect(rows).toHaveLength(1);
-      // Should use existing main-stacked detection instead
-      expect(rows[0]?.layout.type).not.toBe('nested-quad');
+      // 3 items can't form nested-quad (needs 4)
+      expect(rows[0]?.components.length).toBe(3);
     });
   });
 

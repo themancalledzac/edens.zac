@@ -691,7 +691,7 @@ describe('createHeaderRow', () => {
 
       expect(result).not.toBeNull();
       expect(result?.items).toHaveLength(2);
-      expect(result?.pattern.type).toBe('standard');
+      expect(result?.patternName).toBe('header');
       expect(result?.items[0]?.content.contentType).toBe('IMAGE');
       expect(result?.items[1]?.content.contentType).toBe('TEXT');
     });

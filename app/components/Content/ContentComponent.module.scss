@@ -16,7 +16,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 0;
+  margin-bottom: 0.4rem;
   width: 100%;
 
   /* Desktop styles */
@@ -53,13 +53,16 @@
   padding: 0;
 }
 
+/* Header row metadata needs less border on mobile */
+:global([data-pattern="header"]) .blockContainer {
+  border-width: 2px 0 0 0;
+}
+
 /* Desktop styles for text blocks */
 @media (width >= 768px) {
   .blockContainer {
     border-radius: var(--radius-1);
     border-width: 0;
-
-    /* Desktop specific styles can be added here */
   }
 }
 
@@ -119,6 +122,7 @@
   box-sizing: border-box;
   overflow: hidden;
 }
+
 
 /* Ensure overlay only covers the image, not any padding */
 .overlayContainer img {
@@ -181,16 +185,12 @@
 /* Position styles for content blocks in rows */
 .image {
   margin: 0;
-  /* Mobile base: images have border */
-  border-width: var(--space-mobile-border) 0 0 0;
-  border-style: solid;
-  border-color: white;
+  border: 0;
   width: 100%;
   height: auto;
   padding: 0;
 
   @media (width >= 768px) {
-    border-width: 0;
     border-radius: var(--radius-1);
   }
 }
@@ -362,12 +362,16 @@
 
 /* Metadata block inner container - minimal padding for collection metadata */
 .metadataBlockInner {
-  padding: var(--space-4);
+  padding: var(--space-2);
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+
+  @media (width >= 768px) {
+    padding: var(--space-4);
+  }
 }
 
 .metadataHeaderRow {

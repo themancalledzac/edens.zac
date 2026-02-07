@@ -23,7 +23,7 @@ export const LAYOUT = {
 
   // Padding values (in pixels)
   desktopPadding: 25.6, // 0.8rem each side at ≥768px (0.8 * 16px * 2 = 25.6px)
-  mobilePadding: 40, // mobile full-bleed minus 40px
+  mobilePadding: 0, // mobile full-bleed, edge-to-edge
 
   // Content grid
   defaultChunkSize: 4, // Max items per row (1-2 star images get 1 slot, 3+ star get 2 slots)
@@ -32,6 +32,7 @@ export const LAYOUT = {
   // Grid gap between items (CSS: 0.4rem from each adjacent item = 0.8rem total)
   // This is the visual gap between adjacent items in a row or stacked column
   gridGap: 12.8, // 0.8rem = 12.8px (0.4rem padding on each side)
+  mobileGridGap: 6.4, // 0.4rem = 6.4px (half of desktop gap)
 
   // Pattern detection
   patternWindowSize: 5, // Items to look ahead for pattern detection

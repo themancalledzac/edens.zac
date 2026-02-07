@@ -41,38 +41,18 @@ export type BoxTree =
       children: [BoxTree, BoxTree]
     };
 
-/** Layout descriptor for how a row should be rendered */
-export interface HorizontalLayout {
-  type: 'horizontal';
-}
-
-export interface MainStackedLayout {
-  type: 'main-stacked';
-  mainIndex: number; // Index within components array (typically 0)
-  stackedIndices: [number, number]; // Indices of items to stack (typically [1, 2])
-}
-
-export interface NestedQuadLayout {
+/** Nested quad layout detected in FORCE_FILL rows */
+interface NestedQuadLayout {
   type: 'nested-quad';
-  mainIndex: number; // Index of the dominant image (full row height)
-  topPairIndices: [number, number]; // Indices of items in the top horizontal pair
-  bottomIndex: number; // Index of the bottom item
+  mainIndex: number;
+  topPairIndices: [number, number];
+  bottomIndex: number;
 }
-
-export interface CompoundHeroLayout {
-  type: 'compound-hero';
-  heroIndex: number; // Index of the H5★ hero image (full width)
-  heroPosition: 'top' | 'bottom'; // Where hero appears in the compound row
-  supportingIndices: number[]; // Indices of supporting items (horizontal row)
-}
-
-export type LayoutDescriptor = HorizontalLayout | MainStackedLayout | NestedQuadLayout | CompoundHeroLayout;
 
 /** Defines a known-good combination pattern */
 export interface PatternDef {
   requires: PatternRequirement[];
   direction: 'horizontal' | 'vertical' | null;
-  layout: LayoutDescriptor; // Single source of truth for pattern rendering
   /** Ideal proximity for Rule 2 pattern matching (0 = same rating only) */
   ratingProximity?: number;
   /** Absolute max proximity for Rule 3 fallback — prevents absurd pairings like H5*+H0* */
@@ -87,7 +67,6 @@ export interface MatchResult {
   usedIndices: number[];
   components: AnyContentModel[];
   direction: 'horizontal' | 'vertical' | null;
-  layout?: LayoutDescriptor; // Optional custom layout (e.g., nested-quad for 4-item FORCE_FILL)
 }
 
 // =============================================================================
@@ -96,7 +75,6 @@ export interface MatchResult {
 
 export enum CombinationPattern {
   STANDALONE = 'STANDALONE',
-  COMPOUND_HERO = 'COMPOUND_HERO',
   HORIZONTAL_PAIR = 'HORIZONTAL_PAIR',
   VERTICAL_PAIR = 'VERTICAL_PAIR',
   DOMINANT_SECONDARY = 'DOMINANT_SECONDARY',
@@ -117,19 +95,7 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
   [CombinationPattern.STANDALONE]: {
     requires: [{ orientation: 'horizontal', minRating: 5 }],
     direction: null,
-    layout: { type: 'horizontal' },
-    minRowWidth: 5,
-  },
 
-  [CombinationPattern.COMPOUND_HERO]: {
-    requires: [
-      { orientation: 'horizontal', minRating: 5 }, // H5★ hero (can be anywhere in match)
-      { minRating: 0, maxRating: 3 }, // Supporting items (3 low-rated items needed for ~90%+ fill)
-      { minRating: 0, maxRating: 3 },
-      { minRating: 0, maxRating: 3 },
-    ],
-    direction: null, // Compound layout (vertical stack with hero + horizontal row)
-    layout: { type: 'compound-hero', heroIndex: 0, heroPosition: 'top', supportingIndices: [1, 2, 3] },
     minRowWidth: 5,
   },
 
@@ -139,7 +105,7 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
       { orientation: 'horizontal', minRating: 3, maxRating: 4 },
     ],
     direction: 'horizontal',
-    layout: { type: 'horizontal' },
+
     ratingProximity: 1,
     minRowWidth: 4,
   },
@@ -150,7 +116,7 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
       { orientation: 'vertical', minRating: 0, maxRating: 4 },
     ],
     direction: 'horizontal',
-    layout: { type: 'horizontal' },
+
     ratingProximity: 0,
     maxProximity: 2,
     minRowWidth: 4,
@@ -162,7 +128,7 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
       { orientation: 'vertical', minRating: 0, maxRating: 3 },
     ],
     direction: 'horizontal',
-    layout: { type: 'horizontal' },
+
     maxProximity: 3,
     minRowWidth: 4,
   },
@@ -174,7 +140,7 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
       { orientation: 'horizontal', minRating: 2, maxRating: 3 },
     ],
     direction: 'horizontal',
-    layout: { type: 'horizontal' },
+
     ratingProximity: 0,
     maxProximity: 1,
     minRowWidth: 5,
@@ -187,7 +153,7 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
       { minRating: 0, maxRating: 2 },
     ],
     direction: 'horizontal',
-    layout: { type: 'horizontal' },
+
     ratingProximity: 0,
     maxProximity: 2,
     minRowWidth: 3,
@@ -201,7 +167,6 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
       { minRating: 0, maxRating: 3 }, // Any orientation, effective 0-3
     ],
     direction: 'horizontal',
-    layout: { type: 'main-stacked', mainIndex: 0, stackedIndices: [1, 2] },
     maxProximity: 3,
     minRowWidth: 5,
   },
@@ -209,8 +174,7 @@ export const PATTERN_TABLE: Record<MatchablePattern, PatternDef> = {
 
 /** Patterns ordered by priority (highest value first, Rule 1 gates all) */
 export const PATTERNS_BY_PRIORITY: MatchablePattern[] = [
-  CombinationPattern.COMPOUND_HERO,        // H5★ + 3 supporting (specific use of H5★)
-  CombinationPattern.STANDALONE,           // H5★ alone (generic fallback)
+  CombinationPattern.STANDALONE,           // H5★ alone
   CombinationPattern.HORIZONTAL_PAIR,
   CombinationPattern.DOMINANT_VERTICAL_PAIR,
   CombinationPattern.DOMINANT_SECONDARY,
@@ -258,8 +222,6 @@ export const MAX_FILL_RATIO = 1.15;
  * The lower bound allows small gaps rather than forcing exact fits.
  * The upper bound prevents items from being squeezed far smaller than intended
  * (e.g., 150% fill means each item loses ~1/3 of its intended size).
- *
- * NOTE: COMPOUND_HERO pattern uses custom validation (see buildRows)
  *
  * @param components - Items to check
  * @param rowWidth - Row width budget (e.g., 5 for desktop)
@@ -448,6 +410,66 @@ function getTotalCV(components: AnyContentModel[], rowWidth: number): number {
 
 
 /**
+ * Detect nested-quad layout for a 4-item FORCE_FILL row.
+ *
+ * Criteria:
+ * - Exactly 4 items
+ * - At least 3 verticals (AR <= 1.0)
+ * - Dominant item is the highest-rated vertical → becomes the main (full height)
+ * - Two lowest-rated verticals → top horizontal pair
+ * - Remaining item → bottom
+ *
+ * Layout:
+ * ┌──────────┬───────────┐
+ * │          │ V1* │ V2* │  <- Top pair (2 lowest verticals)
+ * │   Main   ├───────────┤
+ * │  (V4*)   │  Bottom   │  <- Bottom single
+ * └──────────┴───────────┘
+ */
+function detectNestedQuadLayout(
+  components: AnyContentModel[],
+  rowWidth: number
+): NestedQuadLayout | null {
+  if (components.length !== 4) return null;
+
+  // Map items with metadata
+  const items = components.map((item, idx) => ({
+    item,
+    idx,
+    rating: getEffectiveRating(item, rowWidth),
+    isVertical: getAspectRatio(item) <= 1.0,
+  }));
+
+  // Need at least 3 verticals
+  const verticals = items.filter(i => i.isVertical);
+  if (verticals.length < 3) return null;
+
+  // Find dominant: highest-rated vertical
+  const sorted = [...verticals].sort((a, b) => b.rating - a.rating);
+  const main = sorted[0]!;
+
+  // Two lowest-rated verticals become top pair
+  const remaining = items.filter(i => i.idx !== main.idx);
+  const remainingVerticals = remaining.filter(i => i.isVertical);
+  remainingVerticals.sort((a, b) => a.rating - b.rating);
+
+  const topPair = remainingVerticals.slice(0, 2);
+  if (topPair.length < 2) return null;
+
+  // Bottom is whatever is left
+  const usedIndices = new Set([main.idx, topPair[0]!.idx, topPair[1]!.idx]);
+  const bottom = items.find(i => !usedIndices.has(i.idx));
+  if (!bottom) return null;
+
+  return {
+    type: 'nested-quad',
+    mainIndex: main.idx,
+    topPairIndices: [topPair[0]!.idx, topPair[1]!.idx],
+    bottomIndex: bottom.idx,
+  };
+}
+
+/**
  * Fallback row completion strategy (Rule 3).
  *
  * Tries sequential fill first (items 0, 1, 2, ...) to preserve original
@@ -488,15 +510,15 @@ export function forceCompleteRow(
   }
 
   if (!seqFailed && seqCount > 0) {
-    console.log('[forceCompleteRow] Sequential fill succeeded with', seqCount, 'items');
     const seqComponents = window.slice(0, seqCount);
     const seqIndices = Array.from({ length: seqCount }, (_, i) => i);
+    const nestedQuad = detectNestedQuadLayout(seqComponents, rowWidth);
 
     return {
       patternName: CombinationPattern.FORCE_FILL,
       usedIndices: seqIndices,
       components: seqComponents,
-      direction: 'horizontal',
+      direction: nestedQuad ? null : 'horizontal',
     };
   }
 
@@ -566,9 +588,6 @@ export function forceCompleteRow(
     }
   }
 
-  // If we've exhausted the window and still not complete, that's acceptable
-  // (final row exception to Rule 1)
-
   return {
     patternName: CombinationPattern.FORCE_FILL,
     usedIndices,
@@ -586,8 +605,7 @@ export interface RowResult {
   components: AnyContentModel[];
   direction: 'horizontal' | 'vertical' | null;
   patternName: CombinationPattern;
-  layout: LayoutDescriptor; // Layout metadata for rendering (KEPT for migration safety)
-  boxTree: BoxTree; // NEW: Recursive rendering tree
+  boxTree: BoxTree;
 }
 
 // =============================================================================
@@ -603,91 +621,17 @@ export interface RowResult {
  *
  * @param pattern - The matched pattern type
  * @param components - The components that matched the pattern
- * @param layout - The layout descriptor (contains indices for complex layouts)
+ * @param nestedQuad - Optional nested quad layout for FORCE_FILL rows with 4+ verticals
  * @returns BoxTree representing the render structure
  */
 function createBoxTreeFromPattern(
   pattern: CombinationPattern,
   components: AnyContentModel[],
-  layout: LayoutDescriptor
+  nestedQuad?: NestedQuadLayout | null
 ): BoxTree {
   // STANDALONE: single leaf
   if (pattern === CombinationPattern.STANDALONE) {
     return { type: 'leaf', content: components[0]! };
-  }
-
-  // COMPOUND_HERO: hero (full width) + supporting items (horizontal row)
-  // Stacked vertically: hero at top or bottom based on original sequence
-  if (pattern === CombinationPattern.COMPOUND_HERO && layout.type === 'compound-hero') {
-    const { heroIndex, supportingIndices, heroPosition } = layout;
-    const hero = components[heroIndex]!;
-    const supporting = supportingIndices.map(idx => components[idx]!);
-
-    console.log('[COMPOUND_HERO BoxTree] Building tree for', supporting.length, 'supporting items');
-    console.log('[COMPOUND_HERO BoxTree] Hero position:', heroPosition);
-    console.log('[COMPOUND_HERO BoxTree] Supporting IDs:', supporting.map(s => s.id));
-
-    // Build left-heavy horizontal tree for supporting items: (((A + B) + C) + D) ...
-    const buildHorizontalTree = (items: AnyContentModel[]): BoxTree => {
-      if (items.length === 1) {
-        return { type: 'leaf', content: items[0]! };
-      }
-      if (items.length === 2) {
-        return {
-          type: 'combined',
-          direction: 'horizontal',
-          children: [
-            { type: 'leaf', content: items[0]! },
-            { type: 'leaf', content: items[1]! }
-          ]
-        };
-      }
-      // 3+ items: build left-heavy tree by adding items one at a time
-      // Result: (((A + B) + C) + D) + E ...
-      let tree: BoxTree = {
-        type: 'combined',
-        direction: 'horizontal',
-        children: [
-          { type: 'leaf', content: items[0]! },
-          { type: 'leaf', content: items[1]! }
-        ]
-      };
-
-      for (let i = 2; i < items.length; i++) {
-        tree = {
-          type: 'combined',
-          direction: 'horizontal',
-          children: [tree, { type: 'leaf', content: items[i]! }]
-        };
-      }
-
-      return tree;
-    };
-
-    const heroLeaf: BoxTree = { type: 'leaf', content: hero };
-    const supportingTree = buildHorizontalTree(supporting);
-
-    // Debug: Print tree structure
-    const printTree = (tree: BoxTree, depth: number = 0): string => {
-      const indent = '  '.repeat(depth);
-      if (tree.type === 'leaf') {
-        return `${indent}LEAF(${tree.content.id})`;
-      }
-      return `${indent}${tree.direction}\n${printTree(tree.children[0], depth + 1)}\n${printTree(tree.children[1], depth + 1)}`;
-    };
-    console.log('[COMPOUND_HERO BoxTree] Supporting tree structure:\n' + printTree(supportingTree));
-
-    // Stack vertically: hero at top or bottom
-    const result: BoxTree = {
-      type: 'combined' as const,
-      direction: 'vertical' as const,
-      children: (heroPosition === 'top'
-        ? [heroLeaf, supportingTree]
-        : [supportingTree, heroLeaf]) as [BoxTree, BoxTree]
-    };
-
-    console.log('[COMPOUND_HERO BoxTree] Final tree structure:\n' + printTree(result));
-    return result;
   }
 
   // HORIZONTAL_PAIR: two leaves side-by-side
@@ -702,7 +646,7 @@ function createBoxTreeFromPattern(
     };
   }
 
-  // VERTICAL_PAIR: two leaves stacked vertically
+  // VERTICAL_PAIR: two leaves side-by-side
   if (pattern === CombinationPattern.VERTICAL_PAIR) {
     return {
       type: 'combined',
@@ -726,34 +670,33 @@ function createBoxTreeFromPattern(
     };
   }
 
-  // DOMINANT_VERTICAL_PAIR (main-stacked): main | (top / bottom)
-  if (pattern === CombinationPattern.DOMINANT_VERTICAL_PAIR && layout.type === 'main-stacked') {
-    const { mainIndex, stackedIndices } = layout;
+  // DOMINANT_VERTICAL_PAIR: main[0] | (stacked[1] / stacked[2])
+  if (pattern === CombinationPattern.DOMINANT_VERTICAL_PAIR) {
     return {
       type: 'combined',
       direction: 'horizontal',
       children: [
-        { type: 'leaf', content: components[mainIndex]! }, // Left: main
+        { type: 'leaf', content: components[0]! },
         {
           type: 'combined',
           direction: 'vertical',
           children: [
-            { type: 'leaf', content: components[stackedIndices[0]]! }, // Top
-            { type: 'leaf', content: components[stackedIndices[1]]! }  // Bottom
+            { type: 'leaf', content: components[1]! },
+            { type: 'leaf', content: components[2]! }
           ]
         }
       ]
     };
   }
 
-  // NESTED_QUAD: main | (topPair / bottom)
-  if (layout.type === 'nested-quad') {
-    const { mainIndex, topPairIndices, bottomIndex } = layout;
+  // NESTED_QUAD (from FORCE_FILL detection): main | (topPair / bottom)
+  if (nestedQuad) {
+    const { mainIndex, topPairIndices, bottomIndex } = nestedQuad;
     return {
       type: 'combined',
       direction: 'horizontal',
       children: [
-        { type: 'leaf', content: components[mainIndex]! }, // Left: main
+        { type: 'leaf', content: components[mainIndex]! },
         {
           type: 'combined',
           direction: 'vertical',
@@ -762,11 +705,11 @@ function createBoxTreeFromPattern(
               type: 'combined',
               direction: 'horizontal',
               children: [
-                { type: 'leaf', content: components[topPairIndices[0]]! }, // Top-left
-                { type: 'leaf', content: components[topPairIndices[1]]! }  // Top-right
+                { type: 'leaf', content: components[topPairIndices[0]]! },
+                { type: 'leaf', content: components[topPairIndices[1]]! }
               ]
             },
-            { type: 'leaf', content: components[bottomIndex]! } // Bottom
+            { type: 'leaf', content: components[bottomIndex]! }
           ]
         }
       ]
@@ -793,7 +736,6 @@ function createBoxTreeFromPattern(
   }
 
   // MULTI_SMALL / FORCE_FILL: chain items horizontally
-  // Handle 2+ items by building a left-heavy tree: ((A + B) + C) + D ...
   if (components.length === 2) {
     return {
       type: 'combined',
@@ -850,13 +792,11 @@ export function buildRows(
   items: AnyContentModel[],
   rowWidth: number
 ): RowResult[] {
-  console.log('[buildRows] Starting with', items.length, 'items, rowWidth=', rowWidth);
   const rows: RowResult[] = [];
   const remaining = [...items];
 
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5); // Working window (lookahead)
-    console.log('[buildRows] Window size:', window.length, 'items');
 
     // RULE 2: Try patterns in priority order
     let matched = false;
@@ -866,83 +806,20 @@ export function buildRows(
 
       const match = matchPattern(patternName, pattern, window, rowWidth);
 
-      // Debug: Log COMPOUND_HERO attempts
-      if (patternName === CombinationPattern.COMPOUND_HERO) {
-        console.log('[COMPOUND_HERO Debug] Match result:', match ? 'MATCHED' : 'NULL', {
-          windowIds: window.map(w => w.id),
-          windowRatings: window.map(w => getItemRating(w, rowWidth)),
-        });
-      }
-
       // RULE 1 gate: Only accept if row is complete
-      // SPECIAL: COMPOUND_HERO validates supporting row separately
-      let isComplete = false;
-      if (match) {
-        if (match.patternName === CombinationPattern.COMPOUND_HERO) {
-          // For COMPOUND_HERO: hero is always 100% (H5★), only validate supporting items
-          const heroIndex = match.components.findIndex(
-            item => getOrientation(item) === 'horizontal' && getItemRating(item, rowWidth) === 5
-          );
-          const supporting = match.components.filter((_, idx) => idx !== heroIndex);
-          isComplete = supporting.length === 3 && isRowComplete(supporting, rowWidth);
-        } else {
-          isComplete = isRowComplete(match.components, rowWidth);
-        }
-      }
+      const isComplete = match ? isRowComplete(match.components, rowWidth) : false;
 
       if (match && isComplete) {
-        console.log('[buildRows] Pattern matched:', patternName, 'with', match.components.length, 'items');
-
-        // COMPOUND_HERO: Dynamically determine hero position based on sequence
-        let customLayout: LayoutDescriptor = pattern.layout;
-        if (match.patternName === CombinationPattern.COMPOUND_HERO) {
-          // Find H5★ hero in matched components
-          const heroIndex = match.components.findIndex(
-            item => getOrientation(item) === 'horizontal' && getItemRating(item, rowWidth) === 5
-          );
-
-          if (heroIndex !== -1) {
-            const supportingIndices = match.components
-              .map((_, idx) => idx)
-              .filter(idx => idx !== heroIndex);
-
-            // Determine position based on hero's original window position
-            const heroWindowIndex = match.usedIndices[heroIndex] || 0;
-            const minUsedIndex = Math.min(...match.usedIndices);
-
-            // Hero at start of consumed range → top; hero at end → bottom
-            const isHeroAtStart = heroWindowIndex === minUsedIndex;
-            const heroPosition: 'top' | 'bottom' = isHeroAtStart ? 'top' : 'bottom';
-
-            customLayout = {
-              type: 'compound-hero',
-              heroIndex,
-              heroPosition,
-              supportingIndices,
-            };
-
-            console.log('[buildRows] 🎯 COMPOUND_HERO matched!', {
-              heroIndex,
-              heroPosition,
-              supportingCount: supportingIndices.length,
-              usedIndices: match.usedIndices,
-              componentRatings: match.components.map(c => getItemRating(c, rowWidth)),
-            });
-          }
-        }
-
         // Generate BoxTree for rendering
         const boxTree = createBoxTreeFromPattern(
           match.patternName,
-          match.components,
-          customLayout
+          match.components
         );
 
         rows.push({
           components: match.components,
           direction: match.direction,
           patternName: match.patternName,
-          layout: customLayout,
           boxTree,
         });
 
@@ -960,20 +837,21 @@ export function buildRows(
     // RULE 3: Fallback — force-fill the row
     if (!matched) {
       const forced = forceCompleteRow(window, rowWidth);
-      const forcedLayout = forced.layout ?? { type: 'horizontal' };
+
+      // Detect nested-quad layout for 4-item rows with multiple verticals
+      const nestedQuad = detectNestedQuadLayout(forced.components, rowWidth);
 
       // Generate BoxTree for rendering
       const boxTree = createBoxTreeFromPattern(
         forced.patternName,
         forced.components,
-        forcedLayout
+        nestedQuad
       );
 
       rows.push({
         components: forced.components,
-        direction: forced.direction,
+        direction: nestedQuad ? null : forced.direction,
         patternName: forced.patternName,
-        layout: forcedLayout, // Use custom layout if provided, else horizontal
         boxTree,
       });
 

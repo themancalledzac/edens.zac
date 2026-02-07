@@ -8,32 +8,15 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
-import {
-  getEffectiveRating,
-  getItemComponentValue,
-  isStandaloneItem,
-} from '@/app/utils/contentRatingUtils';
+import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
 import {
   getContentDimensions,
   getSlotWidth,
   isContentCollection,
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
-import {
-  type BoxTree,
-  buildRows,
-  CombinationPattern,
-  getOrientation,
-  type RowResult,
-} from '@/app/utils/rowCombination';
-import {
-  calculateSizesFromBoxTree,
-  type PatternResult,
-  type RowWithPattern,
-} from '@/app/utils/rowStructureAlgorithm';
-
-// Re-export for consumers
-export type { PatternResult, RowWithPattern };
+import { type BoxTree, buildRows, type CombinationPattern } from '@/app/utils/rowCombination';
+import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
 
 /**
  * Simplified Layout utilities for Content system
@@ -157,13 +140,13 @@ export interface CalculatedContentSize {
 }
 
 /**
- * Row with pattern metadata and calculated sizes
- * Used for rendering complex layouts (main-stacked, 5-star patterns, etc.)
+ * Row with calculated sizes and rendering tree
+ * Used for rendering content layouts
  */
 export interface RowWithPatternAndSizes {
-  pattern: PatternResult;
+  patternName: CombinationPattern | 'standard' | 'header';
   items: CalculatedContentSize[];
-  boxTree: BoxTree; // Recursive rendering tree (replaces pattern-specific rendering)
+  boxTree: BoxTree;
 }
 
 /**
@@ -360,98 +343,6 @@ export interface ProcessContentOptions {
   collectionData?: CollectionModel;
 }
 
-// ===================== RowResult → RowWithPattern Mapping =====================
-
-/**
- * Detect if a 3-item FORCE_FILL row should use main-stacked layout.
- *
- * Main-stacked is appropriate when:
- * - There's one dominant item (higher rating/component value)
- * - Two smaller items that can be stacked vertically beside it
- *
- * Heuristic: If one item has significantly higher component value than the others,
- * and the other two are similar to each other, use main-stacked.
- */
-function detectMainStackedFallback(
-  components: AnyContentModel[],
-  indices: number[]
-): RowWithPattern | null {
-  if (components.length !== 3) return null;
-
-  const rowWidth = LAYOUT.desktopSlotWidth;
-
-  // Get component values for all three items
-  const values = components.map(item => getItemComponentValue(item, rowWidth));
-  const ratings = components.map(item => getEffectiveRating(item, rowWidth));
-  const orientations = components.map(item => getOrientation(item));
-
-  // Ensure all values are valid
-  if (values.length !== 3 || ratings.length !== 3 || orientations.length !== 3) {
-    return null;
-  }
-
-  // Find the item with the HIGHEST RATING (not component value!)
-  // The highest-rated image should be the dominant/main image
-  const maxRating = Math.max(...ratings);
-  const maxIndex = ratings.indexOf(maxRating);
-
-  // Get the other two indices
-  const otherIndices = [0, 1, 2].filter(i => i !== maxIndex);
-
-  // Ensure we have exactly 2 other indices
-  if (otherIndices.length !== 2) return null;
-
-  const otherValues = otherIndices.map(i => values[i]!);
-
-  // Main-stacked criteria:
-  // 1. Dominant item has rating >= 3 OR component value >= 40% of row
-  // 2. Dominant item's value is at least 1.3x larger than either secondary
-  // 3. The two secondaries combined should roughly balance the dominant
-  const dominantRating = ratings[maxIndex]!;
-  const dominantValue = values[maxIndex]!;
-  const secondariesTotal = otherValues[0]! + otherValues[1]!;
-
-  const isDominant = dominantRating >= 3 || dominantValue >= rowWidth * 0.4;
-  const isSignificantlyLarger = dominantValue >= Math.max(...otherValues) * 1.3;
-  const isBalanced = secondariesTotal >= dominantValue * 0.6; // Secondaries should be substantial
-
-  // Prefer horizontal dominant with vertical secondaries, but not strictly required
-  const dominantOrientation = orientations[maxIndex];
-  const hasVerticalSecondaries = otherIndices.some(i => orientations[i] === 'vertical');
-
-  // Bonus: give preference if the dominant is horizontal and secondaries are vertical
-  const classicMainStacked = dominantOrientation === 'horizontal' && hasVerticalSecondaries;
-
-  if (isDominant && isSignificantlyLarger && (isBalanced || classicMainStacked)) {
-    // Rule 3: Group the secondaries (lower-rated items) together.
-    // The dominant stays at whichever end is nearest to its original position.
-    let orderedItems = components;
-    let mainPos: 'left' | 'right' = maxIndex <= 1 ? 'left' : 'right';
-    let finalMainIndex = maxIndex;
-
-    if (maxIndex === 1) {
-      // Dominant is in the middle — move it to the front so secondaries are adjacent
-      orderedItems = [components[1]!, components[0]!, components[2]!];
-      finalMainIndex = 0;
-      mainPos = 'left';
-    }
-    // maxIndex 0 or 2: dominant is already at an end, secondaries are already adjacent
-
-    return {
-      pattern: {
-        type: 'main-stacked',
-        mainIndex: finalMainIndex,
-        secondaryIndices: (finalMainIndex === 0 ? [1, 2] : [0, 1]) as [number, number],
-        indices,
-        mainPosition: mainPos,
-      },
-      items: orderedItems,
-    };
-  }
-
-  return null;
-}
-
 /**
  * Create a simple horizontal BoxTree from a list of content items.
  * Used for mobile/simple layouts where all items are arranged horizontally.
@@ -499,82 +390,6 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
 }
 
 /**
- * Map a CombinationPattern RowResult from buildRows() to a RowWithPattern
- * compatible with calculateRowSizesFromPattern().
- *
- * Uses the layout metadata from RowResult.layout to determine rendering strategy:
- * - 'main-stacked': One dominant image + vertically stacked secondaries
- * - 'horizontal': Standard side-by-side layout
- *
- * This replaces the old pattern-based switch logic with a simpler layout-driven approach.
- */
-function mapRowResultToRowWithPattern(row: RowResult): RowWithPattern {
-  const indices = row.components.map((_, i) => i);
-
-  // Handle STANDALONE pattern specially (single item full-width)
-  if (row.patternName === CombinationPattern.STANDALONE) {
-    return {
-      pattern: { type: 'standalone', indices: [0] as [number] },
-      items: row.components,
-    };
-  }
-
-  // Use the layout descriptor from the row result
-  if (row.layout.type === 'main-stacked') {
-    return {
-      pattern: {
-        type: 'main-stacked',
-        mainIndex: row.layout.mainIndex,
-        secondaryIndices: row.layout.stackedIndices,
-        indices,
-        mainPosition: 'left',
-      },
-      items: row.components,
-    };
-  }
-
-  if (row.layout.type === 'nested-quad') {
-    return {
-      pattern: {
-        type: 'nested-quad',
-        mainIndex: row.layout.mainIndex,
-        topPairIndices: row.layout.topPairIndices,
-        bottomIndex: row.layout.bottomIndex,
-        indices,
-      },
-      items: row.components,
-    };
-  }
-
-  if (row.layout.type === 'compound-hero') {
-    return {
-      pattern: {
-        type: 'compound-hero',
-        heroIndex: row.layout.heroIndex,
-        heroPosition: row.layout.heroPosition,
-        supportingIndices: row.layout.supportingIndices,
-        indices,
-      },
-      items: row.components,
-    };
-  }
-
-  // Default: standard horizontal layout
-  // Smart fallback: detect if a FORCE_FILL row should be main-stacked
-  if (row.patternName === CombinationPattern.FORCE_FILL && row.components.length === 3) {
-    const mainStackedPattern = detectMainStackedFallback(row.components, indices);
-    if (mainStackedPattern) {
-      return mainStackedPattern;
-    }
-  }
-
-  return {
-    pattern: { type: 'standard', indices },
-    items: row.components,
-  };
-}
-
-/**
  * Process content for display with full pattern metadata
  *
  * Supports two layout modes:
@@ -599,11 +414,16 @@ export function processContentForDisplay(
 ): RowWithPatternAndSizes[] {
   const result: RowWithPatternAndSizes[] = [];
 
-  // Create header row first if collectionData is provided
+  // Create header row(s) first if collectionData is provided
+  // On mobile, returns separate rows for cover image and metadata
   if (options?.collectionData) {
-    const headerRow = createHeaderRow(options.collectionData, componentWidth, chunkSize);
-    if (headerRow) {
-      result.push(headerRow);
+    const headerRows = createHeaderRow(options.collectionData, componentWidth, chunkSize, options?.isMobile);
+    if (headerRows) {
+      if (Array.isArray(headerRows)) {
+        result.push(...headerRows);
+      } else {
+        result.push(headerRows);
+      }
     }
   }
 
@@ -613,12 +433,25 @@ export function processContentForDisplay(
 
   // Mobile or pattern detection disabled → use simple slot-based system
   if (options?.isMobile || !usePatternDetection) {
-    const chunks = chunkContent(content, chunkSize);
-    const contentRows = chunks.map(chunk => ({
-      pattern: { type: 'standard' as const, indices: chunk.map((_, i) => i) },
-      items: calculateContentSizes(chunk, componentWidth, chunkSize),
-      boxTree: createSimpleHorizontalBoxTree(chunk),
-    }));
+    // On mobile, override chunkSize to mobileSlotWidth (2) so items are
+    // grouped correctly for a narrow viewport instead of using desktop's 4-slot width
+    const effectiveChunkSize = options?.isMobile ? LAYOUT.mobileSlotWidth : chunkSize;
+    const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
+    const chunks = chunkContent(content, effectiveChunkSize);
+    const contentRows = chunks.map(chunk => {
+      const boxTree = createSimpleHorizontalBoxTree(chunk);
+      const items = calculateSizesFromBoxTree(
+        boxTree,
+        componentWidth,
+        effectiveGap,
+        effectiveChunkSize
+      );
+      return {
+        patternName: 'standard' as const,
+        items,
+        boxTree,
+      };
+    });
     result.push(...contentRows);
 
     return result;
@@ -630,9 +463,7 @@ export function processContentForDisplay(
   // Use buildRows() for pattern-based layout
   const rows = buildRows(content, rowWidth);
 
-  const contentRows = rows.map((row, rowIndex) => {
-    const rowWithPattern = mapRowResultToRowWithPattern(row);
-
+  const contentRows = rows.map(row => {
     // Use BoxTree-based size calculation (generic, follows tree structure)
     const items = calculateSizesFromBoxTree(
       row.boxTree,
@@ -641,38 +472,10 @@ export function processContentForDisplay(
       rowWidth // Pass chunkSize for slot width scaling
     );
 
-    // Helper to calculate actual rendered width (accounts for tree structure + visual gaps)
-    const getRenderedWidth = (tree: BoxTree, sizes: CalculatedContentSize[]): number => {
-      if (tree.type === 'leaf') {
-        const size = sizes.find(s => s.content === tree.content);
-        return size?.width ?? 0;
-      }
-      return tree.direction === 'horizontal'
-        ? getRenderedWidth(tree.children[0], sizes) +
-            LAYOUT.gridGap +
-            getRenderedWidth(tree.children[1], sizes)
-        : Math.max(
-            getRenderedWidth(tree.children[0], sizes),
-            getRenderedWidth(tree.children[1], sizes)
-          );
-    };
-
-    const renderedWidth = getRenderedWidth(row.boxTree, items);
-    const widths = items.map(item => item.width.toFixed(1));
-    console.log(`[Row ${rowIndex}] Pattern: ${rowWithPattern.pattern.type}`);
-    console.log(`  Target width: ${componentWidth.toFixed(1)}px`);
-    console.log(`  All image widths: [${widths.join(', ')}]`);
-    console.log(
-      `  Actual rendered width: ${renderedWidth.toFixed(1)}px (accounts for vertical stacking)`
-    );
-    console.log(
-      `  Difference: ${(componentWidth - renderedWidth).toFixed(1)}px (should be ~0 + CSS gaps)`
-    );
-
     return {
-      pattern: rowWithPattern.pattern,
+      patternName: row.patternName,
       items,
-      boxTree: row.boxTree, // Pass boxTree for rendering
+      boxTree: row.boxTree,
     };
   });
   result.push(...contentRows);
@@ -1052,13 +855,14 @@ function createCoverImageBlock(collection: CollectionModel): ContentParallaxImag
  * @param collection - Collection model with cover image and metadata
  * @param componentWidth - Total available width for the row
  * @param _chunkSize - Number of normal-width items per row (unused, kept for API compatibility)
- * @returns RowWithPatternAndSizes with header items, or null if no cover image
+ * @returns RowWithPatternAndSizes (or array on mobile) with header items, or null if no cover image
  */
 export function createHeaderRow(
   collection: CollectionModel,
   componentWidth: number,
-  _chunkSize: number = LAYOUT.defaultChunkSize
-): RowWithPatternAndSizes | null {
+  _chunkSize: number = LAYOUT.defaultChunkSize,
+  isMobile: boolean = false
+): RowWithPatternAndSizes | RowWithPatternAndSizes[] | null {
   if (!collection.coverImage) {
     return null;
   }
@@ -1069,12 +873,48 @@ export function createHeaderRow(
     return null;
   }
 
-  // Height-constrained sizing for header row
+  const coverAspectRatio = coverBlock.imageWidth / coverBlock.imageHeight;
+
+  // Add metadata block if it has content
+  const metadataItems = buildMetadataItems(collection);
+  const metadataBlock = createMetadataTextBlock(
+    metadataItems,
+    coverBlock.imageWidth,
+    coverBlock.imageHeight
+  );
+
+  // Mobile: each header item is its own full-width row
+  // Cover image is sized via calculateSizesFromBoxTree (respects aspect ratio)
+  // Metadata text block only takes the height its content needs
+  if (isMobile) {
+    const rows: RowWithPatternAndSizes[] = [];
+
+    // Cover image row — sized exactly like a single-item content row
+    const coverTree: BoxTree = { type: 'leaf', content: coverBlock };
+    const coverItems = calculateSizesFromBoxTree(
+      coverTree,
+      componentWidth,
+      LAYOUT.mobileGridGap,
+      LAYOUT.mobileSlotWidth
+    );
+    rows.push({ patternName: 'header' as const, items: coverItems, boxTree: coverTree });
+
+    // Metadata row — full width, auto height (rendered via text block)
+    if (metadataBlock) {
+      const metaTree: BoxTree = { type: 'leaf', content: metadataBlock };
+      const metaItems: CalculatedContentSize[] = [
+        { content: metadataBlock, width: componentWidth, height: 0 },
+      ];
+      rows.push({ patternName: 'header' as const, items: metaItems, boxTree: metaTree });
+    }
+
+    return rows;
+  }
+
+  // Desktop: side-by-side layout with height-constrained sizing
   const maxRowHeight = componentWidth * LAYOUT.headerRowHeightRatio;
   const minCoverWidth = componentWidth * LAYOUT.headerCoverMinRatio;
   const maxCoverWidth = componentWidth * LAYOUT.headerCoverMaxRatio;
-
-  const coverAspectRatio = coverBlock.imageWidth / coverBlock.imageHeight;
 
   // Calculate cover width needed to achieve maxRowHeight
   // height = width / aspectRatio, so width = height * aspectRatio
@@ -1091,31 +931,17 @@ export function createHeaderRow(
     { content: coverBlock, width: coverWidth, height: rowHeight },
   ];
 
-  // Add metadata block if it has content
-  const metadataItems = buildMetadataItems(collection);
-  const metadataBlock = createMetadataTextBlock(
-    metadataItems,
-    coverBlock.imageWidth,
-    coverBlock.imageHeight
-  );
-
   if (metadataBlock) {
     // Description gets remaining width, same height as cover
     const descWidth = componentWidth - coverWidth;
     calculatedSizes.push({ content: metadataBlock, width: descWidth, height: rowHeight });
   }
 
-  // Create pattern result with 'standard' type
-  const pattern: PatternResult = {
-    type: 'standard',
-    indices: calculatedSizes.map((_, index) => index),
-  };
-
   // Create boxTree from the calculated items (cover image + metadata block if present)
   const boxTreeItems = calculatedSizes.map(item => item.content);
 
   return {
-    pattern,
+    patternName: 'header' as const,
     items: calculatedSizes,
     boxTree: createSimpleHorizontalBoxTree(boxTreeItems),
   };
