@@ -2,6 +2,7 @@
 
 import React from 'react';
 
+import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
 import { type BoxTree } from '@/app/utils/rowCombination';
@@ -19,7 +20,7 @@ interface BoxRendererProps {
   draggedImageId?: number | null;
   onImageClick?: (imageId: number) => void;
   enableFullScreenView?: boolean;
-  onFullScreenImageClick?: (image: any) => void;
+  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void;
   selectedImageIds?: number[];
   currentCollectionId?: number;
   isSelectingCoverImage?: boolean;
