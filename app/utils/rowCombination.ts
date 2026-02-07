@@ -805,26 +805,6 @@ function createBoxTreeFromPattern(
     };
   }
 
-  // For 3 items, check if it's actually a main-stacked layout (H + V + V or V + V + H)
-  if (components.length === 3 && layout.type === 'main-stacked') {
-    const { mainIndex, stackedIndices } = layout;
-    return {
-      type: 'combined',
-      direction: 'horizontal',
-      children: [
-        { type: 'leaf', content: components[mainIndex]! }, // Main
-        {
-          type: 'combined',
-          direction: 'vertical',
-          children: [
-            { type: 'leaf', content: components[stackedIndices[0]]! }, // Top
-            { type: 'leaf', content: components[stackedIndices[1]]! }  // Bottom
-          ]
-        }
-      ]
-    };
-  }
-
   // For 3+ items, build left-heavy horizontal tree
   if (components.length >= 3) {
     let tree: BoxTree = {
