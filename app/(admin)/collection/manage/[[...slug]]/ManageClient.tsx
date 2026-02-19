@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
+import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
@@ -12,6 +13,7 @@ import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBloc
 import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
+  createChildCollection,
   createCollection,
   getCollectionUpdateMetadata,
   updateCollection,
@@ -37,13 +39,14 @@ import {
 
 import styles from './ManageClient.module.scss';
 import {
+  applyArrowMove,
+  applyPickAndPlace,
   applyReorderChangesOptimistically,
-  buildCollectionsUpdate,
+  buildReorderChangesFromFinalOrder,
   buildUpdatePayload,
-  calculateReorderChanges,
+  cancelImageMoves,
   COVER_IMAGE_FLASH_DURATION,
   executeReorderOperation,
-  getCurrentSelectedCollections,
   getDisplayedCoverImage,
   handleApiError,
   handleCollectionNavigation,
@@ -52,6 +55,8 @@ import {
   handleSingleImageEdit,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
+  type ReorderMove,
+  replayMoves,
   revalidateCollectionCache,
 } from './manageUtils';
 
@@ -90,12 +95,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
   const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
   const [isTextBlockModalOpen, setIsTextBlockModalOpen] = useState(false);
-  const [dragState, setDragState] = useState<{
-    draggedId: number | null;
-    dragOverId: number | null;
+  const [reorderState, setReorderState] = useState<{
+    active: boolean;
+    originalOrder: number[];
+    moves: ReorderMove[];
+    pickedUpImageId: number | null;
   }>({
-    draggedId: null,
-    dragOverId: null,
+    active: false,
+    originalOrder: [],
+    moves: [],
+    pickedUpImageId: null,
   });
 
   const [createData, setCreateData] = useState<CollectionCreateRequest>({
@@ -183,6 +192,23 @@ export default function ManageClient({ slug }: ManageClientProps) {
       ),
     [collection?.content, collection?.id, collection?.displayMode]
   );
+
+  // Compute the current display order from reorder state
+  const reorderDisplayOrder = useMemo(() => {
+    if (!reorderState.active) return [];
+    return replayMoves(reorderState.originalOrder, reorderState.moves);
+  }, [reorderState.active, reorderState.originalOrder, reorderState.moves]);
+
+  // When in reorder mode, reorder processedContent according to the replay order
+  const displayContent = useMemo(() => {
+    if (!reorderState.active || !processedContent) return processedContent;
+    const orderMap = new Map(reorderDisplayOrder.map((id, i) => [id, i]));
+    return [...processedContent].sort((a, b) => {
+      const aIdx = orderMap.get(a.id) ?? Infinity;
+      const bIdx = orderMap.get(b.id) ?? Infinity;
+      return aIdx - bIdx;
+    });
+  }, [reorderState.active, processedContent, reorderDisplayOrder]);
 
   // Derive imagesToEdit from selectedImageIds
   const imagesToEdit = useMemo(
@@ -294,19 +320,20 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Build payload with only changed fields
       const payload = buildUpdatePayload(updateData, collection);
 
-      await updateCollection(collection.id, payload);
+      // Update collection - response includes full CollectionUpdateResponseDTO with updated slug and all metadata
+      const response = await updateCollection(collection.id, payload);
 
-      // Re-fetch using admin endpoint to get full data with collections arrays
-      const response = await getCollectionUpdateMetadata(collection.slug);
+      // Update currentState with response (includes collection + all metadata)
+      setCurrentState(response);
 
-      // Update currentState with response (merge with existing metadata)
-      setCurrentState(prev => ({
-        ...prev!,
-        collection: response.collection,
-      }));
+      // Update both caches with full admin data
+      collectionStorage.update(response.collection.slug, response.collection);
+      collectionStorage.updateFull(response.collection.slug, response);
 
-      // Update cache with full admin data (includes collections arrays)
-      collectionStorage.update(collection.slug, response.collection);
+      // If slug changed, update URL to reflect new slug
+      if (response.collection.slug !== collection.slug) {
+        router.replace(`/collection/manage/${response.collection.slug}`);
+      }
 
       // Reset coverImageId after successful update
       setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
@@ -379,20 +406,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
         setOperationLoading(true);
         setError(null);
 
-        await updateCollection(collection.id, {
+        // Update cover image - response includes full CollectionUpdateResponseDTO
+        const response = await updateCollection(collection.id, {
           id: collection.id,
           coverImageId: result.coverImageId,
         });
 
-        // Re-fetch collection to get updated cover image
-        const response = await getCollectionUpdateMetadata(collection.slug);
-        setCurrentState(prev => ({
-          ...prev!,
-          collection: response.collection,
-        }));
+        // Update currentState with response (includes collection + all metadata)
+        setCurrentState(response);
 
-        // Update cache
-        collectionStorage.update(collection.slug, response.collection);
+        // Update both caches
+        collectionStorage.update(response.collection.slug, response.collection);
+        collectionStorage.updateFull(response.collection.slug, response);
       } catch (error) {
         setError(handleApiError(error, 'Failed to update cover image'));
       } finally {
@@ -498,6 +523,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         const fullResponse = await getCollectionUpdateMetadata(slug);
         setCurrentState(fullResponse);
         collectionStorage.update(slug, fullResponse.collection);
+        collectionStorage.updateFull(slug, fullResponse);
         await revalidateCollectionCache(slug);
 
         const metadataUpdater = mergeNewMetadata(response, currentState);
@@ -514,24 +540,66 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [currentState]
   );
 
+  /**
+   * Handle successful image deletion - refreshes collection data
+   *
+   * Orchestrates the following steps in sequence:
+   * 1. Re-fetch collection data with full metadata using admin endpoint
+   * 2. Update currentState with full response
+   * 3. Update sessionStorage cache with full admin data
+   * 4. Revalidate Next.js cache for the collection
+   * 5. Clear selected images and exit multi-select mode
+   *
+   * @param _deletedIds - Array of image IDs that were successfully deleted
+   */
+  const handleDeleteSuccess = useCallback(
+    async (_deletedIds: number[]) => {
+      if (!currentState?.collection.slug) return;
+
+      try {
+        const slug = currentState.collection.slug;
+
+        // Re-fetch full collection for state consistency
+        const fullResponse = await getCollectionUpdateMetadata(slug);
+        setCurrentState(fullResponse);
+        collectionStorage.update(slug, fullResponse.collection);
+        collectionStorage.updateFull(slug, fullResponse);
+        await revalidateCollectionCache(slug);
+
+        setSelectedImageIds([]);
+        setIsMultiSelectMode(false);
+      } catch (error) {
+        setError(handleApiError(error, 'Failed to refresh collection after deletion'));
+      }
+    },
+    [currentState]
+  );
+
   // Derive original collection IDs from currentState
   const originalCollectionIds = useMemo(() => {
     const ids = new Set<number>();
     if (collection?.content) {
       for (const block of collection.content) {
         if (isContentCollection(block)) {
-          ids.add(block.id);
+          ids.add(block.referencedCollectionId);
         }
       }
     }
     return ids;
   }, [collection?.content]);
 
-  // Derive current selected collections by applying changes to original collection
-  const currentSelectedCollections: CollectionListModel[] = useMemo(
-    () => getCurrentSelectedCollections(collection?.content, updateData.collections),
-    [updateData.collections, collection?.content]
-  );
+  // Derive pending add/remove sets for CollectionListSelector
+  const pendingAddIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const child of updateData.collections?.newValue || []) {
+      ids.add(child.collectionId);
+    }
+    return ids;
+  }, [updateData.collections?.newValue]);
+
+  const pendingRemoveIds = useMemo(() => {
+    return new Set<number>(updateData.collections?.remove || []);
+  }, [updateData.collections?.remove]);
 
   // Derive current location from collection.location string and updateData.location
   // Handles both original collection location and pending updates
@@ -592,122 +660,275 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }));
   }, []);
 
-  // Handle collections selection changes - simple toggle logic
-  const handleCollectionsChange = useCallback(
-    (value: { id: number; name: string } | Array<{ id: number; name: string }> | null) => {
-      // UnifiedMetadataSelector always passes array for multiSelect
-      const selectedCollections = Array.isArray(value) ? value : [];
+  // Handle collection toggle from CollectionListSelector
+  const handleCollectionToggle = useCallback(
+    (toggledCollection: CollectionListModel) => {
+      setUpdateData(prev => {
+        const currentRemove = new Set(prev.collections?.remove || []);
+        const currentNewValue = prev.collections?.newValue || [];
+        const isSaved = originalCollectionIds.has(toggledCollection.id);
 
-      // Build the collections update using utility function
-      const collectionsUpdate = buildCollectionsUpdate(
-        selectedCollections,
-        originalCollectionIds,
-        updateData.collections
-      );
+        const newRemove = isSaved
+          ? (currentRemove.has(toggledCollection.id)
+            ? [...currentRemove].filter(id => id !== toggledCollection.id)
+            : [...currentRemove, toggledCollection.id])
+          : [...currentRemove];
 
-      setUpdateData(prev => ({
-        ...prev,
-        collections: collectionsUpdate,
-      }));
+        const newNewValue = isSaved
+          ? [...currentNewValue]
+          : (currentNewValue.some(c => c.collectionId === toggledCollection.id)
+            ? currentNewValue.filter(c => c.collectionId !== toggledCollection.id)
+            : [
+                ...currentNewValue,
+                {
+                  collectionId: toggledCollection.id,
+                  name: toggledCollection.name,
+                  visible: true,
+                  orderIndex: currentNewValue.length,
+                },
+              ]);
+
+        // Clean up: if both arrays are empty, clear collections entirely
+        const hasChanges = newRemove.length > 0 || newNewValue.length > 0;
+        return {
+          ...prev,
+          collections: hasChanges
+            ? {
+                ...prev.collections,
+                remove: newRemove.length > 0 ? newRemove : undefined,
+                newValue: newNewValue.length > 0 ? newNewValue : undefined,
+              }
+            : undefined,
+        };
+      });
     },
-    [originalCollectionIds, updateData.collections]
+    [originalCollectionIds]
   );
 
-  // Drag handlers for reordering (supports both IMAGE and COLLECTION content)
-  const handleDragStart = useCallback(
-    (contentId: number) => {
-      if (!collection || collection.displayMode !== 'ORDERED') return;
-      setDragState({ draggedId: contentId, dragOverId: null });
-    },
-    [collection]
-  );
+  // Handle adding new child collection
+  const handleAddNewChild = useCallback(async () => {
+    if (!collection) return;
 
-  const handleDragOver = useCallback(
-    (e: React.DragEvent, contentId: number) => {
-      if (!collection || collection.displayMode !== 'ORDERED' || !dragState.draggedId) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      setDragState(prev => ({ ...prev, dragOverId: contentId }));
-    },
-    [collection, dragState.draggedId]
-  );
+    try {
+      setOperationLoading(true);
+      setError(null);
 
-  const handleDrop = useCallback(
-    async (e: React.DragEvent, targetContentId: number) => {
-      e.preventDefault();
-      if (
-        !dragState.draggedId ||
-        dragState.draggedId === targetContentId ||
-        !collection ||
-        !currentState
-      ) {
-        setDragState({ draggedId: null, dragOverId: null });
-        return;
-      }
+      // Create child collection with default values
+      const response = await createChildCollection(collection.id, {
+        type: CollectionType.PORTFOLIO,
+        title: 'New Child Collection',
+      });
 
-      // Calculate which content items need to be reordered
-      const reorderChanges = calculateReorderChanges(
-        dragState.draggedId,
-        targetContentId,
-        currentState.collection
-      );
+      // Navigate to the new child collection's manage page
+      router.push(`/collection/manage/${response.collection.slug}`);
+    } catch (error) {
+      setError(handleApiError(error, 'Failed to create child collection'));
+    } finally {
+      setOperationLoading(false);
+    }
+  }, [collection, router]);
 
-      if (reorderChanges.length === 0) {
-        setDragState({ draggedId: null, dragOverId: null });
-        return;
-      }
+  // Enter reorder mode
+  const handleEnterReorderMode = useCallback(() => {
+    if (!processedContent) return;
+    // Exit multi-select mode if active
+    setIsMultiSelectMode(false);
+    setSelectedImageIds([]);
+    setReorderState({
+      active: true,
+      originalOrder: processedContent.map(c => c.id),
+      moves: [],
+      pickedUpImageId: null,
+    });
+  }, [processedContent]);
 
-      // OPTIMISTIC UPDATE: Immediately update UI to show the new order
+  // Cancel reorder mode (discard all changes)
+  const handleCancelReorder = useCallback(() => {
+    setReorderState({
+      active: false,
+      originalOrder: [],
+      moves: [],
+      pickedUpImageId: null,
+    });
+  }, []);
+
+  // Save reorder changes to API
+  const handleSaveReorder = useCallback(async () => {
+    if (!collection || !currentState) return;
+    const finalOrder = replayMoves(reorderState.originalOrder, reorderState.moves);
+    const changes = buildReorderChangesFromFinalOrder(finalOrder, reorderState.originalOrder);
+
+    if (changes.length === 0) {
+      handleCancelReorder();
+      return;
+    }
+
+    try {
+      setOperationLoading(true);
+      setError(null);
+
+      // Apply optimistic update
       const optimisticallyUpdatedCollection = applyReorderChangesOptimistically(
         currentState.collection,
-        reorderChanges
+        changes
       );
-
       setCurrentState(prev =>
-        prev
-          ? {
-              ...prev,
-              collection: optimisticallyUpdatedCollection,
-            }
-          : null
+        prev ? { ...prev, collection: optimisticallyUpdatedCollection } : null
       );
 
-      // Clear drag state immediately so UI updates
-      setDragState({ draggedId: null, dragOverId: null });
-
-      // Call API in the background - optimistic update is already showing the correct state
+      await executeReorderOperation(collection.id, changes, collection.slug);
+      handleCancelReorder();
+    } catch (error_) {
+      setError(handleApiError(error_, 'Failed to reorder content.'));
+      // Re-fetch to restore correct state
       try {
-        setOperationLoading(true);
-        setError(null);
-
-        await executeReorderOperation(collection.id, reorderChanges, collection.slug);
-
-        // Success - optimistic update is already correct, nothing more to do
-      } catch (error) {
-        setError(
-          handleApiError(
-            error,
-            'Failed to reorder content. The server may not support reordering this content type.'
-          )
-        );
-
-        // Re-fetch to restore correct state (reverts optimistic update)
-        try {
-          const response = await getCollectionUpdateMetadata(collection.slug);
-          setCurrentState(prev => (prev ? { ...prev, collection: response.collection } : null));
-        } catch {
-          // Silent fail - user already sees the reorder error
-        }
-      } finally {
-        setOperationLoading(false);
+        const response = await getCollectionUpdateMetadata(collection.slug);
+        setCurrentState(prev => (prev ? { ...prev, collection: response.collection } : null));
+      } catch {
+        // Silent fail
       }
+    } finally {
+      setOperationLoading(false);
+    }
+  }, [collection, currentState, reorderState, handleCancelReorder]);
+
+  // Arrow move handler
+  const handleArrowMove = useCallback(
+    (contentId: number, direction: -1 | 1) => {
+      const currentOrder = replayMoves(reorderState.originalOrder, reorderState.moves);
+      const result = applyArrowMove(currentOrder, contentId, direction);
+      if (!result) return;
+      setReorderState(prev => ({
+        ...prev,
+        moves: [...prev.moves, result.move],
+        pickedUpImageId: null,
+      }));
     },
-    [dragState.draggedId, collection, currentState]
+    [reorderState.originalOrder, reorderState.moves]
   );
 
-  const handleDragEnd = useCallback(() => {
-    setDragState({ draggedId: null, dragOverId: null });
+  // Pick up handler
+  const handlePickUp = useCallback((contentId: number) => {
+    setReorderState(prev => ({
+      ...prev,
+      pickedUpImageId: prev.pickedUpImageId === contentId ? null : contentId,
+    }));
   }, []);
+
+  // Place handler (click on target while another image is picked up)
+  const handlePlace = useCallback(
+    (targetId: number) => {
+      if (!reorderState.pickedUpImageId || reorderState.pickedUpImageId === targetId) return;
+      const currentOrder = replayMoves(reorderState.originalOrder, reorderState.moves);
+      const result = applyPickAndPlace(currentOrder, reorderState.pickedUpImageId, targetId);
+      if (!result) return;
+      setReorderState(prev => ({
+        ...prev,
+        moves: [...prev.moves, result.move],
+        pickedUpImageId: null,
+      }));
+    },
+    [reorderState.pickedUpImageId, reorderState.originalOrder, reorderState.moves]
+  );
+
+  // Cancel a single image's moves
+  const handleCancelImageMove = useCallback((contentId: number) => {
+    setReorderState(prev => ({
+      ...prev,
+      moves: cancelImageMoves(prev.moves, contentId),
+      pickedUpImageId: null,
+    }));
+  }, []);
+
+  const renderToolbarActions = () => {
+    const divider = <span className={styles.toolbarDivider} />;
+
+    if (reorderState.active) {
+      return (
+        <>
+          {reorderState.moves.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={handleSaveReorder}
+                className={styles.toolbarButton}
+                disabled={isLoading}
+              >
+                Save Order
+              </button>
+              {divider}
+            </>
+          )}
+          <button type="button" onClick={handleCancelReorder} className={styles.toolbarButton}>
+            Cancel
+          </button>
+        </>
+      );
+    }
+
+    if (isMultiSelectMode) {
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedImageIds([]);
+              setIsMultiSelectMode(false);
+            }}
+            className={styles.toolbarButton}
+          >
+            Cancel
+          </button>
+          {divider}
+          <button
+            type="button"
+            onClick={() => {
+              const allImageIds =
+                collection?.content?.filter(isContentImage).map(img => img.id) || [];
+              setSelectedImageIds(allImageIds);
+            }}
+            className={styles.toolbarButton}
+          >
+            Select All
+          </button>
+          {divider}
+          <button
+            type="button"
+            onClick={handleBulkEdit}
+            className={styles.toolbarButton}
+            disabled={selectedImageIds.length === 0}
+          >
+            Edit {selectedImageIds.length} Image
+            {selectedImageIds.length !== 1 ? 's' : ''}
+          </button>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setIsMultiSelectMode(true)}
+          className={styles.toolbarButton}
+        >
+          Select Multiple
+        </button>
+        {collection?.displayMode !== 'CHRONOLOGICAL' && (
+          <>
+            {divider}
+            <button
+              type="button"
+              onClick={handleEnterReorderMode}
+              className={styles.toolbarButton}
+            >
+              Reorder
+            </button>
+          </>
+        )}
+      </>
+    );
+  };
 
   return (
     <div>
@@ -761,20 +982,33 @@ export default function ManageClient({ slug }: ManageClientProps) {
           {/* UPDATE MODE */}
           {collection && (
             <>
+              <div className={styles.updateAndToolbarWrapper}>
               <div className={styles.updateContainer}>
-                <h2
-                  className={styles.updateHeading}
-                  onClick={() => router.push(`/${collection.slug}`)}
-                >
-                  {collection.title}
-                </h2>
-
-                {displayError && <div className={styles.errorMessage}>{displayError}</div>}
-
                 <form onSubmit={handleUpdate}>
                   <div className={styles.updateFormLayout}>
                     {/* LEFT SECTION */}
                     <div className={styles.leftSection}>
+                      <div className={styles.headingRow}>
+                        <h2
+                          className={styles.updateHeading}
+                          onClick={() => router.push(`/${collection.slug}`)}
+                        >
+                          {collection.title}
+                        </h2>
+                        <label className={styles.headingCheckboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={updateData.visible}
+                            onChange={e =>
+                              setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
+                            }
+                          />
+                          <span>Visible</span>
+                        </label>
+                      </div>
+
+                      {displayError && <div className={styles.errorMessage}>{displayError}</div>}
+
                       {/* Title */}
                       <div className={styles.formGroup}>
                         <label className={styles.formLabel}>Title</label>
@@ -847,23 +1081,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         emptyText="No location set"
                       />
 
-                      {/* Visible Checkbox / Display Mode */}
+                      {/* Display Mode / Row Length */}
                       <div className={styles.formGridHalf}>
-                        <div className={styles.checkboxGroup}>
-                          <label className={styles.checkboxLabel}>
-                            <input
-                              type="checkbox"
-                              checked={updateData.visible}
-                              onChange={e =>
-                                setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
-                              }
-                            />
-                            <span>Visible</span>
-                          </label>
-                        </div>
-
                         <div>
-                          <label className={styles.formLabel}>Display Mode</label>
+                          <label className={styles.formLabel}>Display</label>
                           <select
                             value={updateData.displayMode}
                             onChange={e =>
@@ -874,60 +1095,60 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             }
                             className={styles.formSelect}
                           >
+                            <option value="ORDERED">Default</option>
                             <option value="CHRONOLOGICAL">Chronological</option>
-                            <option value="ORDERED">Ordered</option>
+                            <option value="FIXED">Fixed</option>
                           </select>
                         </div>
-                      </div>
 
-                      {/* Items Per Row (Rows Wide) */}
-                      <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>
-                          Items Per Row
-                          <span className={styles.formLabelHint}> (Default: 4)</span>
-                        </label>
-                        <div className={styles.numberStepperWrapper}>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setUpdateData(prev => ({
-                                ...prev,
-                                rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
-                              }))
-                            }
-                            className={styles.stepperButton}
-                            disabled={(updateData.rowsWide ?? 4) <= 1}
-                          >
-                            ←
-                          </button>
-                          <input
-                            type="number"
-                            min="1"
-                            max="6"
-                            value={updateData.rowsWide ?? ''}
-                            placeholder="4"
-                            onChange={e => {
-                              const value =
-                                e.target.value === '' ? undefined : Number.parseInt(e.target.value);
-                              if (value === undefined || (value >= 1 && value <= 6)) {
-                                setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                        <div>
+                          <label className={styles.formLabel}>
+                            Row Length
+                            <span className={styles.formLabelHint}> (Default: 4)</span>
+                          </label>
+                          <div className={styles.numberStepperWrapper}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setUpdateData(prev => ({
+                                  ...prev,
+                                  rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
+                                }))
                               }
-                            }}
-                            className={styles.numberInput}
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setUpdateData(prev => ({
-                                ...prev,
-                                rowsWide: Math.min(6, (prev.rowsWide ?? 4) + 1),
-                              }))
-                            }
-                            className={styles.stepperButton}
-                            disabled={(updateData.rowsWide ?? 4) >= 6}
-                          >
-                            →
-                          </button>
+                              className={styles.stepperButton}
+                              disabled={(updateData.rowsWide ?? 4) <= 1}
+                            >
+                              ←
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              max="6"
+                              value={updateData.rowsWide ?? ''}
+                              placeholder="4"
+                              onChange={e => {
+                                const value =
+                                  e.target.value === '' ? undefined : Number.parseInt(e.target.value);
+                                if (value === undefined || (value >= 1 && value <= 6)) {
+                                  setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                                }
+                              }}
+                              className={styles.numberInput}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setUpdateData(prev => ({
+                                  ...prev,
+                                  rowsWide: Math.min(6, (prev.rowsWide ?? 4) + 1),
+                                }))
+                              }
+                              className={styles.stepperButton}
+                              disabled={(updateData.rowsWide ?? 4) >= 6}
+                            >
+                              →
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -942,10 +1163,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           className={styles.formTextarea}
                         />
                       </div>
-                    </div>
 
-                    {/* RIGHT SECTION */}
-                    <div className={styles.rightSection}>
                       {/* Cover Image */}
                       <div className={styles.coverImageSection}>
                         <label className={styles.formLabel}>Cover Image</label>
@@ -1001,22 +1219,28 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           </button>
                         </div>
                       </div>
-                      <div className={styles.formSection}>
-                        <h3 className={styles.sectionHeading}>Child Collections</h3>
+                    </div>
 
-                        <UnifiedMetadataSelector<{ id: number; name: string }>
-                          label="Collections"
-                          multiSelect
-                          options={currentState?.collections || []}
-                          selectedValues={currentSelectedCollections}
-                          onChange={handleCollectionsChange}
-                          allowAddNew={false}
-                          getDisplayName={collectionItem => collectionItem.name}
-                          changeButtonText="Select More ▼"
-                          emptyText="No child collections"
-                          simpleChips
-                        />
-                      </div>
+                    {/* RIGHT SECTION */}
+                    <div className={styles.rightSection}>
+                      <CollectionListSelector
+                        allCollections={currentState?.collections || []}
+                        savedCollectionIds={originalCollectionIds}
+                        pendingAddIds={pendingAddIds}
+                        pendingRemoveIds={pendingRemoveIds}
+                        onToggle={handleCollectionToggle}
+                        onNavigate={col => {
+                          if (col.slug) {
+                            router.push(`/collection/manage/${col.slug}`);
+                          } else {
+                            console.error('Cannot navigate to collection: missing slug', col);
+                            setError(`Cannot navigate to collection "${col.name}": missing slug`);
+                          }
+                        }}
+                        onAddNewChild={handleAddNewChild}
+                        label="Child Collections"
+                        excludeCollectionId={collection.id}
+                      />
                     </div>
                   </div>
 
@@ -1035,104 +1259,56 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         'Update Metadata'
                       )}
                     </button>
-
-                    <div className={styles.bulkEditControls}>
-                      {!isMultiSelectMode ? (
-                        <button
-                          type="button"
-                          onClick={() => setIsMultiSelectMode(true)}
-                          className={styles.startBulkEditButton}
-                        >
-                          Select Multiple
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              // Select all image IDs from collection content
-                              const allImageIds =
-                                collection?.content?.filter(isContentImage).map(img => img.id) ||
-                                [];
-                              setSelectedImageIds(allImageIds);
-                            }}
-                            className={styles.startBulkEditButton}
-                          >
-                            Select All
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleBulkEdit}
-                            className={styles.bulkEditButton}
-                            disabled={selectedImageIds.length === 0}
-                          >
-                            Edit {selectedImageIds.length} Image
-                            {selectedImageIds.length > 1 ? 's' : ''}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedImageIds([]);
-                              setIsMultiSelectMode(false);
-                            }}
-                            className={styles.cancelBulkEditButton}
-                          >
-                            Cancel Selection
-                          </button>
-                        </>
-                      )}
-                    </div>
                   </div>
                 </form>
               </div>
 
-              {/* Collection Content */}
-              {processedContent && processedContent.length > 0 && (
-                <>
-                  <div className={styles.contentHeader}>
-                    <h3 className={styles.contentHeading}>
-                      Collection Content ({processedContent.length} items)
-                      {isSelectingCoverImage && (
-                        <span className={styles.selectingNotice}>
-                          (Click any image to set as cover)
-                        </span>
-                      )}
-                      {selectedImageIds.length > 0 && (
-                        <span className={styles.selectingNotice}>
-                          ({selectedImageIds.length} image{selectedImageIds.length > 1 ? 's' : ''}{' '}
-                          selected)
-                        </span>
-                      )}
-                      {collection.displayMode === 'ORDERED' &&
-                        !isSelectingCoverImage &&
-                        selectedImageIds.length === 0 && (
-                          <span className={styles.selectingNotice}>
-                            (Drag and drop images to reorder)
-                          </span>
-                        )}
-                    </h3>
-                  </div>
-                  <ContentBlockWithFullScreen
-                    content={processedContent}
-                    priorityBlockIndex={0}
-                    enableFullScreenView={false}
-                    isSelectingCoverImage={isSelectingCoverImage}
-                    currentCoverImageId={collection.coverImage?.id}
-                    onImageClick={handleImageClick}
-                    justClickedImageId={justClickedImageId}
-                    selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
-                    currentCollectionId={collection.id}
-                    collectionSlug={collection.slug}
-                    collectionData={collection}
-                    enableDragAndDrop={collection.displayMode === 'ORDERED'}
-                    draggedImageId={dragState.draggedId}
-                    dragOverImageId={dragState.dragOverId}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    onDragEnd={handleDragEnd}
-                  />
-                </>
+              {/* Content Toolbar — inside wrapper so margin groups them */}
+              {displayContent && displayContent.length > 0 && (
+                <div className={styles.contentToolbar}>
+                  <span className={styles.toolbarItemCount}>{displayContent.length}</span>
+                  <span className={styles.toolbarDivider} />
+
+                  <div className={styles.toolbarActions}>{renderToolbarActions()}</div>
+
+                  {(isSelectingCoverImage ||
+                    (isMultiSelectMode && selectedImageIds.length > 0) ||
+                    reorderState.active) && (
+                    <span className={styles.toolbarStatus}>
+                      {isSelectingCoverImage && 'Click any image to set as cover'}
+                      {isMultiSelectMode &&
+                        selectedImageIds.length > 0 &&
+                        `${selectedImageIds.length} image${selectedImageIds.length !== 1 ? 's' : ''} selected`}
+                      {reorderState.active && 'Reorder mode \u2014 use arrows or pick and place'}
+                    </span>
+                  )}
+                </div>
+              )}
+              </div>{/* close updateAndToolbarWrapper */}
+
+              {/* Image Grid — outside wrapper */}
+              {displayContent && displayContent.length > 0 && (
+                <ContentBlockWithFullScreen
+                  content={displayContent}
+                  priorityBlockIndex={0}
+                  enableFullScreenView={false}
+                  isSelectingCoverImage={isSelectingCoverImage}
+                  currentCoverImageId={collection.coverImage?.id}
+                  onImageClick={reorderState.active ? undefined : handleImageClick}
+                  justClickedImageId={justClickedImageId}
+                  selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
+                  currentCollectionId={collection.id}
+                  collectionSlug={collection.slug}
+                  collectionData={collection}
+                  isReorderMode={reorderState.active}
+                  reorderMoves={reorderState.moves}
+                  pickedUpImageId={reorderState.pickedUpImageId}
+                  reorderDisplayOrder={reorderDisplayOrder}
+                  onArrowMove={handleArrowMove}
+                  onPickUp={handlePickUp}
+                  onPlace={handlePlace}
+                  onCancelImageMove={handleCancelImageMove}
+                />
               )}
             </>
           )}
@@ -1145,6 +1321,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           scrollPosition={scrollPosition}
           onClose={closeEditor}
           onSaveSuccess={handleMetadataSaveSuccess}
+          onDeleteSuccess={handleDeleteSuccess}
           availableTags={currentState?.tags || []}
           availablePeople={currentState?.people || []}
           availableCameras={currentState?.cameras || []}

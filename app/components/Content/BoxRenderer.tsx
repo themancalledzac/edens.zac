@@ -2,6 +2,7 @@
 
 import React from 'react';
 
+import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
@@ -16,8 +17,6 @@ interface BoxRendererProps {
   sizes: Map<string, { width: number; height: number }>;
   isMobile: boolean;
   // Pass-through props for child renderers
-  enableDragAndDrop?: boolean;
-  draggedImageId?: number | null;
   onImageClick?: (imageId: number) => void;
   enableFullScreenView?: boolean;
   onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void;
@@ -26,10 +25,15 @@ interface BoxRendererProps {
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
   justClickedImageId?: number | null;
-  onDragStart?: (imageId: number) => void;
-  onDragOver?: (e: React.DragEvent, imageId: number) => void;
-  onDrop?: (e: React.DragEvent, imageId: number) => void;
-  onDragEnd?: () => void;
+  // Reorder mode props
+  isReorderMode?: boolean;
+  reorderMoves?: ReorderMove[];
+  pickedUpImageId?: number | null;
+  reorderDisplayOrder?: number[];
+  onArrowMove?: (contentId: number, direction: -1 | 1) => void;
+  onPickUp?: (contentId: number) => void;
+  onPlace?: (targetId: number) => void;
+  onCancelImageMove?: (contentId: number) => void;
   priority?: boolean;
 }
 
@@ -37,8 +41,6 @@ export function BoxRenderer({
   tree,
   sizes,
   isMobile,
-  enableDragAndDrop,
-  draggedImageId,
   onImageClick,
   enableFullScreenView,
   onFullScreenImageClick,
@@ -47,10 +49,14 @@ export function BoxRenderer({
   isSelectingCoverImage,
   currentCoverImageId,
   justClickedImageId,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
+  isReorderMode,
+  reorderMoves,
+  pickedUpImageId,
+  reorderDisplayOrder,
+  onArrowMove,
+  onPickUp,
+  onPlace,
+  onCancelImageMove,
   priority,
 }: BoxRendererProps) {
   // Base case: single leaf
@@ -72,10 +78,16 @@ export function BoxRenderer({
       }
     );
 
+    // Compute per-image reorder state
+    const contentId = tree.content.id;
+    const isPickedUp = isReorderMode && pickedUpImageId === contentId;
+    const hasMoved = isReorderMode && (reorderMoves?.some(m => m.imageId === contentId) ?? false);
+    const orderIndex = reorderDisplayOrder?.indexOf(contentId) ?? -1;
+    const isFirstInOrder = orderIndex === 0;
+    const isLastInOrder = orderIndex === (reorderDisplayOrder?.length ?? 0) - 1;
+
     const fullProps: CollectionContentRendererProps = {
       ...rendererProps,
-      enableDragAndDrop,
-      draggedImageId,
       onImageClick,
       enableFullScreenView,
       onFullScreenImageClick,
@@ -84,10 +96,16 @@ export function BoxRenderer({
       isSelectingCoverImage,
       currentCoverImageId,
       justClickedImageId,
-      onDragStart,
-      onDragOver,
-      onDrop,
-      onDragEnd,
+      isReorderMode,
+      isPickedUp,
+      pickedUpImageId,
+      hasMoved,
+      isFirstInOrder,
+      isLastInOrder,
+      onArrowMove,
+      onPickUp,
+      onPlace,
+      onCancelImageMove,
     };
 
     return <CollectionContentRenderer {...fullProps} />;
@@ -96,48 +114,32 @@ export function BoxRenderer({
   // Recursive case: combined box
   const containerClass = tree.direction === 'horizontal' ? styles.hbox : styles.vbox;
 
+  const childProps = {
+    sizes,
+    isMobile,
+    onImageClick,
+    enableFullScreenView,
+    onFullScreenImageClick,
+    selectedImageIds,
+    currentCollectionId,
+    isSelectingCoverImage,
+    currentCoverImageId,
+    justClickedImageId,
+    isReorderMode,
+    reorderMoves,
+    pickedUpImageId,
+    reorderDisplayOrder,
+    onArrowMove,
+    onPickUp,
+    onPlace,
+    onCancelImageMove,
+    priority,
+  };
+
   return (
     <div className={containerClass}>
-      <BoxRenderer
-        tree={tree.children[0]}
-        sizes={sizes}
-        isMobile={isMobile}
-        enableDragAndDrop={enableDragAndDrop}
-        draggedImageId={draggedImageId}
-        onImageClick={onImageClick}
-        enableFullScreenView={enableFullScreenView}
-        onFullScreenImageClick={onFullScreenImageClick}
-        selectedImageIds={selectedImageIds}
-        currentCollectionId={currentCollectionId}
-        isSelectingCoverImage={isSelectingCoverImage}
-        currentCoverImageId={currentCoverImageId}
-        justClickedImageId={justClickedImageId}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
-        priority={priority}
-      />
-      <BoxRenderer
-        tree={tree.children[1]}
-        sizes={sizes}
-        isMobile={isMobile}
-        enableDragAndDrop={enableDragAndDrop}
-        draggedImageId={draggedImageId}
-        onImageClick={onImageClick}
-        enableFullScreenView={enableFullScreenView}
-        onFullScreenImageClick={onFullScreenImageClick}
-        selectedImageIds={selectedImageIds}
-        currentCollectionId={currentCollectionId}
-        isSelectingCoverImage={isSelectingCoverImage}
-        currentCoverImageId={currentCoverImageId}
-        justClickedImageId={justClickedImageId}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
-        priority={priority}
-      />
+      <BoxRenderer tree={tree.children[0]} {...childProps} />
+      <BoxRenderer tree={tree.children[1]} {...childProps} />
     </div>
   );
 }

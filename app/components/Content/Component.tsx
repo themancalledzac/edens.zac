@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 
+import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -34,14 +35,15 @@ export interface ContentComponentProps {
   currentCollectionId?: number; // ID of current collection (for checking collection-specific visibility)
   chunkSize?: number; // Number of images per row (default: 2)
   collectionData?: CollectionModel; // Collection model for creating header row (cover image + metadata)
-  // Drag-and-drop props for reordering
-  enableDragAndDrop?: boolean;
-  draggedImageId?: number | null;
-  dragOverImageId?: number | null;
-  onDragStart?: (imageId: number) => void;
-  onDragOver?: (e: React.DragEvent, imageId: number) => void;
-  onDrop?: (e: React.DragEvent, imageId: number) => void;
-  onDragEnd?: () => void;
+  // Reorder mode props
+  isReorderMode?: boolean;
+  reorderMoves?: ReorderMove[];
+  pickedUpImageId?: number | null;
+  reorderDisplayOrder?: number[];
+  onArrowMove?: (contentId: number, direction: -1 | 1) => void;
+  onPickUp?: (contentId: number) => void;
+  onPlace?: (targetId: number) => void;
+  onCancelImageMove?: (contentId: number) => void;
 }
 
 /**
@@ -64,13 +66,14 @@ export default function Component({
   currentCollectionId,
   chunkSize = LAYOUT.defaultChunkSize,
   collectionData,
-  enableDragAndDrop = false,
-  draggedImageId,
-  dragOverImageId: _dragOverImageId, // Reserved for drag feedback styling
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
+  isReorderMode = false,
+  reorderMoves,
+  pickedUpImageId,
+  reorderDisplayOrder,
+  onArrowMove,
+  onPickUp,
+  onPlace,
+  onCancelImageMove,
 }: ContentComponentProps) {
   const { contentWidth, isMobile } = useViewport();
 
@@ -90,6 +93,7 @@ export default function Component({
       return processContentForDisplay(content || [], contentWidth, chunkSize, {
         isMobile,
         collectionData,
+        displayMode: collectionData?.displayMode,
       });
     } catch (error) {
       console.error('[Component] processContentForDisplay error', error);
@@ -146,8 +150,8 @@ export default function Component({
         direction: 'horizontal' as const,
         children: [
           { type: 'leaf' as const, content: contents[0]! },
-          { type: 'leaf' as const, content: contents[1]! }
-        ]
+          { type: 'leaf' as const, content: contents[1]! },
+        ],
       };
     }
 
@@ -157,15 +161,15 @@ export default function Component({
       direction: 'horizontal',
       children: [
         { type: 'leaf', content: contents[0]! },
-        { type: 'leaf', content: contents[1]! }
-      ]
+        { type: 'leaf', content: contents[1]! },
+      ],
     };
 
     for (let i = 2; i < contents.length; i++) {
       tree = {
         type: 'combined',
         direction: 'horizontal',
-        children: [tree, { type: 'leaf', content: contents[i]! }]
+        children: [tree, { type: 'leaf', content: contents[i]! }],
       };
     }
 
@@ -191,8 +195,6 @@ export default function Component({
           tree={tree}
           sizes={sizesMap}
           isMobile={isMobile}
-          enableDragAndDrop={enableDragAndDrop}
-          draggedImageId={draggedImageId}
           onImageClick={onImageClick}
           enableFullScreenView={enableFullScreenView}
           onFullScreenImageClick={onFullScreenImageClick}
@@ -201,10 +203,14 @@ export default function Component({
           isSelectingCoverImage={isSelectingCoverImage}
           currentCoverImageId={currentCoverImageId}
           justClickedImageId={justClickedImageId}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          onDragEnd={onDragEnd}
+          isReorderMode={isReorderMode}
+          reorderMoves={reorderMoves}
+          pickedUpImageId={pickedUpImageId}
+          reorderDisplayOrder={reorderDisplayOrder}
+          onArrowMove={onArrowMove}
+          onPickUp={onPickUp}
+          onPlace={onPlace}
+          onCancelImageMove={onCancelImageMove}
         />
       </div>
     );
@@ -215,7 +221,7 @@ export default function Component({
       <div className={cbStyles.inner}>
         {rows.map((row, rowIndex) => {
           // TODO: Should we be doing 'logic' here, or should we pull this into a helper function outside of the react code
-          //  - 
+          //  -
           const shouldShowSeparator =
             firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
           const rowKey = `row-${row.items.map(item => item.content.id).join('-')}`;

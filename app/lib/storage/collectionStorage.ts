@@ -11,15 +11,22 @@
  * - Graceful degradation if storage unavailable or quota exceeded
  */
 
-import { type CollectionModel } from '@/app/types/Collection';
+import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 const STORAGE_KEY_PREFIX = 'collection_cache_';
+const STORAGE_KEY_PREFIX_FULL = 'collection_full_cache_';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 interface CachedCollection {
   data: CollectionModel;
+  timestamp: number;
+  slug: string;
+}
+
+interface CachedFullCollection {
+  data: CollectionUpdateResponseDTO;
   timestamp: number;
   slug: string;
 }
@@ -29,6 +36,13 @@ interface CachedCollection {
  */
 function getStorageKey(slug: string): string {
   return `${STORAGE_KEY_PREFIX}${slug}`;
+}
+
+/**
+ * Build storage key for full collection response (with metadata)
+ */
+function getFullStorageKey(slug: string): string {
+  return `${STORAGE_KEY_PREFIX_FULL}${slug}`;
 }
 
 export const collectionStorage = {
@@ -113,8 +127,10 @@ export const collectionStorage = {
     if (typeof window === 'undefined') return;
 
     try {
-      // Find all keys with our prefix
-      const keys = Object.keys(sessionStorage).filter(key => key.startsWith(STORAGE_KEY_PREFIX));
+      // Find all keys with both prefixes (regular and full)
+      const keys = Object.keys(sessionStorage).filter(
+        key => key.startsWith(STORAGE_KEY_PREFIX) || key.startsWith(STORAGE_KEY_PREFIX_FULL)
+      );
 
       for (const key of keys) {
         sessionStorage.removeItem(key);
@@ -182,6 +198,88 @@ export const collectionStorage = {
         console.error('[collectionStorage] Error updating cache:', error);
       }
       // Ignore errors when updating cache - fail silently to not break the UI
+    }
+  },
+
+  /**
+   * Store full collection response (with metadata arrays) for manage page
+   * @param slug - Collection slug (used as key)
+   * @param data - Full CollectionUpdateResponseDTO to cache
+   */
+  setFull(slug: string, data: CollectionUpdateResponseDTO): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const cached: CachedFullCollection = {
+        data,
+        timestamp: Date.now(),
+        slug,
+      };
+      const key = getFullStorageKey(slug);
+      sessionStorage.setItem(key, JSON.stringify(cached));
+    } catch {
+      // Quota exceeded or storage unavailable - not critical, fail silently
+    }
+  },
+
+  /**
+   * Get cached full collection response if valid
+   * @param slug - Collection slug to retrieve
+   * @returns Cached CollectionUpdateResponseDTO or null if not found/expired
+   */
+  getFull(slug: string): CollectionUpdateResponseDTO | null {
+    if (typeof window === 'undefined') return null;
+
+    try {
+      const key = getFullStorageKey(slug);
+      const item = sessionStorage.getItem(key);
+      if (!item) return null;
+
+      const cached: CachedFullCollection = JSON.parse(item);
+
+      // Verify this is the correct slug
+      if (cached.slug !== slug) {
+        sessionStorage.removeItem(key);
+        return null;
+      }
+
+      // Check if cache is still valid (within 30 minutes)
+      const age = Date.now() - cached.timestamp;
+      const isValid = age < CACHE_DURATION;
+
+      if (!isValid) {
+        sessionStorage.removeItem(key);
+        return null;
+      }
+
+      return cached.data;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Update full collection cache (with metadata)
+   * @param slug - Collection slug
+   * @param data - Updated CollectionUpdateResponseDTO
+   */
+  updateFull(slug: string, data: CollectionUpdateResponseDTO): void {
+    // Same as setFull - overwrites existing cache with new timestamp
+    this.setFull(slug, data);
+  },
+
+  /**
+   * Clear full collection cache for a specific slug
+   * @param slug - Collection slug to clear
+   */
+  clearFull(slug: string): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const key = getFullStorageKey(slug);
+      sessionStorage.removeItem(key);
+    } catch {
+      // Ignore errors when clearing cache
     }
   },
 };

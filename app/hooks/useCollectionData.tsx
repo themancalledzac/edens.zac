@@ -49,14 +49,28 @@ export function useCollectionData(
         setLoading(true);
         setError(null);
 
-        // Always fetch fresh data in manage page to ensure we have complete collection data
-        // (including collections arrays on content items)
+        // Check cache first for instant load (full response with metadata)
+        const cachedResponse = collectionStorage.getFull(slug);
+
+        if (cachedResponse) {
+          // Cache hit - use cached data immediately for instant UI
+          if (isMounted && !abortController.signal.aborted) {
+            onLoadSuccess(cachedResponse);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Cache miss - fetch fresh data
         const response = await getCollectionUpdateMetadata(slug);
 
         if (isMounted && !abortController.signal.aborted) {
-          // Update cache with complete data (includes collections arrays on content items)
+          // Update both caches:
+          // 1. Basic cache for collection pages (CollectionModel only)
           collectionStorage.update(slug, response.collection);
-          
+          // 2. Full cache for manage page (CollectionUpdateResponseDTO with metadata)
+          collectionStorage.updateFull(slug, response);
+
           // Notify parent component of successful load
           onLoadSuccess(response);
         }
@@ -87,7 +101,9 @@ export function useCollectionData(
       setError(null);
 
       const response = await getCollectionUpdateMetadata(slug);
+      // Update both caches
       collectionStorage.update(slug, response.collection);
+      collectionStorage.updateFull(slug, response);
       onLoadSuccess(response);
     } catch (error_) {
       setError(handleApiError(error_, 'Failed to load collection data'));

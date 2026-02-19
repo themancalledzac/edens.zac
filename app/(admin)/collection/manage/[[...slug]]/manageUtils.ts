@@ -5,7 +5,6 @@
 
 import { reorderCollectionContent } from '@/app/lib/api/collections';
 import {
-  type ChildCollection,
   type CollectionModel,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
@@ -82,60 +81,6 @@ export function buildUpdatePayload(
   }
 
   return payload;
-}
-
-/**
- * Extract collection content blocks from a content array
- * Filters content to only CollectionContentModel items (child collections) and maps to selector format
- * Child collections are stored as COLLECTION type in the content array
- *
- * @param content - Array of content blocks from a collection
- * @returns Array of {id, name} objects for use in UnifiedMetadataSelector
- */
-export function getCollectionContentAsSelections(
-  content: AnyContentModel[] | undefined
-): Array<{ id: number; name: string }> {
-  if (!content) return [];
-
-  return content
-    .filter(isContentCollection)
-    .map((collection: ContentCollectionModel) => ({
-      id: collection.id,
-      name: collection.title || collection.slug || '', // Use title if available, fallback to slug
-    }));
-}
-
-/**
- * Get current selected collections by applying changes to original collection
- * Combines original collections (minus removals) with newly added collections
- *
- * @param collectionContent - Array of content blocks from the collection (to extract original collections)
- * @param updateDataCollections - Collections update object with remove and newValue arrays
- * @returns Array of currently selected collections for display in UI
- */
-export function getCurrentSelectedCollections(
-  collectionContent: AnyContentModel[] | undefined,
-  updateDataCollections: CollectionUpdateRequest['collections'] | undefined
-): Array<{ id: number; name: string }> {
-  // Get original collections from collection content
-  const selected = getCollectionContentAsSelections(collectionContent);
-  
-  // Filter out collections that are marked for removal
-  const removeIds = new Set(updateDataCollections?.remove || []);
-  const filtered = selected.filter(c => !removeIds.has(c.id));
-
-  // Add new collections from newValue that aren't already in the filtered list
-  const newCollections = updateDataCollections?.newValue || [];
-  for (const newCollection of newCollections) {
-    if (!filtered.some(c => c.id === newCollection.collectionId)) {
-      filtered.push({
-        id: newCollection.collectionId,
-        name: newCollection.name || '',
-      });
-    }
-  }
-
-  return filtered;
 }
 
 /**
@@ -225,82 +170,6 @@ export function handleApiError(error: unknown, defaultMessage: string): string {
 
   // Fallback to default message
   return defaultMessage;
-}
-
-/**
- * Build collections update object from selection changes
- * Implements simple toggle logic:
- * - Collections in original: deselected -> add to remove, selected -> remove from remove
- * - Collections NOT in original: selected -> add to newValue, deselected -> remove from newValue
- *
- * @param selectedCollections - Currently selected collections from the UI
- * @param originalCollectionIds - Set of collection IDs that exist in the original collection
- * @param currentCollectionsUpdate - Current collections update state from updateData
- * @returns New collections update object for CollectionUpdateRequest
- */
-export function buildCollectionsUpdate(
-  selectedCollections: Array<{ id: number; name: string }>,
-  originalCollectionIds: Set<number>,
-  currentCollectionsUpdate?: CollectionUpdateRequest['collections']
-): CollectionUpdateRequest['collections'] | undefined {
-  const selectedIds = new Set(selectedCollections.map(c => c.id));
-
-  // Get current state from updateData
-  const currentRemove = new Set(currentCollectionsUpdate?.remove || []);
-  const currentNewValue = currentCollectionsUpdate?.newValue || [];
-
-  // Build new state by comparing current selection with original
-  const newRemove = new Set<number>();
-  const newNewValue: ChildCollection[] = [];
-
-  // Process each selected collection
-  for (const [index, selected] of selectedCollections.entries()) {
-    // Collection does NOT exist in original - add to newValue
-    if (!originalCollectionIds.has(selected.id) && !currentNewValue.some(c => c.collectionId === selected.id)) {
-      newNewValue.push({
-        collectionId: selected.id,
-        name: selected.name,
-        visible: true,
-        orderIndex: index,
-      });
-    }
-    // If it exists in original, it stays in original (no action needed)
-  }
-
-  // Process collections that should be removed
-  for (const originalId of originalCollectionIds) {
-    // Original collection is not selected - should be in remove
-    if (!selectedIds.has(originalId) && !currentRemove.has(originalId)) {
-      newRemove.add(originalId);
-    }
-    // If selected, it stays in original (removed from remove list if it was there)
-  }
-
-  // Process collections that should be removed from newValue
-  for (const newCollection of currentNewValue) {
-    // Still selected - keep it
-    if (selectedIds.has(newCollection.collectionId) && !newNewValue.some(c => c.collectionId === newCollection.collectionId)) {
-      newNewValue.push(newCollection);
-    }
-    // If not selected, remove it (by not including in newNewValue)
-  }
-
-  // Build final state
-  const finalRemove = Array.from(new Set([...currentRemove, ...newRemove])).filter(id => {
-    // Only keep removals for collections that are still not selected
-    return !selectedIds.has(id);
-  });
-
-  // Build the update object
-  const collectionsUpdate: CollectionUpdateRequest['collections'] = {};
-  if (finalRemove.length > 0) {
-    collectionsUpdate.remove = finalRemove;
-  }
-  if (newNewValue.length > 0) {
-    collectionsUpdate.newValue = newNewValue;
-  }
-
-  return Object.keys(collectionsUpdate).length > 0 ? collectionsUpdate : undefined;
 }
 
 /**
@@ -471,7 +340,7 @@ export async function refreshCollectionAfterOperation(
   slug: string,
   operation: () => Promise<void>,
   getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>,
-  collectionStorage: { update: (slug: string, collection: CollectionModel) => void }
+  collectionStorage: { update: (slug: string, collection: CollectionModel) => void; updateFull: (slug: string, response: CollectionUpdateResponseDTO) => void }
 ): Promise<CollectionUpdateResponseDTO> {
   // Execute the operation first
   await operation();
@@ -479,8 +348,9 @@ export async function refreshCollectionAfterOperation(
   // Re-fetch collection using admin endpoint to get full data with collections arrays
   const response = await getCollectionUpdateMetadata(slug);
 
-  // Update cache with full admin data (includes collections arrays)
+  // Update both caches with full admin data (includes collections arrays)
   collectionStorage.update(slug, response.collection);
+  collectionStorage.updateFull(slug, response);
 
   return response;
 }
@@ -493,69 +363,6 @@ export async function refreshCollectionAfterOperation(
  * Type for reorder changes (contentId can be image or collection ID)
  */
 export type ReorderChange = { contentId: number; newOrderIndex: number };
-
-/**
- * Calculate which images need to be reordered when dragging one image to another's position
- * Returns array of changes needed for the API call
- * 
- * Simple logic:
- * - If moving FORWARD (lower index → higher index): dragged item takes target position, 
- *   all items between (including target) move BACK by 1
- * - If moving BACKWARD (higher index → lower index): dragged item takes target position,
- *   all items between (including target) move FORWARD by 1
- * 
- * @param draggedContentId - ID of the content being dragged
- * @param targetContentId - ID of the content being dropped on
- * @param collection - Current collection state
- * @returns Array of reorder changes to send to API
- */
-export function calculateReorderChanges(
-  draggedContentId: number,
-  targetContentId: number,
-  collection: CollectionModel
-): ReorderChange[] {
-  const blocks = collection.content || [];
-  const draggedBlock = blocks.find(b => b.id === draggedContentId);
-  const targetBlock = blocks.find(b => b.id === targetContentId);
-
-  if (!draggedBlock || !targetBlock) return [];
-
-  const originalIndex = getContentOrderIndex(draggedBlock);
-  const targetIndex = getContentOrderIndex(targetBlock);
-
-  if (originalIndex === undefined || targetIndex === undefined) return [];
-  if (originalIndex === targetIndex) return []; // No change needed
-
-  const changes: ReorderChange[] = [];
-
-  if (originalIndex < targetIndex) {
-    // Moving FORWARD (e.g., position 2 → position 5)
-    // Dragged item takes target position
-    changes.push({ contentId: draggedContentId, newOrderIndex: targetIndex });
-    
-    // All items between original and target (including target) move BACK by 1
-    for (let i = originalIndex + 1; i <= targetIndex; i++) {
-      const block = blocks.find(b => getContentOrderIndex(b) === i);
-      if (block) {
-        changes.push({ contentId: block.id, newOrderIndex: i - 1 });
-      }
-    }
-  } else {
-    // Moving BACKWARD (e.g., position 5 → position 2)
-    // Dragged item takes target position
-    changes.push({ contentId: draggedContentId, newOrderIndex: targetIndex });
-    
-    // All items between target and original (including target) move FORWARD by 1
-    for (let i = targetIndex; i < originalIndex; i++) {
-      const block = blocks.find(b => getContentOrderIndex(b) === i);
-      if (block) {
-        changes.push({ contentId: block.id, newOrderIndex: i + 1 });
-      }
-    }
-  }
-
-  return changes;
-}
 
 /**
  * Apply reorder changes directly to a collection model (for optimistic updates)
@@ -645,4 +452,98 @@ export function updateBlockOrderIndex(
   };
 }
 
+// ===================== Reorder Mode Utilities =====================
 
+export interface ReorderMove {
+  imageId: number;
+  toIndex: number;
+}
+
+/**
+ * Replay a list of moves against an original order to produce the current display order.
+ * Each move removes the image from its current position and inserts it at toIndex.
+ */
+export function replayMoves(originalOrder: number[], moves: ReorderMove[]): number[] {
+  const order = [...originalOrder];
+  for (const move of moves) {
+    const fromIndex = order.indexOf(move.imageId);
+    if (fromIndex === -1) continue;
+    // Remove from current position
+    order.splice(fromIndex, 1);
+    // Insert at target position
+    order.splice(move.toIndex, 0, move.imageId);
+  }
+  return order;
+}
+
+/**
+ * Apply an arrow move (shift ±1 position) to an image in the current order.
+ * Returns the new order and the move entry to append.
+ */
+export function applyArrowMove(
+  currentOrder: number[],
+  imageId: number,
+  direction: -1 | 1
+): { newOrder: number[]; move: ReorderMove } | null {
+  const fromIndex = currentOrder.indexOf(imageId);
+  if (fromIndex === -1) return null;
+
+  const toIndex = fromIndex + direction;
+  if (toIndex < 0 || toIndex >= currentOrder.length) return null;
+
+  const newOrder = [...currentOrder];
+  // Swap adjacent items
+  newOrder[fromIndex] = currentOrder[toIndex]!;
+  newOrder[toIndex] = imageId;
+
+  return { newOrder, move: { imageId, toIndex } };
+}
+
+/**
+ * Apply pick-and-place: remove pickedId from its current position and insert at targetId's position.
+ * Everything between shifts to fill the gap (splice/insert semantics).
+ */
+export function applyPickAndPlace(
+  currentOrder: number[],
+  pickedId: number,
+  targetId: number
+): { newOrder: number[]; move: ReorderMove } | null {
+  const fromIndex = currentOrder.indexOf(pickedId);
+  const targetIndex = currentOrder.indexOf(targetId);
+  if (fromIndex === -1 || targetIndex === -1 || fromIndex === targetIndex) return null;
+
+  const newOrder = [...currentOrder];
+  // Remove from current position
+  newOrder.splice(fromIndex, 1);
+  // Insert at target position (targetIndex may have shifted after splice)
+  const insertIndex = newOrder.indexOf(targetId);
+  newOrder.splice(insertIndex, 0, pickedId);
+
+  return { newOrder, move: { imageId: pickedId, toIndex: insertIndex } };
+}
+
+/**
+ * Cancel all moves for a given image. Returns the filtered moves array.
+ */
+export function cancelImageMoves(moves: ReorderMove[], imageId: number): ReorderMove[] {
+  return moves.filter(m => m.imageId !== imageId);
+}
+
+/**
+ * Convert a final display order to ReorderChange[] for the API.
+ * Each item gets a newOrderIndex matching its position in the final array.
+ */
+export function buildReorderChangesFromFinalOrder(
+  finalOrder: number[],
+  originalOrder: number[]
+): ReorderChange[] {
+  const changes: ReorderChange[] = [];
+  for (let i = 0; i < finalOrder.length; i++) {
+    const id = finalOrder[i]!;
+    // Only include items whose position actually changed
+    if (originalOrder.indexOf(id) !== i) {
+      changes.push({ contentId: id, newOrderIndex: i });
+    }
+  }
+  return changes;
+}

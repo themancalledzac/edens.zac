@@ -54,19 +54,23 @@ export interface ContentRendererProps {
  * Used by CollectionContentRenderer component
  */
 export interface CollectionContentRendererProps extends ContentRendererProps {
-  // Drag-and-drop props
-  enableDragAndDrop?: boolean;
-  draggedImageId?: number | null;
-  onDragStart?: (imageId: number) => void;
-  onDragOver?: (e: React.DragEvent, imageId: number) => void;
-  onDrop?: (e: React.DragEvent, imageId: number) => void;
-  onDragEnd?: () => void;
-  
+  // Reorder mode props
+  isReorderMode?: boolean;
+  isPickedUp?: boolean;
+  pickedUpImageId?: number | null;
+  hasMoved?: boolean;
+  isFirstInOrder?: boolean;
+  isLastInOrder?: boolean;
+  onArrowMove?: (contentId: number, direction: -1 | 1) => void;
+  onPickUp?: (contentId: number) => void;
+  onPlace?: (targetId: number) => void;
+  onCancelImageMove?: (contentId: number) => void;
+
   // Click handlers
   onImageClick?: (imageId: number) => void;
   enableFullScreenView?: boolean;
   onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void;
-  
+
   // Image-specific overlays (only for IMAGE type)
   selectedImageIds?: number[];
   currentCollectionId?: number;

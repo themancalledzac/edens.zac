@@ -1,0 +1,107 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+
+  // Allow buttons to receive clicks
+  button {
+    pointer-events: auto;
+  }
+
+  &.pickedUp {
+    outline: 3px solid var(--color-primary, #3b82f6);
+    outline-offset: -3px;
+    background: rgba(59, 130, 246, 0.1);
+  }
+}
+
+// Top row with pick-up and cancel buttons
+.topRow {
+  position: absolute;
+  top: var(--space-2, 8px);
+  left: var(--space-2, 8px);
+  right: var(--space-2, 8px);
+  display: flex;
+  justify-content: space-between;
+  z-index: 6;
+}
+
+.pickUpButton,
+.cancelButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease;
+  opacity: 0.8;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.pickUpButton {
+  background: var(--color-primary, #3b82f6);
+  color: white;
+}
+
+.cancelButton {
+  background: var(--color-danger, #ef4444);
+  color: white;
+}
+
+// Arrow buttons centered vertically on left/right edges
+.arrowLeft,
+.arrowRight {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20%;
+  max-width: 48px;
+  height: 40%;
+  max-height: 64px;
+  border: none;
+  border-radius: var(--radius-1, 4px);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 1;
+  }
+
+  &:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+  }
+}
+
+.arrowLeft {
+  left: var(--space-1, 4px);
+}
+
+.arrowRight {
+  right: var(--space-1, 4px);
+}
+
+// Invisible click target that covers the image for placing
+.placeTarget {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: -1; // Behind other buttons but still clickable on image area
+}

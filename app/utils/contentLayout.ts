@@ -69,7 +69,8 @@ function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
  */
 export function chunkContent(
   content: AnyContentModel[],
-  chunkSize: number = LAYOUT.defaultChunkSize
+  chunkSize: number = LAYOUT.defaultChunkSize,
+  options?: { skipReorder?: boolean }
 ): AnyContentModel[][] {
   if (!content || content.length === 0) return [];
 
@@ -77,7 +78,8 @@ export function chunkContent(
   const effectiveChunkSize = Math.max(chunkSize, LAYOUT.minChunkSize);
 
   // Reorder to handle lonely verticals followed by 5-star horizontals
-  const reordered = reorderLonelyVerticals(content);
+  // Skip for FIXED/CHRONOLOGICAL modes where order must be preserved exactly
+  const reordered = options?.skipReorder ? content : reorderLonelyVerticals(content);
 
   const result: AnyContentModel[][] = [];
   let currentRow: AnyContentModel[] = [];
@@ -341,6 +343,8 @@ export interface ProcessContentOptions {
   enablePatternDetection?: boolean;
   /** Collection model for creating header row (cover image + metadata) */
   collectionData?: CollectionModel;
+  /** Display mode — FIXED and CHRONOLOGICAL skip reorderLonelyVerticals */
+  displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
 }
 
 /**
@@ -437,7 +441,8 @@ export function processContentForDisplay(
     // grouped correctly for a narrow viewport instead of using desktop's 4-slot width
     const effectiveChunkSize = options?.isMobile ? LAYOUT.mobileSlotWidth : chunkSize;
     const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
-    const chunks = chunkContent(content, effectiveChunkSize);
+    const skipReorder = options?.displayMode === 'CHRONOLOGICAL' || options?.displayMode === 'FIXED';
+    const chunks = chunkContent(content, effectiveChunkSize, { skipReorder });
     const contentRows = chunks.map(chunk => {
       const boxTree = createSimpleHorizontalBoxTree(chunk);
       const items = calculateSizesFromBoxTree(
@@ -738,7 +743,7 @@ export function processContentBlocks(
   content: AnyContentModel[],
   filterVisible: boolean = true,
   collectionId?: number,
-  displayMode?: 'CHRONOLOGICAL' | 'ORDERED'
+  displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED'
 ): AnyContentModel[] {
   let processed = filterVisibleBlocks(content, filterVisible, collectionId);
   // Note: We now use block.orderIndex directly instead of collections[].orderIndex

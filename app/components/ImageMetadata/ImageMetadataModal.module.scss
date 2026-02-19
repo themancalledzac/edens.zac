@@ -224,7 +224,7 @@
   display: flex;
   gap: 12px;
   margin-top: 32px;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding-top: 24px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 
@@ -233,9 +233,28 @@
   }
 }
 
+.buttonRowLeft {
+  display: flex;
+  gap: 12px;
+
+  @media (width <= 768px) {
+    width: 100%;
+  }
+}
+
+.buttonRowRight {
+  display: flex;
+  gap: 12px;
+
+  @media (width <= 768px) {
+    width: 100%;
+  }
+}
+
 /* Buttons */
 .saveButton,
-.cancelButton {
+.cancelButton,
+.deleteButton {
   padding: 12px 24px;
   font-size: 14px;
   font-weight: 600;
@@ -277,6 +296,22 @@
   &:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.deleteButton {
+  background: rgba(220, 38, 38, 0.2);
+  color: rgb(252 165 165);
+  border: 1px solid rgb(220 38 38);
+
+  &:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.3);
+    border-color: rgb(220 38 38);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
   }
 }
 

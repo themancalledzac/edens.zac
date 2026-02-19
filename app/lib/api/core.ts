@@ -250,6 +250,15 @@ export async function fetchAdminDeleteApi<T>(endpoint: string): Promise<T> {
   });
 }
 
+// For admin deletes with JSON body (DELETE with body)
+export async function fetchAdminDeleteJsonApi<T>(endpoint: string, body: unknown): Promise<T> {
+  return await fetchBase<T>('admin', endpoint, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 // For admin GET requests
 export async function fetchAdminGetApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   try {

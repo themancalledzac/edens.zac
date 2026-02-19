@@ -1,11 +1,12 @@
 'use client';
 
 import Image from 'next/image';
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
+import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { IMAGE } from '@/app/constants';
-import { updateImages } from '@/app/lib/api/content';
+import { deleteImages, updateImages } from '@/app/lib/api/content';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import {
   type ContentImageModel,
@@ -43,6 +44,7 @@ interface ImageMetadataModalProps {
   scrollPosition: number;
   onClose: () => void;
   onSaveSuccess?: (response: ContentImageUpdateResponse) => void;
+  onDeleteSuccess?: (deletedIds: number[]) => void;
   availableTags?: ContentTagModel[];
   availablePeople?: ContentPersonModel[];
   availableCameras?: ContentCameraModel[];
@@ -67,6 +69,7 @@ export default function ImageMetadataModal({
   scrollPosition,
   onClose,
   onSaveSuccess,
+  onDeleteSuccess,
   availableTags = [],
   availablePeople = [],
   availableCameras = [],
@@ -164,8 +167,60 @@ export default function ImageMetadataModal({
     return null;
   }
 
-  // Prepare collection data for UnifiedMetadataSelector
-  const allCollections = availableCollections.map(c => ({ id: c.id, name: c.name }));
+  // Derive saved collection IDs from original image state
+  const originalCollectionIds = useMemo(() => {
+    const ids = new Set<number>();
+    if (!isBulkEdit && selectedImages[0]?.collections) {
+      for (const c of selectedImages[0].collections) {
+        ids.add(c.collectionId);
+      }
+    }
+    return ids;
+  }, [selectedImages, isBulkEdit]);
+
+  // Derive pending add/remove sets by comparing updateState with original
+  const pendingAddIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const c of updateState.collections || []) {
+      if (!originalCollectionIds.has(c.collectionId)) {
+        ids.add(c.collectionId);
+      }
+    }
+    return ids;
+  }, [updateState.collections, originalCollectionIds]);
+
+  const pendingRemoveIds = useMemo(() => {
+    const ids = new Set<number>();
+    const currentIds = new Set((updateState.collections || []).map(c => c.collectionId));
+    for (const id of originalCollectionIds) {
+      if (!currentIds.has(id)) {
+        ids.add(id);
+      }
+    }
+    return ids;
+  }, [updateState.collections, originalCollectionIds]);
+
+  // Handle collection toggle in modal context
+  const handleCollectionToggle = useCallback((collection: CollectionListModel) => {
+    setUpdateState(prev => {
+      const currentCollections = prev.collections || [];
+      const exists = currentCollections.some(c => c.collectionId === collection.id);
+
+      const updatedCollections = exists
+        ? currentCollections.filter(c => c.collectionId !== collection.id)
+        : [
+            ...currentCollections,
+            {
+              collectionId: collection.id,
+              name: collection.name,
+              visible: true,
+              orderIndex: currentCollections.length,
+            },
+          ];
+
+      return { ...prev, collections: updatedCollections };
+    });
+  }, []);
 
   // Handle form submission
   const handleSubmit = async (e: FormEvent) => {
@@ -219,6 +274,32 @@ export default function ImageMetadataModal({
       if (!confirmed) return;
     }
     onClose();
+  };
+
+  // Handle image deletion
+  const handleDelete = async () => {
+    const imageCount = selectedImageIds.length;
+    const confirmMessage =
+      imageCount === 1
+        ? 'Are you sure you want to delete this image? This will remove it from S3 and the database. This action cannot be undone.'
+        : `Are you sure you want to delete ${imageCount} images? This will remove them from S3 and the database. This action cannot be undone.`;
+
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const response = await deleteImages(selectedImageIds);
+
+      onDeleteSuccess?.(response.deletedIds);
+      onClose();
+    } catch (error_) {
+      setError(error_ instanceof Error ? error_.message : 'Failed to delete images');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -726,57 +807,56 @@ export default function ImageMetadataModal({
 
           {/* Collections */}
           <div className={styles.formSection}>
-            <h3 className={styles.sectionHeading}>Collections</h3>
-
-            <UnifiedMetadataSelector<{ id: number; name: string }>
+            <CollectionListSelector
+              allCollections={availableCollections}
+              savedCollectionIds={originalCollectionIds}
+              pendingAddIds={pendingAddIds}
+              pendingRemoveIds={pendingRemoveIds}
+              onToggle={handleCollectionToggle}
               label="Collections"
-              multiSelect
-              options={allCollections}
-              selectedValues={
-                updateState.collections?.map(c => ({
-                  id: c.collectionId,
-                  name: c.name || '',
-                })) || []
-              }
-              onChange={value => {
-                const collections = (value as Array<{ id: number; name: string }> | null) ?? [];
-                const currentVisible = updateState.collections?.[0]?.visible ?? true;
-                updateStateField({
-                  collections: collections.map((c, index) => ({
-                    collectionId: c.id,
-                    name: c.name,
-                    visible: currentVisible,
-                    orderIndex: index,
-                  })),
-                });
-              }}
-              allowAddNew={false}
-              getDisplayName={collection => collection.name}
-              changeButtonText="Select More ▼"
-              emptyText="No collections selected"
+              excludeCollectionId={currentCollectionId}
             />
           </div>
 
           {/* Action Buttons */}
           <div className={styles.buttonRow}>
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={saving}
-              className={styles.cancelButton}
-            >
-              Cancel
-            </button>
-            <button type="submit" disabled={saving || !hasChanges} className={styles.saveButton}>
-              {saving ? (
-                <>
-                  <LoadingSpinner size="small" color="white" />
-                  <span style={{ marginLeft: '8px' }}>Saving...</span>
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
+            <div className={styles.buttonRowLeft}>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={saving}
+                className={styles.deleteButton}
+              >
+                {saving ? (
+                  <>
+                    <LoadingSpinner size="small" color="white" />
+                    <span style={{ marginLeft: '8px' }}>Deleting...</span>
+                  </>
+                ) : (
+                  `Delete ${isBulkEdit ? `${selectedImageIds.length} Images` : 'Image'}`
+                )}
+              </button>
+            </div>
+            <div className={styles.buttonRowRight}>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={saving}
+                className={styles.cancelButton}
+              >
+                Cancel
+              </button>
+              <button type="submit" disabled={saving || !hasChanges} className={styles.saveButton}>
+                {saving ? (
+                  <>
+                    <LoadingSpinner size="small" color="white" />
+                    <span style={{ marginLeft: '8px' }}>Saving...</span>
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
