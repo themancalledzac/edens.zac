@@ -77,6 +77,7 @@ const createCollectionContent = (
   slug,
   title: `Collection ${id}`,
   collectionType: CollectionType.PORTFOLIO,
+  referencedCollectionId: id * 100,
   ...overrides,
 });
 

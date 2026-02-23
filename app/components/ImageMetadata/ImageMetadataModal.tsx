@@ -21,7 +21,6 @@ import {
   type ContentTagModel,
   type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
-import { isLocalEnvironment } from '@/app/utils/environment';
 import { convertLocationStringToModel } from '@/app/utils/locationUtils';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
@@ -153,20 +152,6 @@ export default function ImageMetadataModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get first image for preview and callback - always safe since selectedImages.length > 0
-  // Ensure we have at least one image for preview
-  const previewImage = selectedImages[0];
-
-  if (!previewImage) {
-    if (isLocalEnvironment()) {
-      console.error('[ImageMetadataModal] No images selected:', {
-        selectedImages,
-        selectedImageIds,
-      });
-    }
-    return null;
-  }
-
   // Derive saved collection IDs from original image state
   const originalCollectionIds = useMemo(() => {
     const ids = new Set<number>();
@@ -221,6 +206,13 @@ export default function ImageMetadataModal({
       return { ...prev, collections: updatedCollections };
     });
   }, []);
+
+  // Get first image for preview and callback - always safe since selectedImages.length > 0
+  const previewImage = selectedImages[0];
+
+  if (!previewImage) {
+    return null;
+  }
 
   // Handle form submission
   const handleSubmit = async (e: FormEvent) => {

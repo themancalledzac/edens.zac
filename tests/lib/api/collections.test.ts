@@ -4,7 +4,7 @@
  */
 
 import { parseCollectionArrayResponse } from '@/app/lib/api/collections';
-import type { CollectionModel } from '@/app/types/Collection';
+import { type CollectionModel,CollectionType } from '@/app/types/Collection';
 
 // Test fixtures
 const createCollection = (
@@ -15,10 +15,10 @@ const createCollection = (
   slug: `collection-${id}`,
   title: `Collection ${id}`,
   description: `Description ${id}`,
-  collectionType: 'GALLERY',
+  type: CollectionType.PORTFOLIO,
   visible: true,
-  coverImageId: null,
-  coverImageUrl: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
   ...overrides,
 });
 
@@ -160,14 +160,14 @@ describe('parseCollectionArrayResponse', () => {
       const collection = createCollection(1, {
         title: 'Test Collection',
         description: 'Test Description',
-        collectionType: 'BLOG',
+        type: CollectionType.BLOG,
         visible: false,
       });
       const data = [collection];
       const result = parseCollectionArrayResponse(data);
       expect(result[0]).toEqual(collection);
       expect(result[0]?.title).toBe('Test Collection');
-      expect(result[0]?.collectionType).toBe('BLOG');
+      expect(result[0]?.type).toBe(CollectionType.BLOG);
     });
   });
 });

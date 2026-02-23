@@ -1026,14 +1026,28 @@ export default function ManageClient({ slug }: ManageClientProps) {
                       <div className={styles.formGridHalf}>
                         <div>
                           <label className={styles.formLabel}>Collection Date</label>
-                          <input
-                            type="date"
-                            value={updateData.collectionDate}
-                            onChange={e =>
-                              setUpdateData(prev => ({ ...prev, collectionDate: e.target.value }))
-                            }
-                            className={styles.formInput}
-                          />
+                          <div className={styles.dateInputWrapper}>
+                            <input
+                              type="date"
+                              value={updateData.collectionDate ?? ''}
+                              onChange={e =>
+                                setUpdateData(prev => ({ ...prev, collectionDate: e.target.value }))
+                              }
+                              className={styles.formInput}
+                            />
+                            {updateData.collectionDate && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setUpdateData(prev => ({ ...prev, collectionDate: null }))
+                                }
+                                className={styles.dateClearButton}
+                                title="Clear date"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div>
@@ -1284,9 +1298,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   )}
                 </div>
               )}
-              </div>{/* close updateAndToolbarWrapper */}
-
-              {/* Image Grid — outside wrapper */}
+              {/* Image Grid — inside wrapper so toolbar can stick over it */}
               {displayContent && displayContent.length > 0 && (
                 <ContentBlockWithFullScreen
                   content={displayContent}
@@ -1310,6 +1322,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   onCancelImageMove={handleCancelImageMove}
                 />
               )}
+              </div>{/* close updateAndToolbarWrapper */}
             </>
           )}
         </main>

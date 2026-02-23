@@ -134,7 +134,7 @@ export interface CollectionUpdateRequest {
   slug?: string;
   description?: string;
   location?: LocationUpdate;
-  collectionDate?: string;
+  collectionDate?: string | null;
   visible?: boolean;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)

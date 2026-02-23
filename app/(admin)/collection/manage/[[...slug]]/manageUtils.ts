@@ -45,7 +45,6 @@ export function buildUpdatePayload(
     { key: 'type', original: originalCollection.type },
     { key: 'title', original: originalCollection.title },
     { key: 'description', original: originalCollection.description || '' },
-    { key: 'collectionDate', original: originalCollection.collectionDate || '' },
     { key: 'visible', original: originalCollection.visible },
     { key: 'displayMode', original: originalCollection.displayMode },
     { key: 'rowsWide', original: originalCollection.rowsWide },
@@ -62,6 +61,15 @@ export function buildUpdatePayload(
     if (normalizedFormValue !== normalizedOriginal) {
       // Type assertion needed since we're iterating dynamically
       (payload as unknown as Record<string, unknown>)[key] = formData[key];
+    }
+  }
+
+  // Handle collectionDate separately: null means "explicitly clear", '' means "unchanged from null original"
+  if (formData.collectionDate !== undefined) {
+    const originalDate = originalCollection.collectionDate || null;
+    const newDate = formData.collectionDate === '' ? null : formData.collectionDate;
+    if (newDate !== originalDate) {
+      payload.collectionDate = newDate;
     }
   }
 

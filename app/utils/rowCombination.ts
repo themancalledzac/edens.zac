@@ -13,10 +13,7 @@
  */
 
 import type { AnyContentModel } from '@/app/types/Content';
-import {
-  getEffectiveRating,
-  getItemComponentValue,
-} from '@/app/utils/contentRatingUtils';
+import { getEffectiveRating, getItemComponentValue } from '@/app/utils/contentRatingUtils';
 import { getAspectRatio } from '@/app/utils/contentTypeGuards';
 
 // =============================================================================
@@ -36,18 +33,13 @@ export type BoxTree =
     };
 
 // =============================================================================
-// COMBINATION PATTERN ENUM (backward compatibility — removed in Phase 2)
+// TEMPLATE KEY — structural identity for row compositions
 // =============================================================================
 
-export enum CombinationPattern {
-  STANDALONE = 'STANDALONE',
-  HORIZONTAL_PAIR = 'HORIZONTAL_PAIR',
-  VERTICAL_PAIR = 'VERTICAL_PAIR',
-  DOMINANT_SECONDARY = 'DOMINANT_SECONDARY',
-  TRIPLE_HORIZONTAL = 'TRIPLE_HORIZONTAL',
-  MULTI_SMALL = 'MULTI_SMALL',
-  DOMINANT_VERTICAL_PAIR = 'DOMINANT_VERTICAL_PAIR',
-  FORCE_FILL = 'FORCE_FILL',
+/** Structural key for template map lookup: counts of H and V images in a row */
+export interface TemplateKey {
+  h: number;
+  v: number;
 }
 
 // =============================================================================
@@ -75,10 +67,7 @@ function getItemRating(item: AnyContentModel, rowWidth: number): number {
  * Calculate the total component value of a set of items.
  */
 function getTotalCV(components: AnyContentModel[], rowWidth: number): number {
-  return components.reduce(
-    (sum, item) => sum + getItemComponentValue(item, rowWidth),
-    0
-  );
+  return components.reduce((sum, item) => sum + getItemComponentValue(item, rowWidth), 0);
 }
 
 // =============================================================================
@@ -99,10 +88,7 @@ export const MAX_FILL_RATIO = 1.15;
  * @param rowWidth - Row width budget (e.g., 5 for desktop)
  * @returns true if total component value is within 90-115% of row width
  */
-export function isRowComplete(
-  components: AnyContentModel[],
-  rowWidth: number
-): boolean {
+export function isRowComplete(components: AnyContentModel[], rowWidth: number): boolean {
   if (components.length === 0) return false;
 
   const totalValue = components.reduce(
@@ -122,7 +108,8 @@ export function isRowComplete(
 export interface RowResult {
   components: AnyContentModel[];
   direction: 'horizontal' | 'vertical' | null;
-  patternName: CombinationPattern;
+  templateKey: TemplateKey;
+  label: string;
   boxTree: BoxTree;
 }
 
@@ -169,10 +156,7 @@ export interface TreeNode {
 // =============================================================================
 
 /** Convert AnyContentModel to ImageType for composition decisions */
-export function toImageType(
-  item: AnyContentModel,
-  rowWidth: number
-): ImageType {
+export function toImageType(item: AnyContentModel, rowWidth: number): ImageType {
   const ar: OrientationShort = getAspectRatio(item) > 1.0 ? 'H' : 'V';
   const effectiveRating = getEffectiveRating(item, rowWidth);
   const componentValue = getItemComponentValue(item, rowWidth);
@@ -187,18 +171,12 @@ export function single(img: ImageType): AtomicComponent {
 }
 
 /** Create a horizontal pair */
-export function hPair(
-  left: AtomicComponent,
-  right: AtomicComponent
-): AtomicComponent {
+export function hPair(left: AtomicComponent, right: AtomicComponent): AtomicComponent {
   return { type: 'pair', direction: 'H', children: [left, right] };
 }
 
 /** Create a vertical stack */
-export function vStack(
-  top: AtomicComponent,
-  bottom: AtomicComponent
-): AtomicComponent {
+export function vStack(top: AtomicComponent, bottom: AtomicComponent): AtomicComponent {
   return { type: 'pair', direction: 'V', children: [top, bottom] };
 }
 
@@ -231,9 +209,7 @@ export function acToBoxTree(ac: AtomicComponent): BoxTree {
 }
 
 /** Find the dominant image in a set (highest effective rating) */
-export function findDominant(
-  images: ImageType[]
-): { dominant: ImageType; rest: ImageType[] } {
+export function findDominant(images: ImageType[]): { dominant: ImageType; rest: ImageType[] } {
   if (images.length === 0) {
     throw new Error('findDominant requires at least 1 image');
   }
@@ -277,10 +253,7 @@ interface LayoutTemplate {
 function buildDominantStacked(images: ImageType[]): AtomicComponent {
   const { dominant, rest } = findDominant(images);
   if (dominant.effectiveRating >= 4 && dominant.ar === 'H') {
-    return hPair(
-      single(dominant),
-      vStack(single(rest[0]!), single(rest[1]!))
-    );
+    return hPair(single(dominant), vStack(single(rest[0]!), single(rest[1]!)));
   }
   return hChain(images);
 }
@@ -291,25 +264,20 @@ function buildDominantStacked(images: ImageType[]): AtomicComponent {
  * Falls back to flat hChain if < 3 verticals.
  */
 function buildNestedQuad(images: ImageType[]): AtomicComponent {
-  const verticals = images.filter((i) => i.ar === 'V');
+  const verticals = images.filter(i => i.ar === 'V');
   if (verticals.length >= 3) {
-    const sorted = [...verticals].sort(
-      (a, b) => b.effectiveRating - a.effectiveRating
-    );
+    const sorted = [...verticals].sort((a, b) => b.effectiveRating - a.effectiveRating);
     const main = sorted[0]!;
-    const rest = images.filter((i) => i !== main);
+    const rest = images.filter(i => i !== main);
     const restVerticals = rest
-      .filter((i) => i.ar === 'V')
+      .filter(i => i.ar === 'V')
       .sort((a, b) => a.effectiveRating - b.effectiveRating);
     const topPair = restVerticals.slice(0, 2);
-    const bottom = rest.find((i) => !topPair.includes(i))!;
+    const bottom = rest.find(i => !topPair.includes(i))!;
 
     return hPair(
       single(main),
-      vStack(
-        hPair(single(topPair[0]!), single(topPair[1]!)),
-        single(bottom)
-      )
+      vStack(hPair(single(topPair[0]!), single(topPair[1]!)), single(bottom))
     );
   }
   return hChain(images);
@@ -318,43 +286,43 @@ function buildNestedQuad(images: ImageType[]): AtomicComponent {
 /** Static template map: (hCount, vCount) → layout builder */
 export const TEMPLATE_MAP: Record<string, LayoutTemplate> = {
   // --- 1-item ---
-  '1-0': { label: 'hero', build: (imgs) => single(imgs[0]!) },
-  '0-1': { label: 'single-v', build: (imgs) => single(imgs[0]!) },
+  '1-0': { label: 'hero', build: imgs => single(imgs[0]!) },
+  '0-1': { label: 'single-v', build: imgs => single(imgs[0]!) },
 
   // --- 2-item ---
   '2-0': {
     label: 'h-pair',
-    build: (imgs) => hPair(single(imgs[0]!), single(imgs[1]!)),
+    build: imgs => hPair(single(imgs[0]!), single(imgs[1]!)),
   },
   '1-1': {
     label: 'dom-sec',
-    build: (imgs) => hPair(single(imgs[0]!), single(imgs[1]!)),
+    build: imgs => hPair(single(imgs[0]!), single(imgs[1]!)),
   },
   '0-2': {
     label: 'v-pair',
-    build: (imgs) => hPair(single(imgs[0]!), single(imgs[1]!)),
+    build: imgs => hPair(single(imgs[0]!), single(imgs[1]!)),
   },
 
   // --- 3-item ---
-  '3-0': { label: 'triple-h', build: (imgs) => hChain(imgs) },
+  '3-0': { label: 'triple-h', build: imgs => hChain(imgs) },
   '2-1': { label: 'dom-stacked-2h1v', build: buildDominantStacked },
   '1-2': { label: 'dom-stacked-1h2v', build: buildDominantStacked },
-  '0-3': { label: 'chain-3v', build: (imgs) => hChain(imgs) },
+  '0-3': { label: 'chain-3v', build: imgs => hChain(imgs) },
 
   // --- 4-item ---
-  '4-0': { label: 'chain-4h', build: (imgs) => hChain(imgs) },
-  '3-1': { label: 'chain-3h1v', build: (imgs) => hChain(imgs) },
-  '2-2': { label: 'chain-2h2v', build: (imgs) => hChain(imgs) },
+  '4-0': { label: 'chain-4h', build: imgs => hChain(imgs) },
+  '3-1': { label: 'chain-3h1v', build: imgs => hChain(imgs) },
+  '2-2': { label: 'chain-2h2v', build: imgs => hChain(imgs) },
   '1-3': { label: 'nested-quad-1h3v', build: buildNestedQuad },
   '0-4': { label: 'nested-quad-0h4v', build: buildNestedQuad },
 
   // --- 5-item ---
-  '5-0': { label: 'chain-5h', build: (imgs) => hChain(imgs) },
-  '4-1': { label: 'chain-4h1v', build: (imgs) => hChain(imgs) },
-  '3-2': { label: 'chain-3h2v', build: (imgs) => hChain(imgs) },
-  '2-3': { label: 'chain-2h3v', build: (imgs) => hChain(imgs) },
-  '1-4': { label: 'chain-1h4v', build: (imgs) => hChain(imgs) },
-  '0-5': { label: 'chain-0h5v', build: (imgs) => hChain(imgs) },
+  '5-0': { label: 'chain-5h', build: imgs => hChain(imgs) },
+  '4-1': { label: 'chain-4h1v', build: imgs => hChain(imgs) },
+  '3-2': { label: 'chain-3h2v', build: imgs => hChain(imgs) },
+  '2-3': { label: 'chain-2h3v', build: imgs => hChain(imgs) },
+  '1-4': { label: 'chain-1h4v', build: imgs => hChain(imgs) },
+  '0-5': { label: 'chain-0h5v', build: imgs => hChain(imgs) },
 };
 
 // =============================================================================
@@ -364,6 +332,7 @@ export const TEMPLATE_MAP: Record<string, LayoutTemplate> = {
 /** Result of a template map lookup */
 export interface CompositionResult {
   composition: AtomicComponent;
+  templateKey: TemplateKey;
   label: string;
 }
 
@@ -371,122 +340,30 @@ export interface CompositionResult {
  * Look up and build a composition for a set of images using the template map.
  *
  * @param images - ImageType[] assigned to this row (already determined by greedy fill)
- * @returns CompositionResult with AtomicComponent tree and template label
+ * @returns CompositionResult with AtomicComponent tree, structural key, and template label
  */
 export function lookupComposition(images: ImageType[]): CompositionResult {
   const key = getTemplateKey(images);
   const template = TEMPLATE_MAP[key];
+  const templateKey = parseTemplateKey(images);
 
   if (!template) {
     console.warn(`No template for key "${key}", falling back to hChain`);
-    return { composition: hChain(images), label: 'chain-fallback' };
+    return { composition: hChain(images), templateKey, label: 'chain-fallback' };
   }
 
-  return { composition: template.build(images), label: template.label };
+  return { composition: template.build(images), templateKey, label: template.label };
 }
 
-// =============================================================================
-// BACKWARD-COMPATIBLE PATTERN NAME DERIVATION
-// =============================================================================
-
-/**
- * Derive a backward-compatible CombinationPattern from a row's images and fill.
- * Replicates the old pattern matching criteria so existing consumers of patternName
- * continue to work. Removed when CombinationPattern is dropped.
- */
-function derivePatternName(
-  items: AnyContentModel[],
-  rowWidth: number
-): CombinationPattern {
-  const fill =
-    items.reduce(
-      (sum, item) => sum + getItemComponentValue(item, rowWidth),
-      0
-    ) / rowWidth;
-  const isComplete = fill >= MIN_FILL_RATIO && fill <= MAX_FILL_RATIO;
-
-  if (items.length === 1) {
-    const item = items[0]!;
-    const rating = getItemRating(item, rowWidth);
-    if (getOrientation(item) === 'horizontal' && rating >= 5 && isComplete) {
-      return CombinationPattern.STANDALONE;
-    }
-    return CombinationPattern.FORCE_FILL;
+/** Build a TemplateKey from a set of images */
+function parseTemplateKey(images: ImageType[]): TemplateKey {
+  let h = 0;
+  let v = 0;
+  for (const img of images) {
+    if (img.ar === 'H') h++;
+    else v++;
   }
-
-  if (!isComplete) {
-    return CombinationPattern.FORCE_FILL;
-  }
-
-  if (items.length === 2) {
-    const o0 = getOrientation(items[0]!);
-    const o1 = getOrientation(items[1]!);
-    const r0 = getItemRating(items[0]!, rowWidth);
-    const r1 = getItemRating(items[1]!, rowWidth);
-
-    if (
-      o0 === 'horizontal' &&
-      o1 === 'horizontal' &&
-      r0 >= 3 &&
-      r0 <= 4 &&
-      r1 >= 3 &&
-      r1 <= 4 &&
-      Math.abs(r0 - r1) <= 1
-    ) {
-      return CombinationPattern.HORIZONTAL_PAIR;
-    }
-
-    if (
-      o0 === 'vertical' &&
-      o1 === 'vertical' &&
-      r0 <= 4 &&
-      r1 <= 4 &&
-      Math.abs(r0 - r1) <= 2
-    ) {
-      return CombinationPattern.VERTICAL_PAIR;
-    }
-
-    if (o0 === 'horizontal' && r0 >= 4 && o1 === 'vertical' && r1 <= 3) {
-      return CombinationPattern.DOMINANT_SECONDARY;
-    }
-
-    return CombinationPattern.FORCE_FILL;
-  }
-
-  if (items.length === 3) {
-    const ratings = items.map((item) => getItemRating(item, rowWidth));
-    const orientations = items.map((item) => getOrientation(item));
-
-    if (
-      orientations[0] === 'horizontal' &&
-      ratings[0]! >= 4 &&
-      ratings[1]! <= 3 &&
-      ratings[2]! <= 3
-    ) {
-      return CombinationPattern.DOMINANT_VERTICAL_PAIR;
-    }
-
-    if (
-      orientations.every((o) => o === 'horizontal') &&
-      ratings.every((r) => r! >= 2 && r! <= 3) &&
-      Math.max(...(ratings as number[])) -
-        Math.min(...(ratings as number[])) <=
-        1
-    ) {
-      return CombinationPattern.TRIPLE_HORIZONTAL;
-    }
-
-    if (ratings.every((r) => r! <= 2)) {
-      const allSame = ratings.every((r) => r === ratings[0]);
-      if (allSame) {
-        return CombinationPattern.MULTI_SMALL;
-      }
-    }
-
-    return CombinationPattern.FORCE_FILL;
-  }
-
-  return CombinationPattern.FORCE_FILL;
+  return { h, v };
 }
 
 // =============================================================================
@@ -494,9 +371,7 @@ function derivePatternName(
 // =============================================================================
 
 /** Derive direction from AtomicComponent root for RowResult */
-function deriveDirection(
-  ac: AtomicComponent
-): 'horizontal' | 'vertical' | null {
+function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' | null {
   if (ac.type === 'single') return null;
   return ac.direction === 'H' ? 'horizontal' : 'vertical';
 }
@@ -515,10 +390,7 @@ function deriveDirection(
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
  * @returns Array of rows, each with components and their combination direction
  */
-export function buildRows(
-  items: AnyContentModel[],
-  rowWidth: number
-): RowResult[] {
+export function buildRows(items: AnyContentModel[], rowWidth: number): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
 
@@ -550,10 +422,12 @@ export function buildRows(
         const composition = single(heroImg);
         const boxTree = acToBoxTree(composition);
 
+        const heroKey = parseTemplateKey([heroImg]);
         rows.push({
           components: [heroItem],
           direction: null,
-          patternName: CombinationPattern.STANDALONE,
+          templateKey: heroKey,
+          label: 'hero',
           boxTree,
         });
 
@@ -583,14 +457,15 @@ export function buildRows(
 
     if (!seqFailed && seqCount > 0) {
       const rowItems = window.slice(0, seqCount);
-      const rowImgs = rowItems.map((item) => toImageType(item, rowWidth));
-      const { composition } = lookupComposition(rowImgs);
+      const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
+      const { composition, templateKey, label } = lookupComposition(rowImgs);
       const boxTree = acToBoxTree(composition);
 
       rows.push({
         components: rowItems,
         direction: deriveDirection(composition),
-        patternName: derivePatternName(rowItems, rowWidth),
+        templateKey,
+        label,
         boxTree,
       });
 
@@ -628,10 +503,7 @@ export function buildRows(
 
         if (bestIndex === -1) break;
 
-        const candidateCV = getItemComponentValue(
-          window[bestIndex]!,
-          rowWidth
-        );
+        const candidateCV = getItemComponentValue(window[bestIndex]!, rowWidth);
         const newTotal = currentTotal + candidateCV;
         const newFill = newTotal / rowWidth;
 
@@ -640,10 +512,7 @@ export function buildRows(
           const underfillDistance = Math.abs(1.0 - currentFill);
           const overfillDistance = Math.abs(1.0 - newFill);
 
-          if (
-            currentFill >= MIN_FILL_RATIO ||
-            underfillDistance <= overfillDistance
-          ) {
+          if (currentFill >= MIN_FILL_RATIO || underfillDistance <= overfillDistance) {
             break;
           }
           bfComponents.push(window[bestIndex]!);
@@ -661,14 +530,15 @@ export function buildRows(
       }
     }
 
-    const bfImgs = bfComponents.map((item) => toImageType(item, rowWidth));
-    const { composition } = lookupComposition(bfImgs);
+    const bfImgs = bfComponents.map(item => toImageType(item, rowWidth));
+    const { composition, templateKey: bfKey, label: bfLabel } = lookupComposition(bfImgs);
     const boxTree = acToBoxTree(composition);
 
     rows.push({
       components: bfComponents,
       direction: deriveDirection(composition),
-      patternName: derivePatternName(bfComponents, rowWidth),
+      templateKey: bfKey,
+      label: bfLabel,
       boxTree,
     });
 

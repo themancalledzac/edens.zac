@@ -6,15 +6,24 @@
 import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel, ContentImageModel } from '@/app/types/Content';
 import { getItemComponentValue } from '@/app/utils/contentRatingUtils';
+import type { ImageType, RowResult, TemplateKey } from '@/app/utils/rowCombination';
 import {
+  acToBoxTree,
   buildRows,
-  CombinationPattern,
+  findDominant,
   getOrientation,
+  getTemplateKey,
+  hChain,
+  hPair,
   isRowComplete,
+  lookupComposition,
   MAX_FILL_RATIO,
   MIN_FILL_RATIO,
+  single,
+  TEMPLATE_MAP,
+  toImageType,
+  vStack,
 } from '@/app/utils/rowCombination';
-import type { RowResult } from '@/app/utils/rowCombination';
 
 // ===================== Test Fixtures =====================
 
@@ -194,7 +203,7 @@ describe('isRowComplete', () => {
 });
 
 // ===================== buildRows Tests =====================
-// (matchPattern / forceCompleteRow / PATTERN_TABLE tests removed — functions internalized)
+// (Legacy pattern-matching tests removed — replaced by template map system)
 // Coverage for internals now lives in rowCombination.characterization.test.ts
 
 describe('buildRows', () => {
@@ -204,27 +213,29 @@ describe('buildRows', () => {
     const rows = buildRows(items, DESKTOP);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.components).toHaveLength(1);
-    expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
+    // 1 horizontal image → templateKey { h: 1, v: 0 }
+    expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
   });
 
   it('should create two rows from two H5* images', () => {
     const items = [createHorizontalImage(1, 5), createHorizontalImage(2, 5)];
     const rows = buildRows(items, DESKTOP);
     expect(rows).toHaveLength(2);
-    expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
-    expect(rows[1]?.patternName).toBe(CombinationPattern.STANDALONE);
+    // Each row: 1 horizontal image → templateKey { h: 1, v: 0 }
+    expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
+    expect(rows[1]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
   });
 
   it('should match VERTICAL_PAIR pattern for two V3* images', () => {
     const items = [createVerticalImage(1, 3), createVerticalImage(2, 3)];
     const rows = buildRows(items, DESKTOP);
     // V3* + V3* fills ~2.5/5 = 50%, NOT complete
-    // Should fall through to forceCompleteRow
+    // Should fall through to best-fit fallback
     expect(rows).toHaveLength(1);
     expect(rows[0]?.components).toHaveLength(2);
   });
 
-  it('should match TRIPLE_HORIZONTAL for three H3* images', () => {
+  it('should match triple-h template for three H3* images', () => {
     const items = [
       createHorizontalImage(1, 3),
       createHorizontalImage(2, 3),
@@ -233,30 +244,32 @@ describe('buildRows', () => {
     const rows = buildRows(items, DESKTOP);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.components).toHaveLength(3);
-    expect(rows[0]?.patternName).toBe(CombinationPattern.TRIPLE_HORIZONTAL);
+    // 3 horizontal images → templateKey { h: 3, v: 0 }
+    expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 3, v: 0 });
   });
 
-  it('should match HORIZONTAL_PAIR for H4* + H4* (Issue 7)', () => {
+  it('should match h-pair template for H4* + H4* (Issue 7)', () => {
     const items = [createHorizontalImage(1, 4), createHorizontalImage(2, 4)];
     const rows = buildRows(items, DESKTOP);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.components).toHaveLength(2);
-    expect(rows[0]?.patternName).toBe(CombinationPattern.HORIZONTAL_PAIR);
+    // 2 horizontal images → templateKey { h: 2, v: 0 }
+    expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 2, v: 0 });
     expect(rows[0]?.direction).toBe('horizontal');
   });
 
-  it('should use FORCE_FILL for H3* + H4* (83% fill, below 90% minimum)', () => {
+  it('should use best-fit fallback for H3* + H4* (83% fill, below 90% minimum)', () => {
     // H3* (1.67) + H4* (2.5) = 4.17 → 83% fill, below 90% minimum
-    // HORIZONTAL_PAIR pattern matches but isRowComplete rejects it
-    // Falls back to FORCE_FILL which accepts underfilled rows
+    // Sequential fill fails; best-fit fallback takes both items
     const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 4)];
     const rows = buildRows(items, DESKTOP);
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.patternName).toBe(CombinationPattern.FORCE_FILL);
+    // 2 horizontal images → templateKey { h: 2, v: 0 }
+    expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 2, v: 0 });
     expect(rows[0]?.components).toHaveLength(2);
   });
 
-  it('should use forceCompleteRow when no pattern matches', () => {
+  it('should use best-fit fallback when sequential fill fails', () => {
     const items = [
       createHorizontalImage(1, 1),
       createVerticalImage(2, 1),
@@ -326,7 +339,7 @@ describe('buildRows', () => {
     expect(rows[0]?.components).toHaveLength(3);
   });
 
-  it('should prioritize DOMINANT_VERTICAL_PAIR over VERTICAL_PAIR', () => {
+  it('should prioritize dom-stacked template over v-pair for H4* + V3* + V3*', () => {
     const items = [
       createHorizontalImage(1, 4),
       createVerticalImage(2, 3),
@@ -335,7 +348,8 @@ describe('buildRows', () => {
     const rows = buildRows(items, DESKTOP);
     // H4* (2.5) + V3* (1.25) + V3* (1.25) = 5.0, 100%
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.patternName).toBe(CombinationPattern.DOMINANT_VERTICAL_PAIR);
+    // 1 horizontal + 2 vertical → templateKey { h: 1, v: 2 }
+    expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 2 });
     expect(rows[0]?.components).toHaveLength(3);
   });
 
@@ -345,17 +359,18 @@ describe('buildRows', () => {
   });
 
   describe('low-rated item skip (Issue 8)', () => {
-    it('should allow STANDALONE to skip V1* at position 0 and match H5* at position 1', () => {
+    it('should allow hero skip: V1* at position 0, H5* at position 1 becomes standalone', () => {
       // Collection A, Row 8: [V1*, H5*, ...] → H5* should be standalone, V1* skipped to next row
       // V1* cv ~1.0 (≤ 1.67 threshold), so STANDALONE can skip it
       const items = [
         createVerticalImage(1, 1), // cv ~1.0, skippable
-        createHorizontalImage(2, 5), // should match STANDALONE
+        createHorizontalImage(2, 5), // should match hero templateKey
         createHorizontalImage(3, 3),
       ];
       const rows = buildRows(items, DESKTOP);
       expect(rows.length).toBeGreaterThanOrEqual(2);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // Row 0: H5* hero → templateKey { h: 1, v: 0 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[0]?.components[0]?.id).toBe(2); // H5* was matched
       expect(rows[0]?.components).toHaveLength(1);
       // V1* should appear in a later row
@@ -363,16 +378,17 @@ describe('buildRows', () => {
       expect(allItemIds).toContain(1); // V1* is used somewhere
     });
 
-    it('should allow STANDALONE to skip V2* at position 0 and match H5* at position 1', () => {
+    it('should allow hero skip: H2* at position 0, H5* at position 1 becomes standalone', () => {
       // Collection B, Row 1: [H2*, H5*, ...] → H5* should be standalone
       // H2* cv = 1.25 (≤ 1.67 threshold), so STANDALONE can skip it
       const items = [
         createHorizontalImage(1, 2), // cv ~1.25, skippable
-        createHorizontalImage(2, 5), // should match STANDALONE
+        createHorizontalImage(2, 5), // should match hero templateKey
         createHorizontalImage(3, 3),
       ];
       const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // Row 0: H5* hero → templateKey { h: 1, v: 0 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[0]?.components[0]?.id).toBe(2); // H5* was matched
     });
 
@@ -385,12 +401,12 @@ describe('buildRows', () => {
         createHorizontalImage(2, 5), // cannot match STANDALONE while H4* is at position 0
       ];
       const rows = buildRows(items, DESKTOP);
-      // H4* alone in row 1 (FORCE_FILL, 50% fill - final row exception)
-      // H5* alone in row 2 (STANDALONE, 100%)
+      // H4* alone in row 1, H5* alone in row 2
       expect(rows).toHaveLength(2);
       expect(rows[0]?.components).toHaveLength(1);
       expect(rows[0]?.components[0]?.id).toBe(1); // H4* in first row
-      expect(rows[1]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // Row 1: H5* hero → templateKey { h: 1, v: 0 }
+      expect(rows[1]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[1]?.components[0]?.id).toBe(2); // H5* in second row
     });
 
@@ -407,8 +423,8 @@ describe('buildRows', () => {
       const rows = buildRows(items, DESKTOP);
       // V4* fills first row alone (underfilled, but better than 150% overfill)
       expect(rows[0]?.components[0]?.id).toBe(1); // V4* in row 1
-      // H5* gets standalone in row 2
-      expect(rows[1]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // H5* gets hero in row 2 → templateKey { h: 1, v: 0 }
+      expect(rows[1]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[1]?.components[0]?.id).toBe(2); // H5*
     });
 
@@ -423,10 +439,10 @@ describe('buildRows', () => {
       ];
       const rows = buildRows(items, DESKTOP);
       expect(rows).toHaveLength(2);
-      // Row 1: H5* standalone
-      expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // Row 1: H5* hero → templateKey { h: 1, v: 0 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[0]?.components[0]?.id).toBe(3); // H5* in first row
-      // Row 2: V2* + V2* + H3* (FORCE_FILL, ~90% fill)
+      // Row 2: V2* + V2* + H3* (best-fit fallback, ~90% fill)
       expect(rows[1]?.components).toHaveLength(3);
       const componentIds = rows[1]?.components.map((c: AnyContentModel) => c.id);
       expect(componentIds).toEqual([1, 2, 4]);
@@ -436,12 +452,12 @@ describe('buildRows', () => {
       // V3* has effective rating 2 (after vertical penalty), which is at the threshold
       const items = [
         createVerticalImage(1, 3), // V3* effective=2, rating ≤ 2, skippable
-        createHorizontalImage(2, 5), // H5* - should match STANDALONE
+        createHorizontalImage(2, 5), // H5* - should match hero templateKey
         createHorizontalImage(3, 3),
       ];
       const rows = buildRows(items, DESKTOP);
-      // H5* gets standalone in row 1
-      expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // H5* gets hero in row 1 → templateKey { h: 1, v: 0 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[0]?.components[0]?.id).toBe(2); // H5*
       // V3* goes to next row
       expect(rows[1]?.components[0]?.id).toBe(1); // V3* in row 2
@@ -449,23 +465,24 @@ describe('buildRows', () => {
   });
 
   describe('overfill prevention (Issue 6 / Issue 13)', () => {
-    it('should reject DVP when H5* is dominant (H5*+V2*+V3* = 150%+)', () => {
+    it('should reject dom-stacked when H5* is dominant (H5*+V2*+V3* = 150%+)', () => {
       // Issue 13: H5* (cv=5.0) + V2* (cv=1.25) + V3* (cv=1.25) = 7.5 → 150%
-      // DVP pattern matches but isRowComplete rejects due to overfill cap
-      // Should fall through to STANDALONE for H5*, then V2*+V3* in next row
+      // Template match but isRowComplete rejects due to overfill cap
+      // Should fall through to hero for H5*, then V2*+V3* in next row
       const items = [
         createHorizontalImage(1, 5),
         createVerticalImage(2, 2),
         createVerticalImage(3, 3),
       ];
       const rows = buildRows(items, DESKTOP);
-      // H5* should be standalone (100%), V2*+V3* should be in a separate row
+      // H5* should be hero (100%), V2*+V3* should be in a separate row
       expect(rows).toHaveLength(2);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // Row 0: H5* hero → templateKey { h: 1, v: 0 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[0]?.components).toHaveLength(1);
     });
 
-    it('should reject DVP when H5* + V2* + V2* = 150%', () => {
+    it('should reject dom-stacked when H5* + V2* + V2* = 150%', () => {
       // Collection B, Row 7 scenario
       const items = [
         createHorizontalImage(1, 5),
@@ -474,11 +491,12 @@ describe('buildRows', () => {
       ];
       const rows = buildRows(items, DESKTOP);
       expect(rows).toHaveLength(2);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // Row 0: H5* hero → templateKey { h: 1, v: 0 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[0]?.components).toHaveLength(1);
     });
 
-    it('should accept DVP when H4* is dominant (H4*+V3*+V3* = 100%)', () => {
+    it('should accept dom-stacked when H4* is dominant (H4*+V3*+V3* = 100%)', () => {
       // The intended use case — should still work
       const items = [
         createHorizontalImage(1, 4),
@@ -487,13 +505,13 @@ describe('buildRows', () => {
       ];
       const rows = buildRows(items, DESKTOP);
       expect(rows).toHaveLength(1);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.DOMINANT_VERTICAL_PAIR);
+      // 1 horizontal + 2 vertical → templateKey { h: 1, v: 2 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 2 });
     });
 
-    it('should reject DOMINANT_SECONDARY when H5*+V1* = 120%', () => {
+    it('should reject dom-sec when H5*+V1* = 120%', () => {
       // Collection A, Row 8 scenario: H5*(5.0) + V1*(cv=1.0) = 6.0 → 120%
-      // V1* effective = 0, cv = 5/(6-0) = 0.83... wait, let me check
-      // Actually V1* rating=1, effective=0 (vertical penalty), cv = getComponentValue(0, 5)
+      // V1* effective = 0, cv = getComponentValue(0, 5)
       // effectiveRating 0: itemsPerRow = 6-0 = 6, clamped to 5, cv = 5/5 = 1.0
       // H5*(5.0) + V1*(1.0) = 6.0 → 120% > 115% → rejected
       const items = [
@@ -501,15 +519,18 @@ describe('buildRows', () => {
         createVerticalImage(2, 1),
       ];
       const rows = buildRows(items, DESKTOP);
-      // H5* standalone (100%), V1* alone in next row
+      // H5* hero (100%), V1* alone in next row
       expect(rows).toHaveLength(2);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // Row 0: H5* hero → templateKey { h: 1, v: 0 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
     });
 
-    it('should not produce any pattern-matched row exceeding 115% fill', () => {
-      // Pattern-matched rows (STANDALONE, DVP, etc.) must always be within bounds.
-      // FORCE_FILL rows are best-effort — they may slightly exceed the cap when
-      // the alternative (very underfilled) is worse.
+    it('should keep multi-item rows within fill bounds', () => {
+      // Sequential greedy fill stays within MAX_FILL_RATIO (115%).
+      // Best-fit fallback may exceed 115% when no better option exists —
+      // the algorithm picks the lesser evil between severe underfill and overfill.
+      // Hard ceiling: no row should exceed 135% fill regardless of path.
+      const BEST_FIT_CEILING = 1.35;
       const items = [
         createHorizontalImage(1, 5),
         createVerticalImage(2, 4),
@@ -522,23 +543,28 @@ describe('buildRows', () => {
         createVerticalImage(9, 2),
       ];
       const rows = buildRows(items, DESKTOP);
+      let overfillCount = 0;
       for (const row of rows) {
-        // Skip FORCE_FILL (may exceed normal fill bounds)
-        if (row.patternName === CombinationPattern.FORCE_FILL) {
-          continue;
-        }
+        if (row.components.length === 1) continue;
+
         const totalCV = row.components.reduce(
           (sum: number, item: AnyContentModel) => sum + getItemComponentValue(item, DESKTOP),
           0
         );
         const fill = totalCV / DESKTOP;
-        expect(fill).toBeLessThanOrEqual(MAX_FILL_RATIO + 0.001);
+
+        // Hard ceiling — even best-fit fallback shouldn't exceed this
+        expect(fill).toBeLessThanOrEqual(BEST_FIT_CEILING);
+
+        if (fill > MAX_FILL_RATIO) overfillCount++;
       }
+      // At most 1 row should need best-fit overfill in this collection
+      expect(overfillCount).toBeLessThanOrEqual(1);
     });
 
     it('should prevent previously catastrophic overfills in pattern-matched rows', () => {
       // Collections that previously had 150%+ overfill via DVP matching H5*
-      // After Issue 6 fix, these should be STANDALONE + separate rows
+      // After Issue 6 fix, these should be hero + separate rows
       const items = [
         createHorizontalImage(1, 5),   // Would previously match DVP
         createVerticalImage(2, 3),
@@ -554,7 +580,7 @@ describe('buildRows', () => {
           0
         );
         const fill = totalCV / DESKTOP;
-        // No row should exceed 115%, including FORCE_FILL for this well-structured input
+        // No row should exceed 115%, including best-fit fallback for this well-structured input
         expect(fill).toBeLessThanOrEqual(MAX_FILL_RATIO + 0.001);
       }
     });
@@ -574,43 +600,44 @@ describe('buildRows', () => {
     });
   });
 
-  describe('pattern names in buildRows output', () => {
-    it('should produce correct patternName for each pattern type', () => {
+  describe('template keys in buildRows output', () => {
+    it('should produce correct templateKey for each template type', () => {
       const items = [
         createHorizontalImage(1, 4),  // H4★ (cv 2.5)
         createVerticalImage(2, 3),    // V3★ (effective 2, cv 1.25)
-        createVerticalImage(3, 3),    // V3★ (effective 2, cv 1.25) → DVP = 5.0 (100%)
-        createHorizontalImage(4, 5),  // H5★ (cv 5.0) → STANDALONE
+        createVerticalImage(3, 3),    // V3★ (effective 2, cv 1.25) → dom-stacked-1h2v = 5.0 (100%)
+        createHorizontalImage(4, 5),  // H5★ (cv 5.0) → hero
         createHorizontalImage(5, 3),  // H3★ (cv 1.67)
         createHorizontalImage(6, 3),  // H3★ (cv 1.67)
-        createHorizontalImage(7, 3),  // H3★ (cv 1.67) → TRIPLE_HORIZONTAL = 5.0 (100%)
+        createHorizontalImage(7, 3),  // H3★ (cv 1.67) → triple-h = 5.0 (100%)
       ];
       const rows = buildRows(items, DESKTOP);
 
       expect(rows.length).toBe(3);
 
-      // Row 1: H4★ + V3★ + V3★ → DOMINANT_VERTICAL_PAIR
-      expect(rows[0]?.patternName).toBe(CombinationPattern.DOMINANT_VERTICAL_PAIR);
+      // Row 1: H4★ + V3★ + V3★ → dom-stacked-1h2v → templateKey { h: 1, v: 2 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 2 });
       expect(rows[0]?.components.length).toBe(3);
 
-      // Row 2: H5★ → STANDALONE
-      expect(rows[1]?.patternName).toBe(CombinationPattern.STANDALONE);
+      // Row 2: H5★ → hero → templateKey { h: 1, v: 0 }
+      expect(rows[1]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
       expect(rows[1]?.components.length).toBe(1);
 
-      // Row 3: H3★ + H3★ + H3★ → TRIPLE_HORIZONTAL
-      expect(rows[2]?.patternName).toBe(CombinationPattern.TRIPLE_HORIZONTAL);
+      // Row 3: H3★ + H3★ + H3★ → triple-h → templateKey { h: 3, v: 0 }
+      expect(rows[2]?.templateKey).toEqual<TemplateKey>({ h: 3, v: 0 });
       expect(rows[2]?.components.length).toBe(3);
     });
 
-    it('should produce FORCE_FILL for unmatched combinations', () => {
+    it('should produce h-pair templateKey for unmatched 2-horizontal combinations', () => {
+      // H3* + H4* = 83% fill → best-fit fallback, still 2H 0V → templateKey { h: 2, v: 0 }
       const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 4)];
       const rows = buildRows(items, DESKTOP);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.FORCE_FILL);
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 2, v: 0 });
     });
   });
 
   describe('nested quad layout', () => {
-    it('should detect nested-quad boxTree for 4-item FORCE_FILL with dominant vertical', () => {
+    it('should detect nested-quad boxTree for 4-item best-fit fallback with dominant vertical', () => {
       // Real Row 15 scenario: V1★, V2★, V4★, H3★
       // V4★ base rating 4 → effective rating 3 (vertical penalty)
       const v1 = createVerticalImage(1, 1); // V1★ → effective 1
@@ -622,7 +649,8 @@ describe('buildRows', () => {
       const rows = buildRows(items, 5);
 
       expect(rows).toHaveLength(1);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.FORCE_FILL);
+      // 1 horizontal + 3 vertical → templateKey { h: 1, v: 3 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 3 });
 
       // BoxTree should be nested-quad structure: main | (topPair / bottom)
       const boxTree = rows[0]?.boxTree;
@@ -653,7 +681,8 @@ describe('buildRows', () => {
       const rows = buildRows(items, 5);
 
       expect(rows).toHaveLength(1);
-      expect(rows[0]?.patternName).toBe(CombinationPattern.FORCE_FILL);
+      // 3 horizontal + 1 vertical → templateKey { h: 3, v: 1 }
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 3, v: 1 });
       // BoxTree should be flat horizontal (no vertical stacking)
       const boxTree = rows[0]?.boxTree;
       expect(boxTree?.type).toBe('combined');
@@ -677,7 +706,7 @@ describe('buildRows', () => {
   });
 
   describe('boxTree generation', () => {
-    it('should generate a leaf boxTree for STANDALONE pattern', () => {
+    it('should generate a leaf boxTree for hero pattern', () => {
       const h5 = createHorizontalImage(1, 5);
       const rows = buildRows([h5], 5);
 
@@ -690,7 +719,7 @@ describe('buildRows', () => {
       }
     });
 
-    it('should generate a horizontal combined boxTree for HORIZONTAL_PAIR', () => {
+    it('should generate a horizontal combined boxTree for h-pair template', () => {
       const h4_1 = createHorizontalImage(1, 4);
       const h4_2 = createHorizontalImage(2, 4);
       const rows = buildRows([h4_1, h4_2], 5);
@@ -711,7 +740,7 @@ describe('buildRows', () => {
       }
     });
 
-    it('should generate a nested boxTree for DOMINANT_VERTICAL_PAIR (main-stacked)', () => {
+    it('should generate a nested boxTree for dom-stacked-1h2v template (main-stacked)', () => {
       const h4 = createHorizontalImage(1, 4);
       const v3_1 = createVerticalImage(2, 3);
       const v3_2 = createVerticalImage(3, 3);
@@ -799,5 +828,288 @@ describe('buildRows', () => {
         expect(row.boxTree.type).toBeDefined();
       }
     });
+  });
+});
+
+// =============================================================================
+// Architecture type tests (Step 7 additions)
+// =============================================================================
+
+describe('toImageType', () => {
+  it('should classify horizontal images as H', () => {
+    const img = createHorizontalImage(1, 3);
+    const result = toImageType(img, DESKTOP);
+    expect(result.ar).toBe('H');
+  });
+
+  it('should classify vertical images as V', () => {
+    const img = createVerticalImage(1, 3);
+    const result = toImageType(img, DESKTOP);
+    expect(result.ar).toBe('V');
+  });
+
+  it('should apply vertical penalty to effective rating', () => {
+    // V3*: rating=3, effectiveRating=2 (penalty -1)
+    const v3 = createVerticalImage(1, 3);
+    expect(toImageType(v3, DESKTOP).effectiveRating).toBe(2);
+
+    // H3*: no penalty
+    const h3 = createHorizontalImage(2, 3);
+    expect(toImageType(h3, DESKTOP).effectiveRating).toBe(3);
+  });
+
+  it('should set componentValue from getItemComponentValue', () => {
+    const img = createHorizontalImage(1, 5);
+    const result = toImageType(img, DESKTOP);
+    expect(result.componentValue).toBeGreaterThan(0);
+    expect(result.componentValue).toBe(getItemComponentValue(img, DESKTOP));
+  });
+
+  it('should back-reference the source item', () => {
+    const img = createHorizontalImage(1, 4);
+    const result = toImageType(img, DESKTOP);
+    expect(result.source).toBe(img);
+  });
+});
+
+describe('AtomicComponent builders', () => {
+  const imgH = (): ImageType => toImageType(createHorizontalImage(1, 3), DESKTOP);
+  const imgV = (): ImageType => toImageType(createVerticalImage(2, 3), DESKTOP);
+
+  it('single() produces a single-type node', () => {
+    const ac = single(imgH());
+    expect(ac.type).toBe('single');
+    if (ac.type === 'single') expect(ac.img.ar).toBe('H');
+  });
+
+  it('hPair() produces a horizontal pair', () => {
+    const ac = hPair(single(imgH()), single(imgV()));
+    expect(ac.type).toBe('pair');
+    if (ac.type === 'pair') {
+      expect(ac.direction).toBe('H');
+      expect(ac.children).toHaveLength(2);
+    }
+  });
+
+  it('vStack() produces a vertical pair', () => {
+    const ac = vStack(single(imgH()), single(imgV()));
+    expect(ac.type).toBe('pair');
+    if (ac.type === 'pair') expect(ac.direction).toBe('V');
+  });
+
+  it('hChain() wraps single image as single node', () => {
+    const ac = hChain([imgH()]);
+    expect(ac.type).toBe('single');
+  });
+
+  it('hChain() of 2 produces left-heavy pair', () => {
+    const ac = hChain([imgH(), imgV()]);
+    expect(ac.type).toBe('pair');
+    if (ac.type === 'pair') {
+      expect(ac.direction).toBe('H');
+      expect(ac.children[0].type).toBe('single');
+      expect(ac.children[1].type).toBe('single');
+    }
+  });
+
+  it('hChain() of 3 nests left-heavy: H(H(a,b),c)', () => {
+    const ac = hChain([imgH(), imgH(), imgV()]);
+    expect(ac.type).toBe('pair');
+    if (ac.type === 'pair') {
+      expect(ac.children[0].type).toBe('pair'); // left = H(a,b)
+      expect(ac.children[1].type).toBe('single'); // right = c
+    }
+  });
+
+  it('hChain() throws on empty array', () => {
+    expect(() => hChain([])).toThrow();
+  });
+});
+
+describe('acToBoxTree', () => {
+  it('converts single node to leaf BoxTree', () => {
+    const img = createHorizontalImage(1, 5);
+    const ac = single(toImageType(img, DESKTOP));
+    const bt = acToBoxTree(ac);
+    expect(bt.type).toBe('leaf');
+    if (bt.type === 'leaf') expect(bt.content).toBe(img);
+  });
+
+  it('converts H pair to horizontal combined BoxTree', () => {
+    const a = toImageType(createHorizontalImage(1, 3), DESKTOP);
+    const b = toImageType(createVerticalImage(2, 3), DESKTOP);
+    const bt = acToBoxTree(hPair(single(a), single(b)));
+    expect(bt.type).toBe('combined');
+    if (bt.type === 'combined') {
+      expect(bt.direction).toBe('horizontal');
+      expect(bt.children[0].type).toBe('leaf');
+      expect(bt.children[1].type).toBe('leaf');
+    }
+  });
+
+  it('converts V stack to vertical combined BoxTree', () => {
+    const a = toImageType(createVerticalImage(1, 3), DESKTOP);
+    const b = toImageType(createVerticalImage(2, 2), DESKTOP);
+    const bt = acToBoxTree(vStack(single(a), single(b)));
+    expect(bt.type).toBe('combined');
+    if (bt.type === 'combined') expect(bt.direction).toBe('vertical');
+  });
+
+  it('preserves source references through conversion', () => {
+    const img1 = createHorizontalImage(1, 4);
+    const img2 = createVerticalImage(2, 3);
+    const a = toImageType(img1, DESKTOP);
+    const b = toImageType(img2, DESKTOP);
+    const bt = acToBoxTree(hPair(single(a), single(b)));
+    if (bt.type === 'combined') {
+      expect(bt.children[0].type === 'leaf' && bt.children[0].content).toBe(img1);
+      expect(bt.children[1].type === 'leaf' && bt.children[1].content).toBe(img2);
+    }
+  });
+});
+
+describe('getTemplateKey', () => {
+  it('returns "1-0" for a single H image', () => {
+    const imgs = [toImageType(createHorizontalImage(1, 5), DESKTOP)];
+    expect(getTemplateKey(imgs)).toBe('1-0');
+  });
+
+  it('returns "0-1" for a single V image', () => {
+    const imgs = [toImageType(createVerticalImage(1, 3), DESKTOP)];
+    expect(getTemplateKey(imgs)).toBe('0-1');
+  });
+
+  it('returns "2-1" for 2H + 1V', () => {
+    const imgs = [
+      toImageType(createHorizontalImage(1, 4), DESKTOP),
+      toImageType(createHorizontalImage(2, 3), DESKTOP),
+      toImageType(createVerticalImage(3, 2), DESKTOP),
+    ];
+    expect(getTemplateKey(imgs)).toBe('2-1');
+  });
+
+  it('returns "0-4" for 4 verticals', () => {
+    const imgs = [1, 2, 3, 4].map((id) =>
+      toImageType(createVerticalImage(id, 2), DESKTOP)
+    );
+    expect(getTemplateKey(imgs)).toBe('0-4');
+  });
+});
+
+describe('findDominant', () => {
+  it('returns the highest effective-rating image', () => {
+    const h5 = toImageType(createHorizontalImage(1, 5), DESKTOP);
+    const h3 = toImageType(createHorizontalImage(2, 3), DESKTOP);
+    const h2 = toImageType(createHorizontalImage(3, 2), DESKTOP);
+    const { dominant, rest } = findDominant([h3, h5, h2]);
+    expect(dominant).toBe(h5);
+    expect(rest).toHaveLength(2);
+    expect(rest).not.toContain(h5);
+  });
+
+  it('returns first image when all ratings are equal', () => {
+    const a = toImageType(createHorizontalImage(1, 3), DESKTOP);
+    const b = toImageType(createHorizontalImage(2, 3), DESKTOP);
+    const { dominant } = findDominant([a, b]);
+    expect(dominant).toBe(a);
+  });
+
+  it('throws on empty array', () => {
+    expect(() => findDominant([])).toThrow();
+  });
+});
+
+describe('TEMPLATE_MAP', () => {
+  const allKeys = [
+    '1-0', '0-1',
+    '2-0', '1-1', '0-2',
+    '3-0', '2-1', '1-2', '0-3',
+    '4-0', '3-1', '2-2', '1-3', '0-4',
+    '5-0', '4-1', '3-2', '2-3', '1-4', '0-5',
+  ];
+
+  it('has entries for all (hCount, vCount) combos up to 5 items', () => {
+    for (const key of allKeys) {
+      expect(TEMPLATE_MAP[key]).toBeDefined();
+    }
+  });
+
+  it('every entry has a label string', () => {
+    for (const key of allKeys) {
+      expect(typeof TEMPLATE_MAP[key]?.label).toBe('string');
+    }
+  });
+
+  it('every entry has a build function', () => {
+    for (const key of allKeys) {
+      expect(typeof TEMPLATE_MAP[key]?.build).toBe('function');
+    }
+  });
+});
+
+describe('lookupComposition', () => {
+  it('returns hero label for 1H image', () => {
+    const imgs = [toImageType(createHorizontalImage(1, 5), DESKTOP)];
+    const { label, templateKey } = lookupComposition(imgs);
+    expect(label).toBe('hero');
+    expect(templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
+  });
+
+  it('returns h-pair label for 2H images', () => {
+    const imgs = [
+      toImageType(createHorizontalImage(1, 3), DESKTOP),
+      toImageType(createHorizontalImage(2, 3), DESKTOP),
+    ];
+    const { label, templateKey } = lookupComposition(imgs);
+    expect(label).toBe('h-pair');
+    expect(templateKey).toEqual<TemplateKey>({ h: 2, v: 0 });
+  });
+
+  it('builds dom-stacked when dominant H has effectiveRating >= 4', () => {
+    const imgs = [
+      toImageType(createHorizontalImage(1, 4), DESKTOP), // dominant H, effectiveRating=4
+      toImageType(createVerticalImage(2, 3), DESKTOP),
+      toImageType(createVerticalImage(3, 2), DESKTOP),
+    ];
+    const { label, composition } = lookupComposition(imgs);
+    expect(label).toBe('dom-stacked-1h2v');
+    // Root should be H pair: dominant left, vStack right
+    expect(composition.type).toBe('pair');
+    if (composition.type === 'pair') {
+      expect(composition.direction).toBe('H');
+      expect(composition.children[1].type).toBe('pair');
+      if (composition.children[1].type === 'pair') {
+        expect(composition.children[1].direction).toBe('V');
+      }
+    }
+  });
+
+  it('falls back to chain when no dominant H >= 4 in 2-1', () => {
+    const imgs = [
+      toImageType(createHorizontalImage(1, 3), DESKTOP), // effectiveRating=3, not >= 4
+      toImageType(createVerticalImage(2, 2), DESKTOP),
+      toImageType(createVerticalImage(3, 2), DESKTOP),
+    ];
+    const { label } = lookupComposition(imgs);
+    // buildDominantStacked falls back to hChain
+    expect(label).toBe('dom-stacked-1h2v');
+    const { composition } = lookupComposition(imgs);
+    // hChain of 3 → nested pair, not vStack at root
+    expect(composition.type).toBe('pair');
+    if (composition.type === 'pair') {
+      expect(composition.children[1].type).toBe('single'); // right = last item, not vStack
+    }
+  });
+
+  it('returns chain-fallback label for unknown key and logs warning', () => {
+    // Inject an edge case by passing 6 images (no key in map)
+    const imgs = [1, 2, 3, 4, 5, 6].map((id) =>
+      toImageType(createHorizontalImage(id, 2), DESKTOP)
+    );
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { label } = lookupComposition(imgs);
+    expect(label).toBe('chain-fallback');
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });

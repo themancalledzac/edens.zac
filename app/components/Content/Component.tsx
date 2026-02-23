@@ -178,7 +178,7 @@ export default function Component({
 
   // Render a row using BoxRenderer (generic recursive renderer)
   const renderRow = (row: RowWithPatternAndSizes) => {
-    const { patternName, items, boxTree } = row;
+    const { templateKey, items, boxTree } = row;
     const rowKey = `row-${items.map(item => item.content.id).join('-')}`;
 
     // Safety: If boxTree is missing (shouldn't happen), create a fallback
@@ -189,8 +189,10 @@ export default function Component({
       items.map(item => [String(item.content.id), { width: item.width, height: item.height }])
     );
 
+    const dataPattern = typeof templateKey === 'string' ? templateKey : `${templateKey.h}h-${templateKey.v}v`;
+
     return (
-      <div key={rowKey} className={cbStyles.row} data-pattern={patternName}>
+      <div key={rowKey} className={cbStyles.row} data-pattern={dataPattern}>
         <BoxRenderer
           tree={tree}
           sizes={sizesMap}

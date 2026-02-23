@@ -19,6 +19,7 @@ import {
   convertCollectionContentToParallax,
   createHeaderRow,
   processContentBlocks,
+  type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
 
 // Test fixtures
@@ -80,6 +81,7 @@ const createCollectionContent = (
   title: `Collection ${id}`,
   slug: `collection-${id}`,
   collectionType: 'PORTFOLIO',
+  referencedCollectionId: id * 100,
   coverImage: {
     id: id * 10,
     contentType: 'IMAGE',
@@ -778,6 +780,12 @@ describe('clampParallaxDimensions', () => {
   });
 });
 
+/** Helper to narrow createHeaderRow result to single row (desktop path) */
+function asSingleRow(result: RowWithPatternAndSizes | RowWithPatternAndSizes[] | null): RowWithPatternAndSizes | null {
+  if (result === null || Array.isArray(result)) return null;
+  return result;
+}
+
 describe('createHeaderRow', () => {
   const componentWidth = 800;
   const chunkSize = 4;
@@ -785,18 +793,18 @@ describe('createHeaderRow', () => {
   describe('Normal cases with full metadata', () => {
     it('should create header row with two items: cover image and metadata text block', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       expect(result).not.toBeNull();
       expect(result?.items).toHaveLength(2);
-      expect(result?.patternName).toBe('header');
+      expect(result?.templateKey).toBe('header');
       expect(result?.items[0]?.content.contentType).toBe('IMAGE');
       expect(result?.items[1]?.content.contentType).toBe('TEXT');
     });
 
     it('should create header row with cover image block with correct properties', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
       const coverBlock = result?.items[0]?.content as ContentParallaxImageModel;
 
       expect(coverBlock).toBeDefined();
@@ -810,7 +818,7 @@ describe('createHeaderRow', () => {
 
     it('should create header row with metadata block with all metadata items', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
       const metadataBlock = result?.items[1]?.content as ContentTextModel;
 
       expect(metadataBlock).toBeDefined();
@@ -821,7 +829,7 @@ describe('createHeaderRow', () => {
 
     it('should calculate sizes for header row items', () => {
       const collection = createCollectionModel(1);
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       expect(result?.items[0]?.width).toBeGreaterThan(0);
       expect(result?.items[0]?.height).toBeGreaterThan(0);
@@ -848,7 +856,7 @@ describe('createHeaderRow', () => {
           visible: true,
         },
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       // Horizontal images hit the 50% max cap
       const coverWidth = result?.items[0]?.width || 0;
@@ -869,7 +877,7 @@ describe('createHeaderRow', () => {
           visible: true,
         },
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       const coverWidth = result?.items[0]?.width || 0;
       const minCoverWidth = componentWidth * 0.3;
@@ -894,7 +902,7 @@ describe('createHeaderRow', () => {
           visible: true,
         },
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       const coverWidth = result?.items[0]?.width || 0;
       const minCoverWidth = componentWidth * 0.3;
@@ -918,7 +926,7 @@ describe('createHeaderRow', () => {
           visible: true,
         },
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       const rowHeight = result?.items[0]?.height || 0;
 
@@ -944,7 +952,7 @@ describe('createHeaderRow', () => {
           visible: true,
         },
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       const coverWidth = result?.items[0]?.width || 0;
       const descWidth = result?.items[1]?.width || 0;
@@ -963,7 +971,7 @@ describe('createHeaderRow', () => {
         location: undefined,
         description: undefined,
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
       expect(result).not.toBeNull();
       expect(result?.items).toHaveLength(1);
