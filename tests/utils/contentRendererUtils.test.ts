@@ -50,6 +50,7 @@ const createCollectionContent = (
   title: `Collection ${id}`,
   slug: `collection-${id}`,
   collectionType: 'PORTFOLIO',
+  referencedCollectionId: id * 100,
   coverImage: {
     id: id * 10,
     imageUrl: `https://example.com/cover-${id}.jpg`,
@@ -123,7 +124,6 @@ const mockWrapperStyles = {
 
 const mockParallaxStyles = {
   mobile: 'mobile',
-  dragging: 'dragging',
   selected: 'selected',
 };
 
@@ -645,77 +645,53 @@ describe('contentRendererUtils', () => {
     it('should include dragContainer when includeDragContainer is true', () => {
       const result = buildWrapperClassName('imageLeft', mockWrapperStyles, {
         includeDragContainer: true,
-        enableDragAndDrop: true, // Suppress default class
       });
-      expect(result).toBe('imageLeft dragContainer');
+      expect(result).toBe('imageLeft dragContainer default');
     });
 
     it('should include parallaxContainer and overlayContainer when enableParallax is true', () => {
       const result = buildWrapperClassName('imageRight', mockWrapperStyles, {
         enableParallax: true,
-        enableDragAndDrop: true, // Suppress default class
       });
-      expect(result).toBe('imageRight parallaxContainer overlayContainer');
+      expect(result).toBe('imageRight parallaxContainer overlayContainer default');
     });
 
     it('should include mobile class when isMobile is true', () => {
       const result = buildWrapperClassName('imageSingle', mockWrapperStyles, {
         isMobile: true,
-        enableDragAndDrop: true, // Suppress default class
       });
-      expect(result).toBe('imageSingle mobile');
+      expect(result).toBe('imageSingle mobile default');
     });
 
-    it('should include dragging class when isDragged is true', () => {
-      const result = buildWrapperClassName('imageLeft', mockWrapperStyles, {
-        isDragged: true,
-        enableDragAndDrop: true, // Suppress default class
-      });
-      expect(result).toBe('imageLeft dragging');
-    });
-
-    it('should include clickable class when hasClickHandler is true and enableDragAndDrop is false', () => {
+    it('should include clickable class when hasClickHandler is true', () => {
       const result = buildWrapperClassName('imageRight', mockWrapperStyles, {
         hasClickHandler: true,
-        enableDragAndDrop: false,
       });
       expect(result).toBe('imageRight clickable');
     });
 
-    it('should include default class when hasClickHandler is false and enableDragAndDrop is false', () => {
+    it('should include default class when hasClickHandler is false', () => {
       const result = buildWrapperClassName('imageSingle', mockWrapperStyles, {
         hasClickHandler: false,
-        enableDragAndDrop: false,
       });
       expect(result).toBe('imageSingle default');
-    });
-
-    it('should not include clickable or default when enableDragAndDrop is true', () => {
-      const result = buildWrapperClassName('imageLeft', mockWrapperStyles, {
-        hasClickHandler: true,
-        enableDragAndDrop: true,
-      });
-      expect(result).toBe('imageLeft');
     });
 
     it('should include selected class when isSelected is true', () => {
       const result = buildWrapperClassName('imageRight', mockWrapperStyles, {
         isSelected: true,
-        enableDragAndDrop: true, // Suppress default class
       });
-      expect(result).toBe('imageRight selected');
+      expect(result).toBe('imageRight default selected');
     });
 
     it('should combine multiple classes correctly', () => {
       const result = buildWrapperClassName('imageSingle', mockWrapperStyles, {
         includeDragContainer: true,
         isMobile: true,
-        isDragged: true,
         hasClickHandler: true,
-        enableDragAndDrop: false,
         isSelected: true,
       });
-      expect(result).toBe('imageSingle dragContainer mobile dragging clickable selected');
+      expect(result).toBe('imageSingle dragContainer mobile clickable selected');
     });
 
     it('should filter out empty strings', () => {
@@ -723,8 +699,6 @@ describe('contentRendererUtils', () => {
         includeDragContainer: false,
         enableParallax: false,
         isMobile: false,
-        isDragged: false,
-        enableDragAndDrop: false,
         hasClickHandler: false,
         isSelected: false,
       });
@@ -745,13 +719,6 @@ describe('contentRendererUtils', () => {
       expect(result).toBe('imageLeft mobile');
     });
 
-    it('should include dragging class when isDragged is true', () => {
-      const result = buildParallaxWrapperClassName('imageRight', mockParallaxStyles, {
-        isDragged: true,
-      });
-      expect(result).toBe('imageRight dragging');
-    });
-
     it('should include selected class when isSelected is true', () => {
       const result = buildParallaxWrapperClassName('imageSingle', mockParallaxStyles, {
         isSelected: true,
@@ -762,16 +729,14 @@ describe('contentRendererUtils', () => {
     it('should combine multiple classes correctly', () => {
       const result = buildParallaxWrapperClassName('imageLeft', mockParallaxStyles, {
         isMobile: true,
-        isDragged: true,
         isSelected: true,
       });
-      expect(result).toBe('imageLeft mobile dragging selected');
+      expect(result).toBe('imageLeft mobile selected');
     });
 
     it('should filter out empty strings', () => {
       const result = buildParallaxWrapperClassName('imageRight', mockParallaxStyles, {
         isMobile: false,
-        isDragged: false,
         isSelected: false,
       });
       expect(result).toBe('imageRight');

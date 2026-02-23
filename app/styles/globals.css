@@ -147,7 +147,7 @@ body {
   /* CSS-only parallax setup */
   perspective: 1px;
   transform-style: preserve-3d;
-  overflow-x: hidden;
+  overflow-x: clip;
 
   /* Hide scrollbar completely on all browsers */
   -ms-overflow-style: none; /* Internet Explorer 10+ */

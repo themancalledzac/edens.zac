@@ -24,7 +24,7 @@ export enum CollectionType {
  * - ORDERED: Manual ordering via orderIndex
  * Matches backend CollectionBaseModel.DisplayMode enum
  */
-export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED';
+export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
 
 /**
  * Base model containing common fields shared across all Collection DTOs.
@@ -63,6 +63,8 @@ export interface CollectionCreateRequest {
 export interface CollectionListModel {
   id: number;
   name: string;
+  slug?: string;
+  type?: string;
 }
 
 /**
@@ -132,7 +134,7 @@ export interface CollectionUpdateRequest {
   slug?: string;
   description?: string;
   location?: LocationUpdate;
-  collectionDate?: string;
+  collectionDate?: string | null;
   visible?: boolean;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)

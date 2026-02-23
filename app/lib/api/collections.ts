@@ -208,12 +208,13 @@ export async function createCollection(
 /**
  * PUT /api/admin/collections/{id}
  * Update collection metadata. Accepts partial updates
+ * Returns full CollectionUpdateResponseDTO with collection and all metadata
  */
 export async function updateCollection(
   id: number,
   updateData: CollectionUpdateRequest
-): Promise<CollectionModel> {
-  return fetchAdminPutJsonApi<CollectionModel>(`/collections/${id}`, updateData);
+): Promise<CollectionUpdateResponseDTO> {
+  return fetchAdminPutJsonApi<CollectionUpdateResponseDTO>(`/collections/${id}`, updateData);
 }
 
 /**
@@ -265,5 +266,19 @@ export async function reorderCollectionContent(
   return fetchAdminPostJsonApi<CollectionModel>(
     `/collections/${collectionId}/reorder`,
     { reorders }
+  );
+}
+
+/**
+ * POST /api/admin/collections/{parentId}/child
+ * Create a new child collection and link it to parent
+ */
+export async function createChildCollection(
+  parentId: number,
+  createRequest: CollectionCreateRequest
+): Promise<CollectionUpdateResponseDTO> {
+  return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
+    `/collections/${parentId}/child`,
+    createRequest
   );
 }

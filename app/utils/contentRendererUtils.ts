@@ -296,8 +296,6 @@ export function buildWrapperClassName(
     includeDragContainer?: boolean;
     enableParallax?: boolean;
     isMobile?: boolean;
-    isDragged?: boolean;
-    enableDragAndDrop?: boolean;
     hasClickHandler?: boolean;
     isSelected?: boolean;
   } = {}
@@ -306,8 +304,6 @@ export function buildWrapperClassName(
     includeDragContainer = false,
     enableParallax = false,
     isMobile = false,
-    isDragged = false,
-    enableDragAndDrop = false,
     hasClickHandler = false,
     isSelected = false,
   } = options;
@@ -318,8 +314,7 @@ export function buildWrapperClassName(
     enableParallax ? styles.parallaxContainer : '',
     enableParallax ? styles.overlayContainer : '',
     isMobile ? styles.mobile : '',
-    isDragged ? styles.dragging : '',
-    enableDragAndDrop ? '' : (hasClickHandler ? styles.clickable : styles.default),
+    hasClickHandler ? styles.clickable : styles.default,
     isSelected ? styles.selected : '',
   ].filter(Boolean).join(' ');
 }
@@ -339,20 +334,17 @@ export function buildParallaxWrapperClassName(
   styles: Record<string, string>,
   options: {
     isMobile?: boolean;
-    isDragged?: boolean;
     isSelected?: boolean;
   } = {}
 ): string {
   const {
     isMobile = false,
-    isDragged = false,
     isSelected = false,
   } = options;
 
   return [
     positionClassName, // Position class - MUST be first
     isMobile ? styles.mobile : '',
-    isDragged ? styles.dragging : '',
     isSelected ? styles.selected : '',
   ].filter(Boolean).join(' ');
 }

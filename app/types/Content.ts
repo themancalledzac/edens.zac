@@ -166,6 +166,7 @@ export interface ContentCollectionModel extends Content {
   slug: string;
   collectionType: 'BLOG' | 'PORTFOLIO' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'HOME' | 'MISC';
   coverImage?: ContentImageModel | null; // Full image object with dimensions (matches CollectionModel.coverImage)
+  referencedCollectionId: number; // ID of the actual collection being referenced
 }
 
 /**

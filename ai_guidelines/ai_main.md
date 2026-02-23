@@ -45,6 +45,10 @@
 - **Backend access**: Both localhost Spring Boot server and production RDS available
 - **Port configuration**: Frontend typically runs on 3001, backend on 8080
 
+## Code Quality Rules
+
+- **No trivial helper functions**: Don't extract single-expression logic (e.g., `!!value.slug`, `value > 0`) into named utility functions — inline it where used, since the intent is self-evident at the call site. A helper earns its place only when it encapsulates non-trivial logic, appears at 3+ call sites, or names a meaningful domain concept.
+
 ## Key Reminders
 
 - **Speed and accuracy**: Prioritize both performance and correctness

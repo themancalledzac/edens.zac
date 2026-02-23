@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo } from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
@@ -10,7 +10,6 @@ import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer
 import {
   checkImageVisibility,
   createContentClickHandler,
-  createDragHandlers,
 } from '@/app/utils/contentComponentHandlers';
 import {
   buildParallaxWrapperClassName,
@@ -21,6 +20,7 @@ import { BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
+import ReorderOverlay from './ReorderOverlay';
 
 export default function CollectionContentRenderer({
   contentId,
@@ -35,13 +35,23 @@ export default function CollectionContentRenderer({
   overlayText,
   cardTypeBadge,
   enableParallax,
-  hasSlug: _hasSlug, // Used for collection navigation on public pages
+  hasSlug: _hasSlug,
   isCollection = false,
   contentType,
   textItems,
   isGif = false,
-  enableDragAndDrop = false,
-  draggedImageId,
+  // Reorder mode props
+  isReorderMode = false,
+  isPickedUp = false,
+  pickedUpImageId,
+  hasMoved = false,
+  isFirstInOrder = false,
+  isLastInOrder = false,
+  onArrowMove,
+  onPickUp,
+  onPlace,
+  onCancelImageMove,
+  // Click handlers
   onImageClick,
   enableFullScreenView,
   onFullScreenImageClick,
@@ -50,35 +60,27 @@ export default function CollectionContentRenderer({
   isSelectingCoverImage = false,
   currentCoverImageId,
   justClickedImageId,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
 }: CollectionContentRendererProps) {
-  const isDraggingRef = useRef(false);
   const router = useRouter();
 
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
 
   // Unified click handler - delegates to parent via onImageClick callback
-  // Parent component (ManageClient) decides: navigate for collections, edit for images
-  // For public pages without onImageClick, falls back to fullscreen view
-  // Collections with slug navigate to collection page instead of fullscreen
   const handleClick = useMemo(() => {
     // TEXT content is not clickable
     if (contentType === 'TEXT') {
       return;
     }
 
-    // Collections with slug should navigate to collection page, not open fullscreen
-    // This handles public pages where collections are displayed (e.g., home page)
+    // In reorder mode, clicks are handled by ReorderOverlay
+    if (isReorderMode) {
+      return;
+    }
+
+    // Collections with slug should navigate to collection page
     if (_hasSlug && !onImageClick) {
       return () => {
-        if (isDraggingRef.current) {
-          isDraggingRef.current = false;
-          return;
-        }
         router.push(`/${_hasSlug}`);
       };
     }
@@ -95,7 +97,6 @@ export default function CollectionContentRenderer({
 
     return createContentClickHandler(
       contentId,
-      isDraggingRef,
       onImageClick,
       enableFullScreenView,
       onFullScreenImageClick,
@@ -111,20 +112,8 @@ export default function CollectionContentRenderer({
     onFullScreenImageClick,
     _hasSlug,
     router,
+    isReorderMode,
   ]);
-
-  // Drag handlers
-  const isDragged = enableDragAndDrop && draggedImageId === contentId;
-  const dragHandlers = createDragHandlers(
-    { id: contentId },
-    enableDragAndDrop,
-    draggedImageId,
-    isDraggingRef,
-    onDragStart,
-    onDragOver,
-    onDrop,
-    onDragEnd
-  );
 
   // Render TEXT content
   if (contentType === 'TEXT') {
@@ -144,8 +133,6 @@ export default function CollectionContentRenderer({
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
-          isDragged,
-          enableDragAndDrop,
           hasClickHandler: false,
           isSelected: false,
         })}
@@ -157,7 +144,6 @@ export default function CollectionContentRenderer({
       >
         <div className={cbStyles.blockContainer}>
           <div className={cbStyles.metadataBlockInner}>
-            {/* Top Row: Date and Location */}
             {(dateItem || locationItem) && (
               <div className={cbStyles.metadataHeaderRow}>
                 {dateItem && (
@@ -170,8 +156,6 @@ export default function CollectionContentRenderer({
                 )}
               </div>
             )}
-
-            {/* Middle: Filters (Tags/People) */}
             {filterItems.length > 0 && (
               <div className={cbStyles.metadataFilters}>
                 {filterItems.map(item => (
@@ -184,8 +168,6 @@ export default function CollectionContentRenderer({
                 ))}
               </div>
             )}
-
-            {/* Bottom: Description */}
             {descriptionItem && (
               <div className={cbStyles.metadataDescriptionContainer}>
                 <div className={cbStyles[`textItem-${descriptionItem.type}`]}>
@@ -202,9 +184,7 @@ export default function CollectionContentRenderer({
   // Render image content (IMAGE, COLLECTION, GIF)
   const hasValidImage = imageUrl && imageUrl.trim() !== '';
 
-  // Early return for invalid images - render placeholder
   if (!hasValidImage) {
-    // Default aspect ratio 3:2 if dimensions don't exist
     const placeholderWidth = width || 300;
     const placeholderHeight = height || (placeholderWidth * 2) / 3;
 
@@ -215,8 +195,6 @@ export default function CollectionContentRenderer({
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
-          isDragged,
-          enableDragAndDrop,
           hasClickHandler: false,
           isSelected: false,
         })}
@@ -244,7 +222,6 @@ export default function CollectionContentRenderer({
   const shouldShowOverlay =
     contentType === 'IMAGE' && ((isSelectingCoverImage && isCurrentCover) || isJustClicked);
 
-  // For IMAGE type, check visibility (need to create minimal content object)
   const isNotVisible =
     contentType === 'IMAGE' &&
     checkImageVisibility(
@@ -259,11 +236,6 @@ export default function CollectionContentRenderer({
       currentCollectionId
     );
 
-  // Determine if we have overlays (for imageWrapper structure)
-  // Note: Currently unused but kept for potential future use
-  const _hasOverlays = !!(overlayText || cardTypeBadge);
-
-  // Unified Image component props - conditionally includes parallax className or inline styles
   const imageProps = {
     src: imageUrl,
     alt,
@@ -271,8 +243,6 @@ export default function CollectionContentRenderer({
     height: imageHeight,
     loading: 'lazy' as const,
     unoptimized: isGif,
-    // Parallax: use CSS classes, no inline styles
-    // Non-parallax: use inline styles for sizing/objectFit
     ...(enableParallax
       ? {
           className: `parallax-bg ${variantStyles.parallaxImage}`,
@@ -286,7 +256,6 @@ export default function CollectionContentRenderer({
         }),
   };
 
-  // Common imageWrapper content (Image + overlays) - used by both parallax and non-parallax
   const imageWrapperContent = (
     <>
       <Image {...imageProps} />
@@ -300,10 +269,7 @@ export default function CollectionContentRenderer({
     </>
   );
 
-  // Unified wrapper props - works for both parallax and non-parallax
-  // Note: key is passed directly to JSX (React requirement)
-
-  // DEBUG: Check for NaN values before creating wrapperProps
+  // NaN fallback logic
   if (!Number.isFinite(width) || !Number.isFinite(height)) {
     console.error('[CollectionContentRenderer] NaN detected in props:', {
       contentId,
@@ -317,27 +283,20 @@ export default function CollectionContentRenderer({
     });
   }
 
-  // TODO: This feels obtuse/a hack. We should be able to just use the width and height props.
-  // Calculate fallback values if NaN detected
   let validWidth = width;
   let validHeight = height;
 
   if (!Number.isFinite(width) || !Number.isFinite(height)) {
-    // Calculate fallback from image dimensions if available
     if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
       if (!Number.isFinite(width) && Number.isFinite(height)) {
-        // Width is NaN, height is valid - calculate width from aspect ratio
         validWidth = (height * imageWidth) / imageHeight;
       } else if (!Number.isFinite(height) && Number.isFinite(width)) {
-        // Height is NaN, width is valid - calculate height from aspect ratio
         validHeight = (width * imageHeight) / imageWidth;
       } else {
-        // Both are NaN - use default aspect ratio (3:2)
         validWidth = 300;
         validHeight = 200;
       }
     } else {
-      // No image dimensions available - use default aspect ratio (3:2)
       if (!Number.isFinite(width)) {
         validWidth = Number.isFinite(height) ? height * 1.5 : 300;
       }
@@ -352,23 +311,15 @@ export default function CollectionContentRenderer({
   }
 
   const wrapperProps = {
-    draggable: enableDragAndDrop && !!onDragStart,
-    onDragStart: dragHandlers.handleDragStartEvent,
-    onDragOver: dragHandlers.handleDragOverEvent,
-    onDrop: dragHandlers.handleDropEvent,
-    onDragEnd: dragHandlers.handleDragEndEvent,
     className: enableParallax
       ? buildParallaxWrapperClassName(className, cbStyles, {
           isMobile,
-          isDragged,
           isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
         })
       : buildWrapperClassName(className, cbStyles, {
-          includeDragContainer: enableDragAndDrop && !enableParallax,
+          includeDragContainer: false,
           enableParallax,
           isMobile,
-          isDragged,
-          enableDragAndDrop,
           hasClickHandler: !!handleClick,
           isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
         }),
@@ -383,8 +334,6 @@ export default function CollectionContentRenderer({
     ...(!enableParallax && handleClick && { onClick: handleClick }),
   };
 
-  // Render image content (IMAGE, COLLECTION, GIF)
-  // Unified structure for both parallax and non-parallax
   return (
     <div key={contentId} {...wrapperProps}>
       <div className={cbStyles.imageWrapper} onClick={handleClick}>
@@ -398,6 +347,26 @@ export default function CollectionContentRenderer({
           isSelected={isSelected}
         />
       )}
+      {isReorderMode &&
+        onArrowMove &&
+        onPickUp &&
+        onPlace &&
+        onCancelImageMove &&
+        contentId !== currentCoverImageId && (
+          <ReorderOverlay
+            contentId={contentId}
+            isPickedUp={isPickedUp}
+            pickedUpImageId={pickedUpImageId}
+            hasMoved={hasMoved}
+            isFirst={isFirstInOrder}
+            isLast={isLastInOrder}
+            onArrowLeft={() => onArrowMove(contentId, -1)}
+            onArrowRight={() => onArrowMove(contentId, 1)}
+            onPickUp={() => onPickUp(contentId)}
+            onPlace={() => onPlace(contentId)}
+            onCancel={() => onCancelImageMove(contentId)}
+          />
+        )}
     </div>
   );
 }

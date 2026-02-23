@@ -6,6 +6,7 @@
  */
 
 import {
+  fetchAdminDeleteJsonApi,
   fetchAdminFormDataApi,
   fetchAdminGetApi,
   fetchAdminPatchJsonApi,
@@ -119,10 +120,10 @@ export async function getAllImages(): Promise<ContentImageModel[]> {
 
 /**
  * DELETE /api/admin/content/images
- * Delete one or more images
+ * Delete one or more images (deletes from both S3 and database)
  */
 export async function deleteImages(imageIds: number[]): Promise<{ deletedIds: number[] }> {
-  return fetchAdminPostJsonApi('/content/images', { imageIds });
+  return fetchAdminDeleteJsonApi('/content/images', { imageIds });
 }
 
 /**

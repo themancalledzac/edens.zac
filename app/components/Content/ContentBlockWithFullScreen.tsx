@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
@@ -32,13 +33,15 @@ interface ContentBlockWithFullScreenProps {
   justClickedImageId?: number | null;
   selectedImageIds?: number[];
   currentCollectionId?: number;
-  enableDragAndDrop?: boolean;
-  draggedImageId?: number | null;
-  dragOverImageId?: number | null;
-  onDragStart?: (imageId: number) => void;
-  onDragOver?: (e: React.DragEvent, imageId: number) => void;
-  onDrop?: (e: React.DragEvent, imageId: number) => void;
-  onDragEnd?: () => void;
+  // Reorder mode props
+  isReorderMode?: boolean;
+  reorderMoves?: ReorderMove[];
+  pickedUpImageId?: number | null;
+  reorderDisplayOrder?: number[];
+  onArrowMove?: (contentId: number, direction: -1 | 1) => void;
+  onPickUp?: (contentId: number) => void;
+  onPlace?: (targetId: number) => void;
+  onCancelImageMove?: (contentId: number) => void;
 }
 export default function ContentBlockWithFullScreen({
   content: allBlocks,
@@ -54,13 +57,14 @@ export default function ContentBlockWithFullScreen({
   justClickedImageId,
   selectedImageIds,
   currentCollectionId,
-  enableDragAndDrop = false,
-  draggedImageId,
-  dragOverImageId,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
+  isReorderMode = false,
+  reorderMoves,
+  pickedUpImageId,
+  reorderDisplayOrder,
+  onArrowMove,
+  onPickUp,
+  onPlace,
+  onCancelImageMove,
 }: ContentBlockWithFullScreenProps) {
   const {
     showImage,
@@ -141,13 +145,14 @@ export default function ContentBlockWithFullScreen({
         currentCollectionId={currentCollectionId}
         chunkSize={chunkSize}
         collectionData={collectionData}
-        enableDragAndDrop={enableDragAndDrop}
-        draggedImageId={draggedImageId}
-        dragOverImageId={dragOverImageId}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
+        isReorderMode={isReorderMode}
+        reorderMoves={reorderMoves}
+        pickedUpImageId={pickedUpImageId}
+        reorderDisplayOrder={reorderDisplayOrder}
+        onArrowMove={onArrowMove}
+        onPickUp={onPickUp}
+        onPlace={onPlace}
+        onCancelImageMove={onCancelImageMove}
       />
 
       {hasMore && (
