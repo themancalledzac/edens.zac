@@ -138,18 +138,6 @@ export type AtomicComponent =
       children: [AtomicComponent, AtomicComponent];
     };
 
-/** Row building state — for debugging and inspection */
-export interface TreeNodeState {
-  images: ImageType[];
-  currentValue: number;
-  maxValue: number;
-}
-
-/** A completed row with composition and state */
-export interface TreeNode {
-  state: TreeNodeState;
-  composition: AtomicComponent;
-}
 
 // =============================================================================
 // ARCHITECTURE HELPERS
@@ -371,7 +359,7 @@ function parseTemplateKey(images: ImageType[]): TemplateKey {
 // =============================================================================
 
 /** Derive direction from AtomicComponent root for RowResult */
-function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' | null {
+export function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' | null {
   if (ac.type === 'single') return null;
   return ac.direction === 'H' ? 'horizontal' : 'vertical';
 }

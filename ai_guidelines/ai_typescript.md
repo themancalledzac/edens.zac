@@ -183,6 +183,20 @@ const collection = data as Collection; // No validation
 }
 ```
 
+## Enum Usage
+
+When a type uses an enum (e.g., `CollectionType`), always use the enum value — not a raw string literal:
+
+```typescript
+import { CollectionType } from '@/app/types/Collection';
+
+// ✅ Good
+const model: CollectionModel = { type: CollectionType.PORTFOLIO, ... };
+
+// ❌ Bad - string literal won't satisfy enum type
+const model: CollectionModel = { type: 'PORTFOLIO', ... };
+```
+
 ## Type Safety Checklist
 
 - [ ] No `any` types used

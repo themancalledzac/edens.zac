@@ -41,6 +41,7 @@ describe('fetchCollectionBySlug', () => {
 
 ### Component Test
 ```typescript
+import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from '@jest/globals';
 import GridSection from '@/app/components/Content/GridSection';
@@ -127,13 +128,21 @@ Object.defineProperty(window, 'matchMedia', {
 6. **Keep tests isolated**: Each test should be independent
 7. **Test user interactions**: Click, type, submit actions in component tests
 
+## Test Fixture Gotchas
+
+When creating test fixtures, match the current type definitions exactly:
+- `CollectionModel` uses `type: CollectionType` (enum import), NOT `collectionType: string`
+- `ContentCollectionModel` requires `referencedCollectionId: number`
+- `ContentImageModel.location` is `{ id: number; name: string } | null`, NOT a string
+- Component tests using `toBeInTheDocument()` need `import '@testing-library/jest-dom'` at the top
+- `createHeaderRow()` returns a union type — narrow with type guards before accessing `.items`
+
 ## Testing Backlog Items
 
 Based on current state, prioritize tests for:
-- [ ] `app/lib/api/collections.ts` - All API functions
+- [x] `app/lib/api/collections.ts` - API parsing functions
 - [ ] `app/components/` - All new App Router components
 - [ ] `app/[slug]/page.tsx` - Dynamic route components
-- [ ] `app/types/Collection.ts` - Type validation
 - [ ] New utility functions and processing logic
 
 ## Running Tests

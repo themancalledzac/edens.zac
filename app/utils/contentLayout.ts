@@ -16,6 +16,7 @@ import {
   isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
 import { type BoxTree, buildRows, type TemplateKey } from '@/app/utils/rowCombination';
+import { optimizeRows } from '@/app/utils/rowOptimizer';
 import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
 
 /**
@@ -95,8 +96,6 @@ export function chunkContent(
     const slotWidth = getSlotWidth(contentItem, effectiveChunkSize, prevItem, nextItem);
 
     // Standalone items (slotWidth >= chunkSize) get their own row
-    // Note: Pattern registry now handles standalone detection, but chunkContent
-    // is still used for slot-based layout (mobile/fallback)
     if (slotWidth >= effectiveChunkSize) {
       if (currentRow.length > 0) {
         result.push([...currentRow]);
@@ -339,8 +338,6 @@ export function calculateContentSizes(
 export interface ProcessContentOptions {
   /** Whether the viewport is mobile (disables pattern detection) */
   isMobile?: boolean;
-  /** Enable pattern detection for advanced layouts (default: true on desktop) */
-  enablePatternDetection?: boolean;
   /** Collection model for creating header row (cover image + metadata) */
   collectionData?: CollectionModel;
   /** Display mode — FIXED and CHRONOLOGICAL skip reorderLonelyVerticals */
@@ -407,7 +404,7 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * @param content - Array of content blocks to process (should NOT include header items)
  * @param componentWidth - Total available width for display
  * @param chunkSize - Number of normal-width items per row (default: 2)
- * @param options - Processing options (isMobile, enablePatternDetection, collectionData)
+ * @param options - Processing options (isMobile, collectionData, displayMode)
  * @returns Array of rows with pattern metadata and sized content blocks
  */
 export function processContentForDisplay(
@@ -431,12 +428,8 @@ export function processContentForDisplay(
     }
   }
 
-  // Determine if pattern detection should be used
-  // Default: enabled on desktop, disabled on mobile
-  const usePatternDetection = options?.enablePatternDetection ?? !options?.isMobile;
-
-  // Mobile or pattern detection disabled → use simple slot-based system
-  if (options?.isMobile || !usePatternDetection) {
+  // Mobile → use simple slot-based system; desktop → use pattern detection
+  if (options?.isMobile) {
     // On mobile, override chunkSize to mobileSlotWidth (2) so items are
     // grouped correctly for a narrow viewport instead of using desktop's 4-slot width
     const effectiveChunkSize = options?.isMobile ? LAYOUT.mobileSlotWidth : chunkSize;
@@ -465,8 +458,8 @@ export function processContentForDisplay(
   // Desktop with pattern detection
   const rowWidth = LAYOUT.desktopSlotWidth;
 
-  // Use buildRows() for pattern-based layout
-  const rows = buildRows(content, rowWidth);
+  // Use buildRows() for pattern-based layout, then optimize row boundaries
+  const rows = optimizeRows(buildRows(content, rowWidth), rowWidth);
 
   const contentRows = rows.map(row => {
     // Use BoxTree-based size calculation (generic, follows tree structure)
