@@ -107,12 +107,30 @@ html,
   --color-disabled: #ccc;
 
   /* Additional overlay variations */
+  --color-overlay-light-05: rgba(255, 255, 255, 0.05);
   --color-overlay-light-10: rgba(255, 255, 255, 0.1);
   --color-overlay-light-20: rgba(255, 255, 255, 0.2);
   --color-overlay-light-30: rgba(255, 255, 255, 0.3);
+  --color-overlay-light-40: rgba(255, 255, 255, 0.4);
+  --color-overlay-light-50: rgba(255, 255, 255, 0.5);
+  --color-overlay-light-60: rgba(255, 255, 255, 0.6);
+  --color-overlay-light-70: rgba(255, 255, 255, 0.7);
+  --color-overlay-light-90: rgba(255, 255, 255, 0.9);
 
   /* Hover state */
   --color-hover-grey: #333;
+
+  /* Danger colors for dark backgrounds (tailwind red-600/red-300) */
+  --color-danger-dark: rgb(220, 38, 38);
+  --color-danger-subtle: rgba(220, 38, 38, 0.2);
+  --color-danger-text: rgb(252, 165, 165);
+
+  /* Blue accent (tailwind blue-500/blue-300) */
+  --color-blue: rgb(59, 130, 246);
+  --color-blue-text: rgb(147, 197, 253);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
 
   /* Border variations */
   --color-border-dark: #adb5bd;

@@ -400,7 +400,7 @@
   border: none;
   border-radius: var(--radius-2);
   padding: var(--space-3) var(--space-4);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .toolbarItemCount {

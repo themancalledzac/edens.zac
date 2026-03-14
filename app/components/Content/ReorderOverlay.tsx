@@ -29,7 +29,9 @@ export default function ReorderOverlay({
   onCancel,
 }: ReorderOverlayProps) {
   return (
-    <div className={`${styles.overlay} ${isPickedUp ? styles.pickedUp : ''}`}>
+    <div
+      className={`${styles.overlay} ${isPickedUp ? styles.pickedUp : ''} ${hasMoved && !isPickedUp ? styles.moved : ''}`}
+    >
       {/* Top row: pick-up (left) and cancel (right) */}
       <div className={styles.topRow}>
         <button

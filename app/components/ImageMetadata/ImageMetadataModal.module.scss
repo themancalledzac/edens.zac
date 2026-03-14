@@ -60,15 +60,15 @@
   }
 
   &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-overlay-light-10);
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
+    background: var(--color-overlay-light-30);
+    border-radius: var(--radius-1);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.5);
+      background: var(--color-overlay-light-50);
     }
   }
 
@@ -98,11 +98,11 @@
 
 /* Error Message */
 .errorMessage {
-  background: rgba(220, 38, 38, 0.2);
-  border: 1px solid rgb(220 38 38);
-  color: rgb(252 165 165);
+  background: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-dark);
+  color: var(--color-danger-text);
   padding: 12px 16px;
-  border-radius: 4px;
+  border-radius: var(--radius-1);
   margin-bottom: 20px;
   font-size: 14px;
 }
@@ -111,7 +111,7 @@
 .formSection {
   margin-bottom: 32px;
   padding-bottom: 32px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--color-overlay-light-10);
 
   &:last-of-type {
     border-bottom: none;
@@ -122,7 +122,7 @@
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 16px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-overlay-light-90);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -137,7 +137,7 @@
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 6px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-overlay-light-70);
 }
 
 .formInput,
@@ -146,20 +146,20 @@
   width: 100%;
   padding: 10px 12px;
   font-size: 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  background: var(--color-overlay-light-05);
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: var(--radius-1);
   color: white;
   transition: all 0.2s;
 
   &:focus {
     outline: none;
-    border-color: rgba(255, 255, 255, 0.5);
+    border-color: var(--color-overlay-light-50);
     background: rgba(255, 255, 255, 0.08);
   }
 
   &::placeholder {
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--color-overlay-light-40);
   }
 }
 
@@ -176,7 +176,7 @@
 .formHint {
   display: block;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-overlay-light-50);
   margin-top: 4px;
   font-style: italic;
 }
@@ -205,7 +205,7 @@
   gap: 8px;
   cursor: pointer;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-overlay-light-90);
 
   input[type='checkbox'] {
     width: 18px;
@@ -226,7 +226,7 @@
   margin-top: 32px;
   justify-content: space-between;
   padding-top: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--color-overlay-light-10);
 
   @media (width <= 768px) {
     flex-direction: column-reverse;
@@ -258,7 +258,7 @@
   padding: 12px 24px;
   font-size: 14px;
   font-weight: 600;
-  border-radius: 4px;
+  border-radius: var(--radius-1);
   cursor: pointer;
   transition: all 0.2s;
   border: none;
@@ -279,7 +279,7 @@
   color: black;
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--color-overlay-light-90);
     transform: translateY(-1px);
   }
 
@@ -291,22 +291,22 @@
 .cancelButton {
   background: transparent;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--color-overlay-light-30);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: var(--color-overlay-light-10);
+    border-color: var(--color-overlay-light-50);
   }
 }
 
 .deleteButton {
-  background: rgba(220, 38, 38, 0.2);
-  color: rgb(252 165 165);
-  border: 1px solid rgb(220 38 38);
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-dark);
 
   &:hover:not(:disabled) {
     background: rgba(220, 38, 38, 0.3);
-    border-color: rgb(220 38 38);
+    border-color: var(--color-danger-dark);
     transform: translateY(-1px);
   }
 
@@ -335,7 +335,7 @@
   z-index: var(--z-modal-controls);
 
   &:hover:not(:disabled) {
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: var(--color-overlay-light-30);
   }
 
   &:disabled {
@@ -370,40 +370,40 @@
   padding: 4px 12px;
   font-size: 12px;
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: var(--radius-1);
   cursor: pointer;
   transition: all 0.2s;
   border: none;
 }
 
 .addNewButton {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--color-overlay-light-10);
+  color: var(--color-overlay-light-90);
+  border: 1px solid var(--color-overlay-light-30);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
+    background: var(--color-overlay-light-20);
+    border-color: var(--color-overlay-light-50);
   }
 }
 
 .clearButton {
-  background: rgba(220, 38, 38, 0.2);
-  color: rgb(252 165 165);
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-text);
   border: 1px solid rgb(220 38 38 / 50%);
 
   &:hover {
     background: rgba(220, 38, 38, 0.3);
-    border-color: rgb(220 38 38);
+    border-color: var(--color-danger-dark);
   }
 }
 
 .addNewInput {
   margin-bottom: 12px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
+  background: var(--color-overlay-light-05);
+  border: 1px solid var(--color-overlay-light-30);
+  border-radius: var(--radius-1);
 }
 
 .addNewButtons {
@@ -417,7 +417,7 @@
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: var(--radius-1);
   cursor: pointer;
   transition: all 0.2s;
   border: none;
@@ -428,7 +428,7 @@
   color: black;
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--color-overlay-light-90);
   }
 
   &:disabled {
@@ -440,36 +440,36 @@
 .cancelSmallButton {
   background: transparent;
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--color-overlay-light-30);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--color-overlay-light-10);
   }
 }
 
 .selectedDisplay {
   margin-bottom: 8px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  background: var(--color-overlay-light-05);
+  border-radius: var(--radius-1);
   font-size: 13px;
 }
 
 .selectedLabel {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-overlay-light-60);
   margin-right: 8px;
   font-weight: 500;
 }
 
 .selectedText {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-overlay-light-90);
 }
 
 .optionsList {
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: var(--radius-1);
   background: rgba(255, 255, 255, 0.03);
 
   /* Custom scrollbar */
@@ -478,15 +478,15 @@
   }
 
   &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--color-overlay-light-05);
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--color-overlay-light-20);
     border-radius: 3px;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.3);
+      background: var(--color-overlay-light-30);
     }
   }
 }
@@ -497,7 +497,7 @@
   padding: 10px 12px;
   cursor: pointer;
   transition: background-color 0.15s;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-overlay-light-05);
 
   &:last-child {
     border-bottom: none;
@@ -512,7 +512,7 @@
   background: rgba(255, 255, 255, 0.15);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--color-overlay-light-20);
   }
 }
 
@@ -526,14 +526,14 @@
 
 .optionLabel {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-overlay-light-90);
   user-select: none;
 }
 
 .emptyState {
   padding: 20px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-overlay-light-50);
   font-size: 13px;
   font-style: italic;
 }
@@ -544,9 +544,9 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  background: var(--color-overlay-light-05);
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: var(--radius-1);
   margin-bottom: 8px;
 }
 
@@ -555,12 +555,12 @@
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-overlay-light-90);
   font-weight: 500;
 }
 
 .cameraEmpty {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-overlay-light-40);
   font-style: italic;
 }
 
@@ -569,12 +569,12 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px;
-  background: rgba(220, 38, 38, 0.2);
-  border: 1px solid rgb(220 38 38);
+  background: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-dark);
   border-radius: 3px;
   font-size: 11px;
   font-weight: 600;
-  color: rgb(252 165 165);
+  color: var(--color-danger-text);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -589,7 +589,7 @@
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: var(--radius-1);
   cursor: pointer;
   transition: all 0.2s;
   border: none;
@@ -597,32 +597,32 @@
 }
 
 .cameraChangeButton {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--color-overlay-light-10);
+  color: var(--color-overlay-light-90);
+  border: 1px solid var(--color-overlay-light-30);
 
   &:hover {
     background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.5);
+    border-color: var(--color-overlay-light-50);
   }
 }
 
 .cameraAddButton {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--color-overlay-light-10);
+  color: var(--color-overlay-light-90);
+  border: 1px solid var(--color-overlay-light-30);
 
   &:hover {
     background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.5);
+    border-color: var(--color-overlay-light-50);
   }
 }
 
 .cameraDropdownList {
   max-height: 250px;
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: var(--radius-1);
   background: rgba(255, 255, 255, 0.03);
   margin-bottom: 12px;
 
@@ -632,15 +632,15 @@
   }
 
   &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--color-overlay-light-05);
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--color-overlay-light-20);
     border-radius: 3px;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.3);
+      background: var(--color-overlay-light-30);
     }
   }
 }
@@ -652,8 +652,8 @@
   text-align: left;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid var(--color-overlay-light-05);
+  color: var(--color-overlay-light-90);
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.15s;
@@ -672,14 +672,14 @@
   font-weight: 600;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--color-overlay-light-20);
   }
 }
 
 .cameraDropdownEmpty {
   padding: 20px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-overlay-light-50);
   font-size: 13px;
   font-style: italic;
 }
@@ -690,14 +690,14 @@
   padding: 12px;
   background: rgba(59, 130, 246, 0.1);
   border: 1px dashed rgba(59, 130, 246, 0.3);
-  border-radius: 4px;
+  border-radius: var(--radius-1);
 }
 
 .newItemsLabel {
   display: block;
   font-size: 12px;
   font-weight: 500;
-  color: rgba(147, 197, 253, 0.9);
+  color: var(--color-blue-text);
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -718,7 +718,7 @@
   border: 1px solid rgba(59, 130, 246, 0.4);
   border-radius: 16px;
   font-size: 13px;
-  color: rgba(147, 197, 253, 1);
+  color: var(--color-blue-text);
   font-weight: 500;
 
   span {
@@ -744,8 +744,8 @@
 
   &:hover {
     background: rgba(220, 38, 38, 0.4);
-    border-color: rgb(220 38 38);
-    color: rgb(252 165 165);
+    border-color: var(--color-danger-dark);
+    color: var(--color-danger-text);
     transform: scale(1.1);
   }
 
@@ -760,19 +760,19 @@
   align-items: center;
   padding: 6px 14px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
+  border: 1px solid var(--color-overlay-light-30);
+  border-radius: var(--radius-1);
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-overlay-light-90);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   user-select: none;
 
   &:hover {
-    background: rgba(220, 38, 38, 0.2);
+    background: var(--color-danger-subtle);
     border-color: rgba(220, 38, 38, 0.5);
-    color: rgb(252 165 165);
+    color: var(--color-danger-text);
   }
 
   &:active {
