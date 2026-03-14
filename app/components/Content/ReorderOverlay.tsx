@@ -3,7 +3,6 @@
 import styles from './ReorderOverlay.module.scss';
 
 interface ReorderOverlayProps {
-  contentId: number;
   isPickedUp: boolean;
   pickedUpImageId?: number | null;
   hasMoved: boolean;

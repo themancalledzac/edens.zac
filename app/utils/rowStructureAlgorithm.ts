@@ -8,30 +8,22 @@
 
 import { LAYOUT } from '@/app/constants';
 import type { CalculatedContentSize } from '@/app/utils/contentLayout';
-import {
-  getContentDimensions,
-  getSlotWidth,
-} from '@/app/utils/contentTypeGuards';
+import { getContentDimensions } from '@/app/utils/contentTypeGuards';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
 /**
- * Calculate the combined aspect ratio of a BoxTree with slot width scaling
- * - For leaf: return item's aspect ratio scaled by slot width (rating-based)
+ * Calculate the combined aspect ratio of a BoxTree.
+ * - For leaf: return item's intrinsic aspect ratio (width / height)
  * - For horizontal: sum of aspect ratios (children side-by-side)
  * - For vertical: reciprocal of sum of reciprocals (children stacked)
  *
  * @param tree - BoxTree to calculate aspect ratio for
- * @param chunkSize - Number of normal-width items per row (for slot width calculation)
+ * @param chunkSize - Number of normal-width items per row (unused at leaf level, kept for API consistency)
  */
 export function calculateBoxTreeAspectRatio(tree: BoxTree, chunkSize: number): number {
   if (tree.type === 'leaf') {
-    // Apply slot width scaling like old algorithm
     const { width, height } = getContentDimensions(tree.content);
-    // Use simplified slot width (no prev/next context in BoxTree)
-    const slotWidth = getSlotWidth(tree.content, chunkSize);
-    const effectiveWidth = width * slotWidth;
-    const effectiveHeight = height * slotWidth;
-    return effectiveWidth / effectiveHeight;
+    return height === 0 ? 1 : width / height;
   }
 
   const leftAR = calculateBoxTreeAspectRatio(tree.children[0], chunkSize);

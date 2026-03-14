@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { getAllCollectionsAdmin } from '@/app/lib/api/collections';
+import { ApiError } from '@/app/lib/api/core';
 
 import CollectionPage from '../../components/ContentCollection/CollectionPage';
 
@@ -25,10 +26,8 @@ export default async function AllCollectionsPage() {
     const allCollections = await getAllCollectionsAdmin();
     return <CollectionPage collection={allCollections} />;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // Handle 404s
-    if (errorMessage.includes('404')) {
+    // Handle 404s using structured ApiError status when available
+    if (error instanceof ApiError && error.status === 404) {
       notFound();
     }
 

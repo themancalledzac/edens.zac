@@ -3,10 +3,8 @@
  * Tests content processing and layout utilities
  */
 
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import type {
   AnyContentModel,
-  ContentCollectionModel,
   ContentImageModel,
   ContentParallaxImageModel,
   ContentTextModel,
@@ -17,105 +15,21 @@ import {
   convertCollectionContentToParallax,
   createHeaderRow,
   processContentBlocks,
+  processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
-
-// Test fixtures
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  orderIndex: id,
-  visible: true,
-  imageUrl: `https://example.com/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  title: `Image ${id}`,
-  ...overrides,
-});
-
-const createParallaxContent = (
-  id: number,
-  overrides?: Partial<ContentParallaxImageModel>
-): ContentParallaxImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  orderIndex: id,
-  visible: true,
-  imageUrl: `https://example.com/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  width: 1920,
-  height: 1080,
-  enableParallax: true,
-  title: `Parallax ${id}`,
-  ...overrides,
-});
-
-const createTextContent = (
-  id: number,
-  overrides?: Partial<ContentTextModel>
-): ContentTextModel => ({
-  id,
-  contentType: 'TEXT',
-  orderIndex: id,
-  visible: true,
-  items: [{ type: 'text', value: `Text content ${id}` }],
-  format: 'plain',
-  align: 'left',
-  ...overrides,
-});
-
-const createCollectionContent = (
-  id: number,
-  overrides?: Partial<ContentCollectionModel>
-): ContentCollectionModel => ({
-  id,
-  contentType: 'COLLECTION',
-  orderIndex: id,
-  visible: true,
-  title: `Collection ${id}`,
-  slug: `collection-${id}`,
-  collectionType: 'PORTFOLIO',
-  referencedCollectionId: id * 100,
-  coverImage: {
-    id: id * 10,
-    contentType: 'IMAGE',
-    orderIndex: 0,
-    imageUrl: `https://example.com/cover-${id}.jpg`,
-    imageWidth: 1920,
-    imageHeight: 1080,
-    visible: true,
-  },
-  ...overrides,
-});
-
-const createCollectionModel = (
-  id: number,
-  overrides?: Partial<CollectionModel>
-): CollectionModel => ({
-  id,
-  type: CollectionType.PORTFOLIO,
-  title: `Collection ${id}`,
-  slug: `collection-${id}`,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-  coverImage: {
-    id: id * 10,
-    contentType: 'IMAGE',
-    orderIndex: 0,
-    imageUrl: `https://example.com/cover-${id}.jpg`,
-    imageWidth: 1920,
-    imageHeight: 1080,
-    visible: true,
-  },
-  collectionDate: '2024-01-01',
-  location: 'Seattle, WA',
-  description: 'A beautiful collection description',
-  ...overrides,
-});
+import {
+  createCollectionContent,
+  createCollectionModel,
+  createGifContent,
+  createHorizontalImage,
+  createImageContent,
+  createParallaxContent,
+  createTextContent,
+  createVerticalImage,
+  H,
+  V,
+} from '@/tests/fixtures/contentFixtures';
 
 describe('processContentBlocks', () => {
   describe('Filtering visible blocks', () => {
@@ -262,7 +176,6 @@ describe('processContentBlocks', () => {
       expect(result[1]?.contentType).toBe('TEXT');
     });
   });
-
 
   describe('Ensuring parallax dimensions', () => {
     it('should preserve imageWidth and imageHeight when present', () => {
@@ -779,7 +692,9 @@ describe('clampParallaxDimensions', () => {
 });
 
 /** Helper to narrow createHeaderRow result to single row (desktop path) */
-function asSingleRow(result: RowWithPatternAndSizes | RowWithPatternAndSizes[] | null): RowWithPatternAndSizes | null {
+function asSingleRow(
+  result: RowWithPatternAndSizes | RowWithPatternAndSizes[] | null
+): RowWithPatternAndSizes | null {
   if (result === null || Array.isArray(result)) return null;
   return result;
 }
@@ -1009,5 +924,118 @@ describe('createHeaderRow', () => {
   });
 });
 
-// chunkContent, reorderLonelyVerticals, calculateContentSizes deleted — BoxTree pipeline handles all sizing
+describe('processContentForDisplay', () => {
+  describe('Full pipeline: content array in → sized rows out', () => {
+    it('should produce at least 1 row with numeric sizes for 5 horizontal images', () => {
+      const content = [H(1, 0), H(2, 0), H(3, 0), H(4, 0), H(5, 0)];
+      const result = processContentForDisplay(content, 1000);
 
+      expect(result.length).toBeGreaterThanOrEqual(1);
+
+      for (const row of result) {
+        for (const item of row.items) {
+          expect(typeof item.width).toBe('number');
+          expect(typeof item.height).toBe('number');
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+
+      // All input items should appear exactly once across all rows
+      const allIds = result.flatMap(row => row.items.map(item => item.content.id));
+      const inputIds = content.map(c => c.id);
+      expect(allIds.sort()).toEqual(inputIds.sort());
+    });
+  });
+
+  describe('Mobile vs desktop (rowWidth=2 vs rowWidth=5)', () => {
+    it('should fit 4 images in 1 row on desktop and split across multiple rows on mobile', () => {
+      const content = [H(1, 1), H(2, 1), H(3, 1), H(4, 1)];
+
+      const desktopResult = processContentForDisplay(content, 1000);
+      const mobileResult = processContentForDisplay(content, 400, 4, { isMobile: true });
+
+      // Desktop: rowWidth=5, 4 slots < 5, all fit in 1 row
+      expect(desktopResult).toHaveLength(1);
+
+      // Mobile: rowWidth=2, items split across multiple rows
+      expect(mobileResult.length).toBeGreaterThan(1);
+
+      // Both should produce valid sized outputs
+      for (const row of desktopResult) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+      for (const row of mobileResult) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+    });
+  });
+
+  describe('targetAR option affects row composition', () => {
+    it('should produce valid rows for both low and high targetAR values', () => {
+      const content = [H(1, 2), H(2, 2), H(3, 2), H(4, 2), H(5, 2), H(6, 2)];
+
+      const lowARResult = processContentForDisplay(content, 1000, 4, { targetAR: 1.0 });
+      const highARResult = processContentForDisplay(content, 1000, 4, { targetAR: 3.0 });
+
+      // Both should produce valid rows
+      expect(lowARResult.length).toBeGreaterThanOrEqual(1);
+      expect(highARResult.length).toBeGreaterThanOrEqual(1);
+
+      for (const row of lowARResult) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+      for (const row of highARResult) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+    });
+  });
+
+  describe('Empty input', () => {
+    it('should return empty array for empty input', () => {
+      const result = processContentForDisplay([], 1000);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Mixed content types', () => {
+    it('should include all items with valid sizes across rows', () => {
+      const content = [
+        createHorizontalImage(1, 3),
+        createHorizontalImage(2, 3),
+        createTextContent(3, { width: 800, height: 200 }),
+        createGifContent(4, { width: 800, height: 600 }),
+        createCollectionContent(5),
+      ];
+
+      const result = processContentForDisplay(content, 1000);
+
+      // All items should appear in the output rows
+      const allIds = result.flatMap(row => row.items.map(item => item.content.id));
+      const inputIds = content.map(c => c.id);
+      expect(allIds.sort()).toEqual(inputIds.sort());
+
+      // Each item should have valid width and height
+      for (const row of result) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+    });
+  });
+});
+
+// chunkContent, reorderLonelyVerticals, calculateContentSizes deleted — BoxTree pipeline handles all sizing

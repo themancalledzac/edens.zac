@@ -1,6 +1,6 @@
 /**
  * Content Renderer Utilities
- * 
+ *
  * Functions for normalizing content types to renderer props.
  * All content type checking and data extraction happens here,
  * so the renderer component doesn't need to know about content types.
@@ -55,7 +55,7 @@ function normalizeContentType(contentType: string): 'IMAGE' | 'TEXT' | 'GIF' | '
 /**
  * Determines position className based on row position
  * REPLACES the logic from determineBaseProps in Component.tsx (lines 46-50)
- * 
+ *
  * @param totalInRow - Total number of items in the row
  * @param index - Current item's index in the row (0-based)
  * @param styles - Style module with position class names
@@ -76,7 +76,7 @@ export function determinePositionClassName(
 /**
  * Normalizes any content type to ContentRendererProps
  * Handles all content type checking and data extraction
- * 
+ *
  * @param content - Any content model to normalize
  * @param calculatedWidth - Pre-calculated display width
  * @param calculatedHeight - Pre-calculated display height
@@ -91,27 +91,25 @@ export function normalizeContentToRendererProps(
   positionClassName: string,
   isMobile: boolean
 ): ContentRendererProps {
-  // DEBUG: Check for NaN values
-  if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) {
-    console.error('[normalizeContentToRendererProps] NaN detected:', {
-      contentId: content.id,
-      contentType: content.contentType,
-      calculatedWidth,
-      calculatedHeight,
-      isNaNWidth: !Number.isFinite(calculatedWidth),
-      isNaNHeight: !Number.isFinite(calculatedHeight),
-    });
+  // Guard against NaN dimensions — log only in development
+  if (
+    (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) &&
+    process.env.NODE_ENV === 'development'
+  ) {
+    console.warn(
+      `[normalizeContentToRendererProps] Non-finite dimensions for content ${content.id} (${content.contentType}): width=${calculatedWidth}, height=${calculatedHeight}`
+    );
   }
-  
+
   // Calculate fallback values if NaN detected
   let validWidth = calculatedWidth;
   let validHeight = calculatedHeight;
-  
+
   if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) {
     // Try to get image dimensions to calculate fallback
     let imageWidth: number | undefined;
     let imageHeight: number | undefined;
-    
+
     if (isContentImage(content)) {
       imageWidth = content.imageWidth ?? content.width;
       imageHeight = content.imageHeight ?? content.height;
@@ -122,7 +120,7 @@ export function normalizeContentToRendererProps(
       imageWidth = content.width;
       imageHeight = content.height;
     }
-    
+
     // Calculate fallback from image dimensions if available
     if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
       if (!Number.isFinite(calculatedWidth) && Number.isFinite(calculatedHeight)) {
@@ -139,10 +137,10 @@ export function normalizeContentToRendererProps(
     } else {
       // No image dimensions available - use default aspect ratio (3:2)
       if (!Number.isFinite(calculatedWidth)) {
-        validWidth = Number.isFinite(calculatedHeight) ? (calculatedHeight * 1.5) : 300;
+        validWidth = Number.isFinite(calculatedHeight) ? calculatedHeight * 1.5 : 300;
       }
       if (!Number.isFinite(calculatedHeight)) {
-        validHeight = Number.isFinite(calculatedWidth) ? (calculatedWidth / 1.5) : 200;
+        validHeight = Number.isFinite(calculatedWidth) ? calculatedWidth / 1.5 : 200;
       }
       if (!Number.isFinite(validWidth) && !Number.isFinite(validHeight)) {
         validWidth = 300;
@@ -150,7 +148,7 @@ export function normalizeContentToRendererProps(
       }
     }
   }
-  
+
   const baseProps: ContentRendererProps = {
     contentId: content.id,
     className: positionClassName,
@@ -175,7 +173,7 @@ export function normalizeContentToRendererProps(
       coverImage?.imageHeight,
       coverImage?.height
     );
-    
+
     return {
       ...baseProps,
       imageUrl: coverImage?.imageUrl ?? '',
@@ -200,7 +198,7 @@ export function normalizeContentToRendererProps(
       content.imageHeight,
       content.height
     );
-    
+
     return {
       ...baseProps,
       imageUrl: content.imageUrl,
@@ -224,7 +222,7 @@ export function normalizeContentToRendererProps(
       content.imageHeight,
       content.height
     );
-    
+
     return {
       ...baseProps,
       imageUrl: content.imageUrl,
@@ -240,13 +238,8 @@ export function normalizeContentToRendererProps(
 
   // GIF: Treat as image, use gifUrl
   if (isGifContent(content)) {
-    const dimensions = extractImageDimensions(
-      undefined,
-      content.width,
-      undefined,
-      content.height
-    );
-    
+    const dimensions = extractImageDimensions(undefined, content.width, undefined, content.height);
+
     return {
       ...baseProps,
       imageUrl: content.gifUrl,
@@ -283,7 +276,7 @@ export function normalizeContentToRendererProps(
 /**
  * Build wrapper className string for content renderer
  * Combines position class with conditional classes based on state
- * 
+ *
  * @param positionClassName - Position class (imageLeft/imageRight/imageSingle/imageMiddle) - MUST be first
  * @param styles - Style module with class names
  * @param options - Configuration options
@@ -316,14 +309,16 @@ export function buildWrapperClassName(
     isMobile ? styles.mobile : '',
     hasClickHandler ? styles.clickable : styles.default,
     isSelected ? styles.selected : '',
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**
  * Build simplified wrapper className for parallax images
  * Only includes essential classes (position, mobile, dragging, selected)
  * Excludes redundant classes that are handled by inline styles
- * 
+ *
  * @param positionClassName - Position class (imageLeft/imageRight/imageSingle/imageMiddle) - MUST be first
  * @param styles - Style module with class names
  * @param options - Configuration options
@@ -337,22 +332,21 @@ export function buildParallaxWrapperClassName(
     isSelected?: boolean;
   } = {}
 ): string {
-  const {
-    isMobile = false,
-    isSelected = false,
-  } = options;
+  const { isMobile = false, isSelected = false } = options;
 
   return [
     positionClassName, // Position class - MUST be first
     isMobile ? styles.mobile : '',
     isSelected ? styles.selected : '',
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**
  * Determines full renderer props including position and normalized content data
  * REPLACES determineBaseProps entirely - combines position logic with content normalization
- * 
+ *
  * @param item - Processed content item with calculated dimensions
  * @param totalInRow - Total number of items in the row
  * @param index - Current item's index in the row (0-based)
@@ -367,23 +361,19 @@ export function determineContentRendererProps(
   isMobile: boolean,
   styles: { imageSingle: string; imageLeft: string; imageRight: string; imageMiddle: string }
 ): ContentRendererProps {
-  // DEBUG: Check for NaN values before normalization
-  if (!Number.isFinite(item.width) || !Number.isFinite(item.height)) {
-    console.error('[determineContentRendererProps] NaN detected:', {
-      contentId: item.content.id,
-      contentType: item.content.contentType,
-      itemWidth: item.width,
-      itemHeight: item.height,
-      isNaNWidth: !Number.isFinite(item.width),
-      isNaNHeight: !Number.isFinite(item.height),
-      totalInRow,
-      index,
-    });
+  // Guard against NaN dimensions — log only in development
+  if (
+    (!Number.isFinite(item.width) || !Number.isFinite(item.height)) &&
+    process.env.NODE_ENV === 'development'
+  ) {
+    console.warn(
+      `[determineContentRendererProps] Non-finite dimensions for content ${item.content.id} (${item.content.contentType}): width=${item.width}, height=${item.height}, row=${index}/${totalInRow}`
+    );
   }
-  
+
   // Determine position class (REPLACES Component.tsx determineBaseProps logic)
   const positionClassName = determinePositionClassName(totalInRow, index, styles);
-  
+
   // Normalize content to renderer props
   return normalizeContentToRendererProps(
     item.content,
@@ -393,4 +383,3 @@ export function determineContentRendererProps(
     isMobile
   );
 }
-

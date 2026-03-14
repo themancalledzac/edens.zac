@@ -114,7 +114,12 @@ export function useContentReordering({
         const response = await getCollectionUpdateMetadata(collection.slug);
         setCurrentState(prev => (prev ? { ...prev, collection: response.collection } : null));
       } catch {
-        // Silent fail — state will be stale but user can reload
+        setError(prev =>
+          prev
+            ? `${prev} Additionally, failed to refresh data — please reload the page.`
+            : 'Additionally, failed to refresh data — please reload the page.'
+        );
+        handleCancelReorder();
       }
     } finally {
       setOperationLoading(false);

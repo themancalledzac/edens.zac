@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { BREAKPOINTS, getContentWidth } from '@/app/constants';
 
@@ -17,15 +17,20 @@ function useDebounce<T extends (...args: never[]) => void>(
   callback: T,
   delay: number
 ): T {
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
 
   return useCallback(
     ((...args: Parameters<T>) => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      const timer = setTimeout(() => callback(...args), delay);
-      setDebounceTimer(timer);
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => callback(...args), delay);
     }) as T,
-    [callback, delay, debounceTimer]
+    [callback, delay]
   );
 }
 

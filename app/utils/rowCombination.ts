@@ -59,6 +59,8 @@ function getTotalCV(components: AnyContentModel[], rowWidth: number): number {
 export const MIN_FILL_RATIO = 0.9;
 /** Maximum fill ratio — rows exceeding this are rejected to prevent item squeezing */
 export const MAX_FILL_RATIO = 1.15;
+/** Effective rating at or below which an item is considered low-rated for standalone skip */
+export const LOW_RATED_THRESHOLD = 2;
 
 /**
  * Check if a set of components fills a row within acceptable bounds.
@@ -126,7 +128,7 @@ export type AtomicComponent =
 /** Convert AnyContentModel to ImageType for composition decisions */
 export function toImageType(item: AnyContentModel, rowWidth: number): ImageType {
   const ar: OrientationShort = getAspectRatio(item) > 1.0 ? 'H' : 'V';
-  const effectiveRating = getEffectiveRating(item, rowWidth);
+  const effectiveRating = getEffectiveRating(item);
   const componentValue = getItemComponentValue(item, rowWidth);
   const title = 'title' in item ? String(item.title) : `item-${item.id}`;
 
@@ -326,7 +328,8 @@ function pickBest(candidates: AtomicComponent[], targetAR: number, rowWidth: num
 function generatePartitionCandidates(
   images: ImageType[],
   targetAR: number,
-  rowWidth: number
+  rowWidth: number,
+  depth: number = 0
 ): AtomicComponent[] {
   const n = images.length;
   const candidates: AtomicComponent[] = [];
@@ -352,14 +355,17 @@ function generatePartitionCandidates(
       const rightGroup = sorted.slice(leftSize);
 
       // Recursively compose each side
-      const left = compose(leftGroup, targetAR, rowWidth);
-      const right = compose(rightGroup, targetAR, rowWidth);
+      const left = compose(leftGroup, targetAR, rowWidth, depth);
+      const right = compose(rightGroup, targetAR, rowWidth, depth);
       candidates.push(hPair(left, right));
     }
   }
 
   return candidates;
 }
+
+/** Maximum recursion depth for compose() to prevent stack overflow */
+const MAX_COMPOSE_DEPTH = 10;
 
 /**
  * Recursive composition dispatcher.
@@ -373,12 +379,18 @@ function generatePartitionCandidates(
  * @param images - ImageType[] to arrange
  * @param targetAR - Target aspect ratio for the composition
  * @param rowWidth - Row width for AR calculation
+ * @param depth - Current recursion depth (internal use only)
  */
-export function compose(images: ImageType[], targetAR: number, rowWidth: number): AtomicComponent {
+export function compose(images: ImageType[], targetAR: number, rowWidth: number, depth: number = 0): AtomicComponent {
   const n = images.length;
 
   if (n === 0) throw new Error('compose requires at least 1 image');
   if (n === 1) return single(images[0]!);
+
+  // Guard against unbounded recursion
+  if (depth >= MAX_COMPOSE_DEPTH) {
+    return hChain(images);
+  }
 
   if (n === 2) {
     const [a, b] = [single(images[0]!), single(images[1]!)];
@@ -394,11 +406,11 @@ export function compose(images: ImageType[], targetAR: number, rowWidth: number)
 
   // n >= PARTITION_THRESHOLD: try dominant + rest AND partition splits, pick best
   const { dominant, rest } = findDominant(images);
-  const restComposed = compose(rest, targetAR, rowWidth);
+  const restComposed = compose(rest, targetAR, rowWidth, depth + 1);
 
   const candidates: AtomicComponent[] = [
     hPair(restComposed, single(dominant)),
-    ...generatePartitionCandidates(images, targetAR, rowWidth),
+    ...generatePartitionCandidates(images, targetAR, rowWidth, depth + 1),
   ];
 
   return pickBest(candidates, targetAR, rowWidth);
@@ -545,15 +557,11 @@ export function lookupComposition(images: ImageType[], targetAR: number = 1.5, r
   return { composition: template.build(images, targetAR, rowWidth), templateKey, label: template.label };
 }
 
-/** Build a TemplateKey from a set of images */
+/** Build a TemplateKey from a set of images by parsing the string key */
 function parseTemplateKey(images: ImageType[]): TemplateKey {
-  let h = 0;
-  let v = 0;
-  for (const img of images) {
-    if (img.ar === 'H') h++;
-    else v++;
-  }
-  return { h, v };
+  const key = getTemplateKey(images);
+  const [hStr, vStr] = key.split('-');
+  return { h: Number(hStr), v: Number(vStr) };
 }
 
 // =============================================================================
@@ -607,8 +615,7 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
     // --- STANDALONE skip check ---
     // If item 0 is low-rated (effectiveRating ≤ 2), search ahead for a hero
     // that fills the row solo.
-    const item0Rating = getEffectiveRating(window[0]!, rowWidth);
-    const LOW_RATED_THRESHOLD = 2;
+    const item0Rating = getEffectiveRating(window[0]!);
 
     if (item0Rating <= LOW_RATED_THRESHOLD) {
       const maxSearch = Math.min(3, window.length);

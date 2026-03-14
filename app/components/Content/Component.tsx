@@ -81,28 +81,30 @@ export default function Component({
     ? Math.max(1.5, Math.min(3.0, contentWidth / viewportHeight))
     : 1.5;
 
-  const rows = useMemo(() => {
+  const { rows, layoutError } = useMemo(() => {
     if (!contentWidth) {
-      return [];
+      return { rows: [], layoutError: null };
     }
 
     // If no content and no collectionData, return empty
     if ((!content || content.length === 0) && !collectionData) {
-      return [];
+      return { rows: [], layoutError: null };
     }
 
     try {
       // Pattern detection enabled on desktop, disabled on mobile
       // Pass collectionData to create header row if provided
-      return processContentForDisplay(content || [], contentWidth, chunkSize, {
+      const result = processContentForDisplay(content || [], contentWidth, chunkSize, {
         isMobile,
         collectionData,
         displayMode: collectionData?.displayMode,
         targetAR,
       });
+      return { rows: result, layoutError: null };
     } catch (error) {
       console.error('[Component] processContentForDisplay error', error);
-      return [];
+      const message = error instanceof Error ? error.message : 'Unknown layout error';
+      return { rows: [], layoutError: message };
     }
   }, [content, contentWidth, chunkSize, isMobile, collectionData, targetAR]);
 
@@ -137,6 +139,17 @@ export default function Component({
 
     return -1; // All content is visible, no separator needed
   }, [rows, currentCollectionId]);
+
+  // Show error message when layout pipeline throws
+  if (layoutError) {
+    return (
+      <div className={cbStyles.wrapper}>
+        <div className={cbStyles.layoutError}>
+          Failed to render content layout: {layoutError}
+        </div>
+      </div>
+    );
+  }
 
   // Early return for empty state
   if (rows.length === 0) return <div />;

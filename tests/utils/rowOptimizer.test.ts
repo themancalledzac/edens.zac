@@ -4,7 +4,6 @@
  */
 
 import { LAYOUT } from '@/app/constants';
-import type { ContentImageModel } from '@/app/types/Content';
 import type { BoxTree, RowResult, TemplateKey } from '@/app/utils/rowCombination';
 import { buildRows } from '@/app/utils/rowCombination';
 import {
@@ -14,39 +13,7 @@ import {
   reorderWithinRows,
   rowScore,
 } from '@/app/utils/rowOptimizer';
-
-// ===================== Test Fixtures =====================
-
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  imageUrl: `/test/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  aspectRatio: 1920 / 1080,
-  rating: 0,
-  orderIndex: id,
-  ...overrides,
-});
-
-const H = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1920,
-    imageHeight: 1080,
-    aspectRatio: 1920 / 1080,
-    rating,
-  });
-
-const V = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1080,
-    imageHeight: 1920,
-    aspectRatio: 1080 / 1920,
-    rating,
-  });
+import { H, V } from '@/tests/fixtures/contentFixtures';
 
 // ===================== Helpers =====================
 

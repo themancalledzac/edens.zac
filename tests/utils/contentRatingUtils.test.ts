@@ -4,7 +4,6 @@
  */
 
 import { LAYOUT } from '@/app/constants';
-import type { ContentImageModel } from '@/app/types/Content';
 import {
   getComponentValue,
   getEffectiveRating,
@@ -12,55 +11,13 @@ import {
   getRating,
   isCollectionCard,
 } from '@/app/utils/contentRatingUtils';
-
-// ===================== Test Fixtures =====================
-
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  imageUrl: `/test/image-${id}.jpg`, // Required by isContentImage type guard
-  imageWidth: 1920,
-  imageHeight: 1080,
-  aspectRatio: 1920 / 1080,
-  rating: 0,
-  orderIndex: id,
-  ...overrides,
-});
-
-const createHorizontalImage = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1920,
-    imageHeight: 1080,
-    aspectRatio: 1920 / 1080,
-    rating,
-  });
-
-const createVerticalImage = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1080,
-    imageHeight: 1920,
-    aspectRatio: 1080 / 1920,
-    rating,
-  });
-
-const createSquareImage = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1000,
-    imageHeight: 1000,
-    aspectRatio: 1,
-    rating,
-  });
-
-const createPanorama = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 3000,
-    imageHeight: 1000,
-    aspectRatio: 3,
-    rating,
-  });
+import {
+  createHorizontalImage,
+  createImageContent,
+  createPanorama,
+  createSquareImage,
+  createVerticalImage,
+} from '@/tests/fixtures/contentFixtures';
 
 // isStandaloneItem deleted — standalone detection is now inline in buildRows
 
@@ -218,13 +175,12 @@ describe('getEffectiveRating', () => {
     });
   });
 
-  describe('slotWidth parameter (unused in effective rating)', () => {
-    // Note: slotWidth doesn't affect effective rating calculation
-    // It's passed for future extensibility but currently unused
-    it('should return same effective rating regardless of slotWidth', () => {
+  describe('orientation-only rating (no slotWidth parameter)', () => {
+    // Note: slotWidth does not affect effective rating — slot-width scaling is
+    // handled downstream in getComponentValue().
+    it('should return the same effective rating independent of slot context', () => {
       const image = createHorizontalImage(1, 4);
-      expect(getEffectiveRating(image, 5)).toBe(4);
-      expect(getEffectiveRating(image, 2)).toBe(4);
+      expect(getEffectiveRating(image)).toBe(4);
     });
   });
 });

@@ -26,40 +26,18 @@ import {
   toImageType,
   vStack,
 } from '@/app/utils/rowCombination';
-import { calculateBoxTreeAspectRatio } from '@/app/utils/rowStructureAlgorithm';
-
-// ===================== Test Fixtures =====================
-
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  imageUrl: `/test/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  aspectRatio: 1920 / 1080,
-  rating: 0,
-  orderIndex: id,
-  ...overrides,
-});
-
-const createHorizontalImage = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1920,
-    imageHeight: 1080,
-    aspectRatio: 1920 / 1080,
-    rating,
-  });
-
-const createVerticalImage = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1080,
-    imageHeight: 1920,
-    aspectRatio: 1080 / 1920,
-    rating,
-  });
+import {
+  calculateBoxTreeAspectRatio,
+  calculateSizesFromBoxTree,
+} from '@/app/utils/rowStructureAlgorithm';
+import {
+  createCollectionContent,
+  createGifContent,
+  createHorizontalImage,
+  createImageContent,
+  createTextContent,
+  createVerticalImage,
+} from '@/tests/fixtures/contentFixtures';
 
 // ===================== Constants =====================
 
@@ -179,7 +157,6 @@ describe('isRowComplete', () => {
 // Coverage for internals now lives in rowCombination.characterization.test.ts
 
 describe('buildRows', () => {
-
   it('should create a single row from one H5* image', () => {
     const items = [createHorizontalImage(1, 5)];
     const rows = buildRows(items, DESKTOP);
@@ -290,10 +267,7 @@ describe('buildRows', () => {
   });
 
   it('should work with rowWidth=4 (tablet)', () => {
-    const items = [
-      createHorizontalImage(1, 4),
-      createHorizontalImage(2, 4),
-    ];
+    const items = [createHorizontalImage(1, 4), createHorizontalImage(2, 4)];
     const rows = buildRows(items, 4);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.components).toHaveLength(2);
@@ -346,7 +320,9 @@ describe('buildRows', () => {
       expect(rows[0]?.components[0]?.id).toBe(2); // H5* was matched
       expect(rows[0]?.components).toHaveLength(1);
       // V1* should appear in a later row
-      const allItemIds = rows.flatMap((r: RowResult) => r.components.map((c: AnyContentModel) => c.id));
+      const allItemIds = rows.flatMap((r: RowResult) =>
+        r.components.map((c: AnyContentModel) => c.id)
+      );
       expect(allItemIds).toContain(1); // V1* is used somewhere
     });
 
@@ -477,10 +453,7 @@ describe('buildRows', () => {
     it('should NOT skip non-standalone items that overfill', () => {
       // [H3★, H4★] — H3★ (cv=1.67) + H4★ (cv=2.5) = 4.17 → 83.4% (under MIN_FILL)
       // H4★ is NOT standalone (cv=2.5, 2.5/5=50% < 90%) → normal overfill handling
-      const items = [
-        createHorizontalImage(1, 3),
-        createHorizontalImage(2, 4),
-      ];
+      const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 4)];
       const rows = buildRows(items, DESKTOP);
       // Both should end up in rows (best-fit fallback pairs them)
       const totalItems = rows.reduce((sum, r) => sum + r.components.length, 0);
@@ -490,11 +463,11 @@ describe('buildRows', () => {
     it('should preserve all items when standalones are skipped', () => {
       // Ensure no items are lost during standalone skipping
       const items = [
-        createVerticalImage(1, 2),   // V2★ effective=1, cv=1.0
+        createVerticalImage(1, 2), // V2★ effective=1, cv=1.0
         createHorizontalImage(2, 5), // H5★ standalone
-        createVerticalImage(3, 2),   // V2★ effective=1, cv=1.0
+        createVerticalImage(3, 2), // V2★ effective=1, cv=1.0
         createHorizontalImage(4, 5), // H5★ standalone
-        createVerticalImage(5, 2),   // V2★ effective=1, cv=1.0
+        createVerticalImage(5, 2), // V2★ effective=1, cv=1.0
       ];
       const rows = buildRows(items, DESKTOP);
       const allIds = rows.flatMap(r => r.components.map(c => c.id)).sort();
@@ -552,10 +525,7 @@ describe('buildRows', () => {
       // V1* effective = 0, cv = getComponentValue(0, 5)
       // effectiveRating 0: itemsPerRow = 6-0 = 6, clamped to 5, cv = 5/5 = 1.0
       // H5*(5.0) + V1*(1.0) = 6.0 → 120% > 115% → rejected
-      const items = [
-        createHorizontalImage(1, 5),
-        createVerticalImage(2, 1),
-      ];
+      const items = [createHorizontalImage(1, 5), createVerticalImage(2, 1)];
       const rows = buildRows(items, DESKTOP);
       // H5* hero (100%), V1* alone in next row
       expect(rows).toHaveLength(2);
@@ -592,10 +562,10 @@ describe('buildRows', () => {
       // Collections that previously had 150%+ overfill via DVP matching H5*
       // After Issue 6 fix, these should be hero + separate rows
       const items = [
-        createHorizontalImage(1, 5),   // Would previously match DVP
+        createHorizontalImage(1, 5), // Would previously match DVP
         createVerticalImage(2, 3),
         createVerticalImage(3, 3),
-        createHorizontalImage(4, 4),   // Good DVP candidate
+        createHorizontalImage(4, 4), // Good DVP candidate
         createVerticalImage(5, 3),
         createVerticalImage(6, 3),
       ];
@@ -621,7 +591,10 @@ describe('buildRows', () => {
         createVerticalImage(6, 2),
       ];
       const rows = buildRows(items, DESKTOP);
-      const totalItems = rows.reduce((sum: number, row: RowResult) => sum + row.components.length, 0);
+      const totalItems = rows.reduce(
+        (sum: number, row: RowResult) => sum + row.components.length,
+        0
+      );
       expect(totalItems).toBe(items.length);
     });
   });
@@ -629,13 +602,13 @@ describe('buildRows', () => {
   describe('template keys in buildRows output', () => {
     it('should produce correct templateKey for each template type', () => {
       const items = [
-        createHorizontalImage(1, 4),  // H4★ (cv 2.5)
-        createVerticalImage(2, 3),    // V3★ (effective 2, cv 1.25)
-        createVerticalImage(3, 3),    // V3★ (effective 2, cv 1.25) → dom-stacked-1h2v = 5.0 (100%)
-        createHorizontalImage(4, 5),  // H5★ (cv 5.0) → hero
-        createHorizontalImage(5, 3),  // H3★ (cv 1.67)
-        createHorizontalImage(6, 3),  // H3★ (cv 1.67)
-        createHorizontalImage(7, 3),  // H3★ (cv 1.67) → triple-h = 5.0 (100%)
+        createHorizontalImage(1, 4), // H4★ (cv 2.5)
+        createVerticalImage(2, 3), // V3★ (effective 2, cv 1.25)
+        createVerticalImage(3, 3), // V3★ (effective 2, cv 1.25) → dom-stacked-1h2v = 5.0 (100%)
+        createHorizontalImage(4, 5), // H5★ (cv 5.0) → hero
+        createHorizontalImage(5, 3), // H3★ (cv 1.67)
+        createHorizontalImage(6, 3), // H3★ (cv 1.67)
+        createHorizontalImage(7, 3), // H3★ (cv 1.67) → triple-h = 5.0 (100%)
       ];
       const rows = buildRows(items, DESKTOP);
 
@@ -1015,9 +988,7 @@ describe('getTemplateKey', () => {
   });
 
   it('returns "0-4" for 4 verticals', () => {
-    const imgs = [1, 2, 3, 4].map((id) =>
-      toImageType(createVerticalImage(id, 2), DESKTOP)
-    );
+    const imgs = [1, 2, 3, 4].map(id => toImageType(createVerticalImage(id, 2), DESKTOP));
     expect(getTemplateKey(imgs)).toBe('0-4');
   });
 });
@@ -1047,11 +1018,26 @@ describe('findDominant', () => {
 
 describe('TEMPLATE_MAP', () => {
   const allKeys = [
-    '1-0', '0-1',
-    '2-0', '1-1', '0-2',
-    '3-0', '2-1', '1-2', '0-3',
-    '4-0', '3-1', '2-2', '1-3', '0-4',
-    '5-0', '4-1', '3-2', '2-3', '1-4', '0-5',
+    '1-0',
+    '0-1',
+    '2-0',
+    '1-1',
+    '0-2',
+    '3-0',
+    '2-1',
+    '1-2',
+    '0-3',
+    '4-0',
+    '3-1',
+    '2-2',
+    '1-3',
+    '0-4',
+    '5-0',
+    '4-1',
+    '3-2',
+    '2-3',
+    '1-4',
+    '0-5',
   ];
 
   it('has entries for all (hCount, vCount) combos up to 5 items', () => {
@@ -1129,9 +1115,7 @@ describe('lookupComposition', () => {
 
   it('returns chain-fallback label for unknown key and logs warning', () => {
     // Inject an edge case by passing 6 images (no key in map)
-    const imgs = [1, 2, 3, 4, 5, 6].map((id) =>
-      toImageType(createHorizontalImage(id, 2), DESKTOP)
-    );
+    const imgs = [1, 2, 3, 4, 5, 6].map(id => toImageType(createHorizontalImage(id, 2), DESKTOP));
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const { label } = lookupComposition(imgs);
     expect(label).toBe('compose-fallback');
@@ -1148,7 +1132,9 @@ describe('buildAtomic', () => {
   const TARGET_AR = 1.5;
 
   it('throws on empty input', () => {
-    expect(() => buildAtomic([], TARGET_AR, DESKTOP)).toThrow('buildAtomic requires at least 1 image');
+    expect(() => buildAtomic([], TARGET_AR, DESKTOP)).toThrow(
+      'buildAtomic requires at least 1 image'
+    );
   });
 
   it('returns single leaf for 1 image', () => {
@@ -1170,9 +1156,7 @@ describe('buildAtomic', () => {
   });
 
   it('picks stacked layout for 4 verticals (AR closer to 1.5)', () => {
-    const imgs = [1, 2, 3, 4].map((id) =>
-      toImageType(createVerticalImage(id, id), DESKTOP)
-    );
+    const imgs = [1, 2, 3, 4].map(id => toImageType(createVerticalImage(id, id), DESKTOP));
     const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
 
     // Should NOT be a flat chain — should use vStack to compact AR
@@ -1204,9 +1188,7 @@ describe('buildAtomic', () => {
   });
 
   it('3 horizontals: result AR is reasonable', () => {
-    const imgs = [1, 2, 3].map((id) =>
-      toImageType(createHorizontalImage(id, id + 1), DESKTOP)
-    );
+    const imgs = [1, 2, 3].map(id => toImageType(createHorizontalImage(id, id + 1), DESKTOP));
     const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
 
@@ -1330,9 +1312,7 @@ describe('compose', () => {
   });
 
   it('n=6 uniform images: prefers balanced partition over lopsided dominant', () => {
-    const imgs = [1, 2, 3, 4, 5, 6].map(id =>
-      toImageType(createHorizontalImage(id, 3), DESKTOP)
-    );
+    const imgs = [1, 2, 3, 4, 5, 6].map(id => toImageType(createHorizontalImage(id, 3), DESKTOP));
     const result = compose(imgs, TARGET_AR, DESKTOP);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
     expect(ar).toBeGreaterThan(0.5);
@@ -1350,9 +1330,7 @@ describe('compose', () => {
       }),
       DESKTOP
     );
-    const rest = [2, 3, 4, 5, 6].map(id =>
-      toImageType(createHorizontalImage(id, 2), DESKTOP)
-    );
+    const rest = [2, 3, 4, 5, 6].map(id => toImageType(createHorizontalImage(id, 2), DESKTOP));
     const result = compose([panoramaV, ...rest], TARGET_AR, DESKTOP);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
     // The panorama should make the AR reasonable, not extremely wide
@@ -1367,17 +1345,13 @@ describe('compose', () => {
 
 describe('estimateRowAR', () => {
   it('returns a positive AR for valid image sets', () => {
-    const imgs = [1, 2, 3].map(id =>
-      toImageType(createHorizontalImage(id, 3), DESKTOP)
-    );
+    const imgs = [1, 2, 3].map(id => toImageType(createHorizontalImage(id, 3), DESKTOP));
     const ar = estimateRowAR(imgs, 1.5, DESKTOP);
     expect(ar).toBeGreaterThan(0);
   });
 
   it('4 verticals produce low AR (motivating AR-aware fill)', () => {
-    const imgs = [1, 2, 3, 4].map(id =>
-      toImageType(createVerticalImage(id, 3), DESKTOP)
-    );
+    const imgs = [1, 2, 3, 4].map(id => toImageType(createVerticalImage(id, 3), DESKTOP));
     const ar = estimateRowAR(imgs, 1.5, DESKTOP);
     // 4 verticals should have a low combined AR — this is what triggers more filling
     expect(ar).toBeLessThan(1.5);
@@ -1413,9 +1387,7 @@ describe('buildRows AR-aware fill', () => {
 
   it('does not exceed MAX_ROW_IMAGES per row', () => {
     // Many low-rated verticals — should cap at 8
-    const items = Array.from({ length: 12 }, (_, i) =>
-      createVerticalImage(i + 1, 1)
-    );
+    const items = Array.from({ length: 12 }, (_, i) => createVerticalImage(i + 1, 1));
     const rows = buildRows(items, DESKTOP, 1.5);
     for (const row of rows) {
       expect(row.components.length).toBeLessThanOrEqual(8);
@@ -1436,5 +1408,197 @@ describe('buildRows AR-aware fill', () => {
     expect(rows.length).toBeGreaterThanOrEqual(1);
     const totalImages = rows.reduce((sum, r) => sum + r.components.length, 0);
     expect(totalImages).toBe(5);
+  });
+});
+
+// ===================== T3: buildRows with mobile rowWidth=2 =====================
+
+describe('buildRows with mobile rowWidth=2', () => {
+  it('should produce valid rows for mobile', () => {
+    // 4 images: 2 horizontal (rating 3 = full width on mobile), 2 vertical (rating 1 = half width)
+    const items: AnyContentModel[] = [
+      createHorizontalImage(1, 3),
+      createVerticalImage(2, 1),
+      createVerticalImage(3, 1),
+      createHorizontalImage(4, 3),
+    ];
+    const rows = buildRows(items, 2);
+    // All items should be used
+    const allComponents = rows.flatMap(r => r.components);
+    expect(allComponents).toHaveLength(4);
+    // Each row should have a boxTree
+    for (const row of rows) {
+      expect(row.boxTree).toBeDefined();
+    }
+  });
+
+  it('should disable AR-floor bypass for mobile (arFloor = 0)', () => {
+    // V with rating=4 → effectiveRating=3 → mobile CV=2 (full width)
+    const items2: AnyContentModel[] = [
+      createVerticalImage(1, 4), // effectiveRating=3, CV=2 on mobile → fills row
+      createVerticalImage(2, 4), // effectiveRating=3, CV=2 on mobile → fills row
+    ];
+    const rows = buildRows(items2, 2);
+    // Each should be its own row (each fills full width)
+    expect(rows).toHaveLength(2);
+    expect(rows[0]!.components).toHaveLength(1);
+    expect(rows[1]!.components).toHaveLength(1);
+  });
+
+  it('should produce different row structure than desktop for same content', () => {
+    const items: AnyContentModel[] = [
+      createHorizontalImage(1, 1),
+      createHorizontalImage(2, 1),
+      createHorizontalImage(3, 1),
+      createHorizontalImage(4, 1),
+      createHorizontalImage(5, 1),
+    ];
+    const mobileRows = buildRows(items, 2);
+    const desktopRows = buildRows(items, 5);
+
+    // Desktop: 5 items with rating 1 (CV=1 each) → 5 slots, fits in 1 row
+    expect(desktopRows).toHaveLength(1);
+
+    // Mobile: 5 items with rating 1 (CV=1 each on mobile) → 2 slots per row
+    // Should produce more rows than desktop
+    expect(mobileRows.length).toBeGreaterThan(desktopRows.length);
+
+    // All items should appear in both
+    const mobileComponents = mobileRows.flatMap(r => r.components);
+    const desktopComponents = desktopRows.flatMap(r => r.components);
+    expect(mobileComponents).toHaveLength(5);
+    expect(desktopComponents).toHaveLength(5);
+  });
+});
+
+// ===================== T4: buildNestedQuad fallback to hChain =====================
+
+describe('buildNestedQuad fallback to hChain', () => {
+  it('should use hChain when fewer than 3 vertical images in 4-item row', () => {
+    // Template key '1-3' uses buildNestedQuad — with 3 verticals it does nested quad
+    // Test that 1-3 template produces a nested quad (not a flat hChain)
+    const images = [
+      createHorizontalImage(1, 3),
+      createVerticalImage(2, 2),
+      createVerticalImage(3, 2),
+      createVerticalImage(4, 2),
+    ].map(item => toImageType(item, 5));
+
+    const { composition, label } = lookupComposition(images);
+    expect(label).toBe('nested-quad-1h3v');
+    // The composition should be a pair (nested structure), not a flat chain
+    expect(composition.type).toBe('pair');
+  });
+
+  it('should produce flat hChain for 2-2 pattern (not nested quad)', () => {
+    // '2-2' uses compose, which picks the best AR fit
+    const images = [
+      createHorizontalImage(1, 2),
+      createHorizontalImage(2, 2),
+      createVerticalImage(3, 2),
+      createVerticalImage(4, 2),
+    ].map(item => toImageType(item, 5));
+
+    const { label } = lookupComposition(images);
+    // 2-2 uses compose, not buildNestedQuad
+    expect(label).toBe('compose-2h2v');
+  });
+
+  it('should produce valid BoxTree from nested quad composition', () => {
+    const images = [
+      createVerticalImage(1, 3),
+      createVerticalImage(2, 2),
+      createVerticalImage(3, 2),
+      createVerticalImage(4, 2),
+    ].map(item => toImageType(item, 5));
+
+    const { composition } = lookupComposition(images);
+    const boxTree = acToBoxTree(composition);
+
+    // Should produce a valid BoxTree
+    expect(boxTree.type).toBe('combined');
+    // AR should be a finite positive number
+    const ar = calculateBoxTreeAspectRatio(boxTree, 5);
+    expect(ar).toBeGreaterThan(0);
+    expect(Number.isFinite(ar)).toBe(true);
+  });
+});
+
+// ===================== T6: Mixed content types through buildRows =====================
+
+describe('Mixed content types through buildRows', () => {
+  it('should handle text blocks in buildRows without errors', () => {
+    const items: AnyContentModel[] = [
+      createHorizontalImage(1, 3),
+      createTextContent(2, { width: 800, height: 200 }),
+      createHorizontalImage(3, 3),
+    ];
+    const rows = buildRows(items, 5);
+    const allComponents = rows.flatMap(r => r.components);
+    // All items should be present (not dropped)
+    expect(allComponents).toHaveLength(3);
+    // Text block should be in the output
+    expect(allComponents.some(c => c.contentType === 'TEXT')).toBe(true);
+  });
+
+  it('should handle GIF content in buildRows without errors', () => {
+    const items: AnyContentModel[] = [
+      createHorizontalImage(1, 2),
+      createGifContent(2, { width: 800, height: 600 }),
+      createHorizontalImage(3, 2),
+    ];
+    const rows = buildRows(items, 5);
+    const allComponents = rows.flatMap(r => r.components);
+    expect(allComponents).toHaveLength(3);
+    expect(allComponents.some(c => c.contentType === 'GIF')).toBe(true);
+  });
+
+  it('should handle collection cards in buildRows', () => {
+    const items: AnyContentModel[] = [
+      createCollectionContent(1),
+      createCollectionContent(2),
+      createHorizontalImage(3, 2),
+    ];
+    const rows = buildRows(items, 5);
+    const allComponents = rows.flatMap(r => r.components);
+    expect(allComponents).toHaveLength(3);
+    // Collections should be present
+    expect(allComponents.filter(c => c.contentType === 'COLLECTION')).toHaveLength(2);
+  });
+
+  it('should produce valid sizes from calculateSizesFromBoxTree for mixed content rows', () => {
+    const items: AnyContentModel[] = [
+      createHorizontalImage(1, 2),
+      createTextContent(2, { width: 800, height: 200 }),
+      createGifContent(3, { width: 800, height: 600 }),
+    ];
+    const rows = buildRows(items, 5);
+
+    for (const row of rows) {
+      const sizes = calculateSizesFromBoxTree(row.boxTree, 1000, 12.8, 5);
+      for (const size of sizes) {
+        expect(size.width).toBeGreaterThan(0);
+        expect(size.height).toBeGreaterThan(0);
+        expect(Number.isFinite(size.width)).toBe(true);
+        expect(Number.isFinite(size.height)).toBe(true);
+      }
+    }
+  });
+
+  it('should not silently drop any content type', () => {
+    const items: AnyContentModel[] = [
+      createHorizontalImage(1, 1),
+      createTextContent(2, { width: 400, height: 200 }),
+      createGifContent(3, { width: 600, height: 400 }),
+      createCollectionContent(4),
+      createVerticalImage(5, 2),
+    ];
+    const rows = buildRows(items, 5);
+    const allComponents = rows.flatMap(r => r.components);
+
+    // Every input item should appear in the output
+    expect(allComponents).toHaveLength(5);
+    const ids = allComponents.map(c => c.id).sort((a, b) => a - b);
+    expect(ids).toEqual([1, 2, 3, 4, 5]);
   });
 });

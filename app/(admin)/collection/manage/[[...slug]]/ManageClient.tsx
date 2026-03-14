@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -201,10 +202,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
     setCurrentState,
     setOperationLoading,
     setError,
-    onExitMultiSelect: () => {
+    onExitMultiSelect: useCallback(() => {
       setIsMultiSelectMode(false);
       setSelectedImageIds([]);
-    },
+    }, []),
   });
 
   // Derive imagesToEdit from selectedImageIds
@@ -443,15 +444,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
         // Re-fetch full collection for state consistency
         const fullResponse = await getCollectionUpdateMetadata(slug);
-        setCurrentState(fullResponse);
         collectionStorage.update(slug, fullResponse.collection);
         collectionStorage.updateFull(slug, fullResponse);
         await revalidateCollectionCache(slug);
 
-        const metadataUpdater = mergeNewMetadata(response, currentState);
-        if (metadataUpdater) {
-          setCurrentState(metadataUpdater);
-        }
+        // Merge metadata into the fresh response using functional updater to avoid stale closure
+        setCurrentState(prev => {
+          const base = fullResponse;
+          const metadataUpdater = mergeNewMetadata(response, prev ?? base);
+          return metadataUpdater ? metadataUpdater(base) : base;
+        });
 
         setSelectedImageIds([]);
         setIsMultiSelectMode(false);
@@ -476,7 +478,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
    */
   const handleDeleteSuccess = useCallback(
     async (_deletedIds: number[]) => {
-      if (!currentState?.collection.slug) return;
+      if (!currentState?.collection.slug) {
+        console.warn('handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection');
+        setError('Unable to refresh collection after deletion — please reload the page.');
+        return;
+      }
 
       try {
         const slug = currentState.collection.slug;
@@ -629,7 +635,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   // Handle adding new child collection
   const handleAddNewChild = useCallback(async () => {
-    if (!collection) return;
+    if (!collection) {
+      console.warn('handleAddNewChild: collection unavailable, cannot create child');
+      setError('Collection data unavailable — please reload the page.');
+      return;
+    }
 
     try {
       setOperationLoading(true);
@@ -993,7 +1003,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         <label className={styles.formLabel}>Cover Image</label>
                         {displayedCoverImage && isContentImage(displayedCoverImage) ? (
                           <div className={styles.coverImageWrapper}>
-                            <img src={displayedCoverImage.imageUrl} alt="Cover" />
+                            <Image
+                              src={displayedCoverImage.imageUrl}
+                              alt="Cover"
+                              width={400}
+                              height={300}
+                            />
                             <button
                               type="button"
                               onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}

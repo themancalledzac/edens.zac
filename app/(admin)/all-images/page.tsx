@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { getAllImages } from '@/app/lib/api/content';
+import { ApiError } from '@/app/lib/api/core';
 import type { CollectionModel } from '@/app/types/Collection';
 import { CollectionType } from '@/app/types/Collection';
 import type { ContentImageModel } from '@/app/types/Content';
@@ -56,10 +57,8 @@ export default async function AllImagesPage() {
 
     return <CollectionPage collection={mockCollection} chunkSize={4} />;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // Handle 404s
-    if (errorMessage.includes('404')) {
+    // Handle 404s using structured ApiError status when available
+    if (error instanceof ApiError && error.status === 404) {
       notFound();
     }
 

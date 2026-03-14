@@ -43,20 +43,9 @@ import {
   type ContentImageUpdateResponse,
   type ContentTextModel,
 } from '@/app/types/Content';
+import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 // Test fixtures
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  orderIndex: id,
-  imageUrl: `https://example.com/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  ...overrides,
-});
 
 const createTextContent = (
   id: number,

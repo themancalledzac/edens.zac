@@ -3,13 +3,7 @@
  * Tests content normalization and position class determination
  */
 
-import type {
-  AnyContentModel,
-  ContentCollectionModel,
-  ContentGifModel,
-  ContentImageModel,
-  ContentTextModel,
-} from '@/app/types/Content';
+import type { AnyContentModel } from '@/app/types/Content';
 import {
   buildParallaxWrapperClassName,
   buildWrapperClassName,
@@ -17,92 +11,12 @@ import {
   determinePositionClassName,
   normalizeContentToRendererProps,
 } from '@/app/utils/contentRendererUtils';
-
-// Test fixtures
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  orderIndex: id,
-  visible: true,
-  imageUrl: `https://example.com/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  width: 1920,
-  height: 1080,
-  title: `Image ${id}`,
-  alt: `Alt text ${id}`,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
-
-const createCollectionContent = (
-  id: number,
-  overrides?: Partial<ContentCollectionModel>
-): ContentCollectionModel => ({
-  id,
-  contentType: 'COLLECTION',
-  orderIndex: id,
-  visible: true,
-  title: `Collection ${id}`,
-  slug: `collection-${id}`,
-  collectionType: 'PORTFOLIO',
-  referencedCollectionId: id * 100,
-  coverImage: {
-    id: id * 10,
-    imageUrl: `https://example.com/cover-${id}.jpg`,
-    imageWidth: 1920,
-    imageHeight: 1080,
-    width: 1920,
-    height: 1080,
-    contentType: 'IMAGE',
-    orderIndex: 0,
-    visible: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
-
-const createGifContent = (
-  id: number,
-  overrides?: Partial<ContentGifModel>
-): ContentGifModel => ({
-  id,
-  contentType: 'GIF',
-  orderIndex: id,
-  visible: true,
-  gifUrl: `https://example.com/gif-${id}.gif`,
-  width: 800,
-  height: 600,
-  title: `GIF ${id}`,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
-
-const createTextContent = (
-  id: number,
-  overrides?: Partial<ContentTextModel>
-): ContentTextModel => ({
-  id,
-  contentType: 'TEXT',
-  orderIndex: id,
-  visible: true,
-  items: [{ type: 'text', value: `Text content ${id}` }],
-  format: 'plain',
-  align: 'left',
-  width: 800,
-  height: 200,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  ...overrides,
-});
+import {
+  createCollectionContent,
+  createGifContent,
+  createImageContent,
+  createTextContent,
+} from '@/tests/fixtures/contentFixtures';
 
 const mockStyles = {
   imageSingle: 'imageSingle',
@@ -265,7 +179,7 @@ describe('contentRendererUtils', () => {
 
     describe('IMAGE content', () => {
       it('should normalize image content', () => {
-        const image = createImageContent(1);
+        const image = createImageContent(1, { alt: 'Alt text 1' });
         const result = normalizeContentToRendererProps(
           image,
           600,

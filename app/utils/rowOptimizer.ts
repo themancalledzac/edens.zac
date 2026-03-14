@@ -55,9 +55,6 @@ export function optimizeBoundaries(rows: RowResult[], rowWidth: number): RowResu
     const rowA = result[i]!;
     const rowB = result[i + 1]!;
 
-    // Skip header rows
-    if (rowA.label === 'header' || rowB.label === 'header') continue;
-
     const currentScore = rowScore(rowA.components, rowWidth) + rowScore(rowB.components, rowWidth);
 
     let bestScore = currentScore;

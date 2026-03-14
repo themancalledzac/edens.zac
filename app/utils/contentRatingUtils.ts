@@ -52,24 +52,23 @@ export function getRating(item: AnyContentModel, asStarValue: boolean = false): 
 // =============================================================================
 
 /**
- * Get the effective rating of an item based on its orientation and slot width.
+ * Get the effective rating of an item based on its orientation.
  *
  * The effective rating accounts for:
  * 1. **Vertical penalty**: Vertical images are treated as one rating lower than horizontal
  *    (V5★ → H4★ equivalent, V4★ → H3★ equivalent, etc.)
- * 2. **Dynamic scaling**: On narrower viewports (fewer slots), ratings "collapse upward"
- *    because there's less resolution to distinguish them.
  *
  * Examples:
- * - H5★ on desktop (5 slots) → effectiveRating 5
- * - V5★ on desktop (5 slots) → effectiveRating 4 (vertical penalty)
- * - H3★ on mobile (2 slots) → effectiveRating 3 (unchanged, but slot cost will be full width)
+ * - H5★ → effectiveRating 5
+ * - V5★ → effectiveRating 4 (vertical penalty)
+ * - H3★ → effectiveRating 3
+ *
+ * Note: Slot-width-dependent scaling is handled downstream in getComponentValue().
  *
  * @param item - The content item to evaluate
- * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
  * @returns The effective rating (0-5) after applying orientation penalty
  */
-export function getEffectiveRating(item: AnyContentModel, _slotWidth: number = LAYOUT.desktopSlotWidth): number {
+export function getEffectiveRating(item: AnyContentModel): number {
   // Collection cards get fixed effective rating of 4
   if (isCollectionCard(item)) {
     return 4;
@@ -146,6 +145,6 @@ export function getComponentValue(effectiveRating: number, slotWidth: number = L
  * @returns The component value for this item
  */
 export function getItemComponentValue(item: AnyContentModel, slotWidth: number = LAYOUT.desktopSlotWidth): number {
-  const effectiveRating = getEffectiveRating(item, slotWidth);
+  const effectiveRating = getEffectiveRating(item);
   return getComponentValue(effectiveRating, slotWidth);
 }

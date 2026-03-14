@@ -1,6 +1,6 @@
 'use client';
 
-import { type Dispatch, type SetStateAction, useCallback, useState } from 'react';
+import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 
 import { updateCollection } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
@@ -27,6 +27,15 @@ export function useCoverImageSelection({
 }: UseCoverImageSelectionParams) {
   const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
   const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
+  const flashTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) {
+        clearTimeout(flashTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleCoverImageClick = useCallback(
     async (imageId: number) => {
@@ -58,7 +67,10 @@ export function useCoverImageSelection({
         setError(handleApiError(error, 'Failed to update cover image'));
       } finally {
         setOperationLoading(false);
-        setTimeout(() => {
+        if (flashTimerRef.current) {
+          clearTimeout(flashTimerRef.current);
+        }
+        flashTimerRef.current = setTimeout(() => {
           setJustClickedImageId(null);
         }, COVER_IMAGE_FLASH_DURATION);
       }

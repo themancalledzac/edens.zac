@@ -10,22 +10,7 @@ import {
   createContentClickHandler,
   getCollectionNavigationPath,
 } from '@/app/utils/contentComponentHandlers';
-
-// Test fixtures
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  orderIndex: id,
-  visible: true,
-  imageUrl: `https://example.com/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  title: `Image ${id}`,
-  ...overrides,
-});
+import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 
 const createChildCollection = (

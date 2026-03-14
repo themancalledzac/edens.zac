@@ -97,7 +97,15 @@ export default function CollectionListSelector({
             <div
               key={collection.id}
               className={`${styles.row} ${onNavigate ? styles.navigable : ''}`}
+              role="button"
+              tabIndex={0}
               onClick={() => handleRowClick(collection)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleRowClick(collection);
+                }
+              }}
             >
               <button
                 type="button"
