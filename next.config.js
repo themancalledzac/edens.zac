@@ -8,6 +8,12 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Inline server-side env vars at build time so they're available in Amplify SSR Lambda.
+  // These are only referenced in Route Handlers (server-only), so they won't appear in client bundles.
+  env: {
+    API_URL: process.env.API_URL,
+    INTERNAL_API_SECRET: process.env.INTERNAL_API_SECRET,
+  },
   reactStrictMode: true,
   sassOptions: {
     includePaths: [path.join(process.cwd(), 'styles')],
