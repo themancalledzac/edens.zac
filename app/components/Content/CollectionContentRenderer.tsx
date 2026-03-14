@@ -252,7 +252,6 @@ export default function CollectionContentRenderer({
           style: {
             cursor: handleClick ? ('pointer' as const) : ('default' as const),
           },
-          onClick: handleClick,
         }),
   };
 

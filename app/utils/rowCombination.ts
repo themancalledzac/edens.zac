@@ -545,9 +545,9 @@ export interface CompositionResult {
  * @returns CompositionResult with AtomicComponent tree, structural key, and template label
  */
 export function lookupComposition(images: ImageType[], targetAR: number = 1.5, rowWidth: number = 5): CompositionResult {
-  const key = getTemplateKey(images);
-  const template = TEMPLATE_MAP[key];
   const templateKey = parseTemplateKey(images);
+  const key = `${templateKey.h}-${templateKey.v}`;
+  const template = TEMPLATE_MAP[key];
 
   if (!template) {
     // 6+ images have no static template — use compose() for recursive composition
@@ -557,11 +557,15 @@ export function lookupComposition(images: ImageType[], targetAR: number = 1.5, r
   return { composition: template.build(images, targetAR, rowWidth), templateKey, label: template.label };
 }
 
-/** Build a TemplateKey from a set of images by parsing the string key */
+/** Build a TemplateKey from a set of images by counting h/v directly */
 function parseTemplateKey(images: ImageType[]): TemplateKey {
-  const key = getTemplateKey(images);
-  const [hStr, vStr] = key.split('-');
-  return { h: Number(hStr), v: Number(vStr) };
+  let h = 0;
+  let v = 0;
+  for (const img of images) {
+    if (img.ar === 'H') h++;
+    else v++;
+  }
+  return { h, v };
 }
 
 // =============================================================================
