@@ -518,6 +518,17 @@
   }
 }
 
+/* Layout error state */
+.layoutError {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+  color: var(--color-text-muted, #6b7280);
+  font-size: var(--text-sm, 0.875rem);
+  text-align: center;
+}
+
 /* Visibility separator - shown between visible and non-visible content on manage page */
 .visibilitySeparator {
   display: flex;

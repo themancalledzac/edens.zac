@@ -252,7 +252,6 @@ export default function CollectionContentRenderer({
           style: {
             cursor: handleClick ? ('pointer' as const) : ('default' as const),
           },
-          onClick: handleClick,
         }),
   };
 
@@ -331,7 +330,6 @@ export default function CollectionContentRenderer({
       cursor: handleClick ? 'pointer' : 'default',
     },
     ...(enableParallax && { ref: parallaxRef }),
-    ...(!enableParallax && handleClick && { onClick: handleClick }),
   };
 
   return (
@@ -354,7 +352,6 @@ export default function CollectionContentRenderer({
         onCancelImageMove &&
         contentId !== currentCoverImageId && (
           <ReorderOverlay
-            contentId={contentId}
             isPickedUp={isPickedUp}
             pickedUpImageId={pickedUpImageId}
             hasMoved={hasMoved}

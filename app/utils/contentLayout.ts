@@ -8,130 +8,18 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
-import { isStandaloneItem } from '@/app/utils/contentRatingUtils';
 import {
   getContentDimensions,
-  getSlotWidth,
   isContentCollection,
-  isVerticalImage,
 } from '@/app/utils/contentTypeGuards';
-import { type BoxTree, buildRows, type TemplateKey } from '@/app/utils/rowCombination';
+import { acToBoxTree, type BoxTree, buildRows, hChain, type TemplateKey, toImageType } from '@/app/utils/rowCombination';
+import { optimizeRows } from '@/app/utils/rowOptimizer';
 import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
 
 /**
  * Simplified Layout utilities for Content system
  * Direct processing without complex normalization - works with proper Content types
  */
-
-// ===================== Image Classification Helpers =====================
-
-/**
- * Reorder lonely verticals followed by standalone items (5-star horizontals, panoramas)
- * A vertical is "lonely" if previous item can't pair with it (nothing or standalone item)
- */
-function reorderLonelyVerticals(content: AnyContentModel[]): AnyContentModel[] {
-  if (content.length < 2) return content;
-
-  const result = [...content];
-  let i = 0;
-
-  while (i < result.length - 1) {
-    const current = result[i];
-    const next = result[i + 1];
-
-    if (current && next && isVerticalImage(current) && isStandaloneItem(next)) {
-      const prev = i > 0 ? result[i - 1] : undefined;
-      // Lonely if nothing before, or previous is standalone (can't pair)
-      const isLonely = !prev || isStandaloneItem(prev);
-
-      if (isLonely) {
-        // Swap: [V, 5H] → [5H, V]
-        result[i] = next;
-        result[i + 1] = current;
-        i += 2;
-        continue;
-      }
-    }
-    i++;
-  }
-
-  return result;
-}
-
-// ===================== Chunking =====================
-
-/**
- * Chunk ContentModels based on rating-aware slot system
- * Uses getSlotWidth from contentTypeGuards for consistent slot calculation
- * @param content - Array of content blocks to chunk into rows
- * @param chunkSize - Number of normal-width items per row (default: 2)
- * @returns Array of content rows
- */
-export function chunkContent(
-  content: AnyContentModel[],
-  chunkSize: number = LAYOUT.defaultChunkSize,
-  options?: { skipReorder?: boolean }
-): AnyContentModel[][] {
-  if (!content || content.length === 0) return [];
-
-  // Enforce minimum chunk size to ensure halfSlot is at least 1
-  const effectiveChunkSize = Math.max(chunkSize, LAYOUT.minChunkSize);
-
-  // Reorder to handle lonely verticals followed by 5-star horizontals
-  // Skip for FIXED/CHRONOLOGICAL modes where order must be preserved exactly
-  const reordered = options?.skipReorder ? content : reorderLonelyVerticals(content);
-
-  const result: AnyContentModel[][] = [];
-  let currentRow: AnyContentModel[] = [];
-  let currentRowSlots: number = 0;
-
-  for (let i = 0; i < reordered.length; i++) {
-    const contentItem = reordered[i];
-    if (!contentItem) continue;
-
-    const prevItem = i > 0 ? reordered[i - 1] : undefined;
-    const nextItem = i < reordered.length - 1 ? reordered[i + 1] : undefined;
-
-    const slotWidth = getSlotWidth(contentItem, effectiveChunkSize, prevItem, nextItem);
-
-    // Standalone items (slotWidth >= chunkSize) get their own row
-    // Note: Pattern registry now handles standalone detection, but chunkContent
-    // is still used for slot-based layout (mobile/fallback)
-    if (slotWidth >= effectiveChunkSize) {
-      if (currentRow.length > 0) {
-        result.push([...currentRow]);
-        currentRow = [];
-        currentRowSlots = 0;
-      }
-      result.push([contentItem]);
-      continue;
-    }
-
-    // Check if item fits in current row
-    if (currentRowSlots + slotWidth <= effectiveChunkSize) {
-      currentRow.push(contentItem);
-      currentRowSlots += slotWidth;
-
-      if (currentRowSlots === effectiveChunkSize) {
-        result.push([...currentRow]);
-        currentRow = [];
-        currentRowSlots = 0;
-      }
-    } else {
-      if (currentRow.length > 0) {
-        result.push([...currentRow]);
-      }
-      currentRow = [contentItem];
-      currentRowSlots = slotWidth;
-    }
-  }
-
-  if (currentRow.length > 0) {
-    result.push(currentRow);
-  }
-
-  return result;
-}
 
 // ===================== Content sizing =====================
 
@@ -152,245 +40,28 @@ export interface RowWithPatternAndSizes {
 }
 
 /**
- * Calculate display sizes for row of content to match heights and sum to component width
- * Uses slot width for proportional space allocation:
- * - 3+ star images get chunkSize/2 slots (more visual space)
- * - Normal images get 1 slot
- * @param content - Array of content blocks in a single row
- * @param componentWidth - Total available width for the row
- * @param chunkSize - Number of normal-width items per row (default: 2)
- * @returns Array of content blocks with calculated display dimensions
- */
-export function calculateContentSizes(
-  content: AnyContentModel[],
-  componentWidth: number,
-  chunkSize: number = LAYOUT.defaultChunkSize
-): CalculatedContentSize[] {
-  if (!content || content.length === 0) return [];
-
-  // Enforce minimum chunk size
-  const effectiveChunkSize = Math.max(chunkSize, LAYOUT.minChunkSize);
-
-  if (content.length === 1) {
-    const contentElement = content[0];
-    if (!contentElement) return [];
-
-    const { width, height } = getContentDimensions(contentElement);
-
-    // Validate dimensions
-    if (width <= 0 || height <= 0) {
-      // Fallback to default aspect ratio
-      return [
-        {
-          content: contentElement,
-          width: componentWidth,
-          height: componentWidth / 1.5, // Default 3:2 aspect ratio
-        },
-      ];
-    }
-
-    const ratio = width / Math.max(1, height);
-    const displayHeight = componentWidth / ratio;
-
-    // Validate calculated height
-    if (!Number.isFinite(displayHeight) || displayHeight <= 0) {
-      return [
-        {
-          content: contentElement,
-          width: componentWidth,
-          height: componentWidth / 1.5, // Fallback to default aspect ratio
-        },
-      ];
-    }
-
-    const result = [
-      {
-        content: contentElement,
-        width: componentWidth,
-        height: displayHeight,
-      },
-    ];
-    return result;
-  }
-
-  // Calculate ratios for all content, using effective dimensions based on slot width
-  // Higher slot widths (3+ star images) get proportionally more visual space
-  // Note: Padding is INSIDE the div width due to box-sizing: border-box
-  const ratios = content.map(contentItem => {
-    const { width, height } = getContentDimensions(contentItem);
-    const slotWidth = getSlotWidth(contentItem, effectiveChunkSize);
-
-    // Validate dimensions
-    if (width <= 0 || height <= 0) {
-      return 1.5; // Default 3:2 aspect ratio
-    }
-
-    // Guard: If slotWidth is very large (>= chunkSize), it's likely a standalone item
-    // Use original aspect ratio without scaling
-    if (!Number.isFinite(slotWidth) || slotWidth <= 0 || slotWidth >= effectiveChunkSize) {
-      return width / Math.max(1, height);
-    }
-
-    // Scale by slot width for proportional space allocation
-    // Example: slot=2 means 2x visual space compared to slot=1
-    const effectiveWidth = width * slotWidth;
-    const effectiveHeight = height * slotWidth;
-
-    return effectiveWidth / Math.max(1, effectiveHeight);
-  });
-
-  const ratioSum = ratios.reduce((sum, ratio) => {
-    // Filter out invalid ratios (NaN, Infinity, or 0)
-    if (!Number.isFinite(ratio) || ratio <= 0) return sum;
-    return sum + ratio;
-  }, 0);
-
-  // Guard against division by zero
-  if (ratioSum === 0 || !Number.isFinite(ratioSum)) {
-    // Fallback: distribute width equally among all items
-    const equalWidth = componentWidth / content.length;
-    return content.map(contentItem => {
-      const { width, height } = getContentDimensions(contentItem);
-      const ratio = width / Math.max(1, height);
-      const calculatedHeight = equalWidth / ratio;
-      return {
-        content: contentItem,
-        width: equalWidth,
-        height: calculatedHeight,
-      };
-    });
-  }
-
-  const commonHeight = componentWidth / ratioSum;
-
-  // Validate commonHeight - if invalid, use equal width distribution fallback
-  if (!Number.isFinite(commonHeight) || commonHeight <= 0) {
-    // Use existing fallback logic - equal width distribution
-    const equalWidth = componentWidth / content.length;
-    return content.map(contentItem => {
-      const { width, height } = getContentDimensions(contentItem);
-      const ratio = width / Math.max(1, height);
-      const calculatedHeight = equalWidth / ratio;
-
-      // Validate calculated height
-      if (!Number.isFinite(calculatedHeight) || calculatedHeight <= 0) {
-        return {
-          content: contentItem,
-          width: equalWidth,
-          height: equalWidth / 1.5, // Default 3:2 aspect ratio
-        };
-      }
-
-      return {
-        content: contentItem,
-        width: equalWidth,
-        height: calculatedHeight,
-      };
-    });
-  }
-
-  return content.map((contentItem, idx) => {
-    const ratio = ratios[idx];
-    if (!ratio || !Number.isFinite(ratio) || ratio <= 0) {
-      return { content: contentItem, width: 0, height: 0 };
-    }
-
-    // Calculate width from effective ratio (gives 2-3x space for rated images)
-    const calculatedWidth = ratio * commonHeight;
-
-    // Calculate height to preserve the ORIGINAL aspect ratio (not effective)
-    // We use the original dimensions, not the effective ones, for the final height
-    const { width: originalWidth, height: originalHeight } = getContentDimensions(contentItem);
-
-    // Validate original dimensions
-    if (originalWidth <= 0 || originalHeight <= 0) {
-      // Fallback: use calculated width with default aspect ratio
-      return {
-        content: contentItem,
-        width: calculatedWidth,
-        height: calculatedWidth / 1.5, // Default 3:2 aspect ratio
-      };
-    }
-
-    const originalRatio = originalWidth / Math.max(1, originalHeight);
-    const calculatedHeight = calculatedWidth / originalRatio;
-
-    // Validate calculated dimensions
-    if (
-      !Number.isFinite(calculatedWidth) ||
-      !Number.isFinite(calculatedHeight) ||
-      calculatedWidth <= 0 ||
-      calculatedHeight <= 0
-    ) {
-      return { content: contentItem, width: 0, height: 0 };
-    }
-
-    return {
-      content: contentItem,
-      width: calculatedWidth,
-      height: calculatedHeight,
-    };
-  });
-}
-
-/**
  * Options for content display processing
  */
 export interface ProcessContentOptions {
   /** Whether the viewport is mobile (disables pattern detection) */
   isMobile?: boolean;
-  /** Enable pattern detection for advanced layouts (default: true on desktop) */
-  enablePatternDetection?: boolean;
   /** Collection model for creating header row (cover image + metadata) */
   collectionData?: CollectionModel;
-  /** Display mode — FIXED and CHRONOLOGICAL skip reorderLonelyVerticals */
+  /** Display mode — controls content sort order */
   displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
+  /** Target aspect ratio for AR-aware tree structure selection (default 1.5) */
+  targetAR?: number;
 }
 
-/**
- * Create a simple horizontal BoxTree from a list of content items.
- * Used for mobile/simple layouts where all items are arranged horizontally.
- */
+/** Build a horizontal BoxTree from content items using the shared hChain helper */
 function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
   if (items.length === 0) {
     throw new Error('Cannot create BoxTree from empty items array');
   }
-
-  if (items.length === 1) {
-    return { type: 'leaf', content: items[0]! };
-  }
-
-  // For 2 items: simple horizontal pair
-  if (items.length === 2) {
-    return {
-      type: 'combined',
-      direction: 'horizontal',
-      children: [
-        { type: 'leaf', content: items[0]! },
-        { type: 'leaf', content: items[1]! },
-      ],
-    };
-  }
-
-  // For 3+ items: build left-associative tree (((a | b) | c) | d)
-  let tree: BoxTree = {
-    type: 'combined',
-    direction: 'horizontal',
-    children: [
-      { type: 'leaf', content: items[0]! },
-      { type: 'leaf', content: items[1]! },
-    ],
-  };
-
-  for (let i = 2; i < items.length; i++) {
-    tree = {
-      type: 'combined',
-      direction: 'horizontal',
-      children: [tree, { type: 'leaf', content: items[i]! }],
-    };
-  }
-
-  return tree;
+  // rowWidth=5 is arbitrary here — hChain doesn't use targetAR scoring,
+  // it just builds a left-associative horizontal tree
+  const imageTypes = items.map(item => toImageType(item, 5));
+  return acToBoxTree(hChain(imageTypes));
 }
 
 /**
@@ -407,7 +78,7 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * @param content - Array of content blocks to process (should NOT include header items)
  * @param componentWidth - Total available width for display
  * @param chunkSize - Number of normal-width items per row (default: 2)
- * @param options - Processing options (isMobile, enablePatternDetection, collectionData)
+ * @param options - Processing options (isMobile, collectionData, displayMode)
  * @returns Array of rows with pattern metadata and sized content blocks
  */
 export function processContentForDisplay(
@@ -431,50 +102,19 @@ export function processContentForDisplay(
     }
   }
 
-  // Determine if pattern detection should be used
-  // Default: enabled on desktop, disabled on mobile
-  const usePatternDetection = options?.enablePatternDetection ?? !options?.isMobile;
+  // Unified pipeline: same algorithm, different rowWidth and gap
+  const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : LAYOUT.desktopSlotWidth;
+  const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
+  const targetAR = options?.targetAR ?? 1.5;
 
-  // Mobile or pattern detection disabled → use simple slot-based system
-  if (options?.isMobile || !usePatternDetection) {
-    // On mobile, override chunkSize to mobileSlotWidth (2) so items are
-    // grouped correctly for a narrow viewport instead of using desktop's 4-slot width
-    const effectiveChunkSize = options?.isMobile ? LAYOUT.mobileSlotWidth : chunkSize;
-    const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
-    const skipReorder = options?.displayMode === 'CHRONOLOGICAL' || options?.displayMode === 'FIXED';
-    const chunks = chunkContent(content, effectiveChunkSize, { skipReorder });
-    const contentRows = chunks.map(chunk => {
-      const boxTree = createSimpleHorizontalBoxTree(chunk);
-      const items = calculateSizesFromBoxTree(
-        boxTree,
-        componentWidth,
-        effectiveGap,
-        effectiveChunkSize
-      );
-      return {
-        templateKey: 'standard' as const,
-        items,
-        boxTree,
-      };
-    });
-    result.push(...contentRows);
-
-    return result;
-  }
-
-  // Desktop with pattern detection
-  const rowWidth = LAYOUT.desktopSlotWidth;
-
-  // Use buildRows() for pattern-based layout
-  const rows = buildRows(content, rowWidth);
+  const rows = optimizeRows(buildRows(content, rowWidth, targetAR), rowWidth);
 
   const contentRows = rows.map(row => {
-    // Use BoxTree-based size calculation (generic, follows tree structure)
     const items = calculateSizesFromBoxTree(
       row.boxTree,
       componentWidth,
-      LAYOUT.gridGap,
-      rowWidth // Pass chunkSize for slot width scaling
+      effectiveGap,
+      rowWidth
     );
 
     return {

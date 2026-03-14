@@ -13,7 +13,6 @@
  */
 
 import { LAYOUT } from '@/app/constants';
-import type { ContentImageModel } from '@/app/types/Content';
 import {
   acToBoxTree,
   type BoxTree,
@@ -30,39 +29,7 @@ import {
   toImageType,
   vStack,
 } from '@/app/utils/rowCombination';
-
-// ===================== Test Fixtures =====================
-
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  imageUrl: `/test/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  aspectRatio: 1920 / 1080,
-  rating: 0,
-  orderIndex: id,
-  ...overrides,
-});
-
-const H = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1920,
-    imageHeight: 1080,
-    aspectRatio: 1920 / 1080,
-    rating,
-  });
-
-const V = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1080,
-    imageHeight: 1920,
-    aspectRatio: 1080 / 1920,
-    rating,
-  });
+import { H, V } from '@/tests/fixtures/contentFixtures';
 
 // ===================== Helpers =====================
 
@@ -199,23 +166,28 @@ describe('buildRows characterization', () => {
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
     expect(rows[0]!.templateKey).toEqual({ h: 3, v: 0 });
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(H(L(1),L(2)),L(3))');
+    // buildAtomic produces AR-aware tree (not flat hChain)
+    const bt = rows[0]!.boxTree;
+    expect(bt.type).toBe('combined');
+    if (bt.type === 'combined') expect(bt.direction).toBe('horizontal');
   });
 
   // ---------------------------------------------------------------
-  // Test 8: H1★ + V1★ + H1★ + V1★ + H1★ — chain-3h2v template (5 items)
+  // Test 8: H1★ + V1★ + H1★ + V1★ + H1★ — atomic-3h2v template (5 items)
   // H1★ cv=1.0, V1★ effective=0 cv=1.0. 5×1.0=5.0, fill=100% ✓
   // templateKey: { h: 3, v: 2 }
   // ---------------------------------------------------------------
-  it('8: H1★ + V1★ + H1★ + V1★ + H1★ → chain-3h2v templateKey (5-item row)', () => {
+  it('8: H1★ + V1★ + H1★ + V1★ + H1★ → atomic-3h2v templateKey (5-item row)', () => {
     const items = [H(1, 1), V(2, 1), H(3, 1), V(4, 1), H(5, 1)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4, 5]);
     expect(rows[0]!.templateKey).toEqual({ h: 3, v: 2 });
-    // 5 items → left-heavy chain: H(H(H(H(L(1),L(2)),L(3)),L(4)),L(5))
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(H(H(H(L(1),L(2)),L(3)),L(4)),L(5))');
+    // buildAtomic produces AR-aware tree with dominant on right
+    const bt = rows[0]!.boxTree;
+    expect(bt.type).toBe('combined');
+    if (bt.type === 'combined') expect(bt.direction).toBe('horizontal');
   });
 
   // ---------------------------------------------------------------
@@ -468,7 +440,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4, 5]);
-    expect(rows[0]!.label).toBe('chain-5h');
+    expect(rows[0]!.label).toBe('compose-5h');
   });
 
   // ---------------------------------------------------------------
@@ -883,72 +855,78 @@ describe('architecture types', () => {
 
     it('1-0 (hero) → single leaf', () => {
       const imgs = [makeImg(1, 'H', 5)];
-      const ac = TEMPLATE_MAP['1-0']!.build(imgs);
+      const ac = TEMPLATE_MAP['1-0']!.build(imgs, 1.5, DESKTOP);
       expect(ac.type).toBe('single');
       expect(boxTreeShape(acToBoxTree(ac))).toBe('L(1)');
     });
 
     it('0-1 (single-v) → single leaf', () => {
       const imgs = [makeImg(1, 'V', 1)];
-      const ac = TEMPLATE_MAP['0-1']!.build(imgs);
+      const ac = TEMPLATE_MAP['0-1']!.build(imgs, 1.5, DESKTOP);
       expect(ac.type).toBe('single');
       expect(boxTreeShape(acToBoxTree(ac))).toBe('L(1)');
     });
 
     it('2-0 (h-pair) → H(L,L)', () => {
       const imgs = [makeImg(1, 'H', 4), makeImg(2, 'H', 4)];
-      const ac = TEMPLATE_MAP['2-0']!.build(imgs);
+      const ac = TEMPLATE_MAP['2-0']!.build(imgs, 1.5, DESKTOP);
       expect(boxTreeShape(acToBoxTree(ac))).toBe('H(L(1),L(2))');
     });
 
     it('1-1 (dom-sec) → H(L,L)', () => {
       const imgs = [makeImg(1, 'H', 4), makeImg(2, 'V', 2)];
-      const ac = TEMPLATE_MAP['1-1']!.build(imgs);
+      const ac = TEMPLATE_MAP['1-1']!.build(imgs, 1.5, DESKTOP);
       expect(boxTreeShape(acToBoxTree(ac))).toBe('H(L(1),L(2))');
     });
 
     it('0-2 (v-pair) → H(L,L)', () => {
       const imgs = [makeImg(1, 'V', 5), makeImg(2, 'V', 5)];
-      const ac = TEMPLATE_MAP['0-2']!.build(imgs);
+      const ac = TEMPLATE_MAP['0-2']!.build(imgs, 1.5, DESKTOP);
       expect(boxTreeShape(acToBoxTree(ac))).toBe('H(L(1),L(2))');
     });
 
-    it('3-0 (triple-h) → H(H(L,L),L)', () => {
+    it('3-0 → buildAtomic produces pair at root', () => {
       const imgs = [makeImg(1, 'H', 3), makeImg(2, 'H', 3), makeImg(3, 'H', 3)];
-      const ac = TEMPLATE_MAP['3-0']!.build(imgs);
-      expect(boxTreeShape(acToBoxTree(ac))).toBe('H(H(L(1),L(2)),L(3))');
+      const ac = TEMPLATE_MAP['3-0']!.build(imgs, 1.5, DESKTOP);
+      expect(ac.type).toBe('pair');
+      if (ac.type === 'pair') {
+        expect(ac.direction).toBe('H');
+      }
     });
 
     it('2-1 with dominant H4★ → DVP structure H(dom, V(rest0, rest1))', () => {
       const imgs = [makeImg(1, 'H', 4), makeImg(2, 'H', 3), makeImg(3, 'V', 1)];
-      const ac = TEMPLATE_MAP['2-1']!.build(imgs);
+      const ac = TEMPLATE_MAP['2-1']!.build(imgs, 1.5, DESKTOP);
       // H4★ is dominant (eff=4, H) → DVP
       expect(boxTreeShape(acToBoxTree(ac))).toBe('H(L(1),V(L(2),L(3)))');
     });
 
     it('2-1 without dominant → flat chain', () => {
       const imgs = [makeImg(1, 'H', 2), makeImg(2, 'H', 2), makeImg(3, 'V', 1)];
-      const ac = TEMPLATE_MAP['2-1']!.build(imgs);
+      const ac = TEMPLATE_MAP['2-1']!.build(imgs, 1.5, DESKTOP);
       // No image has eff >= 4 → flat chain
       expect(boxTreeShape(acToBoxTree(ac))).toBe('H(H(L(1),L(2)),L(3))');
     });
 
     it('1-2 with dominant H4★ → DVP structure', () => {
       const imgs = [makeImg(1, 'H', 4), makeImg(2, 'V', 3), makeImg(3, 'V', 3)];
-      const ac = TEMPLATE_MAP['1-2']!.build(imgs);
+      const ac = TEMPLATE_MAP['1-2']!.build(imgs, 1.5, DESKTOP);
       expect(boxTreeShape(acToBoxTree(ac))).toBe('H(L(1),V(L(2),L(3)))');
     });
 
     it('1-2 without dominant → flat chain', () => {
       const imgs = [makeImg(1, 'H', 3), makeImg(2, 'V', 3), makeImg(3, 'V', 3)];
-      const ac = TEMPLATE_MAP['1-2']!.build(imgs);
+      const ac = TEMPLATE_MAP['1-2']!.build(imgs, 1.5, DESKTOP);
       expect(boxTreeShape(acToBoxTree(ac))).toBe('H(H(L(1),L(2)),L(3))');
     });
 
-    it('0-3 → flat chain', () => {
+    it('0-3 → buildAtomic produces pair at root', () => {
       const imgs = [makeImg(1, 'V', 2), makeImg(2, 'V', 2), makeImg(3, 'V', 2)];
-      const ac = TEMPLATE_MAP['0-3']!.build(imgs);
-      expect(boxTreeShape(acToBoxTree(ac))).toBe('H(H(L(1),L(2)),L(3))');
+      const ac = TEMPLATE_MAP['0-3']!.build(imgs, 1.5, DESKTOP);
+      expect(ac.type).toBe('pair');
+      if (ac.type === 'pair') {
+        expect(ac.direction).toBe('H');
+      }
     });
 
     it('0-4 with 4 verticals → nested quad', () => {
@@ -958,7 +936,7 @@ describe('architecture types', () => {
         makeImg(3, 'V', 1), // eff=0
         makeImg(4, 'V', 1), // eff=0
       ];
-      const ac = TEMPLATE_MAP['0-4']!.build(imgs);
+      const ac = TEMPLATE_MAP['0-4']!.build(imgs, 1.5, DESKTOP);
       const bt = acToBoxTree(ac);
       // Main = V3★ (id=1, highest eff), topPair = two lowest V1★s, bottom = remaining V1★
       expect(bt.type).toBe('combined');
@@ -985,7 +963,7 @@ describe('architecture types', () => {
         makeImg(3, 'V', 1), // eff=0
         makeImg(4, 'H', 2), // H, non-vertical
       ];
-      const ac = TEMPLATE_MAP['1-3']!.build(imgs);
+      const ac = TEMPLATE_MAP['1-3']!.build(imgs, 1.5, DESKTOP);
       const bt = acToBoxTree(ac);
       expect(bt.type).toBe('combined');
       if (bt.type === 'combined') {
@@ -997,19 +975,19 @@ describe('architecture types', () => {
       }
     });
 
-    it('1-3 with only 2 verticals → flat chain', () => {
-      // This can't actually happen (1-3 means 1H + 3V = 3 verticals)
-      // but buildNestedQuad handles it defensively with hChain fallback
-      // We test with 4-0 which would never hit nested quad
+    it('4-0 → buildAtomic produces pair at root', () => {
       const imgs = [makeImg(1, 'H', 2), makeImg(2, 'H', 2), makeImg(3, 'H', 2), makeImg(4, 'H', 2)];
-      const ac = TEMPLATE_MAP['4-0']!.build(imgs);
-      expect(boxTreeShape(acToBoxTree(ac))).toBe('H(H(H(L(1),L(2)),L(3)),L(4))');
+      const ac = TEMPLATE_MAP['4-0']!.build(imgs, 1.5, DESKTOP);
+      expect(ac.type).toBe('pair');
     });
 
-    it('5-item chains all produce left-heavy trees', () => {
+    it('5-0 → buildAtomic produces pair at root', () => {
       const fiveH = [makeImg(1,'H',1), makeImg(2,'H',1), makeImg(3,'H',1), makeImg(4,'H',1), makeImg(5,'H',1)];
-      const ac = TEMPLATE_MAP['5-0']!.build(fiveH);
-      expect(boxTreeShape(acToBoxTree(ac))).toBe('H(H(H(H(L(1),L(2)),L(3)),L(4)),L(5))');
+      const ac = TEMPLATE_MAP['5-0']!.build(fiveH, 1.5, DESKTOP);
+      expect(ac.type).toBe('pair');
+      if (ac.type === 'pair') {
+        expect(ac.direction).toBe('H');
+      }
     });
   });
 
@@ -1051,17 +1029,17 @@ describe('architecture types', () => {
         }
     });
 
-    it('falls back to hChain for unknown key', () => {
-      // 6 horizontal images → key "6-0" not in map
+    it('uses compose-fallback for unknown key (6+ images)', () => {
+      // 6 horizontal images → key "6-0" not in map → compose handles it
       const imgs = [
         makeImg(1,'H',1), makeImg(2,'H',1), makeImg(3,'H',1),
         makeImg(4,'H',1), makeImg(5,'H',1), makeImg(6,'H',1),
       ];
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
-      const { composition: ac } = lookupComposition(imgs);
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('6-0'));
-      expect(boxTreeShape(acToBoxTree(ac))).toBe('H(H(H(H(H(L(1),L(2)),L(3)),L(4)),L(5)),L(6))');
-      warnSpy.mockRestore();
+      const { composition: ac, label } = lookupComposition(imgs);
+      expect(label).toBe('compose-fallback');
+      // compose produces a valid tree (exact shape depends on AR scoring)
+      const tree = acToBoxTree(ac);
+      expect(tree.type).toBe('combined');
     });
 
     it('produces correct BoxTree for DVP inputs', () => {

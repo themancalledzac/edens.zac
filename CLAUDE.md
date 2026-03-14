@@ -38,6 +38,21 @@ Import order:
 7. Styles (SCSS modules)
 8. Relative imports (same directory)
 
+## Running Tests
+
+`npm` and `npx` are not on PATH. Use the Homebrew node binary directly:
+
+```bash
+/opt/homebrew/bin/node node_modules/.bin/jest
+```
+
+Common flags:
+- All tests: `/opt/homebrew/bin/node node_modules/.bin/jest`
+- Single file: `/opt/homebrew/bin/node node_modules/.bin/jest tests/utils/contentLayout.test.ts`
+- Watch mode: `/opt/homebrew/bin/node node_modules/.bin/jest --watch`
+
+---
+
 ## Common Mistakes to Avoid
 
 - ❌ Using `'use client'` unnecessarily - prefer Server Components

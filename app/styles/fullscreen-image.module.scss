@@ -170,7 +170,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid rgba(255, 255, 255, 0.5);
+    outline: 2px solid var(--color-overlay-light-50);
     outline-offset: 2px;
   }
 
@@ -227,7 +227,7 @@
 
 .metadataItem {
   margin-bottom: 6px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-overlay-light-90);
 
   @media (width > 768px) {
     margin-bottom: 8px;
@@ -235,7 +235,7 @@
 }
 
 .metadataSeparator {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--color-overlay-light-50);
   margin: 0 4px;
 }
 
@@ -245,7 +245,7 @@
   gap: 12px;
   margin-bottom: 12px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1px solid var(--color-overlay-light-20);
 
   @media (width > 768px) {
     gap: 16px;
@@ -261,7 +261,7 @@
 .metadataSection {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1px solid var(--color-overlay-light-20);
 
   @media (width > 768px) {
     margin-top: 16px;
@@ -285,7 +285,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--color-overlay-light-70);
   margin-bottom: 0;
   flex-shrink: 0;
 
@@ -308,10 +308,10 @@
 
 .metadataSectionItem {
   padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  background: var(--color-overlay-light-10);
+  border-radius: var(--radius-1);
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--color-overlay-light-90);
   user-select: none;
 
   @media (width > 768px) {
@@ -332,7 +332,7 @@
   touch-action: manipulation;
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--color-overlay-light-20);
   }
 
   &:active {
@@ -360,6 +360,6 @@
   z-index: var(--z-modal-controls);
 
   &:hover {
-    background-color: rgba(255, 255, 255, 0.3);
+    background-color: var(--color-overlay-light-30);
   }
 }

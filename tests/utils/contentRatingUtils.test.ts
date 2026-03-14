@@ -4,149 +4,22 @@
  */
 
 import { LAYOUT } from '@/app/constants';
-import type { ContentImageModel } from '@/app/types/Content';
 import {
   getComponentValue,
   getEffectiveRating,
-  getEffectiveRatingFromAspectRatio,
   getItemComponentValue,
   getRating,
   isCollectionCard,
-  isStandaloneItem,
 } from '@/app/utils/contentRatingUtils';
+import {
+  createHorizontalImage,
+  createImageContent,
+  createPanorama,
+  createSquareImage,
+  createVerticalImage,
+} from '@/tests/fixtures/contentFixtures';
 
-// ===================== Test Fixtures =====================
-
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  imageUrl: `/test/image-${id}.jpg`, // Required by isContentImage type guard
-  imageWidth: 1920,
-  imageHeight: 1080,
-  aspectRatio: 1920 / 1080,
-  rating: 0,
-  orderIndex: id,
-  ...overrides,
-});
-
-const createHorizontalImage = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1920,
-    imageHeight: 1080,
-    aspectRatio: 1920 / 1080,
-    rating,
-  });
-
-const createVerticalImage = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1080,
-    imageHeight: 1920,
-    aspectRatio: 1080 / 1920,
-    rating,
-  });
-
-const createSquareImage = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 1000,
-    imageHeight: 1000,
-    aspectRatio: 1,
-    rating,
-  });
-
-const createPanorama = (id: number, rating: number): ContentImageModel =>
-  createImageContent(id, {
-    imageWidth: 3000,
-    imageHeight: 1000,
-    aspectRatio: 3,
-    rating,
-  });
-
-// ===================== isStandaloneItem Tests =====================
-
-describe('isStandaloneItem', () => {
-  describe('5-star horizontal images', () => {
-    it('should return true for 5-star horizontal image', () => {
-      const image = createHorizontalImage(1, 5);
-      expect(isStandaloneItem(image)).toBe(true);
-    });
-
-    it('should return false for 4-star horizontal image', () => {
-      const image = createHorizontalImage(1, 4);
-      expect(isStandaloneItem(image)).toBe(false);
-    });
-
-    it('should return false for 5-star vertical image', () => {
-      const image = createVerticalImage(1, 5);
-      expect(isStandaloneItem(image)).toBe(false);
-    });
-
-    it('should return false for 5-star square image (square is vertical)', () => {
-      const image = createSquareImage(1, 5);
-      expect(isStandaloneItem(image)).toBe(false);
-    });
-  });
-
-  describe('wide panoramas', () => {
-    it('should return true for wide panorama (ratio >= 2.0)', () => {
-      const image = createPanorama(1, 0);
-      expect(isStandaloneItem(image)).toBe(true);
-    });
-
-    it('should return true for panorama with any rating', () => {
-      expect(isStandaloneItem(createPanorama(1, 0))).toBe(true);
-      expect(isStandaloneItem(createPanorama(2, 3))).toBe(true);
-      expect(isStandaloneItem(createPanorama(3, 5))).toBe(true);
-    });
-
-    it('should return true for exactly 2.0 ratio image', () => {
-      const image = createImageContent(1, {
-        imageWidth: 2000,
-        imageHeight: 1000,
-        aspectRatio: 2.0,
-        rating: 0,
-      });
-      expect(isStandaloneItem(image)).toBe(true);
-    });
-  });
-
-  describe('non-standalone images', () => {
-    it('should return false for regular horizontal images', () => {
-      expect(isStandaloneItem(createHorizontalImage(1, 0))).toBe(false);
-      expect(isStandaloneItem(createHorizontalImage(1, 3))).toBe(false);
-      expect(isStandaloneItem(createHorizontalImage(1, 4))).toBe(false);
-    });
-
-    it('should return false for vertical images regardless of rating', () => {
-      expect(isStandaloneItem(createVerticalImage(1, 0))).toBe(false);
-      expect(isStandaloneItem(createVerticalImage(1, 3))).toBe(false);
-      expect(isStandaloneItem(createVerticalImage(1, 5))).toBe(false);
-    });
-
-    it('should return false for square images regardless of rating', () => {
-      expect(isStandaloneItem(createSquareImage(1, 0))).toBe(false);
-      expect(isStandaloneItem(createSquareImage(1, 5))).toBe(false);
-    });
-  });
-
-  describe('edge cases', () => {
-    it('should return false for undefined', () => {
-      // eslint-disable-next-line unicorn/no-useless-undefined
-      expect(isStandaloneItem(undefined)).toBe(false);
-    });
-
-    it('should return false for non-image content', () => {
-      const textContent = {
-        id: 1,
-        contentType: 'TEXT' as const,
-        textBlock: { title: 'Test' },
-      };
-      expect(isStandaloneItem(textContent as never)).toBe(false);
-    });
-  });
-});
+// isStandaloneItem deleted — standalone detection is now inline in buildRows
 
 // ===================== isCollectionCard Tests =====================
 
@@ -302,60 +175,17 @@ describe('getEffectiveRating', () => {
     });
   });
 
-  describe('slotWidth parameter (unused in effective rating)', () => {
-    // Note: slotWidth doesn't affect effective rating calculation
-    // It's passed for future extensibility but currently unused
-    it('should return same effective rating regardless of slotWidth', () => {
+  describe('orientation-only rating (no slotWidth parameter)', () => {
+    // Note: slotWidth does not affect effective rating — slot-width scaling is
+    // handled downstream in getComponentValue().
+    it('should return the same effective rating independent of slot context', () => {
       const image = createHorizontalImage(1, 4);
-      expect(getEffectiveRating(image, 5)).toBe(4);
-      expect(getEffectiveRating(image, 2)).toBe(4);
+      expect(getEffectiveRating(image)).toBe(4);
     });
   });
 });
 
-// ===================== getEffectiveRatingFromAspectRatio Tests =====================
-
-describe('getEffectiveRatingFromAspectRatio', () => {
-  it('should return 5 for wide panoramic (AR >= 2.0)', () => {
-    expect(getEffectiveRatingFromAspectRatio(3.0)).toBe(5);
-    expect(getEffectiveRatingFromAspectRatio(2.5)).toBe(5);
-    expect(getEffectiveRatingFromAspectRatio(2.0)).toBe(5);
-  });
-
-  it('should return 4 for standard horizontal (1.5 <= AR < 2.0)', () => {
-    expect(getEffectiveRatingFromAspectRatio(1.99)).toBe(4);
-    expect(getEffectiveRatingFromAspectRatio(1.78)).toBe(4); // 16:9
-    expect(getEffectiveRatingFromAspectRatio(1.5)).toBe(4);
-  });
-
-  it('should return 3 for square-ish (1.0 <= AR < 1.5)', () => {
-    expect(getEffectiveRatingFromAspectRatio(1.49)).toBe(3);
-    expect(getEffectiveRatingFromAspectRatio(1.0)).toBe(3);
-  });
-
-  it('should return 2 for slightly vertical (0.75 <= AR < 1.0)', () => {
-    expect(getEffectiveRatingFromAspectRatio(0.99)).toBe(2);
-    expect(getEffectiveRatingFromAspectRatio(0.75)).toBe(2);
-  });
-
-  it('should return 1 for tall vertical (AR < 0.75)', () => {
-    expect(getEffectiveRatingFromAspectRatio(0.74)).toBe(1);
-    expect(getEffectiveRatingFromAspectRatio(0.5)).toBe(1);  // 1:2 portrait
-    expect(getEffectiveRatingFromAspectRatio(0.25)).toBe(1);
-  });
-
-  describe('combined component examples from refactor plan', () => {
-    it('two V3* (3:4 each) combined horizontally → 6:4 = 1.5 AR → rating 4', () => {
-      const combinedAR = (3 + 3) / 4; // 6:4 = 1.5
-      expect(getEffectiveRatingFromAspectRatio(combinedAR)).toBe(4);
-    });
-
-    it('two V2* (2:3 each) combined horizontally → 4:3 = 1.33 AR → rating 3', () => {
-      const combinedAR = (2 + 2) / 3; // 4:3 ≈ 1.33
-      expect(getEffectiveRatingFromAspectRatio(combinedAR)).toBe(3);
-    });
-  });
-});
+// getEffectiveRatingFromAspectRatio deleted — no production callers
 
 // ===================== getComponentValue Tests =====================
 

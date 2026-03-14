@@ -19,11 +19,11 @@
 
 /* Placeholder for collections without cover images */
 .placeholderImage {
-  background-color: #e0e0e0;
+  background-color: var(--color-border-light);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #757575;
+  color: var(--color-text-muted);
   font-size: 1.2rem;
   font-weight: 500;
 }

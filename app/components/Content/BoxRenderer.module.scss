@@ -17,3 +17,16 @@
     gap: 0.8rem;
   }
 }
+
+.missingImage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  min-height: 80px;
+  background-color: var(--color-border-medium);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.5rem;
+}

@@ -62,8 +62,8 @@ export const collectionStorage = {
       };
       const key = getStorageKey(slug);
       sessionStorage.setItem(key, JSON.stringify(cached));
-    } catch {
-      // Quota exceeded or storage unavailable - not critical, fail silently
+    } catch (error) {
+      console.warn('[collectionStorage] set: failed to write cache for slug:', slug, error);
     }
   },
 
@@ -98,7 +98,8 @@ export const collectionStorage = {
       }
 
       return cached.data;
-    } catch {
+    } catch (error) {
+      console.warn('[collectionStorage] get: failed to read cache for slug:', slug, error);
       return null;
     }
   },
@@ -114,8 +115,8 @@ export const collectionStorage = {
     try {
       const key = getStorageKey(slug);
       sessionStorage.removeItem(key);
-    } catch {
-      // Ignore errors when clearing cache
+    } catch (error) {
+      console.warn('[collectionStorage] clear: failed to remove cache for slug:', slug, error);
     }
   },
 
@@ -135,8 +136,8 @@ export const collectionStorage = {
       for (const key of keys) {
         sessionStorage.removeItem(key);
       }
-    } catch {
-      // Ignore errors when clearing cache
+    } catch (error) {
+      console.warn('[collectionStorage] clearAll: failed to clear cache', error);
     }
   },
 
@@ -217,8 +218,8 @@ export const collectionStorage = {
       };
       const key = getFullStorageKey(slug);
       sessionStorage.setItem(key, JSON.stringify(cached));
-    } catch {
-      // Quota exceeded or storage unavailable - not critical, fail silently
+    } catch (error) {
+      console.warn('[collectionStorage] setFull: failed to write full cache for slug:', slug, error);
     }
   },
 
@@ -253,7 +254,8 @@ export const collectionStorage = {
       }
 
       return cached.data;
-    } catch {
+    } catch (error) {
+      console.warn('[collectionStorage] getFull: failed to read full cache for slug:', slug, error);
       return null;
     }
   },
@@ -278,8 +280,8 @@ export const collectionStorage = {
     try {
       const key = getFullStorageKey(slug);
       sessionStorage.removeItem(key);
-    } catch {
-      // Ignore errors when clearing cache
+    } catch (error) {
+      console.warn('[collectionStorage] clearFull: failed to remove full cache for slug:', slug, error);
     }
   },
 };

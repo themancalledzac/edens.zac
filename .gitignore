@@ -148,3 +148,10 @@ next-env.d.ts
 .amplify
 amplify_outputs*
 amplifyconfiguration*
+
+# claude code auto-generated
+.claude/skills/
+.claude/worktrees/
+
+
+todo

@@ -18,6 +18,9 @@ import {
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
+// Re-export handleApiError from shared utils so existing imports from this file remain valid
+export { handleApiError } from '@/app/utils/apiUtils';
+
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
@@ -134,50 +137,6 @@ export function validateCoverImageSelection(
   if (!imageId || !blocks) return false;
   const imageBlock = findImageBlockById(blocks, imageId);
   return imageBlock !== undefined;
-}
-
-/**
- * Standardized error handling helper
- * Extracts error message from various error types or provides default
- * Handles: Error objects, fetch Response errors, API error objects, and strings
- */
-export function handleApiError(error: unknown, defaultMessage: string): string {
-  // Handle standard Error objects
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  // Handle fetch Response errors and API error responses
-  if (typeof error === 'object' && error !== null) {
-    // Check for nested response object (common in fetch errors)
-    if ('response' in error && typeof (error as { response: unknown }).response === 'object') {
-      const response = (error as { response: Record<string, unknown> }).response;
-      if (response && 'statusText' in response && typeof response.statusText === 'string') {
-        return response.statusText;
-      }
-      if (response && 'message' in response && typeof response.message === 'string') {
-        return response.message;
-      }
-    }
-
-    // Check for direct message property (API errors often have this)
-    if ('message' in error && typeof (error as { message: unknown }).message === 'string') {
-      return (error as { message: string }).message;
-    }
-
-    // Check for status text (fetch Response objects)
-    if ('statusText' in error && typeof (error as { statusText: unknown }).statusText === 'string') {
-      return (error as { statusText: string }).statusText;
-    }
-  }
-
-  // Handle string errors (sometimes thrown as strings)
-  if (typeof error === 'string') {
-    return error;
-  }
-
-  // Fallback to default message
-  return defaultMessage;
 }
 
 /**
@@ -475,7 +434,10 @@ export function replayMoves(originalOrder: number[], moves: ReorderMove[]): numb
   const order = [...originalOrder];
   for (const move of moves) {
     const fromIndex = order.indexOf(move.imageId);
-    if (fromIndex === -1) continue;
+    if (fromIndex === -1) {
+      console.warn(`[replayMoves] imageId ${move.imageId} not found in current order — move skipped`);
+      continue;
+    }
     // Remove from current position
     order.splice(fromIndex, 1);
     // Insert at target position

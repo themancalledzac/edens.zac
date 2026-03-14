@@ -62,7 +62,12 @@ export function BoxRenderer({
   // Base case: single leaf
   if (tree.type === 'leaf') {
     const size = sizes.get(String(tree.content.id));
-    if (!size) return null;
+    if (!size) {
+      console.error(
+        `BoxRenderer: no size entry for content ID ${tree.content.id}. Image will not render.`
+      );
+      return <div className={styles.missingImage}>Image unavailable</div>;
+    }
 
     // Build renderer props similar to how Component.tsx does it
     const rendererProps = determineContentRendererProps(

@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { handleApiError } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { getCollectionUpdateMetadata } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionUpdateResponseDTO } from '@/app/types/Collection';
+import { handleApiError } from '@/app/utils/apiUtils';
 
 /**
  * Custom hook for loading collection data in manage page
@@ -118,4 +118,3 @@ export function useCollectionData(
     refetch,
   };
 }
-

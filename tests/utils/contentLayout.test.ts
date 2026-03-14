@@ -3,121 +3,33 @@
  * Tests content processing and layout utilities
  */
 
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import type {
   AnyContentModel,
-  ContentCollectionModel,
   ContentImageModel,
   ContentParallaxImageModel,
   ContentTextModel,
 } from '@/app/types/Content';
 import {
-  calculateContentSizes,
-  chunkContent,
   clampParallaxDimensions,
   convertCollectionContentToImage,
   convertCollectionContentToParallax,
   createHeaderRow,
   processContentBlocks,
+  processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
-
-// Test fixtures
-const createImageContent = (
-  id: number,
-  overrides?: Partial<ContentImageModel>
-): ContentImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  orderIndex: id,
-  visible: true,
-  imageUrl: `https://example.com/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  title: `Image ${id}`,
-  ...overrides,
-});
-
-const createParallaxContent = (
-  id: number,
-  overrides?: Partial<ContentParallaxImageModel>
-): ContentParallaxImageModel => ({
-  id,
-  contentType: 'IMAGE',
-  orderIndex: id,
-  visible: true,
-  imageUrl: `https://example.com/image-${id}.jpg`,
-  imageWidth: 1920,
-  imageHeight: 1080,
-  width: 1920,
-  height: 1080,
-  enableParallax: true,
-  title: `Parallax ${id}`,
-  ...overrides,
-});
-
-const createTextContent = (
-  id: number,
-  overrides?: Partial<ContentTextModel>
-): ContentTextModel => ({
-  id,
-  contentType: 'TEXT',
-  orderIndex: id,
-  visible: true,
-  items: [{ type: 'text', value: `Text content ${id}` }],
-  format: 'plain',
-  align: 'left',
-  ...overrides,
-});
-
-const createCollectionContent = (
-  id: number,
-  overrides?: Partial<ContentCollectionModel>
-): ContentCollectionModel => ({
-  id,
-  contentType: 'COLLECTION',
-  orderIndex: id,
-  visible: true,
-  title: `Collection ${id}`,
-  slug: `collection-${id}`,
-  collectionType: 'PORTFOLIO',
-  referencedCollectionId: id * 100,
-  coverImage: {
-    id: id * 10,
-    contentType: 'IMAGE',
-    orderIndex: 0,
-    imageUrl: `https://example.com/cover-${id}.jpg`,
-    imageWidth: 1920,
-    imageHeight: 1080,
-    visible: true,
-  },
-  ...overrides,
-});
-
-const createCollectionModel = (
-  id: number,
-  overrides?: Partial<CollectionModel>
-): CollectionModel => ({
-  id,
-  type: CollectionType.PORTFOLIO,
-  title: `Collection ${id}`,
-  slug: `collection-${id}`,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
-  coverImage: {
-    id: id * 10,
-    contentType: 'IMAGE',
-    orderIndex: 0,
-    imageUrl: `https://example.com/cover-${id}.jpg`,
-    imageWidth: 1920,
-    imageHeight: 1080,
-    visible: true,
-  },
-  collectionDate: '2024-01-01',
-  location: 'Seattle, WA',
-  description: 'A beautiful collection description',
-  ...overrides,
-});
+import {
+  createCollectionContent,
+  createCollectionModel,
+  createGifContent,
+  createHorizontalImage,
+  createImageContent,
+  createParallaxContent,
+  createTextContent,
+  createVerticalImage,
+  H,
+  V,
+} from '@/tests/fixtures/contentFixtures';
 
 describe('processContentBlocks', () => {
   describe('Filtering visible blocks', () => {
@@ -264,7 +176,6 @@ describe('processContentBlocks', () => {
       expect(result[1]?.contentType).toBe('TEXT');
     });
   });
-
 
   describe('Ensuring parallax dimensions', () => {
     it('should preserve imageWidth and imageHeight when present', () => {
@@ -781,7 +692,9 @@ describe('clampParallaxDimensions', () => {
 });
 
 /** Helper to narrow createHeaderRow result to single row (desktop path) */
-function asSingleRow(result: RowWithPatternAndSizes | RowWithPatternAndSizes[] | null): RowWithPatternAndSizes | null {
+function asSingleRow(
+  result: RowWithPatternAndSizes | RowWithPatternAndSizes[] | null
+): RowWithPatternAndSizes | null {
   if (result === null || Array.isArray(result)) return null;
   return result;
 }
@@ -1011,304 +924,118 @@ describe('createHeaderRow', () => {
   });
 });
 
-describe('chunkContent', () => {
-  // Helper: create horizontal image (1920x1080, ratio ~1.78)
-  const createHorizontalImage = (id: number, rating?: number): ContentImageModel =>
-    createImageContent(id, {
-      imageWidth: 1920,
-      imageHeight: 1080,
-      rating,
-    });
+describe('processContentForDisplay', () => {
+  describe('Full pipeline: content array in → sized rows out', () => {
+    it('should produce at least 1 row with numeric sizes for 5 horizontal images', () => {
+      const content = [H(1, 0), H(2, 0), H(3, 0), H(4, 0), H(5, 0)];
+      const result = processContentForDisplay(content, 1000);
 
-  // Helper: create vertical image (1080x1920, ratio ~0.56)
-  const createVerticalImage = (id: number, rating?: number): ContentImageModel =>
-    createImageContent(id, {
-      imageWidth: 1080,
-      imageHeight: 1920,
-      rating,
-    });
+      expect(result.length).toBeGreaterThanOrEqual(1);
 
-  // Helper: create square image (1080x1080, ratio 1.0)
-  const createSquareImage = (id: number, rating?: number): ContentImageModel =>
-    createImageContent(id, {
-      imageWidth: 1080,
-      imageHeight: 1080,
-      rating,
-    });
+      for (const row of result) {
+        for (const item of row.items) {
+          expect(typeof item.width).toBe('number');
+          expect(typeof item.height).toBe('number');
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
 
-  // Helper: create wide panorama (3000x1000, ratio 3.0)
-  const createWidePanorama = (id: number): ContentImageModel =>
-    createImageContent(id, {
-      imageWidth: 3000,
-      imageHeight: 1000,
-    });
-
-  // Helper: create tall panorama (1000x3000, ratio ~0.33)
-  const createTallPanorama = (id: number): ContentImageModel =>
-    createImageContent(id, {
-      imageWidth: 1000,
-      imageHeight: 3000,
-    });
-
-  describe('Empty and edge cases', () => {
-    it('should return empty array for empty input', () => {
-      expect(chunkContent([])).toEqual([]);
-    });
-
-    it('should return empty array for null/undefined input', () => {
-      expect(chunkContent(null as unknown as ContentImageModel[])).toEqual([]);
-      expect(chunkContent(undefined as unknown as ContentImageModel[])).toEqual([]);
-    });
-
-    it('should enforce minimum chunkSize of 2', () => {
-      // With chunkSize=1, halfSlot would be 0 without protection
-      // A 3-star image gets halfSlot, so with minimum enforcement it should work
-      const content = [createHorizontalImage(1, 3)];
-      const result = chunkContent(content, 1);
-      // Should still work (not crash or infinite loop)
-      expect(result.length).toBeGreaterThan(0);
+      // All input items should appear exactly once across all rows
+      const allIds = result.flatMap(row => row.items.map(item => item.content.id));
+      const inputIds = content.map(c => c.id);
+      expect(allIds.sort()).toEqual(inputIds.sort());
     });
   });
 
-  describe('5-star horizontal images (standalone)', () => {
-    it('should place 5-star horizontal image in its own row', () => {
-      const content = [createHorizontalImage(1, 5), createHorizontalImage(2, 1)];
-      const result = chunkContent(content);
+  describe('Mobile vs desktop (rowWidth=2 vs rowWidth=5)', () => {
+    it('should fit 4 images in 1 row on desktop and split across multiple rows on mobile', () => {
+      const content = [H(1, 1), H(2, 1), H(3, 1), H(4, 1)];
 
-      expect(result).toHaveLength(2);
-      expect(result[0]).toHaveLength(1);
-      expect(result[0]?.[0]?.id).toBe(1);
-    });
+      const desktopResult = processContentForDisplay(content, 1000);
+      const mobileResult = processContentForDisplay(content, 400, 4, { isMobile: true });
 
-    it('should place multiple 5-star horizontal images in separate rows', () => {
-      const content = [
-        createHorizontalImage(1, 5),
-        createHorizontalImage(2, 5),
-        createHorizontalImage(3, 5),
-      ];
-      const result = chunkContent(content);
+      // Desktop: rowWidth=5, 4 slots < 5, all fit in 1 row
+      expect(desktopResult).toHaveLength(1);
 
-      expect(result).toHaveLength(3);
-      for (const row of result) {
-        expect(row).toHaveLength(1);
+      // Mobile: rowWidth=2, items split across multiple rows
+      expect(mobileResult.length).toBeGreaterThan(1);
+
+      // Both should produce valid sized outputs
+      for (const row of desktopResult) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+      for (const row of mobileResult) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
       }
     });
   });
 
-  describe('4-star horizontal images (context-dependent)', () => {
-    it('should place 4-star horizontal alone when no adjacent verticals', () => {
-      const content = [createHorizontalImage(1, 4), createHorizontalImage(2, 1)];
-      const result = chunkContent(content);
+  describe('targetAR option affects row composition', () => {
+    it('should produce valid rows for both low and high targetAR values', () => {
+      const content = [H(1, 2), H(2, 2), H(3, 2), H(4, 2), H(5, 2), H(6, 2)];
 
-      // 4-star alone gets standalone row
-      expect(result[0]).toHaveLength(1);
-      expect(result[0]?.[0]?.id).toBe(1);
-    });
+      const lowARResult = processContentForDisplay(content, 1000, 4, { targetAR: 1.0 });
+      const highARResult = processContentForDisplay(content, 1000, 4, { targetAR: 3.0 });
 
-    it('should pair 4-star horizontal with adjacent vertical', () => {
-      const content = [createHorizontalImage(1, 4), createVerticalImage(2, 3)];
-      const result = chunkContent(content);
+      // Both should produce valid rows
+      expect(lowARResult.length).toBeGreaterThanOrEqual(1);
+      expect(highARResult.length).toBeGreaterThanOrEqual(1);
 
-      // Should pair together (both get halfSlot)
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(2);
-    });
-
-    it('should pair 4-star horizontal with preceding vertical', () => {
-      const content = [createVerticalImage(1, 3), createHorizontalImage(2, 4)];
-      const result = chunkContent(content);
-
-      // Should pair together
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(2);
+      for (const row of lowARResult) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+      for (const row of highARResult) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
     });
   });
 
-  describe('Vertical images', () => {
-    it('should treat square images as vertical (ratio = 1.0)', () => {
-      const content = [createSquareImage(1, 3), createSquareImage(2, 3)];
-      const result = chunkContent(content);
-
-      // Two 3-star squares should pair (each gets halfSlot = 2)
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(2);
+  describe('Empty input', () => {
+    it('should return empty array for empty input', () => {
+      const result = processContentForDisplay([], 1000);
+      expect(result).toEqual([]);
     });
+  });
 
-    it('should pair vertical 3+ star images together', () => {
-      const content = [createVerticalImage(1, 3), createVerticalImage(2, 4)];
-      const result = chunkContent(content);
-
-      // Both get halfSlot, should pair
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(2);
-    });
-
-    it('should fit 4 low-star vertical images in one row', () => {
+  describe('Mixed content types', () => {
+    it('should include all items with valid sizes across rows', () => {
       const content = [
-        createVerticalImage(1, 1),
-        createVerticalImage(2, 2),
-        createVerticalImage(3, 1),
-        createVerticalImage(4, 2),
+        createHorizontalImage(1, 3),
+        createHorizontalImage(2, 3),
+        createTextContent(3, { width: 800, height: 200 }),
+        createGifContent(4, { width: 800, height: 600 }),
+        createCollectionContent(5),
       ];
-      const result = chunkContent(content, 4);
 
-      // 1-2 star verticals get slot=1, so 4 fit in chunkSize=4
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(4);
-    });
-  });
+      const result = processContentForDisplay(content, 1000);
 
-  describe('3-star images (half slot)', () => {
-    it('should pair two 3-star horizontal images', () => {
-      const content = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
-      const result = chunkContent(content);
+      // All items should appear in the output rows
+      const allIds = result.flatMap(row => row.items.map(item => item.content.id));
+      const inputIds = content.map(c => c.id);
+      expect(allIds.sort()).toEqual(inputIds.sort());
 
-      // Both get halfSlot (2), total 4 = chunkSize
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(2);
-    });
-
-    it('should pair 3-star horizontal with 3-star vertical', () => {
-      const content = [createHorizontalImage(1, 3), createVerticalImage(2, 3)];
-      const result = chunkContent(content);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(2);
-    });
-  });
-
-  describe('Panorama images', () => {
-    it('should place wide panorama in standalone row', () => {
-      const content = [
-        createHorizontalImage(1, 1),
-        createWidePanorama(2),
-        createHorizontalImage(3, 1),
-      ];
-      const result = chunkContent(content);
-
-      // Wide panorama (ratio >= 2) gets Infinity slot → standalone
-      expect(result.some(row => row.length === 1 && row[0]?.id === 2)).toBe(true);
-    });
-
-    it('should treat tall panorama as normal slot', () => {
-      const content = [
-        createTallPanorama(1),
-        createTallPanorama(2),
-        createTallPanorama(3),
-        createTallPanorama(4),
-      ];
-      const result = chunkContent(content, 4);
-
-      // Tall panorama (ratio <= 0.5) gets slot=1, so 4 fit in chunkSize=4
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(4);
-    });
-  });
-
-  describe('Header items (cover image and metadata)', () => {
-    it('should pair header items together', () => {
-      const headerCover = createImageContent(-1); // Cover image
-      const headerMetadata: ContentTextModel = {
-        id: -2,
-        contentType: 'TEXT',
-        orderIndex: -1,
-        visible: true,
-        items: [{ type: 'text', value: 'Description' }],
-        format: 'plain',
-        align: 'left',
-      };
-
-      const content = [headerCover, headerMetadata];
-      const result = chunkContent(content);
-
-      // Both header items get halfSlot, should pair in one row
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(2);
-    });
-  });
-
-  describe('Collection cards (slug property)', () => {
-    it('should pair collection cards together', () => {
-      const collections = [createCollectionContent(1), createCollectionContent(2)];
-      // Process to get parallax images with slugs
-      const processed = processContentBlocks(collections);
-      const result = chunkContent(processed);
-
-      // Collection cards get halfSlot, 2 should pair
-      expect(result).toHaveLength(1);
-      expect(result[0]).toHaveLength(2);
-    });
-
-    it('should fit 2 collection cards per row', () => {
-      const collections = [
-        createCollectionContent(1),
-        createCollectionContent(2),
-        createCollectionContent(3),
-        createCollectionContent(4),
-      ];
-      const processed = processContentBlocks(collections);
-      const result = chunkContent(processed);
-
-      // 4 collections = 2 rows of 2
-      expect(result).toHaveLength(2);
-      expect(result[0]).toHaveLength(2);
-      expect(result[1]).toHaveLength(2);
-    });
-  });
-
-  describe('Lonely vertical reordering', () => {
-    it('should swap lonely vertical + 5-star horizontal', () => {
-      // Input: [V, 5H] where V has no partner before it
-      const content = [createVerticalImage(1, 3), createHorizontalImage(2, 5)];
-      const result = chunkContent(content);
-
-      // After reorder: [5H, V]
-      // 5H is standalone, V is alone
-      expect(result[0]).toHaveLength(1);
-      expect(result[0]?.[0]?.id).toBe(2); // 5H first
-      expect(result[1]?.[0]?.id).toBe(1); // V second
-    });
-
-    it('should NOT swap when vertical can pair with previous', () => {
-      // Input: [4H, V, 5H] - V can pair with 4H
-      const content = [
-        createHorizontalImage(1, 4),
-        createVerticalImage(2, 3),
-        createHorizontalImage(3, 5),
-      ];
-      const result = chunkContent(content);
-
-      // No swap needed: 4H+V pair, 5H standalone
-      // Check that 4H and V are together
-      const firstRow = result[0];
-      expect(firstRow).toHaveLength(2);
-      expect(firstRow?.some(item => item.id === 1)).toBe(true);
-      expect(firstRow?.some(item => item.id === 2)).toBe(true);
+      // Each item should have valid width and height
+      for (const row of result) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
     });
   });
 });
 
-describe('calculateContentSizes', () => {
-  it('should return empty array for empty input', () => {
-    expect(calculateContentSizes([], 1000)).toEqual([]);
-  });
-
-  it('should handle single image', () => {
-    const content = [createImageContent(1)];
-    const result = calculateContentSizes(content, 1000);
-
-    expect(result).toHaveLength(1);
-    expect(result[0]?.width).toBe(1000);
-    expect(result[0]?.height).toBeGreaterThan(0);
-  });
-
-  it('should enforce minimum chunkSize of 2', () => {
-    // With chunkSize=1, calculation should still work
-    const content = [createImageContent(1, { rating: 3 })];
-    const result = calculateContentSizes(content, 1000, 1);
-
-    expect(result).toHaveLength(1);
-    expect(result[0]?.width).toBe(1000);
-  });
-});
-
+// chunkContent, reorderLonelyVerticals, calculateContentSizes deleted — BoxTree pipeline handles all sizing
