@@ -155,40 +155,22 @@ export function getAspectRatio(item: Content): number {
 }
 
 /**
- * Check if content is a vertical/square image (aspect ratio <= 1.0, excluding tall panoramas)
- */
-export function isVerticalImage(item: Content | undefined): boolean {
-  if (!item || !hasImage(item)) return false;
-  const ratio = getAspectRatio(item);
-  return ratio <= 1.0 && ratio > 0.5;
-}
-
-/**
- * Get slot width for content item based on aspect ratio, rating, and adjacency context
+ * Get slot width for content item based on aspect ratio and rating.
  *
  * Slot width rules:
  * - Collection cards (has slug): chunkSize/2 (pair up on catalog pages)
- * - Wide panorama (ratio ≥ 2): chunkSize (standalone - pattern registry handles detection)
+ * - Wide panorama (ratio ≥ 2): chunkSize (standalone)
  * - Tall panorama (ratio ≤ 0.5): 1 (normal)
- * - 5-star horizontal: chunkSize (standalone - pattern registry handles detection)
- * - 4-star horizontal: chunkSize (standalone) unless adjacent to vertical then chunkSize/2
+ * - 5-star horizontal: chunkSize (standalone)
+ * - 4-star horizontal: chunkSize (standalone)
  * - 3-star (any orientation): chunkSize/2
  * - Vertical 4-5 star: chunkSize/2
  * - Vertical 1-2 star: 1 (normal)
  * - Horizontal 1-2 star: 1 (normal)
- *
- * Note: Standalone items are now detected by pattern registry, not by Infinity slotWidth.
- * This function returns finite slotWidth values for proportional space allocation.
- * Pattern registry uses item properties (isWidePanorama, rating) to detect standalone.
- *
- * Note: Header items (cover image + metadata) are no longer in the content array.
- * They are created as a separate row in processContentForDisplay().
  */
 export function getSlotWidth(
   contentItem: Content,
   chunkSize: number,
-  prevItem?: Content,
-  nextItem?: Content
 ): number {
   const halfSlot = Math.floor(chunkSize / 2);
 
@@ -203,7 +185,7 @@ export function getSlotWidth(
   const ratio = width / Math.max(1, height);
   const isHorizontal = ratio > 1.0; // Square (1:1) is considered vertical
 
-  // Wide panorama → standalone (pattern registry will detect, but return chunkSize for slot calculation)
+  // Wide panorama → standalone
   if (ratio >= 2) return chunkSize;
 
   // Tall panorama → normal slot
@@ -214,22 +196,10 @@ export function getSlotWidth(
     const rating = contentItem.rating || 0;
 
     if (isHorizontal) {
-      // 5-star horizontal → standalone (pattern registry will detect, but return chunkSize for slot calculation)
-      if (rating === 5) return chunkSize;
-
-      // 4-star horizontal → standalone unless adjacent to vertical
-      if (rating === 4) {
-        const adjacentToVertical = isVerticalImage(prevItem) || isVerticalImage(nextItem);
-        return adjacentToVertical ? halfSlot : chunkSize;
-      }
-
-      // 3-star horizontal → half slot
+      if (rating >= 4) return chunkSize;
       if (rating === 3) return halfSlot;
-
-      // 1-2 star horizontal → normal
       return 1;
     } else {
-      // Vertical images: 3+ star → half slot, 1-2 star → normal
       return rating >= 3 ? halfSlot : 1;
     }
   }

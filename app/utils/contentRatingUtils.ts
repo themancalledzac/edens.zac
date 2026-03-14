@@ -7,7 +7,7 @@
 
 import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
-import { getAspectRatio, hasImage, isContentImage } from '@/app/utils/contentTypeGuards';
+import { getAspectRatio, isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
  * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel)
@@ -45,36 +45,6 @@ export function getRating(item: AnyContentModel, asStarValue: boolean = false): 
   }
   // Raw rating: return as-is (0 stays 0)
   return rating;
-}
-
-/**
- * Check if an item should be standalone (take full row width)
- *
- * Standalone candidates:
- * - Wide panorama (aspect ratio >= 2.0) → always standalone
- * - 5-star horizontal (rating=5 AND aspect ratio > 1.0) → standalone
- *
- * Note: 5-star verticals (ratio <= 1.0) should NOT be standalone - they pair with other images
- * Note: Square images (ratio = 1.0) are considered vertical
- *
- * @param item - Content item to check
- * @returns true if item should take full row width
- */
-export function isStandaloneItem(item: AnyContentModel | undefined): boolean {
-  if (!item || !hasImage(item) || !isContentImage(item)) return false;
-
-  const ratio = getAspectRatio(item);
-  const rating = item.rating || 0;
-  const isHorizontal = ratio > 1.0;
-  const isWidePanorama = ratio >= 2.0;
-
-  // Wide panorama → always standalone
-  if (isWidePanorama) return true;
-
-  // 5-star horizontal → always standalone
-  if (rating === 5 && isHorizontal) return true;
-
-  return false;
 }
 
 // =============================================================================
@@ -124,30 +94,6 @@ export function getEffectiveRating(item: AnyContentModel, _slotWidth: number = L
 
   // Ensure rating stays in bounds (0-5)
   return Math.min(Math.max(effectiveRating, 0), 5);
-}
-
-/**
- * Derive an effective rating from an aspect ratio.
- *
- * Used for combined components where the rating is determined by the
- * resulting geometry rather than the original image ratings.
- *
- * Thresholds:
- * - AR >= 2.0  → 5 (wide panoramic)
- * - AR >= 1.5  → 4 (standard horizontal)
- * - AR >= 1.0  → 3 (square-ish)
- * - AR >= 0.75 → 2 (slightly vertical)
- * - AR < 0.75  → 1 (tall vertical)
- *
- * @param ar - The aspect ratio (width / height)
- * @returns The effective rating (1-5)
- */
-export function getEffectiveRatingFromAspectRatio(ar: number): number {
-  if (ar >= 2.0) return 5;
-  if (ar >= 1.5) return 4;
-  if (ar >= 1.0) return 3;
-  if (ar >= 0.75) return 2;
-  return 1;
 }
 
 /**

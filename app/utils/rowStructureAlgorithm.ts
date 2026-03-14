@@ -23,7 +23,7 @@ import { type BoxTree } from '@/app/utils/rowCombination';
  * @param tree - BoxTree to calculate aspect ratio for
  * @param chunkSize - Number of normal-width items per row (for slot width calculation)
  */
-function calculateBoxTreeAspectRatio(tree: BoxTree, chunkSize: number): number {
+export function calculateBoxTreeAspectRatio(tree: BoxTree, chunkSize: number): number {
   if (tree.type === 'leaf') {
     // Apply slot width scaling like old algorithm
     const { width, height } = getContentDimensions(tree.content);

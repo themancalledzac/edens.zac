@@ -75,7 +75,11 @@ export default function Component({
   onPlace,
   onCancelImageMove,
 }: ContentComponentProps) {
-  const { contentWidth, isMobile } = useViewport();
+  const { contentWidth, isMobile, viewportHeight } = useViewport();
+
+  const targetAR = viewportHeight > 0
+    ? Math.max(1.5, Math.min(3.0, contentWidth / viewportHeight))
+    : 1.5;
 
   const rows = useMemo(() => {
     if (!contentWidth) {
@@ -94,12 +98,13 @@ export default function Component({
         isMobile,
         collectionData,
         displayMode: collectionData?.displayMode,
+        targetAR,
       });
     } catch (error) {
       console.error('[Component] processContentForDisplay error', error);
       return [];
     }
-  }, [content, contentWidth, chunkSize, isMobile, collectionData]);
+  }, [content, contentWidth, chunkSize, isMobile, collectionData, targetAR]);
 
   // Find the first row index that contains non-visible content
   // Only check if we're on the manage page (currentCollectionId is provided)

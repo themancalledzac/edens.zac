@@ -31,6 +31,7 @@ function useDebounce<T extends (...args: never[]) => void>(
 
 export interface ViewportDimensions {
   width: number;
+  viewportHeight: number;
   isMobile: boolean;
   contentWidth: number;
 }
@@ -52,17 +53,20 @@ export interface ViewportDimensions {
 export function useViewport(): ViewportDimensions {
   const [dimensions, setDimensions] = useState<ViewportDimensions>({
     width: 0,
+    viewportHeight: 0,
     isMobile: false,
     contentWidth: 0,
   });
 
   const measure = useCallback(() => {
     const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
     const mobile = vw < BREAKPOINTS.mobile;
     const contentWidth = getContentWidth(vw, mobile);
 
     setDimensions({
       width: vw,
+      viewportHeight: vh,
       isMobile: mobile,
       contentWidth,
     });
