@@ -7,8 +7,12 @@
 jest.mock('@/app/lib/api/collections');
 
 import {
+  applyArrowMove,
+  applyPickAndPlace,
   applyReorderChangesOptimistically,
+  buildReorderChangesFromFinalOrder,
   buildUpdatePayload,
+  cancelImageMoves,
   executeReorderOperation,
   findImageBlockById,
   getContentOrderIndex,
@@ -20,6 +24,7 @@ import {
   handleSingleImageEdit,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
+  replayMoves,
   revalidateCollectionCache,
   updateBlockOrderIndex,
   validateCoverImageSelection,
@@ -1625,5 +1630,217 @@ describe('executeReorderOperation', () => {
     await executeReorderOperation(collectionId, mockReorders, slug);
 
     expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', expect.any(Object));
+  });
+});
+
+// ============================================================================
+// Reorder Mode Utilities
+// ============================================================================
+
+describe('replayMoves', () => {
+  it('should return original order when moves is empty', () => {
+    const order = [1, 2, 3, 4];
+    expect(replayMoves(order, [])).toEqual([1, 2, 3, 4]);
+  });
+
+  it('should apply a single move correctly', () => {
+    // Move image 1 from index 0 to index 2
+    const result = replayMoves([1, 2, 3], [{ imageId: 1, toIndex: 2 }]);
+    expect(result).toEqual([2, 3, 1]);
+  });
+
+  it('should apply multiple moves in sequence', () => {
+    // Start: [1, 2, 3, 4]
+    // Move 1 to index 3 → [2, 3, 4, 1]
+    // Move 2 to index 0 → [2, 3, 4, 1] — 2 is already at 0
+    const result = replayMoves([1, 2, 3, 4], [
+      { imageId: 1, toIndex: 3 },
+      { imageId: 3, toIndex: 0 },
+    ]);
+    // After move 1: [2, 3, 4, 1]
+    // After move 3→0: [3, 2, 4, 1]
+    expect(result).toEqual([3, 2, 4, 1]);
+  });
+
+  it('should skip moves for imageId not in order', () => {
+    const result = replayMoves([1, 2, 3], [{ imageId: 99, toIndex: 0 }]);
+    expect(result).toEqual([1, 2, 3]);
+  });
+
+  it('should not mutate the original array', () => {
+    const original = [1, 2, 3];
+    replayMoves(original, [{ imageId: 1, toIndex: 2 }]);
+    expect(original).toEqual([1, 2, 3]);
+  });
+
+  it('should handle moving to same position (no-op move)', () => {
+    // Image 2 is at index 1, move to index 1
+    const result = replayMoves([1, 2, 3], [{ imageId: 2, toIndex: 1 }]);
+    expect(result).toEqual([1, 2, 3]);
+  });
+});
+
+describe('applyArrowMove', () => {
+  it('should shift image right by 1', () => {
+    const result = applyArrowMove([1, 2, 3], 1, 1);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([2, 1, 3]);
+    expect(result!.move).toEqual({ imageId: 1, toIndex: 1 });
+  });
+
+  it('should shift image left by 1', () => {
+    const result = applyArrowMove([1, 2, 3], 3, -1);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([1, 3, 2]);
+    expect(result!.move).toEqual({ imageId: 3, toIndex: 1 });
+  });
+
+  it('should return null when image not found', () => {
+    const result = applyArrowMove([1, 2, 3], 99, 1);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when moving left from first position', () => {
+    const result = applyArrowMove([1, 2, 3], 1, -1);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when moving right from last position', () => {
+    const result = applyArrowMove([1, 2, 3], 3, 1);
+    expect(result).toBeNull();
+  });
+
+  it('should not mutate the original order array', () => {
+    const order = [1, 2, 3];
+    applyArrowMove(order, 1, 1);
+    expect(order).toEqual([1, 2, 3]);
+  });
+});
+
+describe('applyPickAndPlace', () => {
+  it('should insert picked image at target position (shift semantics)', () => {
+    // Move image 1 to where image 3 is
+    // Before: [1, 2, 3, 4] — 1 at 0, 3 at 2
+    // After splice(0,1): [2, 3, 4]
+    // Insert at indexOf(3)=1: [2, 1, 3, 4]
+    const result = applyPickAndPlace([1, 2, 3, 4], 1, 3);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([2, 1, 3, 4]);
+    expect(result!.move).toEqual({ imageId: 1, toIndex: 1 });
+  });
+
+  it('should handle moving forward (lower to higher index)', () => {
+    // Move 1 to where 4 is: [1,2,3,4] → [2,3,1,4] ... wait
+    // splice(0,1): [2,3,4], indexOf(4)=2, insert at 2: [2,3,1,4]
+    const result = applyPickAndPlace([1, 2, 3, 4], 1, 4);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([2, 3, 1, 4]);
+  });
+
+  it('should handle moving backward (higher to lower index)', () => {
+    // Move 4 to where 2 is: [1,2,3,4]
+    // splice(3,1): [1,2,3], indexOf(2)=1, insert at 1: [1,4,2,3]
+    const result = applyPickAndPlace([1, 2, 3, 4], 4, 2);
+    expect(result).not.toBeNull();
+    expect(result!.newOrder).toEqual([1, 4, 2, 3]);
+  });
+
+  it('should return null when pickedId not found', () => {
+    const result = applyPickAndPlace([1, 2, 3], 99, 2);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when targetId not found', () => {
+    const result = applyPickAndPlace([1, 2, 3], 1, 99);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when pickedId equals targetId', () => {
+    const result = applyPickAndPlace([1, 2, 3], 1, 1);
+    expect(result).toBeNull();
+  });
+
+  it('should not mutate the original order array', () => {
+    const order = [1, 2, 3, 4];
+    applyPickAndPlace(order, 1, 3);
+    expect(order).toEqual([1, 2, 3, 4]);
+  });
+});
+
+describe('cancelImageMoves', () => {
+  it('should remove all moves for the given imageId', () => {
+    const moves = [
+      { imageId: 1, toIndex: 2 },
+      { imageId: 2, toIndex: 0 },
+      { imageId: 1, toIndex: 3 },
+    ];
+    const result = cancelImageMoves(moves, 1);
+    expect(result).toEqual([{ imageId: 2, toIndex: 0 }]);
+  });
+
+  it('should return empty array when all moves are for the given imageId', () => {
+    const moves = [
+      { imageId: 1, toIndex: 2 },
+      { imageId: 1, toIndex: 0 },
+    ];
+    expect(cancelImageMoves(moves, 1)).toEqual([]);
+  });
+
+  it('should return original moves when imageId has no moves', () => {
+    const moves = [{ imageId: 2, toIndex: 0 }];
+    const result = cancelImageMoves(moves, 99);
+    expect(result).toEqual([{ imageId: 2, toIndex: 0 }]);
+  });
+
+  it('should return empty array when moves is empty', () => {
+    expect(cancelImageMoves([], 1)).toEqual([]);
+  });
+
+  it('should not mutate the original moves array', () => {
+    const moves = [{ imageId: 1, toIndex: 2 }];
+    cancelImageMoves(moves, 1);
+    expect(moves).toHaveLength(1);
+  });
+});
+
+describe('buildReorderChangesFromFinalOrder', () => {
+  it('should return empty array when order is unchanged', () => {
+    const order = [1, 2, 3];
+    expect(buildReorderChangesFromFinalOrder(order, order)).toEqual([]);
+  });
+
+  it('should include only items whose position changed', () => {
+    // originalOrder: [1, 2, 3], finalOrder: [2, 1, 3]
+    // 1: was at 0, now at 1 → changed
+    // 2: was at 1, now at 0 → changed
+    // 3: was at 2, now at 2 → unchanged
+    const result = buildReorderChangesFromFinalOrder([2, 1, 3], [1, 2, 3]);
+    expect(result).toHaveLength(2);
+    expect(result).toContainEqual({ contentId: 2, newOrderIndex: 0 });
+    expect(result).toContainEqual({ contentId: 1, newOrderIndex: 1 });
+  });
+
+  it('should include all items when all positions changed', () => {
+    const result = buildReorderChangesFromFinalOrder([3, 2, 1], [1, 2, 3]);
+    expect(result).toHaveLength(2); // 2 is in same position (index 1)
+    expect(result).toContainEqual({ contentId: 3, newOrderIndex: 0 });
+    expect(result).toContainEqual({ contentId: 1, newOrderIndex: 2 });
+  });
+
+  it('should assign newOrderIndex matching position in finalOrder', () => {
+    const result = buildReorderChangesFromFinalOrder([4, 1, 2, 3], [1, 2, 3, 4]);
+    // 4 was at 3, now at 0
+    // 1 was at 0, now at 1
+    // 2 was at 1, now at 2
+    // 3 was at 2, now at 3
+    expect(result).toHaveLength(4);
+    expect(result).toContainEqual({ contentId: 4, newOrderIndex: 0 });
+    expect(result).toContainEqual({ contentId: 1, newOrderIndex: 1 });
+    expect(result).toContainEqual({ contentId: 2, newOrderIndex: 2 });
+    expect(result).toContainEqual({ contentId: 3, newOrderIndex: 3 });
+  });
+
+  it('should return empty array for empty input', () => {
+    expect(buildReorderChangesFromFinalOrder([], [])).toEqual([]);
   });
 });
