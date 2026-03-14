@@ -1,4 +1,4 @@
-import { isProduction } from '@/app/utils/environment';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 // Static variables for our endpoints
 const READ = 'read';
@@ -13,11 +13,14 @@ const ADMIN = 'admin';
  * Get the base API URL for a given endpoint type
  */
 function getApiBaseUrl(endpointType: string): string {
-  const base = isProduction()
-    ? process.env.NEXT_PUBLIC_API_URL
-    : 'http://localhost:8080';
-
-  return `${base}/api/${endpointType}`;
+  if (isLocalEnvironment()) {
+    return `http://localhost:8080/api/${endpointType}`;
+  }
+  // All production calls go through the Next.js proxy — never directly to EC2
+  const appBase = typeof window !== 'undefined'
+    ? ''  // browser: relative URL
+    : (process.env.NEXT_PUBLIC_APP_URL ?? '');  // server component: needs absolute
+  return `${appBase}/api/proxy/api/${endpointType}`;
 }
 
 /**

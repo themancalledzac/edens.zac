@@ -11,8 +11,7 @@ import { NextResponse } from 'next/server';
  * @returns Normalized backend base URL
  */
 function getBackendBase(): string {
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-  // Trim trailing slash
+  const base = process.env.API_URL || 'http://localhost:8080';
   return base.replace(/\/+$/, '');
 }
 
@@ -68,6 +67,7 @@ function forwardHeaders(req: NextRequest): Headers {
   }
   // Ensure JSON by default for non-multipart when client did not set
   if (!headers.has('accept')) headers.set('accept', 'application/json, */*;q=0.1');
+  headers.set('X-Internal-Secret', process.env.INTERNAL_API_SECRET ?? '');
   return headers;
 }
 
@@ -106,7 +106,7 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     backendRes = await fetch(targetUrl, init);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: 'Proxy fetch failed', detail: message, targetUrl }, { status: 502 });
+    return NextResponse.json({ error: 'Bad gateway' }, { status: 502 });
   }
 
   // Create a new response with streamed body and copied headers/status
