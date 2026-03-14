@@ -44,7 +44,7 @@ html,
   --space-8: 4rem;
 
   /* Special spacing values */
-  --space-mobile-border: 12px; /* Mobile image borders */
+  --space-mobile-border: 4px; /* Mobile image borders */
 
   /* Breakpoints */
   --breakpoint-mobile: 768px;

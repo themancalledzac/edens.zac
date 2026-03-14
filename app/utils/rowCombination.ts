@@ -648,7 +648,11 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
     // on its own (cv >= rowWidth * MIN_FILL_RATIO), skip it. The standalone will
     // get its own row on a subsequent iteration. This replaces the old
     // reorderLonelyVerticals pre-pass.
-    const arFloor = targetAR * AR_FLOOR_MULTIPLIER;
+    // On mobile (rowWidth ≤ 2), disable AR-floor check entirely.
+    // Mobile renders items full-width or stacked, so single vertical images
+    // naturally have low AR. Without this, the AR override pulls 3-4+ items
+    // into a single row, creating tiny cramped images.
+    const arFloor = rowWidth <= 2 ? 0 : targetAR * AR_FLOOR_MULTIPLIER;
     // Expand window to MAX_ROW_IMAGES for AR-aware fill (may pull more items)
     const expandedWindow = remaining.slice(0, MAX_ROW_IMAGES);
     let seqTotal = 0;

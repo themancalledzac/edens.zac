@@ -39,26 +39,17 @@ import {
 
 import styles from './ManageClient.module.scss';
 import {
-  applyArrowMove,
-  applyPickAndPlace,
-  applyReorderChangesOptimistically,
-  buildReorderChangesFromFinalOrder,
   buildUpdatePayload,
-  cancelImageMoves,
-  COVER_IMAGE_FLASH_DURATION,
-  executeReorderOperation,
   getDisplayedCoverImage,
   handleApiError,
-  handleCollectionNavigation,
-  handleCoverImageSelection,
   handleMultiSelectToggle as handleMultiSelectToggleUtil,
-  handleSingleImageEdit,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
-  type ReorderMove,
-  replayMoves,
   revalidateCollectionCache,
 } from './manageUtils';
+import { useContentReordering } from './useContentReordering';
+import { useCoverImageSelection } from './useCoverImageSelection';
+import { useImageClickHandler } from './useImageClickHandler';
 
 interface ManageClientProps {
   slug?: string; // Collection slug for UPDATE mode, undefined for CREATE mode
@@ -90,22 +81,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
   // Combined loading state (initial load or operation)
   const isLoading = loading || operationLoading;
 
-  const [isSelectingCoverImage, setIsSelectingCoverImage] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
-  const [justClickedImageId, setJustClickedImageId] = useState<number | null>(null);
   const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
   const [isTextBlockModalOpen, setIsTextBlockModalOpen] = useState(false);
-  const [reorderState, setReorderState] = useState<{
-    active: boolean;
-    originalOrder: number[];
-    moves: ReorderMove[];
-    pickedUpImageId: number | null;
-  }>({
-    active: false,
-    originalOrder: [],
-    moves: [],
-    pickedUpImageId: null,
-  });
 
   const [createData, setCreateData] = useState<CollectionCreateRequest>({
     type: CollectionType.PORTFOLIO,
@@ -193,22 +171,41 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [collection?.content, collection?.id, collection?.displayMode]
   );
 
-  // Compute the current display order from reorder state
-  const reorderDisplayOrder = useMemo(() => {
-    if (!reorderState.active) return [];
-    return replayMoves(reorderState.originalOrder, reorderState.moves);
-  }, [reorderState.active, reorderState.originalOrder, reorderState.moves]);
+  const {
+    isSelectingCoverImage,
+    setIsSelectingCoverImage,
+    justClickedImageId,
+    handleCoverImageClick,
+  } = useCoverImageSelection({
+    collection,
+    setCurrentState,
+    setOperationLoading,
+    setError,
+  });
 
-  // When in reorder mode, reorder processedContent according to the replay order
-  const displayContent = useMemo(() => {
-    if (!reorderState.active || !processedContent) return processedContent;
-    const orderMap = new Map(reorderDisplayOrder.map((id, i) => [id, i]));
-    return [...processedContent].sort((a, b) => {
-      const aIdx = orderMap.get(a.id) ?? Infinity;
-      const bIdx = orderMap.get(b.id) ?? Infinity;
-      return aIdx - bIdx;
-    });
-  }, [reorderState.active, processedContent, reorderDisplayOrder]);
+  const {
+    reorderState,
+    reorderDisplayOrder,
+    displayContent,
+    handleEnterReorderMode,
+    handleCancelReorder,
+    handleSaveReorder,
+    handleArrowMove,
+    handlePickUp,
+    handlePlace,
+    handleCancelImageMove,
+  } = useContentReordering({
+    collection,
+    currentState,
+    processedContent,
+    setCurrentState,
+    setOperationLoading,
+    setError,
+    onExitMultiSelect: () => {
+      setIsMultiSelectMode(false);
+      setSelectedImageIds([]);
+    },
+  });
 
   // Derive imagesToEdit from selectedImageIds
   const imagesToEdit = useMemo(
@@ -385,51 +382,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   };
 
-  // Handle cover image selection - makes immediate API call
-  const handleCoverImageClick = useCallback(
-    async (imageId: number) => {
-      if (!collection) return;
-
-      const result = handleCoverImageSelection(imageId, collection.content);
-
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-
-      // Show temporary overlay on newly selected image
-      setJustClickedImageId(result.coverImageId);
-      setIsSelectingCoverImage(false);
-
-      // Make immediate API call to update cover image
-      try {
-        setOperationLoading(true);
-        setError(null);
-
-        // Update cover image - response includes full CollectionUpdateResponseDTO
-        const response = await updateCollection(collection.id, {
-          id: collection.id,
-          coverImageId: result.coverImageId,
-        });
-
-        // Update currentState with response (includes collection + all metadata)
-        setCurrentState(response);
-
-        // Update both caches
-        collectionStorage.update(response.collection.slug, response.collection);
-        collectionStorage.updateFull(response.collection.slug, response);
-      } catch (error) {
-        setError(handleApiError(error, 'Failed to update cover image'));
-      } finally {
-        setOperationLoading(false);
-        setTimeout(() => {
-          setJustClickedImageId(null);
-        }, COVER_IMAGE_FLASH_DURATION);
-      }
-    },
-    [collection]
-  );
-
   // Handle multi-select toggle
   const handleMultiSelectToggle = useCallback((imageId: number) => {
     setSelectedImageIds(prev => handleMultiSelectToggleUtil(imageId, prev));
@@ -451,47 +403,17 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   }, [selectedImageIds, collection, openEditor]);
 
-  // Handle image click - either set cover, multi-select, open metadata editor, or navigate to collection
-  const handleImageClick = useCallback(
-    (imageId: number) => {
-      if (isSelectingCoverImage) {
-        // Mode 1: Cover image selection
-        handleCoverImageClick(imageId);
-        return;
-      }
-
-      // Mode 2: Collection navigation
-      const collectionSlug = handleCollectionNavigation(imageId, collection?.content);
-      if (collectionSlug) {
-        router.push(`/collection/manage/${collectionSlug}`);
-        return;
-      }
-
-      if (isMultiSelectMode) {
-        // Mode 3: Multi-select toggle
-        handleMultiSelectToggle(imageId);
-      } else {
-        // Mode 4: Single image edit
-        const imageBlock = handleSingleImageEdit(imageId, collection?.content, processedContent);
-        if (imageBlock) {
-          // Set selectedImageIds for modal but stay in single-edit mode
-          setSelectedImageIds([imageId]);
-          setIsMultiSelectMode(false);
-          openEditor(imageBlock);
-        }
-      }
-    },
-    [
-      isSelectingCoverImage,
-      isMultiSelectMode,
-      handleCoverImageClick,
-      handleMultiSelectToggle,
-      collection?.content,
-      processedContent,
-      openEditor,
-      router,
-    ]
-  );
+  const { handleImageClick } = useImageClickHandler({
+    isSelectingCoverImage,
+    isMultiSelectMode,
+    handleCoverImageClick,
+    handleMultiSelectToggle,
+    collection,
+    processedContent,
+    openEditor,
+    setSelectedImageIds,
+    setIsMultiSelectMode,
+  });
 
   /**
    * Handle successful metadata save - updates currentState with API response
@@ -727,118 +649,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setOperationLoading(false);
     }
   }, [collection, router]);
-
-  // Enter reorder mode
-  const handleEnterReorderMode = useCallback(() => {
-    if (!processedContent) return;
-    // Exit multi-select mode if active
-    setIsMultiSelectMode(false);
-    setSelectedImageIds([]);
-    setReorderState({
-      active: true,
-      originalOrder: processedContent.map(c => c.id),
-      moves: [],
-      pickedUpImageId: null,
-    });
-  }, [processedContent]);
-
-  // Cancel reorder mode (discard all changes)
-  const handleCancelReorder = useCallback(() => {
-    setReorderState({
-      active: false,
-      originalOrder: [],
-      moves: [],
-      pickedUpImageId: null,
-    });
-  }, []);
-
-  // Save reorder changes to API
-  const handleSaveReorder = useCallback(async () => {
-    if (!collection || !currentState) return;
-    const finalOrder = replayMoves(reorderState.originalOrder, reorderState.moves);
-    const changes = buildReorderChangesFromFinalOrder(finalOrder, reorderState.originalOrder);
-
-    if (changes.length === 0) {
-      handleCancelReorder();
-      return;
-    }
-
-    try {
-      setOperationLoading(true);
-      setError(null);
-
-      // Apply optimistic update
-      const optimisticallyUpdatedCollection = applyReorderChangesOptimistically(
-        currentState.collection,
-        changes
-      );
-      setCurrentState(prev =>
-        prev ? { ...prev, collection: optimisticallyUpdatedCollection } : null
-      );
-
-      await executeReorderOperation(collection.id, changes, collection.slug);
-      handleCancelReorder();
-    } catch (error_) {
-      setError(handleApiError(error_, 'Failed to reorder content.'));
-      // Re-fetch to restore correct state
-      try {
-        const response = await getCollectionUpdateMetadata(collection.slug);
-        setCurrentState(prev => (prev ? { ...prev, collection: response.collection } : null));
-      } catch {
-        // Silent fail
-      }
-    } finally {
-      setOperationLoading(false);
-    }
-  }, [collection, currentState, reorderState, handleCancelReorder]);
-
-  // Arrow move handler
-  const handleArrowMove = useCallback(
-    (contentId: number, direction: -1 | 1) => {
-      const currentOrder = replayMoves(reorderState.originalOrder, reorderState.moves);
-      const result = applyArrowMove(currentOrder, contentId, direction);
-      if (!result) return;
-      setReorderState(prev => ({
-        ...prev,
-        moves: [...prev.moves, result.move],
-        pickedUpImageId: null,
-      }));
-    },
-    [reorderState.originalOrder, reorderState.moves]
-  );
-
-  // Pick up handler
-  const handlePickUp = useCallback((contentId: number) => {
-    setReorderState(prev => ({
-      ...prev,
-      pickedUpImageId: prev.pickedUpImageId === contentId ? null : contentId,
-    }));
-  }, []);
-
-  // Place handler (click on target while another image is picked up)
-  const handlePlace = useCallback(
-    (targetId: number) => {
-      if (!reorderState.pickedUpImageId || reorderState.pickedUpImageId === targetId) return;
-      const currentOrder = replayMoves(reorderState.originalOrder, reorderState.moves);
-      const result = applyPickAndPlace(currentOrder, reorderState.pickedUpImageId, targetId);
-      if (!result) return;
-      setReorderState(prev => ({
-        ...prev,
-        moves: [...prev.moves, result.move],
-        pickedUpImageId: null,
-      }));
-    },
-    [reorderState.pickedUpImageId, reorderState.originalOrder, reorderState.moves]
-  );
-
-  // Cancel a single image's moves
-  const handleCancelImageMove = useCallback((contentId: number) => {
-    setReorderState(prev => ({
-      ...prev,
-      moves: cancelImageMoves(prev.moves, contentId),
-      pickedUpImageId: null,
-    }));
-  }, []);
 
   const renderToolbarActions = () => {
     const divider = <span className={styles.toolbarDivider} />;
