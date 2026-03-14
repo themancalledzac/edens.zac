@@ -3,5 +3,6 @@ export const isLocalEnvironment = () => {
 };
 
 export const isProduction = () => {
-  return process.env.NEXT_PUBLIC_API_URL && !isLocalEnvironment();
+  return process.env.NEXT_PUBLIC_ENV === 'production' ||
+    (!isLocalEnvironment() && process.env.NODE_ENV === 'production');
 };

@@ -91,6 +91,16 @@
     "external-editor": "^3.1.0",
     "@inquirer/editor": "^4.2.16",
     "core-js": "3.23.3",
-    "glob": "^10.3.0"
+    "glob": "^10.5.0",
+    "fast-xml-parser": ">=4.5.4",
+    "@aws-amplify/data-construct": {
+      "fast-xml-parser": "^4.5.4"
+    },
+    "@aws-amplify/graphql-api-construct": {
+      "fast-xml-parser": "^4.5.4"
+    },
+    "immutable": ">=3.8.3",
+    "basic-ftp": ">=5.2.0",
+    "axios": ">=1.13.5"
   }
 }
