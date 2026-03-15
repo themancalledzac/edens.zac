@@ -127,7 +127,7 @@ export async function getCollectionBySlug(
   if (!slug) throw new Error('slug is required');
   const url = buildApiUrl('read', `/collections/${encodeURIComponent(slug)}`, { page, size });
   const res = await fetch(url, {
-    next: { revalidate: 3600, tags: [`collection-${slug}`] },
+    next: { revalidate: TIMING.revalidateCache, tags: [`collection-${slug}`] },
   });
 
   // Await the full JSON response - ensures data is fully parsed before returning

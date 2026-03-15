@@ -5,6 +5,7 @@
  * Admin endpoints: /api/admin/content (Dev only)
  */
 
+import { TIMING } from '@/app/constants';
 import {
   fetchAdminDeleteJsonApi,
   fetchAdminFormDataApi,
@@ -24,7 +25,7 @@ import { type ContentImageModel, type ContentImageUpdateRequest } from '@/app/ty
  * Get all tags (ordered alphabetically)
  */
 export async function getAllTags(): Promise<Array<{ id: number; tagName: string }>> {
-  return fetchReadApi('/content/tags', { next: { revalidate: 3600 } });
+  return fetchReadApi('/content/tags', { next: { revalidate: TIMING.revalidateCache } });
 }
 
 /**
@@ -32,7 +33,7 @@ export async function getAllTags(): Promise<Array<{ id: number; tagName: string 
  * Get all people (ordered alphabetically)
  */
 export async function getAllPeople(): Promise<Array<{ id: number; personName: string }>> {
-  return fetchReadApi('/content/people', { next: { revalidate: 3600 } });
+  return fetchReadApi('/content/people', { next: { revalidate: TIMING.revalidateCache } });
 }
 
 /**
@@ -40,7 +41,7 @@ export async function getAllPeople(): Promise<Array<{ id: number; personName: st
  * Get all cameras (ordered alphabetically)
  */
 export async function getAllCameras(): Promise<Array<{ id: number; cameraName: string }>> {
-  return fetchReadApi('/content/cameras', { next: { revalidate: 3600 } });
+  return fetchReadApi('/content/cameras', { next: { revalidate: TIMING.revalidateCache } });
 }
 
 /**
@@ -51,7 +52,7 @@ export async function getFilmMetadata(): Promise<{
   filmTypes: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
   filmFormats: Array<{ name: string; displayName: string }>;
 }> {
-  return fetchReadApi('/content/film-metadata', { next: { revalidate: 3600 } });
+  return fetchReadApi('/content/film-metadata', { next: { revalidate: TIMING.revalidateCache } });
 }
 
 // ============================================================================

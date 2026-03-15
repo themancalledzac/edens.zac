@@ -239,15 +239,20 @@ export function handleSingleImageEdit(
  * @returns Promise that resolves when revalidation is complete (or fails silently)
  */
 export async function revalidateCollectionCache(slug: string): Promise<void> {
-  try {
-    await fetch('/api/revalidate', {
+  const revalidate = (body: Record<string, string>) =>
+    fetch('/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tag: `collection-${slug}`,
-        path: `/${slug}`,
-      }),
+      body: JSON.stringify(body),
     });
+
+  try {
+    await Promise.all([
+      // Revalidate the specific collection page
+      revalidate({ tag: `collection-${slug}`, path: `/${slug}` }),
+      // Revalidate the collections index (home page, type listings)
+      revalidate({ tag: 'collections-index' }),
+    ]);
   } catch (error) {
     // Fail silently - revalidation is not critical for functionality
     if (isLocalEnvironment()) {
@@ -397,7 +402,7 @@ export async function executeReorderOperation(
     newOrderIndex: change.newOrderIndex,
   })));
 
-  revalidateCollectionCache(slug);
+  void revalidateCollectionCache(slug);
 
   return response;
 }

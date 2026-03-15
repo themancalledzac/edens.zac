@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type SubmitEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
@@ -215,7 +215,7 @@ export default function ImageMetadataModal({
   }
 
   // Handle form submission
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!hasChanges) {

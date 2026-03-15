@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 
@@ -32,7 +32,7 @@ export default function TextBlockCreateModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 

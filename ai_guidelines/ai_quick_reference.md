@@ -25,8 +25,8 @@ Import order (strict):
 
 ### Example
 ```typescript
-// 1. React/Next.js imports
-import { useState } from 'react';
+// 1. React/Next.js imports (named imports only — never `import React`)
+import { type SubmitEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // 2. Internal API/lib imports
@@ -103,3 +103,5 @@ app/
 - ❌ Forgetting to add tests for new utility functions
 - ❌ Using React Context when URL state would suffice
 - ❌ Not using `next/image` for images (always use CloudFront URLs)
+- ❌ Using `import React` namespace — always use named imports from `'react'`
+- ❌ Using deprecated `FormEvent` — use `SubmitEvent<HTMLFormElement>` instead

@@ -1053,12 +1053,13 @@ describe('revalidateCollectionCache', () => {
     jest.restoreAllMocks();
   });
 
-  it('should call /api/revalidate with correct tag and path', async () => {
+  it('should call /api/revalidate with correct tag and path, plus collections-index', async () => {
     const slug = 'test-collection';
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
     await revalidateCollectionCache(slug);
 
+    // Should revalidate the specific collection
     expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1067,6 +1068,17 @@ describe('revalidateCollectionCache', () => {
         path: '/test-collection',
       }),
     });
+
+    // Should also revalidate the collections index (home page)
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collections-index',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('should resolve successfully when revalidation succeeds', async () => {
@@ -1122,6 +1134,16 @@ describe('revalidateCollectionCache', () => {
         path: '/',
       }),
     });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collections-index',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -95,6 +95,43 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 }
 ```
 
+## React 19 Event Types
+
+React 19 deprecated several event types. Always use the non-deprecated replacements:
+
+| Event Handler | Deprecated | Correct (React 19) |
+|---|---|---|
+| `onSubmit` | `FormEvent` | `SubmitEvent<HTMLFormElement>` |
+| `onChange` (input) | — | `ChangeEvent<HTMLInputElement>` |
+| `onChange` (textarea) | — | `ChangeEvent<HTMLTextAreaElement>` |
+
+### Import Rules
+
+- **Never** use `import React from 'react'` or `import React, { ... } from 'react'`
+- **Always** use named imports: `import { type SubmitEvent, useState } from 'react'`
+- Use `type` keyword for type-only imports
+
+```typescript
+// ✅ Good - named imports, React 19 types
+import { type ChangeEvent, type SubmitEvent, useCallback, useState } from 'react';
+
+const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
+  e.preventDefault();
+};
+
+const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  setValue(e.target.value);
+};
+
+// ❌ Bad - namespace import
+import React from 'react';
+const handleSubmit = (e: React.FormEvent) => { ... };
+
+// ❌ Bad - deprecated FormEvent
+import { type FormEvent } from 'react';
+const handleSubmit = (e: FormEvent) => { ... };
+```
+
 ## Type Imports
 
 ### Type-Only Imports
