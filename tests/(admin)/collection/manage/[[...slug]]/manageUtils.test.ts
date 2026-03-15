@@ -689,6 +689,60 @@ describe('buildUpdatePayload', () => {
       });
     });
 
+    it('should not include description when original is undefined and form is empty string', () => {
+      const originalNoDesc = createCollectionModel({
+        ...originalCollection,
+        description: undefined,
+      });
+
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: '',
+      };
+
+      const result = buildUpdatePayload(formData, originalNoDesc);
+
+      expect(result).toEqual({ id: 1 });
+    });
+
+    it('should include description when original is undefined and form has value', () => {
+      const originalNoDesc = createCollectionModel({
+        ...originalCollection,
+        description: undefined,
+      });
+
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: 'Hello',
+      };
+
+      const result = buildUpdatePayload(formData, originalNoDesc);
+
+      expect(result).toEqual({ id: 1, description: 'Hello' });
+    });
+
+    it('should include description when clearing an existing description', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: '',
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({ id: 1, description: '' });
+    });
+
+    it('should not include description when same value unchanged', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: 'Original Description',
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({ id: 1 });
+    });
+
     it('should handle boolean false vs undefined distinction for visible', () => {
       const originalWithFalse = createCollectionModel({
         ...originalCollection,

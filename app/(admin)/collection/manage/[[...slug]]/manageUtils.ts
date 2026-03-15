@@ -47,7 +47,7 @@ export function buildUpdatePayload(
   }> = [
     { key: 'type', original: originalCollection.type },
     { key: 'title', original: originalCollection.title },
-    { key: 'description', original: originalCollection.description || '' },
+    { key: 'description', original: originalCollection.description },
     { key: 'visible', original: originalCollection.visible },
     { key: 'displayMode', original: originalCollection.displayMode },
     { key: 'rowsWide', original: originalCollection.rowsWide },
@@ -58,8 +58,8 @@ export function buildUpdatePayload(
     const formValue = formData[key];
     // Handle undefined/null comparison - treat undefined and null as equivalent
     // Also normalize empty strings for string fields
-    const normalizedOriginal = original === null || original === undefined ? undefined : original;
-    const normalizedFormValue = formValue === null || formValue === undefined ? undefined : formValue;
+    const normalizedOriginal = original === null || original === undefined || original === '' ? undefined : original;
+    const normalizedFormValue = formValue === null || formValue === undefined || formValue === '' ? undefined : formValue;
     
     if (normalizedFormValue !== normalizedOriginal) {
       // Type assertion needed since we're iterating dynamically

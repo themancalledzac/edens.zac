@@ -17,6 +17,7 @@ import {
   createChildCollection,
   createCollection,
   getCollectionUpdateMetadata,
+  getMetadata,
   updateCollection,
 } from '@/app/lib/api/collections';
 import { createImages, createTextContent } from '@/app/lib/api/content';
@@ -116,6 +117,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   const isCreateMode = !slug;
   const collection = currentState?.collection ?? null;
+
+  // All collections in the system, used for the image metadata editor's collection selector
+  const [allCollections, setAllCollections] = useState<CollectionListModel[]>([]);
+
+  useEffect(() => {
+    getMetadata().then((meta) => setAllCollections(meta.collections));
+  }, []);
 
   // Update state: starts as copy of collection data
   const [updateData, setUpdateData] = useState<CollectionUpdateRequest>(() => {
@@ -221,6 +229,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
     () => getDisplayedCoverImage(collection, updateData.coverImageId),
     [collection, updateData.coverImageId]
   );
+
+  const handleImageLoadError = useCallback((contentId: number) => {
+    console.warn(`[ManageClient] Image failed to load: contentId=${contentId}`);
+  }, []);
 
   // Collection data loading is now handled by useCollectionData hook
 
@@ -1145,6 +1157,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   onPickUp={handlePickUp}
                   onPlace={handlePlace}
                   onCancelImageMove={handleCancelImageMove}
+                  onImageLoadError={handleImageLoadError}
                 />
               )}
               </div>{/* close updateAndToolbarWrapper */}
@@ -1166,7 +1179,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           availableLenses={currentState?.lenses || []}
           availableFilmTypes={currentState?.filmTypes || []}
           availableFilmFormats={currentState?.filmFormats || []}
-          availableCollections={currentState?.collections || []}
+          availableCollections={allCollections}
           availableLocations={currentState?.locations || []}
           selectedImageIds={selectedImageIds}
           selectedImages={imagesToEdit}

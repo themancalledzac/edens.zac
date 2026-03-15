@@ -601,7 +601,7 @@ export function createHeaderRow(
 
   if (metadataBlock) {
     // Description gets remaining width, same height as cover
-    const descWidth = componentWidth - coverWidth;
+    const descWidth = componentWidth - coverWidth - LAYOUT.gridGap;
     calculatedSizes.push({ content: metadataBlock, width: descWidth, height: rowHeight });
   }
 

@@ -42,6 +42,7 @@ interface ContentBlockWithFullScreenProps {
   onPickUp?: (contentId: number) => void;
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
+  onImageLoadError?: (contentId: number) => void;
 }
 export default function ContentBlockWithFullScreen({
   content: allBlocks,
@@ -65,6 +66,7 @@ export default function ContentBlockWithFullScreen({
   onPickUp,
   onPlace,
   onCancelImageMove,
+  onImageLoadError,
 }: ContentBlockWithFullScreenProps) {
   const {
     showImage,
@@ -153,6 +155,7 @@ export default function ContentBlockWithFullScreen({
         onPickUp={onPickUp}
         onPlace={onPlace}
         onCancelImageMove={onCancelImageMove}
+        onImageLoadError={onImageLoadError}
       />
 
       {hasMore && (

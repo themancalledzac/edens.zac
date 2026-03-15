@@ -46,7 +46,7 @@ export const LAYOUT = {
   mobileSlotWidth: 2,
 
   // Header row constraints (cover image + description block)
-  headerRowHeightRatio: 0.45, // Max row height as ratio of componentWidth (e.g., 0.45 = 45%)
+  headerRowHeightRatio: 0.38, // Max row height as ratio of componentWidth (e.g., 0.38 = 38%)
   headerCoverMinRatio: 0.3, // Minimum cover image width as ratio of row width
   headerCoverMaxRatio: 0.5, // Maximum cover image width as ratio of row width
 } as const;
