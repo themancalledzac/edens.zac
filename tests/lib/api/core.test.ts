@@ -20,6 +20,7 @@ global.fetch = jest.fn();
 
 // Mock environment
 jest.mock('@/app/utils/environment', () => ({
+  isLocalEnvironment: jest.fn(() => false),
   isProduction: jest.fn(() => false),
 }));
 

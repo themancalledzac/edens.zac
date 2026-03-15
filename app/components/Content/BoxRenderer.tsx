@@ -14,7 +14,7 @@ import cbStyles from './ContentComponent.module.scss';
 
 interface BoxRendererProps {
   tree: BoxTree;
-  sizes: Map<string, { width: number; height: number }>;
+  sizes: Map<number, { width: number; height: number }>;
   isMobile: boolean;
   // Pass-through props for child renderers
   onImageClick?: (imageId: number) => void;
@@ -35,6 +35,7 @@ interface BoxRendererProps {
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
   priority?: boolean;
+  onImageLoadError?: (contentId: number) => void;
 }
 
 export function BoxRenderer({
@@ -58,10 +59,11 @@ export function BoxRenderer({
   onPlace,
   onCancelImageMove,
   priority,
+  onImageLoadError,
 }: BoxRendererProps) {
   // Base case: single leaf
   if (tree.type === 'leaf') {
-    const size = sizes.get(String(tree.content.id));
+    const size = sizes.get(tree.content.id);
     if (!size) {
       console.error(
         `BoxRenderer: no size entry for content ID ${tree.content.id}. Image will not render.`
@@ -111,6 +113,8 @@ export function BoxRenderer({
       onPickUp,
       onPlace,
       onCancelImageMove,
+      priority,
+      onImageLoadError,
     };
 
     return <CollectionContentRenderer {...fullProps} />;
@@ -139,6 +143,7 @@ export function BoxRenderer({
     onPlace,
     onCancelImageMove,
     priority,
+    onImageLoadError,
   };
 
   return (

@@ -44,6 +44,8 @@ export interface ContentComponentProps {
   onPickUp?: (contentId: number) => void;
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
+  // Error handling
+  onImageLoadError?: (contentId: number) => void;
 }
 
 /**
@@ -59,7 +61,7 @@ export default function Component({
   currentCoverImageId,
   onImageClick,
   justClickedImageId,
-  // priorityIndex reserved for future LCP optimization
+  priorityIndex = 0,
   enableFullScreenView = false,
   onFullScreenImageClick,
   selectedImageIds = [],
@@ -74,6 +76,7 @@ export default function Component({
   onPickUp,
   onPlace,
   onCancelImageMove,
+  onImageLoadError,
 }: ContentComponentProps) {
   const { contentWidth, isMobile, viewportHeight } = useViewport();
 
@@ -195,16 +198,16 @@ export default function Component({
   };
 
   // Render a row using BoxRenderer (generic recursive renderer)
-  const renderRow = (row: RowWithPatternAndSizes) => {
+  const renderRow = (row: RowWithPatternAndSizes, rowIndex: number) => {
     const { templateKey, items, boxTree } = row;
-    const rowKey = `row-${items.map(item => item.content.id).join('-')}`;
+    const rowKey = `row-${items.map(i => `${i.content.contentType}-${i.content.id}`).join('-')}`;
 
     // Safety: If boxTree is missing (shouldn't happen), create a fallback
     const tree = boxTree || createSimpleBoxTree(items);
 
-    // Build sizes map from items (convert ID to string for Map key)
+    // Build sizes map from items
     const sizesMap = new Map(
-      items.map(item => [String(item.content.id), { width: item.width, height: item.height }])
+      items.map(item => [item.content.id, { width: item.width, height: item.height }])
     );
 
     const dataPattern = typeof templateKey === 'string' ? templateKey : `${templateKey.h}h-${templateKey.v}v`;
@@ -231,6 +234,8 @@ export default function Component({
           onPickUp={onPickUp}
           onPlace={onPlace}
           onCancelImageMove={onCancelImageMove}
+          priority={rowIndex === priorityIndex}
+          onImageLoadError={onImageLoadError}
         />
       </div>
     );
@@ -244,7 +249,7 @@ export default function Component({
           //  -
           const shouldShowSeparator =
             firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
-          const rowKey = `row-${row.items.map(item => item.content.id).join('-')}`;
+          const rowKey = `row-${row.items.map(i => `${i.content.contentType}-${i.content.id}`).join('-')}`;
 
           return (
             <React.Fragment key={rowKey}>
@@ -255,7 +260,7 @@ export default function Component({
                   <div className={cbStyles.separatorLine} />
                 </div>
               )}
-              {renderRow(row)}
+              {renderRow(row, rowIndex)}
             </React.Fragment>
           );
         })}

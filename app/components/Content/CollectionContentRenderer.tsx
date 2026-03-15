@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
@@ -60,8 +60,12 @@ export default function CollectionContentRenderer({
   isSelectingCoverImage = false,
   currentCoverImageId,
   justClickedImageId,
+  priority = false,
+  onImageLoadError,
 }: CollectionContentRendererProps) {
   const router = useRouter();
+
+  const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set());
 
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
@@ -215,6 +219,38 @@ export default function CollectionContentRenderer({
     );
   }
 
+  // If the image previously failed to load, render a placeholder instead
+  if (failedImageIds.has(contentId)) {
+    const placeholderWidth = width || 300;
+    const placeholderHeight = height || (placeholderWidth * 2) / 3;
+
+    return (
+      <div
+        key={contentId}
+        className={buildWrapperClassName(className, cbStyles, {
+          includeDragContainer: false,
+          enableParallax: false,
+          isMobile,
+          hasClickHandler: false,
+          isSelected: false,
+        })}
+        style={{
+          width: placeholderWidth,
+          height: placeholderHeight,
+          boxSizing: 'border-box',
+          position: 'relative',
+        }}
+      >
+        <div
+          className={cbStyles.placeholderImage}
+          style={{ width: placeholderWidth, height: placeholderHeight }}
+        >
+          Image unavailable
+        </div>
+      </div>
+    );
+  }
+
   // Image-specific overlays (only for IMAGE type)
   const isCurrentCover = contentType === 'IMAGE' && currentCoverImageId === contentId;
   const isJustClicked = contentType === 'IMAGE' && justClickedImageId === contentId;
@@ -236,13 +272,20 @@ export default function CollectionContentRenderer({
       currentCollectionId
     );
 
+  const handleImageError = () => {
+    setFailedImageIds(prev => new Set(prev).add(contentId));
+    onImageLoadError?.(contentId);
+  };
+
   const imageProps = {
     src: imageUrl,
     alt,
     width: imageWidth,
     height: imageHeight,
-    loading: 'lazy' as const,
+    loading: priority ? ('eager' as const) : ('lazy' as const),
+    priority: priority ?? false,
     unoptimized: isGif,
+    onError: handleImageError,
     ...(enableParallax
       ? {
           className: `parallax-bg ${variantStyles.parallaxImage}`,

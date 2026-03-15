@@ -77,5 +77,11 @@ export interface CollectionContentRendererProps extends ContentRendererProps {
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
   justClickedImageId?: number | null;
+
+  // LCP optimization
+  priority?: boolean;
+
+  // Error handling
+  onImageLoadError?: (contentId: number) => void;
 }
 
