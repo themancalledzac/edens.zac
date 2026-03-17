@@ -83,7 +83,8 @@ describe('createLocationUpdateFromModel', () => {
   });
 
   it('should return { remove: true } for undefined', () => {
-    const result = createLocationUpdateFromModel();
+    // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined arg
+    const result = createLocationUpdateFromModel(undefined);
     expect(result).toEqual({ remove: true });
   });
 });
@@ -107,7 +108,8 @@ describe('buildLocationDiff', () => {
 
   it('should return undefined when both are null/undefined', () => {
     expect(buildLocationDiff(null, null)).toBeUndefined();
-    expect(buildLocationDiff()).toBeUndefined();
+    // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined args
+    expect(buildLocationDiff(undefined, undefined)).toBeUndefined();
   });
 
   it('should return update when changing from null to a location', () => {

@@ -9,7 +9,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: rgba(0, 0, 0, 0.85);
+  background-color: rgb(0, 0, 0, 0.85);
   z-index: var(--z-fullscreen);
   overflow: auto;
   padding: 20px;
@@ -27,11 +27,11 @@
 .modalContent {
   width: 100%;
   max-width: 600px;
-  background: rgba(20, 20, 20, 0.98);
+  background: rgb(20, 20, 20, 0.98);
   border-radius: var(--radius-2);
   padding: 32px;
   color: white;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 20px 60px rgb(0, 0, 0, 0.5);
 
   @media (width <= 768px) {
     padding: 24px;
@@ -196,15 +196,15 @@
 }
 
 .submitButton {
-  background: rgba(59, 130, 246, 0.8);
+  background: rgb(59, 130, 246, 0.8);
   color: white;
 
   &:hover:not(:disabled) {
-    background: rgba(59, 130, 246, 1);
+    background: rgb(59, 130, 246, 1);
   }
 
   &:focus {
-    outline: 2px solid rgba(59, 130, 246, 0.5);
+    outline: 2px solid rgb(59, 130, 246, 0.5);
     outline-offset: 2px;
   }
 }

@@ -244,7 +244,6 @@
   text-align: center;
   padding: 5px;
   overflow-wrap: break-word;
-  word-break: break-word;
   pointer-events: none;
   z-index: var(--z-content); /* Ensure text overlay appears above parallax image (z-index: base) */
 }
@@ -396,7 +395,7 @@
   align-items: baseline;
   width: 100%;
   padding-bottom: var(--space-2);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgb(0, 0, 0, 0.1);
 }
 
 .metadataDate {
@@ -454,7 +453,7 @@
 .metadataTagsContainer {
   margin-top: auto;
   padding-top: var(--space-2);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgb(0, 0, 0, 0.1);
 }
 
 .metadataTagsRow {
@@ -472,23 +471,25 @@
   font-weight: 500;
   line-height: 1.4;
   color: var(--color-black);
-  background-color: rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.12);
+  background-color: rgb(0, 0, 0, 0.06);
+  border: 1px solid rgb(0, 0, 0, 0.12);
   border-radius: var(--radius-round);
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
   text-transform: lowercase;
   letter-spacing: 0.02em;
   font-family: inherit;
   white-space: nowrap;
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.12);
-    border-color: rgba(0, 0, 0, 0.25);
+    background-color: rgb(0, 0, 0, 0.12);
+    border-color: rgb(0, 0, 0, 0.25);
   }
 
   &:active {
-    background-color: rgba(0, 0, 0, 0.18);
+    background-color: rgb(0, 0, 0, 0.18);
   }
 }
 

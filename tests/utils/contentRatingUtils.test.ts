@@ -13,7 +13,6 @@ import {
 } from '@/app/utils/contentRatingUtils';
 import {
   createHorizontalImage,
-  createImageContent,
   createPanorama,
   createSquareImage,
   createVerticalImage,

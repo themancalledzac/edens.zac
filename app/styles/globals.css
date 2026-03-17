@@ -18,20 +18,20 @@ html,
   /* Colors */
   --color-fg-muted: #666;
   --color-border: #e5e5e5;
-  --color-overlay-strong: rgba(0, 0, 0, 0.7);
-  --color-overlay-soft: rgba(0, 0, 0, 0.1);
+  --color-overlay-strong: rgb(0, 0, 0, 0.7);
+  --color-overlay-soft: rgb(0, 0, 0, 0.1);
   --color-white: #fff;
   --color-black: #111;
   --color-bg: var(--color-white);
   --color-fg: var(--color-black);
 
   /* Badge and overlay colors */
-  --color-badge-bg: rgba(0, 0, 0, 0.9);
-  --color-text-overlay-bg: rgba(89, 89, 89, 0.4);
-  --color-visibility-overlay: rgba(128, 128, 128, 0.5);
-  --color-cover-overlay: rgba(0, 0, 0, 0.5);
-  --color-selected-indicator: rgba(220, 38, 38, 0.9);
-  --color-shadow: rgba(0, 0, 0, 0.3);
+  --color-badge-bg: rgb(0, 0, 0, 0.9);
+  --color-text-overlay-bg: rgb(89, 89, 89, 0.4);
+  --color-visibility-overlay: rgb(128, 128, 128, 0.5);
+  --color-cover-overlay: rgb(0, 0, 0, 0.5);
+  --color-selected-indicator: rgb(220, 38, 38, 0.9);
+  --color-shadow: rgb(0, 0, 0, 0.3);
 
   /* Spacing scale */
   --space-0: 0;
@@ -108,22 +108,22 @@ html,
   --color-disabled: #ccc;
 
   /* Additional overlay variations */
-  --color-overlay-light-05: rgba(255, 255, 255, 0.05);
-  --color-overlay-light-10: rgba(255, 255, 255, 0.1);
-  --color-overlay-light-20: rgba(255, 255, 255, 0.2);
-  --color-overlay-light-30: rgba(255, 255, 255, 0.3);
-  --color-overlay-light-40: rgba(255, 255, 255, 0.4);
-  --color-overlay-light-50: rgba(255, 255, 255, 0.5);
-  --color-overlay-light-60: rgba(255, 255, 255, 0.6);
-  --color-overlay-light-70: rgba(255, 255, 255, 0.7);
-  --color-overlay-light-90: rgba(255, 255, 255, 0.9);
+  --color-overlay-light-05: rgb(255, 255, 255, 0.05);
+  --color-overlay-light-10: rgb(255, 255, 255, 0.1);
+  --color-overlay-light-20: rgb(255, 255, 255, 0.2);
+  --color-overlay-light-30: rgb(255, 255, 255, 0.3);
+  --color-overlay-light-40: rgb(255, 255, 255, 0.4);
+  --color-overlay-light-50: rgb(255, 255, 255, 0.5);
+  --color-overlay-light-60: rgb(255, 255, 255, 0.6);
+  --color-overlay-light-70: rgb(255, 255, 255, 0.7);
+  --color-overlay-light-90: rgb(255, 255, 255, 0.9);
 
   /* Hover state */
   --color-hover-grey: #333;
 
   /* Danger colors for dark backgrounds (tailwind red-600/red-300) */
   --color-danger-dark: rgb(220, 38, 38);
-  --color-danger-subtle: rgba(220, 38, 38, 0.2);
+  --color-danger-subtle: rgb(220, 38, 38, 0.2);
   --color-danger-text: rgb(252, 165, 165);
 
   /* Blue accent (tailwind blue-500/blue-300) */
@@ -131,7 +131,7 @@ html,
   --color-blue-text: rgb(147, 197, 253);
 
   /* Shadows */
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 2px 4px rgb(0, 0, 0, 0.1);
 
   /* Border variations */
   --color-border-dark: #adb5bd;

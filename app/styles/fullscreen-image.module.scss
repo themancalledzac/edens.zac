@@ -8,7 +8,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: rgba(0, 0, 0, 0.9);
+  background-color: rgb(0, 0, 0, 0.9);
   z-index: var(--z-fullscreen);
   overflow: hidden;
 
@@ -140,7 +140,7 @@
   width: 36px;
   height: 36px;
   border: none;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgb(0, 0, 0, 0.6);
   color: white;
   font-size: 18px;
   border-radius: 0;
@@ -166,7 +166,7 @@
   }
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgb(0, 0, 0, 0.8);
   }
 
   &:focus-visible {
@@ -182,7 +182,7 @@
 /* Metadata content container */
 .metadataContent {
   width: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgb(0, 0, 0, 0.8);
   border-radius: 0;
   padding: 12px 48px 12px 12px;
   color: white;
@@ -254,7 +254,7 @@
   }
 
   span {
-    color: rgba(255, 255, 255, 0.85);
+    color: rgb(255, 255, 255, 0.85);
   }
 }
 
@@ -337,7 +337,7 @@
 
   &:active {
     transform: scale(0.98);
-    background-color: rgba(255, 255, 255, 0.25);
+    background-color: rgb(255, 255, 255, 0.25);
   }
 }
 
@@ -349,7 +349,7 @@
   width: 48px;
   height: 64px;
   border: none;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(0, 0, 0, 0.4);
   color: white;
   font-size: 36px;
   line-height: 1;
@@ -367,7 +367,7 @@
   user-select: none;
 
   &:hover {
-    background-color: rgba(0, 0, 0, 0.65);
+    background-color: rgb(0, 0, 0, 0.65);
   }
 
   &:focus-visible {
@@ -401,7 +401,7 @@
   width: 40px;
   height: 40px;
   border: none;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgb(0, 0, 0, 0.5);
   color: white;
   font-size: 20px;
   border-radius: 50%;

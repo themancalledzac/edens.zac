@@ -89,7 +89,9 @@
   border: none;
   border-radius: var(--radius-1);
   cursor: pointer;
-  transition: background-color 0.2s ease, opacity 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
 
   &:hover {
     background-color: var(--color-primary-dark);

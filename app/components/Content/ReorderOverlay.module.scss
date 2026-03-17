@@ -12,7 +12,7 @@
   &.pickedUp {
     outline: 3px solid var(--color-primary, #3b82f6);
     outline-offset: -3px;
-    background: rgba(59, 130, 246, 0.1);
+    background: rgb(59, 130, 246, 0.1);
   }
 
   &.moved {
@@ -78,7 +78,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgb(0, 0, 0, 0.5);
   color: white;
   opacity: 0.7;
   transition: opacity 0.15s ease;

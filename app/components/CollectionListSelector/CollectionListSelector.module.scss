@@ -71,12 +71,12 @@
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgb(255, 255, 255, 0.08);
   }
 
   &.navigable {
     &:hover {
-      background: rgba(255, 255, 255, 0.12);
+      background: rgb(255, 255, 255, 0.12);
     }
   }
 }
@@ -107,19 +107,19 @@
 
   // Pending add (not yet saved) — pale green
   &--pending-add {
-    background: rgba(76, 175, 80, 0.4);
-    border-color: rgba(76, 175, 80, 0.6);
+    background: rgb(76, 175, 80, 0.4);
+    border-color: rgb(76, 175, 80, 0.6);
   }
 
   // Pending remove — shows as strikethrough / dimmed
   &--pending-remove {
-    background: rgba(244, 67, 54, 0.3);
-    border-color: rgba(244, 67, 54, 0.5);
+    background: rgb(244, 67, 54, 0.3);
+    border-color: rgb(244, 67, 54, 0.5);
   }
 
   // Hover on any green checkbox → red intent
   &--remove-intent {
-    background: rgba(244, 67, 54, 0.7) !important;
+    background: rgb(244, 67, 54, 0.7) !important;
     border-color: var(--color-danger) !important;
   }
 }

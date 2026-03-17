@@ -53,7 +53,7 @@ function getMockSearchContent(): ContentImageModel[] {
         { id: (i + 2) % tags.length, name: tagName2 },
       ],
       people: i % 3 === 0 ? [{ id: i % people.length, name: personName }] : [],
-      createDate: new Date(2024, i % 12, (i % 28) + 1).toISOString(),
+      createdAt: new Date(2024, i % 12, (i % 28) + 1).toISOString(),
       visible: true,
     };
   });
