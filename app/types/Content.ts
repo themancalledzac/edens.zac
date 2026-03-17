@@ -6,7 +6,6 @@
  * Maps to backend Content with contentType discriminator for polymorphism.
  */
 
-import { fetchPatchJsonApi } from '@/app/lib/api/core';
 import type { SingleEntityUpdate } from '@/app/types/createTypes';
 
 import type {
@@ -313,85 +312,3 @@ export interface ContentImageUpdateResponse {
   errors?: string[];
 }
 
-/**
- * Update an image with partial data
- *
- * Note: The backend expects an array of image updates, so we wrap the single update in an array
- * The ContentImageUpdateRequest requires the id field, so ensure updates includes it
- *
- * @param updates - Object containing the image ID and fields to update
- * @returns The updated image data
- * @throws ApiError if the request fails
- *
- * @example
- * // Update image title and caption
- * await updateImage({
- *   id: 123,
- *   title: "Sunset over the mountains",
- *   caption: "A beautiful sunset captured in the Rockies"
- * });
- *
- * @example
- * // Update image collection associations
- * await updateImage({
- *   id: 123,
- *   collections: {
- *     newValue: [{ collectionId: 1, name: "Portfolio", visible: true, orderIndex: 0 }]
- *   }
- * });
- *
- * @example
- * // Remove a field by setting it to null
- * await updateImage({
- *   id: 123,
- *   caption: null
- * });
- */
-export async function updateImage<T = unknown>(updates: ContentImageUpdateRequest): Promise<T | null> {
-  if (!updates.id || updates.id <= 0) {
-    throw new Error('Valid id is required in updates object');
-  }
-
-  if (Object.keys(updates).length <= 1) {
-    throw new Error('Updates object must contain at least one field to update besides id');
-  }
-
-  // Backend expects an array of updates
-  const updateArray = [updates];
-
-  return await fetchPatchJsonApi<T>('/content/images', updateArray);
-}
-
-/**
- * Update multiple images with the same or different updates in a single API call
- *
- * @param imageUpdates - Array of ContentImageUpdateRequest objects (each must include id)
- * @returns Promise with updated images and newly created metadata entities
- * @throws ApiError if the request fails
- *
- * @example
- * // Update multiple images with same metadata
- * const response = await updateMultipleImages([
- *   { id: 1, location: "New York", author: "John Doe" },
- *   { id: 2, location: "New York", author: "John Doe" },
- *   { id: 3, location: "New York", author: "John Doe" }
- * ]);
- * // response.updatedImages contains the fully updated ImageContentModel objects
- * // response.newMetadata contains any newly created tags, cameras, etc.
- */
-export async function updateMultipleImages(
-  imageUpdates: ContentImageUpdateRequest[]
-): Promise<ContentImageUpdateResponse | null> {
-  if (!imageUpdates || imageUpdates.length === 0) {
-    throw new Error('At least one image update is required');
-  }
-
-  // Validate all updates have IDs
-  for (const [index, update] of imageUpdates.entries()) {
-    if (!update.id || update.id <= 0) {
-      throw new Error(`Update at index ${index} is missing required id field`);
-    }
-  }
-
-  return await fetchPatchJsonApi<ContentImageUpdateResponse>('/content/images', imageUpdates);
-}
