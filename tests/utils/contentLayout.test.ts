@@ -26,9 +26,7 @@ import {
   createImageContent,
   createParallaxContent,
   createTextContent,
-  createVerticalImage,
   H,
-  V,
 } from '@/tests/fixtures/contentFixtures';
 
 describe('processContentBlocks', () => {

@@ -1100,7 +1100,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                       {/* RIGHT SECTION */}
                       <div className={styles.rightSection}>
                         <CollectionListSelector
-                          allCollections={currentState?.collections || []}
+                          allCollections={allCollections}
                           savedCollectionIds={originalCollectionIds}
                           pendingAddIds={pendingAddIds}
                           pendingRemoveIds={pendingRemoveIds}
@@ -1114,7 +1114,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             }
                           }}
                           onAddNewChild={handleAddNewChild}
-                          label="Child Collections"
+                          label="Collections"
                           excludeCollectionId={collection.id}
                         />
                       </div>

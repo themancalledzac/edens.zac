@@ -30,12 +30,21 @@ interface ObserverRecord {
 // Registry keyed by a serialized options string
 const registry = new Map<string, ObserverRecord>();
 
+// WeakMap-based ID system to uniquely identify root elements without toString() collisions
+let rootIdCounter = 0;
+const rootIds = new WeakMap<Element | Document, number>();
+
+function getRootId(root: Element | Document | null | undefined): string {
+  if (!root) return 'viewport';
+  if (!rootIds.has(root)) rootIds.set(root, ++rootIdCounter);
+  return `root-${rootIds.get(root)}`;
+}
+
 function serializeOptions(options: ObserverOptions): string {
   const threshold = Array.isArray(options.threshold)
     ? options.threshold.join(',')
     : String(options.threshold ?? 0);
-  const root = options.root ?? 'viewport';
-  return `${threshold}|${options.rootMargin ?? '0px'}|${root}`;
+  return `${threshold}|${options.rootMargin ?? '0px'}|${getRootId(options.root)}`;
 }
 
 function getRecord(options: ObserverOptions): ObserverRecord {

@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
   const { slug } = await params;
 
   try {
-    const collection = await getCollectionBySlug(slug);
+    const collection = await getCollectionBySlug(slug, 0, 500);
     const title = collection.title;
     const description = collection.description ?? `${title} — photography by Zac Eden`;
     const images = collection.coverImage?.imageUrl ? [{ url: collection.coverImage.imageUrl }] : [];

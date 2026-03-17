@@ -10,9 +10,9 @@
   pointer-events: none;
 }
 
-/* Show on parent hover - the parent wrapper needs to trigger this */
-:global(.imageWrapper):hover .overlayContainer,
-:global(.parallaxContainer):hover .overlayContainer {
+/* Show on parent hover - data attributes used to avoid CSS Modules hash collision */
+[data-image-wrapper]:hover .overlayContainer,
+[data-parallax-container]:hover .overlayContainer {
   opacity: 1;
   pointer-events: auto;
 }

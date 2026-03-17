@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { type MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import styles from './ImageDownloadOverlay.module.scss';
 
@@ -17,11 +17,19 @@ interface ImageDownloadOverlayProps {
  */
 export default function ImageDownloadOverlay({ imageId: _imageId }: ImageDownloadOverlayProps) {
   const [showToast, setShowToast] = useState(false);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleDownload = useCallback((e: React.MouseEvent) => {
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
+
+  const handleDownload = useCallback((e: MouseEvent) => {
     e.stopPropagation(); // Prevent triggering fullscreen view
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
     setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
+    toastTimeoutRef.current = setTimeout(() => setShowToast(false), 2000);
   }, []);
 
   return (
@@ -46,9 +54,7 @@ export default function ImageDownloadOverlay({ imageId: _imageId }: ImageDownloa
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
       </button>
-      {showToast && (
-        <div className={styles.miniToast}>Coming soon</div>
-      )}
+      {showToast && <div className={styles.miniToast}>Coming soon</div>}
     </div>
   );
 }

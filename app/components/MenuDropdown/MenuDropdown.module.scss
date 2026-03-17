@@ -40,14 +40,6 @@
   }
 }
 
-.dropdownCloseButton {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-}
-
 .dropdownCloseIcon {
   width: var(--space-6); /* Match hamburger menu size on mobile */
   height: var(--space-6);

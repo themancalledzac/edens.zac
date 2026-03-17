@@ -163,7 +163,7 @@ export async function validateClientGalleryAccess(
       detail = await res.text();
     }
     const message = typeof detail === 'string' ? detail : JSON.stringify(detail);
-    if (res.status === 404) notFound();
+    if (res.status === 404) throw new Error('Gallery not found');
     throw new Error(`API ${res.status}: ${message}`);
   }
   return res.json() as Promise<{ hasAccess: boolean }>;

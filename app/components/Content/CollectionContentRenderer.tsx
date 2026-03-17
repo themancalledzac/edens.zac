@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
@@ -463,7 +463,11 @@ export default function CollectionContentRenderer({
   };
 
   return (
-    <div key={contentId} {...wrapperProps}>
+    <div
+      key={contentId}
+      {...wrapperProps}
+      {...(enableParallax ? { 'data-parallax-container': '' } : { 'data-image-wrapper': '' })}
+    >
       <div className={cbStyles.imageWrapper} onClick={handleClick}>
         {imageWrapperContent}
       </div>

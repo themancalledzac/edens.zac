@@ -41,7 +41,7 @@ const sampleImages: ContentImageModel[] = [
     camera: { id: 1, name: 'Sony A7III' },
     tags: [{ id: 1, name: 'landscape' }, { id: 2, name: 'sunset' }],
     people: [{ id: 1, name: 'Alice' }],
-    createDate: '2024-06-15T18:30:00Z',
+    captureDate: '2024-06-15T18:30:00Z',
   }),
   makeImage({
     id: 2,
@@ -51,7 +51,7 @@ const sampleImages: ContentImageModel[] = [
     camera: { id: 2, name: 'Nikon Z6' },
     tags: [{ id: 3, name: 'architecture' }],
     people: [],
-    createDate: '2024-03-10T12:00:00Z',
+    captureDate: '2024-03-10T12:00:00Z',
   }),
   makeImage({
     id: 3,
@@ -61,7 +61,7 @@ const sampleImages: ContentImageModel[] = [
     camera: { id: 1, name: 'Sony A7III' },
     tags: [{ id: 4, name: 'street' }, { id: 1, name: 'landscape' }],
     people: [{ id: 2, name: 'Bob' }],
-    createDate: '2024-09-01T08:00:00Z',
+    captureDate: '2024-09-01T08:00:00Z',
   }),
 ];
 

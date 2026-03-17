@@ -46,7 +46,7 @@
   border-radius: var(--radius-2);
   font-size: var(--text-sm);
   font-weight: 500;
-  z-index: 9999;
+  z-index: var(--z-fullscreen);
   pointer-events: none;
   animation: toastFadeIn 0.3s ease;
 }

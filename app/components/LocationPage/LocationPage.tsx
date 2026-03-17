@@ -1,8 +1,8 @@
+import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type AnyContentModel, type ContentImageModel } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 
-import ContentBlockWithFullScreen from '../Content/ContentBlockWithFullScreen';
-import SiteHeader from '../SiteHeader/SiteHeader';
 import styles from './LocationPage.module.scss';
 
 interface LocationPageProps {

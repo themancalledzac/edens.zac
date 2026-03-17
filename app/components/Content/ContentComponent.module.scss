@@ -16,7 +16,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 0; /* mobile: rely on --space-mobile-border from next row for separation */
+  margin-bottom: var(--space-mobile-border); /* restore vertical gap between rows on mobile */
   width: 100%;
 
   /* Desktop styles */

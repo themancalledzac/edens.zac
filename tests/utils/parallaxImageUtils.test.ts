@@ -2,6 +2,7 @@
  * Tests for parallaxImageUtils
  * Tests building parallax image content blocks from various content models
  */
+import type { ContentImageModel } from '@/app/types/Content';
 import {
   buildParallaxImageContentBlock,
   buildParallaxImageFromContent,
@@ -12,7 +13,6 @@ import {
   createImageContent,
   createParallaxContent,
 } from '@/tests/fixtures/contentFixtures';
-import type { ContentImageModel } from '@/app/types/Content';
 
 describe('buildParallaxImageContentBlock', () => {
   it('should create parallax image model from valid image', () => {

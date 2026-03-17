@@ -4,13 +4,12 @@ import { CircleX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import InstagramIcon from '@/app/components/Icons/InstagramIcon';
-import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
-import { isLocalEnvironment } from '@/app/utils/environment';
-
 import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
+import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 import styles from './MenuDropdown.module.scss';
 
@@ -140,7 +139,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
           onClick={onClose}
           aria-label="Close navigation menu"
         >
-          <CircleX className={styles.dropdownCloseButton} />
+          <CircleX className={styles.dropdownCloseIcon} />
         </button>
       </div>
 

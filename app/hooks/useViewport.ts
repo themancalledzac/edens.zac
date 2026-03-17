@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { BREAKPOINTS, getContentWidth } from '@/app/constants';
-import { useDebounce } from '@/app/utils/debounce';
+import { useThrottle } from '@/app/utils/debounce';
 
 export interface ViewportDimensions {
   width: number;
@@ -15,12 +15,8 @@ export interface ViewportDimensions {
  *
  * Responsive viewport detection hook that provides real-time window dimensions,
  * mobile breakpoint detection, and calculated content width based on layout
- * constraints. Features debounced resize handling for optimal performance.
- *
- * @dependencies
- * - React hooks for state management and lifecycle
- * - useDebounce for performance optimization
- * - ViewportDimensions interface for return type
+ * constraints. Uses throttled resize handling (leading + trailing edge) for
+ * immediate responsiveness during active interaction.
  *
  * @returns Object containing viewport width, mobile flag, and content width
  */
@@ -51,16 +47,16 @@ export function useViewport(): ViewportDimensions {
     });
   }, []);
 
-  const debouncedMeasure = useDebounce(measure, 100); // 100ms debounce
+  const throttledMeasure = useThrottle(measure, 100); // fires immediately + every 100ms during resize
 
   useEffect(() => {
     // Initial measurement
     measure();
 
-    // Debounced resize listener
-    window.addEventListener('resize', debouncedMeasure);
-    return () => window.removeEventListener('resize', debouncedMeasure);
-  }, [measure, debouncedMeasure]);
+    // Throttled resize listener — fires on first event (leading) + periodically during drag
+    window.addEventListener('resize', throttledMeasure);
+    return () => window.removeEventListener('resize', throttledMeasure);
+  }, [measure, throttledMeasure]);
 
   return dimensions;
 }

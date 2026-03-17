@@ -54,6 +54,12 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setError(null);
+
+      if (!password.trim()) {
+        setError('Please enter a password.');
+        return;
+      }
+
       setIsSubmitting(true);
 
       try {

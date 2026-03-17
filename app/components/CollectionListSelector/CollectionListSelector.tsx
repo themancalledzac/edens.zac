@@ -40,7 +40,7 @@ export default function CollectionListSelector({
   onToggle,
   onNavigate,
   onAddNewChild,
-  label = 'Child Collections',
+  label = 'Collections',
   excludeCollectionId,
 }: CollectionListSelectorProps) {
   const [hoveredCheckboxId, setHoveredCheckboxId] = useState<number | null>(null);

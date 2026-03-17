@@ -2,6 +2,7 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
+import type React from 'react';
 import { type Dispatch, type MouseEvent, type RefObject, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -9,7 +10,6 @@ import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { CollectionModel } from '@/app/types/Collection';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
-import type React from 'react';
 
 type ImageBlock = ContentImageModel | ContentParallaxImageModel;
 
@@ -215,6 +215,7 @@ export function FullScreenModal({
       )}
 
       <button
+        type="button"
         className={styles.closeButton}
         onClick={hideImage}
         aria-label="Close fullscreen image"

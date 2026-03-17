@@ -75,15 +75,15 @@ function imageMatchesQuery(image: ContentImageModel, query: string): boolean {
 }
 
 /**
- * Check if an image's createDate falls within a date range.
+ * Check if a date string falls within a date range.
  */
 function isWithinDateRange(
-  createDate: string | null | undefined,
+  dateValue: string | null | undefined,
   dateFrom: string | undefined,
   dateTo: string | undefined
 ): boolean {
-  if (!createDate) return false;
-  const date = new Date(createDate);
+  if (!dateValue) return false;
+  const date = new Date(dateValue);
 
   if (dateFrom) {
     const from = new Date(dateFrom);
@@ -118,7 +118,7 @@ export function filterContent(
     (criteria.locations && criteria.locations.length > 0) ||
     (criteria.tags && criteria.tags.length > 0) ||
     (criteria.cameras && criteria.cameras.length > 0) ||
-    criteria.query !== undefined ||
+    (criteria.query !== undefined && criteria.query.trim().length > 0) ||
     criteria.dateFrom !== undefined ||
     criteria.dateTo !== undefined;
 
@@ -176,7 +176,7 @@ export function filterContent(
     }
 
     // Date range
-    if ((criteria.dateFrom || criteria.dateTo) && !isWithinDateRange(item.createDate, criteria.dateFrom, criteria.dateTo)) {
+    if ((criteria.dateFrom || criteria.dateTo) && !isWithinDateRange(item.captureDate, criteria.dateFrom, criteria.dateTo)) {
       return false;
     }
 

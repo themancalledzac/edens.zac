@@ -2,12 +2,12 @@
  * Tests for locationUtils
  * Tests location conversion, update creation, and diff building
  */
+import type { LocationModel } from '@/app/types/Collection';
 import {
   buildLocationDiff,
   convertLocationStringToModel,
   createLocationUpdateFromModel,
 } from '@/app/utils/locationUtils';
-import type { LocationModel } from '@/app/types/Collection';
 
 const availableLocations: LocationModel[] = [
   { id: 1, name: 'Seattle, WA' },
@@ -83,7 +83,7 @@ describe('createLocationUpdateFromModel', () => {
   });
 
   it('should return { remove: true } for undefined', () => {
-    const result = createLocationUpdateFromModel(undefined);
+    const result = createLocationUpdateFromModel();
     expect(result).toEqual({ remove: true });
   });
 });
@@ -107,7 +107,7 @@ describe('buildLocationDiff', () => {
 
   it('should return undefined when both are null/undefined', () => {
     expect(buildLocationDiff(null, null)).toBeUndefined();
-    expect(buildLocationDiff(undefined, undefined)).toBeUndefined();
+    expect(buildLocationDiff()).toBeUndefined();
   });
 
   it('should return update when changing from null to a location', () => {
