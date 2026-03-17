@@ -44,9 +44,14 @@ export interface ContentRendererProps {
   
   // TEXT-specific
   textItems?: TextBlockItem[];
-  
+
   // GIF-specific
   isGif?: boolean; // For unoptimized flag
+
+  // Client gallery flag - enables download overlays on images
+  isClientGallery?: boolean;
+  // Collection slug - needed for download endpoints
+  collectionSlug?: string;
 }
 
 /**

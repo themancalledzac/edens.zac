@@ -35,6 +35,9 @@ interface BoxRendererProps {
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
   priority?: boolean;
+  // Client gallery props
+  isClientGallery?: boolean;
+  collectionSlug?: string;
 }
 
 export function BoxRenderer({
@@ -58,6 +61,8 @@ export function BoxRenderer({
   onPlace,
   onCancelImageMove,
   priority,
+  isClientGallery,
+  collectionSlug,
 }: BoxRendererProps) {
   // Base case: single leaf
   if (tree.type === 'leaf') {
@@ -111,6 +116,8 @@ export function BoxRenderer({
       onPickUp,
       onPlace,
       onCancelImageMove,
+      isClientGallery,
+      collectionSlug,
     };
 
     return <CollectionContentRenderer {...fullProps} />;
@@ -139,6 +146,8 @@ export function BoxRenderer({
     onPlace,
     onCancelImageMove,
     priority,
+    isClientGallery,
+    collectionSlug,
   };
 
   return (

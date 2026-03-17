@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 
+import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryGate';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
+import { CollectionType } from '@/app/types/Collection';
 
 interface CollectionPageWrapperProps {
   slug: string;
@@ -31,7 +33,18 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
     // Backend guarantees complete data structure, so we can render directly
-    return <CollectionPage collection={collection} chunkSize={chunkSize} />;
+    const collectionPage = <CollectionPage collection={collection} chunkSize={chunkSize} />;
+
+    // Wrap CLIENT_GALLERY collections with password gate
+    if (collection.type === CollectionType.CLIENT_GALLERY) {
+      return (
+        <ClientGalleryGate collection={collection}>
+          {collectionPage}
+        </ClientGalleryGate>
+      );
+    }
+
+    return collectionPage;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
