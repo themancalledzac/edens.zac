@@ -1,0 +1,98 @@
+/*
+  SearchPage styles
+  Dense grid layout with always-visible filter bar
+*/
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  margin: 0 auto;
+  width: 100%;
+  max-width: var(--page-max-width);
+  position: relative;
+
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding-left: var(--default-padding);
+    padding-right: var(--default-padding);
+    padding-top: var(--default-padding);
+  }
+}
+
+/* Search header — simple text header with title */
+.searchHeader {
+  padding: 1rem var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding: 1.5rem 0 0.5rem;
+  }
+}
+
+.searchTitle {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 0.3rem;
+  color: var(--text-primary, #111);
+
+  @media (width >= 768px) {
+    font-size: 2rem;
+  }
+}
+
+.searchDescription {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--text-secondary, #666);
+  margin: 0;
+  max-width: 600px;
+}
+
+/* Filter bar — always visible */
+.filterBar {
+  padding: 0 var(--page-padding-mobile);
+  border-bottom: 1px solid var(--border-color, #eee);
+  margin-bottom: 0.5rem;
+
+  @media (width >= 768px) {
+    padding: 0;
+    margin-bottom: 1rem;
+  }
+}
+
+/* Results info bar */
+.resultsInfo {
+  padding: 0.4rem var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding: 0.4rem 0;
+  }
+}
+
+.resultCount {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #888);
+}
+
+/* Empty state when no results match filters */
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 2rem;
+  text-align: center;
+
+  p {
+    font-size: 1rem;
+    color: var(--text-secondary, #888);
+    margin: 0;
+  }
+}
