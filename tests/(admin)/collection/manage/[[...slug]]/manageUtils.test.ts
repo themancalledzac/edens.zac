@@ -17,7 +17,6 @@ import {
   findImageBlockById,
   getContentOrderIndex,
   getDisplayedCoverImage,
-  handleApiError,
   handleCollectionNavigation,
   handleCoverImageSelection,
   handleMultiSelectToggle,
@@ -43,6 +42,7 @@ import {
   type ContentImageUpdateResponse,
   type ContentTextModel,
 } from '@/app/types/Content';
+import { handleApiError } from '@/app/utils/apiUtils';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 // Test fixtures
@@ -1718,10 +1718,13 @@ describe('replayMoves', () => {
     // Start: [1, 2, 3, 4]
     // Move 1 to index 3 → [2, 3, 4, 1]
     // Move 2 to index 0 → [2, 3, 4, 1] — 2 is already at 0
-    const result = replayMoves([1, 2, 3, 4], [
-      { imageId: 1, toIndex: 3 },
-      { imageId: 3, toIndex: 0 },
-    ]);
+    const result = replayMoves(
+      [1, 2, 3, 4],
+      [
+        { imageId: 1, toIndex: 3 },
+        { imageId: 3, toIndex: 0 },
+      ]
+    );
     // After move 1: [2, 3, 4, 1]
     // After move 3→0: [3, 2, 4, 1]
     expect(result).toEqual([3, 2, 4, 1]);

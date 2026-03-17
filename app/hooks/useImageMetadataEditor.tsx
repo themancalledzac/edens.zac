@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import type { ContentImageModel } from '@/app/types/Content';
 
 /**
@@ -36,11 +37,10 @@ export function useImageMetadataEditor() {
   }, []);
 
   // Prevent body scrolling while editor is open
+  useBodyScrollLock(!!editingImage);
+
   useEffect(() => {
     if (!editingImage) return;
-
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
 
     // Handle Escape key to close
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -52,7 +52,6 @@ export function useImageMetadataEditor() {
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [editingImage, closeEditor]);

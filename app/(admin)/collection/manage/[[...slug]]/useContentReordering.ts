@@ -5,6 +5,7 @@ import { type Dispatch, type SetStateAction, useCallback, useMemo, useState } fr
 import { getCollectionUpdateMetadata } from '@/app/lib/api/collections';
 import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
+import { handleApiError } from '@/app/utils/apiUtils';
 
 import {
   applyArrowMove,
@@ -13,7 +14,6 @@ import {
   buildReorderChangesFromFinalOrder,
   cancelImageMoves,
   executeReorderOperation,
-  handleApiError,
   type ReorderMove,
   replayMoves,
 } from './manageUtils';
@@ -112,7 +112,9 @@ export function useContentReordering({
       setError(handleApiError(error_, 'Failed to reorder content.'));
       try {
         const response = await getCollectionUpdateMetadata(collection.slug);
-        setCurrentState(prev => (prev ? { ...prev, collection: response.collection } : null));
+        if (response !== null) {
+          setCurrentState(prev => (prev ? { ...prev, collection: response.collection } : null));
+        }
       } catch {
         setError(prev =>
           prev

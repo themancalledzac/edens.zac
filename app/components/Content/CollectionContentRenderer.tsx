@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
@@ -118,6 +118,12 @@ export default function CollectionContentRenderer({
     router,
     isReorderMode,
   ]);
+
+  // Memoized error handler — must be defined before any early return to satisfy Rules of Hooks
+  const handleImageError = useCallback(() => {
+    setFailedImageIds(prev => new Set(prev).add(contentId));
+    onImageLoadError?.(contentId);
+  }, [contentId, onImageLoadError]);
 
   // Render TEXT content
   if (contentType === 'TEXT') {
@@ -272,16 +278,12 @@ export default function CollectionContentRenderer({
       currentCollectionId
     );
 
-  const handleImageError = () => {
-    setFailedImageIds(prev => new Set(prev).add(contentId));
-    onImageLoadError?.(contentId);
-  };
-
   const imageProps = {
     src: imageUrl,
     alt,
     width: imageWidth,
     height: imageHeight,
+    sizes: `(max-width: 768px) 100vw, ${Math.round(width)}px`,
     loading: priority ? ('eager' as const) : ('lazy' as const),
     priority: priority ?? false,
     unoptimized: isGif,

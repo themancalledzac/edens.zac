@@ -1,7 +1,5 @@
 'use client';
 
-import React from 'react';
-
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';

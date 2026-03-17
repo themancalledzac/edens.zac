@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
@@ -25,6 +26,21 @@ function mapUrlToCollectionType(urlType: string): CollectionType | null {
     clientgallery: CollectionType.CLIENT_GALLERY,
   };
   return mapping[normalized] || null;
+}
+
+export async function generateMetadata({ params }: CollectionTypePageProps): Promise<Metadata> {
+  const { collectionType } = await params;
+  const type = collectionType.charAt(0).toUpperCase() + collectionType.slice(1).toLowerCase();
+  const description = `${type} collections — photography by Zac Eden`;
+
+  return {
+    title: type,
+    description,
+    openGraph: {
+      title: type,
+      description,
+    },
+  };
 }
 
 /**

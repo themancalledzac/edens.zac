@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { LAYOUT } from '@/app/constants';
@@ -21,6 +21,47 @@ import { type BoxTree } from '@/app/utils/rowCombination';
 
 import { BoxRenderer } from './BoxRenderer';
 import cbStyles from './ContentComponent.module.scss';
+
+// Module-level helper: builds a simple horizontal BoxTree from a flat list of items.
+// Does not depend on any component state, so it is safe to define outside the component.
+function createSimpleBoxTree(items: CalculatedContentSize[]): BoxTree {
+  const contents = items.map(item => item.content);
+
+  if (contents.length === 1) {
+    return { type: 'leaf' as const, content: contents[0]! };
+  }
+
+  if (contents.length === 2) {
+    return {
+      type: 'combined' as const,
+      direction: 'horizontal' as const,
+      children: [
+        { type: 'leaf' as const, content: contents[0]! },
+        { type: 'leaf' as const, content: contents[1]! },
+      ],
+    };
+  }
+
+  // For 3+ items: build left-associative tree
+  let tree: BoxTree = {
+    type: 'combined',
+    direction: 'horizontal',
+    children: [
+      { type: 'leaf', content: contents[0]! },
+      { type: 'leaf', content: contents[1]! },
+    ],
+  };
+
+  for (let i = 2; i < contents.length; i++) {
+    tree = {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [tree, { type: 'leaf', content: contents[i]! }],
+    };
+  }
+
+  return tree;
+}
 
 export interface ContentComponentProps {
   content: AnyContentModel[];
@@ -80,10 +121,6 @@ export default function Component({
 }: ContentComponentProps) {
   const { contentWidth, isMobile, viewportHeight } = useViewport();
 
-  const targetAR = viewportHeight > 0
-    ? Math.max(1.5, Math.min(3.0, contentWidth / viewportHeight))
-    : 1.5;
-
   const { rows, layoutError } = useMemo(() => {
     if (!contentWidth) {
       return { rows: [], layoutError: null };
@@ -93,6 +130,9 @@ export default function Component({
     if ((!content || content.length === 0) && !collectionData) {
       return { rows: [], layoutError: null };
     }
+
+    const targetAR =
+      viewportHeight > 0 ? Math.max(1.5, Math.min(3.0, contentWidth / viewportHeight)) : 1.5;
 
     try {
       // Pattern detection enabled on desktop, disabled on mobile
@@ -109,7 +149,7 @@ export default function Component({
       const message = error instanceof Error ? error.message : 'Unknown layout error';
       return { rows: [], layoutError: message };
     }
-  }, [content, contentWidth, chunkSize, isMobile, collectionData, targetAR]);
+  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight]);
 
   // Find the first row index that contains non-visible content
   // Only check if we're on the manage page (currentCollectionId is provided)
@@ -156,46 +196,6 @@ export default function Component({
 
   // Early return for empty state
   if (rows.length === 0) return <div />;
-
-  // Create a simple horizontal BoxTree from content items as fallback
-  const createSimpleBoxTree = (items: CalculatedContentSize[]): BoxTree => {
-    const contents = items.map(item => item.content);
-
-    if (contents.length === 1) {
-      return { type: 'leaf' as const, content: contents[0]! };
-    }
-
-    if (contents.length === 2) {
-      return {
-        type: 'combined' as const,
-        direction: 'horizontal' as const,
-        children: [
-          { type: 'leaf' as const, content: contents[0]! },
-          { type: 'leaf' as const, content: contents[1]! },
-        ],
-      };
-    }
-
-    // For 3+ items: build left-associative tree
-    let tree: BoxTree = {
-      type: 'combined',
-      direction: 'horizontal',
-      children: [
-        { type: 'leaf', content: contents[0]! },
-        { type: 'leaf', content: contents[1]! },
-      ],
-    };
-
-    for (let i = 2; i < contents.length; i++) {
-      tree = {
-        type: 'combined',
-        direction: 'horizontal',
-        children: [tree, { type: 'leaf', content: contents[i]! }],
-      };
-    }
-
-    return tree;
-  };
 
   // Render a row using BoxRenderer (generic recursive renderer)
   const renderRow = (row: RowWithPatternAndSizes, rowIndex: number) => {
@@ -252,7 +252,7 @@ export default function Component({
           const rowKey = `row-${row.items.map(i => `${i.content.contentType}-${i.content.id}`).join('-')}`;
 
           return (
-            <React.Fragment key={rowKey}>
+            <Fragment key={rowKey}>
               {shouldShowSeparator && (
                 <div className={cbStyles.visibilitySeparator}>
                   <div className={cbStyles.separatorLine} />
@@ -261,7 +261,7 @@ export default function Component({
                 </div>
               )}
               {renderRow(row, rowIndex)}
-            </React.Fragment>
+            </Fragment>
           );
         })}
       </div>

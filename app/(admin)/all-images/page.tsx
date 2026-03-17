@@ -1,12 +1,11 @@
 import { notFound } from 'next/navigation';
 
+import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { getAllImages } from '@/app/lib/api/content';
 import { ApiError } from '@/app/lib/api/core';
 import type { CollectionModel } from '@/app/types/Collection';
 import { CollectionType } from '@/app/types/Collection';
 import type { ContentImageModel } from '@/app/types/Content';
-
-import CollectionPage from '../../components/ContentCollection/CollectionPage';
 
 /**
  * All Images Page (Dev/Admin Only)
@@ -53,7 +52,7 @@ export default async function AllImagesPage() {
     const allImages = await getAllImages();
 
     // Create a mock collection structure that CollectionPage can process
-    const mockCollection = createMockCollection(allImages);
+    const mockCollection = createMockCollection(allImages ?? []);
 
     return <CollectionPage collection={mockCollection} chunkSize={4} />;
   } catch (error) {

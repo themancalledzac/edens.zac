@@ -1,9 +1,8 @@
 import { notFound } from 'next/navigation';
 
+import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { getAllCollectionsAdmin } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
-
-import CollectionPage from '../../components/ContentCollection/CollectionPage';
 
 /**
  * All Collections Page (Dev/Admin Only)
@@ -24,7 +23,7 @@ export const dynamic = 'force-dynamic';
 export default async function AllCollectionsPage() {
   try {
     const allCollections = await getAllCollectionsAdmin();
-    return <CollectionPage collection={allCollections} />;
+    return <CollectionPage collection={allCollections ?? []} />;
   } catch (error) {
     // Handle 404s using structured ApiError status when available
     if (error instanceof ApiError && error.status === 404) {

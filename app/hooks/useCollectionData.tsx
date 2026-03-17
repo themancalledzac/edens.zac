@@ -72,7 +72,7 @@ export function useCollectionData(
         // Fetch full data (fresh or to supplement basic cache)
         const response = await getCollectionUpdateMetadata(slug);
 
-        if (isMounted && !abortController.signal.aborted) {
+        if (isMounted && !abortController.signal.aborted && response !== null) {
           // Update both caches
           collectionStorage.update(slug, response.collection);
           collectionStorage.updateFull(slug, response);
@@ -107,10 +107,12 @@ export function useCollectionData(
       setError(null);
 
       const response = await getCollectionUpdateMetadata(slug);
-      // Update both caches
-      collectionStorage.update(slug, response.collection);
-      collectionStorage.updateFull(slug, response);
-      onLoadSuccess(response);
+      if (response !== null) {
+        // Update both caches
+        collectionStorage.update(slug, response.collection);
+        collectionStorage.updateFull(slug, response);
+        onLoadSuccess(response);
+      }
     } catch (error_) {
       setError(handleApiError(error_, 'Failed to load collection data'));
     } finally {

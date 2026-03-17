@@ -5,6 +5,7 @@ import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { INTERACTION } from '@/app/constants';
+import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 
@@ -71,6 +72,8 @@ export function useFullScreenImage(): {
 
   const isOpen = !!fullScreenState;
 
+  useBodyScrollLock(isOpen);
+
   const navigate = useCallback((direction: 'next' | 'previous') => {
     setFullScreenState(prev => {
       if (!prev) return null;
@@ -118,9 +121,6 @@ export function useFullScreenImage(): {
   useEffect(() => {
     if (!isOpen) return;
 
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         hideImage();
@@ -141,7 +141,6 @@ export function useFullScreenImage(): {
     document.addEventListener('wheel', preventScroll, { passive: false });
 
     return () => {
-      document.body.style.overflow = originalOverflow;
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('wheel', preventScroll);
     };

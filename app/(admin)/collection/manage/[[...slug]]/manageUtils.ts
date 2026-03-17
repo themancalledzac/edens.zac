@@ -18,9 +18,6 @@ import {
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
-// Re-export handleApiError from shared utils so existing imports from this file remain valid
-export { handleApiError } from '@/app/utils/apiUtils';
-
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
@@ -311,7 +308,7 @@ export function mergeNewMetadata(
 export async function refreshCollectionAfterOperation(
   slug: string,
   operation: () => Promise<void>,
-  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>,
+  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO | null>,
   collectionStorage: { update: (slug: string, collection: CollectionModel) => void; updateFull: (slug: string, response: CollectionUpdateResponseDTO) => void }
 ): Promise<CollectionUpdateResponseDTO> {
   // Execute the operation first
@@ -319,6 +316,10 @@ export async function refreshCollectionAfterOperation(
 
   // Re-fetch collection using admin endpoint to get full data with collections arrays
   const response = await getCollectionUpdateMetadata(slug);
+
+  if (response === null) {
+    throw new Error('No response received from server after operation');
+  }
 
   // Update both caches with full admin data (includes collections arrays)
   collectionStorage.update(slug, response.collection);
@@ -401,6 +402,10 @@ export async function executeReorderOperation(
     contentId: change.contentId,
     newOrderIndex: change.newOrderIndex,
   })));
+
+  if (response === null) {
+    throw new Error('No response received from server after reorder operation');
+  }
 
   void revalidateCollectionCache(slug);
 

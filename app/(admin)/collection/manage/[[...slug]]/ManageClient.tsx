@@ -32,6 +32,7 @@ import {
   type LocationModel,
 } from '@/app/types/Collection';
 import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
+import { handleApiError } from '@/app/utils/apiUtils';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 import {
@@ -43,7 +44,6 @@ import styles from './ManageClient.module.scss';
 import {
   buildUpdatePayload,
   getDisplayedCoverImage,
-  handleApiError,
   handleMultiSelectToggle as handleMultiSelectToggleUtil,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
@@ -122,7 +122,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [allCollections, setAllCollections] = useState<CollectionListModel[]>([]);
 
   useEffect(() => {
-    getMetadata().then(meta => setAllCollections(meta.collections));
+    getMetadata().then(meta => { if (meta !== null) setAllCollections(meta.collections); });
   }, []);
 
   // Update state: starts as copy of collection data
@@ -305,14 +305,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Create endpoint returns CollectionUpdateResponseDTO
       const response = await createCollection(createData);
 
-      // Set current state (contains collection + metadata)
-      setCurrentState(response);
+      if (response !== null) {
+        // Set current state (contains collection + metadata)
+        setCurrentState(response);
 
-      // Revalidate index so the new collection appears on home/listing pages
-      await revalidateCollectionCache(response.collection.slug);
+        // Revalidate index so the new collection appears on home/listing pages
+        await revalidateCollectionCache(response.collection.slug);
 
-      // Update URL to reflect the new collection
-      router.replace(`/collection/manage/${response.collection.slug}`);
+        // Update URL to reflect the new collection
+        router.replace(`/collection/manage/${response.collection.slug}`);
+      }
     } catch (error: unknown) {
       setError(handleApiError(error, 'Failed to create collection'));
     } finally {
@@ -336,16 +338,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Update collection - response includes full CollectionUpdateResponseDTO with updated slug and all metadata
       const response = await updateCollection(collection.id, payload);
 
-      // Update currentState with response (includes collection + all metadata)
-      setCurrentState(response);
+      if (response !== null) {
+        // Update currentState with response (includes collection + all metadata)
+        setCurrentState(response);
 
-      // Update both caches with full admin data
-      collectionStorage.update(response.collection.slug, response.collection);
-      collectionStorage.updateFull(response.collection.slug, response);
+        // Update both caches with full admin data
+        collectionStorage.update(response.collection.slug, response.collection);
+        collectionStorage.updateFull(response.collection.slug, response);
 
-      // If slug changed, update URL to reflect new slug
-      if (response.collection.slug !== collection.slug) {
-        router.replace(`/collection/manage/${response.collection.slug}`);
+        // If slug changed, update URL to reflect new slug
+        if (response.collection.slug !== collection.slug) {
+          router.replace(`/collection/manage/${response.collection.slug}`);
+        }
       }
 
       // Reset coverImageId after successful update
@@ -459,16 +463,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
         // Re-fetch full collection for state consistency
         const fullResponse = await getCollectionUpdateMetadata(slug);
-        collectionStorage.update(slug, fullResponse.collection);
-        collectionStorage.updateFull(slug, fullResponse);
-        await revalidateCollectionCache(slug);
+        if (fullResponse !== null) {
+          collectionStorage.update(slug, fullResponse.collection);
+          collectionStorage.updateFull(slug, fullResponse);
+          await revalidateCollectionCache(slug);
 
-        // Merge metadata into the fresh response using functional updater to avoid stale closure
-        setCurrentState(prev => {
-          const base = fullResponse;
-          const metadataUpdater = mergeNewMetadata(response, prev ?? base);
-          return metadataUpdater ? metadataUpdater(base) : base;
-        });
+          // Merge metadata into the fresh response using functional updater to avoid stale closure
+          setCurrentState(prev => {
+            const base = fullResponse;
+            const metadataUpdater = mergeNewMetadata(response, prev ?? base);
+            return metadataUpdater ? metadataUpdater(base) : base;
+          });
+        }
 
         setSelectedImageIds([]);
         setIsMultiSelectMode(false);
@@ -506,10 +512,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
         // Re-fetch full collection for state consistency
         const fullResponse = await getCollectionUpdateMetadata(slug);
-        setCurrentState(fullResponse);
-        collectionStorage.update(slug, fullResponse.collection);
-        collectionStorage.updateFull(slug, fullResponse);
-        await revalidateCollectionCache(slug);
+        if (fullResponse !== null) {
+          setCurrentState(fullResponse);
+          collectionStorage.update(slug, fullResponse.collection);
+          collectionStorage.updateFull(slug, fullResponse);
+          await revalidateCollectionCache(slug);
+        }
 
         setSelectedImageIds([]);
         setIsMultiSelectMode(false);
@@ -678,7 +686,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
       await revalidateCollectionCache(collection.slug);
 
       // Navigate to the new child collection's manage page
-      router.push(`/collection/manage/${response.collection.slug}`);
+      if (response !== null) {
+        router.push(`/collection/manage/${response.collection.slug}`);
+      }
     } catch (error) {
       setError(handleApiError(error, 'Failed to create child collection'));
     } finally {

@@ -9,7 +9,6 @@ import {
   type TextBlockItem,
 } from '@/app/types/Content';
 import {
-  getContentDimensions,
   isContentCollection,
 } from '@/app/utils/contentTypeGuards';
 import { acToBoxTree, type BoxTree, buildRows, hChain, type TemplateKey, toImageType } from '@/app/utils/rowCombination';

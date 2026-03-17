@@ -248,11 +248,13 @@ export default function ImageMetadataModal({
 
       const response = await updateImages(imageUpdates);
 
-      // Convert response to ContentImageUpdateResponse format
-      const updateResponse = mapUpdateResponseToFrontend(response);
+      if (response !== null) {
+        // Convert response to ContentImageUpdateResponse format
+        const updateResponse = mapUpdateResponseToFrontend(response);
 
-      onSaveSuccess?.(updateResponse);
-      onClose();
+        onSaveSuccess?.(updateResponse);
+        onClose();
+      }
     } catch (error_) {
       setError(error_ instanceof Error ? error_.message : 'Failed to update image');
     } finally {
@@ -285,8 +287,10 @@ export default function ImageMetadataModal({
 
       const response = await deleteImages(selectedImageIds);
 
-      onDeleteSuccess?.(response.deletedIds);
-      onClose();
+      if (response !== null) {
+        onDeleteSuccess?.(response.deletedIds);
+        onClose();
+      }
     } catch (error_) {
       setError(error_ instanceof Error ? error_.message : 'Failed to delete images');
     } finally {

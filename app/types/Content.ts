@@ -17,6 +17,7 @@ import type {
   PersonUpdate,
   TagUpdate,
 } from './Collection';
+import { type CollectionType } from './Collection';
 import type {
   ContentCameraModel,
   ContentFilmTypeModel,
@@ -115,7 +116,7 @@ export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'cont
   parallaxSpeed?: number;
   // Optional fields for collection navigation (when converted from CollectionContentModel)
   slug?: string;
-  collectionType?: 'BLOG' | 'PORTFOLIO' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'HOME' | 'MISC';
+  collectionType?: CollectionType;
 }
 
 /**
@@ -164,7 +165,7 @@ export interface ContentGifModel extends Content {
 export interface ContentCollectionModel extends Content {
   contentType: 'COLLECTION';
   slug: string;
-  collectionType: 'BLOG' | 'PORTFOLIO' | 'ART_GALLERY' | 'CLIENT_GALLERY' | 'HOME' | 'MISC';
+  collectionType: CollectionType;
   coverImage?: ContentImageModel | null; // Full image object with dimensions (matches CollectionModel.coverImage)
   referencedCollectionId: number; // ID of the actual collection being referenced
 }
@@ -346,7 +347,7 @@ export interface ContentImageUpdateResponse {
  *   caption: null
  * });
  */
-export async function updateImage<T = unknown>(updates: ContentImageUpdateRequest): Promise<T> {
+export async function updateImage<T = unknown>(updates: ContentImageUpdateRequest): Promise<T | null> {
   if (!updates.id || updates.id <= 0) {
     throw new Error('Valid id is required in updates object');
   }
@@ -380,7 +381,7 @@ export async function updateImage<T = unknown>(updates: ContentImageUpdateReques
  */
 export async function updateMultipleImages(
   imageUpdates: ContentImageUpdateRequest[]
-): Promise<ContentImageUpdateResponse> {
+): Promise<ContentImageUpdateResponse | null> {
   if (!imageUpdates || imageUpdates.length === 0) {
     throw new Error('At least one image update is required');
   }

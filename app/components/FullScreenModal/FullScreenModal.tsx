@@ -2,7 +2,7 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
-import React from 'react';
+import { type Dispatch, type MouseEvent, type RefObject, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 
 import { IMAGE } from '@/app/constants';
@@ -20,12 +20,12 @@ type FullScreenState = {
 interface FullScreenModalProps {
   fullScreenState: FullScreenState | null;
   loadedImageIds: Set<number>;
-  setLoadedImageIds: React.Dispatch<React.SetStateAction<Set<number>>>;
-  modalRef: React.RefObject<HTMLDivElement | null>;
-  hideImage: (e?: React.MouseEvent) => void;
-  isSwiping: React.RefObject<boolean>;
+  setLoadedImageIds: Dispatch<SetStateAction<Set<number>>>;
+  modalRef: RefObject<HTMLDivElement | null>;
+  hideImage: (e?: MouseEvent) => void;
+  isSwiping: RefObject<boolean>;
   showMetadata: boolean;
-  toggleMetadata: (e: React.MouseEvent) => void;
+  toggleMetadata: (e: MouseEvent) => void;
   router: AppRouterInstance;
 }
 

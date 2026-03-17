@@ -15,7 +15,9 @@
  * @param reset - Function to attempt error recovery and re-render
  * @returns Client component with error message and retry functionality
  */
-import React from "react";
+import { useEffect } from 'react';
+
+import { logger } from '@/app/utils/logger';
 
 import styles from './styles/layout.module.scss';
 
@@ -26,8 +28,8 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  React.useEffect(() => {
-    // Optionally report error to monitoring service
+  useEffect(() => {
+    logger.error('app', 'Unhandled error boundary', error);
   }, [error]);
 
   return (

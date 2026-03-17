@@ -1,11 +1,48 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
+import { getAllCollections, getCollectionBySlug } from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 
 interface CollectionPageProps {
   params: Promise<{
     slug: string;
   }>;
+}
+
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const collections = await getAllCollections();
+  return collections.map((c) => ({ slug: c.slug ?? '' })).filter((p) => p.slug !== '');
+}
+
+export async function generateMetadata({ params }: CollectionPageProps): Promise<Metadata> {
+  const { slug } = await params;
+
+  try {
+    const collection = await getCollectionBySlug(slug);
+    const title = collection.title;
+    const description = collection.description ?? `${title} — photography by Zac Eden`;
+    const images = collection.coverImage?.imageUrl ? [{ url: collection.coverImage.imageUrl }] : [];
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        images,
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: images.map((img) => img.url),
+      },
+    };
+  } catch {
+    return { title: 'Not Found' };
+  }
 }
 
 /**

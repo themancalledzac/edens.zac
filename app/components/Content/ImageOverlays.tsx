@@ -1,4 +1,4 @@
-import React from 'react';
+import { type ReactElement } from 'react';
 
 import cbStyles from './ContentComponent.module.scss';
 
@@ -24,7 +24,7 @@ export function ImageOverlays({
   isNotVisible,
   shouldShowOverlay,
   isSelected,
-}: ImageOverlaysProps): React.ReactElement | null {
+}: ImageOverlaysProps): ReactElement | null {
   if (contentType !== 'IMAGE') return null;
   
   return (
