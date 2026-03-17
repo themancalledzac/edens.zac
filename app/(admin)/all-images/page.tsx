@@ -6,7 +6,7 @@ import type { CollectionModel } from '@/app/types/Collection';
 import { CollectionType } from '@/app/types/Collection';
 import type { ContentImageModel } from '@/app/types/Content';
 
-import CollectionPage from '../../components/ContentCollection/CollectionPage';
+import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 
 /**
  * All Images Page (Dev/Admin Only)

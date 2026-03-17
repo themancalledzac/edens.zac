@@ -1,38 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { BREAKPOINTS, getContentWidth } from '@/app/constants';
-
-/**
- * useDebounce Hook
- *
- * Generic debounce utility that delays function execution until after
- * specified delay period has passed since the last invocation. Optimizes
- * performance for frequent events like resize or scroll.
- *
- * @param callback - Function to debounce
- * @param delay - Delay in milliseconds before execution
- * @returns Debounced version of the callback function
- */
-function useDebounce<T extends (...args: never[]) => void>(
-  callback: T,
-  delay: number
-): T {
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, []);
-
-  return useCallback(
-    ((...args: Parameters<T>) => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(() => callback(...args), delay);
-    }) as T,
-    [callback, delay]
-  );
-}
+import { useDebounce } from '@/app/utils/debounce';
 
 export interface ViewportDimensions {
   width: number;

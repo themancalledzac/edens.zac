@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getAllCollectionsAdmin } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 
-import CollectionPage from '../../components/ContentCollection/CollectionPage';
+import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 
 /**
  * All Collections Page (Dev/Admin Only)

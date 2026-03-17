@@ -240,12 +240,23 @@ export function handleSingleImageEdit(
  */
 export async function revalidateCollectionCache(slug: string): Promise<void> {
   try {
+    // Revalidate the specific collection page
     await fetch('/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         tag: `collection-${slug}`,
         path: `/${slug}`,
+      }),
+    });
+
+    // Also revalidate the collections index so the home page reflects changes
+    await fetch('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collections-index',
+        path: '/',
       }),
     });
   } catch (error) {
