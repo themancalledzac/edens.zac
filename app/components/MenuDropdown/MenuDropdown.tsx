@@ -8,9 +8,10 @@ import InstagramIcon from '@/app/components/Icons/InstagramIcon';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
-import { About } from '../About/About';
-import { ContactForm } from '../ContactForm/ContactForm';
-import GitHubIcon from '../Icons/GitHubIcon';
+import { About } from '@/app/components/About/About';
+import { ContactForm } from '@/app/components/ContactForm/ContactForm';
+import GitHubIcon from '@/app/components/Icons/GitHubIcon';
+
 import styles from './MenuDropdown.module.scss';
 
 interface MenuDropdownProps {

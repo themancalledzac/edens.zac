@@ -191,7 +191,64 @@ export default function CollectionContentRenderer({
     );
   }
 
-  // Render image content (IMAGE, COLLECTION, GIF)
+  // Render GIF content as video (gifUrl is actually an MP4)
+  if (contentType === 'GIF' && imageUrl && imageUrl.trim() !== '') {
+    return (
+      <div
+        key={contentId}
+        className={buildWrapperClassName(className, cbStyles, {
+          includeDragContainer: false,
+          enableParallax: false,
+          isMobile,
+          hasClickHandler: !!handleClick,
+          isSelected: false,
+        })}
+        style={{
+          width: Number.isFinite(width) ? width : 300,
+          height: Number.isFinite(height) ? height : 200,
+          boxSizing: 'border-box',
+          position: 'relative',
+          cursor: handleClick ? 'pointer' : 'default',
+        }}
+      >
+        <div className={cbStyles.imageWrapper} onClick={handleClick}>
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            width={imageWidth || undefined}
+            height={imageHeight || undefined}
+            className={cbStyles.nonParallaxImage}
+            style={{ cursor: handleClick ? 'pointer' : 'default' }}
+          >
+            <source src={imageUrl} type="video/mp4" />
+          </video>
+          {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
+        </div>
+        {isReorderMode &&
+          onArrowMove &&
+          onPickUp &&
+          onPlace &&
+          onCancelImageMove && (
+            <ReorderOverlay
+              isPickedUp={isPickedUp}
+              pickedUpImageId={pickedUpImageId}
+              hasMoved={hasMoved}
+              isFirst={isFirstInOrder}
+              isLast={isLastInOrder}
+              onArrowLeft={() => onArrowMove(contentId, -1)}
+              onArrowRight={() => onArrowMove(contentId, 1)}
+              onPickUp={() => onPickUp(contentId)}
+              onPlace={() => onPlace(contentId)}
+              onCancel={() => onCancelImageMove(contentId)}
+            />
+          )}
+      </div>
+    );
+  }
+
+  // Render image content (IMAGE, COLLECTION)
   const hasValidImage = imageUrl && imageUrl.trim() !== '';
 
   if (!hasValidImage) {
