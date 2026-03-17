@@ -16,7 +16,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0; /* mobile: rely on --space-mobile-border from next row for separation */
   width: 100%;
 
   /* Desktop styles */
@@ -55,7 +55,7 @@
 
 /* Header row metadata needs less border on mobile */
 :global([data-pattern='header']) .blockContainer {
-  border-width: 2px 0 0;
+  border-width: var(--space-mobile-border-header) 0 0;
 }
 
 /* Desktop styles for text blocks */

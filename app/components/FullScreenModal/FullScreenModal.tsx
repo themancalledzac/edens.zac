@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
+import type { CollectionModel } from '@/app/types/Collection';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 
 type ImageBlock = ContentImageModel | ContentParallaxImageModel;
@@ -27,6 +28,8 @@ interface FullScreenModalProps {
   showMetadata: boolean;
   toggleMetadata: (e: MouseEvent) => void;
   router: AppRouterInstance;
+  /** Optional collection data for location and date fallback when image fields are absent */
+  collectionData?: CollectionModel;
 }
 
 export function FullScreenModal({
@@ -38,12 +41,24 @@ export function FullScreenModal({
   isSwiping,
   showMetadata,
   toggleMetadata,
-  router
+  router,
+  collectionData,
 }: FullScreenModalProps) {
   if (!fullScreenState) return null;
-  
+
   const currentImage = fullScreenState.images[fullScreenState.currentIndex];
   if (!currentImage) return null;
+
+  // Resolve location: image location takes priority, fall back to collection location
+  const collectionLocationName =
+    typeof collectionData?.location === 'string'
+      ? collectionData.location
+      : collectionData?.location?.name ?? null;
+  const displayLocation =
+    currentImage.location?.name ?? collectionLocationName ?? null;
+
+  // Resolve date: image captureDate takes priority, fall back to collection collectionDate
+  const displayDate = currentImage.captureDate ?? collectionData?.collectionDate ?? null;
 
   const currentImageLoaded = loadedImageIds.has(currentImage.id);
 
@@ -93,6 +108,13 @@ export function FullScreenModal({
                 )}
                 {currentImage.author && (
                   <div className={styles.metadataItem}>{currentImage.author}</div>
+                )}
+                {(displayDate || displayLocation) && (
+                  <div className={styles.metadataItem}>
+                    {displayDate && <span>{displayDate}</span>}
+                    {displayDate && displayLocation && <span className={styles.metadataSeparator}> / </span>}
+                    {displayLocation && <span>{displayLocation}</span>}
+                  </div>
                 )}
                 {(currentImage.camera || currentImage.lens) && (
                   <div className={styles.metadataItem}>

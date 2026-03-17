@@ -77,7 +77,7 @@ export interface ContentImageModel extends Content {
   camera?: ContentCameraModel | null;
   focalLength?: string | null;
   location?: { id: number; name: string } | null;
-  createDate?: string | null;
+  captureDate?: string | null;
   fstop?: string | null;
   alt?: string;
   aspectRatio?: number;
@@ -269,8 +269,8 @@ export interface ContentImageUpdateRequest {
   /** Film format - enum name (e.g., "MM_35") - only used when isFilm is true */
   filmFormat?: string | null;
 
-  /** Date the image was created */
-  createDate?: string | null;
+  /** Date the image was captured */
+  captureDate?: string | null;
 
   /** Camera update using prev/newValue/remove pattern */
   camera?: CameraUpdate;

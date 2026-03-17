@@ -184,6 +184,7 @@ export default function ContentBlockWithFullScreen({
         showMetadata={showMetadata}
         toggleMetadata={toggleMetadata}
         router={router}
+        collectionData={collectionData}
       />
     </>
   );

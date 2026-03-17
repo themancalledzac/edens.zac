@@ -22,8 +22,9 @@ export const PARALLAX_CONSTANTS = {
   FADE_IN_DURATION: '0.4s',
 
   // Parallax offset range (in pixels)
-  OFFSET_MIN: -50,
-  OFFSET_MAX: 100,
+  // Symmetric ±75px for balanced motion (was asymmetric -50/+100)
+  OFFSET_MIN: -75,
+  OFFSET_MAX: 75,
 
   // Viewport height adjustment (accounts for fixed header and mobile chrome UI)
   VIEWPORT_HEIGHT_OFFSET: 200,

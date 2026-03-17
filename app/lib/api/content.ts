@@ -14,7 +14,11 @@ import {
   fetchAdminPostJsonApi,
   fetchReadApi,
 } from '@/app/lib/api/core';
-import { type ContentImageModel, type ContentImageUpdateRequest } from '@/app/types/Content';
+import {
+  type ContentGifModel,
+  type ContentImageModel,
+  type ContentImageUpdateRequest,
+} from '@/app/types/Content';
 
 // ============================================================================
 // READ Endpoints (Production - /api/read/content)
@@ -60,14 +64,38 @@ export async function getFilmMetadata(): Promise<{
 // ============================================================================
 
 /**
+ * Response shape for image upload operations.
+ * Backend returns three arrays: successfully uploaded images, failed filenames, and skipped filenames.
+ */
+export interface ImageUploadResponse {
+  successful: ContentImageModel[];
+  failed: Array<{ filename: string; reason: string }>;
+  skipped: Array<{ filename: string; reason: string }>;
+}
+
+/**
  * POST /api/admin/content/images/{collectionId}
  * Create and upload images to a collection
  */
 export async function createImages(
   collectionId: number,
   formData: FormData
-): Promise<ContentImageModel[] | null> {
-  return fetchAdminFormDataApi<ContentImageModel[]>(`/content/images/${collectionId}`, formData);
+): Promise<ImageUploadResponse | null> {
+  return fetchAdminFormDataApi<ImageUploadResponse>(`/content/images/${collectionId}`, formData);
+}
+
+/**
+ * POST /api/admin/content/{collectionId}/gifs
+ * Upload a single GIF or video file to a collection.
+ * Accepted MIME types: video/mp4, video/quicktime, image/gif
+ */
+export async function createGif(
+  collectionId: number,
+  file: File
+): Promise<ContentGifModel | null> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return fetchAdminFormDataApi<ContentGifModel>(`/${collectionId}/gifs`, formData);
 }
 
 /**
