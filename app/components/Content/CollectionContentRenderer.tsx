@@ -115,7 +115,7 @@ export default function CollectionContentRenderer({
     isReorderMode,
   ]);
 
-  // Render TEXT content
+  // Render TEXT content (metadata block)
   if (contentType === 'TEXT') {
     if (!textItems || textItems.length === 0) {
       return null;
@@ -124,7 +124,12 @@ export default function CollectionContentRenderer({
     const dateItem = textItems.find(item => item.type === 'date');
     const locationItem = textItems.find(item => item.type === 'location');
     const descriptionItem = textItems.find(item => item.type === 'description');
+    const tagItems = textItems.filter(item => item.type === 'tag');
     const filterItems = textItems.filter(item => item.type === 'text');
+
+    const handleTagClick = (tagName: string) => {
+      router.push(`/collectionType/portfolio?tag=${encodeURIComponent(tagName)}`);
+    };
 
     return (
       <div
@@ -147,13 +152,20 @@ export default function CollectionContentRenderer({
             {(dateItem || locationItem) && (
               <div className={cbStyles.metadataHeaderRow}>
                 {dateItem && (
-                  <div className={cbStyles[`textItem-${dateItem.type}`]}>{dateItem.value}</div>
+                  <div className={cbStyles.metadataDate}>{dateItem.value}</div>
                 )}
                 {locationItem && (
-                  <div className={cbStyles[`textItem-${locationItem.type}`]}>
+                  <div className={cbStyles.metadataLocation}>
                     {locationItem.value}
                   </div>
                 )}
+              </div>
+            )}
+            {descriptionItem && (
+              <div className={cbStyles.metadataDescriptionContainer}>
+                <p className={cbStyles.metadataDescription}>
+                  {descriptionItem.value}
+                </p>
               </div>
             )}
             {filterItems.length > 0 && (
@@ -168,10 +180,19 @@ export default function CollectionContentRenderer({
                 ))}
               </div>
             )}
-            {descriptionItem && (
-              <div className={cbStyles.metadataDescriptionContainer}>
-                <div className={cbStyles[`textItem-${descriptionItem.type}`]}>
-                  {descriptionItem.value}
+            {tagItems.length > 0 && (
+              <div className={cbStyles.metadataTagsContainer}>
+                <div className={cbStyles.metadataTagsRow}>
+                  {tagItems.map(item => (
+                    <button
+                      key={`tag-${contentId}-${item.value}`}
+                      type="button"
+                      className={cbStyles.metadataTag}
+                      onClick={() => handleTagClick(item.value)}
+                    >
+                      {item.value}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
