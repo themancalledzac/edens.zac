@@ -4,6 +4,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useCallback, useMemo, useState } from 'react';
 
+import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
+import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
@@ -62,6 +64,8 @@ export default function CollectionContentRenderer({
   justClickedImageId,
   priority = false,
   onImageLoadError,
+  isClientGallery = false,
+  collectionSlug,
 }: CollectionContentRendererProps) {
   const router = useRouter();
 
@@ -205,6 +209,9 @@ export default function CollectionContentRenderer({
                   ))}
                 </div>
               </div>
+            )}
+            {isClientGallery && collectionSlug && (
+              <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
           </div>
         </div>
@@ -467,6 +474,9 @@ export default function CollectionContentRenderer({
           shouldShowOverlay={shouldShowOverlay}
           isSelected={isSelected}
         />
+      )}
+      {isClientGallery && contentType === 'IMAGE' && (
+        <ImageDownloadOverlay imageId={contentId} />
       )}
       {isReorderMode &&
         onArrowMove &&

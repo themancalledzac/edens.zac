@@ -1,0 +1,55 @@
+/* Image Download Overlay - per-image download button on hover */
+
+.overlayContainer {
+  position: absolute;
+  bottom: var(--space-2);
+  right: var(--space-2);
+  z-index: var(--z-overlay, 10);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+/* Show on parent hover - the parent wrapper needs to trigger this */
+:global(.imageWrapper):hover .overlayContainer,
+:global(.parallaxContainer):hover .overlayContainer {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.downloadIconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: rgba(0, 0, 0, 0.7);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  padding: 0;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.9);
+  }
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-white);
+}
+
+.miniToast {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+  right: 0;
+  background-color: var(--color-black);
+  color: var(--color-white);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-1);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  pointer-events: none;
+}

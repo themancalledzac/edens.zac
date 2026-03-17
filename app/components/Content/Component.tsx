@@ -5,7 +5,7 @@ import { Fragment, useMemo } from 'react';
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
-import { type CollectionModel } from '@/app/types/Collection';
+import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import {
   type AnyContentModel,
   type ContentImageModel,
@@ -212,6 +212,8 @@ export default function Component({
 
     const dataPattern = typeof templateKey === 'string' ? templateKey : `${templateKey.h}h-${templateKey.v}v`;
 
+    const isClientGallery = collectionData?.type === CollectionType.CLIENT_GALLERY;
+
     return (
       <div key={rowKey} className={cbStyles.row} data-pattern={dataPattern}>
         <BoxRenderer
@@ -236,6 +238,8 @@ export default function Component({
           onCancelImageMove={onCancelImageMove}
           priority={rowIndex === priorityIndex}
           onImageLoadError={onImageLoadError}
+          isClientGallery={isClientGallery}
+          collectionSlug={collectionData?.slug}
         />
       </div>
     );
