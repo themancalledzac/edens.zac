@@ -43,10 +43,15 @@ export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderP
             </Link>
           </div>
           <div className={styles.menuWrapper}>
-            <AlignJustify
-              className={styles.menu}
+            <button
+              type="button"
+              className={styles.menuButton}
               onClick={toggleMenu}
-            />
+              aria-label="Open navigation menu"
+              aria-expanded={isMenuOpen}
+            >
+              <AlignJustify className={styles.menu} />
+            </button>
           </div>
         </div>
       </header>

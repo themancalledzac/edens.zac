@@ -1,5 +1,7 @@
 import { type RefObject, useEffect, useMemo, useState } from 'react';
 
+import { observe } from '@/app/utils/sharedObserver';
+
 interface UseInViewportOptions {
   threshold?: number | number[];
   root?: HTMLElement | null;
@@ -38,19 +40,17 @@ export function useInViewport(ref: RefObject<Element | null>, options: UseInView
   useEffect(() => {
     if (!ref.current) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry) {
-          setIsVisible(entry.isIntersecting);
-          setIntersectionRatio(entry.intersectionRatio);
-        }
+    const element = ref.current;
+    const unobserveFn = observe(
+      element,
+      (entry) => {
+        setIsVisible(entry.isIntersecting);
+        setIntersectionRatio(entry.intersectionRatio);
       },
       observerOptions
     );
 
-    observer.observe(ref.current);
-
-    return () => observer.disconnect();
+    return unobserveFn;
   }, [ref, observerOptions]);
 
   return { isVisible, intersectionRatio };

@@ -73,6 +73,17 @@
   }
 }
 
+.menuButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+
 .menu {
   /* Mobile base size - was perfect at 2rem */
   width: var(--space-6);

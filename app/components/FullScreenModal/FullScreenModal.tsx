@@ -2,12 +2,12 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
-import React from 'react';
 import { createPortal } from 'react-dom';
 
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
+import type React from 'react';
 
 type ImageBlock = ContentImageModel | ContentParallaxImageModel;
 
@@ -27,6 +27,8 @@ interface FullScreenModalProps {
   showMetadata: boolean;
   toggleMetadata: (e: React.MouseEvent) => void;
   router: AppRouterInstance;
+  navigateToNext: () => void;
+  navigateToPrevious: () => void;
 }
 
 export function FullScreenModal({
@@ -38,14 +40,18 @@ export function FullScreenModal({
   isSwiping,
   showMetadata,
   toggleMetadata,
-  router
+  router,
+  navigateToNext,
+  navigateToPrevious,
 }: FullScreenModalProps) {
   if (!fullScreenState) return null;
-  
+
   const currentImage = fullScreenState.images[fullScreenState.currentIndex];
   if (!currentImage) return null;
 
   const currentImageLoaded = loadedImageIds.has(currentImage.id);
+  const hasPrevious = fullScreenState.currentIndex > 0;
+  const hasNext = fullScreenState.currentIndex < fullScreenState.images.length - 1;
 
   const handleOverlayClick = () => {
     if (!isSwiping.current) {
@@ -162,6 +168,28 @@ export function FullScreenModal({
           )}
         </div>
       </div>
+
+      {hasPrevious && (
+        <button
+          type="button"
+          className={styles.navButtonPrev}
+          onClick={(e) => { e.stopPropagation(); navigateToPrevious(); }}
+          aria-label="Previous image"
+        >
+          <span aria-hidden="true">&#8249;</span>
+        </button>
+      )}
+
+      {hasNext && (
+        <button
+          type="button"
+          className={styles.navButtonNext}
+          onClick={(e) => { e.stopPropagation(); navigateToNext(); }}
+          aria-label="Next image"
+        >
+          <span aria-hidden="true">&#8250;</span>
+        </button>
+      )}
 
       <button
         className={styles.closeButton}

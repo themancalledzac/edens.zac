@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { getCollectionsByType } from '@/app/lib/api/collections';
+import { ApiError } from '@/app/lib/api/core';
 import { CollectionType } from '@/app/types/Collection';
 
 interface CollectionTypePageProps {
@@ -59,21 +60,18 @@ export default async function CollectionTypePage({ params }: CollectionTypePageP
     // If no collections found, still render the page (empty state handled by CollectionPage)
     return <CollectionPage collection={collections} />;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // Handle 404s
-    if (errorMessage.includes('404')) {
-      notFound();
+    // Handle typed API errors first
+    if (error instanceof ApiError) {
+      if (error.status === 404 || error.status >= 500) {
+        notFound();
+      }
+      throw error;
     }
 
-    // Handle backend schema/database errors
-    const isBackendError =
-      errorMessage.includes('JDBC') ||
-      errorMessage.includes('Unknown column') ||
-      errorMessage.includes('API 500') ||
-      errorMessage.includes('Failed to retrieve');
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
-    if (isBackendError) {
+    // Handle 404s in non-ApiError messages
+    if (errorMessage.includes('404')) {
       notFound();
     }
 

@@ -141,20 +141,25 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
   return (
     <div className={styles.dropdown} ref={dropdownRef}>
       <div className={styles.dropdownCloseButtonWrapper}>
-        <CircleX
-          className={styles.dropdownCloseButton}
+        <button
+          type="button"
+          className={styles.dropdownCloseButtonWrapper_button}
           onClick={onClose}
-        />
+          aria-label="Close navigation menu"
+        >
+          <CircleX className={styles.dropdownCloseButton} />
+        </button>
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
         <div className={styles.dropdownMenuItem}>
-          <h2
-            className={styles.dropdownMenuOptions}
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
             onClick={handleToggle.about}
           >
-            About
-          </h2>
+            <h2 className={styles.dropdownMenuOptions}>About</h2>
+          </button>
         </div>
 
         {showAbout && (
@@ -162,12 +167,13 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
         )}
 
         <div className={styles.dropdownMenuItem}>
-          <h2
-            className={styles.dropdownMenuOptions}
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
             onClick={handleToggle.contact}
           >
-            Contact
-          </h2>
+            <h2 className={styles.dropdownMenuOptions}>Contact</h2>
+          </button>
         </div>
 
         {showContactForm && (
@@ -178,47 +184,57 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
         )}
 
         <div className={styles.dropdownMenuItem}>
-          <h2
-            className={styles.dropdownMenuOptions}
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
             onClick={handleNavigation.blogs}
           >
-            Blogs
-          </h2>
+            <h2 className={styles.dropdownMenuOptions}>Blogs</h2>
+          </button>
         </div>
 
         {isLocalEnvironment() && (pageType === 'collection' || pageType === 'collectionsCollection') && (
           <div className={styles.dropdownMenuItem}>
-            <h2
-              className={styles.dropdownMenuOptions}
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
               onClick={handleNavigation.create}
             >
-              Create
-            </h2>
+              <h2 className={styles.dropdownMenuOptions}>Create</h2>
+            </button>
           </div>
         )}
 
         {isLocalEnvironment() && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
-            <h2
-              className={styles.dropdownMenuOptions}
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
               onClick={handleNavigation.update}
             >
-              Update
-            </h2>
+              <h2 className={styles.dropdownMenuOptions}>Update</h2>
+            </button>
           </div>
         )}
       </div>
 
       <div className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}>
-        <InstagramIcon
-          size={32}
+        <button
+          type="button"
+          className={styles.socialIconButton}
           onClick={handleNavigation.instagram}
-        />
-        <GitHubIcon
-          size={32}
+          aria-label="Instagram"
+        >
+          <InstagramIcon size={32} />
+        </button>
+        <button
+          type="button"
+          className={styles.socialIconButton}
           onClick={handleNavigation.github}
-          className={styles.githubIcon}
-        />
+          aria-label="GitHub"
+        >
+          <GitHubIcon size={32} className={styles.githubIcon} />
+        </button>
       </div>
     </div>
   );

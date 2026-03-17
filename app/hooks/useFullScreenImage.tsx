@@ -30,6 +30,8 @@ export function useFullScreenImage(): {
   setLoadedImageIds: React.Dispatch<React.SetStateAction<Set<number>>>;
   router: ReturnType<typeof useRouter>;
   isOpen: boolean;
+  navigateToNext: () => void;
+  navigateToPrevious: () => void;
 } {
   const router = useRouter();
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
@@ -232,6 +234,8 @@ export function useFullScreenImage(): {
     toggleMetadata,
     setLoadedImageIds,
     router,
-    isOpen: !!fullScreenState
+    isOpen: !!fullScreenState,
+    navigateToNext,
+    navigateToPrevious,
   };
 }
