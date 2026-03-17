@@ -23,7 +23,8 @@ const nextConfig = {
         hostname: '*.cloudfront.net',
       },
     ],
-    formats: ['image/avif', 'image/webp'],
+    formats: ['image/webp'], // Don't attempt AVIF — backend already serves optimized WebP
+    minimumCacheTTL: 86400, // Cache optimized images for 24 hours
   },
   turbopack: {
     root: process.cwd(),
