@@ -9,6 +9,7 @@ import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { CollectionModel } from '@/app/types/Collection';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
+import type React from 'react';
 
 type ImageBlock = ContentImageModel | ContentParallaxImageModel;
 
@@ -30,6 +31,8 @@ interface FullScreenModalProps {
   router: AppRouterInstance;
   /** Optional collection data for location and date fallback when image fields are absent */
   collectionData?: CollectionModel;
+  navigateToNext: () => void;
+  navigateToPrevious: () => void;
 }
 
 export function FullScreenModal({
@@ -43,6 +46,8 @@ export function FullScreenModal({
   toggleMetadata,
   router,
   collectionData,
+  navigateToNext,
+  navigateToPrevious,
 }: FullScreenModalProps) {
   if (!fullScreenState) return null;
 
@@ -61,6 +66,8 @@ export function FullScreenModal({
   const displayDate = currentImage.captureDate ?? collectionData?.collectionDate ?? null;
 
   const currentImageLoaded = loadedImageIds.has(currentImage.id);
+  const hasPrevious = fullScreenState.currentIndex > 0;
+  const hasNext = fullScreenState.currentIndex < fullScreenState.images.length - 1;
 
   const handleOverlayClick = () => {
     if (!isSwiping.current) {
@@ -184,6 +191,28 @@ export function FullScreenModal({
           )}
         </div>
       </div>
+
+      {hasPrevious && (
+        <button
+          type="button"
+          className={styles.navButtonPrev}
+          onClick={(e) => { e.stopPropagation(); navigateToPrevious(); }}
+          aria-label="Previous image"
+        >
+          <span aria-hidden="true">&#8249;</span>
+        </button>
+      )}
+
+      {hasNext && (
+        <button
+          type="button"
+          className={styles.navButtonNext}
+          onClick={(e) => { e.stopPropagation(); navigateToNext(); }}
+          aria-label="Next image"
+        >
+          <span aria-hidden="true">&#8250;</span>
+        </button>
+      )}
 
       <button
         className={styles.closeButton}

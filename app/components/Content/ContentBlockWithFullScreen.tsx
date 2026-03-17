@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+import { ErrorBoundary } from '@/app/components/ErrorBoundary/ErrorBoundary';
 import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
@@ -79,6 +80,8 @@ export default function ContentBlockWithFullScreen({
     showMetadata,
     toggleMetadata,
     router,
+    navigateToNext,
+    navigateToPrevious,
   } = useFullScreenImage();
 
   useEffect(() => {
@@ -174,18 +177,22 @@ export default function ContentBlockWithFullScreen({
         </div>
       )}
 
-      <FullScreenModal
-        fullScreenState={fullScreenState}
-        loadedImageIds={loadedImageIds}
-        setLoadedImageIds={setLoadedImageIds}
-        modalRef={modalRef}
-        hideImage={hideImage}
-        isSwiping={isSwiping}
-        showMetadata={showMetadata}
-        toggleMetadata={toggleMetadata}
-        router={router}
-        collectionData={collectionData}
-      />
+      <ErrorBoundary>
+        <FullScreenModal
+          fullScreenState={fullScreenState}
+          loadedImageIds={loadedImageIds}
+          setLoadedImageIds={setLoadedImageIds}
+          modalRef={modalRef}
+          hideImage={hideImage}
+          isSwiping={isSwiping}
+          showMetadata={showMetadata}
+          toggleMetadata={toggleMetadata}
+          router={router}
+          collectionData={collectionData}
+          navigateToNext={navigateToNext}
+          navigateToPrevious={navigateToPrevious}
+        />
+      </ErrorBoundary>
     </>
   );
 }
