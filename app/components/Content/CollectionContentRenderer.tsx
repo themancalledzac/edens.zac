@@ -2,8 +2,10 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
+import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
+import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
@@ -60,8 +62,14 @@ export default function CollectionContentRenderer({
   isSelectingCoverImage = false,
   currentCoverImageId,
   justClickedImageId,
+  priority = false,
+  onImageLoadError,
+  isClientGallery = false,
+  collectionSlug,
 }: CollectionContentRendererProps) {
   const router = useRouter();
+
+  const [failedImageIds, setFailedImageIds] = useState<Set<number>>(new Set());
 
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
@@ -115,7 +123,13 @@ export default function CollectionContentRenderer({
     isReorderMode,
   ]);
 
-  // Render TEXT content
+  // Memoized error handler — must be defined before any early return to satisfy Rules of Hooks
+  const handleImageError = useCallback(() => {
+    setFailedImageIds(prev => new Set(prev).add(contentId));
+    onImageLoadError?.(contentId);
+  }, [contentId, onImageLoadError]);
+
+  // Render TEXT content (metadata block)
   if (contentType === 'TEXT') {
     if (!textItems || textItems.length === 0) {
       return null;
@@ -124,7 +138,12 @@ export default function CollectionContentRenderer({
     const dateItem = textItems.find(item => item.type === 'date');
     const locationItem = textItems.find(item => item.type === 'location');
     const descriptionItem = textItems.find(item => item.type === 'description');
+    const tagItems = textItems.filter(item => item.type === 'tag');
     const filterItems = textItems.filter(item => item.type === 'text');
+
+    const handleTagClick = (tagName: string) => {
+      router.push(`/collectionType/portfolio?tag=${encodeURIComponent(tagName)}`);
+    };
 
     return (
       <div
@@ -147,13 +166,20 @@ export default function CollectionContentRenderer({
             {(dateItem || locationItem) && (
               <div className={cbStyles.metadataHeaderRow}>
                 {dateItem && (
-                  <div className={cbStyles[`textItem-${dateItem.type}`]}>{dateItem.value}</div>
+                  <div className={cbStyles.metadataDate}>{dateItem.value}</div>
                 )}
                 {locationItem && (
-                  <div className={cbStyles[`textItem-${locationItem.type}`]}>
+                  <div className={cbStyles.metadataLocation}>
                     {locationItem.value}
                   </div>
                 )}
+              </div>
+            )}
+            {descriptionItem && (
+              <div className={cbStyles.metadataDescriptionContainer}>
+                <p className={cbStyles.metadataDescription}>
+                  {descriptionItem.value}
+                </p>
               </div>
             )}
             {filterItems.length > 0 && (
@@ -168,12 +194,24 @@ export default function CollectionContentRenderer({
                 ))}
               </div>
             )}
-            {descriptionItem && (
-              <div className={cbStyles.metadataDescriptionContainer}>
-                <div className={cbStyles[`textItem-${descriptionItem.type}`]}>
-                  {descriptionItem.value}
+            {tagItems.length > 0 && (
+              <div className={cbStyles.metadataTagsContainer}>
+                <div className={cbStyles.metadataTagsRow}>
+                  {tagItems.map(item => (
+                    <button
+                      key={`tag-${contentId}-${item.value}`}
+                      type="button"
+                      className={cbStyles.metadataTag}
+                      onClick={() => handleTagClick(item.value)}
+                    >
+                      {item.value}
+                    </button>
+                  ))}
                 </div>
               </div>
+            )}
+            {isClientGallery && collectionSlug && (
+              <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
           </div>
         </div>
@@ -181,7 +219,64 @@ export default function CollectionContentRenderer({
     );
   }
 
-  // Render image content (IMAGE, COLLECTION, GIF)
+  // Render GIF content as video (gifUrl is actually an MP4)
+  if (contentType === 'GIF' && imageUrl && imageUrl.trim() !== '') {
+    return (
+      <div
+        key={contentId}
+        className={buildWrapperClassName(className, cbStyles, {
+          includeDragContainer: false,
+          enableParallax: false,
+          isMobile,
+          hasClickHandler: !!handleClick,
+          isSelected: false,
+        })}
+        style={{
+          width: Number.isFinite(width) ? width : 300,
+          height: Number.isFinite(height) ? height : 200,
+          boxSizing: 'border-box',
+          position: 'relative',
+          cursor: handleClick ? 'pointer' : 'default',
+        }}
+      >
+        <div className={cbStyles.imageWrapper} onClick={handleClick}>
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            width={imageWidth || undefined}
+            height={imageHeight || undefined}
+            className={cbStyles.nonParallaxImage}
+            style={{ cursor: handleClick ? 'pointer' : 'default' }}
+          >
+            <source src={imageUrl} type="video/mp4" />
+          </video>
+          {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
+        </div>
+        {isReorderMode &&
+          onArrowMove &&
+          onPickUp &&
+          onPlace &&
+          onCancelImageMove && (
+            <ReorderOverlay
+              isPickedUp={isPickedUp}
+              pickedUpImageId={pickedUpImageId}
+              hasMoved={hasMoved}
+              isFirst={isFirstInOrder}
+              isLast={isLastInOrder}
+              onArrowLeft={() => onArrowMove(contentId, -1)}
+              onArrowRight={() => onArrowMove(contentId, 1)}
+              onPickUp={() => onPickUp(contentId)}
+              onPlace={() => onPlace(contentId)}
+              onCancel={() => onCancelImageMove(contentId)}
+            />
+          )}
+      </div>
+    );
+  }
+
+  // Render image content (IMAGE, COLLECTION)
   const hasValidImage = imageUrl && imageUrl.trim() !== '';
 
   if (!hasValidImage) {
@@ -215,6 +310,38 @@ export default function CollectionContentRenderer({
     );
   }
 
+  // If the image previously failed to load, render a placeholder instead
+  if (failedImageIds.has(contentId)) {
+    const placeholderWidth = width || 300;
+    const placeholderHeight = height || (placeholderWidth * 2) / 3;
+
+    return (
+      <div
+        key={contentId}
+        className={buildWrapperClassName(className, cbStyles, {
+          includeDragContainer: false,
+          enableParallax: false,
+          isMobile,
+          hasClickHandler: false,
+          isSelected: false,
+        })}
+        style={{
+          width: placeholderWidth,
+          height: placeholderHeight,
+          boxSizing: 'border-box',
+          position: 'relative',
+        }}
+      >
+        <div
+          className={cbStyles.placeholderImage}
+          style={{ width: placeholderWidth, height: placeholderHeight }}
+        >
+          Image unavailable
+        </div>
+      </div>
+    );
+  }
+
   // Image-specific overlays (only for IMAGE type)
   const isCurrentCover = contentType === 'IMAGE' && currentCoverImageId === contentId;
   const isJustClicked = contentType === 'IMAGE' && justClickedImageId === contentId;
@@ -241,8 +368,11 @@ export default function CollectionContentRenderer({
     alt,
     width: imageWidth,
     height: imageHeight,
-    loading: 'lazy' as const,
+    sizes: `(max-width: 768px) 100vw, ${Math.round(width)}px`,
+    loading: priority ? ('eager' as const) : ('lazy' as const),
+    priority: priority ?? false,
     unoptimized: isGif,
+    onError: handleImageError,
     ...(enableParallax
       ? {
           className: `parallax-bg ${variantStyles.parallaxImage}`,
@@ -333,7 +463,11 @@ export default function CollectionContentRenderer({
   };
 
   return (
-    <div key={contentId} {...wrapperProps}>
+    <div
+      key={contentId}
+      {...wrapperProps}
+      {...(enableParallax ? { 'data-parallax-container': '' } : { 'data-image-wrapper': '' })}
+    >
       <div className={cbStyles.imageWrapper} onClick={handleClick}>
         {imageWrapperContent}
       </div>
@@ -344,6 +478,9 @@ export default function CollectionContentRenderer({
           shouldShowOverlay={shouldShowOverlay}
           isSelected={isSelected}
         />
+      )}
+      {isClientGallery && contentType === 'IMAGE' && (
+        <ImageDownloadOverlay imageId={contentId} />
       )}
       {isReorderMode &&
         onArrowMove &&

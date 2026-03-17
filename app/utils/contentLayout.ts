@@ -9,7 +9,6 @@ import {
   type TextBlockItem,
 } from '@/app/types/Content';
 import {
-  getContentDimensions,
   isContentCollection,
 } from '@/app/utils/contentTypeGuards';
 import { acToBoxTree, type BoxTree, buildRows, hChain, type TemplateKey, toImageType } from '@/app/utils/rowCombination';
@@ -229,7 +228,7 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
     camera: coverImage?.camera ?? null,
     focalLength: coverImage?.focalLength ?? null,
     location: coverImage?.location ?? null,
-    createDate: coverImage?.createDate ?? null,
+    captureDate: coverImage?.captureDate ?? null,
     fstop: coverImage?.fstop ?? null,
     alt: col.title || col.slug || '',
     aspectRatio: imageWidth && imageHeight ? imageWidth / imageHeight : undefined,
@@ -439,13 +438,12 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
     });
   }
 
-  // Add tags
+  // Add tags as dedicated tag type for chip/badge rendering
   if (collection.tags && collection.tags.length > 0) {
     for (const tag of collection.tags) {
       items.push({
-        type: 'text',
+        type: 'tag',
         value: tag,
-        label: 'tag',
       });
     }
   }
@@ -601,7 +599,7 @@ export function createHeaderRow(
 
   if (metadataBlock) {
     // Description gets remaining width, same height as cover
-    const descWidth = componentWidth - coverWidth;
+    const descWidth = componentWidth - coverWidth - LAYOUT.gridGap;
     calculatedSizes.push({ content: metadataBlock, width: descWidth, height: rowHeight });
   }
 

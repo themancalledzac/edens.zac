@@ -20,7 +20,7 @@ import '@/app/styles/globals.css';
 
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import React from 'react';
+import { type ReactNode } from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <html lang="en" suppressHydrationWarning>

@@ -1,9 +1,9 @@
+import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions, processContentBlocks } from '@/app/utils/contentLayout';
 
-import ContentBlockWithFullScreen from '../Content/ContentBlockWithFullScreen';
-import SiteHeader from '../SiteHeader/SiteHeader';
 import styles from './ContentCollectionPage.module.scss';
 
 interface ContentCollectionPageProps {

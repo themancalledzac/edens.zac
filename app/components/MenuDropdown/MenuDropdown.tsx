@@ -1,14 +1,16 @@
 'use client';
 
 import { CircleX } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import { About } from '@/app/components/About/About';
+import { ContactForm } from '@/app/components/ContactForm/ContactForm';
+import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
-import { About } from '../About/About';
-import { ContactForm } from '../ContactForm/ContactForm';
-import GitHubIcon from '../Icons/GitHubIcon';
 import styles from './MenuDropdown.module.scss';
 
 interface MenuDropdownProps {
@@ -39,6 +41,7 @@ interface MenuDropdownProps {
  */
 export function MenuDropdown({ isOpen, onClose, pageType = 'default', collectionSlug }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Form/page state
   const [showContactForm, setShowContactForm] = useState(false);
@@ -48,15 +51,15 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
   // Navigation handlers with automatic close
   const handleNavigation = {
     create: () => {
-      window.location.href = '/collection/manage';
+      router.push('/collection/manage');
       onClose();
     },
     update: () => {
-      window.location.href = collectionSlug ? `/collection/manage/${collectionSlug}` : '/collection/manage';
+      router.push(collectionSlug ? `/collection/manage/${collectionSlug}` : '/collection/manage');
       onClose();
     },
     blogs: () => {
-      window.location.href = '/collectionType/blogs';
+      router.push('/collectionType/blogs');
       onClose();
     },
     instagram: () => {
@@ -115,18 +118,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
   }, [isOpen, onClose]);
 
   // Body scroll lock when dropdown is open
-  useEffect(() => {
-    if (isOpen) {
-      // Save current body overflow and lock scroll
-      const originalStyle = window.getComputedStyle(document.body).overflow;
-      document.body.style.overflow = 'hidden';
-
-      return () => {
-        // Restore original overflow when dropdown closes
-        document.body.style.overflow = originalStyle;
-      };
-    }
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   // Reset forms/pages when dropdown closes
   useEffect(() => {
@@ -141,20 +133,25 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
   return (
     <div className={styles.dropdown} ref={dropdownRef}>
       <div className={styles.dropdownCloseButtonWrapper}>
-        <CircleX
-          className={styles.dropdownCloseButton}
+        <button
+          type="button"
+          className={styles.dropdownCloseButtonWrapper_button}
           onClick={onClose}
-        />
+          aria-label="Close navigation menu"
+        >
+          <CircleX className={styles.dropdownCloseIcon} />
+        </button>
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
         <div className={styles.dropdownMenuItem}>
-          <h2
-            className={styles.dropdownMenuOptions}
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
             onClick={handleToggle.about}
           >
-            About
-          </h2>
+            <h2 className={styles.dropdownMenuOptions}>About</h2>
+          </button>
         </div>
 
         {showAbout && (
@@ -162,12 +159,13 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
         )}
 
         <div className={styles.dropdownMenuItem}>
-          <h2
-            className={styles.dropdownMenuOptions}
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
             onClick={handleToggle.contact}
           >
-            Contact
-          </h2>
+            <h2 className={styles.dropdownMenuOptions}>Contact</h2>
+          </button>
         </div>
 
         {showContactForm && (
@@ -178,47 +176,57 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
         )}
 
         <div className={styles.dropdownMenuItem}>
-          <h2
-            className={styles.dropdownMenuOptions}
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
             onClick={handleNavigation.blogs}
           >
-            Blogs
-          </h2>
+            <h2 className={styles.dropdownMenuOptions}>Blogs</h2>
+          </button>
         </div>
 
         {isLocalEnvironment() && (pageType === 'collection' || pageType === 'collectionsCollection') && (
           <div className={styles.dropdownMenuItem}>
-            <h2
-              className={styles.dropdownMenuOptions}
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
               onClick={handleNavigation.create}
             >
-              Create
-            </h2>
+              <h2 className={styles.dropdownMenuOptions}>Create</h2>
+            </button>
           </div>
         )}
 
         {isLocalEnvironment() && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
-            <h2
-              className={styles.dropdownMenuOptions}
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
               onClick={handleNavigation.update}
             >
-              Update
-            </h2>
+              <h2 className={styles.dropdownMenuOptions}>Update</h2>
+            </button>
           </div>
         )}
       </div>
 
       <div className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}>
-        <InstagramIcon
-          size={32}
+        <button
+          type="button"
+          className={styles.socialIconButton}
           onClick={handleNavigation.instagram}
-        />
-        <GitHubIcon
-          size={32}
+          aria-label="Visit Instagram"
+        >
+          <InstagramIcon size={32} />
+        </button>
+        <button
+          type="button"
+          className={styles.socialIconButton}
           onClick={handleNavigation.github}
-          className={styles.githubIcon}
-        />
+          aria-label="Visit GitHub"
+        >
+          <GitHubIcon size={32} className={styles.githubIcon} />
+        </button>
       </div>
     </div>
   );

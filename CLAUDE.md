@@ -63,6 +63,8 @@ Common flags:
 - ❌ Forgetting to add tests for new utility functions
 - ❌ Using React Context when URL state would suffice
 - ❌ Not using `next/image` for images (always use CloudFront URLs)
+- ❌ Using `import React` namespace — always use named imports from `'react'`
+- ❌ Using deprecated `FormEvent` — use `SubmitEvent<HTMLFormElement>` (React 19)
 
 ## Data Flow
 

@@ -13,7 +13,6 @@ const nextConfig = {
     includePaths: [path.join(process.cwd(), 'styles')],
   },
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'http',
@@ -21,7 +20,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: `${process.env.AWS_CLOUDFRONT_DOMAIN_NAME}.cloudfront.net`,
+        hostname: '*.cloudfront.net',
       },
     ],
     formats: ['image/avif', 'image/webp'],

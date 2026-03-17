@@ -5,10 +5,10 @@ import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, use
 import { updateCollection } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
+import { handleApiError } from '@/app/utils/apiUtils';
 
 import {
   COVER_IMAGE_FLASH_DURATION,
-  handleApiError,
   handleCoverImageSelection,
 } from './manageUtils';
 
@@ -60,9 +60,11 @@ export function useCoverImageSelection({
           coverImageId: result.coverImageId,
         });
 
-        setCurrentState(response);
-        collectionStorage.update(response.collection.slug, response.collection);
-        collectionStorage.updateFull(response.collection.slug, response);
+        if (response !== null) {
+          setCurrentState(response);
+          collectionStorage.update(response.collection.slug, response.collection);
+          collectionStorage.updateFull(response.collection.slug, response);
+        }
       } catch (error) {
         setError(handleApiError(error, 'Failed to update cover image'));
       } finally {

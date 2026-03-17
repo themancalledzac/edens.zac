@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ChangeEvent, type SubmitEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
@@ -17,6 +17,7 @@ import {
   createChildCollection,
   createCollection,
   getCollectionUpdateMetadata,
+  getMetadata,
   updateCollection,
 } from '@/app/lib/api/collections';
 import { createImages, createTextContent } from '@/app/lib/api/content';
@@ -31,6 +32,7 @@ import {
   type LocationModel,
 } from '@/app/types/Collection';
 import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
+import { handleApiError } from '@/app/utils/apiUtils';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 import {
@@ -42,7 +44,6 @@ import styles from './ManageClient.module.scss';
 import {
   buildUpdatePayload,
   getDisplayedCoverImage,
-  handleApiError,
   handleMultiSelectToggle as handleMultiSelectToggleUtil,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
@@ -116,6 +117,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   const isCreateMode = !slug;
   const collection = currentState?.collection ?? null;
+
+  // All collections in the system, used for the image metadata editor's collection selector
+  const [allCollections, setAllCollections] = useState<CollectionListModel[]>([]);
+
+  useEffect(() => {
+    getMetadata().then(meta => { if (meta !== null) setAllCollections(meta.collections); });
+  }, []);
 
   // Update state: starts as copy of collection data
   const [updateData, setUpdateData] = useState<CollectionUpdateRequest>(() => {
@@ -222,6 +230,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [collection, updateData.coverImageId]
   );
 
+  const handleImageLoadError = useCallback((contentId: number) => {
+    console.warn(`[ManageClient] Image failed to load: contentId=${contentId}`);
+  }, []);
+
   // Collection data loading is now handled by useCollectionData hook
 
   /**
@@ -278,7 +290,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   };
 
   // Handle create form submission
-  const handleCreate = async (e: FormEvent) => {
+  const handleCreate = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!createData.title.trim()) {
@@ -293,11 +305,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Create endpoint returns CollectionUpdateResponseDTO
       const response = await createCollection(createData);
 
-      // Set current state (contains collection + metadata)
-      setCurrentState(response);
+      if (response !== null) {
+        // Set current state (contains collection + metadata)
+        setCurrentState(response);
 
-      // Update URL to reflect the new collection
-      router.replace(`/collection/manage/${response.collection.slug}`);
+        // Revalidate index so the new collection appears on home/listing pages
+        await revalidateCollectionCache(response.collection.slug);
+
+        // Update URL to reflect the new collection
+        router.replace(`/collection/manage/${response.collection.slug}`);
+      }
     } catch (error: unknown) {
       setError(handleApiError(error, 'Failed to create collection'));
     } finally {
@@ -306,7 +323,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   };
 
   // Handle update form submission
-  const handleUpdate = async (e: FormEvent) => {
+  const handleUpdate = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!collection || !currentState) return;
@@ -321,16 +338,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // Update collection - response includes full CollectionUpdateResponseDTO with updated slug and all metadata
       const response = await updateCollection(collection.id, payload);
 
-      // Update currentState with response (includes collection + all metadata)
-      setCurrentState(response);
+      if (response !== null) {
+        // Update currentState with response (includes collection + all metadata)
+        setCurrentState(response);
 
-      // Update both caches with full admin data
-      collectionStorage.update(response.collection.slug, response.collection);
-      collectionStorage.updateFull(response.collection.slug, response);
+        // Update both caches with full admin data
+        collectionStorage.update(response.collection.slug, response.collection);
+        collectionStorage.updateFull(response.collection.slug, response);
 
-      // If slug changed, update URL to reflect new slug
-      if (response.collection.slug !== collection.slug) {
-        router.replace(`/collection/manage/${response.collection.slug}`);
+        // If slug changed, update URL to reflect new slug
+        if (response.collection.slug !== collection.slug) {
+          router.replace(`/collection/manage/${response.collection.slug}`);
+        }
       }
 
       // Reset coverImageId after successful update
@@ -343,7 +362,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   };
 
   // Handle image upload
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     if (!collection || !event.target.files || event.target.files.length === 0) return;
 
     try {
@@ -444,16 +463,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
         // Re-fetch full collection for state consistency
         const fullResponse = await getCollectionUpdateMetadata(slug);
-        collectionStorage.update(slug, fullResponse.collection);
-        collectionStorage.updateFull(slug, fullResponse);
-        await revalidateCollectionCache(slug);
+        if (fullResponse !== null) {
+          collectionStorage.update(slug, fullResponse.collection);
+          collectionStorage.updateFull(slug, fullResponse);
+          await revalidateCollectionCache(slug);
 
-        // Merge metadata into the fresh response using functional updater to avoid stale closure
-        setCurrentState(prev => {
-          const base = fullResponse;
-          const metadataUpdater = mergeNewMetadata(response, prev ?? base);
-          return metadataUpdater ? metadataUpdater(base) : base;
-        });
+          // Merge metadata into the fresh response using functional updater to avoid stale closure
+          setCurrentState(prev => {
+            const base = fullResponse;
+            const metadataUpdater = mergeNewMetadata(response, prev ?? base);
+            return metadataUpdater ? metadataUpdater(base) : base;
+          });
+        }
 
         setSelectedImageIds([]);
         setIsMultiSelectMode(false);
@@ -479,7 +500,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const handleDeleteSuccess = useCallback(
     async (_deletedIds: number[]) => {
       if (!currentState?.collection.slug) {
-        console.warn('handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection');
+        console.warn(
+          'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection'
+        );
         setError('Unable to refresh collection after deletion — please reload the page.');
         return;
       }
@@ -489,10 +512,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
         // Re-fetch full collection for state consistency
         const fullResponse = await getCollectionUpdateMetadata(slug);
-        setCurrentState(fullResponse);
-        collectionStorage.update(slug, fullResponse.collection);
-        collectionStorage.updateFull(slug, fullResponse);
-        await revalidateCollectionCache(slug);
+        if (fullResponse !== null) {
+          setCurrentState(fullResponse);
+          collectionStorage.update(slug, fullResponse.collection);
+          collectionStorage.updateFull(slug, fullResponse);
+          await revalidateCollectionCache(slug);
+        }
 
         setSelectedImageIds([]);
         setIsMultiSelectMode(false);
@@ -596,25 +621,31 @@ export default function ManageClient({ slug }: ManageClientProps) {
         const currentNewValue = prev.collections?.newValue || [];
         const isSaved = originalCollectionIds.has(toggledCollection.id);
 
-        const newRemove = isSaved
-          ? (currentRemove.has(toggledCollection.id)
-            ? [...currentRemove].filter(id => id !== toggledCollection.id)
-            : [...currentRemove, toggledCollection.id])
-          : [...currentRemove];
+        let newRemove: number[];
+        if (!isSaved) {
+          newRemove = [...currentRemove];
+        } else if (currentRemove.has(toggledCollection.id)) {
+          newRemove = [...currentRemove].filter(id => id !== toggledCollection.id);
+        } else {
+          newRemove = [...currentRemove, toggledCollection.id];
+        }
 
-        const newNewValue = isSaved
-          ? [...currentNewValue]
-          : (currentNewValue.some(c => c.collectionId === toggledCollection.id)
-            ? currentNewValue.filter(c => c.collectionId !== toggledCollection.id)
-            : [
-                ...currentNewValue,
-                {
-                  collectionId: toggledCollection.id,
-                  name: toggledCollection.name,
-                  visible: true,
-                  orderIndex: currentNewValue.length,
-                },
-              ]);
+        let newNewValue: typeof currentNewValue;
+        if (isSaved) {
+          newNewValue = [...currentNewValue];
+        } else if (currentNewValue.some(c => c.collectionId === toggledCollection.id)) {
+          newNewValue = currentNewValue.filter(c => c.collectionId !== toggledCollection.id);
+        } else {
+          newNewValue = [
+            ...currentNewValue,
+            {
+              collectionId: toggledCollection.id,
+              name: toggledCollection.name,
+              visible: true,
+              orderIndex: currentNewValue.length,
+            },
+          ];
+        }
 
         // Clean up: if both arrays are empty, clear collections entirely
         const hasChanges = newRemove.length > 0 || newNewValue.length > 0;
@@ -651,8 +682,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
         title: 'New Child Collection',
       });
 
+      // Revalidate parent collection and index so new child appears
+      await revalidateCollectionCache(collection.slug);
+
       // Navigate to the new child collection's manage page
-      router.push(`/collection/manage/${response.collection.slug}`);
+      if (response !== null) {
+        router.push(`/collection/manage/${response.collection.slug}`);
+      }
     } catch (error) {
       setError(handleApiError(error, 'Failed to create child collection'));
     } finally {
@@ -737,11 +773,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         {collection?.displayMode !== 'CHRONOLOGICAL' && (
           <>
             {divider}
-            <button
-              type="button"
-              onClick={handleEnterReorderMode}
-              className={styles.toolbarButton}
-            >
+            <button type="button" onClick={handleEnterReorderMode} className={styles.toolbarButton}>
               Reorder
             </button>
           </>
@@ -803,351 +835,358 @@ export default function ManageClient({ slug }: ManageClientProps) {
           {collection && (
             <>
               <div className={styles.updateAndToolbarWrapper}>
-              <div className={styles.updateContainer}>
-                <form onSubmit={handleUpdate}>
-                  <div className={styles.updateFormLayout}>
-                    {/* LEFT SECTION */}
-                    <div className={styles.leftSection}>
-                      <div className={styles.headingRow}>
-                        <h2
-                          className={styles.updateHeading}
-                          onClick={() => router.push(`/${collection.slug}`)}
-                        >
-                          {collection.title}
-                        </h2>
-                        <label className={styles.headingCheckboxLabel}>
-                          <input
-                            type="checkbox"
-                            checked={updateData.visible}
-                            onChange={e =>
-                              setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
-                            }
-                          />
-                          <span>Visible</span>
-                        </label>
-                      </div>
-
-                      {displayError && <div className={styles.errorMessage}>{displayError}</div>}
-
-                      {/* Title */}
-                      <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>Title</label>
-                        <input
-                          type="text"
-                          value={updateData.title}
-                          onChange={e =>
-                            setUpdateData(prev => ({ ...prev, title: e.target.value }))
-                          }
-                          className={styles.formInput}
-                        />
-                      </div>
-
-                      {/* Collection Date / Collection Type */}
-                      <div className={styles.formGridHalf}>
-                        <div>
-                          <label className={styles.formLabel}>Collection Date</label>
-                          <div className={styles.dateInputWrapper}>
+                <div className={styles.updateContainer}>
+                  <form onSubmit={handleUpdate}>
+                    <div className={styles.updateFormLayout}>
+                      {/* LEFT SECTION */}
+                      <div className={styles.leftSection}>
+                        <div className={styles.headingRow}>
+                          <h2
+                            className={styles.updateHeading}
+                            onClick={() => router.push(`/${collection.slug}`)}
+                          >
+                            {collection.title}
+                          </h2>
+                          <label className={styles.headingCheckboxLabel}>
                             <input
-                              type="date"
-                              value={updateData.collectionDate ?? ''}
+                              type="checkbox"
+                              checked={updateData.visible}
                               onChange={e =>
-                                setUpdateData(prev => ({ ...prev, collectionDate: e.target.value }))
+                                setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
                               }
-                              className={styles.formInput}
                             />
-                            {updateData.collectionDate && (
+                            <span>Visible</span>
+                          </label>
+                        </div>
+
+                        {displayError && <div className={styles.errorMessage}>{displayError}</div>}
+
+                        {/* Title */}
+                        <div className={styles.formGroup}>
+                          <label className={styles.formLabel}>Title</label>
+                          <input
+                            type="text"
+                            value={updateData.title}
+                            onChange={e =>
+                              setUpdateData(prev => ({ ...prev, title: e.target.value }))
+                            }
+                            className={styles.formInput}
+                          />
+                        </div>
+
+                        {/* Collection Date / Collection Type */}
+                        <div className={styles.formGridHalf}>
+                          <div>
+                            <label className={styles.formLabel}>Collection Date</label>
+                            <div className={styles.dateInputWrapper}>
+                              <input
+                                type="date"
+                                value={updateData.collectionDate ?? ''}
+                                onChange={e =>
+                                  setUpdateData(prev => ({
+                                    ...prev,
+                                    collectionDate: e.target.value,
+                                  }))
+                                }
+                                className={styles.formInput}
+                              />
+                              {updateData.collectionDate && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setUpdateData(prev => ({ ...prev, collectionDate: null }))
+                                  }
+                                  className={styles.dateClearButton}
+                                  title="Clear date"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className={styles.formLabel}>Collection Type</label>
+                            <select
+                              value={updateData.type}
+                              onChange={e =>
+                                setUpdateData(prev => ({
+                                  ...prev,
+                                  type: e.target.value as CollectionType,
+                                }))
+                              }
+                              className={styles.formSelect}
+                            >
+                              <option value={CollectionType.PORTFOLIO}>Portfolio</option>
+                              <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
+                              <option value={CollectionType.BLOG}>Blog</option>
+                              <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Location */}
+                        <UnifiedMetadataSelector<LocationModel>
+                          label="Location"
+                          multiSelect={false}
+                          options={currentState?.locations || []}
+                          selectedValue={currentLocation}
+                          onChange={handleLocationChange}
+                          allowAddNew
+                          onAddNew={data => {
+                            handleLocationChange({ id: 0, name: data.name as string });
+                          }}
+                          addNewFields={[
+                            {
+                              name: 'name',
+                              label: 'Location Name',
+                              type: 'text',
+                              placeholder: 'e.g., Seattle, WA',
+                              required: true,
+                            },
+                          ]}
+                          getDisplayName={location => location?.name || ''}
+                          showNewIndicator
+                          emptyText="No location set"
+                        />
+
+                        {/* Display Mode / Row Length */}
+                        <div className={styles.formGridHalf}>
+                          <div>
+                            <label className={styles.formLabel}>Display</label>
+                            <select
+                              value={updateData.displayMode}
+                              onChange={e =>
+                                setUpdateData(prev => ({
+                                  ...prev,
+                                  displayMode: e.target.value as DisplayMode,
+                                }))
+                              }
+                              className={styles.formSelect}
+                            >
+                              <option value="ORDERED">Default</option>
+                              <option value="CHRONOLOGICAL">Chronological</option>
+                              <option value="FIXED">Fixed</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className={styles.formLabel}>
+                              Row Length
+                              <span className={styles.formLabelHint}> (Default: 4)</span>
+                            </label>
+                            <div className={styles.numberStepperWrapper}>
                               <button
                                 type="button"
                                 onClick={() =>
-                                  setUpdateData(prev => ({ ...prev, collectionDate: null }))
+                                  setUpdateData(prev => ({
+                                    ...prev,
+                                    rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
+                                  }))
                                 }
-                                className={styles.dateClearButton}
-                                title="Clear date"
+                                className={styles.stepperButton}
+                                disabled={(updateData.rowsWide ?? 4) <= 1}
                               >
-                                ✕
+                                ←
                               </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className={styles.formLabel}>Collection Type</label>
-                          <select
-                            value={updateData.type}
-                            onChange={e =>
-                              setUpdateData(prev => ({
-                                ...prev,
-                                type: e.target.value as CollectionType,
-                              }))
-                            }
-                            className={styles.formSelect}
-                          >
-                            <option value={CollectionType.PORTFOLIO}>Portfolio</option>
-                            <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
-                            <option value={CollectionType.BLOG}>Blog</option>
-                            <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Location */}
-                      <UnifiedMetadataSelector<LocationModel>
-                        label="Location"
-                        multiSelect={false}
-                        options={currentState?.locations || []}
-                        selectedValue={currentLocation}
-                        onChange={handleLocationChange}
-                        allowAddNew
-                        onAddNew={data => {
-                          handleLocationChange({ id: 0, name: data.name as string });
-                        }}
-                        addNewFields={[
-                          {
-                            name: 'name',
-                            label: 'Location Name',
-                            type: 'text',
-                            placeholder: 'e.g., Seattle, WA',
-                            required: true,
-                          },
-                        ]}
-                        getDisplayName={location => location?.name || ''}
-                        showNewIndicator
-                        emptyText="No location set"
-                      />
-
-                      {/* Display Mode / Row Length */}
-                      <div className={styles.formGridHalf}>
-                        <div>
-                          <label className={styles.formLabel}>Display</label>
-                          <select
-                            value={updateData.displayMode}
-                            onChange={e =>
-                              setUpdateData(prev => ({
-                                ...prev,
-                                displayMode: e.target.value as DisplayMode,
-                              }))
-                            }
-                            className={styles.formSelect}
-                          >
-                            <option value="ORDERED">Default</option>
-                            <option value="CHRONOLOGICAL">Chronological</option>
-                            <option value="FIXED">Fixed</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className={styles.formLabel}>
-                            Row Length
-                            <span className={styles.formLabelHint}> (Default: 4)</span>
-                          </label>
-                          <div className={styles.numberStepperWrapper}>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setUpdateData(prev => ({
-                                  ...prev,
-                                  rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
-                                }))
-                              }
-                              className={styles.stepperButton}
-                              disabled={(updateData.rowsWide ?? 4) <= 1}
-                            >
-                              ←
-                            </button>
-                            <input
-                              type="number"
-                              min="1"
-                              max="6"
-                              value={updateData.rowsWide ?? ''}
-                              placeholder="4"
-                              onChange={e => {
-                                const value =
-                                  e.target.value === '' ? undefined : Number.parseInt(e.target.value);
-                                if (value === undefined || (value >= 1 && value <= 6)) {
-                                  setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                              <input
+                                type="number"
+                                min="1"
+                                max="6"
+                                value={updateData.rowsWide ?? ''}
+                                placeholder="4"
+                                onChange={e => {
+                                  const value =
+                                    e.target.value === ''
+                                      ? undefined
+                                      : Number.parseInt(e.target.value);
+                                  if (value === undefined || (value >= 1 && value <= 6)) {
+                                    setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                                  }
+                                }}
+                                className={styles.numberInput}
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setUpdateData(prev => ({
+                                    ...prev,
+                                    rowsWide: Math.min(6, (prev.rowsWide ?? 4) + 1),
+                                  }))
                                 }
-                              }}
-                              className={styles.numberInput}
+                                className={styles.stepperButton}
+                                disabled={(updateData.rowsWide ?? 4) >= 6}
+                              >
+                                →
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div className={styles.formGroup}>
+                          <label className={styles.formLabel}>Description</label>
+                          <textarea
+                            value={updateData.description}
+                            onChange={e =>
+                              setUpdateData(prev => ({ ...prev, description: e.target.value }))
+                            }
+                            className={styles.formTextarea}
+                          />
+                        </div>
+
+                        {/* Cover Image */}
+                        <div className={styles.coverImageSection}>
+                          <label className={styles.formLabel}>Cover Image</label>
+                          {displayedCoverImage && isContentImage(displayedCoverImage) ? (
+                            <div className={styles.coverImageWrapper}>
+                              <Image
+                                src={displayedCoverImage.imageUrl}
+                                alt="Cover"
+                                width={400}
+                                height={300}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                                className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
+                              >
+                                {isSelectingCoverImage ? 'Cancel Selection' : 'Update Cover Image'}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className={styles.noCoverImage}>
+                              <div>No cover image</div>
+                              <button
+                                type="button"
+                                onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                                className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
+                              >
+                                {isSelectingCoverImage ? 'Cancel Selection' : 'Select Cover Image'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Upload Images / Add Text Block */}
+                        <div className={styles.mediaSection}>
+                          <div className={styles.uploadSection}>
+                            <label className={styles.formLabel}>Upload Images</label>
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              disabled={isLoading}
+                              className={styles.uploadInput}
                             />
+                            {isLoading && <div className={styles.uploadingText}>Uploading...</div>}
+                          </div>
+
+                          <div className={styles.textBlockSection}>
+                            <label className={styles.formLabel}>Add Text Block</label>
                             <button
                               type="button"
-                              onClick={() =>
-                                setUpdateData(prev => ({
-                                  ...prev,
-                                  rowsWide: Math.min(6, (prev.rowsWide ?? 4) + 1),
-                                }))
-                              }
-                              className={styles.stepperButton}
-                              disabled={(updateData.rowsWide ?? 4) >= 6}
+                              onClick={handleCreateNewTextBlock}
+                              disabled={isLoading}
+                              className={styles.addTextBlockButton}
                             >
-                              →
+                              + Create New Text Block
                             </button>
                           </div>
                         </div>
                       </div>
 
-                      {/* Description */}
-                      <div className={styles.formGroup}>
-                        <label className={styles.formLabel}>Description</label>
-                        <textarea
-                          value={updateData.description}
-                          onChange={e =>
-                            setUpdateData(prev => ({ ...prev, description: e.target.value }))
-                          }
-                          className={styles.formTextarea}
+                      {/* RIGHT SECTION */}
+                      <div className={styles.rightSection}>
+                        <CollectionListSelector
+                          allCollections={allCollections}
+                          savedCollectionIds={originalCollectionIds}
+                          pendingAddIds={pendingAddIds}
+                          pendingRemoveIds={pendingRemoveIds}
+                          onToggle={handleCollectionToggle}
+                          onNavigate={col => {
+                            if (col.slug) {
+                              router.push(`/collection/manage/${col.slug}`);
+                            } else {
+                              console.error('Cannot navigate to collection: missing slug', col);
+                              setError(`Cannot navigate to collection "${col.name}": missing slug`);
+                            }
+                          }}
+                          onAddNewChild={handleAddNewChild}
+                          label="Collections"
+                          excludeCollectionId={collection.id}
                         />
                       </div>
+                    </div>
 
-                      {/* Cover Image */}
-                      <div className={styles.coverImageSection}>
-                        <label className={styles.formLabel}>Cover Image</label>
-                        {displayedCoverImage && isContentImage(displayedCoverImage) ? (
-                          <div className={styles.coverImageWrapper}>
-                            <Image
-                              src={displayedCoverImage.imageUrl}
-                              alt="Cover"
-                              width={400}
-                              height={300}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                              className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
-                            >
-                              {isSelectingCoverImage ? 'Cancel Selection' : 'Update Cover Image'}
-                            </button>
-                          </div>
+                    <div className={styles.formActions}>
+                      <button
+                        type="submit"
+                        disabled={saving || isLoading}
+                        className={styles.submitButton}
+                      >
+                        {saving ? (
+                          <>
+                            <LoadingSpinner size="small" color="white" />
+                            <span style={{ marginLeft: '8px' }}>Updating...</span>
+                          </>
                         ) : (
-                          <div className={styles.noCoverImage}>
-                            <div>No cover image</div>
-                            <button
-                              type="button"
-                              onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                              className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
-                            >
-                              {isSelectingCoverImage ? 'Cancel Selection' : 'Select Cover Image'}
-                            </button>
-                          </div>
+                          'Update Metadata'
                         )}
-                      </div>
-
-                      {/* Upload Images / Add Text Block */}
-                      <div className={styles.mediaSection}>
-                        <div className={styles.uploadSection}>
-                          <label className={styles.formLabel}>Upload Images</label>
-                          <input
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            disabled={isLoading}
-                            className={styles.uploadInput}
-                          />
-                          {isLoading && <div className={styles.uploadingText}>Uploading...</div>}
-                        </div>
-
-                        <div className={styles.textBlockSection}>
-                          <label className={styles.formLabel}>Add Text Block</label>
-                          <button
-                            type="button"
-                            onClick={handleCreateNewTextBlock}
-                            disabled={isLoading}
-                            className={styles.addTextBlockButton}
-                          >
-                            + Create New Text Block
-                          </button>
-                        </div>
-                      </div>
+                      </button>
                     </div>
-
-                    {/* RIGHT SECTION */}
-                    <div className={styles.rightSection}>
-                      <CollectionListSelector
-                        allCollections={currentState?.collections || []}
-                        savedCollectionIds={originalCollectionIds}
-                        pendingAddIds={pendingAddIds}
-                        pendingRemoveIds={pendingRemoveIds}
-                        onToggle={handleCollectionToggle}
-                        onNavigate={col => {
-                          if (col.slug) {
-                            router.push(`/collection/manage/${col.slug}`);
-                          } else {
-                            console.error('Cannot navigate to collection: missing slug', col);
-                            setError(`Cannot navigate to collection "${col.name}": missing slug`);
-                          }
-                        }}
-                        onAddNewChild={handleAddNewChild}
-                        label="Child Collections"
-                        excludeCollectionId={collection.id}
-                      />
-                    </div>
-                  </div>
-
-                  <div className={styles.formActions}>
-                    <button
-                      type="submit"
-                      disabled={saving || isLoading}
-                      className={styles.submitButton}
-                    >
-                      {saving ? (
-                        <>
-                          <LoadingSpinner size="small" color="white" />
-                          <span style={{ marginLeft: '8px' }}>Updating...</span>
-                        </>
-                      ) : (
-                        'Update Metadata'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Content Toolbar — inside wrapper so margin groups them */}
-              {displayContent && displayContent.length > 0 && (
-                <div className={styles.contentToolbar}>
-                  <span className={styles.toolbarItemCount}>{displayContent.length}</span>
-                  <span className={styles.toolbarDivider} />
-
-                  <div className={styles.toolbarActions}>{renderToolbarActions()}</div>
-
-                  {(isSelectingCoverImage ||
-                    (isMultiSelectMode && selectedImageIds.length > 0) ||
-                    reorderState.active) && (
-                    <span className={styles.toolbarStatus}>
-                      {isSelectingCoverImage && 'Click any image to set as cover'}
-                      {isMultiSelectMode &&
-                        selectedImageIds.length > 0 &&
-                        `${selectedImageIds.length} image${selectedImageIds.length !== 1 ? 's' : ''} selected`}
-                      {reorderState.active && 'Reorder mode \u2014 use arrows or pick and place'}
-                    </span>
-                  )}
+                  </form>
                 </div>
-              )}
-              {/* Image Grid — inside wrapper so toolbar can stick over it */}
-              {displayContent && displayContent.length > 0 && (
-                <ContentBlockWithFullScreen
-                  content={displayContent}
-                  priorityBlockIndex={0}
-                  enableFullScreenView={false}
-                  isSelectingCoverImage={isSelectingCoverImage}
-                  currentCoverImageId={collection.coverImage?.id}
-                  onImageClick={reorderState.active ? undefined : handleImageClick}
-                  justClickedImageId={justClickedImageId}
-                  selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
-                  currentCollectionId={collection.id}
-                  collectionSlug={collection.slug}
-                  collectionData={collection}
-                  isReorderMode={reorderState.active}
-                  reorderMoves={reorderState.moves}
-                  pickedUpImageId={reorderState.pickedUpImageId}
-                  reorderDisplayOrder={reorderDisplayOrder}
-                  onArrowMove={handleArrowMove}
-                  onPickUp={handlePickUp}
-                  onPlace={handlePlace}
-                  onCancelImageMove={handleCancelImageMove}
-                />
-              )}
-              </div>{/* close updateAndToolbarWrapper */}
+
+                {/* Content Toolbar — inside wrapper so margin groups them */}
+                {displayContent && displayContent.length > 0 && (
+                  <div className={styles.contentToolbar}>
+                    <span className={styles.toolbarItemCount}>{displayContent.length}</span>
+                    <span className={styles.toolbarDivider} />
+
+                    <div className={styles.toolbarActions}>{renderToolbarActions()}</div>
+
+                    {(isSelectingCoverImage ||
+                      (isMultiSelectMode && selectedImageIds.length > 0) ||
+                      reorderState.active) && (
+                      <span className={styles.toolbarStatus}>
+                        {isSelectingCoverImage && 'Click any image to set as cover'}
+                        {isMultiSelectMode &&
+                          selectedImageIds.length > 0 &&
+                          `${selectedImageIds.length} image${selectedImageIds.length !== 1 ? 's' : ''} selected`}
+                        {reorderState.active && 'Reorder mode \u2014 use arrows or pick and place'}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {/* Image Grid — inside wrapper so toolbar can stick over it */}
+                {displayContent && displayContent.length > 0 && (
+                  <ContentBlockWithFullScreen
+                    content={displayContent}
+                    priorityBlockIndex={0}
+                    enableFullScreenView={false}
+                    isSelectingCoverImage={isSelectingCoverImage}
+                    currentCoverImageId={collection.coverImage?.id}
+                    onImageClick={reorderState.active ? undefined : handleImageClick}
+                    justClickedImageId={justClickedImageId}
+                    selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
+                    currentCollectionId={collection.id}
+                    collectionSlug={collection.slug}
+                    collectionData={collection}
+                    isReorderMode={reorderState.active}
+                    reorderMoves={reorderState.moves}
+                    pickedUpImageId={reorderState.pickedUpImageId}
+                    reorderDisplayOrder={reorderDisplayOrder}
+                    onArrowMove={handleArrowMove}
+                    onPickUp={handlePickUp}
+                    onPlace={handlePlace}
+                    onCancelImageMove={handleCancelImageMove}
+                    onImageLoadError={handleImageLoadError}
+                  />
+                )}
+              </div>
+              {/* close updateAndToolbarWrapper */}
             </>
           )}
         </main>
@@ -1166,7 +1205,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           availableLenses={currentState?.lenses || []}
           availableFilmTypes={currentState?.filmTypes || []}
           availableFilmFormats={currentState?.filmFormats || []}
-          availableCollections={currentState?.collections || []}
+          availableCollections={allCollections}
           availableLocations={currentState?.locations || []}
           selectedImageIds={selectedImageIds}
           selectedImages={imagesToEdit}

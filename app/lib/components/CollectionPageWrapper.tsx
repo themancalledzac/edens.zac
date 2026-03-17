@@ -1,8 +1,11 @@
 import { notFound } from 'next/navigation';
 
+import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryGate';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
+import { ApiError } from '@/app/lib/api/core';
+import { CollectionType } from '@/app/types/Collection';
 
 interface CollectionPageWrapperProps {
   slug: string;
@@ -31,30 +34,42 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
     // Backend guarantees complete data structure, so we can render directly
-    return <CollectionPage collection={collection} chunkSize={chunkSize} />;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const collectionPage = <CollectionPage collection={collection} chunkSize={chunkSize} />;
 
-    // Handle 404s
-    if (errorMessage.includes('404')) {
-      notFound();
+    // Wrap CLIENT_GALLERY collections with password gate
+    if (collection.type === CollectionType.CLIENT_GALLERY) {
+      return (
+        <ClientGalleryGate collection={collection}>
+          {collectionPage}
+        </ClientGalleryGate>
+      );
     }
 
-    // Handle backend schema/database errors
-    // Common backend errors: JDBC exceptions, "Unknown column", database connection issues
-    const isBackendError =
-      errorMessage.includes('JDBC') ||
-      errorMessage.includes('Unknown column') ||
-      errorMessage.includes('API 500') ||
-      errorMessage.includes('Failed to retrieve collection');
-
-    if (isBackendError) {
-      // For home page, re-throw (page is force-dynamic so this won't break build)
-      if (slug === 'home') {
-        throw error;
+    return collectionPage;
+  } catch (error) {
+    // Handle typed API errors first
+    if (error instanceof ApiError) {
+      // 404 status
+      if (error.status === 404) {
+        notFound();
       }
 
-      // For other collection pages, return notFound
+      // 500 or other backend errors
+      if (error.status >= 500) {
+        // For home page, re-throw (page is force-dynamic so this won't break build)
+        if (slug === 'home') {
+          throw error;
+        }
+        notFound();
+      }
+
+      throw error;
+    }
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Handle 404s in non-ApiError messages
+    if (errorMessage.includes('404')) {
       notFound();
     }
 

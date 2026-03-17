@@ -95,6 +95,43 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 }
 ```
 
+## React 19 Event Types
+
+React 19 deprecated several event types. Always use the non-deprecated replacements:
+
+| Event Handler | Deprecated | Correct (React 19) |
+|---|---|---|
+| `onSubmit` | `FormEvent` | `SubmitEvent<HTMLFormElement>` |
+| `onChange` (input) | — | `ChangeEvent<HTMLInputElement>` |
+| `onChange` (textarea) | — | `ChangeEvent<HTMLTextAreaElement>` |
+
+### Import Rules
+
+- **Never** use `import React from 'react'` or `import React, { ... } from 'react'`
+- **Always** use named imports: `import { type SubmitEvent, useState } from 'react'`
+- Use `type` keyword for type-only imports
+
+```typescript
+// ✅ Good - named imports, React 19 types
+import { type ChangeEvent, type SubmitEvent, useCallback, useState } from 'react';
+
+const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
+  e.preventDefault();
+};
+
+const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  setValue(e.target.value);
+};
+
+// ❌ Bad - namespace import
+import React from 'react';
+const handleSubmit = (e: React.FormEvent) => { ... };
+
+// ❌ Bad - deprecated FormEvent
+import { type FormEvent } from 'react';
+const handleSubmit = (e: FormEvent) => { ... };
+```
+
 ## Type Imports
 
 ### Type-Only Imports
@@ -196,6 +233,33 @@ const model: CollectionModel = { type: CollectionType.PORTFOLIO, ... };
 // ❌ Bad - string literal won't satisfy enum type
 const model: CollectionModel = { type: 'PORTFOLIO', ... };
 ```
+
+## Known Type Issues
+
+### React 18 Runtime / @types/react 19 Mismatch
+
+**Status**: Documented, intentionally not fixed.
+
+The project uses `react: ^18.3.1` (runtime) with `@types/react: ^19.2.10` (type definitions).
+This mismatch exists because:
+
+- Next.js 15+ ships React 19 types and recommends the newer type definitions
+- The actual React runtime remains at 18.x for stability
+- Upgrading React to 19 would require testing all components and hooks for breaking changes
+  (e.g., `ref` as prop, removal of implicit `children`, new `use()` hook semantics)
+
+**Impact**: Mostly transparent. Some React 19 type features (like `SubmitEvent<HTMLFormElement>`)
+are available in types but not in the runtime. Use `FormEvent<HTMLFormElement>` if the React 19
+`SubmitEvent` causes runtime issues.
+
+**Resolution plan**: Upgrade React to 19 when Next.js 15 is fully stable and all dependencies
+(MUI, react-zoom-pan-pinch, @react-spring/parallax) confirm React 19 compatibility.
+
+### Dependency Notes (as of 2026-03)
+
+- `lucide-react: ^0.399.0` - Current. Check for major version bumps periodically.
+- `@react-spring/parallax: ^9.6.1` - Does not yet support React 19 runtime. Keep React 18.
+- `react-zoom-pan-pinch: ^3.4.4` - Check React 19 compat before upgrading React.
 
 ## Type Safety Checklist
 

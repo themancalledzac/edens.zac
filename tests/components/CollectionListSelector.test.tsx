@@ -39,9 +39,9 @@ describe('CollectionListSelector', () => {
     expect(screen.getByText('My Collections')).toBeInTheDocument();
   });
 
-  it('defaults label to "Child Collections"', () => {
+  it('defaults label to "Collections"', () => {
     render(<CollectionListSelector {...defaultProps} />);
-    expect(screen.getByText('Child Collections')).toBeInTheDocument();
+    expect(screen.getByText('Collections')).toBeInTheDocument();
   });
 
   it('excludes collection by excludeCollectionId', () => {

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
-import { type CollectionModel } from '@/app/types/Collection';
+import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import {
   type AnyContentModel,
   type ContentImageModel,
@@ -21,6 +21,47 @@ import { type BoxTree } from '@/app/utils/rowCombination';
 
 import { BoxRenderer } from './BoxRenderer';
 import cbStyles from './ContentComponent.module.scss';
+
+// Module-level helper: builds a simple horizontal BoxTree from a flat list of items.
+// Does not depend on any component state, so it is safe to define outside the component.
+function createSimpleBoxTree(items: CalculatedContentSize[]): BoxTree {
+  const contents = items.map(item => item.content);
+
+  if (contents.length === 1) {
+    return { type: 'leaf' as const, content: contents[0]! };
+  }
+
+  if (contents.length === 2) {
+    return {
+      type: 'combined' as const,
+      direction: 'horizontal' as const,
+      children: [
+        { type: 'leaf' as const, content: contents[0]! },
+        { type: 'leaf' as const, content: contents[1]! },
+      ],
+    };
+  }
+
+  // For 3+ items: build left-associative tree
+  let tree: BoxTree = {
+    type: 'combined',
+    direction: 'horizontal',
+    children: [
+      { type: 'leaf', content: contents[0]! },
+      { type: 'leaf', content: contents[1]! },
+    ],
+  };
+
+  for (let i = 2; i < contents.length; i++) {
+    tree = {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [tree, { type: 'leaf', content: contents[i]! }],
+    };
+  }
+
+  return tree;
+}
 
 export interface ContentComponentProps {
   content: AnyContentModel[];
@@ -44,6 +85,8 @@ export interface ContentComponentProps {
   onPickUp?: (contentId: number) => void;
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
+  // Error handling
+  onImageLoadError?: (contentId: number) => void;
 }
 
 /**
@@ -59,7 +102,7 @@ export default function Component({
   currentCoverImageId,
   onImageClick,
   justClickedImageId,
-  // priorityIndex reserved for future LCP optimization
+  priorityIndex = 0,
   enableFullScreenView = false,
   onFullScreenImageClick,
   selectedImageIds = [],
@@ -74,12 +117,9 @@ export default function Component({
   onPickUp,
   onPlace,
   onCancelImageMove,
+  onImageLoadError,
 }: ContentComponentProps) {
   const { contentWidth, isMobile, viewportHeight } = useViewport();
-
-  const targetAR = viewportHeight > 0
-    ? Math.max(1.5, Math.min(3.0, contentWidth / viewportHeight))
-    : 1.5;
 
   const { rows, layoutError } = useMemo(() => {
     if (!contentWidth) {
@@ -90,6 +130,9 @@ export default function Component({
     if ((!content || content.length === 0) && !collectionData) {
       return { rows: [], layoutError: null };
     }
+
+    const targetAR =
+      viewportHeight > 0 ? Math.max(1.5, Math.min(3.0, contentWidth / viewportHeight)) : 1.5;
 
     try {
       // Pattern detection enabled on desktop, disabled on mobile
@@ -106,7 +149,7 @@ export default function Component({
       const message = error instanceof Error ? error.message : 'Unknown layout error';
       return { rows: [], layoutError: message };
     }
-  }, [content, contentWidth, chunkSize, isMobile, collectionData, targetAR]);
+  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight]);
 
   // Find the first row index that contains non-visible content
   // Only check if we're on the manage page (currentCollectionId is provided)
@@ -154,60 +197,22 @@ export default function Component({
   // Early return for empty state
   if (rows.length === 0) return <div />;
 
-  // Create a simple horizontal BoxTree from content items as fallback
-  const createSimpleBoxTree = (items: CalculatedContentSize[]): BoxTree => {
-    const contents = items.map(item => item.content);
-
-    if (contents.length === 1) {
-      return { type: 'leaf' as const, content: contents[0]! };
-    }
-
-    if (contents.length === 2) {
-      return {
-        type: 'combined' as const,
-        direction: 'horizontal' as const,
-        children: [
-          { type: 'leaf' as const, content: contents[0]! },
-          { type: 'leaf' as const, content: contents[1]! },
-        ],
-      };
-    }
-
-    // For 3+ items: build left-associative tree
-    let tree: BoxTree = {
-      type: 'combined',
-      direction: 'horizontal',
-      children: [
-        { type: 'leaf', content: contents[0]! },
-        { type: 'leaf', content: contents[1]! },
-      ],
-    };
-
-    for (let i = 2; i < contents.length; i++) {
-      tree = {
-        type: 'combined',
-        direction: 'horizontal',
-        children: [tree, { type: 'leaf', content: contents[i]! }],
-      };
-    }
-
-    return tree;
-  };
-
   // Render a row using BoxRenderer (generic recursive renderer)
-  const renderRow = (row: RowWithPatternAndSizes) => {
+  const renderRow = (row: RowWithPatternAndSizes, rowIndex: number) => {
     const { templateKey, items, boxTree } = row;
-    const rowKey = `row-${items.map(item => item.content.id).join('-')}`;
+    const rowKey = `row-${items.map(i => `${i.content.contentType}-${i.content.id}`).join('-')}`;
 
     // Safety: If boxTree is missing (shouldn't happen), create a fallback
     const tree = boxTree || createSimpleBoxTree(items);
 
-    // Build sizes map from items (convert ID to string for Map key)
+    // Build sizes map from items
     const sizesMap = new Map(
-      items.map(item => [String(item.content.id), { width: item.width, height: item.height }])
+      items.map(item => [item.content.id, { width: item.width, height: item.height }])
     );
 
     const dataPattern = typeof templateKey === 'string' ? templateKey : `${templateKey.h}h-${templateKey.v}v`;
+
+    const isClientGallery = collectionData?.type === CollectionType.CLIENT_GALLERY;
 
     return (
       <div key={rowKey} className={cbStyles.row} data-pattern={dataPattern}>
@@ -231,6 +236,10 @@ export default function Component({
           onPickUp={onPickUp}
           onPlace={onPlace}
           onCancelImageMove={onCancelImageMove}
+          priority={rowIndex === priorityIndex}
+          onImageLoadError={onImageLoadError}
+          isClientGallery={isClientGallery}
+          collectionSlug={collectionData?.slug}
         />
       </div>
     );
@@ -244,10 +253,10 @@ export default function Component({
           //  -
           const shouldShowSeparator =
             firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
-          const rowKey = `row-${row.items.map(item => item.content.id).join('-')}`;
+          const rowKey = `row-${row.items.map(i => `${i.content.contentType}-${i.content.id}`).join('-')}`;
 
           return (
-            <React.Fragment key={rowKey}>
+            <Fragment key={rowKey}>
               {shouldShowSeparator && (
                 <div className={cbStyles.visibilitySeparator}>
                   <div className={cbStyles.separatorLine} />
@@ -255,8 +264,8 @@ export default function Component({
                   <div className={cbStyles.separatorLine} />
                 </div>
               )}
-              {renderRow(row)}
-            </React.Fragment>
+              {renderRow(row, rowIndex)}
+            </Fragment>
           );
         })}
       </div>

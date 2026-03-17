@@ -49,11 +49,11 @@ export function useCollectionData(
         setLoading(true);
         setError(null);
 
-        // Check cache first for instant load (full response with metadata)
+        // Check full cache first for instant load (includes metadata arrays)
         const cachedResponse = collectionStorage.getFull(slug);
 
         if (cachedResponse) {
-          // Cache hit - use cached data immediately for instant UI
+          // Full cache hit - use cached data immediately for instant UI
           if (isMounted && !abortController.signal.aborted) {
             onLoadSuccess(cachedResponse);
             setLoading(false);
@@ -61,17 +61,23 @@ export function useCollectionData(
           return;
         }
 
-        // Cache miss - fetch fresh data
+        // Check basic cache (populated by public page visits) for instant shell
+        const cachedBasic = collectionStorage.get(slug);
+        if (cachedBasic && isMounted && !abortController.signal.aborted) {
+          // Show collection data immediately while we fetch full metadata
+          onLoadSuccess({ collection: cachedBasic } as CollectionUpdateResponseDTO);
+          setLoading(false);
+        }
+
+        // Fetch full data (fresh or to supplement basic cache)
         const response = await getCollectionUpdateMetadata(slug);
 
-        if (isMounted && !abortController.signal.aborted) {
-          // Update both caches:
-          // 1. Basic cache for collection pages (CollectionModel only)
+        if (isMounted && !abortController.signal.aborted && response !== null) {
+          // Update both caches
           collectionStorage.update(slug, response.collection);
-          // 2. Full cache for manage page (CollectionUpdateResponseDTO with metadata)
           collectionStorage.updateFull(slug, response);
 
-          // Notify parent component of successful load
+          // Notify parent component with full data
           onLoadSuccess(response);
         }
       } catch (error_) {
@@ -101,10 +107,12 @@ export function useCollectionData(
       setError(null);
 
       const response = await getCollectionUpdateMetadata(slug);
-      // Update both caches
-      collectionStorage.update(slug, response.collection);
-      collectionStorage.updateFull(slug, response);
-      onLoadSuccess(response);
+      if (response !== null) {
+        // Update both caches
+        collectionStorage.update(slug, response.collection);
+        collectionStorage.updateFull(slug, response);
+        onLoadSuccess(response);
+      }
     } catch (error_) {
       setError(handleApiError(error_, 'Failed to load collection data'));
     } finally {

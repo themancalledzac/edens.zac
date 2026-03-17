@@ -44,9 +44,14 @@ export interface ContentRendererProps {
   
   // TEXT-specific
   textItems?: TextBlockItem[];
-  
+
   // GIF-specific
   isGif?: boolean; // For unoptimized flag
+
+  // Client gallery flag - enables download overlays on images
+  isClientGallery?: boolean;
+  // Collection slug - needed for download endpoints
+  collectionSlug?: string;
 }
 
 /**
@@ -77,5 +82,11 @@ export interface CollectionContentRendererProps extends ContentRendererProps {
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
   justClickedImageId?: number | null;
+
+  // LCP optimization
+  priority?: boolean;
+
+  // Error handling
+  onImageLoadError?: (contentId: number) => void;
 }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { type ChangeEvent, type SubmitEvent, useState } from 'react';
 
 import styles from './ContactForm.module.scss';
 
@@ -34,7 +34,7 @@ interface ContactFormProps {
 export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
   const [formData, setFormData] = useState<FormData>({ title: '', message: '' });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -47,7 +47,7 @@ export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
     return `mailto:${email}?subject=${subject}&body=${body}`;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const mailToLink = generateMailToLink(formData);
     const isMobile = window.innerWidth < 768;

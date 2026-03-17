@@ -1,7 +1,5 @@
 'use client';
 
-import React from 'react';
-
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
@@ -14,7 +12,7 @@ import cbStyles from './ContentComponent.module.scss';
 
 interface BoxRendererProps {
   tree: BoxTree;
-  sizes: Map<string, { width: number; height: number }>;
+  sizes: Map<number, { width: number; height: number }>;
   isMobile: boolean;
   // Pass-through props for child renderers
   onImageClick?: (imageId: number) => void;
@@ -35,6 +33,10 @@ interface BoxRendererProps {
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
   priority?: boolean;
+  onImageLoadError?: (contentId: number) => void;
+  // Client gallery props
+  isClientGallery?: boolean;
+  collectionSlug?: string;
 }
 
 export function BoxRenderer({
@@ -58,10 +60,13 @@ export function BoxRenderer({
   onPlace,
   onCancelImageMove,
   priority,
+  onImageLoadError,
+  isClientGallery,
+  collectionSlug,
 }: BoxRendererProps) {
   // Base case: single leaf
   if (tree.type === 'leaf') {
-    const size = sizes.get(String(tree.content.id));
+    const size = sizes.get(tree.content.id);
     if (!size) {
       console.error(
         `BoxRenderer: no size entry for content ID ${tree.content.id}. Image will not render.`
@@ -111,6 +116,10 @@ export function BoxRenderer({
       onPickUp,
       onPlace,
       onCancelImageMove,
+      priority,
+      onImageLoadError,
+      isClientGallery,
+      collectionSlug,
     };
 
     return <CollectionContentRenderer {...fullProps} />;
@@ -139,6 +148,9 @@ export function BoxRenderer({
     onPlace,
     onCancelImageMove,
     priority,
+    onImageLoadError,
+    isClientGallery,
+    collectionSlug,
   };
 
   return (

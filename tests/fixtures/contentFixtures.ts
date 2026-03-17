@@ -128,7 +128,7 @@ export const createCollectionContent = (
   visible: true,
   title: `Collection ${id}`,
   slug: `collection-${id}`,
-  collectionType: 'PORTFOLIO',
+  collectionType: CollectionType.PORTFOLIO,
   referencedCollectionId: id * 100,
   coverImage: {
     id: id * 10,

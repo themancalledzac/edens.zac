@@ -1,38 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { BREAKPOINTS, getContentWidth } from '@/app/constants';
-
-/**
- * useDebounce Hook
- *
- * Generic debounce utility that delays function execution until after
- * specified delay period has passed since the last invocation. Optimizes
- * performance for frequent events like resize or scroll.
- *
- * @param callback - Function to debounce
- * @param delay - Delay in milliseconds before execution
- * @returns Debounced version of the callback function
- */
-function useDebounce<T extends (...args: never[]) => void>(
-  callback: T,
-  delay: number
-): T {
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, []);
-
-  return useCallback(
-    ((...args: Parameters<T>) => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = setTimeout(() => callback(...args), delay);
-    }) as T,
-    [callback, delay]
-  );
-}
+import { useThrottle } from '@/app/utils/debounce';
 
 export interface ViewportDimensions {
   width: number;
@@ -46,12 +15,8 @@ export interface ViewportDimensions {
  *
  * Responsive viewport detection hook that provides real-time window dimensions,
  * mobile breakpoint detection, and calculated content width based on layout
- * constraints. Features debounced resize handling for optimal performance.
- *
- * @dependencies
- * - React hooks for state management and lifecycle
- * - useDebounce for performance optimization
- * - ViewportDimensions interface for return type
+ * constraints. Uses throttled resize handling (leading + trailing edge) for
+ * immediate responsiveness during active interaction.
  *
  * @returns Object containing viewport width, mobile flag, and content width
  */
@@ -67,26 +32,31 @@ export function useViewport(): ViewportDimensions {
     const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
     const mobile = vw < BREAKPOINTS.mobile;
-    const contentWidth = getContentWidth(vw, mobile);
+    const newContentWidth = getContentWidth(vw, mobile);
 
-    setDimensions({
-      width: vw,
-      viewportHeight: vh,
-      isMobile: mobile,
-      contentWidth,
+    setDimensions(prev => {
+      if (
+        prev.width === vw &&
+        prev.viewportHeight === vh &&
+        prev.contentWidth === newContentWidth &&
+        prev.isMobile === mobile
+      ) {
+        return prev;
+      }
+      return { width: vw, viewportHeight: vh, isMobile: mobile, contentWidth: newContentWidth };
     });
   }, []);
 
-  const debouncedMeasure = useDebounce(measure, 100); // 100ms debounce
+  const throttledMeasure = useThrottle(measure, 100); // fires immediately + every 100ms during resize
 
   useEffect(() => {
     // Initial measurement
     measure();
 
-    // Debounced resize listener
-    window.addEventListener('resize', debouncedMeasure);
-    return () => window.removeEventListener('resize', debouncedMeasure);
-  }, [measure, debouncedMeasure]);
+    // Throttled resize listener — fires on first event (leading) + periodically during drag
+    window.addEventListener('resize', throttledMeasure);
+    return () => window.removeEventListener('resize', throttledMeasure);
+  }, [measure, throttledMeasure]);
 
   return dimensions;
 }

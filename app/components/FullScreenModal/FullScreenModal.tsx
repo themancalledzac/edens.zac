@@ -2,11 +2,13 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
-import React from 'react';
+import type React from 'react';
+import { type Dispatch, type MouseEvent, type RefObject, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
+import type { CollectionModel } from '@/app/types/Collection';
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 
 type ImageBlock = ContentImageModel | ContentParallaxImageModel;
@@ -20,13 +22,17 @@ type FullScreenState = {
 interface FullScreenModalProps {
   fullScreenState: FullScreenState | null;
   loadedImageIds: Set<number>;
-  setLoadedImageIds: React.Dispatch<React.SetStateAction<Set<number>>>;
-  modalRef: React.RefObject<HTMLDivElement | null>;
-  hideImage: (e?: React.MouseEvent) => void;
-  isSwiping: React.RefObject<boolean>;
+  setLoadedImageIds: Dispatch<SetStateAction<Set<number>>>;
+  modalRef: RefObject<HTMLDivElement | null>;
+  hideImage: (e?: MouseEvent) => void;
+  isSwiping: RefObject<boolean>;
   showMetadata: boolean;
-  toggleMetadata: (e: React.MouseEvent) => void;
+  toggleMetadata: (e: MouseEvent) => void;
   router: AppRouterInstance;
+  /** Optional collection data for location and date fallback when image fields are absent */
+  collectionData?: CollectionModel;
+  navigateToNext: () => void;
+  navigateToPrevious: () => void;
 }
 
 export function FullScreenModal({
@@ -38,14 +44,30 @@ export function FullScreenModal({
   isSwiping,
   showMetadata,
   toggleMetadata,
-  router
+  router,
+  collectionData,
+  navigateToNext,
+  navigateToPrevious,
 }: FullScreenModalProps) {
   if (!fullScreenState) return null;
-  
+
   const currentImage = fullScreenState.images[fullScreenState.currentIndex];
   if (!currentImage) return null;
 
+  // Resolve location: image location takes priority, fall back to collection location
+  const collectionLocationName =
+    typeof collectionData?.location === 'string'
+      ? collectionData.location
+      : collectionData?.location?.name ?? null;
+  const displayLocation =
+    currentImage.location?.name ?? collectionLocationName ?? null;
+
+  // Resolve date: image captureDate takes priority, fall back to collection collectionDate
+  const displayDate = currentImage.captureDate ?? collectionData?.collectionDate ?? null;
+
   const currentImageLoaded = loadedImageIds.has(currentImage.id);
+  const hasPrevious = fullScreenState.currentIndex > 0;
+  const hasNext = fullScreenState.currentIndex < fullScreenState.images.length - 1;
 
   const handleOverlayClick = () => {
     if (!isSwiping.current) {
@@ -93,6 +115,13 @@ export function FullScreenModal({
                 )}
                 {currentImage.author && (
                   <div className={styles.metadataItem}>{currentImage.author}</div>
+                )}
+                {(displayDate || displayLocation) && (
+                  <div className={styles.metadataItem}>
+                    {displayDate && <span>{displayDate}</span>}
+                    {displayDate && displayLocation && <span className={styles.metadataSeparator}> / </span>}
+                    {displayLocation && <span>{displayLocation}</span>}
+                  </div>
                 )}
                 {(currentImage.camera || currentImage.lens) && (
                   <div className={styles.metadataItem}>
@@ -163,7 +192,30 @@ export function FullScreenModal({
         </div>
       </div>
 
+      {hasPrevious && (
+        <button
+          type="button"
+          className={styles.navButtonPrev}
+          onClick={(e) => { e.stopPropagation(); navigateToPrevious(); }}
+          aria-label="Previous image"
+        >
+          <span aria-hidden="true">&#8249;</span>
+        </button>
+      )}
+
+      {hasNext && (
+        <button
+          type="button"
+          className={styles.navButtonNext}
+          onClick={(e) => { e.stopPropagation(); navigateToNext(); }}
+          aria-label="Next image"
+        >
+          <span aria-hidden="true">&#8250;</span>
+        </button>
+      )}
+
       <button
+        type="button"
         className={styles.closeButton}
         onClick={hideImage}
         aria-label="Close fullscreen image"

@@ -26,9 +26,7 @@ import {
   createImageContent,
   createParallaxContent,
   createTextContent,
-  createVerticalImage,
   H,
-  V,
 } from '@/tests/fixtures/contentFixtures';
 
 describe('processContentBlocks', () => {
@@ -749,9 +747,9 @@ describe('createHeaderRow', () => {
       expect(result?.items[1]?.width).toBeGreaterThan(0);
       expect(result?.items[1]?.height).toBeGreaterThan(0);
 
-      // Cover + description widths should sum to componentWidth
+      // Cover + description widths should sum to componentWidth minus gridGap
       const totalWidth = (result?.items[0]?.width || 0) + (result?.items[1]?.width || 0);
-      expect(totalWidth).toBeCloseTo(componentWidth, 1);
+      expect(totalWidth).toBeCloseTo(componentWidth - 12.8, 1);
     });
   });
 
@@ -771,10 +769,10 @@ describe('createHeaderRow', () => {
       });
       const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
-      // Horizontal images hit the 50% max cap
+      // Horizontal images: AR 1.78 clamped to 1.25, coverWidth = maxRowHeight * 1.25
       const coverWidth = result?.items[0]?.width || 0;
-      const maxCoverWidth = componentWidth * 0.5;
-      expect(coverWidth).toBeCloseTo(maxCoverWidth, 1);
+      // maxRowHeight = 800 * 0.38 = 304, clampedAR = 1.25, coverWidth = 304 * 1.25 = 380
+      expect(coverWidth).toBeCloseTo(380, 1);
     });
 
     it('should give vertical cover narrower width (~36%)', () => {
@@ -796,10 +794,10 @@ describe('createHeaderRow', () => {
       const minCoverWidth = componentWidth * 0.3;
       const maxCoverWidth = componentWidth * 0.5;
 
-      // Clamped AR (0.8) produces coverWidth = maxRowHeight * 0.8 = 360 * 0.8 = 288
+      // Clamped AR (0.8) produces coverWidth = maxRowHeight * 0.8 = 304 * 0.8 = 243.2
       expect(coverWidth).toBeGreaterThan(minCoverWidth);
       expect(coverWidth).toBeLessThan(maxCoverWidth);
-      expect(coverWidth).toBeCloseTo(288, 0);
+      expect(coverWidth).toBeCloseTo(243.2, 0);
     });
 
     it('should give square cover intermediate width (~45%)', () => {
@@ -872,8 +870,8 @@ describe('createHeaderRow', () => {
 
       // Description should be wider than cover for vertical images
       expect(descWidth).toBeGreaterThan(coverWidth);
-      // With clamped AR (0.8), cover = 288, desc = 800 - 288 = 512
-      expect(descWidth).toBeCloseTo(512, 0);
+      // With clamped AR (0.8), cover = 243.2, desc = 800 - 243.2 - 12.8 = 544
+      expect(descWidth).toBeCloseTo(544, 0);
     });
   });
 

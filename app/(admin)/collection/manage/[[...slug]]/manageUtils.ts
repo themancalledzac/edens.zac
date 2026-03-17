@@ -18,9 +18,6 @@ import {
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
-// Re-export handleApiError from shared utils so existing imports from this file remain valid
-export { handleApiError } from '@/app/utils/apiUtils';
-
 // Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
@@ -47,7 +44,7 @@ export function buildUpdatePayload(
   }> = [
     { key: 'type', original: originalCollection.type },
     { key: 'title', original: originalCollection.title },
-    { key: 'description', original: originalCollection.description || '' },
+    { key: 'description', original: originalCollection.description },
     { key: 'visible', original: originalCollection.visible },
     { key: 'displayMode', original: originalCollection.displayMode },
     { key: 'rowsWide', original: originalCollection.rowsWide },
@@ -58,8 +55,8 @@ export function buildUpdatePayload(
     const formValue = formData[key];
     // Handle undefined/null comparison - treat undefined and null as equivalent
     // Also normalize empty strings for string fields
-    const normalizedOriginal = original === null || original === undefined ? undefined : original;
-    const normalizedFormValue = formValue === null || formValue === undefined ? undefined : formValue;
+    const normalizedOriginal = original === null || original === undefined || original === '' ? undefined : original;
+    const normalizedFormValue = formValue === null || formValue === undefined || formValue === '' ? undefined : formValue;
     
     if (normalizedFormValue !== normalizedOriginal) {
       // Type assertion needed since we're iterating dynamically
@@ -239,15 +236,20 @@ export function handleSingleImageEdit(
  * @returns Promise that resolves when revalidation is complete (or fails silently)
  */
 export async function revalidateCollectionCache(slug: string): Promise<void> {
-  try {
-    await fetch('/api/revalidate', {
+  const revalidate = (body: Record<string, string>) =>
+    fetch('/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tag: `collection-${slug}`,
-        path: `/${slug}`,
-      }),
+      body: JSON.stringify(body),
     });
+
+  try {
+    await Promise.all([
+      // Revalidate the specific collection page
+      revalidate({ tag: `collection-${slug}`, path: `/${slug}` }),
+      // Revalidate the collections index (home page, type listings)
+      revalidate({ tag: 'collections-index' }),
+    ]);
   } catch (error) {
     // Fail silently - revalidation is not critical for functionality
     if (isLocalEnvironment()) {
@@ -306,7 +308,7 @@ export function mergeNewMetadata(
 export async function refreshCollectionAfterOperation(
   slug: string,
   operation: () => Promise<void>,
-  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO>,
+  getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO | null>,
   collectionStorage: { update: (slug: string, collection: CollectionModel) => void; updateFull: (slug: string, response: CollectionUpdateResponseDTO) => void }
 ): Promise<CollectionUpdateResponseDTO> {
   // Execute the operation first
@@ -314,6 +316,10 @@ export async function refreshCollectionAfterOperation(
 
   // Re-fetch collection using admin endpoint to get full data with collections arrays
   const response = await getCollectionUpdateMetadata(slug);
+
+  if (response === null) {
+    throw new Error('No response received from server after operation');
+  }
 
   // Update both caches with full admin data (includes collections arrays)
   collectionStorage.update(slug, response.collection);
@@ -397,7 +403,11 @@ export async function executeReorderOperation(
     newOrderIndex: change.newOrderIndex,
   })));
 
-  revalidateCollectionCache(slug);
+  if (response === null) {
+    throw new Error('No response received from server after reorder operation');
+  }
+
+  void revalidateCollectionCache(slug);
 
   return response;
 }

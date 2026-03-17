@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
@@ -42,6 +42,7 @@ interface ContentBlockWithFullScreenProps {
   onPickUp?: (contentId: number) => void;
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
+  onImageLoadError?: (contentId: number) => void;
 }
 export default function ContentBlockWithFullScreen({
   content: allBlocks,
@@ -65,6 +66,7 @@ export default function ContentBlockWithFullScreen({
   onPickUp,
   onPlace,
   onCancelImageMove,
+  onImageLoadError,
 }: ContentBlockWithFullScreenProps) {
   const {
     showImage,
@@ -77,6 +79,8 @@ export default function ContentBlockWithFullScreen({
     showMetadata,
     toggleMetadata,
     router,
+    navigateToNext,
+    navigateToPrevious,
   } = useFullScreenImage();
 
   useEffect(() => {
@@ -153,6 +157,7 @@ export default function ContentBlockWithFullScreen({
         onPickUp={onPickUp}
         onPlace={onPlace}
         onCancelImageMove={onCancelImageMove}
+        onImageLoadError={onImageLoadError}
       />
 
       {hasMore && (
@@ -181,6 +186,9 @@ export default function ContentBlockWithFullScreen({
         showMetadata={showMetadata}
         toggleMetadata={toggleMetadata}
         router={router}
+        collectionData={collectionData}
+        navigateToNext={navigateToNext}
+        navigateToPrevious={navigateToPrevious}
       />
     </>
   );

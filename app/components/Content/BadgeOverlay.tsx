@@ -1,4 +1,4 @@
-import React from 'react';
+import { type ReactElement } from 'react';
 
 import { type CollectionType } from '@/app/types/Collection';
 
@@ -20,7 +20,7 @@ export interface BadgeOverlayProps {
 export function BadgeOverlay({
   contentType = 'content',
   badgeValue,
-}: BadgeOverlayProps): React.ReactElement | null {
+}: BadgeOverlayProps): ReactElement | null {
   if (badgeValue === null) {
     return null;
   }

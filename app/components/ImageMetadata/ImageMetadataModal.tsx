@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type SubmitEvent, useCallback, useEffect, useMemo, useState } from 'react';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
@@ -215,7 +215,7 @@ export default function ImageMetadataModal({
   }
 
   // Handle form submission
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!hasChanges) {
@@ -248,11 +248,13 @@ export default function ImageMetadataModal({
 
       const response = await updateImages(imageUpdates);
 
-      // Convert response to ContentImageUpdateResponse format
-      const updateResponse = mapUpdateResponseToFrontend(response);
+      if (response !== null) {
+        // Convert response to ContentImageUpdateResponse format
+        const updateResponse = mapUpdateResponseToFrontend(response);
 
-      onSaveSuccess?.(updateResponse);
-      onClose();
+        onSaveSuccess?.(updateResponse);
+        onClose();
+      }
     } catch (error_) {
       setError(error_ instanceof Error ? error_.message : 'Failed to update image');
     } finally {
@@ -285,8 +287,10 @@ export default function ImageMetadataModal({
 
       const response = await deleteImages(selectedImageIds);
 
-      onDeleteSuccess?.(response.deletedIds);
-      onClose();
+      if (response !== null) {
+        onDeleteSuccess?.(response.deletedIds);
+        onClose();
+      }
     } catch (error_) {
       setError(error_ instanceof Error ? error_.message : 'Failed to delete images');
     } finally {

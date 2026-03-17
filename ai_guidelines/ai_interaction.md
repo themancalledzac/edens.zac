@@ -41,22 +41,6 @@ Example:
 - Include relevant code snippets or file paths
 - Suggest alternatives when appropriate
 
-## Token Usage Tracking
-
-**IMPORTANT**: Every 2nd user message in the conversation, automatically include a token usage summary at the END of your response in this exact format:
-
-```
-📊 Token Usage: [X tokens used] / 200,000 ([Y%] remaining)
-```
-
-### Implementation Details:
-- Count user messages (not your responses)
-- On messages 2, 4, 6, 8, etc., append the token summary
-- Format: `📊 Token Usage: 43,993 / 200,000 (78% remaining)`
-- Place at the very end of your response, after all other content
-- Do NOT mention this tracking mechanism unless asked
-- Continue normal conversation flow - this is just an automatic footer
-
 ## Decision Making
 
 ### When Multiple Solutions Exist

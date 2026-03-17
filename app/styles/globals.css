@@ -45,6 +45,7 @@ html,
 
   /* Special spacing values */
   --space-mobile-border: 4px; /* Mobile image borders */
+  --space-mobile-border-header: 2px; /* Lighter separator for text/metadata blocks on mobile */
 
   /* Breakpoints */
   --breakpoint-mobile: 768px;

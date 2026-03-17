@@ -17,7 +17,6 @@ import {
   findImageBlockById,
   getContentOrderIndex,
   getDisplayedCoverImage,
-  handleApiError,
   handleCollectionNavigation,
   handleCoverImageSelection,
   handleMultiSelectToggle,
@@ -43,6 +42,7 @@ import {
   type ContentImageUpdateResponse,
   type ContentTextModel,
 } from '@/app/types/Content';
+import { handleApiError } from '@/app/utils/apiUtils';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 // Test fixtures
@@ -689,6 +689,60 @@ describe('buildUpdatePayload', () => {
       });
     });
 
+    it('should not include description when original is undefined and form is empty string', () => {
+      const originalNoDesc = createCollectionModel({
+        ...originalCollection,
+        description: undefined,
+      });
+
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: '',
+      };
+
+      const result = buildUpdatePayload(formData, originalNoDesc);
+
+      expect(result).toEqual({ id: 1 });
+    });
+
+    it('should include description when original is undefined and form has value', () => {
+      const originalNoDesc = createCollectionModel({
+        ...originalCollection,
+        description: undefined,
+      });
+
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: 'Hello',
+      };
+
+      const result = buildUpdatePayload(formData, originalNoDesc);
+
+      expect(result).toEqual({ id: 1, description: 'Hello' });
+    });
+
+    it('should include description when clearing an existing description', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: '',
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({ id: 1, description: '' });
+    });
+
+    it('should not include description when same value unchanged', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        description: 'Original Description',
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({ id: 1 });
+    });
+
     it('should handle boolean false vs undefined distinction for visible', () => {
       const originalWithFalse = createCollectionModel({
         ...originalCollection,
@@ -999,12 +1053,13 @@ describe('revalidateCollectionCache', () => {
     jest.restoreAllMocks();
   });
 
-  it('should call /api/revalidate with correct tag and path', async () => {
+  it('should call /api/revalidate with correct tag and path, plus collections-index', async () => {
     const slug = 'test-collection';
     (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
     await revalidateCollectionCache(slug);
 
+    // Should revalidate the specific collection
     expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1013,6 +1068,17 @@ describe('revalidateCollectionCache', () => {
         path: '/test-collection',
       }),
     });
+
+    // Should also revalidate the collections index (home page)
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collections-index',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('should resolve successfully when revalidation succeeds', async () => {
@@ -1068,6 +1134,16 @@ describe('revalidateCollectionCache', () => {
         path: '/',
       }),
     });
+
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collections-index',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -1642,10 +1718,13 @@ describe('replayMoves', () => {
     // Start: [1, 2, 3, 4]
     // Move 1 to index 3 → [2, 3, 4, 1]
     // Move 2 to index 0 → [2, 3, 4, 1] — 2 is already at 0
-    const result = replayMoves([1, 2, 3, 4], [
-      { imageId: 1, toIndex: 3 },
-      { imageId: 3, toIndex: 0 },
-    ]);
+    const result = replayMoves(
+      [1, 2, 3, 4],
+      [
+        { imageId: 1, toIndex: 3 },
+        { imageId: 3, toIndex: 0 },
+      ]
+    );
     // After move 1: [2, 3, 4, 1]
     // After move 3→0: [3, 2, 4, 1]
     expect(result).toEqual([3, 2, 4, 1]);

@@ -1,7 +1,9 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { getCollectionsByType } from '@/app/lib/api/collections';
+import { ApiError } from '@/app/lib/api/core';
 import { CollectionType } from '@/app/types/Collection';
 
 interface CollectionTypePageProps {
@@ -25,6 +27,21 @@ function mapUrlToCollectionType(urlType: string): CollectionType | null {
     clientgallery: CollectionType.CLIENT_GALLERY,
   };
   return mapping[normalized] || null;
+}
+
+export async function generateMetadata({ params }: CollectionTypePageProps): Promise<Metadata> {
+  const { collectionType } = await params;
+  const type = collectionType.charAt(0).toUpperCase() + collectionType.slice(1).toLowerCase();
+  const description = `${type} collections — photography by Zac Eden`;
+
+  return {
+    title: type,
+    description,
+    openGraph: {
+      title: type,
+      description,
+    },
+  };
 }
 
 /**
@@ -59,21 +76,18 @@ export default async function CollectionTypePage({ params }: CollectionTypePageP
     // If no collections found, still render the page (empty state handled by CollectionPage)
     return <CollectionPage collection={collections} />;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // Handle 404s
-    if (errorMessage.includes('404')) {
-      notFound();
+    // Handle typed API errors first
+    if (error instanceof ApiError) {
+      if (error.status === 404 || error.status >= 500) {
+        notFound();
+      }
+      throw error;
     }
 
-    // Handle backend schema/database errors
-    const isBackendError =
-      errorMessage.includes('JDBC') ||
-      errorMessage.includes('Unknown column') ||
-      errorMessage.includes('API 500') ||
-      errorMessage.includes('Failed to retrieve');
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
-    if (isBackendError) {
+    // Handle 404s in non-ApiError messages
+    if (errorMessage.includes('404')) {
       notFound();
     }
 

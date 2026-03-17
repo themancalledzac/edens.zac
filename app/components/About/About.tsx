@@ -1,5 +1,3 @@
-'use client';
-
 import Image from 'next/image';
 
 import styles from './About.module.scss';
@@ -33,7 +31,6 @@ export function About({ onBack: _onBack }: AboutProps) {
             alt="Zechariah Edens - Portrait"
             width={1000}
             height={500}
-            unoptimized
             className={styles.profileImage}
           />
         </div>

@@ -4,7 +4,8 @@ import { AlignJustify } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { MenuDropdown } from '../MenuDropdown/MenuDropdown';
+import { MenuDropdown } from '@/app/components/MenuDropdown/MenuDropdown';
+
 import styles from './SiteHeader.module.scss';
 
 interface SiteHeaderProps {
@@ -43,10 +44,15 @@ export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderP
             </Link>
           </div>
           <div className={styles.menuWrapper}>
-            <AlignJustify
-              className={styles.menu}
+            <button
+              type="button"
+              className={styles.menuButton}
               onClick={toggleMenu}
-            />
+              aria-label="Open navigation menu"
+              aria-expanded={isMenuOpen}
+            >
+              <AlignJustify className={styles.menu} />
+            </button>
           </div>
         </div>
       </header>

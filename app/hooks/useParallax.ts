@@ -101,13 +101,21 @@ export function useParallax(options: ParallaxOptions = {}) {
     // Initial update
     updateParallax();
 
-    // Update on scroll
+    // Debounced resize handler to avoid N listeners × per-pixel recalculations
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+    const debouncedResize = () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(updateParallax, 100);
+    };
+
+    // Update on scroll (RAF-throttled) and resize (debounced)
     window.addEventListener('scroll', updateParallax, { passive: true });
-    window.addEventListener('resize', updateParallax, { passive: true });
+    window.addEventListener('resize', debouncedResize, { passive: true });
 
     return () => {
       window.removeEventListener('scroll', updateParallax);
-      window.removeEventListener('resize', updateParallax);
+      window.removeEventListener('resize', debouncedResize);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
       }

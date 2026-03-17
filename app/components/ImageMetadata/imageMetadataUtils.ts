@@ -659,7 +659,7 @@ export function buildImageUpdateDiff(
     'fstop',
     'iso',
     'filmFormat',
-    'createDate',
+    'captureDate',
   ];
 
   for (const field of simpleFields) {

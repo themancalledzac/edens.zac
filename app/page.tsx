@@ -1,4 +1,16 @@
+import type { Metadata } from 'next';
+
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
+
+export const metadata: Metadata = {
+  title: 'Home',
+  description: 'Photography portfolio by Zac Eden — landscape, portrait, and event photography',
+  openGraph: {
+    title: 'Edens Zac — Photography Portfolio',
+    description: 'Photography portfolio by Zac Eden — landscape, portrait, and event photography',
+    type: 'website',
+  },
+};
 
 /**
  * Home Page

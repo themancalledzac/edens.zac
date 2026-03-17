@@ -39,7 +39,7 @@ const createImageContent = (
   fstop: 'f/2.8',
   iso: 400,
   filmFormat: null,
-  createDate: '2024-01-01',
+  captureDate: '2024-01-01',
   ...overrides,
 });
 
@@ -702,7 +702,7 @@ describe('buildImageUpdateDiff', () => {
  * Returns: ContentImageUpdateRequest
  *
  * Passing test cases:
- * - Simple fields: title, caption, alt, author, rating, blackAndWhite, isFilm, shutterSpeed, focalLength, location, fstop, iso, filmFormat, createDate
+ * - Simple fields: title, caption, alt, author, rating, blackAndWhite, isFilm, shutterSpeed, focalLength, location, fstop, iso, filmFormat, captureDate
  *   - Field changed -> included in diff
  *   - Field unchanged -> not included
  *   - Null to undefined -> handled correctly
