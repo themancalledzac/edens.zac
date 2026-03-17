@@ -438,13 +438,12 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
     });
   }
 
-  // Add tags
+  // Add tags as dedicated tag type for chip/badge rendering
   if (collection.tags && collection.tags.length > 0) {
     for (const tag of collection.tags) {
       items.push({
-        type: 'text',
+        type: 'tag',
         value: tag,
-        label: 'tag',
       });
     }
   }
