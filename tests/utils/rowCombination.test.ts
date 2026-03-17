@@ -4,7 +4,7 @@
  */
 
 import { LAYOUT } from '@/app/constants';
-import type { AnyContentModel, ContentImageModel } from '@/app/types/Content';
+import type { AnyContentModel } from '@/app/types/Content';
 import { getItemComponentValue } from '@/app/utils/contentRatingUtils';
 import type { ImageType, RowResult, TemplateKey } from '@/app/utils/rowCombination';
 import {

@@ -83,8 +83,8 @@ describe('Read Endpoints', () => {
 
       const result = await getFilmMetadata();
       expect(result).toEqual(metadata);
-      expect(result.filmTypes).toHaveLength(1);
-      expect(result.filmFormats).toHaveLength(1);
+      expect(result!.filmTypes).toHaveLength(1);
+      expect(result!.filmFormats).toHaveLength(1);
     });
   });
 });
@@ -150,7 +150,7 @@ describe('Admin Endpoints', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(response));
 
       const result = await updateImages([{ id: 1, title: 'Updated' }]);
-      expect(result.updatedImages).toHaveLength(1);
+      expect(result!.updatedImages).toHaveLength(1);
     });
   });
 
@@ -160,7 +160,7 @@ describe('Admin Endpoints', () => {
       (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(response));
 
       const result = await deleteImages([1, 2]);
-      expect(result.deletedIds).toEqual([1, 2]);
+      expect(result!.deletedIds).toEqual([1, 2]);
     });
   });
 

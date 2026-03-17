@@ -94,6 +94,7 @@ describe('parseCollectionArrayResponse', () => {
     });
 
     it('should return empty array when data is undefined', () => {
+      // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined input
       const result = parseCollectionArrayResponse(undefined);
       expect(result).toEqual([]);
     });

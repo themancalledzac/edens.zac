@@ -2,6 +2,7 @@
  * Tests for parallaxImageUtils
  * Tests building parallax image content blocks from various content models
  */
+import { CollectionType } from '@/app/types/Collection';
 import type { ContentImageModel } from '@/app/types/Content';
 import {
   buildParallaxImageContentBlock,
@@ -73,7 +74,7 @@ describe('buildParallaxImageFromContent', () => {
   it('should convert CollectionContentModel to parallax', () => {
     const collection = createCollectionContent(3, {
       title: 'Summer Shots',
-      collectionType: 'BLOG',
+      collectionType: CollectionType.BLOG,
     });
 
     const result = buildParallaxImageFromContent(collection);
