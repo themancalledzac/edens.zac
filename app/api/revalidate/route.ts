@@ -23,9 +23,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Revalidate cache tag if provided
-    // ISR purge requires no profile arg; the required 2nd param in the type def is for "use cache" only
     if (tag && typeof tag === 'string') {
-      revalidateTag(tag);
+      revalidateTag(tag, 'default');
     }
 
     // Revalidate path if provided
