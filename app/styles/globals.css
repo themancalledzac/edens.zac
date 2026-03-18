@@ -173,6 +173,13 @@ body {
   scrollbar-width: none; /* Firefox */
 }
 
+body.scroll-locked {
+  position: fixed;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+}
+
 body::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
 }
