@@ -1,8 +1,11 @@
-import { type AnyContentModel, type ContentImageModel, type ContentTextModel } from '@/app/types/Content';
 import {
-  type ContentFilterCriteria,
-  type ContentFilterOptions,
+  type AnyContentModel,
+  type ContentImageModel,
+  type ContentTextModel,
+} from '@/app/types/Content';
+import {
   computeFilterCounts,
+  type ContentFilterCriteria,
   extractFilterOptions,
   filterContent,
   parseFilterFromParams,
@@ -41,7 +44,10 @@ const sampleImages: ContentImageModel[] = [
     rating: 5,
     location: { id: 1, name: 'Seattle' },
     camera: { id: 1, name: 'Sony A7III' },
-    tags: [{ id: 1, name: 'landscape' }, { id: 2, name: 'sunset' }],
+    tags: [
+      { id: 1, name: 'landscape' },
+      { id: 2, name: 'sunset' },
+    ],
     people: [{ id: 1, name: 'Alice' }],
     captureDate: '2024-06-15T18:30:00Z',
   }),
@@ -61,7 +67,10 @@ const sampleImages: ContentImageModel[] = [
     rating: 4,
     location: { id: 3, name: 'Tokyo' },
     camera: { id: 1, name: 'Sony A7III' },
-    tags: [{ id: 4, name: 'street' }, { id: 1, name: 'landscape' }],
+    tags: [
+      { id: 4, name: 'street' },
+      { id: 1, name: 'landscape' },
+    ],
     people: [{ id: 2, name: 'Bob' }],
     captureDate: '2024-09-01T08:00:00Z',
   }),
@@ -331,10 +340,7 @@ describe('extractFilterOptions', () => {
   });
 
   it('detects film and digital presence', () => {
-    const images = [
-      makeImage({ id: 1, isFilm: true }),
-      makeImage({ id: 2, isFilm: false }),
-    ];
+    const images = [makeImage({ id: 1, isFilm: true }), makeImage({ id: 2, isFilm: false })];
     const options = extractFilterOptions(images);
     expect(options.hasFilm).toBe(true);
     expect(options.hasDigital).toBe(true);
@@ -484,7 +490,10 @@ describe('computeFilterCounts', () => {
       rating: 5,
       isFilm: true,
       blackAndWhite: false,
-      tags: [{ id: 1, name: 'landscape' }, { id: 2, name: 'sunset' }],
+      tags: [
+        { id: 1, name: 'landscape' },
+        { id: 2, name: 'sunset' },
+      ],
       people: [{ id: 1, name: 'Alice' }],
       collections: [{ collectionId: 10, name: 'Trip A', visible: true, orderIndex: 0 }],
     }),
@@ -591,7 +600,7 @@ describe('computeFilterCounts', () => {
     const counts = computeFilterCounts(
       images,
       { isFilm: true as const, minRating: 4 },
-      availableOptions,
+      availableOptions
     );
     expect(counts.tags['landscape']).toBe(2);
     expect(counts.tags['architecture']).toBe(0);
