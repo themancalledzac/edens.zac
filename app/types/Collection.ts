@@ -170,6 +170,9 @@ export interface CollectionModel extends CollectionBaseModel {
   // Tags
   tags?: string[];
 
+  // Client gallery access control
+  isPasswordProtected?: boolean;
+
   // Content
   content?: AnyContentModel[];
 }

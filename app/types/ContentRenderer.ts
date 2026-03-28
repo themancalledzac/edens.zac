@@ -47,6 +47,7 @@ export interface ContentRendererProps {
 
   // GIF-specific
   isGif?: boolean; // For unoptimized flag
+  thumbnailUrl?: string | null; // Poster frame for video/GIF while loading
 
   // Client gallery flag - enables download overlays on images
   isClientGallery?: boolean;

@@ -36,7 +36,7 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check sessionStorage on mount
+  // Check sessionStorage on mount, then probe for passwordless galleries
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem(getSessionKey(collection.slug));
@@ -47,8 +47,40 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
     } catch {
       // sessionStorage may be unavailable (SSR, privacy mode)
     }
+
+    // If the collection has isPasswordProtected explicitly set to false, skip the gate
+    if (collection.isPasswordProtected === false) {
+      try {
+        sessionStorage.setItem(getSessionKey(collection.slug), 'granted');
+      } catch { /* ignore */ }
+      setStatus('unlocked');
+      return;
+    }
+
+    // If we don't know whether a password is set, probe the backend
+    // Galleries without a password return hasAccess: true for empty password
+    if (collection.isPasswordProtected === undefined) {
+      (async () => {
+        try {
+          const { validateClientGalleryAccess } = await import('@/app/lib/api/collections');
+          const result = await validateClientGalleryAccess(collection.slug, '');
+          if (result.hasAccess) {
+            try {
+              sessionStorage.setItem(getSessionKey(collection.slug), 'granted');
+            } catch { /* ignore */ }
+            setStatus('unlocked');
+            return;
+          }
+        } catch {
+          // Backend error or gallery requires password — fall through to locked
+        }
+        setStatus('locked');
+      })();
+      return;
+    }
+
     setStatus('locked');
-  }, [collection.slug]);
+  }, [collection.slug, collection.isPasswordProtected]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {

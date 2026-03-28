@@ -61,15 +61,7 @@ export function useCollectionData(
           return;
         }
 
-        // Check basic cache (populated by public page visits) for instant shell
-        const cachedBasic = collectionStorage.get(slug);
-        if (cachedBasic && isMounted && !abortController.signal.aborted) {
-          // Show collection data immediately while we fetch full metadata
-          onLoadSuccess({ collection: cachedBasic } as CollectionUpdateResponseDTO);
-          setLoading(false);
-        }
-
-        // Fetch full data (fresh or to supplement basic cache)
+        // Fetch full data
         const response = await getCollectionUpdateMetadata(slug);
 
         if (isMounted && !abortController.signal.aborted && response !== null) {

@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -42,6 +43,7 @@ export default function CollectionContentRenderer({
   contentType,
   textItems,
   isGif = false,
+  thumbnailUrl,
   // Reorder mode props
   isReorderMode = false,
   isPickedUp = false,
@@ -142,7 +144,7 @@ export default function CollectionContentRenderer({
     const filterItems = textItems.filter(item => item.type === 'text');
 
     const handleTagClick = (tagName: string) => {
-      router.push(`/collectionType/portfolio?tag=${encodeURIComponent(tagName)}`);
+      router.push(`/tag/${encodeURIComponent(tagName)}`);
     };
 
     return (
@@ -169,9 +171,12 @@ export default function CollectionContentRenderer({
                   <div className={cbStyles.metadataDate}>{dateItem.value}</div>
                 )}
                 {locationItem && (
-                  <div className={cbStyles.metadataLocation}>
+                  <Link
+                    href={`/location/${encodeURIComponent(locationItem.value)}`}
+                    className={cbStyles.metadataLocation}
+                  >
                     {locationItem.value}
-                  </div>
+                  </Link>
                 )}
               </div>
             )}
@@ -245,6 +250,7 @@ export default function CollectionContentRenderer({
             loop
             muted
             playsInline
+            poster={thumbnailUrl || undefined}
             width={imageWidth || undefined}
             height={imageHeight || undefined}
             className={cbStyles.nonParallaxImage}

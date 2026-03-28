@@ -251,6 +251,7 @@ export function normalizeContentToRendererProps(
       isCollection: false,
       contentType: 'GIF',
       isGif: true,
+      thumbnailUrl: content.thumbnailUrl,
     };
   }
 
