@@ -3,8 +3,23 @@
  * Tests collection API functions and response parsing
  */
 
-import { parseCollectionArrayResponse } from '@/app/lib/api/collections';
+import { getCollectionsByLocation, parseCollectionArrayResponse } from '@/app/lib/api/collections';
 import { type CollectionModel,CollectionType } from '@/app/types/Collection';
+
+// Mock fetch globally
+global.fetch = jest.fn();
+
+// Mock environment
+jest.mock('@/app/utils/environment', () => ({
+  isLocalEnvironment: jest.fn(() => false),
+}));
+
+const mockSuccessResponse = (data: unknown) => ({
+  ok: true,
+  status: 200,
+  json: jest.fn().mockResolvedValue(data),
+  headers: new Headers({ 'content-type': 'application/json' }),
+});
 
 // Test fixtures
 const createCollection = (
@@ -173,3 +188,37 @@ describe('parseCollectionArrayResponse', () => {
   });
 });
 
+describe('getCollectionsByLocation', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should throw when slug is empty', async () => {
+    await expect(getCollectionsByLocation('')).rejects.toThrow('location slug is required');
+  });
+
+  it('should fetch collections for a location slug', async () => {
+    const collections = [createCollection(1), createCollection(2)];
+    (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(collections));
+
+    const result = await getCollectionsByLocation('seattle');
+    expect(result).toEqual(collections);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/location/seattle'),
+      expect.any(Object)
+    );
+  });
+
+  it('should return empty array on 404', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      json: jest.fn().mockResolvedValue({ message: 'Not found' }),
+      headers: new Headers({ 'content-type': 'application/json' }),
+    });
+
+    const result = await getCollectionsByLocation('nonexistent');
+    expect(result).toEqual([]);
+  });
+});
