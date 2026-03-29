@@ -46,6 +46,12 @@ const mockGetCollectionUpdateMetadata = getCollectionUpdateMetadata as jest.Mock
 const mockCollectionStorageUpdate = collectionStorage.update as jest.MockedFunction<
   typeof collectionStorage.update
 >;
+const mockCollectionStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
+  typeof collectionStorage.getFull
+>;
+const mockCollectionStorageUpdateFull = collectionStorage.updateFull as jest.MockedFunction<
+  typeof collectionStorage.updateFull
+>;
 
 describe('useCollectionData', () => {
   const mockCollectionData: CollectionUpdateResponseDTO = {
@@ -72,6 +78,8 @@ describe('useCollectionData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCollectionStorageUpdate.mockImplementation(() => {});
+    mockCollectionStorageGetFull.mockReturnValue(null);
+    mockCollectionStorageUpdateFull.mockImplementation(() => {});
   });
 
   describe('Successful data loading', () => {
@@ -128,6 +136,41 @@ describe('useCollectionData', () => {
       expect(mockGetCollectionUpdateMetadata).not.toHaveBeenCalled();
       expect(onLoadSuccess).not.toHaveBeenCalled();
       expect(result.current.error).toBe(null);
+    });
+
+    it('should use cached data and skip API call on cache hit', async () => {
+      mockCollectionStorageGetFull.mockReturnValue(mockCollectionData);
+      const onLoadSuccess = jest.fn();
+
+      const { result } = renderHook(() =>
+        useCollectionData('test-collection', undefined, onLoadSuccess)
+      );
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(mockCollectionStorageGetFull).toHaveBeenCalledWith('test-collection');
+      expect(onLoadSuccess).toHaveBeenCalledWith(mockCollectionData);
+      expect(mockGetCollectionUpdateMetadata).not.toHaveBeenCalled();
+    });
+
+    it('should not call onLoadSuccess when API returns null', async () => {
+      mockGetCollectionUpdateMetadata.mockResolvedValue(null);
+      const onLoadSuccess = jest.fn();
+
+      const { result } = renderHook(() =>
+        useCollectionData('test-collection', undefined, onLoadSuccess)
+      );
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith('test-collection');
+      expect(onLoadSuccess).not.toHaveBeenCalled();
+      expect(mockCollectionStorageUpdate).not.toHaveBeenCalled();
+      expect(mockCollectionStorageUpdateFull).not.toHaveBeenCalled();
     });
   });
 
