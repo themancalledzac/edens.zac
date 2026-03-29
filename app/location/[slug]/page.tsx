@@ -74,7 +74,7 @@ export default async function LocationPageRoute({ params }: LocationPageRoutePro
 
   const [collections, images] = await Promise.all([
     getCollectionsByLocation(location.slug),
-    searchImages({ locationId: location.id, size: 500 }),
+    searchImages({ locationId: location.id }),
   ]);
 
   if (collections.length === 0 && images.length === 0) notFound();
