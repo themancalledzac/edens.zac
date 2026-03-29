@@ -5,11 +5,13 @@
  * Used by ImageMetadataModal for both single and bulk editing.
  */
 
+import type { LocationModel } from '@/app/types/Collection';
 import type {
   ContentImageModel,
   ContentImageUpdateRequest,
   ContentImageUpdateResponse,
 } from '@/app/types/Content';
+import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
 import { buildLocationDiff as buildLocationDiffUtil } from '@/app/utils/locationUtils';
 
 // ============================================================================
@@ -141,7 +143,7 @@ export function getCommonValues(images: ContentImageModel[]): Partial<ContentIma
   if (areAllEqual(images, img => img.caption)) common.caption = first.caption;
   if (areAllEqual(images, img => img.alt)) common.alt = first.alt;
   if (areAllEqual(images, img => img.author)) common.author = first.author;
-  
+
   // Location: compare by id if valid, otherwise by name
   if (
     areAllEqual(images, img => {
@@ -439,8 +441,8 @@ function buildLensDiff(
  * @param diff - The diff object to update
  */
 function buildLocationDiff(
-  updateLocation: { id: number; name: string } | null | undefined,
-  currentLocation: { id: number; name: string } | null | undefined,
+  updateLocation: LocationModel | null | undefined,
+  currentLocation: LocationModel | null | undefined,
   diff: ContentImageUpdateRequest
 ): void {
   const locationUpdate = buildLocationDiffUtil(updateLocation || null, currentLocation || null);
@@ -933,8 +935,8 @@ export function buildImageUpdateForSingleEdit(
 export function mapUpdateResponseToFrontend(response: {
   updatedImages: ContentImageModel[];
   newMetadata?: {
-    tags?: Array<{ id: number; tagName: string }>;
-    people?: Array<{ id: number; personName: string }>;
+    tags?: Array<{ id: number; tagName: string; slug: string }>;
+    people?: Array<{ id: number; personName: string; slug: string }>;
     cameras?: Array<{ id: number; cameraName: string }>;
     lenses?: Array<{ id: number; lensName: string }>;
     filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
@@ -944,8 +946,12 @@ export function mapUpdateResponseToFrontend(response: {
     updatedImages: response.updatedImages,
     newMetadata: response.newMetadata
       ? {
-          tags: response.newMetadata.tags?.map(t => ({ id: t.id, name: t.tagName })),
-          people: response.newMetadata.people?.map(p => ({ id: p.id, name: p.personName })),
+          tags: response.newMetadata.tags?.map(t => ({ id: t.id, name: t.tagName, slug: t.slug })),
+          people: response.newMetadata.people?.map(p => ({
+            id: p.id,
+            name: p.personName,
+            slug: p.slug,
+          })),
           cameras: response.newMetadata.cameras?.map(c => ({ id: c.id, name: c.cameraName })),
           lenses: response.newMetadata.lenses?.map(l => ({ id: l.id, name: l.lensName })),
           filmTypes: response.newMetadata.filmTypes?.map(f => ({

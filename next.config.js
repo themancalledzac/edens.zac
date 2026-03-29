@@ -8,6 +8,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  ...(process.env.NEXT_BUILD_DIR ? { distDir: process.env.NEXT_BUILD_DIR } : {}),
   reactStrictMode: true,
   sassOptions: {
     includePaths: [path.join(process.cwd(), 'styles')],

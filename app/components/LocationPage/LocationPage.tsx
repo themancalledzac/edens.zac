@@ -29,24 +29,26 @@ export default function LocationPage({
 
         <div className={styles.locationHeader}>
           {coverImage?.imageUrl ? (
-            <div className={styles.coverImageWrapper}>
-              <Image
-                src={coverImage.imageUrl}
-                alt={locationName}
-                fill
-                sizes="100vw"
-                className={styles.coverImage}
-                priority
-              />
-              <div className={styles.coverOverlay}>
+            <>
+              <div className={styles.coverImageWrapper}>
+                <Image
+                  src={coverImage.imageUrl}
+                  alt={locationName}
+                  fill
+                  sizes="(min-width: 768px) 280px, 140px"
+                  className={styles.coverImage}
+                  priority
+                />
+              </div>
+              <div className={styles.headerInfo}>
                 <h1 className={styles.locationName}>{locationName}</h1>
                 <span className={styles.imageCount}>
                   {imageCount} {imageCount === 1 ? 'photo' : 'photos'}
                 </span>
               </div>
-            </div>
+            </>
           ) : (
-            <div className={styles.textHeader}>
+            <div className={styles.headerInfo}>
               <h1 className={styles.locationName}>{locationName}</h1>
               <span className={styles.imageCount}>
                 {imageCount} {imageCount === 1 ? 'photo' : 'photos'}

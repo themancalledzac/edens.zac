@@ -8,6 +8,20 @@
 import type { LocationModel, LocationUpdate } from '@/app/types/Collection';
 
 /**
+ * Generate a URL-friendly slug from a display name.
+ * Matches backend slug generation rules. Use only as a fallback
+ * when the API hasn't provided a slug — the backend is the canonical source.
+ */
+export function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^\da-z\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
  * Convert a location string or object to a LocationModel
  * Finds the location in availableLocations by name or id, or creates a new one with id: 0
  *
@@ -43,13 +57,13 @@ export function convertLocationStringToModel(
     const foundByName = availableLocations.find(loc => loc.name === locationInput.name);
     if (foundByName) return foundByName;
     // If not found at all, return the object as-is (it has a valid id from the API)
-    return { id: locationInput.id, name: locationInput.name };
+    return { id: locationInput.id, name: locationInput.name, slug: '' };
   }
 
   // Handle string input (legacy format)
   if (typeof locationInput === 'string') {
     const location = availableLocations.find(loc => loc.name === locationInput);
-    return location || { id: 0, name: locationInput };
+    return location || { id: 0, name: locationInput, slug: '' };
   }
 
   return null;

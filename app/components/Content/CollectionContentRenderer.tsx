@@ -18,6 +18,7 @@ import {
   buildParallaxWrapperClassName,
   buildWrapperClassName,
 } from '@/app/utils/contentRendererUtils';
+import { slugify } from '@/app/utils/locationUtils';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
@@ -143,8 +144,8 @@ export default function CollectionContentRenderer({
     const tagItems = textItems.filter(item => item.type === 'tag');
     const filterItems = textItems.filter(item => item.type === 'text');
 
-    const handleTagClick = (tagName: string) => {
-      router.push(`/tag/${encodeURIComponent(tagName)}`);
+    const handleTagClick = (tagName: string, tagSlug?: string) => {
+      router.push(`/tag/${tagSlug ?? slugify(tagName)}`);
     };
 
     return (
@@ -172,7 +173,7 @@ export default function CollectionContentRenderer({
                 )}
                 {locationItem && (
                   <Link
-                    href={`/location/${encodeURIComponent(locationItem.value)}`}
+                    href={`/location/${locationItem.slug ?? slugify(locationItem.value)}`}
                     className={cbStyles.metadataLocation}
                   >
                     {locationItem.value}
@@ -207,7 +208,7 @@ export default function CollectionContentRenderer({
                       key={`tag-${contentId}-${item.value}`}
                       type="button"
                       className={cbStyles.metadataTag}
-                      onClick={() => handleTagClick(item.value)}
+                      onClick={() => handleTagClick(item.value, item.slug)}
                     >
                       {item.value}
                     </button>
