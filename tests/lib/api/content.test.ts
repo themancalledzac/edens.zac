@@ -10,9 +10,12 @@ import {
   deleteImages,
   getAllCameras,
   getAllImages,
+  getAllLenses,
+  getAllLocations,
   getAllPeople,
   getAllTags,
   getFilmMetadata,
+  searchImages,
   updateImages,
 } from '@/app/lib/api/content';
 
@@ -37,15 +40,18 @@ describe('Read Endpoints', () => {
   });
 
   describe('getAllTags', () => {
-    it('should fetch and return tags', async () => {
-      const tags = [
-        { id: 1, tagName: 'landscape' },
-        { id: 2, tagName: 'portrait' },
+    it('should fetch and return tags normalized to ContentTagModel', async () => {
+      const rawTags = [
+        { id: 1, tagName: 'landscape', slug: 'landscape' },
+        { id: 2, tagName: 'portrait', slug: 'portrait' },
       ];
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(tags));
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(rawTags));
 
       const result = await getAllTags();
-      expect(result).toEqual(tags);
+      expect(result).toEqual([
+        { id: 1, name: 'landscape', slug: 'landscape' },
+        { id: 2, name: 'portrait', slug: 'portrait' },
+      ]);
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/content/tags'),
         expect.any(Object)
@@ -54,12 +60,12 @@ describe('Read Endpoints', () => {
   });
 
   describe('getAllPeople', () => {
-    it('should fetch and return people', async () => {
-      const people = [{ id: 1, personName: 'John Doe' }];
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(people));
+    it('should fetch and return people normalized to ContentPersonModel', async () => {
+      const rawPeople = [{ id: 1, personName: 'John Doe', slug: 'john-doe' }];
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(rawPeople));
 
       const result = await getAllPeople();
-      expect(result).toEqual(people);
+      expect(result).toEqual([{ id: 1, name: 'John Doe', slug: 'john-doe' }]);
     });
   });
 
@@ -85,6 +91,95 @@ describe('Read Endpoints', () => {
       expect(result).toEqual(metadata);
       expect(result!.filmTypes).toHaveLength(1);
       expect(result!.filmFormats).toHaveLength(1);
+    });
+  });
+
+  describe('getAllLocations', () => {
+    it('should fetch and return locations', async () => {
+      const locations = [
+        { id: 1, name: 'Seattle', slug: 'seattle', count: 42 },
+        { id: 2, name: 'Portland', slug: 'portland', count: 15 },
+      ];
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(locations));
+
+      const result = await getAllLocations();
+      expect(result).toEqual(locations);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/content/locations'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getAllLenses', () => {
+    it('should fetch and return lenses', async () => {
+      const lenses = [{ id: 1, lensName: 'Sony 24-70mm f/2.8' }];
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(lenses));
+
+      const result = await getAllLenses();
+      expect(result).toEqual(lenses);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/content/lenses'),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('searchImages', () => {
+    it('should return images from array response', async () => {
+      const images = [{ id: 1, contentType: 'IMAGE', imageUrl: 'https://example.com/1.jpg' }];
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(images));
+
+      const result = await searchImages({ locationId: 1 });
+      expect(result).toEqual(images);
+    });
+
+    it('should unwrap paginated response with content property', async () => {
+      const images = [{ id: 1, contentType: 'IMAGE', imageUrl: 'https://example.com/1.jpg' }];
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse({ content: images }));
+
+      const result = await searchImages({ tagIds: [1, 2] });
+      expect(result).toEqual(images);
+    });
+
+    it('should return empty array for null response', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(null));
+
+      const result = await searchImages({});
+      expect(result).toEqual([]);
+    });
+
+    it('should return empty array for unrecognized response shape', async () => {
+      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse({ data: [] }));
+
+      const result = await searchImages({ cameraId: 1 });
+      expect(result).toEqual([]);
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining('[searchImages]'),
+        expect.anything(),
+        expect.anything()
+      );
+      spy.mockRestore();
+    });
+
+    it('should build query params from search params', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse([]));
+
+      await searchImages({ locationId: 5, size: 100, isFilm: true });
+      const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(calledUrl).toContain('locationId=5');
+      expect(calledUrl).toContain('size=100');
+      expect(calledUrl).toContain('isFilm=true');
+    });
+
+    it('should produce no query params when params are empty', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse([]));
+
+      await searchImages({});
+      const calledUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(calledUrl).toContain('/content/images/search');
+      expect(calledUrl).not.toContain('?');
     });
   });
 });
