@@ -159,4 +159,84 @@ describe('CollectionListSelector', () => {
     );
     expect(screen.getByText('No collections available')).toBeInTheDocument();
   });
+
+  describe('keyboard navigation', () => {
+    it('triggers toggle on Enter key press on row', () => {
+      const onToggle = jest.fn();
+      render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
+
+      const rows = screen.getAllByRole('button', { hidden: false });
+      // Rows with role="button" are the collection rows (checkboxes also have role button)
+      // Find the row for 'Portfolio A' by getting the div with role=button containing that text
+      const portfolioRow = screen.getByText('Portfolio A').closest('[role="button"]');
+      fireEvent.keyDown(portfolioRow!, { key: 'Enter' });
+
+      expect(onToggle).toHaveBeenCalledTimes(1);
+      expect(onToggle).toHaveBeenCalledWith(mockCollections[0]);
+    });
+
+    it('triggers toggle on Space key press on row', () => {
+      const onToggle = jest.fn();
+      render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
+
+      const blogRow = screen.getByText('Blog B').closest('[role="button"]');
+      fireEvent.keyDown(blogRow!, { key: ' ' });
+
+      expect(onToggle).toHaveBeenCalledTimes(1);
+      expect(onToggle).toHaveBeenCalledWith(mockCollections[1]);
+    });
+
+    it('does not trigger toggle on other keys', () => {
+      const onToggle = jest.fn();
+      render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
+
+      const galleryRow = screen.getByText('Gallery C').closest('[role="button"]');
+      fireEvent.keyDown(galleryRow!, { key: 'Tab' });
+
+      expect(onToggle).not.toHaveBeenCalled();
+    });
+
+    it('triggers onNavigate on Enter key press when onNavigate is provided', () => {
+      const onToggle = jest.fn();
+      const onNavigate = jest.fn();
+      render(
+        <CollectionListSelector
+          {...defaultProps}
+          onToggle={onToggle}
+          onNavigate={onNavigate}
+        />
+      );
+
+      const portfolioRow = screen.getByText('Portfolio A').closest('[role="button"]');
+      fireEvent.keyDown(portfolioRow!, { key: 'Enter' });
+
+      expect(onNavigate).toHaveBeenCalledTimes(1);
+      expect(onNavigate).toHaveBeenCalledWith(mockCollections[0]);
+      expect(onToggle).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('onAddNewChild', () => {
+    it('renders "Add New Child" button when onAddNewChild prop is provided', () => {
+      const onAddNewChild = jest.fn();
+      render(<CollectionListSelector {...defaultProps} onAddNewChild={onAddNewChild} />);
+
+      expect(screen.getByText('Add New Child')).toBeInTheDocument();
+    });
+
+    it('calls onAddNewChild callback when button is clicked', () => {
+      const onAddNewChild = jest.fn();
+      render(<CollectionListSelector {...defaultProps} onAddNewChild={onAddNewChild} />);
+
+      fireEvent.click(screen.getByText('Add New Child'));
+
+      expect(onAddNewChild).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not render "Add New Child" button when prop is not provided', () => {
+      render(<CollectionListSelector {...defaultProps} />);
+
+      expect(screen.queryByText('Add New Child')).not.toBeInTheDocument();
+    });
+  });
 });
