@@ -1,0 +1,62 @@
+/*
+  TagPage styles
+  Mirrors LocationPage layout with tag-specific header
+*/
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  margin: 0 auto;
+  width: 100%;
+  max-width: var(--page-max-width);
+  position: relative;
+
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding-left: var(--default-padding);
+    padding-right: var(--default-padding);
+    padding-top: var(--default-padding);
+  }
+}
+
+.pageHeader {
+  padding: var(--space-5) var(--page-padding-mobile);
+  border-bottom: 1px solid var(--border-color, #eee);
+  margin-bottom: var(--space-4);
+
+  @media (width >= 768px) {
+    padding: var(--space-6) 0;
+    margin-bottom: var(--space-5);
+  }
+}
+
+.headerMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pageName {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary, #111);
+
+  @media (width >= 768px) {
+    font-size: 2.4rem;
+  }
+}
+
+.imageCount {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #888);
+  font-weight: 500;
+}

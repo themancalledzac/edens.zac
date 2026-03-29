@@ -5,6 +5,7 @@
 
 import type { AnyContentModel, ContentImageModel } from './Content';
 import type { SingleEntityUpdate } from './createTypes';
+import type { ContentPersonModel, ContentTagModel } from './ImageMetadata';
 
 /**
  * Collection type enum - matches backend CollectionType
@@ -170,6 +171,16 @@ export interface CollectionModel extends CollectionBaseModel {
   // Tags
   tags?: string[];
 
+  /**
+   * Client gallery access control.
+   * - `true`: password required — show locked UI
+   * - `false`: no password needed — skip gate entirely
+   * - `undefined`: unknown — probe backend to determine
+   *
+   * Only meaningful when `type === CollectionType.CLIENT_GALLERY`.
+   */
+  isPasswordProtected?: boolean;
+
   // Content
   content?: AnyContentModel[];
 }
@@ -235,6 +246,7 @@ export type {
 export interface LocationModel {
   id: number;
   name: string;
+  slug?: string;
 }
 
 /**
@@ -252,8 +264,8 @@ export type LocationUpdate = SingleEntityUpdate;
  * Matches backend GeneralMetadataDTO.java
  */
 export interface GeneralMetadataDTO {
-  tags: Array<{ id: number; name: string }>;
-  people: Array<{ id: number; name: string }>;
+  tags: ContentTagModel[];
+  people: ContentPersonModel[];
   locations: LocationModel[];
   cameras: Array<{ id: number; name: string }>;
   lenses: Array<{ id: number; name: string }>;

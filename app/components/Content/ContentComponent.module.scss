@@ -411,6 +411,12 @@
   font-size: var(--text-sm);
   text-align: right;
   letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 /* Description area */

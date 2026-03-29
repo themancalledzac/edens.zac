@@ -1,24 +1,52 @@
+import { cache } from 'react';
 import { type Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import LocationPage from '@/app/components/LocationPage/LocationPage';
+import { getCollectionsByLocation } from '@/app/lib/api/collections';
+import { getAllLocations, searchImages } from '@/app/lib/api/content';
 
 interface LocationPageRouteProps {
-  params: Promise<{
-    slug: string;
-  }>;
+  params: Promise<{ slug: string }>;
+}
+
+interface ResolvedLocation {
+  id: number;
+  name: string;
+  slug: string;
 }
 
 /**
+ * Resolve a URL slug to a real location by matching against the backend location list.
+ * Primary: match by API slug field directly.
+ * Fallback: exact name match for backwards-compatible URLs.
+ * Returns null if no match found.
+ */
+async function resolveLocationFromSlug(slug: string): Promise<ResolvedLocation | null> {
+  const locations = await getAllLocations();
+  if (!locations?.length) return null;
+
+  // Primary: match by API slug
+  const slugMatch = locations.find(l => l.slug === slug);
+  if (slugMatch) return { id: slugMatch.id, name: slugMatch.name, slug: slugMatch.slug };
+
+  // Fallback: exact name match for backwards-compatible bookmarked URLs
+  const decoded = decodeURIComponent(slug);
+  const nameMatch = locations.find(l => l.name === decoded);
+  if (nameMatch) return { id: nameMatch.id, name: nameMatch.name, slug: nameMatch.slug };
+
+  return null;
+}
+
+const getCachedLocation = cache(resolveLocationFromSlug);
+
+/**
  * Generate SEO metadata for location pages.
- * Uses the slug to create a human-readable title.
  */
 export async function generateMetadata({ params }: LocationPageRouteProps): Promise<Metadata> {
   const { slug } = await params;
-  const locationName = slug
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  const location = await getCachedLocation(slug);
+  const locationName = location?.name ?? decodeURIComponent(slug);
 
   return {
     title: `${locationName} — Zac Edens Photography`,
@@ -34,18 +62,33 @@ export async function generateMetadata({ params }: LocationPageRouteProps): Prom
 /**
  * Location Page Route
  *
- * Displays images from a specific location in a collection-like layout.
- * This is a POC/placeholder — the backend endpoint does not exist yet.
- * See todo/backend-requirements-location.md for backend requirements.
- *
- * @param params - Next.js dynamic route params containing location slug
+ * Resolves the slug against real backend locations, then fetches collections and images in parallel.
+ * Calls notFound() when the location doesn't exist or has no content.
  */
 export default async function LocationPageRoute({ params }: LocationPageRouteProps) {
   const { slug } = await params;
+  if (!slug) notFound();
 
-  if (!slug) {
-    notFound();
-  }
+  const location = await getCachedLocation(slug);
+  if (!location) notFound();
 
-  return <LocationPage slug={slug} />;
+  const [collections, images] = await Promise.all([
+    getCollectionsByLocation(location.slug),
+    searchImages({ locationId: location.id }),
+  ]);
+
+  if (collections.length === 0 && images.length === 0) notFound();
+
+  // Use the highest-rated image as cover, falling back to first image.
+  // Collection listing endpoints may not include coverImage data.
+  const coverImage = images.find(img => (img.rating ?? 0) >= 4) ?? images[0] ?? null;
+
+  return (
+    <LocationPage
+      locationName={location.name}
+      collections={collections}
+      images={images}
+      coverImage={coverImage}
+    />
+  );
 }

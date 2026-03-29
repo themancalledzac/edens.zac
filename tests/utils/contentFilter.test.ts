@@ -1,5 +1,10 @@
-import { type AnyContentModel, type ContentImageModel, type ContentTextModel } from '@/app/types/Content';
 import {
+  type AnyContentModel,
+  type ContentImageModel,
+  type ContentTextModel,
+} from '@/app/types/Content';
+import {
+  computeFilterCounts,
   type ContentFilterCriteria,
   extractFilterOptions,
   filterContent,
@@ -39,7 +44,10 @@ const sampleImages: ContentImageModel[] = [
     rating: 5,
     location: { id: 1, name: 'Seattle' },
     camera: { id: 1, name: 'Sony A7III' },
-    tags: [{ id: 1, name: 'landscape' }, { id: 2, name: 'sunset' }],
+    tags: [
+      { id: 1, name: 'landscape' },
+      { id: 2, name: 'sunset' },
+    ],
     people: [{ id: 1, name: 'Alice' }],
     captureDate: '2024-06-15T18:30:00Z',
   }),
@@ -59,7 +67,10 @@ const sampleImages: ContentImageModel[] = [
     rating: 4,
     location: { id: 3, name: 'Tokyo' },
     camera: { id: 1, name: 'Sony A7III' },
-    tags: [{ id: 4, name: 'street' }, { id: 1, name: 'landscape' }],
+    tags: [
+      { id: 4, name: 'street' },
+      { id: 1, name: 'landscape' },
+    ],
     people: [{ id: 2, name: 'Bob' }],
     captureDate: '2024-09-01T08:00:00Z',
   }),
@@ -170,6 +181,145 @@ describe('filterContent', () => {
     const result = filterContent(sampleImages, { minRating: 5, locations: ['Portland'] });
     expect(result).toHaveLength(0);
   });
+
+  // ── New filter dimensions ──
+
+  describe('isFilm filter', () => {
+    const filmImages = [
+      makeImage({ id: 10, isFilm: true, title: 'Film Shot' }),
+      makeImage({ id: 11, isFilm: false, title: 'Digital Shot' }),
+      makeImage({ id: 12, isFilm: true, title: 'Another Film' }),
+    ];
+
+    it('filters to film-only images', () => {
+      const result = filterContent(filmImages, { isFilm: true });
+      expect(result).toHaveLength(2);
+      expect(result.map(r => r.id)).toEqual([10, 12]);
+    });
+
+    it('filters to digital-only images', () => {
+      const result = filterContent(filmImages, { isFilm: false });
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(11);
+    });
+
+    it('treats undefined isFilm as digital (false) when filtering for digital', () => {
+      const images = [
+        makeImage({ id: 1, isFilm: undefined }),
+        makeImage({ id: 2, isFilm: false }),
+        makeImage({ id: 3, isFilm: true }),
+      ];
+      const result = filterContent(images, { isFilm: false });
+      expect(result.map(r => r.id)).toEqual([1, 2]);
+    });
+  });
+
+  describe('blackAndWhite filter', () => {
+    const bwImages = [
+      makeImage({ id: 20, blackAndWhite: true, title: 'BW Photo' }),
+      makeImage({ id: 21, blackAndWhite: false, title: 'Color Photo' }),
+      makeImage({ id: 22, blackAndWhite: true, title: 'Another BW' }),
+    ];
+
+    it('filters to black & white only', () => {
+      const result = filterContent(bwImages, { blackAndWhite: true });
+      expect(result).toHaveLength(2);
+      expect(result.map(r => r.id)).toEqual([20, 22]);
+    });
+
+    it('filters to color only', () => {
+      const result = filterContent(bwImages, { blackAndWhite: false });
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(21);
+    });
+
+    it('treats undefined blackAndWhite as color (false) when filtering for color', () => {
+      const images = [
+        makeImage({ id: 1, blackAndWhite: undefined }),
+        makeImage({ id: 2, blackAndWhite: false }),
+        makeImage({ id: 3, blackAndWhite: true }),
+      ];
+      const result = filterContent(images, { blackAndWhite: false });
+      expect(result.map(r => r.id)).toEqual([1, 2]);
+    });
+  });
+
+  describe('collectionIds filter', () => {
+    const collectionImages = [
+      makeImage({
+        id: 30,
+        title: 'In collection A',
+        collections: [{ collectionId: 100, name: 'Trip A', visible: true, orderIndex: 0 }],
+      }),
+      makeImage({
+        id: 31,
+        title: 'In collection B',
+        collections: [{ collectionId: 200, name: 'Trip B', visible: true, orderIndex: 0 }],
+      }),
+      makeImage({
+        id: 32,
+        title: 'In both',
+        collections: [
+          { collectionId: 100, name: 'Trip A', visible: true, orderIndex: 0 },
+          { collectionId: 200, name: 'Trip B', visible: true, orderIndex: 1 },
+        ],
+      }),
+      makeImage({ id: 33, title: 'No collection', collections: [] }),
+    ];
+
+    it('filters by single collection ID', () => {
+      const result = filterContent(collectionImages, { collectionIds: [100] });
+      expect(result).toHaveLength(2);
+      expect(result.map(r => r.id)).toEqual([30, 32]);
+    });
+
+    it('uses OR logic for multiple collection IDs', () => {
+      const result = filterContent(collectionImages, { collectionIds: [100, 200] });
+      expect(result).toHaveLength(3);
+      expect(result.map(r => r.id)).toEqual([30, 31, 32]);
+    });
+
+    it('excludes images with no collections', () => {
+      const result = filterContent(collectionImages, { collectionIds: [100] });
+      expect(result.map(r => r.id)).not.toContain(33);
+    });
+
+    it('returns empty when no images match the collection ID', () => {
+      const result = filterContent(collectionImages, { collectionIds: [999] });
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('cross-dimension AND logic with new filters', () => {
+    const mixedImages = [
+      makeImage({ id: 40, isFilm: true, blackAndWhite: true, rating: 5 }),
+      makeImage({ id: 41, isFilm: true, blackAndWhite: false, rating: 3 }),
+      makeImage({ id: 42, isFilm: false, blackAndWhite: true, rating: 4 }),
+      makeImage({ id: 43, isFilm: false, blackAndWhite: false, rating: 2 }),
+    ];
+
+    it('combines isFilm AND minRating', () => {
+      const result = filterContent(mixedImages, { isFilm: true, minRating: 4 });
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(40);
+    });
+
+    it('combines blackAndWhite AND isFilm', () => {
+      const result = filterContent(mixedImages, { blackAndWhite: true, isFilm: true });
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(40);
+    });
+
+    it('combines all three new filters', () => {
+      const result = filterContent(mixedImages, {
+        isFilm: false,
+        blackAndWhite: true,
+        minRating: 4,
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(42);
+    });
+  });
 });
 
 // ─── extractFilterOptions ───
@@ -190,9 +340,11 @@ describe('extractFilterOptions', () => {
     expect(options.locations).toEqual(['Portland', 'Seattle', 'Tokyo']);
   });
 
-  it('extracts unique tags sorted alphabetically', () => {
+  it('extracts top tags by frequency, then alphabetically within same frequency', () => {
     const options = extractFilterOptions(sampleImages);
-    expect(options.tags).toEqual(['architecture', 'landscape', 'street', 'sunset']);
+    // 'landscape' appears in images 1 and 3 (freq 2), others appear once (freq 1)
+    // Within freq 1: architecture, street, sunset (alpha order)
+    expect(options.tags).toEqual(['landscape', 'architecture', 'street', 'sunset']);
   });
 
   it('extracts unique cameras sorted alphabetically', () => {
@@ -205,6 +357,92 @@ describe('extractFilterOptions', () => {
     const options = extractFilterOptions(mixed);
     expect(options.ratings).toEqual([]);
     expect(options.people).toEqual([]);
+  });
+
+  it('detects film and digital presence', () => {
+    const images = [makeImage({ id: 1, isFilm: true }), makeImage({ id: 2, isFilm: false })];
+    const options = extractFilterOptions(images);
+    expect(options.hasFilm).toBe(true);
+    expect(options.hasDigital).toBe(true);
+  });
+
+  it('returns hasFilm=false when no film images', () => {
+    const images = [makeImage({ id: 1, isFilm: false })];
+    const options = extractFilterOptions(images);
+    expect(options.hasFilm).toBe(false);
+    expect(options.hasDigital).toBe(true);
+  });
+
+  it('detects BW and color presence', () => {
+    const images = [
+      makeImage({ id: 1, blackAndWhite: true }),
+      makeImage({ id: 2, blackAndWhite: false }),
+    ];
+    const options = extractFilterOptions(images);
+    expect(options.hasBW).toBe(true);
+    expect(options.hasColor).toBe(true);
+  });
+
+  it('extracts unique collections sorted alphabetically', () => {
+    const images = [
+      makeImage({
+        id: 1,
+        collections: [{ collectionId: 10, name: 'Trip B', visible: true, orderIndex: 0 }],
+      }),
+      makeImage({
+        id: 2,
+        collections: [{ collectionId: 20, name: 'Trip A', visible: true, orderIndex: 0 }],
+      }),
+      makeImage({
+        id: 3,
+        collections: [{ collectionId: 10, name: 'Trip B', visible: true, orderIndex: 1 }],
+      }),
+    ];
+    const options = extractFilterOptions(images);
+    expect(options.collections).toEqual([
+      { id: 20, name: 'Trip A' },
+      { id: 10, name: 'Trip B' },
+    ]);
+  });
+
+  it('treats undefined isFilm as digital in options', () => {
+    const images = [
+      makeImage({ id: 1, isFilm: undefined }),
+      makeImage({ id: 2, isFilm: true }),
+    ];
+    const options = extractFilterOptions(images);
+    expect(options.hasFilm).toBe(true);
+    expect(options.hasDigital).toBe(true);
+  });
+
+  it('treats undefined blackAndWhite as color in options', () => {
+    const images = [
+      makeImage({ id: 1, blackAndWhite: undefined }),
+      makeImage({ id: 2, blackAndWhite: true }),
+    ];
+    const options = extractFilterOptions(images);
+    expect(options.hasBW).toBe(true);
+    expect(options.hasColor).toBe(true);
+  });
+
+  it('limits tags to top 10 by frequency', () => {
+    const images = Array.from({ length: 12 }, (_, i) =>
+      makeImage({
+        id: i + 1,
+        tags: [{ id: i + 1, name: `tag-${String(i + 1).padStart(2, '0')}` }],
+      })
+    );
+    // Add extra images for first 3 tags to give them higher frequency
+    images.push(makeImage({ id: 100, tags: [{ id: 1, name: 'tag-01' }] }));
+    images.push(makeImage({ id: 101, tags: [{ id: 2, name: 'tag-02' }] }));
+    images.push(makeImage({ id: 102, tags: [{ id: 3, name: 'tag-03' }] }));
+
+    const options = extractFilterOptions(images);
+    expect(options.tags).toHaveLength(10);
+    // Top 3 by frequency should be first
+    expect(options.tags[0]).toBe('tag-01');
+    expect(options.tags[1]).toBe('tag-02');
+    expect(options.tags[2]).toBe('tag-03');
   });
 });
 
@@ -260,6 +498,36 @@ describe('parseFilterFromParams', () => {
     const criteria = parseFilterFromParams(params);
     expect(criteria).toEqual({});
   });
+
+  it('parses isFilm from URLSearchParams', () => {
+    const params = new URLSearchParams('isFilm=true');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.isFilm).toBe(true);
+  });
+
+  it('parses isFilm=false from URLSearchParams', () => {
+    const params = new URLSearchParams('isFilm=false');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.isFilm).toBe(false);
+  });
+
+  it('parses blackAndWhite from URLSearchParams', () => {
+    const params = new URLSearchParams('bw=true');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.blackAndWhite).toBe(true);
+  });
+
+  it('parses collectionIds from URLSearchParams', () => {
+    const params = new URLSearchParams('collection=10&collection=20');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.collectionIds).toEqual([10, 20]);
+  });
+
+  it('ignores non-numeric collectionIds', () => {
+    const params = new URLSearchParams('collection=abc&collection=10');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.collectionIds).toEqual([10]);
+  });
 });
 
 describe('serializeFilterToParams', () => {
@@ -300,5 +568,164 @@ describe('serializeFilterToParams', () => {
     const serialized = serializeFilterToParams(original);
     const parsed = parseFilterFromParams(serialized);
     expect(parsed).toEqual(original);
+  });
+
+  it('serializes isFilm', () => {
+    const params = serializeFilterToParams({ isFilm: true });
+    expect(params.get('isFilm')).toBe('true');
+  });
+
+  it('serializes isFilm=false', () => {
+    const params = serializeFilterToParams({ isFilm: false });
+    expect(params.get('isFilm')).toBe('false');
+  });
+
+  it('serializes blackAndWhite', () => {
+    const params = serializeFilterToParams({ blackAndWhite: true });
+    expect(params.get('bw')).toBe('true');
+  });
+
+  it('serializes collectionIds', () => {
+    const params = serializeFilterToParams({ collectionIds: [10, 20] });
+    expect(params.getAll('collection')).toEqual(['10', '20']);
+  });
+
+  it('round-trips new fields through parse and serialize', () => {
+    const original: ContentFilterCriteria = {
+      minRating: 3,
+      tags: ['landscape'],
+      isFilm: true,
+      blackAndWhite: false,
+      collectionIds: [10, 20],
+    };
+    const serialized = serializeFilterToParams(original);
+    const parsed = parseFilterFromParams(serialized);
+    expect(parsed).toEqual(original);
+  });
+});
+
+// ─── computeFilterCounts ───
+
+describe('computeFilterCounts', () => {
+  const images = [
+    makeImage({
+      id: 1,
+      rating: 5,
+      isFilm: true,
+      blackAndWhite: false,
+      tags: [
+        { id: 1, name: 'landscape' },
+        { id: 2, name: 'sunset' },
+      ],
+      people: [{ id: 1, name: 'Alice' }],
+      collections: [{ collectionId: 10, name: 'Trip A', visible: true, orderIndex: 0 }],
+    }),
+    makeImage({
+      id: 2,
+      rating: 3,
+      isFilm: false,
+      blackAndWhite: true,
+      tags: [{ id: 3, name: 'architecture' }],
+      people: [{ id: 2, name: 'Bob' }],
+      collections: [{ collectionId: 20, name: 'Trip B', visible: true, orderIndex: 0 }],
+    }),
+    makeImage({
+      id: 3,
+      rating: 4,
+      isFilm: true,
+      blackAndWhite: true,
+      tags: [{ id: 1, name: 'landscape' }],
+      people: [],
+      collections: [{ collectionId: 10, name: 'Trip A', visible: true, orderIndex: 1 }],
+    }),
+  ];
+
+  const availableOptions = extractFilterOptions(images);
+
+  it('counts highly rated images with no other filters active', () => {
+    const counts = computeFilterCounts(images, {}, availableOptions);
+    // images 1 (rating 5) and 3 (rating 4) are >= 4
+    expect(counts.highlyRated).toBe(2);
+  });
+
+  it('counts film images with no other filters active', () => {
+    const counts = computeFilterCounts(images, {}, availableOptions);
+    // images 1 and 3 are film
+    expect(counts.film).toBe(2);
+  });
+
+  it('counts digital images with no other filters active', () => {
+    const counts = computeFilterCounts(images, {}, availableOptions);
+    // Only image 2 is digital (isFilm: false); images 1 and 3 are film
+    expect(counts.digital).toBe(1);
+  });
+
+  it('counts per tag with no other filters active', () => {
+    const counts = computeFilterCounts(images, {}, availableOptions);
+    // 'landscape' appears in images 1 and 3
+    expect(counts.tags['landscape']).toBe(2);
+    // 'architecture' appears only in image 2
+    expect(counts.tags['architecture']).toBe(1);
+    // 'sunset' appears only in image 1
+    expect(counts.tags['sunset']).toBe(1);
+  });
+
+  it('counts per person with no other filters active', () => {
+    const counts = computeFilterCounts(images, {}, availableOptions);
+    expect(counts.people['Alice']).toBe(1);
+    expect(counts.people['Bob']).toBe(1);
+  });
+
+  it('counts per collection with no other filters active', () => {
+    const counts = computeFilterCounts(images, {}, availableOptions);
+    // collection 10 (Trip A) has images 1 and 3
+    expect(counts.collections[10]).toBe(2);
+    // collection 20 (Trip B) has image 2
+    expect(counts.collections[20]).toBe(1);
+  });
+
+  it('film count is contextual: keeps B&W filter active', () => {
+    // With B&W active, film count should only count images that are both film AND B&W
+    const counts = computeFilterCounts(images, { blackAndWhite: true }, availableOptions);
+    // Only image 3 is both film and B&W
+    expect(counts.film).toBe(1);
+  });
+
+  it('highly rated count is contextual: keeps film filter active', () => {
+    // With film active, highly rated count only includes film images with rating >= 4
+    const counts = computeFilterCounts(images, { isFilm: true }, availableOptions);
+    // Images 1 (film, rating 5) and 3 (film, rating 4) are both film+highlyRated
+    expect(counts.highlyRated).toBe(2);
+  });
+
+  it('tag count strips current tag filter when computing per-tag counts', () => {
+    // With 'landscape' tag active, computing 'sunset' count strips tags and adds sunset
+    const counts = computeFilterCounts(images, { tags: ['landscape'] }, availableOptions);
+    // 'sunset' count is independent: 1 image has sunset tag
+    expect(counts.tags['sunset']).toBe(1);
+    // 'landscape' count: without tag filter + landscape = 2 images
+    expect(counts.tags['landscape']).toBe(2);
+  });
+
+  it('film count respects other active filters — combined criteria', () => {
+    // With minRating: 4 active, film count should only include rated images
+    const counts = computeFilterCounts(images, { minRating: 4 }, availableOptions);
+    // Images with rating >= 4: image 1 (film, rating 5) and image 3 (film, rating 4)
+    // film count strips minRating, adds isFilm:true check → images 1 and 3 are film
+    expect(counts.film).toBe(2);
+  });
+
+  it('tag count with combined active criteria', () => {
+    // With isFilm: true and minRating: 4 both active:
+    // tag counts strip 'tags' but keep isFilm and minRating
+    // Only film+rated images remain in base: images 1 and 3
+    // 'landscape' appears in both → 2; 'architecture' only in image 2 (excluded) → 0
+    const counts = computeFilterCounts(
+      images,
+      { isFilm: true as const, minRating: 4 },
+      availableOptions
+    );
+    expect(counts.tags['landscape']).toBe(2);
+    expect(counts.tags['architecture']).toBe(0);
   });
 });

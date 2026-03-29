@@ -19,25 +19,31 @@ export interface ContentFilterCriteria {
   /** Minimum star rating (1-5) */
   minRating?: number;
   /** People names to include (OR logic — matches if image has ANY of these) */
-  people?: string[];
+  people?: readonly string[];
   /** Location names to include (OR logic) */
-  locations?: string[];
+  locations?: readonly string[];
   /** Tag names to include (OR logic) */
-  tags?: string[];
+  tags?: readonly string[];
   /** Camera names to include (OR logic) */
-  cameras?: string[];
+  cameras?: readonly string[];
   /** Free-text search (matches title, caption, tags, people, location) */
   query?: string;
   /** Date range start (ISO string, inclusive) */
   dateFrom?: string;
   /** Date range end (ISO string, inclusive) */
   dateTo?: string;
+  /** Filter to film images only */
+  isFilm?: boolean;
+  /** Filter to black & white images only */
+  blackAndWhite?: boolean;
+  /** Collection IDs to include (OR logic — matches if image belongs to ANY of these) */
+  collectionIds?: readonly number[];
 }
 
 /**
  * Type guard: checks if a content model is an image (IMAGE type with image metadata)
  */
-function isImageContent(content: AnyContentModel): content is ContentImageModel {
+export function isImageContent(content: AnyContentModel): content is ContentImageModel {
   return content.contentType === 'IMAGE';
 }
 
@@ -120,7 +126,10 @@ export function filterContent(
     (criteria.cameras && criteria.cameras.length > 0) ||
     (criteria.query !== undefined && criteria.query.trim().length > 0) ||
     criteria.dateFrom !== undefined ||
-    criteria.dateTo !== undefined;
+    criteria.dateTo !== undefined ||
+    criteria.isFilm !== undefined ||
+    criteria.blackAndWhite !== undefined ||
+    (criteria.collectionIds && criteria.collectionIds.length > 0);
 
   if (!hasActiveFilters) return content;
 
@@ -180,6 +189,25 @@ export function filterContent(
       return false;
     }
 
+    // Film filter — treat undefined/null as digital (false)
+    if (criteria.isFilm !== undefined && (item.isFilm ?? false) !== criteria.isFilm) {
+      return false;
+    }
+
+    // Black & white filter — treat undefined/null as color (false)
+    if (criteria.blackAndWhite !== undefined && (item.blackAndWhite ?? false) !== criteria.blackAndWhite) {
+      return false;
+    }
+
+    // Collection IDs filter (OR logic)
+    if (criteria.collectionIds && criteria.collectionIds.length > 0) {
+      const imageCollectionIds = item.collections?.map(c => c.collectionId) ?? [];
+      const matchesCollection = criteria.collectionIds.some(id =>
+        imageCollectionIds.includes(id)
+      );
+      if (!matchesCollection) return false;
+    }
+
     return true;
   });
 }
@@ -191,18 +219,30 @@ export function filterContent(
  * @param content - Array of content to extract options from
  * @returns Object with arrays of unique values for each filter dimension
  */
-export function extractFilterOptions(content: AnyContentModel[]): {
+export interface ContentFilterOptions {
   ratings: number[];
   people: string[];
   locations: string[];
   tags: string[];
   cameras: string[];
-} {
+  collections: Array<{ id: number; name: string }>;
+  hasFilm: boolean;
+  hasDigital: boolean;
+  hasBW: boolean;
+  hasColor: boolean;
+}
+
+export function extractFilterOptions(content: AnyContentModel[]): ContentFilterOptions {
   const ratingsSet = new Set<number>();
   const peopleSet = new Set<string>();
   const locationsSet = new Set<string>();
-  const tagsSet = new Set<string>();
+  const tagFrequency = new Map<string, number>();
   const camerasSet = new Set<string>();
+  const collectionsMap = new Map<number, string>();
+  let hasFilm = false;
+  let hasDigital = false;
+  let hasBW = false;
+  let hasColor = false;
 
   for (const item of content) {
     if (!isImageContent(item)) continue;
@@ -217,20 +257,137 @@ export function extractFilterOptions(content: AnyContentModel[]): {
       locationsSet.add(item.location.name);
     }
 
-    for (const t of item.tags ?? []) tagsSet.add(t.name);
+    for (const t of item.tags ?? []) {
+      tagFrequency.set(t.name, (tagFrequency.get(t.name) ?? 0) + 1);
+    }
 
     if (item.camera?.name) {
       camerasSet.add(item.camera.name);
     }
+
+    for (const c of item.collections ?? []) {
+      if (c.collectionId && c.name) {
+        collectionsMap.set(c.collectionId, c.name);
+      }
+    }
+
+    if (item.isFilm) hasFilm = true;
+    else hasDigital = true;
+
+    if (item.blackAndWhite) hasBW = true;
+    else hasColor = true;
   }
 
   return {
     ratings: Array.from(ratingsSet).sort((a, b) => b - a),
     people: Array.from(peopleSet).sort(),
     locations: Array.from(locationsSet).sort(),
-    tags: Array.from(tagsSet).sort(),
+    tags: Array.from(tagFrequency.entries())
+      .sort(([nameA, freqA], [nameB, freqB]) => freqB - freqA || nameA.localeCompare(nameB))
+      .slice(0, 10)
+      .map(([name]) => name),
     cameras: Array.from(camerasSet).sort(),
+    collections: Array.from(collectionsMap, ([id, name]) => ({ id, name })).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    ),
+    hasFilm,
+    hasDigital,
+    hasBW,
+    hasColor,
   };
+}
+
+/**
+ * Per-option image counts for filter chips, computed contextually.
+ * Each count represents: "how many images match if I select only this option
+ * in this dimension, while keeping all other active filters?"
+ */
+export interface FilterCounts {
+  highlyRated: number;
+  film: number;
+  digital: number;
+  collections: Record<number, number>;
+  tags: Record<string, number>;
+  people: Record<string, number>;
+}
+
+/**
+ * Compute contextual filter counts for each filterable option.
+ *
+ * For each dimension, strips that dimension from the current criteria, then
+ * counts how many images would match with that specific value applied.
+ * This answers: "if I toggle this chip, how many results will I see?"
+ *
+ * @param content - Full unfiltered content array
+ * @param criteria - Currently active filter criteria
+ * @param availableOptions - All available options (from extractFilterOptions)
+ * @returns Counts per option across all filter dimensions
+ */
+export function computeFilterCounts(
+  content: AnyContentModel[],
+  criteria: ContentFilterCriteria,
+  availableOptions: ContentFilterOptions,
+): FilterCounts {
+  // Strip each dimension to get the base set for contextual counting
+  const { minRating: _mr, ...withoutRating } = criteria;
+  const { isFilm: _if, ...withoutFilm } = criteria;
+  const { collectionIds: _cids, ...withoutCollections } = criteria;
+  const { tags: _tags, ...withoutTags } = criteria;
+  const { people: _people, ...withoutPeople } = criteria;
+
+  // One filterContent call per dimension (5 passes total, not N*M)
+  const baseWithoutRating = filterContent(content, withoutRating);
+  const baseWithoutFilm = filterContent(content, withoutFilm);
+  const baseWithoutCollections = filterContent(content, withoutCollections);
+  const baseWithoutTags = filterContent(content, withoutTags);
+  const baseWithoutPeople = filterContent(content, withoutPeople);
+
+  // Count highly rated in single pass
+  let highlyRated = 0;
+  for (const item of baseWithoutRating) {
+    if (isImageContent(item) && (item.rating ?? 0) >= 4) highlyRated++;
+  }
+
+  // Count film / digital in single pass
+  let film = 0;
+  let digital = 0;
+  for (const item of baseWithoutFilm) {
+    if (!isImageContent(item)) continue;
+    if (item.isFilm) film++;
+    else digital++;
+  }
+
+  // Count per collection in single pass
+  const collections: Record<number, number> = {};
+  for (const col of availableOptions.collections) collections[col.id] = 0;
+  for (const item of baseWithoutCollections) {
+    if (!isImageContent(item)) continue;
+    for (const c of item.collections ?? []) {
+      if (c.collectionId in collections) collections[c.collectionId] = (collections[c.collectionId] ?? 0) + 1;
+    }
+  }
+
+  // Count per tag in single pass
+  const tags: Record<string, number> = {};
+  for (const tag of availableOptions.tags) tags[tag] = 0;
+  for (const item of baseWithoutTags) {
+    if (!isImageContent(item)) continue;
+    for (const t of item.tags ?? []) {
+      if (t.name in tags) tags[t.name] = (tags[t.name] ?? 0) + 1;
+    }
+  }
+
+  // Count per person in single pass
+  const people: Record<string, number> = {};
+  for (const person of availableOptions.people) people[person] = 0;
+  for (const item of baseWithoutPeople) {
+    if (!isImageContent(item)) continue;
+    for (const p of item.people ?? []) {
+      if (p.name in people) people[p.name] = (people[p.name] ?? 0) + 1;
+    }
+  }
+
+  return { highlyRated, film, digital, collections, tags, people };
 }
 
 /**
@@ -290,6 +447,19 @@ export function parseFilterFromParams(
   const dateTo = get('to');
   if (dateTo) criteria.dateTo = dateTo;
 
+  const isFilm = get('isFilm');
+  if (isFilm === 'true') criteria.isFilm = true;
+  else if (isFilm === 'false') criteria.isFilm = false;
+
+  const bw = get('bw');
+  if (bw === 'true') criteria.blackAndWhite = true;
+  else if (bw === 'false') criteria.blackAndWhite = false;
+
+  const collectionIds = getAll('collection')
+    .map(v => Number.parseInt(v, 10))
+    .filter(n => !Number.isNaN(n));
+  if (collectionIds.length > 0) criteria.collectionIds = collectionIds;
+
   return criteria;
 }
 
@@ -315,6 +485,10 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   if (criteria.query) params.set('q', criteria.query);
   if (criteria.dateFrom) params.set('from', criteria.dateFrom);
   if (criteria.dateTo) params.set('to', criteria.dateTo);
+
+  if (criteria.isFilm !== undefined) params.set('isFilm', String(criteria.isFilm));
+  if (criteria.blackAndWhite !== undefined) params.set('bw', String(criteria.blackAndWhite));
+  for (const id of criteria.collectionIds ?? []) params.append('collection', String(id));
 
   return params;
 }

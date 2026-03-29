@@ -20,7 +20,7 @@ import {
   getMetadata,
   updateCollection,
 } from '@/app/lib/api/collections';
-import { createImages, createTextContent } from '@/app/lib/api/content';
+import { createImages, createTextContent, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionCreateRequest,
@@ -31,7 +31,7 @@ import {
   type DisplayMode,
   type LocationModel,
 } from '@/app/types/Collection';
-import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
+import { type ContentImageModel, type ContentImageUpdateRequest, type ContentImageUpdateResponse } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
@@ -349,6 +349,38 @@ export default function ManageClient({ slug }: ManageClientProps) {
         // If slug changed, update URL to reflect new slug
         if (response.collection.slug !== collection.slug) {
           router.replace(`/collection/manage/${response.collection.slug}`);
+        }
+
+        // Location inheritance: if a location was just set (not removed),
+        // apply it to all images in this collection that have no location
+        const locationUpdate = payload.location;
+        if (locationUpdate && !locationUpdate.remove && (locationUpdate.prev || locationUpdate.newValue)) {
+          const resolvedLocation = response.collection.location;
+          if (resolvedLocation && typeof resolvedLocation === 'object' && 'id' in resolvedLocation) {
+            const locationModel = resolvedLocation as LocationModel;
+            const imagesWithoutLocation = (collection.content ?? [])
+              .filter((item): item is ContentImageModel =>
+                item.contentType === 'IMAGE' && !item.location
+              );
+
+            if (imagesWithoutLocation.length > 0) {
+              const imageUpdates: ContentImageUpdateRequest[] = imagesWithoutLocation.map(img => ({
+                id: img.id,
+                location: { prev: locationModel.id },
+              }));
+              // Fire-and-forget: inherit location to locationless images, then refresh
+              updateImages(imageUpdates).then(async () => {
+                const refreshed = await getCollectionUpdateMetadata(response.collection.slug);
+                if (refreshed) {
+                  setCurrentState(refreshed);
+                  collectionStorage.update(refreshed.collection.slug, refreshed.collection);
+                  collectionStorage.updateFull(refreshed.collection.slug, refreshed);
+                }
+              }).catch((err) => {
+                console.error('Failed to inherit location to images:', err);
+              });
+            }
+          }
         }
       }
 

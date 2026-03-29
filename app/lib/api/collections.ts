@@ -138,6 +138,28 @@ export async function getCollectionsByType(
 }
 
 /**
+ * GET /api/read/collections/location/{name}
+ * Get visible collections for a location, ordered by collection date (newest first)
+ */
+export async function getCollectionsByLocation(
+  name: string,
+  page = 0,
+  size = PAGINATION.collectionPageSize
+): Promise<CollectionModel[]> {
+  if (!name) throw new Error('location name is required');
+  try {
+    const result = await fetchReadApi<CollectionModel[]>(
+      `/collections/location/${encodeURIComponent(name)}?page=${page}&size=${size}`,
+      { next: { revalidate: TIMING.revalidateCache, tags: [`collections-location-${name}`] } }
+    );
+    return result ?? [];
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return [];
+    throw error;
+  }
+}
+
+/**
  * POST /api/read/collections/{slug}/access
  * Validate password-based access for a client gallery
  */
