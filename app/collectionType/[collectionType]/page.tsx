@@ -51,32 +51,29 @@ export async function generateMetadata({ params }: CollectionTypePageProps): Pro
  * Fetches all collections of the specified type and displays them using
  * the shared CollectionPage component, which handles arrays of collections.
  *
+ * @remarks Fetches page 0 using the default size from `PAGINATION.collectionPageSize`.
+ *   Non-ApiError responses that embed "404" in the message are also treated as notFound(),
+ *   since some fetch wrappers surface HTTP status as a plain Error.
  * @param params - Next.js dynamic route params containing collectionType
  * @returns Server component displaying collections of the specified type
  */
 export default async function CollectionTypePage({ params }: CollectionTypePageProps) {
   const { collectionType } = await params;
 
-  // Validate collectionType exists
   if (!collectionType) {
     notFound();
   }
 
-  // Map URL param to CollectionType enum
   const type = mapUrlToCollectionType(collectionType);
   if (!type) {
     notFound();
   }
 
   try {
-    // Fetch all collections of this type
-    // Using default pagination (page 0, size from PAGINATION.collectionPageSize)
     const collections = await getCollectionsByType(type, 0);
 
-    // If no collections found, still render the page (empty state handled by CollectionPage)
     return <CollectionPage collection={collections} />;
   } catch (error) {
-    // Handle typed API errors first
     if (error instanceof ApiError) {
       if (error.status === 404 || error.status >= 500) {
         notFound();
@@ -86,12 +83,10 @@ export default async function CollectionTypePage({ params }: CollectionTypePageP
 
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    // Handle 404s in non-ApiError messages
     if (errorMessage.includes('404')) {
       notFound();
     }
 
-    // Re-throw other errors so they can be handled by Next.js error boundary
     throw error;
   }
 }

@@ -27,28 +27,16 @@ interface MenuDropdownProps {
  * Features body scroll locking, click-outside-to-close on desktop, and
  * social media integration. Manages nested form states and navigation.
  *
- * @dependencies
- * - Lucide React CircleX icon for close button
- * - React hooks for state and lifecycle management
- * - About and ContactForm components for expandable sections
- * - InstagramIcon and GitHubIcon for social media links
- *
- * @param isOpen - Controls dropdown visibility state
- * @param onClose - Callback function to close the dropdown
- * @param pageType
- * @param collectionSlug
- * @returns Client component rendering full navigation menu overlay
+ * @param isOpen - Controls dropdown visibility
+ * @param onClose - Callback to close the dropdown
  */
 export function MenuDropdown({ isOpen, onClose, pageType = 'default', collectionSlug }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Form/page state
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
-
-  // Navigation handlers with automatic close
   const handleNavigation = {
     create: () => {
       router.push('/collection/manage');
@@ -72,7 +60,6 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
     }
   };
 
-  // Toggle handlers for expandable sections
   const handleToggle = {
     about: () => {
       setShowAbout(prev => !prev);
@@ -84,7 +71,6 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
     }
   };
 
-  // Internal navigation handlers
   const handleBackToMenu = () => {
     setShowContactForm(false);
     setShowAbout(false);
@@ -94,7 +80,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
     onClose();
   };
 
-  // Click outside to close (desktop only)
+  // Click outside to close on desktop only
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -102,7 +88,6 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
-        // Only close on click outside for desktop
         const isDesktop = window.innerWidth >= 768;
         if (isDesktop) {
           onClose();
@@ -117,14 +102,21 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, onClose]);
 
-  // Body scroll lock when dropdown is open
   useBodyScrollLock(isOpen);
 
-  // Reset forms/pages when dropdown closes
+  // Reset forms when dropdown closes
   useEffect(() => {
     if (!isOpen) {
       setShowContactForm(false);
       setShowAbout(false);
+    }
+  }, [isOpen]);
+
+  // Preload About image on open to avoid layout shift
+  useEffect(() => {
+    if (isOpen) {
+      const img = new Image();
+      img.src = '/_DSC0145.jpg';
     }
   }, [isOpen]);
 

@@ -14,6 +14,7 @@ import {
   convertCollectionContentToImage,
   convertCollectionContentToParallax,
   createHeaderRow,
+  isContentVisibleInCollection,
   processContentBlocks,
   processContentForDisplay,
   type RowWithPatternAndSizes,
@@ -696,6 +697,235 @@ function asSingleRow(
   if (result === null || Array.isArray(result)) return null;
   return result;
 }
+
+describe('isContentVisibleInCollection', () => {
+  it('should return true when block.visible is true and no collectionId', () => {
+    const block = createImageContent(1, { visible: true });
+    expect(isContentVisibleInCollection(block)).toBe(true);
+  });
+
+  it('should return false when block.visible is false', () => {
+    const block = createImageContent(1, { visible: false });
+    expect(isContentVisibleInCollection(block)).toBe(false);
+  });
+
+  it('should return true for TEXT content regardless of collectionId', () => {
+    const block = createTextContent(1, { visible: true });
+    expect(isContentVisibleInCollection(block, 42)).toBe(true);
+  });
+
+  it('should return true for GIF content regardless of collectionId', () => {
+    const block = createGifContent(1, { visible: true });
+    expect(isContentVisibleInCollection(block, 42)).toBe(true);
+  });
+
+  it('should return true when image has no collections array', () => {
+    const block = createImageContent(1, { visible: true, collections: undefined });
+    expect(isContentVisibleInCollection(block, 42)).toBe(true);
+  });
+
+  it('should return true when image collection entry is visible for given collectionId', () => {
+    const block = createImageContent(1, {
+      visible: true,
+      collections: [{ collectionId: 42, visible: true, orderIndex: 0 }],
+    });
+    expect(isContentVisibleInCollection(block, 42)).toBe(true);
+  });
+
+  it('should return false when image collection entry is NOT visible for given collectionId', () => {
+    const block = createImageContent(1, {
+      visible: true,
+      collections: [{ collectionId: 42, visible: false, orderIndex: 0 }],
+    });
+    expect(isContentVisibleInCollection(block, 42)).toBe(false);
+  });
+
+  it('should return true when collectionId not found in image collections', () => {
+    const block = createImageContent(1, {
+      visible: true,
+      collections: [{ collectionId: 99, visible: false, orderIndex: 0 }],
+    });
+    // collectionId 42 not in collections array — should default to visible
+    expect(isContentVisibleInCollection(block, 42)).toBe(true);
+  });
+});
+
+describe('convertCollectionContentToImage', () => {
+  it('should convert collection to IMAGE type using coverImage dimensions', () => {
+    const col = createCollectionContent(1);
+    const result = convertCollectionContentToImage(col);
+    expect(result.contentType).toBe('IMAGE');
+    expect(result.imageWidth).toBe(1920);
+    expect(result.imageHeight).toBe(1080);
+    expect(result.width).toBe(1920);
+    expect(result.height).toBe(1080);
+  });
+
+  it('should set overlayText from collection title', () => {
+    const col = createCollectionContent(1, { title: 'My Gallery' });
+    const result = convertCollectionContentToImage(col);
+    expect(result.overlayText).toBe('My Gallery');
+  });
+
+  it('should fall back to slug for overlayText when title is absent', () => {
+    const col = createCollectionContent(1, { title: undefined, slug: 'my-gallery' });
+    const result = convertCollectionContentToImage(col);
+    expect(result.overlayText).toBe('my-gallery');
+  });
+
+  it('should preserve orderIndex from collection', () => {
+    const col = createCollectionContent(1, { orderIndex: 7 });
+    const result = convertCollectionContentToImage(col);
+    expect(result.orderIndex).toBe(7);
+  });
+
+  it('should preserve visible from collection', () => {
+    const col = createCollectionContent(1, { visible: false });
+    const result = convertCollectionContentToImage(col);
+    expect(result.visible).toBe(false);
+  });
+
+  it('should default visible to true when collection visible is undefined', () => {
+    const col = createCollectionContent(1, { visible: undefined });
+    const result = convertCollectionContentToImage(col);
+    expect(result.visible).toBe(true);
+  });
+
+  it('should produce an empty collections array', () => {
+    const col = createCollectionContent(1);
+    const result = convertCollectionContentToImage(col);
+    expect(result.collections).toEqual([]);
+  });
+});
+
+describe('createHeaderRow', () => {
+  it('should return null when collection has no coverImage', () => {
+    const collection = createCollectionModel(1, { coverImage: undefined });
+    const result = createHeaderRow(collection, 1200, 2);
+    expect(result).toBeNull();
+  });
+
+  it('should return null when coverImage has no dimensions', () => {
+    const collection = createCollectionModel(1, {
+      coverImage: {
+        id: 10,
+        contentType: 'IMAGE',
+        orderIndex: 0,
+        imageUrl: 'https://example.com/cover.jpg',
+        // no imageWidth / imageHeight / width / height
+      },
+    });
+    const result = createHeaderRow(collection, 1200, 2);
+    expect(result).toBeNull();
+  });
+
+  it('should return a single row with templateKey "header" on desktop', () => {
+    const collection = createCollectionModel(1);
+    const result = createHeaderRow(collection, 1200, 2, false);
+    const row = asSingleRow(result);
+    expect(row).not.toBeNull();
+    expect(row?.templateKey).toBe('header');
+  });
+
+  it('should include cover image as first item on desktop', () => {
+    const collection = createCollectionModel(1);
+    const result = createHeaderRow(collection, 1200, 2, false);
+    const row = asSingleRow(result);
+    expect(row?.items.length).toBeGreaterThanOrEqual(1);
+    expect(row?.items[0]?.content.contentType).toBe('IMAGE');
+  });
+
+  it('should return an array of rows on mobile (isMobile=true)', () => {
+    const collection = createCollectionModel(1);
+    const result = createHeaderRow(collection, 375, 2, true);
+    expect(Array.isArray(result)).toBe(true);
+    const rows = result as RowWithPatternAndSizes[];
+    expect(rows.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should give each mobile row templateKey "header"', () => {
+    const collection = createCollectionModel(1);
+    const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
+    for (const row of result) {
+      expect(row.templateKey).toBe('header');
+    }
+  });
+
+  it('should include a metadata row on mobile when collection has description', () => {
+    const collection = createCollectionModel(1, { description: 'Some description' });
+    const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
+    // Should have cover row + metadata row
+    expect(result.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('processContentForDisplay', () => {
+  it('should return empty array for empty content', () => {
+    const result = processContentForDisplay([], 1200);
+    expect(result).toEqual([]);
+  });
+
+  it('should produce rows with valid widths for a single image', () => {
+    const content = [createImageContent(1)];
+    const result = processContentForDisplay(content, 1200);
+    expect(result.length).toBeGreaterThan(0);
+    for (const row of result) {
+      for (const item of row.items) {
+        expect(item.width).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('should produce rows for mixed content types', () => {
+    const content = [
+      createImageContent(1),
+      createTextContent(2),
+      createGifContent(3),
+    ];
+    const result = processContentForDisplay(content, 1200);
+    expect(result.length).toBeGreaterThan(0);
+    const allItems = result.flatMap(r => r.items);
+    expect(allItems.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('should include a header row when collectionData is provided', () => {
+    const content = [createImageContent(1)];
+    const collection = createCollectionModel(1);
+    const result = processContentForDisplay(content, 1200, 2, { collectionData: collection });
+    // First row should be the header
+    expect(result[0]?.templateKey).toBe('header');
+    expect(result.length).toBeGreaterThan(1);
+  });
+
+  it('should not include a header row when collectionData is not provided', () => {
+    const content = [createImageContent(1)];
+    const result = processContentForDisplay(content, 1200);
+    const hasHeaderRow = result.some(r => r.templateKey === 'header');
+    expect(hasHeaderRow).toBe(false);
+  });
+
+  it('should respect isMobile option and return rows', () => {
+    const content = [createImageContent(1), createImageContent(2)];
+    const result = processContentForDisplay(content, 375, 2, { isMobile: true });
+    expect(result.length).toBeGreaterThan(0);
+    for (const row of result) {
+      for (const item of row.items) {
+        expect(item.width).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('should include mobile header rows when isMobile and collectionData are both provided', () => {
+    const content = [createImageContent(1)];
+    const collection = createCollectionModel(1);
+    const result = processContentForDisplay(content, 375, 2, {
+      isMobile: true,
+      collectionData: collection,
+    });
+    // Header row(s) come first
+    expect(result[0]?.templateKey).toBe('header');
+  });
+});
 
 describe('createHeaderRow', () => {
   const componentWidth = 800;

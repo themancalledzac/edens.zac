@@ -7,8 +7,15 @@ import {
 import { isContentImage } from '@/app/utils/contentTypeGuards';
 
 /**
- * Create base parallax image properties
- * Shared logic for common parallax block configuration
+ * Create base parallax image properties.
+ *
+ * Sets `orderIndex` to ensure the block appears first and `rating` to a
+ * standard value (3) to prevent full-screen display.
+ *
+ * @param overlayText - Text displayed as overlay on the parallax image
+ * @param cardTypeBadge - Badge label for the card type
+ * @param orderIndex - Display order (default -2 places it before regular content)
+ * @param rating - Rating value (default 3 prevents full-screen layout)
  */
 function createBaseParallaxProperties(
   overlayText: string,
@@ -20,8 +27,8 @@ function createBaseParallaxProperties(
     enableParallax: true as const,
     overlayText,
     cardTypeBadge,
-    orderIndex, // Ensure it appears first
-    rating, // Force standard rating to prevent full-screen display
+    orderIndex,
+    rating,
   };
 }
 
@@ -43,19 +50,17 @@ export function buildParallaxImageContentBlock(
   type: string,
   title: string
 ): ContentParallaxImageModel | null {
-  // If image exists and it's an image block, use it
   if (image && isContentImage(image)) {
     return {
       ...image,
       ...createBaseParallaxProperties(title, type),
       contentType: 'IMAGE',
-      title, // Override the image's title with the collection title
+      title,
       collectionDate,
       type,
     };
   }
 
-  // No image available
   return null;
 }
 
@@ -68,19 +73,15 @@ export function buildParallaxImageContentBlock(
  *
  * @param content - Any content model (ParallaxImageContentModel, CollectionContentModel, ImageContentModel, etc.)
  * @returns Formatted parallax image model
+ * @see convertCollectionContentToParallax
  */
 export function buildParallaxImageFromContent(content: AnyContentModel): ContentParallaxImageModel {
-  // If already has parallax enabled, return as-is (collections are now converted to Parallax earlier)
   if ('enableParallax' in content && content.enableParallax && content.contentType === 'IMAGE') {
     return content as ContentParallaxImageModel;
   }
 
-  // Handle legacy CollectionContentModel (for backwards compatibility)
   if (content.contentType === 'COLLECTION') {
     const collectionContent = content as ContentCollectionModel;
-    
-    // Use coverImage dimensions (imageWidth/imageHeight) if available, otherwise fallback to defaults
-    // This matches the same logic used in convertCollectionContentToParallax
     const coverImage = collectionContent.coverImage;
     const imageWidth = coverImage?.imageWidth ?? coverImage?.width ?? 800;
     const imageHeight = coverImage?.imageHeight ?? coverImage?.height ?? 800;
@@ -96,10 +97,8 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Content
       height: imageHeight,
       createdAt: content.createdAt,
       updatedAt: content.updatedAt,
-      // Preserve collection-specific fields
       slug: 'slug' in content ? content.slug : undefined,
       collectionType: 'collectionType' in content ? content.collectionType : undefined,
-      // Parallax-specific properties
       ...createBaseParallaxProperties(
         content.title ?? 'Untitled',
         'collectionType' in content ? content.collectionType : 'MISC',
@@ -108,7 +107,6 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Content
     };
   }
 
-  // Handle ImageContentModel
   if (content.contentType === 'IMAGE') {
     return {
       ...content,
@@ -121,7 +119,6 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Content
     };
   }
 
-  // Handle GIF or other content types - convert to basic parallax image
   return {
     id: content.id,
     contentType: 'IMAGE',

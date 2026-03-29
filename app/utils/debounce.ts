@@ -22,7 +22,6 @@ export function useDebounce<T extends (...args: never[]) => void>(
     callbackRef.current = callback;
   }, [callback]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -64,7 +63,6 @@ export function useThrottle<T extends (...args: never[]) => void>(
     callbackRef.current = callback;
   }, [callback]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (trailingTimeoutRef.current) clearTimeout(trailingTimeoutRef.current);
@@ -80,11 +78,9 @@ export function useThrottle<T extends (...args: never[]) => void>(
       if (trailingTimeoutRef.current) clearTimeout(trailingTimeoutRef.current);
 
       if (timeSinceLastCall >= interval) {
-        // Leading edge: enough time has passed, fire immediately
         lastCallRef.current = now;
         callbackRef.current(...args);
       } else {
-        // Trailing: capture the final state after interval elapses
         trailingTimeoutRef.current = setTimeout(() => {
           lastCallRef.current = Date.now();
           callbackRef.current(...args);

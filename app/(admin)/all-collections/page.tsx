@@ -17,7 +17,6 @@ import { ApiError } from '@/app/lib/api/core';
  * @returns React Server Component displaying all collections
  */
 
-// Force dynamic rendering - admin pages should never be statically generated
 export const dynamic = 'force-dynamic';
 
 export default async function AllCollectionsPage() {
@@ -25,12 +24,9 @@ export default async function AllCollectionsPage() {
     const allCollections = await getAllCollectionsAdmin();
     return <CollectionPage collection={allCollections ?? []} />;
   } catch (error) {
-    // Handle 404s using structured ApiError status when available
     if (error instanceof ApiError && error.status === 404) {
       notFound();
     }
-
-    // Re-throw other errors for admin visibility
     throw error;
   }
 }

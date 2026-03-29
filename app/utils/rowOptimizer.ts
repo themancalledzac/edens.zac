@@ -61,7 +61,6 @@ export function optimizeBoundaries(rows: RowResult[], rowWidth: number): RowResu
     let bestA: AnyContentModel[] = rowA.components;
     let bestB: AnyContentModel[] = rowB.components;
 
-    // Candidate 1: move last item of A → start of B
     if (rowA.components.length > MIN_ROW_ITEMS && rowB.components.length < MAX_ROW_ITEMS) {
       const candA = rowA.components.slice(0, -1);
       const candB = [rowA.components[rowA.components.length - 1]!, ...rowB.components];
@@ -73,7 +72,6 @@ export function optimizeBoundaries(rows: RowResult[], rowWidth: number): RowResu
       }
     }
 
-    // Candidate 2: move first item of B → end of A
     if (rowB.components.length > MIN_ROW_ITEMS && rowA.components.length < MAX_ROW_ITEMS) {
       const candA = [...rowA.components, rowB.components[0]!];
       const candB = rowB.components.slice(1);
@@ -85,7 +83,6 @@ export function optimizeBoundaries(rows: RowResult[], rowWidth: number): RowResu
       }
     }
 
-    // Accept if improved
     if (bestScore > currentScore) {
       result[i] = rebuildRow(bestA, rowWidth);
       result[i + 1] = rebuildRow(bestB, rowWidth);

@@ -82,13 +82,11 @@ export const collectionStorage = {
 
       const cached: CachedCollection = JSON.parse(item);
 
-      // Verify this is the correct slug
       if (cached.slug !== slug) {
         sessionStorage.removeItem(key);
         return null;
       }
 
-      // Check if cache is still valid (within 30 minutes)
       const age = Date.now() - cached.timestamp;
       const isValid = age < CACHE_DURATION;
 
@@ -172,13 +170,9 @@ export const collectionStorage = {
         return; // No cache to update
       }
 
-      // Create a map of updated images by ID for quick lookup
       const updatedImagesMap = new Map(updatedImages.map(img => [img.id, img]));
 
-      // Update content array: replace images that were updated, keep others as-is
-      // Only updates IMAGE content types that match the updated images by ID
       const updatedContent = cached.content?.map(block => {
-        // Match by ID and verify it's an IMAGE type (safety check)
         if (block.contentType === 'IMAGE' && updatedImagesMap.has(block.id)) {
           const updatedImage = updatedImagesMap.get(block.id)!;
           return updatedImage;
@@ -186,13 +180,11 @@ export const collectionStorage = {
         return block;
       });
 
-      // Update the cached collection with new content
       const updatedCollection: CollectionModel = {
         ...cached,
         content: updatedContent || cached.content,
       };
 
-      // Save updated collection back to cache with new timestamp
       this.set(slug, updatedCollection);
     } catch (error) {
       if (isLocalEnvironment()) {
@@ -238,13 +230,11 @@ export const collectionStorage = {
 
       const cached: CachedFullCollection = JSON.parse(item);
 
-      // Verify this is the correct slug
       if (cached.slug !== slug) {
         sessionStorage.removeItem(key);
         return null;
       }
 
-      // Check if cache is still valid (within 30 minutes)
       const age = Date.now() - cached.timestamp;
       const isValid = age < CACHE_DURATION;
 

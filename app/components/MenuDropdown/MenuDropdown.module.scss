@@ -19,10 +19,13 @@
   flex-direction: column;
   overflow: hidden;
 
-  /* Desktop: Narrower width, full white background - extends to right edge of viewport */
+  /* Desktop: Narrower width, anchored to the right edge of the page container
+     (max-width: --page-max-width), not the viewport edge */
   @media (width >= 768px) {
     left: auto;
-    right: 0;
+    /* On viewports wider than --page-max-width, offset from the viewport edge
+       so the dropdown aligns with the .main container's right edge */
+    right: max(0px, calc((100vw - var(--page-max-width)) / 2));
     width: min(400px, calc(100% - var(--default-padding)));
     background-color: white;
     box-shadow: -8px 0 16px -8px rgb(0, 0, 0, 0.2);
@@ -32,11 +35,21 @@
 .dropdownCloseButtonWrapper {
   display: flex;
   justify-content: flex-end;
-  padding: var(--page-padding-mobile);
+  align-items: center;
   flex-shrink: 0;
 
+  /* Mirror the page container's padding-top + SiteHeader's navBarWrapper height
+     so the close icon lands at the exact same position as the menu icon.
+     The navBarWrapper is sized by the title's line-height (--header-1 at ~1.2x)
+     and vertically centers the icon within it via align-items:center.
+     We replicate that by setting the same top padding and matching the wrapper height. */
+  padding: var(--page-padding-mobile) var(--page-padding-mobile) 0 var(--page-padding-mobile);
+  /* Title line-height drives the navBarWrapper height; icon is centered within it */
+  min-height: calc(var(--page-padding-mobile) + var(--header-1) * 1.2);
+
   @media (width >= 768px) {
-    padding: var(--default-padding) var(--default-padding) var(--page-padding-desktop) 0;
+    padding: var(--default-padding) var(--default-padding) 0 0;
+    min-height: calc(var(--default-padding) + var(--header-1) * 1.2);
   }
 }
 
@@ -46,7 +59,7 @@
   cursor: pointer;
   color: black;
   transition: color 0.2s ease;
-  stroke-width: 2; /* Base stroke width for mobile */
+  stroke-width: 2.5; /* Match hamburger menu stroke-width on mobile */
 
   &:hover {
     color: var(--color-hover-grey);

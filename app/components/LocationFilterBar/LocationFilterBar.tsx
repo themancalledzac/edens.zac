@@ -64,7 +64,6 @@ export default function LocationFilterBar({
 
   return (
     <div className={styles.filterBar}>
-      {/* Row 1: Toggle filters */}
       <div className={styles.toggleRow}>
         <button
           type="button"
@@ -101,7 +100,6 @@ export default function LocationFilterBar({
         </button>
       </div>
 
-      {/* Row 2: Tag chips */}
       {showTagRow && (
         <div className={styles.wrapRow}>
           {availableOptions.tags.map(tag => {
@@ -121,7 +119,6 @@ export default function LocationFilterBar({
         </div>
       )}
 
-      {/* Row 3: People chips */}
       {showPeopleRow && (
         <div className={styles.wrapRow}>
           {availableOptions.people.map(person => {

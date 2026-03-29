@@ -33,7 +33,7 @@ import {
 } from './imageMetadataUtils';
 import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 
-// Type for updateState that allows location to be LocationModel instead of string
+/** updateState uses LocationModel for location instead of the raw string from ContentImageModel. */
 type ImageUpdateState = Omit<Partial<ContentImageModel>, 'location'> & {
   id: number;
   location?: LocationModel | null;
@@ -83,11 +83,8 @@ export default function ImageMetadataModal({
 }: ImageMetadataModalProps) {
   const isBulkEdit = selectedImageIds.length > 1;
 
-  // Update state: starts as copy of image data (full image for single, common for bulk)
-  // Location is stored as LocationModel for UI (object with id and name)
   const [updateState, setUpdateState] = useState<ImageUpdateState>(() => {
     if (selectedImages.length === 1) {
-      // Single edit: copy full image
       const img = selectedImages[0]!;
       const { id, location, ...rest } = img;
       return {
@@ -96,17 +93,15 @@ export default function ImageMetadataModal({
         location: convertLocationStringToModel(location, availableLocations),
       };
     } else {
-      // Bulk edit: use common values
       const common = getCommonValues(selectedImages);
       return {
-        id: 0, // Will be set per image on submit
+        id: 0,
         ...(common as Omit<Partial<ContentImageModel>, 'location'>),
         location: convertLocationStringToModel(common.location, availableLocations),
       };
     }
   });
 
-  // Reset updateState when selectedImages change (e.g., after save)
   useEffect(() => {
     if (selectedImages.length === 1) {
       const img = selectedImages[0]!;
@@ -131,19 +126,15 @@ export default function ImageMetadataModal({
     }
   }, [selectedImages, availableLocations]);
 
-  // Simple update function - update the state directly
   const updateStateField = (updates: Partial<ImageUpdateState>) => {
     setUpdateState(prev => ({ ...prev, ...updates }));
   };
 
-  // Check if there are any changes (compare updateState to currentState)
   const hasChanges = useMemo(() => {
     if (isBulkEdit) {
-      // For bulk, check if updateState differs from common values
       const common = getCommonValues(selectedImages);
       return hasObjectChanges(updateState, { id: 0, ...common });
     } else {
-      // For single, check if updateState differs from original image
       const original = selectedImages[0]!;
       return hasObjectChanges(updateState, original);
     }
@@ -152,7 +143,6 @@ export default function ImageMetadataModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Derive saved collection IDs from original image state
   const originalCollectionIds = useMemo(() => {
     const ids = new Set<number>();
     if (!isBulkEdit && selectedImages[0]?.collections) {
@@ -163,7 +153,6 @@ export default function ImageMetadataModal({
     return ids;
   }, [selectedImages, isBulkEdit]);
 
-  // Derive pending add/remove sets by comparing updateState with original
   const pendingAddIds = useMemo(() => {
     const ids = new Set<number>();
     for (const c of updateState.collections || []) {
@@ -185,7 +174,6 @@ export default function ImageMetadataModal({
     return ids;
   }, [updateState.collections, originalCollectionIds]);
 
-  // Handle collection toggle in modal context
   const handleCollectionToggle = useCallback((collection: CollectionListModel) => {
     setUpdateState(prev => {
       const currentCollections = prev.collections || [];
@@ -207,14 +195,12 @@ export default function ImageMetadataModal({
     });
   }, []);
 
-  // Get first image for preview and callback - always safe since selectedImages.length > 0
   const previewImage = selectedImages[0];
 
   if (!previewImage) {
     return null;
   }
 
-  // Handle form submission
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -227,7 +213,6 @@ export default function ImageMetadataModal({
       setSaving(true);
       setError(null);
 
-      // Build diff for each image using appropriate builder
       const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
         ? buildImageUpdatesForBulkEdit(
             updateState as Partial<ContentImageModel> & {
@@ -249,7 +234,6 @@ export default function ImageMetadataModal({
       const response = await updateImages(imageUpdates);
 
       if (response !== null) {
-        // Convert response to ContentImageUpdateResponse format
         const updateResponse = mapUpdateResponseToFrontend(response);
 
         onSaveSuccess?.(updateResponse);
@@ -270,7 +254,6 @@ export default function ImageMetadataModal({
     onClose();
   };
 
-  // Handle image deletion
   const handleDelete = async () => {
     const imageCount = selectedImageIds.length;
     const confirmMessage =
@@ -311,7 +294,6 @@ export default function ImageMetadataModal({
       {/* Image Section - Left Side */}
       <div className={styles.imageSection}>
         {isBulkEdit ? (
-          // Bulk edit mode - show grid of selected images
           <div
             style={{
               display: 'grid',
@@ -352,7 +334,6 @@ export default function ImageMetadataModal({
             })}
           </div>
         ) : (
-          // Single edit mode - show full image
           <Image
             src={previewImage.imageUrl}
             alt={previewImage.alt || previewImage.title || 'Image preview'}
@@ -487,7 +468,6 @@ export default function ImageMetadataModal({
                   <input
                     type="checkbox"
                     checked={(() => {
-                      // Read directly from updateState.collections
                       const currentCollection = updateState.collections?.find(
                         c => c.collectionId === currentCollectionId
                       );
@@ -665,7 +645,6 @@ export default function ImageMetadataModal({
               </label>
             </div>
 
-            {/* Film-specific fields - only shown when isFilm is true */}
             {updateState.isFilm && (
               <div className={styles.formGrid2Col}>
                 <UnifiedMetadataSelector<ContentFilmTypeModel>

@@ -55,9 +55,9 @@ import { helperFunction } from './helpers';
 
 ```
 Root:
-├── CLAUDE.md # Detailed development guidelines
+├── CLAUDE.md # Development guidelines (always-loaded hub)
 ├── ai_guidelines/ # Modular AI guideline files
-├── amplify/ # AWS Amplify configuration
+├── docs/ # Feature specs, spikes, handoffs
 ├── tests/ # Test files mirror app/ structure
 └── public/ # Static assets
 

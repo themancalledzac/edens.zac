@@ -666,3 +666,116 @@ describe('contentRendererUtils', () => {
   });
 });
 
+describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
+  describe('IMAGE content with NaN dimensions', () => {
+    it('should recover width from aspect ratio when width is NaN but height is valid', () => {
+      // IMAGE fixture: 1920x1080 (AR = 16/9)
+      // width NaN, height=400 → validWidth = 400 * 1920 / 1080 = 711.11 → 711
+      const image = createImageContent(1);
+      const result = normalizeContentToRendererProps(image, NaN, 400, 'imageSingle', false);
+
+      expect(Number.isFinite(result.width)).toBe(true);
+      expect(result.width).toBe(711);
+      expect(result.height).toBe(400);
+    });
+
+    it('should recover height from aspect ratio when height is NaN but width is valid', () => {
+      // IMAGE fixture: 1920x1080 (AR = 16/9)
+      // height NaN, width=600 → validHeight = 600 * 1080 / 1920 = 337.5 → 338
+      const image = createImageContent(1);
+      const result = normalizeContentToRendererProps(image, 600, NaN, 'imageSingle', false);
+
+      expect(Number.isFinite(result.height)).toBe(true);
+      expect(result.width).toBe(600);
+      expect(result.height).toBe(338);
+    });
+
+    it('should fall back to 300x200 when both width and height are NaN', () => {
+      const image = createImageContent(1);
+      const result = normalizeContentToRendererProps(image, NaN, NaN, 'imageSingle', false);
+
+      expect(Number.isFinite(result.width)).toBe(true);
+      expect(Number.isFinite(result.height)).toBe(true);
+      expect(result.width).toBe(300);
+      expect(result.height).toBe(200);
+    });
+
+    it('should treat Infinity as non-finite and recover width from aspect ratio', () => {
+      // IMAGE fixture: 1920x1080 (AR = 16/9)
+      // width Infinity, height=400 → validWidth = 400 * 1920 / 1080 = 711.11 → 711
+      const image = createImageContent(1);
+      const result = normalizeContentToRendererProps(image, Infinity, 400, 'imageSingle', false);
+
+      expect(Number.isFinite(result.width)).toBe(true);
+      expect(result.width).toBe(711);
+      expect(result.height).toBe(400);
+    });
+  });
+
+  describe('COLLECTION content with NaN dimensions', () => {
+    it('should recover width from coverImage aspect ratio when width is NaN', () => {
+      // COLLECTION fixture coverImage: 1920x1080 (AR = 16/9)
+      // width NaN, height=300 → validWidth = 300 * 1920 / 1080 = 533.33 → 533
+      const collection = createCollectionContent(1);
+      const result = normalizeContentToRendererProps(
+        collection,
+        NaN,
+        300,
+        'imageSingle',
+        false
+      );
+
+      expect(Number.isFinite(result.width)).toBe(true);
+      expect(result.width).toBe(533);
+      expect(result.height).toBe(300);
+    });
+  });
+
+  describe('GIF content with NaN dimensions', () => {
+    it('should recover width from gif aspect ratio when width is NaN', () => {
+      // GIF fixture: 800x600 (AR = 4/3)
+      // width NaN, height=300 → validWidth = 300 * 800 / 600 = 400
+      const gif = createGifContent(1);
+      const result = normalizeContentToRendererProps(gif, NaN, 300, 'imageSingle', false);
+
+      expect(Number.isFinite(result.width)).toBe(true);
+      expect(result.width).toBe(400);
+      expect(result.height).toBe(300);
+    });
+  });
+
+  describe('TEXT content with NaN dimensions (no image dimensions — uses 1.5 ratio)', () => {
+    it('should recover width using height * 1.5 when width is NaN but height is valid', () => {
+      // TEXT has no image dimensions for NaN fallback
+      // width NaN, height=200 → validWidth = 200 * 1.5 = 300
+      const text = createTextContent(1);
+      const result = normalizeContentToRendererProps(text, NaN, 200, 'imageSingle', false);
+
+      expect(Number.isFinite(result.width)).toBe(true);
+      expect(result.width).toBe(300);
+      expect(result.height).toBe(200);
+    });
+
+    it('should recover height using width / 1.5 when height is NaN but width is valid', () => {
+      // TEXT has no image dimensions for NaN fallback
+      // height NaN, width=500 → validHeight = 500 / 1.5 = 333.33 → 333
+      const text = createTextContent(1);
+      const result = normalizeContentToRendererProps(text, 500, NaN, 'imageSingle', false);
+
+      expect(Number.isFinite(result.height)).toBe(true);
+      expect(result.width).toBe(500);
+      expect(result.height).toBe(333);
+    });
+
+    it('should fall back to 300x200 when both dimensions are NaN', () => {
+      const text = createTextContent(1);
+      const result = normalizeContentToRendererProps(text, NaN, NaN, 'imageSingle', false);
+
+      expect(Number.isFinite(result.width)).toBe(true);
+      expect(Number.isFinite(result.height)).toBe(true);
+      expect(result.width).toBe(300);
+      expect(result.height).toBe(200);
+    });
+  });
+});
+

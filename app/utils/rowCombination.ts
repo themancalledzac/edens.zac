@@ -211,7 +211,9 @@ export function getTemplateKey(images: ImageType[]): string {
 
 /**
  * Generate candidate rest-group trees based on the number of rest images.
+ *
  * Each candidate represents a different spatial arrangement of the non-dominant images.
+ * For n=2, vStack is listed first so it wins ties (prefer more vertical stacking per spec).
  */
 function generateCandidates(rest: ImageType[]): AtomicComponent[] {
   const n = rest.length;
@@ -224,7 +226,6 @@ function generateCandidates(rest: ImageType[]): AtomicComponent[] {
 
   if (n === 2) {
     const [a, b] = [single(rest[0]!), single(rest[1]!)];
-    // vStack first — wins ties per spec (prefer more vertical stacking)
     return [vStack(a, b), hPair(a, b)];
   }
 
@@ -605,8 +606,18 @@ export function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' 
  * 3. Best-fit fallback when sequential fill fails
  * 4. Template map lookup for layout structure
  *
+ * Standalone promotion: if the next item would overfill AND it fills a row on its
+ * own (cv >= rowWidth * MIN_FILL_RATIO), skip it so it gets its own row on a
+ * subsequent iteration. This replaces the old reorderLonelyVerticals pre-pass.
+ *
+ * On mobile (rowWidth <= 2), the AR-floor check is disabled entirely. Mobile renders
+ * items full-width or stacked, so single vertical images naturally have low AR.
+ * Without this, the AR override pulls 3-4+ items into a single row, creating
+ * excessively cramped images.
+ *
  * @param items - All content items to layout
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
+ * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
  * @returns Array of rows, each with components and their combination direction
  */
 export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: number = 1.5): RowResult[] {
@@ -616,9 +627,6 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
 
-    // --- STANDALONE skip check ---
-    // If item 0 is low-rated (effectiveRating ≤ 2), search ahead for a hero
-    // that fills the row solo.
     const item0Rating = getEffectiveRating(window[0]!);
 
     if (item0Rating <= LOW_RATED_THRESHOLD) {
@@ -654,17 +662,7 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
       }
     }
 
-    // --- Greedy sequential fill ---
-    // Standalone promotion: if the next item would overfill AND it fills a row
-    // on its own (cv >= rowWidth * MIN_FILL_RATIO), skip it. The standalone will
-    // get its own row on a subsequent iteration. This replaces the old
-    // reorderLonelyVerticals pre-pass.
-    // On mobile (rowWidth ≤ 2), disable AR-floor check entirely.
-    // Mobile renders items full-width or stacked, so single vertical images
-    // naturally have low AR. Without this, the AR override pulls 3-4+ items
-    // into a single row, creating tiny cramped images.
     const arFloor = rowWidth <= 2 ? 0 : targetAR * AR_FLOOR_MULTIPLIER;
-    // Expand window to MAX_ROW_IMAGES for AR-aware fill (may pull more items)
     const expandedWindow = remaining.slice(0, MAX_ROW_IMAGES);
     let seqTotal = 0;
     let seqCount = 0;
@@ -677,8 +675,7 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
       const newFill = (seqTotal + cv) / rowWidth;
 
       if (newFill > MAX_FILL_RATIO && !slotCountComplete) {
-        // If we already have items AND this item is a standalone, skip it
-        if (seqCount > 0 && cv / rowWidth >= MIN_FILL_RATIO) {
+          if (seqCount > 0 && cv / rowWidth >= MIN_FILL_RATIO) {
           skippedStandalones.push(i);
           continue;
         }
@@ -686,9 +683,7 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
         break;
       }
 
-      // If we've already hit slot-count fill, only add if AR-aware fill demands it
       if (slotCountComplete) {
-        // Beyond the original window — always add (we're here because AR was too low)
         seqTotal += cv;
         seqCount += 1;
 
@@ -704,15 +699,13 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
       seqCount += 1;
 
       if (newFill >= MIN_FILL_RATIO) {
-        // Row is complete by slot count — check AR before closing
         const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
         const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
         const rowAR = estimateRowAR(rowImgs, targetAR, rowWidth);
 
         if (rowAR >= arFloor) {
-          break; // AR is acceptable, close the row
+          break;
         }
-        // AR too low — mark slot-count complete but keep filling
         slotCountComplete = true;
       }
     }
@@ -731,7 +724,6 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
         boxTree,
       });
 
-      // Remove used items from remaining (skip standalone indices stay)
       const usedIndices = new Set<number>();
       let t = 0;
       for (let i = 0; i < expandedWindow.length && t < seqCount; i++) {
@@ -740,7 +732,6 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
           t++;
         }
       }
-      // Remove from highest index first to preserve lower indices
       const sortedUsed = [...usedIndices].sort((a, b) => b - a);
       for (const idx of sortedUsed) {
         remaining.splice(idx, 1);
@@ -748,7 +739,6 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
       continue;
     }
 
-    // --- Best-fit fallback ---
     const bfComponents: AnyContentModel[] = [];
     const bfUsedIndices: number[] = [];
     const available = new Set(window.map((_, i) => i));

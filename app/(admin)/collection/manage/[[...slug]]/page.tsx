@@ -6,7 +6,6 @@ interface ManageCollectionPageProps {
   }>;
 }
 
-// Force dynamic rendering - admin pages should never be statically generated
 export const dynamic = 'force-dynamic';
 
 /**
@@ -27,6 +26,5 @@ export default async function ManageCollectionPage({ params }: ManageCollectionP
   const { slug: slugArray } = await params;
   const slug = slugArray?.[0];
 
-  // Pass slug to client - it will handle cache check and data fetching
   return <ManageClient slug={slug} />;
 }

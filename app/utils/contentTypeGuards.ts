@@ -58,63 +58,35 @@ export function hasImage(block: Content): block is ContentImageModel | ContentPa
  * Prioritizes imageWidth/imageHeight over width/height for accurate aspect ratios
  */
 export function getContentDimensions(block: Content, defaultWidth = 1300, defaultAspect = 3/2): { width: number; height: number } {
-  // For image blocks, prioritize image dimensions for accurate aspect ratios
   if (isContentImage(block)) {
-    // Use imageWidth/imageHeight if available (most accurate for images)
     if (block.imageWidth && block.imageHeight) {
-      const result = { width: block.imageWidth, height: block.imageHeight };
-      // DEBUG: Check for NaN
-      if (!Number.isFinite(result.width) || !Number.isFinite(result.height)) {
-        console.error('[getContentDimensions] NaN from imageWidth/imageHeight:', {
-          contentId: block.id,
-          imageWidth: block.imageWidth,
-          imageHeight: block.imageHeight,
-        });
-      }
-      return result;
+      return { width: block.imageWidth, height: block.imageHeight };
     }
-    // Fall back to width/height if imageWidth/imageHeight not available
     if (block.width && block.height) {
-      const result = { width: block.width, height: block.height };
-      // DEBUG: Check for NaN
-      if (!Number.isFinite(result.width) || !Number.isFinite(result.height)) {
-        console.error('[getContentDimensions] NaN from width/height:', {
-          contentId: block.id,
-          width: block.width,
-          height: block.height,
-        });
-      }
-      return result;
+      return { width: block.width, height: block.height };
     }
-    // Final fallback to defaults
     const width = defaultWidth;
     const height = Math.round(width / defaultAspect);
     return { width, height };
   }
 
-  // For collection blocks, use coverImage dimensions if available
-  // This allows proper chunking based on actual cover image aspect ratio
   if (isContentCollection(block)) {
     const collectionBlock = block as ContentCollectionModel;
-    // Prioritize coverImage.imageWidth/imageHeight for accurate aspect ratios
     if (collectionBlock.coverImage?.imageWidth && collectionBlock.coverImage?.imageHeight) {
       return {
         width: collectionBlock.coverImage.imageWidth,
         height: collectionBlock.coverImage.imageHeight,
       };
     }
-    // Fallback to coverImage.width/height if imageWidth/imageHeight not available
     if (collectionBlock.coverImage?.width && collectionBlock.coverImage?.height) {
       return {
         width: collectionBlock.coverImage.width,
         height: collectionBlock.coverImage.height,
       };
     }
-    // Final fallback to default aspect ratio
     return { width: defaultWidth, height: Math.round(defaultWidth / defaultAspect) };
   }
 
-  // For all other blocks, use explicit width/height if available, otherwise defaults
   if (block.width && block.height) {
     return { width: block.width, height: block.height };
   }
@@ -138,10 +110,6 @@ export function validateContentBlock(block: unknown): block is Content {
   );
 }
 
-// =============================================================================
-// LAYOUT HELPER FUNCTIONS
-// =============================================================================
-
 /**
  * Get aspect ratio for content item
  */
@@ -156,6 +124,8 @@ export function getAspectRatio(item: Content): number {
 
 /**
  * Get slot width for content item based on aspect ratio and rating.
+ *
+ * Square images (ratio == 1:1) are considered vertical, not horizontal.
  *
  * Slot width rules:
  * - Collection cards (has slug): chunkSize/2 (pair up on catalog pages)
@@ -174,7 +144,6 @@ export function getSlotWidth(
 ): number {
   const halfSlot = Math.floor(chunkSize / 2);
 
-  // Collection cards (with slug for navigation) get half slot
   if ('slug' in contentItem && contentItem.slug) {
     return halfSlot;
   }
@@ -183,15 +152,12 @@ export function getSlotWidth(
 
   const { width, height } = getContentDimensions(contentItem);
   const ratio = width / Math.max(1, height);
-  const isHorizontal = ratio > 1.0; // Square (1:1) is considered vertical
+  const isHorizontal = ratio > 1.0;
 
-  // Wide panorama → standalone
   if (ratio >= 2) return chunkSize;
 
-  // Tall panorama → normal slot
   if (ratio <= 0.5) return 1;
 
-  // Rating-based logic (only for images with ratings)
   if (isContentImage(contentItem)) {
     const rating = contentItem.rating || 0;
 

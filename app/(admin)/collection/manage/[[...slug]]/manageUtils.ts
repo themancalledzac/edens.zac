@@ -18,26 +18,30 @@ import {
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
-// Constants
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
 
-
 /**
- * Build an update payload containing only changed fields
- * Compares form data with original collection and only includes differences
- * Note: New text blocks are added via separate POST endpoint, not through update
- * Note: Content reordering is handled via Image Update endpoint where orderIndex is updated
+ * Build an update payload containing only changed fields.
+ * Compares form data with original collection and only includes differences.
+ *
+ * @remarks
+ * - `undefined` and `null` and `''` are treated as equivalent (normalized to `undefined`).
+ * - `collectionDate`: `null` means "explicitly clear"; `''` means unchanged from a null original.
+ *   When the date is cleared and was previously set, `clearCollectionDate: true` is sent instead.
+ * - `coverImageId`, `collections`, and `location` use presence-check (`!== undefined`) rather
+ *   than value-diff because each has its own update semantics.
+ * - New text blocks are added via a separate POST endpoint, not through this payload.
+ * - Content reordering is handled via the Image Update endpoint (orderIndex field).
  */
 export function buildUpdatePayload(
   formData: CollectionUpdateRequest,
   originalCollection: CollectionModel
 ): CollectionUpdateRequest {
   const payload: CollectionUpdateRequest = {
-    id: originalCollection.id, // ID is required for updates
+    id: originalCollection.id,
   };
 
-  // Field mappings: [formKey, originalValue]
   const fieldMappings: Array<{
     key: keyof CollectionUpdateRequest;
     original: unknown;
@@ -50,40 +54,38 @@ export function buildUpdatePayload(
     { key: 'rowsWide', original: originalCollection.rowsWide },
   ];
 
-  // Only include fields that have actually changed
   for (const { key, original } of fieldMappings) {
     const formValue = formData[key];
-    // Handle undefined/null comparison - treat undefined and null as equivalent
-    // Also normalize empty strings for string fields
-    const normalizedOriginal = original === null || original === undefined || original === '' ? undefined : original;
-    const normalizedFormValue = formValue === null || formValue === undefined || formValue === '' ? undefined : formValue;
-    
+    const normalizedOriginal =
+      original === null || original === undefined || original === '' ? undefined : original;
+    const normalizedFormValue =
+      formValue === null || formValue === undefined || formValue === '' ? undefined : formValue;
+
     if (normalizedFormValue !== normalizedOriginal) {
-      // Type assertion needed since we're iterating dynamically
       (payload as unknown as Record<string, unknown>)[key] = formData[key];
     }
   }
 
-  // Handle collectionDate separately: null means "explicitly clear", '' means "unchanged from null original"
   if (formData.collectionDate !== undefined) {
     const originalDate = originalCollection.collectionDate || null;
     const newDate = formData.collectionDate === '' ? null : formData.collectionDate;
     if (newDate !== originalDate) {
-      payload.collectionDate = newDate;
+      if (newDate === null && originalDate !== null) {
+        payload.clearCollectionDate = true;
+      } else {
+        payload.collectionDate = newDate;
+      }
     }
   }
 
-  // Handle coverImageId separately (undefined vs missing distinction matters)
   if (formData.coverImageId !== undefined) {
     payload.coverImageId = formData.coverImageId;
   }
 
-  // Handle collections separately - include if defined
   if (formData.collections !== undefined) {
     payload.collections = formData.collections;
   }
 
-  // Handle location separately - include if defined (uses LocationUpdate pattern)
   if (formData.location !== undefined) {
     payload.location = formData.location;
   }
@@ -106,18 +108,19 @@ export function findImageBlockById(
 }
 
 /**
- * Get the displayed cover image - either pending selection or current
+ * Get the displayed cover image - either pending selection or current.
+ *
+ * @remarks
+ * Casts `collection.content` to `AnyContentModel[]` — safe because the API response
+ * always populates content with `AnyContentModel` instances at runtime.
  */
 export function getDisplayedCoverImage(
   collection: CollectionModel | null,
   pendingCoverImageId: number | undefined
 ): ContentImageModel | null | undefined {
   if (pendingCoverImageId) {
-    // Type-safe check: only pass blocks if they exist and are the right type
     const blocks = collection?.content;
     if (!blocks || !Array.isArray(blocks)) return undefined;
-
-    // Safe cast: ContentBlock[] from API response contains AnyContentModel instances at runtime
     return findImageBlockById(blocks as AnyContentModel[], pendingCoverImageId);
   }
   return collection?.coverImage;
@@ -190,15 +193,10 @@ export function handleCollectionNavigation(
  * @param currentSelectedIds - Current array of selected image IDs
  * @returns New array of selected image IDs
  */
-export function handleMultiSelectToggle(
-  imageId: number,
-  currentSelectedIds: number[]
-): number[] {
+export function handleMultiSelectToggle(imageId: number, currentSelectedIds: number[]): number[] {
   if (currentSelectedIds.includes(imageId)) {
-    // Deselect
     return currentSelectedIds.filter(id => id !== imageId);
   }
-  // Select
   return [...currentSelectedIds, imageId];
 }
 
@@ -216,15 +214,14 @@ export function handleSingleImageEdit(
   content: AnyContentModel[] | undefined,
   processedContent: AnyContentModel[]
 ): ContentImageModel | null {
-  // Find block in original content or processed content
   const imageBlock =
     content?.find(block => block.id === imageId) ||
     processedContent.find(block => block.id === imageId);
-  
+
   if (imageBlock && isContentImage(imageBlock)) {
     return imageBlock;
   }
-  
+
   return null;
 }
 
@@ -245,13 +242,11 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
 
   try {
     await Promise.all([
-      // Revalidate the specific collection page
       revalidate({ tag: `collection-${slug}`, path: `/${slug}` }),
-      // Revalidate the collections index (home page, type listings)
       revalidate({ tag: 'collections-index' }),
+      revalidate({ tag: 'collection-home' }),
     ]);
   } catch (error) {
-    // Fail silently - revalidation is not critical for functionality
     if (isLocalEnvironment()) {
       console.warn('[manageUtils] Failed to revalidate cache:', error);
     }
@@ -271,8 +266,7 @@ export function mergeNewMetadata(
   _currentState: CollectionUpdateResponseDTO | null
 ): ((prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO) | null {
   const { newMetadata } = response;
-  
-  // Check if there's any new metadata to merge
+
   if (!newMetadata || !Object.values(newMetadata).some(arr => arr && arr.length > 0)) {
     return null;
   }
@@ -291,13 +285,13 @@ export function mergeNewMetadata(
 /**
  * Refresh collection data after an operation
  * Common pattern used by handleImageUpload, handleTextBlockSubmit, etc.
- * 
+ *
  * Pattern:
  * 1. Execute the operation (async function)
  * 2. Re-fetch collection using admin endpoint
  * 3. Update state with refreshed collection (preserving metadata)
  * 4. Update cache with full admin data
- * 
+ *
  * @param slug - Collection slug
  * @param operation - Async function to execute before refresh
  * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
@@ -309,19 +303,19 @@ export async function refreshCollectionAfterOperation(
   slug: string,
   operation: () => Promise<void>,
   getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO | null>,
-  collectionStorage: { update: (slug: string, collection: CollectionModel) => void; updateFull: (slug: string, response: CollectionUpdateResponseDTO) => void }
+  collectionStorage: {
+    update: (slug: string, collection: CollectionModel) => void;
+    updateFull: (slug: string, response: CollectionUpdateResponseDTO) => void;
+  }
 ): Promise<CollectionUpdateResponseDTO> {
-  // Execute the operation first
   await operation();
 
-  // Re-fetch collection using admin endpoint to get full data with collections arrays
   const response = await getCollectionUpdateMetadata(slug);
 
   if (response === null) {
     throw new Error('No response received from server after operation');
   }
 
-  // Update both caches with full admin data (includes collections arrays)
   collectionStorage.update(slug, response.collection);
   collectionStorage.updateFull(slug, response);
 
@@ -340,7 +334,7 @@ export type ReorderChange = { contentId: number; newOrderIndex: number };
 /**
  * Apply reorder changes directly to a collection model (for optimistic updates)
  * Simply updates each block's orderIndex according to the provided changes
- * 
+ *
  * @param collection - Collection model to update
  * @param reorders - Array of ReorderChange with new orderIndex values
  * @returns Updated collection model with new orderIndex values
@@ -351,14 +345,10 @@ export function applyReorderChangesOptimistically(
 ): CollectionModel {
   if (reorders.length === 0) return collection;
 
-  // Create a map of contentId -> newOrderIndex for quick lookup
   const reorderMap = new Map(reorders.map(r => [r.contentId, r.newOrderIndex]));
 
-  // Update all content blocks with new orderIndex values
   const updatedContent = (collection.content || []).map(block => {
     const newOrderIndex = reorderMap.get(block.id);
-    
-    // If this block is not in the reorder map, return as-is
     if (newOrderIndex === undefined) return block;
 
     // All content types have orderIndex in collections array (collection-specific)
@@ -371,8 +361,6 @@ export function applyReorderChangesOptimistically(
   };
 }
 
-
-
 /**
  * Get the orderIndex for a content block
  * Uses direct orderIndex property - works for all content types (images, collections, text, GIFs)
@@ -383,9 +371,6 @@ export function applyReorderChangesOptimistically(
 export function getContentOrderIndex(block: AnyContentModel): number | undefined {
   return block.orderIndex;
 }
-
-
-
 
 /**
  * Execute reorder operation - calls the API and returns the updated collection
@@ -398,10 +383,13 @@ export async function executeReorderOperation(
   reorders: ReorderChange[],
   slug: string
 ): Promise<CollectionModel> {
-  const response = await reorderCollectionContent(collectionId, reorders.map(change => ({
-    contentId: change.contentId,
-    newOrderIndex: change.newOrderIndex,
-  })));
+  const response = await reorderCollectionContent(
+    collectionId,
+    reorders.map(change => ({
+      contentId: change.contentId,
+      newOrderIndex: change.newOrderIndex,
+    }))
+  );
 
   if (response === null) {
     throw new Error('No response received from server after reorder operation');
@@ -445,7 +433,9 @@ export function replayMoves(originalOrder: number[], moves: ReorderMove[]): numb
   for (const move of moves) {
     const fromIndex = order.indexOf(move.imageId);
     if (fromIndex === -1) {
-      console.warn(`[replayMoves] imageId ${move.imageId} not found in current order — move skipped`);
+      console.warn(
+        `[replayMoves] imageId ${move.imageId} not found in current order — move skipped`
+      );
       continue;
     }
     // Remove from current position
@@ -512,6 +502,8 @@ export function cancelImageMoves(moves: ReorderMove[], imageId: number): Reorder
 /**
  * Convert a final display order to ReorderChange[] for the API.
  * Each item gets a newOrderIndex matching its position in the final array.
+ *
+ * @remarks Only items whose position actually changed (relative to `originalOrder`) are included.
  */
 export function buildReorderChangesFromFinalOrder(
   finalOrder: number[],
@@ -520,7 +512,6 @@ export function buildReorderChangesFromFinalOrder(
   const changes: ReorderChange[] = [];
   for (let i = 0; i < finalOrder.length; i++) {
     const id = finalOrder[i]!;
-    // Only include items whose position actually changed
     if (originalOrder.indexOf(id) !== i) {
       changes.push({ contentId: id, newOrderIndex: i });
     }

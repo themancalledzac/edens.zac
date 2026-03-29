@@ -322,6 +322,38 @@ describe('filterContent', () => {
   });
 });
 
+  describe('edge cases', () => {
+    it('returns all content when query is whitespace only', () => {
+      const result = filterContent(sampleImages, { query: '   ' });
+      expect(result).toHaveLength(3);
+    });
+
+    it('returns all content when collectionIds is empty array', () => {
+      const result = filterContent(sampleImages, { collectionIds: [] });
+      expect(result).toHaveLength(3);
+    });
+
+    it('treats minRating: 0 as an active filter (all images with rating >= 0 pass)', () => {
+      const result = filterContent(sampleImages, { minRating: 0 });
+      // All sample images have ratings (5, 3, 4) — all >= 0, so all pass
+      expect(result).toHaveLength(3);
+    });
+
+    it('handles single-day date range (dateFrom equals dateTo)', () => {
+      const images = [
+        makeImage({ id: 10, captureDate: '2024-06-15T12:00:00Z' }),
+        makeImage({ id: 11, captureDate: '2024-06-14T23:59:59Z' }),
+        makeImage({ id: 12, captureDate: '2024-06-16T00:00:01Z' }),
+      ];
+      const result = filterContent(images, {
+        dateFrom: '2024-06-15',
+        dateTo: '2024-06-15',
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0]!.id).toBe(10);
+    });
+  });
+
 // ─── extractFilterOptions ───
 
 describe('extractFilterOptions', () => {
@@ -727,5 +759,18 @@ describe('computeFilterCounts', () => {
     );
     expect(counts.tags['landscape']).toBe(2);
     expect(counts.tags['architecture']).toBe(0);
+  });
+
+  describe('edge cases', () => {
+    it('returns zero counts for empty content array', () => {
+      const emptyOptions = extractFilterOptions([]);
+      const counts = computeFilterCounts([], {}, emptyOptions);
+      expect(counts.highlyRated).toBe(0);
+      expect(counts.film).toBe(0);
+      expect(counts.digital).toBe(0);
+      expect(counts.tags).toEqual({});
+      expect(counts.people).toEqual({});
+      expect(counts.collections).toEqual({});
+    });
   });
 });

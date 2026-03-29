@@ -1,6 +1,5 @@
 import { isLocalEnvironment } from '@/app/utils/environment';
 
-// Static variables for our endpoints
 const READ = 'read';
 const WRITE = 'write';
 const ADMIN = 'admin';
@@ -76,13 +75,11 @@ export class ApiError extends Error {
  * @throws ApiError with appropriate message and status code
  */
 async function throwApiError(error: unknown, response?: Response): Promise<never> {
-  // If it's already an ApiError, re-throw it
   if (error instanceof ApiError) {
     throw error;
   }
 
-  // If we have a Response object (either as error or parameter), extract error from it
-  // Use duck typing instead of instanceof since Response may not be available in all environments
+  // Duck-type check instead of instanceof — Response may not be available in all environments
   const responseObj = (error && typeof error === 'object' && 'status' in error && 'statusText' in error && 'json' in error)
     ? error as Response
     : response;
@@ -94,7 +91,6 @@ async function throwApiError(error: unknown, response?: Response): Promise<never
     );
   }
 
-  // Otherwise, convert the error to ApiError
   throw new ApiError(
     error instanceof Error ? error.message : 'Unknown error occurred',
     500
@@ -121,17 +117,14 @@ export async function fetchReadApi<T>(endpoint: string, options: RequestInit = {
       },
     });
 
-    // For non-OK responses, throw an ApiError
     if (!response.ok) {
       await throwApiError(response);
     }
 
-    // For 204 no content responses, return null
     if (response.status === 204) {
       return null;
     }
 
-    // Parse and return the response data
     return await response.json();
   } catch (error) {
     return await throwApiError(error);
@@ -161,7 +154,6 @@ const fetchBase = async <T>(
       await throwApiError(response);
     }
 
-    // Return parsed response
     if (response.status === 204) {
       return null;
     }
@@ -172,7 +164,7 @@ const fetchBase = async <T>(
   }
 };
 
-// For JSON-based updates (PUT)
+/** PUT JSON to the write endpoint */
 export async function fetchPutJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
   return await fetchBase<T>('write', endpoint, {
     method: 'PUT',
@@ -181,7 +173,7 @@ export async function fetchPutJsonApi<T>(endpoint: string, body: unknown): Promi
   });
 }
 
-// For JSON-based partial updates (PATCH)
+/** PATCH JSON to the write endpoint */
 export async function fetchPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
   return await fetchBase<T>('write', endpoint, {
     method: 'PATCH',
@@ -190,7 +182,7 @@ export async function fetchPatchJsonApi<T>(endpoint: string, body: unknown): Pro
   });
 }
 
-// For JSON-based creates (POST)
+/** POST JSON to the write endpoint */
 export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
   return await fetchBase<T>('write', endpoint, {
     method: 'POST',
@@ -199,7 +191,7 @@ export async function fetchPostJsonApi<T>(endpoint: string, body: unknown): Prom
   });
 }
 
-// For FormData-based creates (POST) - used for image uploads
+/** POST FormData to the write endpoint — used for image uploads */
 export async function fetchFormDataApi<T>(endpoint: string, formData: FormData): Promise<T | null> {
   return await fetchBase<T>('write', endpoint, {
     method: 'POST',
@@ -207,11 +199,7 @@ export async function fetchFormDataApi<T>(endpoint: string, formData: FormData):
   });
 }
 
-// ============================================================================
-// Admin API Functions (for collection management)
-// ============================================================================
-
-// For admin JSON-based creates (POST)
+/** POST JSON to the admin endpoint */
 export async function fetchAdminPostJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'POST',
@@ -220,7 +208,7 @@ export async function fetchAdminPostJsonApi<T>(endpoint: string, body: unknown):
   });
 }
 
-// For admin JSON-based updates (PUT)
+/** PUT JSON to the admin endpoint */
 export async function fetchAdminPutJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'PUT',
@@ -229,7 +217,7 @@ export async function fetchAdminPutJsonApi<T>(endpoint: string, body: unknown): 
   });
 }
 
-// For admin JSON-based partial updates (PATCH)
+/** PATCH JSON to the admin endpoint */
 export async function fetchAdminPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'PATCH',
@@ -238,7 +226,7 @@ export async function fetchAdminPatchJsonApi<T>(endpoint: string, body: unknown)
   });
 }
 
-// For admin FormData-based creates (POST) - used for image uploads
+/** POST FormData to the admin endpoint — used for image uploads */
 export async function fetchAdminFormDataApi<T>(endpoint: string, formData: FormData): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'POST',
@@ -246,14 +234,14 @@ export async function fetchAdminFormDataApi<T>(endpoint: string, formData: FormD
   });
 }
 
-// For admin deletes (DELETE)
+/** DELETE via the admin endpoint */
 export async function fetchAdminDeleteApi<T>(endpoint: string): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'DELETE',
   });
 }
 
-// For admin deletes with JSON body (DELETE with body)
+/** DELETE with a JSON body via the admin endpoint */
 export async function fetchAdminDeleteJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'DELETE',
@@ -262,7 +250,7 @@ export async function fetchAdminDeleteJsonApi<T>(endpoint: string, body: unknown
   });
 }
 
-// For admin GET requests
+/** GET from the admin endpoint */
 export async function fetchAdminGetApi<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
   try {
     const url = buildSimpleApiUrl(ADMIN, endpoint);

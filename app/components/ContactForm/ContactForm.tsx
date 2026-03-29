@@ -17,19 +17,12 @@ interface ContactFormProps {
 /**
  * Contact Form Component
  *
- * Interactive contact form that generates mailto links with form data.
- * Handles responsive behavior for mobile vs desktop email client opening
- * and includes email obfuscation for spam protection.
+ * Generates mailto links with form data. Handles responsive behavior for
+ * mobile vs desktop email client opening and includes email obfuscation
+ * for spam protection.
  *
- * @dependencies
- * - React useState for form state management
- * - ContactForm.module.scss for component styling
- * - FormData interface for type safety
- *
- * @param props - Component props object containing:
- * @param props.onBack - Callback function to return to previous view (currently unused)
- * @param props.onSubmit - Callback function called after successful form submission
- * @returns Client component rendering contact form with mailto functionality
+ * @param props.onBack - Callback to return to previous view (currently unused)
+ * @param props.onSubmit - Called after successful form submission
  */
 export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
   const [formData, setFormData] = useState<FormData>({ title: '', message: '' });
@@ -40,8 +33,8 @@ export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
   };
 
   const generateMailToLink = (formData: FormData) => {
-    const encodedEmail = 'ZWRlbnMuemFjQGdtYWlsLmNvbQ=='; // Base64 encoded email
-    const email = atob(encodedEmail); // Decode at runtime
+    const encodedEmail = 'ZWRlbnMuemFjQGdtYWlsLmNvbQ=='; // Base64 encoded — decoded at runtime for obfuscation
+    const email = atob(encodedEmail);
     const subject = encodeURIComponent(formData.title);
     const body = encodeURIComponent(formData.message);
     return `mailto:${email}?subject=${subject}&body=${body}`;
@@ -58,7 +51,6 @@ export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
       window.open(mailToLink, '_blank', 'noopener,noreferrer');
     }
 
-    // Reset form and notify parent
     setFormData({ title: '', message: '' });
     onSubmit();
   };

@@ -43,6 +43,11 @@ export function useFullScreenImage(): {
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
 
+  /**
+   * @remarks Disables 3D perspective before modal renders — fixes `position:fixed` on mobile.
+   * With perspective disabled, fixed positioning works correctly relative to the viewport.
+   * `scrollPosition` is stored for potential future scroll restoration.
+   */
   const showImage = useCallback((
     image: ImageBlock,
     allImages?: ImageBlock[]
@@ -50,20 +55,20 @@ export function useFullScreenImage(): {
     const images = allImages || [image];
     const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
 
-    // Disable 3D perspective before modal renders - fixes mobile fixed positioning
-    // With perspective disabled, position: fixed works correctly relative to viewport
     document.body.style.perspective = 'none';
     document.body.style.transformStyle = 'flat';
 
     setFullScreenState({
       images,
       currentIndex: currentIndex !== -1 ? currentIndex : 0,
-      scrollPosition: window.scrollY // Stored for potential future use (scroll restoration)
+      scrollPosition: window.scrollY,
     });
   }, []);
 
+  /**
+   * @remarks Restores 3D perspective after modal closes so parallax effects resume.
+   */
   const hideImage = useCallback(() => {
-    // Restore 3D perspective for parallax effects
     document.body.style.perspective = '1px';
     document.body.style.transformStyle = 'preserve-3d';
     
@@ -81,8 +86,7 @@ export function useFullScreenImage(): {
       if (!prev) return null;
       const delta = direction === 'next' ? 1 : -1;
       const newIndex = prev.currentIndex + delta;
-      
-      // Check bounds
+
       if (newIndex >= 0 && newIndex < prev.images.length) {
         return { ...prev, currentIndex: newIndex };
       }
@@ -163,8 +167,6 @@ export function useFullScreenImage(): {
 
     const handleTouchStart = (e: TouchEvent) => {
       if (!e.touches[0]) return;
-      
-      // Don't preventDefault here - let buttons work normally
       touchStartX.current = e.touches[0].clientX;
       touchStartY.current = e.touches[0].clientY;
       isSwiping.current = false;

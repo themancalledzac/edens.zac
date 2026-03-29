@@ -4,15 +4,23 @@
  */
 
 import {
+  applyPartialUpdate,
   buildImageUpdateDiff,
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
   extractMultiSelectValues,
   getCommonValues,
+  getDisplayCamera,
+  getDisplayCollections,
+  getDisplayFilmStock,
+  getDisplayLens,
+  getDisplayPeople,
+  getDisplayTags,
+  getFormValue,
   handleDropdownChange,
   mapUpdateResponseToFrontend,
 } from '@/app/components/ImageMetadata/imageMetadataUtils';
-import type { ContentImageModel } from '@/app/types/Content';
+import type { ContentImageModel, ContentImageUpdateRequest } from '@/app/types/Content';
 import type { ContentFilmTypeModel } from '@/app/types/ImageMetadata';
 
 // Test fixtures
@@ -1594,6 +1602,285 @@ describe('buildImageUpdatesForBulkEdit', () => {
     expect(result[2]?.tags).toEqual({
       newValue: ['Tag B'],
     });
+  });
+});
+
+// ============================================================================
+// applyPartialUpdate
+// ============================================================================
+
+describe('applyPartialUpdate', () => {
+  it('returns original when updates only contain id', () => {
+    const original = { id: 1, title: 'Hello', rating: 4 };
+    const result = applyPartialUpdate(original, { id: 1 });
+    expect(result).toEqual(original);
+  });
+
+  it('applies updated fields from DTO', () => {
+    const original = { id: 1, title: 'Old', rating: 3 };
+    const result = applyPartialUpdate(original, { id: 1, title: 'New' });
+    expect(result).toEqual({ id: 1, title: 'New', rating: 3 });
+  });
+
+  it('does not apply undefined fields', () => {
+    const original = { id: 1, title: 'Keep', caption: 'Also Keep' };
+    const result = applyPartialUpdate(original, { id: 1, title: undefined as never });
+    expect(result.title).toBe('Keep');
+    expect(result.caption).toBe('Also Keep');
+  });
+
+  it('transforms collections.prev to collections', () => {
+    const original = { id: 1, collections: [] as Array<{ collectionId: number; name: string }> };
+    const newCollections = [{ collectionId: 10, name: 'My Collection' }];
+    const result = applyPartialUpdate(original, {
+      id: 1,
+      collections: { prev: newCollections } as never,
+    });
+    expect((result as Record<string, unknown>).collections).toEqual(newCollections);
+  });
+});
+
+// ============================================================================
+// getFormValue
+// ============================================================================
+
+describe('getFormValue', () => {
+  it('returns dtoValue when defined', () => {
+    expect(getFormValue('DTO', 'initial', 'default')).toBe('DTO');
+  });
+
+  it('returns dtoValue even when falsy (empty string)', () => {
+    expect(getFormValue('', 'initial', 'default')).toBe('');
+  });
+
+  it('returns dtoValue even when falsy (zero)', () => {
+    expect(getFormValue(0, 42, 99)).toBe(0);
+  });
+
+  it('returns initialValue when dtoValue is undefined', () => {
+    expect(getFormValue(undefined, 'initial', 'default')).toBe('initial');
+  });
+
+  it('returns defaultValue when both dtoValue and initialValue are undefined', () => {
+    expect(getFormValue(undefined, undefined, 'default')).toBe('default');
+  });
+
+  it('returns defaultValue when initialValue is null', () => {
+    expect(getFormValue(undefined, null, 'default')).toBe('default');
+  });
+});
+
+// ============================================================================
+// getDisplayTags
+// ============================================================================
+
+describe('getDisplayTags', () => {
+  const availableTags = [
+    { id: 1, name: 'Landscape' },
+    { id: 2, name: 'Portrait' },
+    { id: 3, name: 'Street' },
+  ];
+
+  it('returns initial tags when no DTO changes (tags field absent)', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const initialTags = [availableTags[0]!, availableTags[1]!];
+    const result = getDisplayTags(dto, initialTags, availableTags);
+    expect(result).toEqual([{ id: 1, name: 'Landscape' }, { id: 2, name: 'Portrait' }]);
+  });
+
+  it('returns tags from DTO prev IDs', () => {
+    const dto = { id: 1, tags: { prev: [2, 3] } } as ContentImageUpdateRequest;
+    const result = getDisplayTags(dto, [], availableTags);
+    expect(result).toEqual([{ id: 2, name: 'Portrait' }, { id: 3, name: 'Street' }]);
+  });
+
+  it('includes new tags with id: 0 from newNames', () => {
+    const dto = { id: 1, tags: { prev: [1], newValue: ['NewTag'] } } as ContentImageUpdateRequest;
+    const result = getDisplayTags(dto, [], availableTags);
+    expect(result).toEqual([{ id: 1, name: 'Landscape' }, { id: 0, name: 'NewTag' }]);
+  });
+
+  it('returns empty array when no initial and no DTO tags', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const result = getDisplayTags(dto, undefined, availableTags);
+    expect(result).toEqual([]);
+  });
+});
+
+// ============================================================================
+// getDisplayPeople
+// ============================================================================
+
+describe('getDisplayPeople', () => {
+  const availablePeople = [
+    { id: 1, name: 'Alice' },
+    { id: 2, name: 'Bob' },
+  ];
+
+  it('returns initial people when no DTO changes', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const result = getDisplayPeople(dto, availablePeople, availablePeople);
+    expect(result).toEqual(availablePeople);
+  });
+
+  it('returns people from DTO prev IDs', () => {
+    const dto = { id: 1, people: { prev: [2] } } as ContentImageUpdateRequest;
+    const result = getDisplayPeople(dto, availablePeople, availablePeople);
+    expect(result).toEqual([{ id: 2, name: 'Bob' }]);
+  });
+});
+
+// ============================================================================
+// getDisplayCollections
+// ============================================================================
+
+describe('getDisplayCollections', () => {
+  it('returns initial collections mapped to {id, name} format', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const initial = [
+      { collectionId: 10, name: 'Travels' },
+      { collectionId: 11, name: 'Nature' },
+    ];
+    const result = getDisplayCollections(dto, initial);
+    expect(result).toEqual([
+      { id: 10, name: 'Travels' },
+      { id: 11, name: 'Nature' },
+    ]);
+  });
+
+  it('returns collections from DTO prev', () => {
+    const dto = {
+      id: 1,
+      collections: { prev: [{ collectionId: 5, name: 'Weddings' }] },
+    } as ContentImageUpdateRequest;
+    const result = getDisplayCollections(dto, []);
+    expect(result).toEqual([{ id: 5, name: 'Weddings' }]);
+  });
+
+  it('returns empty array when no data', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const result = getDisplayCollections(dto, undefined);
+    expect(result).toEqual([]);
+  });
+});
+
+// ============================================================================
+// getDisplayCamera
+// ============================================================================
+
+describe('getDisplayCamera', () => {
+  const availableCameras = [
+    { id: 1, name: 'Canon AE-1' },
+    { id: 2, name: 'Nikon FM2' },
+  ];
+
+  it('returns initial camera when no DTO changes', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const result = getDisplayCamera(dto, availableCameras[0]!, availableCameras);
+    expect(result).toEqual({ id: 1, name: 'Canon AE-1' });
+  });
+
+  it('returns null when remove: true', () => {
+    const dto = { id: 1, camera: { remove: true } } as ContentImageUpdateRequest;
+    const result = getDisplayCamera(dto, availableCameras[0]!, availableCameras);
+    expect(result).toBeNull();
+  });
+
+  it('returns new camera from newValue with id: 0', () => {
+    const dto = { id: 1, camera: { newValue: 'Leica M6' } } as ContentImageUpdateRequest;
+    const result = getDisplayCamera(dto, null, availableCameras);
+    expect(result).toEqual({ id: 0, name: 'Leica M6' });
+  });
+
+  it('returns camera from prev ID', () => {
+    const dto = { id: 1, camera: { prev: 2 } } as ContentImageUpdateRequest;
+    const result = getDisplayCamera(dto, null, availableCameras);
+    expect(result).toEqual({ id: 2, name: 'Nikon FM2' });
+  });
+
+  it('returns null when no data', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const result = getDisplayCamera(dto, null, availableCameras);
+    expect(result).toBeNull();
+  });
+});
+
+// ============================================================================
+// getDisplayLens
+// ============================================================================
+
+describe('getDisplayLens', () => {
+  const availableLenses = [
+    { id: 1, name: '50mm f/1.4' },
+    { id: 2, name: '35mm f/2' },
+  ];
+
+  it('returns initial lens when no DTO changes', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const result = getDisplayLens(dto, availableLenses[0]!, availableLenses);
+    expect(result).toEqual({ id: 1, name: '50mm f/1.4' });
+  });
+
+  it('returns null when remove: true', () => {
+    const dto = { id: 1, lens: { remove: true } } as ContentImageUpdateRequest;
+    const result = getDisplayLens(dto, availableLenses[0]!, availableLenses);
+    expect(result).toBeNull();
+  });
+
+  it('returns new lens from newValue with id: 0', () => {
+    const dto = { id: 1, lens: { newValue: '85mm f/1.8' } } as ContentImageUpdateRequest;
+    const result = getDisplayLens(dto, null, availableLenses);
+    expect(result).toEqual({ id: 0, name: '85mm f/1.8' });
+  });
+
+  it('returns lens from prev ID', () => {
+    const dto = { id: 1, lens: { prev: 2 } } as ContentImageUpdateRequest;
+    const result = getDisplayLens(dto, null, availableLenses);
+    expect(result).toEqual({ id: 2, name: '35mm f/2' });
+  });
+});
+
+// ============================================================================
+// getDisplayFilmStock
+// ============================================================================
+
+describe('getDisplayFilmStock', () => {
+  const availableFilmTypes: ContentFilmTypeModel[] = [
+    createFilmType(1, 'Kodak Portra 400'),
+    createFilmType(2, 'Ilford HP5'),
+  ];
+
+  it('returns matching film type from initial name', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const result = getDisplayFilmStock(dto, 'Kodak Portra 400', availableFilmTypes);
+    expect(result).toEqual(availableFilmTypes[0]);
+  });
+
+  it('returns null when remove: true', () => {
+    const dto = { id: 1, filmType: { remove: true } } as ContentImageUpdateRequest;
+    const result = getDisplayFilmStock(dto, 'Kodak Portra 400', availableFilmTypes);
+    expect(result).toBeNull();
+  });
+
+  it('returns new film from newValue with id: 0 and filmTypeName + defaultIso', () => {
+    const dto = {
+      id: 1,
+      filmType: { newValue: { filmTypeName: 'Cinestill 800T', defaultIso: 800 } },
+    } as ContentImageUpdateRequest;
+    const result = getDisplayFilmStock(dto, null, availableFilmTypes);
+    expect(result).toEqual({ id: 0, name: 'Cinestill 800T', defaultIso: 800 });
+  });
+
+  it('returns film type from prev ID', () => {
+    const dto = { id: 1, filmType: { prev: 2 } } as ContentImageUpdateRequest;
+    const result = getDisplayFilmStock(dto, null, availableFilmTypes);
+    expect(result).toEqual(availableFilmTypes[1]);
+  });
+
+  it('returns null when no data', () => {
+    const dto = { id: 1 } as ContentImageUpdateRequest;
+    const result = getDisplayFilmStock(dto, null, availableFilmTypes);
+    expect(result).toBeNull();
   });
 });
 

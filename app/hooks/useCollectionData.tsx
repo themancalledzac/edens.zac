@@ -30,12 +30,10 @@ export function useCollectionData(
 
   useEffect(() => {
     if (!slug) {
-      // CREATE mode - no data to fetch
       setLoading(false);
       return;
     }
 
-    // Skip fetch if we already have this exact collection loaded
     if (currentSlug === slug) {
       setLoading(false);
       return;
@@ -53,7 +51,6 @@ export function useCollectionData(
         const cachedResponse = collectionStorage.getFull(slug);
 
         if (cachedResponse) {
-          // Full cache hit - use cached data immediately for instant UI
           if (isMounted && !abortController.signal.aborted) {
             onLoadSuccess(cachedResponse);
             setLoading(false);
@@ -61,15 +58,11 @@ export function useCollectionData(
           return;
         }
 
-        // Fetch full data
         const response = await getCollectionUpdateMetadata(slug);
 
         if (isMounted && !abortController.signal.aborted && response !== null) {
-          // Update both caches
           collectionStorage.update(slug, response.collection);
           collectionStorage.updateFull(slug, response);
-
-          // Notify parent component with full data
           onLoadSuccess(response);
         }
       } catch (error_) {
@@ -100,7 +93,6 @@ export function useCollectionData(
 
       const response = await getCollectionUpdateMetadata(slug);
       if (response !== null) {
-        // Update both caches
         collectionStorage.update(slug, response.collection);
         collectionStorage.updateFull(slug, response);
         onLoadSuccess(response);

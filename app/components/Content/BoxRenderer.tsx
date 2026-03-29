@@ -14,7 +14,7 @@ interface BoxRendererProps {
   tree: BoxTree;
   sizes: Map<number, { width: number; height: number }>;
   isMobile: boolean;
-  // Pass-through props for child renderers
+  /** Pass-through props for child renderers */
   onImageClick?: (imageId: number) => void;
   enableFullScreenView?: boolean;
   onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void;
@@ -23,7 +23,7 @@ interface BoxRendererProps {
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
   justClickedImageId?: number | null;
-  // Reorder mode props
+  /** Reorder mode props */
   isReorderMode?: boolean;
   reorderMoves?: ReorderMove[];
   pickedUpImageId?: number | null;
@@ -34,7 +34,7 @@ interface BoxRendererProps {
   onCancelImageMove?: (contentId: number) => void;
   priority?: boolean;
   onImageLoadError?: (contentId: number) => void;
-  // Client gallery props
+  /** Client gallery props */
   isClientGallery?: boolean;
   collectionSlug?: string;
 }
@@ -64,7 +64,6 @@ export function BoxRenderer({
   isClientGallery,
   collectionSlug,
 }: BoxRendererProps) {
-  // Base case: single leaf
   if (tree.type === 'leaf') {
     const size = sizes.get(tree.content.id);
     if (!size) {
@@ -74,11 +73,10 @@ export function BoxRenderer({
       return <div className={styles.missingImage}>Image unavailable</div>;
     }
 
-    // Build renderer props similar to how Component.tsx does it
     const rendererProps = determineContentRendererProps(
       { content: tree.content, ...size },
-      1, // totalInRow - not really applicable for BoxRenderer
-      0, // index - not really applicable for BoxRenderer
+      1,
+      0,
       isMobile,
       {
         imageSingle: cbStyles.imageSingle || '',
@@ -88,7 +86,6 @@ export function BoxRenderer({
       }
     );
 
-    // Compute per-image reorder state
     const contentId = tree.content.id;
     const isPickedUp = isReorderMode && pickedUpImageId === contentId;
     const hasMoved = isReorderMode && (reorderMoves?.some(m => m.imageId === contentId) ?? false);
@@ -125,7 +122,6 @@ export function BoxRenderer({
     return <CollectionContentRenderer {...fullProps} />;
   }
 
-  // Recursive case: combined box
   const containerClass = tree.direction === 'horizontal' ? styles.hbox : styles.vbox;
 
   const childProps = {

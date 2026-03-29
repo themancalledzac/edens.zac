@@ -1,6 +1,5 @@
 type LogLevel = 'debug' | 'warn' | 'error';
 
- 
 const _logLevelCheck: LogLevel = 'debug';
 
 export const logger = {

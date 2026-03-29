@@ -20,8 +20,6 @@ import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
  * Direct processing without complex normalization - works with proper Content types
  */
 
-// ===================== Content sizing =====================
-
 export interface CalculatedContentSize {
   content: AnyContentModel;
   width: number;
@@ -52,13 +50,16 @@ export interface ProcessContentOptions {
   targetAR?: number;
 }
 
-/** Build a horizontal BoxTree from content items using the shared hChain helper */
+/**
+ * Build a horizontal BoxTree from content items using the shared hChain helper.
+ *
+ * @remarks rowWidth=5 is arbitrary here — hChain builds a left-associative
+ * horizontal tree without AR scoring, so the value does not affect the result.
+ */
 function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
   if (items.length === 0) {
     throw new Error('Cannot create BoxTree from empty items array');
   }
-  // rowWidth=5 is arbitrary here — hChain doesn't use targetAR scoring,
-  // it just builds a left-associative horizontal tree
   const imageTypes = items.map(item => toImageType(item, 5));
   return acToBoxTree(hChain(imageTypes));
 }
@@ -88,8 +89,6 @@ export function processContentForDisplay(
 ): RowWithPatternAndSizes[] {
   const result: RowWithPatternAndSizes[] = [];
 
-  // Create header row(s) first if collectionData is provided
-  // On mobile, returns separate rows for cover image and metadata
   if (options?.collectionData) {
     const headerRows = createHeaderRow(options.collectionData, componentWidth, chunkSize, options?.isMobile);
     if (headerRows) {
@@ -101,7 +100,6 @@ export function processContentForDisplay(
     }
   }
 
-  // Unified pipeline: same algorithm, different rowWidth and gap
   const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : LAYOUT.desktopSlotWidth;
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
@@ -236,7 +234,7 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
     filmFormat: coverImage?.filmFormat ?? null,
     tags: coverImage?.tags ?? [],
     people: coverImage?.people ?? [],
-    collections: coverImage?.collections ?? [],
+    collections: [],
     overlayText: col.title || col.slug || '',
   };
 }
@@ -370,8 +368,14 @@ function reorderImagesBeforeCollections(content: AnyContentModel[]): AnyContentM
 }
 
 /**
- * Process content blocks through filtering, sorting, and transformation pipeline
- * Converts collections to parallax images and ensures proper dimensions
+ * Process content blocks through filtering, sorting, and transformation pipeline.
+ * Converts collections to parallax images and ensures proper dimensions.
+ *
+ * Ordering uses `block.orderIndex` directly (not `collections[].orderIndex`).
+ * When `filterVisible` is false (manage page), non-visible content is sorted to
+ * the bottom after the primary orderIndex/chronological sort to preserve relative
+ * order within visible and non-visible groups.
+ *
  * @param content - Array of content blocks to process
  * @param filterVisible - Whether to filter out non-visible blocks (default: true)
  * @param collectionId - Collection ID for checking image visibility
@@ -385,17 +389,13 @@ export function processContentBlocks(
   displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED'
 ): AnyContentModel[] {
   let processed = filterVisibleBlocks(content, filterVisible, collectionId);
-  // Note: We now use block.orderIndex directly instead of collections[].orderIndex
   processed = ensureParallaxDimensions(processed);
 
-  // Sort by orderIndex or createdAt first (before visibility sorting)
   processed =
     displayMode === 'CHRONOLOGICAL'
       ? sortContentByCreatedAt(processed)
       : sortContentByOrderIndex(processed);
 
-  // When filterVisible is false (manage page), sort non-visible content to bottom
-  // This happens after orderIndex/chronological sorting to preserve relative order within groups
   if (!filterVisible) {
     processed = sortNonVisibleToBottom(processed, collectionId);
   }
@@ -406,10 +406,8 @@ export function processContentBlocks(
   return processed;
 }
 
-// ===================== Collection Header Row Injection =====================
-
 /**
- * Build metadata items array from collection fields
+ * Build metadata items array from collection fields (date, location, description, tags).
  */
 function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   const items: TextBlockItem[] = [];
@@ -441,7 +439,6 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
     });
   }
 
-  // Add tags as dedicated tag type for chip/badge rendering
   if (collection.tags && collection.tags.length > 0) {
     for (const tag of collection.tags) {
       items.push({

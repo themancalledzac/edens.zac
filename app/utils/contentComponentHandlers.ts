@@ -23,12 +23,10 @@ export function checkImageVisibility(
   itemContent: ContentImageModel,
   currentCollectionId?: number
 ): boolean {
-  // Check direct visibility first
   if (itemContent.visible === false) {
     return true;
   }
 
-  // If we have a collection ID, also check collection-specific visibility
   if (currentCollectionId && itemContent.collections) {
     const collectionEntry = itemContent.collections.find(
       c => c.collectionId === currentCollectionId
@@ -42,14 +40,13 @@ export function checkImageVisibility(
 }
 
 /**
- * Create a unified click handler for any content type (IMAGE, COLLECTION, GIF, TEXT)
+ * Create a unified click handler for any content type (IMAGE, COLLECTION, GIF, TEXT).
  * Delegates to parent via onContentClick callback.
  * Navigation/editing decisions are made by the parent component (ManageClient).
  *
- * Priority:
- * 1. If onContentClick is provided (admin/manage pages) -> call it with contentId
- * 2. If fullscreen is enabled (public collection pages) -> call fullscreen handler
- * 3. Otherwise -> no click handler
+ * Priority 1: If onContentClick is provided (admin/manage pages), the parent
+ * component decides whether to navigate (collection) or edit metadata (image).
+ * Priority 2: If fullscreen is enabled (public collection pages), call fullscreen handler.
  *
  * @param contentId - The content ID being clicked
  * @param onContentClick - Handler for content clicks (parent decides what to do based on content type)
@@ -65,13 +62,10 @@ export function createContentClickHandler(
   onFullScreenClick?: (content: ContentImageModel | ContentParallaxImageModel) => void,
   fullScreenContent?: ContentImageModel | ContentParallaxImageModel
 ): (() => void) | undefined {
-  // Priority 1: Parent-provided click handler (manage pages)
-  // Parent component decides: navigate for collection, edit metadata for image
   if (onContentClick) {
     return () => onContentClick(contentId);
   }
 
-  // Priority 2: Fullscreen view (public collection pages)
   if (enableFullScreenView && onFullScreenClick && fullScreenContent) {
     return () => onFullScreenClick(fullScreenContent);
   }

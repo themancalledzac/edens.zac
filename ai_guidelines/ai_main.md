@@ -11,12 +11,10 @@
 
 ## Core Principles
 
-### 1. Legacy Preservation & Migration Strategy
-- **CRITICAL**: Preserve all OLD functionality while migrating to App Router paradigm
-- **Never modify legacy files** in `pages-old/`, `Components/`, or existing catalog system
-- **Build in parallel**: Create new App Router features alongside existing Pages Router
-- **Gradual deprecation**: Keep legacy files operational until full migration is complete
-- **No breaking changes**: Maintain backwards compatibility during transition
+### 1. App Router Migration (Complete)
+- Legacy `pages-old/` and `Components/` directories have been removed
+- All new features use App Router (`app/` directory)
+- No legacy Pages Router files remain
 
 ### 2. App Router First
 - **All new features** must use App Router structure (`app/` directory)
@@ -48,6 +46,10 @@
 ## Code Quality Rules
 
 - **No trivial helper functions**: Don't extract single-expression logic (e.g., `!!value.slug`, `value > 0`) into named utility functions — inline it where used, since the intent is self-evident at the call site. A helper earns its place only when it encapsulates non-trivial logic, appears at 3+ call sites, or names a meaningful domain concept.
+
+## TODOs
+
+- **MenuDropdown 'About' image**: The about section image is currently hardcoded as `/_DSC0145.jpg` in `app/components/MenuDropdown/MenuDropdown.tsx:135`. This should eventually be fetched from the database instead of being a static asset in the frontend repo.
 
 ## Key Reminders
 

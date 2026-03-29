@@ -157,13 +157,13 @@ export const getContentWidth = (viewportWidth: number, isMobile: boolean): numbe
 // =============================================================================
 
 /**
- * ✅ COMPLETED IMPROVEMENTS:
- * - Fixed useFullScreenImage DEFAULT_IMAGE_WIDTH (1200 → 1300) ✓
- * - Fixed useFullScreenImage DEFAULT_IMAGE_HEIGHT (800 → 867) ✓
- * - Established Z_INDEX system and migrated all z-index values ✓
- * - Created BREAKPOINTS, LAYOUT, IMAGE, INTERACTION, TIMING, PAGINATION constants ✓
+ * COMPLETED IMPROVEMENTS:
+ * - Fixed useFullScreenImage DEFAULT_IMAGE_WIDTH (1200 -> 1300)
+ * - Fixed useFullScreenImage DEFAULT_IMAGE_HEIGHT (800 -> 867)
+ * - Established Z_INDEX system and migrated all z-index values
+ * - Created BREAKPOINTS, LAYOUT, IMAGE, INTERACTION, TIMING, PAGINATION constants
  *
- * 📋 REMAINING - Values that could be centralized if needed:
+ * REMAINING - Values that could be centralized if needed:
  *
  * VALIDATION (if form validation becomes centralized):
  *   - TITLE_MIN_LENGTH: 3 (characters)
@@ -184,7 +184,7 @@ export const getContentWidth = (viewportWidth: number, isMobile: boolean): numbe
  *   - TRANSITION_STANDARD: 0.2s ease (most common)
  *   - TRANSITION_SLOW: 0.3s ease (ContactForm only)
  *
- * 💡 NOTES:
+ * NOTES:
  * - Many of these values are component-specific and may not benefit from centralization
  * - Consider adding them only if they're reused across 3+ files
  * - Current system provides good balance between DRY and over-abstraction

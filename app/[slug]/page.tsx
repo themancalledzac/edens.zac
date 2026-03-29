@@ -63,7 +63,6 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
 export default async function CollectionPage({ params }: CollectionPageProps) {
   const { slug } = await params;
 
-  // Validate slug exists
   if (!slug) {
     notFound();
   }

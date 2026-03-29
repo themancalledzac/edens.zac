@@ -36,7 +36,6 @@ export default function TextBlockCreateModal({
     e.preventDefault();
     setError(null);
 
-    // Validate content
     if (!content.trim()) {
       setError('Text content is required');
       return;
