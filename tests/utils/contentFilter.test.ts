@@ -404,6 +404,46 @@ describe('extractFilterOptions', () => {
       { id: 10, name: 'Trip B' },
     ]);
   });
+
+  it('treats undefined isFilm as digital in options', () => {
+    const images = [
+      makeImage({ id: 1, isFilm: undefined }),
+      makeImage({ id: 2, isFilm: true }),
+    ];
+    const options = extractFilterOptions(images);
+    expect(options.hasFilm).toBe(true);
+    expect(options.hasDigital).toBe(true);
+  });
+
+  it('treats undefined blackAndWhite as color in options', () => {
+    const images = [
+      makeImage({ id: 1, blackAndWhite: undefined }),
+      makeImage({ id: 2, blackAndWhite: true }),
+    ];
+    const options = extractFilterOptions(images);
+    expect(options.hasBW).toBe(true);
+    expect(options.hasColor).toBe(true);
+  });
+
+  it('limits tags to top 10 by frequency', () => {
+    const images = Array.from({ length: 12 }, (_, i) =>
+      makeImage({
+        id: i + 1,
+        tags: [{ id: i + 1, name: `tag-${String(i + 1).padStart(2, '0')}` }],
+      })
+    );
+    // Add extra images for first 3 tags to give them higher frequency
+    images.push(makeImage({ id: 100, tags: [{ id: 1, name: 'tag-01' }] }));
+    images.push(makeImage({ id: 101, tags: [{ id: 2, name: 'tag-02' }] }));
+    images.push(makeImage({ id: 102, tags: [{ id: 3, name: 'tag-03' }] }));
+
+    const options = extractFilterOptions(images);
+    expect(options.tags).toHaveLength(10);
+    // Top 3 by frequency should be first
+    expect(options.tags[0]).toBe('tag-01');
+    expect(options.tags[1]).toBe('tag-02');
+    expect(options.tags[2]).toBe('tag-03');
+  });
 });
 
 // ─── URL param serialization ───
