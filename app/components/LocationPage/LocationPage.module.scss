@@ -1,6 +1,6 @@
 /*
   LocationPage styles
-  Cover image header (~20% width) with filter bar and image grid
+  Cover image thumbnail (top-left) with header info beside it
 */
 
 .container {
@@ -27,25 +27,32 @@
   }
 }
 
-/* Location header with cover image */
+/* Location header: cover thumbnail + info side by side */
 .locationHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
   margin-bottom: 1rem;
+  padding: 0 var(--page-padding-mobile);
 
   @media (width >= 768px) {
+    gap: 1.5rem;
     margin-bottom: 1.5rem;
+    padding: 0;
   }
 }
 
-/* Cover image container — small, ~20% width */
+/* Cover image container — small thumbnail, top-left */
 .coverImageWrapper {
   position: relative;
-  width: 100%;
-  aspect-ratio: 5 / 1;
+  width: 140px;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 4px;
+  flex-shrink: 0;
 
   @media (width >= 768px) {
-    aspect-ratio: 5 / 1;
+    width: 240px;
   }
 }
 
@@ -54,31 +61,12 @@
   object-position: center;
 }
 
-.coverOverlay {
-  position: absolute;
-  inset: 0;
+/* Header info text (beside cover or standalone) */
+.headerInfo {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  padding: 1rem;
-  background: linear-gradient(to top, rgb(0 0 0 / 60%) 0%, transparent 60%);
-
-  @media (width >= 768px) {
-    padding: 1.5rem 2rem;
-  }
-}
-
-/* Text-only fallback header (no cover image) */
-.textHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.5rem var(--page-padding-mobile);
-  border-bottom: 1px solid var(--border-color, #eee);
-
-  @media (width >= 768px) {
-    padding: 2rem 0;
-  }
+  gap: 0.35rem;
+  padding-top: 0.25rem;
 }
 
 .locationName {
@@ -86,11 +74,6 @@
   font-weight: 700;
   margin: 0;
   color: var(--text-primary, #111);
-
-  .coverOverlay & {
-    color: #fff;
-    text-shadow: 0 1px 4px rgb(0 0 0 / 40%);
-  }
 
   @media (width >= 768px) {
     font-size: 2.4rem;
@@ -101,8 +84,4 @@
   font-size: 0.85rem;
   color: var(--text-secondary, #888);
   font-weight: 500;
-
-  .coverOverlay & {
-    color: rgb(255 255 255 / 80%);
-  }
 }

@@ -75,7 +75,7 @@ export interface ContentImageModel extends Content {
   rawFileName?: string | null;
   camera?: ContentCameraModel | null;
   focalLength?: string | null;
-  location?: { id: number; name: string } | null;
+  location?: LocationModel | null;
   captureDate?: string | null;
   fstop?: string | null;
   alt?: string;
@@ -125,6 +125,7 @@ export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'cont
 export interface TextBlockItem {
   type: 'date' | 'location' | 'description' | 'text' | 'tag';
   value: string;
+  slug?: string; // URL slug for navigation (location and tag items)
   label?: string; // Optional display label (e.g., "Date:", "Location:")
 }
 

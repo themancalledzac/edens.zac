@@ -1693,8 +1693,8 @@ describe('mapUpdateResponseToFrontend', () => {
     const backendResponse = {
       updatedImages: [updatedImage1, updatedImage2],
       newMetadata: {
-        tags: [{ id: 1, tagName: 'Nature' }],
-        people: [{ id: 1, personName: 'John Doe' }],
+        tags: [{ id: 1, tagName: 'Nature', slug: 'nature' }],
+        people: [{ id: 1, personName: 'John Doe', slug: 'john-doe' }],
         cameras: [{ id: 1, cameraName: 'Canon EOS R5' }],
         lenses: [{ id: 1, lensName: '24-70mm f/2.8' }],
         filmTypes: [{ id: 1, filmTypeName: 'KODAK_PORTRA_400', defaultIso: 400 }],
@@ -1704,8 +1704,8 @@ describe('mapUpdateResponseToFrontend', () => {
     const result = mapUpdateResponseToFrontend(backendResponse);
 
     expect(result.updatedImages).toEqual([updatedImage1, updatedImage2]);
-    expect(result.newMetadata?.tags).toEqual([{ id: 1, name: 'Nature' }]);
-    expect(result.newMetadata?.people).toEqual([{ id: 1, name: 'John Doe' }]);
+    expect(result.newMetadata?.tags).toEqual([{ id: 1, name: 'Nature', slug: 'nature' }]);
+    expect(result.newMetadata?.people).toEqual([{ id: 1, name: 'John Doe', slug: 'john-doe' }]);
     expect(result.newMetadata?.cameras).toEqual([{ id: 1, name: 'Canon EOS R5' }]);
     expect(result.newMetadata?.lenses).toEqual([{ id: 1, name: '24-70mm f/2.8' }]);
     expect(result.newMetadata?.filmTypes).toEqual([

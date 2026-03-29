@@ -1,8 +1,5 @@
 'use client';
 
-import Image from 'next/image';
-
-import { type CollectionModel } from '@/app/types/Collection';
 import { type GalleryFilterState } from '@/app/types/GalleryFilter';
 import { type ContentFilterOptions, type FilterCounts } from '@/app/utils/contentFilter';
 
@@ -11,7 +8,6 @@ import styles from './LocationFilterBar.module.scss';
 interface LocationFilterBarProps {
   filterState: GalleryFilterState;
   onFilterChange: (update: Partial<GalleryFilterState>) => void;
-  collections: CollectionModel[];
   availableOptions: ContentFilterOptions;
   filterCounts: FilterCounts;
 }
@@ -19,11 +15,9 @@ interface LocationFilterBarProps {
 export default function LocationFilterBar({
   filterState,
   onFilterChange,
-  collections,
   availableOptions,
   filterCounts,
 }: LocationFilterBarProps) {
-  const showCollectionRow = collections.length >= 2;
   const showTagRow = availableOptions.tags.length > 0;
   const showPeopleRow = availableOptions.people.length >= 2;
 
@@ -43,14 +37,6 @@ export default function LocationFilterBar({
       digital: 'off',
     };
     onFilterChange({ filmFilter: next[filterState.filmFilter] });
-  };
-
-  const toggleCollectionId = (id: number) => {
-    const current = filterState.selectedCollectionIds;
-    const next = current.includes(id)
-      ? current.filter(cid => cid !== id)
-      : [...current, id];
-    onFilterChange({ selectedCollectionIds: next });
   };
 
   const toggleTag = (tag: string) => {
@@ -97,64 +83,25 @@ export default function LocationFilterBar({
           <span className={styles.count}>{filterCounts.highlyRated}</span>
         </button>
 
-        {(availableOptions.hasFilm && availableOptions.hasDigital) && (
-          <button
-            type="button"
-            className={`${styles.chip} ${
-              filterState.filmFilter === 'film'
-                ? styles.chipFilm
-                : (filterState.filmFilter === 'digital' ? styles.chipDigital : '')
-            }`}
-            onClick={cycleFilmFilter}
-          >
-            {filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}
-            {filterState.filmFilter !== 'off' && (
-              <span className={styles.count}>
-                {filterState.filmFilter === 'film' ? filterCounts.film : filterCounts.digital}
-              </span>
-            )}
-          </button>
-        )}
+        <button
+          type="button"
+          className={`${styles.chip} ${
+            filterState.filmFilter === 'film'
+              ? styles.chipFilm
+              : (filterState.filmFilter === 'digital' ? styles.chipDigital : '')
+          }`}
+          onClick={cycleFilmFilter}
+        >
+          {filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}
+          {filterState.filmFilter !== 'off' && (
+            <span className={styles.count}>
+              {filterState.filmFilter === 'film' ? filterCounts.film : filterCounts.digital}
+            </span>
+          )}
+        </button>
       </div>
 
-      {/* Row 2: Collection mini-cards */}
-      {showCollectionRow && (
-        <div className={styles.collectionRow}>
-          {collections.map(collection => {
-            const isSelected = filterState.selectedCollectionIds.includes(collection.id);
-            return (
-              <button
-                key={collection.id}
-                type="button"
-                className={`${styles.collectionCard} ${isSelected ? styles.collectionCardActive : ''}`}
-                onClick={() => toggleCollectionId(collection.id)}
-              >
-                {collection.coverImage?.imageUrl && (
-                  <div className={styles.collectionThumbnail}>
-                    <Image
-                      src={collection.coverImage.imageUrl}
-                      alt={collection.title}
-                      fill
-                      sizes="(min-width: 768px) 180px, 120px"
-                      className={styles.collectionThumbnailImage}
-                    />
-                  </div>
-                )}
-                <span className={styles.collectionTitle}>
-                  {collection.title}
-                  {filterCounts.collections[collection.id] !== undefined && (
-                    <span className={styles.collectionCount}>
-                      {filterCounts.collections[collection.id]}
-                    </span>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Row 3: Tag chips */}
+      {/* Row 2: Tag chips */}
       {showTagRow && (
         <div className={styles.wrapRow}>
           {availableOptions.tags.map(tag => {
@@ -174,7 +121,7 @@ export default function LocationFilterBar({
         </div>
       )}
 
-      {/* Row 4: People chips */}
+      {/* Row 3: People chips */}
       {showPeopleRow && (
         <div className={styles.wrapRow}>
           {availableOptions.people.map(person => {

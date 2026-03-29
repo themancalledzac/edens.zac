@@ -138,21 +138,21 @@ export async function getCollectionsByType(
 }
 
 /**
- * GET /api/read/collections/location/{name}
+ * GET /api/read/collections/location/{slug}
  * Get visible collections for a location, ordered by collection date (newest first)
  */
 export async function getCollectionsByLocation(
-  name: string,
+  slug: string,
   page = 0,
   size = PAGINATION.collectionPageSize
 ): Promise<CollectionModel[]> {
-  if (!name) throw new Error('location name is required');
+  if (!slug) throw new Error('location slug is required');
   try {
-    const result = await fetchReadApi<CollectionModel[]>(
-      `/collections/location/${encodeURIComponent(name)}?page=${page}&size=${size}`,
-      { next: { revalidate: TIMING.revalidateCache, tags: [`collections-location-${name}`] } }
+    const data = await fetchReadApi<unknown>(
+      `/collections/location/${encodeURIComponent(slug)}?page=${page}&size=${size}`,
+      { next: { revalidate: TIMING.revalidateCache, tags: [`collections-location-${slug}`] } }
     );
-    return result ?? [];
+    return parseCollectionArrayResponse(data);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return [];
     throw error;

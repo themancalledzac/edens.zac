@@ -422,13 +422,16 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   }
 
   if (collection.location) {
-    items.push({
-      type: 'location',
-      value:
-        typeof collection.location === 'string'
-          ? collection.location
-          : (collection.location as { name: string }).name,
-    });
+    if (typeof collection.location === 'string') {
+      items.push({ type: 'location', value: collection.location });
+    } else {
+      const locationModel = collection.location as { name: string; slug?: string };
+      const locationItem: TextBlockItem = { type: 'location', value: locationModel.name };
+      if (locationModel.slug) {
+        locationItem.slug = locationModel.slug;
+      }
+      items.push(locationItem);
+    }
   }
 
   if (collection.description) {
