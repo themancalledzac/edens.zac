@@ -97,8 +97,8 @@ function isWithinDateRange(
   }
   if (dateTo) {
     const to = new Date(dateTo);
-    // Include the entire end date by comparing to end of day
-    to.setHours(23, 59, 59, 999);
+    // Include the entire end date by comparing to end of day (UTC)
+    to.setUTCHours(23, 59, 59, 999);
     if (date > to) return false;
   }
   return true;
@@ -134,16 +134,13 @@ export function filterContent(
   if (!hasActiveFilters) return content;
 
   return content.filter(item => {
-    // Non-image content is excluded when image-specific filters are active
     if (!isImageContent(item)) return false;
 
-    // Rating filter
     if (criteria.minRating !== undefined) {
       const rating = item.rating ?? 0;
       if (rating < criteria.minRating) return false;
     }
 
-    // People filter (OR logic)
     if (criteria.people && criteria.people.length > 0) {
       const imagePersonNames = item.people?.map(p => p.name.toLowerCase()) ?? [];
       const matchesPerson = criteria.people.some(name =>
@@ -152,7 +149,6 @@ export function filterContent(
       if (!matchesPerson) return false;
     }
 
-    // Location filter (OR logic)
     if (criteria.locations && criteria.locations.length > 0) {
       const imageLocation = item.location?.name?.toLowerCase() ?? '';
       const matchesLocation = criteria.locations.some(
@@ -161,7 +157,6 @@ export function filterContent(
       if (!matchesLocation) return false;
     }
 
-    // Tags filter (OR logic)
     if (criteria.tags && criteria.tags.length > 0) {
       const imageTagNames = item.tags?.map(t => t.name.toLowerCase()) ?? [];
       const matchesTag = criteria.tags.some(tag =>
@@ -170,7 +165,6 @@ export function filterContent(
       if (!matchesTag) return false;
     }
 
-    // Camera filter (OR logic)
     if (criteria.cameras && criteria.cameras.length > 0) {
       const imageCameraName = item.camera?.name?.toLowerCase() ?? '';
       const matchesCamera = criteria.cameras.some(
@@ -179,27 +173,22 @@ export function filterContent(
       if (!matchesCamera) return false;
     }
 
-    // Free-text query
     if (criteria.query && criteria.query.trim().length > 0 && !imageMatchesQuery(item, criteria.query.trim())) {
       return false;
     }
 
-    // Date range
     if ((criteria.dateFrom || criteria.dateTo) && !isWithinDateRange(item.captureDate, criteria.dateFrom, criteria.dateTo)) {
       return false;
     }
 
-    // Film filter — treat undefined/null as digital (false)
     if (criteria.isFilm !== undefined && (item.isFilm ?? false) !== criteria.isFilm) {
       return false;
     }
 
-    // Black & white filter — treat undefined/null as color (false)
     if (criteria.blackAndWhite !== undefined && (item.blackAndWhite ?? false) !== criteria.blackAndWhite) {
       return false;
     }
 
-    // Collection IDs filter (OR logic)
     if (criteria.collectionIds && criteria.collectionIds.length > 0) {
       const imageCollectionIds = item.collections?.map(c => c.collectionId) ?? [];
       const matchesCollection = criteria.collectionIds.some(id =>
@@ -318,6 +307,10 @@ export interface FilterCounts {
  * counts how many images would match with that specific value applied.
  * This answers: "if I toggle this chip, how many results will I see?"
  *
+ * Uses one filterContent call per dimension (5 passes total, not N×M), so each
+ * count reflects the intersection of all other active filters while ignoring its
+ * own dimension.
+ *
  * @param content - Full unfiltered content array
  * @param criteria - Currently active filter criteria
  * @param availableOptions - All available options (from extractFilterOptions)
@@ -328,27 +321,23 @@ export function computeFilterCounts(
   criteria: ContentFilterCriteria,
   availableOptions: ContentFilterOptions,
 ): FilterCounts {
-  // Strip each dimension to get the base set for contextual counting
   const { minRating: _mr, ...withoutRating } = criteria;
   const { isFilm: _if, ...withoutFilm } = criteria;
   const { collectionIds: _cids, ...withoutCollections } = criteria;
   const { tags: _tags, ...withoutTags } = criteria;
   const { people: _people, ...withoutPeople } = criteria;
 
-  // One filterContent call per dimension (5 passes total, not N*M)
   const baseWithoutRating = filterContent(content, withoutRating);
   const baseWithoutFilm = filterContent(content, withoutFilm);
   const baseWithoutCollections = filterContent(content, withoutCollections);
   const baseWithoutTags = filterContent(content, withoutTags);
   const baseWithoutPeople = filterContent(content, withoutPeople);
 
-  // Count highly rated in single pass
   let highlyRated = 0;
   for (const item of baseWithoutRating) {
     if (isImageContent(item) && (item.rating ?? 0) >= 4) highlyRated++;
   }
 
-  // Count film / digital in single pass
   let film = 0;
   let digital = 0;
   for (const item of baseWithoutFilm) {
@@ -357,7 +346,6 @@ export function computeFilterCounts(
     else digital++;
   }
 
-  // Count per collection in single pass
   const collections: Record<number, number> = {};
   for (const col of availableOptions.collections) collections[col.id] = 0;
   for (const item of baseWithoutCollections) {
@@ -367,7 +355,6 @@ export function computeFilterCounts(
     }
   }
 
-  // Count per tag in single pass
   const tags: Record<string, number> = {};
   for (const tag of availableOptions.tags) tags[tag] = 0;
   for (const item of baseWithoutTags) {
@@ -377,7 +364,6 @@ export function computeFilterCounts(
     }
   }
 
-  // Count per person in single pass
   const people: Record<string, number> = {};
   for (const person of availableOptions.people) people[person] = 0;
   for (const item of baseWithoutPeople) {
