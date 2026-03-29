@@ -28,13 +28,13 @@
 }
 
 .pageHeader {
-  padding: 1.5rem var(--page-padding-mobile);
+  padding: var(--space-5) var(--page-padding-mobile);
   border-bottom: 1px solid var(--border-color, #eee);
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-4);
 
   @media (width >= 768px) {
-    padding: 2rem 0;
-    margin-bottom: 1.5rem;
+    padding: var(--space-6) 0;
+    margin-bottom: var(--space-5);
   }
 }
 

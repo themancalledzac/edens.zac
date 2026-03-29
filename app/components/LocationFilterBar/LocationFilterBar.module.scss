@@ -27,7 +27,7 @@
 .chip {
   appearance: none;
   border: 1px solid var(--border-color, #ddd);
-  border-radius: 100px;
+  border-radius: 3px;
   background: transparent;
   color: var(--text-primary, #333);
   font-size: 0.8rem;
@@ -44,7 +44,7 @@
 
 .chipActive {
   background: var(--text-primary, #111);
-  color: #fff;
+  color: var(--color-white, #fff);
   border-color: var(--text-primary, #111);
 
   &:hover {
@@ -53,9 +53,9 @@
 }
 
 .chipFilm {
-  background: #e8f5e9;
-  border-color: #4caf50;
-  color: #1b5e20;
+  background: var(--color-chip-film-bg);
+  border-color: var(--color-chip-film-border);
+  color: var(--color-chip-film-text);
 
   &:hover {
     opacity: 0.85;
@@ -63,9 +63,9 @@
 }
 
 .chipDigital {
-  background: #fce4ec;
-  border-color: #e91e63;
-  color: #880e4f;
+  background: var(--color-chip-digital-bg);
+  border-color: var(--color-chip-digital-border);
+  color: var(--color-chip-digital-text);
 
   &:hover {
     opacity: 0.85;
@@ -81,96 +81,7 @@
 }
 
 
-/* Row 2: Collection mini-cards */
-.collectionRow {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding-bottom: 0.25rem;
-
-  /* Hide scrollbar on webkit but keep scrollable */
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--border-color, #ddd);
-    border-radius: 2px;
-  }
-
-  @media (width >= 768px) {
-    gap: 0.75rem;
-  }
-}
-
-.collectionCard {
-  appearance: none;
-  border: 2px solid transparent;
-  border-radius: 3px;
-  background: var(--surface-secondary, #f5f5f5);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  width: 120px;
-  overflow: hidden;
-  transition: border-color 0.15s, opacity 0.15s;
-
-  &:hover {
-    border-color: var(--border-color, #ddd);
-  }
-
-  @media (width >= 768px) {
-    width: 160px;
-  }
-}
-
-.collectionCardActive {
-  border-color: var(--text-primary, #111);
-
-  &:hover {
-    border-color: var(--text-primary, #111);
-  }
-}
-
-.collectionThumbnail {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-}
-
-.collectionThumbnailImage {
-  object-fit: cover;
-}
-
-.collectionTitle {
-  font-size: 0.7rem;
-  font-weight: 500;
-  color: var(--text-primary, #333);
-  padding: 0.3rem 0.4rem;
-  text-align: left;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.25rem;
-  white-space: normal;
-  word-break: break-word;
-
-  @media (width >= 768px) {
-    font-size: 0.75rem;
-    padding: 0.35rem 0.5rem;
-  }
-}
-
-.collectionCount {
-  font-size: 0.65rem;
-  font-weight: 400;
-  opacity: 0.5;
-  flex-shrink: 0;
-}
-
-/* Rows 3+: Wrapping chip rows (tags, people) */
+/* Wrapping chip rows (tags, people) */
 .wrapRow {
   display: flex;
   flex-wrap: wrap;

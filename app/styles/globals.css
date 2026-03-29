@@ -33,6 +33,14 @@ html,
   --color-selected-indicator: rgb(220, 38, 38, 0.9);
   --color-shadow: rgb(0, 0, 0, 0.3);
 
+  /* Filter chip state colors */
+  --color-chip-film-bg: #e8f5e9;
+  --color-chip-film-border: #4caf50;
+  --color-chip-film-text: #1b5e20;
+  --color-chip-digital-bg: #fce4ec;
+  --color-chip-digital-border: #e91e63;
+  --color-chip-digital-text: #880e4f;
+
   /* Spacing scale */
   --space-0: 0;
   --space-1: 0.25rem;
