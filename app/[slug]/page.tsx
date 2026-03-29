@@ -15,8 +15,14 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   return collections.map((c) => ({ slug: c.slug ?? '' })).filter((p) => p.slug !== '');
 }
 
+const STATIC_FILES = ['favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json'];
+
 export async function generateMetadata({ params }: CollectionPageProps): Promise<Metadata> {
   const { slug } = await params;
+
+  if (STATIC_FILES.includes(slug.toLowerCase())) {
+    return { title: 'Not Found' };
+  }
 
   try {
     const collection = await getCollectionBySlug(slug, 0, 500);
@@ -62,10 +68,7 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
     notFound();
   }
 
-  // Exclude common static file requests from dynamic route
-  // These should be handled by Next.js static file serving
-  const staticFiles = ['favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json'];
-  if (staticFiles.includes(slug.toLowerCase())) {
+  if (STATIC_FILES.includes(slug.toLowerCase())) {
     notFound();
   }
 

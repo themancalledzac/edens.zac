@@ -15,6 +15,8 @@ import {
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 
+import LocationCollections from './LocationCollections';
+
 interface LocationPageClientProps {
   images: ContentImageModel[];
   collections: CollectionModel[];
@@ -81,10 +83,11 @@ export default function LocationPageClient({ images, collections }: LocationPage
 
   return (
     <>
+      <LocationCollections collections={collections} />
+
       <LocationFilterBar
         filterState={filterState}
         onFilterChange={handleFilterChange}
-        collections={collections}
         availableOptions={availableOptions}
         filterCounts={filterCounts}
       />

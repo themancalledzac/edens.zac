@@ -16,12 +16,16 @@ export interface IdNameModel {
 /**
  * Content Tag - Used to categorize images
  */
-export type ContentTagModel = IdNameModel
+export interface ContentTagModel extends IdNameModel {
+  slug?: string;
+}
 
 /**
  * Content Person - Represents people tagged in images
  */
-export type ContentPersonModel = IdNameModel
+export interface ContentPersonModel extends IdNameModel {
+  slug?: string;
+}
 
 /**
  * Content Camera - Camera equipment used for photos

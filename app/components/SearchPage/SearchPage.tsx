@@ -46,13 +46,13 @@ function getMockSearchContent(): ContentImageModel[] {
       imageWidth: 1600,
       imageHeight: getHeightForIndex(i),
       rating: (i % 5) + 1,
-      location: { id: i % locations.length, name: locationName },
+      location: { id: i % locations.length, name: locationName, slug: '' },
       camera: { id: i % cameras.length, name: cameraName },
       tags: [
-        { id: i % tags.length, name: tagName1 },
-        { id: (i + 2) % tags.length, name: tagName2 },
+        { id: i % tags.length, name: tagName1, slug: '' },
+        { id: (i + 2) % tags.length, name: tagName2, slug: '' },
       ],
-      people: i % 3 === 0 ? [{ id: i % people.length, name: personName }] : [],
+      people: i % 3 === 0 ? [{ id: i % people.length, name: personName, slug: '' }] : [],
       createdAt: new Date(2024, i % 12, (i % 28) + 1).toISOString(),
       visible: true,
     };

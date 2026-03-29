@@ -443,7 +443,7 @@ export default function ImageMetadataModal({
               }}
               allowAddNew
               onAddNew={data => {
-                const newLocation = { id: 0, name: data.name as string };
+                const newLocation = { id: 0, name: data.name as string, slug: '' };
                 updateStateField({ location: newLocation });
               }}
               addNewFields={[
@@ -753,7 +753,7 @@ export default function ImageMetadataModal({
               }}
               allowAddNew
               onAddNew={data => {
-                const newTag: ContentTagModel = { id: 0, name: data.name as string };
+                const newTag: ContentTagModel = { id: 0, name: data.name as string, slug: '' };
                 const currentTags = updateState.tags || [];
                 updateStateField({ tags: [...currentTags, newTag] });
               }}
@@ -782,7 +782,7 @@ export default function ImageMetadataModal({
               }}
               allowAddNew
               onAddNew={data => {
-                const newPerson: ContentPersonModel = { id: 0, name: data.name as string };
+                const newPerson: ContentPersonModel = { id: 0, name: data.name as string, slug: '' };
                 const currentPeople = updateState.people || [];
                 updateStateField({ people: [...currentPeople, newPerson] });
               }}
