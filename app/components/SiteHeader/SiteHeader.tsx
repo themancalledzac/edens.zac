@@ -16,17 +16,7 @@ interface SiteHeaderProps {
 /**
  * Site Header
  *
- * Shared navigation header component with responsive design and mobile
- * menu functionality. Displays site title/logo and hamburger menu toggle
- * for accessing navigation dropdown.
- *
- * @dependencies
- * - Lucide React AlignJustify icon for menu toggle
- * - Next.js Link for client-side navigation
- * - React useState for menu state management
- * - MenuDropdown component for navigation menu
- *
- * @returns Client component with site branding and navigation
+ * Shared navigation header with site title and hamburger menu toggle.
  */
 export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

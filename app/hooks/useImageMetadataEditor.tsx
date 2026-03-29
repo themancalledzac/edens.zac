@@ -23,7 +23,6 @@ export function useImageMetadataEditor() {
    * Open the metadata editor for a specific image
    */
   const openEditor = useCallback((image: ContentImageModel) => {
-    // Capture current scroll position BEFORE opening editor
     const currentScroll = window.scrollY;
     setScrollPosition(currentScroll);
     setEditingImage(image);
@@ -36,13 +35,11 @@ export function useImageMetadataEditor() {
     setEditingImage(null);
   }, []);
 
-  // Prevent body scrolling while editor is open
   useBodyScrollLock(!!editingImage);
 
   useEffect(() => {
     if (!editingImage) return;
 
-    // Handle Escape key to close
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         closeEditor();

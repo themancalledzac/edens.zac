@@ -87,11 +87,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
   // Separate loading state for operations (create, update, upload, etc.)
   const [operationLoading, setOperationLoading] = useState(false);
 
-  // Combine loading error with component error state
   const [error, setError] = useState<string | null>(null);
   const displayError = error || loadError;
 
-  // Combined loading state (initial load or operation)
   const isLoading = loading || operationLoading;
 
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -110,16 +108,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
     closeEditor: baseCloseEditor,
   } = useImageMetadataEditor();
 
-  // Wrap closeEditor to clear selectedImageIds when closing in single-edit mode
+  /**
+   * Wraps `baseCloseEditor` to clear `selectedImageIds` when closing in single-edit mode.
+   */
   const closeEditor = useCallback(() => {
-    // If not in multi-select mode, clear selections when closing
     if (!isMultiSelectMode) {
       setSelectedImageIds([]);
     }
     baseCloseEditor();
   }, [isMultiSelectMode, baseCloseEditor]);
 
-  // Clear selectedImageIds when editor closes (handles Escape key and other close methods)
   useEffect(() => {
     if (!editingImage && !isMultiSelectMode) {
       setSelectedImageIds([]);
@@ -138,7 +136,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     });
   }, []);
 
-  // Update state: starts as copy of collection data
   const [updateData, setUpdateData] = useState<CollectionUpdateRequest>(() => {
     if (collection) {
       return {
@@ -164,7 +161,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     };
   });
 
-  // Reset updateData when collection loads/changes
   useEffect(() => {
     if (collection) {
       setUpdateData({
@@ -180,8 +176,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   }, [collection]);
 
-  // Process content blocks for display - same as collection page but without visibility filtering
-  // Collections are converted to ParallaxImageContentModel, images get collection-specific orderIndex
   const processedContent = useMemo(
     () =>
       processContentBlocks(
@@ -229,7 +223,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }, []),
   });
 
-  // Derive imagesToEdit from selectedImageIds
   const imagesToEdit = useMemo(
     () =>
       (collection?.content?.filter(
@@ -246,8 +239,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const handleImageLoadError = useCallback((contentId: number) => {
     console.warn(`[ManageClient] Image failed to load: contentId=${contentId}`);
   }, []);
-
-  // Collection data loading is now handled by useCollectionData hook
 
   /**
    * Handle opening the text block creation modal
@@ -271,7 +262,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setOperationLoading(true);
       setError(null);
 
-      // Execute operation and refresh collection
       const response = await refreshCollectionAfterOperation(
         collection.slug,
         async () => {
@@ -286,13 +276,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collectionStorage
       );
 
-      // Update currentState with refreshed collection (keep existing metadata)
       setCurrentState(prev => ({
         ...prev!,
         collection: response.collection,
       }));
 
-      // Close modal after successful creation
       setIsTextBlockModalOpen(false);
     } catch (error) {
       setError(handleApiError(error, 'Failed to create text block'));
@@ -302,7 +290,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   };
 
-  // Handle create form submission
+  /**
+   * Handle create form submission
+   */
   const handleCreate = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -315,17 +305,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setOperationLoading(true);
       setError(null);
 
-      // Create endpoint returns CollectionUpdateResponseDTO
       const response = await createCollection(createData);
 
       if (response !== null) {
-        // Set current state (contains collection + metadata)
         setCurrentState(response);
-
-        // Revalidate index so the new collection appears on home/listing pages
         await revalidateCollectionCache(response.collection.slug);
-
-        // Update URL to reflect the new collection
         router.replace(`/collection/manage/${response.collection.slug}`);
       }
     } catch (error: unknown) {
@@ -335,7 +319,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   };
 
-  // Handle update form submission
+  /**
+   * Handle update form submission
+   */
   const handleUpdate = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -345,24 +331,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setSaving(true);
       setError(null);
 
-      // Build payload with only changed fields
       const payload = buildUpdatePayload(updateData, collection);
-
-      // Update collection - response includes full CollectionUpdateResponseDTO with updated slug and all metadata
       const response = await updateCollection(collection.id, payload);
 
       if (response !== null) {
-        // Update currentState with response (includes collection + all metadata)
         setCurrentState(response);
-
-        // Update both caches with full admin data
         collectionStorage.update(response.collection.slug, response.collection);
         collectionStorage.updateFull(response.collection.slug, response);
-
-        // Invalidate Next.js cache so the public page reflects the update
         void revalidateCollectionCache(response.collection.slug);
 
-        // If slug changed, update URL to reflect new slug
         if (response.collection.slug !== collection.slug) {
           router.replace(`/collection/manage/${response.collection.slug}`);
         }
@@ -391,7 +368,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 id: img.id,
                 location: { prev: locationModel.id },
               }));
-              // Fire-and-forget: inherit location to locationless images, then refresh
               updateImages(imageUpdates)
                 .then(async () => {
                   const refreshed = await getCollectionUpdateMetadata(response.collection.slug);
@@ -409,7 +385,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
         }
       }
 
-      // Reset coverImageId after successful update
       setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
     } catch (error) {
       setError(handleApiError(error, 'Failed to update collection'));
@@ -418,7 +393,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   };
 
-  // Handle image upload
+  /**
+   * Handle image upload
+   */
   const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     if (!collection || !event.target.files || event.target.files.length === 0) return;
 
@@ -428,13 +405,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
       const files = Array.from(event.target.files);
 
-      // Create FormData and append files
       const formData = new FormData();
       for (const file of files) {
         formData.append('files', file); // Backend expects 'files' field
       }
 
-      // Execute operation and refresh collection
       const response = await refreshCollectionAfterOperation(
         collection.slug,
         async () => {
@@ -444,13 +419,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collectionStorage
       );
 
-      // Update currentState with refreshed collection (keep existing metadata)
       setCurrentState(prev => ({
         ...prev!,
         collection: response.collection,
       }));
 
-      // Clear the file input
       event.target.value = '';
     } catch (error) {
       setError(handleApiError(error, 'Failed to upload images'));
@@ -459,23 +432,25 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   };
 
-  // Handle multi-select toggle
+  /**
+   * Handle multi-select toggle
+   */
   const handleMultiSelectToggle = useCallback((imageId: number) => {
     setSelectedImageIds(prev => handleMultiSelectToggleUtil(imageId, prev));
   }, []);
 
-  // Handle bulk edit - open modal with selected images
+  /**
+   * Handle bulk edit - open modal with selected images
+   */
   const handleBulkEdit = useCallback(() => {
     if (selectedImageIds.length === 0 || !collection?.content) return;
 
-    // Get all selected image blocks
     const selectedImages = collection.content.filter(
       block => isContentImage(block) && selectedImageIds.includes(block.id)
     ) as ContentImageModel[];
 
     const firstImage = selectedImages[0];
     if (firstImage) {
-      // Open editor with first image as template
       openEditor(firstImage);
     }
   }, [selectedImageIds, collection, openEditor]);
@@ -513,12 +488,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
       try {
         const slug = currentState.collection.slug;
 
-        // Optimistically update cache with changed images immediately
         if (response.updatedImages && response.updatedImages.length > 0) {
           collectionStorage.updateImagesInCache(slug, response.updatedImages);
         }
 
-        // Re-fetch full collection for state consistency
         const fullResponse = await getCollectionUpdateMetadata(slug);
         if (fullResponse !== null) {
           collectionStorage.update(slug, fullResponse.collection);
@@ -567,7 +540,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       try {
         const slug = currentState.collection.slug;
 
-        // Re-fetch full collection for state consistency
         const fullResponse = await getCollectionUpdateMetadata(slug);
         if (fullResponse !== null) {
           setCurrentState(fullResponse);
@@ -585,7 +557,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [currentState]
   );
 
-  // Derive original collection IDs from currentState
   const originalCollectionIds = useMemo(() => {
     const ids = new Set<number>();
     if (collection?.content) {
@@ -598,7 +569,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     return ids;
   }, [collection?.content]);
 
-  // Derive pending add/remove sets for CollectionListSelector
   const pendingAddIds = useMemo(() => {
     const ids = new Set<number>();
     for (const child of updateData.collections?.newValue || []) {
@@ -611,55 +581,52 @@ export default function ManageClient({ slug }: ManageClientProps) {
     return new Set<number>(updateData.collections?.remove || []);
   }, [updateData.collections?.remove]);
 
-  // Derive current location from collection.location string and updateData.location
-  // Handles both original collection location and pending updates
+  /**
+   * Derive current location from `collection.location` and `updateData.location`.
+   *
+   * @remarks Handles both object format (current API) and string format (legacy).
+   * Priority: pending `updateData.location` overrides the saved collection location.
+   */
   const currentLocation: LocationModel | null = useMemo(() => {
     const availableLocations = currentState?.locations || [];
 
-    // If there's a pending update in updateData, use that
     const locationUpdate = updateData.location;
     if (locationUpdate) {
       if (locationUpdate.remove) {
-        // Location is being removed
         return null;
       }
       if (locationUpdate.prev) {
-        // Existing location selected by ID
         const location = availableLocations.find(loc => loc.id === locationUpdate.prev);
         return location || null;
       }
       if (locationUpdate.newValue) {
-        // New location being created (temporary with id: 0)
         return { id: 0, name: locationUpdate.newValue };
       }
     }
 
-    // No pending update - use original collection location
-    // Handle both object format (new API) and string format (legacy)
     const collectionLocation = collection?.location;
 
-    // If location is already an object with id and name, use it directly
     if (
       collectionLocation &&
       typeof collectionLocation === 'object' &&
       'id' in collectionLocation &&
       'name' in collectionLocation
     ) {
-      // It's already a LocationModel - find it in availableLocations to ensure we have the correct reference
       const location = availableLocations.find(
         loc => loc.id === (collectionLocation as LocationModel).id
       );
       return location || (collectionLocation as LocationModel);
     }
 
-    // Otherwise, treat it as a string and convert
     return convertLocationStringToModel(
       typeof collectionLocation === 'string' ? collectionLocation : null,
       availableLocations
     );
   }, [collection?.location, currentState?.locations, updateData.location]);
 
-  // Handle location selection changes
+  /**
+   * Handle location selection changes
+   */
   const handleLocationChange = useCallback((value: LocationModel | LocationModel[] | null) => {
     const location = Array.isArray(value) ? value[0] || null : value;
     const locationUpdate = createLocationUpdateFromModel(location);
@@ -670,7 +637,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }));
   }, []);
 
-  // Handle collection toggle from CollectionListSelector
+  /**
+   * Handle collection toggle from CollectionListSelector
+   */
   const handleCollectionToggle = useCallback(
     (toggledCollection: CollectionListModel) => {
       setUpdateData(prev => {
@@ -704,7 +673,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
           ];
         }
 
-        // Clean up: if both arrays are empty, clear collections entirely
         const hasChanges = newRemove.length > 0 || newNewValue.length > 0;
         return {
           ...prev,
@@ -721,7 +689,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [originalCollectionIds]
   );
 
-  // Handle adding new child collection
+  /**
+   * Handle adding new child collection
+   */
   const handleAddNewChild = useCallback(async () => {
     if (!collection) {
       console.warn('handleAddNewChild: collection unavailable, cannot create child');
@@ -733,16 +703,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setOperationLoading(true);
       setError(null);
 
-      // Create child collection with default values
       const response = await createChildCollection(collection.id, {
         type: CollectionType.PORTFOLIO,
         title: 'New Child Collection',
       });
 
-      // Revalidate parent collection and index so new child appears
       await revalidateCollectionCache(collection.slug);
 
-      // Navigate to the new child collection's manage page
       if (response !== null) {
         router.push(`/collection/manage/${response.collection.slug}`);
       }

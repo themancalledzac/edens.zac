@@ -50,10 +50,7 @@ export function useViewport(): ViewportDimensions {
   const throttledMeasure = useThrottle(measure, 100); // fires immediately + every 100ms during resize
 
   useEffect(() => {
-    // Initial measurement
     measure();
-
-    // Throttled resize listener — fires on first event (leading) + periodically during drag
     window.addEventListener('resize', throttledMeasure);
     return () => window.removeEventListener('resize', throttledMeasure);
   }, [measure, throttledMeasure]);

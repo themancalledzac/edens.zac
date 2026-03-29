@@ -98,7 +98,6 @@ export function useParallax(options: ParallaxOptions = {}) {
       });
     };
 
-    // Initial update
     updateParallax();
 
     // Debounced resize handler to avoid N listeners × per-pixel recalculations

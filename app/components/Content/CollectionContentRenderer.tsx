@@ -26,6 +26,10 @@ import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 import ReorderOverlay from './ReorderOverlay';
 
+/**
+ * Renders a single content item: IMAGE, GIF, COLLECTION, or TEXT metadata block.
+ * Handles parallax, reorder mode, client gallery download, and image error fallback.
+ */
 export default function CollectionContentRenderer({
   contentId,
   className,
@@ -77,26 +81,21 @@ export default function CollectionContentRenderer({
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
 
-  // Unified click handler - delegates to parent via onImageClick callback
   const handleClick = useMemo(() => {
-    // TEXT content is not clickable
     if (contentType === 'TEXT') {
       return;
     }
 
-    // In reorder mode, clicks are handled by ReorderOverlay
     if (isReorderMode) {
       return;
     }
 
-    // Collections with slug should navigate to collection page
     if (_hasSlug && !onImageClick) {
       return () => {
         router.push(`/${_hasSlug}`);
       };
     }
 
-    // Create minimal content object for fullscreen fallback (public pages)
     const fullScreenContent: ContentImageModel | ContentParallaxImageModel = {
       id: contentId,
       contentType: contentType === 'GIF' ? 'GIF' : 'IMAGE',
@@ -126,13 +125,12 @@ export default function CollectionContentRenderer({
     isReorderMode,
   ]);
 
-  // Memoized error handler — must be defined before any early return to satisfy Rules of Hooks
+  // Must be defined before any early return to satisfy Rules of Hooks
   const handleImageError = useCallback(() => {
     setFailedImageIds(prev => new Set(prev).add(contentId));
     onImageLoadError?.(contentId);
   }, [contentId, onImageLoadError]);
 
-  // Render TEXT content (metadata block)
   if (contentType === 'TEXT') {
     if (!textItems || textItems.length === 0) {
       return null;
@@ -225,7 +223,7 @@ export default function CollectionContentRenderer({
     );
   }
 
-  // Render GIF content as video (gifUrl is actually an MP4)
+  // GIF content is stored as MP4
   if (contentType === 'GIF' && imageUrl && imageUrl.trim() !== '') {
     return (
       <div
@@ -283,7 +281,6 @@ export default function CollectionContentRenderer({
     );
   }
 
-  // Render image content (IMAGE, COLLECTION)
   const hasValidImage = imageUrl && imageUrl.trim() !== '';
 
   if (!hasValidImage) {
@@ -317,7 +314,6 @@ export default function CollectionContentRenderer({
     );
   }
 
-  // If the image previously failed to load, render a placeholder instead
   if (failedImageIds.has(contentId)) {
     const placeholderWidth = width || 300;
     const placeholderHeight = height || (placeholderWidth * 2) / 3;
@@ -349,7 +345,6 @@ export default function CollectionContentRenderer({
     );
   }
 
-  // Image-specific overlays (only for IMAGE type)
   const isCurrentCover = contentType === 'IMAGE' && currentCoverImageId === contentId;
   const isJustClicked = contentType === 'IMAGE' && justClickedImageId === contentId;
   const isSelected = contentType === 'IMAGE' && selectedImageIds.includes(contentId);
@@ -405,7 +400,7 @@ export default function CollectionContentRenderer({
     </>
   );
 
-  // NaN fallback logic
+  // Guard: log and recover from NaN dimensions before rendering
   if (!Number.isFinite(width) || !Number.isFinite(height)) {
     console.error('[CollectionContentRenderer] NaN detected in props:', {
       contentId,

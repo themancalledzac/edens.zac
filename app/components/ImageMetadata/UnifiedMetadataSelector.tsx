@@ -114,10 +114,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
 
-  // ============================================================================
-  // Click Outside & Escape Key Handling (using reusable hook)
-  // ============================================================================
-
   const handleCloseAll = useCallback(() => {
     setIsSelectingFromDropdown(false);
     setIsAddingNew(false);
@@ -126,100 +122,67 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
 
   useClickOutsideMultiple(containerRef, [isSelectingFromDropdown, isAddingNew], handleCloseAll);
 
-  // ============================================================================
-  // Helper Functions
-  // ============================================================================
-
   /**
-   * Get display name for an item
-   * Uses custom getter if provided, otherwise falls back to displayName or name
-   * Always returns a string, never an object
+   * Uses custom getter if provided, otherwise falls back to displayName or name.
+   * Always returns a string, never an object.
    */
   const getItemDisplayName = (item: T | null | undefined): string => {
     if (!item) return '';
     if (getDisplayName) {
       const result = getDisplayName(item);
-      // Ensure we always return a string, never an object
       if (typeof result === 'string') return result;
       return '';
     }
     return item.displayName || item.name || '';
   };
 
-  /**
-   * Get unique key for list items
-   * Uses custom getter if provided, otherwise uses id or name
-   */
+  /** Uses custom getter if provided, otherwise uses id or name. */
   const getKey = (item: T): string | number => {
     if (getItemKey) return getItemKey(item);
     return item.id ?? item.name ?? '';
   };
 
-  /**
-   * Check if an item exists in the database (has a valid id > 0)
-   */
+  /** Check if an item exists in the database (has a valid id > 0). */
   const itemExistsInDatabase = (item: T | null | undefined): boolean => {
     if (!item) return true;
     return Boolean(item.id && item.id > 0);
   };
 
-  /**
-   * Check if an item is selected (works for both single and multi-select)
-   */
   const isItemSelected = (item: T): boolean => {
     if (multiSelect) {
-      // Multi-select: check if item is in selectedValues array
       return selectedValues.some(selected => {
         if (selected.id && item.id) return selected.id === item.id;
         return getItemDisplayName(selected) === getItemDisplayName(item);
       });
     }
-    // Single-select: compare with selectedValue
     if (!selectedValue) return false;
     if (selectedValue.id && item.id) return selectedValue.id === item.id;
     return getItemDisplayName(selectedValue) === getItemDisplayName(item);
   };
 
-  /**
-   * Determine button text based on mode
-   */
   const getButtonText = (): string => {
     if (changeButtonText) return changeButtonText;
     return multiSelect ? 'Select More ▼' : 'Change ▼';
   };
 
-  // ============================================================================
-  // Event Handlers
-  // ============================================================================
-
-  /**
-   * Handle selecting an item from dropdown
-   */
   const handleSelectItem = (item: T) => {
     if (multiSelect) {
-      // Multi-select: toggle item in array
       const isCurrentlySelected = isItemSelected(item);
       if (isCurrentlySelected) {
-        // Remove from selection
         const newSelection = selectedValues.filter(selected => {
           if (selected.id && item.id) return selected.id !== item.id;
           return getItemDisplayName(selected) !== getItemDisplayName(item);
         });
         onChange(newSelection);
       } else {
-        // Add to selection
         onChange([...selectedValues, item]);
       }
     } else {
-      // Single-select: replace selection and close dropdown
       onChange(item);
       setIsSelectingFromDropdown(false);
     }
   };
 
-  /**
-   * Handle removing an item from multi-select
-   */
   const handleRemoveItem = (item: T) => {
     if (!multiSelect) return;
 
@@ -230,20 +193,15 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
     onChange(newSelection);
   };
 
-  /**
-   * Handle adding a new item
-   */
   const handleAddNew = () => {
-    // Validate all required fields
     const missingFields = addNewFields
       .filter(field => field.required)
       .filter(field => !formData[field.name] || formData[field.name]?.toString().trim() === '');
 
     if (missingFields.length > 0) {
-      return; // Button should be disabled, but this is extra safety
+      return;
     }
 
-    // Convert number fields to actual numbers
     const processedData: Record<string, string | number | null> = {};
     for (const field of addNewFields) {
       const value = formData[field.name];
@@ -257,14 +215,10 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
       onAddNew(processedData);
     }
 
-    // Reset form
     setFormData({});
     setIsAddingNew(false);
   };
 
-  /**
-   * Check if Add New form is valid (all required fields filled)
-   */
   const isAddNewFormValid = (): boolean => {
     return addNewFields
       .filter(field => field.required)
@@ -279,16 +233,10 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
       });
   };
 
-  /**
-   * Handle form field change
-   */
   const handleFieldChange = (fieldName: string, value: string) => {
     setFormData(prev => ({ ...prev, [fieldName]: value }));
   };
 
-  /**
-   * Handle keyboard events in form fields
-   */
   const handleFieldKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -301,10 +249,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
     }
   };
 
-  // ============================================================================
-  // Render
-  // ============================================================================
-
   return (
     <div className={styles.formGroup} ref={containerRef}>
       <label className={styles.formLabel}>{label}</label>
@@ -312,7 +256,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
       {/* Current Selection Display */}
       <div className={styles.cameraDisplay}>
         <div className={styles.cameraValue}>
-          {/* Single-select: Show current value or empty state */}
           {!multiSelect &&
             (selectedValue ? (
               <>
@@ -325,7 +268,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
               <span className={styles.cameraEmpty}>{emptyText}</span>
             ))}
 
-          {/* Multi-select: Show selected items as chips */}
           {multiSelect &&
             (selectedValues.length === 0 ? (
               <span className={styles.cameraEmpty}>{emptyText}</span>
@@ -333,7 +275,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
               <div className={styles.selectedChips}>
                 {selectedValues.map(item =>
                   simpleChips ? (
-                    // Simplified chip: click entire chip to remove, no × button
                     <div
                       key={getKey(item)}
                       className={styles.chipSimple}
@@ -346,7 +287,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
                       {getItemDisplayName(item)}
                     </div>
                   ) : (
-                    // Standard chip with × button
                     <div key={getKey(item)} className={styles.chip}>
                       <span>{getItemDisplayName(item)}</span>
                       <button

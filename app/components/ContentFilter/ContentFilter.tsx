@@ -58,19 +58,16 @@ export default function ContentFilter({
 
   const [isOpen, setIsOpen] = useState(variant === 'bar');
 
-  // Parse current filter state from URL
   const criteria = useMemo(
     () => parseFilterFromParams(searchParams),
     [searchParams]
   );
 
-  // Extract available options from content
   const options = useMemo(
     () => extractFilterOptions(content),
     [content]
   );
 
-  // Count active filters for badge
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (criteria.minRating !== undefined) count++;
@@ -83,7 +80,7 @@ export default function ContentFilter({
     return count;
   }, [criteria]);
 
-  // Update URL and notify parent with filtered results
+  /** Updates URL params and notifies parent with filtered results. */
   const updateFilter = useCallback(
     (newCriteria: ContentFilterCriteria) => {
       const params = serializeFilterToParams(newCriteria);
@@ -100,7 +97,7 @@ export default function ContentFilter({
     [content, onFilterChange, pathname, router]
   );
 
-  // Toggle a multi-value filter (people, locations, tags, cameras)
+  /** Toggles a value in a multi-value filter (people, locations, tags, cameras). */
   const toggleArrayFilter = useCallback(
     (key: 'people' | 'locations' | 'tags' | 'cameras', value: string) => {
       const current = criteria[key] ?? [];
@@ -112,7 +109,6 @@ export default function ContentFilter({
     [criteria, updateFilter]
   );
 
-  // Set rating filter
   const setRating = useCallback(
     (rating: number | undefined) => {
       updateFilter({ ...criteria, minRating: rating });
@@ -120,7 +116,6 @@ export default function ContentFilter({
     [criteria, updateFilter]
   );
 
-  // Set text query
   const setQuery = useCallback(
     (query: string) => {
       updateFilter({ ...criteria, query: query || undefined });
@@ -128,7 +123,6 @@ export default function ContentFilter({
     [criteria, updateFilter]
   );
 
-  // Set date range
   const setDateRange = useCallback(
     (from: string | undefined, to: string | undefined) => {
       updateFilter({ ...criteria, dateFrom: from, dateTo: to });
@@ -136,12 +130,10 @@ export default function ContentFilter({
     [criteria, updateFilter]
   );
 
-  // Clear all filters
   const clearFilters = useCallback(() => {
     updateFilter({});
   }, [updateFilter]);
 
-  // Check if we have any filter options to show
   const hasFilterableContent =
     options.ratings.length > 0 ||
     options.people.length > 0 ||
@@ -153,7 +145,6 @@ export default function ContentFilter({
 
   const filterPanel = (
     <div className={`${styles.filterPanel} ${variant === 'bar' ? styles.filterPanelBar : ''}`}>
-      {/* Text search */}
       {showTextSearch && (
         <div className={styles.filterSection}>
           <div className={styles.searchInputWrapper}>
@@ -179,7 +170,6 @@ export default function ContentFilter({
         </div>
       )}
 
-      {/* Rating filter */}
       {options.ratings.length > 0 && (
         <div className={styles.filterSection}>
           <span className={styles.filterLabel}>Min Rating</span>
@@ -198,7 +188,6 @@ export default function ContentFilter({
         </div>
       )}
 
-      {/* People filter */}
       {options.people.length > 0 && (
         <div className={styles.filterSection}>
           <span className={styles.filterLabel}>People</span>
@@ -217,7 +206,6 @@ export default function ContentFilter({
         </div>
       )}
 
-      {/* Location filter (only if >1 unique location) */}
       {options.locations.length > 1 && (
         <div className={styles.filterSection}>
           <span className={styles.filterLabel}>Location</span>
@@ -236,7 +224,6 @@ export default function ContentFilter({
         </div>
       )}
 
-      {/* Tags filter */}
       {options.tags.length > 0 && (
         <div className={styles.filterSection}>
           <span className={styles.filterLabel}>Tags</span>
@@ -255,7 +242,6 @@ export default function ContentFilter({
         </div>
       )}
 
-      {/* Camera filter (only if >1 unique camera) */}
       {options.cameras.length > 1 && (
         <div className={styles.filterSection}>
           <span className={styles.filterLabel}>Camera</span>
@@ -274,7 +260,6 @@ export default function ContentFilter({
         </div>
       )}
 
-      {/* Date range filter */}
       {showDateRange && (
         <div className={styles.filterSection}>
           <span className={styles.filterLabel}>Date Range</span>
@@ -298,7 +283,6 @@ export default function ContentFilter({
         </div>
       )}
 
-      {/* Clear all button */}
       {activeFilterCount > 0 && (
         <div className={styles.filterActions}>
           <button
@@ -314,12 +298,10 @@ export default function ContentFilter({
     </div>
   );
 
-  // For 'bar' variant, always show the panel
   if (variant === 'bar') {
     return <div className={styles.filterContainer}>{filterPanel}</div>;
   }
 
-  // For 'inline' variant, show toggle button + collapsible panel
   return (
     <div className={styles.filterContainer}>
       <button

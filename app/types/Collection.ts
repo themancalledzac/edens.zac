@@ -136,6 +136,7 @@ export interface CollectionUpdateRequest {
   description?: string;
   location?: LocationUpdate;
   collectionDate?: string | null;
+  clearCollectionDate?: boolean;
   visible?: boolean;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)

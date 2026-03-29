@@ -53,8 +53,7 @@ function normalizeContentType(contentType: string): 'IMAGE' | 'TEXT' | 'GIF' | '
 }
 
 /**
- * Determines position className based on row position
- * REPLACES the logic from determineBaseProps in Component.tsx (lines 46-50)
+ * Determines position className based on row position.
  *
  * @param totalInRow - Total number of items in the row
  * @param index - Current item's index in the row (0-based)
@@ -66,7 +65,6 @@ export function determinePositionClassName(
   index: number,
   styles: { imageSingle: string; imageLeft: string; imageRight: string; imageMiddle: string }
 ): string {
-  // EXACT REPLACEMENT of Component.tsx lines 46-50
   if (totalInRow === 1) return styles.imageSingle || '';
   if (index === 0) return styles.imageLeft || '';
   if (index === totalInRow - 1) return styles.imageRight || '';
@@ -91,7 +89,6 @@ export function normalizeContentToRendererProps(
   positionClassName: string,
   isMobile: boolean
 ): ContentRendererProps {
-  // Guard against NaN dimensions — log only in development
   if (
     (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) &&
     process.env.NODE_ENV === 'development'
@@ -101,12 +98,10 @@ export function normalizeContentToRendererProps(
     );
   }
 
-  // Calculate fallback values if NaN detected
   let validWidth = calculatedWidth;
   let validHeight = calculatedHeight;
 
   if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) {
-    // Try to get image dimensions to calculate fallback
     let imageWidth: number | undefined;
     let imageHeight: number | undefined;
 
@@ -121,21 +116,16 @@ export function normalizeContentToRendererProps(
       imageHeight = content.height;
     }
 
-    // Calculate fallback from image dimensions if available
     if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
       if (!Number.isFinite(calculatedWidth) && Number.isFinite(calculatedHeight)) {
-        // Width is NaN, height is valid - calculate width from aspect ratio
         validWidth = (calculatedHeight * imageWidth) / imageHeight;
       } else if (!Number.isFinite(calculatedHeight) && Number.isFinite(calculatedWidth)) {
-        // Height is NaN, width is valid - calculate height from aspect ratio
         validHeight = (calculatedWidth * imageHeight) / imageWidth;
       } else {
-        // Both are NaN - use default aspect ratio (3:2)
         validWidth = 300;
         validHeight = 200;
       }
     } else {
-      // No image dimensions available - use default aspect ratio (3:2)
       if (!Number.isFinite(calculatedWidth)) {
         validWidth = Number.isFinite(calculatedHeight) ? calculatedHeight * 1.5 : 300;
       }
@@ -164,7 +154,6 @@ export function normalizeContentToRendererProps(
     contentType: normalizeContentType(content.contentType),
   };
 
-  // COLLECTION: Use coverImage, enableParallax = true
   if (isContentCollection(content)) {
     const coverImage = content.coverImage;
     const dimensions = extractImageDimensions(
@@ -181,16 +170,14 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(undefined, content.title, undefined, content.slug, 'Collection'),
       overlayText: content.title,
-      cardTypeBadge: content.collectionType, // Only collections have this
-      enableParallax: true, // Collections are parallax
+      cardTypeBadge: content.collectionType,
+      enableParallax: true,
       hasSlug: content.slug,
       isCollection: true,
       contentType: 'COLLECTION',
     };
   }
 
-  // PARALLAX IMAGE: Check for enableParallax BEFORE regular image check
-  // ContentParallaxImageModel has contentType: 'IMAGE' but enableParallax: true
   if (isContentImage(content) && 'enableParallax' in content && content.enableParallax) {
     const dimensions = extractImageDimensions(
       content.imageWidth,
@@ -207,14 +194,13 @@ export function normalizeContentToRendererProps(
       alt: extractAltText(content.alt, content.title, content.caption),
       overlayText: content.overlayText,
       cardTypeBadge: 'collectionType' in content ? content.collectionType : undefined,
-      enableParallax: true, // Preserve parallax flag
+      enableParallax: true,
       hasSlug: 'slug' in content ? content.slug : undefined,
       isCollection: false,
       contentType: 'IMAGE',
     };
   }
 
-  // IMAGE: Standard image, enableParallax = false (but could be enabled later)
   if (isContentImage(content)) {
     const dimensions = extractImageDimensions(
       content.imageWidth,
@@ -230,13 +216,12 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(content.alt, content.title, content.caption),
       overlayText: content.overlayText,
-      enableParallax: false, // Currently false, but could be enabled in future
+      enableParallax: false,
       isCollection: false,
       contentType: 'IMAGE',
     };
   }
 
-  // GIF: Treat as image, use gifUrl
   if (isGifContent(content)) {
     const dimensions = extractImageDimensions(undefined, content.width, undefined, content.height);
 
@@ -255,13 +240,12 @@ export function normalizeContentToRendererProps(
     };
   }
 
-  // TEXT: No image, just dimensions
   if (isTextContent(content)) {
     return {
       ...baseProps,
       imageUrl: '',
       imageWidth: content.width ?? 800,
-      imageHeight: content.height ?? 200, // Default text height
+      imageHeight: content.height ?? 200,
       alt: '',
       enableParallax: false,
       isCollection: false,
@@ -270,15 +254,15 @@ export function normalizeContentToRendererProps(
     };
   }
 
-  // Fallback
   return baseProps;
 }
 
 /**
- * Build wrapper className string for content renderer
- * Combines position class with conditional classes based on state
+ * Build wrapper className string for content renderer.
+ * Combines position class with conditional classes based on state.
  *
- * @param positionClassName - Position class (imageLeft/imageRight/imageSingle/imageMiddle) - MUST be first
+ * @param positionClassName - Position class (imageLeft/imageRight/imageSingle/imageMiddle).
+ *   Must be first in the class list so CSS specificity resolves correctly.
  * @param styles - Style module with class names
  * @param options - Configuration options
  * @returns Combined className string
@@ -303,7 +287,7 @@ export function buildWrapperClassName(
   } = options;
 
   return [
-    positionClassName, // Position class - MUST be first
+    positionClassName,
     includeDragContainer ? styles.dragContainer : '',
     enableParallax ? styles.parallaxContainer : '',
     enableParallax ? styles.overlayContainer : '',
@@ -316,11 +300,12 @@ export function buildWrapperClassName(
 }
 
 /**
- * Build simplified wrapper className for parallax images
- * Only includes essential classes (position, mobile, dragging, selected)
- * Excludes redundant classes that are handled by inline styles
+ * Build simplified wrapper className for parallax images.
+ * Only includes essential classes (position, mobile, dragging, selected).
+ * Excludes redundant classes that are handled by inline styles.
  *
- * @param positionClassName - Position class (imageLeft/imageRight/imageSingle/imageMiddle) - MUST be first
+ * @param positionClassName - Position class (imageLeft/imageRight/imageSingle/imageMiddle).
+ *   Must be first in the class list so CSS specificity resolves correctly.
  * @param styles - Style module with class names
  * @param options - Configuration options
  * @returns Combined className string
@@ -336,7 +321,7 @@ export function buildParallaxWrapperClassName(
   const { isMobile = false, isSelected = false } = options;
 
   return [
-    positionClassName, // Position class - MUST be first
+    positionClassName,
     isMobile ? styles.mobile : '',
     isSelected ? styles.selected : '',
   ]
@@ -345,8 +330,8 @@ export function buildParallaxWrapperClassName(
 }
 
 /**
- * Determines full renderer props including position and normalized content data
- * REPLACES determineBaseProps entirely - combines position logic with content normalization
+ * Determines full renderer props including position and normalized content data.
+ * Combines position class determination with content normalization in one call.
  *
  * @param item - Processed content item with calculated dimensions
  * @param totalInRow - Total number of items in the row
@@ -362,7 +347,6 @@ export function determineContentRendererProps(
   isMobile: boolean,
   styles: { imageSingle: string; imageLeft: string; imageRight: string; imageMiddle: string }
 ): ContentRendererProps {
-  // Guard against NaN dimensions — log only in development
   if (
     (!Number.isFinite(item.width) || !Number.isFinite(item.height)) &&
     process.env.NODE_ENV === 'development'
@@ -372,10 +356,8 @@ export function determineContentRendererProps(
     );
   }
 
-  // Determine position class (REPLACES Component.tsx determineBaseProps logic)
   const positionClassName = determinePositionClassName(totalInRow, index, styles);
 
-  // Normalize content to renderer props
   return normalizeContentToRendererProps(
     item.content,
     item.width,

@@ -29,27 +29,19 @@ export function isCollectionCard(item: AnyContentModel): boolean {
  * - Two 4-star items = 8 stars (within 7-9 range) → natural 2-per-row grouping
  */
 export function getRating(item: AnyContentModel, asStarValue: boolean = false): number {
-  // Collection cards get effective rating of 4 for 2-per-row layout
-  // This ensures collections are displayed in pairs (4+4=8 stars, within 7-9 range)
   if (isCollectionCard(item)) {
     return 4;
   }
 
   if (!isContentImage(item)) {
-    return asStarValue ? 1 : 0; // Non-images: 1 star if asStarValue, 0 rating otherwise
+    return asStarValue ? 1 : 0;
   }
   const rating = item.rating || 0;
   if (asStarValue) {
-    // Star value: 0 or 1 becomes 1, 2+ stays as rating
     return rating === 0 || rating === 1 ? 1 : rating;
   }
-  // Raw rating: return as-is (0 stays 0)
   return rating;
 }
-
-// =============================================================================
-// EFFECTIVE RATING SYSTEM
-// =============================================================================
 
 /**
  * Get the effective rating of an item based on its orientation.
@@ -62,6 +54,7 @@ export function getRating(item: AnyContentModel, asStarValue: boolean = false): 
  * - H5★ → effectiveRating 5
  * - V5★ → effectiveRating 4 (vertical penalty)
  * - H3★ → effectiveRating 3
+ * - V5★ → 4, V4★ → 3, V3★ → 2, V2★ → 1, V1★ → 1, V0★ → 0
  *
  * Note: Slot-width-dependent scaling is handled downstream in getComponentValue().
  *
@@ -69,12 +62,10 @@ export function getRating(item: AnyContentModel, asStarValue: boolean = false): 
  * @returns The effective rating (0-5) after applying orientation penalty
  */
 export function getEffectiveRating(item: AnyContentModel): number {
-  // Collection cards get fixed effective rating of 4
   if (isCollectionCard(item)) {
     return 4;
   }
 
-  // Non-images get minimum rating
   if (!isContentImage(item)) {
     return 1;
   }
@@ -83,15 +74,8 @@ export function getEffectiveRating(item: AnyContentModel): number {
   const ratio = getAspectRatio(item);
   const isVertical = ratio <= 1.0;
 
-  // Apply vertical penalty: verticals are treated as one rating lower
-  // V5★ → 4, V4★ → 3, V3★ → 2, V2★ → 1, V1★ → 1, V0★ → 0
   const effectiveRating = isVertical ? Math.max(baseRating - 1, 0) : baseRating;
 
-  // Note: Dynamic scaling for mobile is handled in getComponentValue()
-  // The effective rating remains the same; the slot cost interpretation changes.
-  // This keeps the rating semantic while allowing flexible slot allocation.
-
-  // Ensure rating stays in bounds (0-5)
   return Math.min(Math.max(effectiveRating, 0), 5);
 }
 
@@ -117,21 +101,10 @@ export function getEffectiveRating(item: AnyContentModel): number {
  * @returns The component value (how much of the row this item occupies)
  */
 export function getComponentValue(effectiveRating: number, slotWidth: number = LAYOUT.desktopSlotWidth): number {
-  // Mobile layout (2 slots): binary decision
-  // 3+ star → full width (2 slots), 0-2 star → half width (1 slot)
   if (slotWidth <= LAYOUT.mobileSlotWidth) {
     return effectiveRating >= 3 ? slotWidth : 1;
   }
 
-  // Desktop layout (5 slots): proportional scaling
-  // Formula: slotCost = slotWidth / itemsPerRow
-  // itemsPerRow = 6 - effectiveRating (clamped to [1, slotWidth])
-  // - 5★: 6-5=1 item per row → 5/1 = 5 slots
-  // - 4★: 6-4=2 items per row → 5/2 = 2.5 slots
-  // - 3★: 6-3=3 items per row → 5/3 ≈ 1.67 slots
-  // - 2★: 6-2=4 items per row → 5/4 = 1.25 slots
-  // - 1★: 6-1=5 items per row → 5/5 = 1 slot
-  // - 0★: 6-0=6, clamped to 5 → 5/5 = 1 slot
   const itemsPerRow = Math.min(Math.max(6 - effectiveRating, 1), slotWidth);
   return slotWidth / itemsPerRow;
 }

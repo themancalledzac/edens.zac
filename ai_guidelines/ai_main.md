@@ -47,6 +47,10 @@
 
 - **No trivial helper functions**: Don't extract single-expression logic (e.g., `!!value.slug`, `value > 0`) into named utility functions — inline it where used, since the intent is self-evident at the call site. A helper earns its place only when it encapsulates non-trivial logic, appears at 3+ call sites, or names a meaningful domain concept.
 
+## TODOs
+
+- **MenuDropdown 'About' image**: The about section image is currently hardcoded as `/_DSC0145.jpg` in `app/components/MenuDropdown/MenuDropdown.tsx:135`. This should eventually be fetched from the database instead of being a static asset in the frontend repo.
+
 ## Key Reminders
 
 - **Speed and accuracy**: Prioritize both performance and correctness

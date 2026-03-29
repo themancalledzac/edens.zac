@@ -24,7 +24,6 @@ import type { ContentImageModel } from '@/app/types/Content';
  * @returns React Server Component displaying all images
  */
 
-// Force dynamic rendering - admin pages should never be statically generated
 export const dynamic = 'force-dynamic';
 
 /**
@@ -32,7 +31,7 @@ export const dynamic = 'force-dynamic';
  */
 function createMockCollection(images: ContentImageModel[]): CollectionModel {
   return {
-    id: 0, // Mock ID
+    id: 0,
     type: CollectionType.MISC,
     title: 'All Images',
     slug: 'all-images',
@@ -40,33 +39,25 @@ function createMockCollection(images: ContentImageModel[]): CollectionModel {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     visible: true,
-    displayMode: 'CHRONOLOGICAL', // Order by creation date
-    contentPerPage: 200, // Show 200 images per page
+    displayMode: 'CHRONOLOGICAL',
+    contentPerPage: 200,
     content: images,
     contentCount: images.length,
   };
 }
 
+/**
+ * @remarks Handles 404s via structured ApiError when available; re-throws all other errors.
+ */
 export default async function AllImagesPage() {
   try {
     const allImages = await getAllImages();
-
-    // Create a mock collection structure that CollectionPage can process
     const mockCollection = createMockCollection(allImages ?? []);
-
     return <CollectionPage collection={mockCollection} chunkSize={4} />;
   } catch (error) {
-    // Handle 404s using structured ApiError status when available
     if (error instanceof ApiError && error.status === 404) {
       notFound();
     }
-
-    // Re-throw other errors for admin visibility
     throw error;
   }
 }
-
-// TODO: Future implementation - Person page
-// Create app/(admin)/person/[personId]/page.tsx
-// Endpoint: GET /api/admin/content/images/person/{personId}
-// Reuse same pattern: createMockCollection(images) -> CollectionPage

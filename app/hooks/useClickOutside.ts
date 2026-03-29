@@ -26,7 +26,6 @@ export function useClickOutside(
   onClose: () => void
 ): void {
   useEffect(() => {
-    // Only attach listeners when element is open
     if (!isOpen) return;
 
     const handleClickOutside = (event: MouseEvent) => {

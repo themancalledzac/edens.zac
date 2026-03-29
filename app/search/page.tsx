@@ -20,10 +20,10 @@ export const metadata: Metadata = {
  * See todo/backend-requirements-search.md for backend requirements.
  *
  * Filter state is stored in URL search params for shareability.
+ *
+ * @todo Replace mock data with a real fetch from `GET /api/read/content/search`,
+ *   forwarding URL query params. The SearchPage component currently handles mock data internally.
  */
 export default function SearchPageRoute() {
-  // In production, this would fetch from GET /api/read/content/search
-  // with query params forwarded from the URL
-  // For now, the SearchPage component handles mock data internally
   return <SearchPage />;
 }

@@ -65,9 +65,7 @@ function getMockSearchContent(): ContentImageModel[] {
 function SearchPageContent() {
   const mockContent = useMemo(() => getMockSearchContent(), []);
 
-  // Initialize filtered content from URL params on mount
   const [filteredContent, setFilteredContent] = useState<AnyContentModel[]>(() => {
-    // On initial render, apply any URL filters
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const criteria = parseFilterFromParams(params);
@@ -85,7 +83,6 @@ function SearchPageContent() {
       <main className={styles.main}>
         <SiteHeader pageType="default" />
 
-        {/* Search header with filter bar */}
         <div className={styles.searchHeader}>
           <h1 className={styles.searchTitle}>Search</h1>
           <p className={styles.searchDescription}>
@@ -94,7 +91,6 @@ function SearchPageContent() {
           </p>
         </div>
 
-        {/* Filter bar — always visible, full featured */}
         <div className={styles.filterBar}>
           <ContentFilter
             content={mockContent}
@@ -105,7 +101,6 @@ function SearchPageContent() {
           />
         </div>
 
-        {/* Results count */}
         <div className={styles.resultsInfo}>
           <span className={styles.resultCount}>
             {filteredContent.length} {filteredContent.length === 1 ? 'result' : 'results'}
@@ -115,7 +110,6 @@ function SearchPageContent() {
           </span>
         </div>
 
-        {/* Content grid — denser layout (chunkSize ~10 for search) */}
         <SearchResults content={filteredContent} />
       </main>
     </div>

@@ -22,11 +22,12 @@ interface LocationPageClientProps {
   collections: CollectionModel[];
 }
 
+/**
+ * Sorts images by captureDate. Uses createdAt as a tiebreaker for same-day images
+ * (upload sequence approximates capture sequence; captureDate has no intra-day precision).
+ */
 function sortByDate(images: ContentImageModel[], direction: 'asc' | 'desc'): ContentImageModel[] {
   return [...images].sort((a, b) => {
-    // captureDate is date-only ("2025-10-07") — no intra-day precision.
-    // Use createdAt as tiebreaker so images shot the same day get a stable,
-    // meaningful order (upload sequence approximates capture sequence).
     const dateA = a.captureDate ? new Date(a.captureDate).getTime() : 0;
     const dateB = b.captureDate ? new Date(b.captureDate).getTime() : 0;
     if (dateA !== dateB) return direction === 'asc' ? dateA - dateB : dateB - dateA;

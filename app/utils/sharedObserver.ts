@@ -6,6 +6,9 @@
  * Replaces ~50+ individual IntersectionObserver instances across components,
  * reducing memory and CPU overhead.
  *
+ * The registry is keyed by a serialized options string. Root elements are
+ * identified via a WeakMap-based ID system to avoid toString() collisions.
+ *
  * Usage:
  *   const unobserve = observe(element, callback, { threshold: 0.5 });
  *   // later:
@@ -27,10 +30,8 @@ interface ObserverRecord {
   callbacks: Map<Element, ObserverCallback>;
 }
 
-// Registry keyed by a serialized options string
 const registry = new Map<string, ObserverRecord>();
 
-// WeakMap-based ID system to uniquely identify root elements without toString() collisions
 let rootIdCounter = 0;
 const rootIds = new WeakMap<Element | Document, number>();
 

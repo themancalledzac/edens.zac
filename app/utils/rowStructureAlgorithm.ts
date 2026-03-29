@@ -35,8 +35,13 @@ export function calculateBoxTreeAspectRatio(tree: BoxTree, chunkSize: number): n
 }
 
 /**
- * Calculate sizes from BoxTree structure
- * Generic recursive algorithm that follows the tree structure
+ * Calculate sizes from BoxTree structure.
+ *
+ * Generic recursive algorithm that follows the tree structure left-to-right,
+ * top-to-bottom. For horizontal nodes, gap space is always 1 × gap (binary tree
+ * has exactly 2 direct children). For vertical nodes, sizes are scaled so the
+ * total height including the gap equals the raw combined height — widths are kept
+ * at the allocated size to prevent width errors in parent horizontal combinations.
  *
  * @param tree - BoxTree encoding how items are combined
  * @param targetWidth - Available width for this subtree
@@ -50,19 +55,16 @@ export function calculateSizesFromBoxTree(
   gap: number = LAYOUT.gridGap,
   chunkSize: number = 4
 ): CalculatedContentSize[] {
-  // Base case: leaf node
   if (tree.type === 'leaf') {
     const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
     const height = targetWidth / ar;
     return [{ content: tree.content, width: targetWidth, height }];
   }
 
-  // Recursive case: combined node
   const leftAR = calculateBoxTreeAspectRatio(tree.children[0], chunkSize);
   const rightAR = calculateBoxTreeAspectRatio(tree.children[1], chunkSize);
 
   if (tree.direction === 'horizontal') {
-    // Binary tree always has 2 children = 1 gap
     const totalGapSpace = gap;
     const availableWidth = targetWidth - totalGapSpace;
 
@@ -75,34 +77,27 @@ export function calculateSizesFromBoxTree(
 
     return [...leftSizes, ...rightSizes];
   } else {
-    // Vertical: binary tree always has 2 direct children, so only 1 gap between them
-    const totalGapSpace = gap; // Always 1 gap for binary tree (2 children)
+    const totalGapSpace = gap;
 
-    // Recursively calculate sizes for both children with full width
     const leftSizes = calculateSizesFromBoxTree(tree.children[0], targetWidth, gap, chunkSize);
     const rightSizes = calculateSizesFromBoxTree(tree.children[1], targetWidth, gap, chunkSize);
 
-    // Calculate total raw height
     const leftHeight = leftSizes.reduce((sum, s) => sum + s.height, 0);
     const rightHeight = rightSizes.reduce((sum, s) => sum + s.height, 0);
     const rawTotalHeight = leftHeight + rightHeight;
 
-    // Scale down so that: scaledHeight + gap = rawHeight
     const targetHeightsSum = rawTotalHeight - totalGapSpace;
     const scaleFactor = rawTotalHeight > 0 ? targetHeightsSum / rawTotalHeight : 1;
 
-    // Scale heights only - widths should fill the allocated space
-    // Scaling widths would make the vertical stack narrower than allocated,
-    // causing width calculation errors in parent horizontal combinations
     const scaledLeftSizes = leftSizes.map(s => ({
       ...s,
-      width: s.width, // Keep original width
+      width: s.width,
       height: s.height * scaleFactor,
     }));
 
     const scaledRightSizes = rightSizes.map(s => ({
       ...s,
-      width: s.width, // Keep original width
+      width: s.width,
       height: s.height * scaleFactor,
     }));
 

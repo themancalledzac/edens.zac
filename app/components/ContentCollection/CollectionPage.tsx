@@ -12,12 +12,10 @@ interface ContentCollectionPageProps {
 }
 
 /**
- * Convert CollectionModel to ParallaxImageContentModel
- * Converts collections to Parallax type for unified rendering using the proven parallax path
- * Includes all necessary fields for proper positioning, aspect ratio, and parallax effects
+ * Converts a CollectionModel to ContentParallaxImageModel for unified parallax rendering.
+ * Dimensions are clamped to a minimum 4:5 aspect ratio.
  */
 function collectionToContentModel(col: CollectionModel): ContentParallaxImageModel {
-  // Extract dimensions from coverImage, clamped to min 4:5 AR for parallax
   const { imageWidth, imageHeight } = clampParallaxDimensions(
     col.coverImage?.imageWidth,
     col.coverImage?.imageHeight
@@ -28,11 +26,11 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
     enableParallax: true,
     id: col.id,
     title: col.title,
-    slug: col.slug, // For navigation detection
-    collectionType: col.type, // For badge display
+    slug: col.slug,
+    collectionType: col.type,
     description: col.description ?? null,
     imageUrl: col.coverImage?.imageUrl ?? '',
-    overlayText: col.title || col.slug || '', // Display title on collection cards
+    overlayText: col.title || col.slug || '',
     imageWidth,
     imageHeight,
     width: imageWidth,
@@ -67,18 +65,12 @@ export default async function CollectionPage({
   collection,
   chunkSize,
 }: ContentCollectionPageProps) {
-  // Get content blocks to display
-  // Note: Header row (cover image + metadata) is now created in processContentForDisplay()
-  // via collectionData prop, not injected into the content array
   const contentBlocks: AnyContentModel[] = Array.isArray(collection)
     ? collection.map(collectionToContentModel)
     : processContentBlocks(collection.content ?? [], true, collection.id, collection.displayMode);
 
-  // Determine if this is a single collection (for passing slug to SiteHeader)
   const singleCollection = Array.isArray(collection) ? null : collection;
   const collectionSlug = singleCollection?.slug;
-
-  // Use contentPerPage from collection if available, otherwise default to 30
   const pageSize = singleCollection?.contentPerPage ?? 30;
 
   return (

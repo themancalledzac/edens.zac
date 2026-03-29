@@ -31,7 +31,6 @@ export default function ReorderOverlay({
     <div
       className={`${styles.overlay} ${isPickedUp ? styles.pickedUp : ''} ${hasMoved && !isPickedUp ? styles.moved : ''}`}
     >
-      {/* Top row: pick-up (left) and cancel (right) */}
       <div className={styles.topRow}>
         <button
           type="button"
@@ -59,7 +58,6 @@ export default function ReorderOverlay({
         )}
       </div>
 
-      {/* Arrow buttons on left and right sides */}
       <button
         type="button"
         className={styles.arrowLeft}

@@ -1,6 +1,6 @@
-import { cache } from 'react';
 import { type Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 
 import PersonPage from '@/app/components/PersonPage/PersonPage';
 import { getAllPeople, searchImages } from '@/app/lib/api/content';
@@ -11,11 +11,16 @@ interface PersonPageRouteProps {
   params: Promise<{ slug: string }>;
 }
 
+/**
+ * Generate SEO metadata for person pages.
+ *
+ * @remarks Resolves the slug by exact API slug first, then falls back to a
+ *   case-insensitive name match for backwards-compatible URLs.
+ */
 export async function generateMetadata({ params }: PersonPageRouteProps): Promise<Metadata> {
   const { slug } = await params;
   const people = await getCachedPeople();
 
-  // Primary: match by API slug; fallback: case-insensitive name match for backwards compatibility
   const person = people?.find(p => p.slug === slug)
     ?? people?.find(p => p.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase());
   const personName = person?.name ?? decodeURIComponent(slug).replace(/-/g, ' ');
@@ -31,6 +36,14 @@ export async function generateMetadata({ params }: PersonPageRouteProps): Promis
   };
 }
 
+/**
+ * Person Page Route
+ *
+ * Fetches all images associated with a person resolved from the URL slug.
+ *
+ * @remarks Resolves the slug by exact API slug first, then falls back to a
+ *   case-insensitive name match for backwards-compatible URLs.
+ */
 export default async function PersonPageRoute({ params }: PersonPageRouteProps) {
   const { slug } = await params;
   if (!slug) notFound();
@@ -38,7 +51,6 @@ export default async function PersonPageRoute({ params }: PersonPageRouteProps) 
   const people = await getCachedPeople();
   if (!people?.length) notFound();
 
-  // Primary: match by API slug; fallback: case-insensitive name match for backwards compatibility
   const matchedPerson = people.find(p => p.slug === slug)
     ?? people.find(p => p.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase());
   if (!matchedPerson) notFound();

@@ -36,7 +36,6 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check sessionStorage on mount, then probe for passwordless galleries
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem(getSessionKey(collection.slug));
@@ -48,7 +47,6 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
       // sessionStorage may be unavailable (SSR, privacy mode)
     }
 
-    // If the collection has isPasswordProtected explicitly set to false, skip the gate
     if (collection.isPasswordProtected === false) {
       try {
         sessionStorage.setItem(getSessionKey(collection.slug), 'granted');
@@ -57,8 +55,7 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
       return;
     }
 
-    // If we don't know whether a password is set, probe the backend
-    // Galleries without a password return hasAccess: true for empty password
+    // Probe: galleries without a password return hasAccess: true for empty password
     if (collection.isPasswordProtected === undefined) {
       (async () => {
         try {
@@ -95,8 +92,7 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
       setIsSubmitting(true);
 
       try {
-        // Dynamic import to avoid bundling API code in the client unnecessarily
-        // The validateClientGalleryAccess function calls the backend endpoint
+        // Dynamic import avoids bundling API code on the client
         const { validateClientGalleryAccess } = await import('@/app/lib/api/collections');
         const result = await validateClientGalleryAccess(collection.slug, password);
 
@@ -120,17 +116,14 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
     [collection.slug, password]
   );
 
-  // While checking sessionStorage, show nothing to avoid flash
   if (status === 'checking') {
     return null;
   }
 
-  // Access granted - render gallery content
   if (status === 'unlocked') {
     return <div>{children}</div>;
   }
 
-  // Locked - show password gate
   return (
     <div className={styles.gateContainer}>
       <div className={styles.gateCard}>

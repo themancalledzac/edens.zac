@@ -20,7 +20,6 @@ export default function ClientGalleryDownload({ collectionSlug: _collectionSlug 
 
   const handleDownloadAll = useCallback(() => {
     setToastVisible(true);
-    // Auto-hide toast after 3 seconds
     setTimeout(() => setToastVisible(false), 3000);
   }, []);
 
