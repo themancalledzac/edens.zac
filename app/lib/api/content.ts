@@ -19,6 +19,7 @@ import {
   type ContentImageModel,
   type ContentImageUpdateRequest,
 } from '@/app/types/Content';
+import { type ContentPersonModel, type ContentTagModel } from '@/app/types/ImageMetadata';
 
 // ============================================================================
 // READ Endpoints (Production - /api/read/content)
@@ -28,16 +29,18 @@ import {
  * GET /api/read/content/tags
  * Get all tags (ordered alphabetically)
  */
-export async function getAllTags(): Promise<Array<{ id: number; tagName: string }> | null> {
-  return fetchReadApi('/content/tags', { next: { revalidate: TIMING.revalidateCache } });
+export async function getAllTags(): Promise<ContentTagModel[] | null> {
+  const raw = await fetchReadApi<Array<{ id: number; tagName: string; slug: string }>>('/content/tags', { next: { revalidate: TIMING.revalidateCache } });
+  return raw?.map(t => ({ id: t.id, name: t.tagName, slug: t.slug })) ?? null;
 }
 
 /**
  * GET /api/read/content/people
  * Get all people (ordered alphabetically)
  */
-export async function getAllPeople(): Promise<Array<{ id: number; personName: string }> | null> {
-  return fetchReadApi('/content/people', { next: { revalidate: TIMING.revalidateCache } });
+export async function getAllPeople(): Promise<ContentPersonModel[] | null> {
+  const raw = await fetchReadApi<Array<{ id: number; personName: string; slug: string }>>('/content/people', { next: { revalidate: TIMING.revalidateCache } });
+  return raw?.map(p => ({ id: p.id, name: p.personName, slug: p.slug })) ?? null;
 }
 
 /**
@@ -52,7 +55,7 @@ export async function getAllCameras(): Promise<Array<{ id: number; cameraName: s
  * GET /api/read/content/locations
  * Get all locations with image counts (ordered alphabetically)
  */
-export async function getAllLocations(): Promise<Array<{ id: number; name: string; count?: number }> | null> {
+export async function getAllLocations(): Promise<Array<{ id: number; name: string; slug: string; count?: number }> | null> {
   return fetchReadApi('/content/locations', { next: { revalidate: TIMING.revalidateCache } });
 }
 
@@ -112,6 +115,7 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   // Handle both array response and paginated wrapper
   if (Array.isArray(result)) return result;
   if ('content' in result && Array.isArray(result.content)) return result.content;
+  console.warn('[searchImages] Unexpected response shape:', typeof result, result !== null && typeof result === 'object' ? Object.keys(result) : '');
   return [];
 }
 
@@ -185,8 +189,8 @@ export async function createTextContent(request: {
 export async function updateImages(updates: ContentImageUpdateRequest[]): Promise<{
   updatedImages: ContentImageModel[];
   newMetadata?: {
-    tags?: Array<{ id: number; tagName: string }>;
-    people?: Array<{ id: number; personName: string }>;
+    tags?: Array<{ id: number; tagName: string; slug: string }>;
+    people?: Array<{ id: number; personName: string; slug: string }>;
     cameras?: Array<{ id: number; cameraName: string }>;
     lenses?: Array<{ id: number; lensName: string }>;
     filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
@@ -195,8 +199,8 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
   const result = await fetchAdminPatchJsonApi<{
     updatedImages: ContentImageModel[];
     newMetadata?: {
-      tags?: Array<{ id: number; tagName: string }>;
-      people?: Array<{ id: number; personName: string }>;
+      tags?: Array<{ id: number; tagName: string; slug: string }>;
+      people?: Array<{ id: number; personName: string; slug: string }>;
       cameras?: Array<{ id: number; cameraName: string }>;
       lenses?: Array<{ id: number; lensName: string }>;
       filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
