@@ -11,12 +11,10 @@
 
 ## Core Principles
 
-### 1. Legacy Preservation & Migration Strategy
-- **CRITICAL**: Preserve all OLD functionality while migrating to App Router paradigm
-- **Never modify legacy files** in `pages-old/`, `Components/`, or existing catalog system
-- **Build in parallel**: Create new App Router features alongside existing Pages Router
-- **Gradual deprecation**: Keep legacy files operational until full migration is complete
-- **No breaking changes**: Maintain backwards compatibility during transition
+### 1. App Router Migration (Complete)
+- Legacy `pages-old/` and `Components/` directories have been removed
+- All new features use App Router (`app/` directory)
+- No legacy Pages Router files remain
 
 ### 2. App Router First
 - **All new features** must use App Router structure (`app/` directory)

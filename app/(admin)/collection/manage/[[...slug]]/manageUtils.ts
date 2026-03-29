@@ -22,7 +22,6 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
 
-
 /**
  * Build an update payload containing only changed fields
  * Compares form data with original collection and only includes differences
@@ -55,9 +54,11 @@ export function buildUpdatePayload(
     const formValue = formData[key];
     // Handle undefined/null comparison - treat undefined and null as equivalent
     // Also normalize empty strings for string fields
-    const normalizedOriginal = original === null || original === undefined || original === '' ? undefined : original;
-    const normalizedFormValue = formValue === null || formValue === undefined || formValue === '' ? undefined : formValue;
-    
+    const normalizedOriginal =
+      original === null || original === undefined || original === '' ? undefined : original;
+    const normalizedFormValue =
+      formValue === null || formValue === undefined || formValue === '' ? undefined : formValue;
+
     if (normalizedFormValue !== normalizedOriginal) {
       // Type assertion needed since we're iterating dynamically
       (payload as unknown as Record<string, unknown>)[key] = formData[key];
@@ -69,7 +70,12 @@ export function buildUpdatePayload(
     const originalDate = originalCollection.collectionDate || null;
     const newDate = formData.collectionDate === '' ? null : formData.collectionDate;
     if (newDate !== originalDate) {
-      payload.collectionDate = newDate;
+      if (newDate === null && originalDate !== null) {
+        // Date is being cleared — send the flag the backend expects
+        payload.clearCollectionDate = true;
+      } else {
+        payload.collectionDate = newDate;
+      }
     }
   }
 
@@ -190,10 +196,7 @@ export function handleCollectionNavigation(
  * @param currentSelectedIds - Current array of selected image IDs
  * @returns New array of selected image IDs
  */
-export function handleMultiSelectToggle(
-  imageId: number,
-  currentSelectedIds: number[]
-): number[] {
+export function handleMultiSelectToggle(imageId: number, currentSelectedIds: number[]): number[] {
   if (currentSelectedIds.includes(imageId)) {
     // Deselect
     return currentSelectedIds.filter(id => id !== imageId);
@@ -220,11 +223,11 @@ export function handleSingleImageEdit(
   const imageBlock =
     content?.find(block => block.id === imageId) ||
     processedContent.find(block => block.id === imageId);
-  
+
   if (imageBlock && isContentImage(imageBlock)) {
     return imageBlock;
   }
-  
+
   return null;
 }
 
@@ -249,6 +252,8 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
       revalidate({ tag: `collection-${slug}`, path: `/${slug}` }),
       // Revalidate the collections index (home page, type listings)
       revalidate({ tag: 'collections-index' }),
+      // Revalidate the home collection
+      revalidate({ tag: 'collection-home' }),
     ]);
   } catch (error) {
     // Fail silently - revalidation is not critical for functionality
@@ -271,7 +276,7 @@ export function mergeNewMetadata(
   _currentState: CollectionUpdateResponseDTO | null
 ): ((prev: CollectionUpdateResponseDTO | null) => CollectionUpdateResponseDTO) | null {
   const { newMetadata } = response;
-  
+
   // Check if there's any new metadata to merge
   if (!newMetadata || !Object.values(newMetadata).some(arr => arr && arr.length > 0)) {
     return null;
@@ -291,13 +296,13 @@ export function mergeNewMetadata(
 /**
  * Refresh collection data after an operation
  * Common pattern used by handleImageUpload, handleTextBlockSubmit, etc.
- * 
+ *
  * Pattern:
  * 1. Execute the operation (async function)
  * 2. Re-fetch collection using admin endpoint
  * 3. Update state with refreshed collection (preserving metadata)
  * 4. Update cache with full admin data
- * 
+ *
  * @param slug - Collection slug
  * @param operation - Async function to execute before refresh
  * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
@@ -309,7 +314,10 @@ export async function refreshCollectionAfterOperation(
   slug: string,
   operation: () => Promise<void>,
   getCollectionUpdateMetadata: (slug: string) => Promise<CollectionUpdateResponseDTO | null>,
-  collectionStorage: { update: (slug: string, collection: CollectionModel) => void; updateFull: (slug: string, response: CollectionUpdateResponseDTO) => void }
+  collectionStorage: {
+    update: (slug: string, collection: CollectionModel) => void;
+    updateFull: (slug: string, response: CollectionUpdateResponseDTO) => void;
+  }
 ): Promise<CollectionUpdateResponseDTO> {
   // Execute the operation first
   await operation();
@@ -340,7 +348,7 @@ export type ReorderChange = { contentId: number; newOrderIndex: number };
 /**
  * Apply reorder changes directly to a collection model (for optimistic updates)
  * Simply updates each block's orderIndex according to the provided changes
- * 
+ *
  * @param collection - Collection model to update
  * @param reorders - Array of ReorderChange with new orderIndex values
  * @returns Updated collection model with new orderIndex values
@@ -357,7 +365,7 @@ export function applyReorderChangesOptimistically(
   // Update all content blocks with new orderIndex values
   const updatedContent = (collection.content || []).map(block => {
     const newOrderIndex = reorderMap.get(block.id);
-    
+
     // If this block is not in the reorder map, return as-is
     if (newOrderIndex === undefined) return block;
 
@@ -371,8 +379,6 @@ export function applyReorderChangesOptimistically(
   };
 }
 
-
-
 /**
  * Get the orderIndex for a content block
  * Uses direct orderIndex property - works for all content types (images, collections, text, GIFs)
@@ -383,9 +389,6 @@ export function applyReorderChangesOptimistically(
 export function getContentOrderIndex(block: AnyContentModel): number | undefined {
   return block.orderIndex;
 }
-
-
-
 
 /**
  * Execute reorder operation - calls the API and returns the updated collection
@@ -398,10 +401,13 @@ export async function executeReorderOperation(
   reorders: ReorderChange[],
   slug: string
 ): Promise<CollectionModel> {
-  const response = await reorderCollectionContent(collectionId, reorders.map(change => ({
-    contentId: change.contentId,
-    newOrderIndex: change.newOrderIndex,
-  })));
+  const response = await reorderCollectionContent(
+    collectionId,
+    reorders.map(change => ({
+      contentId: change.contentId,
+      newOrderIndex: change.newOrderIndex,
+    }))
+  );
 
   if (response === null) {
     throw new Error('No response received from server after reorder operation');
@@ -445,7 +451,9 @@ export function replayMoves(originalOrder: number[], moves: ReorderMove[]): numb
   for (const move of moves) {
     const fromIndex = order.indexOf(move.imageId);
     if (fromIndex === -1) {
-      console.warn(`[replayMoves] imageId ${move.imageId} not found in current order — move skipped`);
+      console.warn(
+        `[replayMoves] imageId ${move.imageId} not found in current order — move skipped`
+      );
       continue;
     }
     // Remove from current position

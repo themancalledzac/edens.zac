@@ -12,31 +12,7 @@ alwaysApply: true
 - **App Router First**: All new features must use Next.js App Router (`app/` directory). Never modify legacy Pages Router files.
 - **Server Components Default**: Minimize `'use client'` usage. Prefer Server Components for data fetching and rendering.
 - **Type Safety**: No `any` types. Use strict TypeScript with proper type definitions from `app/types/`.
-- **Legacy Preservation**: Never modify files in legacy directories. Build new features in parallel.
 - **Testing Required**: All new API functions and utility functions must have corresponding tests in `tests/`.
-
-## File Naming Conventions
-
-- **Components**: PascalCase (`About.tsx`, `ContentComponent.tsx`)
-- **Utilities**: camelCase (`contentLayout.ts`, `rowStructureAlgorithm.ts`)
-- **SCSS Modules**: Component name + `.module.scss` (`About.module.scss`, `ContentComponent.module.scss`)
-- **Hooks**: camelCase with `use` prefix (`useViewport.ts`, `useCollectionData.tsx`)
-- **Types**: PascalCase (`Collection.ts`, `Content.ts`)
-- **API Functions**: camelCase (`collections.ts`, `content.ts`)
-- **Directories**: lowercase with dashes for route groups (`(admin)`, `all-collections`)
-
-## Utils Imports Pattern
-
-Import order:
-
-1. React/Next.js imports
-2. Internal API/lib imports (`@/app/lib/api/*`)
-3. Type imports (`@/app/types/*`)
-4. Component imports (`@/app/components/*`)
-5. Utility imports (`@/app/utils/*`)
-6. Constants (`@/app/constants`)
-7. Styles (SCSS modules)
-8. Relative imports (same directory)
 
 ## Running Tests
 
@@ -51,79 +27,45 @@ Common flags:
 - Single file: `/opt/homebrew/bin/node node_modules/.bin/jest tests/utils/contentLayout.test.ts`
 - Watch mode: `/opt/homebrew/bin/node node_modules/.bin/jest --watch`
 
----
+## Formatting & Verification
+
+After editing files, run the same pipeline Cursor runs on save — Prettier, then ESLint fix, then type check:
+
+```bash
+# Format (matches .prettierrc.json)
+/opt/homebrew/bin/node node_modules/.bin/prettier --write <files>
+# Lint fix (matches Cursor's source.fixAll.eslint on save)
+/opt/homebrew/bin/node node_modules/.bin/eslint --fix <files>
+# Type check
+/opt/homebrew/bin/node node_modules/.bin/tsc --noEmit
+```
+
+For SCSS files, also run Stylelint:
+```bash
+/opt/homebrew/bin/node node_modules/.bin/stylelint --fix <files>
+```
 
 ## Common Mistakes to Avoid
 
-- ❌ Using `'use client'` unnecessarily - prefer Server Components
-- ❌ Importing from `pages/` or legacy directories
-- ❌ Using `any` type - always use proper TypeScript types
-- ❌ Creating components without corresponding SCSS modules
-- ❌ Mixing camelCase and PascalCase for similar file types
-- ❌ Forgetting to add tests for new utility functions
-- ❌ Using React Context when URL state would suffice
-- ❌ Not using `next/image` for images (always use CloudFront URLs)
-- ❌ Using `import React` namespace — always use named imports from `'react'`
-- ❌ Using deprecated `FormEvent` — use `SubmitEvent<HTMLFormElement>` (React 19)
+- Using `'use client'` unnecessarily - prefer Server Components
+- Using `any` type - always use proper TypeScript types
+- Creating components without corresponding SCSS modules
+- Using React Context when URL state would suffice
+- Not using `next/image` for images (always use CloudFront URLs)
+- Using `import React` namespace - always use named imports from `'react'`
 
-## Data Flow
+## Modular Guidelines
 
-1. **Server Components**: Fetch data in `page.tsx` using async functions
-2. **API Layer**: Use `app/lib/api/*` functions for backend communication
-3. **Type Safety**: All API responses should match types in `app/types/`
-4. **State Management**: Prefer URL state and Server Component props over React Context
-5. **Caching**: Use Next.js cache tags and revalidation for API responses
-6. **Content Processing**: Use utilities in `app/utils/contentLayout.ts` for content transformation
+For detailed guidance on specific topics, refer to the files in `ai_guidelines/`:
 
-## For More Details
+| Topic                                       | Reference File                        |
+| ------------------------------------------- | ------------------------------------- |
+| **Core principles & project context**       | `ai_guidelines/ai_main.md`           |
+| **File naming, imports, project structure** | `ai_guidelines/ai_quick_reference.md` |
+| **Testing strategy & patterns**             | `ai_guidelines/ai_test.md`           |
+| **ESLint & Stylelint config**               | `ai_guidelines/ai_lint.md`           |
+| **API patterns & backend integration**      | `ai_guidelines/ai_api.md`            |
+| **TypeScript guidelines & known issues**    | `ai_guidelines/ai_typescript.md`     |
+| **CSS/SCSS conventions (gap rule)**         | `ai_guidelines/ai_css.md`            |
 
-// | topic | Reference File |
-// | **code templates** | `ai_guidelines/{etc}` |
-
-## Project Structure
-
-Root:
-├── CLAUDE.md # Detailed development guidelinesWS Amplify configuration
-│ ├── backend.ts
-│ ├── auth/resource.ts
-│ └── data/resource.ts
-├── tests/ # Test files mirror app/ structure
-└── public/ # Static assets
-
-app/
-├── layout.tsx, page.tsx, error.tsx, not-found.tsx # Root App Router files
-├── (admin)/ # Route group for admin pages
-│ └── collection/manage/[[...slug]]/ # Collection management
-├── [slug]/page.tsx # Dynamic collection route
-├── collectionType/[collectionType]/page.tsx # Collection type filter
-├── api/ # Next.js API routes (proxy, revalidate)
-├── components/ # React components (PascalCase directories)
-│ ├── Content/ # Core content rendering components
-│ ├── ContentCollection/ # Collection page components
-│ ├── ImageMetadata/ # Image metadata editing
-│ └── SiteHeader/, FullScreenModal/, etc.
-├── hooks/ # Custom React hooks (useCollectionData, useParallax, etc.)
-├── lib/
-│ ├── api/ # API client (collections.ts, content.ts, core.ts)
-│ ├── components/ # Shared components
-│ └── storage/ # Local storage utilities
-├── types/ # TypeScript definitions (Collection, Content, ContentRenderer, etc.)
-├── utils/ # Utility functions (contentLayout, rowStructureAlgorithm, etc.)
-├── constants/ # App constants
-└── styles/ # Global styles (globals.css, module SCSS files)
-
-## For More Details
-
-For specific topics, refer to the modular guideline files in `ai_guidelines/`:
-
-| Topic                                                 | Reference File                        |
-| ----------------------------------------------------- | ------------------------------------- |
-| **Core principles & critical rules**                  | `ai_guidelines/ai_main.md`            |
-| **Quick reference** (file naming, imports, structure) | `ai_guidelines/ai_quick_reference.md` |
-| **Testing strategy & patterns**                       | `ai_guidelines/ai_test.md`            |
-| **ESLint & code quality**                             | `ai_guidelines/ai_lint.md`            |
-| **AI interaction & communication**                    | `ai_guidelines/ai_interaction.md`     |
-| **API patterns & backend integration**                | `ai_guidelines/ai_api.md`             |
-| **TypeScript guidelines**                             | `ai_guidelines/ai_typescript.md`      |
-
-**Note**: These files are modular and can be imported when needed, rather than always being part of the cursor rules.
+**Note**: These files are modular and should be referenced when working in the relevant area.

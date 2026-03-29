@@ -1078,7 +1078,16 @@ describe('revalidateCollectionCache', () => {
       }),
     });
 
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    // Should also revalidate the home collection
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collection-home',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 
   it('should resolve successfully when revalidation succeeds', async () => {
@@ -1143,7 +1152,15 @@ describe('revalidateCollectionCache', () => {
       }),
     });
 
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(global.fetch).toHaveBeenCalledWith('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tag: 'collection-home',
+      }),
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 });
 

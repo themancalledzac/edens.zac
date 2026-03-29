@@ -4,7 +4,6 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev/)
 [![SCSS Modules](https://img.shields.io/badge/SCSS-Modules-CC6699?logo=sass)](https://sass-lang.com/)
-[![AWS Amplify](https://img.shields.io/badge/AWS-Amplify-FF9900?logo=aws-amplify)](https://aws.amazon.com/amplify/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-Backend-6DB33F?logo=spring-boot)](https://spring.io/projects/spring-boot)
 
 A full-stack photography portfolio and content management platform. Built for performance, type safety, and visual impact.
@@ -22,7 +21,7 @@ A full-stack photography portfolio and content management platform. Built for pe
 | **Backend** | Spring Boot, Hibernate/JPA, RESTful API |
 | **Database** | PostgreSQL on EC2 |
 | **Storage** | AWS S3 + CloudFront CDN |
-| **Hosting** | AWS Amplify |
+| **Hosting** | AWS (S3 + CloudFront) |
 | **Testing** | Jest, React Testing Library |
 | **Linting** | ESLint 9 (flat config), Stylelint, Prettier |
 
@@ -45,8 +44,8 @@ A full-stack photography portfolio and content management platform. Built for pe
 
 ```
                     +------------------+
-                    |   AWS Amplify    |
-                    |   (Next.js 15)   |
+                    |   Next.js 15     |
+                    |   (App Router)   |
                     +--------+---------+
                              |
               +--------------+--------------+
@@ -132,7 +131,8 @@ app/
   constants/                      Layout breakpoints, image config, grid settings
   styles/                         Global styles, SCSS variables
 tests/                            Jest tests mirroring app/ structure
-amplify/                          AWS Amplify deployment configuration
+docs/                             Feature specs, spikes, handoff docs
+ai_guidelines/                    Modular AI development guidelines
 ```
 
 ---

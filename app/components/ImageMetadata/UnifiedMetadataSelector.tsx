@@ -6,14 +6,10 @@ import { useClickOutsideMultiple } from '@/app/hooks/useClickOutside';
 
 import styles from './ImageMetadataModal.module.scss';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 /**
- * Generic metadata item interface
- * All metadata items must have an optional id and a name/displayName
- * Additional properties are allowed for specialized items (e.g., defaultIso for film types)
+ * Generic metadata item interface.
+ * All metadata items must have an optional id and a name/displayName.
+ * Additional properties are allowed for specialized items (e.g., defaultIso for film types).
  */
 export interface MetadataItem {
   id?: number;
@@ -33,38 +29,31 @@ export interface AddNewField {
   min?: number;
 }
 
-/**
- * Props for UnifiedMetadataSelector component
- */
 interface UnifiedMetadataSelectorProps<T extends MetadataItem> {
-  // Basic configuration
   label: string;
   multiSelect: boolean;
-
-  // Data
   options: T[];
-  selectedValue?: T | null; // Single-select only
-  selectedValues?: T[]; // Multi-select only
-
-  // Callbacks
+  /** Single-select only */
+  selectedValue?: T | null;
+  /** Multi-select only */
+  selectedValues?: T[];
   onChange: (value: T | T[] | null) => void;
-
-  // Add New functionality
   allowAddNew?: boolean;
   onAddNew?: (data: Record<string, string | number | null>) => void;
   addNewFields?: AddNewField[];
-
-  // Display customization
-  getDisplayName?: (item: T) => string; // Custom display text for items
-  getItemKey?: (item: T) => string | number; // Custom key for list items
+  /** Custom display text for items */
+  getDisplayName?: (item: T) => string;
+  /** Custom key for list items */
+  getItemKey?: (item: T) => string | number;
   emptyText?: string;
   changeButtonText?: string;
   addNewButtonText?: string;
-
-  // Behavior
-  showNewIndicator?: boolean; // Show "🔴 Will be added" for items not in database
-  placeholder?: string; // Placeholder for add new inputs
-  simpleChips?: boolean; // Use simplified chip style (click to remove, no × button)
+  /** Show "🔴 Will be added" for items not in database */
+  showNewIndicator?: boolean;
+  /** Placeholder for add new inputs */
+  placeholder?: string;
+  /** Use simplified chip style (click to remove, no x button) */
+  simpleChips?: boolean;
 }
 
 /**
@@ -120,10 +109,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
   placeholder,
   simpleChips = false,
 }: UnifiedMetadataSelectorProps<T>) {
-  // ============================================================================
-  // Refs & State
-  // ============================================================================
-
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSelectingFromDropdown, setIsSelectingFromDropdown] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);

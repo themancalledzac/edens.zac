@@ -128,6 +128,14 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
     }
   }, [isOpen]);
 
+  // Preload About section image when dropdown opens
+  useEffect(() => {
+    if (isOpen) {
+      const img = new Image();
+      img.src = '/_DSC0145.jpg';
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (

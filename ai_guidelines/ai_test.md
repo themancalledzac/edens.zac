@@ -147,16 +147,18 @@ Based on current state, prioritize tests for:
 
 ## Running Tests
 
+`npm` and `npx` are not on PATH. Use the Homebrew node binary directly:
+
 ```bash
 # Run all tests
-npm test
+/opt/homebrew/bin/node node_modules/.bin/jest
 
 # Run tests in watch mode
-npm test -- --watch
+/opt/homebrew/bin/node node_modules/.bin/jest --watch
 
 # Run tests with coverage
-npm test -- --coverage
+/opt/homebrew/bin/node node_modules/.bin/jest --coverage
 
 # Run specific test file
-npm test -- path/to/test/file.test.ts
+/opt/homebrew/bin/node node_modules/.bin/jest path/to/test/file.test.ts
 ```

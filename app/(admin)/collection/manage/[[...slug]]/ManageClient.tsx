@@ -2,7 +2,14 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { type ChangeEvent, type SubmitEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  type ChangeEvent,
+  type SubmitEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
@@ -31,7 +38,11 @@ import {
   type DisplayMode,
   type LocationModel,
 } from '@/app/types/Collection';
-import { type ContentImageModel, type ContentImageUpdateRequest, type ContentImageUpdateResponse } from '@/app/types/Content';
+import {
+  type ContentImageModel,
+  type ContentImageUpdateRequest,
+  type ContentImageUpdateResponse,
+} from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
@@ -122,7 +133,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [allCollections, setAllCollections] = useState<CollectionListModel[]>([]);
 
   useEffect(() => {
-    getMetadata().then(meta => { if (meta !== null) setAllCollections(meta.collections); });
+    getMetadata().then(meta => {
+      if (meta !== null) setAllCollections(meta.collections);
+    });
   }, []);
 
   // Update state: starts as copy of collection data
@@ -346,6 +359,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collectionStorage.update(response.collection.slug, response.collection);
         collectionStorage.updateFull(response.collection.slug, response);
 
+        // Invalidate Next.js cache so the public page reflects the update
+        void revalidateCollectionCache(response.collection.slug);
+
         // If slug changed, update URL to reflect new slug
         if (response.collection.slug !== collection.slug) {
           router.replace(`/collection/manage/${response.collection.slug}`);
@@ -354,14 +370,21 @@ export default function ManageClient({ slug }: ManageClientProps) {
         // Location inheritance: if a location was just set (not removed),
         // apply it to all images in this collection that have no location
         const locationUpdate = payload.location;
-        if (locationUpdate && !locationUpdate.remove && (locationUpdate.prev || locationUpdate.newValue)) {
+        if (
+          locationUpdate &&
+          !locationUpdate.remove &&
+          (locationUpdate.prev || locationUpdate.newValue)
+        ) {
           const resolvedLocation = response.collection.location;
-          if (resolvedLocation && typeof resolvedLocation === 'object' && 'id' in resolvedLocation) {
+          if (
+            resolvedLocation &&
+            typeof resolvedLocation === 'object' &&
+            'id' in resolvedLocation
+          ) {
             const locationModel = resolvedLocation as LocationModel;
-            const imagesWithoutLocation = (collection.content ?? [])
-              .filter((item): item is ContentImageModel =>
-                item.contentType === 'IMAGE' && !item.location
-              );
+            const imagesWithoutLocation = (collection.content ?? []).filter(
+              (item): item is ContentImageModel => item.contentType === 'IMAGE' && !item.location
+            );
 
             if (imagesWithoutLocation.length > 0) {
               const imageUpdates: ContentImageUpdateRequest[] = imagesWithoutLocation.map(img => ({
@@ -369,16 +392,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 location: { prev: locationModel.id },
               }));
               // Fire-and-forget: inherit location to locationless images, then refresh
-              updateImages(imageUpdates).then(async () => {
-                const refreshed = await getCollectionUpdateMetadata(response.collection.slug);
-                if (refreshed) {
-                  setCurrentState(refreshed);
-                  collectionStorage.update(refreshed.collection.slug, refreshed.collection);
-                  collectionStorage.updateFull(refreshed.collection.slug, refreshed);
-                }
-              }).catch((err) => {
-                console.error('Failed to inherit location to images:', err);
-              });
+              updateImages(imageUpdates)
+                .then(async () => {
+                  const refreshed = await getCollectionUpdateMetadata(response.collection.slug);
+                  if (refreshed) {
+                    setCurrentState(refreshed);
+                    collectionStorage.update(refreshed.collection.slug, refreshed.collection);
+                    collectionStorage.updateFull(refreshed.collection.slug, refreshed);
+                  }
+                })
+                .catch(error_ => {
+                  console.error('Failed to inherit location to images:', error_);
+                });
             }
           }
         }
@@ -879,31 +904,50 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           >
                             {collection.title}
                           </h2>
-                          <label className={styles.headingCheckboxLabel}>
-                            <input
-                              type="checkbox"
-                              checked={updateData.visible}
-                              onChange={e =>
-                                setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
-                              }
-                            />
-                            <span>Visible</span>
-                          </label>
+                          <button
+                            type="submit"
+                            disabled={saving || isLoading}
+                            className={styles.headingSubmitButton}
+                          >
+                            {saving ? (
+                              <>
+                                <LoadingSpinner size="small" color="white" />
+                                <span style={{ marginLeft: '8px' }}>Updating...</span>
+                              </>
+                            ) : (
+                              'Update Metadata'
+                            )}
+                          </button>
                         </div>
 
                         {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
-                        {/* Title */}
-                        <div className={styles.formGroup}>
-                          <label className={styles.formLabel}>Title</label>
-                          <input
-                            type="text"
-                            value={updateData.title}
-                            onChange={e =>
-                              setUpdateData(prev => ({ ...prev, title: e.target.value }))
-                            }
-                            className={styles.formInput}
-                          />
+                        {/* Title + Visible */}
+                        <div className={styles.titleRow}>
+                          <div className={styles.titleInputWrapper}>
+                            <label className={styles.formLabel}>Title</label>
+                            <input
+                              type="text"
+                              value={updateData.title}
+                              onChange={e =>
+                                setUpdateData(prev => ({ ...prev, title: e.target.value }))
+                              }
+                              className={styles.formInput}
+                            />
+                          </div>
+                          <div className={styles.visibleCheckboxWrapper}>
+                            <label className={styles.formLabel}>Visible</label>
+                            <label className={styles.visibleCheckboxLabel}>
+                              <input
+                                type="checkbox"
+                                checked={updateData.visible}
+                                onChange={e =>
+                                  setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
+                                }
+                              />
+                              <span>{updateData.visible ? 'Yes' : 'No'}</span>
+                            </label>
+                          </div>
                         </div>
 
                         {/* Collection Date / Collection Type */}
@@ -1150,23 +1194,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           excludeCollectionId={collection.id}
                         />
                       </div>
-                    </div>
-
-                    <div className={styles.formActions}>
-                      <button
-                        type="submit"
-                        disabled={saving || isLoading}
-                        className={styles.submitButton}
-                      >
-                        {saving ? (
-                          <>
-                            <LoadingSpinner size="small" color="white" />
-                            <span style={{ marginLeft: '8px' }}>Updating...</span>
-                          </>
-                        ) : (
-                          'Update Metadata'
-                        )}
-                      </button>
                     </div>
                   </form>
                 </div>
