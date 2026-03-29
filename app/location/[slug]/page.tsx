@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { type Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
@@ -12,37 +13,39 @@ interface LocationPageRouteProps {
 interface ResolvedLocation {
   id: number;
   name: string;
+  slug: string;
 }
 
 /**
  * Resolve a URL slug to a real location by matching against the backend location list.
- * Handles commas, apostrophes, and other characters that get encoded in URLs.
+ * Primary: match by API slug field directly.
+ * Fallback: exact name match for backwards-compatible URLs.
  * Returns null if no match found.
  */
 async function resolveLocationFromSlug(slug: string): Promise<ResolvedLocation | null> {
-  const decoded = decodeURIComponent(slug);
   const locations = await getAllLocations();
   if (!locations?.length) return null;
 
-  // Try exact match first (slug IS the location name, just URL-encoded)
-  const exactMatch = locations.find(l => l.name === decoded);
-  if (exactMatch) return { id: exactMatch.id, name: exactMatch.name };
+  // Primary: match by API slug
+  const slugMatch = locations.find(l => l.slug === slug);
+  if (slugMatch) return { id: slugMatch.id, name: slugMatch.name, slug: slugMatch.slug };
 
-  // Try normalized match: strip punctuation, lowercase, compare
-  const normalize = (s: string) => s.toLowerCase().replace(/[^\d\sa-z]/g, '').replace(/\s+/g, ' ').trim();
-  const normalizedSlug = normalize(decoded.replace(/-/g, ' '));
-  const fuzzyMatch = locations.find(l => normalize(l.name) === normalizedSlug);
-  if (fuzzyMatch) return { id: fuzzyMatch.id, name: fuzzyMatch.name };
+  // Fallback: exact name match for backwards-compatible bookmarked URLs
+  const decoded = decodeURIComponent(slug);
+  const nameMatch = locations.find(l => l.name === decoded);
+  if (nameMatch) return { id: nameMatch.id, name: nameMatch.name, slug: nameMatch.slug };
 
   return null;
 }
+
+const getCachedLocation = cache(resolveLocationFromSlug);
 
 /**
  * Generate SEO metadata for location pages.
  */
 export async function generateMetadata({ params }: LocationPageRouteProps): Promise<Metadata> {
   const { slug } = await params;
-  const location = await resolveLocationFromSlug(slug);
+  const location = await getCachedLocation(slug);
   const locationName = location?.name ?? decodeURIComponent(slug);
 
   return {
@@ -66,12 +69,12 @@ export default async function LocationPageRoute({ params }: LocationPageRoutePro
   const { slug } = await params;
   if (!slug) notFound();
 
-  const location = await resolveLocationFromSlug(slug);
+  const location = await getCachedLocation(slug);
   if (!location) notFound();
 
   const [collections, images] = await Promise.all([
-    getCollectionsByLocation(location.name),
-    searchImages({ locationId: location.id, size: 500 }),
+    getCollectionsByLocation(location.slug),
+    searchImages({ locationId: location.id }),
   ]);
 
   if (collections.length === 0 && images.length === 0) notFound();
