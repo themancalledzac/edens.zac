@@ -447,6 +447,19 @@ export function parseFilterFromParams(
   const dateTo = get('to');
   if (dateTo) criteria.dateTo = dateTo;
 
+  const isFilm = get('isFilm');
+  if (isFilm === 'true') criteria.isFilm = true;
+  else if (isFilm === 'false') criteria.isFilm = false;
+
+  const bw = get('bw');
+  if (bw === 'true') criteria.blackAndWhite = true;
+  else if (bw === 'false') criteria.blackAndWhite = false;
+
+  const collectionIds = getAll('collection')
+    .map(v => Number.parseInt(v, 10))
+    .filter(n => !Number.isNaN(n));
+  if (collectionIds.length > 0) criteria.collectionIds = collectionIds;
+
   return criteria;
 }
 
@@ -472,6 +485,10 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   if (criteria.query) params.set('q', criteria.query);
   if (criteria.dateFrom) params.set('from', criteria.dateFrom);
   if (criteria.dateTo) params.set('to', criteria.dateTo);
+
+  if (criteria.isFilm !== undefined) params.set('isFilm', String(criteria.isFilm));
+  if (criteria.blackAndWhite !== undefined) params.set('bw', String(criteria.blackAndWhite));
+  for (const id of criteria.collectionIds ?? []) params.append('collection', String(id));
 
   return params;
 }

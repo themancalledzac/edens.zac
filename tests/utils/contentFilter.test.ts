@@ -458,6 +458,36 @@ describe('parseFilterFromParams', () => {
     const criteria = parseFilterFromParams(params);
     expect(criteria).toEqual({});
   });
+
+  it('parses isFilm from URLSearchParams', () => {
+    const params = new URLSearchParams('isFilm=true');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.isFilm).toBe(true);
+  });
+
+  it('parses isFilm=false from URLSearchParams', () => {
+    const params = new URLSearchParams('isFilm=false');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.isFilm).toBe(false);
+  });
+
+  it('parses blackAndWhite from URLSearchParams', () => {
+    const params = new URLSearchParams('bw=true');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.blackAndWhite).toBe(true);
+  });
+
+  it('parses collectionIds from URLSearchParams', () => {
+    const params = new URLSearchParams('collection=10&collection=20');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.collectionIds).toEqual([10, 20]);
+  });
+
+  it('ignores non-numeric collectionIds', () => {
+    const params = new URLSearchParams('collection=abc&collection=10');
+    const criteria = parseFilterFromParams(params);
+    expect(criteria.collectionIds).toEqual([10]);
+  });
 });
 
 describe('serializeFilterToParams', () => {
@@ -494,6 +524,39 @@ describe('serializeFilterToParams', () => {
       people: ['Alice'],
       query: 'sunset',
       dateFrom: '2024-01-01',
+    };
+    const serialized = serializeFilterToParams(original);
+    const parsed = parseFilterFromParams(serialized);
+    expect(parsed).toEqual(original);
+  });
+
+  it('serializes isFilm', () => {
+    const params = serializeFilterToParams({ isFilm: true });
+    expect(params.get('isFilm')).toBe('true');
+  });
+
+  it('serializes isFilm=false', () => {
+    const params = serializeFilterToParams({ isFilm: false });
+    expect(params.get('isFilm')).toBe('false');
+  });
+
+  it('serializes blackAndWhite', () => {
+    const params = serializeFilterToParams({ blackAndWhite: true });
+    expect(params.get('bw')).toBe('true');
+  });
+
+  it('serializes collectionIds', () => {
+    const params = serializeFilterToParams({ collectionIds: [10, 20] });
+    expect(params.getAll('collection')).toEqual(['10', '20']);
+  });
+
+  it('round-trips new fields through parse and serialize', () => {
+    const original: ContentFilterCriteria = {
+      minRating: 3,
+      tags: ['landscape'],
+      isFilm: true,
+      blackAndWhite: false,
+      collectionIds: [10, 20],
     };
     const serialized = serializeFilterToParams(original);
     const parsed = parseFilterFromParams(serialized);
