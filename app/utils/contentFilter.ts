@@ -189,13 +189,13 @@ export function filterContent(
       return false;
     }
 
-    // Film filter
-    if (criteria.isFilm !== undefined && item.isFilm !== criteria.isFilm) {
+    // Film filter — treat undefined/null as digital (false)
+    if (criteria.isFilm !== undefined && (item.isFilm ?? false) !== criteria.isFilm) {
       return false;
     }
 
-    // Black & white filter
-    if (criteria.blackAndWhite !== undefined && item.blackAndWhite !== criteria.blackAndWhite) {
+    // Black & white filter — treat undefined/null as color (false)
+    if (criteria.blackAndWhite !== undefined && (item.blackAndWhite ?? false) !== criteria.blackAndWhite) {
       return false;
     }
 

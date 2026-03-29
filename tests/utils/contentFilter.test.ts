@@ -202,6 +202,16 @@ describe('filterContent', () => {
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe(11);
     });
+
+    it('treats undefined isFilm as digital (false) when filtering for digital', () => {
+      const images = [
+        makeImage({ id: 1, isFilm: undefined }),
+        makeImage({ id: 2, isFilm: false }),
+        makeImage({ id: 3, isFilm: true }),
+      ];
+      const result = filterContent(images, { isFilm: false });
+      expect(result.map(r => r.id)).toEqual([1, 2]);
+    });
   });
 
   describe('blackAndWhite filter', () => {
@@ -221,6 +231,16 @@ describe('filterContent', () => {
       const result = filterContent(bwImages, { blackAndWhite: false });
       expect(result).toHaveLength(1);
       expect(result[0]!.id).toBe(21);
+    });
+
+    it('treats undefined blackAndWhite as color (false) when filtering for color', () => {
+      const images = [
+        makeImage({ id: 1, blackAndWhite: undefined }),
+        makeImage({ id: 2, blackAndWhite: false }),
+        makeImage({ id: 3, blackAndWhite: true }),
+      ];
+      const result = filterContent(images, { blackAndWhite: false });
+      expect(result.map(r => r.id)).toEqual([1, 2]);
     });
   });
 
