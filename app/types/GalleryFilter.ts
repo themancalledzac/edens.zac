@@ -7,16 +7,16 @@ export interface GalleryFilterState {
   highlyRatedOnly: boolean;
   /** 'film' = film only, 'digital' = digital only, 'off' = no filter */
   filmFilter: 'film' | 'digital' | 'off';
-  selectedCollectionIds: number[];
-  selectedTags: string[];
-  selectedPeople: string[];
+  readonly selectedCollectionIds: readonly number[];
+  readonly selectedTags: readonly string[];
+  readonly selectedPeople: readonly string[];
 }
 
-export const INITIAL_GALLERY_FILTER_STATE: GalleryFilterState = {
-  dateSortDirection: 'off',
+export const INITIAL_GALLERY_FILTER_STATE: GalleryFilterState = Object.freeze({
+  dateSortDirection: 'off' as const,
   highlyRatedOnly: false,
-  filmFilter: 'off',
-  selectedCollectionIds: [],
-  selectedTags: [],
-  selectedPeople: [],
-};
+  filmFilter: 'off' as const,
+  selectedCollectionIds: Object.freeze([] as readonly number[]),
+  selectedTags: Object.freeze([] as readonly string[]),
+  selectedPeople: Object.freeze([] as readonly string[]),
+});

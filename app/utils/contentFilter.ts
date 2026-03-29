@@ -19,13 +19,13 @@ export interface ContentFilterCriteria {
   /** Minimum star rating (1-5) */
   minRating?: number;
   /** People names to include (OR logic — matches if image has ANY of these) */
-  people?: string[];
+  people?: readonly string[];
   /** Location names to include (OR logic) */
-  locations?: string[];
+  locations?: readonly string[];
   /** Tag names to include (OR logic) */
-  tags?: string[];
+  tags?: readonly string[];
   /** Camera names to include (OR logic) */
-  cameras?: string[];
+  cameras?: readonly string[];
   /** Free-text search (matches title, caption, tags, people, location) */
   query?: string;
   /** Date range start (ISO string, inclusive) */
@@ -37,7 +37,7 @@ export interface ContentFilterCriteria {
   /** Filter to black & white images only */
   blackAndWhite?: boolean;
   /** Collection IDs to include (OR logic — matches if image belongs to ANY of these) */
-  collectionIds?: number[];
+  collectionIds?: readonly number[];
 }
 
 /**
