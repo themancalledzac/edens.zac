@@ -225,23 +225,22 @@ The user needs to dynamically increase or decrease the number/size of images in 
 
 **What must scale with rowWidth:**
 
-| Derived value | Formula | rowWidth=6 | rowWidth=8 | rowWidth=10 | rowWidth=12 |
-|--------------|---------|-----------|-----------|------------|------------|
-| H5★ cv | `rw × 0.75` | 4.5 | 6.0 | 7.5 | 9.0 |
-| H4★ cv | `rw × 0.50` | 3.0 | 4.0 | 5.0 | 6.0 |
-| H3★ cv | `rw × 0.333` | 2.0 | 2.67 | 3.33 | 4.0 |
-| H2★ cv | `rw × 0.25` | 1.5 | 2.0 | 2.5 | 3.0 |
-| H0–1★ cv | `rw × 0.125` | 0.75 | 1.0 | 1.25 | 1.5 |
-| Max items/row | `~rw` | ~6 | ~8 | ~10 | ~12 |
-| Typical items/row | `~rw × 0.5–0.75` | 3–5 | 4–6 | 5–8 | 6–9 |
+| Value | Formula | rowWidth=6 | rowWidth=8 | rowWidth=10 | rowWidth=12 |
+|-------|---------|-----------|-----------|------------|------------|
+| H5★ cv | `BASE_WEIGHT[5]` | **5.0** | **5.0** | **5.0** | **5.0** |
+| H5★ fraction | `5.0 / rw` | 83% | 62% | 50% | 42% |
+| H3★ cv | `BASE_WEIGHT[3]` | **2.5** | **2.5** | **2.5** | **2.5** |
+| H3★ fraction | `2.5 / rw` | 42% | 31% | 25% | 21% |
+| Typical items/row | `~rw / avg_cv` | 2–4 | 3–5 | 4–7 | 5–9 |
 
-**Key: the TARGET_FRACTIONS table never changes.** The fractions (0.75, 0.50, 0.333, etc.) are constants that express the *relative prominence relationship* between ratings. Only `rowWidth` changes. This means:
+**Key: cv is a FIXED WEIGHT. Only rowWidth changes.** This means:
 
-1. **No magic numbers** — every cv is `rowWidth * fraction * arFactor`. No hardcoded cv values anywhere.
-2. **No special cases for specific rowWidths** — the template map, compose(), buildAtomic all work with any rowWidth because they operate on cv-relative budgets.
-3. **MIN_FILL_RATIO and MAX_FILL_RATIO stay as ratios** (0.9 and 1.15) — they scale automatically because fill = totalCV / rowWidth.
-4. **AR floor stays as a ratio** (targetAR × 0.7) — also scales automatically.
-5. **The molecule strategy is rowWidth-independent** — it's driven by H/V orientation, not by absolute sizes.
+1. **No magic numbers** — every cv is `BASE_WEIGHT[rating] * arFactor`. No rowWidth in the formula.
+2. **ALL images shrink together** — increase rowWidth and every image's fraction decreases proportionally.
+3. **Prominence ratios are preserved** — 5★/3★ = 5.0/2.5 = 2× at ANY rowWidth.
+4. **MIN_FILL_RATIO and MAX_FILL_RATIO stay as ratios** (0.9 and 1.15) — they scale automatically because fill = totalCV / rowWidth.
+5. **AR floor stays as a ratio** (targetAR × 0.7) — also scales automatically.
+6. **The molecule strategy is rowWidth-independent** — it's driven by H/V orientation, not by absolute sizes.
 
 **The minWidthFraction and minHeightFraction tables also stay constant** — they're fractions of the row, not absolute values. At rowWidth=6 or rowWidth=12, "H5★ must occupy at least 60% of row width" means the same thing proportionally.
 
@@ -266,12 +265,15 @@ const rowWidth = isMobile
 - The template map routing logic (H/V counting)
 - The AR scoring (pickBest, scoreCandidate)
 - The ordering guarantees
+- **The BASE_WEIGHT table** — cv per rating is fixed, rowWidth is the budget
 
 **What DOES change when rowWidth changes:**
 - How many images fit in a row (more budget → more images)
-- How big each image is (more images → each one smaller)
+- **How big EVERY image is** — ALL images shrink proportionally, not just low-rated ones
 - Which compositions get generated (more items → deeper molecule trees)
 - The visual density of the page
+
+**Critical: cv is a fixed weight, NOT a fraction of rowWidth.** If cv = rowWidth × fraction, then the fraction is constant and increasing rowWidth only affects the leftover crumbs. The whole point of density scaling is that EVERYTHING gets smaller when you increase density. See section 7.2 for the correct formula.
 
 **Test for correctness: the rowWidth invariant.** Any function that uses rowWidth must produce valid output for rowWidth ∈ [4, 16]. If a function breaks at rowWidth=4 or rowWidth=16, it has a hidden assumption about a specific rowWidth value. This is the ground-truth test for whether we've built it correctly.
 
@@ -283,27 +285,53 @@ desktopSlotWidth: 8,   // was 5 — default, adjustable at runtime via densityOf
 mobileSlotWidth: 3,    // was 2 — allows 3-image rows on mobile
 
 // ============================================================================
-// THESE ARE ALL FRACTIONS/RATIOS — they do NOT change when rowWidth changes.
-// rowWidth is the only knob. Everything else derives from it.
+// BASE_WEIGHT: Fixed absolute weights per rating.
+// cv = BASE_WEIGHT[rating] × arFactor
+// fraction = cv / rowWidth  (this is what SHRINKS as rowWidth increases)
+//
+// THIS IS THE KEY INSIGHT: cv does NOT scale with rowWidth.
+// rowWidth is the budget. cv is the cost. Bigger budget → more items fit →
+// every item's fraction shrinks → everything gets smaller together.
 // ============================================================================
 
-// Target prominence fractions by effective rating
-// cv = rowWidth × fraction × arFactor — no hardcoded cv values anywhere
-TARGET_FRACTIONS: {
-  5: 0.75,   // 75% of row budget
-  4: 0.50,   // 50%
-  3: 0.333,  // 33%
-  2: 0.25,   // 25%
-  1: 0.167,  // 17%
-  0: 0.125,  // 12.5%
+BASE_WEIGHT: {
+  5: 5.0,    // A 5★ image "costs" 5.0 units of row budget
+  4: 3.5,    // A 4★ image "costs" 3.5
+  3: 2.5,    // A 3★ image "costs" 2.5
+  2: 1.75,   // etc.
+  1: 1.25,
+  0: 1.0,
 },
 
+// What these produce at different rowWidths:
+//
+// | Rating | Weight | rw=6   | rw=8    | rw=10  | rw=12  |
+// |--------|--------|--------|---------|--------|--------|
+// | 5★     | 5.0    | 83%    | 62.5%   | 50%    | 42%    |
+// | 4★     | 3.5    | 58%    | 44%     | 35%    | 29%    |
+// | 3★     | 2.5    | 42%    | 31%     | 25%    | 21%    |
+// | 2★     | 1.75   | 29%    | 22%     | 17.5%  | 14.6%  |
+// | 0-1★   | 1.0    | 17%    | 12.5%   | 10%    | 8.3%   |
+//
+// At rw=6 (sparse):  H5★ is 83% of row — near-hero, 1 tiny companion
+// At rw=8 (default):  H5★ is 62.5% — shares with 1-2 companions
+// At rw=12 (dense):  H5★ is 42% — shares with 2-3 companions
+//
+// The RATIO between ratings is ALWAYS preserved:
+//   5★/3★ = 5.0/2.5 = 2× at ANY rowWidth
+//   5★/1★ = 5.0/1.25 = 4× at ANY rowWidth
+// What changes is the absolute fraction — ALL images shrink together.
+
 // Minimum WIDTH fractions for HORIZONTAL images (post-composition validation)
+// NOTE: these ARE fractions of the row, and they DO stay constant.
+// They're FLOORS — "don't squeeze a 5★ below X% regardless of density."
+// At very high density (rw=12), 5★ naturally occupies 42%. The floor of 40%
+// means it can't be squeezed further by composition.
 MIN_WIDTH_FRACTION: {
-  5: 0.60,  // H5★ must occupy at least 60% of row width
-  4: 0.35,  // H4★ must occupy at least 35%
-  3: 0.20,  // H3★ must occupy at least 20%
-  2: 0.10,
+  5: 0.40,  // H5★ must occupy at least 40% of row width (even at high density)
+  4: 0.25,  // H4★ at least 25%
+  3: 0.15,  // H3★ at least 15%
+  2: 0.08,
   1: 0.05,
   0: 0.05,
 },
@@ -325,41 +353,58 @@ MIN_HEIGHT_FRACTION: {
 // AR_FLOOR_MULTIPLIER: 0.7   (arFloor = targetAR × 0.7 — scales automatically)
 ```
 
-**Every number above is a fraction or ratio.** None of them reference a specific rowWidth. This is the key to making the system scalable — change rowWidth from 8 to 12, and every cv, every fill check, every composition constraint adjusts proportionally without touching any of these constants.
-
 ### 7.2 New cv Formula (Base — Rating Only)
 
 > **Important:** This is the base formula. Section 7.2a extends it with AR-awareness.
-> The final formula (7.2a) takes `imageAR` as a parameter and applies an AR correction factor.
-> Read this section for the rating-based intuition, then 7.2a for the complete solution.
+> Read this section for the core insight, then 7.2a for the complete solution.
+
+**The fundamental change: cv is a FIXED WEIGHT, not a fraction of rowWidth.**
 
 ```typescript
-// Base formula — rating-only (superseded by 7.2a, shown for intuition)
-// Desktop (slotWidth=8):
-const TARGET_FRACTIONS: Record<number, number> = {
-  5: 0.75,   // 75% → cv=6.0
-  4: 0.50,   // 50% → cv=4.0
-  3: 0.333,  // 33% → cv=2.67
-  2: 0.25,   // 25% → cv=2.0
-  1: 0.167,  // 17% → cv=1.33
-  0: 0.125,  // 12.5% → cv=1.0
-};
+// cv = BASE_WEIGHT[effectiveRating]  (fixed — does NOT multiply by rowWidth)
+// fraction = cv / rowWidth           (THIS is what changes with density)
 ```
 
-**What this means for row fill (desktop, rowWidth=8) — before AR correction:**
+**Why this matters — the old formula was wrong:**
+
+Old: `cv = rowWidth × fraction` → fraction is constant regardless of rowWidth. Increasing density only affects the scraps around the dominant image. The 5★ image stays at 75% forever.
+
+New: `cv = BASE_WEIGHT[rating]` → fraction = weight/rowWidth → fraction SHRINKS as rowWidth grows. ALL images get smaller together. The 5★ image goes from 83% at rw=6 to 42% at rw=12.
+
+**Row fill examples at different densities (before AR correction):**
+
+**At rowWidth=8 (default):**
 
 | Row scenario | Total cv | Fill ratio | Notes |
 |-------------|----------|-----------|-------|
-| H5★ alone | 6.0 | 75% — underfills | ❌ Not allowed (below MIN_FILL=0.9) |
-| H5★ + V2★ | 6.0 + 2.0 = 8.0 | 100% | ✅ Perfect fill |
-| H5★ + V1★ + V1★ | 6.0 + 1.33 + 1.33 = 8.66 | 108% | ✅ Within MAX_FILL=1.15 |
-| H4★ + H4★ | 4.0 + 4.0 = 8.0 | 100% | ✅ Two 4★ images side by side |
-| H3★ + H3★ + H3★ | 2.67 × 3 = 8.0 | 100% | ✅ Three 3★ images |
-| H2★ × 4 | 2.0 × 4 = 8.0 | 100% | ✅ Four 2★ images |
+| H5★ alone | 5.0 | 62.5% | ❌ Underfills — must pull companions |
+| H5★ + H3★ | 5.0 + 2.5 = 7.5 | 94% | ✅ Good fill |
+| H5★ + H3★ + H1★ | 5.0 + 2.5 + 1.25 = 8.75 | 109% | ✅ Within MAX_FILL |
+| H4★ + H4★ | 3.5 + 3.5 = 7.0 | 87.5% | ⚠️ Slightly under — may pull one more |
+| H3★ + H3★ + H3★ | 2.5 × 3 = 7.5 | 94% | ✅ Three 3★ images |
+| H2★ × 4 | 1.75 × 4 = 7.0 | 87.5% | ⚠️ May pull a 5th |
+| H1★ × 6 | 1.25 × 6 = 7.5 | 94% | ✅ Six small images |
+
+**At rowWidth=6 (sparse):**
+
+| Row scenario | Total cv | Fill ratio | Notes |
+|-------------|----------|-----------|-------|
+| H5★ alone | 5.0 | 83% | ⚠️ Just under MIN_FILL — pulls 1 companion |
+| H5★ + H1★ | 5.0 + 1.25 = 6.25 | 104% | ✅ Near-hero with tiny companion |
+| H4★ + H3★ | 3.5 + 2.5 = 6.0 | 100% | ✅ Perfect pair |
+
+**At rowWidth=12 (dense):**
+
+| Row scenario | Total cv | Fill ratio | Notes |
+|-------------|----------|-----------|-------|
+| H5★ alone | 5.0 | 42% | ❌ Way under — pulls 2-3 companions |
+| H5★ + H4★ | 5.0 + 3.5 = 8.5 | 71% | ❌ Still under — pulls more |
+| H5★ + H4★ + H3★ | 5.0 + 3.5 + 2.5 = 11.0 | 92% | ✅ Three images fill the row |
+| H3★ × 5 | 2.5 × 5 = 12.5 | 104% | ✅ Five 3★ images |
+
+**The prominence ratio is always preserved:** 5★/3★ = 5.0/2.5 = 2× at ANY rowWidth. But the absolute fraction shrinks for ALL ratings as density increases.
 
 **⚠️ But this ignores AR — see next section for why this breaks with verticals.**
-
-**Critical observation:** A 5★ horizontal can **no longer be a solo row**. Its cv=6.0 only gives 75% fill, which is below `MIN_FILL_RATIO=0.9`. The greedy fill MUST pull in at least one more image. This is exactly the behavior we want.
 
 ### 7.2a The AR Problem — Why Width Fraction Alone Fails
 
@@ -402,73 +447,79 @@ In the `V5★ + H2★` row:
 
 The cv formula should account for aspect ratio to ensure that the *visual area* (not just width) matches the intended prominence.
 
-**Approach: Scale cv by an AR factor.** Images with low AR (vertical) have their cv reduced because they'll take up more vertical space per unit of width. Images with high AR (horizontal) keep their cv as-is.
+**Approach: Scale the fixed base weight by an AR factor.** Images with low AR (vertical) have their cv reduced because they'll take up more vertical space per unit of width. Images with high AR (horizontal) keep their cv as-is.
 
 ```typescript
 export function getComponentValue(
   effectiveRating: number,
-  slotWidth: number,
-  imageAR: number  // NEW parameter — actual aspect ratio of the image
+  imageAR: number  // actual aspect ratio of the image
 ): number {
-  if (slotWidth <= 3) {
-    // Mobile — keep simple, AR factor less impactful on small screens
-    if (effectiveRating >= 5) return slotWidth;
-    if (effectiveRating >= 4) return 2;
-    if (effectiveRating >= 3) return 1.5;
-    return 1;
-  }
+  // NOTE: rowWidth is NOT a parameter. cv is a fixed weight.
+  // The caller divides cv / rowWidth to get the fill fraction.
 
-  // Desktop (slotWidth=8):
-  const TARGET_FRACTIONS: Record<number, number> = {
-    5: 0.75,
-    4: 0.50,
-    3: 0.333,
-    2: 0.25,
-    1: 0.167,
-    0: 0.125,
-  };
-
-  const baseFraction = TARGET_FRACTIONS[Math.min(effectiveRating, 5)] ?? 0.125;
+  const baseWeight = BASE_WEIGHT[Math.min(effectiveRating, 5)] ?? 1.0;
 
   // AR factor: normalize to a "standard" horizontal AR of 1.5
   // Verticals (AR < 1) get reduced cv → they need less width to be visually prominent
-  // Horizontals (AR > 1.5) get slightly increased cv → they need more width
+  // Horizontals (AR > 1.5) keep full weight (capped — wide H doesn't need bonus)
   const REFERENCE_AR = 1.5;
   const arFactor = Math.sqrt(Math.min(imageAR, REFERENCE_AR) / REFERENCE_AR);
   // arFactor examples:
-  //   AR=2.0 (wide H):  sqrt(min(2.0,1.5)/1.5) = sqrt(1.0) = 1.00 (capped at reference)
+  //   AR=2.0 (wide H):  sqrt(min(2.0,1.5)/1.5) = sqrt(1.0) = 1.00 (capped)
   //   AR=1.5 (standard): sqrt(1.5/1.5) = 1.00
   //   AR=1.0 (square):   sqrt(1.0/1.5) = 0.82
   //   AR=0.67 (portrait): sqrt(0.67/1.5) = 0.67
   //   AR=0.5 (tall V):   sqrt(0.5/1.5) = 0.58
 
-  return slotWidth * baseFraction * arFactor;
+  return baseWeight * arFactor;
+}
+
+// Mobile override (simple — AR factor is less impactful on small screens)
+export function getMobileComponentValue(effectiveRating: number): number {
+  if (effectiveRating >= 5) return 3;  // full width
+  if (effectiveRating >= 4) return 2;
+  if (effectiveRating >= 3) return 1.5;
+  return 1;
 }
 ```
 
-**What this means in practice:**
+**What this means in practice — cv is FIXED, fraction scales with rowWidth:**
 
-| Image | Rating | AR | baseFraction | arFactor | cv (rw=8) | Row fraction |
-|-------|--------|------|-------------|----------|-----------|-------------|
-| H5★ | 5 | 2.0 | 0.75 | 1.00 | **6.0** | 75% |
-| H4★ | 4 | 1.8 | 0.50 | 1.00 | **4.0** | 50% |
-| V5★(er=4) | 4 | 0.67 | 0.50 | 0.67 | **2.67** | 33% |
-| H3★ | 3 | 1.5 | 0.333 | 1.00 | **2.67** | 33% |
-| V4★(er=3) | 3 | 0.67 | 0.333 | 0.67 | **1.78** | 22% |
-| H2★ | 2 | 2.0 | 0.25 | 1.00 | **2.0** | 25% |
-| V3★(er=2) | 2 | 0.5 | 0.25 | 0.58 | **1.16** | 14.5% |
-| V1★(er=0) | 0 | 0.67 | 0.125 | 0.67 | **0.67** | 8% |
+| Image | er | AR | baseWeight | arFactor | **cv** | rw=6 | rw=8 | rw=10 | rw=12 |
+|-------|-----|------|-----------|----------|--------|------|------|-------|-------|
+| H5★ | 5 | 2.0 | 5.0 | 1.00 | **5.0** | 83% | 62% | 50% | 42% |
+| H4★ | 4 | 1.8 | 3.5 | 1.00 | **3.5** | 58% | 44% | 35% | 29% |
+| V5★(er=4) | 4 | 0.67 | 3.5 | 0.67 | **2.34** | 39% | 29% | 23% | 20% |
+| H3★ | 3 | 1.5 | 2.5 | 1.00 | **2.5** | 42% | 31% | 25% | 21% |
+| V4★(er=3) | 3 | 0.67 | 2.5 | 0.67 | **1.67** | 28% | 21% | 17% | 14% |
+| H2★ | 2 | 2.0 | 1.75 | 1.00 | **1.75** | 29% | 22% | 17.5% | 14.6% |
+| V3★(er=2) | 2 | 0.5 | 1.75 | 0.58 | **1.01** | 17% | 13% | 10% | 8.4% |
+| H1★ | 1 | 1.5 | 1.25 | 1.00 | **1.25** | 21% | 16% | 12.5% | 10.4% |
+| V1★(er=0) | 0 | 0.67 | 1.0 | 0.67 | **0.67** | 11% | 8% | 6.7% | 5.6% |
 
-**Key improvement:** V5★ (effectiveRating=4, AR=0.67) now gets cv=2.67 instead of 4.0. In a row with H4★, the total is 4.0+2.67=6.67 (83% fill). That leaves room for a small image. And the V5★'s narrow width + tall height gives it visual area comparable to the H4★ — true parity.
+**Key properties of this table:**
+1. **cv is fixed** — the cv column doesn't change with rowWidth. Ever.
+2. **ALL fractions shrink as rowWidth increases** — look across any row: 83% → 62% → 50% → 42%.
+3. **Prominence ratios are preserved** — H5★/H3★ = 5.0/2.5 = 2× at every rowWidth.
+4. **AR factor reduces verticals** — V5★(cv=2.34) costs less than H4★(cv=3.5) despite same effectiveRating, because it's already tall.
 
-**Row scenarios with AR-weighted cv:**
+**Row scenarios at rowWidth=8 (default):**
 
-| Row | Total cv | Fill | Visual balance |
-|-----|----------|------|---------------|
-| H5★(6.0) + V3★(1.16) + V2★(0.67) | 7.83 | 98% | H5★ dominates width, verticals add density beside it |
-| H4★(4.0) + V5★(2.67) + V1★(0.67) | 7.34 | 92% | H4★ and V5★ share similar visual area |
-| V4★(1.78) + V3★(1.16) + H3★(2.67) + H2★(2.0) | 7.61 | 95% | Mixed — verticals tall and narrow, horizontals wide and short |
-| H3★(2.67) + H3★(2.67) + H3★(2.67) | 8.0 | 100% | Three equal horizontals |
+| Row | Total cv | Fill | Notes |
+|-----|----------|------|-------|
+| H5★(5.0) + H3★(2.5) | 7.5 | 94% | ✅ 5★ gets 62%, 3★ gets 31% |
+| H5★(5.0) + V3★(1.01) + H2★(1.75) | 7.76 | 97% | ✅ 5★ dominant, two smaller companions |
+| H4★(3.5) + V5★(2.34) + H2★(1.75) | 7.59 | 95% | ✅ H4★ and V5★ have similar visual area |
+| H3★(2.5) + H3★(2.5) + H3★(2.5) | 7.5 | 94% | ✅ Three equal horizontals |
+| H2★(1.75) × 4 + H1★(1.25) | 8.25 | 103% | ✅ Five images |
+
+**Row scenarios at rowWidth=12 (dense):**
+
+| Row | Total cv | Fill | Notes |
+|-----|----------|------|-------|
+| H5★(5.0) + H4★(3.5) + H3★(2.5) | 11.0 | 92% | ✅ Three images — 5★ is still biggest at 42% |
+| H3★(2.5) × 5 | 12.5 | 104% | ✅ Five 3★ images |
+| H2★(1.75) × 7 | 12.25 | 102% | ✅ Seven images! Dense but readable |
 
 #### Impact on Molecule Strategy (Section 7.5)
 
@@ -634,14 +685,14 @@ const targetAR = clamp(contentWidth / viewportHeight, 1.5, 3.0);
 
 **Example density levels (desktop):**
 
-| Density | rowWidth | densityOffset | H5★ cv | Typical items/row | Use case |
-|---------|----------|--------------|--------|-------------------|----------|
-| Sparse | 6 | -2 | 4.5 | 2–4 | Small collections, portfolio showcase |
-| Default | 8 | 0 | 6.0 | 3–6 | Most collections |
-| Dense | 10 | +2 | 7.5 | 5–8 | Large collections, browse mode |
-| Very dense | 12 | +4 | 9.0 | 6–10 | Huge collections, contact sheet feel |
+| Density | rowWidth | densityOffset | H5★ fraction | Typical items/row | Use case |
+|---------|----------|--------------|-------------|-------------------|----------|
+| Sparse | 6 | -2 | 83% | 1–3 | Small collections, portfolio showcase |
+| Default | 8 | 0 | 62% | 3–5 | Most collections |
+| Dense | 10 | +2 | 50% | 4–7 | Large collections, browse mode |
+| Very dense | 12 | +4 | 42% | 5–9 | Huge collections, contact sheet feel |
 
-**Because everything is expressed as fractions of rowWidth, the relative prominence relationships are preserved at every density level.** A 5★ image is always ~75% of the row. A 3★ is always ~33%. What changes is the absolute pixel size — at rowWidth=6, 75% of the row is bigger (fewer companions). At rowWidth=12, 75% is smaller (more companions, but the image still dominates).
+**Because cv is a fixed weight, ALL images shrink proportionally as rowWidth increases.** H5★ goes from 83% (sparse) → 62% (default) → 42% (dense). H3★ goes from 42% → 31% → 21%. The prominence RATIO stays constant (5★ is always 2× the fraction of 3★), but the absolute fraction — and therefore pixel size — shrinks for everyone. This is the correct behavior: "more images in a row" means everything gets smaller, not just the low-rated ones.
 
 **Automatic density based on collection size (optional):**
 
@@ -747,35 +798,40 @@ This is an **evolutionary** change, not a rewrite. We modify existing functions 
 
 ## 9. Open Questions for User
 
-### Q1: Target fractions — are these the right numbers?
+### Q1: Base weights — are these the right numbers?
 
-The proposed target fractions for desktop (rowWidth=8):
+The proposed base weights (fixed, rowWidth-independent):
 
-| Rating | Target fraction | Meaning |
-|--------|----------------|---------|
-| 5★ | 75% | Dominates the row but shares with 1–2 small images |
-| 4★ | 50% | Half the row — pairs nicely with another 4★ or two smaller |
-| 3★ | 33% | Third of the row — natural 3-per-row grouping |
-| 2★ | 25% | Quarter — 4-per-row |
-| 0–1★ | 12.5–17% | Small — 5–6 per row |
+| Rating | BASE_WEIGHT | At rw=6 | At rw=8 | At rw=12 |
+|--------|------------|---------|---------|----------|
+| 5★ | 5.0 | 83% | 62% | 42% |
+| 4★ | 3.5 | 58% | 44% | 29% |
+| 3★ | 2.5 | 42% | 31% | 21% |
+| 2★ | 1.75 | 29% | 22% | 15% |
+| 0–1★ | 1.0–1.25 | 17–21% | 12–16% | 8–10% |
 
-Do these feel right? The 5★ number is the most important — 75% means a 5★ image always shares its row with at least one companion. If you want 5★ to be even bigger (say 85%), it could still share with a tiny image, but the companion would be very small. If you want 5★ smaller (say 60%), it could share with a 4★ image (60% + 50% = 110%, just within MAX_FILL).
+The key question is the **spread**. Currently 5★/1★ = 5.0/1.25 = 4×. That means a 5★ image is always 4× the visual weight of a 1★ image. Is 4× enough? Too much? At rw=8: 62% vs 16% — the 5★ is clearly dominant. At rw=12: 42% vs 10% — still dominant but less dramatically.
+
+If the spread is too wide, lower-rated images become tiny at high density. If too narrow, high-rated images don't feel special enough.
 
 ### Q2: Should 5★ images EVER be solo heroes?
 
-Currently: always. Proposed: never on desktop (cv=6.0 on budget 8.0 = 75% < MIN_FILL 0.9).
+With the new model: at rw=8, H5★ has cv=5.0, fill=62.5% — well below MIN_FILL 0.9. It CANNOT be solo. At rw=6 (sparse), fill=83% — still below 0.9. So with the current BASE_WEIGHT of 5.0, **5★ images are never solo at any rowWidth ≥ 6**.
 
-Option A: **Never solo** — 5★ always shares its row. This maximizes density.
-Option B: **Solo only if explicitly marked** — add a `hero: true` flag to specific images.
-Option C: **Solo only if no good companion exists** — if the next image is also 5★, don't pair them.
+If we want solo heroes at sparse density, we'd need BASE_WEIGHT[5] ≥ rw × 0.9. At rw=6, that's 5.4. At rw=8, that's 7.2. Should BASE_WEIGHT[5] be 5.5 (solo possible at rw=6 only) or stay at 5.0 (never solo)?
 
-Which do you prefer? The current design assumes Option A.
+Option A: **Never solo** (BASE_WEIGHT=5.0) — 5★ always shares. This is the current design.
+Option B: **Solo at sparse density only** (BASE_WEIGHT=5.5) — solo hero at rw=6, shares at rw=8+.
+Option C: **Solo only if explicitly marked** — add a `hero: true` flag for specific images.
 
-### Q3: rowWidth=8 — or something else?
+### Q3: Default rowWidth=8 — or something else?
 
-The choice of 8 gives clean math (75% = 6.0 slots, 50% = 4.0 slots). But 10 would give even finer granularity (75% = 7.5, 50% = 5.0, 33% = 3.33). Higher rowWidth = more precision but potentially more items per row.
+With fixed-weight cv, the choice of default rowWidth determines the default density feel:
+- rw=6: H5★ at 83%, very few companions — feels like the current system but slightly less extreme
+- rw=8: H5★ at 62%, 1–2 companions — meaningful sharing, good gallery feel
+- rw=10: H5★ at 50%, 2–3 companions — denser, more images visible
 
-My recommendation is 8 — it's the smallest number that gives meaningful graduation between all rating levels while being large enough that 5★ can share a row. But I want to flag this as a tuneable parameter.
+Since this is now adjustable at runtime, the default is less critical than before. But it sets the out-of-box experience. My recommendation is still 8 — it's a good middle ground where 5★ images are clearly dominant (62%) but always share their row.
 
 ### Q4: How many 5★ images per collection?
 
