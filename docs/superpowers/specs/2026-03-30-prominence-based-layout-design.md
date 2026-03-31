@@ -168,6 +168,47 @@ Example: `[V3★, V2★, H5★, H3★, V2★]` → pre-compose `[vStack(V3★,V2
 
 ## 7. Recommended Design: Weight-Budget System
 
+### 7.0 Core Principle: Rows Must Have Vertical Depth
+
+**This is the most important section of the spec.**
+
+A "row" in this layout is NOT a horizontal strip of images at the same height. A row is a **composition with internal vertical structure** — images stacked on top of each other, molecules nested inside, creating a visually rich block that fills a meaningful portion of the viewport.
+
+**On a 16:9 desktop monitor (1920×1080), a row should aim to occupy ~40–60% of viewport height (430–650px).** This means rows need vertical depth — flat hChain rows at 1274px wide would be ~200px tall (3 horizontal images side by side), which is only 18% of viewport height. That's a film strip, not a gallery.
+
+**The rule: almost every row with 3+ images MUST contain at least one vStack node.** The only acceptable flat (all-hPair) rows are:
+- 1 image (hero)
+- 2 images (natural pair)
+- 2 H5★ images side by side (rare, acceptable because both are wide and create a substantial row)
+
+**Why this matters for composition:**
+- **Horizontal images are "height donors"** — vStacking two horizontals turns a 200px strip into a 400px block. They SHOULD be stacked.
+- **Vertical images are "height consumers"** — they're already tall. vStacking a vertical with anything makes the row absurdly tall. They should NOT be stacked — let them take full row height as a column.
+- A V5★ image at full row height, paired horizontally with a column of 2–3 vStacked horizontal images, is the **ideal composition**. The vertical dominates height, the stacked horizontals add density beside it.
+
+**This is a two-axis prominence system:**
+- **Horizontal images:** prominence = width fraction (wider = more prominent)
+- **Vertical images:** prominence = height fraction of the row (taller = more prominent, and they should occupy full height or close to it)
+
+This is exactly what the user's original proposal described:
+- H5★ = at least 75% of row **width**
+- V5★ = at least 75–85% of row **height** (i.e., don't vStack it — let it be full row height)
+- V4★ = 50–75% of row **height** (could share with one vStacked companion)
+- V3★ = 25–50% of row **height** (can be vStacked with 1–2 others)
+
+These are not incompatible units — they're constraints on DIFFERENT AXES that map to composition structure:
+
+| Constraint | What it means for composition |
+|-----------|------------------------------|
+| V5★ ≥ 75% row height | Do NOT vStack this image. Let it be a standalone column at full row height. |
+| V4★ ≥ 50% row height | May vStack with ONE small companion (V4★ gets the bigger share). |
+| V3★ ≥ 25% row height | Can be vStacked with 2–3 others. |
+| H5★ ≥ 75% row width | This image dominates width. vStack it with 1–2 smaller images for height. |
+| H4★ ≥ 50% row width | Takes half the width. Can be vStacked with a companion. |
+| H3★ — no constraint | Flexible — vStack freely for density. |
+
+**Flat-row penalty for AR scoring:** When `compose()` generates candidates, flat hChain compositions (no vStack nodes) should receive an AR penalty for rows with 3+ images. This ensures the AR scorer prefers compositions with vertical depth even when a flat layout happens to hit the target AR.
+
 ### 7.1 New Constants
 
 ```typescript
@@ -175,15 +216,25 @@ Example: `[V3★, V2★, H5★, H3★, V2★]` → pre-compose `[vStack(V3★,V2
 desktopSlotWidth: 8,   // was 5 — finer granularity for prominence control
 mobileSlotWidth: 3,    // was 2 — allows 3-image rows on mobile
 
-// New: minimum width fractions by effective rating (for post-composition validation)
-// These are FLOORS — the layout engine won't squeeze a 5★ below 60% of row width
+// New: minimum WIDTH fractions for HORIZONTAL images (post-composition validation)
 minWidthFraction: {
-  5: 0.60,  // 5★ must occupy at least 60% of row width
-  4: 0.35,  // 4★ must occupy at least 35%
-  3: 0.20,  // 3★ must occupy at least 20%
+  5: 0.60,  // H5★ must occupy at least 60% of row width
+  4: 0.35,  // H4★ must occupy at least 35%
+  3: 0.20,  // H3★ must occupy at least 20%
   2: 0.10,  // no meaningful constraint below this
   1: 0.05,
   0: 0.05,
+},
+
+// New: minimum HEIGHT fractions for VERTICAL images (composition structure constraint)
+// This controls whether a vertical image can be vStacked with others
+minHeightFraction: {
+  5: 0.75,  // V5★ (er=4): full row height — NEVER vStack
+  4: 0.50,  // V4★ (er=3): at least half row height — vStack with at most 1 companion
+  3: 0.25,  // V3★ (er=2): quarter row height — can be vStacked freely
+  2: 0.10,  // no meaningful constraint
+  1: 0.10,
+  0: 0.10,
 },
 ```
 
@@ -429,23 +480,38 @@ The wrong molecule type makes the composition *worse*, not better. This is why t
 
 **Key insight:** We don't need to force molecule composition. We add it as a *candidate strategy*, and the AR-scoring picks it when it produces better AR fit. The orientation-awareness guides which molecule types are generated as candidates, but the final selection is still AR-based.
 
-### 7.6 Post-Composition Min-Width Validation
+### 7.6 Post-Composition Prominence Validation
 
-After `lookupComposition` builds the tree, walk the tree and check that each leaf's effective width fraction meets the minimum for its rating. This is a *validation* step, not a layout step — it detects bad compositions, not creates good ones.
+After `lookupComposition` builds the tree, validate that each leaf's prominence matches its rating. This is a *validation* step, not a layout step — it detects bad compositions, not creates good ones.
+
+**Two-axis validation:**
+- **Horizontal images:** Check width fraction ≥ minimum for rating
+- **Vertical images:** Check height fraction ≥ minimum for rating (i.e., the image isn't vStacked when it shouldn't be)
 
 ```typescript
-function validateMinWidths(
-  tree: BoxTree,
-  totalWidth: number,
-  minWidthFractions: Record<number, number>
+function validateProminence(
+  tree: AtomicComponent,
+  minWidthFractions: Record<number, number>,  // for H images
+  minHeightFractions: Record<number, number>,  // for V images
 ): boolean {
-  // Walk the tree, calculate each leaf's width as fraction of totalWidth
-  // If any leaf violates its rating's minimum, return false
-  // Caller can then try a different composition or accept the result
+  // Walk the tree
+  // For each leaf:
+  //   If H: check its effective width fraction ≥ minWidthFractions[rating]
+  //   If V: check whether it's inside a vStack node.
+  //         A V5★ inside a vStack = violation (it should be full row height)
+  //         A V3★ inside a vStack = acceptable
+  // Return false if any violation found
 }
 ```
 
-**When validation fails:** Log a warning (for debugging) but accept the composition. The min-width constraints are *soft* — they guide composition choice but don't block rendering. In practice, violations should be rare because the cv formula already ensures high-rated images get proportional row budget.
+**Height fraction is structural, not numerical.** We don't need to compute exact pixel heights — we can infer height fraction from the tree structure:
+- A vertical image that is NOT inside any vStack ancestor → 100% row height
+- A vertical image inside one vStack → ~50% row height (shared with sibling)
+- A vertical image inside nested vStacks → ~25% row height
+
+So the check is: "walk up from this leaf; count vStack ancestors; if the image is vertical and its rating requires ≥ N% height, reject if too many vStack ancestors."
+
+**When validation fails:** Prefer a different composition candidate. If no candidate passes, accept the best-AR one and log a warning. These constraints are *soft* — they guide candidate selection but don't block rendering.
 
 ### 7.7 Ordering Guarantees
 
@@ -641,7 +707,15 @@ With `sqrt`: a V5★ (er=4, AR=0.67) gets cv=2.67. With `linear`: cv=1.78.
 
 My recommendation is `sqrt` — it's conservative and we can always adjust later. But this is a key tuning parameter that we'll want to test visually.
 
-### Q8: Should the vertical penalty (-1 effectiveRating) stack with the AR factor?
+### Q8: Row height target — what % of viewport?
+
+Section 7.0 says rows should target 40–60% of viewport height on a 16:9 monitor. This translates to:
+- 1080p: 430–650px row height
+- With content width 1274px: targetAR = 1274/430 to 1274/650 = **2.0 to 3.0**
+
+The current `targetAR` clamp is `[1.5, 3.0]`. Should we narrow this to `[1.8, 2.5]` to enforce taller rows? Or is this better handled by the flat-row penalty (preferring compositions with vStack) rather than forcing a specific targetAR range?
+
+### Q9: Should the vertical penalty (-1 effectiveRating) stack with the AR factor?
 
 Currently V5★ → effectiveRating=4 (vertical penalty). Then with AR factor, cv gets further reduced. This double-penalty might be too aggressive:
 
