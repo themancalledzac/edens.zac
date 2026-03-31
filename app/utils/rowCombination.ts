@@ -240,7 +240,14 @@ export function buildAtomic(
 
     const left = components[bestIdx]!;
     const right = components[bestIdx + 1]!;
-    const merged = pickBestMerge(left.ac, right.ac, targetAR, rowWidth);
+
+    // Final merge (top level) always uses hPair — rows are horizontal.
+    // Inner merges pick best of hPair/vStack for sub-component compaction.
+    const merged =
+      components.length === 2
+        ? hPair(left.ac, right.ac)
+        : pickBestMerge(left.ac, right.ac, targetAR, rowWidth);
+
     components.splice(bestIdx, 2, {
       ac: merged,
       maxRating: Math.max(left.maxRating, right.maxRating),
