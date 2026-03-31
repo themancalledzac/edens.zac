@@ -209,34 +209,123 @@ These are not incompatible units — they're constraints on DIFFERENT AXES that 
 
 **Flat-row penalty for AR scoring:** When `compose()` generates candidates, flat hChain compositions (no vStack nodes) should receive an AR penalty for rows with 3+ images. This ensures the AR scorer prefers compositions with vertical depth even when a flat layout happens to hit the target AR.
 
+### 7.0a Core Principle: rowWidth Is THE Scaling Knob
+
+**This must be designed from the ground up. Getting it wrong means rethinking everything later.**
+
+The user needs to dynamically increase or decrease the number/size of images in a row — similar to how the old system offered "up to 5 wide" or "up to 6 wide." This is not a one-time constant choice. It's a **runtime-adjustable parameter** that controls layout density, and **every other number in the system must derive from it.**
+
+**The rule: rowWidth is the ONLY input that changes.** Everything else — cv formula, target fractions, max items per row, molecule depth, MIN_FILL_RATIO, MAX_FILL_RATIO — must be expressed as functions of rowWidth, not as independent constants.
+
+**What rowWidth represents:**
+- It's an abstract "budget" for how much content fits in a row
+- Higher rowWidth → more images per row → smaller individual images → denser layout
+- Lower rowWidth → fewer images per row → bigger individual images → sparser layout
+- Desktop default: 8. But the system must work correctly at 6, 8, 10, 12, or any reasonable value.
+
+**What must scale with rowWidth:**
+
+| Derived value | Formula | rowWidth=6 | rowWidth=8 | rowWidth=10 | rowWidth=12 |
+|--------------|---------|-----------|-----------|------------|------------|
+| H5★ cv | `rw × 0.75` | 4.5 | 6.0 | 7.5 | 9.0 |
+| H4★ cv | `rw × 0.50` | 3.0 | 4.0 | 5.0 | 6.0 |
+| H3★ cv | `rw × 0.333` | 2.0 | 2.67 | 3.33 | 4.0 |
+| H2★ cv | `rw × 0.25` | 1.5 | 2.0 | 2.5 | 3.0 |
+| H0–1★ cv | `rw × 0.125` | 0.75 | 1.0 | 1.25 | 1.5 |
+| Max items/row | `~rw` | ~6 | ~8 | ~10 | ~12 |
+| Typical items/row | `~rw × 0.5–0.75` | 3–5 | 4–6 | 5–8 | 6–9 |
+
+**Key: the TARGET_FRACTIONS table never changes.** The fractions (0.75, 0.50, 0.333, etc.) are constants that express the *relative prominence relationship* between ratings. Only `rowWidth` changes. This means:
+
+1. **No magic numbers** — every cv is `rowWidth * fraction * arFactor`. No hardcoded cv values anywhere.
+2. **No special cases for specific rowWidths** — the template map, compose(), buildAtomic all work with any rowWidth because they operate on cv-relative budgets.
+3. **MIN_FILL_RATIO and MAX_FILL_RATIO stay as ratios** (0.9 and 1.15) — they scale automatically because fill = totalCV / rowWidth.
+4. **AR floor stays as a ratio** (targetAR × 0.7) — also scales automatically.
+5. **The molecule strategy is rowWidth-independent** — it's driven by H/V orientation, not by absolute sizes.
+
+**The minWidthFraction and minHeightFraction tables also stay constant** — they're fractions of the row, not absolute values. At rowWidth=6 or rowWidth=12, "H5★ must occupy at least 60% of row width" means the same thing proportionally.
+
+**Where rowWidth is set:**
+
+```typescript
+// In processContentForDisplay or a new density config
+const rowWidth = isMobile
+  ? LAYOUT.mobileSlotWidth                    // 3 (fixed)
+  : LAYOUT.desktopSlotWidth + densityOffset;  // 8 + user adjustment
+
+// densityOffset: -2 for sparse, 0 for default, +2 for dense, +4 for very dense
+// This could come from:
+//   - A UI slider on the collection page
+//   - Automatic calculation based on collection size
+//   - A per-collection setting stored in the database
+```
+
+**What MUST NOT change when rowWidth changes:**
+- The composition algebra (single, hPair, vStack, AtomicComponent tree)
+- The box tree → pixel size calculation (calculateSizesFromBoxTree)
+- The template map routing logic (H/V counting)
+- The AR scoring (pickBest, scoreCandidate)
+- The ordering guarantees
+
+**What DOES change when rowWidth changes:**
+- How many images fit in a row (more budget → more images)
+- How big each image is (more images → each one smaller)
+- Which compositions get generated (more items → deeper molecule trees)
+- The visual density of the page
+
+**Test for correctness: the rowWidth invariant.** Any function that uses rowWidth must produce valid output for rowWidth ∈ [4, 16]. If a function breaks at rowWidth=4 or rowWidth=16, it has a hidden assumption about a specific rowWidth value. This is the ground-truth test for whether we've built it correctly.
+
 ### 7.1 New Constants
 
 ```typescript
 // In app/constants/index.ts (LAYOUT section)
-desktopSlotWidth: 8,   // was 5 — finer granularity for prominence control
+desktopSlotWidth: 8,   // was 5 — default, adjustable at runtime via densityOffset
 mobileSlotWidth: 3,    // was 2 — allows 3-image rows on mobile
 
-// New: minimum WIDTH fractions for HORIZONTAL images (post-composition validation)
-minWidthFraction: {
+// ============================================================================
+// THESE ARE ALL FRACTIONS/RATIOS — they do NOT change when rowWidth changes.
+// rowWidth is the only knob. Everything else derives from it.
+// ============================================================================
+
+// Target prominence fractions by effective rating
+// cv = rowWidth × fraction × arFactor — no hardcoded cv values anywhere
+TARGET_FRACTIONS: {
+  5: 0.75,   // 75% of row budget
+  4: 0.50,   // 50%
+  3: 0.333,  // 33%
+  2: 0.25,   // 25%
+  1: 0.167,  // 17%
+  0: 0.125,  // 12.5%
+},
+
+// Minimum WIDTH fractions for HORIZONTAL images (post-composition validation)
+MIN_WIDTH_FRACTION: {
   5: 0.60,  // H5★ must occupy at least 60% of row width
   4: 0.35,  // H4★ must occupy at least 35%
   3: 0.20,  // H3★ must occupy at least 20%
-  2: 0.10,  // no meaningful constraint below this
+  2: 0.10,
   1: 0.05,
   0: 0.05,
 },
 
-// New: minimum HEIGHT fractions for VERTICAL images (composition structure constraint)
-// This controls whether a vertical image can be vStacked with others
-minHeightFraction: {
+// Minimum HEIGHT fractions for VERTICAL images (composition structure constraint)
+// Controls whether a vertical image can be vStacked with others
+MIN_HEIGHT_FRACTION: {
   5: 0.75,  // V5★ (er=4): full row height — NEVER vStack
-  4: 0.50,  // V4★ (er=3): at least half row height — vStack with at most 1 companion
-  3: 0.25,  // V3★ (er=2): quarter row height — can be vStacked freely
-  2: 0.10,  // no meaningful constraint
+  4: 0.50,  // V4★ (er=3): at least half — vStack with at most 1 companion
+  3: 0.25,  // V3★ (er=2): quarter — can be vStacked freely
+  2: 0.10,
   1: 0.10,
   0: 0.10,
 },
+
+// These existing ratios are already rowWidth-independent — no changes needed:
+// MIN_FILL_RATIO: 0.9        (fill = totalCV / rowWidth — scales automatically)
+// MAX_FILL_RATIO: 1.15       (same)
+// AR_FLOOR_MULTIPLIER: 0.7   (arFloor = targetAR × 0.7 — scales automatically)
 ```
+
+**Every number above is a fraction or ratio.** None of them reference a specific rowWidth. This is the key to making the system scalable — change rowWidth from 8 to 12, and every cv, every fill check, every composition constraint adjusts proportionally without touching any of these constants.
 
 ### 7.2 New cv Formula (Base — Rating Only)
 
@@ -521,28 +610,50 @@ All 6 ordering fixes from today are preserved. Additionally:
 - **compose() partition splits preserve order.** Left group = first N items, right group = remaining — already the case after today's fix.
 - **findDominant placement is positional.** Dominant goes left if it was in the first half of the input, right otherwise — already fixed today.
 
-### 7.8 Density Scaling
+### 7.8 Density Scaling — The rowWidth Knob in Practice
 
-The user wants collections with few images to show bigger images, and collections with many images to show smaller, denser images.
+The user needs to dynamically grow or shrink image density. There are two independent knobs:
 
-**Mechanism:** The `targetAR` parameter already controls this. Higher `targetAR` = wider/shorter rows = more images per row. Lower `targetAR` = taller rows = fewer images per row.
+1. **`rowWidth`** — controls how many images fit per row (more budget → more items → smaller each)
+2. **`targetAR`** — controls row height (higher AR → shorter rows, lower AR → taller rows)
 
-Currently: `targetAR = clamp(contentWidth / viewportHeight, 1.5, 3.0)`.
-
-We can add a density multiplier based on collection size:
+**rowWidth is the primary density control.** It's the one the user adjusts (via slider, per-collection setting, or automatic calculation). targetAR is secondary — it's viewport-derived and mostly stays constant.
 
 ```typescript
-const baseTAR = clamp(contentWidth / viewportHeight, 1.5, 3.0);
-const densityMultiplier = collectionSize <= 20 ? 0.85
-                        : collectionSize <= 50 ? 1.0
-                        : 1.15;
-const targetAR = baseTAR * densityMultiplier;
+// Primary density control: rowWidth
+const baseRowWidth = isMobile ? LAYOUT.mobileSlotWidth : LAYOUT.desktopSlotWidth;
+const rowWidth = baseRowWidth + densityOffset;
+// densityOffset sources (pick one or combine):
+//   - UI slider: user drags left (-2) to right (+4)
+//   - Automatic: based on filtered image count
+//   - Per-collection setting from database
+
+// Secondary: targetAR (viewport-derived, rarely adjusted)
+const targetAR = clamp(contentWidth / viewportHeight, 1.5, 3.0);
 ```
 
-Small collections (≤20 images) get a lower targetAR → taller rows → bigger images.
-Large collections (50+) get a higher targetAR → wider rows → more images per row.
+**Example density levels (desktop):**
 
-**This is optional and can be added later.** The cv formula change + molecule composition are the primary improvements.
+| Density | rowWidth | densityOffset | H5★ cv | Typical items/row | Use case |
+|---------|----------|--------------|--------|-------------------|----------|
+| Sparse | 6 | -2 | 4.5 | 2–4 | Small collections, portfolio showcase |
+| Default | 8 | 0 | 6.0 | 3–6 | Most collections |
+| Dense | 10 | +2 | 7.5 | 5–8 | Large collections, browse mode |
+| Very dense | 12 | +4 | 9.0 | 6–10 | Huge collections, contact sheet feel |
+
+**Because everything is expressed as fractions of rowWidth, the relative prominence relationships are preserved at every density level.** A 5★ image is always ~75% of the row. A 3★ is always ~33%. What changes is the absolute pixel size — at rowWidth=6, 75% of the row is bigger (fewer companions). At rowWidth=12, 75% is smaller (more companions, but the image still dominates).
+
+**Automatic density based on collection size (optional):**
+
+```typescript
+const autoDensityOffset = filteredCount <= 15 ? -2
+                        : filteredCount <= 30 ? -1
+                        : filteredCount <= 60 ? 0
+                        : filteredCount <= 100 ? +1
+                        : +2;
+```
+
+This is optional and can come later. The important thing is that the system SUPPORTS it by making rowWidth the single knob.
 
 ### 7.9 Mobile Behavior
 
@@ -603,13 +714,14 @@ Row 4:  [V4★ ][V3★ ][V2★ ][V2★ ]                      ← 4 verticals, e
 
 This is an **evolutionary** change, not a rewrite. We modify existing functions in place.
 
-### Phase 1: AR-Aware cv Formula + rowWidth (foundation)
-- Update `LAYOUT.desktopSlotWidth` from 5 → 8
-- Update `LAYOUT.mobileSlotWidth` from 2 → 3
-- Rewrite `getComponentValue` with AR-aware formula (rating × AR factor)
+### Phase 1: AR-Aware cv Formula + Scalable rowWidth (foundation)
+- Update `LAYOUT.desktopSlotWidth` from 5 → 8, `mobileSlotWidth` from 2 → 3
+- Extract `TARGET_FRACTIONS`, `MIN_WIDTH_FRACTION`, `MIN_HEIGHT_FRACTION` as constants
+- Rewrite `getComponentValue` as `rowWidth × fraction × arFactor` — NO hardcoded cv values
 - Update `getItemComponentValue` and `toImageType` to pass AR through
 - Remove `seqCount===1` hero shortcut in `buildRows`
 - Fix `slotCountComplete` hero-skip bug
+- **rowWidth invariant tests:** verify buildRows + compose produce valid output for rowWidth ∈ [4, 16]
 - Update all tests that hardcode cv values or row counts
 
 ### Phase 2: Orientation-Aware Molecule Composition
@@ -723,6 +835,32 @@ Currently V5★ → effectiveRating=4 (vertical penalty). Then with AR factor, c
 - Without vertical penalty: er=5, baseFraction=0.75, arFactor=0.67, **cv=4.0** (50% of row)
 
 Should we remove the vertical penalty now that AR factor handles it? Or keep both for maximum differentiation? The answer affects whether V5★ images feel "important" in the layout or get treated like H3★.
+
+### Q10: Density control — UI slider, automatic, or both?
+
+Section 7.0a establishes rowWidth as the single scaling knob. Section 7.8 shows how it maps to density levels. The question is how the user (you) adjusts it:
+
+**Option A: Automatic only.** densityOffset is derived from filtered image count. No UI control. Simplest to implement.
+
+**Option B: UI slider.** A density slider on the collection page (like Google Photos' zoom slider). User has full control. More complex but more flexible.
+
+**Option C: Both.** Automatic default with manual override via slider. Best of both worlds but most complex.
+
+**Option D: Per-collection setting.** Each collection has a density setting stored in the database. Set once during curation, no runtime slider needed.
+
+My recommendation: start with Option A (automatic), then add Option B later if needed. The architecture supports all options because rowWidth is the only thing that changes.
+
+### Q11: What's the valid range for rowWidth?
+
+Section 7.0a says the system must work for rowWidth ∈ [4, 16]. But what's the practical range you'd actually use?
+
+- rowWidth=4: Very sparse. Most rows have 1–2 images. Almost a slideshow.
+- rowWidth=6: Sparse. 2–4 images per row. Good for small collections.
+- rowWidth=8: Default. 3–6 images per row.
+- rowWidth=12: Dense. 6–9 images per row. Contact sheet territory.
+- rowWidth=16: Very dense. 8–12 images per row. Might be too small for individual images.
+
+Knowing the practical range helps us know how aggressively to test edge cases.
 
 ---
 
