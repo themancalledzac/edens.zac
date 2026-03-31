@@ -11,7 +11,6 @@ import type {
   ContentImageUpdateRequest,
   ContentImageUpdateResponse,
 } from '@/app/types/Content';
-import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
 import { buildLocationDiff as buildLocationDiffUtil } from '@/app/utils/locationUtils';
 
 // ============================================================================
@@ -160,7 +159,7 @@ export function getCommonValues(images: ContentImageModel[]): Partial<ContentIma
   if (areAllEqual(images, img => img.camera?.id)) common.camera = first.camera;
   if (areAllEqual(images, img => img.lens?.id)) common.lens = first.lens;
   if (areAllEqual(images, img => img.iso)) common.iso = first.iso;
-  if (areAllEqual(images, img => img.fstop)) common.fstop = first.fstop;
+  if (areAllEqual(images, img => img.fStop)) common.fStop = first.fStop;
   if (areAllEqual(images, img => img.shutterSpeed)) common.shutterSpeed = first.shutterSpeed;
   if (areAllEqual(images, img => img.focalLength)) common.focalLength = first.focalLength;
 
@@ -658,7 +657,7 @@ export function buildImageUpdateDiff(
     'isFilm',
     'shutterSpeed',
     'focalLength',
-    'fstop',
+    'fStop',
     'iso',
     'filmFormat',
     'captureDate',

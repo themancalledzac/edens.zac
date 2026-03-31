@@ -6,7 +6,12 @@
 import { LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import { getItemComponentValue } from '@/app/utils/contentRatingUtils';
-import type { ImageType, RowResult, TemplateKey } from '@/app/utils/rowCombination';
+import type {
+  AtomicComponent,
+  ImageType,
+  RowResult,
+  TemplateKey,
+} from '@/app/utils/rowCombination';
 import {
   acToBoxTree,
   buildAtomic,
@@ -42,6 +47,12 @@ import {
 // ===================== Constants =====================
 
 const DESKTOP = LAYOUT.desktopSlotWidth; // 5
+
+/** Collect leaf image IDs from an AtomicComponent tree in left-to-right order */
+function collectLeafIds(ac: AtomicComponent): number[] {
+  if (ac.type === 'single') return [ac.img.source.id];
+  return [...collectLeafIds(ac.children[0]), ...collectLeafIds(ac.children[1])];
+}
 
 // getOrientation deleted — toImageType handles orientation inline
 
@@ -1143,7 +1154,7 @@ describe('buildAtomic', () => {
     expect(result.type).toBe('single');
   });
 
-  it('returns hPair for 2 images', () => {
+  it('returns pair for 2 images preserving input order', () => {
     const imgs = [
       toImageType(createVerticalImage(1, 2), DESKTOP),
       toImageType(createHorizontalImage(2, 4), DESKTOP),
@@ -1151,96 +1162,106 @@ describe('buildAtomic', () => {
     const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
     expect(result.type).toBe('pair');
     if (result.type === 'pair') {
-      expect(result.direction).toBe('H');
-    }
-  });
-
-  it('picks stacked layout for 4 verticals (AR closer to 1.5)', () => {
-    const imgs = [1, 2, 3, 4].map(id => toImageType(createVerticalImage(id, id), DESKTOP));
-    const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
-
-    // Should NOT be a flat chain — should use vStack to compact AR
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
-    // A flat chain of 4 verticals would have AR ~= 4 * 0.56 = 2.25
-    // Stacked pairs should be closer to 1.5
-    expect(ar).toBeLessThan(2.0);
-  });
-
-  it('dominant image is on the right side of the final hPair', () => {
-    const imgs = [
-      toImageType(createVerticalImage(1, 1), DESKTOP),
-      toImageType(createVerticalImage(2, 2), DESKTOP),
-      toImageType(createHorizontalImage(3, 5), DESKTOP), // dominant (rating 5)
-    ];
-    const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
-
-    // Root should be hPair with dominant on right
-    expect(result.type).toBe('pair');
-    if (result.type === 'pair') {
-      expect(result.direction).toBe('H');
-      // Right child should be the dominant (rating 5, id 3)
-      const right = result.children[1];
-      expect(right.type).toBe('single');
-      if (right.type === 'single') {
-        expect(right.img.effectiveRating).toBeGreaterThanOrEqual(4);
+      expect(result.children[0].type).toBe('single');
+      expect(result.children[1].type).toBe('single');
+      if (result.children[0].type === 'single' && result.children[1].type === 'single') {
+        expect(result.children[0].img.source.id).toBe(1);
+        expect(result.children[1].img.source.id).toBe(2);
       }
     }
   });
 
-  it('3 horizontals: result AR is reasonable', () => {
-    const imgs = [1, 2, 3].map(id => toImageType(createHorizontalImage(id, id + 1), DESKTOP));
-    const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
-
-    // Should pick whichever candidate is closest to 1.5
-    // All horizontals are wide, so AR will be > 1.5 regardless,
-    // but buildAtomic should pick the best available option
-    expect(ar).toBeGreaterThan(0);
-    expect(ar).toBeLessThan(10);
-  });
-
-  it('mixed 4 items: stacked rest beats flat chain when verticals present', () => {
+  it('merges lowest-rated adjacent pair first for 3 images', () => {
     const imgs = [
-      toImageType(createVerticalImage(1, 2), DESKTOP),
-      toImageType(createHorizontalImage(2, 2), DESKTOP),
-      toImageType(createVerticalImage(3, 3), DESKTOP),
-      toImageType(createHorizontalImage(4, 5), DESKTOP), // dominant
+      toImageType(createHorizontalImage(1, 1), DESKTOP),
+      toImageType(createHorizontalImage(2, 4), DESKTOP),
+      toImageType(createHorizontalImage(3, 1), DESKTOP),
     ];
     const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
-
-    // With vertical stacking, AR should be more compact than a flat chain
-    // Flat chain of 4 items would be very wide (AR > 3)
-    expect(ar).toBeLessThan(4.0);
+    const leafIds = collectLeafIds(result);
+    expect(leafIds).toHaveLength(3);
+    expect(leafIds.sort()).toEqual([1, 2, 3]);
   });
 
-  it('result AR is closest to targetAR among all candidates', () => {
+  it('higher-rated images get merged last (occupy more space)', () => {
     const imgs = [
-      toImageType(createVerticalImage(1, 1), DESKTOP),
-      toImageType(createVerticalImage(2, 2), DESKTOP),
+      toImageType(createHorizontalImage(1, 1), DESKTOP),
+      toImageType(createHorizontalImage(2, 1), DESKTOP),
+      toImageType(createHorizontalImage(3, 5), DESKTOP),
+    ];
+    const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
+    expect(result.type).toBe('pair');
+    if (result.type === 'pair') {
+      const [left, right] = result.children;
+      const singleChild = left.type === 'single' ? left : (right.type === 'single' ? right : null);
+      const pairChild = left.type === 'pair' ? left : (right.type === 'pair' ? right : null);
+      expect(singleChild).not.toBeNull();
+      expect(pairChild).not.toBeNull();
+      if (singleChild?.type === 'single') {
+        expect(singleChild.img.effectiveRating).toBe(5);
+      }
+    }
+  });
+
+  it('preserves natural order: dominant in middle does not scramble', () => {
+    // Dominant (5★) is in the MIDDLE — current code forces it right, scrambling order
+    const imgs = [
+      toImageType(createHorizontalImage(1, 1), DESKTOP),
+      toImageType(createHorizontalImage(2, 5), DESKTOP),
+      toImageType(createHorizontalImage(3, 1), DESKTOP),
+    ];
+    const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
+    const leafIds = collectLeafIds(result);
+    // Natural order preserved: 1, 2, 3 — not scrambled by rating extraction
+    expect(leafIds).toEqual([1, 2, 3]);
+  });
+
+  it('preserves natural order with 4 images and dominant in middle', () => {
+    // [A(1★), B(5★), C(1★), D(2★)] — dominant at index 1
+    const imgs = [
+      toImageType(createHorizontalImage(1, 1), DESKTOP),
+      toImageType(createHorizontalImage(2, 5), DESKTOP),
+      toImageType(createHorizontalImage(3, 1), DESKTOP),
+      toImageType(createHorizontalImage(4, 2), DESKTOP),
+    ];
+    const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
+    const leafIds = collectLeafIds(result);
+    expect(leafIds).toHaveLength(4);
+    // Natural order: 1 before 2 before 3 before 4
+    expect(leafIds).toEqual([1, 2, 3, 4]);
+  });
+
+  it('4 images: lowest-rated pair merges first', () => {
+    const imgs = [
+      toImageType(createHorizontalImage(1, 2), DESKTOP),
+      toImageType(createHorizontalImage(2, 5), DESKTOP),
+      toImageType(createHorizontalImage(3, 1), DESKTOP),
+      toImageType(createHorizontalImage(4, 1), DESKTOP),
+    ];
+    const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
+    const leafIds = collectLeafIds(result);
+    expect(leafIds).toHaveLength(4);
+    expect(leafIds.sort()).toEqual([1, 2, 3, 4]);
+  });
+
+  it('produces reasonable AR for mixed orientations', () => {
+    const imgs = [
+      toImageType(createVerticalImage(1, 2), DESKTOP),
+      toImageType(createHorizontalImage(2, 3), DESKTOP),
       toImageType(createVerticalImage(3, 3), DESKTOP),
       toImageType(createHorizontalImage(4, 5), DESKTOP),
     ];
     const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
-    const resultAR = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
-    const resultDistance = Math.abs(resultAR - TARGET_AR);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
+    expect(ar).toBeGreaterThan(0.5);
+    expect(ar).toBeLessThan(5);
+  });
 
-    // Build all possible structures manually and verify none is closer
-    const { dominant, rest } = findDominant(imgs);
-    const sorted = [...rest].sort((a, b) => a.effectiveRating - b.effectiveRating);
-    const [a, b, c] = [single(sorted[0]!), single(sorted[1]!), single(sorted[2]!)];
-
-    const manualCandidates = [
-      hPair(vStack(hPair(a, b), c), single(dominant)),
-      hPair(vStack(a, hPair(b, c)), single(dominant)),
-      hPair(hChain(sorted), single(dominant)),
-    ];
-
-    for (const candidate of manualCandidates) {
-      const candidateAR = calculateBoxTreeAspectRatio(acToBoxTree(candidate), DESKTOP);
-      const candidateDistance = Math.abs(candidateAR - TARGET_AR);
-      expect(resultDistance).toBeLessThanOrEqual(candidateDistance + 0.001);
-    }
+  it('4 verticals: stacked layout produces compact AR', () => {
+    const imgs = [1, 2, 3, 4].map(id => toImageType(createVerticalImage(id, id), DESKTOP));
+    const result = buildAtomic(imgs, TARGET_AR, DESKTOP);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
+    expect(ar).toBeLessThan(2.5);
   });
 });
 

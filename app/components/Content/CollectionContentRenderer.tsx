@@ -7,6 +7,10 @@ import { useCallback, useMemo, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
+import CollectionFilterChips, {
+  toggleArrayFilter,
+} from '@/app/components/ContentCollection/CollectionFilterChips';
+import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
@@ -131,6 +135,8 @@ export default function CollectionContentRenderer({
     onImageLoadError?.(contentId);
   }, [contentId, onImageLoadError]);
 
+  const collectionFilter = useCollectionFilter();
+
   if (contentType === 'TEXT') {
     if (!textItems || textItems.length === 0) {
       return null;
@@ -143,7 +149,16 @@ export default function CollectionContentRenderer({
     const filterItems = textItems.filter(item => item.type === 'text');
 
     const handleTagClick = (tagName: string, tagSlug?: string) => {
-      router.push(`/tag/${tagSlug ?? slugify(tagName)}`);
+      if (collectionFilter) {
+        toggleArrayFilter(
+          collectionFilter.filterState,
+          collectionFilter.onFilterChange,
+          'selectedTags',
+          tagName
+        );
+      } else {
+        router.push(`/tag/${tagSlug ?? slugify(tagName)}`);
+      }
     };
 
     return (
@@ -166,9 +181,7 @@ export default function CollectionContentRenderer({
           <div className={cbStyles.metadataBlockInner}>
             {(dateItem || locationItem) && (
               <div className={cbStyles.metadataHeaderRow}>
-                {dateItem && (
-                  <div className={cbStyles.metadataDate}>{dateItem.value}</div>
-                )}
+                {dateItem && <div className={cbStyles.metadataDate}>{dateItem.value}</div>}
                 {locationItem && (
                   <Link
                     href={`/location/${locationItem.slug ?? slugify(locationItem.value)}`}
@@ -181,9 +194,7 @@ export default function CollectionContentRenderer({
             )}
             {descriptionItem && (
               <div className={cbStyles.metadataDescriptionContainer}>
-                <p className={cbStyles.metadataDescription}>
-                  {descriptionItem.value}
-                </p>
+                <p className={cbStyles.metadataDescription}>{descriptionItem.value}</p>
               </div>
             )}
             {filterItems.length > 0 && (
@@ -198,7 +209,7 @@ export default function CollectionContentRenderer({
                 ))}
               </div>
             )}
-            {tagItems.length > 0 && (
+            {!collectionFilter && tagItems.length > 0 && (
               <div className={cbStyles.metadataTagsContainer}>
                 <div className={cbStyles.metadataTagsRow}>
                   {tagItems.map(item => (
@@ -218,6 +229,13 @@ export default function CollectionContentRenderer({
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
           </div>
+          {collectionFilter && (
+            <CollectionFilterChips
+              filterState={collectionFilter.filterState}
+              filterOptions={collectionFilter.filterOptions}
+              onFilterChange={collectionFilter.onFilterChange}
+            />
+          )}
         </div>
       </div>
     );
@@ -259,24 +277,20 @@ export default function CollectionContentRenderer({
           </video>
           {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
         </div>
-        {isReorderMode &&
-          onArrowMove &&
-          onPickUp &&
-          onPlace &&
-          onCancelImageMove && (
-            <ReorderOverlay
-              isPickedUp={isPickedUp}
-              pickedUpImageId={pickedUpImageId}
-              hasMoved={hasMoved}
-              isFirst={isFirstInOrder}
-              isLast={isLastInOrder}
-              onArrowLeft={() => onArrowMove(contentId, -1)}
-              onArrowRight={() => onArrowMove(contentId, 1)}
-              onPickUp={() => onPickUp(contentId)}
-              onPlace={() => onPlace(contentId)}
-              onCancel={() => onCancelImageMove(contentId)}
-            />
-          )}
+        {isReorderMode && onArrowMove && onPickUp && onPlace && onCancelImageMove && (
+          <ReorderOverlay
+            isPickedUp={isPickedUp}
+            pickedUpImageId={pickedUpImageId}
+            hasMoved={hasMoved}
+            isFirst={isFirstInOrder}
+            isLast={isLastInOrder}
+            onArrowLeft={() => onArrowMove(contentId, -1)}
+            onArrowRight={() => onArrowMove(contentId, 1)}
+            onPickUp={() => onPickUp(contentId)}
+            onPlace={() => onPlace(contentId)}
+            onCancel={() => onCancelImageMove(contentId)}
+          />
+        )}
       </div>
     );
   }
@@ -481,9 +495,7 @@ export default function CollectionContentRenderer({
           isSelected={isSelected}
         />
       )}
-      {isClientGallery && contentType === 'IMAGE' && (
-        <ImageDownloadOverlay imageId={contentId} />
-      )}
+      {isClientGallery && contentType === 'IMAGE' && <ImageDownloadOverlay imageId={contentId} />}
       {isReorderMode &&
         onArrowMove &&
         onPickUp &&

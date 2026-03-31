@@ -251,7 +251,35 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
 
   return (
     <div className={styles.formGroup} ref={containerRef}>
-      <label className={styles.formLabel}>{label}</label>
+      <div className={styles.formLabelRow}>
+        <label className={styles.formLabel}>{label}</label>
+
+        {/* Action Buttons */}
+        <div className={styles.cameraActions}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsSelectingFromDropdown(!isSelectingFromDropdown);
+              setIsAddingNew(false);
+            }}
+            className={styles.cameraChangeButton}
+          >
+            {isSelectingFromDropdown ? 'Close' : getButtonText()}
+          </button>
+          {allowAddNew && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingNew(!isAddingNew);
+                setIsSelectingFromDropdown(false);
+              }}
+              className={styles.cameraAddButton}
+            >
+              {isAddingNew ? 'Close' : addNewButtonText}
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Current Selection Display */}
       <div className={styles.cameraDisplay}>
@@ -302,32 +330,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
                 )}
               </div>
             ))}
-        </div>
-
-        {/* Action Buttons */}
-        <div className={styles.cameraActions}>
-          <button
-            type="button"
-            onClick={() => {
-              setIsSelectingFromDropdown(!isSelectingFromDropdown);
-              setIsAddingNew(false);
-            }}
-            className={styles.cameraChangeButton}
-          >
-            {isSelectingFromDropdown ? 'Close' : getButtonText()}
-          </button>
-          {allowAddNew && (
-            <button
-              type="button"
-              onClick={() => {
-                setIsAddingNew(!isAddingNew);
-                setIsSelectingFromDropdown(false);
-              }}
-              className={styles.cameraAddButton}
-            >
-              {isAddingNew ? 'Close' : addNewButtonText}
-            </button>
-          )}
         </div>
       </div>
 

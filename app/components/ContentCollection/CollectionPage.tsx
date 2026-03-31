@@ -2,8 +2,9 @@ import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWit
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
-import { clampParallaxDimensions, processContentBlocks } from '@/app/utils/contentLayout';
+import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 
+import CollectionPageClient from './CollectionPageClient';
 import styles from './ContentCollectionPage.module.scss';
 
 interface ContentCollectionPageProps {
@@ -65,30 +66,32 @@ export default async function CollectionPage({
   collection,
   chunkSize,
 }: ContentCollectionPageProps) {
-  const contentBlocks: AnyContentModel[] = Array.isArray(collection)
-    ? collection.map(collectionToContentModel)
-    : processContentBlocks(collection.content ?? [], true, collection.id, collection.displayMode);
+  // Single collection: delegate to client component for filter support
+  if (!Array.isArray(collection)) {
+    return (
+      <div className={styles.container}>
+        <main className={styles.main}>
+          <SiteHeader pageType="collection" collectionSlug={collection.slug} />
+          <CollectionPageClient collection={collection} chunkSize={chunkSize} />
+        </main>
+      </div>
+    );
+  }
 
-  const singleCollection = Array.isArray(collection) ? null : collection;
-  const collectionSlug = singleCollection?.slug;
-  const pageSize = singleCollection?.contentPerPage ?? 30;
+  // Array of collections: server-rendered grid (no filters)
+  const contentBlocks: AnyContentModel[] = collection.map(collectionToContentModel);
 
   return (
     <div className={styles.container}>
       <main className={styles.main}>
-        <SiteHeader
-          pageType={singleCollection ? 'collection' : 'collectionsCollection'}
-          collectionSlug={collectionSlug}
-        />
-        {contentBlocks && contentBlocks.length > 0 ? (
+        <SiteHeader pageType="collectionsCollection" />
+        {contentBlocks.length > 0 ? (
           <ContentBlockWithFullScreen
             content={contentBlocks}
             priorityBlockIndex={0}
             enableFullScreenView
-            initialPageSize={pageSize}
+            initialPageSize={30}
             chunkSize={chunkSize}
-            collectionSlug={collectionSlug}
-            collectionData={singleCollection ?? undefined}
           />
         ) : null}
       </main>
