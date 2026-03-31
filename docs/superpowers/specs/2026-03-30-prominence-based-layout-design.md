@@ -76,7 +76,7 @@ The `chunkSize`/`rowWidth` parameter (5 for desktop, 2 for mobile) controls how 
 
 **"At least" vs "at most" creates conflicts.** If H5★ is "at least 75%" and H4★ is "at most 50%," what happens when they're in the same row? 75% + 50% = 125% > 100%. The constraints need to be *targets* that the layout engine optimizes toward, not hard walls that must be satisfied simultaneously.
 
-**The proposal doesn't address how rows get *filled*.** Saying "5★ is at least 75%" tells us the constraint, but not the algorithm. How do we decide which images go together? The current greedy fill works by summing cv until the row is full. If we change cv for 5★ from 5.0 to 3.75 (75% of 5), a 5★ image no longer fills a row — but what fills the remaining 25%? A 1★ image has cv=1.0 (20%), a 2★ has cv=1.25 (25%). So a row could be: H5★(75%) + H2★(25%) = 100%. That works — but only because the cv formula happens to produce complementary values. We need a deliberate algorithm, not accidental arithmetic.
+**The proposal doesn't address how rows get *filled*.** Saying "5★ is at least 75%" tells us the constraint, but not the algorithm. How do we decide which images go together? The current greedy fill works by summing cv until the row is full. With the new fixed-weight system (section 7.2), H5★ has cv=5.0 on a rowWidth=8 budget = 62.5% fill. The greedy fill naturally pulls in companions: H5★(5.0) + H3★(2.5) = 7.5 → 94% fill. But we need a deliberate algorithm for which companions get pulled and how they're composed, not accidental arithmetic.
 
 **"More images per row" and "images should be bigger" for high-rated ones are in tension.** If 5★ images occupy 75% of a row, you can fit maybe 1–2 more small images. To get 5–6 images per row, you need lower-rated images with lower-rated neighbors, which already happens for 2–3★ images. The visual variety will come from rows having different densities (hero row with 2 images, dense row with 5–6), not from every row having many images.
 
@@ -122,17 +122,17 @@ The `chunkSize`/`rowWidth` parameter (5 for desktop, 2 for mobile) controls how 
 
 ### Approach A: "Retune cv" — Minimal change, adjust the formula
 
-Change `getComponentValue` so that 5★ maps to cv=6.0 on a rowWidth=8 budget (75%) instead of cv=5.0 on rowWidth=5 (100%). Everything else scales.
+Change `getComponentValue` to use fixed weights (cv=5.0 for 5★) instead of `rowWidth / itemsPerRow`. Increase rowWidth to 8 so 5★ can share rows.
 
-| effectiveRating | Old cv (rw=5) | New cv (rw=8) | Row fraction |
+| effectiveRating | Old cv (rw=5) | New cv (fixed) | Fraction at rw=8 |
 |----------------|---------------|---------------|-------------|
-| 5 | 5.0 (100%) | 6.0 (75%) | 75% |
-| 4 | 2.5 (50%) | 4.0 (50%) | 50% |
-| 3 | 1.67 (33%) | 2.67 (33%) | 33% |
-| 2 | 1.25 (25%) | 2.0 (25%) | 25% |
-| 0–1 | 1.0 (20%) | 1.33 (17%) | 17% |
+| 5 | 5.0 (100%) | 5.0 | 62% |
+| 4 | 2.5 (50%) | 3.5 | 44% |
+| 3 | 1.67 (33%) | 2.5 | 31% |
+| 2 | 1.25 (25%) | 1.75 | 22% |
+| 0–1 | 1.0 (20%) | 1.0–1.25 | 12–16% |
 
-**Pros:** Minimal code change. Just the formula + rowWidth constant.
+**Pros:** Minimal code change. Solves the hero problem. Fixed weights scale with density.
 **Cons:** Doesn't solve density. Rows still use flat hChain. No new vertical stacking. The template map doesn't have entries for 6–8 items. The composition system can't build good trees for large groups.
 
 **Verdict:** Necessary but not sufficient. This fixes the hero problem but not the density problem.
@@ -152,11 +152,11 @@ Example: `[V3★, V2★, H5★, H3★, V2★]` → pre-compose `[vStack(V3★,V2
 
 **Change the cv formula AND the composition system together.** This is the holistic fix:
 
-1. **New cv formula** on rowWidth=8: 5★=6.0 (75%), 4★=4.0 (50%), 3★=2.67 (33%), 2★=2.0 (25%), 0–1★=1.33 (17%).
+1. **Fixed-weight cv formula** with AR factor: cv = BASE_WEIGHT[rating] × arFactor (rowWidth is the budget, not part of cv).
 2. **Remove the `seqCount===1` hero shortcut** so 5★ images can share rows.
-3. **Add dense composition templates** for 5–8 items that use vStack aggressively.
-4. **Enhance `compose()` to prefer vStack molecules** when the row has many items.
-5. **Add post-composition min-width validation** to prevent high-rated images from being squeezed.
+3. **Add dense composition templates** for 5–8 items with orientation-aware molecules.
+4. **Enhance `compose()` with orientation-aware molecule strategy** (hPair verticals, vStack horizontals).
+5. **Add two-axis prominence validation** — width constraints for H images, height constraints for V images.
 6. **Fix the slotCountComplete hero-skip bug** (DSC_6643).
 
 **Pros:** Solves all three problems (hero, density, ordering). Preserves the template map and atomic design. Additive rather than destructive (we're adding templates and enhancing composition, not ripping anything out).
@@ -191,7 +191,7 @@ A "row" in this layout is NOT a horizontal strip of images at the same height. A
 - **Vertical images:** prominence = height fraction of the row (taller = more prominent, and they should occupy full height or close to it)
 
 This is exactly what the user's original proposal described:
-- H5★ = at least 75% of row **width**
+- H5★ = dominates row **width** (~62% at default density, ~83% at sparse)
 - V5★ = at least 75–85% of row **height** (i.e., don't vStack it — let it be full row height)
 - V4★ = 50–75% of row **height** (could share with one vStacked companion)
 - V3★ = 25–50% of row **height** (can be vStacked with 1–2 others)
@@ -203,8 +203,8 @@ These are not incompatible units — they're constraints on DIFFERENT AXES that 
 | V5★ ≥ 75% row height | Do NOT vStack this image. Let it be a standalone column at full row height. |
 | V4★ ≥ 50% row height | May vStack with ONE small companion (V4★ gets the bigger share). |
 | V3★ ≥ 25% row height | Can be vStacked with 2–3 others. |
-| H5★ ≥ 75% row width | This image dominates width. vStack it with 1–2 smaller images for height. |
-| H4★ ≥ 50% row width | Takes half the width. Can be vStacked with a companion. |
+| H5★ — dominant width | This image dominates width (fraction depends on density). vStack it with 1–2 smaller images for height. |
+| H4★ — secondary width | Takes a significant share. Can be vStacked with a companion. |
 | H3★ — no constraint | Flexible — vStack freely for density. |
 
 **Flat-row penalty for AR scoring:** When `compose()` generates candidates, flat hChain compositions (no vStack nodes) should receive an AR penalty for rows with 3+ images. This ensures the AR scorer prefers compositions with vertical depth even when a flat layout happens to hit the target AR.
@@ -410,7 +410,7 @@ New: `cv = BASE_WEIGHT[rating]` → fraction = weight/rowWidth → fraction SHRI
 
 **This is the single most important insight in this spec.**
 
-The cv formula in 7.2 treats all images equally by rating. But consider what happens when `H5★ (AR=2.0)` and `V5★ (AR=0.5)` both get cv=6.0:
+The base cv formula in 7.2 treats all images equally by rating. But consider what happens when `H5★ (AR=2.0)` and `V5★ (AR=0.5)` both get the same base weight:
 
 In a row with `H5★ + V2★`, the box tree calculator distributes width by AR ratio:
 - H5★ (AR=2.0) gets: `2.0 / (2.0 + 0.67)` = **75% width**
@@ -540,7 +540,7 @@ This is a significant refinement from the naive "always vStack molecules" in the
 
 The greedy fill algorithm stays mostly the same. Key changes:
 
-**Remove the `seqCount===1` hero shortcut (line 771–773).** Currently, when a single item fills `>= MIN_FILL_RATIO`, it auto-breaks as a hero. With the new cv formula, 5★ items cv=6.0/8=0.75 won't trigger this (below 0.9). But we still need to remove the shortcut for correctness — even if an item *could* fill a row alone, we should still check AR and potentially add more items for density.
+**Remove the `seqCount===1` hero shortcut (line 771–773).** Currently, when a single item fills `>= MIN_FILL_RATIO`, it auto-breaks as a hero. With the new cv formula, H5★ has cv=5.0, fill=5.0/8=0.625 — well below MIN_FILL 0.9. So this shortcut can't trigger for any standard image. But we still need to remove or raise the threshold for correctness — even if an item *could* fill a row alone, we should still check AR and potentially add more items for density.
 
 **Actually**: we should keep the shortcut but raise its threshold. A single item should only become a hero if `cv / rowWidth >= 0.95` (nearly full width). In the new formula, no image reaches this threshold on desktop, so heroes become opt-in via the standalone promotion path only.
 
@@ -551,9 +551,9 @@ if (cv / rowWidth >= MIN_FILL_RATIO) {
   break;
 }
 ```
-This prevents DSC_6643 (cv=5.0 old / cv=6.0 new) from being pulled into someone else's row.
+This prevents DSC_6643 from being pulled into someone else's row.
 
-**Note:** With the new cv formula, this bug affects different ratings. A 5★ (cv=6.0) on rowWidth=8 has fill ratio 0.75 — below `MIN_FILL_RATIO=0.9` — so the existing `cv / rowWidth >= MIN_FILL_RATIO` guard from the standalone promotion path won't protect it. We need a different guard: check if adding this item would give it *less* prominence than its rating deserves. Specifically: if the item's cv would become less than `minWidthFraction[rating] * rowWidth` in the expanding row, skip it.
+**Note:** With the new cv formula, a 5★ has cv=5.0 on rowWidth=8 → fill ratio 0.625 — well below `MIN_FILL_RATIO=0.9` — so the existing `cv / rowWidth >= MIN_FILL_RATIO` guard won't protect it. We need a different guard: check if adding this item would give it *less* prominence than its rating deserves. Specifically: if the item's cv would become less than `MIN_WIDTH_FRACTION[rating] * rowWidth` in the expanding row, skip it.
 
 **Simpler alternative:** In the `slotCountComplete` loop, check if the next item's effectiveRating ≥ 4. If so, don't swallow it — let it start a new row where it can be properly composed. This is a coarser but more robust guard.
 
@@ -735,7 +735,7 @@ All rows are the same short height. Monotonous strip layout.
 **Proposed (rowWidth=8, AR-aware cv):**
 
 ```
-Row 1:  [=========== H5★ ===========][V3★]            ← H5★ dominates width (~75%)
+Row 1:  [=========== H5★ ===========][V3★]            ← H5★ dominates width (~62% at rw=8)
         [=========== H5★ ===========][V3★]            ← V3★ is narrow but shares full row height
                                                         ← V3★'s visual area is small — correct for 3★
 
@@ -755,7 +755,7 @@ Row 4:  [V4★ ][V3★ ][V2★ ][V2★ ]                      ← 4 verticals, e
 **Key differences:**
 1. **Rows are TALLER** — vStacked horizontal molecules add height, hPaired vertical molecules add width
 2. **More images per row** — 4–6 instead of 2–4
-3. **Visual prominence tracks rating** — H5★ at 75% width dominates; V5★ narrow but tall = similar area
+3. **Visual prominence tracks rating** — H5★ at ~62% width dominates at default density; V5★ narrow but tall = similar visual area
 4. **No solo hero rows** — even 5★ shares with companions
 5. **AR-aware cv** — verticals get lower cv (they "cost" more visual space per unit of width)
 
@@ -767,8 +767,8 @@ This is an **evolutionary** change, not a rewrite. We modify existing functions 
 
 ### Phase 1: AR-Aware cv Formula + Scalable rowWidth (foundation)
 - Update `LAYOUT.desktopSlotWidth` from 5 → 8, `mobileSlotWidth` from 2 → 3
-- Extract `TARGET_FRACTIONS`, `MIN_WIDTH_FRACTION`, `MIN_HEIGHT_FRACTION` as constants
-- Rewrite `getComponentValue` as `rowWidth × fraction × arFactor` — NO hardcoded cv values
+- Extract `BASE_WEIGHT`, `MIN_WIDTH_FRACTION`, `MIN_HEIGHT_FRACTION` as constants
+- Rewrite `getComponentValue` as `BASE_WEIGHT[rating] × arFactor` — cv is a fixed weight, NOT multiplied by rowWidth
 - Update `getItemComponentValue` and `toImageType` to pass AR through
 - Remove `seqCount===1` hero shortcut in `buildRows`
 - Fix `slotCountComplete` hero-skip bug
@@ -869,7 +869,7 @@ The AR-aware cv formula (section 7.2a) uses `sqrt(imageAR / referenceAR)` as the
 | 0.67 (portrait) | 0.67 | 0.45 |
 | 0.5 (tall V) | 0.58 | 0.33 |
 
-With `sqrt`: a V5★ (er=4, AR=0.67) gets cv=2.67. With `linear`: cv=1.78.
+With `sqrt`: a V5★ (er=4, AR=0.67) gets cv = 3.5 × 0.67 = 2.34. With `linear`: cv = 3.5 × 0.45 = 1.57.
 
 `sqrt` is gentler — verticals still get meaningful cv, so they don't become invisible in row fill. `linear` is more aggressive — verticals get tiny cv, which means rows could have many more verticals (8–10 tiny verticals to fill a budget of 8.0).
 
@@ -887,10 +887,10 @@ The current `targetAR` clamp is `[1.5, 3.0]`. Should we narrow this to `[1.8, 2.
 
 Currently V5★ → effectiveRating=4 (vertical penalty). Then with AR factor, cv gets further reduced. This double-penalty might be too aggressive:
 
-- V5★: er=4, baseFraction=0.50, arFactor=0.67, **cv=2.67** (33% of row)
-- Without vertical penalty: er=5, baseFraction=0.75, arFactor=0.67, **cv=4.0** (50% of row)
+- V5★: er=4, baseWeight=3.5, arFactor=0.67, **cv=2.34** → 29% at rw=8
+- Without vertical penalty: er=5, baseWeight=5.0, arFactor=0.67, **cv=3.35** → 42% at rw=8
 
-Should we remove the vertical penalty now that AR factor handles it? Or keep both for maximum differentiation? The answer affects whether V5★ images feel "important" in the layout or get treated like H3★.
+Should we remove the vertical penalty now that AR factor handles it? Or keep both for maximum differentiation? The answer affects whether V5★ images feel "important" in the layout (42% without penalty — clearly prominent) or get treated like H3★ (29% with both penalties — not prominent at all).
 
 ### Q10: Density control — UI slider, automatic, or both?
 
