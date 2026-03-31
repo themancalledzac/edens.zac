@@ -1,7 +1,7 @@
 /**
  * Row Optimizer — Phase 2 post-pass on buildRows() output.
  *
- * Adjusts row boundaries and within-row item order to maximize fill quality,
+ * Adjusts row boundaries to maximize fill quality,
  * without replacing the greedy algorithm in buildRows().
  */
 
@@ -93,28 +93,9 @@ export function optimizeBoundaries(rows: RowResult[], rowWidth: number): RowResu
 }
 
 /**
- * For 2-item rows, swap items so the higher-rated image is on the left.
- */
-export function reorderWithinRows(rows: RowResult[], rowWidth: number): RowResult[] {
-  return rows.map(row => {
-    if (row.components.length !== 2) return row;
-
-    const imgA = toImageType(row.components[0]!, rowWidth);
-    const imgB = toImageType(row.components[1]!, rowWidth);
-
-    if (imgB.effectiveRating > imgA.effectiveRating) {
-      const swapped = [row.components[1]!, row.components[0]!];
-      return rebuildRow(swapped, rowWidth);
-    }
-
-    return row;
-  });
-}
-
-/**
- * Public API — optimize row boundaries and within-row order.
+ * Public API — optimize row boundaries.
  * Drop-in wrapper around buildRows() output.
  */
 export function optimizeRows(rows: RowResult[], rowWidth: number): RowResult[] {
-  return reorderWithinRows(optimizeBoundaries(rows, rowWidth), rowWidth);
+  return optimizeBoundaries(rows, rowWidth);
 }
