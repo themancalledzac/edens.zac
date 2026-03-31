@@ -72,7 +72,7 @@ The `chunkSize`/`rowWidth` parameter (5 for desktop, 2 for mobile) controls how 
 
 **The percentage model mixes incompatible units.** The proposal says H5★ should be "at least 75% width" and V5★ should be "at most 75–85% height." Width and height are different axes. In the current system, height is *derived* from width via aspect ratio — you can't independently constrain both. If a horizontal image is 75% of row width, its height is `0.75 * rowWidth / AR`. If a vertical image is 85% of row height, what's row height? Row height isn't known until all images in the row are composed.
 
-**The solution:** Express all constraints in terms of **width fraction** (what % of row width this image occupies). Height follows naturally from AR. For verticals, "occupying 30% of row width" already means they're tall (because their AR < 1), so they'll be prominent vertically without needing a height constraint.
+**The solution (revised after further analysis — see section 7.2a):** Width fraction alone is NOT sufficient. A vertical image at 50% width produces a row 4× taller than a horizontal at 50% width. The real unit of prominence is **visual area**, which is AR-dependent. The cv formula must account for aspect ratio, not just rating. See section 7.2a for the AR-aware cv approach.
 
 **"At least" vs "at most" creates conflicts.** If H5★ is "at least 75%" and H4★ is "at most 50%," what happens when they're in the same row? 75% + 50% = 125% > 100%. The constraints need to be *targets* that the layout engine optimizes toward, not hard walls that must be satisfied simultaneously.
 
@@ -107,11 +107,11 @@ The `chunkSize`/`rowWidth` parameter (5 for desktop, 2 for mobile) controls how 
 
 | Component | Change | Why |
 |-----------|--------|-----|
-| **cv formula** (`getComponentValue`) | New formula that allows 5★ to share rows | Core change — 5★ should be ~75% of row, not 100% |
+| **cv formula** (`getComponentValue`) | AR-aware formula: rating × AR factor determines cv | Width fraction alone fails — verticals at same width are 4× taller. cv must account for AR. |
 | **`rowWidth` budget** | Increase from 5 to 8 (desktop) | More granular budget allows finer-grained compositions |
 | **Template map** | Add entries for 5–8 item compositions | Currently only covers 1–5 items; denser rows need templates |
 | **`buildAtomic`** | Expand to handle 5–6 item groups with more vStack candidates | Currently limited to 3–4 items with limited vStack usage |
-| **`compose`** | Add "molecule" composition: vStack pairs before hPair-ing | Currently prefers flat hChain for large groups |
+| **`compose`** | Add orientation-aware molecule composition (hPair verticals, vStack horizontals) | Currently prefers flat hChain for large groups |
 | **`buildRows` hero logic** | Remove the `seqCount===1 → break` shortcut | 5★ images should not auto-break into solo rows |
 | **`buildRows` slotCountComplete** | Add hero-skip check (the DSC_6643 fix) | Pre-existing bug |
 | **Size constraints** | Add min-width validation after composition | Ensure high-rated images don't get squeezed too small |
@@ -187,37 +187,26 @@ minWidthFraction: {
 },
 ```
 
-### 7.2 New cv Formula
+### 7.2 New cv Formula (Base — Rating Only)
+
+> **Important:** This is the base formula. Section 7.2a extends it with AR-awareness.
+> The final formula (7.2a) takes `imageAR` as a parameter and applies an AR correction factor.
+> Read this section for the rating-based intuition, then 7.2a for the complete solution.
 
 ```typescript
-// In contentRatingUtils.ts
-export function getComponentValue(effectiveRating: number, slotWidth: number): number {
-  if (slotWidth <= 3) {
-    // Mobile: 5★=3 (full), 4★=2, 3★=1.5, 2★=1, 0-1★=1
-    if (effectiveRating >= 5) return slotWidth;
-    if (effectiveRating >= 4) return 2;
-    if (effectiveRating >= 3) return 1.5;
-    return 1;
-  }
-
-  // Desktop (slotWidth=8):
-  // The key change: 5★ no longer fills the entire row.
-  // Formula: cv = slotWidth * targetFraction
-  const TARGET_FRACTIONS: Record<number, number> = {
-    5: 0.75,   // 75% → cv=6.0
-    4: 0.50,   // 50% → cv=4.0
-    3: 0.333,  // 33% → cv=2.67
-    2: 0.25,   // 25% → cv=2.0
-    1: 0.167,  // 17% → cv=1.33
-    0: 0.125,  // 12.5% → cv=1.0
-  };
-
-  const fraction = TARGET_FRACTIONS[Math.min(effectiveRating, 5)] ?? 0.125;
-  return slotWidth * fraction;
-}
+// Base formula — rating-only (superseded by 7.2a, shown for intuition)
+// Desktop (slotWidth=8):
+const TARGET_FRACTIONS: Record<number, number> = {
+  5: 0.75,   // 75% → cv=6.0
+  4: 0.50,   // 50% → cv=4.0
+  3: 0.333,  // 33% → cv=2.67
+  2: 0.25,   // 25% → cv=2.0
+  1: 0.167,  // 17% → cv=1.33
+  0: 0.125,  // 12.5% → cv=1.0
+};
 ```
 
-**What this means for row composition (desktop, rowWidth=8):**
+**What this means for row fill (desktop, rowWidth=8) — before AR correction:**
 
 | Row scenario | Total cv | Fill ratio | Notes |
 |-------------|----------|-----------|-------|
@@ -225,12 +214,136 @@ export function getComponentValue(effectiveRating: number, slotWidth: number): n
 | H5★ + V2★ | 6.0 + 2.0 = 8.0 | 100% | ✅ Perfect fill |
 | H5★ + V1★ + V1★ | 6.0 + 1.33 + 1.33 = 8.66 | 108% | ✅ Within MAX_FILL=1.15 |
 | H4★ + H4★ | 4.0 + 4.0 = 8.0 | 100% | ✅ Two 4★ images side by side |
-| H4★ + H3★ + V2★ | 4.0 + 2.67 + 2.0 = 8.67 | 108% | ✅ Three images, mixed |
 | H3★ + H3★ + H3★ | 2.67 × 3 = 8.0 | 100% | ✅ Three 3★ images |
 | H2★ × 4 | 2.0 × 4 = 8.0 | 100% | ✅ Four 2★ images |
-| V1★ × 6 | 1.33 × 6 = 8.0 | 100% | ✅ Six small images |
+
+**⚠️ But this ignores AR — see next section for why this breaks with verticals.**
 
 **Critical observation:** A 5★ horizontal can **no longer be a solo row**. Its cv=6.0 only gives 75% fill, which is below `MIN_FILL_RATIO=0.9`. The greedy fill MUST pull in at least one more image. This is exactly the behavior we want.
+
+### 7.2a The AR Problem — Why Width Fraction Alone Fails
+
+**This is the single most important insight in this spec.**
+
+The cv formula in 7.2 treats all images equally by rating. But consider what happens when `H5★ (AR=2.0)` and `V5★ (AR=0.5)` both get cv=6.0:
+
+In a row with `H5★ + V2★`, the box tree calculator distributes width by AR ratio:
+- H5★ (AR=2.0) gets: `2.0 / (2.0 + 0.67)` = **75% width**
+- V2★ (AR=0.67) gets: `0.67 / 2.67` = **25% width**
+- Row height: `rowWidth / 2.67` — reasonable.
+
+In a row with `V5★ + H2★`, the box tree distributes:
+- V5★ (AR=0.67) gets: `0.67 / (0.67 + 2.0)` = **25% width** — but it's TALL
+- H2★ (AR=2.0) gets: `2.0 / 2.67` = **75% width** — but forced to match the vertical's height
+- Row height: `rowWidth / 2.67` — same math, but the V5★ at 25% width and this row height is **much taller than wide**, making it feel enormous.
+
+**The core issue:** Width fraction doesn't capture visual weight. A vertical at 25% width with row height 1.5x its width takes up more visual area than a horizontal at 75% width with the same row height.
+
+**Visual area analysis:**
+
+For an image in an hPair, its actual rendered area (relative to row area) is:
+```
+widthFraction = imageAR / totalRowAR
+heightFraction = 1.0 (all images in hPair share row height)
+areaFraction = widthFraction × heightFraction = imageAR / totalRowAR
+```
+
+So in the `H5★ + V2★` row above:
+- H5★ area: 2.0 / 2.67 = **75%** of row area (dominant — good!)
+- V2★ area: 0.67 / 2.67 = **25%** (companion — good!)
+
+In the `V5★ + H2★` row:
+- V5★ area: 0.67 / 2.67 = **25%** of row area (NOT dominant — bad! The 5★ image looks small)
+- H2★ area: 2.0 / 2.67 = **75%** (companion takes most of the area — bad!)
+
+**The vertical penalty already partially addresses this** — V5★ → effectiveRating 4 → cv=4.0 instead of 6.0. But it's a crude -1 adjustment that doesn't reflect the actual AR difference.
+
+#### Solution: AR-Weighted cv
+
+The cv formula should account for aspect ratio to ensure that the *visual area* (not just width) matches the intended prominence.
+
+**Approach: Scale cv by an AR factor.** Images with low AR (vertical) have their cv reduced because they'll take up more vertical space per unit of width. Images with high AR (horizontal) keep their cv as-is.
+
+```typescript
+export function getComponentValue(
+  effectiveRating: number,
+  slotWidth: number,
+  imageAR: number  // NEW parameter — actual aspect ratio of the image
+): number {
+  if (slotWidth <= 3) {
+    // Mobile — keep simple, AR factor less impactful on small screens
+    if (effectiveRating >= 5) return slotWidth;
+    if (effectiveRating >= 4) return 2;
+    if (effectiveRating >= 3) return 1.5;
+    return 1;
+  }
+
+  // Desktop (slotWidth=8):
+  const TARGET_FRACTIONS: Record<number, number> = {
+    5: 0.75,
+    4: 0.50,
+    3: 0.333,
+    2: 0.25,
+    1: 0.167,
+    0: 0.125,
+  };
+
+  const baseFraction = TARGET_FRACTIONS[Math.min(effectiveRating, 5)] ?? 0.125;
+
+  // AR factor: normalize to a "standard" horizontal AR of 1.5
+  // Verticals (AR < 1) get reduced cv → they need less width to be visually prominent
+  // Horizontals (AR > 1.5) get slightly increased cv → they need more width
+  const REFERENCE_AR = 1.5;
+  const arFactor = Math.sqrt(Math.min(imageAR, REFERENCE_AR) / REFERENCE_AR);
+  // arFactor examples:
+  //   AR=2.0 (wide H):  sqrt(min(2.0,1.5)/1.5) = sqrt(1.0) = 1.00 (capped at reference)
+  //   AR=1.5 (standard): sqrt(1.5/1.5) = 1.00
+  //   AR=1.0 (square):   sqrt(1.0/1.5) = 0.82
+  //   AR=0.67 (portrait): sqrt(0.67/1.5) = 0.67
+  //   AR=0.5 (tall V):   sqrt(0.5/1.5) = 0.58
+
+  return slotWidth * baseFraction * arFactor;
+}
+```
+
+**What this means in practice:**
+
+| Image | Rating | AR | baseFraction | arFactor | cv (rw=8) | Row fraction |
+|-------|--------|------|-------------|----------|-----------|-------------|
+| H5★ | 5 | 2.0 | 0.75 | 1.00 | **6.0** | 75% |
+| H4★ | 4 | 1.8 | 0.50 | 1.00 | **4.0** | 50% |
+| V5★(er=4) | 4 | 0.67 | 0.50 | 0.67 | **2.67** | 33% |
+| H3★ | 3 | 1.5 | 0.333 | 1.00 | **2.67** | 33% |
+| V4★(er=3) | 3 | 0.67 | 0.333 | 0.67 | **1.78** | 22% |
+| H2★ | 2 | 2.0 | 0.25 | 1.00 | **2.0** | 25% |
+| V3★(er=2) | 2 | 0.5 | 0.25 | 0.58 | **1.16** | 14.5% |
+| V1★(er=0) | 0 | 0.67 | 0.125 | 0.67 | **0.67** | 8% |
+
+**Key improvement:** V5★ (effectiveRating=4, AR=0.67) now gets cv=2.67 instead of 4.0. In a row with H4★, the total is 4.0+2.67=6.67 (83% fill). That leaves room for a small image. And the V5★'s narrow width + tall height gives it visual area comparable to the H4★ — true parity.
+
+**Row scenarios with AR-weighted cv:**
+
+| Row | Total cv | Fill | Visual balance |
+|-----|----------|------|---------------|
+| H5★(6.0) + V3★(1.16) + V2★(0.67) | 7.83 | 98% | H5★ dominates width, verticals add density beside it |
+| H4★(4.0) + V5★(2.67) + V1★(0.67) | 7.34 | 92% | H4★ and V5★ share similar visual area |
+| V4★(1.78) + V3★(1.16) + H3★(2.67) + H2★(2.0) | 7.61 | 95% | Mixed — verticals tall and narrow, horizontals wide and short |
+| H3★(2.67) + H3★(2.67) + H3★(2.67) | 8.0 | 100% | Three equal horizontals |
+
+#### Impact on Molecule Strategy (Section 7.5)
+
+The AR-aware cv changes which molecule strategies make sense:
+
+- **Two verticals side by side** (`hPair`): Combined AR = AR_a + AR_b ≈ 1.33. This makes a roughly-square molecule. **This is good** — it "normalizes" verticals into a wider shape.
+- **Two horizontals stacked** (`vStack`): Combined AR = 1/(1/AR_a + 1/AR_b) ≈ 0.75. This makes a portrait-ish molecule. **This adds height/density** to a row.
+- **Vertical + horizontal stacked** (`vStack`): Creates an intermediate AR.
+
+**The molecule strategy must be orientation-aware:**
+- Vertical pairs → prefer `hPair` (side by side) — normalizes their AR
+- Horizontal pairs → prefer `vStack` (stacked) — adds density
+- Mixed pairs → try both, pick best AR fit
+
+This is a significant refinement from the naive "always vStack molecules" in the original spec.
 
 ### 7.3 buildRows Changes
 
@@ -257,44 +370,64 @@ This prevents DSC_6643 (cv=5.0 old / cv=6.0 new) from being pulled into someone 
 
 The template map currently has entries for 1–5 items. With rowWidth=8, rows will commonly have 4–7 images. We need templates for these counts that use vertical stacking.
 
-**Philosophy:** For N images, the composition should build "molecules" (vStacked pairs) first, then combine molecules horizontally. This is the atom → molecule → row pattern.
+**Philosophy:** The composition should build "molecules" from adjacent pairs, but the molecule type depends on orientation:
+- **Vertical pairs → hPair** (side by side): Two narrow/tall images become one wider unit
+- **Horizontal pairs → vStack** (on top): Two wide/short images become one taller unit
+- **Mixed pairs → try both**, pick best AR fit for the row
+
+This is the atom → molecule → row pattern, and it's **orientation-aware** — the same principle as the template map's H/V routing, extended to larger groups.
 
 **New template patterns for 5–8 items:**
 
 ```
-5 items: H(dominant, V(H(a,b), H(c,d)))     — dominant + 2×2 grid
-         H(V(a,b), H(c, V(d,e)))             — stacked pair + trio
+5 items (2H+3V): H(dominant, H(Va,Vb), Vc)       — dominant + hPaired verticals + single V
+5 items (3H+2V): H(V(Ha,Hb), Hc, H(Vd,Ve))       — vStacked Hs + single H + hPaired Vs
 
-6 items: H(V(a,b), V(c,d), V(e,f))          — three stacked pairs
-         H(dominant, V(H(a,b), H(c,d), e))   — dominant + 2×2 + extra
+6 items (3H+3V): H(V(Ha,Hb), H(Va,Vb), V(Hc,Hd)) — alternating stacked/paired molecules
+6 items (6V):    H(H(Va,Vb), H(Vc,Vd), H(Ve,Vf)) — three hPaired vertical molecules
 
-7 items: H(V(a,b), V(c,d), V(e,f), g)       — three stacked pairs + single
-         H(dominant, V(H(a,b,c), H(d,e,f)))  — dominant + 3×2 grid
+7 items (4H+3V): H(V(Ha,Hb), V(Hc,Hd), H(Va,Vb), Vc) — two vStacked H molecules + hPaired Vs + single
+7 items (3H+4V): H(Ha, H(Va,Vb), V(Hb,Hc), H(Vc,Vd)) — dominant H + mixed molecules
 
-8 items: H(V(a,b), V(c,d), V(e,f), V(g,h))  — four stacked pairs
+8 items (4H+4V): H(V(Ha,Hb), H(Va,Vb), V(Hc,Hd), H(Vc,Vd)) — four alternating molecules
+8 items (8V):    H(H(Va,Vb), H(Vc,Vd), H(Ve,Vf), H(Vg,Vh)) — four hPaired vertical molecules
 ```
 
-These won't all be static template entries — the `compose()` function will generate these candidates dynamically. But the *principle* is: **vStack pairs of similar-rated images, then hPair the molecules.**
+These won't all be static template entries — `compose()` will generate candidates dynamically using the orientation-aware molecule strategy. But the *principle* is: **normalize orientations first (hPair verticals, vStack horizontals), then combine molecules horizontally.**
 
-### 7.5 Enhanced compose() — Molecule-First Strategy
+### 7.5 Enhanced compose() — Orientation-Aware Molecule Strategy
 
 The current `compose()` for n≥5 tries:
 1. dominant + rest (flat)
 2. partition splits (left/right halves)
 
-The enhanced version adds a third strategy: **molecule composition**.
+The enhanced version adds a third strategy: **orientation-aware molecule composition**.
 
 ```
 Molecule composition strategy:
-1. Group adjacent images into pairs (prefer pairing similar-rated images)
-2. vStack each pair into a "molecule"
-3. hPair the molecules together
+1. Scan adjacent image pairs
+2. For each pair, choose molecule type by orientation:
+   - Both vertical → hPair (side by side — widens them)
+   - Both horizontal → vStack (on top — adds density/height)
+   - Mixed → try both, pick better AR fit
+3. hPair the resulting molecules together
 4. Score against targetAR like all other candidates
 ```
 
-This is implemented inside `generatePartitionCandidates` (or a new `generateMoleculeCandidates`) — it's just another set of candidates that `pickBest` evaluates. No special-casing needed.
+**Why orientation matters for molecules:**
 
-**Key insight:** We don't need to force molecule composition. We add it as a *candidate strategy*, and the AR-scoring picks it when it produces better AR fit. For rows with many vertical images, vStacked molecules will naturally win because they produce wider AR (closer to the row's target).
+| Molecule type | Input AR | Output AR | Effect |
+|--------------|----------|-----------|--------|
+| hPair(V, V) | 0.67, 0.67 | **1.33** | Two tall/narrow → one wide/short ✅ |
+| vStack(V, V) | 0.67, 0.67 | **0.33** | Two tall/narrow → one taller/narrower ❌ |
+| vStack(H, H) | 2.0, 2.0 | **1.0** | Two wide/short → one square (adds height) ✅ |
+| hPair(H, H) | 2.0, 2.0 | **4.0** | Two wide/short → one extremely wide ❌ |
+
+The wrong molecule type makes the composition *worse*, not better. This is why the naive "always vStack" approach fails — it works for horizontals but destroys verticals.
+
+**Implementation:** This is a new `generateMoleculeCandidates()` function that sits alongside `generatePartitionCandidates`. Both produce candidate trees; `pickBest` selects the winner by AR distance. No special-casing needed — the AR scoring naturally picks the orientation-appropriate molecule strategy.
+
+**Key insight:** We don't need to force molecule composition. We add it as a *candidate strategy*, and the AR-scoring picks it when it produces better AR fit. The orientation-awareness guides which molecule types are generated as candidates, but the final selection is still AR-based.
 
 ### 7.6 Post-Composition Min-Width Validation
 
@@ -363,25 +496,40 @@ With `mobileSlotWidth=3`:
 
 **Current (rowWidth=5):**
 ```
-Row 1: [========== H5★ ==========]                    ← full width hero
-Row 2: [==== H4★ ====][==== H4★ ====]                 ← two images
-Row 3: [=== H3★ ===][=== H3★ ===][=== H3★ ===]       ← three images
-Row 4: [== H2★ ==][== H2★ ==][== H2★ ==][== H2★ ==]  ← four images
+Row 1: [=============== H5★ ================]          ← full width hero, entire row
+Row 2: [======= H4★ =======][==== H4★ =====]          ← two images, flat
+Row 3: [==== H3★ ====][==== H3★ ====][= H3★ =]       ← three images, flat
+Row 4: [== H2★ ==][== H2★ ==][== H2★ ==][H2★]        ← four images, flat
 ```
 
-**Proposed (rowWidth=8):**
+All rows are the same short height. Monotonous strip layout.
+
+**Proposed (rowWidth=8, AR-aware cv):**
+
 ```
-Row 1: [======= H5★ =======][V2★]                     ← hero shares with small V
-                              [V1★]                     ← (V2★ and V1★ are vStacked)
+Row 1:  [=========== H5★ ===========][V3★]            ← H5★ dominates width (~75%)
+        [=========== H5★ ===========][V3★]            ← V3★ is narrow but shares full row height
+                                                        ← V3★'s visual area is small — correct for 3★
 
-Row 2: [==== H4★ ====][H3★ ][V2★]                     ← three images, mixed sizes
-                       [H2★ ][V2★]                     ← (H3★+H2★ vStacked, V2★+V2★ vStacked)
+Row 2:  [===== H4★ =====][V5★][==== H3★ ====]         ← V5★ (er=4) gets narrow column but TALL
+        [===== H4★ =====][V5★][==== H3★ ====]         ← V5★ visual area ≈ H4★ area — equal prominence
+                                                        ← hPair naturally gives V5★ less width, more height
 
-Row 3: [V3★][V2★][V2★][V1★][V1★][V1★]                ← six verticals in pairs
-       [V2★][V1★][V1★][V1★][V1★][V1★]                ← (each pair is vStacked)
+Row 3:  [H3★][H3★][V2★][V2★][V1★][V1★]               ← 6 images! Molecules:
+        [H2★][H2★][V2★][V2★][V1★][V1★]               ← H3+H2 vStacked, V2+V2 hPaired, V1+V1 hPaired
+                                                        ← Row is TALL — vStacked Hs add height
+
+Row 4:  [V4★ ][V3★ ][V2★ ][V2★ ]                      ← 4 verticals, each narrow
+        [V4★ ][V3★ ][V2★ ][V2★ ]                      ← hPaired into 2 molecules: (V4+V3), (V2+V2)
+        [V4★ ][V3★ ][V2★ ][V2★ ]                      ← Very tall row — verticals stacked for density
 ```
 
-**Key difference:** Rows are *taller* and *denser*. More images visible per scroll. High-rated images are still visually dominant (more pixel area) but they share space.
+**Key differences:**
+1. **Rows are TALLER** — vStacked horizontal molecules add height, hPaired vertical molecules add width
+2. **More images per row** — 4–6 instead of 2–4
+3. **Visual prominence tracks rating** — H5★ at 75% width dominates; V5★ narrow but tall = similar area
+4. **No solo hero rows** — even 5★ shares with companions
+5. **AR-aware cv** — verticals get lower cv (they "cost" more visual space per unit of width)
 
 ---
 
@@ -389,19 +537,20 @@ Row 3: [V3★][V2★][V2★][V1★][V1★][V1★]                ← six vertica
 
 This is an **evolutionary** change, not a rewrite. We modify existing functions in place.
 
-### Phase 1: cv Formula + rowWidth (foundation)
+### Phase 1: AR-Aware cv Formula + rowWidth (foundation)
 - Update `LAYOUT.desktopSlotWidth` from 5 → 8
 - Update `LAYOUT.mobileSlotWidth` from 2 → 3
-- Rewrite `getComponentValue` with the new target-fraction formula
+- Rewrite `getComponentValue` with AR-aware formula (rating × AR factor)
+- Update `getItemComponentValue` and `toImageType` to pass AR through
 - Remove `seqCount===1` hero shortcut in `buildRows`
 - Fix `slotCountComplete` hero-skip bug
 - Update all tests that hardcode cv values or row counts
 
-### Phase 2: Dense Composition (molecules)
-- Add molecule candidate generation to `compose()`
-- Add template map entries for 6–8 item combinations
-- Enhance `buildAtomic` to handle 5–6 items
-- Update characterization tests
+### Phase 2: Orientation-Aware Molecule Composition
+- Add `generateMoleculeCandidates()` — orientation-aware (hPair verticals, vStack horizontals)
+- Add template map entries for 6–8 item H/V combinations
+- Enhance `buildAtomic` to handle 5–6 items with molecule candidates
+- Update characterization tests for new tree shapes
 
 ### Phase 3: Polish + Validation
 - Add post-composition min-width validation (soft constraint)
@@ -473,6 +622,33 @@ The handoff notes several files with uncommitted changes (ordering fixes, debug 
 3. Should we start the prominence work on a clean branch from those commits?
 
 My recommendation: commit the ordering fixes clean (remove debug logs first), commit unrelated work separately, then branch for the prominence work.
+
+### Q7: AR factor — sqrt or linear?
+
+The AR-aware cv formula (section 7.2a) uses `sqrt(imageAR / referenceAR)` as the correction factor. This produces moderate adjustments:
+
+| AR | sqrt factor | linear factor |
+|----|------------|--------------|
+| 2.0 (wide H) | 1.00 (capped) | 1.00 (capped) |
+| 1.5 (standard) | 1.00 | 1.00 |
+| 1.0 (square) | 0.82 | 0.67 |
+| 0.67 (portrait) | 0.67 | 0.45 |
+| 0.5 (tall V) | 0.58 | 0.33 |
+
+With `sqrt`: a V5★ (er=4, AR=0.67) gets cv=2.67. With `linear`: cv=1.78.
+
+`sqrt` is gentler — verticals still get meaningful cv, so they don't become invisible in row fill. `linear` is more aggressive — verticals get tiny cv, which means rows could have many more verticals (8–10 tiny verticals to fill a budget of 8.0).
+
+My recommendation is `sqrt` — it's conservative and we can always adjust later. But this is a key tuning parameter that we'll want to test visually.
+
+### Q8: Should the vertical penalty (-1 effectiveRating) stack with the AR factor?
+
+Currently V5★ → effectiveRating=4 (vertical penalty). Then with AR factor, cv gets further reduced. This double-penalty might be too aggressive:
+
+- V5★: er=4, baseFraction=0.50, arFactor=0.67, **cv=2.67** (33% of row)
+- Without vertical penalty: er=5, baseFraction=0.75, arFactor=0.67, **cv=4.0** (50% of row)
+
+Should we remove the vertical penalty now that AR factor handles it? Or keep both for maximum differentiation? The answer affects whether V5★ images feel "important" in the layout or get treated like H3★.
 
 ---
 
