@@ -178,6 +178,22 @@ export function acToBoxTree(ac: AtomicComponent): BoxTree {
   };
 }
 
+/** Find the dominant image in a set (highest effective rating) */
+export function findDominant(images: ImageType[]): { dominant: ImageType; rest: ImageType[] } {
+  if (images.length === 0) {
+    throw new Error('findDominant requires at least 1 image');
+  }
+  let dominantIdx = 0;
+  for (let i = 1; i < images.length; i++) {
+    if (images[i]!.effectiveRating > images[dominantIdx]!.effectiveRating) {
+      dominantIdx = i;
+    }
+  }
+  const dominant = images[dominantIdx]!;
+  const rest = images.filter((_, i) => i !== dominantIdx);
+  return { dominant, rest };
+}
+
 /** Generate the template map key for a set of images: "hCount-vCount" */
 export function getTemplateKey(images: ImageType[]): string {
   let h = 0;
@@ -193,95 +209,212 @@ export function getTemplateKey(images: ImageType[]): string {
 // buildAtomic — AR-target scoring for tree structure selection
 // =============================================================================
 
-/** A component being iteratively merged in bottom-up composition */
-interface MergeComponent {
-  ac: AtomicComponent;
-  maxRating: number;
-}
-
 /**
- * Build an AR-aware AtomicComponent tree using bottom-up atomic composition.
+ * Generate candidate rest-group trees based on the number of rest images.
  *
- * Iteratively merges the two lowest-maxRating nearby components:
- * 1. Start with every image as a single atom, in natural input order
- * 2. Score all adjacent pairs (and skip-one pairs with a penalty)
- * 3. Merge the best pair — try both hPair and vStack, pick closest to targetAR
- * 4. The merged component inherits the max rating of its children
- * 5. Repeat until 1 component remains
- *
- * This ensures higher-rated images are merged last (occupying more space)
- * while preserving natural input order with minimal positional shifts.
+ * Each candidate represents a different spatial arrangement of the non-dominant images.
+ * For n=2, vStack is listed first so it wins ties (prefer more vertical stacking per spec).
  */
-export function buildAtomic(
-  images: ImageType[],
-  targetAR: number,
-  rowWidth: number
-): AtomicComponent {
-  if (images.length === 0) throw new Error('buildAtomic requires at least 1 image');
-  if (images.length === 1) return single(images[0]!);
+function generateCandidates(rest: ImageType[]): AtomicComponent[] {
+  const n = rest.length;
 
-  const components: MergeComponent[] = images.map(img => ({
-    ac: single(img),
-    maxRating: img.effectiveRating,
-  }));
+  if (n === 0) return [];
 
-  while (components.length > 1) {
-    let bestIdx = 0;
-    let bestScore = Infinity;
-
-    // Score adjacent pairs (distance 1) — merge lowest-rated adjacent pair first
-    for (let i = 0; i < components.length - 1; i++) {
-      const score = Math.max(components[i]!.maxRating, components[i + 1]!.maxRating);
-      if (score < bestScore) {
-        bestScore = score;
-        bestIdx = i;
-      }
-    }
-
-    const left = components[bestIdx]!;
-    const right = components[bestIdx + 1]!;
-
-    // Final merge (top level) always uses hPair — rows are horizontal.
-    // Inner merges pick best of hPair/vStack for sub-component compaction.
-    const merged =
-      components.length === 2
-        ? hPair(left.ac, right.ac)
-        : pickBestMerge(left.ac, right.ac, targetAR, rowWidth);
-
-    components.splice(bestIdx, 2, {
-      ac: merged,
-      maxRating: Math.max(left.maxRating, right.maxRating),
-    });
+  if (n === 1) {
+    return [single(rest[0]!)];
   }
 
-  return components[0]!.ac;
+  if (n === 2) {
+    const [a, b] = [single(rest[0]!), single(rest[1]!)];
+    return [vStack(a, b), hPair(a, b)];
+  }
+
+  if (n === 3) {
+    const [a, b, c] = [single(rest[0]!), single(rest[1]!), single(rest[2]!)];
+    return [
+      vStack(hPair(a, b), c),
+      vStack(a, hPair(b, c)),
+      hChain(rest),
+    ];
+  }
+
+  // n === 4+
+  const [a, b, c, d] = [single(rest[0]!), single(rest[1]!), single(rest[2]!), single(rest[3]!)];
+  return [
+    vStack(hPair(a, b), hPair(c, d)),
+    vStack(hChain(rest.slice(0, 3)), single(rest[3]!)),
+    hChain(rest),
+  ];
 }
 
 /**
- * Merge two AtomicComponents, picking the better of hPair vs vStack by AR fit.
+ * Build an AR-aware AtomicComponent tree from a set of images.
+ *
+ * For 3+ items, generates candidate tree structures and picks the one
+ * whose combined AR is closest to targetAR. The dominant (highest-rated)
+ * image gets full height on the right; candidates arrange the rest group.
+ *
+ * @param images - ImageType[] to arrange
+ * @param targetAR - Target aspect ratio (typically 1.5 for most viewports)
+ * @param rowWidth - Row width for AR calculation (chunkSize param)
  */
-function pickBestMerge(
-  left: AtomicComponent,
-  right: AtomicComponent,
+export function buildAtomic(images: ImageType[], targetAR: number, rowWidth: number): AtomicComponent {
+  if (images.length === 0) throw new Error('buildAtomic requires at least 1 image');
+  if (images.length === 1) return single(images[0]!);
+  if (images.length === 2) return hPair(single(images[0]!), single(images[1]!));
+
+  const { dominant, rest } = findDominant(images);
+  const sorted = [...rest].sort((a, b) => a.effectiveRating - b.effectiveRating);
+  const candidates = generateCandidates(sorted);
+
+  let bestCandidate = candidates[0]!;
+  let bestDistance = Infinity;
+
+  for (const candidate of candidates) {
+    const finalTree = hPair(candidate, single(dominant));
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(finalTree), rowWidth);
+    const distance = Math.abs(ar - targetAR);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestCandidate = candidate;
+    }
+  }
+
+  return hPair(bestCandidate, single(dominant));
+}
+
+// =============================================================================
+// compose — recursive composition dispatcher
+// =============================================================================
+
+/** Partition threshold — try partition splits at this group size and above */
+const PARTITION_THRESHOLD = 5;
+
+/**
+ * Score a candidate AtomicComponent against a target AR.
+ * Lower is better (distance from target).
+ */
+function scoreCandidate(candidate: AtomicComponent, targetAR: number, rowWidth: number): number {
+  const ar = calculateBoxTreeAspectRatio(acToBoxTree(candidate), rowWidth);
+  return Math.abs(ar - targetAR);
+}
+
+/**
+ * Pick the best candidate from a list by AR distance to target.
+ */
+function pickBest(candidates: AtomicComponent[], targetAR: number, rowWidth: number): AtomicComponent {
+  let best = candidates[0]!;
+  let bestScore = Infinity;
+
+  for (const c of candidates) {
+    const score = scoreCandidate(c, targetAR, rowWidth);
+    if (score < bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Generate partition split candidates for a group of images.
+ * Tries balanced splits and scores each against targetAR.
+ *
+ * For n=5: tries (2,3) and (3,2)
+ * For n=6: tries (2,4), (3,3), (4,2)
+ * For n=7: tries (3,4), (4,3)
+ * etc.
+ */
+function generatePartitionCandidates(
+  images: ImageType[],
   targetAR: number,
-  rowWidth: number
-): AtomicComponent {
-  const h = hPair(left, right);
-  const v = vStack(left, right);
-  const hAR = calculateBoxTreeAspectRatio(acToBoxTree(h), rowWidth);
-  const vAR = calculateBoxTreeAspectRatio(acToBoxTree(v), rowWidth);
-  return Math.abs(hAR - targetAR) <= Math.abs(vAR - targetAR) ? h : v;
+  rowWidth: number,
+  depth: number = 0
+): AtomicComponent[] {
+  const n = images.length;
+  const candidates: AtomicComponent[] = [];
+
+  // Determine split sizes to try
+  const minSplit = 2;
+  const maxSplit = n - 2; // At least 2 in each group
+
+  // Sort strategies for assigning images to groups
+  const sortStrategies: ImageType[][] = [
+    // Strategy 1: sorted by rating (highest first)
+    [...images].sort((a, b) => b.effectiveRating - a.effectiveRating),
+    // Strategy 2: sorted by AR (verticals first, then horizontals)
+    [...images].sort((a, b) => {
+      if (a.ar !== b.ar) return a.ar === 'V' ? -1 : 1;
+      return b.effectiveRating - a.effectiveRating;
+    }),
+  ];
+
+  for (let leftSize = minSplit; leftSize <= maxSplit; leftSize++) {
+    for (const sorted of sortStrategies) {
+      const leftGroup = sorted.slice(0, leftSize);
+      const rightGroup = sorted.slice(leftSize);
+
+      // Recursively compose each side
+      const left = compose(leftGroup, targetAR, rowWidth, depth);
+      const right = compose(rightGroup, targetAR, rowWidth, depth);
+      candidates.push(hPair(left, right));
+    }
+  }
+
+  return candidates;
 }
 
-// =============================================================================
-// compose — composition dispatcher
-// =============================================================================
+/** Maximum recursion depth for compose() to prevent stack overflow */
+const MAX_COMPOSE_DEPTH = 10;
 
 /**
- * Composition dispatcher — delegates to buildAtomic for all sizes.
+ * Recursive composition dispatcher.
+ *
+ * Builds the best AtomicComponent tree for a set of images:
+ * - n=1: single
+ * - n=2: best of hPair/vStack by AR fit
+ * - n=3-4: buildAtomic (1 dominant + rest candidates)
+ * - n>=5: candidates from BOTH buildAtomic AND partition splits, pick best
+ *
+ * @param images - ImageType[] to arrange
+ * @param targetAR - Target aspect ratio for the composition
+ * @param rowWidth - Row width for AR calculation
+ * @param depth - Current recursion depth (internal use only)
  */
-export function compose(images: ImageType[], targetAR: number, rowWidth: number): AtomicComponent {
-  return buildAtomic(images, targetAR, rowWidth);
+export function compose(images: ImageType[], targetAR: number, rowWidth: number, depth: number = 0): AtomicComponent {
+  const n = images.length;
+
+  if (n === 0) throw new Error('compose requires at least 1 image');
+  if (n === 1) return single(images[0]!);
+
+  // Guard against unbounded recursion
+  if (depth >= MAX_COMPOSE_DEPTH) {
+    return hChain(images);
+  }
+
+  if (n === 2) {
+    const [a, b] = [single(images[0]!), single(images[1]!)];
+    const hCandidate = hPair(a, b);
+    const vCandidate = vStack(a, b);
+    return pickBest([hCandidate, vCandidate], targetAR, rowWidth);
+  }
+
+  if (n < PARTITION_THRESHOLD) {
+    // n=3-4: use buildAtomic (1 dominant + rest)
+    return buildAtomic(images, targetAR, rowWidth);
+  }
+
+  // n >= PARTITION_THRESHOLD: try dominant + rest AND partition splits, pick best
+  const { dominant, rest } = findDominant(images);
+  const restComposed = compose(rest, targetAR, rowWidth, depth + 1);
+
+  const candidates: AtomicComponent[] = [
+    hPair(restComposed, single(dominant)),
+    ...generatePartitionCandidates(images, targetAR, rowWidth, depth + 1),
+  ];
+
+  return pickBest(candidates, targetAR, rowWidth);
 }
 
 // =============================================================================
@@ -304,6 +437,96 @@ export function estimateRowAR(images: ImageType[], targetAR: number, rowWidth: n
 }
 
 // =============================================================================
+// TEMPLATE MAP
+// =============================================================================
+
+/** A layout template that builds an AtomicComponent from a set of ImageTypes */
+interface LayoutTemplate {
+  label: string;
+  build: (images: ImageType[], targetAR: number, rowWidth: number) => AtomicComponent;
+}
+
+/**
+ * Build a dominant-stacked composition: H(dominant, V(rest[0], rest[1]))
+ * Used when a high-rated horizontal image dominates 2 secondaries.
+ * Falls back to flat hChain if no dominant H with effectiveRating >= 4.
+ */
+function buildDominantStacked(images: ImageType[], _targetAR: number, _rowWidth: number): AtomicComponent {
+  const { dominant, rest } = findDominant(images);
+  if (dominant.effectiveRating >= 4 && dominant.ar === 'H') {
+    return hPair(single(dominant), vStack(single(rest[0]!), single(rest[1]!)));
+  }
+  return hChain(images);
+}
+
+/**
+ * Build a nested-quad composition: H(main, V(H(topPair), bottom))
+ * Used when 4 items have 3+ verticals — dominant vertical gets full height.
+ * Falls back to flat hChain if < 3 verticals.
+ */
+function buildNestedQuad(images: ImageType[], _targetAR: number, _rowWidth: number): AtomicComponent {
+  const verticals = images.filter(i => i.ar === 'V');
+  if (verticals.length >= 3) {
+    const sorted = [...verticals].sort((a, b) => b.effectiveRating - a.effectiveRating);
+    const main = sorted[0]!;
+    const rest = images.filter(i => i !== main);
+    const restVerticals = rest
+      .filter(i => i.ar === 'V')
+      .sort((a, b) => a.effectiveRating - b.effectiveRating);
+    const topPair = restVerticals.slice(0, 2);
+    const bottom = rest.find(i => !topPair.includes(i))!;
+
+    return hPair(
+      single(main),
+      vStack(hPair(single(topPair[0]!), single(topPair[1]!)), single(bottom))
+    );
+  }
+  return hChain(images);
+}
+
+/** Static template map: (hCount, vCount) → layout builder */
+export const TEMPLATE_MAP: Record<string, LayoutTemplate> = {
+  // --- 1-item ---
+  '1-0': { label: 'hero', build: imgs => single(imgs[0]!) },
+  '0-1': { label: 'single-v', build: imgs => single(imgs[0]!) },
+
+  // --- 2-item ---
+  '2-0': {
+    label: 'h-pair',
+    build: imgs => hPair(single(imgs[0]!), single(imgs[1]!)),
+  },
+  '1-1': {
+    label: 'dom-sec',
+    build: imgs => hPair(single(imgs[0]!), single(imgs[1]!)),
+  },
+  '0-2': {
+    label: 'v-pair',
+    build: imgs => hPair(single(imgs[0]!), single(imgs[1]!)),
+  },
+
+  // --- 3-item: compose for general entries, dom-stacked for specific combos ---
+  '3-0': { label: 'compose-3h', build: compose },
+  '2-1': { label: 'dom-stacked-2h1v', build: buildDominantStacked },
+  '1-2': { label: 'dom-stacked-1h2v', build: buildDominantStacked },
+  '0-3': { label: 'compose-3v', build: compose },
+
+  // --- 4-item: compose for general entries, nested-quad for vertical-heavy ---
+  '4-0': { label: 'compose-4h', build: compose },
+  '3-1': { label: 'compose-3h1v', build: compose },
+  '2-2': { label: 'compose-2h2v', build: compose },
+  '1-3': { label: 'nested-quad-1h3v', build: buildNestedQuad },
+  '0-4': { label: 'nested-quad-0h4v', build: buildNestedQuad },
+
+  // --- 5-item: compose handles all ---
+  '5-0': { label: 'compose-5h', build: compose },
+  '4-1': { label: 'compose-4h1v', build: compose },
+  '3-2': { label: 'compose-3h2v', build: compose },
+  '2-3': { label: 'compose-2h3v', build: compose },
+  '1-4': { label: 'compose-1h4v', build: compose },
+  '0-5': { label: 'compose-5v', build: compose },
+};
+
+// =============================================================================
 // COMPOSITION LOOKUP
 // =============================================================================
 
@@ -314,8 +537,29 @@ export interface CompositionResult {
   label: string;
 }
 
-/** Count horizontal and vertical orientations in a set of images */
-function countOrientations(images: ImageType[]): TemplateKey {
+/**
+ * Look up and build a composition for a set of images using the template map.
+ *
+ * @param images - ImageType[] assigned to this row (already determined by greedy fill)
+ * @param targetAR - Target aspect ratio for AR-aware templates (default 1.5)
+ * @param rowWidth - Row width budget for AR calculation
+ * @returns CompositionResult with AtomicComponent tree, structural key, and template label
+ */
+export function lookupComposition(images: ImageType[], targetAR: number = 1.5, rowWidth: number = 5): CompositionResult {
+  const templateKey = parseTemplateKey(images);
+  const key = `${templateKey.h}-${templateKey.v}`;
+  const template = TEMPLATE_MAP[key];
+
+  if (!template) {
+    // 6+ images have no static template — use compose() for recursive composition
+    return { composition: compose(images, targetAR, rowWidth), templateKey, label: 'compose-fallback' };
+  }
+
+  return { composition: template.build(images, targetAR, rowWidth), templateKey, label: template.label };
+}
+
+/** Build a TemplateKey from a set of images by counting h/v directly */
+function parseTemplateKey(images: ImageType[]): TemplateKey {
   let h = 0;
   let v = 0;
   for (const img of images) {
@@ -323,24 +567,6 @@ function countOrientations(images: ImageType[]): TemplateKey {
     else v++;
   }
   return { h, v };
-}
-
-/**
- * Build a composition for a set of images using bottom-up atomic composition.
- *
- * @param images - ImageType[] assigned to this row (already determined by greedy fill)
- * @param targetAR - Target aspect ratio for AR-aware composition (default 1.5)
- * @param rowWidth - Row width budget for AR calculation
- * @returns CompositionResult with AtomicComponent tree, structural key, and label
- */
-export function lookupComposition(
-  images: ImageType[],
-  targetAR: number = 1.5,
-  rowWidth: number = 5
-): CompositionResult {
-  const templateKey = countOrientations(images);
-  const composition = buildAtomic(images, targetAR, rowWidth);
-  return { composition, templateKey, label: `compose-${images.length}` };
 }
 
 // =============================================================================
@@ -394,11 +620,7 @@ export function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' 
  * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
  * @returns Array of rows, each with components and their combination direction
  */
-export function buildRows(
-  items: AnyContentModel[],
-  rowWidth: number,
-  targetAR: number = 1.5
-): RowResult[] {
+export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: number = 1.5): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
 
@@ -426,7 +648,7 @@ export function buildRows(
         const composition = single(heroImg);
         const boxTree = acToBoxTree(composition);
 
-        const heroKey = countOrientations([heroImg]);
+        const heroKey = parseTemplateKey([heroImg]);
         rows.push({
           components: [heroItem],
           direction: null,
@@ -453,7 +675,7 @@ export function buildRows(
       const newFill = (seqTotal + cv) / rowWidth;
 
       if (newFill > MAX_FILL_RATIO && !slotCountComplete) {
-        if (seqCount > 0 && cv / rowWidth >= MIN_FILL_RATIO) {
+          if (seqCount > 0 && cv / rowWidth >= MIN_FILL_RATIO) {
           skippedStandalones.push(i);
           continue;
         }
@@ -574,11 +796,7 @@ export function buildRows(
     }
 
     const bfImgs = bfComponents.map(item => toImageType(item, rowWidth));
-    const {
-      composition,
-      templateKey: bfKey,
-      label: bfLabel,
-    } = lookupComposition(bfImgs, targetAR, rowWidth);
+    const { composition, templateKey: bfKey, label: bfLabel } = lookupComposition(bfImgs, targetAR, rowWidth);
     const boxTree = acToBoxTree(composition);
 
     rows.push({

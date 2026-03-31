@@ -60,10 +60,6 @@ export default function CollectionFilterChips({
     },
   ];
 
-  const hasAnySections = sections.some(s => s.options.length > 0);
-
-  if (!hasAnySections) return null;
-
   return (
     <div className={cbStyles.filterChipsSection}>
       <button

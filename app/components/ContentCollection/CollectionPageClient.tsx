@@ -71,10 +71,9 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     INITIAL_COLLECTION_FILTER_STATE
   );
 
-  const allImages = useMemo(
-    () => (collection.content ?? []).filter(isImageContent),
-    [collection.content]
-  );
+  const allContent = useMemo(() => collection.content ?? [], [collection.content]);
+
+  const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 
   const baseOptions = useMemo(() => extractFilterOptions(allImages), [allImages]);
 
@@ -113,10 +112,21 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     [filterState]
   );
 
-  const filteredImages = useMemo(() => {
-    if (!hasActiveFilters) return allImages;
-    return filterContent(allImages, criteria).filter(isImageContent);
-  }, [allImages, criteria, hasActiveFilters]);
+  // Filter only images (for filter UI); non-image content (COLLECTION, TEXT, etc.) passes through
+  const filteredContent = useMemo(() => {
+    if (!hasActiveFilters) return allContent;
+    const filteredImages = filterContent(allImages, criteria).filter(isImageContent);
+    const filteredImageIds = new Set(filteredImages.map(img => img.id));
+    // Keep non-image content as-is, only filter images
+    return allContent.filter(
+      item => !isImageContent(item) || filteredImageIds.has(item.id)
+    );
+  }, [allContent, allImages, criteria, hasActiveFilters]);
+
+  const filteredImages = useMemo(
+    () => filteredContent.filter(isImageContent),
+    [filteredContent]
+  );
 
   // Dynamic available options: only show options present in filtered results
   const availableOptions = useMemo(() => {
@@ -143,8 +153,8 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
   }, [hasActiveFilters, filteredImages, baseCollectionOptions, filterState]);
 
   const contentBlocks = useMemo(
-    () => processContentBlocks(filteredImages, true, collection.id, collection.displayMode),
-    [filteredImages, collection.id, collection.displayMode]
+    () => processContentBlocks(filteredContent, true, collection.id, collection.displayMode),
+    [filteredContent, collection.id, collection.displayMode]
   );
 
   const handleFilterChange = useCallback((update: Partial<CollectionFilterState>) => {
@@ -162,7 +172,14 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
 
   const pageSize = collection.contentPerPage ?? 30;
 
+  const hasRatingVariance = useMemo(() => {
+    if (allImages.length === 0) return false;
+    const ratings = new Set(allImages.map(img => img.rating ?? 0));
+    return ratings.size > 1;
+  }, [allImages]);
+
   const hasOptions =
+    hasRatingVariance ||
     baseCollectionOptions.tags.length > 0 ||
     baseCollectionOptions.people.length > 0 ||
     baseCollectionOptions.cameras.length > 0 ||
