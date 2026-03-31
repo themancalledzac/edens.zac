@@ -6,13 +6,7 @@
 import { LAYOUT } from '@/app/constants';
 import type { BoxTree, RowResult, TemplateKey } from '@/app/utils/rowCombination';
 import { buildRows } from '@/app/utils/rowCombination';
-import {
-  optimizeBoundaries,
-  optimizeRows,
-  rebuildRow,
-  reorderWithinRows,
-  rowScore,
-} from '@/app/utils/rowOptimizer';
+import { optimizeBoundaries, optimizeRows, rebuildRow, rowScore } from '@/app/utils/rowOptimizer';
 import { H, V } from '@/tests/fixtures/contentFixtures';
 
 // ===================== Helpers =====================
@@ -159,63 +153,6 @@ describe('optimizeBoundaries', () => {
     const originalTotal = rows.reduce((sum, r) => sum + rowScore(r.components, DESKTOP), 0);
     const optimizedTotal = optimized.reduce((sum, r) => sum + rowScore(r.components, DESKTOP), 0);
     expect(optimizedTotal).toBeGreaterThanOrEqual(originalTotal);
-  });
-});
-
-// ===================== reorderWithinRows =====================
-
-describe('reorderWithinRows', () => {
-  it('swaps 2-item row so higher-rated is on left', () => {
-    // Build a row with lower-rated first, higher-rated second
-    const components = [H(1, 3), H(2, 4)];
-    const row = rebuildRow(components, DESKTOP);
-    const result = reorderWithinRows([row], DESKTOP);
-
-    // H2 (rating 4) should now be first
-    expect(result[0]!.components[0]!.id).toBe(2);
-    expect(result[0]!.components[1]!.id).toBe(1);
-  });
-
-  it('does not swap when already in correct order', () => {
-    const components = [H(1, 4), H(2, 3)];
-    const row = rebuildRow(components, DESKTOP);
-    const result = reorderWithinRows([row], DESKTOP);
-
-    expect(result[0]!.components[0]!.id).toBe(1);
-    expect(result[0]!.components[1]!.id).toBe(2);
-  });
-
-  it('does not swap when ratings are equal', () => {
-    const components = [H(1, 3), H(2, 3)];
-    const row = rebuildRow(components, DESKTOP);
-    const result = reorderWithinRows([row], DESKTOP);
-
-    // Order preserved
-    expect(result[0]!.components[0]!.id).toBe(1);
-    expect(result[0]!.components[1]!.id).toBe(2);
-  });
-
-  it('does not touch single-item rows', () => {
-    const row = rebuildRow([H(1, 5)], DESKTOP);
-    const result = reorderWithinRows([row], DESKTOP);
-    expect(result[0]!.components[0]!.id).toBe(1);
-  });
-
-  it('does not touch 3+ item rows', () => {
-    const components = [H(1, 2), H(2, 4), H(3, 3)];
-    const row = rebuildRow(components, DESKTOP);
-    const result = reorderWithinRows([row], DESKTOP);
-
-    // Order unchanged
-    expect(rowIds(result[0]!)).toEqual([1, 2, 3]);
-  });
-
-  it('uses effectiveRating (applies vertical penalty)', () => {
-    // V4★ has effectiveRating 3, H3★ has effectiveRating 3 → no swap (equal)
-    const components = [V(1, 4), H(2, 3)];
-    const row = rebuildRow(components, DESKTOP);
-    const result = reorderWithinRows([row], DESKTOP);
-    expect(result[0]!.components[0]!.id).toBe(1);
   });
 });
 
