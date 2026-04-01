@@ -668,7 +668,7 @@ export function buildRows(
       for (let i = 1; i < maxSearch; i++) {
         const candidate = window[i]!;
         const cv = getItemComponentValue(candidate);
-        if (cv / rowWidth >= MIN_FILL_RATIO) {
+        if (cv / rowWidth >= 0.95) {
           heroIdx = i;
           break;
         }
@@ -707,7 +707,7 @@ export function buildRows(
       const newFill = (seqTotal + cv) / rowWidth;
 
       if (newFill > MAX_FILL_RATIO && !slotCountComplete) {
-        if (seqCount > 0 && cv / rowWidth >= MIN_FILL_RATIO) {
+        if (seqCount > 0 && cv / rowWidth >= 0.95) {
           skippedStandalones.push(i);
           continue;
         }
@@ -716,6 +716,12 @@ export function buildRows(
       }
 
       if (slotCountComplete) {
+        // Don't swallow high-rated images into someone else's row
+        const candidateRating = getEffectiveRating(expandedWindow[i]!);
+        if (candidateRating >= 4) {
+          break;
+        }
+
         seqTotal += cv;
         seqCount += 1;
 
