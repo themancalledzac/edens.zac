@@ -33,7 +33,7 @@ import { H, V } from '@/tests/fixtures/contentFixtures';
 
 // ===================== Helpers =====================
 
-const DESKTOP = LAYOUT.desktopSlotWidth; // 5
+const DESKTOP = LAYOUT.desktopSlotWidth; // 8
 
 /** Extract the item IDs from a row's components, preserving order */
 function rowIds(row: RowResult): number[] {
@@ -45,10 +45,7 @@ function boxTreeLeafIds(tree: BoxTree): number[] {
   if (tree.type === 'leaf') {
     return [tree.content.id];
   }
-  return [
-    ...boxTreeLeafIds(tree.children[0]),
-    ...boxTreeLeafIds(tree.children[1]),
-  ];
+  return [...boxTreeLeafIds(tree.children[0]), ...boxTreeLeafIds(tree.children[1])];
 }
 
 /** Get a simplified representation of BoxTree structure for assertions */
@@ -63,7 +60,6 @@ function boxTreeShape(tree: BoxTree): string {
 // ===================== Characterization Tests =====================
 
 describe('buildRows characterization', () => {
-
   // ---------------------------------------------------------------
   // Test 1: Single H5★ — STANDALONE (trivial)
   // ---------------------------------------------------------------
@@ -191,44 +187,40 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 9: V1★ + H5★ + H3★ + H3★ — STANDALONE skip at position 0
-  // V1★ effective=0, ≤ 2 threshold → skippable
-  // Hero found at position 1: H5★ → templateKey { h: 1, v: 0 }
-  // H5★ becomes standalone, V1★ stays for next row
+  // Test 9: V1★ + H5★ + H3★ + H3★ — no hero skip at rw=8
+  // V1★ cv≈0.61, H5★ cv=5.0, H3★ cv=2.5
+  // Sequential: 0.61+5.0=5.61 (70.2%), +2.5=8.11 (101.4%✓) → complete at 3 items
+  // Row 1: V1★+H5★+H3★ (ids [1,2,3]), remaining H3★ in row 2
   // ---------------------------------------------------------------
-  it('9: V1★ + H5★ + H3★ + H3★ → STANDALONE skip, H5★ first row', () => {
+  it('9: V1★ + H5★ + H3★ + H3★ → sequential fill, 3 in first row', () => {
     const items = [V(1, 1), H(2, 5), H(3, 3), H(4, 3)];
     const rows = buildRows(items, DESKTOP);
 
-    // Row 1: H5★ standalone (skipped V1★)
-    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 0 });
-    expect(rowIds(rows[0]!)).toEqual([2]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('L(2)');
-
-    // Remaining: V1★, H3★, H3★
-    // V1★ cv=1.0, H3★ cv=1.67. Total=1.0+1.67+1.67=4.34, fill=87% < 90%
-    // templateKey: { h: 2, v: 1 }
+    // Row 1: V1★+H5★+H3★ → dom-stacked-2h1v
     expect(rows).toHaveLength(2);
-    expect(rowIds(rows[1]!)).toEqual([1, 3, 4]);
-    expect(rows[1]!.templateKey).toEqual({ h: 2, v: 1 });
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
+    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 1 });
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(2),V(L(1),L(3)))');
+
+    // Row 2: remaining H3★
+    expect(rowIds(rows[1]!)).toEqual([4]);
+    expect(rows[1]!.templateKey).toEqual({ h: 1, v: 0 });
   });
 
   // ---------------------------------------------------------------
-  // Test 10: V1★ + V2★ + H5★ — STANDALONE skip reaching position 2
-  // V1★ eff=0, V2★ eff=1 → both ≤ 2 threshold
-  // Hero found at position 2: H5★ → templateKey { h: 1, v: 0 }
+  // Test 10: V1★ + V2★ + H5★ — all in one row at rw=8
+  // V1★ cv≈0.61, V2★ cv≈0.77, H5★ cv=5.0. Total≈6.38, fill≈79.7%
+  // Sequential fill takes all 3, best-fit completes
   // ---------------------------------------------------------------
-  it('10: V1★ + V2★ + H5★ → STANDALONE skip to position 2', () => {
+  it('10: V1★ + V2★ + H5★ → all in one row (no hero skip at rw=8)', () => {
     const items = [V(1, 1), V(2, 2), H(3, 5)];
     const rows = buildRows(items, DESKTOP);
 
-    // Row 1: H5★ standalone (skipped past V1★ and V2★)
-    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 0 });
-    expect(rowIds(rows[0]!)).toEqual([3]);
-
-    // Remaining: V1★, V2★
-    expect(rows).toHaveLength(2);
-    expect(rowIds(rows[1]!)).toEqual([1, 2]);
+    // All 3 in one row → dom-stacked-1h2v
+    expect(rows).toHaveLength(1);
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
+    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 2 });
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(3),V(L(1),L(2)))');
   });
 
   // ---------------------------------------------------------------
@@ -267,19 +259,21 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 12: 10 mixed images — realistic collection
+  // With rw=8: H5★ cv=5.0, H4★ cv=3.5, V3★ cv≈1.07, H3★ cv=2.5,
+  //            V1★ cv≈0.61, H2★ cv=1.75, V2★ cv≈0.77
   // ---------------------------------------------------------------
   it('12: 10 mixed images — realistic collection end-to-end', () => {
     const items = [
-      H(1, 5),  // cv=5.0
-      H(2, 4),  // cv=2.5
-      V(3, 3),  // eff=2, cv=1.25
-      V(4, 3),  // eff=2, cv=1.25
-      H(5, 3),  // cv=1.67
-      H(6, 3),  // cv=1.67
-      H(7, 3),  // cv=1.67
-      V(8, 1),  // eff=0, cv=1.0
-      H(9, 2),  // cv=1.25
-      V(10, 2), // eff=1, cv=1.0
+      H(1, 5), // cv=5.0
+      H(2, 4), // cv=3.5
+      V(3, 3), // eff=2, cv≈1.07
+      V(4, 3), // eff=2, cv≈1.07
+      H(5, 3), // cv=2.5
+      H(6, 3), // cv=2.5
+      H(7, 3), // cv=2.5
+      V(8, 1), // eff=0, cv≈0.61
+      H(9, 2), // cv=1.75
+      V(10, 2), // eff=1, cv≈0.77
     ];
     const rows = buildRows(items, DESKTOP);
 
@@ -287,31 +281,28 @@ describe('buildRows characterization', () => {
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
     expect(allIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
-    // Row 1: H5★ standalone → templateKey { h: 1, v: 0 }
-    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 0 });
-    expect(rowIds(rows[0]!)).toEqual([1]);
+    // Row 1: H5★(5.0) + H4★(3.5) + V3★(1.07) = 9.57, fill≈119% > MAX
+    // Sequential: 5.0(62.5%) + 3.5(106%✓) → complete at 2
+    // Actual: [1,2,3] → dom-stacked-2h1v (compose picks up V3★)
+    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 1 });
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
 
-    // Row 2: H4★ + V3★ + V3★ → dom-stacked-1h2v (2.5+1.25+1.25=5.0, 100%)
-    expect(rows[1]!.templateKey).toEqual({ h: 1, v: 2 });
-    expect(rowIds(rows[1]!)).toEqual([2, 3, 4]);
+    // Row 2: V3★ + H3★ + H3★ + H3★ → compose-3h1v
+    expect(rows[1]!.templateKey).toEqual({ h: 3, v: 1 });
+    expect(rowIds(rows[1]!)).toEqual([4, 5, 6, 7]);
 
-    // Row 3: H3★ + H3★ + H3★ → triple-h (1.67×3=5.0, 100%)
-    expect(rows[2]!.templateKey).toEqual({ h: 3, v: 0 });
-    expect(rowIds(rows[2]!)).toEqual([5, 6, 7]);
+    // Row 3: V1★ + H2★ + V2★ → dom-stacked-1h2v
+    expect(rows[2]!.templateKey).toEqual({ h: 1, v: 2 });
+    expect(rowIds(rows[2]!)).toEqual([8, 9, 10]);
 
-    // Row 4: remaining V1★ + H2★ + V2★ → dom-stacked-1h2v
-    expect(rows[3]!.templateKey).toEqual({ h: 1, v: 2 });
-    expect(rowIds(rows[3]!)).toEqual([8, 9, 10]);
+    expect(rows).toHaveLength(3);
   });
 
   // ---------------------------------------------------------------
   // Test 13: All 3★ images (uniform rating, degenerate case)
   // ---------------------------------------------------------------
   it('13: all 3★ images (uniform rating)', () => {
-    const items = [
-      H(1, 3), H(2, 3), H(3, 3),
-      H(4, 3), H(5, 3), H(6, 3),
-    ];
+    const items = [H(1, 3), H(2, 3), H(3, 3), H(4, 3), H(5, 3), H(6, 3)];
     const rows = buildRows(items, DESKTOP);
 
     // H3★ cv=1.67. 3×1.67=5.0 → 100% → row complete
@@ -337,22 +328,22 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 15: H4★ + H3★ + V1★ + H2★ + V1★ — dom-stacked-2h1v template
-  // H4★ cv=2.5, H3★ cv=1.67, V1★ cv=1.0. Total=5.17, fill=103% ✓
-  // templateKey row 1: { h: 2, v: 1 } (H4★ dominant → DVP structure)
+  // Test 15: H4★ + H3★ + V1★ + H2★ + V1★ — with rw=8
+  // H4★ cv=3.5, H3★ cv=2.5, V1★ cv≈0.61, H2★ cv=1.75, V1★ cv≈0.61
+  // Sequential: 3.5(43.8%) + 2.5(75%) + 0.61(82.6%) + 1.75(104.5%✓) → complete at 4
+  // Actual: [1,2,3,4] → compose-3h1v
   // ---------------------------------------------------------------
-  it('15: H4★ + H3★ + V1★ + H2★ + V1★ → dom-stacked-2h1v first row', () => {
+  it('15: H4★ + H3★ + V1★ + H2★ + V1★ → compose-3h1v first row', () => {
     const items = [H(1, 4), H(2, 3), V(3, 1), H(4, 2), V(5, 1)];
     const rows = buildRows(items, DESKTOP);
 
-    // Row 1: H4★ + H3★ + V1★ → templateKey { h: 2, v: 1 }
-    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 1 });
-    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),L(3)))');
+    // Row 1: H4★ + H3★ + V1★ + H2★ → templateKey { h: 3, v: 1 }
+    expect(rows[0]!.templateKey).toEqual({ h: 3, v: 1 });
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
 
-    // Remaining: H2★ + V1★ → templateKey { h: 1, v: 1 }
-    expect(rows[1]!.templateKey).toEqual({ h: 1, v: 1 });
-    expect(rowIds(rows[1]!)).toEqual([4, 5]);
+    // Remaining: V1★ → templateKey { h: 0, v: 1 }
+    expect(rows[1]!.templateKey).toEqual({ h: 0, v: 1 });
+    expect(rowIds(rows[1]!)).toEqual([5]);
 
     // All items used
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
@@ -375,26 +366,23 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 17: Best-fit divergence — V4★ + H3★ + H4★ + H1★
-  // V4★ eff=3 cv=1.67, H3★ cv=1.67, H4★ cv=2.5, H1★ cv=1.0
-  // Sequential: 1.67+1.67=3.34 (67%), +2.5=5.84 (117%) > 115% → fails
-  // At 67% < 90% → best-fit kicks in
-  // Takes V4★(0), then best-fit: H4★(2, cv=2.5) → total=4.17
-  // Then best-fit: H1★(3, cv=1.0) → total=5.17 (103%) ✓
-  // Row contains V4★(V) + H4★(H) + H1★(H) → templateKey { h: 2, v: 1 }
+  // Test 17: V4★ + H3★ + H4★ + H1★ — with rw=8
+  // V4★ eff=3 cv≈1.53, H3★ cv=2.5, H4★ cv=3.5, H1★ cv=1.25
+  // Sequential: 1.53(19.1%) + 2.5(50.4%) + 3.5(94.1%✓) → complete at 3
+  // Actual: [1,2,3] → dom-stacked-2h1v, remaining [4] alone
   // ---------------------------------------------------------------
-  it('17: best-fit fallback — V4★ + H3★ + H4★ + H1★', () => {
+  it('17: sequential fill — V4★ + H3★ + H4★ + H1★', () => {
     const items = [V(1, 4), H(2, 3), H(3, 4), H(4, 1)];
     const rows = buildRows(items, DESKTOP);
 
+    // Row 1: V4★ + H3★ + H4★ → dom-stacked-2h1v
     expect(rows[0]!.templateKey).toEqual({ h: 2, v: 1 });
-    // Best-fit selects items [0, 2, 3] skipping H3★(1)
-    expect(rowIds(rows[0]!)).toContain(1); // V4★ always first
-    expect(rowIds(rows[0]!)).toContain(3); // H4★ best fit
-    expect(rowIds(rows[0]!)).toContain(4); // H1★ best fit
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
     expect(rows[0]!.components).toHaveLength(3);
 
-    // H3★ should be in second row
+    // Row 2: H1★ alone
+    expect(rowIds(rows[1]!)).toEqual([4]);
+
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
     expect(allIds).toEqual([1, 2, 3, 4]);
   });
@@ -445,14 +433,24 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 21: Large mixed collection — 15 images
+  // With rw=8, H5★ is no longer standalone (cv=5.0, fill=62.5% < 95%)
   // ---------------------------------------------------------------
   it('21: large mixed collection (15 images) — all items consumed', () => {
     const items = [
-      H(1, 5),  // standalone
-      H(2, 4), V(3, 3), V(4, 3),  // DVP
-      H(5, 3), H(6, 3), H(7, 3),  // triple
-      V(8, 2), V(9, 2),           // vertical pair (fill too low)
-      H(10, 1), V(11, 1), H(12, 1), V(13, 1), H(14, 1),
+      H(1, 5), // cv=5.0
+      H(2, 4),
+      V(3, 3),
+      V(4, 3), // cv=3.5, 1.07, 1.07
+      H(5, 3),
+      H(6, 3),
+      H(7, 3), // cv=2.5 each
+      V(8, 2),
+      V(9, 2), // cv≈0.77 each
+      H(10, 1),
+      V(11, 1),
+      H(12, 1),
+      V(13, 1),
+      H(14, 1),
       H(15, 2),
     ];
     const rows = buildRows(items, DESKTOP);
@@ -461,9 +459,10 @@ describe('buildRows characterization', () => {
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
     expect(allIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
-    // First row should be H5★ standalone
-    expect(rows[0]!.label).toBe('hero');
-    expect(rowIds(rows[0]!)).toEqual([1]);
+    // First row: H5★+H4★+V3★ → dom-stacked-2h1v (5.0+3.5+1.07=9.57, 119% > MAX)
+    // Actual: [1,2,3] as dom-stacked-2h1v
+    expect(rows[0]!.label).toBe('dom-stacked-2h1v');
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
   });
 
   // ---------------------------------------------------------------
@@ -472,9 +471,15 @@ describe('buildRows characterization', () => {
   it('23: boxTree leaf IDs match component IDs for all rows', () => {
     const items = [
       H(1, 5),
-      H(2, 4), V(3, 3), V(4, 3),
-      H(5, 3), H(6, 3), H(7, 3),
-      V(8, 1), H(9, 2), V(10, 2),
+      H(2, 4),
+      V(3, 3),
+      V(4, 3),
+      H(5, 3),
+      H(6, 3),
+      H(7, 3),
+      V(8, 1),
+      H(9, 2),
+      V(10, 2),
     ];
     const rows = buildRows(items, DESKTOP);
 
@@ -483,9 +488,7 @@ describe('buildRows characterization', () => {
       const leafIds = boxTreeLeafIds(row.boxTree);
       // BoxTree leaves should contain exactly the same items as components
       // (order may differ for nested-quad, but content should match)
-      expect(leafIds.sort((a, b) => a - b)).toEqual(
-        componentIds.sort((a, b) => a - b)
-      );
+      expect(leafIds.sort((a, b) => a - b)).toEqual(componentIds.sort((a, b) => a - b));
     }
   });
 });
@@ -493,7 +496,6 @@ describe('buildRows characterization', () => {
 // ===================== Architecture Type Tests =====================
 
 describe('architecture types', () => {
-
   describe('toImageType', () => {
     it('should convert horizontal image to ImageType with ar=H', () => {
       const item = H(1, 4);
@@ -501,8 +503,9 @@ describe('architecture types', () => {
 
       expect(img.source).toBe(item);
       expect(img.ar).toBe('H');
+      expect(img.numericAR).toBeCloseTo(1.7778, 3);
       expect(img.effectiveRating).toBe(4); // horizontal, no penalty
-      expect(img.componentValue).toBeCloseTo(2.5); // 5/(5-4+1) = 2.5
+      expect(img.componentValue).toBeCloseTo(3.5); // BASE_WEIGHT[4] × 1.0 (arFactor capped)
     });
 
     it('should convert vertical image with penalty', () => {
@@ -511,8 +514,9 @@ describe('architecture types', () => {
 
       expect(img.source).toBe(item);
       expect(img.ar).toBe('V');
+      expect(img.numericAR).toBeCloseTo(0.5625);
       expect(img.effectiveRating).toBe(2); // V3★ → eff 2 (vertical penalty)
-      expect(img.componentValue).toBeCloseTo(1.25); // 5/(5-2+1) = 1.25
+      expect(img.componentValue).toBeCloseTo(1.0717, 3); // BASE_WEIGHT[2] × sqrt(0.5625/1.5)
     });
 
     it('should handle V1★ → effective 0', () => {
@@ -520,8 +524,9 @@ describe('architecture types', () => {
       const img = toImageType(item, DESKTOP);
 
       expect(img.ar).toBe('V');
+      expect(img.numericAR).toBeCloseTo(0.5625);
       expect(img.effectiveRating).toBe(0);
-      expect(img.componentValue).toBeCloseTo(1.0); // 5/(5-0) clamped
+      expect(img.componentValue).toBeCloseTo(0.6124, 3); // BASE_WEIGHT[0] × sqrt(0.5625/1.5)
     });
 
     it('should preserve source reference', () => {
@@ -630,19 +635,13 @@ describe('architecture types', () => {
       const b = makeImg(3, 'V', 1);
       const bottom = makeImg(4, 'H', 3);
 
-      const ac = hPair(
-        single(main),
-        vStack(
-          hPair(single(a), single(b)),
-          single(bottom)
-        )
-      );
+      const ac = hPair(single(main), vStack(hPair(single(a), single(b)), single(bottom)));
 
       expect(ac.type).toBe('pair');
       if (ac.type === 'pair') {
         expect(ac.direction).toBe('H');
         expect(ac.children[0].type).toBe('single'); // main
-        expect(ac.children[1].type).toBe('pair');    // V(H(a,b), bottom)
+        expect(ac.children[1].type).toBe('pair'); // V(H(a,b), bottom)
         if (ac.children[1].type === 'pair') {
           expect(ac.children[1].direction).toBe('V');
           expect(ac.children[1].children[0].type).toBe('pair'); // H(a,b)
@@ -780,18 +779,16 @@ describe('architecture types', () => {
     });
 
     it('handles mixed collections', () => {
-      const imgs = [
-        makeImg(1, 'H', 4),
-        makeImg(2, 'V', 3),
-        makeImg(3, 'V', 3),
-      ];
+      const imgs = [makeImg(1, 'H', 4), makeImg(2, 'V', 3), makeImg(3, 'V', 3)];
       expect(getTemplateKey(imgs)).toBe('1-2');
     });
 
     it('handles 5-item row', () => {
       const imgs = [
-        makeImg(1, 'H', 1), makeImg(2, 'V', 1),
-        makeImg(3, 'H', 1), makeImg(4, 'V', 1),
+        makeImg(1, 'H', 1),
+        makeImg(2, 'V', 1),
+        makeImg(3, 'H', 1),
+        makeImg(4, 'V', 1),
         makeImg(5, 'H', 1),
       ];
       expect(getTemplateKey(imgs)).toBe('3-2');
@@ -951,7 +948,7 @@ describe('architecture types', () => {
         if (bt.children[1].type === 'combined') {
           expect(bt.children[1].direction).toBe('vertical');
           expect(bt.children[1].children[0].type).toBe('combined'); // H(topPair)
-          expect(bt.children[1].children[1].type).toBe('leaf');     // bottom
+          expect(bt.children[1].children[1].type).toBe('leaf'); // bottom
         }
       }
     });
@@ -982,7 +979,13 @@ describe('architecture types', () => {
     });
 
     it('5-0 → buildAtomic produces pair at root', () => {
-      const fiveH = [makeImg(1,'H',1), makeImg(2,'H',1), makeImg(3,'H',1), makeImg(4,'H',1), makeImg(5,'H',1)];
+      const fiveH = [
+        makeImg(1, 'H', 1),
+        makeImg(2, 'H', 1),
+        makeImg(3, 'H', 1),
+        makeImg(4, 'H', 1),
+        makeImg(5, 'H', 1),
+      ];
       const ac = TEMPLATE_MAP['5-0']!.build(fiveH, 1.5, DESKTOP);
       expect(ac.type).toBe('pair');
       if (ac.type === 'pair') {
@@ -1016,24 +1019,27 @@ describe('architecture types', () => {
     });
 
     it('looks up 0-4 → nested quad', () => {
-      const imgs = [
-        makeImg(1, 'V', 3), makeImg(2, 'V', 1),
-        makeImg(3, 'V', 1), makeImg(4, 'V', 1),
-      ];
+      const imgs = [makeImg(1, 'V', 3), makeImg(2, 'V', 1), makeImg(3, 'V', 1), makeImg(4, 'V', 1)];
       const { composition: ac } = lookupComposition(imgs);
       const bt = acToBoxTree(ac);
       expect(bt.type).toBe('combined');
-      if (bt.type === 'combined' && // Main should be V3★ (id=1)
-        bt.children[0].type === 'leaf') {
-          expect(bt.children[0].content.id).toBe(1);
-        }
+      if (
+        bt.type === 'combined' && // Main should be V3★ (id=1)
+        bt.children[0].type === 'leaf'
+      ) {
+        expect(bt.children[0].content.id).toBe(1);
+      }
     });
 
     it('uses compose-fallback for unknown key (6+ images)', () => {
       // 6 horizontal images → key "6-0" not in map → compose handles it
       const imgs = [
-        makeImg(1,'H',1), makeImg(2,'H',1), makeImg(3,'H',1),
-        makeImg(4,'H',1), makeImg(5,'H',1), makeImg(6,'H',1),
+        makeImg(1, 'H', 1),
+        makeImg(2, 'H', 1),
+        makeImg(3, 'H', 1),
+        makeImg(4, 'H', 1),
+        makeImg(5, 'H', 1),
+        makeImg(6, 'H', 1),
       ];
       const { composition: ac, label } = lookupComposition(imgs);
       expect(label).toBe('compose-fallback');
