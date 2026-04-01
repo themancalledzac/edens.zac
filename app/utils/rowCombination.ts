@@ -105,6 +105,7 @@ export interface ImageType {
   source: AnyContentModel;
   title: string;
   ar: OrientationShort;
+  numericAR: number;
   effectiveRating: number;
   componentValue: number;
 }
@@ -124,12 +125,13 @@ export type AtomicComponent =
 
 /** Convert AnyContentModel to ImageType for composition decisions */
 export function toImageType(item: AnyContentModel, _rowWidth: number): ImageType {
-  const ar: OrientationShort = getAspectRatio(item) > 1.0 ? 'H' : 'V';
+  const numericAR = getAspectRatio(item);
+  const ar: OrientationShort = numericAR > 1.0 ? 'H' : 'V';
   const effectiveRating = getEffectiveRating(item);
   const componentValue = getItemComponentValue(item);
   const title = 'title' in item ? String(item.title) : `item-${item.id}`;
 
-  return { source: item, title, ar, effectiveRating, componentValue };
+  return { source: item, title, ar, numericAR, effectiveRating, componentValue };
 }
 
 /** Create a single-image AtomicComponent */
