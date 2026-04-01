@@ -30,7 +30,7 @@ import { type ContentPersonModel, type ContentTagModel } from '@/app/types/Image
  * Get all tags (ordered alphabetically)
  */
 export async function getAllTags(): Promise<ContentTagModel[] | null> {
-  const raw = await fetchReadApi<Array<{ id: number; tagName: string; slug: string }>>('/content/tags', { next: { revalidate: TIMING.revalidateCache } });
+  const raw = await fetchReadApi<Array<{ id: number; tagName: string; slug: string }>>('/content/tags', { next: { revalidate: TIMING.revalidateCache, tags: ['content-tags'] } });
   return raw?.map(t => ({ id: t.id, name: t.tagName, slug: t.slug })) ?? null;
 }
 
@@ -39,7 +39,7 @@ export async function getAllTags(): Promise<ContentTagModel[] | null> {
  * Get all people (ordered alphabetically)
  */
 export async function getAllPeople(): Promise<ContentPersonModel[] | null> {
-  const raw = await fetchReadApi<Array<{ id: number; personName: string; slug: string }>>('/content/people', { next: { revalidate: TIMING.revalidateCache } });
+  const raw = await fetchReadApi<Array<{ id: number; personName: string; slug: string }>>('/content/people', { next: { revalidate: TIMING.revalidateCache, tags: ['content-people'] } });
   return raw?.map(p => ({ id: p.id, name: p.personName, slug: p.slug })) ?? null;
 }
 
@@ -48,7 +48,7 @@ export async function getAllPeople(): Promise<ContentPersonModel[] | null> {
  * Get all cameras (ordered alphabetically)
  */
 export async function getAllCameras(): Promise<Array<{ id: number; cameraName: string }> | null> {
-  return fetchReadApi('/content/cameras', { next: { revalidate: TIMING.revalidateCache } });
+  return fetchReadApi('/content/cameras', { next: { revalidate: TIMING.revalidateCache, tags: ['content-cameras'] } });
 }
 
 /**
@@ -56,7 +56,7 @@ export async function getAllCameras(): Promise<Array<{ id: number; cameraName: s
  * Get all locations with image counts (ordered alphabetically)
  */
 export async function getAllLocations(): Promise<Array<{ id: number; name: string; slug: string; count?: number }> | null> {
-  return fetchReadApi('/content/locations', { next: { revalidate: TIMING.revalidateCache } });
+  return fetchReadApi('/content/locations', { next: { revalidate: TIMING.revalidateCache, tags: ['content-locations'] } });
 }
 
 /**
@@ -64,7 +64,7 @@ export async function getAllLocations(): Promise<Array<{ id: number; name: strin
  * Get all lenses (ordered alphabetically)
  */
 export async function getAllLenses(): Promise<Array<{ id: number; lensName: string }> | null> {
-  return fetchReadApi('/content/lenses', { next: { revalidate: TIMING.revalidateCache } });
+  return fetchReadApi('/content/lenses', { next: { revalidate: TIMING.revalidateCache, tags: ['content-lenses'] } });
 }
 
 /**
@@ -127,7 +127,7 @@ export async function getFilmMetadata(): Promise<{
   filmTypes: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
   filmFormats: Array<{ name: string; displayName: string }>;
 } | null> {
-  return fetchReadApi('/content/film-metadata', { next: { revalidate: TIMING.revalidateCache } });
+  return fetchReadApi('/content/film-metadata', { next: { revalidate: TIMING.revalidateCache, tags: ['content-film-metadata'] } });
 }
 
 // ============================================================================

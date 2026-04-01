@@ -59,6 +59,7 @@ import {
   mergeNewMetadata,
   refreshCollectionAfterOperation,
   revalidateCollectionCache,
+  revalidateMetadataCache,
 } from './manageUtils';
 import { useContentReordering } from './useContentReordering';
 import { useCoverImageSelection } from './useCoverImageSelection';
@@ -497,6 +498,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           collectionStorage.update(slug, fullResponse.collection);
           collectionStorage.updateFull(slug, fullResponse);
           await revalidateCollectionCache(slug);
+          void revalidateMetadataCache();
 
           // Merge metadata into the fresh response using functional updater to avoid stale closure
           setCurrentState(prev => {
@@ -546,6 +548,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           collectionStorage.update(slug, fullResponse.collection);
           collectionStorage.updateFull(slug, fullResponse);
           await revalidateCollectionCache(slug);
+          void revalidateMetadataCache();
         }
 
         setSelectedImageIds([]);

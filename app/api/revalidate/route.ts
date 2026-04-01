@@ -13,18 +13,27 @@ import { type NextRequest, NextResponse } from 'next/server';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { tag, path } = body;
+    const { tag, tags, path } = body;
 
-    if (!tag && !path) {
+    if (!tag && !tags && !path) {
       return NextResponse.json(
-        { error: 'Either tag or path is required' },
+        { error: 'Either tag, tags, or path is required' },
         { status: 400 }
       );
     }
 
-    // Revalidate cache tag if provided
+    // Revalidate single cache tag if provided
     if (tag && typeof tag === 'string') {
       revalidateTag(tag, 'default');
+    }
+
+    // Revalidate multiple cache tags if provided
+    if (Array.isArray(tags)) {
+      for (const t of tags) {
+        if (typeof t === 'string') {
+          revalidateTag(t, 'default');
+        }
+      }
     }
 
     // Revalidate path if provided
@@ -32,9 +41,10 @@ export async function POST(req: NextRequest) {
       revalidatePath(path);
     }
 
-    return NextResponse.json({ 
-      revalidated: true, 
+    return NextResponse.json({
+      revalidated: true,
       tag: tag || undefined,
+      tags: tags || undefined,
       path: path || undefined,
     });
   } catch (error) {
