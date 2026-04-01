@@ -77,7 +77,7 @@ export interface ContentImageModel extends Content {
   focalLength?: string | null;
   location?: LocationModel | null;
   captureDate?: string | null;
-  fstop?: string | null;
+  fStop?: string | null;
   alt?: string;
   aspectRatio?: number;
 
@@ -261,7 +261,7 @@ export interface ContentImageUpdateRequest {
   location?: LocationUpdate;
 
   /** F-stop value */
-  fstop?: string | null;
+  fStop?: string | null;
 
   /** ISO value */
   iso?: number | null;

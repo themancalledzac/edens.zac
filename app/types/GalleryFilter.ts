@@ -20,3 +20,24 @@ export const INITIAL_GALLERY_FILTER_STATE: GalleryFilterState = Object.freeze({
   selectedTags: Object.freeze([] as readonly string[]),
   selectedPeople: Object.freeze([] as readonly string[]),
 });
+
+/**
+ * Filter state for collection detail pages.
+ * Simpler than GalleryFilterState — no date sort or film filter.
+ * AND logic within and across categories.
+ */
+export interface CollectionFilterState {
+  readonly selectedTags: readonly string[];
+  readonly selectedPeople: readonly string[];
+  readonly selectedCameras: readonly string[];
+  readonly selectedLenses: readonly string[];
+  highlyRatedOnly: boolean;
+}
+
+export const INITIAL_COLLECTION_FILTER_STATE: CollectionFilterState = Object.freeze({
+  selectedTags: Object.freeze([] as readonly string[]),
+  selectedPeople: Object.freeze([] as readonly string[]),
+  selectedCameras: Object.freeze([] as readonly string[]),
+  selectedLenses: Object.freeze([] as readonly string[]),
+  highlyRatedOnly: false,
+});

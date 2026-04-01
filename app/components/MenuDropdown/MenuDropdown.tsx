@@ -30,7 +30,12 @@ interface MenuDropdownProps {
  * @param isOpen - Controls dropdown visibility
  * @param onClose - Callback to close the dropdown
  */
-export function MenuDropdown({ isOpen, onClose, pageType = 'default', collectionSlug }: MenuDropdownProps) {
+export function MenuDropdown({
+  isOpen,
+  onClose,
+  pageType = 'default',
+  collectionSlug,
+}: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -46,6 +51,10 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
       router.push(collectionSlug ? `/collection/manage/${collectionSlug}` : '/collection/manage');
       onClose();
     },
+    metadata: () => {
+      router.push('/metadata');
+      onClose();
+    },
     blogs: () => {
       router.push('/collectionType/blogs');
       onClose();
@@ -57,7 +66,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
     github: () => {
       window.open('https://github.com/themancalledzac', '_blank', 'noopener,noreferrer');
       onClose();
-    }
+    },
   };
 
   const handleToggle = {
@@ -68,7 +77,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
     contact: () => {
       setShowContactForm(prev => !prev);
       setShowAbout(false);
-    }
+    },
   };
 
   const handleBackToMenu = () => {
@@ -83,11 +92,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
   // Click outside to close on desktop only
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        isOpen &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (isOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         const isDesktop = window.innerWidth >= 768;
         if (isDesktop) {
           onClose();
@@ -137,18 +142,12 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
 
       <div className={styles.dropdownMenuOptionsWrapper}>
         <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleToggle.about}
-          >
+          <button type="button" className={styles.dropdownMenuButton} onClick={handleToggle.about}>
             <h2 className={styles.dropdownMenuOptions}>About</h2>
           </button>
         </div>
 
-        {showAbout && (
-          <About onBack={handleBackToMenu} />
-        )}
+        {showAbout && <About onBack={handleBackToMenu} />}
 
         <div className={styles.dropdownMenuItem}>
           <button
@@ -161,10 +160,7 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
         </div>
 
         {showContactForm && (
-          <ContactForm
-            onBack={handleBackToMenu}
-            onSubmit={handleContactSubmit}
-          />
+          <ContactForm onBack={handleBackToMenu} onSubmit={handleContactSubmit} />
         )}
 
         <div className={styles.dropdownMenuItem}>
@@ -177,17 +173,18 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
           </button>
         </div>
 
-        {isLocalEnvironment() && (pageType === 'collection' || pageType === 'collectionsCollection') && (
-          <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.create}
-            >
-              <h2 className={styles.dropdownMenuOptions}>Create</h2>
-            </button>
-          </div>
-        )}
+        {isLocalEnvironment() &&
+          (pageType === 'collection' || pageType === 'collectionsCollection') && (
+            <div className={styles.dropdownMenuItem}>
+              <button
+                type="button"
+                className={styles.dropdownMenuButton}
+                onClick={handleNavigation.create}
+              >
+                <h2 className={styles.dropdownMenuOptions}>Create</h2>
+              </button>
+            </div>
+          )}
 
         {isLocalEnvironment() && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
@@ -200,9 +197,23 @@ export function MenuDropdown({ isOpen, onClose, pageType = 'default', collection
             </button>
           </div>
         )}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.metadata}
+            >
+              <h2 className={styles.dropdownMenuOptions}>Metadata</h2>
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}>
+      <div
+        className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}
+      >
         <button
           type="button"
           className={styles.socialIconButton}

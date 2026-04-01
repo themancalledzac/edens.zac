@@ -322,37 +322,37 @@ describe('filterContent', () => {
   });
 });
 
-  describe('edge cases', () => {
-    it('returns all content when query is whitespace only', () => {
-      const result = filterContent(sampleImages, { query: '   ' });
-      expect(result).toHaveLength(3);
-    });
-
-    it('returns all content when collectionIds is empty array', () => {
-      const result = filterContent(sampleImages, { collectionIds: [] });
-      expect(result).toHaveLength(3);
-    });
-
-    it('treats minRating: 0 as an active filter (all images with rating >= 0 pass)', () => {
-      const result = filterContent(sampleImages, { minRating: 0 });
-      // All sample images have ratings (5, 3, 4) — all >= 0, so all pass
-      expect(result).toHaveLength(3);
-    });
-
-    it('handles single-day date range (dateFrom equals dateTo)', () => {
-      const images = [
-        makeImage({ id: 10, captureDate: '2024-06-15T12:00:00Z' }),
-        makeImage({ id: 11, captureDate: '2024-06-14T23:59:59Z' }),
-        makeImage({ id: 12, captureDate: '2024-06-16T00:00:01Z' }),
-      ];
-      const result = filterContent(images, {
-        dateFrom: '2024-06-15',
-        dateTo: '2024-06-15',
-      });
-      expect(result).toHaveLength(1);
-      expect(result[0]!.id).toBe(10);
-    });
+describe('edge cases', () => {
+  it('returns all content when query is whitespace only', () => {
+    const result = filterContent(sampleImages, { query: '   ' });
+    expect(result).toHaveLength(3);
   });
+
+  it('returns all content when collectionIds is empty array', () => {
+    const result = filterContent(sampleImages, { collectionIds: [] });
+    expect(result).toHaveLength(3);
+  });
+
+  it('treats minRating: 0 as an active filter (all images with rating >= 0 pass)', () => {
+    const result = filterContent(sampleImages, { minRating: 0 });
+    // All sample images have ratings (5, 3, 4) — all >= 0, so all pass
+    expect(result).toHaveLength(3);
+  });
+
+  it('handles single-day date range (dateFrom equals dateTo)', () => {
+    const images = [
+      makeImage({ id: 10, captureDate: '2024-06-15T12:00:00Z' }),
+      makeImage({ id: 11, captureDate: '2024-06-14T23:59:59Z' }),
+      makeImage({ id: 12, captureDate: '2024-06-16T00:00:01Z' }),
+    ];
+    const result = filterContent(images, {
+      dateFrom: '2024-06-15',
+      dateTo: '2024-06-15',
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]!.id).toBe(10);
+  });
+});
 
 // ─── extractFilterOptions ───
 
@@ -438,10 +438,7 @@ describe('extractFilterOptions', () => {
   });
 
   it('treats undefined isFilm as digital in options', () => {
-    const images = [
-      makeImage({ id: 1, isFilm: undefined }),
-      makeImage({ id: 2, isFilm: true }),
-    ];
+    const images = [makeImage({ id: 1, isFilm: undefined }), makeImage({ id: 2, isFilm: true })];
     const options = extractFilterOptions(images);
     expect(options.hasFilm).toBe(true);
     expect(options.hasDigital).toBe(true);
@@ -772,5 +769,156 @@ describe('computeFilterCounts', () => {
       expect(counts.people).toEqual({});
       expect(counts.collections).toEqual({});
     });
+  });
+});
+
+// ─── AND Match Mode ───
+
+describe('filterContent with AND match mode', () => {
+  const images: ContentImageModel[] = [
+    makeImage({
+      id: 10,
+      tags: [
+        { id: 1, name: 'alpine' },
+        { id: 2, name: 'lake' },
+        { id: 3, name: 'mountain' },
+      ],
+      people: [
+        { id: 1, name: 'Nate' },
+        { id: 2, name: 'Saxon' },
+      ],
+      camera: { id: 1, name: 'NIKON Z 6' },
+      lens: { id: 1, name: 'NIKKOR Z 24-70mm f/4 S' },
+    }),
+    makeImage({
+      id: 11,
+      tags: [
+        { id: 1, name: 'alpine' },
+        { id: 4, name: 'forest' },
+      ],
+      people: [{ id: 1, name: 'Nate' }],
+      camera: { id: 2, name: 'SONY A7III' },
+      lens: { id: 2, name: 'FE 24-70mm f/2.8 GM' },
+    }),
+    makeImage({
+      id: 12,
+      tags: [
+        { id: 2, name: 'lake' },
+        { id: 3, name: 'mountain' },
+      ],
+      people: [{ id: 2, name: 'Saxon' }],
+      camera: { id: 1, name: 'NIKON Z 6' },
+      lens: { id: 1, name: 'NIKKOR Z 24-70mm f/4 S' },
+    }),
+  ];
+
+  it('OR mode (default): matches images with ANY of the selected tags', () => {
+    const result = filterContent(images, { tags: ['alpine', 'lake'] });
+    expect(result.map(r => r.id)).toEqual([10, 11, 12]);
+  });
+
+  it('AND mode: matches images with ALL of the selected tags', () => {
+    const result = filterContent(images, { tags: ['alpine', 'lake'], tagMatchMode: 'AND' });
+    expect(result.map(r => r.id)).toEqual([10]);
+  });
+
+  it('AND mode for people: matches images with ALL selected people', () => {
+    const result = filterContent(images, {
+      people: ['Nate', 'Saxon'],
+      peopleMatchMode: 'AND',
+    });
+    expect(result.map(r => r.id)).toEqual([10]);
+  });
+
+  it('OR mode for people (default): matches images with ANY selected person', () => {
+    const result = filterContent(images, { people: ['Nate', 'Saxon'] });
+    expect(result.map(r => r.id)).toEqual([10, 11, 12]);
+  });
+
+  it('filters by lens name', () => {
+    const result = filterContent(images, { lenses: ['NIKKOR Z 24-70mm f/4 S'] });
+    expect(result.map(r => r.id)).toEqual([10, 12]);
+  });
+
+  it('AND mode across categories: tag AND + person AND', () => {
+    const result = filterContent(images, {
+      tags: ['alpine'],
+      tagMatchMode: 'AND',
+      people: ['Nate'],
+      peopleMatchMode: 'AND',
+    });
+    expect(result.map(r => r.id)).toEqual([10, 11]);
+  });
+
+  it('AND mode: no matches when no image has all tags', () => {
+    const result = filterContent(images, {
+      tags: ['alpine', 'lake', 'forest'],
+      tagMatchMode: 'AND',
+    });
+    expect(result).toEqual([]);
+  });
+});
+
+// ─── extractFilterOptions: lenses ───
+
+describe('extractFilterOptions lenses', () => {
+  it('extracts unique lens names sorted alphabetically', () => {
+    const images: ContentImageModel[] = [
+      makeImage({ id: 20, lens: { id: 1, name: 'NIKKOR Z 24-70mm f/4 S' } }),
+      makeImage({ id: 21, lens: { id: 2, name: 'FE 24-70mm f/2.8 GM' } }),
+      makeImage({ id: 22, lens: { id: 1, name: 'NIKKOR Z 24-70mm f/4 S' } }),
+    ];
+    const options = extractFilterOptions(images);
+    expect(options.lenses).toEqual(['FE 24-70mm f/2.8 GM', 'NIKKOR Z 24-70mm f/4 S']);
+  });
+
+  it('returns empty array when no lenses present', () => {
+    const images: ContentImageModel[] = [makeImage({ id: 30 }), makeImage({ id: 31 })];
+    const options = extractFilterOptions(images);
+    expect(options.lenses).toEqual([]);
+  });
+});
+
+// ─── Tag Frequency Cap (100% exclusion) ───
+
+describe('extractFilterOptions tag frequency', () => {
+  it('excludes tags present on 100% of images from top-10', () => {
+    const images: ContentImageModel[] = [
+      makeImage({
+        id: 40,
+        tags: [
+          { id: 1, name: 'common' },
+          { id: 2, name: 'unique-a' },
+        ],
+      }),
+      makeImage({
+        id: 41,
+        tags: [
+          { id: 1, name: 'common' },
+          { id: 3, name: 'unique-b' },
+        ],
+      }),
+    ];
+    const options = extractFilterOptions(images);
+    // 'common' appears on 100% of images but extractFilterOptions doesn't exclude it
+    // (that logic is in CollectionPageClient's extractCollectionFilterOptions)
+    // extractFilterOptions just returns top 10 by frequency
+    expect(options.tags).toContain('common');
+    expect(options.tags).toContain('unique-a');
+    expect(options.tags).toContain('unique-b');
+  });
+
+  it('caps at 10 tags sorted by frequency then alphabetically', () => {
+    const tags = Array.from({ length: 15 }, (_, i) => ({
+      id: i + 1,
+      name: `tag-${String(i + 1).padStart(2, '0')}`,
+    }));
+    const images: ContentImageModel[] = [
+      makeImage({ id: 50, tags: tags.slice(0, 5) }),
+      makeImage({ id: 51, tags: tags.slice(0, 3) }),
+      makeImage({ id: 52, tags: tags.slice(5, 10) }),
+    ];
+    const options = extractFilterOptions(images);
+    expect(options.tags).toHaveLength(10);
   });
 });

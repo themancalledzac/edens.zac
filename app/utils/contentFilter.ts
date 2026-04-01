@@ -18,14 +18,16 @@ import { type AnyContentModel, type ContentImageModel } from '@/app/types/Conten
 export interface ContentFilterCriteria {
   /** Minimum star rating (1-5) */
   minRating?: number;
-  /** People names to include (OR logic — matches if image has ANY of these) */
+  /** People names to include */
   people?: readonly string[];
   /** Location names to include (OR logic) */
   locations?: readonly string[];
-  /** Tag names to include (OR logic) */
+  /** Tag names to include */
   tags?: readonly string[];
-  /** Camera names to include (OR logic) */
+  /** Camera names to include */
   cameras?: readonly string[];
+  /** Lens names to include */
+  lenses?: readonly string[];
   /** Free-text search (matches title, caption, tags, people, location) */
   query?: string;
   /** Date range start (ISO string, inclusive) */
@@ -38,6 +40,14 @@ export interface ContentFilterCriteria {
   blackAndWhite?: boolean;
   /** Collection IDs to include (OR logic — matches if image belongs to ANY of these) */
   collectionIds?: readonly number[];
+  /** Match mode for tags: 'AND' requires all, 'OR' requires any (default: 'OR') */
+  tagMatchMode?: 'AND' | 'OR';
+  /** Match mode for people: 'AND' requires all, 'OR' requires any (default: 'OR') */
+  peopleMatchMode?: 'AND' | 'OR';
+  /** Match mode for cameras: 'AND' requires all, 'OR' requires any (default: 'OR') */
+  cameraMatchMode?: 'AND' | 'OR';
+  /** Match mode for lenses: 'AND' requires all, 'OR' requires any (default: 'OR') */
+  lensMatchMode?: 'AND' | 'OR';
 }
 
 /**
@@ -124,6 +134,7 @@ export function filterContent(
     (criteria.locations && criteria.locations.length > 0) ||
     (criteria.tags && criteria.tags.length > 0) ||
     (criteria.cameras && criteria.cameras.length > 0) ||
+    (criteria.lenses && criteria.lenses.length > 0) ||
     (criteria.query !== undefined && criteria.query.trim().length > 0) ||
     criteria.dateFrom !== undefined ||
     criteria.dateTo !== undefined ||
@@ -143,7 +154,8 @@ export function filterContent(
 
     if (criteria.people && criteria.people.length > 0) {
       const imagePersonNames = item.people?.map(p => p.name.toLowerCase()) ?? [];
-      const matchesPerson = criteria.people.some(name =>
+      const matcher = criteria.peopleMatchMode === 'AND' ? 'every' : 'some';
+      const matchesPerson = criteria.people[matcher](name =>
         imagePersonNames.includes(name.toLowerCase())
       );
       if (!matchesPerson) return false;
@@ -151,33 +163,43 @@ export function filterContent(
 
     if (criteria.locations && criteria.locations.length > 0) {
       const imageLocation = item.location?.name?.toLowerCase() ?? '';
-      const matchesLocation = criteria.locations.some(
-        loc => loc.toLowerCase() === imageLocation
-      );
+      const matchesLocation = criteria.locations.some(loc => loc.toLowerCase() === imageLocation);
       if (!matchesLocation) return false;
     }
 
     if (criteria.tags && criteria.tags.length > 0) {
       const imageTagNames = item.tags?.map(t => t.name.toLowerCase()) ?? [];
-      const matchesTag = criteria.tags.some(tag =>
-        imageTagNames.includes(tag.toLowerCase())
-      );
+      const matcher = criteria.tagMatchMode === 'AND' ? 'every' : 'some';
+      const matchesTag = criteria.tags[matcher](tag => imageTagNames.includes(tag.toLowerCase()));
       if (!matchesTag) return false;
     }
 
     if (criteria.cameras && criteria.cameras.length > 0) {
       const imageCameraName = item.camera?.name?.toLowerCase() ?? '';
-      const matchesCamera = criteria.cameras.some(
-        cam => cam.toLowerCase() === imageCameraName
-      );
+      const matcher = criteria.cameraMatchMode === 'AND' ? 'every' : 'some';
+      const matchesCamera = criteria.cameras[matcher](cam => cam.toLowerCase() === imageCameraName);
       if (!matchesCamera) return false;
     }
 
-    if (criteria.query && criteria.query.trim().length > 0 && !imageMatchesQuery(item, criteria.query.trim())) {
+    if (criteria.lenses && criteria.lenses.length > 0) {
+      const imageLensName = item.lens?.name?.toLowerCase() ?? '';
+      const matcher = criteria.lensMatchMode === 'AND' ? 'every' : 'some';
+      const matchesLens = criteria.lenses[matcher](lens => lens.toLowerCase() === imageLensName);
+      if (!matchesLens) return false;
+    }
+
+    if (
+      criteria.query &&
+      criteria.query.trim().length > 0 &&
+      !imageMatchesQuery(item, criteria.query.trim())
+    ) {
       return false;
     }
 
-    if ((criteria.dateFrom || criteria.dateTo) && !isWithinDateRange(item.captureDate, criteria.dateFrom, criteria.dateTo)) {
+    if (
+      (criteria.dateFrom || criteria.dateTo) &&
+      !isWithinDateRange(item.captureDate, criteria.dateFrom, criteria.dateTo)
+    ) {
       return false;
     }
 
@@ -185,15 +207,16 @@ export function filterContent(
       return false;
     }
 
-    if (criteria.blackAndWhite !== undefined && (item.blackAndWhite ?? false) !== criteria.blackAndWhite) {
+    if (
+      criteria.blackAndWhite !== undefined &&
+      (item.blackAndWhite ?? false) !== criteria.blackAndWhite
+    ) {
       return false;
     }
 
     if (criteria.collectionIds && criteria.collectionIds.length > 0) {
       const imageCollectionIds = item.collections?.map(c => c.collectionId) ?? [];
-      const matchesCollection = criteria.collectionIds.some(id =>
-        imageCollectionIds.includes(id)
-      );
+      const matchesCollection = criteria.collectionIds.some(id => imageCollectionIds.includes(id));
       if (!matchesCollection) return false;
     }
 
@@ -214,6 +237,7 @@ export interface ContentFilterOptions {
   locations: string[];
   tags: string[];
   cameras: string[];
+  lenses: string[];
   collections: Array<{ id: number; name: string }>;
   hasFilm: boolean;
   hasDigital: boolean;
@@ -227,6 +251,7 @@ export function extractFilterOptions(content: AnyContentModel[]): ContentFilterO
   const locationsSet = new Set<string>();
   const tagFrequency = new Map<string, number>();
   const camerasSet = new Set<string>();
+  const lensesSet = new Set<string>();
   const collectionsMap = new Map<number, string>();
   let hasFilm = false;
   let hasDigital = false;
@@ -254,6 +279,10 @@ export function extractFilterOptions(content: AnyContentModel[]): ContentFilterO
       camerasSet.add(item.camera.name);
     }
 
+    if (item.lens?.name) {
+      lensesSet.add(item.lens.name);
+    }
+
     for (const c of item.collections ?? []) {
       if (c.collectionId && c.name) {
         collectionsMap.set(c.collectionId, c.name);
@@ -276,6 +305,7 @@ export function extractFilterOptions(content: AnyContentModel[]): ContentFilterO
       .slice(0, 10)
       .map(([name]) => name),
     cameras: Array.from(camerasSet).sort(),
+    lenses: Array.from(lensesSet).sort(),
     collections: Array.from(collectionsMap, ([id, name]) => ({ id, name })).sort((a, b) =>
       a.name.localeCompare(b.name)
     ),
@@ -298,6 +328,8 @@ export interface FilterCounts {
   collections: Record<number, number>;
   tags: Record<string, number>;
   people: Record<string, number>;
+  cameras: Record<string, number>;
+  lenses: Record<string, number>;
 }
 
 /**
@@ -319,19 +351,23 @@ export interface FilterCounts {
 export function computeFilterCounts(
   content: AnyContentModel[],
   criteria: ContentFilterCriteria,
-  availableOptions: ContentFilterOptions,
+  availableOptions: ContentFilterOptions
 ): FilterCounts {
   const { minRating: _mr, ...withoutRating } = criteria;
   const { isFilm: _if, ...withoutFilm } = criteria;
   const { collectionIds: _cids, ...withoutCollections } = criteria;
-  const { tags: _tags, ...withoutTags } = criteria;
-  const { people: _people, ...withoutPeople } = criteria;
+  const { tags: _tags, tagMatchMode: _tm, ...withoutTags } = criteria;
+  const { people: _people, peopleMatchMode: _pm, ...withoutPeople } = criteria;
+  const { cameras: _cameras, cameraMatchMode: _cm, ...withoutCameras } = criteria;
+  const { lenses: _lenses, lensMatchMode: _lm, ...withoutLenses } = criteria;
 
   const baseWithoutRating = filterContent(content, withoutRating);
   const baseWithoutFilm = filterContent(content, withoutFilm);
   const baseWithoutCollections = filterContent(content, withoutCollections);
   const baseWithoutTags = filterContent(content, withoutTags);
   const baseWithoutPeople = filterContent(content, withoutPeople);
+  const baseWithoutCameras = filterContent(content, withoutCameras);
+  const baseWithoutLenses = filterContent(content, withoutLenses);
 
   let highlyRated = 0;
   for (const item of baseWithoutRating) {
@@ -351,7 +387,8 @@ export function computeFilterCounts(
   for (const item of baseWithoutCollections) {
     if (!isImageContent(item)) continue;
     for (const c of item.collections ?? []) {
-      if (c.collectionId in collections) collections[c.collectionId] = (collections[c.collectionId] ?? 0) + 1;
+      if (c.collectionId in collections)
+        collections[c.collectionId] = (collections[c.collectionId] ?? 0) + 1;
     }
   }
 
@@ -373,7 +410,25 @@ export function computeFilterCounts(
     }
   }
 
-  return { highlyRated, film, digital, collections, tags, people };
+  const cameras: Record<string, number> = {};
+  for (const cam of availableOptions.cameras) cameras[cam] = 0;
+  for (const item of baseWithoutCameras) {
+    if (!isImageContent(item)) continue;
+    if (item.camera?.name && item.camera.name in cameras) {
+      cameras[item.camera.name] = (cameras[item.camera.name] ?? 0) + 1;
+    }
+  }
+
+  const lenses: Record<string, number> = {};
+  for (const lens of availableOptions.lenses) lenses[lens] = 0;
+  for (const item of baseWithoutLenses) {
+    if (!isImageContent(item)) continue;
+    if (item.lens?.name && item.lens.name in lenses) {
+      lenses[item.lens.name] = (lenses[item.lens.name] ?? 0) + 1;
+    }
+  }
+
+  return { highlyRated, film, digital, collections, tags, people, cameras, lenses };
 }
 
 /**

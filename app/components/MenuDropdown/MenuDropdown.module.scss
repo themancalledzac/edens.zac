@@ -43,12 +43,12 @@
      The navBarWrapper is sized by the title's line-height (--header-1 at ~1.2x)
      and vertically centers the icon within it via align-items:center.
      We replicate that by setting the same top padding and matching the wrapper height. */
-  padding: var(--page-padding-mobile) var(--page-padding-mobile) 0 var(--page-padding-mobile);
+  padding: var(--page-padding-mobile) var(--page-padding-mobile) 16px var(--page-padding-mobile);
   /* Title line-height drives the navBarWrapper height; icon is centered within it */
   min-height: calc(var(--page-padding-mobile) + var(--header-1) * 1.2);
 
   @media (width >= 768px) {
-    padding: var(--default-padding) var(--default-padding) 0 0;
+    padding: var(--default-padding) var(--default-padding) var(--page-padding-desktop) 0;
     min-height: calc(var(--default-padding) + var(--header-1) * 1.2);
   }
 }

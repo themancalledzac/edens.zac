@@ -132,12 +132,23 @@
   margin-bottom: 16px;
 }
 
+.formLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
 .formLabel {
   display: block;
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 6px;
   color: var(--color-overlay-light-70);
+
+  .formLabelRow & {
+    margin-bottom: 0;
+  }
 }
 
 .formInput,
@@ -541,8 +552,6 @@
 /* Camera Selector Styles */
 .cameraDisplay {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 12px 16px;
   background: var(--color-overlay-light-05);
   border: 1px solid var(--color-overlay-light-20);
@@ -709,16 +718,22 @@
   gap: 8px;
 }
 
+.selectedChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: rgb(59, 130, 246, 0.2);
-  border: 1px solid rgb(59, 130, 246, 0.4);
-  border-radius: 16px;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--color-overlay-light-10);
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: 3px;
   font-size: 13px;
-  color: var(--color-blue-text);
+  color: var(--color-overlay-light-80);
   font-weight: 500;
 
   span {
@@ -730,23 +745,21 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   padding: 0;
-  background: rgb(59, 130, 246, 0.3);
-  border: 1px solid rgb(59, 130, 246, 0.5);
-  border-radius: 50%;
-  color: white;
-  font-size: 16px;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  color: var(--color-overlay-light-50);
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: rgb(220, 38, 38, 0.4);
-    border-color: var(--color-danger-dark);
+    background: rgb(220, 38, 38, 0.3);
     color: var(--color-danger-text);
-    transform: scale(1.1);
   }
 
   &:active {
