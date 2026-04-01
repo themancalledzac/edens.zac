@@ -24,7 +24,7 @@ const MIN_ROW_ITEMS = 1;
  */
 export function rowScore(components: AnyContentModel[], rowWidth: number): number {
   if (components.length === 0) return 0;
-  const totalCV = components.reduce((sum, item) => sum + getItemComponentValue(item, rowWidth), 0);
+  const totalCV = components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
   const fillRatio = totalCV / rowWidth;
   return Math.max(0, 1 - Math.abs(1.0 - fillRatio));
 }

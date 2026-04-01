@@ -5,7 +5,7 @@
  * Used by both contentLayout.ts (mobile/fallback) and rowStructureAlgorithm.ts (desktop).
  */
 
-import { LAYOUT } from '@/app/constants';
+import { BASE_WEIGHT, REFERENCE_AR } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import { getAspectRatio, isContentImage } from '@/app/utils/contentTypeGuards';
 
@@ -80,33 +80,22 @@ export function getEffectiveRating(item: AnyContentModel): number {
 }
 
 /**
- * Convert an effective rating to a component value based on the row width.
+ * Calculate component value (cv) for an image using the fixed-weight formula.
  *
- * Component value represents the proportion of a row an item should occupy.
- * The calculation varies based on row width (desktop vs mobile):
+ * cv = BASE_WEIGHT[effectiveRating] × arFactor
  *
- * **Desktop (5 slots):**
- * - 5★ = 5 slots (full width, 1 per row)
- * - 4★ = 2.5 slots (2 per row)
- * - 3★ = 1.67 slots (3 per row)
- * - 2★ = 1.25 slots (4 per row)
- * - 0-1★ = 1 slot (5 per row)
- *
- * **Mobile (2 slots):**
- * - 3-5★ = 2 slots (full width, ratings "collapse" upward)
- * - 0-2★ = 1 slot (2 per row)
+ * cv is a FIXED WEIGHT — it does NOT scale with rowWidth.
+ * The caller divides cv / rowWidth to get the fill fraction.
  *
  * @param effectiveRating - The effective rating (0-5) from getEffectiveRating()
- * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
- * @returns The component value (how much of the row this item occupies)
+ * @param imageAR - The actual aspect ratio of the image (width/height)
+ * @returns The component value (fixed weight, independent of rowWidth)
  */
-export function getComponentValue(effectiveRating: number, slotWidth: number = LAYOUT.desktopSlotWidth): number {
-  if (slotWidth <= LAYOUT.mobileSlotWidth) {
-    return effectiveRating >= 3 ? slotWidth : 1;
-  }
-
-  const itemsPerRow = Math.min(Math.max(6 - effectiveRating, 1), slotWidth);
-  return slotWidth / itemsPerRow;
+export function getComponentValue(effectiveRating: number, imageAR: number): number {
+  const clampedRating = Math.min(Math.max(effectiveRating, 0), 5);
+  const baseWeight = BASE_WEIGHT[clampedRating] ?? 1.0;
+  const arFactor = Math.sqrt(Math.min(imageAR, REFERENCE_AR) / REFERENCE_AR);
+  return baseWeight * arFactor;
 }
 
 /**
@@ -114,10 +103,10 @@ export function getComponentValue(effectiveRating: number, slotWidth: number = L
  * Combines getEffectiveRating() and getComponentValue() in one call.
  *
  * @param item - The content item to evaluate
- * @param slotWidth - Number of slots in the layout (desktop: 5, mobile: 2)
- * @returns The component value for this item
+ * @returns The component value for this item (fixed weight, rowWidth-independent)
  */
-export function getItemComponentValue(item: AnyContentModel, slotWidth: number = LAYOUT.desktopSlotWidth): number {
+export function getItemComponentValue(item: AnyContentModel): number {
   const effectiveRating = getEffectiveRating(item);
-  return getComponentValue(effectiveRating, slotWidth);
+  const imageAR = getAspectRatio(item);
+  return getComponentValue(effectiveRating, imageAR);
 }

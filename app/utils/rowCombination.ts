@@ -47,8 +47,8 @@ export interface TemplateKey {
 /**
  * Calculate the total component value of a set of items.
  */
-function getTotalCV(components: AnyContentModel[], rowWidth: number): number {
-  return components.reduce((sum, item) => sum + getItemComponentValue(item, rowWidth), 0);
+function getTotalCV(components: AnyContentModel[], _rowWidth: number): number {
+  return components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
 }
 
 // =============================================================================
@@ -74,10 +74,7 @@ export const LOW_RATED_THRESHOLD = 2;
 export function isRowComplete(components: AnyContentModel[], rowWidth: number): boolean {
   if (components.length === 0) return false;
 
-  const totalValue = components.reduce(
-    (sum, item) => sum + getItemComponentValue(item, rowWidth),
-    0
-  );
+  const totalValue = components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
 
   const fill = totalValue / rowWidth;
   return fill >= MIN_FILL_RATIO && fill <= MAX_FILL_RATIO;
@@ -126,10 +123,10 @@ export type AtomicComponent =
 // =============================================================================
 
 /** Convert AnyContentModel to ImageType for composition decisions */
-export function toImageType(item: AnyContentModel, rowWidth: number): ImageType {
+export function toImageType(item: AnyContentModel, _rowWidth: number): ImageType {
   const ar: OrientationShort = getAspectRatio(item) > 1.0 ? 'H' : 'V';
   const effectiveRating = getEffectiveRating(item);
-  const componentValue = getItemComponentValue(item, rowWidth);
+  const componentValue = getItemComponentValue(item);
   const title = 'title' in item ? String(item.title) : `item-${item.id}`;
 
   return { source: item, title, ar, effectiveRating, componentValue };
@@ -231,11 +228,7 @@ function generateCandidates(rest: ImageType[]): AtomicComponent[] {
 
   if (n === 3) {
     const [a, b, c] = [single(rest[0]!), single(rest[1]!), single(rest[2]!)];
-    return [
-      vStack(hPair(a, b), c),
-      vStack(a, hPair(b, c)),
-      hChain(rest),
-    ];
+    return [vStack(hPair(a, b), c), vStack(a, hPair(b, c)), hChain(rest)];
   }
 
   // n === 4+
@@ -258,7 +251,11 @@ function generateCandidates(rest: ImageType[]): AtomicComponent[] {
  * @param targetAR - Target aspect ratio (typically 1.5 for most viewports)
  * @param rowWidth - Row width for AR calculation (chunkSize param)
  */
-export function buildAtomic(images: ImageType[], targetAR: number, rowWidth: number): AtomicComponent {
+export function buildAtomic(
+  images: ImageType[],
+  targetAR: number,
+  rowWidth: number
+): AtomicComponent {
   if (images.length === 0) throw new Error('buildAtomic requires at least 1 image');
   if (images.length === 1) return single(images[0]!);
   if (images.length === 2) return hPair(single(images[0]!), single(images[1]!));
@@ -302,7 +299,11 @@ function scoreCandidate(candidate: AtomicComponent, targetAR: number, rowWidth: 
 /**
  * Pick the best candidate from a list by AR distance to target.
  */
-function pickBest(candidates: AtomicComponent[], targetAR: number, rowWidth: number): AtomicComponent {
+function pickBest(
+  candidates: AtomicComponent[],
+  targetAR: number,
+  rowWidth: number
+): AtomicComponent {
   let best = candidates[0]!;
   let bestScore = Infinity;
 
@@ -382,7 +383,12 @@ const MAX_COMPOSE_DEPTH = 10;
  * @param rowWidth - Row width for AR calculation
  * @param depth - Current recursion depth (internal use only)
  */
-export function compose(images: ImageType[], targetAR: number, rowWidth: number, depth: number = 0): AtomicComponent {
+export function compose(
+  images: ImageType[],
+  targetAR: number,
+  rowWidth: number,
+  depth: number = 0
+): AtomicComponent {
   const n = images.length;
 
   if (n === 0) throw new Error('compose requires at least 1 image');
@@ -451,7 +457,11 @@ interface LayoutTemplate {
  * Used when a high-rated horizontal image dominates 2 secondaries.
  * Falls back to flat hChain if no dominant H with effectiveRating >= 4.
  */
-function buildDominantStacked(images: ImageType[], _targetAR: number, _rowWidth: number): AtomicComponent {
+function buildDominantStacked(
+  images: ImageType[],
+  _targetAR: number,
+  _rowWidth: number
+): AtomicComponent {
   const { dominant, rest } = findDominant(images);
   if (dominant.effectiveRating >= 4 && dominant.ar === 'H') {
     return hPair(single(dominant), vStack(single(rest[0]!), single(rest[1]!)));
@@ -464,7 +474,11 @@ function buildDominantStacked(images: ImageType[], _targetAR: number, _rowWidth:
  * Used when 4 items have 3+ verticals — dominant vertical gets full height.
  * Falls back to flat hChain if < 3 verticals.
  */
-function buildNestedQuad(images: ImageType[], _targetAR: number, _rowWidth: number): AtomicComponent {
+function buildNestedQuad(
+  images: ImageType[],
+  _targetAR: number,
+  _rowWidth: number
+): AtomicComponent {
   const verticals = images.filter(i => i.ar === 'V');
   if (verticals.length >= 3) {
     const sorted = [...verticals].sort((a, b) => b.effectiveRating - a.effectiveRating);
@@ -545,17 +559,29 @@ export interface CompositionResult {
  * @param rowWidth - Row width budget for AR calculation
  * @returns CompositionResult with AtomicComponent tree, structural key, and template label
  */
-export function lookupComposition(images: ImageType[], targetAR: number = 1.5, rowWidth: number = 5): CompositionResult {
+export function lookupComposition(
+  images: ImageType[],
+  targetAR: number = 1.5,
+  rowWidth: number = 5
+): CompositionResult {
   const templateKey = parseTemplateKey(images);
   const key = `${templateKey.h}-${templateKey.v}`;
   const template = TEMPLATE_MAP[key];
 
   if (!template) {
     // 6+ images have no static template — use compose() for recursive composition
-    return { composition: compose(images, targetAR, rowWidth), templateKey, label: 'compose-fallback' };
+    return {
+      composition: compose(images, targetAR, rowWidth),
+      templateKey,
+      label: 'compose-fallback',
+    };
   }
 
-  return { composition: template.build(images, targetAR, rowWidth), templateKey, label: template.label };
+  return {
+    composition: template.build(images, targetAR, rowWidth),
+    templateKey,
+    label: template.label,
+  };
 }
 
 /** Build a TemplateKey from a set of images by counting h/v directly */
@@ -620,7 +646,11 @@ export function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' 
  * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
  * @returns Array of rows, each with components and their combination direction
  */
-export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: number = 1.5): RowResult[] {
+export function buildRows(
+  items: AnyContentModel[],
+  rowWidth: number,
+  targetAR: number = 1.5
+): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
 
@@ -635,7 +665,7 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
 
       for (let i = 1; i < maxSearch; i++) {
         const candidate = window[i]!;
-        const cv = getItemComponentValue(candidate, rowWidth);
+        const cv = getItemComponentValue(candidate);
         if (cv / rowWidth >= MIN_FILL_RATIO) {
           heroIdx = i;
           break;
@@ -671,11 +701,11 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
     let slotCountComplete = false;
 
     for (let i = 0; i < expandedWindow.length; i++) {
-      const cv = getItemComponentValue(expandedWindow[i]!, rowWidth);
+      const cv = getItemComponentValue(expandedWindow[i]!);
       const newFill = (seqTotal + cv) / rowWidth;
 
       if (newFill > MAX_FILL_RATIO && !slotCountComplete) {
-          if (seqCount > 0 && cv / rowWidth >= MIN_FILL_RATIO) {
+        if (seqCount > 0 && cv / rowWidth >= MIN_FILL_RATIO) {
           skippedStandalones.push(i);
           continue;
         }
@@ -758,7 +788,7 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
         for (const idx of available) {
           const item = window[idx];
           if (!item) continue;
-          const cv = getItemComponentValue(item, rowWidth);
+          const cv = getItemComponentValue(item);
           const distance = Math.abs(cv - gap);
           if (distance < bestDistance) {
             bestDistance = distance;
@@ -768,7 +798,7 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
 
         if (bestIndex === -1) break;
 
-        const candidateCV = getItemComponentValue(window[bestIndex]!, rowWidth);
+        const candidateCV = getItemComponentValue(window[bestIndex]!);
         const newTotal = currentTotal + candidateCV;
         const newFill = newTotal / rowWidth;
 
@@ -796,7 +826,11 @@ export function buildRows(items: AnyContentModel[], rowWidth: number, targetAR: 
     }
 
     const bfImgs = bfComponents.map(item => toImageType(item, rowWidth));
-    const { composition, templateKey: bfKey, label: bfLabel } = lookupComposition(bfImgs, targetAR, rowWidth);
+    const {
+      composition,
+      templateKey: bfKey,
+      label: bfLabel,
+    } = lookupComposition(bfImgs, targetAR, rowWidth);
     const boxTree = acToBoxTree(composition);
 
     rows.push({
