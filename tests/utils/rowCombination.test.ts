@@ -1573,3 +1573,40 @@ describe('Mixed content types through buildRows', () => {
     expect(ids).toEqual([1, 2, 3, 4, 5]);
   });
 });
+
+describe('rowWidth invariant: valid output for rowWidth 4-16', () => {
+  const images = [
+    createHorizontalImage(1, 5),
+    createVerticalImage(2, 4),
+    createHorizontalImage(3, 3),
+    createHorizontalImage(4, 3),
+    createVerticalImage(5, 2),
+    createHorizontalImage(6, 2),
+    createVerticalImage(7, 1),
+    createHorizontalImage(8, 1),
+    createHorizontalImage(9, 3),
+    createVerticalImage(10, 2),
+  ];
+
+  for (const rw of [4, 6, 8, 10, 12, 16]) {
+    it(`rowWidth=${rw}: all images assigned to rows`, () => {
+      const rows = buildRows(images, rw);
+      const allIds = rows.flatMap(r => r.components.map(c => c.id));
+      expect(allIds.sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    });
+
+    it(`rowWidth=${rw}: no empty rows`, () => {
+      const rows = buildRows(images, rw);
+      for (const row of rows) {
+        expect(row.components.length).toBeGreaterThanOrEqual(1);
+      }
+    });
+
+    it(`rowWidth=${rw}: each row has valid boxTree`, () => {
+      const rows = buildRows(images, rw);
+      for (const row of rows) {
+        expect(row.boxTree).toBeDefined();
+      }
+    });
+  }
+});
