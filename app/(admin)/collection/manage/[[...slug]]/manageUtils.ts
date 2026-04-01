@@ -254,6 +254,34 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
 }
 
 /**
+ * Revalidate Next.js cache for metadata (tags, people, cameras, locations, lenses, film)
+ * Called after operations that create, update, or delete metadata entities.
+ */
+export async function revalidateMetadataCache(): Promise<void> {
+  try {
+    await fetch('/api/revalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tags: [
+          'content-tags',
+          'content-people',
+          'content-cameras',
+          'content-locations',
+          'content-lenses',
+          'content-film-metadata',
+          'search-images',
+        ],
+      }),
+    });
+  } catch (error) {
+    if (isLocalEnvironment()) {
+      console.warn('[manageUtils] Failed to revalidate metadata cache:', error);
+    }
+  }
+}
+
+/**
  * Merge new metadata entities into current state
  * Combines new metadata from API response with existing metadata in state
  *
