@@ -227,7 +227,7 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
     focalLength: coverImage?.focalLength ?? null,
     location: coverImage?.location ?? null,
     captureDate: coverImage?.captureDate ?? null,
-    fstop: coverImage?.fstop ?? null,
+    fStop: coverImage?.fStop ?? null,
     alt: col.title || col.slug || '',
     aspectRatio: imageWidth && imageHeight ? imageWidth / imageHeight : undefined,
     filmType: coverImage?.filmType ?? null,

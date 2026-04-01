@@ -1,58 +1,44 @@
+import { isLocalEnvironment, isProduction } from '@/app/utils/environment';
+
 describe('environment utilities', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
-    process.env = { ...originalEnv };
+    process.env = { ...originalEnv } as NodeJS.ProcessEnv;
   });
 
   afterAll(() => {
     process.env = originalEnv;
   });
 
-  function loadModule(): {
-    isLocalEnvironment: () => boolean;
-    isProduction: () => boolean;
-  } {
-    return require('@/app/utils/environment') as {
-      isLocalEnvironment: () => boolean;
-      isProduction: () => boolean;
-    };
-  }
-
   describe('isLocalEnvironment', () => {
     it('returns true when NEXT_PUBLIC_ENV=local', () => {
       process.env.NEXT_PUBLIC_ENV = 'local';
-      delete process.env.NODE_ENV;
-      const { isLocalEnvironment } = loadModule();
+      delete (process.env as Record<string, string | undefined>).NODE_ENV;
       expect(isLocalEnvironment()).toBe(true);
     });
 
     it('returns true when NODE_ENV=development', () => {
       delete process.env.NEXT_PUBLIC_ENV;
-      process.env.NODE_ENV = 'development';
-      const { isLocalEnvironment } = loadModule();
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
       expect(isLocalEnvironment()).toBe(true);
     });
 
     it('returns true when both NEXT_PUBLIC_ENV=local and NODE_ENV=development', () => {
       process.env.NEXT_PUBLIC_ENV = 'local';
-      process.env.NODE_ENV = 'development';
-      const { isLocalEnvironment } = loadModule();
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'development';
       expect(isLocalEnvironment()).toBe(true);
     });
 
     it('returns false when NEXT_PUBLIC_ENV=production and NODE_ENV=production', () => {
       process.env.NEXT_PUBLIC_ENV = 'production';
-      process.env.NODE_ENV = 'production';
-      const { isLocalEnvironment } = loadModule();
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
       expect(isLocalEnvironment()).toBe(false);
     });
 
     it('returns false when both NEXT_PUBLIC_ENV and NODE_ENV are undefined', () => {
       delete process.env.NEXT_PUBLIC_ENV;
-      delete process.env.NODE_ENV;
-      const { isLocalEnvironment } = loadModule();
+      delete (process.env as Record<string, string | undefined>).NODE_ENV;
       expect(isLocalEnvironment()).toBe(false);
     });
   });
@@ -60,29 +46,25 @@ describe('environment utilities', () => {
   describe('isProduction', () => {
     it('returns true when NEXT_PUBLIC_ENV=production regardless of NODE_ENV', () => {
       process.env.NEXT_PUBLIC_ENV = 'production';
-      delete process.env.NODE_ENV;
-      const { isProduction } = loadModule();
+      delete (process.env as Record<string, string | undefined>).NODE_ENV;
       expect(isProduction()).toBe(true);
     });
 
     it('returns true when NODE_ENV=production and not in local environment', () => {
       delete process.env.NEXT_PUBLIC_ENV;
-      process.env.NODE_ENV = 'production';
-      const { isProduction } = loadModule();
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
       expect(isProduction()).toBe(true);
     });
 
     it('returns false in local environment (NEXT_PUBLIC_ENV=local)', () => {
       process.env.NEXT_PUBLIC_ENV = 'local';
-      process.env.NODE_ENV = 'production';
-      const { isProduction } = loadModule();
+      (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
       expect(isProduction()).toBe(false);
     });
 
     it('returns false when both NEXT_PUBLIC_ENV and NODE_ENV are undefined', () => {
       delete process.env.NEXT_PUBLIC_ENV;
-      delete process.env.NODE_ENV;
-      const { isProduction } = loadModule();
+      delete (process.env as Record<string, string | undefined>).NODE_ENV;
       expect(isProduction()).toBe(false);
     });
   });
