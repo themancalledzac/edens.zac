@@ -40,16 +40,50 @@ export const LAYOUT = {
 
   // Slot-based layout system
   // Slot width determines how many abstract "slots" fit in a row
-  // Desktop: 5 slots allows for finer-grained layout (5-star = full row, 4-star = ~2.5 slots)
-  // Mobile: 2 slots provides simpler binary layout (full width or half width)
-  desktopSlotWidth: 5,
-  mobileSlotWidth: 2,
+  // Desktop: 8 slots for prominence-based layout (finer-grained weight distribution)
+  // Mobile: 3 slots for prominence-based layout (coarser but rating-aware)
+  desktopSlotWidth: 8,
+  mobileSlotWidth: 3,
 
   // Header row constraints (cover image + description block)
   headerRowHeightRatio: 0.38, // Max row height as ratio of componentWidth (e.g., 0.38 = 38%)
   headerCoverMinRatio: 0.3, // Minimum cover image width as ratio of row width
   headerCoverMaxRatio: 0.5, // Maximum cover image width as ratio of row width
 } as const;
+
+// Fixed-weight cv formula: cv = BASE_WEIGHT[rating] × arFactor
+// cv is a fixed cost. rowWidth is the budget. fraction = cv / rowWidth.
+export const BASE_WEIGHT: Record<number, number> = {
+  5: 5.0,
+  4: 3.5,
+  3: 2.5,
+  2: 1.75,
+  1: 1.25,
+  0: 1.0,
+};
+
+// Minimum width fractions for horizontal images (post-composition validation)
+export const MIN_WIDTH_FRACTION: Record<number, number> = {
+  5: 0.4,
+  4: 0.25,
+  3: 0.15,
+  2: 0.08,
+  1: 0.05,
+  0: 0.05,
+};
+
+// Minimum height fractions for vertical images (composition structure constraint)
+export const MIN_HEIGHT_FRACTION: Record<number, number> = {
+  5: 0.75,
+  4: 0.5,
+  3: 0.25,
+  2: 0.1,
+  1: 0.1,
+  0: 0.1,
+};
+
+// Reference AR for the AR factor in cv calculation
+export const REFERENCE_AR = 1.5;
 
 // =============================================================================
 // INTERACTION & TIMING
