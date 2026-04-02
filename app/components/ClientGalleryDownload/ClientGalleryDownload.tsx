@@ -15,7 +15,9 @@ interface ClientGalleryDownloadProps {
  * Currently a placeholder/mock that shows a toast notification.
  * Will eventually call GET /api/read/collections/{slug}/download to fetch a zip.
  */
-export default function ClientGalleryDownload({ collectionSlug: _collectionSlug }: ClientGalleryDownloadProps) {
+export default function ClientGalleryDownload({
+  collectionSlug: _collectionSlug,
+}: ClientGalleryDownloadProps) {
   const [toastVisible, setToastVisible] = useState(false);
 
   const handleDownloadAll = useCallback(() => {
@@ -25,11 +27,7 @@ export default function ClientGalleryDownload({ collectionSlug: _collectionSlug 
 
   return (
     <div className={styles.downloadContainer}>
-      <button
-        type="button"
-        onClick={handleDownloadAll}
-        className={styles.downloadButton}
-      >
+      <button type="button" onClick={handleDownloadAll} className={styles.downloadButton}>
         <svg
           className={styles.downloadIcon}
           viewBox="0 0 24 24"
@@ -46,11 +44,7 @@ export default function ClientGalleryDownload({ collectionSlug: _collectionSlug 
         Download All
       </button>
 
-      {toastVisible && (
-        <div className={styles.toast}>
-          Downloads coming soon
-        </div>
-      )}
+      {toastVisible && <div className={styles.toast}>Downloads coming soon</div>}
     </div>
   );
 }

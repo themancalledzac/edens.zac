@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * Global Error Boundary
@@ -35,9 +35,7 @@ export default function GlobalError({
   return (
     <main className={styles.main}>
       <h1>Something went wrong</h1>
-      {error?.digest ? (
-        <p className={styles.errorMessage}>Error ID: {error.digest}</p>
-      ) : null}
+      {error?.digest ? <p className={styles.errorMessage}>Error ID: {error.digest}</p> : null}
       <button onClick={() => reset()} className={styles.retryButton}>
         Try again
       </button>

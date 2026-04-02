@@ -32,6 +32,8 @@ export interface CollectionFilterState {
   readonly selectedCameras: readonly string[];
   readonly selectedLenses: readonly string[];
   highlyRatedOnly: boolean;
+  dateSortDirection: 'asc' | 'desc' | 'off';
+  focalLengthRange: readonly [number, number] | null;
 }
 
 export const INITIAL_COLLECTION_FILTER_STATE: CollectionFilterState = Object.freeze({
@@ -40,4 +42,6 @@ export const INITIAL_COLLECTION_FILTER_STATE: CollectionFilterState = Object.fre
   selectedCameras: Object.freeze([] as readonly string[]),
   selectedLenses: Object.freeze([] as readonly string[]),
   highlyRatedOnly: false,
+  dateSortDirection: 'off' as const,
+  focalLengthRange: null,
 });

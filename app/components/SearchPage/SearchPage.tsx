@@ -86,8 +86,8 @@ function SearchPageContent() {
         <div className={styles.searchHeader}>
           <h1 className={styles.searchTitle}>Search</h1>
           <p className={styles.searchDescription}>
-            Browse and filter all images. This is a POC — using mock data until the
-            backend search endpoint is available.
+            Browse and filter all images. This is a POC — using mock data until the backend search
+            endpoint is available.
           </p>
         </div>
 
@@ -104,9 +104,7 @@ function SearchPageContent() {
         <div className={styles.resultsInfo}>
           <span className={styles.resultCount}>
             {filteredContent.length} {filteredContent.length === 1 ? 'result' : 'results'}
-            {filteredContent.length !== mockContent.length && (
-              <> of {mockContent.length} total</>
-            )}
+            {filteredContent.length !== mockContent.length && <> of {mockContent.length} total</>}
           </span>
         </div>
 

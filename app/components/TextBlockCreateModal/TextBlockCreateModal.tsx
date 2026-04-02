@@ -9,12 +9,16 @@ import styles from './TextBlockCreateModal.module.scss';
 interface TextBlockCreateModalProps {
   scrollPosition: number;
   onClose: () => void;
-  onSubmit: (data: { content: string; format: 'plain' | 'markdown' | 'html'; align: 'left' | 'center' | 'right' }) => Promise<void>;
+  onSubmit: (data: {
+    content: string;
+    format: 'plain' | 'markdown' | 'html';
+    align: 'left' | 'center' | 'right';
+  }) => Promise<void>;
 }
 
 /**
  * Modal for creating a new text block
- * 
+ *
  * Provides a form with:
  * - Textarea for content
  * - Format selector (plain, markdown, html)
@@ -158,4 +162,3 @@ export default function TextBlockCreateModal({
     </div>
   );
 }
-

@@ -30,7 +30,10 @@ import { type ContentPersonModel, type ContentTagModel } from '@/app/types/Image
  * Get all tags (ordered alphabetically)
  */
 export async function getAllTags(): Promise<ContentTagModel[] | null> {
-  const raw = await fetchReadApi<Array<{ id: number; tagName: string; slug: string }>>('/content/tags', { next: { revalidate: TIMING.revalidateCache, tags: ['content-tags'] } });
+  const raw = await fetchReadApi<Array<{ id: number; tagName: string; slug: string }>>(
+    '/content/tags',
+    { next: { revalidate: TIMING.revalidateCache, tags: ['content-tags'] } }
+  );
   return raw?.map(t => ({ id: t.id, name: t.tagName, slug: t.slug })) ?? null;
 }
 
@@ -39,7 +42,10 @@ export async function getAllTags(): Promise<ContentTagModel[] | null> {
  * Get all people (ordered alphabetically)
  */
 export async function getAllPeople(): Promise<ContentPersonModel[] | null> {
-  const raw = await fetchReadApi<Array<{ id: number; personName: string; slug: string }>>('/content/people', { next: { revalidate: TIMING.revalidateCache, tags: ['content-people'] } });
+  const raw = await fetchReadApi<Array<{ id: number; personName: string; slug: string }>>(
+    '/content/people',
+    { next: { revalidate: TIMING.revalidateCache, tags: ['content-people'] } }
+  );
   return raw?.map(p => ({ id: p.id, name: p.personName, slug: p.slug })) ?? null;
 }
 
@@ -48,15 +54,24 @@ export async function getAllPeople(): Promise<ContentPersonModel[] | null> {
  * Get all cameras (ordered alphabetically)
  */
 export async function getAllCameras(): Promise<Array<{ id: number; cameraName: string }> | null> {
-  return fetchReadApi('/content/cameras', { next: { revalidate: TIMING.revalidateCache, tags: ['content-cameras'] } });
+  return fetchReadApi('/content/cameras', {
+    next: { revalidate: TIMING.revalidateCache, tags: ['content-cameras'] },
+  });
 }
 
 /**
  * GET /api/read/content/locations
  * Get all locations with image counts (ordered alphabetically)
  */
-export async function getAllLocations(): Promise<Array<{ id: number; name: string; slug: string; count?: number }> | null> {
-  return fetchReadApi('/content/locations', { next: { revalidate: TIMING.revalidateCache, tags: ['content-locations'] } });
+export async function getAllLocations(): Promise<Array<{
+  id: number;
+  name: string;
+  slug: string;
+  count?: number;
+}> | null> {
+  return fetchReadApi('/content/locations', {
+    next: { revalidate: TIMING.revalidateCache, tags: ['content-locations'] },
+  });
 }
 
 /**
@@ -64,7 +79,9 @@ export async function getAllLocations(): Promise<Array<{ id: number; name: strin
  * Get all lenses (ordered alphabetically)
  */
 export async function getAllLenses(): Promise<Array<{ id: number; lensName: string }> | null> {
-  return fetchReadApi('/content/lenses', { next: { revalidate: TIMING.revalidateCache, tags: ['content-lenses'] } });
+  return fetchReadApi('/content/lenses', {
+    next: { revalidate: TIMING.revalidateCache, tags: ['content-lenses'] },
+  });
 }
 
 /**
@@ -99,7 +116,8 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   if (params.lensId !== undefined) searchParams.set('lensId', String(params.lensId));
   if (params.minRating !== undefined) searchParams.set('minRating', String(params.minRating));
   if (params.isFilm !== undefined) searchParams.set('isFilm', String(params.isFilm));
-  if (params.blackAndWhite !== undefined) searchParams.set('blackAndWhite', String(params.blackAndWhite));
+  if (params.blackAndWhite !== undefined)
+    searchParams.set('blackAndWhite', String(params.blackAndWhite));
   if (params.page !== undefined) searchParams.set('page', String(params.page));
   if (params.size !== undefined) searchParams.set('size', String(params.size));
 
@@ -115,7 +133,11 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   // Handle both array response and paginated wrapper
   if (Array.isArray(result)) return result;
   if ('content' in result && Array.isArray(result.content)) return result.content;
-  console.warn('[searchImages] Unexpected response shape:', typeof result, result !== null && typeof result === 'object' ? Object.keys(result) : '');
+  console.warn(
+    '[searchImages] Unexpected response shape:',
+    typeof result,
+    result !== null && typeof result === 'object' ? Object.keys(result) : ''
+  );
   return [];
 }
 
@@ -127,7 +149,9 @@ export async function getFilmMetadata(): Promise<{
   filmTypes: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
   filmFormats: Array<{ name: string; displayName: string }>;
 } | null> {
-  return fetchReadApi('/content/film-metadata', { next: { revalidate: TIMING.revalidateCache, tags: ['content-film-metadata'] } });
+  return fetchReadApi('/content/film-metadata', {
+    next: { revalidate: TIMING.revalidateCache, tags: ['content-film-metadata'] },
+  });
 }
 
 // ============================================================================
@@ -160,10 +184,7 @@ export async function createImages(
  * Upload a single GIF or video file to a collection.
  * Accepted MIME types: video/mp4, video/quicktime, image/gif
  */
-export async function createGif(
-  collectionId: number,
-  file: File
-): Promise<ContentGifModel | null> {
+export async function createGif(collectionId: number, file: File): Promise<ContentGifModel | null> {
   const formData = new FormData();
   formData.append('file', file);
   return fetchAdminFormDataApi<ContentGifModel>(`/content/${collectionId}/gifs`, formData);

@@ -9,6 +9,7 @@ export interface CollectionFilterOptions {
   people: string[];
   cameras: string[];
   lenses: string[];
+  focalLengthStops: number[];
 }
 
 interface CollectionFilterContextValue {

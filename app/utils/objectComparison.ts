@@ -64,8 +64,9 @@ export function hasObjectChanges(
   originalState: object & { id?: number }
 ): boolean {
   const { id: _updateId, ...updateRest } = updateState as Record<string, unknown> & { id?: number };
-  const { id: _originalId, ...originalRest } = originalState as Record<string, unknown> & { id?: number };
+  const { id: _originalId, ...originalRest } = originalState as Record<string, unknown> & {
+    id?: number;
+  };
 
   return !deepEqual(updateRest, originalRest);
 }
-

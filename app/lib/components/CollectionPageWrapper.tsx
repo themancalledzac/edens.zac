@@ -33,11 +33,7 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
     const collectionPage = <CollectionPage collection={collection} chunkSize={chunkSize} />;
 
     if (collection.type === CollectionType.CLIENT_GALLERY) {
-      return (
-        <ClientGalleryGate collection={collection}>
-          {collectionPage}
-        </ClientGalleryGate>
-      );
+      return <ClientGalleryGate collection={collection}>{collectionPage}</ClientGalleryGate>;
     }
 
     return collectionPage;

@@ -12,6 +12,50 @@ import { getContentDimensions } from '@/app/utils/contentTypeGuards';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
 /**
+ * Linear height coefficients for a BoxTree subtree.
+ * The rendered height at width W is: H(W) = a * W + b
+ *
+ * For leaves, b = 0 (no internal gaps). For nested trees, b captures
+ * the cumulative height reduction from internal CSS gaps.
+ */
+export interface HeightCoeffs {
+  a: number;
+  b: number;
+}
+
+/**
+ * Compute height coefficients {a, b} for a BoxTree subtree where H(W) = a*W + b.
+ *
+ * These coefficients enable gap-aware width distribution: when distributing
+ * width between horizontal siblings, using these coefficients (instead of raw ARs)
+ * ensures both sides render at the same height, even with asymmetric nesting.
+ */
+export function computeHeightCoeffs(tree: BoxTree, gap: number): HeightCoeffs {
+  if (tree.type === 'leaf') {
+    const { width, height } = getContentDimensions(tree.content);
+    const ar = height === 0 ? 1 : width / height;
+    return { a: 1 / ar, b: 0 };
+  }
+
+  const left = computeHeightCoeffs(tree.children[0], gap);
+  const right = computeHeightCoeffs(tree.children[1], gap);
+  const sumA = left.a + right.a;
+
+  if (tree.direction === 'horizontal') {
+    return {
+      a: (left.a * right.a) / sumA,
+      b: (-left.a * right.a * gap + left.a * right.b + right.a * left.b) / sumA,
+    };
+  }
+
+  // vertical: CSS visual height = sum of raw child heights (vbox scaling + CSS gap cancel out)
+  return {
+    a: sumA,
+    b: left.b + right.b,
+  };
+}
+
+/**
  * Calculate the combined aspect ratio of a BoxTree.
  * - For leaf: return item's intrinsic aspect ratio (width / height)
  * - For horizontal: sum of aspect ratios (children side-by-side)
@@ -29,9 +73,7 @@ export function calculateBoxTreeAspectRatio(tree: BoxTree, chunkSize: number): n
   const leftAR = calculateBoxTreeAspectRatio(tree.children[0], chunkSize);
   const rightAR = calculateBoxTreeAspectRatio(tree.children[1], chunkSize);
 
-  return tree.direction === 'horizontal'
-    ? leftAR + rightAR
-    : 1 / (1 / leftAR + 1 / rightAR);
+  return tree.direction === 'horizontal' ? leftAR + rightAR : 1 / (1 / leftAR + 1 / rightAR);
 }
 
 /**
@@ -61,33 +103,37 @@ export function calculateSizesFromBoxTree(
     return [{ content: tree.content, width: targetWidth, height }];
   }
 
-  const leftAR = calculateBoxTreeAspectRatio(tree.children[0], chunkSize);
-  const rightAR = calculateBoxTreeAspectRatio(tree.children[1], chunkSize);
-
   if (tree.direction === 'horizontal') {
-    const totalGapSpace = gap;
-    const availableWidth = targetWidth - totalGapSpace;
+    const { a: aL, b: bL } = computeHeightCoeffs(tree.children[0], gap);
+    const { a: aR, b: bR } = computeHeightCoeffs(tree.children[1], gap);
+    const availableWidth = targetWidth - gap;
 
-    const totalAR = leftAR + rightAR;
-    const leftWidth = availableWidth * (leftAR / totalAR);
-    const rightWidth = availableWidth * (rightAR / totalAR);
+    // Solve for equal heights: aL * leftWidth + bL = aR * rightWidth + bR
+    const rawLeft = (aR * availableWidth + bR - bL) / (aL + aR);
+    const leftWidth = Math.max(0, Math.min(availableWidth, rawLeft));
+    const rightWidth = availableWidth - leftWidth;
 
     const leftSizes = calculateSizesFromBoxTree(tree.children[0], leftWidth, gap, chunkSize);
     const rightSizes = calculateSizesFromBoxTree(tree.children[1], rightWidth, gap, chunkSize);
 
     return [...leftSizes, ...rightSizes];
   } else {
-    const totalGapSpace = gap;
+    // Vertical: both children get full targetWidth, heights scaled to account for CSS gap.
+    // Use coefficient-predicted visual heights (not sum of returned sizes) because
+    // summing returned sizes overcounts hbox children (side-by-side, not stacked).
+    const { a: aL, b: bL } = computeHeightCoeffs(tree.children[0], gap);
+    const { a: aR, b: bR } = computeHeightCoeffs(tree.children[1], gap);
 
     const leftSizes = calculateSizesFromBoxTree(tree.children[0], targetWidth, gap, chunkSize);
     const rightSizes = calculateSizesFromBoxTree(tree.children[1], targetWidth, gap, chunkSize);
 
-    const leftHeight = leftSizes.reduce((sum, s) => sum + s.height, 0);
-    const rightHeight = rightSizes.reduce((sum, s) => sum + s.height, 0);
-    const rawTotalHeight = leftHeight + rightHeight;
+    // Visual height each child would render at (from coefficients)
+    const leftVisualH = aL * targetWidth + bL;
+    const rightVisualH = aR * targetWidth + bR;
+    const rawVisualTotal = leftVisualH + rightVisualH;
 
-    const targetHeightsSum = rawTotalHeight - totalGapSpace;
-    const scaleFactor = rawTotalHeight > 0 ? targetHeightsSum / rawTotalHeight : 1;
+    // CSS adds gap between the two children, so scale heights down to compensate
+    const scaleFactor = rawVisualTotal > 0 ? (rawVisualTotal - gap) / rawVisualTotal : 1;
 
     const scaledLeftSizes = leftSizes.map(s => ({
       ...s,

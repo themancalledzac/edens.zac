@@ -35,6 +35,4 @@ export const hasValidAdminAuth = (request: NextRequest): boolean => {
 
   const cookieToken = request.cookies.get('admin_token')?.value;
   return !!(cookieToken && cookieToken === requiredToken);
-
-
 };

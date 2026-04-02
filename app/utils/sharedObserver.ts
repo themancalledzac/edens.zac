@@ -58,7 +58,7 @@ function getRecord(options: ObserverOptions): ObserverRecord {
   const callbacks = new Map<Element, ObserverCallback>();
 
   const observer = new IntersectionObserver(
-    (entries) => {
+    entries => {
       for (const entry of entries) {
         const cb = callbacks.get(entry.target);
         if (cb) {

@@ -21,8 +21,11 @@ export async function generateMetadata({ params }: TagPageRouteProps): Promise<M
   const { slug } = await params;
   const tags = await getCachedTags();
 
-  const tag = tags?.find(t => t.slug === slug)
-    ?? tags?.find(t => t.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase());
+  const tag =
+    tags?.find(t => t.slug === slug) ??
+    tags?.find(
+      t => t.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase()
+    );
   const tagName = tag?.name ?? decodeURIComponent(slug).replace(/-/g, ' ');
 
   return {
@@ -51,8 +54,11 @@ export default async function TagPageRoute({ params }: TagPageRouteProps) {
   const tags = await getCachedTags();
   if (!tags?.length) notFound();
 
-  const matchedTag = tags.find(t => t.slug === slug)
-    ?? tags.find(t => t.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase());
+  const matchedTag =
+    tags.find(t => t.slug === slug) ??
+    tags.find(
+      t => t.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase()
+    );
   if (!matchedTag) notFound();
 
   const images = await searchImages({ tagIds: [matchedTag.id] });

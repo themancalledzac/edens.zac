@@ -191,9 +191,7 @@ describe('Admin Endpoints', () => {
 
   describe('getAllImages', () => {
     it('should fetch all images with no-store cache', async () => {
-      const images = [
-        { id: 1, contentType: 'IMAGE', imageUrl: 'https://example.com/1.jpg' },
-      ];
+      const images = [{ id: 1, contentType: 'IMAGE', imageUrl: 'https://example.com/1.jpg' }];
       (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(images));
 
       const result = await getAllImages();

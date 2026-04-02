@@ -1,0 +1,68 @@
+/*
+ * Global range slider styles for dual-thumb focal length filter.
+ * Uses plain class names (not CSS Modules) because vendor pseudo-element
+ * selectors are incompatible with Turbopack's CSS Module class name hashing.
+ */
+
+.range-thumb-min,
+.range-thumb-max {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  margin: 0;
+}
+
+/* Webkit (Chrome, Safari, Edge) */
+.range-thumb-min::-webkit-slider-thumb,
+.range-thumb-max::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: all;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-black, #111);
+  cursor: pointer;
+  border: none;
+  margin-top: -7px;
+}
+
+.range-thumb-min::-webkit-slider-runnable-track {
+  height: 2px;
+  background: rgb(0 0 0 / 12%);
+  border-radius: 1px;
+}
+
+.range-thumb-max::-webkit-slider-runnable-track {
+  height: 2px;
+  background: transparent;
+}
+
+/* Firefox */
+.range-thumb-min::-moz-range-thumb,
+.range-thumb-max::-moz-range-thumb {
+  pointer-events: all;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-black, #111);
+  cursor: pointer;
+  border: none;
+}
+
+.range-thumb-min::-moz-range-track {
+  height: 2px;
+  background: rgb(0 0 0 / 12%);
+  border-radius: 1px;
+}
+
+.range-thumb-max::-moz-range-track {
+  height: 2px;
+  background: transparent;
+}

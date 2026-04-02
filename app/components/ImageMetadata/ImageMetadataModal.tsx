@@ -761,7 +761,11 @@ export default function ImageMetadataModal({
               }}
               allowAddNew
               onAddNew={data => {
-                const newPerson: ContentPersonModel = { id: 0, name: data.name as string, slug: '' };
+                const newPerson: ContentPersonModel = {
+                  id: 0,
+                  name: data.name as string,
+                  slug: '',
+                };
                 const currentPeople = updateState.people || [];
                 updateStateField({ people: [...currentPeople, newPerson] });
               }}

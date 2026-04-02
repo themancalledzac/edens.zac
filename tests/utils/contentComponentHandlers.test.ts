@@ -12,7 +12,6 @@ import {
 } from '@/app/utils/contentComponentHandlers';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
-
 const createChildCollection = (
   collectionId: number,
   overrides?: Partial<ChildCollection>
@@ -109,16 +108,16 @@ describe('checkImageVisibility', () => {
   });
 });
 
-
 describe('createContentClickHandler', () => {
-  const createFullScreenContent = (id: number): ContentImageModel | ContentParallaxImageModel => ({
-    id,
-    contentType: 'IMAGE',
-    imageUrl: `https://example.com/image-${id}.jpg`,
-    title: `Image ${id}`,
-    orderIndex: 0,
-    visible: true,
-  }) as ContentImageModel;
+  const createFullScreenContent = (id: number): ContentImageModel | ContentParallaxImageModel =>
+    ({
+      id,
+      contentType: 'IMAGE',
+      imageUrl: `https://example.com/image-${id}.jpg`,
+      title: `Image ${id}`,
+      orderIndex: 0,
+      visible: true,
+    }) as ContentImageModel;
 
   it('should return undefined when no handlers are provided', () => {
     const handler = createContentClickHandler(1);
@@ -137,7 +136,13 @@ describe('createContentClickHandler', () => {
   it('should call onFullScreenClick when onContentClick is not provided', () => {
     const onFullScreenClick = jest.fn();
     const fullScreenContent = createFullScreenContent(1);
-    const handler = createContentClickHandler(1, undefined, true, onFullScreenClick, fullScreenContent);
+    const handler = createContentClickHandler(
+      1,
+      undefined,
+      true,
+      onFullScreenClick,
+      fullScreenContent
+    );
 
     expect(handler).toBeDefined();
     handler?.();
@@ -148,7 +153,13 @@ describe('createContentClickHandler', () => {
     const onContentClick = jest.fn();
     const onFullScreenClick = jest.fn();
     const fullScreenContent = createFullScreenContent(1);
-    const handler = createContentClickHandler(1, onContentClick, true, onFullScreenClick, fullScreenContent);
+    const handler = createContentClickHandler(
+      1,
+      onContentClick,
+      true,
+      onFullScreenClick,
+      fullScreenContent
+    );
 
     expect(handler).toBeDefined();
     handler?.();
@@ -159,7 +170,13 @@ describe('createContentClickHandler', () => {
   it('should return undefined when enableFullScreenView is false and no onContentClick', () => {
     const onFullScreenClick = jest.fn();
     const fullScreenContent = createFullScreenContent(1);
-    const handler = createContentClickHandler(1, undefined, false, onFullScreenClick, fullScreenContent);
+    const handler = createContentClickHandler(
+      1,
+      undefined,
+      false,
+      onFullScreenClick,
+      fullScreenContent
+    );
     expect(handler).toBeUndefined();
   });
 
@@ -178,8 +195,6 @@ describe('getCollectionNavigationPath', () => {
   });
 
   it('should return public path when isAdminContext is false', () => {
-    expect(getCollectionNavigationPath('test-collection', false)).toBe(
-      '/test-collection'
-    );
+    expect(getCollectionNavigationPath('test-collection', false)).toBe('/test-collection');
   });
 });

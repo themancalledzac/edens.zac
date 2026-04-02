@@ -49,20 +49,22 @@ function forwardHeaders(req: NextRequest): Headers {
   const headers = new Headers();
   for (const [key, value] of req.headers.entries()) {
     const k = key.toLowerCase();
-    if ([
-      'connection',
-      'content-length',
-      'host',
-      'accept-encoding',
-      'cf-ray',
-      'cf-connecting-ip',
-      'x-forwarded-for',
-      'x-forwarded-proto',
-      'x-forwarded-host',
-      'x-vercel-ip-city',
-      'x-vercel-ip-country',
-      'x-vercel-ip-region',
-    ].includes(k)) {
+    if (
+      [
+        'connection',
+        'content-length',
+        'host',
+        'accept-encoding',
+        'cf-ray',
+        'cf-connecting-ip',
+        'x-forwarded-for',
+        'x-forwarded-proto',
+        'x-forwarded-host',
+        'x-vercel-ip-city',
+        'x-vercel-ip-country',
+        'x-vercel-ip-region',
+      ].includes(k)
+    ) {
       continue;
     }
     headers.set(key, value);

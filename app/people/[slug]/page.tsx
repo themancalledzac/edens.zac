@@ -21,8 +21,11 @@ export async function generateMetadata({ params }: PersonPageRouteProps): Promis
   const { slug } = await params;
   const people = await getCachedPeople();
 
-  const person = people?.find(p => p.slug === slug)
-    ?? people?.find(p => p.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase());
+  const person =
+    people?.find(p => p.slug === slug) ??
+    people?.find(
+      p => p.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase()
+    );
   const personName = person?.name ?? decodeURIComponent(slug).replace(/-/g, ' ');
 
   return {
@@ -51,8 +54,11 @@ export default async function PersonPageRoute({ params }: PersonPageRouteProps) 
   const people = await getCachedPeople();
   if (!people?.length) notFound();
 
-  const matchedPerson = people.find(p => p.slug === slug)
-    ?? people.find(p => p.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase());
+  const matchedPerson =
+    people.find(p => p.slug === slug) ??
+    people.find(
+      p => p.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase()
+    );
   if (!matchedPerson) notFound();
 
   const images = await searchImages({ personIds: [matchedPerson.id] });

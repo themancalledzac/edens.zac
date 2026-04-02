@@ -82,13 +82,7 @@ describe('contentRendererUtils', () => {
     describe('COLLECTION content', () => {
       it('should normalize collection with coverImage', () => {
         const collection = createCollectionContent(1);
-        const result = normalizeContentToRendererProps(
-          collection,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result = normalizeContentToRendererProps(collection, 500, 300, 'imageSingle', false);
 
         expect(result.contentId).toBe(1);
         expect(result.contentType).toBe('COLLECTION');
@@ -109,13 +103,7 @@ describe('contentRendererUtils', () => {
 
       it('should handle collection without coverImage', () => {
         const collection = createCollectionContent(1, { coverImage: undefined });
-        const result = normalizeContentToRendererProps(
-          collection,
-          500,
-          300,
-          'imageLeft',
-          true
-        );
+        const result = normalizeContentToRendererProps(collection, 500, 300, 'imageLeft', true);
 
         expect(result.imageUrl).toBe('');
         expect(result.imageWidth).toBe(800); // Default fallback
@@ -135,13 +123,7 @@ describe('contentRendererUtils', () => {
             visible: true,
           },
         });
-        const result = normalizeContentToRendererProps(
-          collection,
-          500,
-          300,
-          'imageRight',
-          false
-        );
+        const result = normalizeContentToRendererProps(collection, 500, 300, 'imageRight', false);
 
         expect(result.imageWidth).toBe(1600);
         expect(result.imageHeight).toBe(900);
@@ -149,13 +131,7 @@ describe('contentRendererUtils', () => {
 
       it('should use slug for alt text if title missing', () => {
         const collection = createCollectionContent(1, { title: undefined });
-        const result = normalizeContentToRendererProps(
-          collection,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result = normalizeContentToRendererProps(collection, 500, 300, 'imageSingle', false);
 
         expect(result.alt).toBe('collection-1');
       });
@@ -165,13 +141,7 @@ describe('contentRendererUtils', () => {
           title: undefined,
           slug: undefined,
         });
-        const result = normalizeContentToRendererProps(
-          collection,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result = normalizeContentToRendererProps(collection, 500, 300, 'imageSingle', false);
 
         expect(result.alt).toBe('Collection');
       });
@@ -180,13 +150,7 @@ describe('contentRendererUtils', () => {
     describe('IMAGE content', () => {
       it('should normalize image content', () => {
         const image = createImageContent(1, { alt: 'Alt text 1' });
-        const result = normalizeContentToRendererProps(
-          image,
-          600,
-          400,
-          'imageLeft',
-          false
-        );
+        const result = normalizeContentToRendererProps(image, 600, 400, 'imageLeft', false);
 
         expect(result.contentId).toBe(1);
         expect(result.contentType).toBe('IMAGE');
@@ -207,13 +171,7 @@ describe('contentRendererUtils', () => {
           width: 1600,
           height: 900,
         });
-        const result = normalizeContentToRendererProps(
-          image,
-          500,
-          300,
-          'imageRight',
-          false
-        );
+        const result = normalizeContentToRendererProps(image, 500, 300, 'imageRight', false);
 
         expect(result.imageWidth).toBe(1600);
         expect(result.imageHeight).toBe(900);
@@ -226,13 +184,7 @@ describe('contentRendererUtils', () => {
           width: undefined,
           height: undefined,
         });
-        const result = normalizeContentToRendererProps(
-          image,
-          500,
-          300,
-          'imageMiddle',
-          false
-        );
+        const result = normalizeContentToRendererProps(image, 500, 300, 'imageMiddle', false);
 
         expect(result.imageWidth).toBe(800);
         expect(result.imageHeight).toBe(800);
@@ -240,26 +192,14 @@ describe('contentRendererUtils', () => {
 
       it('should extract alt text with fallback priority', () => {
         const image1 = createImageContent(1, { alt: 'Custom alt' });
-        const result1 = normalizeContentToRendererProps(
-          image1,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result1 = normalizeContentToRendererProps(image1, 500, 300, 'imageSingle', false);
         expect(result1.alt).toBe('Custom alt');
 
         const image2 = createImageContent(1, {
           alt: undefined,
           title: 'Image Title',
         });
-        const result2 = normalizeContentToRendererProps(
-          image2,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result2 = normalizeContentToRendererProps(image2, 500, 300, 'imageSingle', false);
         expect(result2.alt).toBe('Image Title');
 
         const image3 = createImageContent(1, {
@@ -267,13 +207,7 @@ describe('contentRendererUtils', () => {
           title: undefined,
           caption: 'Image Caption',
         });
-        const result3 = normalizeContentToRendererProps(
-          image3,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result3 = normalizeContentToRendererProps(image3, 500, 300, 'imageSingle', false);
         expect(result3.alt).toBe('Image Caption');
 
         const image4 = createImageContent(1, {
@@ -281,25 +215,13 @@ describe('contentRendererUtils', () => {
           title: undefined,
           caption: undefined,
         });
-        const result4 = normalizeContentToRendererProps(
-          image4,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result4 = normalizeContentToRendererProps(image4, 500, 300, 'imageSingle', false);
         expect(result4.alt).toBe('Image');
       });
 
       it('should preserve overlayText', () => {
         const image = createImageContent(1, { overlayText: 'Overlay text' });
-        const result = normalizeContentToRendererProps(
-          image,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result = normalizeContentToRendererProps(image, 500, 300, 'imageSingle', false);
 
         expect(result.overlayText).toBe('Overlay text');
       });
@@ -308,13 +230,7 @@ describe('contentRendererUtils', () => {
     describe('GIF content', () => {
       it('should normalize GIF content', () => {
         const gif = createGifContent(1);
-        const result = normalizeContentToRendererProps(
-          gif,
-          500,
-          300,
-          'imageLeft',
-          false
-        );
+        const result = normalizeContentToRendererProps(gif, 500, 300, 'imageLeft', false);
 
         expect(result.contentId).toBe(1);
         expect(result.contentType).toBe('GIF');
@@ -332,13 +248,7 @@ describe('contentRendererUtils', () => {
           width: undefined,
           height: undefined,
         });
-        const result = normalizeContentToRendererProps(
-          gif,
-          500,
-          300,
-          'imageRight',
-          false
-        );
+        const result = normalizeContentToRendererProps(gif, 500, 300, 'imageRight', false);
 
         expect(result.imageWidth).toBe(800);
         expect(result.imageHeight).toBe(800);
@@ -350,13 +260,7 @@ describe('contentRendererUtils', () => {
           title: undefined,
           caption: undefined,
         });
-        const result = normalizeContentToRendererProps(
-          gif,
-          500,
-          300,
-          'imageSingle',
-          false
-        );
+        const result = normalizeContentToRendererProps(gif, 500, 300, 'imageSingle', false);
 
         expect(result.alt).toBe('GIF');
       });
@@ -365,13 +269,7 @@ describe('contentRendererUtils', () => {
     describe('TEXT content', () => {
       it('should normalize text content', () => {
         const text = createTextContent(1);
-        const result = normalizeContentToRendererProps(
-          text,
-          500,
-          200,
-          'imageSingle',
-          false
-        );
+        const result = normalizeContentToRendererProps(text, 500, 200, 'imageSingle', false);
 
         expect(result.contentId).toBe(1);
         expect(result.contentType).toBe('TEXT');
@@ -389,13 +287,7 @@ describe('contentRendererUtils', () => {
           width: undefined,
           height: undefined,
         });
-        const result = normalizeContentToRendererProps(
-          text,
-          500,
-          200,
-          'imageLeft',
-          false
-        );
+        const result = normalizeContentToRendererProps(text, 500, 200, 'imageLeft', false);
 
         expect(result.imageWidth).toBe(800);
         expect(result.imageHeight).toBe(200); // Default text height
@@ -405,13 +297,7 @@ describe('contentRendererUtils', () => {
     describe('Base props', () => {
       it('should round calculated width and height', () => {
         const image = createImageContent(1);
-        const result = normalizeContentToRendererProps(
-          image,
-          500.7,
-          300.3,
-          'imageSingle',
-          false
-        );
+        const result = normalizeContentToRendererProps(image, 500.7, 300.3, 'imageSingle', false);
 
         expect(result.width).toBe(501);
         expect(result.height).toBe(300);
@@ -419,26 +305,14 @@ describe('contentRendererUtils', () => {
 
       it('should preserve position className', () => {
         const image = createImageContent(1);
-        const result = normalizeContentToRendererProps(
-          image,
-          500,
-          300,
-          'imageMiddle',
-          false
-        );
+        const result = normalizeContentToRendererProps(image, 500, 300, 'imageMiddle', false);
 
         expect(result.className).toBe('imageMiddle');
       });
 
       it('should preserve isMobile flag', () => {
         const image = createImageContent(1);
-        const resultMobile = normalizeContentToRendererProps(
-          image,
-          500,
-          300,
-          'imageSingle',
-          true
-        );
+        const resultMobile = normalizeContentToRendererProps(image, 500, 300, 'imageSingle', true);
         expect(resultMobile.isMobile).toBe(true);
 
         const resultDesktop = normalizeContentToRendererProps(
@@ -483,13 +357,7 @@ describe('contentRendererUtils', () => {
     it('should combine position class and content normalization', () => {
       const image = createImageContent(1);
       const item = { content: image, width: 500, height: 300 };
-      const result = determineContentRendererProps(
-        item,
-        2,
-        0,
-        false,
-        mockStyles
-      );
+      const result = determineContentRendererProps(item, 2, 0, false, mockStyles);
 
       expect(result.className).toBe('imageLeft');
       expect(result.contentId).toBe(1);
@@ -518,13 +386,7 @@ describe('contentRendererUtils', () => {
     it('should normalize collection content correctly', () => {
       const collection = createCollectionContent(1);
       const item = { content: collection, width: 500, height: 300 };
-      const result = determineContentRendererProps(
-        item,
-        1,
-        0,
-        false,
-        mockStyles
-      );
+      const result = determineContentRendererProps(item, 1, 0, false, mockStyles);
 
       expect(result.contentType).toBe('COLLECTION');
       expect(result.enableParallax).toBe(true);
@@ -535,13 +397,7 @@ describe('contentRendererUtils', () => {
     it('should normalize text content correctly', () => {
       const text = createTextContent(1);
       const item = { content: text, width: 500, height: 200 };
-      const result = determineContentRendererProps(
-        item,
-        2,
-        1,
-        true,
-        mockStyles
-      );
+      const result = determineContentRendererProps(item, 2, 1, true, mockStyles);
 
       expect(result.contentType).toBe('TEXT');
       expect(result.textItems).toEqual([{ type: 'text', value: 'Text content 1' }]);
@@ -672,7 +528,7 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
       // IMAGE fixture: 1920x1080 (AR = 16/9)
       // width NaN, height=400 → validWidth = 400 * 1920 / 1080 = 711.11 → 711
       const image = createImageContent(1);
-      const result = normalizeContentToRendererProps(image, NaN, 400, 'imageSingle', false);
+      const result = normalizeContentToRendererProps(image, Number.NaN, 400, 'imageSingle', false);
 
       expect(Number.isFinite(result.width)).toBe(true);
       expect(result.width).toBe(711);
@@ -683,7 +539,7 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
       // IMAGE fixture: 1920x1080 (AR = 16/9)
       // height NaN, width=600 → validHeight = 600 * 1080 / 1920 = 337.5 → 338
       const image = createImageContent(1);
-      const result = normalizeContentToRendererProps(image, 600, NaN, 'imageSingle', false);
+      const result = normalizeContentToRendererProps(image, 600, Number.NaN, 'imageSingle', false);
 
       expect(Number.isFinite(result.height)).toBe(true);
       expect(result.width).toBe(600);
@@ -692,7 +548,13 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
 
     it('should fall back to 300x200 when both width and height are NaN', () => {
       const image = createImageContent(1);
-      const result = normalizeContentToRendererProps(image, NaN, NaN, 'imageSingle', false);
+      const result = normalizeContentToRendererProps(
+        image,
+        Number.NaN,
+        Number.NaN,
+        'imageSingle',
+        false
+      );
 
       expect(Number.isFinite(result.width)).toBe(true);
       expect(Number.isFinite(result.height)).toBe(true);
@@ -719,7 +581,7 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
       const collection = createCollectionContent(1);
       const result = normalizeContentToRendererProps(
         collection,
-        NaN,
+        Number.NaN,
         300,
         'imageSingle',
         false
@@ -736,7 +598,7 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
       // GIF fixture: 800x600 (AR = 4/3)
       // width NaN, height=300 → validWidth = 300 * 800 / 600 = 400
       const gif = createGifContent(1);
-      const result = normalizeContentToRendererProps(gif, NaN, 300, 'imageSingle', false);
+      const result = normalizeContentToRendererProps(gif, Number.NaN, 300, 'imageSingle', false);
 
       expect(Number.isFinite(result.width)).toBe(true);
       expect(result.width).toBe(400);
@@ -749,7 +611,7 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
       // TEXT has no image dimensions for NaN fallback
       // width NaN, height=200 → validWidth = 200 * 1.5 = 300
       const text = createTextContent(1);
-      const result = normalizeContentToRendererProps(text, NaN, 200, 'imageSingle', false);
+      const result = normalizeContentToRendererProps(text, Number.NaN, 200, 'imageSingle', false);
 
       expect(Number.isFinite(result.width)).toBe(true);
       expect(result.width).toBe(300);
@@ -760,7 +622,7 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
       // TEXT has no image dimensions for NaN fallback
       // height NaN, width=500 → validHeight = 500 / 1.5 = 333.33 → 333
       const text = createTextContent(1);
-      const result = normalizeContentToRendererProps(text, 500, NaN, 'imageSingle', false);
+      const result = normalizeContentToRendererProps(text, 500, Number.NaN, 'imageSingle', false);
 
       expect(Number.isFinite(result.height)).toBe(true);
       expect(result.width).toBe(500);
@@ -769,7 +631,13 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
 
     it('should fall back to 300x200 when both dimensions are NaN', () => {
       const text = createTextContent(1);
-      const result = normalizeContentToRendererProps(text, NaN, NaN, 'imageSingle', false);
+      const result = normalizeContentToRendererProps(
+        text,
+        Number.NaN,
+        Number.NaN,
+        'imageSingle',
+        false
+      );
 
       expect(Number.isFinite(result.width)).toBe(true);
       expect(Number.isFinite(result.height)).toBe(true);
@@ -778,4 +646,3 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
     });
   });
 });
-

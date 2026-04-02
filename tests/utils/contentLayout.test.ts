@@ -877,11 +877,7 @@ describe('processContentForDisplay', () => {
   });
 
   it('should produce rows for mixed content types', () => {
-    const content = [
-      createImageContent(1),
-      createTextContent(2),
-      createGifContent(3),
-    ];
+    const content = [createImageContent(1), createTextContent(2), createGifContent(3)];
     const result = processContentForDisplay(content, 1200);
     expect(result.length).toBeGreaterThan(0);
     const allItems = result.flatMap(r => r.items);

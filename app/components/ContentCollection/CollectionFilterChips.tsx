@@ -3,6 +3,7 @@
 import { type CollectionFilterState } from '@/app/types/GalleryFilter';
 
 import cbStyles from '../Content/ContentComponent.module.scss';
+import FocalLengthRangeSlider from './FocalLengthRangeSlider';
 
 type ArrayFilterKey = 'selectedTags' | 'selectedPeople' | 'selectedCameras' | 'selectedLenses';
 
@@ -19,7 +20,13 @@ export function toggleArrayFilter(
 
 interface CollectionFilterChipsProps {
   filterState: CollectionFilterState;
-  filterOptions: { tags: string[]; people: string[]; cameras: string[]; lenses: string[] };
+  filterOptions: {
+    tags: string[];
+    people: string[];
+    cameras: string[];
+    lenses: string[];
+    focalLengthStops: number[];
+  };
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
 }
 
@@ -60,15 +67,53 @@ export default function CollectionFilterChips({
     },
   ];
 
+  const dateSortLabels: Record<CollectionFilterState['dateSortDirection'], string> = {
+    asc: 'Date \u2191',
+    desc: 'Date \u2193',
+    off: 'Date',
+  };
+  const dateSortLabel = dateSortLabels[filterState.dateSortDirection];
+
+  const cycleDateSort = () => {
+    const next: Record<
+      CollectionFilterState['dateSortDirection'],
+      CollectionFilterState['dateSortDirection']
+    > = {
+      off: 'asc',
+      asc: 'desc',
+      desc: 'off',
+    };
+    onFilterChange({ dateSortDirection: next[filterState.dateSortDirection] });
+  };
+
+  const showFocalLength = filterOptions.focalLengthStops.length >= 2;
+
   return (
     <div className={cbStyles.filterChipsSection}>
-      <button
-        type="button"
-        className={`${cbStyles.filterChipToggle} ${filterState.highlyRatedOnly ? cbStyles.filterChipActive : ''}`}
-        onClick={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
-      >
-        Highly Rated
-      </button>
+      <div className={cbStyles.filterChipOptions}>
+        <button
+          type="button"
+          className={`${cbStyles.filterChipToggle} ${filterState.dateSortDirection !== 'off' ? cbStyles.filterChipActive : ''}`}
+          onClick={cycleDateSort}
+        >
+          {dateSortLabel}
+        </button>
+        <button
+          type="button"
+          className={`${cbStyles.filterChipToggle} ${filterState.highlyRatedOnly ? cbStyles.filterChipActive : ''}`}
+          onClick={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
+        >
+          Highly Rated
+        </button>
+        {showFocalLength && (
+          <FocalLengthRangeSlider
+            stops={filterOptions.focalLengthStops}
+            value={filterState.focalLengthRange}
+            onChange={range => onFilterChange({ focalLengthRange: range })}
+          />
+        )}
+      </div>
+
       {sections
         .filter(s => s.options.length > 0)
         .map(({ label, options, stateKey, selected }, idx) => (

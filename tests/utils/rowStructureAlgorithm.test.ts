@@ -7,6 +7,7 @@ import type { BoxTree } from '@/app/utils/rowCombination';
 import {
   calculateBoxTreeAspectRatio,
   calculateSizesFromBoxTree,
+  computeHeightCoeffs,
 } from '@/app/utils/rowStructureAlgorithm';
 import {
   createHorizontalImage,
@@ -464,5 +465,179 @@ describe('calculateSizesFromBoxTree', () => {
       // Each child gets (targetWidth - gap) / 2 for equal AR
       expect(sizesSmallGap[0]!.width).toBeGreaterThan(sizesLargeGap[0]!.width);
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Gap-aware width distribution (nested trees)
+  // ---------------------------------------------------------------------------
+
+  describe('gap-aware width distribution (nested trees)', () => {
+    it('hbox(hbox(A, B), C): all three images render at the same height', () => {
+      const img1 = H(1, 3);
+      const img2 = H(2, 3);
+      const img3 = H(3, 3);
+      // H( H(A, B), C ) — left subtree has an inner gap, right does not
+      const tree = hNode(hNode(leaf(img1), leaf(img2)), leaf(img3));
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+
+      expect(sizes[0]!.height).toBeCloseTo(sizes[2]!.height, 1);
+      expect(sizes[1]!.height).toBeCloseTo(sizes[2]!.height, 1);
+    });
+
+    it('hbox(A, hbox(B, C)): all three images render at the same height', () => {
+      const img1 = H(1, 3);
+      const img2 = H(2, 3);
+      const img3 = H(3, 3);
+      const tree = hNode(leaf(img1), hNode(leaf(img2), leaf(img3)));
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+
+      expect(sizes[0]!.height).toBeCloseTo(sizes[1]!.height, 1);
+      expect(sizes[0]!.height).toBeCloseTo(sizes[2]!.height, 1);
+    });
+
+    it('hbox(hbox(A, B), hbox(C, D)): symmetric nesting has equal heights', () => {
+      const tree = hNode(hNode(leaf(H(1, 3)), leaf(H(2, 3))), hNode(leaf(H(3, 3)), leaf(H(4, 3))));
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+
+      // All four should have the same height
+      for (let i = 1; i < sizes.length; i++) {
+        expect(sizes[i]!.height).toBeCloseTo(sizes[0]!.height, 1);
+      }
+    });
+
+    it('hbox(vbox(A, B), C): vbox total height equals C height', () => {
+      const img1 = H(1, 3);
+      const img2 = H(2, 3);
+      const img3 = H(3, 3);
+      const tree = hNode(vNode(leaf(img1), leaf(img2)), leaf(img3));
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+
+      // vbox total height = sum of scaled heights + gap
+      const vboxTotalHeight = sizes[0]!.height + sizes[1]!.height + gridGap;
+      const rightHeight = sizes[2]!.height;
+      expect(vboxTotalHeight).toBeCloseTo(rightHeight, 1);
+    });
+
+    it('deep nesting: hbox(hbox(hbox(A, B), C), D) — 3 levels, heights match', () => {
+      const tree = hNode(hNode(hNode(leaf(H(1, 3)), leaf(H(2, 3))), leaf(H(3, 3))), leaf(H(4, 3)));
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+
+      // All four images should have the same height
+      for (let i = 1; i < sizes.length; i++) {
+        expect(sizes[i]!.height).toBeCloseTo(sizes[0]!.height, 1);
+      }
+    });
+
+    it('nested trees still sum widths correctly at each level', () => {
+      const tree = hNode(hNode(leaf(H(1, 3)), leaf(H(2, 3))), leaf(H(3, 3)));
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+
+      // Total content width = targetWidth - 2*gap (outer gap + inner gap)
+      const totalContentWidth = sizes.reduce((sum, s) => sum + s.width, 0);
+      expect(totalContentWidth).toBeCloseTo(targetWidth - 2 * gridGap, 1);
+    });
+
+    it('leaf-only horizontal produces identical result to AR-proportional', () => {
+      const imgH = H(1, 3); // AR ≈ 1.7778
+      const imgV = V(2, 3); // AR ≈ 0.5625
+      const tree = hNode(leaf(imgH), leaf(imgV));
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+
+      // For leaves, coefficients reduce to AR-proportional distribution
+      const arH = 1920 / 1080;
+      const arV = 1080 / 1920;
+      const availableWidth = targetWidth - gridGap;
+      const expectedLeftWidth = availableWidth * (arH / (arH + arV));
+      expect(sizes[0]!.width).toBeCloseTo(expectedLeftWidth, 3);
+    });
+
+    it('hbox(vbox(H, hbox(V,V)), V): real-world 5-image pattern', () => {
+      // This was the exact pattern that showed the 4.8px height mismatch.
+      // The vbox summed ALL returned sizes from its hbox child (overcounting),
+      // inflating the scale factor and producing wrong heights.
+      const tree = hNode(
+        hNode(vNode(leaf(H(1, 3)), hNode(leaf(V(2, 3)), leaf(V(3, 3)))), leaf(V(4, 3))),
+        leaf(createImageContent(5, { imageWidth: 2500, imageHeight: 2500 }))
+      );
+      const sizes = calculateSizesFromBoxTree(tree, 1200, gridGap, 4);
+
+      // The vbox visual height should match its horizontal sibling (V leaf)
+      const vboxVisual = sizes[0]!.height + gridGap + sizes[1]!.height; // top + gap + bottom
+      // (sizes[1] and sizes[2] are from the inner hbox, equal height — use either)
+      const vLeafHeight = sizes[3]!.height;
+      expect(vboxVisual).toBeCloseTo(vLeafHeight, 0);
+    });
+
+    it('mixed H/V images in nested tree: hbox(hbox(H, V), H)', () => {
+      const tree = hNode(hNode(leaf(H(1, 5)), leaf(V(2, 3))), leaf(H(3, 4)));
+      const sizes = calculateSizesFromBoxTree(tree, targetWidth, gridGap, chunkSize);
+
+      // Left subtree images should have equal height (inner hbox)
+      expect(sizes[0]!.height).toBeCloseTo(sizes[1]!.height, 1);
+      // And match the right leaf
+      expect(sizes[0]!.height).toBeCloseTo(sizes[2]!.height, 1);
+    });
+  });
+});
+
+// =============================================================================
+// computeHeightCoeffs
+// =============================================================================
+
+describe('computeHeightCoeffs', () => {
+  const gap = 12.8;
+
+  it('leaf: a = 1/AR, b = 0', () => {
+    const img = H(1, 3); // 1920x1080, AR ≈ 1.7778
+    const tree = leaf(img);
+    const { a, b } = computeHeightCoeffs(tree, gap);
+    expect(a).toBeCloseTo(1080 / 1920, 5);
+    expect(b).toBeCloseTo(0, 5);
+  });
+
+  it('horizontal pair of leaves: correct a and b', () => {
+    const tree = hNode(leaf(H(1, 3)), leaf(H(2, 3)));
+    const ar = 1920 / 1080;
+    const { a, b } = computeHeightCoeffs(tree, gap);
+
+    // a = a_L * a_R / (a_L + a_R) = (1/ar)^2 / (2/ar) = 1/(2*ar)
+    expect(a).toBeCloseTo(1 / (2 * ar), 5);
+    // b = -a_L * a_R * gap / (a_L + a_R) = -(1/ar)^2 * gap / (2/ar) = -gap/(2*ar)
+    expect(b).toBeCloseTo(-gap / (2 * ar), 5);
+  });
+
+  it('vertical pair of leaves: a = sum of reciprocal ARs, b = 0', () => {
+    const tree = vNode(leaf(H(1, 3)), leaf(H(2, 3)));
+    const ar = 1920 / 1080;
+    const { a, b } = computeHeightCoeffs(tree, gap);
+
+    expect(a).toBeCloseTo(2 / ar, 5); // 1/ar + 1/ar
+    // b = 0 because vbox scaling + CSS gap cancel out (visual height = raw total)
+    expect(b).toBeCloseTo(0, 5);
+  });
+
+  it('predicted height matches rendered height from calculateSizesFromBoxTree', () => {
+    const tree = hNode(hNode(leaf(H(1, 3)), leaf(V(2, 3))), vNode(leaf(H(3, 4)), leaf(V(4, 2))));
+    const W = 1200;
+    const { a, b } = computeHeightCoeffs(tree, gap);
+    const predictedHeight = a * W + b;
+
+    const sizes = calculateSizesFromBoxTree(tree, W, gap, 4);
+    // For a top-level horizontal node, rendered height = max height of either side
+    // (they should be equal after the fix)
+    const leftHeight = sizes[0]!.height; // first leaf in left subtree
+    expect(predictedHeight).toBeCloseTo(leftHeight, 1);
+  });
+
+  it('nested hbox has non-zero b (inner gaps accumulate)', () => {
+    // hbox(hbox(A, B), C) has more negative b than hbox(A, B)
+    const simple = hNode(leaf(H(1, 3)), leaf(H(2, 3)));
+    const nested = hNode(hNode(leaf(H(1, 3)), leaf(H(2, 3))), leaf(H(3, 3)));
+
+    const simpleCoeffs = computeHeightCoeffs(simple, gap);
+    const nestedCoeffs = computeHeightCoeffs(nested, gap);
+
+    expect(simpleCoeffs.b).toBeLessThan(0);
+    expect(nestedCoeffs.b).toBeLessThan(simpleCoeffs.b); // more negative
   });
 });

@@ -1,17 +1,14 @@
 /**
  * Utility functions for Content Component handlers
  * Extracts business logic from React component code
- * 
+ *
  * Design principles:
  * - Pure functions where possible (no side effects)
  * - Single responsibility per function
  * - Handler creators are higher-order functions that return event handlers
  */
 
-import {
-  type ContentImageModel,
-  type ContentParallaxImageModel,
-} from '@/app/types/Content';
+import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
 
 /**
  * Check if an image is not visible (either globally or collection-specific)
@@ -82,4 +79,3 @@ export function createContentClickHandler(
 export function getCollectionNavigationPath(slug: string, isAdminContext: boolean): string {
   return isAdminContext ? `/collection/manage/${slug}` : `/${slug}`;
 }
-

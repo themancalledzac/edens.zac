@@ -3,10 +3,10 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 /**
  * Revalidate Collection Cache
- * 
+ *
  * Route handler to revalidate Next.js cache tags and paths for collections.
  * Called after image updates to ensure collection pages show fresh data.
- * 
+ *
  * POST /api/revalidate
  * Body: { tag?: string, path?: string } - Cache tag and/or path to revalidate
  */
@@ -16,10 +16,7 @@ export async function POST(req: NextRequest) {
     const { tag, tags, path } = body;
 
     if (!tag && !tags && !path) {
-      return NextResponse.json(
-        { error: 'Either tag, tags, or path is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Either tag, tags, or path is required' }, { status: 400 });
     }
 
     // Revalidate single cache tag if provided

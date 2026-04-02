@@ -23,7 +23,12 @@ describe('buildParallaxImageContentBlock', () => {
       imageHeight: 1080,
     });
 
-    const result = buildParallaxImageContentBlock(image, '2024-01-01', 'PORTFOLIO', 'My Collection');
+    const result = buildParallaxImageContentBlock(
+      image,
+      '2024-01-01',
+      'PORTFOLIO',
+      'My Collection'
+    );
 
     expect(result).not.toBeNull();
     expect(result!.enableParallax).toBe(true);

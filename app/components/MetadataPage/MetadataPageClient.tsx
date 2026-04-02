@@ -1,9 +1,8 @@
 'use client';
 
+import { SiteHeader } from '@/app/components/SiteHeader/SiteHeader';
 import type { LocationModel } from '@/app/types/Collection';
 import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
-
-import { SiteHeader } from '@/app/components/SiteHeader/SiteHeader';
 
 import { MetadataLocationList } from './MetadataLocationList';
 import styles from './MetadataPage.module.scss';

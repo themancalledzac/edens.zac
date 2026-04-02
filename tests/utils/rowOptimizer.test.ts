@@ -11,7 +11,7 @@ import { H, V } from '@/tests/fixtures/contentFixtures';
 
 // ===================== Helpers =====================
 
-const DESKTOP = LAYOUT.desktopSlotWidth; // 5
+const DESKTOP = LAYOUT.desktopSlotWidth; // 8
 
 function rowIds(row: RowResult): number[] {
   return row.components.map(c => c.id);
@@ -35,10 +35,10 @@ function allIds(rows: RowResult[]): number[] {
 // ===================== rowScore =====================
 
 describe('rowScore', () => {
-  it('returns 1.0 for a perfect fill (H5★ hero)', () => {
+  it('returns 0.625 for H5★ at rw=8 (no longer perfect fill)', () => {
     const items = [H(1, 5)];
-    // H5★ cv = 5.0, fill = 5.0/5 = 1.0
-    expect(rowScore(items, DESKTOP)).toBeCloseTo(1.0);
+    // H5★ cv = 5.0, fill = 5.0/8 = 0.625, score = 1-|1-0.625| = 0.625
+    expect(rowScore(items, DESKTOP)).toBeCloseTo(0.625);
   });
 
   it('returns < 1.0 for underfill', () => {
@@ -104,13 +104,13 @@ describe('optimizeBoundaries', () => {
     expect(rowIds(optimized[0]!)).toEqual([1]);
   });
 
-  it('does not change two already-optimal rows', () => {
-    // Two hero rows: each is a perfect 1.0 fill
+  it('does not change a single row with two H5★ (125% overfill accepted)', () => {
+    // At rw=8: H5★+H5★ = 10.0/8 = 125%. Overfill accepted to avoid solo rows.
     const rows = buildRows([H(1, 5), H(2, 5)], DESKTOP);
+    expect(rows).toHaveLength(1);
     const optimized = optimizeBoundaries(rows, DESKTOP);
-    expect(optimized).toHaveLength(2);
-    expect(rowIds(optimized[0]!)).toEqual([1]);
-    expect(rowIds(optimized[1]!)).toEqual([2]);
+    expect(optimized).toHaveLength(1);
+    expect(rowIds(optimized[0]!)).toEqual([1, 2]);
   });
 
   it('preserves total item count', () => {

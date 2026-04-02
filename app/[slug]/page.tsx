@@ -12,7 +12,7 @@ interface CollectionPageProps {
 
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
   const collections = await getAllCollections();
-  return collections.map((c) => ({ slug: c.slug ?? '' })).filter((p) => p.slug !== '');
+  return collections.map(c => ({ slug: c.slug ?? '' })).filter(p => p.slug !== '');
 }
 
 const STATIC_FILES = ['favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json'];
@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
         card: 'summary_large_image',
         title,
         description,
-        images: images.map((img) => img.url),
+        images: images.map(img => img.url),
       },
     };
   } catch {
@@ -73,4 +73,3 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
 
   return <CollectionPageWrapper slug={slug} />;
 }
-

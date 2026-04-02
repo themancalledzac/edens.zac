@@ -22,10 +22,7 @@ interface SearchResultsProps {
  * without re-mounting the entire page.
  */
 export default function SearchResults({ content }: SearchResultsProps) {
-  const contentBlocks = useMemo(
-    () => processContentBlocks(content, true),
-    [content]
-  );
+  const contentBlocks = useMemo(() => processContentBlocks(content, true), [content]);
 
   if (contentBlocks.length === 0) {
     return (

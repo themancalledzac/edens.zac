@@ -32,7 +32,7 @@ export function useInViewport(ref: RefObject<Element | null>, options: UseInView
     (): IntersectionObserverInit => ({
       root,
       rootMargin,
-      threshold
+      threshold,
     }),
     [root, rootMargin, threshold]
   );
@@ -43,7 +43,7 @@ export function useInViewport(ref: RefObject<Element | null>, options: UseInView
     const element = ref.current;
     const unobserveFn = observe(
       element,
-      (entry) => {
+      entry => {
         setIsVisible(entry.isIntersecting);
         setIntersectionRatio(entry.intersectionRatio);
       },

@@ -3,7 +3,6 @@
  * Tests unified standalone detection logic
  */
 
-import { LAYOUT } from '@/app/constants';
 import {
   getComponentValue,
   getEffectiveRating,
@@ -189,107 +188,71 @@ describe('getEffectiveRating', () => {
 // ===================== getComponentValue Tests =====================
 
 describe('getComponentValue', () => {
-  const DESKTOP_SLOTS = LAYOUT.desktopSlotWidth; // 5
-  const MOBILE_SLOTS = LAYOUT.mobileSlotWidth; // 2
-
-  describe('desktop layout (5 slots)', () => {
-    it('should return 5 slots for 5★ (full width, 1 per row)', () => {
-      expect(getComponentValue(5, DESKTOP_SLOTS)).toBe(5);
-    });
-
-    it('should return 2.5 slots for 4★ (2 per row)', () => {
-      expect(getComponentValue(4, DESKTOP_SLOTS)).toBe(2.5);
-    });
-
-    it('should return ~1.67 slots for 3★ (3 per row)', () => {
-      expect(getComponentValue(3, DESKTOP_SLOTS)).toBeCloseTo(5 / 3, 5);
-    });
-
-    it('should return 1.25 slots for 2★ (4 per row)', () => {
-      expect(getComponentValue(2, DESKTOP_SLOTS)).toBe(1.25);
-    });
-
-    it('should return 1 slot for 1★ (5 per row)', () => {
-      expect(getComponentValue(1, DESKTOP_SLOTS)).toBe(1);
-    });
-
-    it('should return 1 slot for 0★ (5 per row, clamped)', () => {
-      expect(getComponentValue(0, DESKTOP_SLOTS)).toBe(1);
-    });
+  it('returns base weight for standard horizontal (AR=1.5)', () => {
+    expect(getComponentValue(5, 1.5)).toBe(5.0);
+    expect(getComponentValue(4, 1.5)).toBe(3.5);
+    expect(getComponentValue(3, 1.5)).toBe(2.5);
+    expect(getComponentValue(2, 1.5)).toBe(1.75);
+    expect(getComponentValue(1, 1.5)).toBe(1.25);
+    expect(getComponentValue(0, 1.5)).toBe(1.0);
   });
 
-  describe('mobile layout (2 slots)', () => {
-    it('should return 2 slots (full width) for 3-5★', () => {
-      expect(getComponentValue(5, MOBILE_SLOTS)).toBe(2);
-      expect(getComponentValue(4, MOBILE_SLOTS)).toBe(2);
-      expect(getComponentValue(3, MOBILE_SLOTS)).toBe(2);
-    });
-
-    it('should return 1 slot (half width) for 0-2★', () => {
-      expect(getComponentValue(2, MOBILE_SLOTS)).toBe(1);
-      expect(getComponentValue(1, MOBILE_SLOTS)).toBe(1);
-      expect(getComponentValue(0, MOBILE_SLOTS)).toBe(1);
-    });
+  it('caps arFactor at 1.0 for wide horizontals (AR > 1.5)', () => {
+    expect(getComponentValue(5, 2.0)).toBe(5.0);
+    expect(getComponentValue(3, 2.5)).toBe(2.5);
   });
 
-  describe('default parameter', () => {
-    it('should use desktop slot width by default', () => {
-      expect(getComponentValue(4)).toBe(2.5); // Same as getComponentValue(4, 5)
-    });
+  it('reduces cv for verticals (AR < 1.0) via sqrt factor', () => {
+    const cv = getComponentValue(4, 0.67);
+    expect(cv).toBeCloseTo(3.5 * Math.sqrt(0.67 / 1.5), 2);
+    expect(cv).toBeLessThan(3.5);
+    expect(cv).toBeGreaterThan(2.0);
+  });
+
+  it('reduces cv for square images (AR=1.0)', () => {
+    const cv = getComponentValue(3, 1.0);
+    expect(cv).toBeCloseTo(2.5 * Math.sqrt(1.0 / 1.5), 2);
+  });
+
+  it('handles effectiveRating > 5 by capping at 5', () => {
+    expect(getComponentValue(6, 1.5)).toBe(5.0);
+    expect(getComponentValue(10, 1.5)).toBe(5.0);
+  });
+
+  it('handles effectiveRating < 0 by flooring at 0', () => {
+    expect(getComponentValue(-1, 1.5)).toBe(1.0);
   });
 });
 
 // ===================== getItemComponentValue Tests =====================
 
 describe('getItemComponentValue', () => {
-  const DESKTOP_SLOTS = LAYOUT.desktopSlotWidth;
-  const MOBILE_SLOTS = LAYOUT.mobileSlotWidth;
-
-  describe('combines getEffectiveRating and getComponentValue', () => {
-    it('should return correct slot cost for 5★ horizontal on desktop', () => {
-      const image = createHorizontalImage(1, 5);
-      // Effective rating: 5, Slot cost: 5
-      expect(getItemComponentValue(image, DESKTOP_SLOTS)).toBe(5);
-    });
-
-    it('should return correct slot cost for 5★ vertical on desktop', () => {
-      const image = createVerticalImage(1, 5);
-      // Effective rating: 4 (vertical penalty), Slot cost: 2.5
-      expect(getItemComponentValue(image, DESKTOP_SLOTS)).toBe(2.5);
-    });
-
-    it('should return correct slot cost for 4★ horizontal on mobile', () => {
-      const image = createHorizontalImage(1, 4);
-      // Effective rating: 4, Slot cost: 2 (full width on mobile for 3+)
-      expect(getItemComponentValue(image, MOBILE_SLOTS)).toBe(2);
-    });
-
-    it('should return correct slot cost for 3★ vertical on mobile', () => {
-      const image = createVerticalImage(1, 3);
-      // Effective rating: 2 (vertical penalty), Slot cost: 1 (half width on mobile for 0-2)
-      expect(getItemComponentValue(image, MOBILE_SLOTS)).toBe(1);
-    });
-
-    it('should return correct slot cost for 2★ horizontal on desktop', () => {
-      const image = createHorizontalImage(1, 2);
-      // Effective rating: 2, Slot cost: 1.25
-      expect(getItemComponentValue(image, DESKTOP_SLOTS)).toBe(1.25);
-    });
+  it('returns full base weight for H5★ (AR ~1.78, capped at reference)', () => {
+    const image = createHorizontalImage(1, 5);
+    // H5★: effectiveRating=5, AR=1.78 (capped at 1.5) → arFactor=1.0 → cv=5.0
+    expect(getItemComponentValue(image)).toBe(5.0);
   });
 
-  describe('worked example from documentation', () => {
-    // From 01-row-layout.md: V4* takes the same slot width as H3*
-    it('V4★ should have same effective rating as H3★', () => {
-      const v4 = createVerticalImage(1, 4);
-      const h3 = createHorizontalImage(2, 3);
+  it('applies vertical penalty and AR factor for V5★', () => {
+    const image = createVerticalImage(1, 5);
+    // V5★: effectiveRating=4, AR=0.5625 → arFactor=sqrt(0.5625/1.5)≈0.612 → cv≈2.14
+    const cv = getItemComponentValue(image);
+    expect(cv).toBeGreaterThan(1.5);
+    expect(cv).toBeLessThan(3.5);
+  });
 
-      // V4★ effective = 3, H3★ effective = 3
-      expect(getEffectiveRating(v4)).toBe(3);
-      expect(getEffectiveRating(h3)).toBe(3);
+  it('V4★ and H3★ no longer have same cv (AR factor differentiates)', () => {
+    const v4 = createVerticalImage(1, 4);
+    const h3 = createHorizontalImage(2, 3);
+    // V4★: er=3, AR=0.5625, cv = 2.5 * sqrt(0.5625/1.5) ≈ 1.53
+    // H3★: er=3, AR=1.78, cv = 2.5 * 1.0 = 2.5
+    expect(getItemComponentValue(v4)).toBeLessThan(getItemComponentValue(h3));
+  });
 
-      // Same slot cost on desktop
-      expect(getItemComponentValue(v4, DESKTOP_SLOTS)).toBeCloseTo(5 / 3, 5);
-      expect(getItemComponentValue(h3, DESKTOP_SLOTS)).toBeCloseTo(5 / 3, 5);
-    });
+  it('does not take slotWidth parameter', () => {
+    const image = createHorizontalImage(1, 3);
+    // Just verify it works with no second arg
+    expect(typeof getItemComponentValue(image)).toBe('number');
+    expect(getItemComponentValue(image)).toBeGreaterThan(0);
   });
 });

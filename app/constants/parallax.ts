@@ -28,6 +28,4 @@ export const PARALLAX_CONSTANTS = {
 
   // Viewport height adjustment (accounts for fixed header and mobile chrome UI)
   VIEWPORT_HEIGHT_OFFSET: 200,
-
 };
-
