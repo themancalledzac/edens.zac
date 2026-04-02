@@ -320,11 +320,7 @@ export function buildParallaxWrapperClassName(
 ): string {
   const { isMobile = false, isSelected = false } = options;
 
-  return [
-    positionClassName,
-    isMobile ? styles.mobile : '',
-    isSelected ? styles.selected : '',
-  ]
+  return [positionClassName, isMobile ? styles.mobile : '', isSelected ? styles.selected : '']
     .filter(Boolean)
     .join(' ');
 }

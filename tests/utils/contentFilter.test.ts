@@ -462,9 +462,11 @@ describe('extractFilterOptions', () => {
       })
     );
     // Add extra images for first 3 tags to give them higher frequency
-    images.push(makeImage({ id: 100, tags: [{ id: 1, name: 'tag-01' }] }));
-    images.push(makeImage({ id: 101, tags: [{ id: 2, name: 'tag-02' }] }));
-    images.push(makeImage({ id: 102, tags: [{ id: 3, name: 'tag-03' }] }));
+    images.push(
+      makeImage({ id: 100, tags: [{ id: 1, name: 'tag-01' }] }),
+      makeImage({ id: 101, tags: [{ id: 2, name: 'tag-02' }] }),
+      makeImage({ id: 102, tags: [{ id: 3, name: 'tag-03' }] })
+    );
 
     const options = extractFilterOptions(images);
     expect(options.tags).toHaveLength(10);

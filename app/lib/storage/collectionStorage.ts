@@ -211,7 +211,11 @@ export const collectionStorage = {
       const key = getFullStorageKey(slug);
       sessionStorage.setItem(key, JSON.stringify(cached));
     } catch (error) {
-      console.warn('[collectionStorage] setFull: failed to write full cache for slug:', slug, error);
+      console.warn(
+        '[collectionStorage] setFull: failed to write full cache for slug:',
+        slug,
+        error
+      );
     }
   },
 
@@ -271,7 +275,11 @@ export const collectionStorage = {
       const key = getFullStorageKey(slug);
       sessionStorage.removeItem(key);
     } catch (error) {
-      console.warn('[collectionStorage] clearFull: failed to remove full cache for slug:', slug, error);
+      console.warn(
+        '[collectionStorage] clearFull: failed to remove full cache for slug:',
+        slug,
+        error
+      );
     }
   },
 };

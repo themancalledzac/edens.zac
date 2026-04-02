@@ -11,12 +11,12 @@ interface ImageOverlaysProps {
 
 /**
  * ImageOverlays Component
- * 
+ *
  * Renders overlay indicators for image content:
  * - Visibility overlay (gray) for non-visible images
  * - Cover image overlay (checkmark) when selecting cover image
  * - Selected indicator (red circle with X) for selected images
- * 
+ *
  * Only renders for IMAGE content type.
  */
 export function ImageOverlays({
@@ -26,7 +26,7 @@ export function ImageOverlays({
   isSelected,
 }: ImageOverlaysProps): ReactElement | null {
   if (contentType !== 'IMAGE') return null;
-  
+
   return (
     <>
       {isNotVisible && <div className={cbStyles.visibilityOverlay} />}
@@ -48,4 +48,3 @@ export function ImageOverlays({
     </>
   );
 }
-

@@ -186,9 +186,7 @@ export default function Component({
   if (layoutError) {
     return (
       <div className={cbStyles.wrapper}>
-        <div className={cbStyles.layoutError}>
-          Failed to render content layout: {layoutError}
-        </div>
+        <div className={cbStyles.layoutError}>Failed to render content layout: {layoutError}</div>
       </div>
     );
   }
@@ -207,7 +205,8 @@ export default function Component({
       items.map(item => [item.content.id, { width: item.width, height: item.height }])
     );
 
-    const dataPattern = typeof templateKey === 'string' ? templateKey : `${templateKey.h}h-${templateKey.v}v`;
+    const dataPattern =
+      typeof templateKey === 'string' ? templateKey : `${templateKey.h}h-${templateKey.v}v`;
 
     const isClientGallery = collectionData?.type === CollectionType.CLIENT_GALLERY;
 

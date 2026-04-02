@@ -58,9 +58,8 @@ export function FullScreenModal({
   const collectionLocationName =
     typeof collectionData?.location === 'string'
       ? collectionData.location
-      : collectionData?.location?.name ?? null;
-  const displayLocation =
-    currentImage.location?.name ?? collectionLocationName ?? null;
+      : (collectionData?.location?.name ?? null);
+  const displayLocation = currentImage.location?.name ?? collectionLocationName ?? null;
 
   // Resolve date: image captureDate takes priority, fall back to collection collectionDate
   const displayDate = currentImage.captureDate ?? collectionData?.collectionDate ?? null;
@@ -76,14 +75,11 @@ export function FullScreenModal({
   };
 
   const modalContent = (
-    <div
-      ref={modalRef}
-      className={styles.imageFullScreenWrapper}
-      role="dialog"
-      aria-modal="true"
-    >
+    <div ref={modalRef} className={styles.imageFullScreenWrapper} role="dialog" aria-modal="true">
       <div className={styles.overlayContainer} onClick={handleOverlayClick}>
-        <div className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}>
+        <div
+          className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}
+        >
           <Image
             key={currentImage.id}
             src={currentImage.imageUrl}
@@ -102,82 +98,89 @@ export function FullScreenModal({
               });
             }}
           />
-          
+
           {currentImageLoaded && (
             <div
               className={`${styles.metadataOverlay} ${styles.metadataOverlayLoaded}`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
             >
               {showMetadata && (
-              <div className={styles.metadataContent}>
-                {currentImage.title && (
-                  <div className={styles.metadataTitle}>{currentImage.title}</div>
-                )}
-                {currentImage.author && (
-                  <div className={styles.metadataItem}>{currentImage.author}</div>
-                )}
-                {(displayDate || displayLocation) && (
-                  <div className={styles.metadataItem}>
-                    {displayDate && <span>{displayDate}</span>}
-                    {displayDate && displayLocation && <span className={styles.metadataSeparator}> / </span>}
-                    {displayLocation && <span>{displayLocation}</span>}
-                  </div>
-                )}
-                {(currentImage.camera || currentImage.lens) && (
-                  <div className={styles.metadataItem}>
-                    {currentImage.camera && <span>{currentImage.camera.name}</span>}
-                    {currentImage.camera && currentImage.lens && <span className={styles.metadataSeparator}> / </span>}
-                    {currentImage.lens && <span>{currentImage.lens.name}</span>}
-                  </div>
-                )}
-                {(currentImage.iso || currentImage.fStop || currentImage.shutterSpeed || currentImage.focalLength) && (
-                  <div className={styles.metadataSettingsRow}>
-                    {currentImage.iso && <span>{currentImage.iso}</span>}
-                    {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
-                    {currentImage.fStop && <span>{currentImage.fStop}</span>}
-                    {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
-                  </div>
-                )}
-                {currentImage.people && currentImage.people.length > 0 && (
-                  <div className={styles.metadataSection}>
-                    <div className={styles.metadataSectionRow}>
-                      <div className={styles.metadataSectionHeader}>People</div>
-                      <div className={styles.metadataSectionItems}>
-                        {currentImage.people.map((p, index) => (
-                          <div key={p.id || index} className={styles.metadataSectionItem}>
-                            {p.name}
-                          </div>
-                        ))}
+                <div className={styles.metadataContent}>
+                  {currentImage.title && (
+                    <div className={styles.metadataTitle}>{currentImage.title}</div>
+                  )}
+                  {currentImage.author && (
+                    <div className={styles.metadataItem}>{currentImage.author}</div>
+                  )}
+                  {(displayDate || displayLocation) && (
+                    <div className={styles.metadataItem}>
+                      {displayDate && <span>{displayDate}</span>}
+                      {displayDate && displayLocation && (
+                        <span className={styles.metadataSeparator}> / </span>
+                      )}
+                      {displayLocation && <span>{displayLocation}</span>}
+                    </div>
+                  )}
+                  {(currentImage.camera || currentImage.lens) && (
+                    <div className={styles.metadataItem}>
+                      {currentImage.camera && <span>{currentImage.camera.name}</span>}
+                      {currentImage.camera && currentImage.lens && (
+                        <span className={styles.metadataSeparator}> / </span>
+                      )}
+                      {currentImage.lens && <span>{currentImage.lens.name}</span>}
+                    </div>
+                  )}
+                  {(currentImage.iso ||
+                    currentImage.fStop ||
+                    currentImage.shutterSpeed ||
+                    currentImage.focalLength) && (
+                    <div className={styles.metadataSettingsRow}>
+                      {currentImage.iso && <span>{currentImage.iso}</span>}
+                      {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
+                      {currentImage.fStop && <span>{currentImage.fStop}</span>}
+                      {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
+                    </div>
+                  )}
+                  {currentImage.people && currentImage.people.length > 0 && (
+                    <div className={styles.metadataSection}>
+                      <div className={styles.metadataSectionRow}>
+                        <div className={styles.metadataSectionHeader}>People</div>
+                        <div className={styles.metadataSectionItems}>
+                          {currentImage.people.map((p, index) => (
+                            <div key={p.id || index} className={styles.metadataSectionItem}>
+                              {p.name}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                {currentImage.collections && currentImage.collections.length > 0 && (
-                  <div className={styles.metadataSection}>
-                    <div className={styles.metadataSectionRow}>
-                      <div className={styles.metadataSectionHeader}>Collections</div>
-                      <div className={styles.metadataSectionItems}>
-                        {currentImage.collections.map((c, index) => (
-                          <div 
-                            key={c.collectionId || index} 
-                            className={`${styles.metadataSectionItem} ${c.slug ? styles.metadataSectionItemClickable : ''}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (c.slug) {
-                                hideImage();
-                                router.push(`/${c.slug}`);
-                              }
-                            }}
-                          >
-                            {c.name || `Collection ${c.collectionId}`}
-                          </div>
-                        ))}
+                  )}
+                  {currentImage.collections && currentImage.collections.length > 0 && (
+                    <div className={styles.metadataSection}>
+                      <div className={styles.metadataSectionRow}>
+                        <div className={styles.metadataSectionHeader}>Collections</div>
+                        <div className={styles.metadataSectionItems}>
+                          {currentImage.collections.map((c, index) => (
+                            <div
+                              key={c.collectionId || index}
+                              className={`${styles.metadataSectionItem} ${c.slug ? styles.metadataSectionItemClickable : ''}`}
+                              onClick={e => {
+                                e.stopPropagation();
+                                if (c.slug) {
+                                  hideImage();
+                                  router.push(`/${c.slug}`);
+                                }
+                              }}
+                            >
+                              {c.name || `Collection ${c.collectionId}`}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
               <button
                 className={styles.metadataToggle}
                 onClick={toggleMetadata}
@@ -196,7 +199,10 @@ export function FullScreenModal({
         <button
           type="button"
           className={styles.navButtonPrev}
-          onClick={(e) => { e.stopPropagation(); navigateToPrevious(); }}
+          onClick={e => {
+            e.stopPropagation();
+            navigateToPrevious();
+          }}
           aria-label="Previous image"
         >
           <span aria-hidden="true">&#8249;</span>
@@ -207,7 +213,10 @@ export function FullScreenModal({
         <button
           type="button"
           className={styles.navButtonNext}
-          onClick={(e) => { e.stopPropagation(); navigateToNext(); }}
+          onClick={e => {
+            e.stopPropagation();
+            navigateToNext();
+          }}
           aria-label="Next image"
         >
           <span aria-hidden="true">&#8250;</span>
@@ -230,4 +239,3 @@ export function FullScreenModal({
   }
   return null;
 }
-

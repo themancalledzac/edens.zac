@@ -30,12 +30,12 @@ export interface ContentPersonModel extends IdNameModel {
 /**
  * Content Camera - Camera equipment used for photos
  */
-export type ContentCameraModel = IdNameModel
+export type ContentCameraModel = IdNameModel;
 
 /**
  * Content Lens - Lens equipment used for photos
  */
-export type ContentLensModel = IdNameModel
+export type ContentLensModel = IdNameModel;
 
 /**
  * Film Type - Represents film stock used

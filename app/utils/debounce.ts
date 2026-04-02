@@ -11,10 +11,7 @@ import { useCallback, useEffect, useRef } from 'react';
  * @param delay - Delay in milliseconds before execution
  * @returns Debounced version of the callback function (stable reference)
  */
-export function useDebounce<T extends (...args: never[]) => void>(
-  callback: T,
-  delay: number
-): T {
+export function useDebounce<T extends (...args: never[]) => void>(callback: T, delay: number): T {
   const callbackRef = useRef<T>(callback);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 

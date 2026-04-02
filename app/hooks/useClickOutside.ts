@@ -76,4 +76,3 @@ export function useClickOutsideMultiple(
   const isAnyOpen = isOpenStates.some(Boolean);
   useClickOutside(ref, isAnyOpen, onClose);
 }
-

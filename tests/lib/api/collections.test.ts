@@ -4,7 +4,7 @@
  */
 
 import { getCollectionsByLocation, parseCollectionArrayResponse } from '@/app/lib/api/collections';
-import { type CollectionModel,CollectionType } from '@/app/types/Collection';
+import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -22,10 +22,7 @@ const mockSuccessResponse = (data: unknown) => ({
 });
 
 // Test fixtures
-const createCollection = (
-  id: number,
-  overrides?: Partial<CollectionModel>
-): CollectionModel => ({
+const createCollection = (id: number, overrides?: Partial<CollectionModel>): CollectionModel => ({
   id,
   slug: `collection-${id}`,
   title: `Collection ${id}`,
@@ -40,11 +37,7 @@ const createCollection = (
 describe('parseCollectionArrayResponse', () => {
   describe('Direct array responses', () => {
     it('should return array when data is directly an array', () => {
-      const data = [
-        createCollection(1),
-        createCollection(2),
-        createCollection(3),
-      ];
+      const data = [createCollection(1), createCollection(2), createCollection(3)];
       const result = parseCollectionArrayResponse(data);
       expect(result).toEqual(data);
     });
@@ -63,30 +56,21 @@ describe('parseCollectionArrayResponse', () => {
 
   describe('Wrapped object responses', () => {
     it('should extract array from content property', () => {
-      const collections = [
-        createCollection(1),
-        createCollection(2),
-      ];
+      const collections = [createCollection(1), createCollection(2)];
       const data = { content: collections };
       const result = parseCollectionArrayResponse(data);
       expect(result).toEqual(collections);
     });
 
     it('should extract array from collections property', () => {
-      const collections = [
-        createCollection(1),
-        createCollection(2),
-      ];
+      const collections = [createCollection(1), createCollection(2)];
       const data = { collections };
       const result = parseCollectionArrayResponse(data);
       expect(result).toEqual(collections);
     });
 
     it('should extract array from items property', () => {
-      const collections = [
-        createCollection(1),
-        createCollection(2),
-      ];
+      const collections = [createCollection(1), createCollection(2)];
       const data = { items: collections };
       const result = parseCollectionArrayResponse(data);
       expect(result).toEqual(collections);

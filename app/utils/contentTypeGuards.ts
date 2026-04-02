@@ -48,7 +48,9 @@ export function isContentCollection(block: Content): block is ContentCollectionM
  * Type guard to check if a Content has an image (IMAGE or GIF)
  * Note: PARALLAX is no longer a separate contentType - it's just a boolean flag
  */
-export function hasImage(block: Content): block is ContentImageModel | ContentParallaxImageModel | ContentGifModel {
+export function hasImage(
+  block: Content
+): block is ContentImageModel | ContentParallaxImageModel | ContentGifModel {
   return isContentImage(block) || isGifContent(block);
 }
 
@@ -57,7 +59,11 @@ export function hasImage(block: Content): block is ContentImageModel | ContentPa
  * Falls back to imageWidth/Height for image blocks, or default dimensions
  * Prioritizes imageWidth/imageHeight over width/height for accurate aspect ratios
  */
-export function getContentDimensions(block: Content, defaultWidth = 1300, defaultAspect = 3/2): { width: number; height: number } {
+export function getContentDimensions(
+  block: Content,
+  defaultWidth = 1300,
+  defaultAspect = 3 / 2
+): { width: number; height: number } {
   if (isContentImage(block)) {
     if (block.imageWidth && block.imageHeight) {
       return { width: block.imageWidth, height: block.imageHeight };
@@ -138,10 +144,7 @@ export function getAspectRatio(item: Content): number {
  * - Vertical 1-2 star: 1 (normal)
  * - Horizontal 1-2 star: 1 (normal)
  */
-export function getSlotWidth(
-  contentItem: Content,
-  chunkSize: number,
-): number {
+export function getSlotWidth(contentItem: Content, chunkSize: number): number {
   const halfSlot = Math.floor(chunkSize / 2);
 
   if ('slug' in contentItem && contentItem.slug) {

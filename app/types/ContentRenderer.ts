@@ -4,7 +4,11 @@
  * This eliminates the need for type checking inside the renderer component
  */
 
-import { type ContentImageModel, type ContentParallaxImageModel, type TextBlockItem } from './Content';
+import {
+  type ContentImageModel,
+  type ContentParallaxImageModel,
+  type TextBlockItem,
+} from './Content';
 
 /**
  * Base props that all content renderers receive
@@ -13,35 +17,35 @@ import { type ContentImageModel, type ContentParallaxImageModel, type TextBlockI
 export interface ContentRendererProps {
   // Content ID (for handlers)
   contentId: number;
-  
+
   // Position/layout props
   className: string; // imageLeft/imageRight/imageSingle/imageMiddle
   width: number;
   height: number;
   isMobile: boolean;
-  
+
   // Image data (normalized from any content type)
   imageUrl: string;
   imageWidth: number;
   imageHeight: number;
   alt: string;
-  
+
   // Overlay/badge data
   overlayText?: string;
   cardTypeBadge?: string; // Only for collections
   dateBadge?: string;
-  
+
   // Parallax (boolean - currently true for collections, false for others)
   // Can be enabled for any image in the future
   enableParallax: boolean;
-  
+
   // Click behavior
   hasSlug?: string; // If present, click navigates to collection
   isCollection?: boolean; // For badge contentType
-  
+
   // Content type for special handling (NO PARALLAX - it's just a boolean flag)
   contentType: 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION';
-  
+
   // TEXT-specific
   textItems?: TextBlockItem[];
 
@@ -90,4 +94,3 @@ export interface CollectionContentRendererProps extends ContentRendererProps {
   // Error handling
   onImageLoadError?: (contentId: number) => void;
 }
-

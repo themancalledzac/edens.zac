@@ -13,7 +13,8 @@ describe('handleApiError', () => {
     });
 
     it('returns empty string when Error.message is empty', () => {
-      const error = new Error('');
+      const error = new Error('empty');
+      error.message = '';
       expect(handleApiError(error, 'Default')).toBe('');
     });
   });

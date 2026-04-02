@@ -50,7 +50,9 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
     if (collection.isPasswordProtected === false) {
       try {
         sessionStorage.setItem(getSessionKey(collection.slug), 'granted');
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       setStatus('unlocked');
       return;
     }
@@ -64,7 +66,9 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
           if (result.hasAccess) {
             try {
               sessionStorage.setItem(getSessionKey(collection.slug), 'granted');
-            } catch { /* ignore */ }
+            } catch {
+              /* ignore */
+            }
             setStatus('unlocked');
             return;
           }
@@ -146,11 +150,7 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
             disabled={isSubmitting}
           />
           {error && <p className={styles.gateError}>{error}</p>}
-          <button
-            type="submit"
-            className={styles.gateButton}
-            disabled={isSubmitting}
-          >
+          <button type="submit" className={styles.gateButton} disabled={isSubmitting}>
             {isSubmitting ? 'Verifying...' : 'Enter Gallery'}
           </button>
         </form>

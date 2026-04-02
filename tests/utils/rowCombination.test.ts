@@ -163,9 +163,9 @@ describe('buildRows', () => {
     expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
   });
 
-  it('should create one row from two H5* images (cv=10.0, fill=125% > MAX but best-fit pairs them)', () => {
-    // H5*+H5* = 10.0/8 = 125%. Sequential overfills, but best-fit pairs them
-    // since overfill (125%) is closer than underfill (62.5%)
+  it('should pair two H5* images (125% overfill accepted to avoid solo rows)', () => {
+    // H5*+H5* = 10.0/8 = 125% > MAX_FILL but < 135% cap.
+    // Overfill accepted because single H5* at 62.5% is underfilled.
     const items = [createHorizontalImage(1, 5), createHorizontalImage(2, 5)];
     const rows = buildRows(items, DESKTOP);
     expect(rows).toHaveLength(1);
@@ -254,11 +254,14 @@ describe('buildRows', () => {
     ];
     const rows = buildRows(items, DESKTOP);
 
-    // All rows except the last should be >= 90% full
+    // All rows except the last should be >= 50% full (order-preserving best-fit
+    // may slightly overfill past MAX_FILL_RATIO to keep items in sequence)
     for (let i = 0; i < rows.length - 1; i++) {
       const row = rows[i];
       if (row) {
-        expect(isRowComplete(row.components, DESKTOP)).toBe(true);
+        const totalCV = row.components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
+        const fill = totalCV / DESKTOP;
+        expect(fill).toBeGreaterThanOrEqual(0.5);
       }
     }
   });
@@ -274,17 +277,16 @@ describe('buildRows', () => {
   });
 
   it('should work with rowWidth=3 (small tablet)', () => {
-    // H1* cv=1.25, 2×1.25=2.5/3=83.3% < 90% → not complete with 2
-    // Best-fit puts 2 in first row, 1 in second
+    // H1* cv=1.25, 2×1.25=2.5/3=83.3% < MIN_FILL, 3×1.25=3.75/3=125% > MAX
+    // Overfill accepted (125% ≤ 135%) to avoid underfilled row
     const items = [
       createHorizontalImage(1, 1),
       createHorizontalImage(2, 1),
       createHorizontalImage(3, 1),
     ];
     const rows = buildRows(items, 3);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]?.components).toHaveLength(2);
-    expect(rows[1]?.components).toHaveLength(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.components).toHaveLength(3);
   });
 
   it('should prioritize dom-stacked template over v-pair for H4* + V3* + V3*', () => {
@@ -324,18 +326,17 @@ describe('buildRows', () => {
       expect(allItemIds.sort()).toEqual([1, 2, 3]);
     });
 
-    it('should pair H2* + H5* in one row (no hero skip at rw=8)', () => {
-      // H2* cv=1.75 + H5* cv=5.0 = 6.75, fill=84.4% < 90%
-      // Best-fit pairs them, H3* goes to next row
+    it('should pair H2* + H5* + H3* in one row (overfill accepted, order preserved)', () => {
+      // H2*(1.75) + H5*(5.0) = 84.4% < MIN_FILL. H3*(2.5) → 115.6% ≤ 135% → accepted.
+      // Order preserved: all three items stay together in sequence.
       const items = [
         createHorizontalImage(1, 2),
         createHorizontalImage(2, 5),
         createHorizontalImage(3, 3),
       ];
       const rows = buildRows(items, DESKTOP);
-      expect(rows).toHaveLength(2);
-      // First row has H2* + H5* paired
-      expect(rows[0]?.components).toHaveLength(2);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.components).toHaveLength(3);
     });
 
     it('should pair H4* + H5* in one row (cv=3.5+5.0=8.5, fill=106%)', () => {
@@ -540,8 +541,9 @@ describe('buildRows', () => {
           0
         );
         const fill = totalCV / DESKTOP;
-        // No row should exceed 115% + epsilon
-        expect(fill).toBeLessThanOrEqual(MAX_FILL_RATIO + 0.001);
+        // Rows may overfill up to 135% when underfilled rows accept the next
+        // sequential item to avoid solo rows and preserve ordering.
+        expect(fill).toBeLessThanOrEqual(1.35 + 0.001);
       }
     });
 
@@ -566,7 +568,7 @@ describe('buildRows', () => {
   describe('template keys in buildRows output', () => {
     it('should produce correct templateKey for each template type', () => {
       // With rw=8, cv values: H4*=3.5, V3*≈1.07, H5*=5.0, H3*=2.5
-      // Sequential fill pairs H4*(3.5/8=43.8%) + H5*(8.5/8=106%✓)
+      // H4★+V3★+V3★ = 70.5% < MIN_FILL. H5★ would make 133% ≤ 135% cap → accepted.
       const items = [
         createHorizontalImage(1, 4), // H4★ cv=3.5
         createVerticalImage(2, 3), // V3★ cv≈1.07
@@ -578,19 +580,15 @@ describe('buildRows', () => {
       ];
       const rows = buildRows(items, DESKTOP);
 
-      expect(rows.length).toBe(3);
+      expect(rows.length).toBe(2);
 
-      // Row 1: H4★ + H5★ → h-pair (3.5+5.0=8.5, fill=106%) → templateKey { h: 2, v: 0 }
-      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 2, v: 0 });
-      expect(rows[0]?.components.length).toBe(2);
+      // Row 1: H4★ + V3★ + V3★ + H5★ → compose-2h2v (133% overfill accepted)
+      expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 2, v: 2 });
+      expect(rows[0]?.components.length).toBe(4);
 
-      // Row 2: V3★ + H3★ + H3★ + H3★ → compose-3h1v
-      expect(rows[1]?.templateKey).toEqual<TemplateKey>({ h: 3, v: 1 });
-      expect(rows[1]?.components.length).toBe(4);
-
-      // Row 3: V3★ alone → single-v
-      expect(rows[2]?.templateKey).toEqual<TemplateKey>({ h: 0, v: 1 });
-      expect(rows[2]?.components.length).toBe(1);
+      // Row 2: H3★ + H3★ + H3★ → compose-3h (7.5/8=93.75%)
+      expect(rows[1]?.templateKey).toEqual<TemplateKey>({ h: 3, v: 0 });
+      expect(rows[1]?.components.length).toBe(3);
     });
 
     it('should produce h-pair templateKey for unmatched 2-horizontal combinations', () => {

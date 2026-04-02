@@ -18,7 +18,6 @@ import {
   createCollectionContent,
   createGifContent,
   createImageContent,
-  createParallaxContent,
   createTextContent,
 } from '@/tests/fixtures/contentFixtures';
 
@@ -50,7 +49,8 @@ describe('isContentImage', () => {
   });
 
   it('returns false for undefined', () => {
-    expect(isContentImage(undefined)).toBe(false);
+    const undef = undefined;
+    expect(isContentImage(undef)).toBe(false);
   });
 
   it('returns false for a string primitive', () => {
@@ -305,7 +305,8 @@ describe('validateContentBlock', () => {
   });
 
   it('returns false for undefined', () => {
-    expect(validateContentBlock(undefined)).toBe(false);
+    const undef = undefined;
+    expect(validateContentBlock(undef)).toBe(false);
   });
 
   it('returns false for a string', () => {

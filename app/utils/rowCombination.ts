@@ -698,7 +698,6 @@ export function buildRows(
     const expandedWindow = remaining.slice(0, MAX_ROW_IMAGES);
     let seqTotal = 0;
     let seqCount = 0;
-    let seqFailed = false;
     const skippedStandalones: number[] = [];
     let slotCountComplete = false;
 
@@ -711,7 +710,14 @@ export function buildRows(
           skippedStandalones.push(i);
           continue;
         }
-        seqFailed = seqTotal / rowWidth < MIN_FILL_RATIO;
+        // Accept moderate overfill to keep images in order and avoid solo rows.
+        // The current row is underfilled (< MIN_FILL). Adding this item overshoots,
+        // but a solo underfilled row is worse than slight overfill.
+        const currentFill = seqTotal / rowWidth;
+        if (currentFill < MIN_FILL_RATIO && newFill <= 1.35) {
+          seqTotal += cv;
+          seqCount += 1;
+        }
         break;
       }
 
@@ -748,7 +754,7 @@ export function buildRows(
       }
     }
 
-    if (!seqFailed && seqCount > 0) {
+    if (seqCount > 0) {
       const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
       const { composition, templateKey, label } = lookupComposition(rowImgs, targetAR, rowWidth);
@@ -786,27 +792,13 @@ export function buildRows(
     available.delete(0);
 
     if (!isRowComplete(bfComponents, rowWidth)) {
-      while (available.size > 0) {
+      // Take items in sequential order to preserve original ordering.
+      // Previous approach picked by cv-distance-to-gap which scrambled order.
+      for (let idx = 1; idx < window.length; idx++) {
+        if (!available.has(idx)) continue;
+
         const currentTotal = getTotalCV(bfComponents, rowWidth);
-        const gap = rowWidth - currentTotal;
-
-        let bestIndex = -1;
-        let bestDistance = Infinity;
-
-        for (const idx of available) {
-          const item = window[idx];
-          if (!item) continue;
-          const cv = getItemComponentValue(item);
-          const distance = Math.abs(cv - gap);
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = idx;
-          }
-        }
-
-        if (bestIndex === -1) break;
-
-        const candidateCV = getItemComponentValue(window[bestIndex]!);
+        const candidateCV = getItemComponentValue(window[idx]!);
         const newTotal = currentTotal + candidateCV;
         const newFill = newTotal / rowWidth;
 
@@ -815,17 +807,20 @@ export function buildRows(
           const underfillDistance = Math.abs(1.0 - currentFill);
           const overfillDistance = Math.abs(1.0 - newFill);
 
-          if (currentFill >= MIN_FILL_RATIO || underfillDistance <= overfillDistance) {
-            break;
+          if (currentFill >= MIN_FILL_RATIO) {
+            break; // Row already well-filled, stop here
           }
-          bfComponents.push(window[bestIndex]!);
-          bfUsedIndices.push(bestIndex);
+          if (underfillDistance <= overfillDistance) {
+            continue; // Skip this item, try next (it's too big but row needs more)
+          }
+          bfComponents.push(window[idx]!);
+          bfUsedIndices.push(idx);
           break;
         }
 
-        bfComponents.push(window[bestIndex]!);
-        bfUsedIndices.push(bestIndex);
-        available.delete(bestIndex);
+        bfComponents.push(window[idx]!);
+        bfUsedIndices.push(idx);
+        available.delete(idx);
 
         if (isRowComplete(bfComponents, rowWidth)) {
           break;

@@ -181,10 +181,9 @@ describe('useClickOutside', () => {
       const ref = { current: containerElement };
       const removeEventListenerSpy = jest.spyOn(document, 'removeEventListener');
 
-      const { rerender } = renderHook(
-        ({ isOpen }) => useClickOutside(ref, isOpen, mockOnClose),
-        { initialProps: { isOpen: true } }
-      );
+      const { rerender } = renderHook(({ isOpen }) => useClickOutside(ref, isOpen, mockOnClose), {
+        initialProps: { isOpen: true },
+      });
 
       // Change isOpen to false
       rerender({ isOpen: false });
@@ -235,10 +234,9 @@ describe('useClickOutside', () => {
       const firstOnClose = jest.fn();
       const secondOnClose = jest.fn();
 
-      const { rerender } = renderHook(
-        ({ onClose }) => useClickOutside(ref, true, onClose),
-        { initialProps: { onClose: firstOnClose } }
-      );
+      const { rerender } = renderHook(({ onClose }) => useClickOutside(ref, true, onClose), {
+        initialProps: { onClose: firstOnClose },
+      });
 
       // Click outside with first callback
       act(() => {

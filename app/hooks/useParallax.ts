@@ -11,7 +11,6 @@ interface ParallaxOptions {
   enableParallax?: boolean;
 }
 
-
 /**
  * useParallax Hook
  *
@@ -33,10 +32,7 @@ interface ParallaxOptions {
  * @returns Ref to attach to the container element
  */
 export function useParallax(options: ParallaxOptions = {}) {
-  const {
-    selector = '.parallax-bg',
-    enableParallax = true,
-  } = options;
+  const { selector = '.parallax-bg', enableParallax = true } = options;
 
   const elementRef = useRef<HTMLDivElement>(null);
   const { isVisible } = useInViewport(elementRef, {
@@ -86,7 +82,7 @@ export function useParallax(options: ParallaxOptions = {}) {
 
         // Calculate parallax offset using configured range
         const offsetRange = PARALLAX_CONSTANTS.OFFSET_MAX - PARALLAX_CONSTANTS.OFFSET_MIN;
-        const newOffset = PARALLAX_CONSTANTS.OFFSET_MIN + (scrollProgress * offsetRange);
+        const newOffset = PARALLAX_CONSTANTS.OFFSET_MIN + scrollProgress * offsetRange;
 
         if (
           lastOffsetRef.current === undefined ||
@@ -119,7 +115,6 @@ export function useParallax(options: ParallaxOptions = {}) {
         cancelAnimationFrame(rafRef.current);
       }
     };
-
   }, [isVisible, selector, enableParallax]);
 
   return elementRef;

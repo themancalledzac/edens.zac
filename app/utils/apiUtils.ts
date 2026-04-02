@@ -32,7 +32,10 @@ export function handleApiError(error: unknown, defaultMessage: string): string {
       return (error as { message: string }).message;
     }
 
-    if ('statusText' in error && typeof (error as { statusText: unknown }).statusText === 'string') {
+    if (
+      'statusText' in error &&
+      typeof (error as { statusText: unknown }).statusText === 'string'
+    ) {
       return (error as { statusText: string }).statusText;
     }
   }

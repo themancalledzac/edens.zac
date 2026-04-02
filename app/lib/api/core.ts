@@ -16,9 +16,10 @@ function getApiBaseUrl(endpointType: string): string {
     return `http://localhost:8080/api/${endpointType}`;
   }
   // All production calls go through the Next.js proxy — never directly to EC2
-  const appBase = typeof window !== 'undefined'
-    ? ''  // browser: relative URL
-    : (process.env.NEXT_PUBLIC_APP_URL ?? '');  // server component: needs absolute
+  const appBase =
+    typeof window !== 'undefined'
+      ? '' // browser: relative URL
+      : (process.env.NEXT_PUBLIC_APP_URL ?? ''); // server component: needs absolute
   return `${appBase}/api/proxy/api/${endpointType}`;
 }
 
@@ -80,9 +81,14 @@ async function throwApiError(error: unknown, response?: Response): Promise<never
   }
 
   // Duck-type check instead of instanceof — Response may not be available in all environments
-  const responseObj = (error && typeof error === 'object' && 'status' in error && 'statusText' in error && 'json' in error)
-    ? error as Response
-    : response;
+  const responseObj =
+    error &&
+    typeof error === 'object' &&
+    'status' in error &&
+    'statusText' in error &&
+    'json' in error
+      ? (error as Response)
+      : response;
   if (responseObj) {
     const errorData = await responseObj.json().catch(() => null);
     throw new ApiError(
@@ -91,10 +97,7 @@ async function throwApiError(error: unknown, response?: Response): Promise<never
     );
   }
 
-  throw new ApiError(
-    error instanceof Error ? error.message : 'Unknown error occurred',
-    500
-  );
+  throw new ApiError(error instanceof Error ? error.message : 'Unknown error occurred', 500);
 }
 
 /**
@@ -105,7 +108,10 @@ async function throwApiError(error: unknown, response?: Response): Promise<never
  * @returns The parsed response data
  * @throws ApiError if the request fails
  */
-export async function fetchReadApi<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
+export async function fetchReadApi<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T | null> {
   try {
     const url = buildSimpleApiUrl(READ, endpoint);
 
@@ -218,7 +224,10 @@ export async function fetchAdminPutJsonApi<T>(endpoint: string, body: unknown): 
 }
 
 /** PATCH JSON to the admin endpoint */
-export async function fetchAdminPatchJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
+export async function fetchAdminPatchJsonApi<T>(
+  endpoint: string,
+  body: unknown
+): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -227,7 +236,10 @@ export async function fetchAdminPatchJsonApi<T>(endpoint: string, body: unknown)
 }
 
 /** POST FormData to the admin endpoint — used for image uploads */
-export async function fetchAdminFormDataApi<T>(endpoint: string, formData: FormData): Promise<T | null> {
+export async function fetchAdminFormDataApi<T>(
+  endpoint: string,
+  formData: FormData
+): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'POST',
     body: formData,
@@ -242,7 +254,10 @@ export async function fetchAdminDeleteApi<T>(endpoint: string): Promise<T | null
 }
 
 /** DELETE with a JSON body via the admin endpoint */
-export async function fetchAdminDeleteJsonApi<T>(endpoint: string, body: unknown): Promise<T | null> {
+export async function fetchAdminDeleteJsonApi<T>(
+  endpoint: string,
+  body: unknown
+): Promise<T | null> {
   return await fetchBase<T>('admin', endpoint, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
@@ -251,7 +266,10 @@ export async function fetchAdminDeleteJsonApi<T>(endpoint: string, body: unknown
 }
 
 /** GET from the admin endpoint */
-export async function fetchAdminGetApi<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
+export async function fetchAdminGetApi<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T | null> {
   try {
     const url = buildSimpleApiUrl(ADMIN, endpoint);
 

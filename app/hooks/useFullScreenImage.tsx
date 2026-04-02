@@ -48,10 +48,7 @@ export function useFullScreenImage(): {
    * With perspective disabled, fixed positioning works correctly relative to the viewport.
    * `scrollPosition` is stored for potential future scroll restoration.
    */
-  const showImage = useCallback((
-    image: ImageBlock,
-    allImages?: ImageBlock[]
-  ) => {
+  const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
     const images = allImages || [image];
     const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
 
@@ -71,7 +68,7 @@ export function useFullScreenImage(): {
   const hideImage = useCallback(() => {
     document.body.style.perspective = '1px';
     document.body.style.transformStyle = 'preserve-3d';
-    
+
     setFullScreenState(null);
     setShowMetadata(false);
     setLoadedImageIds(new Set());
@@ -101,12 +98,12 @@ export function useFullScreenImage(): {
     if (!fullScreenState) return;
     const currentImage = fullScreenState.images[fullScreenState.currentIndex];
     if (!currentImage) return;
-    
+
     const checkImageLoaded = () => {
       const imgElement = document.querySelector(
         `img[src="${currentImage.imageUrl}"]`
       ) as HTMLImageElement;
-      
+
       if (imgElement?.complete && imgElement?.naturalHeight !== 0) {
         setLoadedImageIds(prev => {
           if (prev.has(currentImage.id)) return prev;
@@ -119,7 +116,7 @@ export function useFullScreenImage(): {
 
     checkImageLoaded();
     const timeoutId = setTimeout(checkImageLoaded, 100);
-    
+
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullScreenState?.currentIndex]);
@@ -155,8 +152,7 @@ export function useFullScreenImage(): {
   const isMetadataControl = useCallback((target: HTMLElement | null): boolean => {
     if (!target) return false;
     return !!(
-      target.closest(`.${styles.metadataToggle}`) || 
-      target.closest(`.${styles.metadataContent}`)
+      target.closest(`.${styles.metadataToggle}`) || target.closest(`.${styles.metadataContent}`)
     );
   }, []);
 
@@ -174,7 +170,7 @@ export function useFullScreenImage(): {
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!e.touches[0] || isMetadataControl(e.target as HTMLElement)) return;
-      
+
       const currentX = e.touches[0].clientX;
       const currentY = e.touches[0].clientY;
       const deltaX = currentX - touchStartX.current;
@@ -188,20 +184,24 @@ export function useFullScreenImage(): {
 
     const handleTouchEnd = (e: TouchEvent) => {
       if (!e.changedTouches[0]) return;
-      
+
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
       const deltaX = touchEndX - touchStartX.current;
       const deltaY = touchEndY - touchStartY.current;
 
-      if (isSwiping.current && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > INTERACTION.swipeThreshold) {
+      if (
+        isSwiping.current &&
+        Math.abs(deltaX) > Math.abs(deltaY) &&
+        Math.abs(deltaX) > INTERACTION.swipeThreshold
+      ) {
         if (deltaX > 0) {
           navigateToPrevious();
         } else {
           navigateToNext();
         }
       }
-      
+
       setTimeout(() => {
         isSwiping.current = false;
       }, 50);

@@ -1,8 +1,8 @@
 /**
  * Tests for useCollectionData hook
- * 
+ *
  * Testing Strategy:
- * 
+ *
  * Passing test cases:
  * - Hook loads collection data successfully when slug is provided
  * - Hook skips fetch when currentSlug matches slug (already loaded)
@@ -14,7 +14,7 @@
  * - Hook refetch function reloads data successfully
  * - Hook cleanup prevents state updates after unmount
  * - Hook cleanup aborts fetch on unmount
- * 
+ *
  * Failing test cases:
  * - Hook sets error state when API call fails
  * - Hook handles network errors gracefully
@@ -35,7 +35,7 @@ import { CollectionType, type CollectionUpdateResponseDTO } from '@/app/types/Co
 jest.mock('@/app/lib/api/collections');
 jest.mock('@/app/lib/storage/collectionStorage');
 jest.mock('@/app/(admin)/collection/manage/[[...slug]]/manageUtils', () => ({
-  handleApiError: jest.fn((error, defaultMessage) => 
+  handleApiError: jest.fn((error, defaultMessage) =>
     error instanceof Error ? error.message : defaultMessage
   ),
 }));
@@ -125,9 +125,7 @@ describe('useCollectionData', () => {
     it('should handle CREATE mode (no slug) correctly', async () => {
       const onLoadSuccess = jest.fn();
 
-      const { result } = renderHook(() =>
-        useCollectionData(undefined, undefined, onLoadSuccess)
-      );
+      const { result } = renderHook(() => useCollectionData(undefined, undefined, onLoadSuccess));
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -276,9 +274,7 @@ describe('useCollectionData', () => {
     it('should not refetch when slug is undefined', async () => {
       const onLoadSuccess = jest.fn();
 
-      const { result } = renderHook(() =>
-        useCollectionData(undefined, undefined, onLoadSuccess)
-      );
+      const { result } = renderHook(() => useCollectionData(undefined, undefined, onLoadSuccess));
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -318,4 +314,3 @@ describe('useCollectionData', () => {
     });
   });
 });
-

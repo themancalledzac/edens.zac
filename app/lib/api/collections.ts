@@ -79,10 +79,9 @@ export async function getAllCollections(
   size = PAGINATION.homePageSize
 ): Promise<CollectionModel[]> {
   try {
-    const data = await fetchReadApi<unknown>(
-      `/collections?page=${page}&size=${size}`,
-      { next: { revalidate: TIMING.revalidateCache, tags: ['collections-index'] } }
-    );
+    const data = await fetchReadApi<unknown>(`/collections?page=${page}&size=${size}`, {
+      next: { revalidate: TIMING.revalidateCache, tags: ['collections-index'] },
+    });
     return parseCollectionArrayResponse(data);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return [];
@@ -266,10 +265,9 @@ export async function reorderCollectionContent(
   collectionId: number,
   reorders: Array<{ contentId: number; newOrderIndex: number }>
 ): Promise<CollectionModel | null> {
-  return fetchAdminPostJsonApi<CollectionModel>(
-    `/collections/${collectionId}/reorder`,
-    { reorders }
-  );
+  return fetchAdminPostJsonApi<CollectionModel>(`/collections/${collectionId}/reorder`, {
+    reorders,
+  });
 }
 
 /**

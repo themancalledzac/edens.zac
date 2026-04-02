@@ -22,7 +22,10 @@ export default function LocationFilterBar({
   const showPeopleRow = availableOptions.people.length >= 2;
 
   const cycleDateSort = () => {
-    const next: Record<GalleryFilterState['dateSortDirection'], GalleryFilterState['dateSortDirection']> = {
+    const next: Record<
+      GalleryFilterState['dateSortDirection'],
+      GalleryFilterState['dateSortDirection']
+    > = {
       off: 'desc',
       desc: 'asc',
       asc: 'off',
@@ -41,9 +44,7 @@ export default function LocationFilterBar({
 
   const toggleTag = (tag: string) => {
     const current = filterState.selectedTags;
-    const next = current.includes(tag)
-      ? current.filter(t => t !== tag)
-      : [...current, tag];
+    const next = current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag];
     onFilterChange({ selectedTags: next });
   };
 
@@ -55,12 +56,12 @@ export default function LocationFilterBar({
     onFilterChange({ selectedPeople: next });
   };
 
-  const dateSortLabel =
-    filterState.dateSortDirection === 'desc'
-      ? 'Date \u2193'
-      : (filterState.dateSortDirection === 'asc'
-        ? 'Date \u2191'
-        : 'Date');
+  const dateSortLabels: Record<typeof filterState.dateSortDirection, string> = {
+    desc: 'Date \u2193',
+    asc: 'Date \u2191',
+    off: 'Date',
+  };
+  const dateSortLabel = dateSortLabels[filterState.dateSortDirection];
 
   return (
     <div className={styles.filterBar}>
@@ -84,11 +85,7 @@ export default function LocationFilterBar({
 
         <button
           type="button"
-          className={`${styles.chip} ${
-            filterState.filmFilter === 'film'
-              ? styles.chipFilm
-              : (filterState.filmFilter === 'digital' ? styles.chipDigital : '')
-          }`}
+          className={`${styles.chip} ${filterState.filmFilter === 'film' ? styles.chipFilm : ''}${filterState.filmFilter === 'digital' ? styles.chipDigital : ''}`}
           onClick={cycleFilmFilter}
         >
           {filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}

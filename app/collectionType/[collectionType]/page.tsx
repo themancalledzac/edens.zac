@@ -90,4 +90,3 @@ export default async function CollectionTypePage({ params }: CollectionTypePageP
     throw error;
   }
 }
-

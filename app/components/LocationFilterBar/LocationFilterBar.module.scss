@@ -34,7 +34,10 @@
   font-weight: 500;
   padding: 0.35rem 0.85rem;
   cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
   white-space: nowrap;
 
   &:hover {
@@ -79,7 +82,6 @@
   opacity: 0.6;
   margin-left: 0.2rem;
 }
-
 
 /* Wrapping chip rows (tags, people) */
 .wrapRow {

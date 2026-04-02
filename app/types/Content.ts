@@ -175,7 +175,7 @@ export interface ContentCollectionModel extends Content {
  * Use this for type-safe rendering and processing
  */
 export type AnyContentModel =
-| ContentImageModel
+  | ContentImageModel
   | ContentParallaxImageModel
   | ContentTextModel
   | ContentGifModel
@@ -312,4 +312,3 @@ export interface ContentImageUpdateResponse {
   /** List of error messages if any updates failed */
   errors?: string[];
 }
-

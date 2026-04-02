@@ -8,10 +8,15 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
+import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import {
-  isContentCollection,
-} from '@/app/utils/contentTypeGuards';
-import { acToBoxTree, type BoxTree, buildRows, hChain, type TemplateKey, toImageType } from '@/app/utils/rowCombination';
+  acToBoxTree,
+  type BoxTree,
+  buildRows,
+  hChain,
+  type TemplateKey,
+  toImageType,
+} from '@/app/utils/rowCombination';
 import { optimizeRows } from '@/app/utils/rowOptimizer';
 import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
 
@@ -90,7 +95,12 @@ export function processContentForDisplay(
   const result: RowWithPatternAndSizes[] = [];
 
   if (options?.collectionData) {
-    const headerRows = createHeaderRow(options.collectionData, componentWidth, chunkSize, options?.isMobile);
+    const headerRows = createHeaderRow(
+      options.collectionData,
+      componentWidth,
+      chunkSize,
+      options?.isMobile
+    );
     if (headerRows) {
       if (Array.isArray(headerRows)) {
         result.push(...headerRows);
@@ -107,12 +117,7 @@ export function processContentForDisplay(
   const rows = optimizeRows(buildRows(content, rowWidth, targetAR), rowWidth);
 
   const contentRows = rows.map(row => {
-    const items = calculateSizesFromBoxTree(
-      row.boxTree,
-      componentWidth,
-      effectiveGap,
-      rowWidth
-    );
+    const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap, rowWidth);
 
     return {
       templateKey: row.templateKey,

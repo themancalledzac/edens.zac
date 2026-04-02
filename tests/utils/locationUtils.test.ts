@@ -36,12 +36,18 @@ describe('convertLocationStringToModel', () => {
 
   describe('with object input', () => {
     it('should find existing location by id', () => {
-      const result = convertLocationStringToModel({ id: 2, name: 'Chamonix, France' }, availableLocations);
+      const result = convertLocationStringToModel(
+        { id: 2, name: 'Chamonix, France' },
+        availableLocations
+      );
       expect(result).toEqual({ id: 2, name: 'Chamonix, France', slug: 'chamonix-france' });
     });
 
     it('should find existing location by name when id does not match', () => {
-      const result = convertLocationStringToModel({ id: 999, name: 'Portland, OR' }, availableLocations);
+      const result = convertLocationStringToModel(
+        { id: 999, name: 'Portland, OR' },
+        availableLocations
+      );
       expect(result).toEqual({ id: 5, name: 'Portland, OR', slug: 'portland-or' });
     });
 
@@ -51,7 +57,10 @@ describe('convertLocationStringToModel', () => {
     });
 
     it('should try name match for objects with id 0', () => {
-      const result = convertLocationStringToModel({ id: 0, name: 'Seattle, WA' }, availableLocations);
+      const result = convertLocationStringToModel(
+        { id: 0, name: 'Seattle, WA' },
+        availableLocations
+      );
       expect(result).toEqual({ id: 1, name: 'Seattle, WA', slug: 'seattle-wa' });
     });
   });
@@ -69,7 +78,11 @@ describe('convertLocationStringToModel', () => {
 
 describe('createLocationUpdateFromModel', () => {
   it('should return { prev: id } for existing location', () => {
-    const result = createLocationUpdateFromModel({ id: 5, name: 'Portland, OR', slug: 'portland-or' });
+    const result = createLocationUpdateFromModel({
+      id: 5,
+      name: 'Portland, OR',
+      slug: 'portland-or',
+    });
     expect(result).toEqual({ prev: 5 });
   });
 

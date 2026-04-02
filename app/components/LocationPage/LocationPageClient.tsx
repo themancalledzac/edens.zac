@@ -43,20 +43,19 @@ export default function LocationPageClient({ images, collections }: LocationPage
 
   const availableOptions = useMemo(() => extractFilterOptions(images), [images]);
 
-  const criteria = useMemo(() => ({
-    ...(filterState.highlyRatedOnly ? { minRating: 4 } : {}),
-    ...(filterState.filmFilter === 'film' ? { isFilm: true as const } : {}),
-    ...(filterState.filmFilter === 'digital' ? { isFilm: false as const } : {}),
-    ...(filterState.selectedCollectionIds.length > 0
-      ? { collectionIds: filterState.selectedCollectionIds }
-      : {}),
-    ...(filterState.selectedTags.length > 0
-      ? { tags: filterState.selectedTags }
-      : {}),
-    ...(filterState.selectedPeople.length > 0
-      ? { people: filterState.selectedPeople }
-      : {}),
-  }), [filterState]);
+  const criteria = useMemo(
+    () => ({
+      ...(filterState.highlyRatedOnly ? { minRating: 4 } : {}),
+      ...(filterState.filmFilter === 'film' ? { isFilm: true as const } : {}),
+      ...(filterState.filmFilter === 'digital' ? { isFilm: false as const } : {}),
+      ...(filterState.selectedCollectionIds.length > 0
+        ? { collectionIds: filterState.selectedCollectionIds }
+        : {}),
+      ...(filterState.selectedTags.length > 0 ? { tags: filterState.selectedTags } : {}),
+      ...(filterState.selectedPeople.length > 0 ? { people: filterState.selectedPeople } : {}),
+    }),
+    [filterState]
+  );
 
   const filteredImages = useMemo(() => {
     const filtered = filterContent(images, criteria).filter(
@@ -73,10 +72,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
     [images, criteria, availableOptions]
   );
 
-  const contentBlocks = useMemo(
-    () => processContentBlocks(filteredImages, true),
-    [filteredImages]
-  );
+  const contentBlocks = useMemo(() => processContentBlocks(filteredImages, true), [filteredImages]);
 
   const handleFilterChange = useCallback((update: Partial<GalleryFilterState>) => {
     setFilterState(prev => ({ ...prev, ...update }));

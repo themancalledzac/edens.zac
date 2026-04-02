@@ -15,7 +15,7 @@ import type { LocationModel, LocationUpdate } from '@/app/types/Collection';
 export function slugify(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^\da-z\s-]/g, '')
+    .replace(/[^\d\sa-z-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');

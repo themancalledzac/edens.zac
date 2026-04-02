@@ -58,15 +58,9 @@ export default function ContentFilter({
 
   const [isOpen, setIsOpen] = useState(variant === 'bar');
 
-  const criteria = useMemo(
-    () => parseFilterFromParams(searchParams),
-    [searchParams]
-  );
+  const criteria = useMemo(() => parseFilterFromParams(searchParams), [searchParams]);
 
-  const options = useMemo(
-    () => extractFilterOptions(content),
-    [content]
-  );
+  const options = useMemo(() => extractFilterOptions(content), [content]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -101,9 +95,7 @@ export default function ContentFilter({
   const toggleArrayFilter = useCallback(
     (key: 'people' | 'locations' | 'tags' | 'cameras', value: string) => {
       const current = criteria[key] ?? [];
-      const next = current.includes(value)
-        ? current.filter(v => v !== value)
-        : [...current, value];
+      const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
       updateFilter({ ...criteria, [key]: next.length > 0 ? next : undefined });
     },
     [criteria, updateFilter]
@@ -153,7 +145,7 @@ export default function ContentFilter({
               type="text"
               placeholder="Search images..."
               value={criteria.query ?? ''}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={e => setQuery(e.target.value)}
               className={styles.searchInput}
             />
             {criteria.query && (
@@ -267,7 +259,7 @@ export default function ContentFilter({
             <input
               type="date"
               value={criteria.dateFrom ?? ''}
-              onChange={(e) => setDateRange(e.target.value || undefined, criteria.dateTo)}
+              onChange={e => setDateRange(e.target.value || undefined, criteria.dateTo)}
               className={styles.dateInput}
               aria-label="Date from"
             />
@@ -275,7 +267,7 @@ export default function ContentFilter({
             <input
               type="date"
               value={criteria.dateTo ?? ''}
-              onChange={(e) => setDateRange(criteria.dateFrom, e.target.value || undefined)}
+              onChange={e => setDateRange(criteria.dateFrom, e.target.value || undefined)}
               className={styles.dateInput}
               aria-label="Date to"
             />
@@ -285,11 +277,7 @@ export default function ContentFilter({
 
       {activeFilterCount > 0 && (
         <div className={styles.filterActions}>
-          <button
-            type="button"
-            onClick={clearFilters}
-            className={styles.clearButton}
-          >
+          <button type="button" onClick={clearFilters} className={styles.clearButton}>
             Clear all filters
           </button>
           {isPending && <span className={styles.pendingIndicator}>Updating...</span>}
@@ -313,9 +301,7 @@ export default function ContentFilter({
       >
         <SlidersHorizontal size={16} />
         <span>Filter</span>
-        {activeFilterCount > 0 && (
-          <span className={styles.filterBadge}>{activeFilterCount}</span>
-        )}
+        {activeFilterCount > 0 && <span className={styles.filterBadge}>{activeFilterCount}</span>}
       </button>
       {isOpen && (
         <div id="content-filter-panel" className={styles.filterDropdown}>

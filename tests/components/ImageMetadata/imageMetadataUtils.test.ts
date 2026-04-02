@@ -520,9 +520,7 @@ describe('buildImageUpdateDiff', () => {
       const currentState = createImageContent(1, { collections: [] });
       const updateState = {
         id: 1,
-        collections: [
-          { collectionId: 2, name: 'New Collection', visible: true },
-        ],
+        collections: [{ collectionId: 2, name: 'New Collection', visible: true }],
       };
 
       const result = buildImageUpdateDiff(updateState, currentState);
@@ -556,15 +554,11 @@ describe('buildImageUpdateDiff', () => {
 
     it('should include prev when collection visibility changes', () => {
       const currentState = createImageContent(1, {
-        collections: [
-          { collectionId: 1, name: 'Collection 1', visible: true },
-        ],
+        collections: [{ collectionId: 1, name: 'Collection 1', visible: true }],
       });
       const updateState = {
         id: 1,
-        collections: [
-          { collectionId: 1, name: 'Collection 1', visible: false },
-        ],
+        collections: [{ collectionId: 1, name: 'Collection 1', visible: false }],
       };
 
       const result = buildImageUpdateDiff(updateState, currentState);
@@ -637,15 +631,11 @@ describe('buildImageUpdateDiff', () => {
 
     it('should not include collections when unchanged', () => {
       const currentState = createImageContent(1, {
-        collections: [
-          { collectionId: 1, name: 'Collection 1', visible: true },
-        ],
+        collections: [{ collectionId: 1, name: 'Collection 1', visible: true }],
       });
       const updateState = {
         id: 1,
-        collections: [
-          { collectionId: 1, name: 'Collection 1', visible: true },
-        ],
+        collections: [{ collectionId: 1, name: 'Collection 1', visible: true }],
       };
 
       const result = buildImageUpdateDiff(updateState, currentState);
@@ -820,10 +810,7 @@ describe('getCommonValues', () => {
   describe('Camera and lens fields', () => {
     it('should include camera when all images have same camera ID', () => {
       const camera = { id: 1, name: 'Canon' };
-      const images = [
-        createImageContent(1, { camera }),
-        createImageContent(2, { camera }),
-      ];
+      const images = [createImageContent(1, { camera }), createImageContent(2, { camera })];
       const result = getCommonValues(images);
       expect(result.camera).toEqual(camera);
     });
@@ -848,10 +835,7 @@ describe('getCommonValues', () => {
 
     it('should include lens when all images have same lens ID', () => {
       const lens = { id: 1, name: '50mm' };
-      const images = [
-        createImageContent(1, { lens }),
-        createImageContent(2, { lens }),
-      ];
+      const images = [createImageContent(1, { lens }), createImageContent(2, { lens })];
       const result = getCommonValues(images);
       expect(result.lens).toEqual(lens);
     });
@@ -859,19 +843,13 @@ describe('getCommonValues', () => {
 
   describe('Numeric fields', () => {
     it('should include iso when all images have same iso', () => {
-      const images = [
-        createImageContent(1, { iso: 400 }),
-        createImageContent(2, { iso: 400 }),
-      ];
+      const images = [createImageContent(1, { iso: 400 }), createImageContent(2, { iso: 400 })];
       const result = getCommonValues(images);
       expect(result.iso).toBe(400);
     });
 
     it('should include rating when all images have same rating', () => {
-      const images = [
-        createImageContent(1, { rating: 5 }),
-        createImageContent(2, { rating: 5 }),
-      ];
+      const images = [createImageContent(1, { rating: 5 }), createImageContent(2, { rating: 5 })];
       const result = getCommonValues(images);
       expect(result.rating).toBe(5);
     });
@@ -1061,10 +1039,7 @@ describe('extractMultiSelectValues', () => {
   });
 
   it('should extract newNames from items with id 0 or no id', () => {
-    const value = [
-      { id: 0, name: 'New Tag 1' },
-      { name: 'New Tag 2' },
-    ];
+    const value = [{ id: 0, name: 'New Tag 1' }, { name: 'New Tag 2' }];
     const result = extractMultiSelectValues(value);
     expect(result.prevIds).toBeNull();
     expect(result.newNames).toEqual(['New Tag 1', 'New Tag 2']);
@@ -1101,17 +1076,17 @@ describe('extractMultiSelectValues', () => {
   });
 
   it('should filter out items with id <= 0 from prevIds', () => {
-      const value = [
-        { id: 1, name: 'Tag 1' },
-        { id: 0, name: 'New Tag' },
-        { id: -1, name: 'Invalid' },
-      ];
-      const result = extractMultiSelectValues(value);
-      expect(result.prevIds).toEqual([1]);
-      // Only items with id === 0 or no id are included in newNames
-      // Items with id < 0 are not treated as new items
-      expect(result.newNames).toEqual(['New Tag']);
-    });
+    const value = [
+      { id: 1, name: 'Tag 1' },
+      { id: 0, name: 'New Tag' },
+      { id: -1, name: 'Invalid' },
+    ];
+    const result = extractMultiSelectValues(value);
+    expect(result.prevIds).toEqual([1]);
+    // Only items with id === 0 or no id are included in newNames
+    // Items with id < 0 are not treated as new items
+    expect(result.newNames).toEqual(['New Tag']);
+  });
 });
 
 describe('handleDropdownChange', () => {
@@ -1134,10 +1109,7 @@ describe('handleDropdownChange', () => {
 
     it('should handle tags with new names', () => {
       const updateDTO = jest.fn();
-      const value = [
-        { id: 0, name: 'New Tag 1' },
-        { name: 'New Tag 2' },
-      ];
+      const value = [{ id: 0, name: 'New Tag 1' }, { name: 'New Tag 2' }];
 
       handleDropdownChange({ field: 'tags', value }, updateDTO);
 
@@ -1243,9 +1215,7 @@ describe('handleDropdownChange', () => {
     it('should handle collections field', () => {
       const updateDTO = jest.fn();
       const value = {
-        newValue: [
-          { collectionId: 1, name: 'Collection', visible: true },
-        ],
+        newValue: [{ collectionId: 1, name: 'Collection', visible: true }],
       };
 
       handleDropdownChange({ field: 'collections', value }, updateDTO);
@@ -1297,9 +1267,18 @@ describe('buildImageUpdatesForBulkEdit', () => {
   // - Handles empty selectedImageIds array
   // - Handles empty selectedImages array
 
-  const image1 = createImageContent(1, { title: 'Image 1', location: { id: 1, name: 'Location 1' } });
-  const image2 = createImageContent(2, { title: 'Image 2', location: { id: 2, name: 'Location 2' } });
-  const image3 = createImageContent(3, { title: 'Image 3', location: { id: 3, name: 'Location 3' } });
+  const image1 = createImageContent(1, {
+    title: 'Image 1',
+    location: { id: 1, name: 'Location 1' },
+  });
+  const image2 = createImageContent(2, {
+    title: 'Image 2',
+    location: { id: 2, name: 'Location 2' },
+  });
+  const image3 = createImageContent(3, {
+    title: 'Image 3',
+    location: { id: 3, name: 'Location 3' },
+  });
 
   const availableFilmTypes = [
     createFilmType(1, 'Kodak Portra 400'),
@@ -1360,7 +1339,12 @@ describe('buildImageUpdatesForBulkEdit', () => {
     const selectedImageIds = [1, 999]; // 999 doesn't exist
 
     expect(() => {
-      buildImageUpdatesForBulkEdit(updateState, selectedImages, selectedImageIds, availableFilmTypes);
+      buildImageUpdatesForBulkEdit(
+        updateState,
+        selectedImages,
+        selectedImageIds,
+        availableFilmTypes
+      );
     }).toThrow('Image 999 not found in selectedImages');
   });
 
@@ -1685,19 +1669,28 @@ describe('getDisplayTags', () => {
     const dto = { id: 1 } as ContentImageUpdateRequest;
     const initialTags = [availableTags[0]!, availableTags[1]!];
     const result = getDisplayTags(dto, initialTags, availableTags);
-    expect(result).toEqual([{ id: 1, name: 'Landscape' }, { id: 2, name: 'Portrait' }]);
+    expect(result).toEqual([
+      { id: 1, name: 'Landscape' },
+      { id: 2, name: 'Portrait' },
+    ]);
   });
 
   it('returns tags from DTO prev IDs', () => {
     const dto = { id: 1, tags: { prev: [2, 3] } } as ContentImageUpdateRequest;
     const result = getDisplayTags(dto, [], availableTags);
-    expect(result).toEqual([{ id: 2, name: 'Portrait' }, { id: 3, name: 'Street' }]);
+    expect(result).toEqual([
+      { id: 2, name: 'Portrait' },
+      { id: 3, name: 'Street' },
+    ]);
   });
 
   it('includes new tags with id: 0 from newNames', () => {
     const dto = { id: 1, tags: { prev: [1], newValue: ['NewTag'] } } as ContentImageUpdateRequest;
     const result = getDisplayTags(dto, [], availableTags);
-    expect(result).toEqual([{ id: 1, name: 'Landscape' }, { id: 0, name: 'NewTag' }]);
+    expect(result).toEqual([
+      { id: 1, name: 'Landscape' },
+      { id: 0, name: 'NewTag' },
+    ]);
   });
 
   it('returns empty array when no initial and no DTO tags', () => {
@@ -1759,7 +1752,8 @@ describe('getDisplayCollections', () => {
 
   it('returns empty array when no data', () => {
     const dto = { id: 1 } as ContentImageUpdateRequest;
-    const result = getDisplayCollections(dto, undefined);
+    const noCollections = undefined;
+    const result = getDisplayCollections(dto, noCollections);
     expect(result).toEqual([]);
   });
 });
@@ -1944,8 +1938,6 @@ describe('buildImageUpdateForSingleEdit', () => {
   });
 
   it('should handle updateState with no fields changed', () => {
-
-
     const result = buildImageUpdateForSingleEdit(originalImage, originalImage, availableFilmTypes);
 
     // Should only have id field
@@ -2116,4 +2108,3 @@ describe('mapUpdateResponseToFrontend', () => {
     expect(result.errors).toBeUndefined();
   });
 });
-

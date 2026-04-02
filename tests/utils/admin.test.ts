@@ -1,16 +1,13 @@
-import { isAdminRoutesEnabled, hasValidAdminAuth } from '@/app/utils/admin';
+import { hasValidAdminAuth, isAdminRoutesEnabled } from '@/app/utils/admin';
 
 function createMockRequest(options: { headerToken?: string; cookieToken?: string }) {
   return {
     headers: {
-      get: (name: string) =>
-        name === 'x-admin-token' ? (options.headerToken ?? null) : null,
+      get: (name: string) => (name === 'x-admin-token' ? (options.headerToken ?? null) : null),
     },
     cookies: {
       get: (name: string) =>
-        name === 'admin_token' && options.cookieToken
-          ? { value: options.cookieToken }
-          : undefined,
+        name === 'admin_token' && options.cookieToken ? { value: options.cookieToken } : undefined,
     },
   } as unknown as Parameters<typeof hasValidAdminAuth>[0];
 }

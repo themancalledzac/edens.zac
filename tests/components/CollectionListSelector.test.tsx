@@ -74,11 +74,7 @@ describe('CollectionListSelector', () => {
     const onToggle = jest.fn();
     const onNavigate = jest.fn();
     render(
-      <CollectionListSelector
-        {...defaultProps}
-        onToggle={onToggle}
-        onNavigate={onNavigate}
-      />
+      <CollectionListSelector {...defaultProps} onToggle={onToggle} onNavigate={onNavigate} />
     );
 
     // Click on the name text (row click, not checkbox)
@@ -104,11 +100,7 @@ describe('CollectionListSelector', () => {
     const onToggle = jest.fn();
     const onNavigate = jest.fn();
     render(
-      <CollectionListSelector
-        {...defaultProps}
-        onToggle={onToggle}
-        onNavigate={onNavigate}
-      />
+      <CollectionListSelector {...defaultProps} onToggle={onToggle} onNavigate={onNavigate} />
     );
 
     const checkbox = screen.getByLabelText('Toggle Portfolio A');
@@ -165,7 +157,7 @@ describe('CollectionListSelector', () => {
       const onToggle = jest.fn();
       render(<CollectionListSelector {...defaultProps} onToggle={onToggle} />);
 
-      const rows = screen.getAllByRole('button', { hidden: false });
+      const _rows = screen.getAllByRole('button', { hidden: false });
       // Rows with role="button" are the collection rows (checkboxes also have role button)
       // Find the row for 'Portfolio A' by getting the div with role=button containing that text
       const portfolioRow = screen.getByText('Portfolio A').closest('[role="button"]');
@@ -200,11 +192,7 @@ describe('CollectionListSelector', () => {
       const onToggle = jest.fn();
       const onNavigate = jest.fn();
       render(
-        <CollectionListSelector
-          {...defaultProps}
-          onToggle={onToggle}
-          onNavigate={onNavigate}
-        />
+        <CollectionListSelector {...defaultProps} onToggle={onToggle} onNavigate={onNavigate} />
       );
 
       const portfolioRow = screen.getByText('Portfolio A').closest('[role="button"]');

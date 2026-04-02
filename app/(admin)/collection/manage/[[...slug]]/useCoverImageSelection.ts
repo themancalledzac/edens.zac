@@ -1,16 +1,20 @@
 'use client';
 
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { updateCollection } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { handleApiError } from '@/app/utils/apiUtils';
 
-import {
-  COVER_IMAGE_FLASH_DURATION,
-  handleCoverImageSelection,
-} from './manageUtils';
+import { COVER_IMAGE_FLASH_DURATION, handleCoverImageSelection } from './manageUtils';
 
 interface UseCoverImageSelectionParams {
   collection: CollectionModel | null;

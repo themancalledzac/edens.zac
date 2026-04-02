@@ -20,9 +20,7 @@ export default function AdminError({
   return (
     <main className={styles.main}>
       <h1>Admin Error — Something went wrong</h1>
-      {error?.digest ? (
-        <p className={styles.errorMessage}>Error ID: {error.digest}</p>
-      ) : null}
+      {error?.digest ? <p className={styles.errorMessage}>Error ID: {error.digest}</p> : null}
       <button onClick={() => reset()} className={styles.retryButton}>
         Try again
       </button>

@@ -53,11 +53,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div className={styles.errorContainer} role="alert">
           <p className={styles.errorMessage}>Something went wrong.</p>
-          <button
-            type="button"
-            className={styles.retryButton}
-            onClick={this.handleReset}
-          >
+          <button type="button" className={styles.retryButton} onClick={this.handleReset}>
             Try again
           </button>
         </div>

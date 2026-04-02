@@ -104,8 +104,8 @@ describe('optimizeBoundaries', () => {
     expect(rowIds(optimized[0]!)).toEqual([1]);
   });
 
-  it('does not change a single row with two H5★ (already optimal)', () => {
-    // At rw=8: H5★+H5★ = 10.0/8 = 125%, best-fit pairs them in 1 row
+  it('does not change a single row with two H5★ (125% overfill accepted)', () => {
+    // At rw=8: H5★+H5★ = 10.0/8 = 125%. Overfill accepted to avoid solo rows.
     const rows = buildRows([H(1, 5), H(2, 5)], DESKTOP);
     expect(rows).toHaveLength(1);
     const optimized = optimizeBoundaries(rows, DESKTOP);
