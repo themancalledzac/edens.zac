@@ -43,7 +43,7 @@ const createImageContent = (
   isFilm: false,
   shutterSpeed: '1/125',
   focalLength: '50mm',
-  location: null,
+  locations: [],
   fStop: 'f/2.8',
   iso: 400,
   filmFormat: null,
@@ -1269,15 +1269,15 @@ describe('buildImageUpdatesForBulkEdit', () => {
 
   const image1 = createImageContent(1, {
     title: 'Image 1',
-    location: { id: 1, name: 'Location 1' },
+    locations: [{ id: 1, name: 'Location 1' }],
   });
   const image2 = createImageContent(2, {
     title: 'Image 2',
-    location: { id: 2, name: 'Location 2' },
+    locations: [{ id: 2, name: 'Location 2' }],
   });
   const image3 = createImageContent(3, {
     title: 'Image 3',
-    location: { id: 3, name: 'Location 3' },
+    locations: [{ id: 3, name: 'Location 3' }],
   });
 
   const availableFilmTypes = [
@@ -1289,7 +1289,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
     const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0, // Will be replaced per image
       title: 'Updated Title',
-      location: { id: 4, name: 'Updated Location' },
+      locations: [{ id: 4, name: 'Updated Location' }],
     };
 
     const selectedImages = [image1, image2, image3];
@@ -1892,7 +1892,7 @@ describe('buildImageUpdateForSingleEdit', () => {
 
   const originalImage = createImageContent(1, {
     title: 'Original Title',
-    location: { id: 1, name: 'Original Location' },
+    locations: [{ id: 1, name: 'Original Location' }],
     rating: 3,
   });
 
@@ -1908,7 +1908,7 @@ describe('buildImageUpdateForSingleEdit', () => {
 
     expect(result.id).toBe(1);
     expect(result.title).toBe('Updated Title');
-    expect(result.location).toBeUndefined(); // Not changed, so not in diff
+    expect(result.locations).toBeUndefined(); // Not changed, so not in diff
   });
 
   it('should return ContentImageUpdateRequest with correct id', () => {
@@ -1927,13 +1927,14 @@ describe('buildImageUpdateForSingleEdit', () => {
     const updateState: ContentImageModel = {
       ...originalImage,
       title: 'New Title',
-      location: { id: 5, name: 'New Location' },
+      locations: [{ id: 5, name: 'New Location' }],
     };
 
     const result = buildImageUpdateForSingleEdit(updateState, originalImage, availableFilmTypes);
 
     expect(result.title).toBe('New Title');
-    expect(result.location).toEqual({ prev: 5 }); // LocationModel { id: 5 } → LocationUpdate { prev: 5 }
+    // Original has location id:1, updated has id:5 → remove:[1], prev:[5]
+    expect(result.locations).toEqual({ prev: [5], remove: [1] });
     expect(result.rating).toBeUndefined(); // Not changed
   });
 

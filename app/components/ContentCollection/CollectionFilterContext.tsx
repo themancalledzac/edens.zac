@@ -10,6 +10,7 @@ export interface CollectionFilterOptions {
   cameras: string[];
   lenses: string[];
   focalLengthStops: number[];
+  showHighlyRated: boolean;
 }
 
 interface CollectionFilterContextValue {

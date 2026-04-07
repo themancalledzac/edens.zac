@@ -281,6 +281,30 @@
   margin-bottom: var(--space-2);
 }
 
+.coverImagePickerGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.coverImagePickerItem {
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: var(--radius-1);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--color-primary);
+  }
+
+  img {
+    display: block;
+    object-fit: cover;
+  }
+}
+
 .uploadSection {
   display: flex;
   flex-direction: column;

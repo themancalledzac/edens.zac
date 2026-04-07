@@ -228,6 +228,7 @@ describe('getContentDimensions', () => {
           width: 640,
           height: 480,
           visible: true,
+          locations: [],
         },
       });
       expect(getContentDimensions(col)).toEqual({ width: 640, height: 480 });
@@ -241,6 +242,7 @@ describe('getContentDimensions', () => {
           orderIndex: 0,
           imageUrl: 'https://example.com/cover.jpg',
           visible: true,
+          locations: [],
         },
       });
       expect(getContentDimensions(col)).toEqual({ width: 1300, height: 867 });

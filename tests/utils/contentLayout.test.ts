@@ -459,6 +459,7 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
           imageHeight: 1000,
           width: 800, // Should be ignored
           height: 700, // Should be ignored
+          locations: [],
         },
       });
       const result = convertCollectionContentToParallax(collection);
@@ -478,6 +479,7 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
           imageUrl: 'https://example.com/cover.jpg',
           width: 1000,
           height: 900,
+          locations: [],
         },
       });
       const result = convertCollectionContentToParallax(collection);
@@ -498,6 +500,7 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
           imageHeight: 1080,
           width: 800, // Should be ignored
           height: 600, // Should be ignored
+          locations: [],
         },
       });
       const result = convertCollectionContentToImage(collection);
@@ -516,6 +519,7 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
           imageUrl: 'https://example.com/cover.jpg',
           width: 800,
           height: 600,
+          locations: [],
         },
       });
       const result = convertCollectionContentToImage(collection);
@@ -532,6 +536,7 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
           contentType: 'IMAGE',
           orderIndex: 0,
           imageUrl: 'https://example.com/cover.jpg',
+          locations: [],
         },
       });
       const result = convertCollectionContentToParallax(collection);
@@ -548,6 +553,7 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
           contentType: 'IMAGE',
           orderIndex: 0,
           imageUrl: 'https://example.com/cover.jpg',
+          locations: [],
         },
       });
       const result = convertCollectionContentToImage(collection);
@@ -650,6 +656,7 @@ describe('clampParallaxDimensions', () => {
         imageUrl: 'https://example.com/tall.jpg',
         imageWidth: 1000,
         imageHeight: 2000,
+        locations: [],
       },
     });
     const result = convertCollectionContentToParallax(collection);
@@ -666,6 +673,7 @@ describe('clampParallaxDimensions', () => {
         imageUrl: 'https://example.com/wide.jpg',
         imageWidth: 2000,
         imageHeight: 1000,
+        locations: [],
       },
     });
     const result = convertCollectionContentToParallax(collection);
@@ -682,6 +690,7 @@ describe('clampParallaxDimensions', () => {
         imageUrl: 'https://example.com/tall.jpg',
         imageWidth: 1000,
         imageHeight: 2000,
+        locations: [],
       },
     });
     const result = convertCollectionContentToImage(collection);
@@ -812,6 +821,7 @@ describe('createHeaderRow', () => {
         contentType: 'IMAGE',
         orderIndex: 0,
         imageUrl: 'https://example.com/cover.jpg',
+        locations: [],
         // no imageWidth / imageHeight / width / height
       },
     });
@@ -991,6 +1001,7 @@ describe('createHeaderRow', () => {
           imageWidth: 1920,
           imageHeight: 1080,
           visible: true,
+          locations: [],
         },
       });
       const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
@@ -1012,6 +1023,7 @@ describe('createHeaderRow', () => {
           imageWidth: 1080,
           imageHeight: 1920,
           visible: true,
+          locations: [],
         },
       });
       const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
@@ -1037,6 +1049,7 @@ describe('createHeaderRow', () => {
           imageWidth: 1000,
           imageHeight: 1000,
           visible: true,
+          locations: [],
         },
       });
       const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
@@ -1061,6 +1074,7 @@ describe('createHeaderRow', () => {
           imageWidth: 1080,
           imageHeight: 1920,
           visible: true,
+          locations: [],
         },
       });
       const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
@@ -1087,6 +1101,7 @@ describe('createHeaderRow', () => {
           imageWidth: 1080,
           imageHeight: 1920,
           visible: true,
+          locations: [],
         },
       });
       const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
@@ -1105,7 +1120,7 @@ describe('createHeaderRow', () => {
     it('should create header row with only cover image when no metadata', () => {
       const collection = createCollectionModel(1, {
         collectionDate: undefined,
-        location: undefined,
+        locations: [],
         description: undefined,
       });
       const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));

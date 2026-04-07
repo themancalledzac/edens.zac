@@ -3,6 +3,7 @@
 import { type CollectionFilterState } from '@/app/types/GalleryFilter';
 
 import cbStyles from '../Content/ContentComponent.module.scss';
+import { type CollectionFilterOptions } from './CollectionFilterContext';
 import FocalLengthRangeSlider from './FocalLengthRangeSlider';
 
 type ArrayFilterKey = 'selectedTags' | 'selectedPeople' | 'selectedCameras' | 'selectedLenses';
@@ -20,13 +21,7 @@ export function toggleArrayFilter(
 
 interface CollectionFilterChipsProps {
   filterState: CollectionFilterState;
-  filterOptions: {
-    tags: string[];
-    people: string[];
-    cameras: string[];
-    lenses: string[];
-    focalLengthStops: number[];
-  };
+  filterOptions: CollectionFilterOptions;
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
 }
 
@@ -98,13 +93,15 @@ export default function CollectionFilterChips({
         >
           {dateSortLabel}
         </button>
-        <button
-          type="button"
-          className={`${cbStyles.filterChipToggle} ${filterState.highlyRatedOnly ? cbStyles.filterChipActive : ''}`}
-          onClick={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
-        >
-          Highly Rated
-        </button>
+        {filterOptions.showHighlyRated && (
+          <button
+            type="button"
+            className={`${cbStyles.filterChipToggle} ${filterState.highlyRatedOnly ? cbStyles.filterChipActive : ''}`}
+            onClick={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
+          >
+            Highly Rated
+          </button>
+        )}
         {showFocalLength && (
           <FocalLengthRangeSlider
             stops={filterOptions.focalLengthStops}

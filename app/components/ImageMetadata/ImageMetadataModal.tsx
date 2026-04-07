@@ -21,7 +21,7 @@ import {
   type ContentTagModel,
   type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
-import { convertLocationStringToModel } from '@/app/utils/locationUtils';
+import { convertLocationsToModels } from '@/app/utils/locationUtils';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
 import styles from './ImageMetadataModal.module.scss';
@@ -33,10 +33,8 @@ import {
 } from './imageMetadataUtils';
 import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 
-/** updateState uses LocationModel for location instead of the raw string from ContentImageModel. */
-type ImageUpdateState = Omit<Partial<ContentImageModel>, 'location'> & {
+type ImageUpdateState = Partial<ContentImageModel> & {
   id: number;
-  location?: LocationModel | null;
 };
 
 interface ImageMetadataModalProps {
@@ -86,18 +84,16 @@ export default function ImageMetadataModal({
   const [updateState, setUpdateState] = useState<ImageUpdateState>(() => {
     if (selectedImages.length === 1) {
       const img = selectedImages[0]!;
-      const { id, location, ...rest } = img;
       return {
-        id,
-        ...rest,
-        location: convertLocationStringToModel(location, availableLocations),
+        ...img,
+        locations: convertLocationsToModels(img.locations, availableLocations),
       };
     } else {
       const common = getCommonValues(selectedImages);
       return {
         id: 0,
-        ...(common as Omit<Partial<ContentImageModel>, 'location'>),
-        location: convertLocationStringToModel(common.location, availableLocations),
+        ...common,
+        locations: convertLocationsToModels(common.locations, availableLocations),
       };
     }
   });
@@ -105,24 +101,17 @@ export default function ImageMetadataModal({
   useEffect(() => {
     if (selectedImages.length === 1) {
       const img = selectedImages[0]!;
-      const { id, location, ...rest } = img;
-      const newState: ImageUpdateState = {
-        id,
-        ...(rest as Omit<Partial<ContentImageModel>, 'location'>),
-        location: convertLocationStringToModel(location, availableLocations),
-      };
-
-      setUpdateState(newState);
+      setUpdateState({
+        ...img,
+        locations: convertLocationsToModels(img.locations, availableLocations),
+      });
     } else {
       const common = getCommonValues(selectedImages);
-      const { location, ...rest } = common;
-      const newState: ImageUpdateState = {
+      setUpdateState({
         id: 0,
-        ...(rest as Omit<Partial<ContentImageModel>, 'location'>),
-        location: convertLocationStringToModel(location, availableLocations),
-      };
-
-      setUpdateState(newState);
+        ...common,
+        locations: convertLocationsToModels(common.locations, availableLocations),
+      });
     }
   }, [selectedImages, availableLocations]);
 
@@ -414,18 +403,18 @@ export default function ImageMetadataModal({
             </div>
 
             <UnifiedMetadataSelector<LocationModel>
-              label="Location"
-              multiSelect={false}
+              label="Locations"
+              multiSelect
               options={availableLocations}
-              selectedValue={updateState.location || null}
+              selectedValues={updateState.locations ?? []}
               onChange={value => {
-                const location = Array.isArray(value) ? value[0] || null : value;
-                updateStateField({ location });
+                const locations = Array.isArray(value) ? value : (value ? [value] : []);
+                updateStateField({ locations });
               }}
               allowAddNew
               onAddNew={data => {
                 const newLocation = { id: 0, name: data.name as string, slug: '' };
-                updateStateField({ location: newLocation });
+                updateStateField({ locations: [...(updateState.locations ?? []), newLocation] });
               }}
               addNewFields={[
                 {
@@ -438,7 +427,7 @@ export default function ImageMetadataModal({
               ]}
               getDisplayName={location => location?.name || ''}
               showNewIndicator
-              emptyText="No location set"
+              emptyText="No locations set"
             />
 
             <div className={styles.formGroup}>

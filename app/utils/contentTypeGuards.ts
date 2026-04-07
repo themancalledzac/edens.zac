@@ -4,6 +4,7 @@
  * Provides compile-time type safety for Content discrimination.
  * Use these instead of runtime type checking or casting.
  */
+import { CollectionType } from '@/app/types/Collection';
 import {
   type Content,
   type ContentCollectionModel,
@@ -174,4 +175,13 @@ export function getSlotWidth(contentItem: Content, chunkSize: number): number {
   }
 
   return 1;
+}
+
+/**
+ * Check if a collection type is a "parent-type" collection.
+ * Parent-type collections (HOME, PARENT) can only contain child collections,
+ * not images, text, or GIFs.
+ */
+export function isParentType(type: CollectionType | string | undefined): boolean {
+  return type === CollectionType.HOME || type === CollectionType.PARENT;
 }

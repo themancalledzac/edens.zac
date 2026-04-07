@@ -22,6 +22,7 @@ function makeImage(overrides: Partial<ContentImageModel> = {}): ContentImageMode
     imageUrl: 'https://example.com/test.jpg',
     imageWidth: 1600,
     imageHeight: 1067,
+    locations: [],
     ...overrides,
   };
 }
@@ -42,7 +43,7 @@ const sampleImages: ContentImageModel[] = [
     id: 1,
     title: 'Seattle Sunset',
     rating: 5,
-    location: { id: 1, name: 'Seattle' },
+    locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }],
     camera: { id: 1, name: 'Sony A7III' },
     tags: [
       { id: 1, name: 'landscape' },
@@ -55,7 +56,7 @@ const sampleImages: ContentImageModel[] = [
     id: 2,
     title: 'Portland Bridge',
     rating: 3,
-    location: { id: 2, name: 'Portland' },
+    locations: [{ id: 2, name: 'Portland', slug: 'portland' }],
     camera: { id: 2, name: 'Nikon Z6' },
     tags: [{ id: 3, name: 'architecture' }],
     people: [],
@@ -65,7 +66,7 @@ const sampleImages: ContentImageModel[] = [
     id: 3,
     title: 'Tokyo Street',
     rating: 4,
-    location: { id: 3, name: 'Tokyo' },
+    locations: [{ id: 3, name: 'Tokyo', slug: 'tokyo' }],
     camera: { id: 1, name: 'Sony A7III' },
     tags: [
       { id: 4, name: 'street' },

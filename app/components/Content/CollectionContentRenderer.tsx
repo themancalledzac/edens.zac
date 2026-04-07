@@ -374,6 +374,7 @@ export default function CollectionContentRenderer({
         imageUrl: imageUrl || '',
         orderIndex: 0,
         collections: [],
+        locations: [],
         visible: true,
       } as ContentImageModel,
       currentCollectionId

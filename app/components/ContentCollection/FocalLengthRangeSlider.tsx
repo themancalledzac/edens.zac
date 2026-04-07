@@ -1,7 +1,5 @@
 'use client';
 
-import { type CSSProperties } from 'react';
-
 import cbStyles from '../Content/ContentComponent.module.scss';
 
 interface FocalLengthRangeSliderProps {
@@ -11,19 +9,6 @@ interface FocalLengthRangeSliderProps {
   value: readonly [number, number] | null;
   onChange: (range: readonly [number, number] | null) => void;
 }
-
-const rangeInputStyle: CSSProperties = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  width: '100%',
-  height: '100%',
-  background: 'transparent',
-  pointerEvents: 'none',
-  margin: 0,
-  WebkitAppearance: 'none',
-  appearance: 'none',
-};
 
 export default function FocalLengthRangeSlider({
   stops,
@@ -74,7 +59,7 @@ export default function FocalLengthRangeSlider({
           step={1}
           value={currentMinIdx}
           onChange={handleMinChange}
-          style={rangeInputStyle}
+          className="range-thumb-min"
           aria-label="Minimum focal length"
         />
         <input
@@ -84,7 +69,7 @@ export default function FocalLengthRangeSlider({
           step={1}
           value={currentMaxIdx}
           onChange={handleMaxChange}
-          style={rangeInputStyle}
+          className="range-thumb-max"
           aria-label="Maximum focal length"
         />
       </div>

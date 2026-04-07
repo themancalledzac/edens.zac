@@ -4,7 +4,6 @@
  */
 
 import type { AnyContentModel, ContentImageModel } from './Content';
-import type { SingleEntityUpdate } from './createTypes';
 import type { ContentPersonModel, ContentTagModel } from './ImageMetadata';
 
 /**
@@ -16,6 +15,7 @@ export enum CollectionType {
   ART_GALLERY = 'ART_GALLERY',
   CLIENT_GALLERY = 'CLIENT_GALLERY',
   HOME = 'HOME',
+  PARENT = 'PARENT',
   MISC = 'MISC',
 }
 
@@ -39,7 +39,7 @@ export interface CollectionBaseModel {
   title?: string;
   slug?: string;
   description?: string;
-  location?: string | LocationModel; // Can be string (legacy) or LocationModel (new API format)
+  locations: LocationModel[];
   collectionDate?: string;
   visible?: boolean;
   displayMode?: DisplayMode;
@@ -134,7 +134,7 @@ export interface CollectionUpdateRequest {
   title?: string;
   slug?: string;
   description?: string;
-  location?: LocationUpdate;
+  locations?: LocationUpdate;
   collectionDate?: string | null;
   clearCollectionDate?: boolean;
   visible?: boolean;
@@ -251,14 +251,18 @@ export interface LocationModel {
 }
 
 /**
- * LocationUpdate - Update pattern for location assignment (single-select)
+ * LocationUpdate - Update pattern for location associations (many-to-many)
  * Matches backend LocationUpdate.java
  *
- * - prev: ID of existing location to use
- * - newValue: Name of new location to create
- * - remove: true to remove location association
+ * - prev: List of existing location IDs to keep/add
+ * - newValue: List of new location names to create and add
+ * - remove: List of location IDs to remove
  */
-export type LocationUpdate = SingleEntityUpdate;
+export interface LocationUpdate {
+  prev?: number[];
+  newValue?: string[];
+  remove?: number[];
+}
 
 /**
  * General metadata DTO containing all available metadata for dropdowns
@@ -309,4 +313,5 @@ export interface CollectionUpdateResponseDTO {
   filmTypes?: GeneralMetadataDTO['filmTypes'];
   filmFormats?: GeneralMetadataDTO['filmFormats'];
   collections?: GeneralMetadataDTO['collections'];
+  childCollectionImages?: ContentImageModel[] | null;
 }

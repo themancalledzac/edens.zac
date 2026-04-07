@@ -54,12 +54,10 @@ export function FullScreenModal({
   const currentImage = fullScreenState.images[fullScreenState.currentIndex];
   if (!currentImage) return null;
 
-  // Resolve location: image location takes priority, fall back to collection location
-  const collectionLocationName =
-    typeof collectionData?.location === 'string'
-      ? collectionData.location
-      : (collectionData?.location?.name ?? null);
-  const displayLocation = currentImage.location?.name ?? collectionLocationName ?? null;
+  // Resolve locations: image locations take priority, fall back to collection locations
+  const displayLocations = currentImage.locations?.length
+    ? currentImage.locations
+    : (collectionData?.locations ?? []);
 
   // Resolve date: image captureDate takes priority, fall back to collection collectionDate
   const displayDate = currentImage.captureDate ?? collectionData?.collectionDate ?? null;
@@ -112,13 +110,32 @@ export function FullScreenModal({
                   {currentImage.author && (
                     <div className={styles.metadataItem}>{currentImage.author}</div>
                   )}
-                  {(displayDate || displayLocation) && (
+                  {(displayDate || displayLocations.length > 0) && (
                     <div className={styles.metadataItem}>
                       {displayDate && <span>{displayDate}</span>}
-                      {displayDate && displayLocation && (
+                      {displayDate && displayLocations.length > 0 && (
                         <span className={styles.metadataSeparator}> / </span>
                       )}
-                      {displayLocation && <span>{displayLocation}</span>}
+                      {displayLocations.map((loc, i) => (
+                        <span key={loc.id || loc.name}>
+                          {i > 0 && ', '}
+                          {loc.slug ? (
+                            <a
+                              href={`/location/${loc.slug}`}
+                              onClick={e => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                router.push(`/location/${loc.slug}`);
+                              }}
+                              className={styles.metadataLink}
+                            >
+                              {loc.name}
+                            </a>
+                          ) : (
+                            loc.name
+                          )}
+                        </span>
+                      ))}
                     </div>
                   )}
                   {(currentImage.camera || currentImage.lens) && (

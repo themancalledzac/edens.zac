@@ -46,7 +46,7 @@ function getMockSearchContent(): ContentImageModel[] {
       imageWidth: 1600,
       imageHeight: getHeightForIndex(i),
       rating: (i % 5) + 1,
-      location: { id: i % locations.length, name: locationName, slug: '' },
+      locations: [{ id: i % locations.length, name: locationName, slug: '' }],
       camera: { id: i % cameras.length, name: cameraName },
       tags: [
         { id: i % tags.length, name: tagName1, slug: '' },

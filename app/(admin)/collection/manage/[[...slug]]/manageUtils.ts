@@ -29,7 +29,7 @@ export const DEFAULT_PAGE_SIZE = 50;
  * - `undefined` and `null` and `''` are treated as equivalent (normalized to `undefined`).
  * - `collectionDate`: `null` means "explicitly clear"; `''` means unchanged from a null original.
  *   When the date is cleared and was previously set, `clearCollectionDate: true` is sent instead.
- * - `coverImageId`, `collections`, and `location` use presence-check (`!== undefined`) rather
+ * - `coverImageId`, `collections`, and `locations` use presence-check (`!== undefined`) rather
  *   than value-diff because each has its own update semantics.
  * - New text blocks are added via a separate POST endpoint, not through this payload.
  * - Content reordering is handled via the Image Update endpoint (orderIndex field).
@@ -86,8 +86,8 @@ export function buildUpdatePayload(
     payload.collections = formData.collections;
   }
 
-  if (formData.location !== undefined) {
-    payload.location = formData.location;
+  if (formData.locations !== undefined) {
+    payload.locations = formData.locations;
   }
 
   return payload;
@@ -116,12 +116,20 @@ export function findImageBlockById(
  */
 export function getDisplayedCoverImage(
   collection: CollectionModel | null,
-  pendingCoverImageId: number | undefined
+  pendingCoverImageId: number | undefined,
+  childCollectionImages?: ContentImageModel[] | null
 ): ContentImageModel | null | undefined {
   if (pendingCoverImageId) {
     const blocks = collection?.content;
-    if (!blocks || !Array.isArray(blocks)) return undefined;
-    return findImageBlockById(blocks as AnyContentModel[], pendingCoverImageId);
+    if (blocks && Array.isArray(blocks)) {
+      const found = findImageBlockById(blocks as AnyContentModel[], pendingCoverImageId);
+      if (found) return found;
+    }
+    // Fallback: search childCollectionImages (for parent-type collections)
+    if (childCollectionImages) {
+      return childCollectionImages.find(img => img.id === pendingCoverImageId) ?? undefined;
+    }
+    return undefined;
   }
   return collection?.coverImage;
 }

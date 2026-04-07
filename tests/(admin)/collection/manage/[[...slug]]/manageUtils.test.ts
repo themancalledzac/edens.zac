@@ -84,6 +84,7 @@ const createCollectionModel = (overrides?: Partial<CollectionModel>): Collection
   updatedAt: '2024-01-01T00:00:00Z',
   visible: true,
   displayMode: 'CHRONOLOGICAL',
+  locations: [],
   ...overrides,
 });
 
@@ -569,7 +570,7 @@ describe('buildUpdatePayload', () => {
     type: CollectionType.PORTFOLIO,
     title: 'Original Title',
     description: 'Original Description',
-    location: 'Original Location',
+    locations: [{ id: 1, name: 'Original Location', slug: 'original-location' }],
     collectionDate: '2024-01-01',
     visible: true,
     displayMode: 'CHRONOLOGICAL',
@@ -1416,6 +1417,7 @@ describe('refreshCollectionAfterOperation', () => {
       type: CollectionType.PORTFOLIO,
       visible: true,
       displayMode: 'CHRONOLOGICAL',
+      locations: [],
       content: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
@@ -1519,6 +1521,7 @@ describe('getContentOrderIndex', () => {
       contentType: 'IMAGE',
       orderIndex: 5,
       imageUrl: 'test.jpg',
+      locations: [],
     };
 
     const result = getContentOrderIndex(imageBlock);
@@ -1575,6 +1578,7 @@ describe('updateBlockOrderIndex', () => {
       contentType: 'IMAGE',
       orderIndex: 5,
       imageUrl: 'test.jpg',
+      locations: [],
     };
 
     const result = updateBlockOrderIndex(imageBlock, 10);
@@ -1619,6 +1623,7 @@ describe('updateBlockOrderIndex', () => {
       imageUrl: 'test.jpg',
       title: 'Test Image',
       rating: 5,
+      locations: [],
     };
 
     const result = updateBlockOrderIndex(imageBlock, 10);

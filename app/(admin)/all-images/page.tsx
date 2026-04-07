@@ -43,6 +43,7 @@ function createMockCollection(images: ContentImageModel[]): CollectionModel {
     contentPerPage: 200,
     content: images,
     contentCount: images.length,
+    locations: [],
   };
 }
 
