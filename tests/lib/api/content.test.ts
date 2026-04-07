@@ -149,12 +149,13 @@ describe('Read Endpoints', () => {
       expect(result).toEqual([]);
     });
 
-    it('should return empty array for unrecognized response shape', async () => {
-      const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    it('should throw for unrecognized response shape', async () => {
+      const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
       (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse({ data: [] }));
 
-      const result = await searchImages({ cameraId: 1 });
-      expect(result).toEqual([]);
+      await expect(searchImages({ cameraId: 1 })).rejects.toThrow(
+        '[searchImages] Unexpected response shape'
+      );
       expect(spy).toHaveBeenCalledWith(
         expect.stringContaining('[searchImages]'),
         expect.anything(),

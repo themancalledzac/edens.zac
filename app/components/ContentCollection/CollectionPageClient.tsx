@@ -9,13 +9,9 @@ import {
   type CollectionFilterState,
   INITIAL_COLLECTION_FILTER_STATE,
 } from '@/app/types/GalleryFilter';
-import {
-  type ContentFilterOptions,
-  extractFilterOptions,
-  filterContent,
-  isImageContent,
-} from '@/app/utils/contentFilter';
+import { extractFilterOptions, filterContent, isImageContent } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
+import { isContentCollection } from '@/app/utils/contentTypeGuards';
 
 import { CollectionFilterProvider } from './CollectionFilterContext';
 
@@ -26,12 +22,16 @@ interface CollectionPageClientProps {
 
 /**
  * Parse a numeric focal length from a string like "50mm", "50 mm", "50.0mm".
- * Returns null if the string is missing or has no numeric content.
+ * Returns null if the string is missing, has no numeric content, or the value
+ * falls outside the realistic lens range (4–2000mm).
  */
 function parseFocalLength(fl: string | null | undefined): number | null {
   if (!fl) return null;
-  const match = fl.match(/(\d+(?:\.\d+)?)/);
-  return match?.[1] ? Number.parseFloat(match[1]) : null;
+  const match = fl.match(/^(\d+(?:\.\d+)?)\s*(?:mm)?$/i);
+  if (!match?.[1]) return null;
+  const value = Number.parseFloat(match[1]);
+  if (value < 4 || value > 2000) return null;
+  return value;
 }
 
 /**
@@ -52,42 +52,20 @@ function sortByDate(images: ContentImageModel[], direction: 'asc' | 'desc'): Con
 
 /**
  * Extracts filter options specific to collection pages.
- * Applies the 90% exclusion rule for tags (near-universal tags are not useful as filters)
- * and the >1 distinct rule for cameras/lenses.
+ * Uses the shared extractFilterOptions with 90% tag exclusion, plus
+ * the >1 distinct rule for cameras/lenses and focal length stops.
  */
-function extractCollectionFilterOptions(
-  images: ContentImageModel[],
-  baseOptions: ContentFilterOptions
-): {
+function extractCollectionFilterOptions(images: ContentImageModel[]): {
   tags: string[];
   people: string[];
   cameras: string[];
   lenses: string[];
   focalLengthStops: number[];
 } {
-  const imageCount = images.length;
+  const baseOptions = extractFilterOptions(images, 0.9);
 
-  // Tags: exclude those on ≥90% of images (near-universal tags aren't useful filters)
-  const tagFrequency = new Map<string, number>();
-  for (const img of images) {
-    for (const t of img.tags ?? []) {
-      tagFrequency.set(t.name, (tagFrequency.get(t.name) ?? 0) + 1);
-    }
-  }
-  const exclusionThreshold = imageCount * 0.9;
-  const tags = Array.from(tagFrequency.entries())
-    .filter(([, freq]) => freq < exclusionThreshold)
-    .sort(([nameA, freqA], [nameB, freqB]) => freqB - freqA || nameA.localeCompare(nameB))
-    .slice(0, 10)
-    .map(([name]) => name);
-
-  // People: show if any exist
-  const people = baseOptions.people;
-
-  // Cameras: only show if more than 1 distinct
+  // Cameras/lenses: only show if more than 1 distinct
   const cameras = baseOptions.cameras.length > 1 ? baseOptions.cameras : [];
-
-  // Lenses: only show if more than 1 distinct
   const lenses = baseOptions.lenses.length > 1 ? baseOptions.lenses : [];
 
   // Focal length stops: sorted distinct values, only show if 2+ distinct
@@ -98,7 +76,7 @@ function extractCollectionFilterOptions(
   }
   const focalLengthStops = flSet.size >= 2 ? Array.from(flSet).sort((a, b) => a - b) : [];
 
-  return { tags, people, cameras, lenses, focalLengthStops };
+  return { tags: baseOptions.tags, people: baseOptions.people, cameras, lenses, focalLengthStops };
 }
 
 export default function CollectionPageClient({ collection, chunkSize }: CollectionPageClientProps) {
@@ -110,12 +88,26 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 
-  const baseOptions = useMemo(() => extractFilterOptions(allImages), [allImages]);
+  const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
-  const baseCollectionOptions = useMemo(
-    () => extractCollectionFilterOptions(allImages, baseOptions),
-    [allImages, baseOptions]
-  );
+  // A page is "collection-dominant" when it has more child-collection items than images.
+  // On these pages, image-specific filters (people, cameras, lenses, focal length, highly rated)
+  // are suppressed since the page's purpose is browsing sub-collections, not filtering images.
+  const isCollectionDominant = allCollections.length > allImages.length;
+
+  const baseCollectionOptions = useMemo(() => {
+    const options = extractCollectionFilterOptions(allImages);
+    if (isCollectionDominant) {
+      return {
+        tags: options.tags,
+        people: [],
+        cameras: [],
+        lenses: [],
+        focalLengthStops: [],
+      };
+    }
+    return options;
+  }, [allImages, isCollectionDominant]);
 
   // Build criteria from filter state — all AND mode for collection page
   const criteria = useMemo(
@@ -171,13 +163,18 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
 
   // Date sort is applied after processContentBlocks (which has its own orderIndex sort)
 
+  const hasRatingVariance = useMemo(() => {
+    if (allImages.length === 0) return false;
+    const ratings = new Set(allImages.map(img => img.rating ?? 0));
+    return ratings.size > 1;
+  }, [allImages]);
+
+  const showHighlyRated = hasRatingVariance && !isCollectionDominant;
+
   // Dynamic available options: only show options present in filtered results
   const availableOptions = useMemo(() => {
-    if (!hasActiveFilters) return baseCollectionOptions;
-    const filteredOptions = extractCollectionFilterOptions(
-      filteredImages,
-      extractFilterOptions(filteredImages)
-    );
+    if (!hasActiveFilters) return { ...baseCollectionOptions, showHighlyRated };
+    const filteredOptions = extractCollectionFilterOptions(filteredImages);
     return {
       // Keep active selections visible even if they'd otherwise be hidden
       tags: baseCollectionOptions.tags.filter(
@@ -193,8 +190,9 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
         l => filteredOptions.lenses.includes(l) || filterState.selectedLenses.includes(l)
       ),
       focalLengthStops: baseCollectionOptions.focalLengthStops,
+      showHighlyRated,
     };
-  }, [hasActiveFilters, filteredImages, baseCollectionOptions, filterState]);
+  }, [hasActiveFilters, filteredImages, baseCollectionOptions, filterState, showHighlyRated]);
 
   const contentBlocks = useMemo(() => {
     const processed = processContentBlocks(
@@ -229,12 +227,6 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
 
   const pageSize = collection.contentPerPage ?? 30;
 
-  const hasRatingVariance = useMemo(() => {
-    if (allImages.length === 0) return false;
-    const ratings = new Set(allImages.map(img => img.rating ?? 0));
-    return ratings.size > 1;
-  }, [allImages]);
-
   const hasDateVariance = useMemo(() => {
     const dates = new Set(allImages.map(img => img.captureDate).filter(Boolean));
     return dates.size > 1;
@@ -243,7 +235,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
   const hasFocalLengthVariance = baseCollectionOptions.focalLengthStops.length > 0;
 
   const hasOptions =
-    hasRatingVariance ||
+    showHighlyRated ||
     hasDateVariance ||
     hasFocalLengthVariance ||
     baseCollectionOptions.tags.length > 0 ||

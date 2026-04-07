@@ -45,11 +45,8 @@ import {
 } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
 import { processContentBlocks } from '@/app/utils/contentLayout';
-import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
-import {
-  convertLocationStringToModel,
-  createLocationUpdateFromModel,
-} from '@/app/utils/locationUtils';
+import { isContentCollection, isContentImage, isParentType } from '@/app/utils/contentTypeGuards';
+import { convertLocationsToModels, createLocationsUpdate } from '@/app/utils/locationUtils';
 
 import styles from './ManageClient.module.scss';
 import {
@@ -195,6 +192,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     handleCoverImageClick,
   } = useCoverImageSelection({
     collection,
+    childCollectionImages: currentState?.childCollectionImages,
     setCurrentState,
     setOperationLoading,
     setError,
@@ -232,9 +230,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [selectedImageIds, collection?.content]
   );
 
+  const isParent = isParentType(updateData.type);
+
   const displayedCoverImage = useMemo(
-    () => getDisplayedCoverImage(collection, updateData.coverImageId),
-    [collection, updateData.coverImageId]
+    () =>
+      getDisplayedCoverImage(
+        collection,
+        updateData.coverImageId,
+        currentState?.childCollectionImages
+      ),
+    [collection, updateData.coverImageId, currentState?.childCollectionImages]
   );
 
   const handleImageLoadError = useCallback((contentId: number) => {
@@ -345,29 +350,25 @@ export default function ManageClient({ slug }: ManageClientProps) {
           router.replace(`/collection/manage/${response.collection.slug}`);
         }
 
-        // Location inheritance: if a location was just set (not removed),
-        // apply it to all images in this collection that have no location
-        const locationUpdate = payload.location;
+        // Location inheritance: if locations were just set (not all removed),
+        // apply them to all images in this collection that have no locations
+        const locationsUpdate = payload.locations;
         if (
-          locationUpdate &&
-          !locationUpdate.remove &&
-          (locationUpdate.prev || locationUpdate.newValue)
+          locationsUpdate &&
+          !locationsUpdate.remove?.length &&
+          (locationsUpdate.prev?.length || locationsUpdate.newValue?.length)
         ) {
-          const resolvedLocation = response.collection.location;
-          if (
-            resolvedLocation &&
-            typeof resolvedLocation === 'object' &&
-            'id' in resolvedLocation
-          ) {
-            const locationModel = resolvedLocation as LocationModel;
+          const resolvedLocations = response.collection.locations ?? [];
+          if (resolvedLocations.length > 0) {
             const imagesWithoutLocation = (collection.content ?? []).filter(
-              (item): item is ContentImageModel => item.contentType === 'IMAGE' && !item.location
+              (item): item is ContentImageModel =>
+                item.contentType === 'IMAGE' && (!item.locations || item.locations.length === 0)
             );
 
             if (imagesWithoutLocation.length > 0) {
               const imageUpdates: ContentImageUpdateRequest[] = imagesWithoutLocation.map(img => ({
                 id: img.id,
-                location: { prev: locationModel.id },
+                locations: { prev: resolvedLocations.map(l => l.id) },
               }));
               updateImages(imageUpdates)
                 .then(async () => {
@@ -379,7 +380,8 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   }
                 })
                 .catch(error_ => {
-                  console.error('Failed to inherit location to images:', error_);
+                  console.error('Failed to inherit locations to images:', error_);
+                  setError('Collection saved, but failed to inherit locations to images.');
                 });
             }
           }
@@ -585,58 +587,41 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, [updateData.collections?.remove]);
 
   /**
-   * Derive current location from `collection.location` and `updateData.location`.
+   * Derive current locations from `collection.locations` and `updateData.locations`.
    *
-   * @remarks Handles both object format (current API) and string format (legacy).
-   * Priority: pending `updateData.location` overrides the saved collection location.
+   * Priority: pending `updateData.locations` overrides the saved collection locations.
    */
-  const currentLocation: LocationModel | null = useMemo(() => {
+  const currentLocations: LocationModel[] = useMemo(() => {
     const availableLocations = currentState?.locations || [];
 
-    const locationUpdate = updateData.location;
-    if (locationUpdate) {
-      if (locationUpdate.remove) {
-        return null;
+    const locationsUpdate = updateData.locations;
+    if (locationsUpdate) {
+      const result: LocationModel[] = [];
+      // Resolve prev IDs to models
+      for (const id of locationsUpdate.prev ?? []) {
+        const found = availableLocations.find(loc => loc.id === id);
+        if (found) result.push(found);
       }
-      if (locationUpdate.prev) {
-        const location = availableLocations.find(loc => loc.id === locationUpdate.prev);
-        return location || null;
+      // Add new locations (not yet created)
+      for (const name of locationsUpdate.newValue ?? []) {
+        result.push({ id: 0, name, slug: '' });
       }
-      if (locationUpdate.newValue) {
-        return { id: 0, name: locationUpdate.newValue };
-      }
+      return result;
     }
 
-    const collectionLocation = collection?.location;
-
-    if (
-      collectionLocation &&
-      typeof collectionLocation === 'object' &&
-      'id' in collectionLocation &&
-      'name' in collectionLocation
-    ) {
-      const location = availableLocations.find(
-        loc => loc.id === (collectionLocation as LocationModel).id
-      );
-      return location || (collectionLocation as LocationModel);
-    }
-
-    return convertLocationStringToModel(
-      typeof collectionLocation === 'string' ? collectionLocation : null,
-      availableLocations
-    );
-  }, [collection?.location, currentState?.locations, updateData.location]);
+    return convertLocationsToModels(collection?.locations, availableLocations);
+  }, [collection?.locations, currentState?.locations, updateData.locations]);
 
   /**
-   * Handle location selection changes
+   * Handle locations selection changes (multi-select)
    */
-  const handleLocationChange = useCallback((value: LocationModel | LocationModel[] | null) => {
-    const location = Array.isArray(value) ? value[0] || null : value;
-    const locationUpdate = createLocationUpdateFromModel(location);
+  const handleLocationsChange = useCallback((value: LocationModel | LocationModel[] | null) => {
+    const locations = Array.isArray(value) ? value : value ? [value] : [];
+    const locationsUpdate = createLocationsUpdate(locations);
 
     setUpdateData(prev => ({
       ...prev,
-      location: locationUpdate,
+      locations: locationsUpdate,
     }));
   }, []);
 
@@ -836,6 +821,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
                     <option value={CollectionType.BLOG}>Blog</option>
                     <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
+                    <option value={CollectionType.PARENT}>Parent</option>
                   </select>
                 </div>
 
@@ -971,16 +957,21 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           </div>
                         </div>
 
-                        {/* Location */}
+                        {/* Locations */}
                         <UnifiedMetadataSelector<LocationModel>
-                          label="Location"
-                          multiSelect={false}
+                          label="Locations"
+                          multiSelect
                           options={currentState?.locations || []}
-                          selectedValue={currentLocation}
-                          onChange={handleLocationChange}
+                          selectedValues={currentLocations}
+                          onChange={handleLocationsChange}
                           allowAddNew
                           onAddNew={data => {
-                            handleLocationChange({ id: 0, name: data.name as string });
+                            const newLoc: LocationModel = {
+                              id: 0,
+                              name: data.name as string,
+                              slug: '',
+                            };
+                            handleLocationsChange([...currentLocations, newLoc]);
                           }}
                           addNewFields={[
                             {
@@ -993,81 +984,83 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           ]}
                           getDisplayName={location => location?.name || ''}
                           showNewIndicator
-                          emptyText="No location set"
+                          emptyText="No locations set"
                         />
 
-                        {/* Display Mode / Row Length */}
-                        <div className={styles.formGridHalf}>
-                          <div>
-                            <label className={styles.formLabel}>Display</label>
-                            <select
-                              value={updateData.displayMode}
-                              onChange={e =>
-                                setUpdateData(prev => ({
-                                  ...prev,
-                                  displayMode: e.target.value as DisplayMode,
-                                }))
-                              }
-                              className={styles.formSelect}
-                            >
-                              <option value="ORDERED">Default</option>
-                              <option value="CHRONOLOGICAL">Chronological</option>
-                              <option value="FIXED">Fixed</option>
-                            </select>
-                          </div>
+                        {/* Display Mode / Row Length — hidden for parent-type collections */}
+                        {!isParent && (
+                          <div className={styles.formGridHalf}>
+                            <div>
+                              <label className={styles.formLabel}>Display</label>
+                              <select
+                                value={updateData.displayMode}
+                                onChange={e =>
+                                  setUpdateData(prev => ({
+                                    ...prev,
+                                    displayMode: e.target.value as DisplayMode,
+                                  }))
+                                }
+                                className={styles.formSelect}
+                              >
+                                <option value="ORDERED">Default</option>
+                                <option value="CHRONOLOGICAL">Chronological</option>
+                                <option value="FIXED">Fixed</option>
+                              </select>
+                            </div>
 
-                          <div>
-                            <label className={styles.formLabel}>
-                              Row Length
-                              <span className={styles.formLabelHint}> (Default: 4)</span>
-                            </label>
-                            <div className={styles.numberStepperWrapper}>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setUpdateData(prev => ({
-                                    ...prev,
-                                    rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
-                                  }))
-                                }
-                                className={styles.stepperButton}
-                                disabled={(updateData.rowsWide ?? 4) <= 1}
-                              >
-                                ←
-                              </button>
-                              <input
-                                type="number"
-                                min="1"
-                                max="6"
-                                value={updateData.rowsWide ?? ''}
-                                placeholder="4"
-                                onChange={e => {
-                                  const value =
-                                    e.target.value === ''
-                                      ? undefined
-                                      : Number.parseInt(e.target.value);
-                                  if (value === undefined || (value >= 1 && value <= 6)) {
-                                    setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                            <div>
+                              <label className={styles.formLabel}>
+                                Row Length
+                                <span className={styles.formLabelHint}> (Default: 4)</span>
+                              </label>
+                              <div className={styles.numberStepperWrapper}>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setUpdateData(prev => ({
+                                      ...prev,
+                                      rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
+                                    }))
                                   }
-                                }}
-                                className={styles.numberInput}
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setUpdateData(prev => ({
-                                    ...prev,
-                                    rowsWide: Math.min(6, (prev.rowsWide ?? 4) + 1),
-                                  }))
-                                }
-                                className={styles.stepperButton}
-                                disabled={(updateData.rowsWide ?? 4) >= 6}
-                              >
-                                →
-                              </button>
+                                  className={styles.stepperButton}
+                                  disabled={(updateData.rowsWide ?? 4) <= 1}
+                                >
+                                  ←
+                                </button>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="6"
+                                  value={updateData.rowsWide ?? ''}
+                                  placeholder="4"
+                                  onChange={e => {
+                                    const value =
+                                      e.target.value === ''
+                                        ? undefined
+                                        : Number.parseInt(e.target.value);
+                                    if (value === undefined || (value >= 1 && value <= 6)) {
+                                      setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                                    }
+                                  }}
+                                  className={styles.numberInput}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setUpdateData(prev => ({
+                                      ...prev,
+                                      rowsWide: Math.min(6, (prev.rowsWide ?? 4) + 1),
+                                    }))
+                                  }
+                                  className={styles.stepperButton}
+                                  disabled={(updateData.rowsWide ?? 4) >= 6}
+                                >
+                                  →
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Description */}
                         <div className={styles.formGroup}>
@@ -1114,33 +1107,64 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           )}
                         </div>
 
-                        {/* Upload Images / Add Text Block */}
-                        <div className={styles.mediaSection}>
-                          <div className={styles.uploadSection}>
-                            <label className={styles.formLabel}>Upload Images</label>
-                            <input
-                              type="file"
-                              multiple
-                              accept="image/*"
-                              onChange={handleImageUpload}
-                              disabled={isLoading}
-                              className={styles.uploadInput}
-                            />
-                            {isLoading && <div className={styles.uploadingText}>Uploading...</div>}
+                        {/* Cover image picker grid for parent-type collections */}
+                        {isParent && isSelectingCoverImage && (
+                          <div className={styles.coverImagePickerGrid}>
+                            {currentState?.childCollectionImages &&
+                            currentState.childCollectionImages.length > 0 ? (
+                              currentState.childCollectionImages.map(img => (
+                                <div
+                                  key={img.id}
+                                  className={styles.coverImagePickerItem}
+                                  onClick={() => handleCoverImageClick(img.id)}
+                                >
+                                  <Image
+                                    src={img.imageUrl}
+                                    alt={img.title || ''}
+                                    width={120}
+                                    height={90}
+                                  />
+                                </div>
+                              ))
+                            ) : (
+                              <div className={styles.noCoverImage}>
+                                Add child collections with images to select a cover image.
+                              </div>
+                            )}
                           </div>
+                        )}
 
-                          <div className={styles.textBlockSection}>
-                            <label className={styles.formLabel}>Add Text Block</label>
-                            <button
-                              type="button"
-                              onClick={handleCreateNewTextBlock}
-                              disabled={isLoading}
-                              className={styles.addTextBlockButton}
-                            >
-                              + Create New Text Block
-                            </button>
+                        {/* Upload Images / Add Text Block — hidden for parent-type collections */}
+                        {!isParent && (
+                          <div className={styles.mediaSection}>
+                            <div className={styles.uploadSection}>
+                              <label className={styles.formLabel}>Upload Images</label>
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                disabled={isLoading}
+                                className={styles.uploadInput}
+                              />
+                              {isLoading && (
+                                <div className={styles.uploadingText}>Uploading...</div>
+                              )}
+                            </div>
+
+                            <div className={styles.textBlockSection}>
+                              <label className={styles.formLabel}>Add Text Block</label>
+                              <button
+                                type="button"
+                                onClick={handleCreateNewTextBlock}
+                                disabled={isLoading}
+                                className={styles.addTextBlockButton}
+                              >
+                                + Create New Text Block
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
                       {/* RIGHT SECTION */}
