@@ -7,9 +7,9 @@ import { useCallback, useMemo, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
-import CollectionFilterChips, {
+import CollectionFilterBar, {
   toggleArrayFilter,
-} from '@/app/components/ContentCollection/CollectionFilterChips';
+} from '@/app/components/ContentCollection/CollectionFilterBar';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { useParallax } from '@/app/hooks/useParallax';
 import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
@@ -230,9 +230,10 @@ export default function CollectionContentRenderer({
             )}
           </div>
           {collectionFilter && (
-            <CollectionFilterChips
+            <CollectionFilterBar
               filterState={collectionFilter.filterState}
               filterOptions={collectionFilter.filterOptions}
+              filteredAvailable={collectionFilter.filteredAvailable}
               onFilterChange={collectionFilter.onFilterChange}
             />
           )}

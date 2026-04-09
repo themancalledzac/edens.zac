@@ -8,30 +8,18 @@ import { type ContentImageModel } from '@/app/types/Content';
 import {
   type CollectionFilterState,
   INITIAL_COLLECTION_FILTER_STATE,
+  type LensType,
 } from '@/app/types/GalleryFilter';
 import { extractFilterOptions, filterContent, isImageContent } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
+import { getLensType } from '@/app/utils/focalLength';
 
 import { CollectionFilterProvider } from './CollectionFilterContext';
 
 interface CollectionPageClientProps {
   collection: CollectionModel;
   chunkSize?: number;
-}
-
-/**
- * Parse a numeric focal length from a string like "50mm", "50 mm", "50.0mm".
- * Returns null if the string is missing, has no numeric content, or the value
- * falls outside the realistic lens range (4–2000mm).
- */
-function parseFocalLength(fl: string | null | undefined): number | null {
-  if (!fl) return null;
-  const match = fl.match(/^(\d+(?:\.\d+)?)\s*(?:mm)?$/i);
-  if (!match?.[1]) return null;
-  const value = Number.parseFloat(match[1]);
-  if (value < 4 || value > 2000) return null;
-  return value;
 }
 
 /**
@@ -53,14 +41,14 @@ function sortByDate(images: ContentImageModel[], direction: 'asc' | 'desc'): Con
 /**
  * Extracts filter options specific to collection pages.
  * Uses the shared extractFilterOptions with 90% tag exclusion, plus
- * the >1 distinct rule for cameras/lenses and focal length stops.
+ * the >1 distinct rule for cameras/lenses and lens type categories.
  */
 function extractCollectionFilterOptions(images: ContentImageModel[]): {
   tags: string[];
   people: string[];
   cameras: string[];
   lenses: string[];
-  focalLengthStops: number[];
+  lensTypes: LensType[];
 } {
   const baseOptions = extractFilterOptions(images, 0.9);
 
@@ -68,15 +56,16 @@ function extractCollectionFilterOptions(images: ContentImageModel[]): {
   const cameras = baseOptions.cameras.length > 1 ? baseOptions.cameras : [];
   const lenses = baseOptions.lenses.length > 1 ? baseOptions.lenses : [];
 
-  // Focal length stops: sorted distinct values, only show if 2+ distinct
-  const flSet = new Set<number>();
+  // Lens types: only show if 2+ distinct categories present
+  const lensTypeSet = new Set<LensType>();
   for (const img of images) {
-    const fl = parseFocalLength(img.focalLength);
-    if (fl !== null) flSet.add(fl);
+    const lt = getLensType(img.focalLength);
+    if (lt !== null) lensTypeSet.add(lt);
   }
-  const focalLengthStops = flSet.size >= 2 ? Array.from(flSet).sort((a, b) => a - b) : [];
+  const typeOrder: LensType[] = ['wide', 'normal', 'telephoto'];
+  const lensTypes = lensTypeSet.size >= 2 ? typeOrder.filter(t => lensTypeSet.has(t)) : [];
 
-  return { tags: baseOptions.tags, people: baseOptions.people, cameras, lenses, focalLengthStops };
+  return { tags: baseOptions.tags, people: baseOptions.people, cameras, lenses, lensTypes };
 }
 
 export default function CollectionPageClient({ collection, chunkSize }: CollectionPageClientProps) {
@@ -103,7 +92,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
         people: [],
         cameras: [],
         lenses: [],
-        focalLengthStops: [],
+        lensTypes: [] as LensType[],
       };
     }
     return options;
@@ -136,7 +125,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
       filterState.selectedPeople.length > 0 ||
       filterState.selectedCameras.length > 0 ||
       filterState.selectedLenses.length > 0 ||
-      filterState.focalLengthRange !== null,
+      filterState.selectedLensTypes.length > 0,
     [filterState]
   );
 
@@ -145,19 +134,19 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     if (!hasActiveFilters) return allContent;
     let filtered = filterContent(allImages, criteria).filter(isImageContent);
 
-    // Apply focal length range filter (images without focalLength always pass through)
-    if (filterState.focalLengthRange) {
-      const [min, max] = filterState.focalLengthRange;
+    // Apply lens type filter — images without parseable focalLength are
+    // included intentionally so they aren't silently hidden by a lens-type chip.
+    if (filterState.selectedLensTypes.length > 0) {
       filtered = filtered.filter(img => {
-        const fl = parseFocalLength(img.focalLength);
-        return fl === null || (fl >= min && fl <= max);
+        const lt = getLensType(img.focalLength);
+        return lt === null || filterState.selectedLensTypes.includes(lt);
       });
     }
 
     const filteredImageIds = new Set(filtered.map(img => img.id));
     // Keep non-image content as-is, only filter images
     return allContent.filter(item => !isImageContent(item) || filteredImageIds.has(item.id));
-  }, [allContent, allImages, criteria, hasActiveFilters, filterState.focalLengthRange]);
+  }, [allContent, allImages, criteria, hasActiveFilters, filterState.selectedLensTypes]);
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
@@ -171,28 +160,20 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
 
   const showHighlyRated = hasRatingVariance && !isCollectionDominant;
 
-  // Dynamic available options: only show options present in filtered results
-  const availableOptions = useMemo(() => {
-    if (!hasActiveFilters) return { ...baseCollectionOptions, showHighlyRated };
-    const filteredOptions = extractCollectionFilterOptions(filteredImages);
-    return {
-      // Keep active selections visible even if they'd otherwise be hidden
-      tags: baseCollectionOptions.tags.filter(
-        t => filteredOptions.tags.includes(t) || filterState.selectedTags.includes(t)
-      ),
-      people: baseCollectionOptions.people.filter(
-        p => filteredOptions.people.includes(p) || filterState.selectedPeople.includes(p)
-      ),
-      cameras: baseCollectionOptions.cameras.filter(
-        c => filteredOptions.cameras.includes(c) || filterState.selectedCameras.includes(c)
-      ),
-      lenses: baseCollectionOptions.lenses.filter(
-        l => filteredOptions.lenses.includes(l) || filterState.selectedLenses.includes(l)
-      ),
-      focalLengthStops: baseCollectionOptions.focalLengthStops,
+  // Available options from filtered results — used to determine which chips are "available" vs "unavailable"
+  const filteredAvailableOptions = useMemo(() => {
+    if (!hasActiveFilters) return null;
+    return extractCollectionFilterOptions(filteredImages);
+  }, [hasActiveFilters, filteredImages]);
+
+  // All base options are always shown; filteredAvailableOptions determines grey-out state
+  const availableOptions = useMemo(
+    () => ({
+      ...baseCollectionOptions,
       showHighlyRated,
-    };
-  }, [hasActiveFilters, filteredImages, baseCollectionOptions, filterState, showHighlyRated]);
+    }),
+    [baseCollectionOptions, showHighlyRated]
+  );
 
   const contentBlocks = useMemo(() => {
     const processed = processContentBlocks(
@@ -220,9 +201,10 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     () => ({
       filterState,
       filterOptions: availableOptions,
+      filteredAvailable: filteredAvailableOptions,
       onFilterChange: handleFilterChange,
     }),
-    [filterState, availableOptions, handleFilterChange]
+    [filterState, availableOptions, filteredAvailableOptions, handleFilterChange]
   );
 
   const pageSize = collection.contentPerPage ?? 30;
@@ -232,16 +214,14 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     return dates.size > 1;
   }, [allImages]);
 
-  const hasFocalLengthVariance = baseCollectionOptions.focalLengthStops.length > 0;
-
   const hasOptions =
     showHighlyRated ||
     hasDateVariance ||
-    hasFocalLengthVariance ||
     baseCollectionOptions.tags.length > 0 ||
     baseCollectionOptions.people.length > 0 ||
     baseCollectionOptions.cameras.length > 0 ||
-    baseCollectionOptions.lenses.length > 0;
+    baseCollectionOptions.lenses.length > 0 ||
+    baseCollectionOptions.lensTypes.length > 0;
 
   const content = (
     <>
@@ -255,7 +235,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
         collectionData={collection}
       />
       {hasActiveFilters && filteredImages.length === 0 && (
-        <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary, #888)' }}>
+        <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
           No images match your filters.
         </p>
       )}

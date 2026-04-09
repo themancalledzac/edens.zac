@@ -17,7 +17,6 @@
  * @returns React Server Component wrapping entire application
  */
 import '@/app/styles/globals.css';
-import '@/app/styles/rangeSlider.css';
 
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
