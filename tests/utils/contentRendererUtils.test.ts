@@ -121,6 +121,7 @@ describe('contentRendererUtils', () => {
             contentType: 'IMAGE',
             orderIndex: 0,
             visible: true,
+            locations: [],
           },
         });
         const result = normalizeContentToRendererProps(collection, 500, 300, 'imageRight', false);

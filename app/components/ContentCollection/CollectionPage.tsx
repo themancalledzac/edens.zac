@@ -41,6 +41,7 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
     createdAt: col.createdAt,
     updatedAt: col.updatedAt,
     collectionDate: col.collectionDate,
+    locations: [],
   };
 }
 

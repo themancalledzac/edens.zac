@@ -11,7 +11,7 @@ import type {
   ContentImageUpdateRequest,
   ContentImageUpdateResponse,
 } from '@/app/types/Content';
-import { buildLocationDiff as buildLocationDiffUtil } from '@/app/utils/locationUtils';
+import { buildLocationsDiff } from '@/app/utils/locationUtils';
 
 // ============================================================================
 // Generic Update Utilities
@@ -143,16 +143,14 @@ export function getCommonValues(images: ContentImageModel[]): Partial<ContentIma
   if (areAllEqual(images, img => img.alt)) common.alt = first.alt;
   if (areAllEqual(images, img => img.author)) common.author = first.author;
 
-  // Location: compare by id if valid, otherwise by name
-  if (
-    areAllEqual(images, img => {
-      const loc = img.location;
-      if (!loc) return null;
-      // Use id for comparison if it's a valid id (> 0), otherwise use name
-      return loc.id > 0 ? loc.id : loc.name;
-    })
-  ) {
-    common.location = first.location;
+  // Locations: find intersection of location arrays across all images
+  {
+    const commonLocs = (first.locations ?? []).filter(loc =>
+      images.every(img => (img.locations ?? []).some(l => l.id === loc.id))
+    );
+    if (commonLocs.length > 0 || images.every(img => (img.locations ?? []).length === 0)) {
+      common.locations = commonLocs;
+    }
   }
 
   // Camera settings
@@ -431,23 +429,23 @@ function buildLensDiff(
 }
 
 /**
- * Build diff for location field using prev/newValue/remove pattern
- * Handles conversion from LocationModel (UI) to LocationUpdate (API)
+ * Build diff for locations field using prev/newValue/remove pattern (many-to-many)
+ * Handles conversion from LocationModel[] (UI) to LocationUpdate (API)
  * Uses shared location utility function
  *
- * @param updateLocation - LocationModel from updateState (or null)
- * @param currentLocation - Location object from currentState (or null)
+ * @param updateLocations - LocationModel array from updateState
+ * @param currentLocations - LocationModel array from currentState
  * @param diff - The diff object to update
  */
-function buildLocationDiff(
-  updateLocation: LocationModel | null | undefined,
-  currentLocation: LocationModel | null | undefined,
+function buildLocationsDiffField(
+  updateLocations: LocationModel[] | undefined,
+  currentLocations: LocationModel[] | undefined,
   diff: ContentImageUpdateRequest
 ): void {
-  const locationUpdate = buildLocationDiffUtil(updateLocation || null, currentLocation || null);
+  const locationUpdate = buildLocationsDiff(updateLocations ?? [], currentLocations ?? []);
 
   if (locationUpdate !== undefined) {
-    diff.location = locationUpdate;
+    diff.locations = locationUpdate;
   }
 }
 
@@ -632,14 +630,13 @@ function buildCollectionsDiff(
  * Build a diff between updateState (what user edited) and currentState (original)
  * Returns a ContentImageUpdateRequest with only changed fields
  *
- * @param updateState - The updated state from the form (location may be LocationModel instead of string)
+ * @param updateState - The updated state from the form
  * @param currentState - The original state before edits
  * @param availableFilmTypes - Optional list of available film types to determine if filmType is existing or new
  */
 export function buildImageUpdateDiff(
   updateState: Partial<ContentImageModel> & {
     id: number;
-    location?: { id: number; name: string } | null;
   },
   currentState: ContentImageModel,
   availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
@@ -677,7 +674,7 @@ export function buildImageUpdateDiff(
   buildCameraDiff(updateState.camera, currentState.camera, diff);
   buildLensDiff(updateState.lens, currentState.lens, diff);
 
-  buildLocationDiff(updateState.location, currentState.location, diff);
+  buildLocationsDiffField(updateState.locations, currentState.locations, diff);
 
   buildFilmTypeDiff(
     updateState.filmType,
@@ -852,7 +849,6 @@ export function handleDropdownChange(
 export function buildImageUpdatesForBulkEdit(
   updateState: Partial<ContentImageModel> & {
     id: number;
-    location?: { id: number; name: string } | null;
   },
   selectedImages: ContentImageModel[],
   selectedImageIds: number[],
@@ -868,6 +864,11 @@ export function buildImageUpdatesForBulkEdit(
   const originalCommonTagIds = new Set(
     (originalCommon.tags || [])
       .map(t => t.id)
+      .filter((id): id is number => id !== undefined && id > 0)
+  );
+  const originalCommonLocationIds = new Set(
+    (originalCommon.locations || [])
+      .map(l => l.id)
       .filter((id): id is number => id !== undefined && id > 0)
   );
 
@@ -902,6 +903,16 @@ export function buildImageUpdatesForBulkEdit(
       mergedUpdateState.tags = [...updateState.tags, ...imageSpecificTags];
     }
 
+    if (updateState.locations !== undefined) {
+      // Get image-specific locations (locations in current image but not in original common set)
+      const imageSpecificLocations = (currentImage.locations || []).filter(
+        l => l.id && l.id > 0 && !originalCommonLocationIds.has(l.id)
+      );
+
+      // Merge: updateState locations (common + new) + image-specific locations
+      mergedUpdateState.locations = [...updateState.locations, ...imageSpecificLocations];
+    }
+
     // Build diff: merged updateState against currentImage (individual state)
     return buildImageUpdateDiff(mergedUpdateState, currentImage, availableFilmTypes);
   });
@@ -917,7 +928,7 @@ export function buildImageUpdatesForBulkEdit(
  * @returns ContentImageUpdateRequest object for the single image
  */
 export function buildImageUpdateForSingleEdit(
-  updateState: ContentImageModel & { location?: { id: number; name: string } | null },
+  updateState: ContentImageModel,
   originalImage: ContentImageModel,
   availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
 ): ContentImageUpdateRequest {

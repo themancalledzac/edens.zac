@@ -67,10 +67,23 @@ export default function LocationPageClient({ images, collections }: LocationPage
     return filtered;
   }, [images, criteria, filterState.dateSortDirection]);
 
-  const filterCounts: FilterCounts = useMemo(
-    () => computeFilterCounts(images, criteria, availableOptions),
-    [images, criteria, availableOptions]
-  );
+  const filterCounts: FilterCounts = useMemo(() => {
+    try {
+      return computeFilterCounts(images, criteria, availableOptions);
+    } catch (error) {
+      console.error('Failed to compute filter counts:', error);
+      return {
+        highlyRated: 0,
+        film: 0,
+        digital: 0,
+        collections: {},
+        tags: {},
+        people: {},
+        cameras: {},
+        lenses: {},
+      };
+    }
+  }, [images, criteria, availableOptions]);
 
   const contentBlocks = useMemo(() => processContentBlocks(filteredImages, true), [filteredImages]);
 

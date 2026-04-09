@@ -33,8 +33,10 @@ export interface CollectionFilterState {
   readonly selectedLenses: readonly string[];
   highlyRatedOnly: boolean;
   dateSortDirection: 'asc' | 'desc' | 'off';
-  focalLengthRange: readonly [number, number] | null;
+  readonly selectedLensTypes: readonly LensType[];
 }
+
+export type LensType = 'wide' | 'normal' | 'telephoto';
 
 export const INITIAL_COLLECTION_FILTER_STATE: CollectionFilterState = Object.freeze({
   selectedTags: Object.freeze([] as readonly string[]),
@@ -43,5 +45,5 @@ export const INITIAL_COLLECTION_FILTER_STATE: CollectionFilterState = Object.fre
   selectedLenses: Object.freeze([] as readonly string[]),
   highlyRatedOnly: false,
   dateSortDirection: 'off' as const,
-  focalLengthRange: null,
+  selectedLensTypes: Object.freeze([] as readonly LensType[]),
 });

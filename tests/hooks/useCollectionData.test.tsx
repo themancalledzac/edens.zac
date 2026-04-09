@@ -62,6 +62,7 @@ describe('useCollectionData', () => {
       type: CollectionType.PORTFOLIO,
       visible: true,
       displayMode: 'CHRONOLOGICAL',
+      locations: [],
       content: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',

@@ -133,12 +133,14 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   // Handle both array response and paginated wrapper
   if (Array.isArray(result)) return result;
   if ('content' in result && Array.isArray(result.content)) return result.content;
-  console.warn(
+  console.error(
     '[searchImages] Unexpected response shape:',
     typeof result,
     result !== null && typeof result === 'object' ? Object.keys(result) : ''
   );
-  return [];
+  throw new Error(
+    `[searchImages] Unexpected response shape: expected array or { content: [] }, got ${typeof result}`
+  );
 }
 
 /**

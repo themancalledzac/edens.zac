@@ -75,8 +75,8 @@ function imageMatchesQuery(image: ContentImageModel, query: string): boolean {
   if (matchesQuery(image.description, query)) return true;
   if (matchesQuery(image.alt, query)) return true;
 
-  // Check location
-  if (image.location && matchesQuery(image.location.name, query)) return true;
+  // Check locations
+  if (image.locations?.some(loc => matchesQuery(loc.name, query))) return true;
 
   // Check camera
   if (image.camera && matchesQuery(image.camera.name, query)) return true;
@@ -162,8 +162,10 @@ export function filterContent(
     }
 
     if (criteria.locations && criteria.locations.length > 0) {
-      const imageLocation = item.location?.name?.toLowerCase() ?? '';
-      const matchesLocation = criteria.locations.some(loc => loc.toLowerCase() === imageLocation);
+      const imageLocationNames = item.locations?.map(l => l.name.toLowerCase()) ?? [];
+      const matchesLocation = criteria.locations.some(loc =>
+        imageLocationNames.includes(loc.toLowerCase())
+      );
       if (!matchesLocation) return false;
     }
 
@@ -245,7 +247,14 @@ export interface ContentFilterOptions {
   hasColor: boolean;
 }
 
-export function extractFilterOptions(content: AnyContentModel[]): ContentFilterOptions {
+/**
+ * @param content - Array of content to extract options from
+ * @param tagExclusionRatio - Exclude tags appearing on >= this ratio of images (0-1). Default: no exclusion.
+ */
+export function extractFilterOptions(
+  content: AnyContentModel[],
+  tagExclusionRatio?: number
+): ContentFilterOptions {
   const ratingsSet = new Set<number>();
   const peopleSet = new Set<string>();
   const locationsSet = new Set<string>();
@@ -267,8 +276,8 @@ export function extractFilterOptions(content: AnyContentModel[]): ContentFilterO
 
     for (const p of item.people ?? []) peopleSet.add(p.name);
 
-    if (item.location?.name) {
-      locationsSet.add(item.location.name);
+    for (const loc of item.locations ?? []) {
+      if (loc.name) locationsSet.add(loc.name);
     }
 
     for (const t of item.tags ?? []) {
@@ -296,11 +305,16 @@ export function extractFilterOptions(content: AnyContentModel[]): ContentFilterO
     else hasColor = true;
   }
 
+  const imageCount = content.filter(isImageContent).length;
+  const exclusionThreshold =
+    tagExclusionRatio !== undefined && imageCount > 0 ? imageCount * tagExclusionRatio : Infinity;
+
   return {
     ratings: Array.from(ratingsSet).sort((a, b) => b - a),
     people: Array.from(peopleSet).sort(),
     locations: Array.from(locationsSet).sort(),
     tags: Array.from(tagFrequency.entries())
+      .filter(([, freq]) => freq < exclusionThreshold)
       .sort(([nameA, freqA], [nameB, freqB]) => freqB - freqA || nameA.localeCompare(nameB))
       .slice(0, 10)
       .map(([name]) => name),

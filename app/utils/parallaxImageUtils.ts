@@ -95,6 +95,7 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Content
       imageHeight,
       width: imageWidth,
       height: imageHeight,
+      locations: [],
       createdAt: content.createdAt,
       updatedAt: content.updatedAt,
       slug: 'slug' in content ? content.slug : undefined,
@@ -126,6 +127,7 @@ export function buildParallaxImageFromContent(content: AnyContentModel): Content
     imageUrl: content.imageUrl ?? '',
     imageWidth: content.width ?? 800,
     imageHeight: content.height ?? 800,
+    locations: [],
     createdAt: content.createdAt,
     updatedAt: content.updatedAt,
     ...createBaseParallaxProperties(

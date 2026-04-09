@@ -12,12 +12,15 @@ import {
 import { updateCollection } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
+import { type AnyContentModel, type ContentImageModel } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
+import { isParentType } from '@/app/utils/contentTypeGuards';
 
 import { COVER_IMAGE_FLASH_DURATION, handleCoverImageSelection } from './manageUtils';
 
 interface UseCoverImageSelectionParams {
   collection: CollectionModel | null;
+  childCollectionImages?: ContentImageModel[] | null;
   setCurrentState: Dispatch<SetStateAction<CollectionUpdateResponseDTO | null>>;
   setOperationLoading: Dispatch<SetStateAction<boolean>>;
   setError: Dispatch<SetStateAction<string | null>>;
@@ -25,6 +28,7 @@ interface UseCoverImageSelectionParams {
 
 export function useCoverImageSelection({
   collection,
+  childCollectionImages,
   setCurrentState,
   setOperationLoading,
   setError,
@@ -45,7 +49,10 @@ export function useCoverImageSelection({
     async (imageId: number) => {
       if (!collection) return;
 
-      const result = handleCoverImageSelection(imageId, collection.content);
+      const imagePool = isParentType(collection.type)
+        ? (childCollectionImages as AnyContentModel[] | undefined)
+        : collection.content;
+      const result = handleCoverImageSelection(imageId, imagePool);
 
       if (!result.success) {
         setError(result.error);
@@ -81,7 +88,7 @@ export function useCoverImageSelection({
         }, COVER_IMAGE_FLASH_DURATION);
       }
     },
-    [collection, setCurrentState, setOperationLoading, setError]
+    [collection, childCollectionImages, setCurrentState, setOperationLoading, setError]
   );
 
   return {

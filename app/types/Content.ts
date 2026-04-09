@@ -75,7 +75,7 @@ export interface ContentImageModel extends Content {
   rawFileName?: string | null;
   camera?: ContentCameraModel | null;
   focalLength?: string | null;
-  location?: LocationModel | null;
+  locations: LocationModel[];
   captureDate?: string | null;
   fStop?: string | null;
   alt?: string;
@@ -257,8 +257,8 @@ export interface ContentImageUpdateRequest {
   /** Focal length */
   focalLength?: string | null;
 
-  /** Location update using prev/newValue/remove pattern */
-  location?: LocationUpdate;
+  /** Locations update using prev/newValue/remove pattern (many-to-many) */
+  locations?: LocationUpdate;
 
   /** F-stop value */
   fStop?: string | null;

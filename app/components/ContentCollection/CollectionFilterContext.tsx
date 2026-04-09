@@ -2,19 +2,30 @@
 
 import { createContext, useContext } from 'react';
 
-import { type CollectionFilterState } from '@/app/types/GalleryFilter';
+import { type CollectionFilterState, type LensType } from '@/app/types/GalleryFilter';
 
 export interface CollectionFilterOptions {
   tags: string[];
   people: string[];
   cameras: string[];
   lenses: string[];
-  focalLengthStops: number[];
+  lensTypes: LensType[];
+  showHighlyRated: boolean;
 }
+
+/** Subset of options available after current filters are applied (for grey-out logic). null = no active filters. */
+export type FilteredAvailableOptions = {
+  tags: string[];
+  people: string[];
+  cameras: string[];
+  lenses: string[];
+  lensTypes: LensType[];
+} | null;
 
 interface CollectionFilterContextValue {
   filterState: CollectionFilterState;
   filterOptions: CollectionFilterOptions;
+  filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
 }
 

@@ -25,6 +25,7 @@ function mapUrlToCollectionType(urlType: string): CollectionType | null {
     artgallery: CollectionType.ART_GALLERY,
     'client-gallery': CollectionType.CLIENT_GALLERY,
     clientgallery: CollectionType.CLIENT_GALLERY,
+    parent: CollectionType.PARENT,
   };
   return mapping[normalized] || null;
 }

@@ -62,26 +62,6 @@ export const BASE_WEIGHT: Record<number, number> = {
   0: 1.0,
 };
 
-// Minimum width fractions for horizontal images (post-composition validation)
-export const MIN_WIDTH_FRACTION: Record<number, number> = {
-  5: 0.4,
-  4: 0.25,
-  3: 0.15,
-  2: 0.08,
-  1: 0.05,
-  0: 0.05,
-};
-
-// Minimum height fractions for vertical images (composition structure constraint)
-export const MIN_HEIGHT_FRACTION: Record<number, number> = {
-  5: 0.75,
-  4: 0.5,
-  3: 0.25,
-  2: 0.1,
-  1: 0.1,
-  0: 0.1,
-};
-
 // Reference AR for the AR factor in cv calculation
 export const REFERENCE_AR = 1.5;
 

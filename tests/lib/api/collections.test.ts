@@ -29,6 +29,7 @@ const createCollection = (id: number, overrides?: Partial<CollectionModel>): Col
   description: `Description ${id}`,
   type: CollectionType.PORTFOLIO,
   visible: true,
+  locations: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,

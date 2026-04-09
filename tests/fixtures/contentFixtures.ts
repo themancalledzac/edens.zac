@@ -22,6 +22,7 @@ export const createImageContent = (
   imageHeight: 1080,
   title: `Image ${id}`,
   rating: 0,
+  locations: [],
   ...overrides,
 });
 
@@ -82,6 +83,7 @@ export const createParallaxContent = (
   height: 1080,
   enableParallax: true,
   title: `Parallax ${id}`,
+  locations: [],
   ...overrides,
 });
 
@@ -139,6 +141,7 @@ export const createCollectionContent = (
     imageWidth: 1920,
     imageHeight: 1080,
     visible: true,
+    locations: [],
   },
   ...overrides,
 });
@@ -154,6 +157,7 @@ export const createCollectionModel = (
   slug: `collection-${id}`,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
+  locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }],
   coverImage: {
     id: id * 10,
     contentType: 'IMAGE',
@@ -162,9 +166,9 @@ export const createCollectionModel = (
     imageWidth: 1920,
     imageHeight: 1080,
     visible: true,
+    locations: [],
   },
   collectionDate: '2024-01-01',
-  location: 'Seattle, WA',
   description: 'A beautiful collection description',
   ...overrides,
 });

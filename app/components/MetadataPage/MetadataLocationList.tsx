@@ -16,6 +16,7 @@ export function MetadataLocationList({ items: initialItems }: MetadataLocationLi
   const [items, setItems] = useState(initialItems);
   const [editedNames, setEditedNames] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState<number | null>(null);
 
   const handleNameChange = (id: number, value: string) => {
     setEditedNames(prev => ({ ...prev, [id]: value }));
@@ -23,38 +24,48 @@ export function MetadataLocationList({ items: initialItems }: MetadataLocationLi
 
   const handleUpdate = async (item: LocationModel) => {
     const newName = editedNames[item.id]?.trim();
-    if (!newName) return;
+    if (!newName || saving !== null) return;
 
     setError(null);
-    const response = await fetchAdminPutJsonApi<LocationModel>(`/metadata/locations/${item.id}`, {
-      name: newName,
-    });
-    if (response !== null) {
-      setItems(prev => prev.map(i => (i.id === item.id ? response : i)));
-      setEditedNames(prev => {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
+    setSaving(item.id);
+    try {
+      const response = await fetchAdminPutJsonApi<LocationModel>(`/metadata/locations/${item.id}`, {
+        name: newName,
       });
-    } else {
+      if (response !== null) {
+        setItems(prev => prev.map(i => (i.id === item.id ? response : i)));
+        setEditedNames(prev => {
+          const next = { ...prev };
+          delete next[item.id];
+          return next;
+        });
+      } else {
+        setError(`Failed to update '${item.name}'`);
+      }
+    } catch {
       setError(`Failed to update '${item.name}'`);
+    } finally {
+      setSaving(null);
     }
   };
 
   const handleDelete = async (item: LocationModel) => {
-    if (!window.confirm(`Delete '${item.name}'?`)) return;
+    if (!window.confirm(`Delete '${item.name}'?`) || saving !== null) return;
 
     setError(null);
-    const response = await fetchAdminDeleteApi(`/metadata/locations/${item.id}`);
-    if (response !== null) {
+    setSaving(item.id);
+    try {
+      await fetchAdminDeleteApi(`/metadata/locations/${item.id}`);
       setItems(prev => prev.filter(i => i.id !== item.id));
       setEditedNames(prev => {
         const next = { ...prev };
         delete next[item.id];
         return next;
       });
-    } else {
+    } catch {
       setError(`Failed to delete '${item.name}'`);
+    } finally {
+      setSaving(null);
     }
   };
 
@@ -97,14 +108,16 @@ export function MetadataLocationList({ items: initialItems }: MetadataLocationLi
                     type="button"
                     className={styles.updateButton}
                     onClick={() => handleUpdate(item)}
+                    disabled={saving !== null}
                   >
-                    Update
+                    {saving === item.id ? 'Saving...' : 'Update'}
                   </button>
                 )}
                 <button
                   type="button"
                   className={styles.deleteButton}
                   onClick={() => handleDelete(item)}
+                  disabled={saving !== null}
                 >
                   Delete
                 </button>

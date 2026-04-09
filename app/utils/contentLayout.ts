@@ -193,6 +193,7 @@ export function convertCollectionContentToParallax(
     visible: col.visible ?? true,
     createdAt: col.createdAt,
     updatedAt: col.updatedAt,
+    locations: [],
   };
 }
 
@@ -230,7 +231,7 @@ export function convertCollectionContentToImage(col: ContentCollectionModel): Co
     rawFileName: coverImage?.rawFileName ?? null,
     camera: coverImage?.camera ?? null,
     focalLength: coverImage?.focalLength ?? null,
-    location: coverImage?.location ?? null,
+    locations: coverImage?.locations ?? [],
     captureDate: coverImage?.captureDate ?? null,
     fStop: coverImage?.fStop ?? null,
     alt: col.title || col.slug || '',
@@ -424,14 +425,11 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
     });
   }
 
-  if (collection.location) {
-    if (typeof collection.location === 'string') {
-      items.push({ type: 'location', value: collection.location });
-    } else {
-      const locationModel = collection.location as { name: string; slug?: string };
-      const locationItem: TextBlockItem = { type: 'location', value: locationModel.name };
-      if (locationModel.slug) {
-        locationItem.slug = locationModel.slug;
+  if (collection.locations && collection.locations.length > 0) {
+    for (const loc of collection.locations) {
+      const locationItem: TextBlockItem = { type: 'location', value: loc.name };
+      if (loc.slug) {
+        locationItem.slug = loc.slug;
       }
       items.push(locationItem);
     }
@@ -505,6 +503,7 @@ function createCoverImageBlock(collection: CollectionModel): ContentParallaxImag
     visible: true,
     createdAt: collection.createdAt,
     updatedAt: collection.updatedAt,
+    locations: [],
   };
 }
 
