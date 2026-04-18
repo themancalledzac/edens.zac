@@ -2,7 +2,6 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
-import type React from 'react';
 import { type Dispatch, type MouseEvent, type RefObject, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -73,7 +72,7 @@ export function FullScreenModal({
   };
 
   const modalContent = (
-    <div ref={modalRef} className={styles.imageFullScreenWrapper} role="dialog" aria-modal="true">
+    <div ref={modalRef} className={styles.imageFullScreenWrapper} role="dialog" aria-modal="true" aria-label="Image viewer">
       <div className={styles.overlayContainer} onClick={handleOverlayClick}>
         <div
           className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}
@@ -86,7 +85,6 @@ export function FullScreenModal({
             height={currentImage.imageHeight || IMAGE.defaultHeight}
             className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
             priority
-            unoptimized
             onLoad={() => {
               setLoadedImageIds(prev => {
                 if (prev.has(currentImage.id)) return prev;
