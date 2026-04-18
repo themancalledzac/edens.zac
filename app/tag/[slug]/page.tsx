@@ -7,6 +7,8 @@ import { getAllTags, searchImages } from '@/app/lib/api/content';
 
 const getCachedTags = cache(() => getAllTags());
 
+export const revalidate = 3600;
+
 interface TagPageRouteProps {
   params: Promise<{ slug: string }>;
 }
