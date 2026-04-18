@@ -10,6 +10,8 @@ html::-webkit-scrollbar {
 
 html,
 :root {
+  color-scheme: light;
+
   --content-width: 72rem;
   --content-min-width: 766px;
   --content-max-width: 800px;
@@ -186,6 +188,7 @@ body.scroll-locked {
   left: 0;
   right: 0;
   overflow: hidden;
+  scrollbar-gutter: stable;
 }
 
 body::-webkit-scrollbar {
