@@ -23,6 +23,7 @@ import {
   buildWrapperClassName,
 } from '@/app/utils/contentRendererUtils';
 import { slugify } from '@/app/utils/locationUtils';
+import { logger } from '@/app/utils/logger';
 
 import { BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
@@ -424,7 +425,7 @@ export default function CollectionContentRenderer({
 
   // Guard: log and recover from NaN dimensions before rendering
   if (!Number.isFinite(width) || !Number.isFinite(height)) {
-    console.error('[CollectionContentRenderer] NaN detected in props:', {
+    logger.error('CollectionContentRenderer', 'NaN detected in props', undefined, {
       contentId,
       contentType,
       width,
