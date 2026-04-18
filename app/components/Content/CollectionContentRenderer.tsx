@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
@@ -85,19 +85,24 @@ export default function CollectionContentRenderer({
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
 
-  const handleClick = useMemo(() => {
-    if (contentType === 'TEXT') {
-      return;
-    }
+  // Whether a meaningful click action exists for this item (used for cursor/style checks).
+  // Mirrors the guard logic in handleClick: TEXT and reorder mode produce no action,
+  // slug-only navigation fires when _hasSlug is set and no onImageClick is present,
+  // otherwise a handler exists when onImageClick or fullscreen is configured.
+  const hasClickHandler =
+    contentType !== 'TEXT' &&
+    !isReorderMode &&
+    ((_hasSlug !== undefined && !onImageClick) ||
+      !!onImageClick ||
+      !!(enableFullScreenView && onFullScreenImageClick));
 
-    if (isReorderMode) {
-      return;
-    }
+  const handleClick = useCallback(() => {
+    if (contentType === 'TEXT') return;
+    if (isReorderMode) return;
 
     if (_hasSlug && !onImageClick) {
-      return () => {
-        router.push(`/${_hasSlug}`);
-      };
+      router.push(`/${_hasSlug}`);
+      return;
     }
 
     const fullScreenContent: ContentImageModel | ContentParallaxImageModel = {
@@ -109,13 +114,14 @@ export default function CollectionContentRenderer({
       visible: true,
     } as ContentImageModel;
 
-    return createContentClickHandler(
+    const handler = createContentClickHandler(
       contentId,
       onImageClick,
       enableFullScreenView,
       onFullScreenImageClick,
       fullScreenContent
     );
+    handler?.();
   }, [
     contentId,
     contentType,
@@ -251,7 +257,7 @@ export default function CollectionContentRenderer({
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
-          hasClickHandler: !!handleClick,
+          hasClickHandler: hasClickHandler,
           isSelected: false,
         })}
         style={{
@@ -259,7 +265,7 @@ export default function CollectionContentRenderer({
           height: Number.isFinite(height) ? height : 200,
           boxSizing: 'border-box',
           position: 'relative',
-          cursor: handleClick ? 'pointer' : 'default',
+          cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
         <div className={cbStyles.imageWrapper} onClick={handleClick}>
@@ -272,7 +278,7 @@ export default function CollectionContentRenderer({
             width={imageWidth || undefined}
             height={imageHeight || undefined}
             className={cbStyles.nonParallaxImage}
-            style={{ cursor: handleClick ? 'pointer' : 'default' }}
+            style={{ cursor: hasClickHandler ? 'pointer' : 'default' }}
           >
             <source src={imageUrl} type="video/mp4" />
           </video>
@@ -398,7 +404,7 @@ export default function CollectionContentRenderer({
       : {
           className: cbStyles.nonParallaxImage,
           style: {
-            cursor: handleClick ? ('pointer' as const) : ('default' as const),
+            cursor: hasClickHandler ? ('pointer' as const) : ('default' as const),
           },
         }),
   };
@@ -467,7 +473,7 @@ export default function CollectionContentRenderer({
           includeDragContainer: false,
           enableParallax,
           isMobile,
-          hasClickHandler: !!handleClick,
+          hasClickHandler: hasClickHandler,
           isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
         }),
     style: {
@@ -475,7 +481,7 @@ export default function CollectionContentRenderer({
       height: validHeight,
       boxSizing: 'border-box' as const,
       position: 'relative' as const,
-      cursor: handleClick ? 'pointer' : 'default',
+      cursor: hasClickHandler ? 'pointer' : 'default',
     },
     ...(enableParallax && { ref: parallaxRef }),
   };
