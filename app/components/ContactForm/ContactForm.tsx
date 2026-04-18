@@ -2,6 +2,8 @@
 
 import { type ChangeEvent, type SubmitEvent, useState } from 'react';
 
+import { BREAKPOINTS } from '@/app/constants';
+
 import styles from './ContactForm.module.scss';
 
 interface FormData {
@@ -43,7 +45,7 @@ export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const mailToLink = generateMailToLink(formData);
-    const isMobile = window.innerWidth < 768;
+    const isMobile = window.innerWidth < BREAKPOINTS.mobile;
 
     if (isMobile) {
       window.location.href = mailToLink;
