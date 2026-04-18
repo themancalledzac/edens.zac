@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useMemo, useState } from 'react';
 
 import ContentFilter from '@/app/components/ContentFilter/ContentFilter';
@@ -63,15 +64,12 @@ function getMockSearchContent(): ContentImageModel[] {
  * Inner search page content — wrapped in Suspense for useSearchParams
  */
 function SearchPageContent() {
+  const searchParams = useSearchParams();
   const mockContent = useMemo(() => getMockSearchContent(), []);
 
   const [filteredContent, setFilteredContent] = useState<AnyContentModel[]>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const criteria = parseFilterFromParams(params);
-      return filterContent(mockContent, criteria);
-    }
-    return mockContent;
+    const criteria = parseFilterFromParams(searchParams);
+    return filterContent(mockContent, criteria);
   });
 
   const handleFilterChange = useCallback((filtered: AnyContentModel[]) => {
