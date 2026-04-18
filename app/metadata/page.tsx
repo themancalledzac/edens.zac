@@ -1,7 +1,7 @@
 import { MetadataPageClient } from '@/app/components/MetadataPage/MetadataPageClient';
 import { getMetadata } from '@/app/lib/api/collections';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 export default async function MetadataPage() {
   const metadata = await getMetadata();
