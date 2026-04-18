@@ -8,6 +8,7 @@ import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
@@ -93,7 +94,7 @@ export function MenuDropdown({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        const isDesktop = window.innerWidth >= 768;
+        const isDesktop = window.innerWidth >= BREAKPOINTS.mobile;
         if (isDesktop) {
           onClose();
         }
@@ -105,6 +106,21 @@ export function MenuDropdown({
     }
 
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
+
+  // Escape key to close dropdown
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   useBodyScrollLock(isOpen);
