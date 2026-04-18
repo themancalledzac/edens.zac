@@ -30,7 +30,7 @@ export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderP
         <div className={styles.navBarWrapper}>
           <div className={styles.navBarLeftWrapper}>
             <Link href="/" className={styles.title}>
-              <h2>Zac Edens</h2>
+              <span>Zac Edens</span>
             </Link>
           </div>
           <div className={styles.menuWrapper}>

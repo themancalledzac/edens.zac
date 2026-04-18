@@ -143,7 +143,7 @@ export function MenuDropdown({
       <div className={styles.dropdownMenuOptionsWrapper}>
         <div className={styles.dropdownMenuItem}>
           <button type="button" className={styles.dropdownMenuButton} onClick={handleToggle.about}>
-            <h2 className={styles.dropdownMenuOptions}>About</h2>
+            <span className={styles.dropdownMenuOptions}>About</span>
           </button>
         </div>
 
@@ -155,7 +155,7 @@ export function MenuDropdown({
             className={styles.dropdownMenuButton}
             onClick={handleToggle.contact}
           >
-            <h2 className={styles.dropdownMenuOptions}>Contact</h2>
+            <span className={styles.dropdownMenuOptions}>Contact</span>
           </button>
         </div>
 
@@ -169,7 +169,7 @@ export function MenuDropdown({
             className={styles.dropdownMenuButton}
             onClick={handleNavigation.blogs}
           >
-            <h2 className={styles.dropdownMenuOptions}>Blogs</h2>
+            <span className={styles.dropdownMenuOptions}>Blogs</span>
           </button>
         </div>
 
@@ -181,7 +181,7 @@ export function MenuDropdown({
                 className={styles.dropdownMenuButton}
                 onClick={handleNavigation.create}
               >
-                <h2 className={styles.dropdownMenuOptions}>Create</h2>
+                <span className={styles.dropdownMenuOptions}>Create</span>
               </button>
             </div>
           )}
@@ -193,7 +193,7 @@ export function MenuDropdown({
               className={styles.dropdownMenuButton}
               onClick={handleNavigation.update}
             >
-              <h2 className={styles.dropdownMenuOptions}>Update</h2>
+              <span className={styles.dropdownMenuOptions}>Update</span>
             </button>
           </div>
         )}
@@ -205,7 +205,7 @@ export function MenuDropdown({
               className={styles.dropdownMenuButton}
               onClick={handleNavigation.metadata}
             >
-              <h2 className={styles.dropdownMenuOptions}>Metadata</h2>
+              <span className={styles.dropdownMenuOptions}>Metadata</span>
             </button>
           </div>
         )}
