@@ -136,7 +136,7 @@ export function MenuDropdown({
           onClick={onClose}
           aria-label="Close navigation menu"
         >
-          <CircleX className={styles.dropdownCloseIcon} />
+          <CircleX className={styles.dropdownCloseIcon} aria-hidden="true" />
         </button>
       </div>
 
@@ -220,7 +220,7 @@ export function MenuDropdown({
           onClick={handleNavigation.instagram}
           aria-label="Visit Instagram"
         >
-          <InstagramIcon size={32} />
+          <InstagramIcon size={32} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -228,7 +228,7 @@ export function MenuDropdown({
           onClick={handleNavigation.github}
           aria-label="Visit GitHub"
         >
-          <GitHubIcon size={32} className={styles.githubIcon} />
+          <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
         </button>
       </div>
     </div>

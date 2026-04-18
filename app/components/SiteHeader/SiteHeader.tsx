@@ -41,7 +41,7 @@ export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderP
               aria-label="Open navigation menu"
               aria-expanded={isMenuOpen}
             >
-              <AlignJustify className={styles.menu} />
+              <AlignJustify className={styles.menu} aria-hidden="true" />
             </button>
           </div>
         </div>
