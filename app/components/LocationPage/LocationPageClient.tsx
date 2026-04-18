@@ -14,6 +14,7 @@ import {
   type FilterCounts,
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
+import { logger } from '@/app/utils/logger';
 import { sortByDate } from '@/app/utils/sortByDate';
 
 import LocationCollections from './LocationCollections';
@@ -56,7 +57,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
     try {
       return computeFilterCounts(images, criteria, availableOptions);
     } catch (error) {
-      console.error('Failed to compute filter counts:', error);
+      logger.error('LocationPageClient', 'Failed to compute filter counts', error);
       return {
         highlyRated: 0,
         film: 0,
