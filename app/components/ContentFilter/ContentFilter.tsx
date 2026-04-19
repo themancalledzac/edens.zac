@@ -172,6 +172,7 @@ export default function ContentFilter({
                 type="button"
                 className={`${styles.chip} ${criteria.minRating === star ? styles.chipActive : ''}`}
                 onClick={() => setRating(criteria.minRating === star ? undefined : star)}
+                aria-pressed={criteria.minRating === star}
               >
                 {star}+
               </button>
@@ -190,6 +191,7 @@ export default function ContentFilter({
                 type="button"
                 className={`${styles.chip} ${criteria.people?.includes(person) ? styles.chipActive : ''}`}
                 onClick={() => toggleArrayFilter('people', person)}
+                aria-pressed={criteria.people?.includes(person) ?? false}
               >
                 {person}
               </button>
@@ -208,6 +210,7 @@ export default function ContentFilter({
                 type="button"
                 className={`${styles.chip} ${criteria.locations?.includes(location) ? styles.chipActive : ''}`}
                 onClick={() => toggleArrayFilter('locations', location)}
+                aria-pressed={criteria.locations?.includes(location) ?? false}
               >
                 {location}
               </button>
@@ -226,6 +229,7 @@ export default function ContentFilter({
                 type="button"
                 className={`${styles.chip} ${criteria.tags?.includes(tag) ? styles.chipActive : ''}`}
                 onClick={() => toggleArrayFilter('tags', tag)}
+                aria-pressed={criteria.tags?.includes(tag) ?? false}
               >
                 {tag}
               </button>
@@ -244,6 +248,7 @@ export default function ContentFilter({
                 type="button"
                 className={`${styles.chip} ${criteria.cameras?.includes(camera) ? styles.chipActive : ''}`}
                 onClick={() => toggleArrayFilter('cameras', camera)}
+                aria-pressed={criteria.cameras?.includes(camera) ?? false}
               >
                 {camera}
               </button>

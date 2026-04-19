@@ -1,8 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 
 import { INTERACTION } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
@@ -23,12 +22,12 @@ export function useFullScreenImage(): {
   fullScreenState: FullScreenState;
   loadedImageIds: Set<number>;
   showMetadata: boolean;
-  modalRef: React.RefObject<HTMLDivElement | null>;
-  isSwiping: React.RefObject<boolean>;
+  modalRef: RefObject<HTMLDivElement | null>;
+  isSwiping: RefObject<boolean>;
   showImage: (image: ImageBlock, allImages?: ImageBlock[]) => void;
-  hideImage: (e?: React.MouseEvent) => void;
-  toggleMetadata: (e: React.MouseEvent) => void;
-  setLoadedImageIds: React.Dispatch<React.SetStateAction<Set<number>>>;
+  hideImage: (e?: MouseEvent) => void;
+  toggleMetadata: (e: MouseEvent) => void;
+  setLoadedImageIds: Dispatch<SetStateAction<Set<number>>>;
   router: ReturnType<typeof useRouter>;
   isOpen: boolean;
   navigateToNext: () => void;
@@ -218,7 +217,7 @@ export function useFullScreenImage(): {
     };
   }, [isOpen, navigateToNext, navigateToPrevious, isMetadataControl]);
 
-  const toggleMetadata = useCallback((e: React.MouseEvent) => {
+  const toggleMetadata = useCallback((e: MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     setShowMetadata(prev => !prev);

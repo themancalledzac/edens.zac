@@ -16,8 +16,12 @@ interface LoadingSpinnerProps {
  */
 export function LoadingSpinner({ size = 'medium', color = 'white' }: LoadingSpinnerProps) {
   return (
-    <div className={`${styles.spinner} ${styles[size]} ${styles[color]}`}>
-      <div className={styles.circle} />
+    <div
+      className={`${styles.spinner} ${styles[size]} ${styles[color]}`}
+      role="status"
+      aria-label="Loading"
+    >
+      <div className={styles.circle} aria-hidden="true" />
     </div>
   );
 }

@@ -68,6 +68,7 @@ export default function LocationFilterBar({
       <div className={styles.toggleRow}>
         <button
           type="button"
+          aria-pressed={filterState.dateSortDirection !== 'off'}
           className={`${styles.chip} ${filterState.dateSortDirection !== 'off' ? styles.chipActive : ''}`}
           onClick={cycleDateSort}
         >
@@ -76,6 +77,7 @@ export default function LocationFilterBar({
 
         <button
           type="button"
+          aria-pressed={filterState.highlyRatedOnly}
           className={`${styles.chip} ${filterState.highlyRatedOnly ? styles.chipActive : ''}`}
           onClick={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
         >
@@ -85,6 +87,7 @@ export default function LocationFilterBar({
 
         <button
           type="button"
+          aria-pressed={filterState.filmFilter !== 'off'}
           className={`${styles.chip} ${filterState.filmFilter === 'film' ? styles.chipFilm : ''}${filterState.filmFilter === 'digital' ? styles.chipDigital : ''}`}
           onClick={cycleFilmFilter}
         >
@@ -105,6 +108,7 @@ export default function LocationFilterBar({
               <button
                 key={tag}
                 type="button"
+                aria-pressed={isSelected}
                 className={`${styles.chip} ${isSelected ? styles.chipActive : ''}`}
                 onClick={() => toggleTag(tag)}
               >
@@ -124,6 +128,7 @@ export default function LocationFilterBar({
               <button
                 key={person}
                 type="button"
+                aria-pressed={isSelected}
                 className={`${styles.chip} ${isSelected ? styles.chipActive : ''}`}
                 onClick={() => togglePerson(person)}
               >
