@@ -3,14 +3,14 @@ import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type ContentImageModel } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 
-import styles from './PersonPage.module.scss';
+import styles from './TaxonomyPage.module.scss';
 
-interface PersonPageProps {
-  personName: string;
+interface TaxonomyPageProps {
+  entityName: string;
   images: ContentImageModel[];
 }
 
-export default function PersonPage({ personName, images }: PersonPageProps) {
+export default function TaxonomyPage({ entityName, images }: TaxonomyPageProps) {
   const contentBlocks = processContentBlocks(images, true);
 
   return (
@@ -19,7 +19,7 @@ export default function PersonPage({ personName, images }: PersonPageProps) {
         <SiteHeader pageType="default" />
         <div className={styles.pageHeader}>
           <div className={styles.headerMeta}>
-            <h1 className={styles.pageName}>{personName}</h1>
+            <h1 className={styles.pageName}>{entityName}</h1>
             <span className={styles.imageCount}>
               {images.length} {images.length === 1 ? 'photo' : 'photos'}
             </span>

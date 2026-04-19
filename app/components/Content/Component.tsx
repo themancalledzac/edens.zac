@@ -17,6 +17,7 @@ import {
   processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
+import { logger } from '@/app/utils/logger';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
 import { BoxRenderer } from './BoxRenderer';
@@ -151,7 +152,7 @@ export default function Component({
       });
       return { rows: result, layoutError: null };
     } catch (error) {
-      console.error('[Component] processContentForDisplay error', error);
+      logger.error('Component', 'processContentForDisplay error', error);
       const message = error instanceof Error ? error.message : 'Unknown layout error';
       return { rows: [], layoutError: message };
     }

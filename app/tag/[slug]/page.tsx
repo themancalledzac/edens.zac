@@ -2,7 +2,7 @@ import { type Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
-import TagPage from '@/app/components/TagPage/TagPage';
+import TaxonomyPage from '@/app/components/TaxonomyPage/TaxonomyPage';
 import { getAllTags, searchImages } from '@/app/lib/api/content';
 
 const getCachedTags = cache(() => getAllTags());
@@ -65,5 +65,5 @@ export default async function TagPageRoute({ params }: TagPageRouteProps) {
 
   const images = await searchImages({ tagIds: [matchedTag.id] });
 
-  return <TagPage tagName={matchedTag.name} images={images} />;
+  return <TaxonomyPage entityName={matchedTag.name} images={images} />;
 }
