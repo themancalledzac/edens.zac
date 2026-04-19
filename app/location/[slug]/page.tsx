@@ -38,6 +38,8 @@ async function resolveLocationFromSlug(slug: string): Promise<ResolvedLocation |
 
 const getCachedLocation = cache(resolveLocationFromSlug);
 
+export const revalidate = 3600;
+
 /**
  * Generate SEO metadata for location pages.
  */

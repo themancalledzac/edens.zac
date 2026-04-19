@@ -7,6 +7,8 @@ import { getAllPeople, searchImages } from '@/app/lib/api/content';
 
 const getCachedPeople = cache(() => getAllPeople());
 
+export const revalidate = 3600;
+
 interface PersonPageRouteProps {
   params: Promise<{ slug: string }>;
 }

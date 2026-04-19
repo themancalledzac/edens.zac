@@ -1,9 +1,9 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
-import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -15,6 +15,14 @@ import {
 
 import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
+
+const FullScreenModal = dynamic(
+  () =>
+    import('@/app/components/FullScreenModal/FullScreenModal').then(
+      m => ({ default: m.FullScreenModal })
+    ),
+  { ssr: false }
+);
 
 const LOAD_MORE_THRESHOLD = '400px';
 const DEFAULT_CHUNK_SIZE = 50;

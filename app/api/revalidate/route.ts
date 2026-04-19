@@ -21,14 +21,14 @@ export async function POST(req: NextRequest) {
 
     // Revalidate single cache tag if provided
     if (tag && typeof tag === 'string') {
-      revalidateTag(tag, 'default');
+      revalidateTag(tag, 'max');
     }
 
     // Revalidate multiple cache tags if provided
     if (Array.isArray(tags)) {
       for (const t of tags) {
         if (typeof t === 'string') {
-          revalidateTag(t, 'default');
+          revalidateTag(t, 'max');
         }
       }
     }
