@@ -14,11 +14,12 @@
 }
 
 .formWrapper {
+  --form-chrome-height: 15rem; /* nav header + page padding */
   flex: 1;
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: calc(100vh - 15rem);
+  height: calc(100vh - var(--form-chrome-height));
   overflow-y: auto;
 }
 
