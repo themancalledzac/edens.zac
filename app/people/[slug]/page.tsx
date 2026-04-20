@@ -9,6 +9,11 @@ const getCachedPeople = cache(() => getAllPeople());
 
 export const revalidate = 3600;
 
+export async function generateStaticParams() {
+  const people = await getAllPeople();
+  return (people ?? []).map(person => ({ slug: person.slug }));
+}
+
 interface PersonPageRouteProps {
   params: Promise<{ slug: string }>;
 }

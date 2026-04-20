@@ -9,6 +9,11 @@ const getCachedTags = cache(() => getAllTags());
 
 export const revalidate = 3600;
 
+export async function generateStaticParams() {
+  const tags = await getAllTags();
+  return (tags ?? []).map(tag => ({ slug: tag.slug }));
+}
+
 interface TagPageRouteProps {
   params: Promise<{ slug: string }>;
 }
