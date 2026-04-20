@@ -325,8 +325,8 @@ describe('buildImageUpdateDiff', () => {
       const updateState = {
         id: 1,
         tags: [
-          { id: 1, name: 'Tag 1' },
-          { id: 2, name: 'Tag 2' },
+          { id: 1, name: 'Tag 1', slug: 'tag-1' },
+          { id: 2, name: 'Tag 2', slug: 'tag-2' },
         ],
       };
 
@@ -342,8 +342,8 @@ describe('buildImageUpdateDiff', () => {
       const updateState = {
         id: 1,
         tags: [
-          { id: 0, name: 'New Tag 1' },
-          { id: 0, name: 'New Tag 2' },
+          { id: 0, name: 'New Tag 1', slug: '' },
+          { id: 0, name: 'New Tag 2', slug: '' },
         ],
       };
 
@@ -357,8 +357,8 @@ describe('buildImageUpdateDiff', () => {
     it('should include remove when tags are removed', () => {
       const currentState = createImageContent(1, {
         tags: [
-          { id: 1, name: 'Tag 1' },
-          { id: 2, name: 'Tag 2' },
+          { id: 1, name: 'Tag 1', slug: 'tag-1' },
+          { id: 2, name: 'Tag 2', slug: 'tag-2' },
         ],
       });
       const updateState = { id: 1, tags: [] };
@@ -372,13 +372,13 @@ describe('buildImageUpdateDiff', () => {
 
     it('should handle mixed existing and new tags', () => {
       const currentState = createImageContent(1, {
-        tags: [{ id: 1, name: 'Existing Tag' }],
+        tags: [{ id: 1, name: 'Existing Tag', slug: 'existing-tag' }],
       });
       const updateState = {
         id: 1,
         tags: [
-          { id: 1, name: 'Existing Tag' },
-          { id: 0, name: 'New Tag' },
+          { id: 1, name: 'Existing Tag', slug: 'existing-tag' },
+          { id: 0, name: 'New Tag', slug: '' },
         ],
       };
 
@@ -393,15 +393,15 @@ describe('buildImageUpdateDiff', () => {
     it('should handle adding and removing tags simultaneously', () => {
       const currentState = createImageContent(1, {
         tags: [
-          { id: 1, name: 'Tag 1' },
-          { id: 2, name: 'Tag 2' },
+          { id: 1, name: 'Tag 1', slug: 'tag-1' },
+          { id: 2, name: 'Tag 2', slug: 'tag-2' },
         ],
       });
       const updateState = {
         id: 1,
         tags: [
-          { id: 2, name: 'Tag 2' },
-          { id: 0, name: 'New Tag' },
+          { id: 2, name: 'Tag 2', slug: 'tag-2' },
+          { id: 0, name: 'New Tag', slug: '' },
         ],
       };
 
@@ -416,11 +416,11 @@ describe('buildImageUpdateDiff', () => {
 
     it('should not include tags when unchanged', () => {
       const currentState = createImageContent(1, {
-        tags: [{ id: 1, name: 'Tag 1' }],
+        tags: [{ id: 1, name: 'Tag 1', slug: 'tag-1' }],
       });
       const updateState = {
         id: 1,
-        tags: [{ id: 1, name: 'Tag 1' }],
+        tags: [{ id: 1, name: 'Tag 1', slug: 'tag-1' }],
       };
 
       const result = buildImageUpdateDiff(updateState, currentState);
@@ -435,8 +435,8 @@ describe('buildImageUpdateDiff', () => {
       const updateState = {
         id: 1,
         people: [
-          { id: 1, name: 'Person 1' },
-          { id: 2, name: 'Person 2' },
+          { id: 1, name: 'Person 1', slug: 'person-1' },
+          { id: 2, name: 'Person 2', slug: 'person-2' },
         ],
       };
 
@@ -452,8 +452,8 @@ describe('buildImageUpdateDiff', () => {
       const updateState = {
         id: 1,
         people: [
-          { id: 0, name: 'New Person 1' },
-          { id: 0, name: 'New Person 2' },
+          { id: 0, name: 'New Person 1', slug: '' },
+          { id: 0, name: 'New Person 2', slug: '' },
         ],
       };
 
@@ -467,8 +467,8 @@ describe('buildImageUpdateDiff', () => {
     it('should include remove when people are removed', () => {
       const currentState = createImageContent(1, {
         people: [
-          { id: 1, name: 'Person 1' },
-          { id: 2, name: 'Person 2' },
+          { id: 1, name: 'Person 1', slug: 'person-1' },
+          { id: 2, name: 'Person 2', slug: 'person-2' },
         ],
       });
       const updateState = { id: 1, people: [] };
@@ -482,13 +482,13 @@ describe('buildImageUpdateDiff', () => {
 
     it('should handle mixed existing and new people', () => {
       const currentState = createImageContent(1, {
-        people: [{ id: 1, name: 'Existing Person' }],
+        people: [{ id: 1, name: 'Existing Person', slug: 'existing-person' }],
       });
       const updateState = {
         id: 1,
         people: [
-          { id: 1, name: 'Existing Person' },
-          { id: 0, name: 'New Person' },
+          { id: 1, name: 'Existing Person', slug: 'existing-person' },
+          { id: 0, name: 'New Person', slug: '' },
         ],
       };
 
@@ -502,11 +502,11 @@ describe('buildImageUpdateDiff', () => {
 
     it('should not include people when unchanged', () => {
       const currentState = createImageContent(1, {
-        people: [{ id: 1, name: 'Person 1' }],
+        people: [{ id: 1, name: 'Person 1', slug: 'person-1' }],
       });
       const updateState = {
         id: 1,
-        people: [{ id: 1, name: 'Person 1' }],
+        people: [{ id: 1, name: 'Person 1', slug: 'person-1' }],
       };
 
       const result = buildImageUpdateDiff(updateState, currentState);
@@ -649,15 +649,15 @@ describe('buildImageUpdateDiff', () => {
       const currentState = createImageContent(1, {
         title: 'Original',
         camera: { id: 1, name: 'Old Camera' },
-        tags: [{ id: 1, name: 'Tag 1' }],
+        tags: [{ id: 1, name: 'Tag 1', slug: 'tag-1' }],
       });
       const updateState = {
         id: 1,
         title: 'New Title',
         camera: { id: 2, name: 'New Camera' },
         tags: [
-          { id: 1, name: 'Tag 1' },
-          { id: 0, name: 'New Tag' },
+          { id: 1, name: 'Tag 1', slug: 'tag-1' },
+          { id: 0, name: 'New Tag', slug: '' },
         ],
       };
 
@@ -910,30 +910,30 @@ describe('getCommonValues', () => {
       const images = [
         createImageContent(1, {
           tags: [
-            { id: 1, name: 'Tag 1' },
-            { id: 2, name: 'Tag 2' },
-            { id: 3, name: 'Tag 3' },
+            { id: 1, name: 'Tag 1', slug: 'tag-1' },
+            { id: 2, name: 'Tag 2', slug: 'tag-2' },
+            { id: 3, name: 'Tag 3', slug: 'tag-3' },
           ],
         }),
         createImageContent(2, {
           tags: [
-            { id: 2, name: 'Tag 2' },
-            { id: 3, name: 'Tag 3' },
-            { id: 4, name: 'Tag 4' },
+            { id: 2, name: 'Tag 2', slug: 'tag-2' },
+            { id: 3, name: 'Tag 3', slug: 'tag-3' },
+            { id: 4, name: 'Tag 4', slug: 'tag-4' },
           ],
         }),
       ];
       const result = getCommonValues(images);
       expect(result.tags).toEqual([
-        { id: 2, name: 'Tag 2' },
-        { id: 3, name: 'Tag 3' },
+        { id: 2, name: 'Tag 2', slug: 'tag-2' },
+        { id: 3, name: 'Tag 3', slug: 'tag-3' },
       ]);
     });
 
     it('should return empty array when no common tags', () => {
       const images = [
-        createImageContent(1, { tags: [{ id: 1, name: 'Tag 1' }] }),
-        createImageContent(2, { tags: [{ id: 2, name: 'Tag 2' }] }),
+        createImageContent(1, { tags: [{ id: 1, name: 'Tag 1', slug: 'tag-1' }] }),
+        createImageContent(2, { tags: [{ id: 2, name: 'Tag 2', slug: 'tag-2' }] }),
       ];
       const result = getCommonValues(images);
       expect(result.tags).toEqual([]);
@@ -943,19 +943,19 @@ describe('getCommonValues', () => {
       const images = [
         createImageContent(1, {
           people: [
-            { id: 1, name: 'Person 1' },
-            { id: 2, name: 'Person 2' },
+            { id: 1, name: 'Person 1', slug: 'person-1' },
+            { id: 2, name: 'Person 2', slug: 'person-2' },
           ],
         }),
         createImageContent(2, {
           people: [
-            { id: 2, name: 'Person 2' },
-            { id: 3, name: 'Person 3' },
+            { id: 2, name: 'Person 2', slug: 'person-2' },
+            { id: 3, name: 'Person 3', slug: 'person-3' },
           ],
         }),
       ];
       const result = getCommonValues(images);
-      expect(result.people).toEqual([{ id: 2, name: 'Person 2' }]);
+      expect(result.people).toEqual([{ id: 2, name: 'Person 2', slug: 'person-2' }]);
     });
 
     it('should return intersection of collections by collectionId', () => {
@@ -989,20 +989,20 @@ describe('getCommonValues', () => {
           title: 'Title',
           iso: 400,
           camera: { id: 1, name: 'Canon' },
-          tags: [{ id: 1, name: 'Tag 1' }],
+          tags: [{ id: 1, name: 'Tag 1', slug: 'tag-1' }],
         }),
         createImageContent(2, {
           title: 'Title',
           iso: 400,
           camera: { id: 1, name: 'Canon' },
-          tags: [{ id: 1, name: 'Tag 1' }],
+          tags: [{ id: 1, name: 'Tag 1', slug: 'tag-1' }],
         }),
       ];
       const result = getCommonValues(images);
       expect(result.title).toBe('Title');
       expect(result.iso).toBe(400);
       expect(result.camera).toEqual({ id: 1, name: 'Canon' });
-      expect(result.tags).toEqual([{ id: 1, name: 'Tag 1' }]);
+      expect(result.tags).toEqual([{ id: 1, name: 'Tag 1', slug: 'tag-1' }]);
     });
 
     it('should only include fields where ALL images match', () => {
@@ -1393,7 +1393,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
     // User adds Person B to all images
     // Expected: Image 1 should have both Person A and Person B, Images 2-3 should have Person B
     const imageWithPerson = createImageContent(1, {
-      people: [{ id: 1, name: 'Person A' }],
+      people: [{ id: 1, name: 'Person A', slug: 'person-a' }],
     });
     const imageWithoutPeople = createImageContent(2, {
       people: [],
@@ -1404,7 +1404,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
 
     const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
-      people: [{ id: 0, name: 'Person B' }], // New person added
+      people: [{ id: 0, name: 'Person B', slug: '' }], // New person added
     };
 
     const selectedImages = [imageWithPerson, imageWithoutPeople, imageWithoutPeople2];
@@ -1443,7 +1443,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
     // User adds existing Person B (id: 2) to all images
     // Expected: Only prev array should be updated, no remove array
     const imageWithPerson = createImageContent(1, {
-      people: [{ id: 1, name: 'Person A' }],
+      people: [{ id: 1, name: 'Person A', slug: 'person-a' }],
     });
     const imageWithoutPeople = createImageContent(2, {
       people: [],
@@ -1454,7 +1454,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
 
     const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
-      people: [{ id: 2, name: 'Person B' }], // Existing person (id: 2) added
+      people: [{ id: 2, name: 'Person B', slug: 'person-b' }], // Existing person (id: 2) added
     };
 
     const selectedImages = [imageWithPerson, imageWithoutPeople, imageWithoutPeople2];
@@ -1495,13 +1495,13 @@ describe('buildImageUpdatesForBulkEdit', () => {
     // User deselects Person B (removes from updateState)
     // Expected: Person B should be in remove array for all images
     const image1 = createImageContent(1, {
-      people: [{ id: 2, name: 'Person B' }],
+      people: [{ id: 2, name: 'Person B', slug: 'person-b' }],
     });
     const image2 = createImageContent(2, {
-      people: [{ id: 2, name: 'Person B' }],
+      people: [{ id: 2, name: 'Person B', slug: 'person-b' }],
     });
     const image3 = createImageContent(3, {
-      people: [{ id: 2, name: 'Person B' }],
+      people: [{ id: 2, name: 'Person B', slug: 'person-b' }],
     });
 
     const updateState: Partial<ContentImageModel> & { id: number } = {
@@ -1543,7 +1543,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
     // User adds Tag B to all images
     // Expected: Image 1 should have both Tag A and Tag B, Images 2-3 should have Tag B
     const imageWithTag = createImageContent(1, {
-      tags: [{ id: 1, name: 'Tag A' }],
+      tags: [{ id: 1, name: 'Tag A', slug: 'tag-a' }],
     });
     const imageWithoutTags = createImageContent(2, {
       tags: [],
@@ -1554,7 +1554,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
 
     const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
-      tags: [{ id: 0, name: 'Tag B' }], // New tag added
+      tags: [{ id: 0, name: 'Tag B', slug: '' }], // New tag added
     };
 
     const selectedImages = [imageWithTag, imageWithoutTags, imageWithoutTags2];
