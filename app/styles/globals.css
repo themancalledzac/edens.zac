@@ -1,20 +1,8 @@
-html {
-  /* Hide scrollbar completely on all browsers */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-  scrollbar-width: none; /* Firefox */
-}
-
-html::-webkit-scrollbar {
-  display: none; /* Safari and Chrome */
-}
-
 html,
 :root {
   color-scheme: light;
 
   --content-width: 72rem;
-  --content-min-width: 766px;
-  --content-max-width: 800px;
   --page-max-width: 1300px;
 
   /* Colors */
@@ -177,10 +165,6 @@ body {
   perspective: 1px;
   transform-style: preserve-3d;
   overflow-x: clip;
-
-  /* Hide scrollbar completely on all browsers */
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-  scrollbar-width: none; /* Firefox */
 }
 
 body.scroll-locked {
@@ -189,10 +173,6 @@ body.scroll-locked {
   right: 0;
   overflow: hidden;
   scrollbar-gutter: stable;
-}
-
-body::-webkit-scrollbar {
-  display: none; /* Safari and Chrome */
 }
 
 /* Universal scrollbar hiding for all elements */
