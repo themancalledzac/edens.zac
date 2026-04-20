@@ -18,8 +18,6 @@ export const BREAKPOINTS = {
 export const LAYOUT = {
   // Maximum widths
   pageMaxWidth: 1300, // CSS: --page-max-width
-  contentMaxWidth: 800, // CSS: --content-max-width
-  contentMinWidth: 766, // CSS: --content-min-width
 
   // Padding values (in pixels)
   desktopPadding: 25.6, // 0.8rem each side at ≥768px (0.8 * 16px * 2 = 25.6px)
