@@ -616,7 +616,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
    * Handle locations selection changes (multi-select)
    */
   const handleLocationsChange = useCallback((value: LocationModel | LocationModel[] | null) => {
-    const locations = Array.isArray(value) ? value : (value ? [value] : []);
+    const locations = Array.isArray(value) ? value : value ? [value] : [];
     const locationsUpdate = createLocationsUpdate(locations);
 
     setUpdateData(prev => ({
