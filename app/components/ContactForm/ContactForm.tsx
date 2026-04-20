@@ -1,85 +1,83 @@
 'use client';
 
-import { type ChangeEvent, type SubmitEvent, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 
-import { BREAKPOINTS } from '@/app/constants';
+import { type ContactResult, submitContactMessage } from '@/app/utils/contactApi';
 
 import styles from './ContactForm.module.scss';
 
-interface FormData {
-  title: string;
-  message: string;
-}
+type Status = 'idle' | 'submitting' | 'success' | 'error';
 
 interface ContactFormProps {
   onBack: () => void;
   onSubmit: () => void;
 }
 
-/**
- * Contact Form Component
- *
- * Generates mailto links with form data. Handles responsive behavior for
- * mobile vs desktop email client opening and includes email obfuscation
- * for spam protection.
- *
- * @param props.onBack - Callback to return to previous view (currently unused)
- * @param props.onSubmit - Called after successful form submission
- */
 export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
-  const [formData, setFormData] = useState<FormData>({ title: '', message: '' });
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<Status>('idle');
+  const [errorResult, setErrorResult] = useState<Extract<ContactResult, { ok: false }> | null>(
+    null
+  );
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const generateMailToLink = (formData: FormData) => {
-    const encodedEmail = 'ZWRlbnMuemFjQGdtYWlsLmNvbQ=='; // Base64 encoded — decoded at runtime for obfuscation
-    const email = atob(encodedEmail);
-    const subject = encodeURIComponent(formData.title);
-    const body = encodeURIComponent(formData.message);
-    return `mailto:${email}?subject=${subject}&body=${body}`;
-  };
-
-  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const mailToLink = generateMailToLink(formData);
-    const isMobile = window.innerWidth < BREAKPOINTS.mobile;
+    setStatus('submitting');
+    setErrorResult(null);
 
-    if (isMobile) {
-      window.location.href = mailToLink;
+    const result = await submitContactMessage({ email, message });
+
+    if (result.ok) {
+      setEmail('');
+      setMessage('');
+      setStatus('success');
+      onSubmit();
     } else {
-      window.open(mailToLink, '_blank', 'noopener,noreferrer');
+      setStatus('error');
+      setErrorResult(result);
     }
-
-    setFormData({ title: '', message: '' });
-    onSubmit();
   };
+
+  const fallbackHref = `mailto:${atob('ZWRlbnMuemFjQGdtYWlsLmNvbQ==')}`;
+  const showMailtoFallback =
+    status === 'error' && (errorResult?.code === 'server' || errorResult?.code === 'network');
 
   return (
     <div className={styles.contactFormContainer}>
       <div className={styles.formWrapper}>
-        <form className={styles.contactForm} onSubmit={handleSubmit}>
+        {status === 'success' && (
+          <div className={`${styles.statusBanner} ${styles.statusBannerSuccess}`}>
+            Message sent!
+          </div>
+        )}
+        {status === 'error' && errorResult && (
+          <div className={`${styles.statusBanner} ${styles.statusBannerError}`}>
+            {errorResult.message}{' '}
+            {showMailtoFallback && <a href={fallbackHref}>email me directly</a>}
+          </div>
+        )}
+        <form aria-label="contact form" className={styles.contactForm} onSubmit={handleSubmit}>
           <input
-            type="text"
-            name="title"
-            placeholder="Title"
-            className={styles.titleInput}
-            value={formData.title}
-            onChange={handleInputChange}
+            type="email"
+            name="email"
+            placeholder="Your email"
+            className={styles.emailInput}
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            maxLength={320}
             required
           />
           <textarea
-            placeholder="Your message"
             name="message"
+            placeholder="Your message"
             className={styles.messageTextarea}
-            value={formData.message}
-            onChange={handleInputChange}
+            value={message}
+            onChange={e => setMessage(e.target.value)}
             required
           />
-          <button type="submit" className={styles.submitButton}>
-            Send
+          <button type="submit" className={styles.submitButton} disabled={status === 'submitting'}>
+            {status === 'submitting' ? 'Sending...' : 'Send'}
           </button>
         </form>
       </div>
