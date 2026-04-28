@@ -56,6 +56,10 @@ export function MenuDropdown({
       router.push('/metadata');
       onClose();
     },
+    comments: () => {
+      router.push('/comments');
+      onClose();
+    },
     blogs: () => {
       router.push('/collectionType/blogs');
       onClose();
@@ -222,6 +226,18 @@ export function MenuDropdown({
               onClick={handleNavigation.metadata}
             >
               <span className={styles.dropdownMenuOptions}>Metadata</span>
+            </button>
+          </div>
+        )}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.comments}
+            >
+              <span className={styles.dropdownMenuOptions}>Comments</span>
             </button>
           </div>
         )}

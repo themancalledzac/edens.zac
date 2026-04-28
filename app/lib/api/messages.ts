@@ -1,4 +1,4 @@
-import { fetchAdminGetApi } from './core';
+import { fetchAdminDeleteApi, fetchAdminGetApi } from './core';
 
 export interface AdminMessageView {
   id: number;
@@ -18,4 +18,8 @@ export async function getAdminMessages(limit = 50, offset = 0): Promise<AdminMes
   return fetchAdminGetApi<AdminMessageList>(`/messages?limit=${limit}&offset=${offset}`, {
     cache: 'no-store',
   });
+}
+
+export async function deleteAdminMessage(id: number): Promise<void> {
+  await fetchAdminDeleteApi<void>(`/messages/${id}`);
 }
