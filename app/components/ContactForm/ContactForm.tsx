@@ -39,10 +39,6 @@ export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
     }
   };
 
-  const fallbackHref = `mailto:${atob('ZWRlbnMuemFjQGdtYWlsLmNvbQ==')}`;
-  const showMailtoFallback =
-    status === 'error' && (errorResult?.code === 'server' || errorResult?.code === 'network');
-
   return (
     <div className={styles.contactFormContainer}>
       <div className={styles.formWrapper}>
@@ -53,8 +49,7 @@ export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
         )}
         {status === 'error' && errorResult && (
           <div className={`${styles.statusBanner} ${styles.statusBannerError}`}>
-            {errorResult.message}{' '}
-            {showMailtoFallback && <a href={fallbackHref}>email me directly</a>}
+            {errorResult.message}
           </div>
         )}
         <form aria-label="contact form" className={styles.contactForm} onSubmit={handleSubmit}>
@@ -74,9 +69,19 @@ export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
             className={styles.messageTextarea}
             value={message}
             onChange={e => setMessage(e.target.value)}
+            maxLength={5000}
             required
           />
-          <button type="submit" className={styles.submitButton} disabled={status === 'submitting'}>
+          <small
+            className={`${styles.charCounter} ${message.length > 4500 ? styles.charCounterWarn : ''}`}
+          >
+            {message.length} / 5000
+          </small>
+          <button
+            type="submit"
+            className={styles.submitButton}
+            disabled={status === 'submitting' || message.length === 0 || message.length > 5000}
+          >
             {status === 'submitting' ? 'Sending...' : 'Send'}
           </button>
         </form>

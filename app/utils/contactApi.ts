@@ -7,7 +7,8 @@ export type ContactResult =
   | { ok: true; id: number; createdAt: string }
   | { ok: false; code: 'rate-limit' | 'validation' | 'server' | 'network'; message: string };
 
-const FALLBACK_ERROR_MESSAGE = 'Something went wrong. Please email me directly:';
+const SERVER_ERROR_MESSAGE = 'Something went wrong. Please try again in a bit.';
+const NETWORK_ERROR_MESSAGE = "Couldn't reach the server. Please try again in a bit.";
 
 const ENDPOINT = '/api/proxy/api/public/messages';
 
@@ -22,7 +23,7 @@ export async function submitContactMessage(payload: ContactPayload): Promise<Con
     if (res.status === 201) {
       const data = (await res.json()) as { id: number; createdAt: string };
       if (typeof data.id !== 'number' || typeof data.createdAt !== 'string') {
-        return { ok: false, code: 'server', message: FALLBACK_ERROR_MESSAGE };
+        return { ok: false, code: 'server', message: SERVER_ERROR_MESSAGE };
       }
       return { ok: true, id: data.id, createdAt: data.createdAt };
     }
@@ -31,7 +32,8 @@ export async function submitContactMessage(payload: ContactPayload): Promise<Con
       return {
         ok: false,
         code: 'rate-limit',
-        message: "You've sent a lot of messages. Try again in an hour.",
+        message:
+          'Whoa — too many messages from your network in the last hour. Please try again later.',
       };
     }
 
@@ -47,13 +49,13 @@ export async function submitContactMessage(payload: ContactPayload): Promise<Con
     return {
       ok: false,
       code: 'server',
-      message: FALLBACK_ERROR_MESSAGE,
+      message: SERVER_ERROR_MESSAGE,
     };
   } catch {
     return {
       ok: false,
       code: 'network',
-      message: FALLBACK_ERROR_MESSAGE,
+      message: NETWORK_ERROR_MESSAGE,
     };
   }
 }

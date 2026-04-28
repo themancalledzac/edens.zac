@@ -71,6 +71,16 @@ function forwardHeaders(req: NextRequest): Headers {
   }
   // Ensure JSON by default for non-multipart when client did not set
   if (!headers.has('accept')) headers.set('accept', 'application/json, */*;q=0.1');
+  // Forward sanitized real client IP for backend rate limiting.
+  // We strip x-forwarded-for / x-vercel-ip-* above to prevent header smuggling,
+  // then re-inject only what we trust.
+  const realIpRaw =
+    req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ??
+    req.headers.get('x-real-ip') ??
+    '';
+  if (realIpRaw && /^[\d.:A-Fa-f]+$/.test(realIpRaw)) {
+    headers.set('X-Real-IP', realIpRaw);
+  }
   headers.set('X-Internal-Secret', process.env.INTERNAL_API_SECRET ?? '');
   return headers;
 }
@@ -95,6 +105,26 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   const params = await context.params;
   const method = req.method;
   const targetUrl = buildTargetUrl(params.path || [], req.nextUrl.search);
+
+  const ALLOWED_ORIGINS = new Set(
+    [
+      process.env.NEXT_PUBLIC_APP_URL,
+      process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : null,
+      process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : null,
+    ].filter(Boolean) as string[]
+  );
+
+  const writeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+  if (writeMethods.has(method)) {
+    const origin = req.headers.get('origin');
+    if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const contentLength = Number(req.headers.get('content-length') ?? '0');
+    if (contentLength > 16384) {
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+    }
+  }
 
   const init: RequestInit = {
     method,

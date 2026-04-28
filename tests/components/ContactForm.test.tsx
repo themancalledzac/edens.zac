@@ -114,7 +114,8 @@ describe('ContactForm', () => {
     mockSubmit.mockResolvedValue({
       ok: false,
       code: 'rate-limit',
-      message: "You've sent a lot of messages. Try again in an hour.",
+      message:
+        'Whoa — too many messages from your network in the last hour. Please try again later.',
     });
     render(<ContactForm {...defaultProps} />);
 
@@ -128,7 +129,9 @@ describe('ContactForm', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("You've sent a lot of messages. Try again in an hour.")
+        screen.getByText(
+          'Whoa — too many messages from your network in the last hour. Please try again later.'
+        )
       ).toBeInTheDocument();
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
@@ -156,11 +159,11 @@ describe('ContactForm', () => {
     });
   });
 
-  it('shows error banner with mailto fallback link on server error', async () => {
+  it('shows server error message without link', async () => {
     mockSubmit.mockResolvedValue({
       ok: false,
       code: 'server',
-      message: 'Something went wrong. Please email me directly:',
+      message: 'Something went wrong. Please try again in a bit.',
     });
     render(<ContactForm {...defaultProps} />);
 
@@ -173,16 +176,18 @@ describe('ContactForm', () => {
     fireEvent.submit(screen.getByRole('form'));
 
     await waitFor(() => {
-      expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
-      expect(screen.getByRole('link')).toHaveAttribute('href', expect.stringContaining('mailto:'));
+      expect(
+        screen.getByText('Something went wrong. Please try again in a bit.')
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
   });
 
-  it('shows mailto fallback link on network error', async () => {
+  it('shows network error message without link', async () => {
     mockSubmit.mockResolvedValue({
       ok: false,
       code: 'network',
-      message: 'Something went wrong. Please email me directly:',
+      message: "Couldn't reach the server. Please try again in a bit.",
     });
     render(<ContactForm {...defaultProps} />);
 
@@ -195,8 +200,52 @@ describe('ContactForm', () => {
     fireEvent.submit(screen.getByRole('form'));
 
     await waitFor(() => {
-      expect(screen.getByRole('link')).toHaveAttribute('href', expect.stringContaining('mailto:'));
+      expect(
+        screen.getByText("Couldn't reach the server. Please try again in a bit.")
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
     });
+  });
+
+  it('renders character counter showing length under 4500', () => {
+    render(<ContactForm {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText('Your message'), {
+      target: { value: 'x'.repeat(4499) },
+    });
+    expect(screen.getByText('4499 / 5000')).toBeInTheDocument();
+    const counter = screen.getByText('4499 / 5000');
+    expect(counter).not.toHaveClass('charCounterWarn');
+  });
+
+  it('character counter goes red at 4500+ chars', () => {
+    render(<ContactForm {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText('Your message'), {
+      target: { value: 'x'.repeat(4501) },
+    });
+    expect(screen.getByText('4501 / 5000')).toBeInTheDocument();
+    const counter = screen.getByText('4501 / 5000');
+    expect(counter).toHaveClass('charCounterWarn');
+  });
+
+  it('submit button disabled when message is empty', () => {
+    render(<ContactForm {...defaultProps} />);
+    const button = screen.getByRole('button', { name: /^send$/i });
+    expect(button).toBeDisabled();
+  });
+
+  it('submit button disabled when message exceeds 5000', () => {
+    render(<ContactForm {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText('Your message'), {
+      target: { value: 'x'.repeat(5001) },
+    });
+    const button = screen.getByRole('button', { name: /^send$/i });
+    expect(button).toBeDisabled();
+  });
+
+  it('textarea has maxLength=5000', () => {
+    render(<ContactForm {...defaultProps} />);
+    const textarea = screen.getByPlaceholderText('Your message') as HTMLTextAreaElement;
+    expect(textarea.maxLength).toBe(5000);
   });
 
   it('does not show any banner or link in idle state', () => {

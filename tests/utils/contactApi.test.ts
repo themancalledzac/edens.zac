@@ -39,7 +39,8 @@ describe('submitContactMessage', () => {
     expect(result).toEqual({
       ok: false,
       code: 'rate-limit',
-      message: "You've sent a lot of messages. Try again in an hour.",
+      message:
+        'Whoa — too many messages from your network in the last hour. Please try again later.',
     });
   });
 
@@ -74,7 +75,7 @@ describe('submitContactMessage', () => {
     expect(result).toEqual({
       ok: false,
       code: 'server',
-      message: 'Something went wrong. Please email me directly:',
+      message: 'Something went wrong. Please try again in a bit.',
     });
   });
 
@@ -85,7 +86,7 @@ describe('submitContactMessage', () => {
     expect(result).toEqual({
       ok: false,
       code: 'network',
-      message: 'Something went wrong. Please email me directly:',
+      message: "Couldn't reach the server. Please try again in a bit.",
     });
   });
 });

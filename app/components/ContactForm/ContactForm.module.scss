@@ -116,3 +116,14 @@
     font-weight: 500;
   }
 }
+
+.charCounter {
+  align-self: flex-end;
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.charCounterWarn {
+  color: var(--color-error-text, #c00);
+}
