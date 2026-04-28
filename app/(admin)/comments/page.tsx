@@ -1,3 +1,4 @@
+import { SiteHeader } from '@/app/components/SiteHeader/SiteHeader';
 import { getAdminMessages } from '@/app/lib/api/messages';
 
 import styles from './Comments.module.scss';
@@ -12,11 +13,16 @@ export default async function CommentsPage() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <h1>Comments</h1>
-        <span className={styles.total}>{total} total</span>
-      </header>
-      <CommentsList initialMessages={messages} initialTotal={total} />
+      <main className={styles.main}>
+        <SiteHeader />
+        <div className={styles.pageHeader}>
+          <h1 className={styles.pageTitle}>Comments</h1>
+          <span className={styles.total}>{total} total</span>
+        </div>
+        <div className={styles.contentArea}>
+          <CommentsList initialMessages={messages} initialTotal={total} />
+        </div>
+      </main>
     </div>
   );
 }

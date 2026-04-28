@@ -126,12 +126,15 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     }
   }
 
+  // Buffer the body: NextRequest.body is a ReadableStream, and undici fetch
+  // requires `duplex: 'half'` to forward streams. Buffering avoids the streaming
+  // path and lets undici set Content-Length. Safe given the 16 KB cap above.
+  const body = ['GET', 'HEAD'].includes(method) ? undefined : await req.arrayBuffer();
+
   const init: RequestInit = {
     method,
     headers: forwardHeaders(req),
-    // Pass through the body for methods that can have one
-    body: ['GET', 'HEAD'].includes(method) ? undefined : req.body,
-    // Enable streaming/opaque forwarding
+    body,
     redirect: 'manual',
   };
 
