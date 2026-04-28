@@ -19,7 +19,8 @@ const PAGE = 50;
 const RTF = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 
 function relative(iso: string): string {
-  const diffMs = new Date(iso).getTime() - Date.now();
+  const utc = iso.endsWith('Z') || iso.includes('+') ? iso : `${iso}Z`;
+  const diffMs = new Date(utc).getTime() - Date.now();
   const minutes = Math.round(diffMs / 60_000);
   if (Math.abs(minutes) < 60) return RTF.format(minutes, 'minute');
   const hours = Math.round(minutes / 60);
