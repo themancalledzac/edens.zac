@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { hasValidAdminAuth,isAdminRoutesEnabled } from '@/app/utils/admin';
+import { hasValidAdminAuth, isAdminRoutesEnabled } from '@/app/utils/admin';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 /**
@@ -34,7 +34,10 @@ export function proxy(request: NextRequest) {
 
   // 3) Admin routes protection (App Router group (admin) does not alter URL)
   const isAdminRoute =
-    pathname === '/collection/create' || /\/collection\/.+\/edit$/.test(pathname);
+    pathname === '/collection/create' ||
+    /\/collection\/.+\/edit$/.test(pathname) ||
+    pathname === '/comments' ||
+    pathname.startsWith('/comments/');
 
   if (!isAdminRoute) {
     return NextResponse.next();
@@ -52,7 +55,10 @@ export function proxy(request: NextRequest) {
 
   if (!hasValidAdminAuth(request)) {
     // Optional: indicate auth requirement via header for debugging
-    return new NextResponse('Unauthorized', { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="admin"' } });
+    return new NextResponse('Unauthorized', {
+      status: 401,
+      headers: { 'WWW-Authenticate': 'Bearer realm="admin"' },
+    });
   }
 
   return NextResponse.next();
@@ -60,9 +66,11 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/catalog/:slug*',
     '/cdn/:path*',
     '/collection/create',
     '/collection/:slug/edit',
-    '/catalog/:slug*',
+    '/comments',
+    '/comments/:path*',
   ],
 };
