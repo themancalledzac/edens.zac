@@ -929,7 +929,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                     setUpdateData(prev => ({ ...prev, collectionDate: null }))
                                   }
                                   className={styles.dateClearButton}
-                                  title="Clear date"
+                                  aria-label="Clear date"
                                 >
                                   ✕
                                 </button>
@@ -1024,6 +1024,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                   }
                                   className={styles.stepperButton}
                                   disabled={(updateData.rowsWide ?? 4) <= 1}
+                                  aria-label="Decrease rows wide"
                                 >
                                   ←
                                 </button>
@@ -1054,6 +1055,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                   }
                                   className={styles.stepperButton}
                                   disabled={(updateData.rowsWide ?? 4) >= 6}
+                                  aria-label="Increase rows wide"
                                 >
                                   →
                                 </button>

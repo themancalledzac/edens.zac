@@ -66,9 +66,9 @@ export default function ReorderOverlay({
           onArrowLeft();
         }}
         disabled={isFirst}
-        title="Move left"
+        aria-label="Move left"
       >
-        ←
+        <span aria-hidden="true">←</span>
       </button>
       <button
         type="button"
@@ -78,9 +78,9 @@ export default function ReorderOverlay({
           onArrowRight();
         }}
         disabled={isLast}
-        title="Move right"
+        aria-label="Move right"
       >
-        →
+        <span aria-hidden="true">→</span>
       </button>
 
       {/* Place target overlay — shown when another image is picked up */}

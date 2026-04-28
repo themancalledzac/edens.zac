@@ -8,6 +8,7 @@ import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
@@ -93,7 +94,7 @@ export function MenuDropdown({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        const isDesktop = window.innerWidth >= 768;
+        const isDesktop = window.innerWidth >= BREAKPOINTS.mobile;
         if (isDesktop) {
           onClose();
         }
@@ -105,6 +106,21 @@ export function MenuDropdown({
     }
 
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
+
+  // Escape key to close dropdown
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   useBodyScrollLock(isOpen);
@@ -136,14 +152,14 @@ export function MenuDropdown({
           onClick={onClose}
           aria-label="Close navigation menu"
         >
-          <CircleX className={styles.dropdownCloseIcon} />
+          <CircleX className={styles.dropdownCloseIcon} aria-hidden="true" />
         </button>
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
         <div className={styles.dropdownMenuItem}>
           <button type="button" className={styles.dropdownMenuButton} onClick={handleToggle.about}>
-            <h2 className={styles.dropdownMenuOptions}>About</h2>
+            <span className={styles.dropdownMenuOptions}>About</span>
           </button>
         </div>
 
@@ -155,7 +171,7 @@ export function MenuDropdown({
             className={styles.dropdownMenuButton}
             onClick={handleToggle.contact}
           >
-            <h2 className={styles.dropdownMenuOptions}>Contact</h2>
+            <span className={styles.dropdownMenuOptions}>Contact</span>
           </button>
         </div>
 
@@ -169,7 +185,7 @@ export function MenuDropdown({
             className={styles.dropdownMenuButton}
             onClick={handleNavigation.blogs}
           >
-            <h2 className={styles.dropdownMenuOptions}>Blogs</h2>
+            <span className={styles.dropdownMenuOptions}>Blogs</span>
           </button>
         </div>
 
@@ -181,7 +197,7 @@ export function MenuDropdown({
                 className={styles.dropdownMenuButton}
                 onClick={handleNavigation.create}
               >
-                <h2 className={styles.dropdownMenuOptions}>Create</h2>
+                <span className={styles.dropdownMenuOptions}>Create</span>
               </button>
             </div>
           )}
@@ -193,7 +209,7 @@ export function MenuDropdown({
               className={styles.dropdownMenuButton}
               onClick={handleNavigation.update}
             >
-              <h2 className={styles.dropdownMenuOptions}>Update</h2>
+              <span className={styles.dropdownMenuOptions}>Update</span>
             </button>
           </div>
         )}
@@ -205,7 +221,7 @@ export function MenuDropdown({
               className={styles.dropdownMenuButton}
               onClick={handleNavigation.metadata}
             >
-              <h2 className={styles.dropdownMenuOptions}>Metadata</h2>
+              <span className={styles.dropdownMenuOptions}>Metadata</span>
             </button>
           </div>
         )}
@@ -220,7 +236,7 @@ export function MenuDropdown({
           onClick={handleNavigation.instagram}
           aria-label="Visit Instagram"
         >
-          <InstagramIcon size={32} />
+          <InstagramIcon size={32} aria-hidden="true" />
         </button>
         <button
           type="button"
@@ -228,7 +244,7 @@ export function MenuDropdown({
           onClick={handleNavigation.github}
           aria-label="Visit GitHub"
         >
-          <GitHubIcon size={32} className={styles.githubIcon} />
+          <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
         </button>
       </div>
     </div>

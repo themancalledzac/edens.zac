@@ -4,6 +4,7 @@ import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/ma
 import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
+import { logger } from '@/app/utils/logger';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
 import styles from './BoxRenderer.module.scss';
@@ -67,8 +68,9 @@ export function BoxRenderer({
   if (tree.type === 'leaf') {
     const size = sizes.get(tree.content.id);
     if (!size) {
-      console.error(
-        `BoxRenderer: no size entry for content ID ${tree.content.id}. Image will not render.`
+      logger.error(
+        'BoxRenderer',
+        `no size entry for content ID ${tree.content.id} — image will not render`
       );
       return <div className={styles.missingImage}>Image unavailable</div>;
     }

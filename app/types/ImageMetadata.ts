@@ -17,14 +17,14 @@ export interface IdNameModel {
  * Content Tag - Used to categorize images
  */
 export interface ContentTagModel extends IdNameModel {
-  slug?: string;
+  slug: string;
 }
 
 /**
  * Content Person - Represents people tagged in images
  */
 export interface ContentPersonModel extends IdNameModel {
-  slug?: string;
+  slug: string;
 }
 
 /**

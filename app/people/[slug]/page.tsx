@@ -2,10 +2,17 @@ import { type Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
-import PersonPage from '@/app/components/PersonPage/PersonPage';
+import TaxonomyPage from '@/app/components/TaxonomyPage/TaxonomyPage';
 import { getAllPeople, searchImages } from '@/app/lib/api/content';
 
 const getCachedPeople = cache(() => getAllPeople());
+
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const people = await getAllPeople();
+  return (people ?? []).map(person => ({ slug: person.slug }));
+}
 
 interface PersonPageRouteProps {
   params: Promise<{ slug: string }>;
@@ -63,5 +70,5 @@ export default async function PersonPageRoute({ params }: PersonPageRouteProps) 
 
   const images = await searchImages({ personIds: [matchedPerson.id] });
 
-  return <PersonPage personName={matchedPerson.name} images={images} />;
+  return <TaxonomyPage entityName={matchedPerson.name} images={images} />;
 }

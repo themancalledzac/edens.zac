@@ -1195,7 +1195,7 @@ describe('mergeNewMetadata', () => {
   it('should return updater function when newMetadata has tags', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        tags: [{ id: 1, name: 'New Tag' }],
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
       },
     });
     const currentState = createCollectionUpdateResponse();
@@ -1209,8 +1209,8 @@ describe('mergeNewMetadata', () => {
   it('should return updater function when newMetadata has multiple types', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        tags: [{ id: 1, name: 'New Tag' }],
-        people: [{ id: 1, name: 'New Person' }],
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
+        people: [{ id: 1, name: 'New Person', slug: 'new-person' }],
         cameras: [{ id: 1, name: 'New Camera' }],
       },
     });
@@ -1224,11 +1224,11 @@ describe('mergeNewMetadata', () => {
   it('should merge tags correctly (appends to existing)', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        tags: [{ id: 2, name: 'New Tag' }],
+        tags: [{ id: 2, name: 'New Tag', slug: 'new-tag' }],
       },
     });
     const prev = createCollectionUpdateResponse({
-      tags: [{ id: 1, name: 'Existing Tag' }],
+      tags: [{ id: 1, name: 'Existing Tag', slug: 'existing-tag' }],
     });
     const updater = mergeNewMetadata(response, null);
 
@@ -1236,8 +1236,8 @@ describe('mergeNewMetadata', () => {
     if (updater) {
       const result = updater(prev);
       expect(result.tags).toEqual([
-        { id: 1, name: 'Existing Tag' },
-        { id: 2, name: 'New Tag' },
+        { id: 1, name: 'Existing Tag', slug: 'existing-tag' },
+        { id: 2, name: 'New Tag', slug: 'new-tag' },
       ]);
     }
   });
@@ -1245,11 +1245,11 @@ describe('mergeNewMetadata', () => {
   it('should merge people correctly (appends to existing)', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        people: [{ id: 2, name: 'New Person' }],
+        people: [{ id: 2, name: 'New Person', slug: 'new-person' }],
       },
     });
     const prev = createCollectionUpdateResponse({
-      people: [{ id: 1, name: 'Existing Person' }],
+      people: [{ id: 1, name: 'Existing Person', slug: 'existing-person' }],
     });
     const updater = mergeNewMetadata(response, null);
 
@@ -1257,8 +1257,8 @@ describe('mergeNewMetadata', () => {
     if (updater) {
       const result = updater(prev);
       expect(result.people).toEqual([
-        { id: 1, name: 'Existing Person' },
-        { id: 2, name: 'New Person' },
+        { id: 1, name: 'Existing Person', slug: 'existing-person' },
+        { id: 2, name: 'New Person', slug: 'new-person' },
       ]);
     }
   });
@@ -1266,7 +1266,7 @@ describe('mergeNewMetadata', () => {
   it('should work when prev is null', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        tags: [{ id: 1, name: 'New Tag' }],
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
       },
     });
     const updater = mergeNewMetadata(response, null);
@@ -1274,14 +1274,14 @@ describe('mergeNewMetadata', () => {
     expect(updater).not.toBeNull();
     if (updater) {
       const result = updater(null);
-      expect(result.tags).toEqual([{ id: 1, name: 'New Tag' }]);
+      expect(result.tags).toEqual([{ id: 1, name: 'New Tag', slug: 'new-tag' }]);
     }
   });
 
   it('should work when prev has no metadata', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        tags: [{ id: 1, name: 'New Tag' }],
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
       },
     });
     const prev = createCollectionUpdateResponse({
@@ -1293,18 +1293,18 @@ describe('mergeNewMetadata', () => {
     expect(updater).not.toBeNull();
     if (updater) {
       const result = updater(prev);
-      expect(result.tags).toEqual([{ id: 1, name: 'New Tag' }]);
+      expect(result.tags).toEqual([{ id: 1, name: 'New Tag', slug: 'new-tag' }]);
     }
   });
 
   it('should preserve existing metadata that is not in newMetadata', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        tags: [{ id: 1, name: 'New Tag' }],
+        tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
       },
     });
     const prev = createCollectionUpdateResponse({
-      tags: [{ id: 0, name: 'Existing Tag' }],
+      tags: [{ id: 0, name: 'Existing Tag', slug: 'existing-tag' }],
       cameras: [{ id: 1, name: 'Existing Camera' }],
     });
     const updater = mergeNewMetadata(response, null);
@@ -1320,11 +1320,11 @@ describe('mergeNewMetadata', () => {
   it('should append duplicates (no deduplication)', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        tags: [{ id: 1, name: 'Tag' }],
+        tags: [{ id: 1, name: 'Tag', slug: 'tag' }],
       },
     });
     const prev = createCollectionUpdateResponse({
-      tags: [{ id: 1, name: 'Tag' }],
+      tags: [{ id: 1, name: 'Tag', slug: 'tag' }],
     });
     const updater = mergeNewMetadata(response, null);
 
@@ -1333,8 +1333,8 @@ describe('mergeNewMetadata', () => {
       const result = updater(prev);
       expect(result.tags).toHaveLength(2);
       expect(result.tags).toEqual([
-        { id: 1, name: 'Tag' },
-        { id: 1, name: 'Tag' },
+        { id: 1, name: 'Tag', slug: 'tag' },
+        { id: 1, name: 'Tag', slug: 'tag' },
       ]);
     }
   });

@@ -46,10 +46,10 @@ const sampleImages: ContentImageModel[] = [
     locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }],
     camera: { id: 1, name: 'Sony A7III' },
     tags: [
-      { id: 1, name: 'landscape' },
-      { id: 2, name: 'sunset' },
+      { id: 1, name: 'landscape', slug: 'landscape' },
+      { id: 2, name: 'sunset', slug: 'sunset' },
     ],
-    people: [{ id: 1, name: 'Alice' }],
+    people: [{ id: 1, name: 'Alice', slug: 'alice' }],
     captureDate: '2024-06-15T18:30:00Z',
   }),
   makeImage({
@@ -58,7 +58,7 @@ const sampleImages: ContentImageModel[] = [
     rating: 3,
     locations: [{ id: 2, name: 'Portland', slug: 'portland' }],
     camera: { id: 2, name: 'Nikon Z6' },
-    tags: [{ id: 3, name: 'architecture' }],
+    tags: [{ id: 3, name: 'architecture', slug: 'architecture' }],
     people: [],
     captureDate: '2024-03-10T12:00:00Z',
   }),
@@ -69,10 +69,10 @@ const sampleImages: ContentImageModel[] = [
     locations: [{ id: 3, name: 'Tokyo', slug: 'tokyo' }],
     camera: { id: 1, name: 'Sony A7III' },
     tags: [
-      { id: 4, name: 'street' },
-      { id: 1, name: 'landscape' },
+      { id: 4, name: 'street', slug: 'street' },
+      { id: 1, name: 'landscape', slug: 'landscape' },
     ],
-    people: [{ id: 2, name: 'Bob' }],
+    people: [{ id: 2, name: 'Bob', slug: 'bob' }],
     captureDate: '2024-09-01T08:00:00Z',
   }),
 ];
@@ -459,14 +459,14 @@ describe('extractFilterOptions', () => {
     const images = Array.from({ length: 12 }, (_, i) =>
       makeImage({
         id: i + 1,
-        tags: [{ id: i + 1, name: `tag-${String(i + 1).padStart(2, '0')}` }],
+        tags: [{ id: i + 1, name: `tag-${String(i + 1).padStart(2, '0')}`, slug: `tag-${String(i + 1).padStart(2, '0')}` }],
       })
     );
     // Add extra images for first 3 tags to give them higher frequency
     images.push(
-      makeImage({ id: 100, tags: [{ id: 1, name: 'tag-01' }] }),
-      makeImage({ id: 101, tags: [{ id: 2, name: 'tag-02' }] }),
-      makeImage({ id: 102, tags: [{ id: 3, name: 'tag-03' }] })
+      makeImage({ id: 100, tags: [{ id: 1, name: 'tag-01', slug: 'tag-01' }] }),
+      makeImage({ id: 101, tags: [{ id: 2, name: 'tag-02', slug: 'tag-02' }] }),
+      makeImage({ id: 102, tags: [{ id: 3, name: 'tag-03', slug: 'tag-03' }] })
     );
 
     const options = extractFilterOptions(images);
@@ -646,10 +646,10 @@ describe('computeFilterCounts', () => {
       isFilm: true,
       blackAndWhite: false,
       tags: [
-        { id: 1, name: 'landscape' },
-        { id: 2, name: 'sunset' },
+        { id: 1, name: 'landscape', slug: 'landscape' },
+        { id: 2, name: 'sunset', slug: 'sunset' },
       ],
-      people: [{ id: 1, name: 'Alice' }],
+      people: [{ id: 1, name: 'Alice', slug: 'alice' }],
       collections: [{ collectionId: 10, name: 'Trip A', visible: true, orderIndex: 0 }],
     }),
     makeImage({
@@ -657,8 +657,8 @@ describe('computeFilterCounts', () => {
       rating: 3,
       isFilm: false,
       blackAndWhite: true,
-      tags: [{ id: 3, name: 'architecture' }],
-      people: [{ id: 2, name: 'Bob' }],
+      tags: [{ id: 3, name: 'architecture', slug: 'architecture' }],
+      people: [{ id: 2, name: 'Bob', slug: 'bob' }],
       collections: [{ collectionId: 20, name: 'Trip B', visible: true, orderIndex: 0 }],
     }),
     makeImage({
@@ -666,7 +666,7 @@ describe('computeFilterCounts', () => {
       rating: 4,
       isFilm: true,
       blackAndWhite: true,
-      tags: [{ id: 1, name: 'landscape' }],
+      tags: [{ id: 1, name: 'landscape', slug: 'landscape' }],
       people: [],
       collections: [{ collectionId: 10, name: 'Trip A', visible: true, orderIndex: 1 }],
     }),
@@ -782,13 +782,13 @@ describe('filterContent with AND match mode', () => {
     makeImage({
       id: 10,
       tags: [
-        { id: 1, name: 'alpine' },
-        { id: 2, name: 'lake' },
-        { id: 3, name: 'mountain' },
+        { id: 1, name: 'alpine', slug: 'alpine' },
+        { id: 2, name: 'lake', slug: 'lake' },
+        { id: 3, name: 'mountain', slug: 'mountain' },
       ],
       people: [
-        { id: 1, name: 'Nate' },
-        { id: 2, name: 'Saxon' },
+        { id: 1, name: 'Nate', slug: 'nate' },
+        { id: 2, name: 'Saxon', slug: 'saxon' },
       ],
       camera: { id: 1, name: 'NIKON Z 6' },
       lens: { id: 1, name: 'NIKKOR Z 24-70mm f/4 S' },
@@ -796,20 +796,20 @@ describe('filterContent with AND match mode', () => {
     makeImage({
       id: 11,
       tags: [
-        { id: 1, name: 'alpine' },
-        { id: 4, name: 'forest' },
+        { id: 1, name: 'alpine', slug: 'alpine' },
+        { id: 4, name: 'forest', slug: 'forest' },
       ],
-      people: [{ id: 1, name: 'Nate' }],
+      people: [{ id: 1, name: 'Nate', slug: 'nate' }],
       camera: { id: 2, name: 'SONY A7III' },
       lens: { id: 2, name: 'FE 24-70mm f/2.8 GM' },
     }),
     makeImage({
       id: 12,
       tags: [
-        { id: 2, name: 'lake' },
-        { id: 3, name: 'mountain' },
+        { id: 2, name: 'lake', slug: 'lake' },
+        { id: 3, name: 'mountain', slug: 'mountain' },
       ],
-      people: [{ id: 2, name: 'Saxon' }],
+      people: [{ id: 2, name: 'Saxon', slug: 'saxon' }],
       camera: { id: 1, name: 'NIKON Z 6' },
       lens: { id: 1, name: 'NIKKOR Z 24-70mm f/4 S' },
     }),
@@ -890,15 +890,15 @@ describe('extractFilterOptions tag frequency', () => {
       makeImage({
         id: 40,
         tags: [
-          { id: 1, name: 'common' },
-          { id: 2, name: 'unique-a' },
+          { id: 1, name: 'common', slug: 'common' },
+          { id: 2, name: 'unique-a', slug: 'unique-a' },
         ],
       }),
       makeImage({
         id: 41,
         tags: [
-          { id: 1, name: 'common' },
-          { id: 3, name: 'unique-b' },
+          { id: 1, name: 'common', slug: 'common' },
+          { id: 3, name: 'unique-b', slug: 'unique-b' },
         ],
       }),
     ];
@@ -915,6 +915,7 @@ describe('extractFilterOptions tag frequency', () => {
     const tags = Array.from({ length: 15 }, (_, i) => ({
       id: i + 1,
       name: `tag-${String(i + 1).padStart(2, '0')}`,
+      slug: `tag-${String(i + 1).padStart(2, '0')}`,
     }));
     const images: ContentImageModel[] = [
       makeImage({ id: 50, tags: tags.slice(0, 5) }),

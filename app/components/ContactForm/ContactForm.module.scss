@@ -1,6 +1,5 @@
 /*
   ContactForm component styles
-  Extracted from MenuDropdown for better organization
 */
 
 .contactFormContainer {
@@ -30,7 +29,7 @@
   padding-bottom: 5px;
 }
 
-.titleInput {
+.emailInput {
   height: var(--menu-item-height);
   font-size: var(--text-lg);
   padding: var(--space-2);
@@ -87,4 +86,44 @@
   &:active {
     transform: translateY(1px);
   }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.statusBanner {
+  padding: var(--space-2);
+  border-radius: var(--radius-1);
+  font-size: var(--text-md);
+  margin-bottom: var(--space-2);
+}
+
+.statusBannerSuccess {
+  background-color: #f0fdf4;
+  color: var(--color-success-dark);
+  border: 1px solid var(--color-success);
+}
+
+.statusBannerError {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-error-border);
+
+  a {
+    color: var(--color-error-text);
+    font-weight: 500;
+  }
+}
+
+.charCounter {
+  align-self: flex-end;
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
+  margin-top: calc(var(--space-2) * -1);
+}
+
+.charCounterWarn {
+  color: var(--color-error-text, #c00);
 }
