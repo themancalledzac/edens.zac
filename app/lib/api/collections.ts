@@ -10,7 +10,6 @@ import { notFound } from 'next/navigation';
 import { PAGINATION, TIMING } from '@/app/constants';
 import {
   ApiError,
-  buildApiUrl,
   fetchAdminDeleteApi,
   fetchAdminGetApi,
   fetchAdminPostJsonApi,
@@ -160,7 +159,17 @@ export async function getCollectionsByLocation(
 
 /**
  * POST /api/read/collections/{slug}/access
- * Validate password-based access for a client gallery
+ *
+ * Validates password-based access for a client gallery. Routed through the BFF
+ * proxy at `/api/proxy/api/read/...` so it inherits `X-Internal-Secret` injection
+ * and Origin allowlist enforcement (matches the contact-messages template).
+ *
+ * On success, the backend sets an `HttpOnly; Secure; SameSite=Strict` access
+ * cookie. The browser stores it transparently — `credentials: 'same-origin'`
+ * ensures the cookie is accepted from the same-origin proxy response.
+ *
+ * Throws `ApiError` with status `429` when the rate limiter rejects the
+ * request, so callers can surface a friendly "too many attempts" message.
  */
 export async function validateClientGalleryAccess(
   slug: string,
@@ -168,26 +177,43 @@ export async function validateClientGalleryAccess(
 ): Promise<{ hasAccess: boolean }> {
   if (!slug) throw new Error('slug is required');
   if (!password) throw new Error('password is required');
-  const url = buildApiUrl('read', `/collections/${encodeURIComponent(slug)}/access`);
+  const url = `/api/proxy/api/read/collections/${encodeURIComponent(slug)}/access`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
     cache: 'no-store',
   });
   if (!res.ok) {
     let detail: unknown;
-    const ct = res.headers.get('content-type') || '';
+    const contentType = res.headers.get('content-type') || '';
     try {
-      detail = ct.includes('application/json') ? await res.json() : await res.text();
+      detail = contentType.includes('application/json') ? await res.json() : await res.text();
     } catch {
-      detail = await res.text();
+      detail = '';
     }
-    const message = typeof detail === 'string' ? detail : JSON.stringify(detail);
-    if (res.status === 404) throw new Error('Gallery not found');
-    throw new Error(`API ${res.status}: ${message}`);
+    const message =
+      typeof detail === 'string' && detail
+        ? detail
+        : (detail && typeof detail === 'object'
+          ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
+          : `API error: ${res.status}`);
+    if (res.status === 404) throw new ApiError('Gallery not found', 404);
+    throw new ApiError(message, res.status);
   }
-  return res.json() as Promise<{ hasAccess: boolean }>;
+  // Runtime-validate the response shape — backend should always return
+  // `{ hasAccess: boolean }` but a regression here would silently flip the gate
+  // to "unlocked" without proof of access.
+  const data: unknown = await res.json();
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    typeof (data as { hasAccess?: unknown }).hasAccess !== 'boolean'
+  ) {
+    throw new ApiError('Unexpected response shape from /access', res.status);
+  }
+  return { hasAccess: (data as { hasAccess: boolean }).hasAccess };
 }
 
 // ============================================================================
@@ -217,6 +243,50 @@ export async function updateCollection(
   updateData: CollectionUpdateRequest
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPutJsonApi<CollectionUpdateResponseDTO>(`/collections/${id}`, updateData);
+}
+
+/**
+ * Response shape for `POST /api/admin/collections/{id}/send-password`.
+ * Backend returns `{ sent: false, reason: 'email-disabled' }` when the SES
+ * feature flag is off — the password is still stored, just not emailed.
+ */
+export interface SendGalleryPasswordResponse {
+  sent: boolean;
+  reason?: string;
+}
+
+/**
+ * POST /api/admin/collections/{id}/send-password
+ *
+ * Sets a new password on a CLIENT_GALLERY collection AND emails the plaintext
+ * to the recipient in a single atomic action. Plaintext is never persisted —
+ * BCrypt is one-way, so this is the only way to deliver a password to the
+ * client. If admin needs to resend, they set a new password.
+ */
+export async function sendGalleryPassword(
+  id: number,
+  password: string,
+  email: string
+): Promise<SendGalleryPasswordResponse | null> {
+  return fetchAdminPostJsonApi<SendGalleryPasswordResponse>(`/collections/${id}/send-password`, {
+    password,
+    email,
+  });
+}
+
+/**
+ * Updates a CLIENT_GALLERY collection's password without sending an email.
+ * An empty string clears the password (gallery becomes unprotected). Thin
+ * wrapper over `updateCollection` so callers don't have to assemble the
+ * partial-update payload themselves.
+ */
+export async function setGalleryPassword(id: number, password: string): Promise<void> {
+  // updateCollection returns null on API failure — without this throw the admin UI
+  // shows "Password set." even when the backend never persisted the new hash.
+  const result = await updateCollection(id, { id, password });
+  if (result === null) {
+    throw new ApiError('Failed to update password — see network tab for details.', 500);
+  }
 }
 
 /**
