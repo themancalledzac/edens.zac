@@ -1,6 +1,6 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { type CollectionModel } from '@/app/types/Collection';
+import { type CollectionModel,CollectionType } from '@/app/types/Collection';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 
@@ -17,9 +17,15 @@ interface ContentCollectionPageProps {
  * Dimensions are clamped to a minimum 4:5 aspect ratio.
  */
 function collectionToContentModel(col: CollectionModel): ContentParallaxImageModel {
+  // Defense-in-depth: never render a coverImage for a password-protected CLIENT_GALLERY in
+  // list views. Backend BE-H5 strips it at the API, but a stale cache or future regression
+  // could re-expose it.
+  const isProtected =
+    col.type === CollectionType.CLIENT_GALLERY && col.isPasswordProtected === true;
+  const safeCoverImage = isProtected ? null : col.coverImage;
   const { imageWidth, imageHeight } = clampParallaxDimensions(
-    col.coverImage?.imageWidth,
-    col.coverImage?.imageHeight
+    safeCoverImage?.imageWidth,
+    safeCoverImage?.imageHeight
   );
 
   return {
@@ -30,7 +36,7 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
     slug: col.slug,
     collectionType: col.type,
     description: col.description ?? null,
-    imageUrl: col.coverImage?.imageUrl ?? '',
+    imageUrl: safeCoverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',
     imageWidth,
     imageHeight,

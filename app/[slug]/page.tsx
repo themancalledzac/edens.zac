@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { getAllCollections, getCollectionBySlug } from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
+import { CollectionType } from '@/app/types/Collection';
 
 interface CollectionPageProps {
   params: Promise<{
@@ -12,7 +13,10 @@ interface CollectionPageProps {
 
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
   const collections = await getAllCollections();
-  return collections.map(c => ({ slug: c.slug ?? '' })).filter(p => p.slug !== '');
+  return collections
+    .filter(c => c.type !== CollectionType.CLIENT_GALLERY) // exclude — served dynamically
+    .map(c => ({ slug: c.slug ?? '' }))
+    .filter(p => p.slug !== '');
 }
 
 const STATIC_FILES = ['favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json'];
@@ -28,21 +32,29 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
     const collection = await getCollectionBySlug(slug, 0, 500);
     const title = collection.title;
     const description = collection.description ?? `${title} — photography by Zac Eden`;
-    const images = collection.coverImage?.imageUrl ? [{ url: collection.coverImage.imageUrl }] : [];
+    // Suppress OG/Twitter image for protected client galleries — the cover image is private
+    // until the per-gallery password is verified, and meta tags are crawlable without auth.
+    const isProtected =
+      collection.type === CollectionType.CLIENT_GALLERY && collection.isPasswordProtected === true;
+    const images =
+      !isProtected && collection.coverImage?.imageUrl
+        ? [{ url: collection.coverImage.imageUrl }]
+        : [];
+    const safeDescription = isProtected ? 'Private gallery — password required.' : description;
 
     return {
-      title,
-      description,
+      title: isProtected ? `${title} — Private Gallery` : title,
+      description: safeDescription,
       openGraph: {
         title,
-        description,
+        description: safeDescription,
         images,
         type: 'website',
       },
       twitter: {
-        card: 'summary_large_image',
+        card: images.length > 0 ? 'summary_large_image' : 'summary',
         title,
-        description,
+        description: safeDescription,
         images: images.map(img => img.url),
       },
     };

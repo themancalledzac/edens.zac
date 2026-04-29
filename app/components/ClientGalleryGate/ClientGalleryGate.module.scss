@@ -77,6 +77,30 @@
   margin: 0;
 }
 
+.gateLoading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: var(--space-4) 0 0 0;
+}
+
+.gateSpinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border-medium);
+  border-top-color: var(--color-black);
+  border-radius: 50%;
+  animation: gateSpinnerRotate 0.8s linear infinite;
+}
+
+@keyframes gateSpinnerRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .gateButton {
   width: 100%;
   padding: var(--space-3) var(--space-4);

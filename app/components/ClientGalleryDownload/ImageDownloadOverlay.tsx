@@ -1,6 +1,8 @@
 'use client';
 
-import { type MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type MouseEvent, useCallback } from 'react';
+
+import { downloadImageUrl } from '@/app/lib/api/downloads';
 
 import styles from './ImageDownloadOverlay.module.scss';
 
@@ -11,26 +13,20 @@ interface ImageDownloadOverlayProps {
 /**
  * Image Download Overlay
  *
- * Individual image download button shown on hover for CLIENT_GALLERY images.
- * Currently a mock/placeholder. Will eventually call
- * GET /api/read/content/images/{id}/download to fetch the original.
+ * Per-image download button shown on hover for CLIENT_GALLERY images.
+ * Navigates to the BFF-routed download endpoint, which streams the WebP
+ * with `Content-Disposition: attachment` so the browser downloads rather
+ * than navigates. The httpOnly `gallery_access_{slug}` cookie set by the
+ * gate is sent automatically (same-origin via the proxy).
  */
-export default function ImageDownloadOverlay({ imageId: _imageId }: ImageDownloadOverlayProps) {
-  const [showToast, setShowToast] = useState(false);
-  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    };
-  }, []);
-
-  const handleDownload = useCallback((e: MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering fullscreen view
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setShowToast(true);
-    toastTimeoutRef.current = setTimeout(() => setShowToast(false), 2000);
-  }, []);
+export default function ImageDownloadOverlay({ imageId }: ImageDownloadOverlayProps) {
+  const handleDownload = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation(); // prevent triggering fullscreen view
+      window.location.href = downloadImageUrl(imageId);
+    },
+    [imageId]
+  );
 
   return (
     <div className={styles.overlayContainer}>
@@ -54,7 +50,6 @@ export default function ImageDownloadOverlay({ imageId: _imageId }: ImageDownloa
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
       </button>
-      {showToast && <div className={styles.miniToast}>Coming soon</div>}
     </div>
   );
 }

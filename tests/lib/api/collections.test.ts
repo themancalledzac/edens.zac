@@ -3,7 +3,14 @@
  * Tests collection API functions and response parsing
  */
 
-import { getCollectionsByLocation, parseCollectionArrayResponse } from '@/app/lib/api/collections';
+import {
+  getCollectionsByLocation,
+  parseCollectionArrayResponse,
+  sendGalleryPassword,
+  setGalleryPassword,
+  validateClientGalleryAccess,
+} from '@/app/lib/api/collections';
+import { ApiError } from '@/app/lib/api/core';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 
 // Mock fetch globally
@@ -205,5 +212,247 @@ describe('getCollectionsByLocation', () => {
 
     const result = await getCollectionsByLocation('nonexistent');
     expect(result).toEqual([]);
+  });
+});
+
+describe('validateClientGalleryAccess', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('throws when slug is missing', async () => {
+    await expect(validateClientGalleryAccess('', 'pw')).rejects.toThrow('slug is required');
+  });
+
+  it('throws when password is missing', async () => {
+    await expect(validateClientGalleryAccess('smith-wedding', '')).rejects.toThrow(
+      'password is required'
+    );
+  });
+
+  it('routes through the BFF proxy with credentials and JSON body', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ hasAccess: true }),
+    });
+
+    const result = await validateClientGalleryAccess('smith-wedding', 'super-secret');
+
+    expect(result).toEqual({ hasAccess: true });
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/proxy/api/read/collections/smith-wedding/access',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: 'super-secret' }),
+        cache: 'no-store',
+      })
+    );
+  });
+
+  it('encodes the slug in the URL', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ hasAccess: true }),
+    });
+
+    await validateClientGalleryAccess('a b/c', 'pw');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/proxy/api/read/collections/a%20b%2Fc/access',
+      expect.any(Object)
+    );
+  });
+
+  it('returns the {hasAccess} body without exposing any token', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ hasAccess: false }),
+    });
+
+    const result = await validateClientGalleryAccess('smith-wedding', 'wrong');
+
+    expect(result).toEqual({ hasAccess: false });
+    expect((result as Record<string, unknown>).accessToken).toBeUndefined();
+  });
+
+  it('throws ApiError with status 429 when rate-limited', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 429,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ message: 'Too Many Requests' }),
+    });
+
+    await expect(validateClientGalleryAccess('smith-wedding', 'pw')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 429,
+    });
+  });
+
+  it('throws ApiError with status 404 when gallery not found', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 404,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ message: 'Not found' }),
+    });
+
+    await expect(validateClientGalleryAccess('missing', 'pw')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 404,
+    });
+  });
+
+  it('throws ApiError with the response status on 403', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ message: 'Forbidden' }),
+    });
+
+    let caught: unknown;
+    try {
+      await validateClientGalleryAccess('smith-wedding', 'pw');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ApiError);
+    expect((caught as ApiError).status).toBe(403);
+  });
+
+  // FE-C1: runtime-validate the response shape so a backend regression can't silently
+  // flip the gate to "unlocked" without proof of access.
+  it('throws ApiError when response body is missing hasAccess key', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({}),
+    });
+
+    await expect(validateClientGalleryAccess('smith-wedding', 'pw')).rejects.toMatchObject({
+      name: 'ApiError',
+      message: 'Unexpected response shape from /access',
+    });
+  });
+
+  it('throws ApiError when hasAccess is a string instead of boolean', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: jest.fn().mockResolvedValue({ hasAccess: 'true' }),
+    });
+
+    await expect(validateClientGalleryAccess('smith-wedding', 'pw')).rejects.toMatchObject({
+      name: 'ApiError',
+      message: 'Unexpected response shape from /access',
+    });
+  });
+});
+
+describe('sendGalleryPassword', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('POSTs to the admin send-password endpoint with password and email', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ sent: true }),
+      headers: new Headers({ 'content-type': 'application/json' }),
+    });
+
+    const result = await sendGalleryPassword(42, 'gallery-pw', 'client@example.com');
+
+    expect(result).toEqual({ sent: true });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/42/send-password'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ password: 'gallery-pw', email: 'client@example.com' }),
+      })
+    );
+  });
+
+  it('returns {sent: false, reason} when the backend reports email is disabled', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ sent: false, reason: 'email-disabled' }),
+      headers: new Headers({ 'content-type': 'application/json' }),
+    });
+
+    const result = await sendGalleryPassword(7, 'pw', 'a@b.com');
+
+    expect(result).toEqual({ sent: false, reason: 'email-disabled' });
+  });
+});
+
+describe('setGalleryPassword', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('calls updateCollection with {id, password} via PUT to /collections/{id}', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ collection: { id: 9 } }),
+      headers: new Headers({ 'content-type': 'application/json' }),
+    });
+
+    await setGalleryPassword(9, 'new-password');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ id: 9, password: 'new-password' }),
+      })
+    );
+  });
+
+  it('passes an empty string to clear the password', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ collection: { id: 9 } }),
+      headers: new Headers({ 'content-type': 'application/json' }),
+    });
+
+    await setGalleryPassword(9, '');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ id: 9, password: '' }),
+      })
+    );
+  });
+
+  // FE-I1: Throw if the underlying updateCollection silently fails. Without this,
+  // the admin UI shows "Password set." even though the backend never persisted the hash.
+  it('throws ApiError when the PUT response is not ok (updateCollection returns null)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: jest.fn().mockResolvedValue({ message: 'Internal error' }),
+      headers: new Headers({ 'content-type': 'application/json' }),
+    });
+
+    await expect(setGalleryPassword(9, 'new-password')).rejects.toBeInstanceOf(ApiError);
   });
 });

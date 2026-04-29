@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from 'react';
 
+import { downloadCollectionUrl } from '@/app/lib/api/downloads';
+
 import styles from './ClientGalleryDownload.module.scss';
 
 interface ClientGalleryDownloadProps {
@@ -12,22 +14,32 @@ interface ClientGalleryDownloadProps {
  * Client Gallery Download All Button
  *
  * Prominent "Download All" action for CLIENT_GALLERY collections.
- * Currently a placeholder/mock that shows a toast notification.
- * Will eventually call GET /api/read/collections/{slug}/download to fetch a zip.
+ * Navigates to the BFF-routed collection download endpoint, which streams
+ * a ZIP with `Content-Disposition: attachment` so the browser saves rather
+ * than navigates. The httpOnly `gallery_access_{slug}` cookie set by the
+ * gate is sent automatically (same-origin via the proxy).
+ *
+ * The "preparing" state is a short-lived label change while the browser is
+ * negotiating the ZIP — the native download UI is the real progress feedback.
  */
-export default function ClientGalleryDownload({
-  collectionSlug: _collectionSlug,
-}: ClientGalleryDownloadProps) {
-  const [toastVisible, setToastVisible] = useState(false);
+export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryDownloadProps) {
+  const [preparing, setPreparing] = useState(false);
 
   const handleDownloadAll = useCallback(() => {
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 3000);
-  }, []);
+    setPreparing(true);
+    window.location.href = downloadCollectionUrl(collectionSlug);
+    // Reset preparing state after a short delay (the browser is now handling the download)
+    setTimeout(() => setPreparing(false), 4000);
+  }, [collectionSlug]);
 
   return (
     <div className={styles.downloadContainer}>
-      <button type="button" onClick={handleDownloadAll} className={styles.downloadButton}>
+      <button
+        type="button"
+        onClick={handleDownloadAll}
+        disabled={preparing}
+        className={styles.downloadButton}
+      >
         <svg
           className={styles.downloadIcon}
           viewBox="0 0 24 24"
@@ -41,10 +53,8 @@ export default function ClientGalleryDownload({
           <polyline points="7 10 12 15 17 10" />
           <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
-        Download All
+        {preparing ? 'Preparing ZIP…' : 'Download All'}
       </button>
-
-      {toastVisible && <div className={styles.toast}>Downloads coming soon</div>}
     </div>
   );
 }

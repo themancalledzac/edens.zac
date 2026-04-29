@@ -30,13 +30,26 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
-    const collectionPage = <CollectionPage collection={collection} chunkSize={chunkSize} />;
-
     if (collection.type === CollectionType.CLIENT_GALLERY) {
-      return <ClientGalleryGate collection={collection}>{collectionPage}</ClientGalleryGate>;
+      // Auth signal: backend (CollectionControllerProd.getCollectionBySlug) sets
+      // `content` to null when the per-slug cookie is missing or invalid, and
+      // returns an array (possibly empty) once the cookie validates. So
+      // `Array.isArray(content)` distinguishes authenticated from locked, and
+      // is the only authoritative signal — `isPasswordProtected` stays true
+      // even after the cookie validates (it describes the gallery, not the
+      // viewer's session).
+      //
+      // Routing here, rather than wrapping <CollectionPage> as gate children,
+      // means we never serialize the page's RSC payload (cover image, grid)
+      // for a locked viewer (FE-H6 invariant, structurally enforced).
+      const isAuthenticated = Array.isArray(collection.content);
+      if (!collection.isPasswordProtected || isAuthenticated) {
+        return <CollectionPage collection={collection} chunkSize={chunkSize} />;
+      }
+      return <ClientGalleryGate collection={collection} />;
     }
 
-    return collectionPage;
+    return <CollectionPage collection={collection} chunkSize={chunkSize} />;
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 404) {

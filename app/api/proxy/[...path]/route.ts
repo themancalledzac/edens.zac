@@ -154,6 +154,16 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   resHeaders.delete('transfer-encoding');
   resHeaders.delete('connection');
 
+  // Multiple `Set-Cookie` headers are valid (e.g. an auth cookie + a CSRF
+  // cookie in one response). The Headers constructor combines repeated
+  // headers into a single comma-joined value, which corrupts cookies that
+  // contain commas in the Expires attribute. We re-emit each Set-Cookie
+  // explicitly via getSetCookie() so the browser sees the original list.
+  resHeaders.delete('set-cookie');
+  for (const cookie of backendRes.headers.getSetCookie()) {
+    resHeaders.append('Set-Cookie', cookie);
+  }
+
   return new NextResponse(backendRes.body, {
     status: backendRes.status,
     headers: resHeaders,
