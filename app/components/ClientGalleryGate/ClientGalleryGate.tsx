@@ -1,87 +1,52 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
+import { ApiError } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 
 import styles from './ClientGalleryGate.module.scss';
 
 interface ClientGalleryGateProps {
   collection: CollectionModel;
-  children: React.ReactNode;
 }
 
-type GateStatus = 'checking' | 'locked' | 'unlocked';
+type SubmitState = 'idle' | 'verifying' | 'unlocking';
 
-const SESSION_KEY_PREFIX = 'client-gallery-access-';
-
-function getSessionKey(slug: string): string {
-  return `${SESSION_KEY_PREFIX}${slug}`;
-}
+// Failsafe: if router.refresh() never replaces this gate with the page (e.g.
+// the gallery is empty so the wrapper still routes to <CollectionPage> with
+// nothing to show, but for whatever reason the prop change doesn't unmount us),
+// drop the spinner after this many ms so the user isn't stuck.
+const UNLOCKING_FAILSAFE_MS = 5000;
 
 /**
  * Client Gallery Gate
  *
- * Password-protected gate for CLIENT_GALLERY collections.
- * Shows a password prompt before granting access to gallery content.
- * Stores access grants in sessionStorage so users do not need to
- * re-enter credentials during the same browser session.
- *
- * If the gallery has no password, an "Enter Gallery" button grants access.
- * If the gallery has a password, a password input + submit is shown.
+ * Password form for locked CLIENT_GALLERY collections. The wrapper
+ * (`CollectionPageWrapper`) routes between this component and
+ * `<CollectionPage>` based on `Array.isArray(collection.content)` — so this
+ * component is only mounted when the viewer has no valid `gallery_access_<slug>`
+ * cookie. Successful submission sets the cookie and triggers `router.refresh()`,
+ * which re-runs the wrapper server-side and unmounts the gate in favor of the
+ * page. The brief in-between window shows a "Loading gallery…" state.
  */
-export default function ClientGalleryGate({ collection, children }: ClientGalleryGateProps) {
-  const [status, setStatus] = useState<GateStatus>('checking');
+export default function ClientGalleryGate({ collection }: ClientGalleryGateProps) {
+  const router = useRouter();
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitState, setSubmitState] = useState<SubmitState>('idle');
 
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(getSessionKey(collection.slug));
-      if (stored === 'granted') {
-        setStatus('unlocked');
-        return;
-      }
-    } catch {
-      // sessionStorage may be unavailable (SSR, privacy mode)
-    }
-
-    if (collection.isPasswordProtected === false) {
-      try {
-        sessionStorage.setItem(getSessionKey(collection.slug), 'granted');
-      } catch {
-        /* ignore */
-      }
-      setStatus('unlocked');
-      return;
-    }
-
-    // Probe: galleries without a password return hasAccess: true for empty password
-    if (collection.isPasswordProtected === undefined) {
-      (async () => {
-        try {
-          const { validateClientGalleryAccess } = await import('@/app/lib/api/collections');
-          const result = await validateClientGalleryAccess(collection.slug, '');
-          if (result.hasAccess) {
-            try {
-              sessionStorage.setItem(getSessionKey(collection.slug), 'granted');
-            } catch {
-              /* ignore */
-            }
-            setStatus('unlocked');
-            return;
-          }
-        } catch {
-          // Backend error or gallery requires password — fall through to locked
-        }
-        setStatus('locked');
-      })();
-      return;
-    }
-
-    setStatus('locked');
-  }, [collection.slug, collection.isPasswordProtected]);
+    if (submitState !== 'unlocking') return;
+    const timer = setTimeout(() => {
+      setSubmitState('idle');
+      setError(
+        'Verified, but the gallery did not load. Please refresh the page or contact the gallery owner.'
+      );
+    }, UNLOCKING_FAILSAFE_MS);
+    return () => clearTimeout(timer);
+  }, [submitState]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
@@ -93,40 +58,63 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
         return;
       }
 
-      setIsSubmitting(true);
+      setSubmitState('verifying');
 
       try {
-        // Dynamic import avoids bundling API code on the client
         const { validateClientGalleryAccess } = await import('@/app/lib/api/collections');
         const result = await validateClientGalleryAccess(collection.slug, password);
 
         if (result.hasAccess) {
-          try {
-            sessionStorage.setItem(getSessionKey(collection.slug), 'granted');
-          } catch {
-            // Ignore storage errors
-          }
-          setStatus('unlocked');
+          // Cookie is now set on the response. Trigger an SSR re-fetch — the
+          // wrapper will route to <CollectionPage> on the next render and
+          // unmount us. Show a loading state during that window.
+          setSubmitState('unlocking');
+          router.refresh();
         } else {
           setError('Incorrect password. Please try again.');
           setPassword('');
+          setSubmitState('idle');
         }
-      } catch {
-        setError('Unable to verify access. Please try again later.');
-      } finally {
-        setIsSubmitting(false);
+      } catch (error_) {
+        if (error_ instanceof ApiError) {
+          if (error_.status === 429) {
+            setError('Too many attempts. Please wait 15 minutes and try again.');
+          } else if (error_.status === 404) {
+            setError('Gallery not found. Check the URL and try again.');
+            setPassword('');
+          } else if (error_.status === 403) {
+            setError('Access denied. Please contact the gallery owner.');
+            setPassword('');
+          } else {
+            setError('Unable to verify access. Please try again later.');
+            setPassword('');
+          }
+        } else {
+          setError('Network error. Please check your connection and try again.');
+          setPassword('');
+        }
+        setSubmitState('idle');
       }
     },
-    [collection.slug, password]
+    [collection.slug, password, router]
   );
 
-  if (status === 'checking') {
-    return null;
+  if (submitState === 'unlocking') {
+    return (
+      <div className={styles.gateContainer}>
+        <div className={styles.gateCard}>
+          <h1 className={styles.gateTitle}>{collection.title}</h1>
+          <p className={styles.gateSubtitle}>Client Gallery</p>
+          <p className={styles.gateLoading} role="status" aria-live="polite">
+            <span className={styles.gateSpinner} aria-hidden="true" />
+            Loading gallery…
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  if (status === 'unlocked') {
-    return <div>{children}</div>;
-  }
+  const isVerifying = submitState === 'verifying';
 
   return (
     <div className={styles.gateContainer}>
@@ -147,11 +135,11 @@ export default function ClientGalleryGate({ collection, children }: ClientGaller
             placeholder="Gallery password"
             autoFocus
             autoComplete="off"
-            disabled={isSubmitting}
+            disabled={isVerifying}
           />
           {error && <p className={styles.gateError}>{error}</p>}
-          <button type="submit" className={styles.gateButton} disabled={isSubmitting}>
-            {isSubmitting ? 'Verifying...' : 'Enter Gallery'}
+          <button type="submit" className={styles.gateButton} disabled={isVerifying}>
+            {isVerifying ? 'Verifying...' : 'Enter Gallery'}
           </button>
         </form>
       </div>
