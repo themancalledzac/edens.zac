@@ -13,6 +13,7 @@ import {
   fetchPatchJsonApi,
   fetchPostJsonApi,
   fetchPutJsonApi,
+  getServerCookieHeader,
 } from '@/app/lib/api/core';
 
 // Mock fetch globally
@@ -22,6 +23,11 @@ global.fetch = jest.fn();
 jest.mock('@/app/utils/environment', () => ({
   isLocalEnvironment: jest.fn(() => true),
   isProduction: jest.fn(() => false),
+}));
+
+// Mock next/headers for getServerCookieHeader tests
+jest.mock('next/headers', () => ({
+  cookies: jest.fn(),
 }));
 
 describe('handleApiError (tested via public API functions)', () => {
@@ -359,5 +365,79 @@ describe('fetchBase (tested via public API functions)', () => {
       const result = await fetchAdminGetApi('/test');
       expect(result).toBeNull();
     });
+  });
+});
+
+describe('getServerCookieHeader', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const nextHeaders = require('next/headers') as { cookies: jest.Mock };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Ensure we're in the server environment (no window)
+    Object.defineProperty(global, 'window', { value: undefined, writable: true });
+  });
+
+  it('returns a Cookie header string when cookies exist', async () => {
+    nextHeaders.cookies.mockResolvedValue({
+      getAll: () => [
+        { name: 'gallery_access_foo', value: 'tokenA' },
+        { name: 'gallery_access_bar', value: 'tokenB' },
+      ],
+    });
+
+    const result = await getServerCookieHeader();
+    expect(result).toBe('gallery_access_foo=tokenA; gallery_access_bar=tokenB');
+  });
+
+  it('returns null when the cookie store is empty', async () => {
+    nextHeaders.cookies.mockResolvedValue({
+      getAll: () => [],
+    });
+
+    const result = await getServerCookieHeader();
+    expect(result).toBeNull();
+  });
+
+  it('returns null silently when the "called outside a request scope" error is thrown', async () => {
+    nextHeaders.cookies.mockRejectedValue(
+      new Error('cookies() was called outside a request scope.')
+    );
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await getServerCookieHeader();
+    expect(result).toBeNull();
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it('returns null silently when called from generateStaticParams (build-time)', async () => {
+    nextHeaders.cookies.mockRejectedValue(
+      new Error(
+        'Route /[slug] used `cookies()` inside `generateStaticParams`. This is not supported because `generateStaticParams` runs at build time without an HTTP request.'
+      )
+    );
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await getServerCookieHeader();
+    expect(result).toBeNull();
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it('returns null and calls console.warn when an unexpected error is thrown', async () => {
+    nextHeaders.cookies.mockRejectedValue(new Error('Unexpected internal failure'));
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await getServerCookieHeader();
+    expect(result).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[getServerCookieHeader] Unexpected error reading cookies:',
+      expect.any(Error)
+    );
+
+    warnSpy.mockRestore();
   });
 });

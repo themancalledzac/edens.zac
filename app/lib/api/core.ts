@@ -5,6 +5,39 @@ const WRITE = 'write';
 const ADMIN = 'admin';
 
 /**
+ * On the server, forward incoming browser cookies on outgoing fetches so that the backend
+ * sees per-gallery `gallery_access_<slug>` cookies on RSC re-fetches (e.g. after
+ * `router.refresh()` from the client gallery gate).
+ *
+ * Returns `null` in the browser — fetch already attaches same-origin cookies automatically.
+ */
+export async function getServerCookieHeader(): Promise<string | null> {
+  if (typeof window !== 'undefined') return null;
+  try {
+    // Lazy import: `next/headers` is only available in the server runtime.
+    const { cookies } = await import('next/headers');
+    const store = await cookies();
+    const all = store.getAll();
+    if (all.length === 0) return null;
+    return all.map(c => `${c.name}=${c.value}`).join('; ');
+  } catch (error: unknown) {
+    // `cookies()` throws whenever there's no request context — at build time,
+    // inside `generateStaticParams`, inside `unstable_cache`, or otherwise
+    // outside a per-request scope. All of those mean "no cookies to forward",
+    // not a real failure, so suppress the noise.
+    if (
+      error instanceof Error &&
+      /outside a request scope|generatestaticparams|without an http request/i.test(error.message)
+    ) {
+      return null;
+    }
+    // Any other unexpected error: warn and degrade gracefully rather than breaking the fetch.
+    console.warn('[getServerCookieHeader] Unexpected error reading cookies:', error);
+    return null;
+  }
+}
+
+/**
  * Core API utilities for making requests to the backend
  */
 
@@ -115,13 +148,16 @@ export async function fetchReadApi<T>(
   try {
     const url = buildSimpleApiUrl(READ, endpoint);
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    const cookieHeader = await getServerCookieHeader();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> | undefined),
+    };
+    if (cookieHeader) {
+      headers.Cookie = cookieHeader;
+    }
+
+    const response = await fetch(url, { ...options, headers });
 
     if (!response.ok) {
       await throwApiError(response);
