@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-import { getAllCollections, getCollectionBySlug } from '@/app/lib/api/collections';
+import { getCollectionBySlug } from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { CollectionType } from '@/app/types/Collection';
 
@@ -11,13 +11,12 @@ interface CollectionPageProps {
   }>;
 }
 
-export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const collections = await getAllCollections();
-  return collections
-    .filter(c => c.type !== CollectionType.CLIENT_GALLERY) // exclude — served dynamically
-    .map(c => ({ slug: c.slug ?? '' }))
-    .filter(p => p.slug !== '');
-}
+// Render every collection through Lambda SSR — same path the home page
+// (app/page.tsx) uses. Amplify's static-with-dynamic-fallback routing for
+// this segment doesn't work in prod: non-prerendered slugs return a fixed
+// CloudFront 500 without invoking Lambda. Going fully dynamic sidesteps
+// the broken fallback and matches what local dev already does.
+export const dynamic = 'force-dynamic';
 
 const STATIC_FILES = ['favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json'];
 
