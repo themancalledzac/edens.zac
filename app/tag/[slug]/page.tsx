@@ -10,8 +10,17 @@ const getCachedTags = cache(() => getAllTags());
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const tags = await getAllTags();
-  return (tags ?? []).map(tag => ({ slug: tag.slug }));
+  // Tolerate backend unreachability at build time. The Amplify build container
+  // can't fetch from this site's own not-yet-deployed proxy, so an empty list
+  // here means "no prerendered routes" — pages still render on first request
+  // and are cached by `revalidate = 3600`. Mirrors the home page pattern in
+  // app/[slug]/page.tsx, where getAllCollections() swallows fetch errors.
+  try {
+    const tags = await getAllTags();
+    return (tags ?? []).map(tag => ({ slug: tag.slug }));
+  } catch {
+    return [];
+  }
 }
 
 interface TagPageRouteProps {
