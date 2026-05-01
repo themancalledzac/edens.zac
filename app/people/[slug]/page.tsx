@@ -7,21 +7,9 @@ import { getAllPeople, searchImages } from '@/app/lib/api/content';
 
 const getCachedPeople = cache(() => getAllPeople());
 
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  // Tolerate backend unreachability at build time. The Amplify build container
-  // can't fetch from this site's own not-yet-deployed proxy, so an empty list
-  // here means "no prerendered routes" — pages still render on first request
-  // and are cached by `revalidate = 3600`. Mirrors the home page pattern in
-  // app/[slug]/page.tsx, where getAllCollections() swallows fetch errors.
-  try {
-    const people = await getAllPeople();
-    return (people ?? []).map(person => ({ slug: person.slug }));
-  } catch {
-    return [];
-  }
-}
+// Render on every request rather than at build time. See app/tag/[slug]/page.tsx
+// for the rationale — same trade-off applies here.
+export const dynamic = 'force-dynamic';
 
 interface PersonPageRouteProps {
   params: Promise<{ slug: string }>;

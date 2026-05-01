@@ -4,7 +4,6 @@ import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryG
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
-import { ApiError } from '@/app/lib/api/core';
 import { CollectionType } from '@/app/types/Collection';
 
 interface CollectionPageWrapperProps {
@@ -51,24 +50,48 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
 
     return <CollectionPage collection={collection} chunkSize={chunkSize} />;
   } catch (error) {
-    if (error instanceof ApiError) {
-      if (error.status === 404) {
-        notFound();
-      }
+    // Re-throw Next.js sentinel errors (notFound(), redirect()) so the framework
+    // can handle them. Their digest property starts with `NEXT_`.
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      typeof (error as { digest?: unknown }).digest === 'string' &&
+      ((error as { digest: string }).digest.startsWith('NEXT_') ||
+        (error as { digest: string }).digest === 'DYNAMIC_SERVER_USAGE')
+    ) {
+      throw error;
+    }
 
-      if (error.status >= 500) {
-        // For home page, re-throw (page is force-dynamic so this won't break build)
-        if (slug === 'home') {
-          throw error;
-        }
-        notFound();
-      }
+    // Duck-type the status field instead of `instanceof ApiError`. In production
+    // builds, code splitting can produce two copies of the ApiError class in
+    // different chunks; an instance from one chunk fails `instanceof` against
+    // the class in another, so the 404→notFound() branch silently misses and we
+    // fall through to a Lambda-level 500 page. Reading `error.status` works
+    // regardless of which copy of the class is throwing.
+    const status =
+      typeof error === 'object' && error !== null && 'status' in error
+        ? Number((error as { status: unknown }).status)
+        : Number.NaN;
 
+    if (status === 404) {
+      notFound();
+    }
+
+    if (status >= 500) {
+      // For home page, re-throw (page is force-dynamic so this won't break build)
+      if (slug === 'home') {
+        throw error;
+      }
+      notFound();
+    }
+
+    // Re-throw other known numeric statuses (4xx like 401, 403) as unhandled errors.
+    // These bubble up as Lambda 500s — same behavior as the prior instanceof branch.
+    if (Number.isFinite(status)) {
       throw error;
     }
 
     const errorMessage = error instanceof Error ? error.message : String(error);
-
     if (errorMessage.includes('404')) {
       notFound();
     }

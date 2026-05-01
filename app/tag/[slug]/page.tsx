@@ -7,21 +7,13 @@ import { getAllTags, searchImages } from '@/app/lib/api/content';
 
 const getCachedTags = cache(() => getAllTags());
 
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  // Tolerate backend unreachability at build time. The Amplify build container
-  // can't fetch from this site's own not-yet-deployed proxy, so an empty list
-  // here means "no prerendered routes" — pages still render on first request
-  // and are cached by `revalidate = 3600`. Mirrors the home page pattern in
-  // app/[slug]/page.tsx, where getAllCollections() swallows fetch errors.
-  try {
-    const tags = await getAllTags();
-    return (tags ?? []).map(tag => ({ slug: tag.slug }));
-  } catch {
-    return [];
-  }
-}
+// Render on every request rather than at build time. The page renders
+// `searchImages({ tagIds: [...] })` and `getAllTags()` server-side; build-time
+// prerender requires the build container to reach the deployed proxy/backend,
+// which is brittle (chicken-and-egg during fresh deploys, dies on transient
+// failures, and fails the entire build for one bad tag). The server-side
+// React `cache()` wrapper above still dedupes within a single request.
+export const dynamic = 'force-dynamic';
 
 interface TagPageRouteProps {
   params: Promise<{ slug: string }>;
