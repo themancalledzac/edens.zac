@@ -13,6 +13,18 @@ const ADMIN = 'admin';
  */
 export async function getServerCookieHeader(): Promise<string | null> {
   if (typeof window !== 'undefined') return null;
+
+  // Skip entirely during the production build phase. Next.js's `cookies()`
+  // throws `DynamicServerError` (digest: 'DYNAMIC_SERVER_USAGE') outside a
+  // request scope, and the digest is recorded at the call site — *before*
+  // any try/catch we wrap around it. For routes that also declare
+  // `generateStaticParams`, that digest fails the build ("can't render
+  // statically because it used `cookies`"), even when our catch swallows
+  // the thrown error. Skipping the call entirely during build avoids
+  // triggering the digest. At build time no user request context exists,
+  // so there's no `gallery_access_<slug>` cookie to forward anyway.
+  if (process.env.NEXT_PHASE === 'phase-production-build') return null;
+
   try {
     // Lazy import: `next/headers` is only available in the server runtime.
     const { cookies } = await import('next/headers');
@@ -22,12 +34,21 @@ export async function getServerCookieHeader(): Promise<string | null> {
     return all.map(c => `${c.name}=${c.value}`).join('; ');
   } catch (error: unknown) {
     // `cookies()` throws whenever there's no request context — at build time,
-    // inside `generateStaticParams`, inside `unstable_cache`, or otherwise
-    // outside a per-request scope. All of those mean "no cookies to forward",
-    // not a real failure, so suppress the noise.
+    // inside `generateStaticParams`, inside `unstable_cache`, during ISR
+    // background revalidation, or otherwise outside a per-request scope.
+    // All of those mean "no cookies to forward", not a real failure.
     if (
       error instanceof Error &&
-      /outside a request scope|generatestaticparams|without an http request/i.test(error.message)
+      /outside a request scope|generatestaticparams|without an http request|rendered statically|dynamic server usage/i.test(
+        error.message
+      )
+    ) {
+      return null;
+    }
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      (error as { digest?: unknown }).digest === 'DYNAMIC_SERVER_USAGE'
     ) {
       return null;
     }
