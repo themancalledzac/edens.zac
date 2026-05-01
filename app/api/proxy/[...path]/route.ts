@@ -129,7 +129,16 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   // Buffer the body: NextRequest.body is a ReadableStream, and undici fetch
   // requires `duplex: 'half'` to forward streams. Buffering avoids the streaming
   // path and lets undici set Content-Length. Safe given the 16 KB cap above.
-  const body = ['GET', 'HEAD'].includes(method) ? undefined : await req.arrayBuffer();
+  //
+  // The body must be wrapped in a Uint8Array view rather than passed as a raw
+  // ArrayBuffer. AWS Amplify's SSR Lambda runtime ships an undici build that
+  // throws synchronously on bare ArrayBuffer bodies (manifesting as a 502
+  // "Bad Gateway" on every write through this proxy in production while the
+  // Next.js dev server accepts it fine). Uint8Array is what undici handles
+  // uniformly across all Node runtimes — local dev, Vercel, and Amplify.
+  const body = ['GET', 'HEAD'].includes(method)
+    ? undefined
+    : new Uint8Array(await req.arrayBuffer());
 
   const init: RequestInit = {
     method,
