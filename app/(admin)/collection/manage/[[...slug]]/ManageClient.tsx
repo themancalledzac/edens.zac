@@ -25,8 +25,7 @@ import {
   createCollection,
   getCollectionUpdateMetadata,
   getMetadata,
-  sendGalleryPassword,
-  setGalleryPassword,
+  saveGalleryAccess,
   updateCollection,
 } from '@/app/lib/api/collections';
 import { createImages, createTextContent, updateImages } from '@/app/lib/api/content';
@@ -184,13 +183,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [galleryStatus, setGalleryStatus] = useState<string | null>(null);
   const [gallerySaving, setGallerySaving] = useState(false);
 
-  // Reset the gallery section when the collection changes (e.g. slug change
-  // after creation, or admin navigates to a different collection).
+  // Sync gallery fields from the loaded collection (and reset status).
   useEffect(() => {
-    setGalleryPasswordInput('');
-    setGalleryEmail('');
+    setGalleryPasswordInput(collection?.galleryPassword ?? '');
+    setGalleryEmail(collection?.recipientEmails?.join(', ') ?? '');
     setGalleryStatus(null);
-  }, [collection?.id]);
+  }, [collection?.id, collection?.galleryPassword, collection?.recipientEmails]);
 
   const processedContent = useMemo(
     () =>
@@ -415,101 +413,62 @@ export default function ManageClient({ slug }: ManageClientProps) {
   };
 
   /**
-   * Refresh local collection state to reflect a newly set / cleared
-   * password. The backend doesn't return the updated DTO from these
-   * actions, so we re-fetch the admin metadata to pick up
-   * `isPasswordProtected`.
+   * Save gallery access. If a recipient email is provided, sets the password
+   * and emails it; otherwise stores the password only.
    */
-  const refreshCollectionAfterPasswordChange = useCallback(async () => {
-    if (!collection?.slug) return;
-    const refreshed = await getCollectionUpdateMetadata(collection.slug);
-    if (refreshed !== null) {
-      setCurrentState(refreshed);
-      collectionStorage.update(refreshed.collection.slug, refreshed.collection);
-      collectionStorage.updateFull(refreshed.collection.slug, refreshed);
-    }
-  }, [collection?.slug]);
-
-  /**
-   * "Set Password & Email Client" — atomic set-and-send. Plaintext is sent
-   * to the backend in a single POST, hashed, stored, and emailed. If SES
-   * is feature-flagged off the response reports {sent: false, reason}.
-   */
-  const handleSendPassword = useCallback(async () => {
+  const handleSaveAccess = useCallback(async () => {
     if (!collection) return;
-    if (galleryPassword.length < 8) {
-      setGalleryStatus('Password must be at least 8 characters.');
-      return;
-    }
-    if (!galleryEmail.trim()) {
-      setGalleryStatus('Recipient email is required.');
+    if (galleryPassword.length < 4) {
+      setGalleryStatus('Password must be at least 4 characters.');
       return;
     }
     setGallerySaving(true);
     setGalleryStatus(null);
     try {
-      const result = await sendGalleryPassword(collection.id, galleryPassword, galleryEmail.trim());
-      await refreshCollectionAfterPasswordChange();
-      if (result?.sent) {
-        setGalleryStatus(`Password sent to ${galleryEmail.trim()}.`);
-      } else {
+      const emails = galleryEmail.trim()
+        ? galleryEmail
+            .split(',')
+            .map(e => e.trim())
+            .filter(Boolean)
+        : undefined;
+      const result = await saveGalleryAccess(collection.id, { password: galleryPassword, emails });
+      if (emails) {
         setGalleryStatus(
-          `Password set, email disabled${result?.reason ? ` (${result.reason})` : ''}.`
+          result.emailsSent
+            ? `Password saved and sent to ${result.emails.join(', ')}.`
+            : `Password saved, email not sent${result.reason ? ` (${result.reason})` : ''}.`
         );
+      } else {
+        setGalleryStatus('Password saved. No email sent.');
       }
-      setGalleryPasswordInput('');
-      setGalleryEmail('');
+      setGalleryPasswordInput(result.password ?? '');
+      setGalleryEmail(result.emails.join(', '));
     } catch (error) {
-      setGalleryStatus(handleApiError(error, 'Failed to send password.'));
+      setGalleryStatus(handleApiError(error, 'Failed to save access settings.'));
     } finally {
       setGallerySaving(false);
     }
-  }, [collection, galleryPassword, galleryEmail, refreshCollectionAfterPasswordChange]);
+  }, [collection, galleryPassword, galleryEmail]);
 
   /**
-   * "Set Password Only" — store the password without emailing. Used when
-   * the admin will deliver it through a different channel.
-   */
-  const handleSetOnlyPassword = useCallback(async () => {
-    if (!collection) return;
-    if (galleryPassword.length < 8) {
-      setGalleryStatus('Password must be at least 8 characters.');
-      return;
-    }
-    setGallerySaving(true);
-    setGalleryStatus(null);
-    try {
-      await setGalleryPassword(collection.id, galleryPassword);
-      await refreshCollectionAfterPasswordChange();
-      setGalleryStatus('Password set. No email sent.');
-      setGalleryPasswordInput('');
-    } catch (error) {
-      setGalleryStatus(handleApiError(error, 'Failed to set password.'));
-    } finally {
-      setGallerySaving(false);
-    }
-  }, [collection, galleryPassword, refreshCollectionAfterPasswordChange]);
-
-  /**
-   * "Clear Password" — passes an empty string to the backend, which
-   * nulls out the password hash. Gallery becomes unprotected.
+   * "Clear Password" — sends null to the backend, which nulls out the
+   * password hash. Gallery becomes unprotected.
    */
   const handleClearPassword = useCallback(async () => {
     if (!collection) return;
     setGallerySaving(true);
     setGalleryStatus(null);
     try {
-      await setGalleryPassword(collection.id, '');
-      await refreshCollectionAfterPasswordChange();
+      const result = await saveGalleryAccess(collection.id, { password: null });
       setGalleryStatus('Password cleared. Gallery is now unprotected.');
-      setGalleryPasswordInput('');
-      setGalleryEmail('');
+      setGalleryPasswordInput(result.password ?? '');
+      setGalleryEmail(result.emails.join(', '));
     } catch (error) {
       setGalleryStatus(handleApiError(error, 'Failed to clear password.'));
     } finally {
       setGallerySaving(false);
     }
-  }, [collection, refreshCollectionAfterPasswordChange]);
+  }, [collection]);
 
   /**
    * Handle image upload
@@ -1209,40 +1168,48 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               style={{ marginTop: 0, marginBottom: '12px' }}
                             >
                               {collection.isPasswordProtected
-                                ? 'Password is set. Sending or setting a new password replaces the existing one.'
+                                ? 'Password is set. Saving a new password replaces the existing one.'
                                 : 'No password set. This gallery is currently unprotected.'}
                             </p>
-                            <label htmlFor="gallery-password-input" className={styles.formLabel}>
-                              New password
-                            </label>
-                            <input
-                              id="gallery-password-input"
-                              type="text"
-                              minLength={8}
-                              value={galleryPassword}
-                              onChange={e => setGalleryPasswordInput(e.target.value)}
-                              className={styles.formInput}
-                              placeholder="At least 8 characters"
-                              disabled={gallerySaving}
-                              autoComplete="off"
-                            />
-                            <label
-                              htmlFor="gallery-email-input"
-                              className={styles.formLabel}
-                              style={{ marginTop: '8px' }}
-                            >
-                              Recipient email
-                            </label>
-                            <input
-                              id="gallery-email-input"
-                              type="email"
-                              value={galleryEmail}
-                              onChange={e => setGalleryEmail(e.target.value)}
-                              className={styles.formInput}
-                              placeholder="client@example.com"
-                              disabled={gallerySaving}
-                              autoComplete="off"
-                            />
+                            <div className={styles.formGridHalf}>
+                              <div>
+                                <label
+                                  htmlFor="gallery-password-input"
+                                  className={styles.formLabel}
+                                >
+                                  Password
+                                </label>
+                                {/* Backend stores plaintext (admin-only field) so the photographer can see and re-share the current password. */}
+                                <input
+                                  id="gallery-password-input"
+                                  type="text"
+                                  minLength={4}
+                                  value={galleryPassword}
+                                  onChange={e => setGalleryPasswordInput(e.target.value)}
+                                  className={styles.formInput}
+                                  placeholder="At least 4 characters"
+                                  disabled={gallerySaving}
+                                  autoComplete="off"
+                                />
+                              </div>
+                              <div>
+                                <label htmlFor="gallery-email-input" className={styles.formLabel}>
+                                  Recipient email
+                                </label>
+                                {/* TODO: pre-populate with collection.recipientEmail when backend returns it */}
+                                <input
+                                  id="gallery-email-input"
+                                  type="email"
+                                  multiple
+                                  value={galleryEmail}
+                                  onChange={e => setGalleryEmail(e.target.value)}
+                                  className={styles.formInput}
+                                  placeholder="client@example.com, other@example.com"
+                                  disabled={gallerySaving}
+                                  autoComplete="off"
+                                />
+                              </div>
+                            </div>
                             <div
                               style={{
                                 display: 'flex',
@@ -1253,19 +1220,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             >
                               <button
                                 type="button"
-                                onClick={handleSendPassword}
-                                disabled={gallerySaving}
+                                onClick={handleSaveAccess}
+                                disabled={gallerySaving || galleryPassword.length === 0}
                                 className={styles.submitButton}
                               >
-                                {gallerySaving ? 'Working…' : 'Set Password & Email Client'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleSetOnlyPassword}
-                                disabled={gallerySaving}
-                                className={styles.submitButton}
-                              >
-                                Set Password Only (no email)
+                                {gallerySaving ? 'Saving…' : 'Save'}
                               </button>
                               {collection.isPasswordProtected && (
                                 <button
@@ -1290,97 +1249,90 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           </section>
                         )}
 
-                        {/* Cover Image */}
-                        <div className={styles.coverImageSection}>
-                          <label className={styles.formLabel}>Cover Image</label>
-                          {displayedCoverImage && isContentImage(displayedCoverImage) ? (
-                            <div className={styles.coverImageWrapper}>
-                              <Image
-                                src={displayedCoverImage.imageUrl}
-                                alt="Cover"
-                                width={400}
-                                height={300}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                                className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
-                              >
-                                {isSelectingCoverImage ? 'Cancel Selection' : 'Update Cover Image'}
-                              </button>
+                        {/* Cover Image + media row (non-parent: side by side; parent: stacked) */}
+                        <div className={!isParent ? styles.coverAndMediaRow : undefined}>
+                          <div className={styles.coverImageSection}>
+                            <label className={styles.formLabel}>Cover Image</label>
+                            {displayedCoverImage && isContentImage(displayedCoverImage) ? (
+                              <div className={styles.coverImageWrapper}>
+                                <Image
+                                  src={displayedCoverImage.imageUrl}
+                                  alt="Cover"
+                                  width={400}
+                                  height={300}
+                                />
+                              </div>
+                            ) : (
+                              <div className={styles.noCoverImage}>No cover image</div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                              className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
+                            >
+                              {isSelectingCoverImage ? 'Cancel' : 'Select'}
+                            </button>
+                          </div>
+
+                          {/* Picker grid — parent only */}
+                          {isParent && isSelectingCoverImage && (
+                            <div className={styles.coverImagePickerGrid}>
+                              {currentState?.childCollectionImages &&
+                              currentState.childCollectionImages.length > 0 ? (
+                                currentState.childCollectionImages.map(img => (
+                                  <div
+                                    key={img.id}
+                                    className={styles.coverImagePickerItem}
+                                    onClick={() => handleCoverImageClick(img.id)}
+                                  >
+                                    <Image
+                                      src={img.imageUrl}
+                                      alt={img.title || ''}
+                                      width={120}
+                                      height={90}
+                                    />
+                                  </div>
+                                ))
+                              ) : (
+                                <div className={styles.noCoverImage}>
+                                  Add child collections with images to select a cover image.
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <div className={styles.noCoverImage}>
-                              <div>No cover image</div>
-                              <button
-                                type="button"
-                                onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                                className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
-                              >
-                                {isSelectingCoverImage ? 'Cancel Selection' : 'Select Cover Image'}
-                              </button>
+                          )}
+
+                          {/* Upload Images + Add Text Block — non-parent only */}
+                          {!isParent && (
+                            <div className={styles.mediaSection}>
+                              <div className={styles.uploadSection}>
+                                <label className={styles.formLabel}>Upload Images</label>
+                                <input
+                                  type="file"
+                                  multiple
+                                  accept="image/*"
+                                  onChange={handleImageUpload}
+                                  disabled={isLoading}
+                                  className={styles.uploadInput}
+                                />
+                                {isLoading && (
+                                  <div className={styles.uploadingText}>Uploading...</div>
+                                )}
+                              </div>
+
+                              <div className={styles.textBlockSection}>
+                                <label className={styles.formLabel}>Add Text Block</label>
+                                <button
+                                  type="button"
+                                  onClick={handleCreateNewTextBlock}
+                                  disabled={isLoading}
+                                  className={styles.addTextBlockButton}
+                                >
+                                  + Create New Text Block
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
-
-                        {/* Cover image picker grid for parent-type collections */}
-                        {isParent && isSelectingCoverImage && (
-                          <div className={styles.coverImagePickerGrid}>
-                            {currentState?.childCollectionImages &&
-                            currentState.childCollectionImages.length > 0 ? (
-                              currentState.childCollectionImages.map(img => (
-                                <div
-                                  key={img.id}
-                                  className={styles.coverImagePickerItem}
-                                  onClick={() => handleCoverImageClick(img.id)}
-                                >
-                                  <Image
-                                    src={img.imageUrl}
-                                    alt={img.title || ''}
-                                    width={120}
-                                    height={90}
-                                  />
-                                </div>
-                              ))
-                            ) : (
-                              <div className={styles.noCoverImage}>
-                                Add child collections with images to select a cover image.
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Upload Images / Add Text Block — hidden for parent-type collections */}
-                        {!isParent && (
-                          <div className={styles.mediaSection}>
-                            <div className={styles.uploadSection}>
-                              <label className={styles.formLabel}>Upload Images</label>
-                              <input
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                onChange={handleImageUpload}
-                                disabled={isLoading}
-                                className={styles.uploadInput}
-                              />
-                              {isLoading && (
-                                <div className={styles.uploadingText}>Uploading...</div>
-                              )}
-                            </div>
-
-                            <div className={styles.textBlockSection}>
-                              <label className={styles.formLabel}>Add Text Block</label>
-                              <button
-                                type="button"
-                                onClick={handleCreateNewTextBlock}
-                                disabled={isLoading}
-                                className={styles.addTextBlockButton}
-                              >
-                                + Create New Text Block
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
 
                       {/* RIGHT SECTION */}
