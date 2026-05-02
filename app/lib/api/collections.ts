@@ -246,47 +246,36 @@ export async function updateCollection(
 }
 
 /**
- * Response shape for `POST /api/admin/collections/{id}/send-password`.
- * Backend returns `{ sent: false, reason: 'email-disabled' }` when the SES
- * feature flag is off — the password is still stored, just not emailed.
- */
-export interface SendGalleryPasswordResponse {
-  sent: boolean;
-  reason?: string;
-}
-
-/**
- * POST /api/admin/collections/{id}/send-password
+ * POST /api/admin/collections/{id}/gallery-access
  *
- * Sets a new password on a CLIENT_GALLERY collection AND emails the plaintext
- * to the recipient in a single atomic action. Plaintext is never persisted —
- * BCrypt is one-way, so this is the only way to deliver a password to the
- * client. If admin needs to resend, they set a new password.
+ * Three modes:
+ *   set only:     { password: "..." }
+ *   set + email:  { password: "...", emails: ["client@example.com"] }
+ *   clear:        { password: null }
  */
-export async function sendGalleryPassword(
-  id: number,
-  password: string,
-  email: string
-): Promise<SendGalleryPasswordResponse | null> {
-  return fetchAdminPostJsonApi<SendGalleryPasswordResponse>(`/collections/${id}/send-password`, {
-    password,
-    email,
-  });
+export interface GalleryAccessResponse {
+  saved: boolean;
+  emailsSent: boolean;
+  reason: string | null;
+  password: string | null;
+  emails: string[];
 }
 
-/**
- * Updates a CLIENT_GALLERY collection's password without sending an email.
- * An empty string clears the password (gallery becomes unprotected). Thin
- * wrapper over `updateCollection` so callers don't have to assemble the
- * partial-update payload themselves.
- */
-export async function setGalleryPassword(id: number, password: string): Promise<void> {
-  // updateCollection returns null on API failure — without this throw the admin UI
-  // shows "Password set." even when the backend never persisted the new hash.
-  const result = await updateCollection(id, { id, password });
-  if (result === null) {
-    throw new ApiError('Failed to update password — see network tab for details.', 500);
+export async function saveGalleryAccess(
+  id: number,
+  body: { password: string | null; emails?: string[] }
+): Promise<GalleryAccessResponse> {
+  const result = await fetchAdminPostJsonApi<GalleryAccessResponse>(
+    `/collections/${id}/gallery-access`,
+    body
+  );
+  if (result === null || !result.saved) {
+    throw new ApiError(
+      result?.reason ?? 'Failed to save gallery access — see network tab for details.',
+      400
+    );
   }
+  return result;
 }
 
 /**

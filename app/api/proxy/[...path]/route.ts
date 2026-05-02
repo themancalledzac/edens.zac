@@ -115,20 +115,30 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   );
 
   const writeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+  // Tiered body size limit. Public write endpoints (contact form, gallery
+  // password) carry tiny JSON payloads — 16 KB is generous. Multipart uploads
+  // (admin image uploads, dev-only) need real headroom. The Content-Length
+  // header is a fast reject, but is not authoritative — clients may omit or
+  // spoof it. We re-check against the actual buffered body size below.
+  const contentType = req.headers.get('content-type') ?? '';
+  const isMultipart = contentType.startsWith('multipart/form-data');
+  const maxBytes = isMultipart ? 25 * 1024 * 1024 : 16 * 1024;
+
   if (writeMethods.has(method)) {
     const origin = req.headers.get('origin');
     if (!origin || !ALLOWED_ORIGINS.has(origin)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const contentLength = Number(req.headers.get('content-length') ?? '0');
-    if (contentLength > 16384) {
+    const declaredLength = Number(req.headers.get('content-length') ?? '0');
+    if (declaredLength > maxBytes) {
       return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
     }
   }
 
   // Buffer the body: NextRequest.body is a ReadableStream, and undici fetch
   // requires `duplex: 'half'` to forward streams. Buffering avoids the streaming
-  // path and lets undici set Content-Length. Safe given the 16 KB cap above.
+  // path and lets undici set Content-Length.
   //
   // The body must be wrapped in a Uint8Array view rather than passed as a raw
   // ArrayBuffer. AWS Amplify's SSR Lambda runtime ships an undici build that
@@ -139,6 +149,12 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   const body = ['GET', 'HEAD'].includes(method)
     ? undefined
     : new Uint8Array(await req.arrayBuffer());
+
+  // Authoritative size check after buffering — guards against missing or
+  // spoofed Content-Length headers that bypassed the early reject above.
+  if (writeMethods.has(method) && body && body.byteLength > maxBytes) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
+  }
 
   const init: RequestInit = {
     method,

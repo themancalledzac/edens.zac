@@ -69,7 +69,7 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
  * @param collectionType - Optional collection type for future customization
  * @returns Server component displaying unified collection content
  */
-export default async function CollectionPage({
+export default function CollectionPage({
   collection,
   chunkSize,
 }: ContentCollectionPageProps) {

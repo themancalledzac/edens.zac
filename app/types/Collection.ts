@@ -182,6 +182,12 @@ export interface CollectionModel extends CollectionBaseModel {
    */
   isPasswordProtected?: boolean;
 
+  /** Admin-only: plaintext gallery password. Populated only in admin/manage responses. */
+  galleryPassword?: string | null;
+
+  /** Admin-only: recipient email addresses. Populated only in admin/manage responses. */
+  recipientEmails?: string[];
+
   // Content
   content?: AnyContentModel[];
 }

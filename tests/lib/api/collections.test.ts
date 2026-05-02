@@ -6,8 +6,7 @@
 import {
   getCollectionsByLocation,
   parseCollectionArrayResponse,
-  sendGalleryPassword,
-  setGalleryPassword,
+  saveGalleryAccess,
   validateClientGalleryAccess,
 } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
@@ -361,91 +360,131 @@ describe('validateClientGalleryAccess', () => {
   });
 });
 
-describe('sendGalleryPassword', () => {
+describe('saveGalleryAccess', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('POSTs to the admin send-password endpoint with password and email', async () => {
+  it('POSTs to the gallery-access endpoint with password only', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ sent: true }),
+      json: jest
+        .fn()
+        .mockResolvedValue({ saved: true, emailsSent: false, reason: null, password: 'gallery-pw', emails: [] }),
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 
-    const result = await sendGalleryPassword(42, 'gallery-pw', 'client@example.com');
+    const result = await saveGalleryAccess(42, { password: 'gallery-pw' });
 
-    expect(result).toEqual({ sent: true });
+    expect(result).toEqual({ saved: true, emailsSent: false, reason: null, password: 'gallery-pw', emails: [] });
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/collections/42/send-password'),
+      expect.stringContaining('/collections/42/gallery-access'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ password: 'gallery-pw', email: 'client@example.com' }),
+        body: JSON.stringify({ password: 'gallery-pw' }),
       })
     );
   });
 
-  it('returns {sent: false, reason} when the backend reports email is disabled', async () => {
+  it('POSTs with emails array when recipients are provided', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ sent: false, reason: 'email-disabled' }),
+      json: jest.fn().mockResolvedValue({
+        saved: true,
+        emailsSent: true,
+        reason: null,
+        password: 'gallery-pw',
+        emails: ['client@example.com'],
+      }),
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 
-    const result = await sendGalleryPassword(7, 'pw', 'a@b.com');
+    const result = await saveGalleryAccess(42, {
+      password: 'gallery-pw',
+      emails: ['client@example.com'],
+    });
 
-    expect(result).toEqual({ sent: false, reason: 'email-disabled' });
+    expect(result).toEqual({
+      saved: true,
+      emailsSent: true,
+      reason: null,
+      password: 'gallery-pw',
+      emails: ['client@example.com'],
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/42/gallery-access'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ password: 'gallery-pw', emails: ['client@example.com'] }),
+      })
+    );
   });
-});
 
-describe('setGalleryPassword', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('calls updateCollection with {id, password} via PUT to /collections/{id}', async () => {
+  it('sends null password to clear the gallery password', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ collection: { id: 9 } }),
+      json: jest
+        .fn()
+        .mockResolvedValue({ saved: true, emailsSent: false, reason: null, password: null, emails: [] }),
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 
-    await setGalleryPassword(9, 'new-password');
+    await saveGalleryAccess(9, { password: null });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/collections/9'),
+      expect.stringContaining('/collections/9/gallery-access'),
       expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({ id: 9, password: 'new-password' }),
+        method: 'POST',
+        body: JSON.stringify({ password: null }),
       })
     );
   });
 
-  it('passes an empty string to clear the password', async () => {
+  it('returns {emailsSent: false, reason} when email is disabled on the backend', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ collection: { id: 9 } }),
+      json: jest.fn().mockResolvedValue({
+        saved: true,
+        emailsSent: false,
+        reason: 'email-disabled',
+        password: 'pw',
+        emails: ['a@b.com'],
+      }),
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 
-    await setGalleryPassword(9, '');
+    const result = await saveGalleryAccess(7, {
+      password: 'pw',
+      emails: ['a@b.com'],
+    });
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/collections/9'),
-      expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({ id: 9, password: '' }),
-      })
-    );
+    expect(result).toEqual({
+      saved: true,
+      emailsSent: false,
+      reason: 'email-disabled',
+      password: 'pw',
+      emails: ['a@b.com'],
+    });
   });
 
-  // FE-I1: Throw if the underlying updateCollection silently fails. Without this,
-  // the admin UI shows "Password set." even though the backend never persisted the hash.
-  it('throws ApiError when the PUT response is not ok (updateCollection returns null)', async () => {
+  it('throws ApiError when saved is false', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest
+        .fn()
+        .mockResolvedValue({ saved: false, emailsSent: false, reason: 'validation-error' }),
+      headers: new Headers({ 'content-type': 'application/json' }),
+    });
+
+    await expect(saveGalleryAccess(9, { password: 'pw' })).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('throws ApiError when the HTTP response is not ok', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 500,
@@ -453,6 +492,6 @@ describe('setGalleryPassword', () => {
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 
-    await expect(setGalleryPassword(9, 'new-password')).rejects.toBeInstanceOf(ApiError);
+    await expect(saveGalleryAccess(9, { password: 'pw' })).rejects.toBeInstanceOf(ApiError);
   });
 });

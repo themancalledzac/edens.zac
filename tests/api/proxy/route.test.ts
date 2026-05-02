@@ -78,3 +78,106 @@ describe('Vercel BFF proxy /api/proxy/[...path] — Set-Cookie forwarding', () =
     mockFetch.mockRestore();
   });
 });
+
+describe('Vercel BFF proxy /api/proxy/[...path] — payload size limits', () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NODE_ENV: 'development',
+    };
+  });
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  it('rejects JSON payloads larger than 16 KB with 413', async () => {
+    const oversize = 'x'.repeat(16 * 1024 + 1);
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/read/messages', {
+      method: 'POST',
+      body: JSON.stringify({ msg: oversize }),
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+      },
+    });
+
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'messages'] }),
+    } as never);
+
+    expect(res.status).toBe(413);
+  });
+
+  it('allows multipart uploads up to 25 MB', async () => {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    // 1 MB multipart body — well over the 16 KB JSON cap, well under the 25 MB multipart cap.
+    const body = new Uint8Array(1024 * 1024);
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/admin/content/images/1', {
+      method: 'POST',
+      body,
+      headers: {
+        'content-type': 'multipart/form-data; boundary=----test',
+        origin: 'http://localhost:3000',
+      },
+    });
+
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'admin', 'content', 'images', '1'] }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it('rejects multipart payloads larger than 25 MB with 413', async () => {
+    // 25 MB + 1 byte
+    const body = new Uint8Array(25 * 1024 * 1024 + 1);
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/admin/content/images/1', {
+      method: 'POST',
+      body,
+      headers: {
+        'content-type': 'multipart/form-data; boundary=----test',
+        origin: 'http://localhost:3000',
+      },
+    });
+
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'admin', 'content', 'images', '1'] }),
+    } as never);
+
+    expect(res.status).toBe(413);
+  });
+
+  it('enforces cap against actual buffered body size when Content-Length is missing', async () => {
+    // Construct a request where the underlying body is large but the
+    // Content-Length header is absent — the proxy must still reject it.
+    const oversize = 'x'.repeat(16 * 1024 + 1);
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/read/messages', {
+      method: 'POST',
+      body: oversize,
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+      },
+    });
+    // Force the declared length to 0 so the early-reject path is bypassed.
+    req.headers.set('content-length', '0');
+
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'messages'] }),
+    } as never);
+
+    expect(res.status).toBe(413);
+  });
+});

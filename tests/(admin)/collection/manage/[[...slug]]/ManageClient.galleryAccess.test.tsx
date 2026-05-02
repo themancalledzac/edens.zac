@@ -217,14 +217,9 @@ describe('ManageClient — Gallery Access section', () => {
     await renderManageClient();
 
     expect(screen.getByText('Gallery Access')).toBeInTheDocument();
-    expect(screen.getByLabelText('New password')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByLabelText('Recipient email')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /set password & email client/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /set password only \(no email\)/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
   });
 
   it('hides the Clear Password button when the gallery has no password', async () => {
@@ -247,144 +242,161 @@ describe('ManageClient — Gallery Access section', () => {
     expect(screen.getByRole('button', { name: /clear password/i })).toBeInTheDocument();
   });
 
-  it('calls sendGalleryPassword with the right args and shows success status', async () => {
+  it('Save with email calls saveGalleryAccess with emails array and shows success', async () => {
     mockResponse = makeResponse({ type: CollectionType.CLIENT_GALLERY });
-    mockedCollectionsApi.sendGalleryPassword.mockResolvedValue({ sent: true });
-
-    await renderManageClient();
-
-    fireEvent.change(screen.getByLabelText('New password'), {
-      target: { value: 'eight-chars-pw' },
-    });
-    fireEvent.change(screen.getByLabelText('Recipient email'), {
-      target: { value: 'client@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /set password & email client/i }));
-
-    await waitFor(() => {
-      expect(mockedCollectionsApi.sendGalleryPassword).toHaveBeenCalledWith(
-        42,
-        'eight-chars-pw',
-        'client@example.com'
-      );
-    });
-    await waitFor(() => {
-      expect(screen.getByText(/password sent to client@example.com/i)).toBeInTheDocument();
-    });
-  });
-
-  it('rejects passwords shorter than 8 characters before calling the API', async () => {
-    mockResponse = makeResponse({ type: CollectionType.CLIENT_GALLERY });
-
-    await renderManageClient();
-
-    fireEvent.change(screen.getByLabelText('New password'), {
-      target: { value: 'short' },
-    });
-    fireEvent.change(screen.getByLabelText('Recipient email'), {
-      target: { value: 'client@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /set password & email client/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument();
-    });
-    expect(mockedCollectionsApi.sendGalleryPassword).not.toHaveBeenCalled();
-  });
-
-  it('shows "email disabled" status when the backend reports SES is off', async () => {
-    mockResponse = makeResponse({ type: CollectionType.CLIENT_GALLERY });
-    mockedCollectionsApi.sendGalleryPassword.mockResolvedValue({
-      sent: false,
-      reason: 'email-disabled',
+    mockedCollectionsApi.saveGalleryAccess.mockResolvedValue({
+      saved: true,
+      emailsSent: true,
+      reason: null,
+      password: 'gallery-pw',
+      emails: ['client@example.com'],
     });
 
     await renderManageClient();
 
-    fireEvent.change(screen.getByLabelText('New password'), {
-      target: { value: 'eight-chars-pw' },
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'gallery-pw' },
     });
     fireEvent.change(screen.getByLabelText('Recipient email'), {
       target: { value: 'client@example.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /set password & email client/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
+    await waitFor(() => {
+      expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {
+        password: 'gallery-pw',
+        emails: ['client@example.com'],
+      });
+    });
     await waitFor(() => {
       expect(
-        screen.getByText(/password set, email disabled \(email-disabled\)/i)
+        screen.getByText(/password saved and sent to client@example.com/i)
       ).toBeInTheDocument();
     });
   });
 
-  it('"Set Password Only" calls setGalleryPassword without an email', async () => {
+  it('rejects passwords shorter than 4 characters before calling the API', async () => {
     mockResponse = makeResponse({ type: CollectionType.CLIENT_GALLERY });
-    mockedCollectionsApi.setGalleryPassword.mockResolvedValue();
 
     await renderManageClient();
 
-    fireEvent.change(screen.getByLabelText('New password'), {
-      target: { value: 'eight-chars-pw' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /set password only \(no email\)/i }));
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'abc' } });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
-      expect(mockedCollectionsApi.setGalleryPassword).toHaveBeenCalledWith(42, 'eight-chars-pw');
+      expect(screen.getByText('Password must be at least 4 characters.')).toBeInTheDocument();
     });
-    expect(mockedCollectionsApi.sendGalleryPassword).not.toHaveBeenCalled();
+    expect(mockedCollectionsApi.saveGalleryAccess).not.toHaveBeenCalled();
+  });
+
+  it('shows "email not sent" status when the backend reports emailsSent=false', async () => {
+    mockResponse = makeResponse({ type: CollectionType.CLIENT_GALLERY });
+    mockedCollectionsApi.saveGalleryAccess.mockResolvedValue({
+      saved: true,
+      emailsSent: false,
+      reason: 'email-disabled',
+      password: 'gallery-pw',
+      emails: ['client@example.com'],
+    });
+
+    await renderManageClient();
+
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'gallery-pw' },
+    });
+    fireEvent.change(screen.getByLabelText('Recipient email'), {
+      target: { value: 'client@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
     await waitFor(() => {
-      expect(screen.getByText('Password set. No email sent.')).toBeInTheDocument();
+      expect(
+        screen.getByText(/password saved, email not sent \(email-disabled\)/i)
+      ).toBeInTheDocument();
     });
   });
 
-  it('"Clear Password" calls setGalleryPassword with an empty string', async () => {
+  it('Save without email calls saveGalleryAccess without emails and shows success', async () => {
+    mockResponse = makeResponse({ type: CollectionType.CLIENT_GALLERY });
+    mockedCollectionsApi.saveGalleryAccess.mockResolvedValue({
+      saved: true,
+      emailsSent: false,
+      reason: null,
+      password: 'gallery-pw',
+      emails: [],
+    });
+
+    await renderManageClient();
+
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'gallery-pw' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {
+        password: 'gallery-pw',
+        emails: undefined,
+      });
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Password saved. No email sent.')).toBeInTheDocument();
+    });
+  });
+
+  it('"Clear Password" calls saveGalleryAccess with null password', async () => {
     mockResponse = makeResponse({
       type: CollectionType.CLIENT_GALLERY,
       isPasswordProtected: true,
     });
-    mockedCollectionsApi.setGalleryPassword.mockResolvedValue();
+    mockedCollectionsApi.saveGalleryAccess.mockResolvedValue({
+      saved: true,
+      emailsSent: false,
+      reason: null,
+      password: null,
+      emails: [],
+    });
 
     await renderManageClient();
 
     fireEvent.click(screen.getByRole('button', { name: /clear password/i }));
 
     await waitFor(() => {
-      expect(mockedCollectionsApi.setGalleryPassword).toHaveBeenCalledWith(42, '');
+      expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, { password: null });
     });
     await waitFor(() => {
       expect(screen.getByText('Password cleared. Gallery is now unprotected.')).toBeInTheDocument();
     });
   });
 
-  it('"Set Password Only" shows an error message and does not clear the input when setGalleryPassword throws ApiError', async () => {
+  it('shows an error and does not clear the input when saveGalleryAccess throws', async () => {
     mockResponse = makeResponse({ type: CollectionType.CLIENT_GALLERY });
-    mockedCollectionsApi.setGalleryPassword.mockRejectedValue(
+    mockedCollectionsApi.saveGalleryAccess.mockRejectedValue(
       new ApiError('Internal Server Error', 500)
     );
 
     await renderManageClient();
 
-    fireEvent.change(screen.getByLabelText('New password'), {
-      target: { value: 'eight-chars-pw' },
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'gallery-pw' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /set password only \(no email\)/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     await waitFor(() => {
-      expect(mockedCollectionsApi.setGalleryPassword).toHaveBeenCalledWith(42, 'eight-chars-pw');
+      expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {
+        password: 'gallery-pw',
+        emails: undefined,
+      });
     });
 
-    // Must NOT show any success message
-    expect(screen.queryByText('Password set. No email sent.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Password saved. No email sent.')).not.toBeInTheDocument();
 
-    // Must show an error/failure status message.
-    // handleApiError returns error.message for Error instances, so the status
-    // reflects the ApiError message rather than the defaultMessage fallback.
     await waitFor(() => {
       expect(screen.getByRole('status')).toBeInTheDocument();
     });
-    const statusEl = screen.getByRole('status');
-    expect(statusEl.textContent).toMatch(/internal server error/i);
+    expect(screen.getByRole('status').textContent).toMatch(/internal server error/i);
 
-    // Password input must NOT be cleared so admin can retry
-    expect(screen.getByLabelText('New password')).toHaveValue('eight-chars-pw');
+    // Input must NOT be cleared so admin can retry
+    expect(screen.getByLabelText('Password')).toHaveValue('gallery-pw');
   });
 });
