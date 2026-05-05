@@ -5,6 +5,7 @@ import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { getCollectionsByType } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 import { CollectionType } from '@/app/types/Collection';
+import { isLocalEnvironment } from '@/app/utils/environment';
 
 interface CollectionTypePageProps {
   params: Promise<{
@@ -73,7 +74,7 @@ export default async function CollectionTypePage({ params }: CollectionTypePageP
   try {
     const collections = await getCollectionsByType(type, 0);
 
-    return <CollectionPage collection={collections} />;
+    return <CollectionPage collection={collections} showProtectedCovers={isLocalEnvironment()} />;
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 404 || error.status >= 500) {

@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
 export default async function AllCollectionsPage() {
   try {
     const allCollections = await getAllCollectionsAdmin();
-    return <CollectionPage collection={allCollections ?? []} />;
+    return <CollectionPage collection={allCollections} showProtectedCovers />;
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       notFound();

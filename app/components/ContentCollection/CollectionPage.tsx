@@ -10,19 +10,30 @@ import styles from './ContentCollectionPage.module.scss';
 interface ContentCollectionPageProps {
   collection: CollectionModel | CollectionModel[];
   chunkSize?: number; // Number of images per row (default: 2)
+  /**
+   * Opt-in flag to bypass the defense-in-depth strip of cover images on
+   * password-protected CLIENT_GALLERY entries. Admin-only callers (e.g.
+   * /all-collections, /collectionType/* in local dev) set this true so the
+   * admin can see their own covers. Default false preserves the strip for
+   * anonymous public list views.
+   */
+  showProtectedCovers?: boolean;
 }
 
 /**
  * Converts a CollectionModel to ContentParallaxImageModel for unified parallax rendering.
  * Dimensions are clamped to a minimum 4:5 aspect ratio.
  */
-function collectionToContentModel(col: CollectionModel): ContentParallaxImageModel {
+function collectionToContentModel(
+  col: CollectionModel,
+  showProtectedCovers: boolean
+): ContentParallaxImageModel {
   // Defense-in-depth: never render a coverImage for a password-protected CLIENT_GALLERY in
-  // list views. Backend BE-H5 strips it at the API, but a stale cache or future regression
-  // could re-expose it.
+  // list views unless the caller explicitly opts in. Backend BE-H5 strips it at the API,
+  // but a stale cache or future regression could re-expose it.
   const isProtected =
     col.type === CollectionType.CLIENT_GALLERY && col.isPasswordProtected === true;
-  const safeCoverImage = isProtected ? null : col.coverImage;
+  const safeCoverImage = isProtected && !showProtectedCovers ? null : col.coverImage;
   const { imageWidth, imageHeight } = clampParallaxDimensions(
     safeCoverImage?.imageWidth,
     safeCoverImage?.imageHeight
@@ -72,6 +83,7 @@ function collectionToContentModel(col: CollectionModel): ContentParallaxImageMod
 export default function CollectionPage({
   collection,
   chunkSize,
+  showProtectedCovers = false,
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
@@ -86,7 +98,9 @@ export default function CollectionPage({
   }
 
   // Array of collections: server-rendered grid (no filters)
-  const contentBlocks: AnyContentModel[] = collection.map(collectionToContentModel);
+  const contentBlocks: AnyContentModel[] = collection.map(c =>
+    collectionToContentModel(c, showProtectedCovers)
+  );
 
   return (
     <div className={styles.container}>
