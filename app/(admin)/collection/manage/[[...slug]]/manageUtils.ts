@@ -49,7 +49,7 @@ export function buildUpdatePayload(
     { key: 'type', original: originalCollection.type },
     { key: 'title', original: originalCollection.title },
     { key: 'description', original: originalCollection.description },
-    { key: 'visible', original: originalCollection.visible },
+    { key: 'visibility', original: originalCollection.visibility },
     { key: 'displayMode', original: originalCollection.displayMode },
     { key: 'rowsWide', original: originalCollection.rowsWide },
   ];

@@ -5,6 +5,7 @@ import { getAllImages } from '@/app/lib/api/content';
 import { ApiError } from '@/app/lib/api/core';
 import type { CollectionModel } from '@/app/types/Collection';
 import { CollectionType } from '@/app/types/Collection';
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import type { ContentImageModel } from '@/app/types/Content';
 
 /**
@@ -38,7 +39,7 @@ function createMockCollection(images: ContentImageModel[]): CollectionModel {
     description: 'All images ordered by date descending (newest first)',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    visible: true,
+    visibility: CollectionVisibility.LISTED,
     displayMode: 'CHRONOLOGICAL',
     contentPerPage: 200,
     content: images,

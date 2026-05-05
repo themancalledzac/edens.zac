@@ -116,7 +116,7 @@
   }
 }
 
-// Title row: title input (wide) + visible checkbox (narrow)
+// Title row: title input occupies the full width (visibility moved to its own fieldset)
 .titleRow {
   display: flex;
   align-items: flex-end;
@@ -128,30 +128,37 @@
   min-width: 0;
 }
 
-.visibleCheckboxWrapper {
-  flex-shrink: 0;
+// Visibility fieldset: 3 stacked radios for LISTED / UNLISTED / HIDDEN
+.visibilityFieldset {
+  border: 1px solid var(--color-border, rgb(255 255 255 / 0.1));
+  border-radius: var(--radius-sm, 4px);
+  padding: var(--space-2) var(--space-3);
   display: flex;
   flex-direction: column;
+  gap: var(--space-2);
 }
 
-.visibleCheckboxLabel {
-  display: flex;
-  align-items: center;
+.visibilityRadioLabel {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
   gap: var(--space-2);
+  cursor: pointer;
   color: var(--color-bg-light);
   font-size: var(--text-sm);
-  font-weight: 500;
-  cursor: pointer;
-  padding: var(--space-2) 0;
 
-  input[type='checkbox'] {
+  input[type='radio'] {
     cursor: pointer;
   }
+}
 
-  span {
-    font-weight: 500;
-    min-width: 2ch;
-  }
+.visibilityRadioName {
+  font-weight: 600;
+}
+
+.visibilityRadioDesc {
+  opacity: 0.75;
+  font-size: var(--text-xs, 0.75rem);
 }
 
 // Left/Right Layout for Update Form

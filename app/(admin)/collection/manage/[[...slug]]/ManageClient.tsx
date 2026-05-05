@@ -40,6 +40,11 @@ import {
   type LocationModel,
 } from '@/app/types/Collection';
 import {
+  COLLECTION_VISIBILITY_DESCRIPTIONS,
+  COLLECTION_VISIBILITY_LABELS,
+  CollectionVisibility,
+} from '@/app/types/CollectionVisibility';
+import {
   type ContentImageModel,
   type ContentImageUpdateRequest,
   type ContentImageUpdateResponse,
@@ -143,7 +148,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         title: collection.title || '',
         description: collection.description || '',
         collectionDate: collection.collectionDate || '',
-        visible: collection.visible ?? true,
+        visibility: collection.visibility ?? CollectionVisibility.HIDDEN,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
         rowsWide: collection.rowsWide ?? undefined,
       };
@@ -154,7 +159,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       title: '',
       description: '',
       collectionDate: '',
-      visible: true,
+      visibility: CollectionVisibility.HIDDEN,
       displayMode: 'CHRONOLOGICAL',
       rowsWide: undefined,
     };
@@ -168,7 +173,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         title: collection.title || '',
         description: collection.description || '',
         collectionDate: collection.collectionDate || '',
-        visible: collection.visible ?? true,
+        visibility: collection.visibility ?? CollectionVisibility.HIDDEN,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
         rowsWide: collection.rowsWide ?? undefined,
       });
@@ -952,7 +957,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
                         {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
-                        {/* Title + Visible */}
+                        {/* Title */}
                         <div className={styles.titleRow}>
                           <div className={styles.titleInputWrapper}>
                             <label className={styles.formLabel}>Title</label>
@@ -965,20 +970,31 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               className={styles.formInput}
                             />
                           </div>
-                          <div className={styles.visibleCheckboxWrapper}>
-                            <label className={styles.formLabel}>Visible</label>
-                            <label className={styles.visibleCheckboxLabel}>
+                        </div>
+
+                        {/* Visibility */}
+                        <fieldset className={styles.visibilityFieldset}>
+                          <legend className={styles.formLabel}>Visibility</legend>
+                          {Object.values(CollectionVisibility).map(v => (
+                            <label key={v} className={styles.visibilityRadioLabel}>
                               <input
-                                type="checkbox"
-                                checked={updateData.visible}
-                                onChange={e =>
-                                  setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
+                                type="radio"
+                                name="visibility"
+                                value={v}
+                                checked={updateData.visibility === v}
+                                onChange={() =>
+                                  setUpdateData(prev => ({ ...prev, visibility: v }))
                                 }
                               />
-                              <span>{updateData.visible ? 'Yes' : 'No'}</span>
+                              <span className={styles.visibilityRadioName}>
+                                {COLLECTION_VISIBILITY_LABELS[v]}
+                              </span>
+                              <span className={styles.visibilityRadioDesc}>
+                                {COLLECTION_VISIBILITY_DESCRIPTIONS[v]}
+                              </span>
                             </label>
-                          </div>
-                        </div>
+                          ))}
+                        </fieldset>
 
                         {/* Collection Date / Collection Type */}
                         <div className={styles.formGridHalf}>

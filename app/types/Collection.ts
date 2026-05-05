@@ -3,6 +3,7 @@
  * Single source of truth for Collection types
  */
 
+import { type CollectionVisibility } from './CollectionVisibility';
 import type { AnyContentModel, ContentImageModel } from './Content';
 import type { ContentPersonModel, ContentTagModel } from './ImageMetadata';
 
@@ -41,7 +42,7 @@ export interface CollectionBaseModel {
   description?: string;
   locations: LocationModel[];
   collectionDate?: string;
-  visible?: boolean;
+  visibility?: CollectionVisibility;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)
   createdAt?: string;
@@ -137,7 +138,7 @@ export interface CollectionUpdateRequest {
   locations?: LocationUpdate;
   collectionDate?: string | null;
   clearCollectionDate?: boolean;
-  visible?: boolean;
+  visibility?: CollectionVisibility;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)
   password?: string;
@@ -245,6 +246,11 @@ export type {
   ContentTagModel,
   FilmFormatDTO,
 } from './ImageMetadata';
+
+/**
+ * Re-export CollectionVisibility for callers importing from Collection.ts.
+ */
+export { CollectionVisibility } from './CollectionVisibility';
 
 /**
  * Location Model - Represents a location that can be assigned to collections and content

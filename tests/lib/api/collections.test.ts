@@ -11,6 +11,7 @@ import {
 } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -34,7 +35,7 @@ const createCollection = (id: number, overrides?: Partial<CollectionModel>): Col
   title: `Collection ${id}`,
   description: `Description ${id}`,
   type: CollectionType.PORTFOLIO,
-  visible: true,
+  visibility: CollectionVisibility.LISTED,
   locations: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -168,7 +169,7 @@ describe('parseCollectionArrayResponse', () => {
         title: 'Test Collection',
         description: 'Test Description',
         type: CollectionType.BLOG,
-        visible: false,
+        visibility: CollectionVisibility.UNLISTED,
       });
       const data = [collection];
       const result = parseCollectionArrayResponse(data);

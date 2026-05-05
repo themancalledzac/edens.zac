@@ -1,6 +1,7 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type CollectionModel,CollectionType } from '@/app/types/Collection';
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 
@@ -54,7 +55,9 @@ function collectionToContentModel(
     width: imageWidth,
     height: imageHeight,
     orderIndex: 0,
-    visible: col.visible ?? true,
+    // Map collection-level visibility -> content-block visible flag.
+    // LISTED (or unknown/undefined) = render; UNLISTED/HIDDEN = hide from list views.
+    visible: col.visibility === undefined ? true : col.visibility === CollectionVisibility.LISTED,
     createdAt: col.createdAt,
     updatedAt: col.updatedAt,
     collectionDate: col.collectionDate,

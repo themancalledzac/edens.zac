@@ -30,6 +30,7 @@ import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { getCollectionUpdateMetadata } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { CollectionType, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 // Mock dependencies
 jest.mock('@/app/lib/api/collections');
@@ -60,7 +61,7 @@ describe('useCollectionData', () => {
       slug: 'test-collection',
       title: 'Test Collection',
       type: CollectionType.PORTFOLIO,
-      visible: true,
+      visibility: CollectionVisibility.LISTED,
       displayMode: 'CHRONOLOGICAL',
       locations: [],
       content: [],

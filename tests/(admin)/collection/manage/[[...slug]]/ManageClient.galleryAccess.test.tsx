@@ -16,6 +16,7 @@ import {
   CollectionType,
   type CollectionUpdateResponseDTO,
 } from '@/app/types/Collection';
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 // next/navigation router is required for the wider component; not tested here.
 jest.mock('next/navigation', () => ({
@@ -156,7 +157,7 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     description: '',
     type: CollectionType.CLIENT_GALLERY,
     locations: [],
-    visible: true,
+    visibility: CollectionVisibility.LISTED,
     displayMode: 'CHRONOLOGICAL',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
