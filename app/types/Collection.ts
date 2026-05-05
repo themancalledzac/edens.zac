@@ -178,6 +178,13 @@ export interface CollectionModel extends CollectionBaseModel {
   tags?: string[];
 
   /**
+   * People associated with this collection. Editable on the manage page; can be
+   * regenerated as the union of every contained image's people via the
+   * "Regenerate from contents" admin action.
+   */
+  people?: ContentPersonModel[];
+
+  /**
    * Client gallery access control.
    * - `true`: password required — show locked UI
    * - `false`: no password needed — skip gate entirely

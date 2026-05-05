@@ -8,7 +8,11 @@
  * All filter state is designed to be stored in URL search params for shareability.
  */
 
-import { type AnyContentModel, type ContentImageModel } from '@/app/types/Content';
+import {
+  type AnyContentModel,
+  type ContentCollectionModel,
+  type ContentImageModel,
+} from '@/app/types/Content';
 
 /**
  * Filter criteria for content arrays.
@@ -55,6 +59,14 @@ export interface ContentFilterCriteria {
  */
 export function isImageContent(content: AnyContentModel): content is ContentImageModel {
   return content.contentType === 'IMAGE';
+}
+
+/**
+ * Type guard: checks if a content model is a collection reference (COLLECTION type).
+ * Local helper so contentFilter doesn't depend on contentTypeGuards (avoids cycle).
+ */
+function isCollectionRef(content: AnyContentModel): content is ContentCollectionModel {
+  return content.contentType === 'COLLECTION';
 }
 
 /**
@@ -268,6 +280,21 @@ export function extractFilterOptions(
   let hasColor = false;
 
   for (const item of content) {
+    if (isCollectionRef(item)) {
+      // Aggregate filter dimensions from collection refs when the backend
+      // populates them (forward-compat: today the fields may be undefined).
+      // This is what makes the filter bar populate on synthetic PARENT pages
+      // (e.g. /all-collections, /all-blog) where every block is a collection.
+      for (const p of item.people ?? []) peopleSet.add(p.name);
+      for (const loc of item.locations ?? []) {
+        if (loc.name) locationsSet.add(loc.name);
+      }
+      for (const t of item.tags ?? []) {
+        tagFrequency.set(t.name, (tagFrequency.get(t.name) ?? 0) + 1);
+      }
+      continue;
+    }
+
     if (!isImageContent(item)) continue;
 
     if (item.rating !== undefined && item.rating !== null) {

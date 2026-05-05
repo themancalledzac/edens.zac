@@ -170,6 +170,19 @@ export interface ContentCollectionModel extends Content {
   referencedCollectionId: number; // ID of the actual collection being referenced
   /** Rating 0-5 of the referenced collection (nullable). Used by home manage page. */
   rating?: number | null;
+
+  /**
+   * Optional aggregated metadata of the referenced collection — surfaced on
+   * collection-ref content blocks so synthetic PARENT pages (e.g. /all-blog)
+   * can populate the filter bar without a separate per-collection fetch.
+   *
+   * Backend may omit any of these fields; consumers must treat them as
+   * optional. Used by `extractFilterOptions` to aggregate filter dimensions
+   * across child collections on collection-dominant pages.
+   */
+  tags?: ContentTagModel[];
+  people?: ContentPersonModel[];
+  locations?: LocationModel[];
 }
 
 /**

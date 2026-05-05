@@ -26,7 +26,9 @@ import {
   createCollection,
   getCollectionUpdateMetadata,
   getMetadata,
+  regenerateCollectionPeople,
   saveGalleryAccess,
+  setCollectionPeople,
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
@@ -38,6 +40,7 @@ import {
   CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
+  type ContentPersonModel,
   type DisplayMode,
   type LocationModel,
 } from '@/app/types/Collection';
@@ -179,6 +182,65 @@ export default function ManageClient({ slug }: ManageClientProps) {
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
         rowsWide: collection.rowsWide ?? undefined,
       });
+    }
+  }, [collection]);
+
+  // People — collection-level people list, edited inline. Saved/regenerated via
+  // their own admin endpoints (separate from the metadata Update Metadata flow)
+  // because the backend reconciles to an exact set of person IDs.
+  const [collectionPeople, setCollectionPeopleState] = useState<ContentPersonModel[]>([]);
+  const [peopleSaving, setPeopleSaving] = useState(false);
+  const [peopleStatus, setPeopleStatus] = useState<string | null>(null);
+
+  // Sync people from the loaded collection (and reset status when it changes).
+  useEffect(() => {
+    setCollectionPeopleState(collection?.people ?? []);
+    setPeopleStatus(null);
+  }, [collection?.id, collection?.people]);
+
+  /**
+   * Save the current people list. Sends only existing person IDs; new people
+   * created inline via the picker (id === 0) are skipped because the backend
+   * endpoint reconciles by ID — creation must happen elsewhere first.
+   */
+  const handleSavePeople = useCallback(async () => {
+    if (!collection) return;
+    setPeopleSaving(true);
+    setPeopleStatus(null);
+    try {
+      const personIds = collectionPeople.filter(p => p.id > 0).map(p => p.id);
+      await setCollectionPeople(collection.id, personIds);
+      setPeopleStatus('People saved.');
+    } catch (error) {
+      setPeopleStatus(handleApiError(error, 'Failed to save people.'));
+    } finally {
+      setPeopleSaving(false);
+    }
+  }, [collection, collectionPeople]);
+
+  /**
+   * Regenerate the collection's people list from the union of all contained
+   * images' people. Confirms first because it overwrites the current list.
+   * Reloads the page on success so the refreshed list re-hydrates from the
+   * server (simpler than re-fetching just the metadata payload).
+   */
+  const handleRegeneratePeople = useCallback(async () => {
+    if (!collection) return;
+    if (
+      !window.confirm(
+        "Replace this collection's people list with the union of all contained images' people?"
+      )
+    )
+      return;
+    setPeopleSaving(true);
+    setPeopleStatus(null);
+    try {
+      await regenerateCollectionPeople(collection.id);
+      setPeopleStatus('People regenerated. Reloading...');
+      window.location.reload();
+    } catch (error) {
+      setPeopleStatus(handleApiError(error, 'Failed to regenerate people.'));
+      setPeopleSaving(false);
     }
   }, [collection]);
 
@@ -1092,6 +1154,96 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           showNewIndicator
                           emptyText="No locations set"
                         />
+
+                        {/* People — collection-level associations. Saved via
+                            its own endpoint (separate from Update Metadata)
+                            because the backend reconciles to an exact set of
+                            IDs; "Regenerate" computes the union from contained
+                            images' people. */}
+                        <section
+                          aria-labelledby="collection-people-heading"
+                          className={styles.formGroup}
+                        >
+                          <h3
+                            id="collection-people-heading"
+                            className={styles.formLabel}
+                            style={{ marginBottom: '8px' }}
+                          >
+                            People
+                          </h3>
+                          <UnifiedMetadataSelector<ContentPersonModel>
+                            label=""
+                            multiSelect
+                            options={currentState?.people || []}
+                            selectedValues={collectionPeople}
+                            onChange={value => {
+                              let next: ContentPersonModel[];
+                              if (Array.isArray(value)) {
+                                next = value;
+                              } else if (value) {
+                                next = [value];
+                              } else {
+                                next = [];
+                              }
+                              setCollectionPeopleState(next);
+                            }}
+                            allowAddNew
+                            onAddNew={data => {
+                              const newPerson: ContentPersonModel = {
+                                id: 0,
+                                name: data.name as string,
+                                slug: '',
+                              };
+                              setCollectionPeopleState(prev => [...prev, newPerson]);
+                            }}
+                            addNewFields={[
+                              {
+                                name: 'name',
+                                label: 'Person Name',
+                                type: 'text',
+                                placeholder: 'Enter person name',
+                                required: true,
+                              },
+                            ]}
+                            getDisplayName={person => person?.name || ''}
+                            showNewIndicator
+                            emptyText="No people set"
+                          />
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '8px',
+                              marginTop: '12px',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={handleSavePeople}
+                              disabled={peopleSaving}
+                              className={styles.submitButton}
+                            >
+                              {peopleSaving ? 'Saving…' : 'Save People'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRegeneratePeople}
+                              disabled={peopleSaving}
+                              className={styles.submitButton}
+                            >
+                              Regenerate from contents
+                            </button>
+                          </div>
+                          {peopleStatus && (
+                            <p
+                              role="status"
+                              style={{ marginTop: '12px' }}
+                              className={styles.formLabelHint}
+                            >
+                              {peopleStatus}
+                            </p>
+                          )}
+                        </section>
 
                         {/* Display Mode / Row Length — hidden for parent-type collections */}
                         {!isParent && (

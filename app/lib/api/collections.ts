@@ -324,6 +324,24 @@ export async function reorderCollectionContent(
 }
 
 /**
+ * PUT /api/admin/collections/{id}/people
+ * Replace the people list on a collection. Pass the desired set of person IDs;
+ * the backend reconciles to that exact set.
+ */
+export async function setCollectionPeople(id: number, personIds: number[]): Promise<void> {
+  await fetchAdminPutJsonApi<void>(`/collections/${id}/people`, personIds);
+}
+
+/**
+ * POST /api/admin/collections/{id}/people/regenerate
+ * Auto-fill the collection's people list from the union of all contained
+ * images' people. Replaces the existing list.
+ */
+export async function regenerateCollectionPeople(id: number): Promise<void> {
+  await fetchAdminPostJsonApi<void>(`/collections/${id}/people/regenerate`, {});
+}
+
+/**
  * POST /api/admin/collections/{parentId}/child
  * Create a new child collection and link it to parent
  */
