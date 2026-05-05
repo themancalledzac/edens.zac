@@ -1,9 +1,5 @@
-'use client';
-
 import Image from 'next/image';
 import Link from 'next/link';
-
-import { useParallax } from '@/app/hooks/useParallax';
 
 import styles from './AdminHubGrid.module.scss';
 import type { AdminTileMerged } from './adminTiles';
@@ -13,10 +9,8 @@ interface AdminTileProps {
 }
 
 function AdminTile({ tile }: AdminTileProps) {
-  const parallaxRef = useParallax({ enableParallax: true });
-
   return (
-    <div ref={parallaxRef} className={styles.tileWrapper}>
+    <div className={styles.tileWrapper}>
       <Link href={tile.href} className={styles.tile}>
         <div className={styles.imageWrapper}>
           {tile.coverImageUrl ? (
@@ -25,10 +19,10 @@ function AdminTile({ tile }: AdminTileProps) {
               alt=""
               fill
               sizes="(min-width: 1024px) 320px, (min-width: 768px) 45vw, 90vw"
-              className={`${styles.tileImage} parallax-bg`}
+              className={styles.tileImage}
             />
           ) : (
-            <div className={`${styles.placeholder} parallax-bg`} />
+            <div className={styles.placeholder} />
           )}
         </div>
         <div className={styles.overlay}>
