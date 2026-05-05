@@ -16,6 +16,6 @@ export const ADMIN_TILES: AdminTileConfig[] = [
   { tileKey: 'home',             label: 'Home (Preview)',   href: '/homePage' },
   { tileKey: 'all-collections',  label: 'All Collections',  href: '/all-collections' },
   { tileKey: 'all-images',       label: 'All Images',       href: '/all-images' },
-  { tileKey: 'blogs',            label: 'Blogs',            href: '/collectionType/blogs' },
-  { tileKey: 'client-galleries', label: 'Client Galleries', href: '/collectionType/client-gallery' },
+  { tileKey: 'blogs',            label: 'Blogs',            href: '/all-blogs' },
+  { tileKey: 'client-galleries', label: 'Client Galleries', href: '/all-client-galleries' },
 ];

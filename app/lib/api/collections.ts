@@ -20,7 +20,6 @@ import {
 import {
   type CollectionCreateRequest,
   type CollectionModel,
-  type CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
@@ -108,28 +107,6 @@ export async function getCollectionBySlug(
     );
     if (result === null) notFound();
     return result;
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) notFound();
-    throw error;
-  }
-}
-
-/**
- * GET /api/read/collections/type/{type}
- * Get visible collections by type ordered by collection date (newest first)
- */
-export async function getCollectionsByType(
-  type: CollectionType,
-  page = 0,
-  size = PAGINATION.collectionPageSize
-): Promise<CollectionModel[]> {
-  if (!type) throw new Error('type is required');
-  try {
-    const result = await fetchReadApi<CollectionModel[]>(
-      `/collections/type/${type}?page=${page}&size=${size}`,
-      { next: { revalidate: TIMING.revalidateCache, tags: [`collections-type-${type}`] } }
-    );
-    return result ?? [];
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
