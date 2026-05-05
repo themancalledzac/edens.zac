@@ -288,10 +288,15 @@ export async function deleteCollection(id: number): Promise<void | null> {
 
 /**
  * GET /api/admin/collections/all
- * Get all collections ordered by collection date (admin only)
+ * Get all collections ordered by collection date (admin only).
+ *
+ * Backend returns a Spring `Page<CollectionModel>` envelope ({ content: [...], ... }),
+ * not a flat array. Use parseCollectionArrayResponse to unwrap so consumers can rely
+ * on a real `CollectionModel[]`.
  */
-export async function getAllCollectionsAdmin(): Promise<CollectionModel[] | null> {
-  return fetchAdminGetApi<CollectionModel[]>('/collections/all', { cache: 'no-store' });
+export async function getAllCollectionsAdmin(): Promise<CollectionModel[]> {
+  const data = await fetchAdminGetApi<unknown>('/collections/all', { cache: 'no-store' });
+  return parseCollectionArrayResponse(data);
 }
 
 /**
