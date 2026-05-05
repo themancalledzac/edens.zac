@@ -16,6 +16,7 @@ import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWit
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
+import RatingStars from '@/app/components/RatingStars/RatingStars';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
@@ -27,6 +28,7 @@ import {
   getMetadata,
   saveGalleryAccess,
   updateCollection,
+  updateCollectionRating,
 } from '@/app/lib/api/collections';
 import { createImages, createTextContent, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
@@ -1371,6 +1373,40 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           label="Collections"
                           excludeCollectionId={collection.id}
                         />
+
+                        {/* Home: rate child collections inline. Click is immediate (no save button). */}
+                        {slug === 'home' && (collection.content?.some(isContentCollection) ?? false) && (
+                          <section aria-labelledby="children-rating-heading" className={styles.formGroup}>
+                            <h3 id="children-rating-heading" className={styles.formLabel}>
+                              Children (rating)
+                            </h3>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                              {(collection.content ?? [])
+                                .filter(isContentCollection)
+                                .map(child => (
+                                  <li
+                                    key={child.id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      gap: '8px',
+                                      padding: '6px 0',
+                                    }}
+                                  >
+                                    <span>{child.title ?? child.slug}</span>
+                                    <RatingStars
+                                      initialRating={child.rating ?? null}
+                                      onChange={async next => {
+                                        await updateCollectionRating(child.referencedCollectionId, next);
+                                      }}
+                                      ariaLabel={`Rate ${child.title ?? child.slug}`}
+                                    />
+                                  </li>
+                                ))}
+                            </ul>
+                          </section>
+                        )}
                       </div>
                     </div>
                   </form>

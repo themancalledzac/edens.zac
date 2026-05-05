@@ -168,6 +168,8 @@ export interface ContentCollectionModel extends Content {
   collectionType: CollectionType;
   coverImage?: ContentImageModel | null; // Full image object with dimensions (matches CollectionModel.coverImage)
   referencedCollectionId: number; // ID of the actual collection being referenced
+  /** Rating 0-5 of the referenced collection (nullable). Used by home manage page. */
+  rating?: number | null;
 }
 
 /**

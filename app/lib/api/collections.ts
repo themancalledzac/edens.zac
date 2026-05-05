@@ -12,6 +12,7 @@ import {
   ApiError,
   fetchAdminDeleteApi,
   fetchAdminGetApi,
+  fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
   fetchAdminPutJsonApi,
   fetchReadApi,
@@ -319,6 +320,14 @@ export async function getCollectionUpdateMetadata(
  */
 export async function getMetadata(): Promise<GeneralMetadataDTO | null> {
   return fetchAdminGetApi<GeneralMetadataDTO>('/collections/metadata', { cache: 'no-store' });
+}
+
+/**
+ * PATCH /api/admin/collections/{id}/rating
+ * Set the rating for a collection. Pass `null` to clear.
+ */
+export async function updateCollectionRating(id: number, rating: number | null): Promise<void> {
+  await fetchAdminPatchJsonApi<void>(`/collections/${id}/rating`, { rating });
 }
 
 /**

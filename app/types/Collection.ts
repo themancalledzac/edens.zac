@@ -43,6 +43,8 @@ export interface CollectionBaseModel {
   locations: LocationModel[];
   collectionDate?: string;
   visibility?: CollectionVisibility;
+  /** Rating 0-5, nullable. Used for ordering multi-collection list views. */
+  rating?: number;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)
   createdAt?: string;
@@ -139,6 +141,8 @@ export interface CollectionUpdateRequest {
   collectionDate?: string | null;
   clearCollectionDate?: boolean;
   visibility?: CollectionVisibility;
+  /** Rating 0-5, nullable. `null` clears the rating. */
+  rating?: number | null;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)
   password?: string;
