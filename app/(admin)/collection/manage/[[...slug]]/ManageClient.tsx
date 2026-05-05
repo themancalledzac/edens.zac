@@ -438,7 +438,21 @@ export default function ManageClient({ slug }: ManageClientProps) {
             .map(e => e.trim())
             .filter(Boolean)
         : undefined;
-      const result = await saveGalleryAccess(collection.id, { password: galleryPassword, emails });
+      // PARENT collections can share their password with every child client
+      // gallery in one shot. Confirm with the user (default Yes) before flipping
+      // the propagate flag — clearing a password never propagates.
+      const isParent = collection.type === CollectionType.PARENT;
+      const propagateToChildren =
+        isParent
+          ? window.confirm(
+              'Share this password with all child client galleries? They will use the same password and one unlock will cover all of them.'
+            )
+          : false;
+      const result = await saveGalleryAccess(collection.id, {
+        password: galleryPassword,
+        emails,
+        propagateToChildren,
+      });
       if (emails) {
         setGalleryStatus(
           result.emailsSent

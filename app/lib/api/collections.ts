@@ -230,6 +230,9 @@ export async function updateCollection(
  *   set only:     { password: "..." }
  *   set + email:  { password: "...", emails: ["client@example.com"] }
  *   clear:        { password: null }
+ *
+ * For PARENT collections, callers may pass `propagateToChildren: true` so the
+ * backend shares the password with every child client gallery in one shot.
  */
 export interface GalleryAccessResponse {
   saved: boolean;
@@ -241,7 +244,7 @@ export interface GalleryAccessResponse {
 
 export async function saveGalleryAccess(
   id: number,
-  body: { password: string | null; emails?: string[] }
+  body: { password: string | null; emails?: string[]; propagateToChildren?: boolean }
 ): Promise<GalleryAccessResponse> {
   const result = await fetchAdminPostJsonApi<GalleryAccessResponse>(
     `/collections/${id}/gallery-access`,

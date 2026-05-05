@@ -267,6 +267,7 @@ describe('ManageClient — Gallery Access section', () => {
       expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {
         password: 'gallery-pw',
         emails: ['client@example.com'],
+        propagateToChildren: false,
       });
     });
     await waitFor(() => {
@@ -338,6 +339,7 @@ describe('ManageClient — Gallery Access section', () => {
       expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {
         password: 'gallery-pw',
         emails: undefined,
+        propagateToChildren: false,
       });
     });
     await waitFor(() => {
@@ -387,6 +389,7 @@ describe('ManageClient — Gallery Access section', () => {
       expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {
         password: 'gallery-pw',
         emails: undefined,
+        propagateToChildren: false,
       });
     });
 
