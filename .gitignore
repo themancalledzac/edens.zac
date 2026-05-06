@@ -154,5 +154,9 @@ amplifyconfiguration*
 .claude/skills/
 .claude/worktrees/
 
+# Local-only authoring artifacts (handoffs, plans, specs, spikes)
+docs/handoffs/
+docs/superpowers/
+docs/spikes/
 
 todo
