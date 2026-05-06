@@ -191,16 +191,70 @@ describe('Admin Endpoints', () => {
   });
 
   describe('getAllImages', () => {
-    it('should fetch all images with no-store cache', async () => {
+    it('unwraps a Spring Page envelope into PagedImages', async () => {
+      const images = [{ id: 1, contentType: 'IMAGE', imageUrl: 'https://example.com/1.jpg' }];
+      const envelope = {
+        content: images,
+        totalElements: 137,
+        totalPages: 3,
+        number: 0,
+        last: false,
+        size: 50,
+      };
+      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(envelope));
+
+      const result = await getAllImages();
+      expect(result).toEqual({
+        items: images,
+        page: 0,
+        totalPages: 3,
+        totalElements: 137,
+        isLast: false,
+      });
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/content/images?page=0&size=50'),
+        expect.objectContaining({ cache: 'no-store' })
+      );
+    });
+
+    it('passes filter params in the query string', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue(
+        mockSuccessResponse({ content: [], totalElements: 0, totalPages: 0, number: 0, last: true })
+      );
+
+      await getAllImages({
+        page: 2,
+        size: 50,
+        locationId: 8,
+        minRating: 4,
+        tagIds: [3, 7],
+        captureStartDate: '2026-01-01',
+        captureEndDate: '2026-12-31',
+      });
+
+      const url = (global.fetch as jest.Mock).mock.calls[0][0] as string;
+      expect(url).toContain('page=2');
+      expect(url).toContain('size=50');
+      expect(url).toContain('locationId=8');
+      expect(url).toContain('minRating=4');
+      expect(url).toContain('tagIds=3');
+      expect(url).toContain('tagIds=7');
+      expect(url).toContain('captureStartDate=2026-01-01');
+      expect(url).toContain('captureEndDate=2026-12-31');
+    });
+
+    it('falls back to a single-page envelope when BE returns a bare array', async () => {
       const images = [{ id: 1, contentType: 'IMAGE', imageUrl: 'https://example.com/1.jpg' }];
       (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(images));
 
       const result = await getAllImages();
-      expect(result).toEqual(images);
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/content/images'),
-        expect.objectContaining({ cache: 'no-store' })
-      );
+      expect(result).toEqual({
+        items: images,
+        page: 0,
+        totalPages: 1,
+        totalElements: 1,
+        isLast: true,
+      });
     });
   });
 
