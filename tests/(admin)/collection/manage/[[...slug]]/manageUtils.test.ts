@@ -35,6 +35,7 @@ import {
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
 } from '@/app/types/Collection';
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
   type AnyContentModel,
   type ContentCollectionModel,
@@ -82,7 +83,7 @@ const createCollectionModel = (overrides?: Partial<CollectionModel>): Collection
   slug: 'test-collection',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
-  visible: true,
+  visibility: CollectionVisibility.LISTED,
   displayMode: 'CHRONOLOGICAL',
   locations: [],
   ...overrides,
@@ -572,7 +573,7 @@ describe('buildUpdatePayload', () => {
     description: 'Original Description',
     locations: [{ id: 1, name: 'Original Location', slug: 'original-location' }],
     collectionDate: '2024-01-01',
-    visible: true,
+    visibility: CollectionVisibility.LISTED,
     displayMode: 'CHRONOLOGICAL',
   });
 
@@ -584,7 +585,7 @@ describe('buildUpdatePayload', () => {
         title: 'Original Title',
         description: 'Original Description',
         collectionDate: '2024-01-01',
-        visible: true,
+        visibility: CollectionVisibility.LISTED,
         displayMode: 'CHRONOLOGICAL',
       };
 
@@ -612,7 +613,7 @@ describe('buildUpdatePayload', () => {
         id: 1,
         title: 'New Title',
         description: 'New Description',
-        visible: false,
+        visibility: CollectionVisibility.UNLISTED,
       };
 
       const result = buildUpdatePayload(formData, originalCollection);
@@ -621,7 +622,7 @@ describe('buildUpdatePayload', () => {
         id: 1,
         title: 'New Title',
         description: 'New Description',
-        visible: false,
+        visibility: CollectionVisibility.UNLISTED,
       });
     });
 
@@ -744,22 +745,22 @@ describe('buildUpdatePayload', () => {
       expect(result).toEqual({ id: 1 });
     });
 
-    it('should handle boolean false vs undefined distinction for visible', () => {
-      const originalWithFalse = createCollectionModel({
+    it('should detect visibility change from UNLISTED to LISTED', () => {
+      const originalWithUnlisted = createCollectionModel({
         ...originalCollection,
-        visible: false,
+        visibility: CollectionVisibility.UNLISTED,
       });
 
       const formData: CollectionUpdateRequest = {
         id: 1,
-        visible: true,
+        visibility: CollectionVisibility.LISTED,
       };
 
-      const result = buildUpdatePayload(formData, originalWithFalse);
+      const result = buildUpdatePayload(formData, originalWithUnlisted);
 
       expect(result).toEqual({
         id: 1,
-        visible: true,
+        visibility: CollectionVisibility.LISTED,
       });
     });
   });
@@ -1415,7 +1416,7 @@ describe('refreshCollectionAfterOperation', () => {
       slug: mockSlug,
       title: 'Test Collection',
       type: CollectionType.PORTFOLIO,
-      visible: true,
+      visibility: CollectionVisibility.LISTED,
       displayMode: 'CHRONOLOGICAL',
       locations: [],
       content: [],

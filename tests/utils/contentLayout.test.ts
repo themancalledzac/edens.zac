@@ -529,7 +529,7 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
       expect(result.height).toBe(600);
     });
 
-    it('should handle undefined dimensions in convertCollectionContentToParallax', () => {
+    it('should default to 1:1 placeholder dimensions when cover has none in convertCollectionContentToParallax', () => {
       const collection = createCollectionContent(1, {
         coverImage: {
           id: 10,
@@ -540,10 +540,12 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
         },
       });
       const result = convertCollectionContentToParallax(collection);
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
-      expect(result.width).toBeUndefined();
-      expect(result.height).toBeUndefined();
+      // Parallax cards apply a 1:1 placeholder so the layout algorithm packs
+      // no-cover collection cards uniformly alongside cards with real covers.
+      expect(result.imageWidth).toBe(1000);
+      expect(result.imageHeight).toBe(1000);
+      expect(result.width).toBe(1000);
+      expect(result.height).toBe(1000);
     });
 
     it('should handle undefined dimensions in convertCollectionContentToImage', () => {
@@ -563,13 +565,13 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
       expect(result.height).toBeUndefined();
     });
 
-    it('should handle null coverImage in convertCollectionContentToParallax', () => {
+    it('should default to 1:1 placeholder dimensions when coverImage is null in convertCollectionContentToParallax', () => {
       const collection = createCollectionContent(1, {
         coverImage: null,
       });
       const result = convertCollectionContentToParallax(collection);
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
+      expect(result.imageWidth).toBe(1000);
+      expect(result.imageHeight).toBe(1000);
     });
 
     it('should handle null coverImage in convertCollectionContentToImage', () => {
@@ -581,13 +583,13 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
       expect(result.imageHeight).toBeUndefined();
     });
 
-    it('should handle undefined coverImage in convertCollectionContentToParallax', () => {
+    it('should default to 1:1 placeholder dimensions when coverImage is undefined in convertCollectionContentToParallax', () => {
       const collection = createCollectionContent(1, {
         coverImage: undefined,
       });
       const result = convertCollectionContentToParallax(collection);
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
+      expect(result.imageWidth).toBe(1000);
+      expect(result.imageHeight).toBe(1000);
     });
 
     it('should handle undefined coverImage in convertCollectionContentToImage', () => {

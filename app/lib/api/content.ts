@@ -234,11 +234,99 @@ export async function updateImages(updates: ContentImageUpdateRequest[]): Promis
 }
 
 /**
- * GET /api/admin/content/images
- * Get all images ordered by date descending
+ * Filter + pagination params for the admin /all-images endpoint.
+ * All filter fields are optional; only set fields participate in the query.
+ * Within each list dimension: OR logic. Across dimensions: AND logic.
  */
-export async function getAllImages(): Promise<ContentImageModel[] | null> {
-  return fetchAdminGetApi<ContentImageModel[]>('/content/images', { cache: 'no-store' });
+export interface GetAllImagesParams {
+  page?: number;
+  size?: number;
+  locationId?: number;
+  tagIds?: number[];
+  personIds?: number[];
+  cameraId?: number;
+  lensId?: number;
+  /** Returns images with rating >= minRating (1-5). */
+  minRating?: number;
+  isFilm?: boolean;
+  blackAndWhite?: boolean;
+  /** ISO YYYY-MM-DD; inclusive lower bound on capture_date. */
+  captureStartDate?: string;
+  /** ISO YYYY-MM-DD; inclusive upper bound on capture_date. */
+  captureEndDate?: string;
+}
+
+/**
+ * Paginated response shape used by the `/all-images` UI. Carries the items
+ * for the requested page plus envelope metadata so the caller can advance the
+ * cursor without a second round-trip.
+ */
+export interface PagedImages {
+  items: ContentImageModel[];
+  page: number;
+  totalPages: number;
+  totalElements: number;
+  isLast: boolean;
+}
+
+/**
+ * GET /api/admin/content/images
+ * Get a single page of images (filtered + paginated). Backend returns a Spring
+ * `Page<>` envelope (`{ content, totalElements, totalPages, last, number, ... }`),
+ * which we unwrap into {@link PagedImages}. Tolerates a bare array fallback for
+ * resilience against future shape changes.
+ */
+export async function getAllImages(params: GetAllImagesParams = {}): Promise<PagedImages> {
+  const {
+    page = 0,
+    size = 50,
+    locationId,
+    tagIds,
+    personIds,
+    cameraId,
+    lensId,
+    minRating,
+    isFilm,
+    blackAndWhite,
+    captureStartDate,
+    captureEndDate,
+  } = params;
+  const search = new URLSearchParams();
+  search.set('page', String(page));
+  search.set('size', String(size));
+  if (locationId !== undefined) search.set('locationId', String(locationId));
+  if (tagIds?.length) {
+    for (const id of tagIds) search.append('tagIds', String(id));
+  }
+  if (personIds?.length) {
+    for (const id of personIds) search.append('personIds', String(id));
+  }
+  if (cameraId !== undefined) search.set('cameraId', String(cameraId));
+  if (lensId !== undefined) search.set('lensId', String(lensId));
+  if (minRating !== undefined) search.set('minRating', String(minRating));
+  if (isFilm !== undefined) search.set('isFilm', String(isFilm));
+  if (blackAndWhite !== undefined) search.set('blackAndWhite', String(blackAndWhite));
+  if (captureStartDate) search.set('captureStartDate', captureStartDate);
+  if (captureEndDate) search.set('captureEndDate', captureEndDate);
+
+  const data = await fetchAdminGetApi<unknown>(`/content/images?${search.toString()}`, {
+    cache: 'no-store',
+  });
+
+  if (data && typeof data === 'object') {
+    const env = data as Record<string, unknown>;
+    const items = Array.isArray(env.content) ? (env.content as ContentImageModel[]) : [];
+    const totalElements = typeof env.totalElements === 'number' ? env.totalElements : items.length;
+    const totalPages =
+      typeof env.totalPages === 'number'
+        ? env.totalPages
+        : (size > 0 ? Math.ceil(totalElements / size) : 1);
+    const number = typeof env.number === 'number' ? env.number : page;
+    const last = typeof env.last === 'boolean' ? env.last : number >= totalPages - 1;
+    return { items, page: number, totalPages, totalElements, isLast: last };
+  }
+
+  return { items: [], page, totalPages: 0, totalElements: 0, isLast: true };
 }
 
 /**

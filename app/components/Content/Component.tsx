@@ -197,7 +197,7 @@ export default function Component({
   /** Renders a row using BoxRenderer (recursive). */
   const renderRow = (row: RowWithPatternAndSizes, rowIndex: number) => {
     const { templateKey, items, boxTree } = row;
-    const rowKey = `row-${items.map(i => `${i.content.contentType}-${i.content.id}`).join('-')}`;
+    const rowKey = `row-${rowIndex}-${items.map(i => `${i.content.contentType}-${i.content.id ?? i.content.orderIndex}`).join('-')}`;
 
     // If boxTree is missing (shouldn't happen), create a fallback
     const tree = boxTree || createSimpleBoxTree(items);
@@ -248,7 +248,7 @@ export default function Component({
         {rows.map((row, rowIndex) => {
           const shouldShowSeparator =
             firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
-          const rowKey = `row-${row.items.map(i => `${i.content.contentType}-${i.content.id}`).join('-')}`;
+          const rowKey = `row-${rowIndex}-${row.items.map(i => `${i.content.contentType}-${i.content.id ?? i.content.orderIndex}`).join('-')}`;
 
           return (
             <Fragment key={rowKey}>

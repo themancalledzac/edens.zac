@@ -18,6 +18,7 @@ import * as collectionsApi from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 jest.mock('@/app/lib/api/collections', () => ({
   getCollectionBySlug: jest.fn(),
@@ -28,6 +29,15 @@ const notFoundMock = jest.fn(() => {
 });
 jest.mock('next/navigation', () => ({
   notFound: () => notFoundMock(),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
+}));
+// SiteHeader → MenuDropdown → clearCache action → next/cache, which references
+// Request/TextEncoder at module init and breaks under jsdom.
+jest.mock('next/cache', () => ({
+  revalidatePath: jest.fn(),
+  revalidateTag: jest.fn(),
 }));
 
 const mockGetCollectionBySlug = collectionsApi.getCollectionBySlug as jest.MockedFunction<
@@ -43,7 +53,7 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     locations: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
-    visible: true,
+    visibility: CollectionVisibility.LISTED,
     isPasswordProtected: true,
     ...overrides,
   };

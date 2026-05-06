@@ -5,6 +5,7 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 
 /**
  * Global Next.js Proxy
+ * - Local-only admin hub at /admin (and /homePage escape route)
  * - Protects admin App Router routes (create/edit collections)
  * - Maintains legacy local-only protection for /cdn tooling routes
  * - Supports feature flags and simple token-based authorization for gradual rollout
@@ -12,7 +13,22 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1) Legacy protection for /cdn tools — allow only in local/dev
+  // 1) Local-only admin hub. /admin* and /homePage are dev-console paths;
+  //    in non-local environments they redirect to / so they are not discoverable.
+  if (pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/homePage') {
+    if (!isLocalEnvironment()) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 2) On localhost, / → /admin so the dev console is the landing surface.
+  //    The real home page remains reachable at /homePage (rule 1, local-only).
+  if (isLocalEnvironment() && pathname === '/') {
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+
+  // 3) Legacy protection for /cdn tools — allow only in local/dev
   if (pathname.startsWith('/cdn')) {
     if (!isLocalEnvironment()) {
       return NextResponse.redirect(new URL('/', request.url));
@@ -20,7 +36,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2) Feature-flagged redirect from legacy catalog URLs to new collection URLs
+  // 4) Feature-flagged redirect from legacy catalog URLs to new collection URLs
   if (pathname.startsWith('/catalog/')) {
     const slug = pathname.split('/')[2] ?? '';
     const redirectsEnabled = process.env.COLLECTION_REDIRECTS_ENABLED === 'true';
@@ -32,9 +48,10 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // 3) Admin routes protection (App Router group (admin) does not alter URL)
+  // 5) Admin routes protection (App Router group (admin) does not alter URL)
   const isAdminRoute =
-    pathname === '/collection/create' ||
+    pathname === '/collection/manage' ||
+    pathname.startsWith('/collection/manage/') ||
     /\/collection\/.+\/edit$/.test(pathname) ||
     pathname === '/comments' ||
     pathname.startsWith('/comments/');
@@ -66,9 +83,18 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Admin hub (local-only) and the localhost / → /admin redirect.
+    // Including '/' here means the middleware runs on every public home
+    // page hit; the rule short-circuits in non-local so the prod cost is
+    // a single env check.
+    '/',
+    '/admin',
+    '/admin/:path*',
+    '/homePage',
     '/catalog/:slug*',
     '/cdn/:path*',
-    '/collection/create',
+    '/collection/manage',
+    '/collection/manage/:path*',
     '/collection/:slug/edit',
     '/comments',
     '/comments/:path*',

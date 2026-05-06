@@ -12,6 +12,7 @@ import {
   ApiError,
   fetchAdminDeleteApi,
   fetchAdminGetApi,
+  fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
   fetchAdminPutJsonApi,
   fetchReadApi,
@@ -19,7 +20,6 @@ import {
 import {
   type CollectionCreateRequest,
   type CollectionModel,
-  type CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
@@ -107,28 +107,6 @@ export async function getCollectionBySlug(
     );
     if (result === null) notFound();
     return result;
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) notFound();
-    throw error;
-  }
-}
-
-/**
- * GET /api/read/collections/type/{type}
- * Get visible collections by type ordered by collection date (newest first)
- */
-export async function getCollectionsByType(
-  type: CollectionType,
-  page = 0,
-  size = PAGINATION.collectionPageSize
-): Promise<CollectionModel[]> {
-  if (!type) throw new Error('type is required');
-  try {
-    const result = await fetchReadApi<CollectionModel[]>(
-      `/collections/type/${type}?page=${page}&size=${size}`,
-      { next: { revalidate: TIMING.revalidateCache, tags: [`collections-type-${type}`] } }
-    );
-    return result ?? [];
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) notFound();
     throw error;
@@ -252,6 +230,9 @@ export async function updateCollection(
  *   set only:     { password: "..." }
  *   set + email:  { password: "...", emails: ["client@example.com"] }
  *   clear:        { password: null }
+ *
+ * For PARENT collections, callers may pass `propagateToChildren: true` so the
+ * backend shares the password with every child client gallery in one shot.
  */
 export interface GalleryAccessResponse {
   saved: boolean;
@@ -263,7 +244,7 @@ export interface GalleryAccessResponse {
 
 export async function saveGalleryAccess(
   id: number,
-  body: { password: string | null; emails?: string[] }
+  body: { password: string | null; emails?: string[]; propagateToChildren?: boolean }
 ): Promise<GalleryAccessResponse> {
   const result = await fetchAdminPostJsonApi<GalleryAccessResponse>(
     `/collections/${id}/gallery-access`,
@@ -288,10 +269,15 @@ export async function deleteCollection(id: number): Promise<void | null> {
 
 /**
  * GET /api/admin/collections/all
- * Get all collections ordered by collection date (admin only)
+ * Get all collections ordered by collection date (admin only).
+ *
+ * Backend returns a Spring `Page<CollectionModel>` envelope ({ content: [...], ... }),
+ * not a flat array. Use parseCollectionArrayResponse to unwrap so consumers can rely
+ * on a real `CollectionModel[]`.
  */
-export async function getAllCollectionsAdmin(): Promise<CollectionModel[] | null> {
-  return fetchAdminGetApi<CollectionModel[]>('/collections/all', { cache: 'no-store' });
+export async function getAllCollectionsAdmin(): Promise<CollectionModel[]> {
+  const data = await fetchAdminGetApi<unknown>('/collections/all', { cache: 'no-store' });
+  return parseCollectionArrayResponse(data);
 }
 
 /**
@@ -317,6 +303,14 @@ export async function getMetadata(): Promise<GeneralMetadataDTO | null> {
 }
 
 /**
+ * PATCH /api/admin/collections/{id}/rating
+ * Set the rating for a collection. Pass `null` to clear.
+ */
+export async function updateCollectionRating(id: number, rating: number | null): Promise<void> {
+  await fetchAdminPatchJsonApi<void>(`/collections/${id}/rating`, { rating });
+}
+
+/**
  * POST /api/admin/collections/{collectionId}/reorder
  * Reorder content in a collection (supports all content types: IMAGE, COLLECTION, TEXT, GIF)
  */
@@ -327,6 +321,24 @@ export async function reorderCollectionContent(
   return fetchAdminPostJsonApi<CollectionModel>(`/collections/${collectionId}/reorder`, {
     reorders,
   });
+}
+
+/**
+ * PUT /api/admin/collections/{id}/people
+ * Replace the people list on a collection. Pass the desired set of person IDs;
+ * the backend reconciles to that exact set.
+ */
+export async function setCollectionPeople(id: number, personIds: number[]): Promise<void> {
+  await fetchAdminPutJsonApi<void>(`/collections/${id}/people`, personIds);
+}
+
+/**
+ * POST /api/admin/collections/{id}/people/regenerate
+ * Auto-fill the collection's people list from the union of all contained
+ * images' people. Replaces the existing list.
+ */
+export async function regenerateCollectionPeople(id: number): Promise<void> {
+  await fetchAdminPostJsonApi<void>(`/collections/${id}/people/regenerate`, {});
 }
 
 /**

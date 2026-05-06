@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { type CollectionModel } from '@/app/types/Collection';
-import { type ContentImageModel } from '@/app/types/Content';
+import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
 import {
   type CollectionFilterState,
   INITIAL_COLLECTION_FILTER_STATE,
@@ -28,20 +28,27 @@ interface CollectionPageClientProps {
  * Uses the shared extractFilterOptions with 90% tag exclusion, plus
  * the >1 distinct rule for cameras/lenses and lens type categories.
  */
-function extractCollectionFilterOptions(images: ContentImageModel[]): {
+function extractCollectionFilterOptions(
+  images: ContentImageModel[],
+  collectionRefs: ContentCollectionModel[] = []
+): {
   tags: string[];
   people: string[];
   cameras: string[];
   lenses: string[];
   lensTypes: LensType[];
 } {
-  const baseOptions = extractFilterOptions(images, 0.9);
+  // Pass images + refs together so extractFilterOptions can aggregate filter
+  // dimensions from collection refs too. This is what populates the filter bar
+  // on synthetic PARENT pages whose `content` is 100% collection refs and 0
+  // images (e.g. /all-collections, /all-blog).
+  const baseOptions = extractFilterOptions([...images, ...collectionRefs], 0.9);
 
   // Cameras/lenses: only show if more than 1 distinct
   const cameras = baseOptions.cameras.length > 1 ? baseOptions.cameras : [];
   const lenses = baseOptions.lenses.length > 1 ? baseOptions.lenses : [];
 
-  // Lens types: only show if 2+ distinct categories present
+  // Lens types: only show if 2+ distinct categories present (image-only signal)
   const lensTypeSet = new Set<LensType>();
   for (const img of images) {
     const lt = getLensType(img.focalLength);
@@ -70,18 +77,22 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
   const isCollectionDominant = allCollections.length > allImages.length;
 
   const baseCollectionOptions = useMemo(() => {
-    const options = extractCollectionFilterOptions(allImages);
+    // On collection-dominant pages we still want tags/people aggregated from
+    // collection refs, so we always pass refs through. The post-filter below
+    // suppresses image-only dimensions (cameras/lenses/lensTypes) on those
+    // pages, but keeps tags AND people from collection-ref aggregation.
+    const options = extractCollectionFilterOptions(allImages, allCollections);
     if (isCollectionDominant) {
       return {
         tags: options.tags,
-        people: [],
+        people: options.people,
         cameras: [],
         lenses: [],
         lensTypes: [] as LensType[],
       };
     }
     return options;
-  }, [allImages, isCollectionDominant]);
+  }, [allImages, allCollections, isCollectionDominant]);
 
   // Build criteria from filter state — all AND mode for collection page
   const criteria = useMemo(
@@ -148,8 +159,10 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
   // Available options from filtered results — used to determine which chips are "available" vs "unavailable"
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;
-    return extractCollectionFilterOptions(filteredImages);
-  }, [hasActiveFilters, filteredImages]);
+    // Collection refs aren't filtered (image-only filters don't touch them),
+    // so the full collection-ref list still contributes to "available" tags.
+    return extractCollectionFilterOptions(filteredImages, allCollections);
+  }, [hasActiveFilters, filteredImages, allCollections]);
 
   // All base options are always shown; filteredAvailableOptions determines grey-out state
   const availableOptions = useMemo(

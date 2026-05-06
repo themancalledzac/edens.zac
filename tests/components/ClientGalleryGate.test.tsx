@@ -15,6 +15,7 @@ import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryG
 import * as collectionsApi from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 const mockRefresh = jest.fn();
 
@@ -39,7 +40,7 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     locations: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
-    visible: true,
+    visibility: CollectionVisibility.LISTED,
     isPasswordProtected: true,
     ...overrides,
   };

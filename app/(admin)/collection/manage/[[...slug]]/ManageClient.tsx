@@ -16,6 +16,7 @@ import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWit
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
+import RatingStars from '@/app/components/RatingStars/RatingStars';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
@@ -25,8 +26,11 @@ import {
   createCollection,
   getCollectionUpdateMetadata,
   getMetadata,
+  regenerateCollectionPeople,
   saveGalleryAccess,
+  setCollectionPeople,
   updateCollection,
+  updateCollectionRating,
 } from '@/app/lib/api/collections';
 import { createImages, createTextContent, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
@@ -36,9 +40,15 @@ import {
   CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
+  type ContentPersonModel,
   type DisplayMode,
   type LocationModel,
 } from '@/app/types/Collection';
+import {
+  COLLECTION_VISIBILITY_DESCRIPTIONS,
+  COLLECTION_VISIBILITY_LABELS,
+  CollectionVisibility,
+} from '@/app/types/CollectionVisibility';
 import {
   type ContentImageModel,
   type ContentImageUpdateRequest,
@@ -143,7 +153,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         title: collection.title || '',
         description: collection.description || '',
         collectionDate: collection.collectionDate || '',
-        visible: collection.visible ?? true,
+        visibility: collection.visibility ?? CollectionVisibility.HIDDEN,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
         rowsWide: collection.rowsWide ?? undefined,
       };
@@ -154,7 +164,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       title: '',
       description: '',
       collectionDate: '',
-      visible: true,
+      visibility: CollectionVisibility.HIDDEN,
       displayMode: 'CHRONOLOGICAL',
       rowsWide: undefined,
     };
@@ -168,10 +178,69 @@ export default function ManageClient({ slug }: ManageClientProps) {
         title: collection.title || '',
         description: collection.description || '',
         collectionDate: collection.collectionDate || '',
-        visible: collection.visible ?? true,
+        visibility: collection.visibility ?? CollectionVisibility.HIDDEN,
         displayMode: collection.displayMode || 'CHRONOLOGICAL',
         rowsWide: collection.rowsWide ?? undefined,
       });
+    }
+  }, [collection]);
+
+  // People — collection-level people list, edited inline. Saved/regenerated via
+  // their own admin endpoints (separate from the metadata Update Metadata flow)
+  // because the backend reconciles to an exact set of person IDs.
+  const [collectionPeople, setCollectionPeopleState] = useState<ContentPersonModel[]>([]);
+  const [peopleSaving, setPeopleSaving] = useState(false);
+  const [peopleStatus, setPeopleStatus] = useState<string | null>(null);
+
+  // Sync people from the loaded collection (and reset status when it changes).
+  useEffect(() => {
+    setCollectionPeopleState(collection?.people ?? []);
+    setPeopleStatus(null);
+  }, [collection?.id, collection?.people]);
+
+  /**
+   * Save the current people list. Sends only existing person IDs; new people
+   * created inline via the picker (id === 0) are skipped because the backend
+   * endpoint reconciles by ID — creation must happen elsewhere first.
+   */
+  const handleSavePeople = useCallback(async () => {
+    if (!collection) return;
+    setPeopleSaving(true);
+    setPeopleStatus(null);
+    try {
+      const personIds = collectionPeople.filter(p => p.id > 0).map(p => p.id);
+      await setCollectionPeople(collection.id, personIds);
+      setPeopleStatus('People saved.');
+    } catch (error) {
+      setPeopleStatus(handleApiError(error, 'Failed to save people.'));
+    } finally {
+      setPeopleSaving(false);
+    }
+  }, [collection, collectionPeople]);
+
+  /**
+   * Regenerate the collection's people list from the union of all contained
+   * images' people. Confirms first because it overwrites the current list.
+   * Reloads the page on success so the refreshed list re-hydrates from the
+   * server (simpler than re-fetching just the metadata payload).
+   */
+  const handleRegeneratePeople = useCallback(async () => {
+    if (!collection) return;
+    if (
+      !window.confirm(
+        "Replace this collection's people list with the union of all contained images' people?"
+      )
+    )
+      return;
+    setPeopleSaving(true);
+    setPeopleStatus(null);
+    try {
+      await regenerateCollectionPeople(collection.id);
+      setPeopleStatus('People regenerated. Reloading...');
+      window.location.reload();
+    } catch (error) {
+      setPeopleStatus(handleApiError(error, 'Failed to regenerate people.'));
+      setPeopleSaving(false);
     }
   }, [collection]);
 
@@ -431,7 +500,21 @@ export default function ManageClient({ slug }: ManageClientProps) {
             .map(e => e.trim())
             .filter(Boolean)
         : undefined;
-      const result = await saveGalleryAccess(collection.id, { password: galleryPassword, emails });
+      // PARENT collections can share their password with every child client
+      // gallery in one shot. Confirm with the user (default Yes) before flipping
+      // the propagate flag — clearing a password never propagates.
+      const isParent = collection.type === CollectionType.PARENT;
+      const propagateToChildren =
+        isParent
+          ? window.confirm(
+              'Share this password with all child client galleries? They will use the same password and one unlock will cover all of them.'
+            )
+          : false;
+      const result = await saveGalleryAccess(collection.id, {
+        password: galleryPassword,
+        emails,
+        propagateToChildren,
+      });
       if (emails) {
         setGalleryStatus(
           result.emailsSent
@@ -952,7 +1035,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
                         {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
-                        {/* Title + Visible */}
+                        {/* Title */}
                         <div className={styles.titleRow}>
                           <div className={styles.titleInputWrapper}>
                             <label className={styles.formLabel}>Title</label>
@@ -965,20 +1048,31 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               className={styles.formInput}
                             />
                           </div>
-                          <div className={styles.visibleCheckboxWrapper}>
-                            <label className={styles.formLabel}>Visible</label>
-                            <label className={styles.visibleCheckboxLabel}>
+                        </div>
+
+                        {/* Visibility */}
+                        <fieldset className={styles.visibilityFieldset}>
+                          <legend className={styles.formLabel}>Visibility</legend>
+                          {Object.values(CollectionVisibility).map(v => (
+                            <label key={v} className={styles.visibilityRadioLabel}>
                               <input
-                                type="checkbox"
-                                checked={updateData.visible}
-                                onChange={e =>
-                                  setUpdateData(prev => ({ ...prev, visible: e.target.checked }))
+                                type="radio"
+                                name="visibility"
+                                value={v}
+                                checked={updateData.visibility === v}
+                                onChange={() =>
+                                  setUpdateData(prev => ({ ...prev, visibility: v }))
                                 }
                               />
-                              <span>{updateData.visible ? 'Yes' : 'No'}</span>
+                              <span className={styles.visibilityRadioName}>
+                                {COLLECTION_VISIBILITY_LABELS[v]}
+                              </span>
+                              <span className={styles.visibilityRadioDesc}>
+                                {COLLECTION_VISIBILITY_DESCRIPTIONS[v]}
+                              </span>
                             </label>
-                          </div>
-                        </div>
+                          ))}
+                        </fieldset>
 
                         {/* Collection Date / Collection Type */}
                         <div className={styles.formGridHalf}>
@@ -1060,6 +1154,96 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           showNewIndicator
                           emptyText="No locations set"
                         />
+
+                        {/* People — collection-level associations. Saved via
+                            its own endpoint (separate from Update Metadata)
+                            because the backend reconciles to an exact set of
+                            IDs; "Regenerate" computes the union from contained
+                            images' people. */}
+                        <section
+                          aria-labelledby="collection-people-heading"
+                          className={styles.formGroup}
+                        >
+                          <h3
+                            id="collection-people-heading"
+                            className={styles.formLabel}
+                            style={{ marginBottom: '8px' }}
+                          >
+                            People
+                          </h3>
+                          <UnifiedMetadataSelector<ContentPersonModel>
+                            label=""
+                            multiSelect
+                            options={currentState?.people || []}
+                            selectedValues={collectionPeople}
+                            onChange={value => {
+                              let next: ContentPersonModel[];
+                              if (Array.isArray(value)) {
+                                next = value;
+                              } else if (value) {
+                                next = [value];
+                              } else {
+                                next = [];
+                              }
+                              setCollectionPeopleState(next);
+                            }}
+                            allowAddNew
+                            onAddNew={data => {
+                              const newPerson: ContentPersonModel = {
+                                id: 0,
+                                name: data.name as string,
+                                slug: '',
+                              };
+                              setCollectionPeopleState(prev => [...prev, newPerson]);
+                            }}
+                            addNewFields={[
+                              {
+                                name: 'name',
+                                label: 'Person Name',
+                                type: 'text',
+                                placeholder: 'Enter person name',
+                                required: true,
+                              },
+                            ]}
+                            getDisplayName={person => person?.name || ''}
+                            showNewIndicator
+                            emptyText="No people set"
+                          />
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '8px',
+                              marginTop: '12px',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={handleSavePeople}
+                              disabled={peopleSaving}
+                              className={styles.submitButton}
+                            >
+                              {peopleSaving ? 'Saving…' : 'Save People'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleRegeneratePeople}
+                              disabled={peopleSaving}
+                              className={styles.submitButton}
+                            >
+                              Regenerate from contents
+                            </button>
+                          </div>
+                          {peopleStatus && (
+                            <p
+                              role="status"
+                              style={{ marginTop: '12px' }}
+                              className={styles.formLabelHint}
+                            >
+                              {peopleStatus}
+                            </p>
+                          )}
+                        </section>
 
                         {/* Display Mode / Row Length — hidden for parent-type collections */}
                         {!isParent && (
@@ -1355,6 +1539,40 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           label="Collections"
                           excludeCollectionId={collection.id}
                         />
+
+                        {/* Home: rate child collections inline. Click is immediate (no save button). */}
+                        {slug === 'home' && (collection.content?.some(isContentCollection) ?? false) && (
+                          <section aria-labelledby="children-rating-heading" className={styles.formGroup}>
+                            <h3 id="children-rating-heading" className={styles.formLabel}>
+                              Children (rating)
+                            </h3>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                              {(collection.content ?? [])
+                                .filter(isContentCollection)
+                                .map(child => (
+                                  <li
+                                    key={child.id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      gap: '8px',
+                                      padding: '6px 0',
+                                    }}
+                                  >
+                                    <span>{child.title ?? child.slug}</span>
+                                    <RatingStars
+                                      initialRating={child.rating ?? null}
+                                      onChange={async next => {
+                                        await updateCollectionRating(child.referencedCollectionId, next);
+                                      }}
+                                      ariaLabel={`Rate ${child.title ?? child.slug}`}
+                                    />
+                                  </li>
+                                ))}
+                            </ul>
+                          </section>
+                        )}
                       </div>
                     </div>
                   </form>

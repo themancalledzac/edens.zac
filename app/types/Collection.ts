@@ -3,6 +3,7 @@
  * Single source of truth for Collection types
  */
 
+import { type CollectionVisibility } from './CollectionVisibility';
 import type { AnyContentModel, ContentImageModel } from './Content';
 import type { ContentPersonModel, ContentTagModel } from './ImageMetadata';
 
@@ -41,7 +42,9 @@ export interface CollectionBaseModel {
   description?: string;
   locations: LocationModel[];
   collectionDate?: string;
-  visible?: boolean;
+  visibility?: CollectionVisibility;
+  /** Rating 0-5, nullable. Used for ordering multi-collection list views. */
+  rating?: number;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)
   createdAt?: string;
@@ -137,7 +140,9 @@ export interface CollectionUpdateRequest {
   locations?: LocationUpdate;
   collectionDate?: string | null;
   clearCollectionDate?: boolean;
-  visible?: boolean;
+  visibility?: CollectionVisibility;
+  /** Rating 0-5, nullable. `null` clears the rating. */
+  rating?: number | null;
   displayMode?: DisplayMode;
   rowsWide?: number; // Number of items per row (chunk size for layout)
   password?: string;
@@ -171,6 +176,13 @@ export interface CollectionModel extends CollectionBaseModel {
 
   // Tags
   tags?: string[];
+
+  /**
+   * People associated with this collection. Editable on the manage page; can be
+   * regenerated as the union of every contained image's people via the
+   * "Regenerate from contents" admin action.
+   */
+  people?: ContentPersonModel[];
 
   /**
    * Client gallery access control.
@@ -245,6 +257,11 @@ export type {
   ContentTagModel,
   FilmFormatDTO,
 } from './ImageMetadata';
+
+/**
+ * Re-export CollectionVisibility for callers importing from Collection.ts.
+ */
+export { CollectionVisibility } from './CollectionVisibility';
 
 /**
  * Location Model - Represents a location that can be assigned to collections and content
