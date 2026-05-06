@@ -8,12 +8,11 @@ export type ClearCacheResult = { ok: true } | { ok: false; error: string };
 
 // "Clear Cache" does two things:
 //   1. POSTs to the dev-only backend endpoint /api/admin/cache/clear, which
-//      currently evicts the admin home tile cover cache (random covers reseed).
-//   2. Calls revalidatePath('/', 'layout') to nuke the Next.js route cache so
-//      the next page render re-fetches everything.
-//
-// Failures from (1) do not block (2) - the FE-side cache invalidation is
-// independent and still useful even if the backend POST fails.
+//      currently evicts the admin home tile cover cache.
+//   2. revalidatePath('/', 'layout') to nuke the Next.js route cache so the
+//      next render re-fetches.
+// Step (2) is independent of (1) — FE-side cache invalidation is still useful
+// even if the backend POST fails.
 export async function clearCacheAction(): Promise<ClearCacheResult> {
   let backendError: string | null = null;
   try {

@@ -243,19 +243,6 @@ describe('Admin Endpoints', () => {
       expect(url).toContain('captureEndDate=2026-12-31');
     });
 
-    it('falls back to a single-page envelope when BE returns a bare array', async () => {
-      const images = [{ id: 1, contentType: 'IMAGE', imageUrl: 'https://example.com/1.jpg' }];
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(images));
-
-      const result = await getAllImages();
-      expect(result).toEqual({
-        items: images,
-        page: 0,
-        totalPages: 1,
-        totalElements: 1,
-        isLast: true,
-      });
-    });
   });
 
   describe('createImages', () => {

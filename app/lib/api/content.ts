@@ -313,17 +313,6 @@ export async function getAllImages(params: GetAllImagesParams = {}): Promise<Pag
     cache: 'no-store',
   });
 
-  // Bare-array fallback: synthesize a single-page envelope.
-  if (Array.isArray(data)) {
-    return {
-      items: data as ContentImageModel[],
-      page: 0,
-      totalPages: 1,
-      totalElements: data.length,
-      isLast: true,
-    };
-  }
-
   if (data && typeof data === 'object') {
     const env = data as Record<string, unknown>;
     const items = Array.isArray(env.content) ? (env.content as ContentImageModel[]) : [];
@@ -331,9 +320,7 @@ export async function getAllImages(params: GetAllImagesParams = {}): Promise<Pag
     const totalPages =
       typeof env.totalPages === 'number'
         ? env.totalPages
-        : (size > 0
-          ? Math.ceil(totalElements / size)
-          : 1);
+        : (size > 0 ? Math.ceil(totalElements / size) : 1);
     const number = typeof env.number === 'number' ? env.number : page;
     const last = typeof env.last === 'boolean' ? env.last : number >= totalPages - 1;
     return { items, page: number, totalPages, totalElements, isLast: last };

@@ -29,6 +29,15 @@ const notFoundMock = jest.fn(() => {
 });
 jest.mock('next/navigation', () => ({
   notFound: () => notFoundMock(),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
+}));
+// SiteHeader → MenuDropdown → clearCache action → next/cache, which references
+// Request/TextEncoder at module init and breaks under jsdom.
+jest.mock('next/cache', () => ({
+  revalidatePath: jest.fn(),
+  revalidateTag: jest.fn(),
 }));
 
 const mockGetCollectionBySlug = collectionsApi.getCollectionBySlug as jest.MockedFunction<

@@ -36,7 +36,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2) Feature-flagged redirect from legacy catalog URLs to new collection URLs
+  // 4) Feature-flagged redirect from legacy catalog URLs to new collection URLs
   if (pathname.startsWith('/catalog/')) {
     const slug = pathname.split('/')[2] ?? '';
     const redirectsEnabled = process.env.COLLECTION_REDIRECTS_ENABLED === 'true';
@@ -48,9 +48,10 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // 3) Admin routes protection (App Router group (admin) does not alter URL)
+  // 5) Admin routes protection (App Router group (admin) does not alter URL)
   const isAdminRoute =
-    pathname === '/collection/create' ||
+    pathname === '/collection/manage' ||
+    pathname.startsWith('/collection/manage/') ||
     /\/collection\/.+\/edit$/.test(pathname) ||
     pathname === '/comments' ||
     pathname.startsWith('/comments/');
@@ -92,7 +93,8 @@ export const config = {
     '/homePage',
     '/catalog/:slug*',
     '/cdn/:path*',
-    '/collection/create',
+    '/collection/manage',
+    '/collection/manage/:path*',
     '/collection/:slug/edit',
     '/comments',
     '/comments/:path*',

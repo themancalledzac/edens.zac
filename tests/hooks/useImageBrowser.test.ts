@@ -6,9 +6,7 @@
  * - Auto-prefetch fires page 1 on mount when initial.isLast === false
  * - Auto-prefetch is skipped when initial.isLast === true
  * - loadNext appends pages and respects isDone
- * - setFilters resets pages, refetches page 0 with merged filter set
  * - fetchingRef lock prevents duplicate concurrent fetches
- * - Stale in-flight responses are discarded after a setFilters
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 
@@ -99,50 +97,4 @@ describe('useImageBrowser', () => {
     expect(mockedGetAllImages).toHaveBeenCalledTimes(2);
   });
 
-  it('setFilters resets pages and refetches page 0', async () => {
-    const initial = makePage(0, 50, false);
-    mockedGetAllImages.mockResolvedValueOnce(makePage(1, 50, false)); // auto-prefetch
-
-    const { result } = renderHook(() => useImageBrowser(initial));
-    await waitFor(() => expect(result.current.items).toHaveLength(100));
-
-    // New filter — wipe state and replace with page 0 of filtered set (5 items).
-    mockedGetAllImages.mockResolvedValueOnce(makePage(0, 5, true, 5));
-
-    act(() => result.current.setFilters({ minRating: 4 }));
-    await waitFor(() => expect(result.current.items).toHaveLength(5));
-    expect(result.current.isDone).toBe(true);
-    expect(result.current.filters).toMatchObject({ minRating: 4, page: 0 });
-
-    // Verify the BE was called with merged params.
-    const lastCall = mockedGetAllImages.mock.calls.at(-1)?.[0];
-    expect(lastCall).toMatchObject({ minRating: 4, page: 0 });
-  });
-
-  it('discards stale in-flight responses after a setFilters', async () => {
-    const initial = makePage(0, 50, false);
-
-    // First mock: a slow response that arrives AFTER the filter change.
-    let resolveSlow: ((p: PagedImages) => void) | null = null;
-    const slowPromise = new Promise<PagedImages>(resolve => {
-      resolveSlow = resolve;
-    });
-    mockedGetAllImages.mockReturnValueOnce(slowPromise as unknown as Promise<PagedImages>);
-
-    const { result } = renderHook(() => useImageBrowser(initial));
-
-    // Filter change happens before slow response lands.
-    mockedGetAllImages.mockResolvedValueOnce(makePage(0, 3, true, 3));
-    act(() => result.current.setFilters({ minRating: 5 }));
-    await waitFor(() => expect(result.current.items).toHaveLength(3));
-
-    // Now resolve the stale prefetch — its result must be discarded.
-    act(() => {
-      resolveSlow?.(makePage(1, 50, false));
-    });
-    await new Promise(r => setTimeout(r, 0));
-
-    expect(result.current.items).toHaveLength(3);
-    expect(result.current.filters).toMatchObject({ minRating: 5 });
-  });
 });

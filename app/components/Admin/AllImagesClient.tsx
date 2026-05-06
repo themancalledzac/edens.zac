@@ -16,23 +16,19 @@ interface AllImagesClientProps {
 }
 
 /**
- * Client wrapper for /all-images. Renders the same way as every other
- * collection page (header, filter bar, grid) by feeding a synthetic
- * {@link CollectionModel} into the standard {@link CollectionPage} pipeline.
+ * Client wrapper for /all-images. Renders through the standard
+ * {@link CollectionPage} pipeline by synthesizing a {@link CollectionModel}.
  *
- * Pagination is bolted on top: {@link useImageBrowser} owns the growing items
- * array and an IntersectionObserver sentinel triggers {@code loadNext()} when
- * the user scrolls within one viewport of the bottom.
+ * Pagination: {@link useImageBrowser} owns the growing items array; an
+ * IntersectionObserver sentinel triggers {@code loadNext()} as the user
+ * scrolls within one viewport of the bottom.
  *
- * The mock collection's {@code contentPerPage} is set to {@code MAX_SAFE_INTEGER}
- * so {@link ContentBlockWithFullScreen}'s built-in client-side render cap never
- * engages — every loaded item renders immediately, since pagination is already
- * handled at the data layer here.
- *
- * Filtering on this page comes for free from {@link CollectionPageClient}'s
- * standard filter bar (client-side, operating on currently-loaded items).
- * Future enhancement: wire {@link useImageBrowser.setFilters} to push filters
- * server-side for full-database filter coverage.
+ * Order preservation: the BE returns images in {@code capture_date ASC}
+ * order. We assign a sequential {@code orderIndex} per array position and
+ * use {@code displayMode: 'ORDERED'} so the layout pipeline preserves that
+ * order. Without this, downstream sorts (which key on {@code createdAt} for
+ * {@code CHRONOLOGICAL} mode) would slot newly-loaded pages into the middle
+ * of the grid for any backfilled photos.
  */
 export default function AllImagesClient({ initial }: AllImagesClientProps) {
   const { items, loadNext, isLoading, isDone, error } = useImageBrowser(initial);
@@ -50,6 +46,11 @@ export default function AllImagesClient({ initial }: AllImagesClientProps) {
     }
   }, [sentinelVisible, isLoading, isDone, loadNext]);
 
+  const orderedItems = useMemo(
+    () => items.map((item, index) => ({ ...item, orderIndex: index })),
+    [items]
+  );
+
   const mockCollection: CollectionModel = useMemo(
     () => ({
       id: 0,
@@ -60,13 +61,13 @@ export default function AllImagesClient({ initial }: AllImagesClientProps) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       visibility: CollectionVisibility.LISTED,
-      displayMode: 'CHRONOLOGICAL',
+      displayMode: 'ORDERED',
       contentPerPage: Number.MAX_SAFE_INTEGER,
-      content: items,
-      contentCount: items.length,
+      content: orderedItems,
+      contentCount: orderedItems.length,
       locations: [],
     }),
-    [items]
+    [orderedItems]
   );
 
   return (

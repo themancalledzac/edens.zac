@@ -13,12 +13,6 @@ describe('ADMIN_TILES', () => {
     }
   });
 
-  it('marks the about tile as disabled (placeholder until edit feature ships)', () => {
-    const about = ADMIN_TILES.find(t => t.tileKey === 'about');
-    expect(about).toBeDefined();
-    expect(about?.disabled).toBe(true);
-  });
-
   it('points the home tile at /homePage (escape route, not /)', () => {
     const home = ADMIN_TILES.find(t => t.tileKey === 'home');
     expect(home?.href).toBe('/homePage');

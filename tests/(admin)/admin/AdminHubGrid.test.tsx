@@ -15,13 +15,6 @@ const tiles: AdminTileMerged[] = [
     href: '/all-images',
     coverImageUrl: 'https://cf.example/img.jpg',
   },
-  {
-    tileKey: 'about',
-    label: 'About Me (soon)',
-    href: '#',
-    disabled: true,
-    coverImageUrl: null,
-  },
 ];
 
 describe('AdminHubGrid', () => {
@@ -29,20 +22,14 @@ describe('AdminHubGrid', () => {
     render(<AdminHubGrid tiles={tiles} />);
     expect(screen.getByText('Home (Preview)')).toBeInTheDocument();
     expect(screen.getByText('All Images')).toBeInTheDocument();
-    expect(screen.getByText('About Me (soon)')).toBeInTheDocument();
   });
 
-  it('renders enabled tiles as <a> links pointing at href', () => {
+  it('renders tiles as <a> links pointing at href', () => {
     render(<AdminHubGrid tiles={tiles} />);
     const homeLink = screen.getByRole('link', { name: /home \(preview\)/i });
     expect(homeLink).toHaveAttribute('href', '/homePage');
     const allImagesLink = screen.getByRole('link', { name: /all images/i });
     expect(allImagesLink).toHaveAttribute('href', '/all-images');
-  });
-
-  it('does NOT render disabled tiles as links', () => {
-    render(<AdminHubGrid tiles={tiles} />);
-    expect(screen.queryByRole('link', { name: /about me/i })).not.toBeInTheDocument();
   });
 
   it('renders an <img> when coverImageUrl is set, placeholder when null', () => {

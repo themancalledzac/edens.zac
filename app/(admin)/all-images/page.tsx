@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AllImagesPage() {
   try {
-    const page0 = await getAllImages({ page: 0, size: 50 });
+    const page0 = await getAllImages({ page: 0, size: 150 });
     return <AllImagesClient initial={page0} />;
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {

@@ -2,7 +2,7 @@
 
 import { CircleX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
@@ -10,6 +10,8 @@ import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
 import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
+import { clearCacheAction } from '@/app/lib/actions/clearCache';
+import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 import styles from './MenuDropdown.module.scss';
@@ -42,6 +44,17 @@ export function MenuDropdown({
 
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [isClearing, startClearing] = useTransition();
+
+  const handleClearCache = () => {
+    startClearing(async () => {
+      const result = await clearCacheAction();
+      if (result.ok) {
+        collectionStorage.clearAll();
+      }
+      onClose();
+    });
+  };
 
   const handleNavigation = {
     create: () => {
@@ -65,7 +78,7 @@ export function MenuDropdown({
       onClose();
     },
     blogs: () => {
-      router.push('/collectionType/blogs');
+      router.push('/all-blogs');
       onClose();
     },
     instagram: () => {
@@ -254,6 +267,21 @@ export function MenuDropdown({
               onClick={handleNavigation.comments}
             >
               <span className={styles.dropdownMenuOptions}>Comments</span>
+            </button>
+          </div>
+        )}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleClearCache}
+              disabled={isClearing}
+            >
+              <span className={styles.dropdownMenuOptions}>
+                {isClearing ? 'Clearing…' : 'Clear Cache'}
+              </span>
             </button>
           </div>
         )}

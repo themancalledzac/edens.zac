@@ -2,34 +2,23 @@ import { type Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 
+import { resolveTaxonomyBySlug } from '@/app/components/TaxonomyPage/resolveTaxonomy';
 import TaxonomyPage from '@/app/components/TaxonomyPage/TaxonomyPage';
 import { getAllPeople, searchImages } from '@/app/lib/api/content';
 
 const getCachedPeople = cache(() => getAllPeople());
 
-// Render on every request rather than at build time. See app/tag/[slug]/page.tsx
-// for the rationale — same trade-off applies here.
+// Render on every request — see app/tag/[slug]/page.tsx for the rationale.
 export const dynamic = 'force-dynamic';
 
 interface PersonPageRouteProps {
   params: Promise<{ slug: string }>;
 }
 
-/**
- * Generate SEO metadata for person pages.
- *
- * @remarks Resolves the slug by exact API slug first, then falls back to a
- *   case-insensitive name match for backwards-compatible URLs.
- */
 export async function generateMetadata({ params }: PersonPageRouteProps): Promise<Metadata> {
   const { slug } = await params;
   const people = await getCachedPeople();
-
-  const person =
-    people?.find(p => p.slug === slug) ??
-    people?.find(
-      p => p.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase()
-    );
+  const person = resolveTaxonomyBySlug(people, slug);
   const personName = person?.name ?? decodeURIComponent(slug).replace(/-/g, ' ');
 
   return {
@@ -43,29 +32,14 @@ export async function generateMetadata({ params }: PersonPageRouteProps): Promis
   };
 }
 
-/**
- * Person Page Route
- *
- * Fetches all images associated with a person resolved from the URL slug.
- *
- * @remarks Resolves the slug by exact API slug first, then falls back to a
- *   case-insensitive name match for backwards-compatible URLs.
- */
 export default async function PersonPageRoute({ params }: PersonPageRouteProps) {
   const { slug } = await params;
   if (!slug) notFound();
 
   const people = await getCachedPeople();
-  if (!people?.length) notFound();
-
-  const matchedPerson =
-    people.find(p => p.slug === slug) ??
-    people.find(
-      p => p.name.toLowerCase() === decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase()
-    );
+  const matchedPerson = resolveTaxonomyBySlug(people, slug);
   if (!matchedPerson) notFound();
 
   const images = await searchImages({ personIds: [matchedPerson.id] });
-
   return <TaxonomyPage entityName={matchedPerson.name} images={images} />;
 }

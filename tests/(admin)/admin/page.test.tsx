@@ -8,12 +8,17 @@ jest.mock('@/app/lib/api/adminHome');
 jest.mock('@/app/hooks/useParallax', () => ({
   useParallax: () => ({ current: null }),
 }));
-// Page transitively imports AdminActionBox → actions → next/cache, which
-// references Request/TextEncoder at module init and breaks under jsdom.
-// Stubbing next/cache short-circuits the chain.
+// SiteHeader → MenuDropdown → clearCache action → next/cache, which references
+// Request/TextEncoder at module init and breaks under jsdom. Stub the chain.
 jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
   revalidateTag: jest.fn(),
+}));
+// MenuDropdown calls useRouter unconditionally; jsdom has no app-router context.
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/admin',
 }));
 
 const mockGetTiles = adminHomeApi.getAdminHomeTiles as jest.MockedFunction<
@@ -59,12 +64,5 @@ describe('AdminHubPage', () => {
     for (const tile of ADMIN_TILES) {
       expect(screen.getByText(tile.label)).toBeInTheDocument();
     }
-  });
-
-  it('renders the Clear Cache button (action box wired up)', async () => {
-    mockGetTiles.mockResolvedValue([]);
-    const ui = await AdminHubPage();
-    render(ui);
-    expect(screen.getByRole('button', { name: /clear cache/i })).toBeInTheDocument();
   });
 });
