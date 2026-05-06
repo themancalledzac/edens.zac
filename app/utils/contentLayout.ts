@@ -131,7 +131,10 @@ export function processContentForDisplay(
 }
 
 /**
- * Extract image dimensions from cover image with fallback to width/height properties
+ * Extract image dimensions from cover image with fallback to width/height properties.
+ * Returns undefined dimensions when the cover image has none — callers that need
+ * a placeholder default (e.g. {@link convertCollectionContentToParallax} for
+ * no-image collection cards) apply it locally.
  */
 function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
   imageWidth?: number;
@@ -173,12 +176,19 @@ export function convertCollectionContentToParallax(
   col: ContentCollectionModel
 ): ContentParallaxImageModel {
   const raw = extractCollectionDimensions(col.coverImage);
-  const { imageWidth, imageHeight } = clampParallaxDimensions(raw.imageWidth, raw.imageHeight);
+  // No-cover collection cards default to a 1:1 placeholder so the layout
+  // algorithm packs them uniformly alongside cards with real cover images.
+  const w = raw.imageWidth ?? 1000;
+  const h = raw.imageHeight ?? 1000;
+  const { imageWidth, imageHeight } = clampParallaxDimensions(w, h);
 
   return {
     contentType: 'IMAGE',
     enableParallax: true,
-    id: col.id,
+    // Synthetic PARENT collections (e.g. /all-collections) carry null content-table
+    // IDs because they aren't backed by content rows. Fall back to the referenced
+    // collection's ID so downstream Map lookups (sizesMap, row keys) stay unique.
+    id: col.id ?? col.referencedCollectionId,
     title: col.title,
     slug: col.slug,
     collectionType: col.collectionType,

@@ -3,12 +3,8 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
-import {
-  type ContentCollectionModel,
-  type ContentImageModel,
-  type ContentTextModel,
-} from '@/app/types/Content';
+import { type CollectionModel } from '@/app/types/Collection';
+import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
 import {
   type CollectionFilterState,
   INITIAL_COLLECTION_FILTER_STATE,
@@ -69,28 +65,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     INITIAL_COLLECTION_FILTER_STATE
   );
 
-  // Text-box-as-header: when a PARENT collection has no cover image, prepend a
-  // synthetic TEXT content block carrying the collection title in lieu of the
-  // missing cover-image header row. Local id of -1 keeps it distinct from real
-  // backend content (whose ids are positive auto-incremented bigints).
-  const allContent = useMemo(() => {
-    const raw = collection.content ?? [];
-    const needsHeaderText =
-      collection.type === CollectionType.PARENT &&
-      (collection.coverImage === null || collection.coverImage === undefined);
-    if (!needsHeaderText) return raw;
-    const headerTextBlock: ContentTextModel = {
-      id: -1,
-      contentType: 'TEXT',
-      orderIndex: -1,
-      visible: true,
-      title: collection.title,
-      items: [{ type: 'text', value: collection.title }],
-      format: 'plain',
-      align: 'center',
-    };
-    return [headerTextBlock, ...raw];
-  }, [collection.content, collection.coverImage, collection.title, collection.type]);
+  const allContent = useMemo(() => collection.content ?? [], [collection.content]);
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 

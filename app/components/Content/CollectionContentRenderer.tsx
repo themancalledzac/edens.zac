@@ -316,9 +316,22 @@ export default function CollectionContentRenderer({
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
-          hasClickHandler: false,
+          hasClickHandler,
           isSelected: false,
         })}
+        onClick={hasClickHandler ? handleClick : undefined}
+        role={hasClickHandler ? 'button' : undefined}
+        tabIndex={hasClickHandler ? 0 : undefined}
+        onKeyDown={
+          hasClickHandler
+            ? e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleClick();
+                }
+              }
+            : undefined
+        }
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
@@ -329,9 +342,10 @@ export default function CollectionContentRenderer({
           alignItems: 'center',
           justifyContent: 'center',
           color: '#757575',
+          cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
-        No Image
+        {overlayText || 'No Image'}
       </div>
     );
   }
