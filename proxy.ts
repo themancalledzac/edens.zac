@@ -5,6 +5,7 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 
 /**
  * Global Next.js Proxy
+ * - Local-only admin hub at /admin (and /homePage escape route)
  * - Protects admin App Router routes (create/edit collections)
  * - Maintains legacy local-only protection for /cdn tooling routes
  * - Supports feature flags and simple token-based authorization for gradual rollout
@@ -12,7 +13,22 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1) Legacy protection for /cdn tools — allow only in local/dev
+  // 1) Local-only admin hub. /admin* and /homePage are dev-console paths;
+  //    in non-local environments they redirect to / so they are not discoverable.
+  if (pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/homePage') {
+    if (!isLocalEnvironment()) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 2) On localhost, / → /admin so the dev console is the landing surface.
+  //    The real home page remains reachable at /homePage (rule 1, local-only).
+  if (isLocalEnvironment() && pathname === '/') {
+    return NextResponse.redirect(new URL('/admin', request.url));
+  }
+
+  // 3) Legacy protection for /cdn tools — allow only in local/dev
   if (pathname.startsWith('/cdn')) {
     if (!isLocalEnvironment()) {
       return NextResponse.redirect(new URL('/', request.url));
@@ -66,6 +82,14 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Admin hub (local-only) and the localhost / → /admin redirect.
+    // Including '/' here means the middleware runs on every public home
+    // page hit; the rule short-circuits in non-local so the prod cost is
+    // a single env check.
+    '/',
+    '/admin',
+    '/admin/:path*',
+    '/homePage',
     '/catalog/:slug*',
     '/cdn/:path*',
     '/collection/create',
