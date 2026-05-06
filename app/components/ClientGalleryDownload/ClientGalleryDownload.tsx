@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { downloadCollectionUrl } from '@/app/lib/api/downloads';
+import { downloadCollectionUrl,type DownloadFormat } from '@/app/lib/api/downloads';
 
 import styles from './ClientGalleryDownload.module.scss';
 
@@ -10,50 +10,107 @@ interface ClientGalleryDownloadProps {
   collectionSlug: string;
 }
 
-/**
- * Client Gallery Download All Button
- *
- * Prominent "Download All" action for CLIENT_GALLERY collections.
- * Navigates to the BFF-routed collection download endpoint, which streams
- * a ZIP with `Content-Disposition: attachment` so the browser saves rather
- * than navigates. The httpOnly `gallery_access_{slug}` cookie set by the
- * gate is sent automatically (same-origin via the proxy).
- *
- * The "preparing" state is a short-lived label change while the browser is
- * negotiating the ZIP — the native download UI is the real progress feedback.
- */
-export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryDownloadProps) {
-  const [preparing, setPreparing] = useState(false);
+const DownloadIcon = () => (
+  <svg
+    aria-hidden="true"
+    className={styles.downloadIcon}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
 
-  const handleDownloadAll = useCallback(() => {
-    setPreparing(true);
-    window.location.href = downloadCollectionUrl(collectionSlug);
-    // Reset preparing state after a short delay (the browser is now handling the download)
-    setTimeout(() => setPreparing(false), 4000);
-  }, [collectionSlug]);
+export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryDownloadProps) {
+  const [showPicker, setShowPicker] = useState(false);
+  const [preparing, setPreparing] = useState<DownloadFormat | null>(null);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const closePicker = useCallback(() => {
+    setShowPicker(false);
+  }, []);
+
+  // Esc closes the picker (only while it's open and a download isn't in flight)
+  useEffect(() => {
+    if (!showPicker || preparing !== null) return;
+    const handler = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') closePicker();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [showPicker, preparing, closePicker]);
+
+  // Clear any pending reset timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    };
+  }, []);
+
+  const handleOpenPicker = useCallback(() => {
+    setShowPicker(true);
+  }, []);
+
+  const handleFormatDownload = useCallback(
+    (format: DownloadFormat) => {
+      setPreparing(format);
+      window.location.href = downloadCollectionUrl(collectionSlug, format);
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = setTimeout(() => {
+        setPreparing(null);
+        setShowPicker(false);
+        resetTimerRef.current = null;
+      }, 4000);
+    },
+    [collectionSlug]
+  );
+
+  if (showPicker) {
+    return (
+      <div className={styles.downloadContainer}>
+        <span id="download-quality-label" className={styles.pickerLabel}>
+          Choose quality:
+        </span>
+        <div className={styles.pickerRow} role="group" aria-labelledby="download-quality-label">
+          <button
+            type="button"
+            onClick={() => handleFormatDownload('web')}
+            disabled={preparing !== null}
+            className={styles.pickerButton}
+          >
+            <DownloadIcon />
+            {preparing === 'web' ? 'Preparing…' : 'Web Optimized'}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleFormatDownload('original')}
+            disabled={preparing !== null}
+            className={styles.pickerButton}
+          >
+            <DownloadIcon />
+            {preparing === 'original' ? 'Preparing…' : 'Full Size'}
+          </button>
+          {preparing === null && (
+            <button type="button" onClick={closePicker} className={styles.cancelButton}>
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.downloadContainer}>
-      <button
-        type="button"
-        onClick={handleDownloadAll}
-        disabled={preparing}
-        className={styles.downloadButton}
-      >
-        <svg
-          className={styles.downloadIcon}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-        {preparing ? 'Preparing ZIP…' : 'Download All'}
+      <button type="button" onClick={handleOpenPicker} className={styles.downloadButton}>
+        <DownloadIcon />
+        Download All
       </button>
     </div>
   );
