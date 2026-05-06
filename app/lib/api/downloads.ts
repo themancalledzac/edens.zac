@@ -7,12 +7,14 @@
  * (e.g. `window.location.href = ...`) and the browser handles the response.
  *
  * Backend endpoints:
- * - GET /api/read/content/images/{id}/download?format=web
- * - GET /api/read/collections/{slug}/download?format=web
+ * - GET /api/read/content/images/{id}/download?format=web|original
+ * - GET /api/read/collections/{slug}/download?format=web|original
  */
 
-export const downloadImageUrl = (imageId: number, format: 'web' | 'original' = 'web'): string =>
+export type DownloadFormat = 'web' | 'original';
+
+export const downloadImageUrl = (imageId: number, format: DownloadFormat = 'web'): string =>
   `/api/proxy/api/read/content/images/${imageId}/download?format=${format}`;
 
-export const downloadCollectionUrl = (slug: string, format: 'web' = 'web'): string =>
+export const downloadCollectionUrl = (slug: string, format: DownloadFormat = 'web'): string =>
   `/api/proxy/api/read/collections/${encodeURIComponent(slug)}/download?format=${format}`;
