@@ -133,6 +133,49 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     expect(element.type).toBe(CollectionPage);
   });
 
+  it('routes a locked PARENT (password-protected, content === undefined) to <ClientGalleryGate>', async () => {
+    mockGetCollectionBySlug.mockResolvedValue(
+      makeCollection({
+        type: CollectionType.PARENT,
+        isPasswordProtected: true,
+        content: undefined,
+      })
+    );
+
+    const element = await CollectionPageWrapper({ slug: 'edens-family' });
+
+    expect(element.type).toBe(ClientGalleryGate);
+    expect(element.props.collection.type).toBe(CollectionType.PARENT);
+  });
+
+  it('routes an authenticated PARENT (content is an array) to <CollectionPage>', async () => {
+    mockGetCollectionBySlug.mockResolvedValue(
+      makeCollection({
+        type: CollectionType.PARENT,
+        isPasswordProtected: true,
+        content: [],
+      })
+    );
+
+    const element = await CollectionPageWrapper({ slug: 'edens-family' });
+
+    expect(element.type).toBe(CollectionPage);
+  });
+
+  it('routes a non-protected PARENT directly to <CollectionPage>', async () => {
+    mockGetCollectionBySlug.mockResolvedValue(
+      makeCollection({
+        type: CollectionType.PARENT,
+        isPasswordProtected: false,
+        content: undefined,
+      })
+    );
+
+    const element = await CollectionPageWrapper({ slug: 'edens-family' });
+
+    expect(element.type).toBe(CollectionPage);
+  });
+
   it('calls notFound() when the slug is empty', async () => {
     await expect(CollectionPageWrapper({ slug: '' })).rejects.toThrow('NEXT_NOT_FOUND');
     expect(notFoundMock).toHaveBeenCalled();
