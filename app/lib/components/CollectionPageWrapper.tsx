@@ -29,18 +29,21 @@ export default async function CollectionPageWrapper({ slug }: CollectionPageWrap
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
-    if (collection.type === CollectionType.CLIENT_GALLERY) {
-      // Auth signal: backend (CollectionControllerProd.getCollectionBySlug) sets
-      // `content` to null when the per-slug cookie is missing or invalid, and
-      // returns an array (possibly empty) once the cookie validates. So
-      // `Array.isArray(content)` distinguishes authenticated from locked, and
-      // is the only authoritative signal — `isPasswordProtected` stays true
-      // even after the cookie validates (it describes the gallery, not the
-      // viewer's session).
-      //
-      // Routing here, rather than wrapping <CollectionPage> as gate children,
-      // means we never serialize the page's RSC payload (cover image, grid)
-      // for a locked viewer (FE-H6 invariant, structurally enforced).
+    // Gate any password-protected gallery — CLIENT_GALLERY directly, and PARENT collections
+    // that have a password (typically set with propagate=true to share with their CLIENT_GALLERY
+    // children). Auth signal: backend (CollectionControllerProd.getCollectionBySlug) sets
+    // `content` to null when neither the per-slug nor the shared password-fingerprint cookie
+    // validates, and returns an array (possibly empty) once a cookie validates. So
+    // `Array.isArray(content)` is the authoritative authenticated signal — `isPasswordProtected`
+    // describes the gallery, not the viewer's session.
+    //
+    // Routing here, rather than wrapping <CollectionPage> as gate children, means we never
+    // serialize the page's RSC payload (cover image, grid) for a locked viewer (FE-H6 invariant,
+    // structurally enforced).
+    const isGateableType =
+      collection.type === CollectionType.CLIENT_GALLERY ||
+      collection.type === CollectionType.PARENT;
+    if (isGateableType) {
       const isAuthenticated = Array.isArray(collection.content);
       if (!collection.isPasswordProtected || isAuthenticated) {
         return <CollectionPage collection={collection} chunkSize={chunkSize} />;

@@ -254,7 +254,7 @@ export function MenuDropdown({
               className={styles.dropdownMenuButton}
               onClick={handleNavigation.manage}
             >
-              <span className={styles.dropdownMenuOptions}>Manage</span>
+              <span className={styles.dropdownMenuOptions}>Create</span>
             </button>
           </div>
         )}

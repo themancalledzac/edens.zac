@@ -1121,6 +1121,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
                               <option value={CollectionType.BLOG}>Blog</option>
                               <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
+                              <option value={CollectionType.PARENT}>Parent</option>
                             </select>
                           </div>
                         </div>
@@ -1334,8 +1335,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           />
                         </div>
 
-                        {/* Gallery Access — only meaningful for CLIENT_GALLERY */}
-                        {updateData.type === CollectionType.CLIENT_GALLERY && (
+                        {/* Gallery Access — meaningful for CLIENT_GALLERY and PARENT */}
+                        {(updateData.type === CollectionType.CLIENT_GALLERY ||
+                          updateData.type === CollectionType.PARENT) && (
                           <section
                             aria-labelledby="gallery-access-heading"
                             className={styles.formGroup}
