@@ -561,6 +561,28 @@
   background-color: rgb(0 0 0 / 6%);
 }
 
+/* ── Info chip — non-clickable labeled fact ── */
+.filterBarInfo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-black);
+  letter-spacing: 0.02em;
+  font-family: inherit;
+  white-space: nowrap;
+  opacity: 0.75;
+  cursor: default;
+}
+
+.filterBarInfoLabel {
+  opacity: 0.55;
+  font-weight: 400;
+}
+
 .filterBarChevron {
   font-size: 0.55rem;
   line-height: 1;

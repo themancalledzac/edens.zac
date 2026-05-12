@@ -459,7 +459,13 @@ describe('extractFilterOptions', () => {
     const images = Array.from({ length: 12 }, (_, i) =>
       makeImage({
         id: i + 1,
-        tags: [{ id: i + 1, name: `tag-${String(i + 1).padStart(2, '0')}`, slug: `tag-${String(i + 1).padStart(2, '0')}` }],
+        tags: [
+          {
+            id: i + 1,
+            name: `tag-${String(i + 1).padStart(2, '0')}`,
+            slug: `tag-${String(i + 1).padStart(2, '0')}`,
+          },
+        ],
       })
     );
     // Add extra images for first 3 tags to give them higher frequency
@@ -771,7 +777,54 @@ describe('computeFilterCounts', () => {
       expect(counts.tags).toEqual({});
       expect(counts.people).toEqual({});
       expect(counts.collections).toEqual({});
+      expect(counts.locations).toEqual({});
     });
+  });
+});
+
+describe('computeFilterCounts locations', () => {
+  const images = [
+    makeImage({
+      id: 1,
+      rating: 5,
+      isFilm: true,
+      locations: [{ id: 1, name: 'Dolomites', slug: 'dolomites' }],
+    }),
+    makeImage({
+      id: 2,
+      rating: 3,
+      isFilm: true,
+      locations: [{ id: 1, name: 'Dolomites', slug: 'dolomites' }],
+    }),
+    makeImage({
+      id: 3,
+      rating: 4,
+      isFilm: false,
+      locations: [{ id: 2, name: 'Iceland', slug: 'iceland' }],
+    }),
+  ];
+
+  const availableOptions = extractFilterOptions(images);
+
+  it('counts images per location with no other filters active', () => {
+    const counts = computeFilterCounts(images, {}, availableOptions);
+    expect(counts.locations['Dolomites']).toBe(2);
+    expect(counts.locations['Iceland']).toBe(1);
+  });
+
+  it('strips current locations filter when computing per-location counts', () => {
+    // With 'Dolomites' active, the per-location counts should reflect what's
+    // available if the user toggled — so 'Iceland' should still report 1.
+    const counts = computeFilterCounts(images, { locations: ['Dolomites'] }, availableOptions);
+    expect(counts.locations['Iceland']).toBe(1);
+    expect(counts.locations['Dolomites']).toBe(2);
+  });
+
+  it('respects other active filters when computing location counts', () => {
+    // With isFilm: true active, only images 1 and 2 (both Dolomites) remain.
+    const counts = computeFilterCounts(images, { isFilm: true }, availableOptions);
+    expect(counts.locations['Dolomites']).toBe(2);
+    expect(counts.locations['Iceland']).toBe(0);
   });
 });
 

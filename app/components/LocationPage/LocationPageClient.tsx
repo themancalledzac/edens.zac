@@ -67,6 +67,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
         people: {},
         cameras: {},
         lenses: {},
+        locations: {},
       };
     }
   }, [images, criteria, availableOptions]);

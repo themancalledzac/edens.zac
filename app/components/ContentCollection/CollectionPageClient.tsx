@@ -16,7 +16,9 @@ import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { getLensType } from '@/app/utils/focalLength';
 import { sortByDate } from '@/app/utils/sortByDate';
 
-import { CollectionFilterProvider } from './CollectionFilterContext';
+import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
+
+type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated'>;
 
 interface CollectionPageClientProps {
   collection: CollectionModel;
@@ -25,28 +27,21 @@ interface CollectionPageClientProps {
 
 /**
  * Extracts filter options specific to collection pages.
- * Uses the shared extractFilterOptions with 90% tag exclusion, plus
- * the >1 distinct rule for cameras/lenses and lens type categories.
+ *
+ * Returns per-dimension data with a `filterable` flag. When a dimension has
+ * exactly one value and the dimension's policy allows info-mode (cameras /
+ * lenses / locations), filterable is set to false so the bar renders it as
+ * an inline info chip instead of a dropdown.
  */
 function extractCollectionFilterOptions(
   images: ContentImageModel[],
   collectionRefs: ContentCollectionModel[] = []
-): {
-  tags: string[];
-  people: string[];
-  cameras: string[];
-  lenses: string[];
-  lensTypes: LensType[];
-} {
+): CollectionDimensions {
   // Pass images + refs together so extractFilterOptions can aggregate filter
   // dimensions from collection refs too. This is what populates the filter bar
   // on synthetic PARENT pages whose `content` is 100% collection refs and 0
   // images (e.g. /all-collections, /all-blog).
   const baseOptions = extractFilterOptions([...images, ...collectionRefs], 0.9);
-
-  // Cameras/lenses: only show if more than 1 distinct
-  const cameras = baseOptions.cameras.length > 1 ? baseOptions.cameras : [];
-  const lenses = baseOptions.lenses.length > 1 ? baseOptions.lenses : [];
 
   // Lens types: only show if 2+ distinct categories present (image-only signal)
   const lensTypeSet = new Set<LensType>();
@@ -57,8 +52,18 @@ function extractCollectionFilterOptions(
   const typeOrder: LensType[] = ['wide', 'normal', 'telephoto'];
   const lensTypes = lensTypeSet.size >= 2 ? typeOrder.filter(t => lensTypeSet.has(t)) : [];
 
-  return { tags: baseOptions.tags, people: baseOptions.people, cameras, lenses, lensTypes };
+  return {
+    tags: { values: baseOptions.tags, filterable: true },
+    people: { values: baseOptions.people, filterable: true },
+    cameras: { values: baseOptions.cameras, filterable: baseOptions.cameras.length >= 2 },
+    lenses: { values: baseOptions.lenses, filterable: baseOptions.lenses.length >= 2 },
+    locations: { values: baseOptions.locations, filterable: baseOptions.locations.length >= 2 },
+    lensTypes: { values: lensTypes, filterable: true },
+  };
 }
+
+const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
+const EMPTY_LENSTYPE_DIM = { values: [] as readonly LensType[], filterable: true };
 
 export default function CollectionPageClient({ collection, chunkSize }: CollectionPageClientProps) {
   const [filterState, setFilterState] = useState<CollectionFilterState>(
@@ -76,19 +81,18 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
   // are suppressed since the page's purpose is browsing sub-collections, not filtering images.
   const isCollectionDominant = allCollections.length > allImages.length;
 
-  const baseCollectionOptions = useMemo(() => {
-    // On collection-dominant pages we still want tags/people aggregated from
-    // collection refs, so we always pass refs through. The post-filter below
-    // suppresses image-only dimensions (cameras/lenses/lensTypes) on those
-    // pages, but keeps tags AND people from collection-ref aggregation.
+  const baseCollectionOptions = useMemo<CollectionDimensions>(() => {
+    // On collection-dominant pages we still want tags/people/locations aggregated
+    // from collection refs, so we always pass refs through. The post-filter below
+    // suppresses image-only dimensions (cameras/lenses/lensTypes) on those pages,
+    // but keeps tags, people, AND locations from collection-ref aggregation.
     const options = extractCollectionFilterOptions(allImages, allCollections);
     if (isCollectionDominant) {
       return {
-        tags: options.tags,
-        people: options.people,
-        cameras: [],
-        lenses: [],
-        lensTypes: [] as LensType[],
+        ...options,
+        cameras: EMPTY_STRING_DIM,
+        lenses: EMPTY_STRING_DIM,
+        lensTypes: EMPTY_LENSTYPE_DIM,
       };
     }
     return options;
@@ -110,6 +114,9 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
       ...(filterState.selectedLenses.length > 0
         ? { lenses: filterState.selectedLenses, lensMatchMode: 'AND' as const }
         : {}),
+      ...(filterState.selectedLocations.length > 0
+        ? { locations: filterState.selectedLocations }
+        : {}),
     }),
     [filterState]
   );
@@ -121,7 +128,8 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
       filterState.selectedPeople.length > 0 ||
       filterState.selectedCameras.length > 0 ||
       filterState.selectedLenses.length > 0 ||
-      filterState.selectedLensTypes.length > 0,
+      filterState.selectedLensTypes.length > 0 ||
+      filterState.selectedLocations.length > 0,
     [filterState]
   );
 
@@ -161,11 +169,19 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     if (!hasActiveFilters) return null;
     // Collection refs aren't filtered (image-only filters don't touch them),
     // so the full collection-ref list still contributes to "available" tags.
-    return extractCollectionFilterOptions(filteredImages, allCollections);
+    const dims = extractCollectionFilterOptions(filteredImages, allCollections);
+    return {
+      tags: dims.tags.values,
+      people: dims.people.values,
+      cameras: dims.cameras.values,
+      lenses: dims.lenses.values,
+      lensTypes: dims.lensTypes.values,
+      locations: dims.locations.values,
+    };
   }, [hasActiveFilters, filteredImages, allCollections]);
 
   // All base options are always shown; filteredAvailableOptions determines grey-out state
-  const availableOptions = useMemo(
+  const availableOptions = useMemo<CollectionInfoOptions>(
     () => ({
       ...baseCollectionOptions,
       showHighlyRated,
@@ -215,11 +231,15 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
   const hasOptions =
     showHighlyRated ||
     hasDateVariance ||
-    baseCollectionOptions.tags.length > 0 ||
-    baseCollectionOptions.people.length > 0 ||
-    baseCollectionOptions.cameras.length > 0 ||
-    baseCollectionOptions.lenses.length > 0 ||
-    baseCollectionOptions.lensTypes.length > 0;
+    baseCollectionOptions.tags.values.length > 0 ||
+    baseCollectionOptions.people.values.length > 0 ||
+    baseCollectionOptions.cameras.values.length > 0 ||
+    baseCollectionOptions.lenses.values.length > 0 ||
+    baseCollectionOptions.lensTypes.values.length > 0 ||
+    // Locations contributes only when multi-value (filterable) — single-value
+    // locations are intentionally not surfaced (see CollectionFilterBar
+    // INFO_DIMENSIONS comment) and so should not trigger the bar on their own.
+    baseCollectionOptions.locations.filterable;
 
   const content = (
     <>
