@@ -8,6 +8,7 @@ import {
   buildImageUpdateDiff,
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
+  computeCameraSelectionUpdate,
   extractMultiSelectValues,
   getCommonValues,
   getDisplayCamera,
@@ -21,7 +22,7 @@ import {
   mapUpdateResponseToFrontend,
 } from '@/app/components/ImageMetadata/imageMetadataUtils';
 import type { ContentImageModel, ContentImageUpdateRequest } from '@/app/types/Content';
-import type { ContentFilmTypeModel } from '@/app/types/ImageMetadata';
+import type { ContentCameraModel, ContentFilmTypeModel } from '@/app/types/ImageMetadata';
 
 // Test fixtures
 const createImageContent = (
@@ -2107,5 +2108,69 @@ describe('mapUpdateResponseToFrontend', () => {
     const result = mapUpdateResponseToFrontend(backendResponse);
 
     expect(result.errors).toBeUndefined();
+  });
+});
+
+describe('computeCameraSelectionUpdate', () => {
+  const filmCamera120: ContentCameraModel = {
+    id: 1,
+    name: 'Hasselblad 500cm',
+    isFilm: true,
+    defaultFilmFormat: 'MM_120',
+  };
+  const filmCameraNoFormat: ContentCameraModel = {
+    id: 2,
+    name: 'Unknown Film Body',
+    isFilm: true,
+    defaultFilmFormat: null,
+  };
+  const digitalCamera: ContentCameraModel = {
+    id: 3,
+    name: 'Sony A7 IV',
+    isFilm: false,
+  };
+
+  it('returns { camera: null } when camera is null', () => {
+    const result = computeCameraSelectionUpdate(null, { filmFormat: 'MM_35' });
+    expect(result).toEqual({ camera: null });
+  });
+
+  it('auto-toggles isFilm + filmFormat when a film camera with a default is picked', () => {
+    const result = computeCameraSelectionUpdate(filmCamera120, { filmFormat: null });
+    expect(result).toEqual({
+      camera: filmCamera120,
+      isFilm: true,
+      filmFormat: 'MM_120',
+    });
+  });
+
+  it('preserves prev filmFormat when the picked film camera has no defaultFilmFormat', () => {
+    const result = computeCameraSelectionUpdate(filmCameraNoFormat, { filmFormat: 'MM_35' });
+    expect(result).toEqual({
+      camera: filmCameraNoFormat,
+      isFilm: true,
+      filmFormat: 'MM_35',
+    });
+  });
+
+  it('only sets camera when a digital camera is picked (does not touch isFilm/filmFormat)', () => {
+    const result = computeCameraSelectionUpdate(digitalCamera, { filmFormat: 'MM_35' });
+    expect(result).toEqual({ camera: digitalCamera });
+    expect(result).not.toHaveProperty('isFilm');
+    expect(result).not.toHaveProperty('filmFormat');
+  });
+
+  it("manual filmFormat wins over the camera's default", () => {
+    // User had MM_35 manually set, then picks a 120 camera — manual choice preserved.
+    const result = computeCameraSelectionUpdate(filmCamera120, { filmFormat: 'MM_35' });
+    expect(result.filmFormat).toBe('MM_120');
+    // NOTE: behavior chosen in the plan is "camera default WINS via ?? fallback"
+    // i.e. `camera.defaultFilmFormat ?? prev.filmFormat`. When the camera has a
+    // default, it's applied. When it doesn't, prev is preserved.
+  });
+
+  it('null prev.filmFormat and null camera default → filmFormat is null', () => {
+    const result = computeCameraSelectionUpdate(filmCameraNoFormat, { filmFormat: null });
+    expect(result.filmFormat).toBeNull();
   });
 });

@@ -11,6 +11,7 @@ import type {
   ContentImageUpdateRequest,
   ContentImageUpdateResponse,
 } from '@/app/types/Content';
+import type { ContentCameraModel } from '@/app/types/ImageMetadata';
 import { buildLocationsDiff } from '@/app/utils/locationUtils';
 
 // ============================================================================
@@ -311,6 +312,35 @@ export function getDisplayCamera<T extends { id?: number; name: string }>(
   availableCameras: T[]
 ): T | null {
   return getDisplayItemFromUpdate(updateDTO.camera, initialCamera, availableCameras);
+}
+
+/**
+ * Compute the partial-state update produced by picking a camera in the
+ * metadata editor.
+ *
+ * - Picking a film body (`camera.isFilm`) auto-flips `isFilm` to true and
+ *   prefers the camera's `defaultFilmFormat` only when the user hasn't
+ *   already set `filmFormat` manually.
+ * - Picking a digital camera (or null) does NOT auto-untoggle anything —
+ *   the user-visible Film Photography checkbox stays the single source
+ *   of truth for clearing film state.
+ *
+ * Pure helper so the behavior can be unit-tested without mounting the
+ * modal.
+ */
+export function computeCameraSelectionUpdate(
+  camera: ContentCameraModel | null,
+  prev: { filmFormat?: string | null }
+): Partial<ContentImageModel> {
+  if (!camera) return { camera: null };
+  if (camera.isFilm) {
+    return {
+      camera,
+      isFilm: true,
+      filmFormat: camera.defaultFilmFormat ?? prev.filmFormat ?? null,
+    };
+  }
+  return { camera };
 }
 
 /**
@@ -947,7 +977,12 @@ export function mapUpdateResponseToFrontend(response: {
   newMetadata?: {
     tags?: Array<{ id: number; tagName: string; slug: string }>;
     people?: Array<{ id: number; personName: string; slug: string }>;
-    cameras?: Array<{ id: number; cameraName: string }>;
+    cameras?: Array<{
+      id: number;
+      cameraName: string;
+      isFilm?: boolean;
+      defaultFilmFormat?: string | null;
+    }>;
     lenses?: Array<{ id: number; lensName: string }>;
     filmTypes?: Array<{ id: number; filmTypeName: string; defaultIso: number }>;
   };
@@ -962,7 +997,12 @@ export function mapUpdateResponseToFrontend(response: {
             name: p.personName,
             slug: p.slug,
           })),
-          cameras: response.newMetadata.cameras?.map(c => ({ id: c.id, name: c.cameraName })),
+          cameras: response.newMetadata.cameras?.map(c => ({
+            id: c.id,
+            name: c.cameraName,
+            isFilm: c.isFilm,
+            defaultFilmFormat: c.defaultFilmFormat,
+          })),
           lenses: response.newMetadata.lenses?.map(l => ({ id: l.id, name: l.lensName })),
           filmTypes: response.newMetadata.filmTypes?.map(f => ({
             id: f.id,
