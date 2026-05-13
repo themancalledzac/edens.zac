@@ -31,6 +31,7 @@ export interface CollectionFilterState {
   readonly selectedPeople: readonly string[];
   readonly selectedCameras: readonly string[];
   readonly selectedLenses: readonly string[];
+  readonly selectedLocations: readonly string[];
   highlyRatedOnly: boolean;
   dateSortDirection: 'asc' | 'desc' | 'off';
   readonly selectedLensTypes: readonly LensType[];
@@ -43,6 +44,7 @@ export const INITIAL_COLLECTION_FILTER_STATE: CollectionFilterState = Object.fre
   selectedPeople: Object.freeze([] as readonly string[]),
   selectedCameras: Object.freeze([] as readonly string[]),
   selectedLenses: Object.freeze([] as readonly string[]),
+  selectedLocations: Object.freeze([] as readonly string[]),
   highlyRatedOnly: false,
   dateSortDirection: 'off' as const,
   selectedLensTypes: Object.freeze([] as readonly LensType[]),

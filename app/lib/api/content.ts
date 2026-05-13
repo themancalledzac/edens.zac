@@ -356,3 +356,15 @@ export async function createPerson(request: {
 }): Promise<{ id: number; personName: string } | null> {
   return fetchAdminPostJsonApi('/content/people', request);
 }
+
+/**
+ * POST /api/admin/metadata/cameras
+ * Create a new camera with optional film metadata
+ */
+export async function createCamera(request: {
+  cameraName: string;
+  isFilm?: boolean;
+  defaultFilmFormat?: string | null;
+}): Promise<{ id: number; cameraName: string; isFilm: boolean } | null> {
+  return fetchAdminPostJsonApi('/metadata/cameras', request);
+}

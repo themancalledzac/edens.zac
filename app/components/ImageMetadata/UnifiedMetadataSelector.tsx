@@ -1,5 +1,6 @@
 'use client';
 
+import { Plus } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 
 import { useClickOutsideMultiple } from '@/app/hooks/useClickOutside';
@@ -18,15 +19,28 @@ export interface MetadataItem {
 }
 
 /**
- * Field configuration for "Add New" forms
+ * Field configuration for "Add New" forms.
+ *
+ * - `text` / `number` render a plain input.
+ * - `checkbox` renders a labelled checkbox. `required` is ignored for checkboxes.
+ * - `select` renders a `<select>` driven by `options`. `required: true` means
+ *   the empty value cannot be submitted.
+ * - `showWhen` is an optional predicate evaluated against the live form data;
+ *   when it returns `false`, the field is not rendered.
  */
+export type AddNewFieldFormData = Record<string, string | boolean>;
+
 export interface AddNewField {
   name: string;
   label: string;
-  type: 'text' | 'number';
+  type: 'text' | 'number' | 'checkbox' | 'select';
   placeholder?: string;
   required?: boolean;
   min?: number;
+  /** For `type: 'select'` */
+  options?: Array<{ value: string; label: string }>;
+  /** Only render this field when the predicate returns true. */
+  showWhen?: (formData: AddNewFieldFormData) => boolean;
 }
 
 interface UnifiedMetadataSelectorProps<T extends MetadataItem> {
@@ -39,15 +53,13 @@ interface UnifiedMetadataSelectorProps<T extends MetadataItem> {
   selectedValues?: T[];
   onChange: (value: T | T[] | null) => void;
   allowAddNew?: boolean;
-  onAddNew?: (data: Record<string, string | number | null>) => void;
+  onAddNew?: (data: Record<string, string | number | boolean | null>) => void;
   addNewFields?: AddNewField[];
   /** Custom display text for items */
   getDisplayName?: (item: T) => string;
   /** Custom key for list items */
   getItemKey?: (item: T) => string | number;
   emptyText?: string;
-  changeButtonText?: string;
-  addNewButtonText?: string;
   /** Show "🔴 Will be added" for items not in database */
   showNewIndicator?: boolean;
   /** Placeholder for add new inputs */
@@ -57,38 +69,12 @@ interface UnifiedMetadataSelectorProps<T extends MetadataItem> {
 }
 
 /**
- * UnifiedMetadataSelector - A flexible dropdown selector for all metadata types
+ * UnifiedMetadataSelector — flexible click-to-open dropdown for metadata fields.
  *
- * Features:
- * - Single-select or multi-select modes
- * - Dropdown selection from existing items
- * - "Add New" functionality with custom form fields
- * - Visual indicators for new items
- * - Keyboard navigation support
- * - Highly customizable display and behavior
- *
- * @example Single-select (Camera)
- * <UnifiedMetadataSelector
- *   label="Camera"
- *   multiSelect={false}
- *   options={availableCameras}
- *   selectedValue={currentCamera}
- *   onChange={(camera) => handleCameraChange(camera)}
- *   allowAddNew={true}
- *   onAddNew={(data) => handleAddNewCamera(data.name)}
- * />
- *
- * @example Multi-select (Tags)
- * <UnifiedMetadataSelector
- *   label="Tags"
- *   multiSelect={true}
- *   options={allTags}
- *   selectedValues={selectedTags}
- *   onChange={(tags) => handleTagsChange(tags)}
- *   allowAddNew={true}
- *   onAddNew={(data) => handleAddNewTag(data.name)}
- *   changeButtonText="Select More ▼"
- * />
+ * UX: the value box itself is the click target. Clicking it toggles the
+ * dropdown. The dropdown ends with a big "+" row when `allowAddNew` is set,
+ * which opens the inline add-new form. Selecting an item closes the dropdown
+ * — single AND multi-select — for consistency across Camera/Lens/Film/Tags/People.
  */
 export default function UnifiedMetadataSelector<T extends MetadataItem>({
   label,
@@ -103,8 +89,6 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
   getDisplayName,
   getItemKey,
   emptyText = `No ${label.toLowerCase()} set`,
-  changeButtonText,
-  addNewButtonText = '+ Add New',
   showNewIndicator = false,
   placeholder,
   simpleChips = false,
@@ -112,7 +96,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSelectingFromDropdown, setIsSelectingFromDropdown] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [formData, setFormData] = useState<AddNewFieldFormData>({});
 
   const handleCloseAll = useCallback(() => {
     setIsSelectingFromDropdown(false);
@@ -160,9 +144,25 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
     return getItemDisplayName(selectedValue) === getItemDisplayName(item);
   };
 
-  const getButtonText = (): string => {
-    if (changeButtonText) return changeButtonText;
-    return multiSelect ? 'Select More ▼' : 'Change ▼';
+  const handleToggleDropdown = () => {
+    setIsSelectingFromDropdown(prev => !prev);
+    setIsAddingNew(false);
+  };
+
+  const handleDisplayKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleToggleDropdown();
+    }
+  };
+
+  const getDisplayAriaSummary = (): string => {
+    if (multiSelect) {
+      return selectedValues.length > 0
+        ? selectedValues.map(getItemDisplayName).join(', ')
+        : emptyText;
+    }
+    return selectedValue ? getItemDisplayName(selectedValue) : emptyText;
   };
 
   const handleSelectItem = (item: T) => {
@@ -179,11 +179,14 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
       }
     } else {
       onChange(item);
-      setIsSelectingFromDropdown(false);
     }
+    // Close on every select — single OR multi. To add another item the user
+    // re-opens the dropdown. Same UX across every metadata field.
+    setIsSelectingFromDropdown(false);
   };
 
-  const handleRemoveItem = (item: T) => {
+  const handleRemoveItem = (e: React.MouseEvent | React.KeyboardEvent, item: T) => {
+    e.stopPropagation();
     if (!multiSelect) return;
 
     const newSelection = selectedValues.filter(selected => {
@@ -193,22 +196,36 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
     onChange(newSelection);
   };
 
+  const isFieldVisible = (field: AddNewField): boolean =>
+    field.showWhen ? field.showWhen(formData) : true;
+
   const handleAddNew = () => {
-    const missingFields = addNewFields
-      .filter(field => field.required)
-      .filter(field => !formData[field.name] || formData[field.name]?.toString().trim() === '');
-
-    if (missingFields.length > 0) {
-      return;
-    }
-
-    const processedData: Record<string, string | number | null> = {};
-    for (const field of addNewFields) {
+    // Validate visible, required fields. Hidden fields (showWhen → false) are skipped.
+    const missing = addNewFields.filter(isFieldVisible).filter(field => {
+      if (!field.required) return false;
       const value = formData[field.name];
-      processedData[field.name] =
-        field.type === 'number' && value
-          ? Number.parseInt(value, 10)
-          : value?.toString().trim() || null;
+      if (field.type === 'checkbox') return false; // checkboxes never "missing"
+      if (value === undefined || value === null) return true;
+      return value.toString().trim() === '';
+    });
+    if (missing.length > 0) return;
+
+    const processedData: Record<string, string | number | boolean | null> = {};
+    for (const field of addNewFields) {
+      // Drop fields that are hidden so the parent doesn't get stale values from
+      // a sibling toggle (e.g. defaultFilmFormat when isFilm flips off).
+      if (!isFieldVisible(field)) continue;
+      const value = formData[field.name];
+      if (field.type === 'checkbox') {
+        processedData[field.name] = value === true;
+      } else if (field.type === 'number') {
+        processedData[field.name] =
+          typeof value === 'string' && value !== '' ? Number.parseInt(value, 10) : null;
+      } else if (typeof value === 'string') {
+        processedData[field.name] = value.trim() || null;
+      } else {
+        processedData[field.name] = value ? String(value) : null;
+      }
     }
 
     if (onAddNew) {
@@ -221,19 +238,21 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
 
   const isAddNewFormValid = (): boolean => {
     return addNewFields
+      .filter(isFieldVisible)
       .filter(field => field.required)
       .every(field => {
         const value = formData[field.name];
-        if (!value) return false;
+        if (field.type === 'checkbox') return true;
+        if (value === undefined || value === null) return false;
         if (field.type === 'number') {
-          const numValue = Number.parseInt(value, 10);
+          const numValue = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;
           return !Number.isNaN(numValue) && numValue > 0;
         }
-        return value?.toString().trim().length > 0;
+        return value.toString().trim().length > 0;
       });
   };
 
-  const handleFieldChange = (fieldName: string, value: string) => {
+  const handleFieldChange = (fieldName: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [fieldName]: value }));
   };
 
@@ -253,36 +272,18 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
     <div className={styles.formGroup} ref={containerRef}>
       <div className={styles.formLabelRow}>
         <label className={styles.formLabel}>{label}</label>
-
-        {/* Action Buttons */}
-        <div className={styles.cameraActions}>
-          <button
-            type="button"
-            onClick={() => {
-              setIsSelectingFromDropdown(!isSelectingFromDropdown);
-              setIsAddingNew(false);
-            }}
-            className={styles.cameraChangeButton}
-          >
-            {isSelectingFromDropdown ? 'Close' : getButtonText()}
-          </button>
-          {allowAddNew && (
-            <button
-              type="button"
-              onClick={() => {
-                setIsAddingNew(!isAddingNew);
-                setIsSelectingFromDropdown(false);
-              }}
-              className={styles.cameraAddButton}
-            >
-              {isAddingNew ? 'Close' : addNewButtonText}
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Current Selection Display */}
-      <div className={styles.cameraDisplay}>
+      {/* Current Selection Display — itself the dropdown trigger */}
+      <div
+        className={styles.cameraDisplay}
+        role="button"
+        tabIndex={0}
+        aria-expanded={isSelectingFromDropdown}
+        aria-label={`${label}: ${getDisplayAriaSummary()}. Click to change.`}
+        onClick={handleToggleDropdown}
+        onKeyDown={handleDisplayKeyDown}
+      >
         <div className={styles.cameraValue}>
           {!multiSelect &&
             (selectedValue ? (
@@ -306,10 +307,12 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
                     <div
                       key={getKey(item)}
                       className={styles.chipSimple}
-                      onClick={() => handleRemoveItem(item)}
+                      onClick={e => handleRemoveItem(e, item)}
                       role="button"
                       tabIndex={0}
-                      onKeyDown={e => e.key === 'Enter' && handleRemoveItem(item)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleRemoveItem(e, item);
+                      }}
                       aria-label={`Remove ${getItemDisplayName(item)}`}
                     >
                       {getItemDisplayName(item)}
@@ -319,7 +322,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
                       <span>{getItemDisplayName(item)}</span>
                       <button
                         type="button"
-                        onClick={() => handleRemoveItem(item)}
+                        onClick={e => handleRemoveItem(e, item)}
                         className={styles.chipRemove}
                         aria-label={`Remove ${getItemDisplayName(item)}`}
                       >
@@ -356,8 +359,21 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
           ) : (
             <div className={styles.cameraDropdownEmpty}>
               No {label.toLowerCase()} available.
-              {allowAddNew && ' Click "Add New" to create one.'}
+              {allowAddNew && ' Click the + below to create one.'}
             </div>
+          )}
+          {allowAddNew && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingNew(true);
+                setIsSelectingFromDropdown(false);
+              }}
+              className={styles.cameraDropdownAddPlus}
+              aria-label={`Add new ${label.toLowerCase()}`}
+            >
+              <Plus size={24} aria-hidden="true" />
+            </button>
           )}
         </div>
       )}
@@ -365,23 +381,69 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
       {/* Add New Form */}
       {isAddingNew && (
         <div className={styles.addNewInput}>
-          {addNewFields.map((field, index) => (
-            <div key={field.name} className={styles.formGroup}>
-              <label className={styles.formLabel}>{field.label}</label>
-              <input
-                type={field.type}
-                value={formData[field.name] || ''}
-                onChange={e => handleFieldChange(field.name, e.target.value)}
-                onKeyDown={handleFieldKeyDown}
-                placeholder={
-                  field.placeholder || placeholder || `Enter ${field.label.toLowerCase()}`
-                }
-                className={styles.formInput}
-                min={field.type === 'number' ? field.min : undefined}
-                autoFocus={index === 0}
-              />
-            </div>
-          ))}
+          {addNewFields.map((field, index) => {
+            if (!isFieldVisible(field)) return null;
+            const rawValue = formData[field.name];
+
+            if (field.type === 'checkbox') {
+              const checked = rawValue === true;
+              return (
+                <div key={field.name} className={styles.checkboxGroup}>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={e => handleFieldChange(field.name, e.target.checked)}
+                    />
+                    <span>{field.label}</span>
+                  </label>
+                </div>
+              );
+            }
+
+            if (field.type === 'select') {
+              const selectValue = typeof rawValue === 'string' ? rawValue : '';
+              return (
+                <div key={field.name} className={styles.formGroup}>
+                  <label className={styles.formLabel}>{field.label}</label>
+                  <select
+                    value={selectValue}
+                    onChange={e => handleFieldChange(field.name, e.target.value)}
+                    className={styles.formSelect}
+                    autoFocus={index === 0}
+                  >
+                    <option value="">
+                      {field.placeholder ?? `Select ${field.label.toLowerCase()}`}
+                    </option>
+                    {(field.options ?? []).map(opt => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            }
+
+            const inputValue = typeof rawValue === 'string' ? rawValue : '';
+            return (
+              <div key={field.name} className={styles.formGroup}>
+                <label className={styles.formLabel}>{field.label}</label>
+                <input
+                  type={field.type}
+                  value={inputValue}
+                  onChange={e => handleFieldChange(field.name, e.target.value)}
+                  onKeyDown={handleFieldKeyDown}
+                  placeholder={
+                    field.placeholder || placeholder || `Enter ${field.label.toLowerCase()}`
+                  }
+                  className={styles.formInput}
+                  min={field.type === 'number' ? field.min : undefined}
+                  autoFocus={index === 0}
+                />
+              </div>
+            );
+          })}
 
           <div className={styles.addNewButtons}>
             <button

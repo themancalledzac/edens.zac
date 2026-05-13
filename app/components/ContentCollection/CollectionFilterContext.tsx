@@ -4,27 +4,38 @@ import { createContext, useContext } from 'react';
 
 import { type CollectionFilterState, type LensType } from '@/app/types/GalleryFilter';
 
-export interface CollectionFilterOptions {
-  tags: string[];
-  people: string[];
-  cameras: string[];
-  lenses: string[];
-  lensTypes: LensType[];
+/**
+ * Per-dimension data used by the collection filter bar.
+ * `filterable` drives rendering: true -> filter dropdown, false -> inline info chip.
+ */
+export interface DimensionData<T = string> {
+  values: readonly T[];
+  filterable: boolean;
+}
+
+export interface CollectionInfoOptions {
+  tags: DimensionData;
+  people: DimensionData;
+  cameras: DimensionData;
+  lenses: DimensionData;
+  locations: DimensionData;
+  lensTypes: DimensionData<LensType>;
   showHighlyRated: boolean;
 }
 
 /** Subset of options available after current filters are applied (for grey-out logic). null = no active filters. */
 export type FilteredAvailableOptions = {
-  tags: string[];
-  people: string[];
-  cameras: string[];
-  lenses: string[];
-  lensTypes: LensType[];
+  tags: readonly string[];
+  people: readonly string[];
+  cameras: readonly string[];
+  lenses: readonly string[];
+  lensTypes: readonly LensType[];
+  locations: readonly string[];
 } | null;
 
 interface CollectionFilterContextValue {
   filterState: CollectionFilterState;
-  filterOptions: CollectionFilterOptions;
+  filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
 }

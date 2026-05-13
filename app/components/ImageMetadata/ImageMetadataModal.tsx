@@ -6,7 +6,7 @@ import { type SubmitEvent, useCallback, useEffect, useMemo, useState } from 'rea
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { IMAGE } from '@/app/constants';
-import { deleteImages, updateImages } from '@/app/lib/api/content';
+import { createCamera, deleteImages, updateImages } from '@/app/lib/api/content';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import {
   type ContentImageModel,
@@ -28,6 +28,7 @@ import styles from './ImageMetadataModal.module.scss';
 import {
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
+  computeCameraSelectionUpdate,
   getCommonValues,
   mapUpdateResponseToFrontend,
 } from './imageMetadataUtils';
@@ -408,7 +409,14 @@ export default function ImageMetadataModal({
               options={availableLocations}
               selectedValues={updateState.locations ?? []}
               onChange={value => {
-                const locations = Array.isArray(value) ? value : (value ? [value] : []);
+                let locations: LocationModel[];
+                if (Array.isArray(value)) {
+                  locations = value;
+                } else if (value) {
+                  locations = [value];
+                } else {
+                  locations = [];
+                }
                 updateStateField({ locations });
               }}
               allowAddNew
@@ -514,19 +522,69 @@ export default function ImageMetadataModal({
               selectedValue={updateState.camera || null}
               onChange={value => {
                 const camera = Array.isArray(value) ? value[0] || null : value;
-                updateStateField({ camera: camera || null });
+                updateStateField(computeCameraSelectionUpdate(camera, updateState));
               }}
               allowAddNew
               onAddNew={data => {
-                updateStateField({ camera: { id: 0, name: data.name as string } });
+                const cameraName = (data.cameraName as string | null) ?? '';
+                if (!cameraName.trim()) return;
+                const isFilm = data.isFilm === true;
+                const defaultFilmFormat = isFilm
+                  ? ((data.defaultFilmFormat as string | null) ?? null)
+                  : null;
+                // Optimistic local update — assume the create succeeds. Reuses the
+                // same auto-toggle helper as picking an existing film camera.
+                const optimisticCamera: ContentCameraModel = {
+                  id: 0,
+                  name: cameraName.trim(),
+                  isFilm,
+                  defaultFilmFormat,
+                };
+                updateStateField(computeCameraSelectionUpdate(optimisticCamera, updateState));
+                // Fire the create async — when it resolves, swap the camera with the real id.
+                void createCamera({
+                  cameraName: optimisticCamera.name,
+                  isFilm,
+                  defaultFilmFormat,
+                })
+                  .then(created => {
+                    if (!created) return;
+                    updateStateField({
+                      camera: {
+                        id: created.id,
+                        name: created.cameraName,
+                        isFilm: created.isFilm,
+                        defaultFilmFormat,
+                      },
+                    });
+                  })
+                  .catch(error_ => {
+                    console.error('Failed to create camera', error_);
+                  });
               }}
               addNewFields={[
                 {
-                  name: 'name',
+                  name: 'cameraName',
                   label: 'Camera Name',
                   type: 'text',
-                  placeholder: 'e.g., Canon EOS R5',
+                  placeholder: 'e.g., Hasselblad 500cm',
                   required: true,
+                },
+                {
+                  name: 'isFilm',
+                  label: 'Film Camera',
+                  type: 'checkbox',
+                },
+                {
+                  name: 'defaultFilmFormat',
+                  label: 'Film Format',
+                  type: 'select',
+                  options: availableFilmFormats.map(f => ({
+                    value: f.name,
+                    label: f.displayName,
+                  })),
+                  showWhen: data => data.isFilm === true,
+                  placeholder: 'Select format',
                 },
               ]}
               getDisplayName={camera => camera.name}
@@ -735,7 +793,6 @@ export default function ImageMetadataModal({
                 },
               ]}
               getDisplayName={tag => tag.name}
-              changeButtonText="Select More ▼"
               emptyText="No tags selected"
             />
 
@@ -768,7 +825,6 @@ export default function ImageMetadataModal({
                 },
               ]}
               getDisplayName={person => person.name}
-              changeButtonText="Select More ▼"
               emptyText="No people selected"
             />
           </div>

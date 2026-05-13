@@ -5,7 +5,7 @@
 
 import { type CollectionVisibility } from './CollectionVisibility';
 import type { AnyContentModel, ContentImageModel } from './Content';
-import type { ContentPersonModel, ContentTagModel } from './ImageMetadata';
+import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './ImageMetadata';
 
 /**
  * Collection type enum - matches backend CollectionType
@@ -295,7 +295,7 @@ export interface GeneralMetadataDTO {
   tags: ContentTagModel[];
   people: ContentPersonModel[];
   locations: LocationModel[];
-  cameras: Array<{ id: number; name: string }>;
+  cameras: ContentCameraModel[];
   lenses: Array<{ id: number; name: string }>;
   filmTypes: Array<{
     id: number;

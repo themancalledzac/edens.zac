@@ -28,9 +28,19 @@ export interface ContentPersonModel extends IdNameModel {
 }
 
 /**
- * Content Camera - Camera equipment used for photos
+ * Content Camera - Camera equipment used for photos.
+ *
+ * `isFilm` / `defaultFilmFormat` were added to support auto-toggling the
+ * Film Photography + Film Format fields when a film body is selected in
+ * the image-metadata editor. Optional so frontend code keeps compiling
+ * against backends that haven't shipped the new columns yet.
  */
-export type ContentCameraModel = IdNameModel;
+export interface ContentCameraModel extends IdNameModel {
+  /** True if this camera is a film body */
+  isFilm?: boolean;
+  /** Default FilmFormat enum name (e.g. "MM_120"). Only meaningful when isFilm is true. */
+  defaultFilmFormat?: string | null;
+}
 
 /**
  * Content Lens - Lens equipment used for photos

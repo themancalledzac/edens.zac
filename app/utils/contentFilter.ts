@@ -371,6 +371,7 @@ export interface FilterCounts {
   people: Record<string, number>;
   cameras: Record<string, number>;
   lenses: Record<string, number>;
+  locations: Record<string, number>;
 }
 
 /**
@@ -401,6 +402,7 @@ export function computeFilterCounts(
   const { people: _people, peopleMatchMode: _pm, ...withoutPeople } = criteria;
   const { cameras: _cameras, cameraMatchMode: _cm, ...withoutCameras } = criteria;
   const { lenses: _lenses, lensMatchMode: _lm, ...withoutLenses } = criteria;
+  const { locations: _locations, ...withoutLocations } = criteria;
 
   const baseWithoutRating = filterContent(content, withoutRating);
   const baseWithoutFilm = filterContent(content, withoutFilm);
@@ -409,6 +411,7 @@ export function computeFilterCounts(
   const baseWithoutPeople = filterContent(content, withoutPeople);
   const baseWithoutCameras = filterContent(content, withoutCameras);
   const baseWithoutLenses = filterContent(content, withoutLenses);
+  const baseWithoutLocations = filterContent(content, withoutLocations);
 
   let highlyRated = 0;
   for (const item of baseWithoutRating) {
@@ -469,7 +472,16 @@ export function computeFilterCounts(
     }
   }
 
-  return { highlyRated, film, digital, collections, tags, people, cameras, lenses };
+  const locations: Record<string, number> = {};
+  for (const loc of availableOptions.locations) locations[loc] = 0;
+  for (const item of baseWithoutLocations) {
+    if (!isImageContent(item)) continue;
+    for (const l of item.locations ?? []) {
+      if (l.name in locations) locations[l.name] = (locations[l.name] ?? 0) + 1;
+    }
+  }
+
+  return { highlyRated, film, digital, collections, tags, people, cameras, lenses, locations };
 }
 
 /**

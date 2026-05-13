@@ -8,6 +8,12 @@ import { CollectionType } from '@/app/types/Collection';
 
 interface CollectionPageWrapperProps {
   slug: string;
+  /**
+   * Slugs of child collection refs to drop from `collection.content` before
+   * rendering. Used by synthetic listing pages (e.g. /all-collections) to hide
+   * collections that exist as standalone pages but shouldn't appear in lists.
+   */
+  excludeContentSlugs?: readonly string[];
 }
 
 /**
@@ -19,13 +25,26 @@ interface CollectionPageWrapperProps {
  * @param slug - Collection slug to fetch and display
  * @returns Server component rendering the collection page
  */
-export default async function CollectionPageWrapper({ slug }: CollectionPageWrapperProps) {
+export default async function CollectionPageWrapper({
+  slug,
+  excludeContentSlugs,
+}: CollectionPageWrapperProps) {
   if (!slug) {
     notFound();
   }
 
   try {
-    const collection = await getCollectionBySlug(slug, 0, 500);
+    const fetched = await getCollectionBySlug(slug, 0, 500);
+
+    const collection =
+      excludeContentSlugs && excludeContentSlugs.length > 0 && Array.isArray(fetched.content)
+        ? {
+            ...fetched,
+            content: fetched.content.filter(
+              item => item.contentType !== 'COLLECTION' || !excludeContentSlugs.includes(item.slug)
+            ),
+          }
+        : fetched;
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
