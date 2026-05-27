@@ -1380,6 +1380,39 @@ describe('buildRows AR-aware fill', () => {
   });
 });
 
+// ===================== buildRows density-scaled MIN_FILL =====================
+
+describe('buildRows density-scaled MIN_FILL', () => {
+  it('rowWidth=12 packs 5 H items per row even with a higher-rated r4 mixed in', () => {
+    // At fixed MIN_FILL=0.9, 3×r3 + 1×r4 = cv 11/12 = 92% would break the
+    // row after 4 items. Density-scaled MIN_FILL at rowWidth=12 ≈ 0.98
+    // forces the algorithm to pull the 5th item (cv 13.5/12 = 112%, within
+    // MAX_FILL_RATIO 1.15). Mirrors a real /2020-protests row at admin
+    // density 8.
+    const items = [
+      createHorizontalImage(1, 3),
+      createHorizontalImage(2, 3),
+      createHorizontalImage(3, 3),
+      createHorizontalImage(4, 4),
+      createHorizontalImage(5, 3),
+      createHorizontalImage(6, 3),
+    ];
+    const rows = buildRows(items, 12);
+    expect(rows[0]!.components.length).toBe(5);
+  });
+
+  it('rowWidth=8 (default) unchanged — 3 H items per row at cv 7.5 hits 94% fill', () => {
+    const items = [
+      createHorizontalImage(1, 3),
+      createHorizontalImage(2, 3),
+      createHorizontalImage(3, 3),
+      createHorizontalImage(4, 3),
+    ];
+    const rows = buildRows(items, 8);
+    expect(rows[0]!.components.length).toBe(3);
+  });
+});
+
 // ===================== T3: buildRows with mobile rowWidth=2 =====================
 
 describe('buildRows with mobile rowWidth=2', () => {

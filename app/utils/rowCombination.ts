@@ -673,6 +673,11 @@ export function buildRows(
   const rows: RowResult[] = [];
   const remaining = [...items];
 
+  // MIN_FILL scales with rowWidth so denser rows demand fuller packing —
+  // otherwise a fixed 90% bar lets fewer items satisfy "done" as rowWidth
+  // grows, defeating the Row Density control.
+  const effectiveMinFill = MIN_FILL_RATIO + Math.max(0, (rowWidth - 8) * 0.02);
+
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
 
@@ -727,11 +732,10 @@ export function buildRows(
           skippedStandalones.push(i);
           continue;
         }
-        // Accept moderate overfill to keep images in order and avoid solo rows.
-        // The current row is underfilled (< MIN_FILL). Adding this item overshoots,
-        // but a solo underfilled row is worse than slight overfill.
+        // Accept moderate overfill when the row is still under the density-
+        // scaled MIN_FILL bar — solo underfilled row is worse than slight overfill.
         const currentFill = seqTotal / rowWidth;
-        if (currentFill < MIN_FILL_RATIO && newFill <= 1.35) {
+        if (currentFill < effectiveMinFill && newFill <= 1.35) {
           seqTotal += cv;
           seqCount += 1;
         }
@@ -759,7 +763,7 @@ export function buildRows(
       seqTotal += cv;
       seqCount += 1;
 
-      if (newFill >= MIN_FILL_RATIO) {
+      if (newFill >= effectiveMinFill) {
         const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
         const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
         const rowAR = estimateRowAR(rowImgs, targetAR, rowWidth);
