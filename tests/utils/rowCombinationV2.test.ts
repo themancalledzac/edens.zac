@@ -308,6 +308,45 @@ describe('composeV2 — edge cases', () => {
     expect(hasVStackOf3s(tree)).toBe(true);
   });
 
+  it('±1 displacement bound: no leaf moves more than 1 position from input order', () => {
+    // Regression for the cluster-swap displacement bug. Each leaf must end
+    // up at most 1 position away from its input slot, per spec P6. Cluster
+    // swaps used to bypass this — a singleton swapping with a 4-leaf cluster
+    // moved 4 positions in one operation while only consuming 1 swap budget.
+    // 6 items chosen to give the algorithm room to build clusters that
+    // could swap with singletons.
+    const items = [
+      createHorizontalImage(1, 3),
+      createHorizontalImage(2, 4),
+      createHorizontalImage(3, 3),
+      createHorizontalImage(4, 3),
+      createHorizontalImage(5, 4),
+      V(6, 5),
+    ];
+    const tree = composeV2(asImages(items), TARGET_AR, 14);
+
+    const renderedOrder = (() => {
+      const out: number[] = [];
+      const walk = (n: AtomicComponent): void => {
+        if (n.type === 'single') {
+          out.push(n.img.source.id ?? -1);
+        } else {
+          walk(n.children[0]);
+          walk(n.children[1]);
+        }
+      };
+      walk(tree);
+      return out;
+    })();
+
+    const inputOrder = items.map(i => i.id);
+    for (const id of inputOrder) {
+      const inputPos = inputOrder.indexOf(id);
+      const renderedPos = renderedOrder.indexOf(id);
+      expect(Math.abs(renderedPos - inputPos)).toBeLessThanOrEqual(1);
+    }
+  });
+
   it('all-H row of 3: emerges as dom-stacked (root hPair with an inner vStack of two H leaves)', () => {
     const items = [
       createHorizontalImage(1, 3),

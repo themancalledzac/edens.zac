@@ -253,9 +253,12 @@ export function composeV2(items: ImageType[], targetAR: number, rowWidth: number
           rightAtom = atoms[i + 1]!;
         } else if (swap === 'swap-with-prev') {
           // swap atoms[i-1] with atoms[i], then pair (new atoms[i], atoms[i+1])
-          // = (old atoms[i-1], atoms[i+1])
           const prev = atoms[i - 1]!;
           const here = atoms[i]!;
+          // P6: ±1 leaf displacement. A cluster swap moves the other side's
+          // leaves by `len(cluster)` positions in one operation — singleton-
+          // only keeps every leaf's net displacement at ±1.
+          if (prev.ids.length !== 1 || here.ids.length !== 1) continue;
           movedIds = [...prev.ids, ...here.ids];
           if (!hasBudget(movedIds, swapBudget)) continue;
           leftAtom = prev;
@@ -264,6 +267,7 @@ export function composeV2(items: ImageType[], targetAR: number, rowWidth: number
           // 'swap-with-next': swap atoms[i+1] with atoms[i+2], then pair (atoms[i], atoms[i+2])
           const here = atoms[i + 1]!;
           const next = atoms[i + 2]!;
+          if (here.ids.length !== 1 || next.ids.length !== 1) continue;
           movedIds = [...here.ids, ...next.ids];
           if (!hasBudget(movedIds, swapBudget)) continue;
           leftAtom = atoms[i]!;
