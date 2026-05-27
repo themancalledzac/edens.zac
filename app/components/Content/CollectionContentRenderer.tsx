@@ -12,7 +12,11 @@ import CollectionFilterBar, {
 } from '@/app/components/ContentCollection/CollectionFilterBar';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { useParallax } from '@/app/hooks/useParallax';
-import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
+import {
+  type ContentGifModel,
+  type ContentImageModel,
+  type ViewableContent,
+} from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import {
   checkImageVisibility,
@@ -106,14 +110,27 @@ export default function CollectionContentRenderer({
       return;
     }
 
-    const fullScreenContent: ContentImageModel | ContentParallaxImageModel = {
-      id: contentId,
-      contentType: contentType === 'GIF' ? 'GIF' : 'IMAGE',
-      imageUrl: imageUrl || '',
-      title: alt,
-      orderIndex: 0,
-      visible: true,
-    } as ContentImageModel;
+    // Synthetic stand-in passed up to ContentBlockWithFullScreen — that wrapper looks the real
+    // block up by id from its source array and forwards full metadata into the modal. We just
+    // need id + contentType to be honest; everything else is best-effort fallback.
+    const fullScreenContent: ViewableContent =
+      contentType === 'GIF'
+        ? ({
+            id: contentId,
+            contentType: 'GIF',
+            gifUrl: imageUrl || '',
+            title: alt,
+            orderIndex: 0,
+            visible: true,
+          } as ContentGifModel)
+        : ({
+            id: contentId,
+            contentType: 'IMAGE',
+            imageUrl: imageUrl || '',
+            title: alt,
+            orderIndex: 0,
+            visible: true,
+          } as ContentImageModel);
 
     const handler = createContentClickHandler(
       contentId,

@@ -6,11 +6,7 @@ import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/ma
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
-import {
-  type AnyContentModel,
-  type ContentImageModel,
-  type ContentParallaxImageModel,
-} from '@/app/types/Content';
+import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
 import {
   type CalculatedContentSize,
   isContentVisibleInCollection,
@@ -76,8 +72,8 @@ export interface ContentComponentProps {
   priorityIndex?: number;
   /** Enable full-screen image viewing on click */
   enableFullScreenView?: boolean;
-  /** Accepts any image type (normalized in renderer) */
-  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void;
+  /** Accepts any viewable content (image, parallax image, or GIF/MP4 — normalized in renderer) */
+  onFullScreenImageClick?: (image: ViewableContent) => void;
   /** Array of selected image IDs for bulk editing */
   selectedImageIds?: number[];
   /** ID of current collection (for checking collection-specific visibility) */

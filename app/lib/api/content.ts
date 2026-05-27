@@ -14,6 +14,7 @@ import {
   fetchAdminPostJsonApi,
   fetchReadApi,
 } from '@/app/lib/api/core';
+import { type CollectionUpdate, type TagUpdate } from '@/app/types/Collection';
 import {
   type ContentGifModel,
   type ContentImageModel,
@@ -193,6 +194,42 @@ export async function createGif(collectionId: number, file: File): Promise<Conte
 }
 
 /**
+ * Patch payload for {@link updateGif}. Only non-null fields are applied on the backend.
+ *
+ * Mirrors the slice of {@link ContentImageUpdateRequest} that makes sense for animated content —
+ * no EXIF/equipment fields. `tags` and `collections` use the prev/newValue/remove pattern so a
+ * single request can add, remove, and re-order memberships at once.
+ */
+export interface ContentGifUpdateRequest {
+  title?: string;
+  rating?: number;
+  tags?: TagUpdate;
+  collections?: CollectionUpdate;
+}
+
+/**
+ * DELETE /api/admin/content/gifs/{id}
+ * Delete a GIF/MP4 content block. Cleans up the S3 objects + DB rows. Returns the deleted id
+ * on success, or `null` if the backend reported the GIF was not found. The endpoint takes the
+ * id as a path param; the empty body satisfies the shared admin DELETE helper.
+ */
+export async function deleteGif(id: number): Promise<{ deletedId: number } | null> {
+  return fetchAdminDeleteJsonApi<{ deletedId: number }>(`/content/gifs/${id}`, {});
+}
+
+/**
+ * PATCH /api/admin/content/gifs/{id}
+ * Update title/rating on an existing GIF/MP4 content block. The backend mirrors the IMAGE
+ * update slice that makes sense for animated content — no EXIF/equipment fields.
+ */
+export async function updateGif(
+  id: number,
+  request: ContentGifUpdateRequest
+): Promise<ContentGifModel | null> {
+  return fetchAdminPatchJsonApi<ContentGifModel>(`/content/gifs/${id}`, request);
+}
+
+/**
  * POST /api/admin/content/content
  * Create text or code content
  */
@@ -320,7 +357,9 @@ export async function getAllImages(params: GetAllImagesParams = {}): Promise<Pag
     const totalPages =
       typeof env.totalPages === 'number'
         ? env.totalPages
-        : (size > 0 ? Math.ceil(totalElements / size) : 1);
+        : (size > 0
+          ? Math.ceil(totalElements / size)
+          : 1);
     const number = typeof env.number === 'number' ? env.number : page;
     const last = typeof env.last === 'boolean' ? env.last : number >= totalPages - 1;
     return { items, page: number, totalPages, totalElements, isLast: last };

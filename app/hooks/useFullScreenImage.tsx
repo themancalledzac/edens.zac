@@ -1,16 +1,29 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { type Dispatch, type MouseEvent, type RefObject, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type Dispatch,
+  type MouseEvent,
+  type RefObject,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { INTERACTION } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import styles from '@/app/styles/fullscreen-image.module.scss';
-import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
+import type { ViewableContent } from '@/app/types/Content';
 
 const SCROLL_BLOCKING_KEYS = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'];
 
-export type ImageBlock = ContentImageModel | ContentParallaxImageModel;
+/**
+ * Backwards-compatible alias for the union of content types that can open in the fullscreen
+ * viewer. Now includes GIF/MP4 — see {@link ViewableContent}.
+ */
+export type ImageBlock = ViewableContent;
 
 export type FullScreenState = {
   images: ImageBlock[];
@@ -99,9 +112,21 @@ export function useFullScreenImage(): {
     if (!currentImage) return;
 
     const checkImageLoaded = () => {
-      const imgElement = document.querySelector(
-        `img[src="${currentImage.imageUrl}"]`
-      ) as HTMLImageElement;
+      // GIF/MP4 blocks render as <video>, not <img> — mark them loaded immediately so the
+      // modal's loaded-state UI doesn't stall waiting for an image that never appears.
+      if (currentImage.contentType === 'GIF') {
+        setLoadedImageIds(prev => {
+          if (prev.has(currentImage.id)) return prev;
+          const newSet = new Set(prev);
+          newSet.add(currentImage.id);
+          return newSet;
+        });
+        return;
+      }
+
+      const imgSrc = 'imageUrl' in currentImage ? currentImage.imageUrl : undefined;
+      if (!imgSrc) return;
+      const imgElement = document.querySelector(`img[src="${imgSrc}"]`) as HTMLImageElement;
 
       if (imgElement?.complete && imgElement?.naturalHeight !== 0) {
         setLoadedImageIds(prev => {

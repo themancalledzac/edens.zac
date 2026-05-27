@@ -44,6 +44,7 @@ import {
   type ContentTextModel,
 } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
+import { isContentImage } from '@/app/utils/contentTypeGuards';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 // Test fixtures
@@ -512,9 +513,15 @@ describe('handleSingleImageEdit', () => {
       const result = handleSingleImageEdit(1, content, processedContent);
 
       expect(result).toEqual(fullImage);
-      expect(result?.imageUrl).toBe('test.jpg');
-      expect(result?.imageWidth).toBe(1920);
-      expect(result?.rating).toBe(5);
+      // Narrow to the IMAGE branch — handleSingleImageEdit now returns
+      // ContentImageModel | ContentGifModel | null so image-only fields require a guard.
+      if (result && isContentImage(result)) {
+        expect(result.imageUrl).toBe('test.jpg');
+        expect(result.imageWidth).toBe(1920);
+        expect(result.rating).toBe(5);
+      } else {
+        throw new Error('expected result to be a ContentImageModel');
+      }
     });
   });
 

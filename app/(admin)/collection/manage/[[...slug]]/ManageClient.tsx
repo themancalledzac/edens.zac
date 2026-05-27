@@ -32,7 +32,7 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
-import { createImages, createTextContent, updateImages } from '@/app/lib/api/content';
+import { createGif, createImages, createTextContent, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionCreateRequest,
@@ -50,13 +50,19 @@ import {
   CollectionVisibility,
 } from '@/app/types/CollectionVisibility';
 import {
+  type ContentGifModel,
   type ContentImageModel,
   type ContentImageUpdateRequest,
   type ContentImageUpdateResponse,
 } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
 import { processContentBlocks } from '@/app/utils/contentLayout';
-import { isContentCollection, isContentImage, isParentType } from '@/app/utils/contentTypeGuards';
+import {
+  isContentCollection,
+  isContentImage,
+  isGifContent,
+  isParentType,
+} from '@/app/utils/contentTypeGuards';
 import { convertLocationsToModels, createLocationsUpdate } from '@/app/utils/locationUtils';
 
 import styles from './ManageClient.module.scss';
@@ -75,6 +81,13 @@ import { useImageClickHandler } from './useImageClickHandler';
 
 interface ManageClientProps {
   slug?: string; // Collection slug for UPDATE mode, undefined for CREATE mode
+}
+
+const ANIMATED_MEDIA_MIME_TYPES = new Set(['image/gif', 'video/mp4', 'video/quicktime']);
+const ANIMATED_MEDIA_EXTENSION_REGEX = /\.(gif|mp4|mov)$/i;
+
+function isAnimatedMediaFile(file: File): boolean {
+  return ANIMATED_MEDIA_MIME_TYPES.has(file.type) || ANIMATED_MEDIA_EXTENSION_REGEX.test(file.name);
 }
 
 export default function ManageClient({ slug }: ManageClientProps) {
@@ -111,7 +124,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   });
 
   const {
-    editingImage,
+    editingContent,
     scrollPosition,
     openEditor,
     closeEditor: baseCloseEditor,
@@ -128,10 +141,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, [isMultiSelectMode, baseCloseEditor]);
 
   useEffect(() => {
-    if (!editingImage && !isMultiSelectMode) {
+    if (!editingContent && !isMultiSelectMode) {
       setSelectedImageIds([]);
     }
-  }, [editingImage, isMultiSelectMode]);
+  }, [editingContent, isMultiSelectMode]);
 
   const isCreateMode = !slug;
   const collection = currentState?.collection ?? null;
@@ -307,12 +320,26 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }, []),
   });
 
-  const imagesToEdit = useMemo(
+  /**
+   * Content blocks the metadata modal should edit. Mixes images and GIFs so the unified modal can
+   * dispatch to the right backend endpoint based on the previewed type. Bulk-edit semantics still
+   * key off the IMAGE subset — the modal greys out IMAGE-only fields when the previewed block is
+   * a GIF.
+   */
+  const contentToEdit = useMemo(
     () =>
       (collection?.content?.filter(
-        contentItem => isContentImage(contentItem) && selectedImageIds.includes(contentItem.id)
-      ) as ContentImageModel[]) || [],
+        contentItem =>
+          (isContentImage(contentItem) || isGifContent(contentItem)) &&
+          selectedImageIds.includes(contentItem.id)
+      ) as (ContentImageModel | ContentGifModel)[]) || [],
     [selectedImageIds, collection?.content]
+  );
+
+  /** Back-compat alias for the IMAGE-only subset, used where the older flow still expects it. */
+  const imagesToEdit = useMemo(
+    () => contentToEdit.filter(c => isContentImage(c)) as ContentImageModel[],
+    [contentToEdit]
   );
 
   const isParent = isParentType(updateData.type);
@@ -504,12 +531,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
       // gallery in one shot. Confirm with the user (default Yes) before flipping
       // the propagate flag — clearing a password never propagates.
       const isParent = collection.type === CollectionType.PARENT;
-      const propagateToChildren =
-        isParent
-          ? window.confirm(
-              'Share this password with all child client galleries? They will use the same password and one unlock will cover all of them.'
-            )
-          : false;
+      const propagateToChildren = isParent
+        ? window.confirm(
+            'Share this password with all child client galleries? They will use the same password and one unlock will cover all of them.'
+          )
+        : false;
       const result = await saveGalleryAccess(collection.id, {
         password: galleryPassword,
         emails,
@@ -554,9 +580,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, [collection]);
 
   /**
-   * Handle image upload
+   * Handle media upload. Partitions the selected files by type:
+   *   - gif/mp4/mov → POST /content/{id}/gifs (one request per file)
+   *   - everything else → POST /content/images/{id} (single multipart batch)
+   *
+   * The two pipelines exist because the backend stores animated media as a
+   * GIF entity with an ffmpeg-extracted poster frame, while still images
+   * run through the EXIF + dedupe pipeline.
    */
-  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     if (!collection || !event.target.files || event.target.files.length === 0) return;
 
     try {
@@ -564,16 +596,27 @@ export default function ManageClient({ slug }: ManageClientProps) {
       setError(null);
 
       const files = Array.from(event.target.files);
-
-      const formData = new FormData();
-      for (const file of files) {
-        formData.append('files', file); // Backend expects 'files' field
-      }
+      const animatedFiles = files.filter(isAnimatedMediaFile);
+      const imageFiles = files.filter(f => !isAnimatedMediaFile(f));
+      const gifFailures: string[] = [];
 
       const response = await refreshCollectionAfterOperation(
         collection.slug,
         async () => {
-          await createImages(collection.id, formData);
+          if (imageFiles.length > 0) {
+            const formData = new FormData();
+            for (const file of imageFiles) {
+              formData.append('files', file); // Backend expects 'files' field
+            }
+            await createImages(collection.id, formData);
+          }
+          for (const file of animatedFiles) {
+            try {
+              await createGif(collection.id, file);
+            } catch (gifError) {
+              gifFailures.push(`${file.name}: ${handleApiError(gifError, 'upload failed')}`);
+            }
+          }
         },
         getCollectionUpdateMetadata,
         collectionStorage
@@ -584,9 +627,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
         collection: response.collection,
       }));
 
+      if (gifFailures.length > 0) {
+        setError(`Some files failed to upload:\n${gifFailures.join('\n')}`);
+      }
+
       event.target.value = '';
     } catch (error) {
-      setError(handleApiError(error, 'Failed to upload images'));
+      setError(handleApiError(error, 'Failed to upload media'));
     } finally {
       setOperationLoading(false);
     }
@@ -612,6 +659,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
     const firstImage = selectedImages[0];
     if (firstImage) {
       openEditor(firstImage);
+      return;
+    }
+
+    // No images in the selection — fall back to editing the first selected GIF/MP4.
+    // The GIF modal is single-content for now; a future phase will add a real bulk flow.
+    const selectedGif = collection.content.find(
+      (block): block is ContentGifModel =>
+        isGifContent(block) && selectedImageIds.includes(block.id)
+    );
+    const firstGif = selectedGif;
+    if (firstGif) {
+      openEditor(firstGif);
     }
   }, [selectedImageIds, collection, openEditor]);
 
@@ -671,6 +730,31 @@ export default function ManageClient({ slug }: ManageClientProps) {
         setIsMultiSelectMode(false);
       } catch (error) {
         setError(handleApiError(error, 'An error occurred. Try reloading the page.'));
+      }
+    },
+    [currentState]
+  );
+
+  /**
+   * Handle successful GIF metadata save — refreshes the collection so the new rating
+   * flows into getSlotWidth and the row layout reflows.
+   */
+  const handleGifSaveSuccess = useCallback(
+    async (updated: ContentGifModel) => {
+      if (!currentState?.collection.slug) return;
+      try {
+        const slug = currentState.collection.slug;
+        const fullResponse = await getCollectionUpdateMetadata(slug);
+        if (fullResponse !== null) {
+          setCurrentState(fullResponse);
+          collectionStorage.update(slug, fullResponse.collection);
+          collectionStorage.updateFull(slug, fullResponse);
+          await revalidateCollectionCache(slug);
+        }
+        setSelectedImageIds([]);
+        setIsMultiSelectMode(false);
+      } catch (error) {
+        setError(handleApiError(error, `Failed to refresh after GIF ${updated.id} update`));
       }
     },
     [currentState]
@@ -1060,9 +1144,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                 name="visibility"
                                 value={v}
                                 checked={updateData.visibility === v}
-                                onChange={() =>
-                                  setUpdateData(prev => ({ ...prev, visibility: v }))
-                                }
+                                onChange={() => setUpdateData(prev => ({ ...prev, visibility: v }))}
                               />
                               <span className={styles.visibilityRadioName}>
                                 {COLLECTION_VISIBILITY_LABELS[v]}
@@ -1487,16 +1569,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             </div>
                           )}
 
-                          {/* Upload Images + Add Text Block — non-parent only */}
+                          {/* Upload Media + Add Text Block — non-parent only */}
                           {!isParent && (
                             <div className={styles.mediaSection}>
                               <div className={styles.uploadSection}>
-                                <label className={styles.formLabel}>Upload Images</label>
+                                <label className={styles.formLabel}>Upload Media</label>
                                 <input
                                   type="file"
                                   multiple
-                                  accept="image/*"
-                                  onChange={handleImageUpload}
+                                  accept="image/*,video/mp4,video/quicktime,.gif,.mp4,.mov"
+                                  onChange={handleMediaUpload}
                                   disabled={isLoading}
                                   className={styles.uploadInput}
                                 />
@@ -1543,38 +1625,45 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         />
 
                         {/* Home: rate child collections inline. Click is immediate (no save button). */}
-                        {slug === 'home' && (collection.content?.some(isContentCollection) ?? false) && (
-                          <section aria-labelledby="children-rating-heading" className={styles.formGroup}>
-                            <h3 id="children-rating-heading" className={styles.formLabel}>
-                              Children (rating)
-                            </h3>
-                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                              {(collection.content ?? [])
-                                .filter(isContentCollection)
-                                .map(child => (
-                                  <li
-                                    key={child.id}
-                                    style={{
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'space-between',
-                                      gap: '8px',
-                                      padding: '6px 0',
-                                    }}
-                                  >
-                                    <span>{child.title ?? child.slug}</span>
-                                    <RatingStars
-                                      initialRating={child.rating ?? null}
-                                      onChange={async next => {
-                                        await updateCollectionRating(child.referencedCollectionId, next);
+                        {slug === 'home' &&
+                          (collection.content?.some(isContentCollection) ?? false) && (
+                            <section
+                              aria-labelledby="children-rating-heading"
+                              className={styles.formGroup}
+                            >
+                              <h3 id="children-rating-heading" className={styles.formLabel}>
+                                Children (rating)
+                              </h3>
+                              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                {(collection.content ?? [])
+                                  .filter(isContentCollection)
+                                  .map(child => (
+                                    <li
+                                      key={child.id}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: '8px',
+                                        padding: '6px 0',
                                       }}
-                                      ariaLabel={`Rate ${child.title ?? child.slug}`}
-                                    />
-                                  </li>
-                                ))}
-                            </ul>
-                          </section>
-                        )}
+                                    >
+                                      <span>{child.title ?? child.slug}</span>
+                                      <RatingStars
+                                        initialRating={child.rating ?? null}
+                                        onChange={async next => {
+                                          await updateCollectionRating(
+                                            child.referencedCollectionId,
+                                            next
+                                          );
+                                        }}
+                                        ariaLabel={`Rate ${child.title ?? child.slug}`}
+                                      />
+                                    </li>
+                                  ))}
+                              </ul>
+                            </section>
+                          )}
                       </div>
                     </div>
                   </form>
@@ -1633,13 +1722,17 @@ export default function ManageClient({ slug }: ManageClientProps) {
         </main>
       </div>
 
-      {/* Image Metadata Editor Modal */}
-      {editingImage && imagesToEdit && imagesToEdit.length > 0 && (
+      {/* Unified metadata editor — handles IMAGE and GIF/MP4 content. The modal renders a
+          <video> preview and dispatches save/delete to the GIF endpoints when the previewed
+          block is a GIF; image-only fields are greyed out in that branch. */}
+      {editingContent && contentToEdit.length > 0 && (
         <ImageMetadataModal
           scrollPosition={scrollPosition}
           onClose={closeEditor}
           onSaveSuccess={handleMetadataSaveSuccess}
+          onGifSaveSuccess={handleGifSaveSuccess}
           onDeleteSuccess={handleDeleteSuccess}
+          onRemoveFromCollectionSuccess={handleDeleteSuccess}
           availableTags={currentState?.tags || []}
           availablePeople={currentState?.people || []}
           availableCameras={currentState?.cameras || []}
@@ -1649,7 +1742,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           availableCollections={allCollections}
           availableLocations={currentState?.locations || []}
           selectedImageIds={selectedImageIds}
-          selectedImages={imagesToEdit}
+          selectedImages={contentToEdit}
           currentCollectionId={collection?.id}
         />
       )}

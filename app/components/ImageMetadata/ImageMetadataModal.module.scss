@@ -265,7 +265,8 @@
 /* Buttons */
 .saveButton,
 .cancelButton,
-.deleteButton {
+.deleteButton,
+.removeButton {
   padding: 12px 24px;
   font-size: 14px;
   font-weight: 600;
@@ -318,6 +319,22 @@
   &:hover:not(:disabled) {
     background: rgb(220, 38, 38, 0.3);
     border-color: var(--color-danger-dark);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+}
+
+.removeButton {
+  background: rgb(234, 179, 8, 0.15);
+  color: rgb(250, 204, 21);
+  border: 1px solid rgb(202, 138, 4, 0.6);
+
+  &:hover:not(:disabled) {
+    background: rgb(234, 179, 8, 0.25);
+    border-color: rgb(202, 138, 4);
     transform: translateY(-1px);
   }
 

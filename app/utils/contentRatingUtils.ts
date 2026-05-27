@@ -7,7 +7,7 @@
 
 import { BASE_WEIGHT, REFERENCE_AR } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
-import { getAspectRatio, isContentImage } from '@/app/utils/contentTypeGuards';
+import { getAspectRatio, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 
 /**
  * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel)
@@ -33,10 +33,12 @@ export function getRating(item: AnyContentModel, asStarValue: boolean = false): 
     return 4;
   }
 
-  if (!isContentImage(item)) {
+  // Animated GIF/MP4 blocks carry a backend-persisted rating with the same 0-5 semantics as
+  // images. Treat them identically here so the row layout doesn't squash them.
+  if (!isContentImage(item) && !isGifContent(item)) {
     return asStarValue ? 1 : 0;
   }
-  const rating = item.rating || 0;
+  const rating = (item as { rating?: number | null }).rating ?? 0;
   if (asStarValue) {
     return rating === 0 || rating === 1 ? 1 : rating;
   }
@@ -66,11 +68,14 @@ export function getEffectiveRating(item: AnyContentModel): number {
     return 4;
   }
 
-  if (!isContentImage(item)) {
+  // Animated GIF/MP4 blocks share the image rating semantics (0-5 with vertical penalty). The
+  // earlier `return 1` short-circuit here is what made GIFs always pack as low-priority filler in
+  // the row algorithm even after we added rating to the backend.
+  if (!isContentImage(item) && !isGifContent(item)) {
     return 1;
   }
 
-  const baseRating = item.rating || 0;
+  const baseRating = (item as { rating?: number | null }).rating ?? 0;
   const ratio = getAspectRatio(item);
   const isVertical = ratio <= 1.0;
 

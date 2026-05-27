@@ -7,20 +7,16 @@ import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/ma
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';
-import {
-  type AnyContentModel,
-  type ContentImageModel,
-  type ContentParallaxImageModel,
-} from '@/app/types/Content';
+import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
 
 import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
 
 const FullScreenModal = dynamic(
   () =>
-    import('@/app/components/FullScreenModal/FullScreenModal').then(
-      m => ({ default: m.FullScreenModal })
-    ),
+    import('@/app/components/FullScreenModal/FullScreenModal').then(m => ({
+      default: m.FullScreenModal,
+    })),
   { ssr: false }
 );
 
@@ -97,15 +93,26 @@ export default function ContentBlockWithFullScreen({
     }
   }, [collectionSlug, collectionData]);
 
-  const imageBlocks = useMemo(() => {
+  /**
+   * Every content block that can open in the fullscreen viewer — still images, parallax images,
+   * and animated GIF/MP4 blocks. The fullscreen prev/next navigation walks this list, so adding
+   * GIFs here means they get the same swipe/arrow-key flow as images.
+   */
+  const viewableBlocks = useMemo(() => {
     return allBlocks.filter(
-      (block): block is ContentImageModel | ContentParallaxImageModel =>
-        block.contentType === 'IMAGE'
+      (block): block is ViewableContent =>
+        block.contentType === 'IMAGE' || block.contentType === 'GIF'
     );
   }, [allBlocks]);
 
-  const handleFullScreenImageClick = (image: ContentImageModel | ContentParallaxImageModel) => {
-    showImage(image, imageBlocks);
+  /**
+   * The image arg may be a synthetic from {@link CollectionContentRenderer}'s click handler — it
+   * only carries id + contentType + imageUrl/gifUrl. Look up the real block in {@link allBlocks}
+   * so the modal has full metadata (title, locations, captureDate, etc).
+   */
+  const handleFullScreenImageClick = (image: ViewableContent) => {
+    const real = viewableBlocks.find(b => b.id === image.id);
+    showImage(real ?? image, viewableBlocks);
   };
 
   const [visibleCount, setVisibleCount] = useState(

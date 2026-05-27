@@ -8,7 +8,7 @@
  * - Handler creators are higher-order functions that return event handlers
  */
 
-import { type ContentImageModel, type ContentParallaxImageModel } from '@/app/types/Content';
+import { type ContentImageModel, type ViewableContent } from '@/app/types/Content';
 
 /**
  * Check if an image is not visible (either globally or collection-specific)
@@ -56,8 +56,8 @@ export function createContentClickHandler(
   contentId: number,
   onContentClick?: (contentId: number) => void,
   enableFullScreenView?: boolean,
-  onFullScreenClick?: (content: ContentImageModel | ContentParallaxImageModel) => void,
-  fullScreenContent?: ContentImageModel | ContentParallaxImageModel
+  onFullScreenClick?: (content: ViewableContent) => void,
+  fullScreenContent?: ViewableContent
 ): (() => void) | undefined {
   if (onContentClick) {
     return () => onContentClick(contentId);
