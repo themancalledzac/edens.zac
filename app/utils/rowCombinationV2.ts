@@ -41,6 +41,8 @@ interface MergeAtom {
   ids: number[];
   /** Max vertical tiers in this subtree. Leaf=1; hPair=max(children); vStack=sum(children). */
   vTier: number;
+  /** Max effective rating among leaves — drives the no-vStack-of-prominents rule. */
+  maxEffRating: number;
 }
 
 /** A swap option considered when scoring a merge at index `i`. */
@@ -90,6 +92,7 @@ function leafAtom(img: ImageType, leafIndex: number): MergeAtom {
     ar: img.numericAR,
     ids: [leafIndex],
     vTier: 1,
+    maxEffRating: img.effectiveRating,
   };
 }
 
@@ -123,6 +126,7 @@ function buildMerged(
     ar,
     ids: [...left.ids, ...right.ids],
     vTier,
+    maxEffRating: Math.max(left.maxEffRating, right.maxEffRating),
   };
 }
 
@@ -294,6 +298,12 @@ export function composeV2(items: ImageType[], targetAR: number, rowWidth: number
           // Cap vertical depth at 2 tiers so high-density rows form balanced
           // 2×N grids instead of 3+ tier vertical strips.
           if (direction === 'V' && leftAtom.vTier + rightAtom.vTier > 2) {
+            continue;
+          }
+          // Prominence rule: never vStack a subtree containing a 4★+ leaf.
+          // Stacking shrinks images to narrow-column width; dominant items
+          // deserve to stand alone (or hPair with peers), not cluster.
+          if (direction === 'V' && (leftAtom.maxEffRating >= 4 || rightAtom.maxEffRating >= 4)) {
             continue;
           }
           const merged = buildMerged(leftAtom, rightAtom, direction, rowWidth);

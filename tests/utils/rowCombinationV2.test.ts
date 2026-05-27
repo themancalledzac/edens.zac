@@ -267,6 +267,47 @@ describe('composeV2 — edge cases', () => {
     expect(isVStackOfTwoLeaves(right)).toBe(true);
   });
 
+  it('mixed prominence row [r4, r4, r3, r3]: 3★s vStack, 4★s never inside a vStack', () => {
+    // Prominence rule: no vStack contains a leaf with effRating ≥ 4. Stacking
+    // a 4★ shrinks it to match the narrow column — defeats prominence. So
+    // the 3★s pair up as vStack, the 4★s pair up as hPair, and the row reads
+    // [4-4-[3/3]] with the 4★s visibly wider than the stacked 3★ column.
+    const items = [
+      createHorizontalImage(1, 4),
+      createHorizontalImage(2, 4),
+      createHorizontalImage(3, 3),
+      createHorizontalImage(4, 3),
+    ];
+    const tree = composeV2(asImages(items), TARGET_AR, 12);
+
+    // No vStack node should contain a 4★ leaf anywhere in its subtree.
+    const leafIdsIn = (n: AtomicComponent): number[] =>
+      n.type === 'single'
+        ? [n.img.source.id ?? -1]
+        : [...leafIdsIn(n.children[0]), ...leafIdsIn(n.children[1])];
+    const containsProminentVStack = (n: AtomicComponent): boolean => {
+      if (n.type === 'single') return false;
+      if (n.direction === 'V') {
+        const ids = leafIdsIn(n);
+        if (ids.includes(1) || ids.includes(2)) return true;
+      }
+      return containsProminentVStack(n.children[0]) || containsProminentVStack(n.children[1]);
+    };
+    expect(containsProminentVStack(tree)).toBe(false);
+
+    // And the row should contain a vStack of the two 3★s.
+    const hasVStackOf3s = (n: AtomicComponent): boolean => {
+      if (n.type !== 'pair' || n.direction !== 'V') {
+        return n.type === 'pair'
+          ? hasVStackOf3s(n.children[0]) || hasVStackOf3s(n.children[1])
+          : false;
+      }
+      const ids = leafIdsIn(n);
+      return ids.length === 2 && ids.includes(3) && ids.includes(4);
+    };
+    expect(hasVStackOf3s(tree)).toBe(true);
+  });
+
   it('all-H row of 3: emerges as dom-stacked (root hPair with an inner vStack of two H leaves)', () => {
     const items = [
       createHorizontalImage(1, 3),
