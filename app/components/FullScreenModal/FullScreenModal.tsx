@@ -8,15 +8,19 @@ import { createPortal } from 'react-dom';
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { CollectionModel } from '@/app/types/Collection';
-import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
+import type { ContentGifModel, ViewableContent } from '@/app/types/Content';
 
-type ImageBlock = ContentImageModel | ContentParallaxImageModel;
+type ImageBlock = ViewableContent;
 
 type FullScreenState = {
   images: ImageBlock[];
   currentIndex: number;
   scrollPosition: number;
 };
+
+function isGifBlock(block: ImageBlock): block is ContentGifModel {
+  return block.contentType === 'GIF';
+}
 
 interface FullScreenModalProps {
   fullScreenState: FullScreenState | null;
@@ -53,13 +57,20 @@ export function FullScreenModal({
   const currentImage = fullScreenState.images[fullScreenState.currentIndex];
   if (!currentImage) return null;
 
-  // Resolve locations: image locations take priority, fall back to collection locations
-  const displayLocations = currentImage.locations?.length
-    ? currentImage.locations
+  const isGif = isGifBlock(currentImage);
+
+  // Resolve locations: image locations take priority, fall back to collection locations.
+  // GIF blocks don't carry locations today — fall straight through to the collection.
+  const imageLocations = !isGif ? currentImage.locations : undefined;
+  const displayLocations = imageLocations?.length
+    ? imageLocations
     : (collectionData?.locations ?? []);
 
-  // Resolve date: image captureDate takes priority, fall back to collection collectionDate
-  const displayDate = currentImage.captureDate ?? collectionData?.collectionDate ?? null;
+  // Resolve date: image captureDate takes priority, fall back to collection collectionDate.
+  // GIFs don't have captureDate — fall back immediately.
+  const displayDate = !isGif
+    ? (currentImage.captureDate ?? collectionData?.collectionDate ?? null)
+    : (collectionData?.collectionDate ?? null);
 
   const currentImageLoaded = loadedImageIds.has(currentImage.id);
   const hasPrevious = fullScreenState.currentIndex > 0;
@@ -72,28 +83,51 @@ export function FullScreenModal({
   };
 
   const modalContent = (
-    <div ref={modalRef} className={styles.imageFullScreenWrapper} role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div
+      ref={modalRef}
+      className={styles.imageFullScreenWrapper}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Image viewer"
+    >
       <div className={styles.overlayContainer} onClick={handleOverlayClick}>
         <div
           className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}
         >
-          <Image
-            key={currentImage.id}
-            src={currentImage.imageUrl}
-            alt={currentImage.title || currentImage.caption || 'Full screen image'}
-            width={currentImage.imageWidth || IMAGE.defaultWidth}
-            height={currentImage.imageHeight || IMAGE.defaultHeight}
-            className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
-            priority
-            onLoad={() => {
-              setLoadedImageIds(prev => {
-                if (prev.has(currentImage.id)) return prev;
-                const newSet = new Set(prev);
-                newSet.add(currentImage.id);
-                return newSet;
-              });
-            }}
-          />
+          {isGif ? (
+            <video
+              key={currentImage.id}
+              autoPlay
+              loop
+              muted
+              playsInline
+              controls={false}
+              poster={currentImage.thumbnailUrl ?? undefined}
+              width={currentImage.width || IMAGE.defaultWidth}
+              height={currentImage.height || IMAGE.defaultHeight}
+              className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
+            >
+              <source src={currentImage.gifUrl} type="video/mp4" />
+            </video>
+          ) : (
+            <Image
+              key={currentImage.id}
+              src={currentImage.imageUrl}
+              alt={currentImage.title || currentImage.caption || 'Full screen image'}
+              width={currentImage.imageWidth || IMAGE.defaultWidth}
+              height={currentImage.imageHeight || IMAGE.defaultHeight}
+              className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
+              priority
+              onLoad={() => {
+                setLoadedImageIds(prev => {
+                  if (prev.has(currentImage.id)) return prev;
+                  const newSet = new Set(prev);
+                  newSet.add(currentImage.id);
+                  return newSet;
+                });
+              }}
+            />
+          )}
 
           {currentImageLoaded && (
             <div
@@ -136,7 +170,7 @@ export function FullScreenModal({
                       ))}
                     </div>
                   )}
-                  {(currentImage.camera || currentImage.lens) && (
+                  {!isGif && (currentImage.camera || currentImage.lens) && (
                     <div className={styles.metadataItem}>
                       {currentImage.camera && <span>{currentImage.camera.name}</span>}
                       {currentImage.camera && currentImage.lens && (
@@ -145,18 +179,19 @@ export function FullScreenModal({
                       {currentImage.lens && <span>{currentImage.lens.name}</span>}
                     </div>
                   )}
-                  {(currentImage.iso ||
-                    currentImage.fStop ||
-                    currentImage.shutterSpeed ||
-                    currentImage.focalLength) && (
-                    <div className={styles.metadataSettingsRow}>
-                      {currentImage.iso && <span>{currentImage.iso}</span>}
-                      {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
-                      {currentImage.fStop && <span>{currentImage.fStop}</span>}
-                      {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
-                    </div>
-                  )}
-                  {currentImage.people && currentImage.people.length > 0 && (
+                  {!isGif &&
+                    (currentImage.iso ||
+                      currentImage.fStop ||
+                      currentImage.shutterSpeed ||
+                      currentImage.focalLength) && (
+                      <div className={styles.metadataSettingsRow}>
+                        {currentImage.iso && <span>{currentImage.iso}</span>}
+                        {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
+                        {currentImage.fStop && <span>{currentImage.fStop}</span>}
+                        {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
+                      </div>
+                    )}
+                  {!isGif && currentImage.people && currentImage.people.length > 0 && (
                     <div className={styles.metadataSection}>
                       <div className={styles.metadataSectionRow}>
                         <div className={styles.metadataSectionHeader}>People</div>
@@ -170,7 +205,7 @@ export function FullScreenModal({
                       </div>
                     </div>
                   )}
-                  {currentImage.collections && currentImage.collections.length > 0 && (
+                  {!isGif && currentImage.collections && currentImage.collections.length > 0 && (
                     <div className={styles.metadataSection}>
                       <div className={styles.metadataSectionRow}>
                         <div className={styles.metadataSectionHeader}>Collections</div>

@@ -3,42 +3,50 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
-import type { ContentImageModel } from '@/app/types/Content';
+import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 /**
- * Hook for managing image metadata editor state
+ * Any content block that owns first-class metadata (title, rating, etc.) and should open the
+ * metadata editor on click. Today: still images and animated GIF/MP4 blocks. Adding new rated
+ * content types means adding them here, not at every callsite — the click handler and modal
+ * dispatch already key off the runtime contentType.
+ */
+export type EditableContent = ContentImageModel | ContentGifModel;
+
+/**
+ * Hook for managing metadata editor state.
  *
  * Handles:
- * - Opening/closing the metadata editor modal
+ * - Opening/closing the metadata editor modal (image or gif)
  * - Scroll position management
  * - Body scroll prevention while modal is open
  *
  * @returns Editor state and control functions
  */
 export function useImageMetadataEditor() {
-  const [editingImage, setEditingImage] = useState<ContentImageModel | null>(null);
+  const [editingContent, setEditingContent] = useState<EditableContent | null>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
 
   /**
-   * Open the metadata editor for a specific image
+   * Open the metadata editor for a specific content block (image or gif).
    */
-  const openEditor = useCallback((image: ContentImageModel) => {
+  const openEditor = useCallback((content: EditableContent) => {
     const currentScroll = window.scrollY;
     setScrollPosition(currentScroll);
-    setEditingImage(image);
+    setEditingContent(content);
   }, []);
 
   /**
-   * Close the metadata editor
+   * Close the metadata editor.
    */
   const closeEditor = useCallback(() => {
-    setEditingImage(null);
+    setEditingContent(null);
   }, []);
 
-  useBodyScrollLock(!!editingImage);
+  useBodyScrollLock(!!editingContent);
 
   useEffect(() => {
-    if (!editingImage) return;
+    if (!editingContent) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -51,13 +59,15 @@ export function useImageMetadataEditor() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [editingImage, closeEditor]);
+  }, [editingContent, closeEditor]);
 
   return {
-    editingImage,
+    editingContent,
+    /** @deprecated use `editingContent` — kept for back-compat until callers migrate. */
+    editingImage: editingContent,
     scrollPosition,
     openEditor,
     closeEditor,
-    isOpen: !!editingImage,
+    isOpen: !!editingContent,
   };
 }

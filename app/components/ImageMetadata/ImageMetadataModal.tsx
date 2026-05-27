@@ -6,9 +6,17 @@ import { type SubmitEvent, useCallback, useEffect, useMemo, useState } from 'rea
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { IMAGE } from '@/app/constants';
-import { createCamera, deleteImages, updateImages } from '@/app/lib/api/content';
+import {
+  type ContentGifUpdateRequest,
+  createCamera,
+  deleteGif,
+  deleteImages,
+  updateGif,
+  updateImages,
+} from '@/app/lib/api/content';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import {
+  type ContentGifModel,
   type ContentImageModel,
   type ContentImageUpdateRequest,
   type ContentImageUpdateResponse,
@@ -21,11 +29,13 @@ import {
   type ContentTagModel,
   type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
+import { isGifContent } from '@/app/utils/contentTypeGuards';
 import { convertLocationsToModels } from '@/app/utils/locationUtils';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
 import styles from './ImageMetadataModal.module.scss';
 import {
+  buildImageUpdateDiff,
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
   computeCameraSelectionUpdate,
@@ -34,15 +44,90 @@ import {
 } from './imageMetadataUtils';
 import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 
-type ImageUpdateState = Partial<ContentImageModel> & {
-  id: number;
-};
+/**
+ * Local edit-state shape. We allow GIF fields too because the same modal now edits both — image-
+ * only fields are disabled in the JSX when the current selection is a GIF.
+ */
+type ImageUpdateState = Partial<ContentImageModel> &
+  Partial<Pick<ContentGifModel, 'gifUrl' | 'thumbnailUrl' | 'rating'>> & {
+    id: number;
+  };
+
+/** Any content the modal can edit — images and animated GIF/MP4 blocks. */
+type EditableContent = ContentImageModel | ContentGifModel;
+
+/**
+ * Render the single-item preview: looping `<video>` for GIF/MP4, `<Image>` for stills. Extracted
+ * so the inline JSX doesn't trigger the unicorn/no-nested-ternary rule, and so the same render
+ * can be reused if we ever introduce a single-preview header above the bulk grid.
+ */
+function renderSinglePreview({
+  isGif,
+  previewImageAsGif,
+  previewImageAsImage,
+}: {
+  isGif: boolean;
+  previewImageAsGif: ContentGifModel | null;
+  previewImageAsImage: ContentImageModel | null;
+}) {
+  if (isGif && previewImageAsGif) {
+    return (
+      <video
+        key={previewImageAsGif.gifUrl}
+        autoPlay
+        loop
+        muted
+        playsInline
+        controls={false}
+        poster={previewImageAsGif.thumbnailUrl ?? undefined}
+        width={previewImageAsGif.width || IMAGE.defaultWidth}
+        height={previewImageAsGif.height || IMAGE.defaultHeight}
+        style={{
+          maxWidth: '100%',
+          maxHeight: '100%',
+          width: 'auto',
+          height: 'auto',
+          objectFit: 'contain',
+        }}
+      >
+        <source src={previewImageAsGif.gifUrl} type="video/mp4" />
+      </video>
+    );
+  }
+  if (previewImageAsImage) {
+    return (
+      <Image
+        src={previewImageAsImage.imageUrl}
+        alt={previewImageAsImage.alt || previewImageAsImage.title || 'Image preview'}
+        width={previewImageAsImage.imageWidth || IMAGE.defaultWidth}
+        height={previewImageAsImage.imageHeight || IMAGE.defaultHeight}
+        style={{
+          maxWidth: '100%',
+          maxHeight: '100%',
+          width: 'auto',
+          height: 'auto',
+          objectFit: 'contain',
+        }}
+        priority
+        unoptimized
+      />
+    );
+  }
+  return null;
+}
 
 interface ImageMetadataModalProps {
   scrollPosition: number;
   onClose: () => void;
   onSaveSuccess?: (response: ContentImageUpdateResponse) => void;
+  /**
+   * Fired after a single-GIF save. Separate from `onSaveSuccess` because the GIF update endpoint
+   * returns one record instead of the batched ImageUpdate response. ManageClient hands these to
+   * the same collection-refresh handler that GIF saves used to call from `GifMetadataModal`.
+   */
+  onGifSaveSuccess?: (gif: ContentGifModel) => void;
   onDeleteSuccess?: (deletedIds: number[]) => void;
+  onRemoveFromCollectionSuccess?: (removedImageIds: number[]) => void;
   availableTags?: ContentTagModel[];
   availablePeople?: ContentPersonModel[];
   availableCameras?: ContentCameraModel[];
@@ -51,8 +136,13 @@ interface ImageMetadataModalProps {
   availableFilmFormats?: FilmFormatDTO[];
   availableCollections?: CollectionListModel[];
   availableLocations?: LocationModel[];
-  selectedImageIds: number[]; // Array of selected image IDs (1 for single edit, N for bulk edit)
-  selectedImages: ContentImageModel[]; // Images to edit (already filtered in parent)
+  selectedImageIds: number[]; // Array of selected content IDs (1 for single edit, N for bulk edit)
+  /**
+   * Content blocks to edit. May include images and GIF/MP4 blocks. Bulk edit only operates on
+   * the IMAGE subset (the EXIF-heavy fields don't have GIF analogs); when the selection is a
+   * single GIF the modal routes title/rating/tags/collections through `updateGif()`.
+   */
+  selectedImages: EditableContent[];
   currentCollectionId?: number; // ID of the collection being edited (for visibility checkbox)
 }
 
@@ -67,7 +157,9 @@ export default function ImageMetadataModal({
   scrollPosition,
   onClose,
   onSaveSuccess,
+  onGifSaveSuccess,
   onDeleteSuccess,
+  onRemoveFromCollectionSuccess,
   availableTags = [],
   availablePeople = [],
   availableCameras = [],
@@ -82,38 +174,37 @@ export default function ImageMetadataModal({
 }: ImageMetadataModalProps) {
   const isBulkEdit = selectedImageIds.length > 1;
 
-  const [updateState, setUpdateState] = useState<ImageUpdateState>(() => {
+  // `getCommonValues` was authored for ContentImageModel only — for GIF blocks we slot the union
+  // in but the bulk-edit code path only ever runs on images (ManageClient.handleBulkEdit splits
+  // mixed selections), so the cast here is safe at runtime.
+  const imageSubset = selectedImages.filter(
+    (c): c is ContentImageModel => c.contentType === 'IMAGE'
+  );
+
+  const buildInitialState = (): ImageUpdateState => {
     if (selectedImages.length === 1) {
-      const img = selectedImages[0]!;
+      const item = selectedImages[0]!;
+      const itemLocations = 'locations' in item ? item.locations : undefined;
       return {
-        ...img,
-        locations: convertLocationsToModels(img.locations, availableLocations),
-      };
-    } else {
-      const common = getCommonValues(selectedImages);
-      return {
-        id: 0,
-        ...common,
-        locations: convertLocationsToModels(common.locations, availableLocations),
-      };
+        ...item,
+        locations: convertLocationsToModels(itemLocations, availableLocations),
+      } as ImageUpdateState;
     }
-  });
+    const common = getCommonValues(imageSubset);
+    return {
+      id: 0,
+      ...common,
+      locations: convertLocationsToModels(common.locations, availableLocations),
+    };
+  };
+
+  const [updateState, setUpdateState] = useState<ImageUpdateState>(buildInitialState);
 
   useEffect(() => {
-    if (selectedImages.length === 1) {
-      const img = selectedImages[0]!;
-      setUpdateState({
-        ...img,
-        locations: convertLocationsToModels(img.locations, availableLocations),
-      });
-    } else {
-      const common = getCommonValues(selectedImages);
-      setUpdateState({
-        id: 0,
-        ...common,
-        locations: convertLocationsToModels(common.locations, availableLocations),
-      });
-    }
+    setUpdateState(buildInitialState());
+    // buildInitialState closes over selectedImages + availableLocations only; everything else is
+    // stable. Listing the function in deps would just churn on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedImages, availableLocations]);
 
   const updateStateField = (updates: Partial<ImageUpdateState>) => {
@@ -122,12 +213,14 @@ export default function ImageMetadataModal({
 
   const hasChanges = useMemo(() => {
     if (isBulkEdit) {
-      const common = getCommonValues(selectedImages);
+      const common = getCommonValues(imageSubset);
       return hasObjectChanges(updateState, { id: 0, ...common });
     } else {
       const original = selectedImages[0]!;
       return hasObjectChanges(updateState, original);
     }
+    // imageSubset is derived from selectedImages each render; reflect that in deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updateState, selectedImages, isBulkEdit]);
 
   const [saving, setSaving] = useState(false);
@@ -191,6 +284,15 @@ export default function ImageMetadataModal({
     return null;
   }
 
+  /**
+   * Type-narrowing helpers so the JSX below can stay readable. When `isGif` is true the GIF-
+   * specific fields are available on the union; when false the image-specific ones are. The
+   * disabled-input pattern (rather than rendering nothing) keeps the layout stable.
+   */
+  const isGif = isGifContent(previewImage);
+  const previewImageAsImage = !isGif ? (previewImage as ContentImageModel) : null;
+  const previewImageAsGif = isGif ? (previewImage as ContentGifModel) : null;
+
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -203,20 +305,62 @@ export default function ImageMetadataModal({
       setSaving(true);
       setError(null);
 
+      // Single GIF: route through the GIF patch endpoint. Bulk-edit on GIF is not supported yet —
+      // selectedImages was already filtered upstream in ManageClient.handleBulkEdit so a mixed
+      // selection won't reach here as a "GIF edit"; we treat anything non-IMAGE as a single-gif
+      // edit and reject batch.
+      if (!isBulkEdit && isGif && previewImageAsGif) {
+        const original = previewImageAsGif;
+        const payload: ContentGifUpdateRequest = {};
+        if ((updateState.title ?? '') !== (original.title ?? '')) {
+          payload.title = updateState.title ?? '';
+        }
+        if (updateState.rating !== undefined && updateState.rating !== (original.rating ?? null)) {
+          payload.rating = updateState.rating ?? 0;
+        }
+        // Collections: build prev/newValue/remove from originalCollectionIds vs current selection
+        const currentCollectionIds = new Set(
+          (updateState.collections || []).map(c => c.collectionId)
+        );
+        const add = (updateState.collections || []).filter(
+          c => !originalCollectionIds.has(c.collectionId)
+        );
+        const remove: number[] = [];
+        for (const id of originalCollectionIds) {
+          if (!currentCollectionIds.has(id)) remove.push(id);
+        }
+        if (add.length > 0 || remove.length > 0) {
+          payload.collections = {
+            newValue: add.length > 0 ? add : undefined,
+            remove: remove.length > 0 ? remove : undefined,
+          };
+        }
+
+        const updated =
+          Object.keys(payload).length > 0 ? await updateGif(original.id, payload) : original;
+        if (updated) {
+          onGifSaveSuccess?.(updated as ContentGifModel);
+          onClose();
+        }
+        return;
+      }
+
       const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
         ? buildImageUpdatesForBulkEdit(
             updateState as Partial<ContentImageModel> & {
               id: number;
               location?: LocationModel | null;
             },
-            selectedImages,
+            selectedImages.filter(
+              (s): s is ContentImageModel => s.contentType === 'IMAGE'
+            ) as ContentImageModel[],
             selectedImageIds,
             availableFilmTypes
           )
         : [
             buildImageUpdateForSingleEdit(
               updateState as ContentImageModel & { location?: LocationModel | null },
-              selectedImages[0]!,
+              selectedImages[0] as ContentImageModel,
               availableFilmTypes
             ),
           ];
@@ -246,10 +390,12 @@ export default function ImageMetadataModal({
 
   const handleDelete = async () => {
     const imageCount = selectedImageIds.length;
+    const noun = isGif ? 'GIF/MP4' : 'image';
+    const nounPlural = isGif ? 'GIFs/MP4s' : 'images';
     const confirmMessage =
       imageCount === 1
-        ? 'Are you sure you want to delete this image? This will remove it from S3 and the database. This action cannot be undone.'
-        : `Are you sure you want to delete ${imageCount} images? This will remove them from S3 and the database. This action cannot be undone.`;
+        ? `Are you sure you want to delete this ${noun}? This will remove it from S3 and the database. This action cannot be undone.`
+        : `Are you sure you want to delete ${imageCount} ${nounPlural}? This will remove them from S3 and the database. This action cannot be undone.`;
 
     const confirmed = window.confirm(confirmMessage);
     if (!confirmed) return;
@@ -257,6 +403,17 @@ export default function ImageMetadataModal({
     try {
       setSaving(true);
       setError(null);
+
+      // Single GIF: route to the GIF delete endpoint. Bulk-gif delete isn't supported yet — we
+      // process the single visible selection only.
+      if (!isBulkEdit && isGif && previewImageAsGif) {
+        const result = await deleteGif(previewImageAsGif.id);
+        if (result?.deletedId != null) {
+          onDeleteSuccess?.([result.deletedId]);
+          onClose();
+        }
+        return;
+      }
 
       const response = await deleteImages(selectedImageIds);
 
@@ -266,6 +423,50 @@ export default function ImageMetadataModal({
       }
     } catch (error_) {
       setError(error_ instanceof Error ? error_.message : 'Failed to delete images');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveFromCollection = async () => {
+    if (!currentCollectionId) return;
+
+    const imageCount = selectedImageIds.length;
+    const confirmMessage =
+      imageCount === 1
+        ? 'Remove this image from the current collection? The image and its metadata will remain in the system.'
+        : `Remove ${imageCount} images from the current collection? Images and their metadata will remain in the system.`;
+
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      // "Remove from collection" only operates on IMAGE blocks today — the bulk diff helper is
+      // typed to ContentImageModel. Skip GIF entries; they'll be a follow-up.
+      const imageUpdates: ContentImageUpdateRequest[] = imageSubset.map(img => {
+        const trimmedCollections = (img.collections || []).filter(
+          c => c.collectionId !== currentCollectionId
+        );
+        return buildImageUpdateDiff(
+          { id: img.id, collections: trimmedCollections },
+          img,
+          availableFilmTypes
+        );
+      });
+
+      const response = await updateImages(imageUpdates);
+
+      if (response !== null) {
+        onRemoveFromCollectionSuccess?.(selectedImageIds);
+        onClose();
+      }
+    } catch (error_) {
+      setError(
+        error_ instanceof Error ? error_.message : 'Failed to remove images from collection'
+      );
     } finally {
       setSaving(false);
     }
@@ -296,8 +497,14 @@ export default function ImageMetadataModal({
             }}
           >
             {selectedImageIds.map(imageId => {
-              const img = selectedImages.find(i => i.id === imageId);
-              if (!img) return null;
+              const item = selectedImages.find(i => i.id === imageId);
+              if (!item) return null;
+              // Bulk-edit thumbnail src: image uses imageUrl, GIF uses thumbnailUrl (still WebP).
+              const thumbSrc =
+                item.contentType === 'GIF'
+                  ? (item.thumbnailUrl ?? '')
+                  : ((item as ContentImageModel).imageUrl ?? '');
+              if (!thumbSrc) return null;
               return (
                 <div
                   key={imageId}
@@ -310,8 +517,8 @@ export default function ImageMetadataModal({
                   }}
                 >
                   <Image
-                    src={img.imageUrl}
-                    alt={img.alt || img.title || 'Selected image'}
+                    src={thumbSrc}
+                    alt={item.alt || item.title || 'Selected media'}
                     fill
                     style={{
                       objectFit: 'cover',
@@ -324,21 +531,7 @@ export default function ImageMetadataModal({
             })}
           </div>
         ) : (
-          <Image
-            src={previewImage.imageUrl}
-            alt={previewImage.alt || previewImage.title || 'Image preview'}
-            width={previewImage.imageWidth || IMAGE.defaultWidth}
-            height={previewImage.imageHeight || IMAGE.defaultHeight}
-            style={{
-              maxWidth: '100%',
-              maxHeight: '100%',
-              width: 'auto',
-              height: 'auto',
-              objectFit: 'contain',
-            }}
-            priority
-            unoptimized
-          />
+          renderSinglePreview({ isGif, previewImageAsGif, previewImageAsImage })
         )}
       </div>
 
@@ -370,7 +563,12 @@ export default function ImageMetadataModal({
               />
             </div>
 
-            <div className={styles.formGroup}>
+            <div
+              className={styles.formGroup}
+              style={isGif ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
+              aria-disabled={isGif}
+              title={isGif ? 'Caption is not supported on GIF/MP4 content.' : undefined}
+            >
               <label className={styles.formLabel}>Caption</label>
               <textarea
                 value={updateState.caption ?? ''}
@@ -378,6 +576,7 @@ export default function ImageMetadataModal({
                 className={styles.formTextarea}
                 placeholder="Enter caption"
                 rows={3}
+                disabled={isGif}
               />
             </div>
 
@@ -403,40 +602,46 @@ export default function ImageMetadataModal({
               />
             </div>
 
-            <UnifiedMetadataSelector<LocationModel>
-              label="Locations"
-              multiSelect
-              options={availableLocations}
-              selectedValues={updateState.locations ?? []}
-              onChange={value => {
-                let locations: LocationModel[];
-                if (Array.isArray(value)) {
-                  locations = value;
-                } else if (value) {
-                  locations = [value];
-                } else {
-                  locations = [];
-                }
-                updateStateField({ locations });
-              }}
-              allowAddNew
-              onAddNew={data => {
-                const newLocation = { id: 0, name: data.name as string, slug: '' };
-                updateStateField({ locations: [...(updateState.locations ?? []), newLocation] });
-              }}
-              addNewFields={[
-                {
-                  name: 'name',
-                  label: 'Location Name',
-                  type: 'text',
-                  placeholder: 'e.g., Seattle, WA',
-                  required: true,
-                },
-              ]}
-              getDisplayName={location => location?.name || ''}
-              showNewIndicator
-              emptyText="No locations set"
-            />
+            <div
+              style={isGif ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
+              aria-disabled={isGif}
+              title={isGif ? 'Locations are not yet supported on GIF/MP4 content.' : undefined}
+            >
+              <UnifiedMetadataSelector<LocationModel>
+                label="Locations"
+                multiSelect
+                options={availableLocations}
+                selectedValues={updateState.locations ?? []}
+                onChange={value => {
+                  let locations: LocationModel[];
+                  if (Array.isArray(value)) {
+                    locations = value;
+                  } else if (value) {
+                    locations = [value];
+                  } else {
+                    locations = [];
+                  }
+                  updateStateField({ locations });
+                }}
+                allowAddNew
+                onAddNew={data => {
+                  const newLocation = { id: 0, name: data.name as string, slug: '' };
+                  updateStateField({ locations: [...(updateState.locations ?? []), newLocation] });
+                }}
+                addNewFields={[
+                  {
+                    name: 'name',
+                    label: 'Location Name',
+                    type: 'text',
+                    placeholder: 'e.g., Seattle, WA',
+                    required: true,
+                  },
+                ]}
+                getDisplayName={location => location?.name || ''}
+                showNewIndicator
+                emptyText="No locations set"
+              />
+            </div>
 
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Rating</label>
@@ -511,8 +716,13 @@ export default function ImageMetadataModal({
             )}
           </div>
 
-          {/* Camera Metadata */}
-          <div className={styles.formSection}>
+          {/* Camera Metadata — image-only, greyed out for GIF/MP4 blocks. */}
+          <div
+            className={styles.formSection}
+            style={isGif ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
+            aria-disabled={isGif}
+            title={isGif ? 'Camera/EXIF metadata is not supported on GIF/MP4 content.' : undefined}
+          >
             <h3 className={styles.sectionHeading}>Camera Settings</h3>
 
             <UnifiedMetadataSelector<ContentCameraModel>
@@ -796,37 +1006,43 @@ export default function ImageMetadataModal({
               emptyText="No tags selected"
             />
 
-            <UnifiedMetadataSelector<ContentPersonModel>
-              label="People"
-              multiSelect
-              options={availablePeople}
-              selectedValues={updateState.people || []}
-              onChange={value => {
-                const people = (value as ContentPersonModel[] | null) ?? [];
-                updateStateField({ people });
-              }}
-              allowAddNew
-              onAddNew={data => {
-                const newPerson: ContentPersonModel = {
-                  id: 0,
-                  name: data.name as string,
-                  slug: '',
-                };
-                const currentPeople = updateState.people || [];
-                updateStateField({ people: [...currentPeople, newPerson] });
-              }}
-              addNewFields={[
-                {
-                  name: 'name',
-                  label: 'Person Name',
-                  type: 'text',
-                  placeholder: 'Enter person name',
-                  required: true,
-                },
-              ]}
-              getDisplayName={person => person.name}
-              emptyText="No people selected"
-            />
+            <div
+              style={isGif ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
+              aria-disabled={isGif}
+              title={isGif ? 'People are not yet supported on GIF/MP4 content.' : undefined}
+            >
+              <UnifiedMetadataSelector<ContentPersonModel>
+                label="People"
+                multiSelect
+                options={availablePeople}
+                selectedValues={updateState.people || []}
+                onChange={value => {
+                  const people = (value as ContentPersonModel[] | null) ?? [];
+                  updateStateField({ people });
+                }}
+                allowAddNew
+                onAddNew={data => {
+                  const newPerson: ContentPersonModel = {
+                    id: 0,
+                    name: data.name as string,
+                    slug: '',
+                  };
+                  const currentPeople = updateState.people || [];
+                  updateStateField({ people: [...currentPeople, newPerson] });
+                }}
+                addNewFields={[
+                  {
+                    name: 'name',
+                    label: 'Person Name',
+                    type: 'text',
+                    placeholder: 'Enter person name',
+                    required: true,
+                  },
+                ]}
+                getDisplayName={person => person.name}
+                emptyText="No people selected"
+              />
+            </div>
           </div>
 
           {/* Collections */}
@@ -860,6 +1076,24 @@ export default function ImageMetadataModal({
                   `Delete ${isBulkEdit ? `${selectedImageIds.length} Images` : 'Image'}`
                 )}
               </button>
+              {currentCollectionId && (
+                <button
+                  type="button"
+                  onClick={handleRemoveFromCollection}
+                  disabled={saving}
+                  className={styles.removeButton}
+                  title="Remove from current collection (image stays in the system)"
+                >
+                  {saving ? (
+                    <>
+                      <LoadingSpinner size="small" color="white" />
+                      <span style={{ marginLeft: '8px' }}>Removing...</span>
+                    </>
+                  ) : (
+                    `Remove ${isBulkEdit ? `${selectedImageIds.length} Images` : 'Image'}`
+                  )}
+                </button>
+              )}
             </div>
             <div className={styles.buttonRowRight}>
               <button

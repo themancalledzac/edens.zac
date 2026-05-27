@@ -4,11 +4,7 @@
  * This eliminates the need for type checking inside the renderer component
  */
 
-import {
-  type ContentImageModel,
-  type ContentParallaxImageModel,
-  type TextBlockItem,
-} from './Content';
+import { type TextBlockItem, type ViewableContent } from './Content';
 
 /**
  * Base props that all content renderers receive
@@ -79,7 +75,12 @@ export interface CollectionContentRendererProps extends ContentRendererProps {
   // Click handlers
   onImageClick?: (imageId: number) => void;
   enableFullScreenView?: boolean;
-  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void;
+  /**
+   * Open the fullscreen viewer for any visual content block — images, parallax images, or
+   * animated GIF/MP4 blocks. The viewer renders the correct element (<Image> vs <video>)
+   * based on contentType.
+   */
+  onFullScreenImageClick?: (image: ViewableContent) => void;
 
   // Image-specific overlays (only for IMAGE type)
   selectedImageIds?: number[];

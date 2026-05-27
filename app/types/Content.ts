@@ -154,7 +154,20 @@ export interface ContentGifModel extends Content {
   height?: number;
   author?: string | null;
   createDate?: string | null;
+  /**
+   * Layout rating (0-5 or null). Drives slot-width selection in the row grid:
+   * horizontal GIF rating >= 4 takes the full row; rating 3 takes half a row;
+   * lower ratings take a single slot. New uploads default to 4. Vertical content
+   * (AR <= 1) gets a -1 effective-rating penalty.
+   */
+  rating?: number | null;
   tags?: ContentTagModel[];
+  /**
+   * Collections this GIF/MP4 belongs to. Many-to-many via the same `collection_content` join
+   * table that images use. Used by the metadata modal's collection selector so the admin can
+   * surface a single GIF in multiple galleries.
+   */
+  collections?: ChildCollection[];
 }
 
 /**
@@ -195,6 +208,14 @@ export type AnyContentModel =
   | ContentTextModel
   | ContentGifModel
   | ContentCollectionModel;
+
+/**
+ * Content blocks that participate in the click-to-fullscreen viewer: still images, parallax
+ * images, and animated GIF/MP4 blocks. TEXT and COLLECTION blocks have their own click semantics
+ * (collection navigation) and are excluded here. Use this everywhere a "viewable" content piece
+ * flows through the fullscreen pipeline.
+ */
+export type ViewableContent = ContentImageModel | ContentParallaxImageModel | ContentGifModel;
 /**
  * Camera update using prev/newValue/remove pattern
  * - prev: ID of existing camera to use

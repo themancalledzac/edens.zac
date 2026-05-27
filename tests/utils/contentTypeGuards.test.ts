@@ -500,11 +500,56 @@ describe('getSlotWidth', () => {
     });
   });
 
-  describe('GIF content', () => {
-    it('returns 1 for a standard GIF (falls through isContentImage check)', () => {
-      const gif = createGifContent(1, { width: 800, height: 600 });
-      // GIF has ratio > 1 but is not ContentImageModel, so falls through to return 1
-      expect(getSlotWidth(gif, CHUNK)).toBe(1);
+  describe('GIF content by rating (uses same logic as IMAGE)', () => {
+    describe('horizontal GIF (800x450, AR ~1.78)', () => {
+      it('returns chunkSize for rating 5', () => {
+        const gif = createGifContent(1, { width: 800, height: 450, rating: 5 });
+        expect(getSlotWidth(gif, CHUNK)).toBe(CHUNK);
+      });
+
+      it('returns chunkSize for rating 4 (default for new uploads)', () => {
+        const gif = createGifContent(1, { width: 800, height: 450, rating: 4 });
+        expect(getSlotWidth(gif, CHUNK)).toBe(CHUNK);
+      });
+
+      it('returns halfSlot for rating 3', () => {
+        const gif = createGifContent(1, { width: 800, height: 450, rating: 3 });
+        expect(getSlotWidth(gif, CHUNK)).toBe(HALF);
+      });
+
+      it('returns 1 for rating 2', () => {
+        const gif = createGifContent(1, { width: 800, height: 450, rating: 2 });
+        expect(getSlotWidth(gif, CHUNK)).toBe(1);
+      });
+
+      it('returns 1 for unrated GIF (rating null)', () => {
+        const gif = createGifContent(1, { width: 800, height: 450, rating: null });
+        expect(getSlotWidth(gif, CHUNK)).toBe(1);
+      });
+
+      it('returns 1 for unrated GIF (rating undefined)', () => {
+        const gif = createGifContent(1, { width: 800, height: 450 });
+        expect(getSlotWidth(gif, CHUNK)).toBe(1);
+      });
+    });
+
+    describe('vertical GIF (450x800, AR ~0.56)', () => {
+      it('returns halfSlot for rating 4 (vertical penalty applied)', () => {
+        const gif = createGifContent(1, { width: 450, height: 800, rating: 4 });
+        expect(getSlotWidth(gif, CHUNK)).toBe(HALF);
+      });
+
+      it('returns 1 for rating 2', () => {
+        const gif = createGifContent(1, { width: 450, height: 800, rating: 2 });
+        expect(getSlotWidth(gif, CHUNK)).toBe(1);
+      });
+    });
+
+    describe('panorama GIF (1600x600, AR 2.67)', () => {
+      it('returns chunkSize regardless of rating', () => {
+        const gif = createGifContent(1, { width: 1600, height: 600, rating: 0 });
+        expect(getSlotWidth(gif, CHUNK)).toBe(CHUNK);
+      });
     });
   });
 });

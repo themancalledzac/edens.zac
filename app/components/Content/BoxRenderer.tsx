@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
-import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/Content';
+import type { ViewableContent } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
 import { logger } from '@/app/utils/logger';
@@ -18,7 +18,7 @@ interface BoxRendererProps {
   /** Pass-through props for child renderers */
   onImageClick?: (imageId: number) => void;
   enableFullScreenView?: boolean;
-  onFullScreenImageClick?: (image: ContentImageModel | ContentParallaxImageModel) => void;
+  onFullScreenImageClick?: (image: ViewableContent) => void;
   selectedImageIds?: number[];
   currentCollectionId?: number;
   isSelectingCoverImage?: boolean;

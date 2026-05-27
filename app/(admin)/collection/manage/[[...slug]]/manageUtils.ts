@@ -12,10 +12,11 @@ import {
 import {
   type AnyContentModel,
   type ContentCollectionModel,
+  type ContentGifModel,
   type ContentImageModel,
   type ContentImageUpdateResponse,
 } from '@/app/types/Content';
-import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
+import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
@@ -221,13 +222,12 @@ export function handleSingleImageEdit(
   imageId: number,
   content: AnyContentModel[] | undefined,
   processedContent: AnyContentModel[]
-): ContentImageModel | null {
-  const imageBlock =
-    content?.find(block => block.id === imageId) ||
-    processedContent.find(block => block.id === imageId);
+): ContentImageModel | ContentGifModel | null {
+  const block =
+    content?.find(b => b.id === imageId) || processedContent.find(b => b.id === imageId);
 
-  if (imageBlock && isContentImage(imageBlock)) {
-    return imageBlock;
+  if (block && (isContentImage(block) || isGifContent(block))) {
+    return block;
   }
 
   return null;

@@ -4,7 +4,11 @@ import { useRouter } from 'next/navigation';
 import { type Dispatch, type SetStateAction, useCallback } from 'react';
 
 import { type CollectionModel } from '@/app/types/Collection';
-import { type AnyContentModel, type ContentImageModel } from '@/app/types/Content';
+import {
+  type AnyContentModel,
+  type ContentGifModel,
+  type ContentImageModel,
+} from '@/app/types/Content';
 
 import { handleCollectionNavigation, handleSingleImageEdit } from './manageUtils';
 
@@ -15,7 +19,7 @@ interface UseImageClickHandlerParams {
   handleMultiSelectToggle: (imageId: number) => void;
   collection: CollectionModel | null;
   processedContent: AnyContentModel[];
-  openEditor: (image: ContentImageModel) => void;
+  openEditor: (content: ContentImageModel | ContentGifModel) => void;
   setSelectedImageIds: Dispatch<SetStateAction<number[]>>;
   setIsMultiSelectMode: Dispatch<SetStateAction<boolean>>;
 }

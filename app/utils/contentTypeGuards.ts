@@ -132,7 +132,10 @@ export function getAspectRatio(item: Content): number {
 /**
  * Get slot width for content item based on aspect ratio and rating.
  *
- * Square images (ratio == 1:1) are considered vertical, not horizontal.
+ * Square images (ratio == 1:1) are considered vertical, not horizontal. Vertical
+ * content (AR <= 1) gets an effective-rating penalty of -1 before applying the
+ * rules below — keeps the same shape semantics whether the source is an IMAGE
+ * or an animated GIF/MP4.
  *
  * Slot width rules:
  * - Collection cards (has slug): chunkSize/2 (pair up on catalog pages)
@@ -141,9 +144,13 @@ export function getAspectRatio(item: Content): number {
  * - 5-star horizontal: chunkSize (standalone)
  * - 4-star horizontal: chunkSize (standalone)
  * - 3-star (any orientation): chunkSize/2
- * - Vertical 4-5 star: chunkSize/2
+ * - Vertical 4-5 star: chunkSize/2 (penalty drops them to 3-4 → halfSlot)
  * - Vertical 1-2 star: 1 (normal)
  * - Horizontal 1-2 star: 1 (normal)
+ *
+ * GIF/MP4 uses the same rating-driven logic as IMAGE. New uploads default to
+ * rating 4 on the backend, so an animated block reads as feature media unless
+ * the admin lowers it.
  */
 export function getSlotWidth(contentItem: Content, chunkSize: number): number {
   const halfSlot = Math.floor(chunkSize / 2);
@@ -162,8 +169,9 @@ export function getSlotWidth(contentItem: Content, chunkSize: number): number {
 
   if (ratio <= 0.5) return 1;
 
-  if (isContentImage(contentItem)) {
-    const rating = contentItem.rating || 0;
+  const ratedItem = getRatedContentItem(contentItem);
+  if (ratedItem !== null) {
+    const rating = ratedItem.rating ?? 0;
 
     if (isHorizontal) {
       if (rating >= 4) return chunkSize;
@@ -175,6 +183,17 @@ export function getSlotWidth(contentItem: Content, chunkSize: number): number {
   }
 
   return 1;
+}
+
+/**
+ * Return the content item if it carries a layout rating (IMAGE or GIF), or
+ * null otherwise. Centralizes the rating-eligibility check so getSlotWidth
+ * treats animated and still media uniformly.
+ */
+function getRatedContentItem(item: Content): { rating?: number | null } | null {
+  if (isContentImage(item)) return item;
+  if (isGifContent(item)) return item;
+  return null;
 }
 
 /**
