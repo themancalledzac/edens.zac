@@ -116,7 +116,14 @@ export function processContentForDisplay(
     }
   }
 
-  const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : LAYOUT.desktopSlotWidth;
+  // Row Density (admin 1-10 stored on collection.rowsWide → chunkSize prop)
+  // controls the row's slot budget. Higher density = larger budget = more
+  // (proportionally smaller) items fit per row before MIN_FILL_RATIO is hit.
+  // Mapping: rowWidth = chunkSize + 4. Admin default 4 → rowWidth 8 (matches
+  // historical desktopSlotWidth), admin max 10 → rowWidth 14 ("very dense"
+  // per the 2026-03-30 layout design doc). Mobile ignores chunkSize and pins
+  // to mobileSlotWidth — mobile is already narrow enough.
+  const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : chunkSize + 4;
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 
