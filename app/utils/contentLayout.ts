@@ -122,8 +122,10 @@ export function processContentForDisplay(
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 
-  const useV2 = options?.useV2 ?? false;
-  const rows = optimizeRows(buildRows(content, rowWidth, targetAR, useV2), rowWidth, useV2);
+  const rows = optimizeRows(
+    buildRows(content, rowWidth, targetAR, options?.useV2 ?? false),
+    rowWidth
+  );
 
   const contentRows = rows.map(row => {
     const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap, rowWidth);

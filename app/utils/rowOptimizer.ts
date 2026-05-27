@@ -31,16 +31,11 @@ export function rowScore(components: AnyContentModel[], rowWidth: number): numbe
 
 /**
  * Reconstruct a RowResult from a set of components.
- * Threads `useV2` so a row rebuilt after boundary shifts stays on the same
- * composition algorithm as the original buildRows pass.
+ * Reuses the existing template map pipeline.
  */
-export function rebuildRow(
-  components: AnyContentModel[],
-  rowWidth: number,
-  useV2: boolean = false
-): RowResult {
+export function rebuildRow(components: AnyContentModel[], rowWidth: number): RowResult {
   const images = components.map(item => toImageType(item, rowWidth));
-  const { composition, templateKey, label } = lookupComposition(images, 1.5, rowWidth, useV2);
+  const { composition, templateKey, label } = lookupComposition(images);
   const boxTree = acToBoxTree(composition);
   const direction = deriveDirection(composition);
 
@@ -51,11 +46,7 @@ export function rebuildRow(
  * Single forward pass over adjacent row pairs.
  * Tries moving one item across the boundary (+/-1) and accepts if it improves pair score.
  */
-export function optimizeBoundaries(
-  rows: RowResult[],
-  rowWidth: number,
-  useV2: boolean = false
-): RowResult[] {
+export function optimizeBoundaries(rows: RowResult[], rowWidth: number): RowResult[] {
   if (rows.length < 2) return rows;
 
   const result = [...rows];
@@ -93,8 +84,8 @@ export function optimizeBoundaries(
     }
 
     if (bestScore > currentScore) {
-      result[i] = rebuildRow(bestA, rowWidth, useV2);
-      result[i + 1] = rebuildRow(bestB, rowWidth, useV2);
+      result[i] = rebuildRow(bestA, rowWidth);
+      result[i + 1] = rebuildRow(bestB, rowWidth);
     }
   }
 
@@ -104,11 +95,7 @@ export function optimizeBoundaries(
 /**
  * For 2-item rows, swap items so the higher-rated image is on the left.
  */
-export function reorderWithinRows(
-  rows: RowResult[],
-  rowWidth: number,
-  useV2: boolean = false
-): RowResult[] {
+export function reorderWithinRows(rows: RowResult[], rowWidth: number): RowResult[] {
   return rows.map(row => {
     if (row.components.length !== 2) return row;
 
@@ -117,7 +104,7 @@ export function reorderWithinRows(
 
     if (imgB.effectiveRating > imgA.effectiveRating) {
       const swapped = [row.components[1]!, row.components[0]!];
-      return rebuildRow(swapped, rowWidth, useV2);
+      return rebuildRow(swapped, rowWidth);
     }
 
     return row;
@@ -128,10 +115,6 @@ export function reorderWithinRows(
  * Public API — optimize row boundaries and within-row order.
  * Drop-in wrapper around buildRows() output.
  */
-export function optimizeRows(
-  rows: RowResult[],
-  rowWidth: number,
-  useV2: boolean = false
-): RowResult[] {
-  return reorderWithinRows(optimizeBoundaries(rows, rowWidth, useV2), rowWidth, useV2);
+export function optimizeRows(rows: RowResult[], rowWidth: number): RowResult[] {
+  return reorderWithinRows(optimizeBoundaries(rows, rowWidth), rowWidth);
 }
