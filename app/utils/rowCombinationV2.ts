@@ -39,6 +39,8 @@ interface MergeAtom {
   ar: number;
   /** Original leaf indices (positions in the input array) that contributed to this atom. */
   ids: number[];
+  /** Max vertical tiers in this subtree. Leaf=1; hPair=max(children); vStack=sum(children). */
+  vTier: number;
 }
 
 /** A swap option considered when scoring a merge at index `i`. */
@@ -87,6 +89,7 @@ function leafAtom(img: ImageType, leafIndex: number): MergeAtom {
     orient: img.ar,
     ar: img.numericAR,
     ids: [leafIndex],
+    vTier: 1,
   };
 }
 
@@ -112,12 +115,14 @@ function buildMerged(
   const ar = calculateBoxTreeAspectRatio(acToBoxTree(ac), rowWidth);
   const orient: AtomOrient =
     left.orient === right.orient && left.orient !== 'M' ? left.orient : 'M';
+  const vTier = direction === 'V' ? left.vTier + right.vTier : Math.max(left.vTier, right.vTier);
   return {
     ac,
     cv: left.cv + right.cv,
     orient,
     ar,
     ids: [...left.ids, ...right.ids],
+    vTier,
   };
 }
 
@@ -282,16 +287,13 @@ export function composeV2(items: ImageType[], targetAR: number, rowWidth: number
         }
 
         for (const direction of ['H', 'V'] as const) {
-          // Top-level constraint: rows are horizontal by definition. The
-          // FINAL merge (atoms.length === 2 going in → 1 atom out) becomes
-          // the row's BoxTree root. A vStack at the root creates a vertical
-          // strip that breaks the row's flow — visible on /2020-protests row
-          // 12 (HHVH) as `v(h(L1000,L1001), v(L1002,L1003))` ("2 on top, 2
-          // below" reading as a stacked sub-page). Block vStack at top level
-          // regardless of children orientations. Inner vStacks remain allowed
-          // and are required for dom-stacked emergence (e.g. an HHH row's
-          // inner `v(low, low)` cluster paired with the dominant via hPair).
+          // Top-level rule: rows are horizontal — force hPair at the root.
           if (direction === 'V' && atoms.length === 2) {
+            continue;
+          }
+          // Cap vertical depth at 2 tiers so high-density rows form balanced
+          // 2×N grids instead of 3+ tier vertical strips.
+          if (direction === 'V' && leftAtom.vTier + rightAtom.vTier > 2) {
             continue;
           }
           const merged = buildMerged(leftAtom, rightAtom, direction, rowWidth);
