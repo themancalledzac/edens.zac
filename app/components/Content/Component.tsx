@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { LAYOUT } from '@/app/constants';
@@ -126,6 +126,14 @@ export default function Component({
 }: ContentComponentProps) {
   const { contentWidth, isMobile, viewportHeight } = useViewport();
 
+  // Dev-only A/B toggle: `?layout=v2` opts into the experimental bottom-up
+  // merge composition. Reads window.location once on mount to avoid the
+  // useSearchParams Suspense bailout that would force CSR for the whole page.
+  const [useV2Layout, setUseV2Layout] = useState(false);
+  useEffect(() => {
+    setUseV2Layout(new URLSearchParams(window.location.search).get('layout') === 'v2');
+  }, []);
+
   const { rows, layoutError } = useMemo(() => {
     if (!contentWidth) {
       return { rows: [], layoutError: null };
@@ -145,6 +153,7 @@ export default function Component({
         collectionData,
         displayMode: collectionData?.displayMode,
         targetAR,
+        useV2: useV2Layout,
       });
       return { rows: result, layoutError: null };
     } catch (error) {
@@ -152,7 +161,7 @@ export default function Component({
       const message = error instanceof Error ? error.message : 'Unknown layout error';
       return { rows: [], layoutError: message };
     }
-  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight]);
+  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight, useV2Layout]);
 
   // Must be called before early return to satisfy React Hooks rules
   const firstNonVisibleRowIndex = useMemo(() => {

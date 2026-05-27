@@ -1608,3 +1608,23 @@ describe('rowWidth invariant: valid output for rowWidth 4-16', () => {
     });
   }
 });
+
+// ===================== lookupComposition useV2 dispatcher =====================
+
+describe('lookupComposition useV2 dispatcher', () => {
+  it('returns a composeV2 result with label "v2-merge" when useV2=true', () => {
+    const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
+    const imgTypes = items.map(item => toImageType(item, DESKTOP));
+    const result = lookupComposition(imgTypes, 1.5, DESKTOP, true);
+    expect(result.label).toBe('v2-merge');
+    expect(result.composition).toBeDefined();
+  });
+
+  it('returns the template-map result with its normal label when useV2 is omitted', () => {
+    const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
+    const imgTypes = items.map(item => toImageType(item, DESKTOP));
+    const result = lookupComposition(imgTypes, 1.5, DESKTOP);
+    expect(result.label).not.toBe('v2-merge');
+    expect(result.composition).toBeDefined();
+  });
+});

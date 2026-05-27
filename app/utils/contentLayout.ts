@@ -53,6 +53,12 @@ export interface ProcessContentOptions {
   displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
   /** Target aspect ratio for AR-aware tree structure selection (default 1.5) */
   targetAR?: number;
+  /**
+   * When true, route row composition through the experimental bottom-up merge
+   * (composeV2) instead of the top-down template lookup. Opt-in via URL ?layout=v2.
+   * Default false preserves existing visitor-facing behavior.
+   */
+  useV2?: boolean;
 }
 
 /**
@@ -114,7 +120,10 @@ export function processContentForDisplay(
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 
-  const rows = optimizeRows(buildRows(content, rowWidth, targetAR), rowWidth);
+  const rows = optimizeRows(
+    buildRows(content, rowWidth, targetAR, options?.useV2 ?? false),
+    rowWidth
+  );
 
   const contentRows = rows.map(row => {
     const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap, rowWidth);

@@ -15,6 +15,7 @@
 import type { AnyContentModel } from '@/app/types/Content';
 import { getEffectiveRating, getItemComponentValue } from '@/app/utils/contentRatingUtils';
 import { getAspectRatio } from '@/app/utils/contentTypeGuards';
+import { composeV2 } from '@/app/utils/rowCombinationV2';
 import { calculateBoxTreeAspectRatio } from '@/app/utils/rowStructureAlgorithm';
 
 // =============================================================================
@@ -559,13 +560,25 @@ export interface CompositionResult {
  * @param images - ImageType[] assigned to this row (already determined by greedy fill)
  * @param targetAR - Target aspect ratio for AR-aware templates (default 1.5)
  * @param rowWidth - Row width budget for AR calculation
+ * @param useV2 - When true, route through the experimental bottom-up merge (composeV2)
+ *               instead of the top-down template lookup. Opt-in via URL ?layout=v2.
+ *               Defaults to false to preserve existing visitor-facing behavior.
  * @returns CompositionResult with AtomicComponent tree, structural key, and template label
  */
 export function lookupComposition(
   images: ImageType[],
   targetAR: number = 1.5,
-  rowWidth: number = 5
+  rowWidth: number = 5,
+  useV2: boolean = false
 ): CompositionResult {
+  if (useV2) {
+    return {
+      composition: composeV2(images, targetAR, rowWidth),
+      templateKey: parseTemplateKey(images),
+      label: 'v2-merge',
+    };
+  }
+
   const templateKey = parseTemplateKey(images);
   const key = `${templateKey.h}-${templateKey.v}`;
   const template = TEMPLATE_MAP[key];
@@ -646,12 +659,16 @@ export function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' 
  * @param items - All content items to layout
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
  * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
+ * @param useV2 - When true, route per-row composition through the experimental
+ *               bottom-up merge (composeV2). Defaults to false. Threaded into
+ *               `lookupComposition`; does not alter greedy fill or best-fit fallback.
  * @returns Array of rows, each with components and their combination direction
  */
 export function buildRows(
   items: AnyContentModel[],
   rowWidth: number,
-  targetAR: number = 1.5
+  targetAR: number = 1.5,
+  useV2: boolean = false
 ): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
@@ -757,7 +774,12 @@ export function buildRows(
     if (seqCount > 0) {
       const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-      const { composition, templateKey, label } = lookupComposition(rowImgs, targetAR, rowWidth);
+      const { composition, templateKey, label } = lookupComposition(
+        rowImgs,
+        targetAR,
+        rowWidth,
+        useV2
+      );
       const boxTree = acToBoxTree(composition);
 
       rows.push({
@@ -833,7 +855,7 @@ export function buildRows(
       composition,
       templateKey: bfKey,
       label: bfLabel,
-    } = lookupComposition(bfImgs, targetAR, rowWidth);
+    } = lookupComposition(bfImgs, targetAR, rowWidth, useV2);
     const boxTree = acToBoxTree(composition);
 
     rows.push({
