@@ -48,39 +48,9 @@ function isVStackOfPureV(ac: AtomicComponent): boolean {
   return l.type === 'single' && l.img.ar === 'V' && r.type === 'single' && r.img.ar === 'V';
 }
 
-/** True if `ac` is a vStack with both children being pure-H single leaves. */
-function isVStackOfPureH(ac: AtomicComponent): boolean {
-  if (ac.type !== 'pair' || ac.direction !== 'V') return false;
-  const [l, r] = ac.children;
-  return l.type === 'single' && l.img.ar === 'H' && r.type === 'single' && r.img.ar === 'H';
-}
-
-/**
- * Recursive "effective orientation" of a subtree:
- * - single leaf → that leaf's orientation ('H' or 'V')
- * - pair where both children's effective orient agree (and aren't 'M') → that orient
- * - otherwise → 'M' (mixed)
- *
- * This is the same propagation rule the merge loop should use internally so
- * the vStack same-orient penalty applies to clusters, not just leaves.
- */
-function effectiveOrient(ac: AtomicComponent): 'H' | 'V' | 'M' {
-  if (ac.type === 'single') return ac.img.ar;
-  const l = effectiveOrient(ac.children[0]);
-  const r = effectiveOrient(ac.children[1]);
-  return l === r && l !== 'M' ? l : 'M';
-}
-
-/**
- * True if `ac` is a vStack whose two SUBTREES are predominantly the same
- * orientation. Catches `vStack(hPair(H,H), single(H))` etc., not just
- * `vStack(leaf, leaf)`.
- */
-function isSameOrientVStack(ac: AtomicComponent): boolean {
-  if (ac.type !== 'pair' || ac.direction !== 'V') return false;
-  const l = effectiveOrient(ac.children[0]);
-  const r = effectiveOrient(ac.children[1]);
-  return l === r && l !== 'M';
+/** True if `ac` is a top-level vStack (the row's root direction is vertical). */
+function isVStackRoot(ac: AtomicComponent): boolean {
+  return ac.type === 'pair' && ac.direction === 'V';
 }
 
 /** Recursively check that no node in `ac` satisfies `predicate`. */
@@ -194,29 +164,16 @@ describe('composeV2 — edge cases', () => {
     expect(noNodeSatisfies(tree, isVStackOfPureV)).toBe(true);
   });
 
-  it('all-H row of 4: no vStack node has two pure-H single children', () => {
-    const items = [
-      createHorizontalImage(1, 4),
-      createHorizontalImage(2, 3),
-      createHorizontalImage(3, 3),
-      createHorizontalImage(4, 3),
-    ];
-    const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
+  // -- Row root is always horizontal (top-level hard rule) ------------------
+  // Rows are horizontal by definition. The final merge becomes the BoxTree
+  // root; a vStack root creates a vertical-strip "sub-page" that breaks the
+  // row's flow. Regression source: /2020-protests row 12 (HHVH) used to
+  // render as `v(h(L1000,L1001), v(L1002,L1003))` even after the same-orient
+  // hard-skip landed — the mixed-orient `v(V,H)` child slipped through the
+  // "same orient on both children" gate. Now blocked unconditionally when
+  // atoms.length === 2.
 
-    expect(noNodeSatisfies(tree, isVStackOfPureH)).toBe(true);
-  });
-
-  // -- Regression: /2020-protests bug 2026-05-27 -------------------------
-  // The leaf-only checks above missed the case where one side of a vStack
-  // is itself a cluster of same-orientation leaves. composeV2 was producing
-  // `vStack(hPair(H,H), single(H))` for all-H rows because the orientation
-  // penalty in `scoreMerge` excluded merged clusters (orient='M'). The
-  // user-visible effect was a page of "1-image on top, 2-images below"
-  // pseudo-rows where the spec calls for horizontal chains.
-  //
-  // Strengthened to walk subtree orientations recursively.
-
-  it('all-H row of 3: no vStack node has two same-orient subtrees (cluster or leaf)', () => {
+  it('all-H row of 3: tree root is hPair, not vStack', () => {
     const items = [
       createHorizontalImage(1, 3),
       createHorizontalImage(2, 3),
@@ -224,10 +181,10 @@ describe('composeV2 — edge cases', () => {
     ];
     const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
 
-    expect(noNodeSatisfies(tree, isSameOrientVStack)).toBe(true);
+    expect(isVStackRoot(tree)).toBe(false);
   });
 
-  it('all-H row of 4: no vStack node has two same-orient subtrees (cluster or leaf)', () => {
+  it('all-H row of 4: tree root is hPair, not vStack', () => {
     const items = [
       createHorizontalImage(1, 4),
       createHorizontalImage(2, 3),
@@ -236,14 +193,64 @@ describe('composeV2 — edge cases', () => {
     ];
     const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
 
-    expect(noNodeSatisfies(tree, isSameOrientVStack)).toBe(true);
+    expect(isVStackRoot(tree)).toBe(false);
   });
 
-  it('all-V row of 4: no vStack node has two same-orient subtrees (cluster or leaf)', () => {
+  it('all-V row of 4: tree root is hPair, not vStack', () => {
     const items = [V(1, 4), V(2, 3), V(3, 3), V(4, 3)];
     const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
 
-    expect(noNodeSatisfies(tree, isSameOrientVStack)).toBe(true);
+    expect(isVStackRoot(tree)).toBe(false);
+  });
+
+  it('mixed-orient row (HHVH) does not produce a top-level vStack', () => {
+    // Regression for /2020-protests row 12 — items 1000(H), 1001(H), 1002(V),
+    // 1003(H). The earlier same-orient hard-skip let `v(h(H,H), v(V,H))`
+    // through because the mixed-orient cluster on the right didn't share an
+    // orient with the H-cluster on the left. Top-level rule must be
+    // unconditional.
+    const items = [
+      createHorizontalImage(1000, 3),
+      createHorizontalImage(1001, 3),
+      V(1002, 3),
+      createHorizontalImage(1003, 3),
+    ];
+    const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
+
+    expect(isVStackRoot(tree)).toBe(false);
+  });
+
+  // -- Dominant-stacked variety emergence (positive case) ------------------
+  // V1's compose-3h emits `h(v(low, low), dominant)` for all-H 3-item rows
+  // by generating candidates and picking the best AR fit. Asymmetric
+  // orientation cost (V+V penalized, H+H allowed) lets composeV2 emerge the
+  // same pattern: the inner H+H pair wins as vStack on AR, then the top-
+  // level constraint forces hPair against the remaining leaf. Without this
+  // property, all-H rows collapse to uniform hChain (the 2026-05-27 regression
+  // visible on /2020-protests as "uniform 3-wide").
+
+  it('all-H row of 3: emerges as dom-stacked (root hPair with an inner vStack of two H leaves)', () => {
+    const items = [
+      createHorizontalImage(1, 3),
+      createHorizontalImage(2, 3),
+      createHorizontalImage(3, 3),
+    ];
+    const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
+
+    expect(tree.type).toBe('pair');
+    if (tree.type !== 'pair') throw new Error('unreachable');
+    expect(tree.direction).toBe('H');
+
+    const isVStackOfTwoHLeaves = (node: AtomicComponent): boolean =>
+      node.type === 'pair' &&
+      node.direction === 'V' &&
+      node.children[0].type === 'single' &&
+      node.children[0].img.ar === 'H' &&
+      node.children[1].type === 'single' &&
+      node.children[1].img.ar === 'H';
+
+    const [leftChild, rightChild] = tree.children;
+    expect(isVStackOfTwoHLeaves(leftChild) || isVStackOfTwoHLeaves(rightChild)).toBe(true);
   });
 
   it('does not throw and returns a valid tree for the walked example (smoke)', () => {

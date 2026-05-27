@@ -137,13 +137,16 @@ function scoreMerge(
 ): number {
   const sumCvCost = left.cv + right.cv;
 
+  // Asymmetric orientation cost: penalize V+V vStacks only (excessively-tall
+  // columns). H+H vStacks are NOT penalized — they're the structural backbone
+  // of dom-stacked emergence: V1 produces `h(v(low_H, low_H), dominant_H)` by
+  // picking vStack for the inner H+H pair on AR-fit, then hPair-ing with the
+  // dominant. Penalizing H+H equally killed that variety, giving uniform
+  // hChain on all-H rows (regression vs V1 on /2020-protests, 2026-05-27).
+  // Spec §6's walked example still works because the V+V penalty is what
+  // makes (4v, 3v) lose to (1h, 4v) despite lower sum-cv.
   let orientationCost = 0;
-  if (
-    direction === 'V' &&
-    left.orient === right.orient &&
-    left.orient !== 'M' &&
-    right.orient !== 'M'
-  ) {
+  if (direction === 'V' && left.orient === 'V' && right.orient === 'V') {
     orientationCost = ORIENTATION_PENALTY;
   }
 
@@ -279,20 +282,16 @@ export function composeV2(items: ImageType[], targetAR: number, rowWidth: number
         }
 
         for (const direction of ['H', 'V'] as const) {
-          // Hard rule from spec P5: never vStack two atoms whose effective
-          // orientations agree (cluster or leaf). The soft ORIENTATION_PENALTY
-          // in `scoreMerge` was being overwhelmed by the AR-cost gain on rows
-          // of 3+ items — a 3-wide hChain has AR ≈ 5, a vStack roughly square,
-          // so ar_cost differences (1.2+) drowned out the 1.0 penalty and
-          // composeV2 produced `vStack(hPair(H,H), single(H))` for all-H rows.
-          // Promoting the spec's "vStacks should pair opposite orientations"
-          // intent from soft cost to constraint. Diagnosed 2026-05-27 from
-          // /2020-protests A/B logs.
-          if (
-            direction === 'V' &&
-            leftAtom.orient === rightAtom.orient &&
-            leftAtom.orient !== 'M'
-          ) {
+          // Top-level constraint: rows are horizontal by definition. The
+          // FINAL merge (atoms.length === 2 going in → 1 atom out) becomes
+          // the row's BoxTree root. A vStack at the root creates a vertical
+          // strip that breaks the row's flow — visible on /2020-protests row
+          // 12 (HHVH) as `v(h(L1000,L1001), v(L1002,L1003))` ("2 on top, 2
+          // below" reading as a stacked sub-page). Block vStack at top level
+          // regardless of children orientations. Inner vStacks remain allowed
+          // and are required for dom-stacked emergence (e.g. an HHH row's
+          // inner `v(low, low)` cluster paired with the dominant via hPair).
+          if (direction === 'V' && atoms.length === 2) {
             continue;
           }
           const merged = buildMerged(leftAtom, rightAtom, direction, rowWidth);
