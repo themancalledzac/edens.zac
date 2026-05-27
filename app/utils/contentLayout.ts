@@ -125,7 +125,20 @@ export function processContentForDisplay(
   // to mobileSlotWidth — mobile is already narrow enough.
   const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : chunkSize + 4;
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
-  const targetAR = options?.targetAR ?? 1.5;
+
+  // targetAR scales additively with rowWidth above the default. Without this,
+  // composeV2 keeps clustering items via inner vStacks at high density —
+  // vStack consistently saves ~0.8 AR cost over hPair regardless of target,
+  // so multiplicative target scaling doesn't tip the balance. Additive
+  // scaling at coefficient 1.2 pushes the effective target ABOVE the natural
+  // row AR at high density (5 H items in hChain ≈ AR 8.9; rowWidth=14 →
+  // target 8.7), making hPair win and producing contact-sheet layouts.
+  // Default (rowWidth=8) is preserved (max term is 0). Diagnosed 2026-05-27
+  // from /2020-protests density-10 still showing dom-stacked clusters.
+  const baseTargetAR = options?.targetAR ?? 1.5;
+  const targetAR = options?.isMobile
+    ? baseTargetAR
+    : baseTargetAR + Math.max(0, rowWidth - LAYOUT.desktopSlotWidth) * 1.2;
 
   const rows = optimizeRows(
     buildRows(content, rowWidth, targetAR, options?.useV2 ?? false),

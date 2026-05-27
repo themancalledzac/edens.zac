@@ -229,6 +229,33 @@ describe('composeV2 — edge cases', () => {
   // property, all-H rows collapse to uniform hChain (the 2026-05-27 regression
   // visible on /2020-protests as "uniform 3-wide").
 
+  it('all-H row of 5 at high density (rowWidth=14, target=8.7): contact-sheet (no vStacks)', () => {
+    // When processContentForDisplay scales targetAR with rowWidth above the
+    // default, composeV2 receives a target that exceeds the natural hChain
+    // AR for that row size — hPair wins every merge and the tree flattens.
+    // This is the algorithmic complement to the Row Density admin control:
+    // budget controls how many items fit per row, target-scaling controls
+    // whether they cluster (low density) or flatten (high density).
+    const items = [
+      createHorizontalImage(1, 3),
+      createHorizontalImage(2, 3),
+      createHorizontalImage(3, 3),
+      createHorizontalImage(4, 3),
+      createHorizontalImage(5, 3),
+    ];
+    const rowWidth = 14; // admin density 10
+    const scaledTargetAR = TARGET_AR + Math.max(0, rowWidth - 8) * 1.2; // 8.7
+    const tree = composeV2(asImages(items), scaledTargetAR, rowWidth);
+
+    // Walk the tree and assert every internal node is hPair.
+    const hasAnyVStack = (ac: AtomicComponent): boolean => {
+      if (ac.type === 'single') return false;
+      if (ac.direction === 'V') return true;
+      return hasAnyVStack(ac.children[0]) || hasAnyVStack(ac.children[1]);
+    };
+    expect(hasAnyVStack(tree)).toBe(false);
+  });
+
   it('all-H row of 3: emerges as dom-stacked (root hPair with an inner vStack of two H leaves)', () => {
     const items = [
       createHorizontalImage(1, 3),
