@@ -93,6 +93,14 @@ function leafAtom(img: ImageType, leafIndex: number): MergeAtom {
 /**
  * Construct the merged atom for a chosen (left, right, direction) without yet
  * touching the atoms array.
+ *
+ * Orientation propagation: when both children share the same non-mixed
+ * orientation, the merged cluster carries that orientation. Otherwise it is
+ * 'M' (mixed). This is what makes the vStack same-orient penalty in
+ * `scoreMerge` apply to cluster pairs and not just leaf pairs — without
+ * it, an all-H row of 3+ items collapses into `vStack(hPair(H,H), single(H))`
+ * because the orientation cost was bypassed once the first merge produced
+ * an 'M' cluster (regression diagnosed 2026-05-27 from /2020-protests A/B).
  */
 function buildMerged(
   left: MergeAtom,
@@ -102,10 +110,12 @@ function buildMerged(
 ): MergeAtom {
   const ac = combine(left, right, direction);
   const ar = calculateBoxTreeAspectRatio(acToBoxTree(ac), rowWidth);
+  const orient: AtomOrient =
+    left.orient === right.orient && left.orient !== 'M' ? left.orient : 'M';
   return {
     ac,
     cv: left.cv + right.cv,
-    orient: 'M',
+    orient,
     ar,
     ids: [...left.ids, ...right.ids],
   };
@@ -269,6 +279,22 @@ export function composeV2(items: ImageType[], targetAR: number, rowWidth: number
         }
 
         for (const direction of ['H', 'V'] as const) {
+          // Hard rule from spec P5: never vStack two atoms whose effective
+          // orientations agree (cluster or leaf). The soft ORIENTATION_PENALTY
+          // in `scoreMerge` was being overwhelmed by the AR-cost gain on rows
+          // of 3+ items — a 3-wide hChain has AR ≈ 5, a vStack roughly square,
+          // so ar_cost differences (1.2+) drowned out the 1.0 penalty and
+          // composeV2 produced `vStack(hPair(H,H), single(H))` for all-H rows.
+          // Promoting the spec's "vStacks should pair opposite orientations"
+          // intent from soft cost to constraint. Diagnosed 2026-05-27 from
+          // /2020-protests A/B logs.
+          if (
+            direction === 'V' &&
+            leftAtom.orient === rightAtom.orient &&
+            leftAtom.orient !== 'M'
+          ) {
+            continue;
+          }
           const merged = buildMerged(leftAtom, rightAtom, direction, rowWidth);
           const score = scoreMerge(
             leftAtom,

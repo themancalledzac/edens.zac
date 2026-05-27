@@ -55,6 +55,34 @@ function isVStackOfPureH(ac: AtomicComponent): boolean {
   return l.type === 'single' && l.img.ar === 'H' && r.type === 'single' && r.img.ar === 'H';
 }
 
+/**
+ * Recursive "effective orientation" of a subtree:
+ * - single leaf → that leaf's orientation ('H' or 'V')
+ * - pair where both children's effective orient agree (and aren't 'M') → that orient
+ * - otherwise → 'M' (mixed)
+ *
+ * This is the same propagation rule the merge loop should use internally so
+ * the vStack same-orient penalty applies to clusters, not just leaves.
+ */
+function effectiveOrient(ac: AtomicComponent): 'H' | 'V' | 'M' {
+  if (ac.type === 'single') return ac.img.ar;
+  const l = effectiveOrient(ac.children[0]);
+  const r = effectiveOrient(ac.children[1]);
+  return l === r && l !== 'M' ? l : 'M';
+}
+
+/**
+ * True if `ac` is a vStack whose two SUBTREES are predominantly the same
+ * orientation. Catches `vStack(hPair(H,H), single(H))` etc., not just
+ * `vStack(leaf, leaf)`.
+ */
+function isSameOrientVStack(ac: AtomicComponent): boolean {
+  if (ac.type !== 'pair' || ac.direction !== 'V') return false;
+  const l = effectiveOrient(ac.children[0]);
+  const r = effectiveOrient(ac.children[1]);
+  return l === r && l !== 'M';
+}
+
 /** Recursively check that no node in `ac` satisfies `predicate`. */
 function noNodeSatisfies(ac: AtomicComponent, predicate: (n: AtomicComponent) => boolean): boolean {
   if (predicate(ac)) return false;
@@ -176,6 +204,46 @@ describe('composeV2 — edge cases', () => {
     const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
 
     expect(noNodeSatisfies(tree, isVStackOfPureH)).toBe(true);
+  });
+
+  // -- Regression: /2020-protests bug 2026-05-27 -------------------------
+  // The leaf-only checks above missed the case where one side of a vStack
+  // is itself a cluster of same-orientation leaves. composeV2 was producing
+  // `vStack(hPair(H,H), single(H))` for all-H rows because the orientation
+  // penalty in `scoreMerge` excluded merged clusters (orient='M'). The
+  // user-visible effect was a page of "1-image on top, 2-images below"
+  // pseudo-rows where the spec calls for horizontal chains.
+  //
+  // Strengthened to walk subtree orientations recursively.
+
+  it('all-H row of 3: no vStack node has two same-orient subtrees (cluster or leaf)', () => {
+    const items = [
+      createHorizontalImage(1, 3),
+      createHorizontalImage(2, 3),
+      createHorizontalImage(3, 3),
+    ];
+    const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
+
+    expect(noNodeSatisfies(tree, isSameOrientVStack)).toBe(true);
+  });
+
+  it('all-H row of 4: no vStack node has two same-orient subtrees (cluster or leaf)', () => {
+    const items = [
+      createHorizontalImage(1, 4),
+      createHorizontalImage(2, 3),
+      createHorizontalImage(3, 3),
+      createHorizontalImage(4, 3),
+    ];
+    const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
+
+    expect(noNodeSatisfies(tree, isSameOrientVStack)).toBe(true);
+  });
+
+  it('all-V row of 4: no vStack node has two same-orient subtrees (cluster or leaf)', () => {
+    const items = [V(1, 4), V(2, 3), V(3, 3), V(4, 3)];
+    const tree = composeV2(asImages(items), TARGET_AR, DESKTOP);
+
+    expect(noNodeSatisfies(tree, isSameOrientVStack)).toBe(true);
   });
 
   it('does not throw and returns a valid tree for the walked example (smoke)', () => {
