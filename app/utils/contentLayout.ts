@@ -9,17 +9,14 @@ import {
   type TextBlockItem,
 } from '@/app/types/Content';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
-import { buildLayoutTrace, logLayoutTrace } from '@/app/utils/layoutTrace';
 import {
   acToBoxTree,
   type BoxTree,
   buildRows,
   hChain,
-  type LayoutVersion,
   type TemplateKey,
   toImageType,
 } from '@/app/utils/rowCombination';
-import { optimizeRows } from '@/app/utils/rowOptimizer';
 import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
 
 /**
@@ -55,13 +52,6 @@ export interface ProcessContentOptions {
   displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
   /** Target aspect ratio for AR-aware tree structure selection (default 1.5) */
   targetAR?: number;
-  /**
-   * Opt-in alternate row composition algorithm. `'v2'` = bottom-up scored merge
-   * (rowCombinationV2). `'v3'` = two-phase AR-propagation merge
-   * (rowCombinationV3). Undefined = V1 template lookup + compose.
-   * Toggled via URL `?layout=v2` / `?layout=v3` for A/B comparison.
-   */
-  layoutVersion?: LayoutVersion;
 }
 
 /**
@@ -126,13 +116,7 @@ export function processContentForDisplay(
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 
-  // optimizeRows runs reorderWithinRows + optimizeBoundaries, both of which call
-  // rebuildRow → lookupComposition without a layout version, falling back to V1's
-  // buildAtomic/findDominant. That bypass is what makes V2-page last rows render
-  // with V1's "dominant always right" shape (see 2026-05-27 trace + handoff Known
-  // Issue #1). Under v2/v3 we trust the new composition's output as-is.
-  const built = buildRows(content, rowWidth, targetAR, options?.layoutVersion);
-  const rows = options?.layoutVersion ? built : optimizeRows(built, rowWidth);
+  const rows = buildRows(content, rowWidth, targetAR);
 
   const contentRows = rows.map(row => {
     const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap, rowWidth);
@@ -144,22 +128,6 @@ export function processContentForDisplay(
     };
   });
   result.push(...contentRows);
-
-  // Diagnostic: emit a single page-wide trace object whenever an opt-in layout
-  // version (?layout=v2 / ?layout=v3) is active. Browser-only — SSR no-op via
-  // logLayoutTrace's window check.
-  if (options?.layoutVersion) {
-    const trace = buildLayoutTrace({
-      content,
-      rows: result,
-      componentWidth,
-      rowWidth,
-      targetAR,
-      layoutVersion: options.layoutVersion,
-      isMobile: !!options?.isMobile,
-    });
-    logLayoutTrace(trace);
-  }
 
   return result;
 }

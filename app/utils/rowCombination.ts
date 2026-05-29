@@ -15,15 +15,8 @@
 import type { AnyContentModel } from '@/app/types/Content';
 import { getEffectiveRating, getItemComponentValue } from '@/app/utils/contentRatingUtils';
 import { getAspectRatio } from '@/app/utils/contentTypeGuards';
-import { composeV2 } from '@/app/utils/rowCombinationV2';
 import { composeV3 } from '@/app/utils/rowCombinationV3';
 import { calculateBoxTreeAspectRatio } from '@/app/utils/rowStructureAlgorithm';
-
-/**
- * Opt-in layout algorithm selector, threaded from the `?layout=` URL flag.
- * `undefined` means default (V1 top-down compose + TEMPLATE_MAP).
- */
-export type LayoutVersion = 'v2' | 'v3';
 
 // =============================================================================
 // TYPES
@@ -570,50 +563,17 @@ export interface CompositionResult {
  * @param images - ImageType[] assigned to this row (already determined by greedy fill)
  * @param targetAR - Target aspect ratio for AR-aware templates (default 1.5)
  * @param rowWidth - Row width budget for AR calculation
- * @param layoutVersion - Opt-in alternate algorithm. `'v2'` uses the bottom-up
- *                        scored merge (composeV2). `'v3'` uses the two-phase
- *                        AR-propagation merge (composeV3). Undefined falls
- *                        through to the V1 template lookup + compose path.
  * @returns CompositionResult with AtomicComponent tree, structural key, and template label
  */
 export function lookupComposition(
   images: ImageType[],
   targetAR: number = 1.5,
-  rowWidth: number = 5,
-  layoutVersion?: LayoutVersion
+  rowWidth: number = 5
 ): CompositionResult {
-  if (layoutVersion === 'v3') {
-    return {
-      composition: composeV3(images, targetAR, rowWidth),
-      templateKey: parseTemplateKey(images),
-      label: 'v3-twophase',
-    };
-  }
-  if (layoutVersion === 'v2') {
-    return {
-      composition: composeV2(images, targetAR, rowWidth),
-      templateKey: parseTemplateKey(images),
-      label: 'v2-merge',
-    };
-  }
-
-  const templateKey = parseTemplateKey(images);
-  const key = `${templateKey.h}-${templateKey.v}`;
-  const template = TEMPLATE_MAP[key];
-
-  if (!template) {
-    // 6+ images have no static template — use compose() for recursive composition
-    return {
-      composition: compose(images, targetAR, rowWidth),
-      templateKey,
-      label: 'compose-fallback',
-    };
-  }
-
   return {
-    composition: template.build(images, targetAR, rowWidth),
-    templateKey,
-    label: template.label,
+    composition: composeV3(images, targetAR, rowWidth),
+    templateKey: parseTemplateKey(images),
+    label: 'standard',
   };
 }
 
@@ -677,18 +637,12 @@ export function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' 
  * @param items - All content items to layout
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
  * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
- * @param layoutVersion - Opt-in alternate per-row composition. `'v2'` routes
- *                        through the bottom-up scored merge; `'v3'` routes
- *                        through the two-phase AR-propagation merge. Threaded
- *                        into `lookupComposition`; does not alter greedy fill
- *                        or best-fit fallback.
  * @returns Array of rows, each with components and their combination direction
  */
 export function buildRows(
   items: AnyContentModel[],
   rowWidth: number,
-  targetAR: number = 1.5,
-  layoutVersion?: LayoutVersion
+  targetAR: number = 1.5
 ): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
@@ -799,12 +753,7 @@ export function buildRows(
     if (seqCount > 0) {
       const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-      const { composition, templateKey, label } = lookupComposition(
-        rowImgs,
-        targetAR,
-        rowWidth,
-        layoutVersion
-      );
+      const { composition, templateKey, label } = lookupComposition(rowImgs, targetAR, rowWidth);
       const boxTree = acToBoxTree(composition);
 
       rows.push({
@@ -880,7 +829,7 @@ export function buildRows(
       composition,
       templateKey: bfKey,
       label: bfLabel,
-    } = lookupComposition(bfImgs, targetAR, rowWidth, layoutVersion);
+    } = lookupComposition(bfImgs, targetAR, rowWidth);
     const boxTree = acToBoxTree(composition);
 
     rows.push({

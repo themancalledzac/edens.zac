@@ -616,20 +616,21 @@ describe('buildRows', () => {
       // 1 horizontal + 3 vertical → templateKey { h: 1, v: 3 }
       expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 1, v: 3 });
 
-      // BoxTree should be nested-quad structure: main | (topPair / bottom)
+      // V3 builds: H[ V[ H[v1,v2], v4 ], h3 ] — a vertical-stack column on the
+      // left and the H3★ as the right leaf.
       const boxTree = rows[0]?.boxTree;
       expect(boxTree?.type).toBe('combined');
       if (boxTree?.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
-        // Left child should be the main (V4★)
-        expect(boxTree.children[0].type).toBe('leaf');
-        if (boxTree.children[0].type === 'leaf') {
-          expect(boxTree.children[0].content).toEqual(v4);
+        // Left child is the vertical stack column
+        expect(boxTree.children[0].type).toBe('combined');
+        if (boxTree.children[0].type === 'combined') {
+          expect(boxTree.children[0].direction).toBe('vertical');
         }
-        // Right child should be vertical stack
-        expect(boxTree.children[1].type).toBe('combined');
-        if (boxTree.children[1].type === 'combined') {
-          expect(boxTree.children[1].direction).toBe('vertical');
+        // Right child is the H3★ leaf
+        expect(boxTree.children[1].type).toBe('leaf');
+        if (boxTree.children[1].type === 'leaf') {
+          expect(boxTree.children[1].content).toEqual(h3);
         }
       }
     });
@@ -746,24 +747,24 @@ describe('buildRows', () => {
       expect(boxTree?.type).toBe('combined');
       if (boxTree?.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
-        // Left child: main (V4*)
-        expect(boxTree.children[0]?.type).toBe('leaf');
-        // Right child: nested vertical (top pair + bottom)
+        // V3 builds: H[ H[v4,v1], V[v2,h3] ] — a horizontal pair on the left and
+        // a vertical stack of two leaves on the right.
+        // Left child: horizontal pair
+        expect(boxTree.children[0]?.type).toBe('combined');
+        if (boxTree.children[0]?.type === 'combined') {
+          expect(boxTree.children[0].direction).toBe('horizontal');
+        }
+        // Right child: vertical stack of two leaves
         expect(boxTree.children[1]?.type).toBe('combined');
         if (boxTree.children[1]?.type === 'combined') {
           expect(boxTree.children[1].direction).toBe('vertical');
-          // Top: horizontal pair (V1* + V2*)
-          expect(boxTree.children[1].children[0]?.type).toBe('combined');
-          if (boxTree.children[1].children[0]?.type === 'combined') {
-            expect(boxTree.children[1].children[0].direction).toBe('horizontal');
-          }
-          // Bottom: H3*
+          expect(boxTree.children[1].children[0]?.type).toBe('leaf');
           expect(boxTree.children[1].children[1]?.type).toBe('leaf');
         }
       }
     });
 
-    it('should generate left-heavy tree for 3+ horizontal items', () => {
+    it('should generate a nested tree for 3+ horizontal items', () => {
       const h3_1 = createHorizontalImage(1, 3);
       const h3_2 = createHorizontalImage(2, 3);
       const h3_3 = createHorizontalImage(3, 3);
@@ -775,10 +776,14 @@ describe('buildRows', () => {
       expect(boxTree?.type).toBe('combined');
       if (boxTree?.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
-        // Left child: combined (h3_1 + h3_2)
-        expect(boxTree.children[0]?.type).toBe('combined');
-        // Right child: leaf (h3_3)
-        expect(boxTree.children[1]?.type).toBe('leaf');
+        // V3 builds: H[ h3_1, V[h3_2, h3_3] ] — leaf on the left, vertical pair right.
+        // Left child: leaf (h3_1)
+        expect(boxTree.children[0]?.type).toBe('leaf');
+        // Right child: vertical pair (h3_2 + h3_3)
+        expect(boxTree.children[1]?.type).toBe('combined');
+        if (boxTree.children[1]?.type === 'combined') {
+          expect(boxTree.children[1].direction).toBe('vertical');
+        }
       }
     });
 
@@ -1030,32 +1035,39 @@ describe('TEMPLATE_MAP', () => {
 });
 
 describe('lookupComposition', () => {
-  it('returns hero label for 1H image', () => {
+  // lookupComposition now always routes through composeV3 and labels every row
+  // 'standard'; these tests pin the V3 composition shapes for representative inputs.
+  it('returns a single composition for 1H image', () => {
     const imgs = [toImageType(createHorizontalImage(1, 5), DESKTOP)];
-    const { label, templateKey } = lookupComposition(imgs);
-    expect(label).toBe('hero');
+    const { label, templateKey, composition } = lookupComposition(imgs);
+    expect(label).toBe('standard');
     expect(templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
+    expect(composition.type).toBe('single');
   });
 
-  it('returns h-pair label for 2H images', () => {
+  it('returns an H pair for 2H images', () => {
     const imgs = [
       toImageType(createHorizontalImage(1, 3), DESKTOP),
       toImageType(createHorizontalImage(2, 3), DESKTOP),
     ];
-    const { label, templateKey } = lookupComposition(imgs);
-    expect(label).toBe('h-pair');
+    const { label, templateKey, composition } = lookupComposition(imgs);
+    expect(label).toBe('standard');
     expect(templateKey).toEqual<TemplateKey>({ h: 2, v: 0 });
+    expect(composition.type).toBe('pair');
+    if (composition.type === 'pair') {
+      expect(composition.direction).toBe('H');
+    }
   });
 
-  it('builds dom-stacked when dominant H has effectiveRating >= 4', () => {
+  it('builds dominant-left + vStack-right for 1H(4★) + 2V', () => {
     const imgs = [
       toImageType(createHorizontalImage(1, 4), DESKTOP), // dominant H, effectiveRating=4
       toImageType(createVerticalImage(2, 3), DESKTOP),
       toImageType(createVerticalImage(3, 2), DESKTOP),
     ];
     const { label, composition } = lookupComposition(imgs);
-    expect(label).toBe('dom-stacked-1h2v');
-    // Root should be H pair: dominant left, vStack right
+    expect(label).toBe('standard');
+    // V3 builds: H[ H4★, V[V3★, V2★] ] — dominant left, vStack right.
     expect(composition.type).toBe('pair');
     if (composition.type === 'pair') {
       expect(composition.direction).toBe('H');
@@ -1066,31 +1078,30 @@ describe('lookupComposition', () => {
     }
   });
 
-  it('falls back to chain when no dominant H >= 4 in 2-1', () => {
+  it('builds dominant-left + vStack-right for 1H(3★) + 2V', () => {
     const imgs = [
-      toImageType(createHorizontalImage(1, 3), DESKTOP), // effectiveRating=3, not >= 4
+      toImageType(createHorizontalImage(1, 3), DESKTOP),
       toImageType(createVerticalImage(2, 2), DESKTOP),
       toImageType(createVerticalImage(3, 2), DESKTOP),
     ];
-    const { label } = lookupComposition(imgs);
-    // buildDominantStacked falls back to hChain
-    expect(label).toBe('dom-stacked-1h2v');
-    const { composition } = lookupComposition(imgs);
-    // hChain of 3 → nested pair, not vStack at root
+    const { label, composition } = lookupComposition(imgs);
+    expect(label).toBe('standard');
+    // V3 builds: H[ H3★, V[V2★, V2★] ] — leaf left, vStack right.
     expect(composition.type).toBe('pair');
     if (composition.type === 'pair') {
-      expect(composition.children[1].type).toBe('single'); // right = last item, not vStack
+      expect(composition.children[0].type).toBe('single');
+      expect(composition.children[1].type).toBe('pair');
+      if (composition.children[1].type === 'pair') {
+        expect(composition.children[1].direction).toBe('V');
+      }
     }
   });
 
-  it('returns chain-fallback label for unknown key and logs warning', () => {
-    // Inject an edge case by passing 6 images (no key in map)
+  it('composes a nested pair for 6 images (no static template)', () => {
     const imgs = [1, 2, 3, 4, 5, 6].map(id => toImageType(createHorizontalImage(id, 2), DESKTOP));
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const { label } = lookupComposition(imgs);
-    expect(label).toBe('compose-fallback');
-    // compose-fallback no longer warns — it handles 6+ images gracefully
-    warnSpy.mockRestore();
+    const { label, composition } = lookupComposition(imgs);
+    expect(label).toBe('standard');
+    expect(composition.type).toBe('pair');
   });
 });
 
@@ -1476,9 +1487,7 @@ describe('buildRows with mobile rowWidth=2', () => {
 // ===================== T4: buildNestedQuad fallback to hChain =====================
 
 describe('buildNestedQuad fallback to hChain', () => {
-  it('should use hChain when fewer than 3 vertical images in 4-item row', () => {
-    // Template key '1-3' uses buildNestedQuad — with 3 verticals it does nested quad
-    // Test that 1-3 template produces a nested quad (not a flat hChain)
+  it('produces a nested pair for a 1h3v row', () => {
     const images = [
       createHorizontalImage(1, 3),
       createVerticalImage(2, 2),
@@ -1487,13 +1496,12 @@ describe('buildNestedQuad fallback to hChain', () => {
     ].map(item => toImageType(item, 5));
 
     const { composition, label } = lookupComposition(images);
-    expect(label).toBe('nested-quad-1h3v');
+    expect(label).toBe('standard');
     // The composition should be a pair (nested structure), not a flat chain
     expect(composition.type).toBe('pair');
   });
 
-  it('should produce flat hChain for 2-2 pattern (not nested quad)', () => {
-    // '2-2' uses compose, which picks the best AR fit
+  it('produces a nested pair for a 2h2v row', () => {
     const images = [
       createHorizontalImage(1, 2),
       createHorizontalImage(2, 2),
@@ -1501,9 +1509,9 @@ describe('buildNestedQuad fallback to hChain', () => {
       createVerticalImage(4, 2),
     ].map(item => toImageType(item, 5));
 
-    const { label } = lookupComposition(images);
-    // 2-2 uses compose, not buildNestedQuad
-    expect(label).toBe('compose-2h2v');
+    const { composition, label } = lookupComposition(images);
+    expect(label).toBe('standard');
+    expect(composition.type).toBe('pair');
   });
 
   it('should produce valid BoxTree from nested quad composition', () => {
@@ -1640,35 +1648,6 @@ describe('rowWidth invariant: valid output for rowWidth 4-16', () => {
       }
     });
   }
-});
-
-// ===================== lookupComposition layoutVersion dispatcher =====================
-
-describe('lookupComposition layoutVersion dispatcher', () => {
-  it('returns a composeV2 result with label "v2-merge" when layoutVersion="v2"', () => {
-    const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
-    const imgTypes = items.map(item => toImageType(item, DESKTOP));
-    const result = lookupComposition(imgTypes, 1.5, DESKTOP, 'v2');
-    expect(result.label).toBe('v2-merge');
-    expect(result.composition).toBeDefined();
-  });
-
-  it('returns a composeV3 result with label "v3-twophase" when layoutVersion="v3"', () => {
-    const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
-    const imgTypes = items.map(item => toImageType(item, DESKTOP));
-    const result = lookupComposition(imgTypes, 1.5, DESKTOP, 'v3');
-    expect(result.label).toBe('v3-twophase');
-    expect(result.composition).toBeDefined();
-  });
-
-  it('falls through to the template-map path when layoutVersion is omitted', () => {
-    const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
-    const imgTypes = items.map(item => toImageType(item, DESKTOP));
-    const result = lookupComposition(imgTypes, 1.5, DESKTOP);
-    expect(result.label).not.toBe('v2-merge');
-    expect(result.label).not.toBe('v3-twophase');
-    expect(result.composition).toBeDefined();
-  });
 });
 
 // ===================== Row Density packing (rowWidth → items/row) =====================

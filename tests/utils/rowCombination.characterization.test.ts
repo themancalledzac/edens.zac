@@ -200,7 +200,7 @@ describe('buildRows characterization', () => {
     expect(rows).toHaveLength(2);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
     expect(rows[0]!.templateKey).toEqual({ h: 2, v: 1 });
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(2),V(L(1),L(3)))');
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),L(3))');
 
     // Row 2: remaining H3★
     expect(rowIds(rows[1]!)).toEqual([4]);
@@ -220,7 +220,7 @@ describe('buildRows characterization', () => {
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
     expect(rows[0]!.templateKey).toEqual({ h: 1, v: 2 });
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(3),V(L(1),L(2)))');
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),L(3))');
   });
 
   // ---------------------------------------------------------------
@@ -237,22 +237,23 @@ describe('buildRows characterization', () => {
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
     expect(rows[0]!.templateKey).toEqual({ h: 0, v: 4 });
 
-    // Nested quad: main=V3★(id=1, eff=2), topPair=two lowest V1★s, bottom=remaining V1★
+    // V3 builds: H( H(V3★,V1★), V(V1★,V1★) ) — an H pair on the left and a
+    // V stack of two leaves on the right.
     const tree = rows[0]!.boxTree;
     expect(tree.type).toBe('combined');
     if (tree.type === 'combined') {
       expect(tree.direction).toBe('horizontal');
-      // Main is highest-rated vertical = V3★ (id=1)
-      expect(tree.children[0].type).toBe('leaf');
-      if (tree.children[0].type === 'leaf') {
-        expect(tree.children[0].content.id).toBe(1);
+      // Left side: horizontal pair
+      expect(tree.children[0].type).toBe('combined');
+      if (tree.children[0].type === 'combined') {
+        expect(tree.children[0].direction).toBe('horizontal');
       }
-      // Right side: V(H(topPair), bottom)
+      // Right side: vertical stack of two leaves
       expect(tree.children[1].type).toBe('combined');
       if (tree.children[1].type === 'combined') {
         expect(tree.children[1].direction).toBe('vertical');
-        expect(tree.children[1].children[0].type).toBe('combined'); // top pair
-        expect(tree.children[1].children[1].type).toBe('leaf'); // bottom
+        expect(tree.children[1].children[0].type).toBe('leaf');
+        expect(tree.children[1].children[1].type).toBe('leaf');
       }
     }
   });
@@ -428,7 +429,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4, 5]);
-    expect(rows[0]!.label).toBe('compose-5h');
+    expect(rows[0]!.label).toBe('standard');
   });
 
   // ---------------------------------------------------------------
@@ -459,9 +460,8 @@ describe('buildRows characterization', () => {
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
     expect(allIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
-    // First row: H5★+H4★+V3★ → dom-stacked-2h1v (5.0+3.5+1.07=9.57, 119% > MAX)
-    // Actual: [1,2,3] as dom-stacked-2h1v
-    expect(rows[0]!.label).toBe('dom-stacked-2h1v');
+    // First row: H5★+H4★+V3★ (5.0+3.5+1.07=9.57, 119% > MAX) → [1,2,3]
+    expect(rows[0]!.label).toBe('standard');
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
   });
 
@@ -1031,8 +1031,8 @@ describe('architecture types', () => {
       }
     });
 
-    it('uses compose-fallback for unknown key (6+ images)', () => {
-      // 6 horizontal images → key "6-0" not in map → compose handles it
+    it('composes a valid tree for 6+ images', () => {
+      // 6 horizontal images → composeV3 handles the row, labeled 'standard'
       const imgs = [
         makeImg(1, 'H', 1),
         makeImg(2, 'H', 1),
@@ -1042,8 +1042,8 @@ describe('architecture types', () => {
         makeImg(6, 'H', 1),
       ];
       const { composition: ac, label } = lookupComposition(imgs);
-      expect(label).toBe('compose-fallback');
-      // compose produces a valid tree (exact shape depends on AR scoring)
+      expect(label).toBe('standard');
+      // composeV3 produces a valid tree (exact shape depends on AR scoring)
       const tree = acToBoxTree(ac);
       expect(tree.type).toBe('combined');
     });

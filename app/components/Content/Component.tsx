@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useMemo } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import { LAYOUT } from '@/app/constants';
@@ -14,7 +14,7 @@ import {
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
 import { logger } from '@/app/utils/logger';
-import { type BoxTree, type LayoutVersion } from '@/app/utils/rowCombination';
+import { type BoxTree } from '@/app/utils/rowCombination';
 
 import { BoxRenderer } from './BoxRenderer';
 import cbStyles from './ContentComponent.module.scss';
@@ -126,17 +126,6 @@ export default function Component({
 }: ContentComponentProps) {
   const { contentWidth, isMobile, viewportHeight } = useViewport();
 
-  // Dev-only A/B toggle: `?layout=v2` opts into the bottom-up scored merge
-  // (composeV2). `?layout=v3` opts into the two-phase AR-propagation merge
-  // (composeV3). Anything else falls back to the V1 template-map path.
-  // Reads window.location once on mount to avoid the useSearchParams Suspense
-  // bailout that would force CSR for the whole page.
-  const [layoutVersion, setLayoutVersion] = useState<LayoutVersion | undefined>();
-  useEffect(() => {
-    const param = new URLSearchParams(window.location.search).get('layout');
-    if (param === 'v2' || param === 'v3') setLayoutVersion(param);
-  }, []);
-
   const { rows, layoutError } = useMemo(() => {
     if (!contentWidth) {
       return { rows: [], layoutError: null };
@@ -162,7 +151,6 @@ export default function Component({
         collectionData,
         displayMode: collectionData?.displayMode,
         targetAR,
-        layoutVersion,
       });
       return { rows: result, layoutError: null };
     } catch (error) {
@@ -170,7 +158,7 @@ export default function Component({
       const message = error instanceof Error ? error.message : 'Unknown layout error';
       return { rows: [], layoutError: message };
     }
-  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight, layoutVersion]);
+  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight]);
 
   // Must be called before early return to satisfy React Hooks rules
   const firstNonVisibleRowIndex = useMemo(() => {
