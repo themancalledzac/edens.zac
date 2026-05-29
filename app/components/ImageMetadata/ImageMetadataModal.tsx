@@ -79,6 +79,7 @@ function renderSinglePreview({
         muted
         playsInline
         controls={false}
+        preload="auto"
         poster={previewImageAsGif.thumbnailUrl ?? undefined}
         width={previewImageAsGif.width || IMAGE.defaultWidth}
         height={previewImageAsGif.height || IMAGE.defaultHeight}

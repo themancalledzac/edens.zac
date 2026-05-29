@@ -102,6 +102,7 @@ export function FullScreenModal({
               muted
               playsInline
               controls={false}
+              preload="auto"
               poster={currentImage.thumbnailUrl ?? undefined}
               width={currentImage.width || IMAGE.defaultWidth}
               height={currentImage.height || IMAGE.defaultHeight}

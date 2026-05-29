@@ -295,6 +295,7 @@ export default function CollectionContentRenderer({
             loop
             muted
             playsInline
+            preload="auto"
             poster={thumbnailUrl || undefined}
             width={imageWidth || undefined}
             height={imageHeight || undefined}
