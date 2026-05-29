@@ -136,12 +136,7 @@ export default function Component({
       return { rows: [], layoutError: null };
     }
 
-    // Target row aspect ratio = screen aspect ratio, so one row ≈ one screenful
-    // (row height ≈ viewport height). This keeps row AREA constant per viewport,
-    // so the density slider (items per row) cleanly drives image size: fewer
-    // items = bigger, more items = smaller, monotonically. Clamped to [1.0, 2.5]:
-    // the 1.0 floor preserves "never taller than wide"; the cap avoids film-strip
-    // rows on ultrawide screens.
+    // Row AR ≈ screen AR so each row ≈ one screenful; density then drives image size. Clamp [1.0, 2.5].
     const targetAR =
       viewportHeight > 0 ? Math.max(1.0, Math.min(2.5, contentWidth / viewportHeight)) : 1.5;
 

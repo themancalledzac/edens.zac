@@ -191,11 +191,8 @@ export const AR_FLOOR_MULTIPLIER = 0.7;
 export const MAX_ROW_IMAGES = 12;
 
 /**
- * Estimate the combined aspect ratio of a set of images when composed together.
- * Uses the canonical composer (compose) to build the tree, then calculates AR
- * from the BoxTree. Routing through the composer keeps the Stage-1 AR estimate
- * consistent with the composition that actually renders (lookupComposition also
- * uses compose).
+ * Estimate a row's combined aspect ratio. Routes through the canonical composer
+ * so the Stage-1 estimate matches the composition that actually renders.
  */
 export function estimateRowAR(images: ImageType[], targetAR: number, rowWidth: number): number {
   const composition = compose(images, targetAR, rowWidth);
@@ -264,28 +261,17 @@ function collectRowItems(
 }
 
 /**
- * Row-first layout algorithm.
+ * Row-first layout algorithm. Builds rows one at a time over a lookahead
+ * window: standalone-skip a hero past low-rated items, greedy sequential fill,
+ * best-fit fallback, then compose each row's tree.
  *
- * Builds rows one at a time using a working window (lookahead of 5 items).
- * For each row:
- * 1. Check for STANDALONE skip (hero image past low-rated items)
- * 2. Greedy sequential fill until row is complete or overshoots
- * 3. Best-fit fallback when sequential fill fails
- * 4. Template map lookup for layout structure
+ * A would-overfill item that fills a row on its own (cv >= rowWidth *
+ * MIN_FILL_RATIO) is skipped to get its own row next iteration. The AR-floor
+ * check is disabled on mobile (rowWidth <= 2), where items render full-width or
+ * stacked and single verticals naturally have low AR.
  *
- * Standalone promotion: if the next item would overfill AND it fills a row on its
- * own (cv >= rowWidth * MIN_FILL_RATIO), skip it so it gets its own row on a
- * subsequent iteration. This replaces the old reorderLonelyVerticals pre-pass.
- *
- * On mobile (rowWidth <= 2), the AR-floor check is disabled entirely. Mobile renders
- * items full-width or stacked, so single vertical images naturally have low AR.
- * Without this, the AR override pulls 3-4+ items into a single row, creating
- * excessively cramped images.
- *
- * @param items - All content items to layout
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
  * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
- * @returns Array of rows, each with components and their combination direction
  */
 export function buildRows(
   items: AnyContentModel[],
@@ -295,10 +281,8 @@ export function buildRows(
   const rows: RowResult[] = [];
   const remaining = [...items];
 
-  // Constant fill bar. Row Density now drives packing through rowWidth itself
-  // (chunkSize ×2.5), so density ≈ items/row directly. The old rowWidth-scaled
-  // bar over-inflated past MAX_FILL_RATIO at large rowWidths (≈1.24 at rowWidth
-  // 25), forcing every dense row through the overfill path into the cap.
+  // Constant fill bar: density drives packing through rowWidth (chunkSize ×2.5),
+  // so a rowWidth-scaled bar would over-inflate past MAX_FILL_RATIO at high density.
   const effectiveMinFill = MIN_FILL_RATIO;
 
   while (remaining.length > 0) {
@@ -492,71 +476,15 @@ export function buildRows(
 // =============================================================================
 
 /**
- * Row composition — two-phase composition with point-balance splitting.
+ * Row composition — the canonical two-phase composer.
  *
- * The canonical row composer. Builds each row's AtomicComponent tree in two
- * passes:
- *
- *   Phase 1: split the row hierarchically at the adjacent boundary where the
- *            left and right halves have the closest effectiveRating sums.
- *            This treats prominence (rating) as the splitting signal so that
- *            same-rated content yields balanced trees while genuinely
- *            higher-rated outliers naturally end up on their own side.
- *            Order preserved — no swaps, only adjacent splits.
- *
- *   Phase 2: enumerate every direction assignment for the tree. For each
- *            internal node, both hPair and vStack are tried. The root is
- *            forced to hPair (rows are horizontal by definition). Scoring has a
- *            hard floor at AR 1.0 (a row must never be taller than it is wide).
- *            Among candidates within a small AR band of the best, the most
- *            EQUITABLE one wins — the tree whose leaf areas best track each
- *            image's cv, so equal-rated images render at similar size rather
- *            than one ballooning while its siblings are crushed.
- *
- * Why point-balance over sum-cv merge or AR-gap split: sum-cv merge produces
- * dominant emergence — the heaviest item ends up alone at the root, visually
- * singling it out even on rows of uniformly-rated content. AR-gap split makes structural choices off a
- * numerical signal (orientation boundary) that isn't always meaningful — for
- * rows with multiple AR boundaries, an arbitrary tie-break decides which side
- * gets the lone item. Point-balance ties the split criterion to the user's
- * perceived prominence: items group together when their combined weight matches
- * the other side's combined weight. Same-rated rows yield balanced trees.
- *
- * Why a hard floor at 1.0: a row must never be taller than it is wide. The
- * trade-off is explicit and intended — on a 2H+2V row the near-square nested-
- * quad at AR ~0.9 is rejected in favour of a wider (>= 1.0) arrangement, even
- * though 0.9 is closer to square. "Never taller than wide" takes priority over
- * "closest to square" when the two conflict (user decision, 2026-05-28).
- *
- * Why enumeration in Phase 2: the row's aspect-ratio constraint is global
- * ("the visible row should never be taller than wide"). Local greedy
- * direction picks don't see the cumulative effect — children that look good
- * in isolation can compose into a too-wide or too-tall row. With small trees
- * (≤8 leaves → ≤7 internal nodes → ≤128 candidates), exhaustive enumeration
- * finds the genuine optimum cheaply.
- *
- * Why this needs no skip-rule stack:
- *   - Top-level no-vStack is a hard constraint (forced hPair at root in Phase 2).
- *   - vTier caps are not needed; deep vStacks ARE produced when they make the
- *     row closer to square at high density, and naturally avoided when they
- *     would make a row taller than wide (rejected by floor).
- *   - 4★+ "prominence blocks vStack" is not needed; if a 4★ leaf in a deep
- *     vStack would tank the row AR, the floor rejects that candidate.
- *   - Same-orientation vStack avoidance (V+V) is not needed; vStacks of
- *     narrow-AR items push the row AR below 1.0 and get rejected.
- *
- * Selection is two-tiered, not a skip-rule stack: (1) the AR floor at 1.0
- * ("never taller than wide") plus closeness to the target row AR pick the
- * acceptable band; (2) within that band, the lowest area-vs-cv spread wins, so
- * sizing tracks cv (the intended signal) instead of being an artifact of which
- * subtree a leaf landed in.
- *
- * Note: the splitting principle is tree-depth balance — equitable leaf depths
- * so same-rated items render at similar size — rather than pairing the lowest
- * sum-cv adjacent atoms first (which produces dominant emergence, singling out
- * the heaviest item at the root, and is incorrect for rows of uniformly-rated
- * content). cv-driven sizing is handled downstream by buildRows and the pixel
- * calculator.
+ * Phase 1 (splitByPointBalance): split the row hierarchically at the adjacent
+ * boundary where the two halves have the closest effectiveRating sums, so
+ * same-rated content yields balanced trees and outliers fall on their own side.
+ * Phase 2 (pickRootAssignment): enumerate every hPair/vStack assignment (root
+ * forced to hPair), keep those within a small AR band of the best, and pick the
+ * most equitable — leaf areas tracking each image's cv. A hard AR floor at 1.0
+ * ("never taller than wide") takes priority over "closest to square".
  */
 
 // =============================================================================
@@ -568,27 +496,14 @@ type AbstractNode =
   | { kind: 'merge'; left: AbstractNode; right: AbstractNode };
 
 /**
- * Build the unlabeled binary tree by recursively splitting the row at the
- * adjacent boundary where the left and right halves have the closest
- * effectiveRating sums.
+ * Build the unlabeled binary tree by recursively splitting at the adjacent
+ * boundary minimising `|leftSum − half| + |rightSum − half|` (half = total
+ * effectiveRating / 2) — the split closest to halving the row's "points".
+ * Ties (e.g. uniform-rating rows) break toward the middle gap, giving
+ * structurally-balanced trees. Order preserved — no swaps, only splits.
  *
- * - **Primary criterion**: minimise `|leftSum − half| + |rightSum − half|`,
- *   where `half = total effectiveRating / 2`. Equivalent to finding the
- *   adjacent split closest to dividing the row's "points" in half.
- * - **Tiebreaker**: for ties in score (notably uniform-rating rows where
- *   any structurally-balanced split scores the same), pick the gap closest
- *   to the row's middle gap index. This produces structurally-balanced
- *   trees — all leaves at the same or adjacent depth, so they render at
- *   similar visual size given the same direction choices in Phase 2.
- *
- * Order is preserved: leaves stay in input order; no swaps, only splits.
- *
- * Why effectiveRating: it encodes the user's perceived prominence (rating
- * with the orientation-derived vertical penalty already applied for sizing
- * purposes), so equally-weighted halves correspond to visually-equitable
- * halves. Using cv directly would double-penalise verticals because cv
- * applies the AR factor on top of the rating; point-balance is about
- * perceived prominence, not pixel area.
+ * effectiveRating (not cv) is the signal: it's perceived prominence; cv would
+ * double-penalise verticals by reapplying the AR factor on top of the rating.
  */
 function splitByPointBalance(items: ImageType[]): AbstractNode {
   if (items.length === 0) throw new Error('compose requires at least 1 image');
@@ -807,23 +722,15 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
 // =============================================================================
 
 /**
- * Compose a row of images via the two-phase algorithm.
- *
- * @param items - Images in input order; never reordered.
- * @param targetAR - Desired row aspect ratio (e.g., 1.0 for square). Lifted to
- *                   ROW_AR_FLOOR (1.0) internally if lower; rows are never
- *                   taller than wide regardless of the caller's request.
- * @param rowWidth - Unused (AR is intrinsic to the tree); kept for call-site
- *                   symmetry with the other row helpers.
- * @returns AtomicComponent tree for this row, with hPair/vStack assigned at
- *          each internal node and leaves in input order.
+ * Compose a row of images via the two-phase algorithm. Leaves stay in input
+ * order. targetAR below ROW_AR_FLOOR (1.0) is lifted to it. rowWidth is unused
+ * (AR is intrinsic to the tree); kept for call-site symmetry.
  */
 export function compose(items: ImageType[], targetAR: number, rowWidth: number): AtomicComponent {
   if (items.length === 0) throw new Error('compose requires at least 1 image');
   if (items.length === 1) return single(items[0]!);
 
-  // `rowWidth` is unused (AR is intrinsic to the tree); kept for call-site
-  // symmetry with the other row helpers. Touch it so lint doesn't flag it.
+  // rowWidth is unused; touch it so lint doesn't flag it.
   void rowWidth;
   const tree = splitByPointBalance(items);
   return pickRootAssignment(tree, targetAR);

@@ -110,9 +110,8 @@ export function processContentForDisplay(
     }
   }
 
-  // Row Density (admin 1-10 → chunkSize) maps to the per-row cv budget via ×2.5
-  // so density ≈ images-per-row for typical 3★ content (cv 2.5): density 1 → ~1
-  // full-width image, 4 → ~4, 10 → ~10 (bounded by MAX_ROW_IMAGES). Mobile pins.
+  // Row density (chunkSize) maps to the per-row cv budget via ×2.5, so density ≈
+  // images-per-row for typical 3★ content (cv 2.5). Mobile pins to a slot width.
   const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : Math.round(chunkSize * 2.5);
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;

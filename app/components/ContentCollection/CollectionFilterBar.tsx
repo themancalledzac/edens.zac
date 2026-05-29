@@ -320,10 +320,9 @@ export default function CollectionFilterBar({
         </button>
       )}
 
-      {/* Row-density slider — always-on live view control */}
+      {/* Row-density slider */}
       <label className={cbStyles.filterBarSlider}>
-        {/* Visible readout duplicates the value the range input announces natively,
-            so it is hidden from assistive tech to avoid double-announcement. */}
+        {/* aria-hidden: the range input already announces this value natively. */}
         <span className={cbStyles.filterBarSliderLabel} aria-hidden="true">
           Density {density}
         </span>

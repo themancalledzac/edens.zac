@@ -71,8 +71,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     INITIAL_COLLECTION_FILTER_STATE
   );
 
-  // Row density (chunkSize) the layout uses. Defaults to the collection's saved
-  // value; the always-on slider lets viewers retune it live for the current view.
+  // Row density: defaults to the collection's saved value; slider retunes it live.
   const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
 
   const handleDensityChange = useCallback((value: number) => {

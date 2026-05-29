@@ -38,9 +38,7 @@ interface CollectionFilterContextValue {
   filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
-  /** Current row density (chunkSize) the layout is using. */
   density: number;
-  /** Update row density (clamped 1-10 by the provider). Live view tuning control. */
   onDensityChange: (value: number) => void;
 }
 
