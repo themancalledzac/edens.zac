@@ -322,7 +322,11 @@ export default function CollectionFilterBar({
 
       {/* Row-density slider — always-on live view control */}
       <label className={cbStyles.filterBarSlider}>
-        <span className={cbStyles.filterBarSliderLabel}>Density {density}</span>
+        {/* Visible readout duplicates the value the range input announces natively,
+            so it is hidden from assistive tech to avoid double-announcement. */}
+        <span className={cbStyles.filterBarSliderLabel} aria-hidden="true">
+          Density {density}
+        </span>
         <input
           type="range"
           min={1}
