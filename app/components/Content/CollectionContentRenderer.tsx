@@ -259,6 +259,8 @@ export default function CollectionContentRenderer({
               filterOptions={collectionFilter.filterOptions}
               filteredAvailable={collectionFilter.filteredAvailable}
               onFilterChange={collectionFilter.onFilterChange}
+              density={collectionFilter.density}
+              onDensityChange={collectionFilter.onDensityChange}
             />
           )}
         </div>
@@ -292,6 +294,7 @@ export default function CollectionContentRenderer({
             loop
             muted
             playsInline
+            preload="auto"
             poster={thumbnailUrl || undefined}
             width={imageWidth || undefined}
             height={imageHeight || undefined}

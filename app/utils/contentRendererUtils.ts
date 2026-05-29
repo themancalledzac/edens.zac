@@ -227,7 +227,7 @@ export function normalizeContentToRendererProps(
 
     return {
       ...baseProps,
-      imageUrl: content.gifUrl,
+      imageUrl: content.gifUrlWeb ?? content.gifUrl,
       imageWidth: dimensions.imageWidth,
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(content.alt, content.title, content.caption, undefined, 'GIF'),

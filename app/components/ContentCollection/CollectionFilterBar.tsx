@@ -85,6 +85,8 @@ interface CollectionFilterBarProps {
   filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
+  density: number;
+  onDensityChange: (value: number) => void;
 }
 
 export default function CollectionFilterBar({
@@ -92,6 +94,8 @@ export default function CollectionFilterBar({
   filterOptions,
   filteredAvailable,
   onFilterChange,
+  density,
+  onDensityChange,
 }: CollectionFilterBarProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -315,6 +319,23 @@ export default function CollectionFilterBar({
           ×
         </button>
       )}
+
+      {/* Row-density slider */}
+      <label className={cbStyles.filterBarSlider}>
+        {/* aria-hidden: the range input already announces this value natively. */}
+        <span className={cbStyles.filterBarSliderLabel} aria-hidden="true">
+          Density {density}
+        </span>
+        <input
+          type="range"
+          min={1}
+          max={10}
+          step={1}
+          value={density}
+          onChange={e => onDensityChange(Number(e.target.value))}
+          aria-label="Row density"
+        />
+      </label>
     </div>
   );
 }

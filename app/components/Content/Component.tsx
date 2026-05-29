@@ -136,8 +136,9 @@ export default function Component({
       return { rows: [], layoutError: null };
     }
 
+    // Row AR ≈ screen AR so each row ≈ one screenful; density then drives image size. Clamp [1.0, 2.5].
     const targetAR =
-      viewportHeight > 0 ? Math.max(1.5, Math.min(3.0, contentWidth / viewportHeight)) : 1.5;
+      viewportHeight > 0 ? Math.max(1.0, Math.min(2.5, contentWidth / viewportHeight)) : 1.5;
 
     try {
       const result = processContentForDisplay(content || [], contentWidth, chunkSize, {
@@ -192,7 +193,7 @@ export default function Component({
 
   /** Renders a row using BoxRenderer (recursive). */
   const renderRow = (row: RowWithPatternAndSizes, rowIndex: number) => {
-    const { templateKey, items, boxTree } = row;
+    const { rowType, items, boxTree } = row;
     const rowKey = `row-${rowIndex}-${items.map(i => `${i.content.contentType}-${i.content.id ?? i.content.orderIndex}`).join('-')}`;
 
     // If boxTree is missing (shouldn't happen), create a fallback
@@ -202,8 +203,7 @@ export default function Component({
       items.map(item => [item.content.id, { width: item.width, height: item.height }])
     );
 
-    const dataPattern =
-      typeof templateKey === 'string' ? templateKey : `${templateKey.h}h-${templateKey.v}v`;
+    const dataPattern = rowType;
 
     const isClientGallery = collectionData?.type === CollectionType.CLIENT_GALLERY;
 

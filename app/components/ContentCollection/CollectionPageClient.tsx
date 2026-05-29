@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import { LAYOUT } from '@/app/constants';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
 import {
@@ -69,6 +70,13 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
   const [filterState, setFilterState] = useState<CollectionFilterState>(
     INITIAL_COLLECTION_FILTER_STATE
   );
+
+  // Row density: defaults to the collection's saved value; slider retunes it live.
+  const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
+
+  const handleDensityChange = useCallback((value: number) => {
+    setDensity(Math.max(1, Math.min(10, Math.round(value))));
+  }, []);
 
   const allContent = useMemo(() => collection.content ?? [], [collection.content]);
 
@@ -217,8 +225,17 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
       filterOptions: availableOptions,
       filteredAvailable: filteredAvailableOptions,
       onFilterChange: handleFilterChange,
+      density,
+      onDensityChange: handleDensityChange,
     }),
-    [filterState, availableOptions, filteredAvailableOptions, handleFilterChange]
+    [
+      filterState,
+      availableOptions,
+      filteredAvailableOptions,
+      handleFilterChange,
+      density,
+      handleDensityChange,
+    ]
   );
 
   const pageSize = collection.contentPerPage ?? 30;
@@ -248,7 +265,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
         priorityBlockIndex={0}
         enableFullScreenView
         initialPageSize={pageSize}
-        chunkSize={chunkSize}
+        chunkSize={density}
         collectionSlug={collection.slug}
         collectionData={collection}
       />

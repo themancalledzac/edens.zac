@@ -583,6 +583,42 @@
   font-weight: 400;
 }
 
+/* ── Row-density slider — always-on live view control ── */
+.filterBarSlider {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-black);
+  letter-spacing: 0.02em;
+  font-family: inherit;
+  white-space: nowrap;
+  opacity: 0.75;
+
+  input[type='range'] {
+    width: 96px;
+    height: 1rem;
+    margin: 0;
+    vertical-align: middle;
+    cursor: pointer;
+    accent-color: var(--color-black);
+
+    &:focus-visible {
+      outline: 2px solid var(--color-black);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.filterBarSliderLabel {
+  opacity: 0.55;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
 .filterBarChevron {
   font-size: 0.55rem;
   line-height: 1;

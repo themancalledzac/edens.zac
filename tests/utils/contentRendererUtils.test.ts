@@ -265,6 +265,27 @@ describe('contentRendererUtils', () => {
 
         expect(result.alt).toBe('GIF');
       });
+
+      it('should use gifUrlWeb for the in-row imageUrl when present', () => {
+        const gif = createGifContent(1, {
+          gifUrl: 'https://example.com/gif-1-full.mp4',
+          gifUrlWeb: 'https://example.com/gif-1-web.mp4',
+        });
+        const result = normalizeContentToRendererProps(gif, 500, 300, 'imageLeft', false);
+
+        // Row layout must load the small 1080px variant, not the 2000px master.
+        expect(result.imageUrl).toBe('https://example.com/gif-1-web.mp4');
+      });
+
+      it('should fall back to gifUrl when gifUrlWeb is absent', () => {
+        const gif = createGifContent(1, {
+          gifUrl: 'https://example.com/gif-1-full.mp4',
+          // gifUrlWeb intentionally omitted (pre-existing gif / backend not yet deployed)
+        });
+        const result = normalizeContentToRendererProps(gif, 500, 300, 'imageLeft', false);
+
+        expect(result.imageUrl).toBe('https://example.com/gif-1-full.mp4');
+      });
     });
 
     describe('TEXT content', () => {

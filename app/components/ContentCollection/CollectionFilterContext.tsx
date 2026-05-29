@@ -38,6 +38,8 @@ interface CollectionFilterContextValue {
   filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
+  density: number;
+  onDensityChange: (value: number) => void;
 }
 
 const CollectionFilterContext = createContext<CollectionFilterContextValue | null>(null);

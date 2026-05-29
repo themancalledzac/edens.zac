@@ -14,10 +14,8 @@ import {
   type BoxTree,
   buildRows,
   hChain,
-  type TemplateKey,
   toImageType,
 } from '@/app/utils/rowCombination';
-import { optimizeRows } from '@/app/utils/rowOptimizer';
 import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
 
 /**
@@ -36,7 +34,7 @@ export interface CalculatedContentSize {
  * Used for rendering content layouts
  */
 export interface RowWithPatternAndSizes {
-  templateKey: TemplateKey | 'standard' | 'header';
+  rowType: 'content' | 'header';
   items: CalculatedContentSize[];
   boxTree: BoxTree;
 }
@@ -70,12 +68,13 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
 }
 
 /**
- * Process content for display with full pattern metadata
+ * Process content for display, returning sized rows ready to render.
  *
- * Supports two layout modes:
- * 1. Pattern Detection (desktop default): Uses pattern registry to detect
- *    optimal layouts like main-stacked, 5-star vertical patterns, etc.
- * 2. Slot-Based (mobile/fallback): Simple slot-based chunking
+ * Runs the single row-composition algorithm: {@link buildRows} greedily fills
+ * each row to the per-viewport cv budget, then composes its BoxTree via
+ * {@link buildAtomic}. The only mobile/desktop difference is the row-width budget
+ * (mobile pins to a narrow slot width; desktop derives it from the density
+ * chunkSize) — there is no separate pattern-detection or slot-based mode.
  *
  * If collectionData is provided, creates a header row (cover image + metadata)
  * as the first row, before processing regular content.
@@ -84,7 +83,7 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * @param componentWidth - Total available width for display
  * @param chunkSize - Number of normal-width items per row (default: 2)
  * @param options - Processing options (isMobile, collectionData, displayMode)
- * @returns Array of rows with pattern metadata and sized content blocks
+ * @returns Array of rows with structural key and sized content blocks
  */
 export function processContentForDisplay(
   content: AnyContentModel[],
@@ -110,17 +109,19 @@ export function processContentForDisplay(
     }
   }
 
-  const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : LAYOUT.desktopSlotWidth;
+  // Row density (chunkSize) maps to the per-row cv budget via ×2.5, so density ≈
+  // images-per-row for typical 3★ content (cv 2.5). Mobile pins to a slot width.
+  const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : Math.round(chunkSize * 2.5);
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 
-  const rows = optimizeRows(buildRows(content, rowWidth, targetAR), rowWidth);
+  const rows = buildRows(content, rowWidth, targetAR);
 
   const contentRows = rows.map(row => {
     const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap, rowWidth);
 
     return {
-      templateKey: row.templateKey,
+      rowType: 'content' as const,
       items,
       boxTree: row.boxTree,
     };
@@ -577,7 +578,7 @@ export function createHeaderRow(
       LAYOUT.mobileGridGap,
       LAYOUT.mobileSlotWidth
     );
-    rows.push({ templateKey: 'header' as const, items: coverItems, boxTree: coverTree });
+    rows.push({ rowType: 'header' as const, items: coverItems, boxTree: coverTree });
 
     // Metadata row — full width, auto height (rendered via text block)
     if (metadataBlock) {
@@ -585,7 +586,7 @@ export function createHeaderRow(
       const metaItems: CalculatedContentSize[] = [
         { content: metadataBlock, width: componentWidth, height: 0 },
       ];
-      rows.push({ templateKey: 'header' as const, items: metaItems, boxTree: metaTree });
+      rows.push({ rowType: 'header' as const, items: metaItems, boxTree: metaTree });
     }
 
     return rows;
@@ -621,7 +622,7 @@ export function createHeaderRow(
   const boxTreeItems = calculatedSizes.map(item => item.content);
 
   return {
-    templateKey: 'header' as const,
+    rowType: 'header' as const,
     items: calculatedSizes,
     boxTree: createSimpleHorizontalBoxTree(boxTreeItems),
   };

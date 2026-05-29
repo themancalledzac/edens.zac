@@ -62,7 +62,7 @@ export const createPanorama = (id: number, rating: number): ContentImageModel =>
     rating,
   });
 
-// Short aliases used in rowCombination and rowOptimizer tests
+// Short aliases used in rowCombination tests
 export const H = (id: number, rating: number): ContentImageModel =>
   createHorizontalImage(id, rating);
 export const V = (id: number, rating: number): ContentImageModel => createVerticalImage(id, rating);

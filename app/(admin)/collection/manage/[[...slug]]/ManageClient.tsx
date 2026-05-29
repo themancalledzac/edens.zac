@@ -336,12 +336,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [selectedImageIds, collection?.content]
   );
 
-  /** Back-compat alias for the IMAGE-only subset, used where the older flow still expects it. */
-  const imagesToEdit = useMemo(
-    () => contentToEdit.filter(c => isContentImage(c)) as ContentImageModel[],
-    [contentToEdit]
-  );
-
   const isParent = isParentType(updateData.type);
 
   const displayedCoverImage = useMemo(
@@ -1351,7 +1345,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
                             <div>
                               <label className={styles.formLabel}>
-                                Row Length
+                                Row Density
                                 <span className={styles.formLabelHint}> (Default: 4)</span>
                               </label>
                               <div className={styles.numberStepperWrapper}>
@@ -1365,14 +1359,14 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                   }
                                   className={styles.stepperButton}
                                   disabled={(updateData.rowsWide ?? 4) <= 1}
-                                  aria-label="Decrease rows wide"
+                                  aria-label="Decrease row density"
                                 >
                                   ←
                                 </button>
                                 <input
                                   type="number"
                                   min="1"
-                                  max="6"
+                                  max="10"
                                   value={updateData.rowsWide ?? ''}
                                   placeholder="4"
                                   onChange={e => {
@@ -1380,7 +1374,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                       e.target.value === ''
                                         ? undefined
                                         : Number.parseInt(e.target.value);
-                                    if (value === undefined || (value >= 1 && value <= 6)) {
+                                    if (value === undefined || (value >= 1 && value <= 10)) {
                                       setUpdateData(prev => ({ ...prev, rowsWide: value }));
                                     }
                                   }}
@@ -1391,12 +1385,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                   onClick={() =>
                                     setUpdateData(prev => ({
                                       ...prev,
-                                      rowsWide: Math.min(6, (prev.rowsWide ?? 4) + 1),
+                                      rowsWide: Math.min(10, (prev.rowsWide ?? 4) + 1),
                                     }))
                                   }
                                   className={styles.stepperButton}
-                                  disabled={(updateData.rowsWide ?? 4) >= 6}
-                                  aria-label="Increase rows wide"
+                                  disabled={(updateData.rowsWide ?? 4) >= 10}
+                                  aria-label="Increase row density"
                                 >
                                   →
                                 </button>

@@ -87,10 +87,9 @@ A full-stack photography portfolio and content management platform. Built for pe
 The layout engine uses a recursive binary tree (BoxTree) to arrange images into visually balanced rows. Each leaf node is a content item; combined nodes specify horizontal or vertical arrangement. The algorithm:
 
 1. **Greedy row fill** -- Items are added sequentially until the row reaches 90-115% capacity, measured in slot units derived from each image's effective rating.
-2. **Template map lookup** -- The orientation profile of each row (count of horizontal vs. vertical images) maps to a structural template: flat chains, dominant-stacked layouts, nested quads, etc.
-3. **AR-target scoring** -- For rows with 3+ items, multiple candidate tree structures are generated and scored by how closely their combined aspect ratio matches the target (1.5 for desktop). The best candidate wins.
-4. **Partition splitting** -- For 5+ items, the algorithm also tries balanced partition splits (recursive divide-and-conquer), comparing them against the dominant+rest approach.
-5. **Boundary optimization** -- A post-pass shifts items between adjacent rows to maximize fill quality across the entire layout.
+2. **Point-balance split** -- Within a row, the tree is built by splitting at the adjacent boundary that best halves the row's prominence (effective-rating) points, so items group when their combined weight matches the other side's. No templates -- structure follows the ratings.
+3. **Direction enumeration** -- Every horizontal/vertical assignment of that tree is enumerated and scored against a hard aspect-ratio floor (a row is never taller than it is wide) plus closeness to the target AR (1.5 for desktop); among acceptable candidates, the most equitable one (leaf areas tracking each image's weight) wins.
+4. **Boundary optimization** -- A post-pass shifts items between adjacent rows to maximize fill quality across the entire layout.
 
 This produces layouts where a single 5-star panoramic gets a full-width hero row, while four 2-star verticals stack efficiently into a compact grid -- all without manual configuration.
 
