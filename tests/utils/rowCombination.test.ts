@@ -948,7 +948,7 @@ describe('acToBoxTree', () => {
 });
 
 describe('lookupComposition', () => {
-  // lookupComposition now always routes through compose; these tests pin the
+  // lookupComposition now always routes through buildAtomic; these tests pin the
   // composition shapes and template keys for representative inputs.
   it('returns a single composition for 1H image', () => {
     const imgs = [toImageType(createHorizontalImage(1, 5), DESKTOP)];

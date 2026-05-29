@@ -3,7 +3,7 @@
  *
  * Stage 1 (`buildRows`): greedy sequential fill decides which items go in each
  * row, using a per-row cv budget (rowWidth) and an AR-floor check.
- * Stage 2 (`compose`): for each row, a point-balance split builds a binary tree,
+ * Stage 2 (`buildAtomic`): for each row, a point-balance split builds a binary tree,
  * then every hPair/vStack direction assignment is enumerated and scored — a hard
  * AR floor at 1.0 ("never taller than wide") plus closeness to the target row AR,
  * with an equity tiebreak so equal-rated images render at similar size.
@@ -185,7 +185,7 @@ export function acToBoxTree(ac: AtomicComponent): BoxTree {
 export const AR_FLOOR_MULTIPLIER = 0.7;
 
 /**
- * Maximum images per row. Caps greedy fill AND bounds compose's Phase 2
+ * Maximum images per row. Caps greedy fill AND bounds buildAtomic's Phase 2
  * enumeration (~2^(n-1) candidates for an n-leaf row), so keep this modest.
  */
 export const MAX_ROW_IMAGES = 12;
@@ -195,7 +195,7 @@ export const MAX_ROW_IMAGES = 12;
  * so the Stage-1 estimate matches the composition that actually renders.
  */
 export function estimateRowAR(images: ImageType[], targetAR: number, rowWidth: number): number {
-  const composition = compose(images, targetAR, rowWidth);
+  const composition = buildAtomic(images, targetAR, rowWidth);
   return calculateBoxTreeAspectRatio(acToBoxTree(composition), rowWidth);
 }
 
@@ -223,7 +223,7 @@ export function lookupComposition(
   rowWidth: number = 5
 ): CompositionResult {
   return {
-    composition: compose(images, targetAR, rowWidth),
+    composition: buildAtomic(images, targetAR, rowWidth),
     templateKey: parseTemplateKey(images),
   };
 }
@@ -263,7 +263,7 @@ function collectRowItems(
 /**
  * Row-first layout algorithm. Builds rows one at a time over a lookahead
  * window: standalone-skip a hero past low-rated items, greedy sequential fill,
- * best-fit fallback, then compose each row's tree.
+ * best-fit fallback, then build each row's atomic tree.
  *
  * A would-overfill item that fills a row on its own (cv >= rowWidth *
  * MIN_FILL_RATIO) is skipped to get its own row next iteration. The AR-floor
@@ -474,18 +474,9 @@ export function buildRows(
 // =============================================================================
 // ROW COMPOSITION
 // =============================================================================
-
-/**
- * Row composition — the canonical two-phase composer.
- *
- * Phase 1 (splitByPointBalance): split the row hierarchically at the adjacent
- * boundary where the two halves have the closest effectiveRating sums, so
- * same-rated content yields balanced trees and outliers fall on their own side.
- * Phase 2 (pickRootAssignment): enumerate every hPair/vStack assignment (root
- * forced to hPair), keep those within a small AR band of the best, and pick the
- * most equitable — leaf areas tracking each image's cv. A hard AR floor at 1.0
- * ("never taller than wide") takes priority over "closest to square".
- */
+// buildAtomic — two-phase composer: point-balance split (Phase 1), then
+// direction enumeration with a hard AR-1.0 floor + equity tiebreak (Phase 2).
+// Algorithm & rationale: ./rowCombination.md
 
 // =============================================================================
 // Phase 1 — point-balance hierarchical split
@@ -497,16 +488,13 @@ type AbstractNode =
 
 /**
  * Build the unlabeled binary tree by recursively splitting at the adjacent
- * boundary minimising `|leftSum − half| + |rightSum − half|` (half = total
- * effectiveRating / 2) — the split closest to halving the row's "points".
- * Ties (e.g. uniform-rating rows) break toward the middle gap, giving
- * structurally-balanced trees. Order preserved — no swaps, only splits.
+ * boundary whose two halves have the closest effectiveRating sums. Order
+ * preserved — no swaps, only splits.
  *
- * effectiveRating (not cv) is the signal: it's perceived prominence; cv would
- * double-penalise verticals by reapplying the AR factor on top of the rating.
+ * effectiveRating (not cv): cv would double-penalise verticals. See ./rowCombination.md.
  */
 function splitByPointBalance(items: ImageType[]): AbstractNode {
-  if (items.length === 0) throw new Error('compose requires at least 1 image');
+  if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
   if (items.length === 1) return { kind: 'leaf', img: items[0]! };
 
   // For 2 items there's only one valid split.
@@ -677,7 +665,7 @@ function enumerateAssignments(node: AbstractNode): Candidate[] {
  * with hPair. The combination with the lowest `rowAR_Cost` wins.
  */
 function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicComponent {
-  // Leaf-only trees should never reach Phase 2 (handled by compose entry).
+  // Leaf-only trees should never reach Phase 2 (handled by buildAtomic entry).
   if (tree.kind === 'leaf') return single(tree.img);
 
   const leftOptions = enumerateAssignments(tree.left);
@@ -722,12 +710,16 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
 // =============================================================================
 
 /**
- * Compose a row of images via the two-phase algorithm. Leaves stay in input
- * order. targetAR below ROW_AR_FLOOR (1.0) is lifted to it. rowWidth is unused
- * (AR is intrinsic to the tree); kept for call-site symmetry.
+ * Build a row's atomic component tree via the two-phase algorithm. Leaves stay
+ * in input order. targetAR below ROW_AR_FLOOR (1.0) is lifted to it. rowWidth is
+ * unused (AR is intrinsic to the tree); kept for call-site symmetry.
  */
-export function compose(items: ImageType[], targetAR: number, rowWidth: number): AtomicComponent {
-  if (items.length === 0) throw new Error('compose requires at least 1 image');
+export function buildAtomic(
+  items: ImageType[],
+  targetAR: number,
+  rowWidth: number
+): AtomicComponent {
+  if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
   if (items.length === 1) return single(items[0]!);
 
   // rowWidth is unused; touch it so lint doesn't flag it.

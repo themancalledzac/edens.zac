@@ -73,7 +73,7 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  *
  * Runs the single row-composition algorithm: {@link buildRows} greedily fills
  * each row to the per-viewport cv budget, then composes its BoxTree via
- * {@link compose}. The only mobile/desktop difference is the row-width budget
+ * {@link buildAtomic}. The only mobile/desktop difference is the row-width budget
  * (mobile pins to a narrow slot width; desktop derives it from the density
  * chunkSize) — there is no separate pattern-detection or slot-based mode.
  *
