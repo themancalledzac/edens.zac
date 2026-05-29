@@ -153,6 +153,7 @@ amplifyconfiguration*
 # claude code auto-generated
 .claude/skills/
 .claude/worktrees/
+.claude/agent-memory/
 
 # Local-only authoring artifacts (handoffs, plans, specs, spikes)
 docs/handoffs/

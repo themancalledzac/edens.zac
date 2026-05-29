@@ -512,8 +512,8 @@ export function buildRows(
  *            than one ballooning while its siblings are crushed.
  *
  * Why point-balance over sum-cv merge or AR-gap split: sum-cv merge produces
- * dominant emergence — heaviest item ends up alone at root, same visual as
- * an explicit `findDominant`. AR-gap split makes structural choices off a
+ * dominant emergence — the heaviest item ends up alone at the root, visually
+ * singling it out even on rows of uniformly-rated content. AR-gap split makes structural choices off a
  * numerical signal (orientation boundary) that isn't always meaningful — for
  * rows with multiple AR boundaries, an arbitrary tie-break decides which side
  * gets the lone item. Point-balance ties the split criterion to the user's
@@ -551,10 +551,10 @@ export function buildRows(
  *
  * Note: the splitting principle is tree-depth balance — equitable leaf depths
  * so same-rated items render at similar size — rather than pairing the lowest
- * sum-cv adjacent atoms first (which produces dominant emergence, the same
- * visual pattern as an explicit `findDominant` and incorrect for rows of
- * uniformly-rated content). cv-driven sizing is handled downstream by buildRows
- * and the pixel calculator.
+ * sum-cv adjacent atoms first (which produces dominant emergence, singling out
+ * the heaviest item at the root, and is incorrect for rows of uniformly-rated
+ * content). cv-driven sizing is handled downstream by buildRows and the pixel
+ * calculator.
  */
 
 // =============================================================================

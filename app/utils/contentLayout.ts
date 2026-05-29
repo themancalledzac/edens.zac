@@ -69,12 +69,13 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
 }
 
 /**
- * Process content for display with full pattern metadata
+ * Process content for display, returning sized rows ready to render.
  *
- * Supports two layout modes:
- * 1. Pattern Detection (desktop default): Uses pattern registry to detect
- *    optimal layouts like main-stacked, 5-star vertical patterns, etc.
- * 2. Slot-Based (mobile/fallback): Simple slot-based chunking
+ * Runs the single row-composition algorithm: {@link buildRows} greedily fills
+ * each row to the per-viewport cv budget, then composes its BoxTree via
+ * {@link compose}. The only mobile/desktop difference is the row-width budget
+ * (mobile pins to a narrow slot width; desktop derives it from the density
+ * chunkSize) — there is no separate pattern-detection or slot-based mode.
  *
  * If collectionData is provided, creates a header row (cover image + metadata)
  * as the first row, before processing regular content.
@@ -83,7 +84,7 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * @param componentWidth - Total available width for display
  * @param chunkSize - Number of normal-width items per row (default: 2)
  * @param options - Processing options (isMobile, collectionData, displayMode)
- * @returns Array of rows with pattern metadata and sized content blocks
+ * @returns Array of rows with structural key and sized content blocks
  */
 export function processContentForDisplay(
   content: AnyContentModel[],
