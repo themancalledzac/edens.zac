@@ -831,12 +831,12 @@ describe('createHeaderRow', () => {
     expect(result).toBeNull();
   });
 
-  it('should return a single row with templateKey "header" on desktop', () => {
+  it('should return a single row with rowType "header" on desktop', () => {
     const collection = createCollectionModel(1);
     const result = createHeaderRow(collection, 1200, 2, false);
     const row = asSingleRow(result);
     expect(row).not.toBeNull();
-    expect(row?.templateKey).toBe('header');
+    expect(row?.rowType).toBe('header');
   });
 
   it('should include cover image as first item on desktop', () => {
@@ -855,11 +855,11 @@ describe('createHeaderRow', () => {
     expect(rows.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('should give each mobile row templateKey "header"', () => {
+  it('should give each mobile row rowType "header"', () => {
     const collection = createCollectionModel(1);
     const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
     for (const row of result) {
-      expect(row.templateKey).toBe('header');
+      expect(row.rowType).toBe('header');
     }
   });
 
@@ -901,14 +901,14 @@ describe('processContentForDisplay', () => {
     const collection = createCollectionModel(1);
     const result = processContentForDisplay(content, 1200, 2, { collectionData: collection });
     // First row should be the header
-    expect(result[0]?.templateKey).toBe('header');
+    expect(result[0]?.rowType).toBe('header');
     expect(result.length).toBeGreaterThan(1);
   });
 
   it('should not include a header row when collectionData is not provided', () => {
     const content = [createImageContent(1)];
     const result = processContentForDisplay(content, 1200);
-    const hasHeaderRow = result.some(r => r.templateKey === 'header');
+    const hasHeaderRow = result.some(r => r.rowType === 'header');
     expect(hasHeaderRow).toBe(false);
   });
 
@@ -931,7 +931,7 @@ describe('processContentForDisplay', () => {
       collectionData: collection,
     });
     // Header row(s) come first
-    expect(result[0]?.templateKey).toBe('header');
+    expect(result[0]?.rowType).toBe('header');
   });
 });
 
@@ -946,7 +946,7 @@ describe('createHeaderRow', () => {
 
       expect(result).not.toBeNull();
       expect(result?.items).toHaveLength(2);
-      expect(result?.templateKey).toBe('header');
+      expect(result?.rowType).toBe('header');
       expect(result?.items[0]?.content.contentType).toBe('IMAGE');
       expect(result?.items[1]?.content.contentType).toBe('TEXT');
     });

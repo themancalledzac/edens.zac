@@ -33,16 +33,6 @@ export type BoxTree =
     };
 
 // =============================================================================
-// TEMPLATE KEY — structural identity for row compositions
-// =============================================================================
-
-/** Structural key for template map lookup: counts of H and V images in a row */
-export interface TemplateKey {
-  h: number;
-  v: number;
-}
-
-// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
@@ -89,7 +79,6 @@ export function isRowComplete(components: AnyContentModel[], rowWidth: number): 
 /** A row result from the row-building algorithm */
 export interface RowResult {
   components: AnyContentModel[];
-  templateKey: TemplateKey;
   boxTree: BoxTree;
 }
 
@@ -200,46 +189,6 @@ export function estimateRowAR(images: ImageType[], targetAR: number, rowWidth: n
 }
 
 // =============================================================================
-// COMPOSITION LOOKUP
-// =============================================================================
-
-/** Result of a template map lookup */
-export interface CompositionResult {
-  composition: AtomicComponent;
-  templateKey: TemplateKey;
-}
-
-/**
- * Look up and build a composition for a set of images using the template map.
- *
- * @param images - ImageType[] assigned to this row (already determined by greedy fill)
- * @param targetAR - Target aspect ratio for AR-aware templates (default 1.5)
- * @param rowWidth - Row width budget for AR calculation
- * @returns CompositionResult with AtomicComponent tree and structural key
- */
-export function lookupComposition(
-  images: ImageType[],
-  targetAR: number = 1.5,
-  rowWidth: number = 5
-): CompositionResult {
-  return {
-    composition: buildAtomic(images, targetAR, rowWidth),
-    templateKey: parseTemplateKey(images),
-  };
-}
-
-/** Build a TemplateKey from a set of images by counting h/v directly */
-function parseTemplateKey(images: ImageType[]): TemplateKey {
-  let h = 0;
-  let v = 0;
-  for (const img of images) {
-    if (img.ar === 'H') h++;
-    else v++;
-  }
-  return { h, v };
-}
-
-// =============================================================================
 // buildRows
 // =============================================================================
 
@@ -309,10 +258,8 @@ export function buildRows(
         const composition = single(heroImg);
         const boxTree = acToBoxTree(composition);
 
-        const heroKey = parseTemplateKey([heroImg]);
         rows.push({
           components: [heroItem],
-          templateKey: heroKey,
           boxTree,
         });
 
@@ -383,12 +330,11 @@ export function buildRows(
     if (seqCount > 0) {
       const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-      const { composition, templateKey } = lookupComposition(rowImgs, targetAR, rowWidth);
+      const composition = buildAtomic(rowImgs, targetAR, rowWidth);
       const boxTree = acToBoxTree(composition);
 
       rows.push({
         components: rowItems,
-        templateKey,
         boxTree,
       });
 
@@ -453,12 +399,11 @@ export function buildRows(
     }
 
     const bfImgs = bfComponents.map(item => toImageType(item, rowWidth));
-    const { composition, templateKey: bfKey } = lookupComposition(bfImgs, targetAR, rowWidth);
+    const composition = buildAtomic(bfImgs, targetAR, rowWidth);
     const boxTree = acToBoxTree(composition);
 
     rows.push({
       components: bfComponents,
-      templateKey: bfKey,
       boxTree,
     });
 

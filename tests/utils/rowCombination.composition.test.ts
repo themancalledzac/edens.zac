@@ -2,9 +2,9 @@
  * Unit tests for buildAtomic — two-phase composition with AR-driven direction.
  *
  * These cover the behaviours that drove the composer's design: input order is
- * preserved, dom-stacked variety emerges on all-H rows without an explicit rule,
- * V+V vStacks are NOT produced on all-V rows because their AR is too far from
- * target, and the user's row-7 example resolves the way the AR math predicts.
+ * preserved, a stacked-column shape emerges on all-H rows without an explicit
+ * rule, V+V vStacks are NOT produced on all-V rows because their AR is too far
+ * from target, and the user's row-7 example resolves the way the AR math predicts.
  */
 
 import { LAYOUT } from '@/app/constants';
@@ -87,9 +87,9 @@ describe('buildAtomic — input order is preserved', () => {
 });
 
 describe('buildAtomic — emergence without rules', () => {
-  it('produces a dom-stacked shape (not a flat 3-wide hChain) for 3 same-rated H images', () => {
+  it('produces a stacked-column shape (not a flat 3-wide hChain) for 3 same-rated H images', () => {
     // 3 H4★ images at desktop target 1.5 — a flat hChain has AR ≈ 5.3,
-    // dom-stacked variant h(v(H,H), H) has AR ≈ 2.7 (much closer).
+    // the H(V(H,H), H) variant has AR ≈ 2.7 (much closer).
     const items = [1, 2, 3]
       .map(id => createHorizontalImage(id, 4))
       .map(it => toImageType(it, DESKTOP));
@@ -97,7 +97,7 @@ describe('buildAtomic — emergence without rules', () => {
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     expect(result.direction).toBe('H');
-    // Tree should contain at least one vStack node (the dom-stacked column).
+    // Tree should contain at least one vStack node (the stacked column).
     const shape = shapeOf(result);
     expect(shape).toContain('v(');
   });
@@ -251,7 +251,7 @@ describe('buildAtomic — AR fitness', () => {
     }
   });
 
-  it('keeps the /a-mariners-game row 0 (2V+2H) at AR >= 1.0, rejecting the sub-1.0 nested-quad', () => {
+  it('keeps the /a-mariners-game row 0 (2V+2H) at AR >= 1.0, rejecting the sub-1.0 2×2 nested tree', () => {
     // Floor enforcement (user decision 2026-05-28). Real row-0 content:
     // [V5 ar0.665, H3 ar1.25, V5 ar0.665, H4 ar1.601]. Point-balance → [[V,H],[V,H]].
     // The squarest Phase-2 candidate is h(v(V,H),v(V,H)) at AR ~0.904, but a row

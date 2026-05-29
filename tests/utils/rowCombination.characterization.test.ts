@@ -1,15 +1,12 @@
 /**
- * Characterization Tests for buildRows()
+ * Characterization Tests for buildRows() and buildAtomic()
  *
- * These tests capture the CURRENT behavior of buildRows() as a regression safety net
- * for the Phase 1 template map refactor. They assert on:
+ * These tests capture the output of buildRows()/buildAtomic() as a regression
+ * safety net. They assert on:
  *
  * - Number of rows returned
  * - components array per row (which items, in what order)
  * - boxTree structure per row (full tree shape)
- * - templateKey per row ({ h: number; v: number } orientation counts)
- *
- * After the refactor, components, boxTree, and templateKey assertions should all pass.
  */
 
 import { LAYOUT } from '@/app/constants';
@@ -65,99 +62,86 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1]);
-    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 0 });
     expect(rows[0]!.boxTree.type).toBe('leaf');
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('L(1)');
   });
 
   // ---------------------------------------------------------------
-  // Test 2: V5★ + V5★ — v-pair template
+  // Test 2: V5★ + V5★ — 2 verticals
   // V5★ effective=4, cv=2.5. 2×2.5=5.0, fill=100%
-  // templateKey: { h: 0, v: 2 }
   // ---------------------------------------------------------------
-  it('2: V5★ + V5★ → v-pair (100% fill)', () => {
+  it('2: V5★ + V5★ → 2 verticals (100% fill)', () => {
     const items = [V(1, 5), V(2, 5)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(rows[0]!.templateKey).toEqual({ h: 0, v: 2 });
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
   // Test 3: H3★ + H3★ — greedy sequential fill
   // H3★ cv=1.67, 2×1.67=3.34, fill=67% < 90% → row incomplete with 2 items
-  // templateKey: { h: 2, v: 0 }
   // ---------------------------------------------------------------
-  it('3: H3★ + H3★ → h-pair templateKey (67% fill, below 90%)', () => {
+  it('3: H3★ + H3★ → 2 horizontals (67% fill, below 90%)', () => {
     const items = [H(1, 3), H(2, 3)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 0 });
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
   // Test 4: V2★ + V2★ — greedy sequential fill
   // V2★ effective=1, cv=1.0. 2×1.0=2.0, fill=40% < 90%
-  // templateKey: { h: 0, v: 2 }
   // ---------------------------------------------------------------
-  it('4: V2★ + V2★ → v-pair templateKey (40% fill)', () => {
+  it('4: V2★ + V2★ → 2 verticals (40% fill)', () => {
     const items = [V(1, 2), V(2, 2)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(rows[0]!.templateKey).toEqual({ h: 0, v: 2 });
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
-  // Test 5: H4★ + V1★ + V1★ — dom-stacked-1h2v template
+  // Test 5: H4★ + V1★ + V1★ — dominant H + stacked V-pair
   // H4★ cv=2.5, V1★ effective=0 cv=1.0. Total=4.5, fill=90% ✓
-  // templateKey: { h: 1, v: 2 }
   // ---------------------------------------------------------------
-  it('5: H4★ + V1★ + V1★ → dom-stacked-1h2v (90% fill)', () => {
+  it('5: H4★ + V1★ + V1★ → H(leaf, V(leaf,leaf)) (90% fill)', () => {
     const items = [H(1, 4), V(2, 1), V(3, 1)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 2 });
-    // DVP: main | V(stacked1, stacked2)
+    // main | V(stacked1, stacked2)
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),L(3)))');
   });
 
   // ---------------------------------------------------------------
-  // Test 6: H4★ + V2★ — dom-sec template
+  // Test 6: H4★ + V2★ — H + V
   // H4★ cv=2.5, V2★ effective=1 cv=1.0. Total=3.5, fill=70% < 90%
-  // templateKey: { h: 1, v: 1 }
   // ---------------------------------------------------------------
-  it('6: H4★ + V2★ → dom-sec templateKey (70% fill)', () => {
+  it('6: H4★ + V2★ → H + V (70% fill)', () => {
     const items = [H(1, 4), V(2, 2)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 1 });
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
-  // Test 7: H2★ + H2★ + H2★ — triple-h template
+  // Test 7: H2★ + H2★ + H2★ — 3 horizontals
   // H2★ cv=1.25, 3×1.25=3.75, fill=75% < 90% → row incomplete
-  // templateKey: { h: 3, v: 0 }
   // ---------------------------------------------------------------
-  it('7: H2★ + H2★ + H2★ → triple-h templateKey (75% fill)', () => {
+  it('7: H2★ + H2★ + H2★ → 3 horizontals (75% fill)', () => {
     const items = [H(1, 2), H(2, 2), H(3, 2)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(rows[0]!.templateKey).toEqual({ h: 3, v: 0 });
     // buildAtomic produces AR-aware tree (not flat hChain)
     const bt = rows[0]!.boxTree;
     expect(bt.type).toBe('combined');
@@ -165,17 +149,15 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 8: H1★ + V1★ + H1★ + V1★ + H1★ — atomic-3h2v template (5 items)
+  // Test 8: H1★ + V1★ + H1★ + V1★ + H1★ — 5-item row (3H + 2V)
   // H1★ cv=1.0, V1★ effective=0 cv=1.0. 5×1.0=5.0, fill=100% ✓
-  // templateKey: { h: 3, v: 2 }
   // ---------------------------------------------------------------
-  it('8: H1★ + V1★ + H1★ + V1★ + H1★ → atomic-3h2v templateKey (5-item row)', () => {
+  it('8: H1★ + V1★ + H1★ + V1★ + H1★ → 3H + 2V (5-item row)', () => {
     const items = [H(1, 1), V(2, 1), H(3, 1), V(4, 1), H(5, 1)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4, 5]);
-    expect(rows[0]!.templateKey).toEqual({ h: 3, v: 2 });
     // buildAtomic produces AR-aware tree with dominant on right
     const bt = rows[0]!.boxTree;
     expect(bt.type).toBe('combined');
@@ -192,15 +174,13 @@ describe('buildRows characterization', () => {
     const items = [V(1, 1), H(2, 5), H(3, 3), H(4, 3)];
     const rows = buildRows(items, DESKTOP);
 
-    // Row 1: V1★+H5★+H3★ → dom-stacked-2h1v
+    // Row 1: V1★+H5★+H3★ → H(V-pair, leaf)
     expect(rows).toHaveLength(2);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 1 });
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),L(3))');
 
     // Row 2: remaining H3★
     expect(rowIds(rows[1]!)).toEqual([4]);
-    expect(rows[1]!.templateKey).toEqual({ h: 1, v: 0 });
   });
 
   // ---------------------------------------------------------------
@@ -212,28 +192,24 @@ describe('buildRows characterization', () => {
     const items = [V(1, 1), V(2, 2), H(3, 5)];
     const rows = buildRows(items, DESKTOP);
 
-    // All 3 in one row → dom-stacked-1h2v
+    // All 3 in one row → H(V-pair, leaf)
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 2 });
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),L(3))');
   });
 
   // ---------------------------------------------------------------
-  // Test 11: 4 verticals (V3★, V1★, V1★, V1★) — nested-quad-0h4v template
+  // Test 11: 4 verticals (V3★, V1★, V1★, V1★) — 2×2 nested
   // V3★ eff=2, V1★ eff=0. CVs: 1.25 + 1.0 + 1.0 + 1.0 = 4.25, fill=85%
-  // templateKey: { h: 0, v: 4 }
-  // Main: V3★ (highest rating eff=2), top pair: two lowest (V1★, V1★), bottom: V1★
   // ---------------------------------------------------------------
-  it('11: V3★ + V1★ + V1★ + V1★ → nested quad', () => {
+  it('11: V3★ + V1★ + V1★ + V1★ → 2×2 nested', () => {
     const items = [V(1, 3), V(2, 1), V(3, 1), V(4, 1)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
-    expect(rows[0]!.templateKey).toEqual({ h: 0, v: 4 });
 
-    // V3 builds: H( H(V3★,V1★), V(V1★,V1★) ) — an H pair on the left and a
+    // Builds: H( H(V3★,V1★), V(V1★,V1★) ) — an H pair on the left and a
     // V stack of two leaves on the right.
     const tree = rows[0]!.boxTree;
     expect(tree.type).toBe('combined');
@@ -278,17 +254,14 @@ describe('buildRows characterization', () => {
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
     expect(allIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
-    // Row 1: H5★(5.0) + H4★(3.5) = 8.5, fill≈106% (≤ MAX). The V3 estimate for
+    // Row 1: H5★(5.0) + H4★(3.5) = 8.5, fill≈106% (≤ MAX). The AR estimate for
     // {H5,H4} already meets the AR floor, so the row closes at 2 items.
-    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 0 });
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
 
     // Row 2: V3★ + V3★ + H3★ + H3★ + H3★ → 3H + 2V
-    expect(rows[1]!.templateKey).toEqual({ h: 3, v: 2 });
     expect(rowIds(rows[1]!)).toEqual([3, 4, 5, 6, 7]);
 
     // Row 3: V1★ + H2★ + V2★ → 1H + 2V
-    expect(rows[2]!.templateKey).toEqual({ h: 1, v: 2 });
     expect(rowIds(rows[2]!)).toEqual([8, 9, 10]);
 
     expect(rows).toHaveLength(3);
@@ -302,24 +275,21 @@ describe('buildRows characterization', () => {
     const rows = buildRows(items, DESKTOP);
 
     // H3★ cv=1.67. 3×1.67=5.0 → 100% → row complete
-    // triple-h template: 3 H3★ → templateKey { h: 3, v: 0 }
+    // 3 H3★ per row
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.templateKey).toEqual({ h: 3, v: 0 });
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(rows[1]!.templateKey).toEqual({ h: 3, v: 0 });
     expect(rowIds(rows[1]!)).toEqual([4, 5, 6]);
   });
 
   // ---------------------------------------------------------------
   // Test 14: Single V1★ (leftovers / final row)
   // ---------------------------------------------------------------
-  it('14: single V1★ → single-item FORCE_FILL', () => {
+  it('14: single V1★ → single-item row', () => {
     const items = [V(1, 1)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1]);
-    expect(rows[0]!.templateKey).toEqual({ h: 0, v: 1 });
     expect(rows[0]!.boxTree.type).toBe('leaf');
   });
 
@@ -327,18 +297,16 @@ describe('buildRows characterization', () => {
   // Test 15: H4★ + H3★ + V1★ + H2★ + V1★ — with rw=8
   // H4★ cv=3.5, H3★ cv=2.5, V1★ cv≈0.61, H2★ cv=1.75, V1★ cv≈0.61
   // Sequential: 3.5(43.8%) + 2.5(75%) + 0.61(82.6%) + 1.75(104.5%✓) → complete at 4
-  // Actual: [1,2,3,4] → compose-3h1v
+  // Actual: [1,2,3,4] → 3H + 1V
   // ---------------------------------------------------------------
-  it('15: H4★ + H3★ + V1★ + H2★ + V1★ → compose-3h1v first row', () => {
+  it('15: H4★ + H3★ + V1★ + H2★ + V1★ → 3H + 1V first row', () => {
     const items = [H(1, 4), H(2, 3), V(3, 1), H(4, 2), V(5, 1)];
     const rows = buildRows(items, DESKTOP);
 
-    // Row 1: H4★ + H3★ + V1★ + H2★ → templateKey { h: 3, v: 1 }
-    expect(rows[0]!.templateKey).toEqual({ h: 3, v: 1 });
+    // Row 1: H4★ + H3★ + V1★ + H2★
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
 
-    // Remaining: V1★ → templateKey { h: 0, v: 1 }
-    expect(rows[1]!.templateKey).toEqual({ h: 0, v: 1 });
+    // Remaining: V1★
     expect(rowIds(rows[1]!)).toEqual([5]);
 
     // All items used
@@ -350,7 +318,7 @@ describe('buildRows characterization', () => {
   // Test 16: H3★ + V1★ + V1★ + H3★ — sequential fill
   // H3★ cv=1.67, V1★ cv=1.0
   // Sequential: 1.67+1.0=2.67 (53%), +1.0=3.67 (73%), +1.67=5.34 (107%) ✓
-  // Sequential completes → templateKey { h: 2, v: 2 }
+  // Sequential completes → 2H + 2V
   // ---------------------------------------------------------------
   it('16: H3★ + V1★ + V1★ + H3★ → sequential fill (no best-fit needed)', () => {
     const items = [H(1, 3), V(2, 1), V(3, 1), H(4, 3)];
@@ -358,21 +326,19 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
-    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 2 });
   });
 
   // ---------------------------------------------------------------
   // Test 17: V4★ + H3★ + H4★ + H1★ — with rw=8
   // V4★ eff=3 cv≈1.53, H3★ cv=2.5, H4★ cv=3.5, H1★ cv=1.25
   // Sequential: 1.53(19.1%) + 2.5(50.4%) + 3.5(94.1%✓) → complete at 3
-  // Actual: [1,2,3] → dom-stacked-2h1v, remaining [4] alone
+  // Actual: [1,2,3] → 2H + 1V, remaining [4] alone
   // ---------------------------------------------------------------
   it('17: sequential fill — V4★ + H3★ + H4★ + H1★', () => {
     const items = [V(1, 4), H(2, 3), H(3, 4), H(4, 1)];
     const rows = buildRows(items, DESKTOP);
 
-    // Row 1: V4★ + H3★ + H4★ → dom-stacked-2h1v
-    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 1 });
+    // Row 1: V4★ + H3★ + H4★ → 2H + 1V
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
     expect(rows[0]!.components).toHaveLength(3);
 
@@ -384,41 +350,36 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 18: H4★ + H4★ — h-pair template (100% fill)
-  // templateKey: { h: 2, v: 0 }
+  // Test 18: H4★ + H4★ — 2 horizontals (100% fill)
   // ---------------------------------------------------------------
-  it('18: H4★ + H4★ → h-pair (100% fill)', () => {
+  it('18: H4★ + H4★ → 2 horizontals (100% fill)', () => {
     const items = [H(1, 4), H(2, 4)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(rows[0]!.templateKey).toEqual({ h: 2, v: 0 });
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
-  // Test 19: H4★ + V3★ + V3★ — dom-stacked-1h2v template (100% fill)
-  // templateKey: { h: 1, v: 2 }
+  // Test 19: H4★ + V3★ + V3★ — dominant H + stacked V-pair (100% fill)
   // ---------------------------------------------------------------
-  it('19: H4★ + V3★ + V3★ → dom-stacked-1h2v (100% fill)', () => {
+  it('19: H4★ + V3★ + V3★ → H(leaf, V(leaf,leaf)) (100% fill)', () => {
     const items = [H(1, 4), V(2, 3), V(3, 3)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(rows[0]!.templateKey).toEqual({ h: 1, v: 2 });
     expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),L(3)))');
   });
 
   // ---------------------------------------------------------------
-  // Test 20: 5 H1★ images — MULTI_SMALL match
-  // H1★ cv=1.0, all same rating (eff=1), proximity=0 ✓
+  // Test 20: 5 H1★ images — single-row fallback
+  // H1★ cv=1.0, all same rating (eff=1)
   // 3×1.0=3.0, fill=60% < 90% → isRowComplete fails for 3
-  // 5×1.0=5.0, fill=100% but MULTI_SMALL matches 3 items
-  // So pattern matches but row incomplete → FORCE_FILL takes 5
+  // 5×1.0=5.0, fill=100% → all 5 fill into one row
   // ---------------------------------------------------------------
-  it('20: 5 H1★ images → FORCE_FILL (MULTI_SMALL fails fill check)', () => {
+  it('20: 5 H1★ images → single-row fallback', () => {
     const items = [H(1, 1), H(2, 1), H(3, 1), H(4, 1), H(5, 1)];
     const rows = buildRows(items, DESKTOP);
 
@@ -454,7 +415,7 @@ describe('buildRows characterization', () => {
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
     expect(allIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
-    // First row: H5★+H4★ (5.0+3.5=8.5, 106% ≤ MAX). The V3 estimate for {H5,H4}
+    // First row: H5★+H4★ (5.0+3.5=8.5, 106% ≤ MAX). The AR estimate for {H5,H4}
     // meets the AR floor, so the row closes at 2 items → [1,2].
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
   });
@@ -481,7 +442,7 @@ describe('buildRows characterization', () => {
       const componentIds = rowIds(row);
       const leafIds = boxTreeLeafIds(row.boxTree);
       // BoxTree leaves should contain exactly the same items as components
-      // (order may differ for nested-quad, but content should match)
+      // (order may differ for a 2×2 nested shape, but content should match)
       expect(leafIds.sort((a, b) => a - b)).toEqual(componentIds.sort((a, b) => a - b));
     }
   });
@@ -607,7 +568,7 @@ describe('architecture types', () => {
       expect(() => hChain([])).toThrow();
     });
 
-    it('can compose DVP structure: H(main, V(sec1, sec2))', () => {
+    it('builds H(leaf, V(leaf,leaf))', () => {
       const main = makeImg(1, 'H', 4);
       const sec1 = makeImg(2, 'V', 3);
       const sec2 = makeImg(3, 'V', 3);
@@ -623,7 +584,7 @@ describe('architecture types', () => {
       }
     });
 
-    it('can compose nested-quad: H(main, V(H(a,b), bottom))', () => {
+    it('builds H(leaf, V(H(a,b), leaf))', () => {
       const main = makeImg(1, 'V', 4);
       const a = makeImg(2, 'V', 1);
       const b = makeImg(3, 'V', 1);
@@ -685,7 +646,7 @@ describe('architecture types', () => {
       }
     });
 
-    it('converts DVP structure and preserves source references', () => {
+    it('acToBoxTree converts H(leaf, V-pair) and preserves source refs', () => {
       const mainItem = H(1, 4);
       const sec1Item = V(2, 3);
       const sec2Item = V(3, 3);

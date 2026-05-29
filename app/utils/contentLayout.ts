@@ -14,7 +14,6 @@ import {
   type BoxTree,
   buildRows,
   hChain,
-  type TemplateKey,
   toImageType,
 } from '@/app/utils/rowCombination';
 import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
@@ -35,7 +34,7 @@ export interface CalculatedContentSize {
  * Used for rendering content layouts
  */
 export interface RowWithPatternAndSizes {
-  templateKey: TemplateKey | 'standard' | 'header';
+  rowType: 'content' | 'header';
   items: CalculatedContentSize[];
   boxTree: BoxTree;
 }
@@ -122,7 +121,7 @@ export function processContentForDisplay(
     const items = calculateSizesFromBoxTree(row.boxTree, componentWidth, effectiveGap, rowWidth);
 
     return {
-      templateKey: row.templateKey,
+      rowType: 'content' as const,
       items,
       boxTree: row.boxTree,
     };
@@ -579,7 +578,7 @@ export function createHeaderRow(
       LAYOUT.mobileGridGap,
       LAYOUT.mobileSlotWidth
     );
-    rows.push({ templateKey: 'header' as const, items: coverItems, boxTree: coverTree });
+    rows.push({ rowType: 'header' as const, items: coverItems, boxTree: coverTree });
 
     // Metadata row — full width, auto height (rendered via text block)
     if (metadataBlock) {
@@ -587,7 +586,7 @@ export function createHeaderRow(
       const metaItems: CalculatedContentSize[] = [
         { content: metadataBlock, width: componentWidth, height: 0 },
       ];
-      rows.push({ templateKey: 'header' as const, items: metaItems, boxTree: metaTree });
+      rows.push({ rowType: 'header' as const, items: metaItems, boxTree: metaTree });
     }
 
     return rows;
@@ -623,7 +622,7 @@ export function createHeaderRow(
   const boxTreeItems = calculatedSizes.map(item => item.content);
 
   return {
-    templateKey: 'header' as const,
+    rowType: 'header' as const,
     items: calculatedSizes,
     boxTree: createSimpleHorizontalBoxTree(boxTreeItems),
   };
