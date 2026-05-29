@@ -147,7 +147,13 @@ export interface ContentTextModel extends Content {
  */
 export interface ContentGifModel extends Content {
   contentType: 'GIF';
-  gifUrl: string; // Backend field name (was imageUrlWeb)
+  gifUrl: string; // 2000px "full" master — used by the fullscreen viewer
+  /**
+   * 1080px "web" display variant — used in the row layout. Optional: pre-existing gifs and actual
+   * image/gif uploads have no web variant, so consumers fall back to `gifUrl` (`gifUrlWeb ?? gifUrl`).
+   * Mirrors backend ContentModels.Gif.gifUrlWeb.
+   */
+  gifUrlWeb?: string | null;
   thumbnailUrl?: string | null; // Backend field name (was imageUrlRaw)
   alt?: string;
   width?: number;
