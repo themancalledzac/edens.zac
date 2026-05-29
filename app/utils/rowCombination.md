@@ -42,7 +42,7 @@ trees.
 
 **Why a hard floor at 1.0.** "Never taller than wide" takes priority over
 "closest to square" when they conflict — e.g. on a 2H+2V row a near-square
-nested-quad at AR ~0.9 is rejected in favour of a wider (≥1.0) arrangement,
+2×2 nested arrangement at AR ~0.9 is rejected in favour of a wider (≥1.0) arrangement,
 even though 0.9 is closer to square.
 
 **Why enumeration in Phase 2.** The aspect-ratio constraint is global; local
@@ -50,18 +50,18 @@ greedy direction picks can't see the cumulative effect (children that look fine
 in isolation can compose into a too-tall or too-wide row). Small trees (≤12
 leaves) make exhaustive enumeration cheap, so it finds the genuine optimum.
 
-**Why no skip-rule stack.** The floor + equity selection subsume the special
+**Why no special-case rules.** The floor + equity selection subsume the special
 cases older composers needed:
 
 - Top-level no-vStack is a hard constraint (forced hPair at the root).
-- vTier caps are unneeded — deep vStacks emerge when they make a row squarer at
+- vertical-depth caps are unneeded — deep vStacks emerge when they make a row squarer at
   high density, and are rejected by the floor when they'd make it taller than wide.
 - "4★+ blocks vStack" is unneeded — a 4★ leaf in a deep vStack that tanks the
   row AR is rejected by the floor.
 - Same-orientation (V+V) avoidance is unneeded — narrow-AR vStacks push the row
   AR below 1.0 and get rejected.
 
-Selection is two-tiered, not a skip-rule stack: (1) the AR floor plus closeness
+Selection is two-tiered, not a stack of special-case rules: (1) the AR floor plus closeness
 to the target row AR pick the acceptable band; (2) within it, the lowest
 area-vs-cv spread wins, so sizing tracks `cv` (the intended signal) rather than
 being an artifact of which subtree a leaf landed in.
