@@ -196,7 +196,6 @@ describe('buildRows', () => {
     expect(rows[0]?.components).toHaveLength(2);
     // 2 horizontal images → templateKey { h: 2, v: 0 }
     expect(rows[0]?.templateKey).toEqual<TemplateKey>({ h: 2, v: 0 });
-    expect(rows[0]?.direction).toBe('horizontal');
   });
 
   it('should use best-fit fallback for H3* + H4* (83% fill, below 90% minimum)', () => {
@@ -799,6 +798,15 @@ describe('buildRows', () => {
         expect(row.boxTree.type).toBeDefined();
       }
     });
+
+    it('row results expose only components, templateKey, and boxTree (no label/direction)', () => {
+      const rows = buildRows([createHorizontalImage(1, 3), createHorizontalImage(2, 3)], 8, 1.5);
+      expect(rows[0]).toHaveProperty('components');
+      expect(rows[0]).toHaveProperty('templateKey');
+      expect(rows[0]).toHaveProperty('boxTree');
+      expect(rows[0]).not.toHaveProperty('label');
+      expect(rows[0]).not.toHaveProperty('direction');
+    });
   });
 });
 
@@ -940,12 +948,11 @@ describe('acToBoxTree', () => {
 });
 
 describe('lookupComposition', () => {
-  // lookupComposition now always routes through compose and labels every row
-  // 'standard'; these tests pin the composition shapes for representative inputs.
+  // lookupComposition now always routes through compose; these tests pin the
+  // composition shapes and template keys for representative inputs.
   it('returns a single composition for 1H image', () => {
     const imgs = [toImageType(createHorizontalImage(1, 5), DESKTOP)];
-    const { label, templateKey, composition } = lookupComposition(imgs);
-    expect(label).toBe('standard');
+    const { templateKey, composition } = lookupComposition(imgs);
     expect(templateKey).toEqual<TemplateKey>({ h: 1, v: 0 });
     expect(composition.type).toBe('single');
   });
@@ -955,8 +962,7 @@ describe('lookupComposition', () => {
       toImageType(createHorizontalImage(1, 3), DESKTOP),
       toImageType(createHorizontalImage(2, 3), DESKTOP),
     ];
-    const { label, templateKey, composition } = lookupComposition(imgs);
-    expect(label).toBe('standard');
+    const { templateKey, composition } = lookupComposition(imgs);
     expect(templateKey).toEqual<TemplateKey>({ h: 2, v: 0 });
     expect(composition.type).toBe('pair');
     if (composition.type === 'pair') {
@@ -970,8 +976,7 @@ describe('lookupComposition', () => {
       toImageType(createVerticalImage(2, 3), DESKTOP),
       toImageType(createVerticalImage(3, 2), DESKTOP),
     ];
-    const { label, composition } = lookupComposition(imgs);
-    expect(label).toBe('standard');
+    const { composition } = lookupComposition(imgs);
     // V3 builds: H[ H4★, V[V3★, V2★] ] — dominant left, vStack right.
     expect(composition.type).toBe('pair');
     if (composition.type === 'pair') {
@@ -989,8 +994,7 @@ describe('lookupComposition', () => {
       toImageType(createVerticalImage(2, 2), DESKTOP),
       toImageType(createVerticalImage(3, 2), DESKTOP),
     ];
-    const { label, composition } = lookupComposition(imgs);
-    expect(label).toBe('standard');
+    const { composition } = lookupComposition(imgs);
     // V3 builds: H[ H3★, V[V2★, V2★] ] — leaf left, vStack right.
     expect(composition.type).toBe('pair');
     if (composition.type === 'pair') {
@@ -1004,8 +1008,7 @@ describe('lookupComposition', () => {
 
   it('composes a nested pair for 6 images (no static template)', () => {
     const imgs = [1, 2, 3, 4, 5, 6].map(id => toImageType(createHorizontalImage(id, 2), DESKTOP));
-    const { label, composition } = lookupComposition(imgs);
-    expect(label).toBe('standard');
+    const { composition } = lookupComposition(imgs);
     expect(composition.type).toBe('pair');
   });
 });
@@ -1185,8 +1188,7 @@ describe('buildNestedQuad fallback to hChain', () => {
       createVerticalImage(4, 2),
     ].map(item => toImageType(item, 5));
 
-    const { composition, label } = lookupComposition(images);
-    expect(label).toBe('standard');
+    const { composition } = lookupComposition(images);
     // The composition should be a pair (nested structure), not a flat chain
     expect(composition.type).toBe('pair');
   });
@@ -1199,8 +1201,7 @@ describe('buildNestedQuad fallback to hChain', () => {
       createVerticalImage(4, 2),
     ].map(item => toImageType(item, 5));
 
-    const { composition, label } = lookupComposition(images);
-    expect(label).toBe('standard');
+    const { composition } = lookupComposition(images);
     expect(composition.type).toBe('pair');
   });
 

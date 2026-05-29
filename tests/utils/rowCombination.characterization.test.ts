@@ -424,7 +424,6 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4, 5]);
-    expect(rows[0]!.label).toBe('standard');
   });
 
   // ---------------------------------------------------------------
@@ -457,7 +456,6 @@ describe('buildRows characterization', () => {
 
     // First row: H5★+H4★ (5.0+3.5=8.5, 106% ≤ MAX). The V3 estimate for {H5,H4}
     // meets the AR floor, so the row closes at 2 items → [1,2].
-    expect(rows[0]!.label).toBe('standard');
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
   });
 

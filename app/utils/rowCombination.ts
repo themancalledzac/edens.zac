@@ -87,9 +87,7 @@ export function isRowComplete(components: AnyContentModel[], rowWidth: number): 
 /** A row result from the row-building algorithm */
 export interface RowResult {
   components: AnyContentModel[];
-  direction: 'horizontal' | 'vertical' | null;
   templateKey: TemplateKey;
-  label: string;
   boxTree: BoxTree;
 }
 
@@ -210,7 +208,6 @@ export function estimateRowAR(images: ImageType[], targetAR: number, rowWidth: n
 export interface CompositionResult {
   composition: AtomicComponent;
   templateKey: TemplateKey;
-  label: string;
 }
 
 /**
@@ -219,7 +216,7 @@ export interface CompositionResult {
  * @param images - ImageType[] assigned to this row (already determined by greedy fill)
  * @param targetAR - Target aspect ratio for AR-aware templates (default 1.5)
  * @param rowWidth - Row width budget for AR calculation
- * @returns CompositionResult with AtomicComponent tree, structural key, and template label
+ * @returns CompositionResult with AtomicComponent tree and structural key
  */
 export function lookupComposition(
   images: ImageType[],
@@ -229,7 +226,6 @@ export function lookupComposition(
   return {
     composition: compose(images, targetAR, rowWidth),
     templateKey: parseTemplateKey(images),
-    label: 'standard',
   };
 }
 
@@ -263,12 +259,6 @@ function collectRowItems(
     }
   }
   return items;
-}
-
-/** Derive direction from AtomicComponent root for RowResult */
-export function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' | null {
-  if (ac.type === 'single') return null;
-  return ac.direction === 'H' ? 'horizontal' : 'vertical';
 }
 
 /**
@@ -336,9 +326,7 @@ export function buildRows(
         const heroKey = parseTemplateKey([heroImg]);
         rows.push({
           components: [heroItem],
-          direction: null,
           templateKey: heroKey,
-          label: 'hero',
           boxTree,
         });
 
@@ -409,14 +397,12 @@ export function buildRows(
     if (seqCount > 0) {
       const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-      const { composition, templateKey, label } = lookupComposition(rowImgs, targetAR, rowWidth);
+      const { composition, templateKey } = lookupComposition(rowImgs, targetAR, rowWidth);
       const boxTree = acToBoxTree(composition);
 
       rows.push({
         components: rowItems,
-        direction: deriveDirection(composition),
         templateKey,
-        label,
         boxTree,
       });
 
@@ -481,18 +467,12 @@ export function buildRows(
     }
 
     const bfImgs = bfComponents.map(item => toImageType(item, rowWidth));
-    const {
-      composition,
-      templateKey: bfKey,
-      label: bfLabel,
-    } = lookupComposition(bfImgs, targetAR, rowWidth);
+    const { composition, templateKey: bfKey } = lookupComposition(bfImgs, targetAR, rowWidth);
     const boxTree = acToBoxTree(composition);
 
     rows.push({
       components: bfComponents,
-      direction: deriveDirection(composition),
       templateKey: bfKey,
-      label: bfLabel,
       boxTree,
     });
 
