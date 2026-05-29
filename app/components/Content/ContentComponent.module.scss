@@ -583,6 +583,33 @@
   font-weight: 400;
 }
 
+/* ── Density slider — dev-only tuning control (gated by ?layout flag) ── */
+.filterBarSlider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-black);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  opacity: 0.75;
+
+  input[type='range'] {
+    width: 96px;
+    cursor: pointer;
+    accent-color: var(--color-black);
+  }
+}
+
+.filterBarSliderLabel {
+  opacity: 0.55;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
 .filterBarChevron {
   font-size: 0.55rem;
   line-height: 1;

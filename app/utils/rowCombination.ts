@@ -16,7 +16,14 @@ import type { AnyContentModel } from '@/app/types/Content';
 import { getEffectiveRating, getItemComponentValue } from '@/app/utils/contentRatingUtils';
 import { getAspectRatio } from '@/app/utils/contentTypeGuards';
 import { composeV2 } from '@/app/utils/rowCombinationV2';
+import { composeV3 } from '@/app/utils/rowCombinationV3';
 import { calculateBoxTreeAspectRatio } from '@/app/utils/rowStructureAlgorithm';
+
+/**
+ * Opt-in layout algorithm selector, threaded from the `?layout=` URL flag.
+ * `undefined` means default (V1 top-down compose + TEMPLATE_MAP).
+ */
+export type LayoutVersion = 'v2' | 'v3';
 
 // =============================================================================
 // TYPES
@@ -433,8 +440,11 @@ export function compose(
 /** AR floor multiplier: row AR must be at least targetAR * this value */
 export const AR_FLOOR_MULTIPLIER = 0.7;
 
-/** Maximum images per row (safety cap for AR-aware fill) */
-export const MAX_ROW_IMAGES = 8;
+/**
+ * Maximum images per row. Caps greedy fill AND bounds composeV3's Phase 2
+ * enumeration (~2^(n-1) candidates for an n-leaf row), so keep this modest.
+ */
+export const MAX_ROW_IMAGES = 12;
 
 /**
  * Estimate the combined aspect ratio of a set of images when composed together.
@@ -560,18 +570,26 @@ export interface CompositionResult {
  * @param images - ImageType[] assigned to this row (already determined by greedy fill)
  * @param targetAR - Target aspect ratio for AR-aware templates (default 1.5)
  * @param rowWidth - Row width budget for AR calculation
- * @param useV2 - When true, route through the experimental bottom-up merge (composeV2)
- *               instead of the top-down template lookup. Opt-in via URL ?layout=v2.
- *               Defaults to false to preserve existing visitor-facing behavior.
+ * @param layoutVersion - Opt-in alternate algorithm. `'v2'` uses the bottom-up
+ *                        scored merge (composeV2). `'v3'` uses the two-phase
+ *                        AR-propagation merge (composeV3). Undefined falls
+ *                        through to the V1 template lookup + compose path.
  * @returns CompositionResult with AtomicComponent tree, structural key, and template label
  */
 export function lookupComposition(
   images: ImageType[],
   targetAR: number = 1.5,
   rowWidth: number = 5,
-  useV2: boolean = false
+  layoutVersion?: LayoutVersion
 ): CompositionResult {
-  if (useV2) {
+  if (layoutVersion === 'v3') {
+    return {
+      composition: composeV3(images, targetAR, rowWidth),
+      templateKey: parseTemplateKey(images),
+      label: 'v3-twophase',
+    };
+  }
+  if (layoutVersion === 'v2') {
     return {
       composition: composeV2(images, targetAR, rowWidth),
       templateKey: parseTemplateKey(images),
@@ -659,24 +677,27 @@ export function deriveDirection(ac: AtomicComponent): 'horizontal' | 'vertical' 
  * @param items - All content items to layout
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
  * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
- * @param useV2 - When true, route per-row composition through the experimental
- *               bottom-up merge (composeV2). Defaults to false. Threaded into
- *               `lookupComposition`; does not alter greedy fill or best-fit fallback.
+ * @param layoutVersion - Opt-in alternate per-row composition. `'v2'` routes
+ *                        through the bottom-up scored merge; `'v3'` routes
+ *                        through the two-phase AR-propagation merge. Threaded
+ *                        into `lookupComposition`; does not alter greedy fill
+ *                        or best-fit fallback.
  * @returns Array of rows, each with components and their combination direction
  */
 export function buildRows(
   items: AnyContentModel[],
   rowWidth: number,
   targetAR: number = 1.5,
-  useV2: boolean = false
+  layoutVersion?: LayoutVersion
 ): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
 
-  // MIN_FILL scales with rowWidth so denser rows demand fuller packing —
-  // otherwise a fixed 90% bar lets fewer items satisfy "done" as rowWidth
-  // grows, defeating the Row Density control.
-  const effectiveMinFill = MIN_FILL_RATIO + Math.max(0, (rowWidth - 8) * 0.02);
+  // Constant fill bar. Row Density now drives packing through rowWidth itself
+  // (chunkSize ×2.5), so density ≈ items/row directly. The old rowWidth-scaled
+  // bar over-inflated past MAX_FILL_RATIO at large rowWidths (≈1.24 at rowWidth
+  // 25), forcing every dense row through the overfill path into the cap.
+  const effectiveMinFill = MIN_FILL_RATIO;
 
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
@@ -782,7 +803,7 @@ export function buildRows(
         rowImgs,
         targetAR,
         rowWidth,
-        useV2
+        layoutVersion
       );
       const boxTree = acToBoxTree(composition);
 
@@ -859,7 +880,7 @@ export function buildRows(
       composition,
       templateKey: bfKey,
       label: bfLabel,
-    } = lookupComposition(bfImgs, targetAR, rowWidth, useV2);
+    } = lookupComposition(bfImgs, targetAR, rowWidth, layoutVersion);
     const boxTree = acToBoxTree(composition);
 
     rows.push({

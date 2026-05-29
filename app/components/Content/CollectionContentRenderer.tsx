@@ -259,6 +259,9 @@ export default function CollectionContentRenderer({
               filterOptions={collectionFilter.filterOptions}
               filteredAvailable={collectionFilter.filteredAvailable}
               onFilterChange={collectionFilter.onFilterChange}
+              density={collectionFilter.density}
+              onDensityChange={collectionFilter.onDensityChange}
+              showDensitySlider={collectionFilter.showDensitySlider}
             />
           )}
         </div>

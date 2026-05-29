@@ -20,6 +20,7 @@ import {
   isRowComplete,
   lookupComposition,
   MAX_FILL_RATIO,
+  MAX_ROW_IMAGES,
   MIN_FILL_RATIO,
   single,
   TEMPLATE_MAP,
@@ -1355,11 +1356,11 @@ describe('buildRows AR-aware fill', () => {
   });
 
   it('does not exceed MAX_ROW_IMAGES per row', () => {
-    // Many low-rated verticals — should cap at 8
+    // Many low-rated verticals — rows must never exceed the cap
     const items = Array.from({ length: 12 }, (_, i) => createVerticalImage(i + 1, 1));
     const rows = buildRows(items, DESKTOP, 1.5);
     for (const row of rows) {
-      expect(row.components.length).toBeLessThanOrEqual(8);
+      expect(row.components.length).toBeLessThanOrEqual(MAX_ROW_IMAGES);
     }
   });
 
@@ -1380,15 +1381,14 @@ describe('buildRows AR-aware fill', () => {
   });
 });
 
-// ===================== buildRows density-scaled MIN_FILL =====================
+// ===================== buildRows fill at constant MIN_FILL =====================
 
-describe('buildRows density-scaled MIN_FILL', () => {
-  it('rowWidth=12 packs 5 H items per row even with a higher-rated r4 mixed in', () => {
-    // At fixed MIN_FILL=0.9, 3×r3 + 1×r4 = cv 11/12 = 92% would break the
-    // row after 4 items. Density-scaled MIN_FILL at rowWidth=12 ≈ 0.98
-    // forces the algorithm to pull the 5th item (cv 13.5/12 = 112%, within
-    // MAX_FILL_RATIO 1.15). Mirrors a real /2020-protests row at admin
-    // density 8.
+describe('buildRows fill at constant MIN_FILL', () => {
+  it('rowWidth=12 packs 4 H items per row at the constant 0.9 fill bar', () => {
+    // The fill bar is a constant MIN_FILL (0.9), no longer rowWidth-scaled:
+    // 3×r3 + 1×r4 = cv 11/12 = 92% ≥ 0.9 completes the row after 4 items.
+    // Density itself now comes from the rowWidth = chunkSize×2.5 mapping rather
+    // than a scaled fill bar.
     const items = [
       createHorizontalImage(1, 3),
       createHorizontalImage(2, 3),
@@ -1398,10 +1398,10 @@ describe('buildRows density-scaled MIN_FILL', () => {
       createHorizontalImage(6, 3),
     ];
     const rows = buildRows(items, 12);
-    expect(rows[0]!.components.length).toBe(5);
+    expect(rows[0]!.components.length).toBe(4);
   });
 
-  it('rowWidth=8 (default) unchanged — 3 H items per row at cv 7.5 hits 94% fill', () => {
+  it('rowWidth=8 (default) — 3 H items per row at cv 7.5 hits 94% fill', () => {
     const items = [
       createHorizontalImage(1, 3),
       createHorizontalImage(2, 3),
@@ -1642,22 +1642,71 @@ describe('rowWidth invariant: valid output for rowWidth 4-16', () => {
   }
 });
 
-// ===================== lookupComposition useV2 dispatcher =====================
+// ===================== lookupComposition layoutVersion dispatcher =====================
 
-describe('lookupComposition useV2 dispatcher', () => {
-  it('returns a composeV2 result with label "v2-merge" when useV2=true', () => {
+describe('lookupComposition layoutVersion dispatcher', () => {
+  it('returns a composeV2 result with label "v2-merge" when layoutVersion="v2"', () => {
     const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
     const imgTypes = items.map(item => toImageType(item, DESKTOP));
-    const result = lookupComposition(imgTypes, 1.5, DESKTOP, true);
+    const result = lookupComposition(imgTypes, 1.5, DESKTOP, 'v2');
     expect(result.label).toBe('v2-merge');
     expect(result.composition).toBeDefined();
   });
 
-  it('returns the template-map result with its normal label when useV2 is omitted', () => {
+  it('returns a composeV3 result with label "v3-twophase" when layoutVersion="v3"', () => {
+    const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
+    const imgTypes = items.map(item => toImageType(item, DESKTOP));
+    const result = lookupComposition(imgTypes, 1.5, DESKTOP, 'v3');
+    expect(result.label).toBe('v3-twophase');
+    expect(result.composition).toBeDefined();
+  });
+
+  it('falls through to the template-map path when layoutVersion is omitted', () => {
     const items = [createHorizontalImage(1, 3), createHorizontalImage(2, 3)];
     const imgTypes = items.map(item => toImageType(item, DESKTOP));
     const result = lookupComposition(imgTypes, 1.5, DESKTOP);
     expect(result.label).not.toBe('v2-merge');
+    expect(result.label).not.toBe('v3-twophase');
     expect(result.composition).toBeDefined();
+  });
+});
+
+// ===================== Row Density packing (rowWidth → items/row) =====================
+
+describe('row density packing', () => {
+  it('packs ~9-12 images per row at rowWidth 25 (density 10) for 3★ content', () => {
+    // density 10 → rowWidth 25; 3★ cost = cv 2.5, so a constant 0.9 fill bar
+    // completes around 9 items (was ~6 under the old rowWidth-14 budget),
+    // bounded above by MAX_ROW_IMAGES.
+    const items = Array.from({ length: 20 }, (_, i) => createHorizontalImage(i + 1, 3));
+    const rows = buildRows(items, 25, 1.0);
+    expect(rows[0]!.components.length).toBeGreaterThanOrEqual(8);
+    expect(rows[0]!.components.length).toBeLessThanOrEqual(MAX_ROW_IMAGES);
+  });
+
+  it('puts 1 image per row at rowWidth 3 (density 1), consuming every item', () => {
+    // density 1 → rowWidth 3; a single 3★ (cv 2.5) fills it and a second would
+    // overfill past 1.35×, so each image gets its own near-full-width row.
+    const items = Array.from({ length: 6 }, (_, i) => createHorizontalImage(i + 1, 3));
+    const rows = buildRows(items, 3, 1.0);
+    expect(rows[0]!.components.length).toBe(1);
+    const total = rows.reduce((n, r) => n + r.components.length, 0);
+    expect(total).toBe(6);
+  });
+
+  it('does not drop a high-cost 5★ image at rowWidth 3 (best-fit fallback forces its row)', () => {
+    // 5★ cv 5.0 at rowWidth 3 = fill 1.67 on the first item → greedy fill exits
+    // with seqCount 0; the best-fit fallback must still give it its own row.
+    const items = [createHorizontalImage(1, 5), createHorizontalImage(2, 3)];
+    const rows = buildRows(items, 3, 1.0);
+    const total = rows.reduce((n, r) => n + r.components.length, 0);
+    expect(total).toBe(2);
+  });
+
+  it('never exceeds MAX_ROW_IMAGES per row even with many low-rated images', () => {
+    // 1★ cv 1.25 → 20 would fit a rowWidth-25 budget, but the cap bounds it.
+    const items = Array.from({ length: 30 }, (_, i) => createHorizontalImage(i + 1, 1));
+    const rows = buildRows(items, 25, 1.0);
+    for (const r of rows) expect(r.components.length).toBeLessThanOrEqual(MAX_ROW_IMAGES);
   });
 });

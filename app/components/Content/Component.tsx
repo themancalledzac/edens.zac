@@ -14,7 +14,7 @@ import {
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
 import { logger } from '@/app/utils/logger';
-import { type BoxTree } from '@/app/utils/rowCombination';
+import { type BoxTree, type LayoutVersion } from '@/app/utils/rowCombination';
 
 import { BoxRenderer } from './BoxRenderer';
 import cbStyles from './ContentComponent.module.scss';
@@ -126,12 +126,15 @@ export default function Component({
 }: ContentComponentProps) {
   const { contentWidth, isMobile, viewportHeight } = useViewport();
 
-  // Dev-only A/B toggle: `?layout=v2` opts into the experimental bottom-up
-  // merge composition. Reads window.location once on mount to avoid the
-  // useSearchParams Suspense bailout that would force CSR for the whole page.
-  const [useV2Layout, setUseV2Layout] = useState(false);
+  // Dev-only A/B toggle: `?layout=v2` opts into the bottom-up scored merge
+  // (composeV2). `?layout=v3` opts into the two-phase AR-propagation merge
+  // (composeV3). Anything else falls back to the V1 template-map path.
+  // Reads window.location once on mount to avoid the useSearchParams Suspense
+  // bailout that would force CSR for the whole page.
+  const [layoutVersion, setLayoutVersion] = useState<LayoutVersion | undefined>();
   useEffect(() => {
-    setUseV2Layout(new URLSearchParams(window.location.search).get('layout') === 'v2');
+    const param = new URLSearchParams(window.location.search).get('layout');
+    if (param === 'v2' || param === 'v3') setLayoutVersion(param);
   }, []);
 
   const { rows, layoutError } = useMemo(() => {
@@ -144,8 +147,14 @@ export default function Component({
       return { rows: [], layoutError: null };
     }
 
+    // Target row aspect ratio = screen aspect ratio, so one row ≈ one screenful
+    // (row height ≈ viewport height). This keeps row AREA constant per viewport,
+    // so the density slider (items per row) cleanly drives image size: fewer
+    // items = bigger, more items = smaller, monotonically. Clamped to [1.0, 2.5]:
+    // the 1.0 floor preserves "never taller than wide"; the cap avoids film-strip
+    // rows on ultrawide screens.
     const targetAR =
-      viewportHeight > 0 ? Math.max(1.5, Math.min(3.0, contentWidth / viewportHeight)) : 1.5;
+      viewportHeight > 0 ? Math.max(1.0, Math.min(2.5, contentWidth / viewportHeight)) : 1.5;
 
     try {
       const result = processContentForDisplay(content || [], contentWidth, chunkSize, {
@@ -153,7 +162,7 @@ export default function Component({
         collectionData,
         displayMode: collectionData?.displayMode,
         targetAR,
-        useV2: useV2Layout,
+        layoutVersion,
       });
       return { rows: result, layoutError: null };
     } catch (error) {
@@ -161,7 +170,7 @@ export default function Component({
       const message = error instanceof Error ? error.message : 'Unknown layout error';
       return { rows: [], layoutError: message };
     }
-  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight, useV2Layout]);
+  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight, layoutVersion]);
 
   // Must be called before early return to satisfy React Hooks rules
   const firstNonVisibleRowIndex = useMemo(() => {

@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import { LAYOUT } from '@/app/constants';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
 import {
@@ -69,6 +70,23 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
   const [filterState, setFilterState] = useState<CollectionFilterState>(
     INITIAL_COLLECTION_FILTER_STATE
   );
+
+  // Row density (chunkSize) the layout uses. Defaults to the collection's saved
+  // value; the dev-only slider can override it for live A/B tuning.
+  const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
+
+  // Dev-only: the density slider is gated behind the ?layout A/B flag, like the
+  // layout-version toggle — regular visitors never see it. Read once on mount to
+  // avoid the useSearchParams Suspense bailout that would force CSR.
+  const [showDensitySlider, setShowDensitySlider] = useState(false);
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get('layout');
+    setShowDensitySlider(param === 'v2' || param === 'v3');
+  }, []);
+
+  const handleDensityChange = useCallback((value: number) => {
+    setDensity(Math.max(1, Math.min(10, Math.round(value))));
+  }, []);
 
   const allContent = useMemo(() => collection.content ?? [], [collection.content]);
 
@@ -217,8 +235,19 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
       filterOptions: availableOptions,
       filteredAvailable: filteredAvailableOptions,
       onFilterChange: handleFilterChange,
+      density,
+      onDensityChange: handleDensityChange,
+      showDensitySlider,
     }),
-    [filterState, availableOptions, filteredAvailableOptions, handleFilterChange]
+    [
+      filterState,
+      availableOptions,
+      filteredAvailableOptions,
+      handleFilterChange,
+      density,
+      handleDensityChange,
+      showDensitySlider,
+    ]
   );
 
   const pageSize = collection.contentPerPage ?? 30;
@@ -248,7 +277,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
         priorityBlockIndex={0}
         enableFullScreenView
         initialPageSize={pageSize}
-        chunkSize={chunkSize}
+        chunkSize={density}
         collectionSlug={collection.slug}
         collectionData={collection}
       />

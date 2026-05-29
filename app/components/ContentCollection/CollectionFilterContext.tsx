@@ -38,6 +38,12 @@ interface CollectionFilterContextValue {
   filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
+  /** Current row density (chunkSize) the layout is using. */
+  density: number;
+  /** Update row density (clamped 1-10 by the provider). Dev tuning control. */
+  onDensityChange: (value: number) => void;
+  /** Surface the dev-only density slider (gated by the ?layout flag). */
+  showDensitySlider: boolean;
 }
 
 const CollectionFilterContext = createContext<CollectionFilterContextValue | null>(null);
