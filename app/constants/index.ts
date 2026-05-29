@@ -64,22 +64,6 @@ export const BASE_WEIGHT: Record<number, number> = {
 export const REFERENCE_AR = 1.5;
 
 // =============================================================================
-// ROW COMPOSITION V2 — bottom-up adjacent merge scoring weights
-// =============================================================================
-// See docs/superpowers/specs/2026-05-26-row-composition-redesign.md §4 for the
-// scoring formula and tuning rationale. These dials govern the composeV2()
-// merge loop in app/utils/rowCombinationV2.ts.
-
-/** Penalty applied when a vStack would merge two same-orientation leaves (V+V or H+H). */
-export const ORIENTATION_PENALTY = 1.0;
-
-/** Penalty applied per ±1 swap used to enable a merge. */
-export const SWAP_PENALTY = 0.6;
-
-/** Weight applied to |running_ar - targetAR| in merge scoring. */
-export const AR_WEIGHT = 0.3;
-
-// =============================================================================
 // INTERACTION & TIMING
 // =============================================================================
 
