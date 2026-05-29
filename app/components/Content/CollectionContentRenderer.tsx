@@ -261,7 +261,6 @@ export default function CollectionContentRenderer({
               onFilterChange={collectionFilter.onFilterChange}
               density={collectionFilter.density}
               onDensityChange={collectionFilter.onDensityChange}
-              showDensitySlider={collectionFilter.showDensitySlider}
             />
           )}
         </div>

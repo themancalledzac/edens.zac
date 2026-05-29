@@ -87,7 +87,6 @@ interface CollectionFilterBarProps {
   onFilterChange: (update: Partial<CollectionFilterState>) => void;
   density: number;
   onDensityChange: (value: number) => void;
-  showDensitySlider: boolean;
 }
 
 export default function CollectionFilterBar({
@@ -97,7 +96,6 @@ export default function CollectionFilterBar({
   onFilterChange,
   density,
   onDensityChange,
-  showDensitySlider,
 }: CollectionFilterBarProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -322,21 +320,19 @@ export default function CollectionFilterBar({
         </button>
       )}
 
-      {/* Dev-only row-density slider (gated by the ?layout flag) */}
-      {showDensitySlider && (
-        <label className={cbStyles.filterBarSlider}>
-          <span className={cbStyles.filterBarSliderLabel}>Density {density}</span>
-          <input
-            type="range"
-            min={1}
-            max={10}
-            step={1}
-            value={density}
-            onChange={e => onDensityChange(Number(e.target.value))}
-            aria-label="Row density"
-          />
-        </label>
-      )}
+      {/* Row-density slider — always-on live view control */}
+      <label className={cbStyles.filterBarSlider}>
+        <span className={cbStyles.filterBarSliderLabel}>Density {density}</span>
+        <input
+          type="range"
+          min={1}
+          max={10}
+          step={1}
+          value={density}
+          onChange={e => onDensityChange(Number(e.target.value))}
+          aria-label="Row density"
+        />
+      </label>
     </div>
   );
 }

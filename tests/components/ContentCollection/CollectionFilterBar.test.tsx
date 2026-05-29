@@ -7,7 +7,7 @@ import { INITIAL_COLLECTION_FILTER_STATE } from '@/app/types/GalleryFilter';
 
 const emptyDim = { values: [] as readonly string[], filterable: false };
 
-// Minimal options with no filter dimensions — isolates the dev density slider.
+// Minimal options with no filter dimensions — isolates the density slider.
 const filterOptions: CollectionInfoOptions = {
   tags: emptyDim,
   people: emptyDim,
@@ -29,15 +29,14 @@ function renderBar(overrides: Partial<ComponentProps<typeof CollectionFilterBar>
       onFilterChange={onFilterChange}
       density={4}
       onDensityChange={onDensityChange}
-      showDensitySlider
       {...overrides}
     />
   );
   return { onDensityChange, onFilterChange };
 }
 
-describe('CollectionFilterBar — dev-only density slider', () => {
-  it('renders a 1-10 range slider reflecting the current density when enabled', () => {
+describe('CollectionFilterBar — row-density slider', () => {
+  it('always renders a 1-10 range slider reflecting the current density', () => {
     renderBar({ density: 4 });
     const slider = screen.getByLabelText('Row density') as HTMLInputElement;
     expect(slider.getAttribute('type')).toBe('range');
@@ -46,14 +45,15 @@ describe('CollectionFilterBar — dev-only density slider', () => {
     expect(slider.value).toBe('4');
   });
 
+  it('reflects a different current density value', () => {
+    renderBar({ density: 7 });
+    const slider = screen.getByLabelText('Row density') as HTMLInputElement;
+    expect(slider.value).toBe('7');
+  });
+
   it('calls onDensityChange with the new numeric value when moved', () => {
     const { onDensityChange } = renderBar({ density: 4 });
     fireEvent.change(screen.getByLabelText('Row density'), { target: { value: '8' } });
     expect(onDensityChange).toHaveBeenCalledWith(8);
-  });
-
-  it('does not render the slider for regular visitors (showDensitySlider false)', () => {
-    renderBar({ showDensitySlider: false });
-    expect(screen.queryByLabelText('Row density')).toBeNull();
   });
 });
