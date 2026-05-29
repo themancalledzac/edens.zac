@@ -940,8 +940,8 @@ describe('acToBoxTree', () => {
 });
 
 describe('lookupComposition', () => {
-  // lookupComposition now always routes through composeV3 and labels every row
-  // 'standard'; these tests pin the V3 composition shapes for representative inputs.
+  // lookupComposition now always routes through compose and labels every row
+  // 'standard'; these tests pin the composition shapes for representative inputs.
   it('returns a single composition for 1H image', () => {
     const imgs = [toImageType(createHorizontalImage(1, 5), DESKTOP)];
     const { label, templateKey, composition } = lookupComposition(imgs);

@@ -1,15 +1,19 @@
 /**
- * Unit tests for composeV3 — two-phase composition with AR-driven direction.
+ * Unit tests for compose — two-phase composition with AR-driven direction.
  *
- * These cover the behaviours that drove V3's design: input order is preserved,
- * dom-stacked variety emerges on all-H rows without an explicit rule, V+V
- * vStacks are NOT produced on all-V rows because their AR is too far from
+ * These cover the behaviours that drove the composer's design: input order is
+ * preserved, dom-stacked variety emerges on all-H rows without an explicit rule,
+ * V+V vStacks are NOT produced on all-V rows because their AR is too far from
  * target, and the user's row-7 example resolves the way the AR math predicts.
  */
 
 import { LAYOUT } from '@/app/constants';
-import { acToBoxTree, type AtomicComponent, toImageType } from '@/app/utils/rowCombination';
-import { composeV3 } from '@/app/utils/rowCombinationV3';
+import {
+  acToBoxTree,
+  type AtomicComponent,
+  compose,
+  toImageType,
+} from '@/app/utils/rowCombination';
 import {
   calculateBoxTreeAspectRatio,
   calculateSizesFromBoxTree,
@@ -40,10 +44,10 @@ function leafIds(ac: AtomicComponent): number[] {
   return [...leafIds(ac.children[0]), ...leafIds(ac.children[1])];
 }
 
-describe('composeV3 — degenerate cases', () => {
+describe('compose — degenerate cases', () => {
   it('returns a single() for one image', () => {
     const img = toImageType(createHorizontalImage(1, 3), DESKTOP);
-    const result = composeV3([img], TARGET_AR, DESKTOP);
+    const result = compose([img], TARGET_AR, DESKTOP);
     expect(result.type).toBe('single');
     if (result.type === 'single') expect(result.img.source.id).toBe(1);
   });
@@ -52,14 +56,14 @@ describe('composeV3 — degenerate cases', () => {
     const items = [createHorizontalImage(1, 3), createVerticalImage(2, 3)].map(it =>
       toImageType(it, DESKTOP)
     );
-    const result = composeV3(items, TARGET_AR, DESKTOP);
+    const result = compose(items, TARGET_AR, DESKTOP);
     expect(result.type).toBe('pair');
     if (result.type === 'pair') expect(result.direction).toBe('H');
     expect(leafIds(result)).toEqual([1, 2]);
   });
 });
 
-describe('composeV3 — input order is preserved', () => {
+describe('compose — input order is preserved', () => {
   it('leaves the row 7 of /2020-protests in input order [1004,1005,1006,1007]', () => {
     // Row 7 from the 2026-05-27 layout trace at density 10:
     // input cv: 3.5, 3.196, 2.282, 2.415; ARs: 1.503, 1.251, 1.25, 0.714
@@ -69,7 +73,7 @@ describe('composeV3 — input order is preserved', () => {
       createImageContent(1006, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(1007, { imageWidth: 714, imageHeight: 1000, rating: 5 }),
     ].map(it => toImageType(it, 14));
-    const result = composeV3(items, TARGET_AR, 14);
+    const result = compose(items, TARGET_AR, 14);
     expect(leafIds(result)).toEqual([1004, 1005, 1006, 1007]);
   });
 
@@ -77,19 +81,19 @@ describe('composeV3 — input order is preserved', () => {
     const items = [1, 2, 3, 4, 5, 6]
       .map(id => createHorizontalImage(id, 3))
       .map(it => toImageType(it, DESKTOP));
-    const result = composeV3(items, TARGET_AR, DESKTOP);
+    const result = compose(items, TARGET_AR, DESKTOP);
     expect(leafIds(result)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });
 
-describe('composeV3 — emergence without rules', () => {
+describe('compose — emergence without rules', () => {
   it('produces a dom-stacked shape (not a flat 3-wide hChain) for 3 same-rated H images', () => {
     // 3 H4★ images at desktop target 1.5 — a flat hChain has AR ≈ 5.3,
     // dom-stacked variant h(v(H,H), H) has AR ≈ 2.7 (much closer).
     const items = [1, 2, 3]
       .map(id => createHorizontalImage(id, 4))
       .map(it => toImageType(it, DESKTOP));
-    const result = composeV3(items, TARGET_AR, DESKTOP);
+    const result = compose(items, TARGET_AR, DESKTOP);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     expect(result.direction).toBe('H');
@@ -104,7 +108,7 @@ describe('composeV3 — emergence without rules', () => {
     const items = [1, 2, 3]
       .map(id => createVerticalImage(id, 3))
       .map(it => toImageType(it, DESKTOP));
-    const result = composeV3(items, TARGET_AR, DESKTOP);
+    const result = compose(items, TARGET_AR, DESKTOP);
     const shape = shapeOf(result);
     // No 'v(' substring → all internal nodes are hPair.
     expect(shape).not.toContain('v(');
@@ -117,7 +121,7 @@ describe('composeV3 — emergence without rules', () => {
     const items = [1, 2, 3, 4]
       .map(id => createHorizontalImage(id, 3))
       .map(it => toImageType(it, DESKTOP));
-    const result = composeV3(items, TARGET_AR, DESKTOP);
+    const result = compose(items, TARGET_AR, DESKTOP);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     expect(result.direction).toBe('H');
@@ -133,9 +137,9 @@ describe('composeV3 — emergence without rules', () => {
   });
 });
 
-describe('composeV3 — AR fitness', () => {
+describe('compose — AR fitness', () => {
   it('produces a row AR within reasonable bounds of the target', () => {
-    // For a typical mixed row, V3 should produce a tree whose AR is within
+    // For a typical mixed row, compose should produce a tree whose AR is within
     // a factor of ~3 of the target. This is loose because no single tree
     // shape can always hit 1.5 exactly, but it should never produce
     // pathological shapes (AR > 10 or AR < 0.2).
@@ -145,7 +149,7 @@ describe('composeV3 — AR fitness', () => {
       createVerticalImage(3, 4),
       createHorizontalImage(4, 3),
     ].map(it => toImageType(it, DESKTOP));
-    const result = composeV3(items, TARGET_AR, DESKTOP);
+    const result = compose(items, TARGET_AR, DESKTOP);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
     expect(ar).toBeGreaterThan(0.5);
     expect(ar).toBeLessThan(5.0);
@@ -158,14 +162,14 @@ describe('composeV3 — AR fitness', () => {
     const items = [1, 2]
       .map(id => createHorizontalImage(id, 3))
       .map(it => toImageType(it, DESKTOP));
-    const result = composeV3(items, TARGET_AR, DESKTOP);
+    const result = compose(items, TARGET_AR, DESKTOP);
     expect(result.type).toBe('pair');
     if (result.type === 'pair') expect(result.direction).toBe('H');
   });
 
   it('lands close to target 1.0 on a high-density mixed-orient row', () => {
     // Simulates /2020-protests row 6 (8 items mixed V+H at rowWidth=14).
-    // V3 enumerates direction assignments and picks the candidate closest to
+    // compose enumerates direction assignments and picks the candidate closest to
     // square that still satisfies the floor (AR >= 1.0, never taller than wide).
     const items = [
       createVerticalImage(1, 4),
@@ -177,7 +181,7 @@ describe('composeV3 — AR fitness', () => {
       createImageContent(7, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(8, { imageWidth: 1503, imageHeight: 1000, rating: 4 }),
     ].map(it => toImageType(it, 14));
-    const result = composeV3(items, 1.0, 14);
+    const result = compose(items, 1.0, 14);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 14);
     // Floor guarantees AR >= 1.0 (never taller than wide); upper bound asserts
     // the row stays reasonably close to square, not pathologically wide.
@@ -192,7 +196,7 @@ describe('composeV3 — AR fitness', () => {
     const items = [1, 2, 3, 4, 5, 6]
       .map(id => createHorizontalImage(id, 3))
       .map(it => toImageType(it, 14));
-    const result = composeV3(items, 1.0, 14);
+    const result = compose(items, 1.0, 14);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 14);
     expect(ar).toBeGreaterThanOrEqual(1.0);
   });
@@ -206,7 +210,7 @@ describe('composeV3 — AR fitness', () => {
     const items = [1, 2, 3, 4, 5, 6]
       .map(id => createHorizontalImage(id, 3))
       .map(it => toImageType(it, 14));
-    const result = composeV3(items, 1.0, 14);
+    const result = compose(items, 1.0, 14);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 14);
     // Should land within ~50% of target — far better than V2's ~3x overshoot.
     expect(ar).toBeLessThan(1.6);
@@ -223,7 +227,7 @@ describe('composeV3 — AR fitness', () => {
       createVerticalImage(662, 3),
       createVerticalImage(663, 3),
     ].map(it => toImageType(it, 8));
-    const result = composeV3(items, 1.0, 8);
+    const result = compose(items, 1.0, 8);
     // Tree shape: h(<left-cluster>, <right-cluster>); both clusters are
     // 2-leaf merges. Each H pairs with its sibling, each V pairs with its
     // sibling.
@@ -251,7 +255,7 @@ describe('composeV3 — AR fitness', () => {
     // Floor enforcement (user decision 2026-05-28). Real row-0 content:
     // [V5 ar0.665, H3 ar1.25, V5 ar0.665, H4 ar1.601]. Point-balance → [[V,H],[V,H]].
     // The squarest Phase-2 candidate is h(v(V,H),v(V,H)) at AR ~0.904, but a row
-    // must never be taller than wide, so the floor rejects it and V3 picks the
+    // must never be taller than wide, so the floor rejects it and compose picks the
     // closest >= 1.0 candidate (h(h(V,H),v(V,H)) at AR ~2.385) instead. This is a
     // non-vacuous guard: a real sub-1.0 candidate exists and is excluded.
     const items = [
@@ -260,7 +264,7 @@ describe('composeV3 — AR fitness', () => {
       createImageContent(695, { imageWidth: 665, imageHeight: 1000, rating: 5 }),
       createImageContent(727, { imageWidth: 1601, imageHeight: 1000, rating: 4 }),
     ].map(it => toImageType(it, 10));
-    const result = composeV3(items, 1.0, 10);
+    const result = compose(items, 1.0, 10);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 10);
     expect(ar).toBeGreaterThanOrEqual(1.0);
   });
@@ -276,7 +280,7 @@ describe('composeV3 — AR fitness', () => {
       createImageContent(1006, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(1007, { imageWidth: 714, imageHeight: 1000, rating: 5 }),
     ].map(it => toImageType(it, 14));
-    const result = composeV3(items, 1.0, 14);
+    const result = compose(items, 1.0, 14);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     const [leftChild, rightChild] = result.children;
@@ -317,7 +321,7 @@ describe('composeV3 — AR fitness', () => {
       createImageContent(665, { imageWidth: 1251, imageHeight: 1000, rating: 2 }),
       createImageContent(685, { imageWidth: 666, imageHeight: 1000, rating: 2 }),
     ].map(it => toImageType(it, 8));
-    const result = composeV3(items, 1.0, 8);
+    const result = compose(items, 1.0, 8);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     const [leftChild, rightChild] = result.children;
@@ -350,7 +354,7 @@ describe('composeV3 — AR fitness', () => {
     const items = [1, 2, 3, 4, 5, 6]
       .map(id => createHorizontalImage(id, 3))
       .map(it => toImageType(it, 14));
-    const result = composeV3(items, 1.0, 14);
+    const result = compose(items, 1.0, 14);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     // Root should split 3|3, not 1|5 or 5|1.
@@ -378,7 +382,7 @@ describe('composeV3 — AR fitness', () => {
       createImageContent(7, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(8, { imageWidth: 1503, imageHeight: 1000, rating: 4 }),
     ].map(it => toImageType(it, 14));
-    const result = composeV3(items, 1.0, 14);
+    const result = compose(items, 1.0, 14);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 14);
     // Floor keeps it >= 1.0; the equity tiebreak may pick a slightly wider tree
     // than the pure AR-optimum (within AR_EQUITY_BAND) when it sizes the images
@@ -388,7 +392,7 @@ describe('composeV3 — AR fitness', () => {
   });
 });
 
-describe('composeV3 — equitable sizing', () => {
+describe('compose — equitable sizing', () => {
   it('sizes equal-rated images comparably in a mixed row (no runaway dominance)', () => {
     // /chamonix?layout=v3 density 8 (rowWidth 20) row 0: a 7-item row that was
     // rendering one 4★ image ~25× larger than two other 4★ images, because
@@ -404,7 +408,7 @@ describe('composeV3 — equitable sizing', () => {
       createImageContent(760, { imageWidth: 1501, imageHeight: 1000, rating: 4 }),
       createImageContent(761, { imageWidth: 1501, imageHeight: 1000, rating: 4 }),
     ].map(it => toImageType(it, 20));
-    const result = composeV3(items, 1.457, 20);
+    const result = compose(items, 1.457, 20);
     const sizes = calculateSizesFromBoxTree(acToBoxTree(result), 1215, LAYOUT.gridGap, 20);
 
     // The five horizontal 4★ images should render at comparable sizes; pre-fix
