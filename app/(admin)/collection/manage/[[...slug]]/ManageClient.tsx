@@ -336,12 +336,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [selectedImageIds, collection?.content]
   );
 
-  /** Back-compat alias for the IMAGE-only subset, used where the older flow still expects it. */
-  const imagesToEdit = useMemo(
-    () => contentToEdit.filter(c => isContentImage(c)) as ContentImageModel[],
-    [contentToEdit]
-  );
-
   const isParent = isParentType(updateData.type);
 
   const displayedCoverImage = useMemo(
