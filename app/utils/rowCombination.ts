@@ -1,15 +1,17 @@
 /**
- * Row Combination - Template Map Row Building
+ * Row Combination — row layout engine (two stages).
  *
- * Uses a (hCount, vCount) template map to determine layout structure for each row.
- * Greedy sequential fill determines which items go in each row; the template map
- * determines how those items are arranged (flat chain, DVP, nested quad, etc.).
+ * Stage 1 (`buildRows`): greedy sequential fill decides which items go in each
+ * row, using a per-row cv budget (rowWidth) and an AR-floor check.
+ * Stage 2 (`compose`): for each row, a point-balance split builds a binary tree,
+ * then every hPair/vStack direction assignment is enumerated and scored — a hard
+ * AR floor at 1.0 ("never taller than wide") plus closeness to the target row AR,
+ * with an equity tiebreak so equal-rated images render at similar size.
  *
  * Key concepts:
  * - A "component" is anything that occupies row space: a single image, gif, text, or combined block.
- * - Component value = proportion of row width an item occupies (effectiveRating / rowWidth).
+ * - Component value (cv) = proportion of row width an item occupies (effectiveRating / rowWidth).
  * - A row is "complete" when total component values >= 0.9 (90% threshold).
- * - Templates are keyed by orientation counts and produce AtomicComponent trees.
  */
 
 import type { AnyContentModel } from '@/app/types/Content';
