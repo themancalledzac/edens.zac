@@ -1,3 +1,5 @@
+// Mobile-first. Desktop overrides also require height >= 600px (not just width
+// >= 768px) so a landscape phone — wide but short — keeps the mobile treatment. (0142)
 .imageFullScreenWrapper {
   position: fixed;
   top: 0;
@@ -20,7 +22,7 @@
   overscroll-behavior: none;
   touch-action: pan-x;
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     flex-direction: row;
   }
 }
@@ -38,7 +40,7 @@
 
   touch-action: pan-x;
 
-  @media (width >= 768px) {
+  @media (width >= 768px) and (height >= 600px) {
     padding: var(--default-padding);
   }
 }
@@ -68,7 +70,7 @@
   background-color: white;
 
   // Use consistent padding for all screens larger than mobile
-  @media (width >= 768px) {
+  @media (width >= 768px) and (height >= 600px) {
     padding: 40px;
   }
 }
@@ -95,7 +97,7 @@
   user-select: none; /* Standard - prevents selection */
   pointer-events: auto; /* Keep interactions enabled for swipe detection */
 
-  @media (width >= 768px) {
+  @media (width >= 768px) and (height >= 600px) {
     max-width: calc(100vw - calc(var(--default-padding) * 2));
     max-height: calc(100vh - calc(var(--default-padding) * 2));
   }
@@ -107,7 +109,7 @@
   max-width: calc(100vw - 16px); // 8px padding * 2 for frame
   max-height: calc(100vh - calc(var(--default-padding) * 2) - 16px);
 
-  @media (width >= 768px) {
+  @media (width >= 768px) and (height >= 600px) {
     max-width: calc(100vw - calc(var(--default-padding) * 2) - 80px); // 40px padding * 2
     max-height: calc(100vh - calc(var(--default-padding) * 2) - 80px);
   }
@@ -159,7 +161,7 @@
   user-select: none; /* Prevents text selection on mobile */
   -webkit-tap-highlight-color: transparent; /* Removes iOS tap highlight */
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     width: 40px;
     height: 40px;
     font-size: 20px;
@@ -195,7 +197,7 @@
   margin-bottom: 0;
   margin-right: 0;
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     padding: 16px 56px 16px 16px;
     font-size: 13px;
     max-height: 60vh;
@@ -219,7 +221,7 @@
   margin-bottom: 8px;
   color: white;
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     font-size: 17px;
     margin-bottom: 10px;
   }
@@ -229,7 +231,7 @@
   margin-bottom: 6px;
   color: var(--color-overlay-light-90);
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     margin-bottom: 8px;
   }
 }
@@ -247,7 +249,7 @@
   padding-top: 8px;
   border-top: 1px solid var(--color-overlay-light-20);
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     gap: 16px;
     margin-bottom: 16px;
     padding-top: 10px;
@@ -263,7 +265,7 @@
   padding-top: 12px;
   border-top: 1px solid var(--color-overlay-light-20);
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     margin-top: 16px;
     padding-top: 16px;
   }
@@ -275,7 +277,7 @@
   align-items: center;
   gap: 8px;
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     gap: 10px;
   }
 }
@@ -289,7 +291,7 @@
   margin-bottom: 0;
   flex-shrink: 0;
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     font-size: 12px;
     margin-bottom: 0;
   }
@@ -301,7 +303,7 @@
   gap: 8px;
   align-items: center;
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     gap: 10px;
   }
 }
@@ -314,7 +316,7 @@
   color: var(--color-overlay-light-90);
   user-select: none;
 
-  @media (width > 768px) {
+  @media (width > 768px) and (height >= 600px) {
     padding: 6px 10px;
     font-size: 12px;
   }
@@ -379,7 +381,7 @@
     outline: none;
   }
 
-  @media (width >= 768px) {
+  @media (width >= 768px) and (height >= 600px) {
     width: 56px;
     height: 80px;
     font-size: 44px;
