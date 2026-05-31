@@ -21,10 +21,11 @@ export const PARALLAX_CONSTANTS = {
   FADE_IN_DELAY: '0.1s',
   FADE_IN_DURATION: '0.4s',
 
-  // Parallax offset range (in pixels)
-  // Asymmetric: -75px upward travel (increased from -50), +100px downward buffer (prevents bottom-of-image showing on entry)
-  OFFSET_MIN: -75,
-  OFFSET_MAX: 100,
+  // Fraction of the available pixel overflow actually used for parallax travel.
+  // Travel is derived per-card from the live overflow (see app/utils/parallaxMath.ts),
+  // so a value < 1 leaves a sub-pixel margin that prevents rounding from ever
+  // revealing the grey container behind the image.
+  TRAVEL_SAFETY: 0.9,
 
   // Viewport height adjustment (accounts for fixed header and mobile chrome UI)
   VIEWPORT_HEIGHT_OFFSET: 200,

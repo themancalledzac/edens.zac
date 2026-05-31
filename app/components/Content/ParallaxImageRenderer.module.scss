@@ -8,9 +8,9 @@
   display: block;
   object-fit: cover;
   width: 100%;
-  height: 130%; /* PARALLAX_CONSTANTS.IMAGE_HEIGHT_PERCENTAGE */
+  height: 130%; /* 30% taller than the card: overflow available for parallax travel */
   position: absolute;
-  top: -25%; /* PARALLAX_CONSTANTS.IMAGE_TOP_OFFSET */
+  top: -15%; /* symmetric: 15% overflow above and 15% below (130% - 100% - 15%) */
   left: 0;
   z-index: var(--z-base);
   cursor: inherit;
