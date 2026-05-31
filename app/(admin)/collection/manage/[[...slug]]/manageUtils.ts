@@ -30,8 +30,8 @@ export const DEFAULT_PAGE_SIZE = 50;
  * - `undefined` and `null` and `''` are treated as equivalent (normalized to `undefined`).
  * - `collectionDate`: `null` means "explicitly clear"; `''` means unchanged from a null original.
  *   When the date is cleared and was previously set, `clearCollectionDate: true` is sent instead.
- * - `coverImageId`, `collections`, and `locations` use presence-check (`!== undefined`) rather
- *   than value-diff because each has its own update semantics.
+ * - `coverImageId`, `collections`, `siblings`, and `locations` use presence-check (`!== undefined`)
+ *   rather than value-diff because each has its own update semantics.
  * - New text blocks are added via a separate POST endpoint, not through this payload.
  * - Content reordering is handled via the Image Update endpoint (orderIndex field).
  */
@@ -85,6 +85,10 @@ export function buildUpdatePayload(
 
   if (formData.collections !== undefined) {
     payload.collections = formData.collections;
+  }
+
+  if (formData.siblings !== undefined) {
+    payload.siblings = formData.siblings;
   }
 
   if (formData.locations !== undefined) {

@@ -679,6 +679,26 @@ describe('buildUpdatePayload', () => {
       });
     });
 
+    it('should include siblings when set', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        siblings: {
+          newValue: [{ collectionId: 5, name: 'Sibling Collection' }],
+          remove: [9],
+        },
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        siblings: {
+          newValue: [{ collectionId: 5, name: 'Sibling Collection' }],
+          remove: [9],
+        },
+      });
+    });
+
     it('should handle empty string vs undefined distinction for description', () => {
       const originalWithEmpty = createCollectionModel({
         ...originalCollection,
