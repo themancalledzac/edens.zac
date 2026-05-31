@@ -151,6 +151,12 @@ export interface CollectionUpdateRequest {
   tags?: TagUpdate;
   people?: PersonUpdate;
   collections?: CollectionUpdate;
+  /**
+   * Sibling-collection updates (mutual association). Reuses the `CollectionUpdate`
+   * wire shape; backend honors only `newValue` (add) and `remove` (delete) — `prev`
+   * and the `orderIndex`/`visible` fields of each `ChildCollection` are ignored.
+   */
+  siblings?: CollectionUpdate;
 }
 
 /**
@@ -199,6 +205,13 @@ export interface CollectionModel extends CollectionBaseModel {
 
   /** Admin-only: recipient email addresses. Populated only in admin/manage responses. */
   recipientEmails?: string[];
+
+  /**
+   * Curated, mutual "sibling" collections (variant peers). Public reads return only
+   * LISTED siblings; admin/manage reads return all. Rendered as `Related:` text links
+   * in the metadata block. Mirrors backend CollectionModel.siblings (List<CollectionList>).
+   */
+  siblings?: CollectionListModel[];
 
   // Content
   content?: AnyContentModel[];
