@@ -991,6 +991,53 @@ describe('createHeaderRow', () => {
     });
   });
 
+  describe('Sibling collection items', () => {
+    it('should append a collection item per sibling after the tags', () => {
+      const collection = createCollectionModel(1, {
+        siblings: [
+          { id: 50, name: 'Dolomites Film', slug: 'dolomites-film' },
+          { id: 51, name: 'Dolomites 2025', slug: 'dolomites-2025' },
+        ],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems).toHaveLength(2);
+      expect(collectionItems[0]).toEqual({
+        type: 'collection',
+        value: 'Dolomites Film',
+        slug: '/dolomites-film',
+      });
+      expect(collectionItems[1]).toEqual({
+        type: 'collection',
+        value: 'Dolomites 2025',
+        slug: '/dolomites-2025',
+      });
+    });
+
+    it('should emit no collection items when the collection has no siblings', () => {
+      const collection = createCollectionModel(1); // fixture has no siblings
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      expect(metadataBlock.items.filter(item => item.type === 'collection')).toHaveLength(0);
+    });
+
+    it('should skip siblings that have no slug', () => {
+      const collection = createCollectionModel(1, {
+        siblings: [
+          { id: 60, name: 'Has Slug', slug: 'has-slug' },
+          { id: 61, name: 'No Slug' },
+        ],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems).toHaveLength(1);
+      expect(collectionItems[0]?.value).toBe('Has Slug');
+      expect(collectionItems[0]?.slug).toBe('/has-slug');
+    });
+  });
+
   describe('Height-constrained sizing', () => {
     it('should give horizontal cover ~50% width (clamped to max)', () => {
       // Horizontal: 1920x1080 = 1.78 aspect ratio

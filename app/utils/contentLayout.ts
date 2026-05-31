@@ -424,7 +424,7 @@ export function processContentBlocks(
 }
 
 /**
- * Build metadata items array from collection fields (date, location, description, tags).
+ * Build metadata items array from collection fields (date, location, description, tags, siblings).
  */
 function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   const items: TextBlockItem[] = [];
@@ -459,6 +459,14 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
         type: 'tag',
         value: tag,
       });
+    }
+  }
+
+  if (collection.siblings && collection.siblings.length > 0) {
+    for (const sib of collection.siblings) {
+      if (sib.slug) {
+        items.push({ type: 'collection', value: sib.name, slug: `/${sib.slug}` });
+      }
     }
   }
 
