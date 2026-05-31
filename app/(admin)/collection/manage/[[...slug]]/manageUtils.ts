@@ -5,7 +5,10 @@
 
 import { reorderCollectionContent } from '@/app/lib/api/collections';
 import {
+  type ChildCollection,
+  type CollectionListModel,
   type CollectionModel,
+  type CollectionUpdate,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
 } from '@/app/types/Collection';
@@ -21,6 +24,59 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
+
+/**
+ * Toggle one collection within a `prev`/`newValue`/`remove` association — the shared
+ * engine behind both the child-collection and sibling-collection pickers in ManageClient.
+ *
+ * Pure and exhaustive over the four transitions:
+ * - add a not-yet-saved collection  → appended to `newValue`
+ * - un-add a pending addition        → removed from `newValue`
+ * - remove a saved collection        → appended to `remove`
+ * - un-remove a pending removal       → removed from `remove`
+ *
+ * `buildEntry` lets each caller shape its `newValue` rows: child rows carry
+ * `visible`/`orderIndex`; sibling rows carry only `{ collectionId, name }`. Returns
+ * `undefined` when no pending changes remain, so the key drops out of the payload.
+ */
+export function toggleRelation(
+  current: CollectionUpdate | undefined,
+  toggled: CollectionListModel,
+  originalIds: Set<number>,
+  buildEntry: (collection: CollectionListModel, index: number) => ChildCollection
+): CollectionUpdate | undefined {
+  const currentRemove = new Set(current?.remove ?? []);
+  const currentNewValue = current?.newValue ?? [];
+  const isSaved = originalIds.has(toggled.id);
+
+  let newRemove: number[];
+  if (!isSaved) {
+    newRemove = [...currentRemove];
+  } else if (currentRemove.has(toggled.id)) {
+    newRemove = [...currentRemove].filter(id => id !== toggled.id);
+  } else {
+    newRemove = [...currentRemove, toggled.id];
+  }
+
+  let newNewValue: ChildCollection[];
+  if (isSaved) {
+    newNewValue = [...currentNewValue];
+  } else if (currentNewValue.some(c => c.collectionId === toggled.id)) {
+    newNewValue = currentNewValue.filter(c => c.collectionId !== toggled.id);
+  } else {
+    newNewValue = [...currentNewValue, buildEntry(toggled, currentNewValue.length)];
+  }
+
+  const hasChanges = newRemove.length > 0 || newNewValue.length > 0;
+  if (!hasChanges) {
+    return undefined;
+  }
+  return {
+    ...current,
+    remove: newRemove.length > 0 ? newRemove : undefined,
+    newValue: newNewValue.length > 0 ? newNewValue : undefined,
+  };
+}
 
 /**
  * Build an update payload containing only changed fields.

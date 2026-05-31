@@ -74,6 +74,7 @@ import {
   refreshCollectionAfterOperation,
   revalidateCollectionCache,
   revalidateMetadataCache,
+  toggleRelation,
 } from './manageUtils';
 import { useContentReordering } from './useContentReordering';
 import { useCoverImageSelection } from './useCoverImageSelection';
@@ -861,53 +862,25 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, []);
 
   /**
-   * Handle collection toggle from CollectionListSelector
+   * Handle child-collection toggle from CollectionListSelector. Child rows carry
+   * `visible`/`orderIndex` in their `newValue` entry (containment metadata).
    */
   const handleCollectionToggle = useCallback(
     (toggledCollection: CollectionListModel) => {
-      setUpdateData(prev => {
-        const currentRemove = new Set(prev.collections?.remove || []);
-        const currentNewValue = prev.collections?.newValue || [];
-        const isSaved = originalCollectionIds.has(toggledCollection.id);
-
-        let newRemove: number[];
-        if (!isSaved) {
-          newRemove = [...currentRemove];
-        } else if (currentRemove.has(toggledCollection.id)) {
-          newRemove = [...currentRemove].filter(id => id !== toggledCollection.id);
-        } else {
-          newRemove = [...currentRemove, toggledCollection.id];
-        }
-
-        let newNewValue: typeof currentNewValue;
-        if (isSaved) {
-          newNewValue = [...currentNewValue];
-        } else if (currentNewValue.some(c => c.collectionId === toggledCollection.id)) {
-          newNewValue = currentNewValue.filter(c => c.collectionId !== toggledCollection.id);
-        } else {
-          newNewValue = [
-            ...currentNewValue,
-            {
-              collectionId: toggledCollection.id,
-              name: toggledCollection.name,
-              visible: true,
-              orderIndex: currentNewValue.length,
-            },
-          ];
-        }
-
-        const hasChanges = newRemove.length > 0 || newNewValue.length > 0;
-        return {
-          ...prev,
-          collections: hasChanges
-            ? {
-                ...prev.collections,
-                remove: newRemove.length > 0 ? newRemove : undefined,
-                newValue: newNewValue.length > 0 ? newNewValue : undefined,
-              }
-            : undefined,
-        };
-      });
+      setUpdateData(prev => ({
+        ...prev,
+        collections: toggleRelation(
+          prev.collections,
+          toggledCollection,
+          originalCollectionIds,
+          (collection, index) => ({
+            collectionId: collection.id,
+            name: collection.name,
+            visible: true,
+            orderIndex: index,
+          })
+        ),
+      }));
     },
     [originalCollectionIds]
   );
@@ -938,50 +911,23 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, [updateData.siblings?.remove]);
 
   /**
-   * Toggle a sibling link. Mutates updateData.siblings (newValue/remove) exactly like
-   * handleCollectionToggle mutates updateData.collections. Sibling entries carry only
-   * { collectionId, name } — no orderIndex/visible (siblings have neither).
+   * Toggle a sibling link. Same engine as handleCollectionToggle, but sibling rows carry
+   * only { collectionId, name } — no orderIndex/visible (siblings have neither).
    */
   const handleSiblingToggle = useCallback(
     (toggledCollection: CollectionListModel) => {
-      setUpdateData(prev => {
-        const currentRemove = new Set(prev.siblings?.remove || []);
-        const currentNewValue = prev.siblings?.newValue || [];
-        const isSaved = originalSiblingIds.has(toggledCollection.id);
-
-        let newRemove: number[];
-        if (!isSaved) {
-          newRemove = [...currentRemove];
-        } else if (currentRemove.has(toggledCollection.id)) {
-          newRemove = [...currentRemove].filter(id => id !== toggledCollection.id);
-        } else {
-          newRemove = [...currentRemove, toggledCollection.id];
-        }
-
-        let newNewValue: typeof currentNewValue;
-        if (isSaved) {
-          newNewValue = [...currentNewValue];
-        } else if (currentNewValue.some(c => c.collectionId === toggledCollection.id)) {
-          newNewValue = currentNewValue.filter(c => c.collectionId !== toggledCollection.id);
-        } else {
-          newNewValue = [
-            ...currentNewValue,
-            { collectionId: toggledCollection.id, name: toggledCollection.name },
-          ];
-        }
-
-        const hasChanges = newRemove.length > 0 || newNewValue.length > 0;
-        return {
-          ...prev,
-          siblings: hasChanges
-            ? {
-                ...prev.siblings,
-                remove: newRemove.length > 0 ? newRemove : undefined,
-                newValue: newNewValue.length > 0 ? newNewValue : undefined,
-              }
-            : undefined,
-        };
-      });
+      setUpdateData(prev => ({
+        ...prev,
+        siblings: toggleRelation(
+          prev.siblings,
+          toggledCollection,
+          originalSiblingIds,
+          collection => ({
+            collectionId: collection.id,
+            name: collection.name,
+          })
+        ),
+      }));
     },
     [originalSiblingIds]
   );

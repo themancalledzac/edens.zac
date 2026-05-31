@@ -256,7 +256,7 @@ export default function CollectionContentRenderer({
                 <div className={cbStyles.metadataSiblingsRow}>
                   {collectionItems.map(item => (
                     <Link
-                      key={`sibling-${contentId}-${item.value}`}
+                      key={`sibling-${contentId}-${item.slug}`}
                       href={item.slug!}
                       className={cbStyles.metadataSiblingCollection}
                     >
