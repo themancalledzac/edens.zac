@@ -913,6 +913,80 @@ export default function ManageClient({ slug }: ManageClientProps) {
   );
 
   /**
+   * Sibling-collection selection state — mirrors the child-collection state above,
+   * but `originalSiblingIds` derives from `collection.siblings` (mutual association)
+   * rather than from `collection.content` (containment).
+   */
+  const originalSiblingIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const sib of collection?.siblings ?? []) {
+      ids.add(sib.id);
+    }
+    return ids;
+  }, [collection?.siblings]);
+
+  const pendingAddSiblingIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const sib of updateData.siblings?.newValue ?? []) {
+      ids.add(sib.collectionId);
+    }
+    return ids;
+  }, [updateData.siblings?.newValue]);
+
+  const pendingRemoveSiblingIds = useMemo(() => {
+    return new Set<number>(updateData.siblings?.remove ?? []);
+  }, [updateData.siblings?.remove]);
+
+  /**
+   * Toggle a sibling link. Mutates updateData.siblings (newValue/remove) exactly like
+   * handleCollectionToggle mutates updateData.collections. Sibling entries carry only
+   * { collectionId, name } — no orderIndex/visible (siblings have neither).
+   */
+  const handleSiblingToggle = useCallback(
+    (toggledCollection: CollectionListModel) => {
+      setUpdateData(prev => {
+        const currentRemove = new Set(prev.siblings?.remove || []);
+        const currentNewValue = prev.siblings?.newValue || [];
+        const isSaved = originalSiblingIds.has(toggledCollection.id);
+
+        let newRemove: number[];
+        if (!isSaved) {
+          newRemove = [...currentRemove];
+        } else if (currentRemove.has(toggledCollection.id)) {
+          newRemove = [...currentRemove].filter(id => id !== toggledCollection.id);
+        } else {
+          newRemove = [...currentRemove, toggledCollection.id];
+        }
+
+        let newNewValue: typeof currentNewValue;
+        if (isSaved) {
+          newNewValue = [...currentNewValue];
+        } else if (currentNewValue.some(c => c.collectionId === toggledCollection.id)) {
+          newNewValue = currentNewValue.filter(c => c.collectionId !== toggledCollection.id);
+        } else {
+          newNewValue = [
+            ...currentNewValue,
+            { collectionId: toggledCollection.id, name: toggledCollection.name },
+          ];
+        }
+
+        const hasChanges = newRemove.length > 0 || newNewValue.length > 0;
+        return {
+          ...prev,
+          siblings: hasChanges
+            ? {
+                ...prev.siblings,
+                remove: newRemove.length > 0 ? newRemove : undefined,
+                newValue: newNewValue.length > 0 ? newNewValue : undefined,
+              }
+            : undefined,
+        };
+      });
+    },
+    [originalSiblingIds]
+  );
+
+  /**
    * Handle adding new child collection
    */
   const handleAddNewChild = useCallback(async () => {
@@ -1616,6 +1690,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           onAddNewChild={handleAddNewChild}
                           label="Collections"
                           excludeCollectionId={collection.id}
+                          siblingSavedIds={originalSiblingIds}
+                          siblingPendingAddIds={pendingAddSiblingIds}
+                          siblingPendingRemoveIds={pendingRemoveSiblingIds}
+                          onToggleSibling={handleSiblingToggle}
                         />
 
                         {/* Home: rate child collections inline. Click is immediate (no save button). */}
