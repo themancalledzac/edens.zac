@@ -227,4 +227,72 @@ describe('CollectionListSelector', () => {
       expect(screen.queryByText('Add New Child')).not.toBeInTheDocument();
     });
   });
+
+  describe('two-column sibling mode', () => {
+    const twoColProps = {
+      allCollections: mockCollections,
+      savedCollectionIds: new Set<number>([1]),
+      pendingAddIds: new Set<number>(),
+      pendingRemoveIds: new Set<number>(),
+      onToggle: jest.fn(),
+      siblingSavedIds: new Set<number>([2]),
+      siblingPendingAddIds: new Set<number>(),
+      siblingPendingRemoveIds: new Set<number>(),
+      onToggleSibling: jest.fn(),
+    };
+    beforeEach(() => jest.clearAllMocks());
+
+    it('renders Sibling and Child column headers when sibling props are provided', () => {
+      render(<CollectionListSelector {...twoColProps} />);
+      expect(screen.getByText('Sibling')).toBeInTheDocument();
+      expect(screen.getByText('Child')).toBeInTheDocument();
+    });
+    it('exposes a Sibling and a Child toggle per collection row', () => {
+      render(<CollectionListSelector {...twoColProps} />);
+      expect(screen.getByLabelText('Toggle sibling Portfolio A')).toBeInTheDocument();
+      expect(screen.getByLabelText('Toggle child Portfolio A')).toBeInTheDocument();
+    });
+    it('fires onToggleSibling (not onToggle) when the Sibling checkbox is clicked', () => {
+      const onToggle = jest.fn();
+      const onToggleSibling = jest.fn();
+      render(
+        <CollectionListSelector
+          {...twoColProps}
+          onToggle={onToggle}
+          onToggleSibling={onToggleSibling}
+        />
+      );
+      fireEvent.click(screen.getByLabelText('Toggle sibling Portfolio A'));
+      expect(onToggleSibling).toHaveBeenCalledTimes(1);
+      expect(onToggleSibling).toHaveBeenCalledWith(mockCollections[0]);
+      expect(onToggle).not.toHaveBeenCalled();
+    });
+    it('fires onToggle (not onToggleSibling) when the Child checkbox is clicked', () => {
+      const onToggle = jest.fn();
+      const onToggleSibling = jest.fn();
+      render(
+        <CollectionListSelector
+          {...twoColProps}
+          onToggle={onToggle}
+          onToggleSibling={onToggleSibling}
+        />
+      );
+      fireEvent.click(screen.getByLabelText('Toggle child Portfolio A'));
+      expect(onToggle).toHaveBeenCalledTimes(1);
+      expect(onToggle).toHaveBeenCalledWith(mockCollections[0]);
+      expect(onToggleSibling).not.toHaveBeenCalled();
+    });
+    it('reflects independent saved state per column (sibling on B, child on A)', () => {
+      render(<CollectionListSelector {...twoColProps} />);
+      expect(screen.getByLabelText('Toggle child Portfolio A').className).toContain('saved');
+      expect(screen.getByLabelText('Toggle sibling Blog B').className).toContain('saved');
+      expect(screen.getByLabelText('Toggle sibling Portfolio A').className).toContain('empty');
+      expect(screen.getByLabelText('Toggle child Blog B').className).toContain('empty');
+    });
+    it('still omits the excludeCollectionId row in two-column mode', () => {
+      render(<CollectionListSelector {...twoColProps} excludeCollectionId={2} />);
+      expect(screen.getByText('Portfolio A')).toBeInTheDocument();
+      expect(screen.queryByText('Blog B')).not.toBeInTheDocument();
+    });
+  });
 });

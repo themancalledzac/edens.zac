@@ -140,3 +140,25 @@
   white-space: nowrap;
   text-align: right;
 }
+
+// Two-column (Sibling | Child) mode: header row labeling the leading toggles.
+.columnHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-1);
+}
+
+.columnHeader {
+  width: 16px;
+  min-width: 16px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.columnHeaderName {
+  flex: 1;
+}
