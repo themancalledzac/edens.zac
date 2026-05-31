@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 import { PARALLAX_CONSTANTS } from '@/app/constants/parallax';
+import { computeParallaxOffset, getParallaxBudgets } from '@/app/utils/parallaxMath';
 
 import { useInViewport } from './inViewport';
 
@@ -15,12 +16,14 @@ interface ParallaxOptions {
  * useParallax Hook
  *
  * Viewport-based parallax effect that scrolls images based on their visibility
- * in the viewport. Images are scaled to 130% (15% overflow above and below).
+ * in the viewport. The image is scaled larger than its container (e.g. 130%) so
+ * it overflows on both edges; the parallax travel is bounded by that actual
+ * overflow (read from live layout) so the grey container is never revealed.
  *
  * Behavior:
- * - When element enters bottom of viewport: image positioned at top (-15%)
- * - When element exits top of viewport: image positioned at bottom (+15%)
- * - Scroll position interpolates linearly between these states
+ * - Entering bottom of viewport: image at its highest position (bottom edge aligned)
+ * - Exiting top of viewport: image at its lowest position (top edge aligned)
+ * - Scroll position interpolates linearly between these states, scaled by TRAVEL_SAFETY
  *
  * @dependencies
  * - useInViewport for visibility detection and intersection ratio
@@ -80,9 +83,17 @@ export function useParallax(options: ParallaxOptions = {}) {
 
         const scrollProgress = Math.max(0, Math.min(1, currentPosition / travelDistance));
 
-        // Calculate parallax offset using configured range
-        const offsetRange = PARALLAX_CONSTANTS.OFFSET_MAX - PARALLAX_CONSTANTS.OFFSET_MIN;
-        const newOffset = PARALLAX_CONSTANTS.OFFSET_MIN + scrollProgress * offsetRange;
+        // Derive the travel budget from the image's ACTUAL overflow (read from live
+        // layout), so the offset can never exceed it and reveal the grey container —
+        // at any card height. offsetTop/offsetHeight are transform-independent.
+        const containerHeight =
+          (parallaxBg.offsetParent as HTMLElement | null)?.clientHeight ?? element.offsetHeight;
+        const { upBudgetPx, downBudgetPx } = getParallaxBudgets(
+          parallaxBg.offsetTop,
+          parallaxBg.offsetHeight,
+          containerHeight
+        );
+        const newOffset = computeParallaxOffset(scrollProgress, upBudgetPx, downBudgetPx);
 
         if (
           lastOffsetRef.current === undefined ||

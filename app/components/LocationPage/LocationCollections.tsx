@@ -23,7 +23,8 @@ function CollectionCard({ collection }: CollectionCardProps) {
             <Image
               src={collection.coverImage.imageUrl}
               alt={collection.title}
-              fill
+              width={collection.coverImage.imageWidth ?? collection.coverImage.width ?? 400}
+              height={collection.coverImage.imageHeight ?? collection.coverImage.height ?? 225}
               sizes="(min-width: 768px) 200px, 140px"
               className={`${styles.cardImage} parallax-bg`}
             />
