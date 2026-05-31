@@ -161,9 +161,8 @@ body {
   margin: 0;
   font-family: var(--font-sans), serif;
 
-  /* CSS-only parallax setup */
-  perspective: 1px;
-  transform-style: preserve-3d;
+  /* No body perspective/transform-style: it makes <body> the containing block for
+     position:fixed overlays and breaks the fullscreen modal on iOS. Parallax is JS-driven. */
   overflow-x: clip;
 }
 

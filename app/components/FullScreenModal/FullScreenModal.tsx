@@ -10,6 +10,8 @@ import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { CollectionModel } from '@/app/types/Collection';
 import type { ContentGifModel, ViewableContent } from '@/app/types/Content';
 
+import { FsDebug } from './FsDebug';
+
 type ImageBlock = ViewableContent;
 
 type FullScreenState = {
@@ -81,6 +83,10 @@ export function FullScreenModal({
       hideImage();
     }
   };
+
+  const fsdebug =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('fsdebug') === '1';
 
   const modalContent = (
     <div
@@ -282,6 +288,8 @@ export function FullScreenModal({
       >
         <span aria-hidden="true">&#10005;</span>
       </button>
+
+      {fsdebug && <FsDebug />}
     </div>
   );
 
