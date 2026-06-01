@@ -56,16 +56,11 @@ export function useFullScreenImage(): {
   const isSwiping = useRef<boolean>(false);
 
   /**
-   * @remarks Disables 3D perspective before modal renders — fixes `position:fixed` on mobile.
-   * With perspective disabled, fixed positioning works correctly relative to the viewport.
-   * `scrollPosition` is stored for potential future scroll restoration.
+   * @remarks `scrollPosition` is stored for potential future scroll restoration.
    */
   const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
     const images = allImages || [image];
     const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
-
-    document.body.style.perspective = 'none';
-    document.body.style.transformStyle = 'flat';
 
     setFullScreenState({
       images,
@@ -74,13 +69,7 @@ export function useFullScreenImage(): {
     });
   }, []);
 
-  /**
-   * @remarks Restores 3D perspective after modal closes so parallax effects resume.
-   */
   const hideImage = useCallback(() => {
-    document.body.style.perspective = '1px';
-    document.body.style.transformStyle = 'preserve-3d';
-
     setFullScreenState(null);
     setShowMetadata(false);
     setLoadedImageIds(new Set());

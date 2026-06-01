@@ -2,7 +2,13 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
-import { type Dispatch, type MouseEvent, type RefObject, type SetStateAction } from 'react';
+import {
+  type Dispatch,
+  type MouseEvent,
+  type RefObject,
+  type SetStateAction,
+  useEffect,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 import { IMAGE } from '@/app/constants';
@@ -52,6 +58,36 @@ export function FullScreenModal({
   navigateToNext,
   navigateToPrevious,
 }: FullScreenModalProps) {
+  const isOpen = fullScreenState != null;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    document.body.classList.add('fullscreen-open');
+
+    // Size the viewer to the ACTUAL visible viewport. iOS browsers (Brave especially) report CSS
+    // dvh/lvh that don't match the real glass — lvh overshoots while the toolbar shows, dvh
+    // undershoots while it's hidden. window.visualViewport.height is the one value that tracks the
+    // true visible height (effectively what Safari uses for dvh). Publish it as --fs-height and
+    // keep it current as the toolbar shows/hides.
+    const vv = window.visualViewport;
+    const setHeight = () => {
+      const h = vv ? vv.height : window.innerHeight;
+      document.documentElement.style.setProperty('--fs-height', `${Math.round(h)}px`);
+    };
+    setHeight();
+    vv?.addEventListener('resize', setHeight);
+    vv?.addEventListener('scroll', setHeight);
+    window.addEventListener('resize', setHeight);
+
+    return () => {
+      document.body.classList.remove('fullscreen-open');
+      vv?.removeEventListener('resize', setHeight);
+      vv?.removeEventListener('scroll', setHeight);
+      window.removeEventListener('resize', setHeight);
+      document.documentElement.style.removeProperty('--fs-height');
+    };
+  }, [isOpen]);
+
   if (!fullScreenState) return null;
 
   const currentImage = fullScreenState.images[fullScreenState.currentIndex];

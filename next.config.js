@@ -10,6 +10,10 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig = {
   ...(process.env.NEXT_BUILD_DIR ? { distDir: process.env.NEXT_BUILD_DIR } : {}),
   reactStrictMode: true,
+  // Allow the dev server's internal endpoints (HMR, client-side navigation / RSC) to be
+  // requested from these LAN origins, so the site is testable from a phone over Wi-Fi.
+  // Dev-only; ignored in production. Update with your machine's LAN IP(s) if they change.
+  allowedDevOrigins: ['192.168.68.55', '192.168.68.59', '192.168.68.60'],
   sassOptions: {
     includePaths: [path.join(process.cwd(), 'styles')],
   },

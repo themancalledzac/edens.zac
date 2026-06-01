@@ -157,13 +157,13 @@ html,
 }
 
 body {
+  background-color: var(--color-bg);
   padding: 0;
   margin: 0;
   font-family: var(--font-sans), serif;
 
-  /* CSS-only parallax setup */
-  perspective: 1px;
-  transform-style: preserve-3d;
+  /* No body perspective/transform-style: it makes <body> the containing block for
+     position:fixed overlays and breaks the fullscreen modal on iOS. Parallax is JS-driven. */
   overflow-x: clip;
 }
 
@@ -173,6 +173,25 @@ body.scroll-locked {
   right: 0;
   overflow: hidden;
   scrollbar-gutter: stable;
+}
+
+/* While the fullscreen modal is open it adds body.fullscreen-open. On iOS the visible screen
+   can extend past the layout viewport that the overlay's position:fixed maps to, exposing a
+   strip of the page canvas the overlay cannot reach. color-scheme:light paints that canvas
+   white; darkening the root background makes the strip black instead. Geometry-independent —
+   the canvas sits behind everything, so this covers any iOS viewport gap the overlay misses.
+   NOTE: intentionally scoped to fullscreen-open, NOT scroll-locked — the menu dropdown also
+   locks scroll but must not darken the html canvas. */
+html:has(body.fullscreen-open) {
+  background-color: #000;
+}
+
+/* …and the <body> box itself. body is explicitly white (--color-bg) and sits behind the
+   90%-opaque overlay, so it paints through both the alpha gap and any iOS viewport strip the
+   fixed overlay can't reach. Forcing it dark while the modal is open makes the fix independent
+   of whether the exposed surface is the html canvas or the body box. Reverts on close. */
+body.fullscreen-open {
+  background-color: #000;
 }
 
 /* Universal scrollbar hiding for all elements */
