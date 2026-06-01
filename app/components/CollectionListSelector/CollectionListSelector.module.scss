@@ -19,27 +19,10 @@
   margin: 0;
 }
 
+/* Canonical fill/padding/size/hover/disabled come from <Button variant="secondary" size="sm">.
+   Only nowrap remains (Button doesn't set white-space). */
 .addButton {
-  padding: var(--space-1) var(--space-3);
-  background: var(--color-secondary);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  font-weight: 500;
   white-space: nowrap;
-  transition: background-color 0.15s ease;
-
-  &:hover:not(:disabled) {
-    background: var(--color-secondary-dark);
-  }
-
-  &:disabled {
-    background: var(--color-disabled);
-    cursor: not-allowed;
-    opacity: 0.6;
-  }
 }
 
 .list {
