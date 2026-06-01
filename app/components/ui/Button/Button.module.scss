@@ -46,12 +46,11 @@
 }
 
 .secondary {
-  background-color: var(--color-bg);
-  color: var(--color-fg);
-  border-color: var(--color-border);
+  background-color: var(--color-secondary);
+  color: var(--color-white);
 
   &:hover:not(:disabled) {
-    background-color: var(--color-bg-light);
+    background-color: var(--color-secondary-dark);
   }
 }
 

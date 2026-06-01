@@ -32,7 +32,9 @@ export function Button({
   children,
   ...rest
 }: ButtonProps) {
-  const spinnerColor = variant === 'primary' || variant === 'danger' ? 'white' : 'dark';
+  // Filled variants (primary/secondary/danger) sit on dark backgrounds → white spinner;
+  // only ghost is on a light surface → dark spinner.
+  const spinnerColor = variant === 'ghost' ? 'dark' : 'white';
   const classes = [styles.button, styles[variant], styles[size], className]
     .filter(Boolean)
     .join(' ');
