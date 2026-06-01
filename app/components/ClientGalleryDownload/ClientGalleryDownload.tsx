@@ -80,7 +80,6 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
         </span>
         <div className={styles.pickerRow} role="group" aria-labelledby="download-quality-label">
           <Button
-            type="button"
             className={styles.ctaButton}
             leftIcon={<DownloadIcon />}
             onClick={() => handleFormatDownload('web')}
@@ -89,7 +88,6 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
             {preparing === 'web' ? 'Preparing…' : 'Web Optimized'}
           </Button>
           <Button
-            type="button"
             className={styles.ctaButton}
             leftIcon={<DownloadIcon />}
             onClick={() => handleFormatDownload('original')}
@@ -109,12 +107,7 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
 
   return (
     <div className={styles.downloadContainer}>
-      <Button
-        type="button"
-        className={styles.ctaButton}
-        leftIcon={<DownloadIcon />}
-        onClick={handleOpenPicker}
-      >
+      <Button className={styles.ctaButton} leftIcon={<DownloadIcon />} onClick={handleOpenPicker}>
         Download All
       </Button>
     </div>

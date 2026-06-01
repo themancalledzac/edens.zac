@@ -117,7 +117,6 @@ export default function CollectionListSelector({
         <label className={styles.label}>{label}</label>
         {onAddNewChild && (
           <Button
-            type="button"
             variant="secondary"
             size="sm"
             className={styles.addButton}
