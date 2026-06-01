@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { downloadCollectionUrl,type DownloadFormat } from '@/app/lib/api/downloads';
+import { Button } from '@/app/components/ui/Button/Button';
+import { downloadCollectionUrl, type DownloadFormat } from '@/app/lib/api/downloads';
 
 import styles from './ClientGalleryDownload.module.scss';
 
@@ -78,24 +79,26 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
           Choose quality:
         </span>
         <div className={styles.pickerRow} role="group" aria-labelledby="download-quality-label">
-          <button
+          <Button
             type="button"
+            variant="primary"
+            className={styles.ctaButton}
+            leftIcon={<DownloadIcon />}
             onClick={() => handleFormatDownload('web')}
             disabled={preparing !== null}
-            className={styles.pickerButton}
           >
-            <DownloadIcon />
             {preparing === 'web' ? 'Preparing…' : 'Web Optimized'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="primary"
+            className={styles.ctaButton}
+            leftIcon={<DownloadIcon />}
             onClick={() => handleFormatDownload('original')}
             disabled={preparing !== null}
-            className={styles.pickerButton}
           >
-            <DownloadIcon />
             {preparing === 'original' ? 'Preparing…' : 'Full Size'}
-          </button>
+          </Button>
           {preparing === null && (
             <button type="button" onClick={closePicker} className={styles.cancelButton}>
               Cancel
@@ -108,10 +111,15 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
 
   return (
     <div className={styles.downloadContainer}>
-      <button type="button" onClick={handleOpenPicker} className={styles.downloadButton}>
-        <DownloadIcon />
+      <Button
+        type="button"
+        variant="primary"
+        className={styles.ctaButton}
+        leftIcon={<DownloadIcon />}
+        onClick={handleOpenPicker}
+      >
         Download All
-      </button>
+      </Button>
     </div>
   );
 }

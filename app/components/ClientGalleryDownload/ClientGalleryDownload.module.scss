@@ -8,30 +8,12 @@
   margin-top: var(--space-4);
 }
 
-.downloadButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  font-size: var(--text-sm);
-  font-weight: 600;
+/* Canonical fill/padding/radius/hover/disabled come from <Button variant="primary">.
+   Shared by "Download All" + the picker buttons; only the uppercase CTA typography
+   remains (Button doesn't set these). */
+.ctaButton {
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-white);
-  background-color: var(--color-black);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-
-  &:hover {
-    background-color: var(--color-primary-dark);
-  }
-
-  &:disabled {
-    cursor: progress;
-    opacity: 0.7;
-  }
 }
 
 .downloadIcon {
@@ -55,32 +37,6 @@
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
-}
-
-.pickerButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--color-white);
-  background-color: var(--color-black);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background-color: var(--color-primary-dark);
-  }
-
-  &:disabled {
-    cursor: progress;
-    opacity: 0.7;
-  }
 }
 
 .cancelButton {
