@@ -9,8 +9,8 @@ import {
   type SetStateAction,
   useEffect,
 } from 'react';
-import { createPortal } from 'react-dom';
 
+import { Modal } from '@/app/components/ui/Modal/Modal';
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { CollectionModel } from '@/app/types/Collection';
@@ -21,7 +21,6 @@ type ImageBlock = ViewableContent;
 type FullScreenState = {
   images: ImageBlock[];
   currentIndex: number;
-  scrollPosition: number;
 };
 
 function isGifBlock(block: ImageBlock): block is ContentGifModel {
@@ -119,13 +118,7 @@ export function FullScreenModal({
   };
 
   const modalContent = (
-    <div
-      ref={modalRef}
-      className={styles.imageFullScreenWrapper}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Image viewer"
-    >
+    <div ref={modalRef} className={styles.imageFullScreenWrapper}>
       <div className={styles.overlayContainer} onClick={handleOverlayClick}>
         <div
           className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}
@@ -174,7 +167,9 @@ export function FullScreenModal({
               {showMetadata && (
                 <div className={styles.metadataContent}>
                   {currentImage.title && (
-                    <div className={styles.metadataTitle}>{currentImage.title}</div>
+                    <div id="fullscreen-title" className={styles.metadataTitle}>
+                      {currentImage.title}
+                    </div>
                   )}
                   {currentImage.author && (
                     <div className={styles.metadataItem}>{currentImage.author}</div>
@@ -321,8 +316,14 @@ export function FullScreenModal({
     </div>
   );
 
-  if (typeof document !== 'undefined') {
-    return createPortal(modalContent, document.body);
-  }
-  return null;
+  return (
+    <Modal
+      open
+      onClose={hideImage}
+      variant="fullscreen"
+      labelledBy={currentImage.title ? 'fullscreen-title' : undefined}
+    >
+      {modalContent}
+    </Modal>
+  );
 }

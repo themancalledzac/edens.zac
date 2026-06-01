@@ -3,11 +3,12 @@
 import { type SubmitEvent, useState } from 'react';
 
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
+import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
+import { Modal } from '@/app/components/ui/Modal/Modal';
 
 import styles from './TextBlockCreateModal.module.scss';
 
 interface TextBlockCreateModalProps {
-  scrollPosition: number;
   onClose: () => void;
   onSubmit: (data: {
     content: string;
@@ -25,11 +26,7 @@ interface TextBlockCreateModalProps {
  * - Alignment selector (left, center, right)
  * - Save and cancel buttons
  */
-export default function TextBlockCreateModal({
-  scrollPosition,
-  onClose,
-  onSubmit,
-}: TextBlockCreateModalProps) {
+export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCreateModalProps) {
   const [content, setContent] = useState('');
   const [format, setFormat] = useState<'plain' | 'markdown' | 'html'>('plain');
   const [align, setAlign] = useState<'left' | 'center' | 'right'>('left');
@@ -66,27 +63,13 @@ export default function TextBlockCreateModal({
   };
 
   return (
-    <div
-      className={styles.modalWrapper}
-      style={{ top: `${scrollPosition}px` }}
-      onClick={e => {
-        // Close on backdrop click
-        if (e.target === e.currentTarget) {
-          handleCancel();
-        }
-      }}
-    >
-      <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+    <Modal open onClose={handleCancel} variant="overlay" labelledBy="text-block-modal-title">
+      <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h2 className={styles.heading}>Create New Text Block</h2>
-          <button
-            type="button"
-            onClick={handleCancel}
-            className={styles.closeButton}
-            aria-label="Close modal"
-          >
-            ×
-          </button>
+          <h2 id="text-block-modal-title" className={styles.heading}>
+            Create New Text Block
+          </h2>
+          <CloseButton onClick={handleCancel} aria-label="Close modal" />
         </div>
 
         {error && <div className={styles.errorMessage}>{error}</div>}
@@ -159,6 +142,6 @@ export default function TextBlockCreateModal({
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

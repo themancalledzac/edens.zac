@@ -28,7 +28,6 @@ export type ImageBlock = ViewableContent;
 export type FullScreenState = {
   images: ImageBlock[];
   currentIndex: number;
-  scrollPosition: number;
 } | null;
 
 export function useFullScreenImage(): {
@@ -55,9 +54,6 @@ export function useFullScreenImage(): {
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
 
-  /**
-   * @remarks `scrollPosition` is stored for potential future scroll restoration.
-   */
   const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
     const images = allImages || [image];
     const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
@@ -65,7 +61,6 @@ export function useFullScreenImage(): {
     setFullScreenState({
       images,
       currentIndex: currentIndex !== -1 ? currentIndex : 0,
-      scrollPosition: window.scrollY,
     });
   }, []);
 
