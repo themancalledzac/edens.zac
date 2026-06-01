@@ -46,7 +46,7 @@
     /* Mobile base font-size */
     font-size: var(--header-1);
     font-weight: 600;
-    color: black;
+    color: var(--color-fg);
     transition: color 0.2s ease;
 
     &:hover {
@@ -89,7 +89,7 @@
   width: var(--space-6);
   height: var(--space-6);
   cursor: pointer;
-  color: black;
+  color: var(--color-fg);
   transition: color 0.2s ease;
   stroke-width: 2.5; /* Base stroke width for mobile */
 

@@ -145,6 +145,23 @@ html,
   --z-modal: 1000; /* Modal backdrops */
   --z-modal-controls: 1002; /* Modal close buttons */
   --z-fullscreen: 9999; /* Fullscreen overlays */
+
+  /* ── Compatibility aliases: map the previously-undeclared "shadow namespace"
+     onto real tokens so silent hex fallbacks stop winning. Non-breaking.
+     These are the migration seam; the Phase 4 token collapse renames usages
+     onto the semantic roles and then deletes this block. ── */
+  --text-primary: var(--color-text-primary); /* was silently #333 */
+  --text-secondary: var(--color-text-secondary); /* was silently #666 */
+  --text-muted: var(--color-text-muted); /* was silently #999 */
+  --text-base: var(--text-md); /* font-size, ManageClient */
+  --border-color: var(--color-border); /* was silently #ddd */
+  --color-bg-subtle: var(--color-bg-light);
+  --color-bg-muted: var(--color-bg-medium);
+  --surface-secondary: var(--color-bg-light);
+  --color-accent: var(--color-blue); /* selection/link accent */
+  --radius-sm: var(--radius-1);
+  --color-warning: #f4b400; /* RatingStars; net-new token */
+  --color-overlay-light-80: rgb(255, 255, 255, 0.8); /* gap in the 05..90 ramp */
 }
 
 /* Desktop heading sizes */
@@ -158,6 +175,7 @@ html,
 
 body {
   background-color: var(--color-bg);
+  color: var(--color-fg);
   padding: 0;
   margin: 0;
   font-family: var(--font-sans), serif;
