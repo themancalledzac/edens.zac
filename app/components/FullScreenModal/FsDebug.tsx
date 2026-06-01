@@ -41,12 +41,13 @@ function rectTop(sel: string): number {
   return el ? Math.round(el.getBoundingClientRect().top) : -1;
 }
 
-// Identify which element actually occupies a given point (tag + first class hint).
+// Identify the element painting a given point + its computed background color.
+// pointer-events:none elements (the debug overlay/line) are skipped by elementFromPoint,
+// so this reports the real visual stack. A white bg here = the surface bleeding through.
 function elAt(x: number, y: number): string {
   const el = document.elementFromPoint(x, y);
-  if (!el) return 'null(outside layout viewport)';
-  const cls = String((el as HTMLElement).className ?? '').slice(0, 18);
-  return cls ? `${el.tagName.toLowerCase()}.${cls}` : el.tagName.toLowerCase();
+  if (!el) return 'null(off-viewport)';
+  return `${el.tagName.toLowerCase()} ${getComputedStyle(el).backgroundColor}`;
 }
 
 export function FsDebug() {
@@ -78,10 +79,9 @@ export function FsDebug() {
       const imgBottom = rectBottom('[class*="fullScreenImage"]');
       const vv = window.visualViewport;
       const innerH = window.innerHeight;
-      // Probe the element at the visible bottom strip — the actual question.
-      // If it's html/body → the white is exposed page canvas; if it's the overlay → covered.
+      // Vertical scan UP from the bottom at center-x: maps the "black bar" — what element paints
+      // each height and how tall the bar is (wrapper backdrop? body? matte cut off?).
       const cx = Math.round(window.innerWidth / 2);
-      const visBottomY = innerH - 2;
       setSnap({
         inner: `${window.innerWidth}x${innerH}`,
         visualVP: vv
@@ -97,7 +97,13 @@ export function FsDebug() {
         'IMG bottom(yellow)': imgBottom,
         htmlBg: getComputedStyle(document.documentElement).backgroundColor,
         bodyBg: getComputedStyle(document.body).backgroundColor,
-        [`botEl@${visBottomY}`]: elAt(cx, visBottomY),
+        'fsH(var)':
+          getComputedStyle(document.documentElement).getPropertyValue('--fs-height').trim() ||
+          'unset',
+        [`y${innerH - 2}`]: elAt(cx, innerH - 2),
+        [`y${innerH - 24}`]: elAt(cx, innerH - 24),
+        [`y${innerH - 48}`]: elAt(cx, innerH - 48),
+        [`y${innerH - 72}`]: elAt(cx, innerH - 72),
       });
     };
     update();

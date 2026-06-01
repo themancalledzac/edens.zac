@@ -186,6 +186,14 @@ html:has(body.fullscreen-open) {
   background-color: #000;
 }
 
+/* …and the <body> box itself. body is explicitly white (--color-bg) and sits behind the
+   90%-opaque overlay, so it paints through both the alpha gap and any iOS viewport strip the
+   fixed overlay can't reach. Forcing it dark while the modal is open makes the fix independent
+   of whether the exposed surface is the html canvas or the body box. Reverts on close. */
+body.fullscreen-open {
+  background-color: #000;
+}
+
 /* Universal scrollbar hiding for all elements */
 *::-webkit-scrollbar {
   display: none; /* Safari and Chrome */
