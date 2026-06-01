@@ -122,54 +122,80 @@ export default function CollectionListSelector({
       </div>
       {siblingMode && (
         <div className={styles.columnHeaderRow}>
-          <span className={styles.columnHeader}>Sibling</span>
-          <span className={styles.columnHeader}>Child</span>
-          <span className={styles.columnHeaderName} />
+          <span className={styles.columnHeaderName}>Catalog Name</span>
+          <span className={styles.columnHeaderToggle}>Sibling</span>
+          <span className={styles.columnHeaderToggle}>Child</span>
         </div>
       )}
       <div className={styles.list}>
         {filteredCollections.length === 0 && (
           <div className={styles.emptyState}>No collections available</div>
         )}
-        {filteredCollections.map(collection => (
-          <div
-            key={collection.id}
-            className={`${styles.row} ${onNavigate ? styles.navigable : ''}`}
-            role="button"
-            tabIndex={0}
-            onClick={() => handleRowClick(collection)}
-            onKeyDown={e => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleRowClick(collection);
-              }
-            }}
-          >
-            {siblingMode &&
-              renderCheckbox(
+        {filteredCollections.map(collection =>
+          siblingMode ? (
+            // Two-column mode: name on the left, Sibling | Child toggles aligned on the right.
+            <div
+              key={collection.id}
+              className={`${styles.row} ${styles.rowSibling}`}
+              role="group"
+              aria-label={collection.name}
+            >
+              <span className={styles.type}>{collection.type || 'Portfolio'}</span>
+              <span className={styles.name}>{collection.name}</span>
+              <span className={styles.toggleCell}>
+                {renderCheckbox(
+                  collection,
+                  siblingSavedIds!,
+                  siblingPendingAddIds!,
+                  siblingPendingRemoveIds!,
+                  onToggleSibling!,
+                  hoveredSiblingId,
+                  setHoveredSiblingId,
+                  `Toggle sibling ${collection.name}`
+                )}
+              </span>
+              <span className={styles.toggleCell}>
+                {renderCheckbox(
+                  collection,
+                  savedCollectionIds,
+                  pendingAddIds,
+                  pendingRemoveIds,
+                  onToggle,
+                  hoveredChildId,
+                  setHoveredChildId,
+                  `Toggle child ${collection.name}`
+                )}
+              </span>
+            </div>
+          ) : (
+            <div
+              key={collection.id}
+              className={`${styles.row} ${onNavigate ? styles.navigable : ''}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleRowClick(collection)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleRowClick(collection);
+                }
+              }}
+            >
+              {renderCheckbox(
                 collection,
-                siblingSavedIds!,
-                siblingPendingAddIds!,
-                siblingPendingRemoveIds!,
-                onToggleSibling!,
-                hoveredSiblingId,
-                setHoveredSiblingId,
-                `Toggle sibling ${collection.name}`
+                savedCollectionIds,
+                pendingAddIds,
+                pendingRemoveIds,
+                onToggle,
+                hoveredChildId,
+                setHoveredChildId,
+                `Toggle ${collection.name}`
               )}
-            {renderCheckbox(
-              collection,
-              savedCollectionIds,
-              pendingAddIds,
-              pendingRemoveIds,
-              onToggle,
-              hoveredChildId,
-              setHoveredChildId,
-              siblingMode ? `Toggle child ${collection.name}` : `Toggle ${collection.name}`
-            )}
-            <span className={styles.type}>{collection.type || 'Portfolio'}</span>
-            <span className={styles.name}>{collection.name}</span>
-          </div>
-        ))}
+              <span className={styles.type}>{collection.type || 'Portfolio'}</span>
+              <span className={styles.name}>{collection.name}</span>
+            </div>
+          )
+        )}
       </div>
     </div>
   );
