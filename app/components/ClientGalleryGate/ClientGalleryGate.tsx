@@ -139,12 +139,7 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
             disabled={isVerifying}
           />
           {error && <p className={styles.gateError}>{error}</p>}
-          <Button
-            type="submit"
-            variant="primary"
-            className={styles.gateButton}
-            disabled={isVerifying}
-          >
+          <Button type="submit" className={styles.gateButton} disabled={isVerifying}>
             {isVerifying ? 'Verifying...' : 'Enter Gallery'}
           </Button>
         </form>
