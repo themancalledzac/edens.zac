@@ -3,10 +3,10 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
-import LocationFilterBar from '@/app/components/LocationFilterBar/LocationFilterBar';
+import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
-import { type GalleryFilterState, INITIAL_GALLERY_FILTER_STATE } from '@/app/types/GalleryFilter';
+import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import {
   computeFilterCounts,
   extractFilterOptions,
@@ -25,7 +25,7 @@ interface LocationPageClientProps {
 }
 
 export default function LocationPageClient({ images, collections }: LocationPageClientProps) {
-  const [filterState, setFilterState] = useState<GalleryFilterState>(INITIAL_GALLERY_FILTER_STATE);
+  const [filterState, setFilterState] = useState<FilterState>(INITIAL_FILTER_STATE);
 
   const availableOptions = useMemo(() => extractFilterOptions(images), [images]);
 
@@ -34,9 +34,6 @@ export default function LocationPageClient({ images, collections }: LocationPage
       ...(filterState.highlyRatedOnly ? { minRating: 4 } : {}),
       ...(filterState.filmFilter === 'film' ? { isFilm: true as const } : {}),
       ...(filterState.filmFilter === 'digital' ? { isFilm: false as const } : {}),
-      ...(filterState.selectedCollectionIds.length > 0
-        ? { collectionIds: filterState.selectedCollectionIds }
-        : {}),
       ...(filterState.selectedTags.length > 0 ? { tags: filterState.selectedTags } : {}),
       ...(filterState.selectedPeople.length > 0 ? { people: filterState.selectedPeople } : {}),
     }),
@@ -74,7 +71,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
 
   const contentBlocks = useMemo(() => processContentBlocks(filteredImages, true), [filteredImages]);
 
-  const handleFilterChange = useCallback((update: Partial<GalleryFilterState>) => {
+  const handleFilterChange = useCallback((update: Partial<FilterState>) => {
     setFilterState(prev => ({ ...prev, ...update }));
   }, []);
 
@@ -82,11 +79,37 @@ export default function LocationPageClient({ images, collections }: LocationPage
     <>
       <LocationCollections collections={collections} />
 
-      <LocationFilterBar
+      <FilterToolbar
         filterState={filterState}
         onFilterChange={handleFilterChange}
-        availableOptions={availableOptions}
-        filterCounts={filterCounts}
+        dimensions={{
+          ...(availableOptions.tags.length > 0
+            ? {
+                selectedTags: {
+                  label: 'Tags',
+                  options: availableOptions.tags,
+                  counts: filterCounts.tags,
+                },
+              }
+            : {}),
+          ...(availableOptions.people.length >= 2
+            ? {
+                selectedPeople: {
+                  label: 'People',
+                  options: availableOptions.people,
+                  counts: filterCounts.people,
+                },
+              }
+            : {}),
+        }}
+        counts={{
+          highlyRated: filterCounts.highlyRated,
+          film: filterCounts.film,
+          digital: filterCounts.digital,
+        }}
+        showDateSort
+        showHighlyRated
+        showFilm
       />
 
       {contentBlocks.length > 0 ? (

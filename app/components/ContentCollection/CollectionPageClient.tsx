@@ -6,11 +6,7 @@ import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWit
 import { LAYOUT } from '@/app/constants';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
-import {
-  type CollectionFilterState,
-  INITIAL_COLLECTION_FILTER_STATE,
-  type LensType,
-} from '@/app/types/GalleryFilter';
+import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
 import { extractFilterOptions, filterContent, isImageContent } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
@@ -70,9 +66,7 @@ const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
 const EMPTY_LENSTYPE_DIM = { values: [] as readonly LensType[], filterable: true };
 
 export default function CollectionPageClient({ collection, chunkSize }: CollectionPageClientProps) {
-  const [filterState, setFilterState] = useState<CollectionFilterState>(
-    INITIAL_COLLECTION_FILTER_STATE
-  );
+  const [filterState, setFilterState] = useState<FilterState>(INITIAL_FILTER_STATE);
 
   // Row density: defaults to the collection's saved value; slider retunes it live.
   const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
@@ -218,7 +212,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     });
   }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
 
-  const handleFilterChange = useCallback((update: Partial<CollectionFilterState>) => {
+  const handleFilterChange = useCallback((update: Partial<FilterState>) => {
     setFilterState(prev => ({ ...prev, ...update }));
   }, []);
 
@@ -257,8 +251,8 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     baseCollectionOptions.lenses.values.length > 0 ||
     baseCollectionOptions.lensTypes.values.length > 0 ||
     // Locations contributes only when multi-value (filterable) — single-value
-    // locations are intentionally not surfaced (see CollectionFilterBar
-    // INFO_DIMENSIONS comment) and so should not trigger the bar on their own.
+    // locations are intentionally not surfaced (extractCollectionFilterOptions
+    // marks them non-filterable) and so should not trigger the toolbar alone.
     baseCollectionOptions.locations.filterable;
 
   const content = (

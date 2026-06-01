@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 
-import { type CollectionFilterState, type LensType } from '@/app/types/GalleryFilter';
+import { type FilterState, type LensType } from '@/app/types/GalleryFilter';
 
 /**
  * Per-dimension data used by the collection filter bar.
@@ -34,10 +34,10 @@ export type FilteredAvailableOptions = {
 } | null;
 
 interface CollectionFilterContextValue {
-  filterState: CollectionFilterState;
+  filterState: FilterState;
   filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
-  onFilterChange: (update: Partial<CollectionFilterState>) => void;
+  onFilterChange: (update: Partial<FilterState>) => void;
   density: number;
   onDensityChange: (value: number) => void;
 }

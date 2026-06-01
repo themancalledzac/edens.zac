@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { useClickOutsideMultiple } from '@/app/hooks/useClickOutside';
 
-import styles from './ImageMetadataModal.module.scss';
+import styles from './Dropdown.module.scss';
 
 /**
  * Generic metadata item interface.
@@ -43,7 +43,14 @@ export interface AddNewField {
   showWhen?: (formData: AddNewFieldFormData) => boolean;
 }
 
-interface UnifiedMetadataSelectorProps<T extends MetadataItem> {
+/**
+ * Chip rendering style for multi-select values.
+ * - `detailed` (default): pill with an explicit "×" remove button (used in ImageMetadataModal).
+ * - `simple`: borderless click-to-remove pill, no × button (used in admin ManageClient lists).
+ */
+export type DropdownVariant = 'detailed' | 'simple';
+
+interface DropdownProps<T extends MetadataItem> {
   label: string;
   multiSelect: boolean;
   options: T[];
@@ -64,19 +71,22 @@ interface UnifiedMetadataSelectorProps<T extends MetadataItem> {
   showNewIndicator?: boolean;
   /** Placeholder for add new inputs */
   placeholder?: string;
-  /** Use simplified chip style (click to remove, no x button) */
-  simpleChips?: boolean;
+  /** Chip rendering style for multi-select values (default `detailed`). */
+  variant?: DropdownVariant;
 }
 
 /**
- * UnifiedMetadataSelector — flexible click-to-open dropdown for metadata fields.
+ * Dropdown<T> — flexible click-to-open selector for metadata fields.
+ *
+ * Canonical primitive promoted from ImageMetadata/UnifiedMetadataSelector
+ * (design-review §3 / §6a-rank-4). Owns its own portable SCSS.
  *
  * UX: the value box itself is the click target. Clicking it toggles the
  * dropdown. The dropdown ends with a big "+" row when `allowAddNew` is set,
  * which opens the inline add-new form. Selecting an item closes the dropdown
  * — single AND multi-select — for consistency across Camera/Lens/Film/Tags/People.
  */
-export default function UnifiedMetadataSelector<T extends MetadataItem>({
+export default function Dropdown<T extends MetadataItem>({
   label,
   multiSelect,
   options,
@@ -91,8 +101,8 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
   emptyText = `No ${label.toLowerCase()} set`,
   showNewIndicator = false,
   placeholder,
-  simpleChips = false,
-}: UnifiedMetadataSelectorProps<T>) {
+  variant = 'detailed',
+}: DropdownProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSelectingFromDropdown, setIsSelectingFromDropdown] = useState(false);
   const [isAddingNew, setIsAddingNew] = useState(false);
@@ -303,7 +313,7 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
             ) : (
               <div className={styles.selectedChips}>
                 {selectedValues.map(item =>
-                  simpleChips ? (
+                  variant === 'simple' ? (
                     <div
                       key={getKey(item)}
                       className={styles.chipSimple}
@@ -405,8 +415,11 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
               const selectValue = typeof rawValue === 'string' ? rawValue : '';
               return (
                 <div key={field.name} className={styles.formGroup}>
-                  <label className={styles.formLabel}>{field.label}</label>
+                  <label htmlFor={field.name} className={styles.formLabel}>
+                    {field.label}
+                  </label>
                   <select
+                    id={field.name}
                     value={selectValue}
                     onChange={e => handleFieldChange(field.name, e.target.value)}
                     className={styles.formSelect}
@@ -428,8 +441,11 @@ export default function UnifiedMetadataSelector<T extends MetadataItem>({
             const inputValue = typeof rawValue === 'string' ? rawValue : '';
             return (
               <div key={field.name} className={styles.formGroup}>
-                <label className={styles.formLabel}>{field.label}</label>
+                <label htmlFor={field.name} className={styles.formLabel}>
+                  {field.label}
+                </label>
                 <input
+                  id={field.name}
                   type={field.type}
                   value={inputValue}
                   onChange={e => handleFieldChange(field.name, e.target.value)}

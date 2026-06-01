@@ -14,11 +14,11 @@ import {
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
-import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
 import RatingStars from '@/app/components/RatingStars/RatingStars';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { Button } from '@/app/components/ui/Button/Button';
+import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
@@ -1218,7 +1218,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         </div>
 
                         {/* Locations */}
-                        <UnifiedMetadataSelector<LocationModel>
+                        <Dropdown<LocationModel>
                           label="Locations"
                           multiSelect
                           options={currentState?.locations || []}
@@ -1263,7 +1263,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           >
                             People
                           </h3>
-                          <UnifiedMetadataSelector<ContentPersonModel>
+                          <Dropdown<ContentPersonModel>
                             label=""
                             multiSelect
                             options={currentState?.people || []}

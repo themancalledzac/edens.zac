@@ -1,0 +1,348 @@
+/* Dropdown primitive styles — extracted verbatim from ImageMetadataModal.module.scss
+   so the canonical Dropdown<T> is portable (design-review §3 / §6a-rank-4). */
+
+/* Form scaffolding the inline add-new form reuses */
+.formGroup {
+  margin-bottom: 16px;
+}
+
+.formLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--color-overlay-light-70);
+
+  .formLabelRow & {
+    margin-bottom: 0;
+  }
+}
+
+.formInput,
+.formSelect {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: var(--color-overlay-light-05);
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: var(--radius-1);
+  color: white;
+  transition: all 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-overlay-light-50);
+    background: rgb(255, 255, 255, 0.08);
+  }
+
+  &::placeholder {
+    color: var(--color-overlay-light-40);
+  }
+}
+
+.formSelect {
+  cursor: pointer;
+}
+
+/* Checkbox add-new field */
+.checkboxGroup {
+  display: flex;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--color-overlay-light-90);
+
+  input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: white;
+  }
+
+  &:hover {
+    color: white;
+  }
+}
+
+/* Inline add-new form container + its action buttons */
+.addNewInput {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: var(--color-overlay-light-05);
+  border: 1px solid var(--color-overlay-light-30);
+  border-radius: var(--radius-1);
+}
+
+.addNewButtons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.confirmButton,
+.cancelSmallButton {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.confirmButton {
+  background: white;
+  color: black;
+
+  &:hover:not(:disabled) {
+    background: var(--color-overlay-light-90);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.cancelSmallButton {
+  background: transparent;
+  color: white;
+  border: 1px solid var(--color-overlay-light-30);
+
+  &:hover {
+    background: var(--color-overlay-light-10);
+  }
+}
+
+/* The value box — itself the dropdown trigger */
+.cameraDisplay {
+  display: flex;
+  padding: 12px 16px;
+  background: var(--color-overlay-light-05);
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: var(--radius-1);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+
+  &:hover {
+    background: var(--color-overlay-light-10);
+    border-color: var(--color-overlay-light-30);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-overlay-light-50);
+    outline-offset: 2px;
+  }
+}
+
+.cameraValue {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--color-overlay-light-90);
+  font-weight: 500;
+}
+
+.cameraEmpty {
+  color: var(--color-overlay-light-40);
+  font-style: italic;
+}
+
+.cameraNewIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-dark);
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-danger-text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* The open option list */
+.cameraDropdownList {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: var(--radius-1);
+  background: rgb(255, 255, 255, 0.03);
+  margin-bottom: 12px;
+
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--color-overlay-light-05);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-overlay-light-20);
+    border-radius: 3px;
+
+    &:hover {
+      background: var(--color-overlay-light-30);
+    }
+  }
+}
+
+.cameraDropdownItem {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-overlay-light-05);
+  color: var(--color-overlay-light-90);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: rgb(255, 255, 255, 0.08);
+  }
+}
+
+.cameraDropdownItemActive {
+  background: rgb(255, 255, 255, 0.15);
+  font-weight: 600;
+
+  &:hover {
+    background: var(--color-overlay-light-20);
+  }
+}
+
+.cameraDropdownAddPlus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--color-overlay-light-20);
+  color: var(--color-overlay-light-90);
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background: rgb(255, 255, 255, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-overlay-light-50);
+    outline-offset: -2px;
+  }
+}
+
+.cameraDropdownEmpty {
+  padding: 20px;
+  text-align: center;
+  color: var(--color-overlay-light-50);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Selected chips (multi-select) */
+.selectedChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--color-overlay-light-10);
+  border: 1px solid var(--color-overlay-light-20);
+  border-radius: 3px;
+  font-size: 13px;
+  color: var(--color-overlay-light-80);
+  font-weight: 500;
+
+  span {
+    user-select: none;
+  }
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 2px;
+  color: var(--color-overlay-light-50);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgb(220, 38, 38, 0.3);
+    color: var(--color-danger-text);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+/* Simplified chip style for admin pages — click to remove */
+.chipSimple {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--color-overlay-light-30);
+  border-radius: var(--radius-1);
+  font-size: 13px;
+  color: var(--color-overlay-light-90);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+
+  &:hover {
+    background: var(--color-danger-subtle);
+    border-color: rgb(220, 38, 38, 0.5);
+    color: var(--color-danger-text);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
