@@ -18,6 +18,13 @@ interface CollectionListSelectorProps {
   onAddNewChild?: () => void;
   label?: string;
   excludeCollectionId?: number;
+  // Optional second ("Sibling") toggle column. When the full set is supplied the
+  // selector switches to a two-column Sibling | Child grid; otherwise it renders
+  // its original single-column layout unchanged.
+  siblingSavedIds?: Set<number>;
+  siblingPendingAddIds?: Set<number>;
+  siblingPendingRemoveIds?: Set<number>;
+  onToggleSibling?: (collection: CollectionListModel) => void;
 }
 
 function getCheckboxState(
@@ -42,31 +49,66 @@ export default function CollectionListSelector({
   onAddNewChild,
   label = 'Collections',
   excludeCollectionId,
+  siblingSavedIds,
+  siblingPendingAddIds,
+  siblingPendingRemoveIds,
+  onToggleSibling,
 }: CollectionListSelectorProps) {
-  const [hoveredCheckboxId, setHoveredCheckboxId] = useState<number | null>(null);
+  // Independent hover state per column so remove-intent (red) on one checkbox
+  // never lights up the other column's checkbox.
+  const [hoveredChildId, setHoveredChildId] = useState<number | null>(null);
+  const [hoveredSiblingId, setHoveredSiblingId] = useState<number | null>(null);
+
+  const siblingMode =
+    !!onToggleSibling && !!siblingSavedIds && !!siblingPendingAddIds && !!siblingPendingRemoveIds;
 
   const filteredCollections = excludeCollectionId
     ? allCollections.filter(c => c.id !== excludeCollectionId)
     : allCollections;
 
-  const handleCheckboxClick = useCallback(
-    (e: React.MouseEvent, collection: CollectionListModel) => {
-      e.stopPropagation();
-      onToggle(collection);
-    },
-    [onToggle]
-  );
-
   const handleRowClick = useCallback(
     (collection: CollectionListModel) => {
+      // In two-column mode the row hosts two independent toggles, so a bare
+      // row-body click is a no-op unless an explicit navigate handler is given.
       if (onNavigate) {
         onNavigate(collection);
-      } else {
+      } else if (!siblingMode) {
         onToggle(collection);
       }
     },
-    [onNavigate, onToggle]
+    [onNavigate, onToggle, siblingMode]
   );
+
+  // Renders one checkbox button for a column, with its own hover/remove-intent.
+  const renderCheckbox = (
+    collection: CollectionListModel,
+    savedIds: Set<number>,
+    pendingAdd: Set<number>,
+    pendingRemove: Set<number>,
+    onClick: (collection: CollectionListModel) => void,
+    hoveredId: number | null,
+    setHoveredId: (id: number | null) => void,
+    ariaLabel: string
+  ) => {
+    const state = getCheckboxState(collection.id, savedIds, pendingAdd, pendingRemove);
+    const isHovered = hoveredId === collection.id;
+    const isSelected = state === 'saved' || state === 'pending-add';
+    const showRemoveIntent = isHovered && isSelected;
+
+    return (
+      <button
+        type="button"
+        className={`${styles.checkbox} ${styles[`checkbox--${state}`]} ${showRemoveIntent ? styles['checkbox--remove-intent'] : ''}`}
+        onClick={e => {
+          e.stopPropagation();
+          onClick(collection);
+        }}
+        onMouseEnter={() => setHoveredId(collection.id)}
+        onMouseLeave={() => setHoveredId(null)}
+        aria-label={ariaLabel}
+      />
+    );
+  };
 
   return (
     <div className={styles.container}>
@@ -78,48 +120,56 @@ export default function CollectionListSelector({
           </button>
         )}
       </div>
+      {siblingMode && (
+        <div className={styles.columnHeaderRow}>
+          <span className={styles.columnHeader}>Sibling</span>
+          <span className={styles.columnHeader}>Child</span>
+          <span className={styles.columnHeaderName} />
+        </div>
+      )}
       <div className={styles.list}>
         {filteredCollections.length === 0 && (
           <div className={styles.emptyState}>No collections available</div>
         )}
-        {filteredCollections.map(collection => {
-          const state = getCheckboxState(
-            collection.id,
-            savedCollectionIds,
-            pendingAddIds,
-            pendingRemoveIds
-          );
-          const isCheckboxHovered = hoveredCheckboxId === collection.id;
-          const isSelected = state === 'saved' || state === 'pending-add';
-          const showRemoveIntent = isCheckboxHovered && isSelected;
-
-          return (
-            <div
-              key={collection.id}
-              className={`${styles.row} ${onNavigate ? styles.navigable : ''}`}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleRowClick(collection)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleRowClick(collection);
-                }
-              }}
-            >
-              <button
-                type="button"
-                className={`${styles.checkbox} ${styles[`checkbox--${state}`]} ${showRemoveIntent ? styles['checkbox--remove-intent'] : ''}`}
-                onClick={e => handleCheckboxClick(e, collection)}
-                onMouseEnter={() => setHoveredCheckboxId(collection.id)}
-                onMouseLeave={() => setHoveredCheckboxId(null)}
-                aria-label={`Toggle ${collection.name}`}
-              />
-              <span className={styles.type}>{collection.type || 'Portfolio'}</span>
-              <span className={styles.name}>{collection.name}</span>
-            </div>
-          );
-        })}
+        {filteredCollections.map(collection => (
+          <div
+            key={collection.id}
+            className={`${styles.row} ${onNavigate ? styles.navigable : ''}`}
+            role="button"
+            tabIndex={0}
+            onClick={() => handleRowClick(collection)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleRowClick(collection);
+              }
+            }}
+          >
+            {siblingMode &&
+              renderCheckbox(
+                collection,
+                siblingSavedIds!,
+                siblingPendingAddIds!,
+                siblingPendingRemoveIds!,
+                onToggleSibling!,
+                hoveredSiblingId,
+                setHoveredSiblingId,
+                `Toggle sibling ${collection.name}`
+              )}
+            {renderCheckbox(
+              collection,
+              savedCollectionIds,
+              pendingAddIds,
+              pendingRemoveIds,
+              onToggle,
+              hoveredChildId,
+              setHoveredChildId,
+              siblingMode ? `Toggle child ${collection.name}` : `Toggle ${collection.name}`
+            )}
+            <span className={styles.type}>{collection.type || 'Portfolio'}</span>
+            <span className={styles.name}>{collection.name}</span>
+          </div>
+        ))}
       </div>
     </div>
   );

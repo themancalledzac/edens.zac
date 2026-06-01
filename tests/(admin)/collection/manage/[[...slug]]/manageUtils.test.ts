@@ -25,13 +25,16 @@ import {
   refreshCollectionAfterOperation,
   replayMoves,
   revalidateCollectionCache,
+  toggleRelation,
   updateBlockOrderIndex,
   validateCoverImageSelection,
 } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
 import * as collectionsApi from '@/app/lib/api/collections';
 import {
+  type CollectionListModel,
   type CollectionModel,
   CollectionType,
+  type CollectionUpdate,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
 } from '@/app/types/Collection';
@@ -675,6 +678,26 @@ describe('buildUpdatePayload', () => {
         id: 1,
         collections: {
           newValue: [{ collectionId: 2, name: 'Child Collection' }],
+        },
+      });
+    });
+
+    it('should include siblings when set', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        siblings: {
+          newValue: [{ collectionId: 5, name: 'Sibling Collection' }],
+          remove: [9],
+        },
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        siblings: {
+          newValue: [{ collectionId: 5, name: 'Sibling Collection' }],
+          remove: [9],
         },
       });
     });
@@ -1940,5 +1963,70 @@ describe('buildReorderChangesFromFinalOrder', () => {
 
   it('should return empty array for empty input', () => {
     expect(buildReorderChangesFromFinalOrder([], [])).toEqual([]);
+  });
+});
+
+describe('toggleRelation', () => {
+  const collection = (id: number, name = `Collection ${id}`): CollectionListModel => ({ id, name });
+
+  // Child rows carry visible/orderIndex; sibling rows carry only { collectionId, name }.
+  const childEntry = (c: CollectionListModel, index: number) => ({
+    collectionId: c.id,
+    name: c.name,
+    visible: true,
+    orderIndex: index,
+  });
+  const siblingEntry = (c: CollectionListModel) => ({ collectionId: c.id, name: c.name });
+
+  it('add-new: appends an unsaved collection to newValue', () => {
+    const result = toggleRelation(
+      undefined,
+      collection(5, 'Five'),
+      new Set<number>(),
+      siblingEntry
+    );
+    expect(result).toEqual({ newValue: [{ collectionId: 5, name: 'Five' }] });
+  });
+
+  it('un-add: toggling a pending addition clears it (-> undefined when nothing remains)', () => {
+    const current: CollectionUpdate = { newValue: [{ collectionId: 5, name: 'Five' }] };
+    const result = toggleRelation(current, collection(5), new Set<number>(), siblingEntry);
+    expect(result).toBeUndefined();
+  });
+
+  it('remove-saved: toggling a saved collection appends it to remove', () => {
+    const result = toggleRelation(undefined, collection(7), new Set<number>([7]), siblingEntry);
+    expect(result).toEqual({ remove: [7] });
+  });
+
+  it('un-remove: toggling a pending removal clears it (-> undefined when nothing remains)', () => {
+    const current: CollectionUpdate = { remove: [7] };
+    const result = toggleRelation(current, collection(7), new Set<number>([7]), siblingEntry);
+    expect(result).toBeUndefined();
+  });
+
+  it('child shape: newValue entry carries visible + orderIndex from buildEntry', () => {
+    const current: CollectionUpdate = {
+      newValue: [{ collectionId: 1, name: 'One', visible: true, orderIndex: 0 }],
+    };
+    const result = toggleRelation(current, collection(2, 'Two'), new Set<number>(), childEntry);
+    expect(result?.newValue).toEqual([
+      { collectionId: 1, name: 'One', visible: true, orderIndex: 0 },
+      { collectionId: 2, name: 'Two', visible: true, orderIndex: 1 },
+    ]);
+  });
+
+  it('tracks a saved removal and an unsaved addition independently', () => {
+    const originalIds = new Set<number>([7]);
+    let update = toggleRelation(undefined, collection(7), originalIds, siblingEntry);
+    update = toggleRelation(update, collection(5, 'Five'), originalIds, siblingEntry);
+    expect(update).toEqual({ remove: [7], newValue: [{ collectionId: 5, name: 'Five' }] });
+  });
+
+  it('preserves an existing prev field on the association', () => {
+    const current: CollectionUpdate = { prev: [{ collectionId: 9, name: 'Nine' }] };
+    const result = toggleRelation(current, collection(5, 'Five'), new Set<number>(), siblingEntry);
+    expect(result?.prev).toEqual([{ collectionId: 9, name: 'Nine' }]);
+    expect(result?.newValue).toEqual([{ collectionId: 5, name: 'Five' }]);
   });
 });

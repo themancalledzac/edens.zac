@@ -171,6 +171,7 @@ export default function CollectionContentRenderer({
     const descriptionItem = textItems.find(item => item.type === 'description');
     const tagItems = textItems.filter(item => item.type === 'tag');
     const filterItems = textItems.filter(item => item.type === 'text');
+    const collectionItems = textItems.filter(item => item.type === 'collection');
 
     const handleTagClick = (tagName: string, tagSlug?: string) => {
       if (collectionFilter) {
@@ -245,6 +246,22 @@ export default function CollectionContentRenderer({
                     >
                       {item.value}
                     </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {collectionItems.length > 0 && (
+              <div className={cbStyles.metadataSiblingsContainer}>
+                <span className={cbStyles.metadataSiblingLabel}>Related:</span>
+                <div className={cbStyles.metadataSiblingsRow}>
+                  {collectionItems.map(item => (
+                    <Link
+                      key={`sibling-${contentId}-${item.slug}`}
+                      href={item.slug!}
+                      className={cbStyles.metadataSiblingCollection}
+                    >
+                      {item.value}
+                    </Link>
                   ))}
                 </div>
               </div>

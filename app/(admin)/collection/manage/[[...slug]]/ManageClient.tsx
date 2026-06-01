@@ -74,6 +74,7 @@ import {
   refreshCollectionAfterOperation,
   revalidateCollectionCache,
   revalidateMetadataCache,
+  toggleRelation,
 } from './manageUtils';
 import { useContentReordering } from './useContentReordering';
 import { useCoverImageSelection } from './useCoverImageSelection';
@@ -861,55 +862,74 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, []);
 
   /**
-   * Handle collection toggle from CollectionListSelector
+   * Handle child-collection toggle from CollectionListSelector. Child rows carry
+   * `visible`/`orderIndex` in their `newValue` entry (containment metadata).
    */
   const handleCollectionToggle = useCallback(
     (toggledCollection: CollectionListModel) => {
-      setUpdateData(prev => {
-        const currentRemove = new Set(prev.collections?.remove || []);
-        const currentNewValue = prev.collections?.newValue || [];
-        const isSaved = originalCollectionIds.has(toggledCollection.id);
-
-        let newRemove: number[];
-        if (!isSaved) {
-          newRemove = [...currentRemove];
-        } else if (currentRemove.has(toggledCollection.id)) {
-          newRemove = [...currentRemove].filter(id => id !== toggledCollection.id);
-        } else {
-          newRemove = [...currentRemove, toggledCollection.id];
-        }
-
-        let newNewValue: typeof currentNewValue;
-        if (isSaved) {
-          newNewValue = [...currentNewValue];
-        } else if (currentNewValue.some(c => c.collectionId === toggledCollection.id)) {
-          newNewValue = currentNewValue.filter(c => c.collectionId !== toggledCollection.id);
-        } else {
-          newNewValue = [
-            ...currentNewValue,
-            {
-              collectionId: toggledCollection.id,
-              name: toggledCollection.name,
-              visible: true,
-              orderIndex: currentNewValue.length,
-            },
-          ];
-        }
-
-        const hasChanges = newRemove.length > 0 || newNewValue.length > 0;
-        return {
-          ...prev,
-          collections: hasChanges
-            ? {
-                ...prev.collections,
-                remove: newRemove.length > 0 ? newRemove : undefined,
-                newValue: newNewValue.length > 0 ? newNewValue : undefined,
-              }
-            : undefined,
-        };
-      });
+      setUpdateData(prev => ({
+        ...prev,
+        collections: toggleRelation(
+          prev.collections,
+          toggledCollection,
+          originalCollectionIds,
+          (collection, index) => ({
+            collectionId: collection.id,
+            name: collection.name,
+            visible: true,
+            orderIndex: index,
+          })
+        ),
+      }));
     },
     [originalCollectionIds]
+  );
+
+  /**
+   * Sibling-collection selection state — mirrors the child-collection state above,
+   * but `originalSiblingIds` derives from `collection.siblings` (mutual association)
+   * rather than from `collection.content` (containment).
+   */
+  const originalSiblingIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const sib of collection?.siblings ?? []) {
+      ids.add(sib.id);
+    }
+    return ids;
+  }, [collection?.siblings]);
+
+  const pendingAddSiblingIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const sib of updateData.siblings?.newValue ?? []) {
+      ids.add(sib.collectionId);
+    }
+    return ids;
+  }, [updateData.siblings?.newValue]);
+
+  const pendingRemoveSiblingIds = useMemo(() => {
+    return new Set<number>(updateData.siblings?.remove ?? []);
+  }, [updateData.siblings?.remove]);
+
+  /**
+   * Toggle a sibling link. Same engine as handleCollectionToggle, but sibling rows carry
+   * only { collectionId, name } — no orderIndex/visible (siblings have neither).
+   */
+  const handleSiblingToggle = useCallback(
+    (toggledCollection: CollectionListModel) => {
+      setUpdateData(prev => ({
+        ...prev,
+        siblings: toggleRelation(
+          prev.siblings,
+          toggledCollection,
+          originalSiblingIds,
+          collection => ({
+            collectionId: collection.id,
+            name: collection.name,
+          })
+        ),
+      }));
+    },
+    [originalSiblingIds]
   );
 
   /**
@@ -1616,6 +1636,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           onAddNewChild={handleAddNewChild}
                           label="Collections"
                           excludeCollectionId={collection.id}
+                          siblingSavedIds={originalSiblingIds}
+                          siblingPendingAddIds={pendingAddSiblingIds}
+                          siblingPendingRemoveIds={pendingRemoveSiblingIds}
+                          onToggleSibling={handleSiblingToggle}
                         />
 
                         {/* Home: rate child collections inline. Click is immediate (no save button). */}

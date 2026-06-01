@@ -123,9 +123,9 @@ export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'cont
  * Text blocks are composed of multiple items for semantic editing
  */
 export interface TextBlockItem {
-  type: 'date' | 'location' | 'description' | 'text' | 'tag';
+  type: 'date' | 'location' | 'description' | 'text' | 'tag' | 'collection';
   value: string;
-  slug?: string; // URL slug for navigation (location and tag items)
+  slug?: string; // URL slug for navigation (location, tag, and sibling-collection items)
   label?: string; // Optional display label (e.g., "Date:", "Location:")
 }
 
