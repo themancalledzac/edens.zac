@@ -1,51 +1,80 @@
 /**
- * Shared filter state for gallery pages (location, tag, search, etc.)
- * Designed to be reused across any image gallery view.
+ * Unified filter state for every gallery view (collection detail pages,
+ * location/tag/people taxonomy pages, parent pages). One shape with all
+ * dimensions present-as-empty-arrays; a given page wires only the dimensions
+ * it surfaces. Replaces the former GalleryFilterState + CollectionFilterState.
+ *
+ * All fields are URL-serializable (see app/utils/contentFilter.ts
+ * parseFilterFromParams / serializeFilterToParams) so the state can later be
+ * synced to search params (master plan Phase 3 — not this plan).
  */
-export interface GalleryFilterState {
-  dateSortDirection: 'asc' | 'desc' | 'off';
+export type DateSortDirection = 'asc' | 'desc' | 'off';
+
+/** 'film' = film only, 'digital' = digital only, 'off' = no film/digital filter. */
+export type FilmFilter = 'film' | 'digital' | 'off';
+
+export type LensType = 'wide' | 'normal' | 'telephoto';
+
+export interface FilterState {
+  dateSortDirection: DateSortDirection;
   highlyRatedOnly: boolean;
-  /** 'film' = film only, 'digital' = digital only, 'off' = no filter */
-  filmFilter: 'film' | 'digital' | 'off';
-  readonly selectedCollectionIds: readonly number[];
-  readonly selectedTags: readonly string[];
-  readonly selectedPeople: readonly string[];
-}
-
-export const INITIAL_GALLERY_FILTER_STATE: GalleryFilterState = Object.freeze({
-  dateSortDirection: 'off' as const,
-  highlyRatedOnly: false,
-  filmFilter: 'off' as const,
-  selectedCollectionIds: Object.freeze([] as readonly number[]),
-  selectedTags: Object.freeze([] as readonly string[]),
-  selectedPeople: Object.freeze([] as readonly string[]),
-});
-
-/**
- * Filter state for collection detail pages.
- * Simpler than GalleryFilterState — no date sort or film filter.
- * AND logic within and across categories.
- */
-export interface CollectionFilterState {
+  filmFilter: FilmFilter;
   readonly selectedTags: readonly string[];
   readonly selectedPeople: readonly string[];
   readonly selectedCameras: readonly string[];
   readonly selectedLenses: readonly string[];
   readonly selectedLocations: readonly string[];
-  highlyRatedOnly: boolean;
-  dateSortDirection: 'asc' | 'desc' | 'off';
   readonly selectedLensTypes: readonly LensType[];
 }
 
-export type LensType = 'wide' | 'normal' | 'telephoto';
-
-export const INITIAL_COLLECTION_FILTER_STATE: CollectionFilterState = Object.freeze({
+export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
+  dateSortDirection: 'off' as const,
+  highlyRatedOnly: false,
+  filmFilter: 'off' as const,
   selectedTags: Object.freeze([] as readonly string[]),
   selectedPeople: Object.freeze([] as readonly string[]),
   selectedCameras: Object.freeze([] as readonly string[]),
   selectedLenses: Object.freeze([] as readonly string[]),
   selectedLocations: Object.freeze([] as readonly string[]),
-  highlyRatedOnly: false,
-  dateSortDirection: 'off' as const,
   selectedLensTypes: Object.freeze([] as readonly LensType[]),
 });
+
+/** Keys of FilterState whose value is a readonly string-or-LensType array. */
+export type ArrayFilterKey =
+  | 'selectedTags'
+  | 'selectedPeople'
+  | 'selectedCameras'
+  | 'selectedLenses'
+  | 'selectedLocations'
+  | 'selectedLensTypes';
+
+/**
+ * The single canonical date-sort cycle: off -> asc -> desc -> off.
+ * (Collapses the two divergent orders that previously lived in
+ * CollectionFilterBar and LocationFilterBar.)
+ */
+export function cycleDateSort(current: DateSortDirection): DateSortDirection {
+  const next: Record<DateSortDirection, DateSortDirection> = {
+    off: 'asc',
+    asc: 'desc',
+    desc: 'off',
+  };
+  return next[current];
+}
+
+/**
+ * Toggle a value in one of the array dimensions and emit a Partial update.
+ * Lifted out of CollectionFilterBar so the toolbar AND tag-click handlers in
+ * CollectionContentRenderer share one implementation (replaces the hand-rolled
+ * toggleTag / togglePerson in LocationFilterBar).
+ */
+export function toggleArrayFilter(
+  state: FilterState,
+  onChange: (update: Partial<FilterState>) => void,
+  key: ArrayFilterKey,
+  value: string
+): void {
+  const current = state[key] as readonly string[];
+  const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+  onChange({ [key]: next });
+}

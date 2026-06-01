@@ -7,10 +7,11 @@ import { useCallback, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
-import CollectionFilterBar, {
-  toggleArrayFilter,
-} from '@/app/components/ContentCollection/CollectionFilterBar';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
+import {
+  FilterToolbar,
+  type ToolbarDimension,
+} from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { useParallax } from '@/app/hooks/useParallax';
 import {
   type ContentGifModel,
@@ -18,6 +19,7 @@ import {
   type ViewableContent,
 } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
+import { type ArrayFilterKey, toggleArrayFilter } from '@/app/types/GalleryFilter';
 import {
   checkImageVisibility,
   createContentClickHandler,
@@ -34,6 +36,49 @@ import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 import ReorderOverlay from './ReorderOverlay';
+
+/**
+ * Maps the collection page's CollectionInfoOptions (per-dimension `filterable`
+ * + values) into the toolbar's `dimensions` config. Only filterable dimensions
+ * with at least one value become dropdowns; lens names and lens-type chips are
+ * surfaced as separate dropdowns (types carry display labels).
+ */
+function toCollectionDimensions(
+  options: NonNullable<ReturnType<typeof useCollectionFilter>>['filterOptions']
+): Partial<Record<ArrayFilterKey, ToolbarDimension>> {
+  const dims: Partial<Record<ArrayFilterKey, ToolbarDimension>> = {};
+  if (options.people.filterable && options.people.values.length > 0) {
+    dims.selectedPeople = { label: 'People', options: options.people.values };
+  }
+  if (options.tags.filterable && options.tags.values.length > 0) {
+    dims.selectedTags = { label: 'Tags', options: options.tags.values };
+  }
+  if (options.cameras.filterable && options.cameras.values.length > 0) {
+    dims.selectedCameras = { label: 'Camera', options: options.cameras.values };
+  }
+  if (options.locations.filterable && options.locations.values.length > 0) {
+    dims.selectedLocations = { label: 'Location', options: options.locations.values };
+  }
+  if (
+    (options.lenses.filterable && options.lenses.values.length > 0) ||
+    (options.lensTypes.filterable && options.lensTypes.values.length > 0)
+  ) {
+    // Lens dropdown is split (types then names) in the old bar; the toolbar
+    // surfaces lens NAMES as one dropdown and lens TYPES as another.
+    dims.selectedLenses = {
+      label: 'Lens',
+      options: options.lenses.values,
+    };
+    if (options.lensTypes.values.length > 0) {
+      dims.selectedLensTypes = {
+        label: 'Lens type',
+        options: options.lensTypes.values,
+        optionLabels: { wide: 'Wide', normal: 'Normal', telephoto: 'Telephoto' },
+      };
+    }
+  }
+  return dims;
+}
 
 /**
  * Renders a single content item: IMAGE, GIF, COLLECTION, or TEXT metadata block.
@@ -271,14 +316,29 @@ export default function CollectionContentRenderer({
             )}
           </div>
           {collectionFilter && (
-            <CollectionFilterBar
-              filterState={collectionFilter.filterState}
-              filterOptions={collectionFilter.filterOptions}
-              filteredAvailable={collectionFilter.filteredAvailable}
-              onFilterChange={collectionFilter.onFilterChange}
-              density={collectionFilter.density}
-              onDensityChange={collectionFilter.onDensityChange}
-            />
+            <div className={cbStyles.filterBarWrapper}>
+              <FilterToolbar
+                filterState={collectionFilter.filterState}
+                onFilterChange={collectionFilter.onFilterChange}
+                dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
+                filteredAvailable={
+                  collectionFilter.filteredAvailable
+                    ? {
+                        selectedTags: collectionFilter.filteredAvailable.tags,
+                        selectedPeople: collectionFilter.filteredAvailable.people,
+                        selectedCameras: collectionFilter.filteredAvailable.cameras,
+                        selectedLenses: collectionFilter.filteredAvailable.lenses,
+                        selectedLensTypes: collectionFilter.filteredAvailable.lensTypes,
+                        selectedLocations: collectionFilter.filteredAvailable.locations,
+                      }
+                    : null
+                }
+                showDateSort
+                showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
+                density={collectionFilter.density}
+                onDensityChange={collectionFilter.onDensityChange}
+              />
+            </div>
           )}
         </div>
       </div>
