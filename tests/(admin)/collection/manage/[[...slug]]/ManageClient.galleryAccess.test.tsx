@@ -130,7 +130,7 @@ jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   default: () => null,
 }));
 
-jest.mock('@/app/components/ImageMetadata/UnifiedMetadataSelector', () => ({
+jest.mock('@/app/components/ui/Dropdown/Dropdown', () => ({
   __esModule: true,
   default: () => null,
 }));

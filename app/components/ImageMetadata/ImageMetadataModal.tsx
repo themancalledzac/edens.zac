@@ -5,6 +5,7 @@ import { type SubmitEvent, useCallback, useEffect, useMemo, useState } from 'rea
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
+import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { IMAGE } from '@/app/constants';
 import {
   type ContentGifUpdateRequest,
@@ -43,7 +44,6 @@ import {
   getCommonValues,
   mapUpdateResponseToFrontend,
 } from './imageMetadataUtils';
-import UnifiedMetadataSelector from './UnifiedMetadataSelector';
 
 /**
  * Local edit-state shape. We allow GIF fields too because the same modal now edits both — image-
@@ -614,7 +614,7 @@ export default function ImageMetadataModal({
             </div>
 
             <div>
-              <UnifiedMetadataSelector<LocationModel>
+              <Dropdown<LocationModel>
                 label="Locations"
                 multiSelect
                 options={availableLocations}
@@ -732,7 +732,7 @@ export default function ImageMetadataModal({
           >
             <h3 className={styles.sectionHeading}>Camera Settings</h3>
 
-            <UnifiedMetadataSelector<ContentCameraModel>
+            <Dropdown<ContentCameraModel>
               label="Camera"
               multiSelect={false}
               options={availableCameras}
@@ -809,7 +809,7 @@ export default function ImageMetadataModal({
               emptyText="No camera set"
             />
 
-            <UnifiedMetadataSelector<ContentLensModel>
+            <Dropdown<ContentLensModel>
               label="Lens"
               multiSelect={false}
               options={availableLenses}
@@ -911,7 +911,7 @@ export default function ImageMetadataModal({
 
             {updateState.isFilm && (
               <div className={styles.formGrid2Col}>
-                <UnifiedMetadataSelector<ContentFilmTypeModel>
+                <Dropdown<ContentFilmTypeModel>
                   label="Film Stock"
                   multiSelect={false}
                   options={availableFilmTypes}
@@ -985,7 +985,7 @@ export default function ImageMetadataModal({
           <div className={styles.formSection}>
             <h3 className={styles.sectionHeading}>Tags & People</h3>
 
-            <UnifiedMetadataSelector<ContentTagModel>
+            <Dropdown<ContentTagModel>
               label="Tags"
               multiSelect
               options={availableTags}
@@ -1014,7 +1014,7 @@ export default function ImageMetadataModal({
             />
 
             <div>
-              <UnifiedMetadataSelector<ContentPersonModel>
+              <Dropdown<ContentPersonModel>
                 label="People"
                 multiSelect
                 options={availablePeople}
