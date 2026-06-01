@@ -1,0 +1,63 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  background-color: var(--color-overlay-strong);
+  overscroll-behavior: none;
+
+  /* Reset transforms inherited from any parallax/perspective ancestor so the
+     portal'd dialog positions against the viewport, not a transformed parent. */
+  transform: none;
+  perspective: none;
+}
+
+.dialog {
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ── Variants (layout only; behavior is identical) ── */
+
+/* overlay: centered card with breathing room (ClientGalleryGate, TextBlockCreateModal). */
+.overlay {
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+
+  .dialog {
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    border-radius: var(--radius-2);
+    box-shadow: 0 20px 60px var(--color-overlay-strong);
+  }
+}
+
+/* sheet: full-bleed scrolling panel (MenuDropdown nav, ImageMetadataModal editor). */
+.sheet {
+  .dialog {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+  }
+}
+
+/* fullscreen: edge-to-edge, transparent dialog over the scrim (FullScreenModal viewer). */
+.fullscreen {
+  .dialog {
+    width: 100%;
+    height: 100%;
+  }
+}
