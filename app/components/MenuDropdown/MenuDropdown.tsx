@@ -8,9 +8,8 @@ import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
-import { Modal } from '@/app/components/ui/Modal/Modal';
 import { BREAKPOINTS } from '@/app/constants';
-import { useClickOutside } from '@/app/hooks/useClickOutside';
+import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { isLocalEnvironment } from '@/app/utils/environment';
@@ -99,18 +98,40 @@ export function MenuDropdown({
     onClose();
   };
 
-  // Desktop-only outside-click dismissal — mirrors the previous hand-rolled effect
-  // (mobile intentionally does NOT close on an outside tap). The Modal owns Escape
-  // and scroll-lock, so only the click-outside concern remains here.
-  const [isDesktop, setIsDesktop] = useState(false);
+  // Click outside to close on desktop only
   useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= BREAKPOINTS.mobile);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        const isDesktop = window.innerWidth >= BREAKPOINTS.mobile;
+        if (isDesktop) {
+          onClose();
+        }
+      }
+    };
 
-  useClickOutside(dropdownRef, isOpen && isDesktop, onClose);
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
+
+  // Escape key to close dropdown
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useBodyScrollLock(isOpen);
 
   // Reset forms when dropdown closes
   useEffect(() => {
@@ -128,130 +149,126 @@ export function MenuDropdown({
     }
   }, [isOpen]);
 
+  if (!isOpen) return null;
+
   return (
-    <Modal open={isOpen} onClose={onClose} variant="sheet">
-      <div className={styles.dropdown} ref={dropdownRef}>
-        <div className={styles.dropdownCloseButtonWrapper}>
-          <button
-            type="button"
-            className={styles.dropdownCloseButtonWrapper_button}
-            onClick={onClose}
-            aria-label="Close navigation menu"
-          >
-            <CircleX className={styles.dropdownCloseIcon} aria-hidden="true" />
-          </button>
-        </div>
-
-        <div className={styles.dropdownMenuOptionsWrapper}>
-          <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleToggle.about}
-            >
-              <span className={styles.dropdownMenuOptions}>About</span>
-            </button>
-          </div>
-
-          {showAbout && <About />}
-
-          <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleToggle.contact}
-            >
-              <span className={styles.dropdownMenuOptions}>Contact</span>
-            </button>
-          </div>
-
-          {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
-
-          {isLocalEnvironment() && (
-            <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleNavigation.create}
-              >
-                <span className={styles.dropdownMenuOptions}>Create</span>
-              </button>
-            </div>
-          )}
-
-          {isLocalEnvironment() && pageType === 'collection' && (
-            <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleNavigation.update}
-              >
-                <span className={styles.dropdownMenuOptions}>Update</span>
-              </button>
-            </div>
-          )}
-
-          {isLocalEnvironment() && (
-            <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleNavigation.metadata}
-              >
-                <span className={styles.dropdownMenuOptions}>Metadata</span>
-              </button>
-            </div>
-          )}
-
-          {isLocalEnvironment() && (
-            <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleNavigation.comments}
-              >
-                <span className={styles.dropdownMenuOptions}>Comments</span>
-              </button>
-            </div>
-          )}
-
-          {isLocalEnvironment() && (
-            <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleClearCache}
-                disabled={isClearing}
-              >
-                <span className={styles.dropdownMenuOptions}>
-                  {isClearing ? 'Clearing…' : 'Clear Cache'}
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div
-          className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}
+    <div className={styles.dropdown} ref={dropdownRef}>
+      <div className={styles.dropdownCloseButtonWrapper}>
+        <button
+          type="button"
+          className={styles.dropdownCloseButtonWrapper_button}
+          onClick={onClose}
+          aria-label="Close navigation menu"
         >
-          <button
-            type="button"
-            className={styles.socialIconButton}
-            onClick={handleNavigation.instagram}
-            aria-label="Visit Instagram"
-          >
-            <InstagramIcon size={32} aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className={styles.socialIconButton}
-            onClick={handleNavigation.github}
-            aria-label="Visit GitHub"
-          >
-            <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
+          <CircleX className={styles.dropdownCloseIcon} aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className={styles.dropdownMenuOptionsWrapper}>
+        <div className={styles.dropdownMenuItem}>
+          <button type="button" className={styles.dropdownMenuButton} onClick={handleToggle.about}>
+            <span className={styles.dropdownMenuOptions}>About</span>
           </button>
         </div>
+
+        {showAbout && <About />}
+
+        <div className={styles.dropdownMenuItem}>
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
+            onClick={handleToggle.contact}
+          >
+            <span className={styles.dropdownMenuOptions}>Contact</span>
+          </button>
+        </div>
+
+        {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.create}
+            >
+              <span className={styles.dropdownMenuOptions}>Create</span>
+            </button>
+          </div>
+        )}
+
+        {isLocalEnvironment() && pageType === 'collection' && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.update}
+            >
+              <span className={styles.dropdownMenuOptions}>Update</span>
+            </button>
+          </div>
+        )}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.metadata}
+            >
+              <span className={styles.dropdownMenuOptions}>Metadata</span>
+            </button>
+          </div>
+        )}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.comments}
+            >
+              <span className={styles.dropdownMenuOptions}>Comments</span>
+            </button>
+          </div>
+        )}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleClearCache}
+              disabled={isClearing}
+            >
+              <span className={styles.dropdownMenuOptions}>
+                {isClearing ? 'Clearing…' : 'Clear Cache'}
+              </span>
+            </button>
+          </div>
+        )}
       </div>
-    </Modal>
+
+      <div
+        className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}
+      >
+        <button
+          type="button"
+          className={styles.socialIconButton}
+          onClick={handleNavigation.instagram}
+          aria-label="Visit Instagram"
+        >
+          <InstagramIcon size={32} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={styles.socialIconButton}
+          onClick={handleNavigation.github}
+          aria-label="Visit GitHub"
+        >
+          <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   );
 }
