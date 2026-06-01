@@ -2,18 +2,12 @@ import Image from 'next/image';
 
 import styles from './About.module.scss';
 
-interface AboutProps {
-  onBack: () => void;
-}
-
 /**
  * About Component
  *
  * Personal introduction displaying profile image and bio text.
- *
- * @param props.onBack - Callback to return to previous view (currently unused)
  */
-export function About({ onBack: _onBack }: AboutProps) {
+export function About() {
   return (
     <div className={styles.aboutContainer}>
       <div className={styles.contentWrapper}>
