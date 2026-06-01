@@ -470,7 +470,7 @@ function buildLensDiff(
 function buildLocationsDiffField(
   updateLocations: LocationModel[] | undefined,
   currentLocations: LocationModel[] | undefined,
-  diff: ContentImageUpdateRequest
+  diff: Pick<ContentImageUpdateRequest, 'locations'>
 ): void {
   const locationUpdate = buildLocationsDiff(updateLocations ?? [], currentLocations ?? []);
 
@@ -564,7 +564,7 @@ function buildTagsDiff(
 function buildPeopleDiff(
   updatePeople: ContentImageModel['people'],
   currentPeople: ContentImageModel['people'],
-  diff: ContentImageUpdateRequest
+  diff: Pick<ContentImageUpdateRequest, 'people'>
 ): void {
   const updatePeopleArray = updatePeople || [];
   const currentPeopleArray = currentPeople || [];
@@ -716,6 +716,36 @@ export function buildImageUpdateDiff(
   buildTagsDiff(updateState.tags, currentState.tags, diff);
   buildPeopleDiff(updateState.people, currentState.people, diff);
   buildCollectionsDiff(updateState.collections, currentState.collections, diff);
+
+  return diff;
+}
+
+/**
+ * Build ONLY the people + locations diffs (prev/newValue/remove) for any content type.
+ *
+ * Reuses the exact same private builders as the image diff path ({@link buildPeopleDiff} and
+ * {@link buildLocationsDiffField}) so the prev/newValue/remove logic is never duplicated. The
+ * GIF/MP4 save path calls this and copies the resulting keys onto its own update request — people
+ * and locations are general relational metadata that both images and GIFs share.
+ *
+ * @param updateState - The edited people/locations (selected in the modal)
+ * @param currentState - The original people/locations on the content block
+ * @returns An object with `people` and/or `locations` set only when they changed; `{}` if unchanged
+ */
+export function buildContentPeopleLocationsDiff(
+  updateState: {
+    people?: ContentImageModel['people'];
+    locations?: LocationModel[];
+  },
+  currentState: {
+    people?: ContentImageModel['people'];
+    locations?: LocationModel[];
+  }
+): Pick<ContentImageUpdateRequest, 'people' | 'locations'> {
+  const diff: Pick<ContentImageUpdateRequest, 'people' | 'locations'> = {};
+
+  buildPeopleDiff(updateState.people, currentState.people, diff);
+  buildLocationsDiffField(updateState.locations, currentState.locations, diff);
 
   return diff;
 }

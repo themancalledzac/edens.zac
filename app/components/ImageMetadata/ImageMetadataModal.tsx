@@ -35,6 +35,7 @@ import { hasObjectChanges } from '@/app/utils/objectComparison';
 
 import styles from './ImageMetadataModal.module.scss';
 import {
+  buildContentPeopleLocationsDiff,
   buildImageUpdateDiff,
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
@@ -336,6 +337,15 @@ export default function ImageMetadataModal({
             remove: remove.length > 0 ? remove : undefined,
           };
         }
+        // People + locations: reuse the same prev/newValue/remove builders the image path uses, so
+        // a GIF/MP4 can carry general relational metadata. Only attach keys that actually changed.
+        const { people, locations } = buildContentPeopleLocationsDiff(updateState, original);
+        if (people !== undefined) {
+          payload.people = people;
+        }
+        if (locations !== undefined) {
+          payload.locations = locations;
+        }
 
         const updated =
           Object.keys(payload).length > 0 ? await updateGif(original.id, payload) : original;
@@ -603,11 +613,7 @@ export default function ImageMetadataModal({
               />
             </div>
 
-            <div
-              style={isGif ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
-              aria-disabled={isGif}
-              title={isGif ? 'Locations are not yet supported on GIF/MP4 content.' : undefined}
-            >
+            <div>
               <UnifiedMetadataSelector<LocationModel>
                 label="Locations"
                 multiSelect
@@ -1007,11 +1013,7 @@ export default function ImageMetadataModal({
               emptyText="No tags selected"
             />
 
-            <div
-              style={isGif ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
-              aria-disabled={isGif}
-              title={isGif ? 'People are not yet supported on GIF/MP4 content.' : undefined}
-            >
+            <div>
               <UnifiedMetadataSelector<ContentPersonModel>
                 label="People"
                 multiSelect
