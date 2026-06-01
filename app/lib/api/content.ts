@@ -14,7 +14,12 @@ import {
   fetchAdminPostJsonApi,
   fetchReadApi,
 } from '@/app/lib/api/core';
-import { type CollectionUpdate, type TagUpdate } from '@/app/types/Collection';
+import {
+  type CollectionUpdate,
+  type LocationUpdate,
+  type PersonUpdate,
+  type TagUpdate,
+} from '@/app/types/Collection';
 import {
   type ContentGifModel,
   type ContentImageModel,
@@ -197,13 +202,19 @@ export async function createGif(collectionId: number, file: File): Promise<Conte
  * Patch payload for {@link updateGif}. Only non-null fields are applied on the backend.
  *
  * Mirrors the slice of {@link ContentImageUpdateRequest} that makes sense for animated content —
- * no EXIF/equipment fields. `tags` and `collections` use the prev/newValue/remove pattern so a
- * single request can add, remove, and re-order memberships at once.
+ * no EXIF/equipment fields. `tags`, `people`, `locations`, and `collections` use the
+ * prev/newValue/remove pattern so a single request can add, remove, and re-order memberships at
+ * once. People + locations are general relational metadata (not EXIF), so a GIF/MP4 can carry them
+ * just like an image.
  */
 export interface ContentGifUpdateRequest {
   title?: string;
   rating?: number;
   tags?: TagUpdate;
+  /** Person updates using prev/newValue/remove pattern (many-to-many) */
+  people?: PersonUpdate;
+  /** Location updates using prev/newValue/remove pattern (many-to-many) */
+  locations?: LocationUpdate;
   collections?: CollectionUpdate;
 }
 
@@ -219,8 +230,9 @@ export async function deleteGif(id: number): Promise<{ deletedId: number } | nul
 
 /**
  * PATCH /api/admin/content/gifs/{id}
- * Update title/rating on an existing GIF/MP4 content block. The backend mirrors the IMAGE
- * update slice that makes sense for animated content — no EXIF/equipment fields.
+ * Update title/rating/tags/people/locations/collections on an existing GIF/MP4 content block. The
+ * backend mirrors the IMAGE update slice that makes sense for animated content — no EXIF/equipment
+ * fields.
  */
 export async function updateGif(
   id: number,

@@ -5,6 +5,7 @@
 
 import {
   applyPartialUpdate,
+  buildContentPeopleLocationsDiff,
   buildImageUpdateDiff,
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
@@ -2172,5 +2173,94 @@ describe('computeCameraSelectionUpdate', () => {
   it('null prev.filmFormat and null camera default → filmFormat is null', () => {
     const result = computeCameraSelectionUpdate(filmCameraNoFormat, { filmFormat: null });
     expect(result.filmFormat).toBeNull();
+  });
+});
+
+describe('buildContentPeopleLocationsDiff (shared people/locations builder for GIF/MP4)', () => {
+  it('returns an empty object when nothing changed', () => {
+    const original = {
+      people: [{ id: 1, name: 'Person 1', slug: 'person-1' }],
+      locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
+    };
+    const updateState = {
+      people: [{ id: 1, name: 'Person 1', slug: 'person-1' }],
+      locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
+    };
+
+    const result = buildContentPeopleLocationsDiff(updateState, original);
+
+    expect(result).toEqual({});
+  });
+
+  it('builds prev for added existing people (same prev/newValue/remove shape as images)', () => {
+    const original = { people: [], locations: [] };
+    const updateState = {
+      people: [
+        { id: 1, name: 'Person 1', slug: 'person-1' },
+        { id: 2, name: 'Person 2', slug: 'person-2' },
+      ],
+      locations: [],
+    };
+
+    const result = buildContentPeopleLocationsDiff(updateState, original);
+
+    expect(result.people).toEqual({ prev: [1, 2] });
+    expect(result.locations).toBeUndefined();
+  });
+
+  it('builds newValue for brand-new people and remove for dropped people', () => {
+    const original = {
+      people: [{ id: 9, name: 'Old Person', slug: 'old-person' }],
+      locations: [],
+    };
+    const updateState = {
+      people: [{ id: 0, name: 'New Person', slug: '' }],
+      locations: [],
+    };
+
+    const result = buildContentPeopleLocationsDiff(updateState, original);
+
+    expect(result.people).toEqual({
+      newValue: ['New Person'],
+      remove: [9],
+    });
+  });
+
+  it('builds a locations diff with prev/newValue/remove for a GIF', () => {
+    const original = {
+      people: [],
+      locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
+    };
+    const updateState = {
+      people: [],
+      locations: [
+        { id: 6, name: 'Portland', slug: 'portland' },
+        { id: 0, name: 'Tacoma', slug: '' },
+      ],
+    };
+
+    const result = buildContentPeopleLocationsDiff(updateState, original);
+
+    expect(result.locations).toEqual({
+      prev: [6],
+      newValue: ['Tacoma'],
+      remove: [5],
+    });
+    expect(result.people).toBeUndefined();
+  });
+
+  it('builds both people and locations diffs together', () => {
+    const original = { people: [], locations: [] };
+    const updateState = {
+      people: [{ id: 3, name: 'Person 3', slug: 'person-3' }],
+      locations: [{ id: 7, name: 'Olympia', slug: 'olympia' }],
+    };
+
+    const result = buildContentPeopleLocationsDiff(updateState, original);
+
+    expect(result).toEqual({
+      people: { prev: [3] },
+      locations: { prev: [7] },
+    });
   });
 });

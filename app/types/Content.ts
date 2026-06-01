@@ -169,6 +169,17 @@ export interface ContentGifModel extends Content {
   rating?: number | null;
   tags?: ContentTagModel[];
   /**
+   * People associated with this GIF/MP4. Many-to-many via the content-level people join, mirroring
+   * {@link ContentImageModel.people}. Used by the metadata modal's People selector so a GIF can be
+   * tagged with the people in it.
+   */
+  people?: ContentPersonModel[];
+  /**
+   * Locations associated with this GIF/MP4. Many-to-many via the content-level location join,
+   * mirroring {@link ContentImageModel.locations}. Used by the metadata modal's Location selector.
+   */
+  locations?: LocationModel[];
+  /**
    * Collections this GIF/MP4 belongs to. Many-to-many via the same `collection_content` join
    * table that images use. Used by the metadata modal's collection selector so the admin can
    * surface a single GIF in multiple galleries.
