@@ -123,6 +123,7 @@ export default function CollectionListSelector({
       {siblingMode && (
         <div className={styles.columnHeaderRow}>
           <span className={styles.columnHeaderName}>Catalog Name</span>
+          <span className={styles.columnHeaderType}>Catalog Type</span>
           <span className={styles.columnHeaderToggle}>Sibling</span>
           <span className={styles.columnHeaderToggle}>Child</span>
         </div>
@@ -140,8 +141,8 @@ export default function CollectionListSelector({
               role="group"
               aria-label={collection.name}
             >
-              <span className={styles.type}>{collection.type || 'Portfolio'}</span>
               <span className={styles.name}>{collection.name}</span>
+              <span className={styles.type}>{collection.type || 'Portfolio'}</span>
               <span className={styles.toggleCell}>
                 {renderCheckbox(
                   collection,

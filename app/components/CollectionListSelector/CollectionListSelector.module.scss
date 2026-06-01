@@ -142,13 +142,13 @@
 }
 
 // Two-column (Sibling | Child) mode.
-// Width shared by each toggle column header and its checkbox cell so the
-// "Sibling"/"Child" labels sit directly above their checkboxes.
+// Column order: Catalog Name (flex) | Catalog Type (fixed) | Sibling | Child.
+// Each fixed-width header column shares its width with the matching cell below
+// so headers sit directly above their content/checkboxes.
 $toggle-col-width: 60px;
+$type-col-width: 130px;
 
-// Header row: "Catalog Name" on the left, Sibling | Child labels above the
-// right-hand toggle columns. Horizontal padding + gap mirror `.row` so the
-// columns line up with the checkboxes below.
+// Header row mirrors `.row` horizontal padding + gap so columns line up.
 .columnHeaderRow {
   display: flex;
   align-items: center;
@@ -158,6 +158,16 @@ $toggle-col-width: 60px;
 
 .columnHeaderName {
   flex: 1;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.columnHeaderType {
+  width: $type-col-width;
+  min-width: $type-col-width;
+  flex-shrink: 0;
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-text-muted);
@@ -174,13 +184,21 @@ $toggle-col-width: 60px;
   text-align: center;
 }
 
-// Sibling-mode row: not clickable as a whole (each toggle handles its own
-// click), so drop the row-level pointer cursor. Name is left-aligned here.
+// Sibling-mode row: name on the left (flex), type as its own fixed column
+// right before the toggles. Not clickable as a whole (each toggle handles its
+// own click), so drop the row-level pointer cursor.
 .rowSibling {
   cursor: default;
 
   .name {
+    flex: 1;
     text-align: left;
+  }
+
+  .type {
+    width: $type-col-width;
+    min-width: $type-col-width;
+    flex-shrink: 0;
   }
 }
 
