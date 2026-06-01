@@ -157,6 +157,7 @@ html,
 }
 
 body {
+  background-color: var(--color-bg);
   padding: 0;
   margin: 0;
   font-family: var(--font-sans), serif;
@@ -172,6 +173,17 @@ body.scroll-locked {
   right: 0;
   overflow: hidden;
   scrollbar-gutter: stable;
+}
+
+/* While the fullscreen modal is open it adds body.fullscreen-open. On iOS the visible screen
+   can extend past the layout viewport that the overlay's position:fixed maps to, exposing a
+   strip of the page canvas the overlay cannot reach. color-scheme:light paints that canvas
+   white; darkening the root background makes the strip black instead. Geometry-independent —
+   the canvas sits behind everything, so this covers any iOS viewport gap the overlay misses.
+   NOTE: intentionally scoped to fullscreen-open, NOT scroll-locked — the menu dropdown also
+   locks scroll but must not darken the html canvas. */
+html:has(body.fullscreen-open) {
+  background-color: #000;
 }
 
 /* Universal scrollbar hiding for all elements */

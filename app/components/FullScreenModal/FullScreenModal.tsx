@@ -2,7 +2,13 @@
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import Image from 'next/image';
-import { type Dispatch, type MouseEvent, type RefObject, type SetStateAction } from 'react';
+import {
+  type Dispatch,
+  type MouseEvent,
+  type RefObject,
+  type SetStateAction,
+  useEffect,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 import { IMAGE } from '@/app/constants';
@@ -54,6 +60,14 @@ export function FullScreenModal({
   navigateToNext,
   navigateToPrevious,
 }: FullScreenModalProps) {
+  useEffect(() => {
+    if (!fullScreenState) return;
+    document.body.classList.add('fullscreen-open');
+    return () => {
+      document.body.classList.remove('fullscreen-open');
+    };
+  }, [fullScreenState]);
+
   if (!fullScreenState) return null;
 
   const currentImage = fullScreenState.images[fullScreenState.currentIndex];

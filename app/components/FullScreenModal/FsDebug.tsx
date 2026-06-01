@@ -1,9 +1,12 @@
 'use client';
 
 // TEMPORARY on-screen diagnostic for the mobile full-screen white-strip bug.
-// Rendered only when the URL has ?fsdebug=1. Prints real viewport numbers from the
-// device and draws a magenta line at the overlay's fixed bottom edge so a screenshot
-// shows exactly where the overlay ends vs. where any white strip starts.
+// Rendered only when the URL has ?fsdebug=1. Prints real viewport + element geometry from the
+// device, outlines each modal layer in a distinct color, and draws a magenta line at the
+// overlay's fixed bottom edge.
+//   cyan outline   = .overlayContainer (the flex centering box)
+//   red outline    = .imageWrapper / .imageWrapperLoaded (the WHITE 8px frame)
+//   yellow outline = .fullScreenImage (the image/video itself)
 // DELETE this file (and its use in FullScreenModal) once the bug is resolved.
 
 import { useEffect, useState } from 'react';
@@ -29,34 +32,72 @@ function probeSafeBottom(): number {
   return Math.round(h);
 }
 
+function rectBottom(sel: string): number {
+  const el = document.querySelector(sel);
+  return el ? Math.round(el.getBoundingClientRect().bottom) : -1;
+}
+function rectTop(sel: string): number {
+  const el = document.querySelector(sel);
+  return el ? Math.round(el.getBoundingClientRect().top) : -1;
+}
+
+// Identify which element actually occupies a given point (tag + first class hint).
+function elAt(x: number, y: number): string {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return 'null(outside layout viewport)';
+  const cls = String((el as HTMLElement).className ?? '').slice(0, 18);
+  return cls ? `${el.tagName.toLowerCase()}.${cls}` : el.tagName.toLowerCase();
+}
+
 export function FsDebug() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
 
+  // Outline each modal layer + tint the page canvas lime, so the screenshot shows whether the
+  // bottom white is an uncovered page area (shows lime) or an actual white element (stays white).
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      [class*="overlayContainer"] { outline: 2px solid cyan !important; outline-offset: -2px; }
+      [class*="imageWrapper"] { outline: 2px solid red !important; outline-offset: -2px; }
+      [class*="fullScreenImage"] { outline: 2px solid yellow !important; outline-offset: -2px; }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      style.remove();
+    };
+  }, []);
+
   useEffect(() => {
     const update = () => {
-      const wrapper = document.querySelector('[class*="imageFullScreenWrapper"]');
-      const wr = wrapper?.getBoundingClientRect();
+      const wrapBottom = rectBottom('[class*="imageFullScreenWrapper"]');
+      const frameSel = document.querySelector('[class*="imageWrapperLoaded"]')
+        ? '[class*="imageWrapperLoaded"]'
+        : '[class*="imageWrapper"]';
+      const frameTop = rectTop(frameSel);
+      const frameBottom = rectBottom(frameSel);
+      const imgBottom = rectBottom('[class*="fullScreenImage"]');
       const vv = window.visualViewport;
       const innerH = window.innerHeight;
-      const wrapBottom = wr ? Math.round(wr.bottom) : -1;
-      const vvBottom = vv ? Math.round(vv.offsetTop + vv.height) : -1;
+      // Probe the element at the visible bottom strip — the actual question.
+      // If it's html/body → the white is exposed page canvas; if it's the overlay → covered.
+      const cx = Math.round(window.innerWidth / 2);
+      const visBottomY = innerH - 2;
       setSnap({
         inner: `${window.innerWidth}x${innerH}`,
         visualVP: vv
-          ? `${Math.round(vv.width)}x${Math.round(vv.height)} top${Math.round(vv.offsetTop)} sc${vv.scale.toFixed(2)}`
+          ? `${Math.round(vv.width)}x${Math.round(vv.height)} top${Math.round(vv.offsetTop)}`
           : 'n/a',
-        clientH: document.documentElement.clientHeight,
-        screen: `${screen.width}x${screen.height}`,
-        dpr: window.devicePixelRatio,
-        vh: probeUnit('100vh'),
-        dvh: probeUnit('100dvh'),
-        svh: probeUnit('100svh'),
-        lvh: probeUnit('100lvh'),
+        'vh/dvh': `${probeUnit('100vh')}/${probeUnit('100dvh')}`,
+        'svh/lvh': `${probeUnit('100svh')}/${probeUnit('100lvh')}`,
         safeBottom: probeSafeBottom(),
-        wrapTop: wr ? Math.round(wr.top) : -1,
         wrapBottom,
-        'innerH-wrapBottom': innerH - wrapBottom,
-        'vvBottom-wrapBottom': vv ? vvBottom - wrapBottom : 'n/a',
+        'gapBelowWrap(innerH-wrap)': innerH - wrapBottom,
+        'FRAME top/bot(red)': `${frameTop}/${frameBottom}`,
+        'gapBelowFrame(innerH-frame)': innerH - frameBottom,
+        'IMG bottom(yellow)': imgBottom,
+        htmlBg: getComputedStyle(document.documentElement).backgroundColor,
+        bodyBg: getComputedStyle(document.body).backgroundColor,
+        [`botEl@${visBottomY}`]: elAt(cx, visBottomY),
       });
     };
     update();
@@ -100,7 +141,7 @@ export function FsDebug() {
           padding: '8px 10px',
           borderRadius: 6,
           pointerEvents: 'none',
-          maxWidth: '70vw',
+          maxWidth: '72vw',
           whiteSpace: 'pre',
         }}
       >

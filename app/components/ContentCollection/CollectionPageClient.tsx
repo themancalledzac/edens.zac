@@ -51,7 +51,10 @@ function extractCollectionFilterOptions(
     if (lt !== null) lensTypeSet.add(lt);
   }
   const typeOrder: LensType[] = ['wide', 'normal', 'telephoto'];
-  const lensTypes = lensTypeSet.size >= 2 ? typeOrder.filter(t => lensTypeSet.has(t)) : [];
+  const lensTypes =
+    lensTypeSet.size >= 2 && baseOptions.lenses.length >= 2
+      ? typeOrder.filter(t => lensTypeSet.has(t))
+      : [];
 
   return {
     tags: { values: baseOptions.tags, filterable: true },

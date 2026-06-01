@@ -447,6 +447,7 @@ export default function CollectionContentRenderer({
     sizes: `(max-width: 768px) 100vw, ${Math.round(width)}px`,
     loading: priority ? ('eager' as const) : ('lazy' as const),
     priority: priority ?? false,
+    fetchPriority: priority ? ('high' as const) : undefined,
     unoptimized: isGif,
     onError: handleImageError,
     ...(enableParallax
