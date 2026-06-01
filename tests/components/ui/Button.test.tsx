@@ -21,6 +21,11 @@ describe('Button', () => {
     expect(btn.className).toMatch(/sm/);
   });
 
+  it('supports the outline variant', () => {
+    render(<Button variant="outline">More</Button>);
+    expect(screen.getByRole('button', { name: 'More' }).className).toMatch(/outline/);
+  });
+
   it('is disabled and aria-busy while loading', () => {
     render(<Button loading>Saving</Button>);
     const btn = screen.getByRole('button', { name: /saving/i });

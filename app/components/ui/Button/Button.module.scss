@@ -72,6 +72,17 @@
   }
 }
 
+.outline {
+  background-color: transparent;
+  color: var(--color-fg);
+  border-color: var(--color-border);
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-overlay-soft);
+    border-color: var(--color-fg);
+  }
+}
+
 .label {
   display: inline-block;
 }

@@ -4,7 +4,7 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 
 import styles from './Button.module.scss';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 export type ButtonSize = 'sm' | 'md';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -32,9 +32,9 @@ export function Button({
   children,
   ...rest
 }: ButtonProps) {
-  // Filled variants (primary/secondary/danger) sit on dark backgrounds → white spinner;
-  // only ghost is on a light surface → dark spinner.
-  const spinnerColor = variant === 'ghost' ? 'dark' : 'white';
+  // Filled variants (primary/secondary/danger) carry their own dark fill → white spinner;
+  // the transparent variants (ghost/outline) sit on the page surface → dark spinner.
+  const spinnerColor = variant === 'ghost' || variant === 'outline' ? 'dark' : 'white';
   const classes = [styles.button, styles[variant], styles[size], className]
     .filter(Boolean)
     .join(' ');
