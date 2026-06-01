@@ -10,7 +10,7 @@ const mockSubmit = contactApi.submitContactMessage as jest.MockedFunction<
 >;
 
 describe('ContactForm', () => {
-  const defaultProps = { onBack: jest.fn(), onSubmit: jest.fn() };
+  const defaultProps = { onSubmit: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();

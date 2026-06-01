@@ -9,11 +9,10 @@ import styles from './ContactForm.module.scss';
 type Status = 'idle' | 'submitting' | 'success' | 'error';
 
 interface ContactFormProps {
-  onBack: () => void;
   onSubmit: () => void;
 }
 
-export function ContactForm({ onBack: _onBack, onSubmit }: ContactFormProps) {
+export function ContactForm({ onSubmit }: ContactFormProps) {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');

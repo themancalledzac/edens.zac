@@ -73,14 +73,6 @@ export function MenuDropdown({
       router.push('/comments');
       onClose();
     },
-    manage: () => {
-      router.push('/collection/manage');
-      onClose();
-    },
-    blogs: () => {
-      router.push('/all-blogs');
-      onClose();
-    },
     instagram: () => {
       window.open('https://instagram.com/themancalledzac', '_blank', 'noopener,noreferrer');
       onClose();
@@ -100,11 +92,6 @@ export function MenuDropdown({
       setShowContactForm(prev => !prev);
       setShowAbout(false);
     },
-  };
-
-  const handleBackToMenu = () => {
-    setShowContactForm(false);
-    setShowAbout(false);
   };
 
   const handleContactSubmit = () => {
@@ -184,7 +171,7 @@ export function MenuDropdown({
           </button>
         </div>
 
-        {showAbout && <About onBack={handleBackToMenu} />}
+        {showAbout && <About />}
 
         <div className={styles.dropdownMenuItem}>
           <button
@@ -196,32 +183,19 @@ export function MenuDropdown({
           </button>
         </div>
 
-        {showContactForm && (
-          <ContactForm onBack={handleBackToMenu} onSubmit={handleContactSubmit} />
+        {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.create}
+            >
+              <span className={styles.dropdownMenuOptions}>Create</span>
+            </button>
+          </div>
         )}
-
-        <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleNavigation.blogs}
-          >
-            <span className={styles.dropdownMenuOptions}>Blogs</span>
-          </button>
-        </div>
-
-        {isLocalEnvironment() &&
-          (pageType === 'collection' || pageType === 'collectionsCollection') && (
-            <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleNavigation.create}
-              >
-                <span className={styles.dropdownMenuOptions}>Create</span>
-              </button>
-            </div>
-          )}
 
         {isLocalEnvironment() && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
@@ -243,18 +217,6 @@ export function MenuDropdown({
               onClick={handleNavigation.metadata}
             >
               <span className={styles.dropdownMenuOptions}>Metadata</span>
-            </button>
-          </div>
-        )}
-
-        {isLocalEnvironment() && (
-          <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.manage}
-            >
-              <span className={styles.dropdownMenuOptions}>Create</span>
             </button>
           </div>
         )}
