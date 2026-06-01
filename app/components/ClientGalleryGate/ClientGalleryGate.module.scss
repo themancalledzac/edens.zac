@@ -101,28 +101,11 @@
   }
 }
 
+/* Canonical colors/padding/radius/disabled/focus come from <Button variant="primary">.
+   Only the gate-specific presentation remains (properties Button doesn't set, so they
+   layer cleanly): full-width, uppercase CTA typography. */
 .gateButton {
   width: 100%;
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-sm);
-  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--color-white);
-  background-color: var(--color-black);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    opacity 0.2s ease;
-
-  &:hover {
-    background-color: var(--color-primary-dark);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
 }

@@ -15,10 +15,10 @@ import CollectionListSelector from '@/app/components/CollectionListSelector/Coll
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
 import UnifiedMetadataSelector from '@/app/components/ImageMetadata/UnifiedMetadataSelector';
-import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import RatingStars from '@/app/components/RatingStars/RatingStars';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
+import { Button } from '@/app/components/ui/Button/Button';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
@@ -1092,9 +1092,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   />
                 </div>
 
-                <button type="submit" disabled={isLoading} className={styles.submitButton}>
+                <Button type="submit" disabled={isLoading}>
                   {isLoading ? 'Creating...' : 'Create Collection'}
-                </button>
+                </Button>
               </form>
             </div>
           )}
@@ -1115,20 +1115,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           >
                             {collection.title}
                           </h2>
-                          <button
+                          <Button
+                            variant="secondary"
                             type="submit"
-                            disabled={saving || isLoading}
+                            loading={saving}
+                            disabled={isLoading}
                             className={styles.headingSubmitButton}
                           >
-                            {saving ? (
-                              <>
-                                <LoadingSpinner size="small" color="white" />
-                                <span style={{ marginLeft: '8px' }}>Updating...</span>
-                              </>
-                            ) : (
-                              'Update Metadata'
-                            )}
-                          </button>
+                            {saving ? 'Updating...' : 'Update Metadata'}
+                          </Button>
                         </div>
 
                         {displayError && <div className={styles.errorMessage}>{displayError}</div>}
@@ -1314,22 +1309,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               marginTop: '12px',
                             }}
                           >
-                            <button
-                              type="button"
-                              onClick={handleSavePeople}
-                              disabled={peopleSaving}
-                              className={styles.submitButton}
-                            >
+                            <Button onClick={handleSavePeople} disabled={peopleSaving}>
                               {peopleSaving ? 'Saving…' : 'Save People'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleRegeneratePeople}
-                              disabled={peopleSaving}
-                              className={styles.submitButton}
-                            >
+                            </Button>
+                            <Button onClick={handleRegeneratePeople} disabled={peopleSaving}>
                               Regenerate from contents
-                            </button>
+                            </Button>
                           </div>
                           {peopleStatus && (
                             <p
@@ -1500,23 +1485,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                 marginTop: '12px',
                               }}
                             >
-                              <button
-                                type="button"
+                              <Button
                                 onClick={handleSaveAccess}
                                 disabled={gallerySaving || galleryPassword.length === 0}
-                                className={styles.submitButton}
                               >
                                 {gallerySaving ? 'Saving…' : 'Save'}
-                              </button>
+                              </Button>
                               {collection.isPasswordProtected && (
-                                <button
-                                  type="button"
-                                  onClick={handleClearPassword}
-                                  disabled={gallerySaving}
-                                  className={styles.submitButton}
-                                >
+                                <Button onClick={handleClearPassword} disabled={gallerySaving}>
                                   Clear Password
-                                </button>
+                                </Button>
                               )}
                             </div>
                             {galleryStatus && (
@@ -1547,13 +1525,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             ) : (
                               <div className={styles.noCoverImage}>No cover image</div>
                             )}
-                            <button
-                              type="button"
+                            <Button
+                              variant={isSelectingCoverImage ? 'danger' : 'secondary'}
                               onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                              className={`${styles.coverImageButton} ${isSelectingCoverImage ? styles.selecting : ''}`}
+                              className={styles.coverImageButton}
                             >
                               {isSelectingCoverImage ? 'Cancel' : 'Select'}
-                            </button>
+                            </Button>
                           </div>
 
                           {/* Picker grid — parent only */}
@@ -1603,14 +1581,14 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
                               <div className={styles.textBlockSection}>
                                 <label className={styles.formLabel}>Add Text Block</label>
-                                <button
-                                  type="button"
+                                <Button
+                                  variant="secondary"
                                   onClick={handleCreateNewTextBlock}
                                   disabled={isLoading}
                                   className={styles.addTextBlockButton}
                                 >
                                   + Create New Text Block
-                                </button>
+                                </Button>
                               </div>
                             </div>
                           )}

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
+import { Button } from '@/app/components/ui/Button/Button';
 import { ApiError } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 
@@ -138,9 +139,9 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
             disabled={isVerifying}
           />
           {error && <p className={styles.gateError}>{error}</p>}
-          <button type="submit" className={styles.gateButton} disabled={isVerifying}>
+          <Button type="submit" className={styles.gateButton} disabled={isVerifying}>
             {isVerifying ? 'Verifying...' : 'Enter Gallery'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

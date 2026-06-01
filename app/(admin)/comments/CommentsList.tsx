@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { Button } from '@/app/components/ui/Button/Button';
 import {
   type AdminMessageView,
   deleteAdminMessage,
@@ -98,23 +99,23 @@ export function CommentsList({ initialMessages, initialTotal }: Props) {
               >
                 Reply in Gmail
               </a>
-              <button
-                type="button"
+              <Button
+                variant="danger"
+                size="sm"
                 onClick={() => handleDelete(m)}
                 disabled={deletingId === m.id}
-                className={styles.deleteButton}
               >
                 {deletingId === m.id ? 'Deleting...' : 'Delete'}
-              </button>
+              </Button>
             </div>
           </li>
         ))}
       </ul>
       {error && <p className={styles.error}>{error}</p>}
       {messages.length < total && (
-        <button onClick={loadMore} disabled={loading} className={styles.loadMore}>
+        <Button variant="outline" onClick={loadMore} disabled={loading} className={styles.loadMore}>
           {loading ? 'Loading...' : `Load more (${total - messages.length} remaining)`}
-        </button>
+        </Button>
       )}
     </>
   );

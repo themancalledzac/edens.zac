@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react';
 
+import { Button } from '@/app/components/ui/Button/Button';
 import type { CollectionListModel } from '@/app/types/Collection';
 
 import styles from './CollectionListSelector.module.scss';
@@ -115,9 +116,14 @@ export default function CollectionListSelector({
       <div className={styles.header}>
         <label className={styles.label}>{label}</label>
         {onAddNewChild && (
-          <button type="button" className={styles.addButton} onClick={onAddNewChild}>
+          <Button
+            variant="secondary"
+            size="sm"
+            className={styles.addButton}
+            onClick={onAddNewChild}
+          >
             Add New Child
-          </button>
+          </Button>
         )}
       </div>
       {siblingMode && (
