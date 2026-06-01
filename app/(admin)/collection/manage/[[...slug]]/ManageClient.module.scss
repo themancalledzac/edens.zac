@@ -92,28 +92,10 @@
   }
 }
 
-// Submit button styled for the heading row
+// Update-Metadata submit button in the heading row — keep it from shrinking
+// next to the title; <Button variant="secondary"> owns the rest of the look.
 .headingSubmitButton {
-  padding: var(--space-2) var(--space-4);
-  background: var(--color-secondary);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  font-weight: 500;
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-
-  &:disabled {
-    background: var(--color-disabled);
-    cursor: not-allowed;
-  }
-
-  &:hover:not(:disabled) {
-    opacity: 0.9;
-  }
 }
 
 // Title row: title input occupies the full width (visibility moved to its own fieldset)
@@ -272,21 +254,9 @@
   }
 }
 
+// Full-width cover-image toggle; <Button variant="secondary|danger"> owns color.
 .coverImageButton {
   width: 100%;
-  padding: var(--space-2);
-  background: var(--color-secondary);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  font-weight: normal;
-
-  &.selecting {
-    background: var(--color-danger);
-    font-weight: bold;
-  }
 }
 
 .noCoverImage {
@@ -469,21 +439,6 @@
 }
 
 // Submit Button
-.submitButton {
-  padding: 0.75rem 1.5rem;
-  background: var(--color-primary);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  font-size: var(--text-md);
-
-  &:disabled {
-    background: var(--color-disabled);
-    cursor: not-allowed;
-  }
-}
-
 // Content Toolbar — sticky bar above image grid (outside the form)
 .contentToolbar {
   display: flex;
@@ -537,24 +492,9 @@
   flex-direction: column;
 }
 
+// Full-width "add text block" action; <Button variant="secondary"> owns the look.
 .addTextBlockButton {
-  padding: var(--space-2);
-  background: var(--color-secondary);
-  color: var(--color-white);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  font-size: var(--text-sm);
   width: 100%;
-
-  &:hover:not(:disabled) {
-    background: var(--color-secondary-dark);
-  }
-
-  &:disabled {
-    background: var(--color-disabled);
-    cursor: not-allowed;
-  }
 }
 
 // Load More Section
