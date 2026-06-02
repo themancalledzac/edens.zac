@@ -229,17 +229,16 @@ export default function CollectionContentRenderer({
     return (
       <div
         key={contentId}
-        className={buildWrapperClassName(className, cbStyles, {
+        className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
           hasClickHandler: false,
           isSelected: false,
-        })}
+        })} ${cbStyles.contentBox}`}
         style={{
           width: Number.isFinite(width) ? width : 300,
           height: height > 0 ? height : 'auto',
-          boxSizing: 'border-box',
         }}
       >
         <div className={cbStyles.blockContainer}>
@@ -345,18 +344,16 @@ export default function CollectionContentRenderer({
     return (
       <div
         key={contentId}
-        className={buildWrapperClassName(className, cbStyles, {
+        className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
           hasClickHandler: hasClickHandler,
           isSelected: false,
-        })}
+        })} ${cbStyles.contentBox}`}
         style={{
           width: Number.isFinite(width) ? width : 300,
           height: Number.isFinite(height) ? height : 200,
-          boxSizing: 'border-box',
-          position: 'relative',
           cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
@@ -371,7 +368,6 @@ export default function CollectionContentRenderer({
             width={imageWidth || undefined}
             height={imageHeight || undefined}
             className={cbStyles.nonParallaxImage}
-            style={{ cursor: hasClickHandler ? 'pointer' : 'default' }}
           >
             <source src={imageUrl} type="video/mp4" />
           </video>
@@ -404,13 +400,13 @@ export default function CollectionContentRenderer({
     return (
       <div
         key={contentId}
-        className={buildWrapperClassName(className, cbStyles, {
+        className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
           hasClickHandler,
           isSelected: false,
-        })}
+        })} ${cbStyles.imagePlaceholder}`}
         onClick={hasClickHandler ? handleClick : undefined}
         role={hasClickHandler ? 'button' : undefined}
         tabIndex={hasClickHandler ? 0 : undefined}
@@ -427,13 +423,6 @@ export default function CollectionContentRenderer({
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
-          boxSizing: 'border-box',
-          position: 'relative',
-          backgroundColor: '#e0e0e0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#757575',
           cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
@@ -449,18 +438,16 @@ export default function CollectionContentRenderer({
     return (
       <div
         key={contentId}
-        className={buildWrapperClassName(className, cbStyles, {
+        className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
           hasClickHandler: false,
           isSelected: false,
-        })}
+        })} ${cbStyles.contentBox}`}
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
-          boxSizing: 'border-box',
-          position: 'relative',
         }}
       >
         <div

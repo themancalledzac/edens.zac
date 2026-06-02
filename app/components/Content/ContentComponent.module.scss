@@ -623,3 +623,20 @@
   white-space: nowrap;
   padding: 0 var(--space-2);
 }
+
+/* Box model for content wrappers whose dimensions are set inline (JS-derived). */
+.contentBox {
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* No-image fallback wrapper (distinct from .placeholderImage which keeps token colors). */
+.imagePlaceholder {
+  box-sizing: border-box;
+  position: relative;
+  background-color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #757575;
+}
