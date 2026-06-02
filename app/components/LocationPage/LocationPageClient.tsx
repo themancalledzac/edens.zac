@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
@@ -26,7 +27,20 @@ interface LocationPageClientProps {
 }
 
 export default function LocationPageClient({ images, collections }: LocationPageClientProps) {
-  const [filterState, setFilterState] = useState<FilterState>(INITIAL_FILTER_STATE);
+  const { initialCriteria, syncToUrl } = useFilterUrlState();
+
+  const [filterState, setFilterState] = useState<FilterState>(() => ({
+    ...INITIAL_FILTER_STATE,
+    highlyRatedOnly: initialCriteria.minRating !== undefined && initialCriteria.minRating >= 4,
+    filmFilter:
+      initialCriteria.isFilm === true
+        ? 'film'
+        : initialCriteria.isFilm === false
+          ? 'digital'
+          : 'off',
+    selectedTags: initialCriteria.tags ?? [],
+    selectedPeople: initialCriteria.people ?? [],
+  }));
 
   const availableOptions = useMemo(() => extractFilterOptions(images), [images]);
 
@@ -72,9 +86,25 @@ export default function LocationPageClient({ images, collections }: LocationPage
 
   const contentBlocks = useMemo(() => processContentBlocks(filteredImages, true), [filteredImages]);
 
-  const handleFilterChange = useCallback((update: Partial<FilterState>) => {
-    setFilterState(prev => ({ ...prev, ...update }));
-  }, []);
+  const handleFilterChange = useCallback(
+    (update: Partial<FilterState>) => {
+      setFilterState(prev => {
+        const next = { ...prev, ...update };
+        // Mirror the `criteria` mapping above so the URL is a faithful
+        // serialization of the live filter. dateSortDirection / lens dimensions
+        // have no URL key in serializeFilterToParams and stay local by design.
+        syncToUrl({
+          ...(next.highlyRatedOnly ? { minRating: 4 } : {}),
+          ...(next.filmFilter === 'film' ? { isFilm: true } : {}),
+          ...(next.filmFilter === 'digital' ? { isFilm: false } : {}),
+          ...(next.selectedTags.length > 0 ? { tags: [...next.selectedTags] } : {}),
+          ...(next.selectedPeople.length > 0 ? { people: [...next.selectedPeople] } : {}),
+        });
+        return next;
+      });
+    },
+    [syncToUrl]
+  );
 
   return (
     <>
