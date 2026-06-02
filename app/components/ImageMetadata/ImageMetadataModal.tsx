@@ -3,7 +3,6 @@
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
-import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import {
@@ -27,6 +26,7 @@ import styles from './ImageMetadataModal.module.scss';
 import CameraSettingsSection from './sections/CameraSettingsSection';
 import EssentialInfoSection from './sections/EssentialInfoSection';
 import MediaPreview from './sections/MediaPreview';
+import TagsPeopleSection from './sections/TagsPeopleSection';
 
 /** Any content the modal can edit — images and animated GIF/MP4 blocks. */
 type EditableContent = ContentImageModel | ContentGifModel;
@@ -163,72 +163,12 @@ export default function ImageMetadataModal({
               isGif={isGif}
             />
 
-            {/* Tags & People */}
-            <div className={styles.formSection}>
-              <h3 className={styles.sectionHeading}>Tags & People</h3>
-
-              <Dropdown<ContentTagModel>
-                label="Tags"
-                multiSelect
-                options={availableTags}
-                selectedValues={updateState.tags || []}
-                onChange={value => {
-                  const tags = (value as ContentTagModel[] | null) ?? [];
-                  updateStateField({ tags });
-                }}
-                allowAddNew
-                onAddNew={data => {
-                  const newTag: ContentTagModel = { id: 0, name: data.name as string, slug: '' };
-                  const currentTags = updateState.tags || [];
-                  updateStateField({ tags: [...currentTags, newTag] });
-                }}
-                addNewFields={[
-                  {
-                    name: 'name',
-                    label: 'Tag Name',
-                    type: 'text',
-                    placeholder: 'Enter new tag',
-                    required: true,
-                  },
-                ]}
-                getDisplayName={tag => tag.name}
-                emptyText="No tags selected"
-              />
-
-              <div>
-                <Dropdown<ContentPersonModel>
-                  label="People"
-                  multiSelect
-                  options={availablePeople}
-                  selectedValues={updateState.people || []}
-                  onChange={value => {
-                    const people = (value as ContentPersonModel[] | null) ?? [];
-                    updateStateField({ people });
-                  }}
-                  allowAddNew
-                  onAddNew={data => {
-                    const newPerson: ContentPersonModel = {
-                      id: 0,
-                      name: data.name as string,
-                      slug: '',
-                    };
-                    const currentPeople = updateState.people || [];
-                    updateStateField({ people: [...currentPeople, newPerson] });
-                  }}
-                  addNewFields={[
-                    {
-                      name: 'name',
-                      label: 'Person Name',
-                      type: 'text',
-                      placeholder: 'Enter person name',
-                      required: true,
-                    },
-                  ]}
-                  getDisplayName={person => person.name}
-                  emptyText="No people selected"
-                />
-              </div>
-            </div>
+            <TagsPeopleSection
+              updateState={updateState}
+              updateStateField={updateStateField}
+              availableTags={availableTags}
+              availablePeople={availablePeople}
+            />
 
             {/* Collections */}
             <div className={styles.formSection}>
