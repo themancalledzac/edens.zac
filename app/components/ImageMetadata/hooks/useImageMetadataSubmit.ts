@@ -2,13 +2,7 @@
 
 import { type SubmitEvent, useState } from 'react';
 
-import {
-  type ContentGifUpdateRequest,
-  deleteGif,
-  deleteImages,
-  updateGif,
-  updateImages,
-} from '@/app/lib/api/content';
+import { deleteGif, deleteImages, updateGif, updateImages } from '@/app/lib/api/content';
 import { type LocationModel } from '@/app/types/Collection';
 import {
   type ContentGifModel,
@@ -20,7 +14,7 @@ import { type ContentFilmTypeModel } from '@/app/types/ImageMetadata';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 
 import {
-  buildContentPeopleLocationsDiff,
+  buildGifUpdatePayload,
   buildImageUpdateDiff,
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
@@ -82,6 +76,67 @@ export function useImageMetadataSubmit({
   const isGif = previewImage ? isGifContent(previewImage) : false;
   const previewImageAsGif = isGif ? (previewImage as ContentGifModel) : null;
 
+  // The single-GIF edit/delete path applies only to a non-bulk GIF selection. Bulk-edit on GIF is
+  // not supported yet — ManageClient.handleBulkEdit splits mixed selections, so a batch never
+  // reaches here as a "GIF edit". When set, handleSubmit/handleDelete route through the GIF
+  // endpoints; otherwise the image path runs.
+  const singleGifTarget = isBulkEdit ? null : previewImageAsGif;
+
+  /**
+   * Shared save lifecycle. Flips `saving` on, clears the error, runs the operation, surfaces any
+   * thrown message, and always clears `saving`. Centralizes the try/catch/finally every save path
+   * needs so the "saving never sticks on" invariant can't be missed in one branch.
+   */
+  const runSave = async (operation: () => Promise<void>, fallbackError: string) => {
+    try {
+      setSaving(true);
+      setError(null);
+      await operation();
+    } catch (error_) {
+      setError(error_ instanceof Error ? error_.message : fallbackError);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitGifEdit = async (gifModel: ContentGifModel) => {
+    const payload = buildGifUpdatePayload(updateState, gifModel, originalCollectionIds);
+    const updated =
+      Object.keys(payload).length > 0 ? await updateGif(gifModel.id, payload) : gifModel;
+    if (updated) {
+      onGifSaveSuccess?.(updated);
+      onClose();
+    }
+  };
+
+  const submitImageEdits = async () => {
+    const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
+      ? buildImageUpdatesForBulkEdit(
+          updateState as Partial<ContentImageModel> & {
+            id: number;
+            location?: LocationModel | null;
+          },
+          selectedImages.filter(
+            (s): s is ContentImageModel => s.contentType === 'IMAGE'
+          ) as ContentImageModel[],
+          selectedImageIds,
+          availableFilmTypes
+        )
+      : [
+          buildImageUpdateForSingleEdit(
+            updateState as ContentImageModel & { location?: LocationModel | null },
+            selectedImages[0] as ContentImageModel,
+            availableFilmTypes
+          ),
+        ];
+
+    const response = await updateImages(imageUpdates);
+    if (response !== null) {
+      onSaveSuccess?.(mapUpdateResponseToFrontend(response));
+      onClose();
+    }
+  };
+
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -90,92 +145,10 @@ export function useImageMetadataSubmit({
       return;
     }
 
-    try {
-      setSaving(true);
-      setError(null);
-
-      // Single GIF: route through the GIF patch endpoint. Bulk-edit on GIF is not supported yet —
-      // selectedImages was already filtered upstream in ManageClient.handleBulkEdit so a mixed
-      // selection won't reach here as a "GIF edit"; we treat anything non-IMAGE as a single-gif
-      // edit and reject batch.
-      if (!isBulkEdit && isGif && previewImageAsGif) {
-        const original = previewImageAsGif;
-        const payload: ContentGifUpdateRequest = {};
-        if ((updateState.title ?? '') !== (original.title ?? '')) {
-          payload.title = updateState.title ?? '';
-        }
-        if (updateState.rating !== undefined && updateState.rating !== (original.rating ?? null)) {
-          payload.rating = updateState.rating ?? 0;
-        }
-        // Collections: build prev/newValue/remove from originalCollectionIds vs current selection
-        const currentCollectionIds = new Set(
-          (updateState.collections || []).map(c => c.collectionId)
-        );
-        const add = (updateState.collections || []).filter(
-          c => !originalCollectionIds.has(c.collectionId)
-        );
-        const remove: number[] = [];
-        for (const id of originalCollectionIds) {
-          if (!currentCollectionIds.has(id)) remove.push(id);
-        }
-        if (add.length > 0 || remove.length > 0) {
-          payload.collections = {
-            newValue: add.length > 0 ? add : undefined,
-            remove: remove.length > 0 ? remove : undefined,
-          };
-        }
-        // People + locations: reuse the same prev/newValue/remove builders the image path uses, so
-        // a GIF/MP4 can carry general relational metadata. Only attach keys that actually changed.
-        const { people, locations } = buildContentPeopleLocationsDiff(updateState, original);
-        if (people !== undefined) {
-          payload.people = people;
-        }
-        if (locations !== undefined) {
-          payload.locations = locations;
-        }
-
-        const updated =
-          Object.keys(payload).length > 0 ? await updateGif(original.id, payload) : original;
-        if (updated) {
-          onGifSaveSuccess?.(updated as ContentGifModel);
-          onClose();
-        }
-        return;
-      }
-
-      const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
-        ? buildImageUpdatesForBulkEdit(
-            updateState as Partial<ContentImageModel> & {
-              id: number;
-              location?: LocationModel | null;
-            },
-            selectedImages.filter(
-              (s): s is ContentImageModel => s.contentType === 'IMAGE'
-            ) as ContentImageModel[],
-            selectedImageIds,
-            availableFilmTypes
-          )
-        : [
-            buildImageUpdateForSingleEdit(
-              updateState as ContentImageModel & { location?: LocationModel | null },
-              selectedImages[0] as ContentImageModel,
-              availableFilmTypes
-            ),
-          ];
-
-      const response = await updateImages(imageUpdates);
-
-      if (response !== null) {
-        const updateResponse = mapUpdateResponseToFrontend(response);
-
-        onSaveSuccess?.(updateResponse);
-        onClose();
-      }
-    } catch (error_) {
-      setError(error_ instanceof Error ? error_.message : 'Failed to update image');
-    } finally {
-      setSaving(false);
-    }
+    await runSave(
+      () => (singleGifTarget ? submitGifEdit(singleGifTarget) : submitImageEdits()),
+      'Failed to update image'
+    );
   };
 
   const handleCancel = () => {
@@ -198,14 +171,11 @@ export function useImageMetadataSubmit({
     const confirmed = window.confirm(confirmMessage);
     if (!confirmed) return;
 
-    try {
-      setSaving(true);
-      setError(null);
-
+    await runSave(async () => {
       // Single GIF: route to the GIF delete endpoint. Bulk-gif delete isn't supported yet — we
       // process the single visible selection only.
-      if (!isBulkEdit && isGif && previewImageAsGif) {
-        const result = await deleteGif(previewImageAsGif.id);
+      if (singleGifTarget) {
+        const result = await deleteGif(singleGifTarget.id);
         if (result?.deletedId != null) {
           onDeleteSuccess?.([result.deletedId]);
           onClose();
@@ -214,16 +184,11 @@ export function useImageMetadataSubmit({
       }
 
       const response = await deleteImages(selectedImageIds);
-
       if (response !== null) {
         onDeleteSuccess?.(response.deletedIds);
         onClose();
       }
-    } catch (error_) {
-      setError(error_ instanceof Error ? error_.message : 'Failed to delete images');
-    } finally {
-      setSaving(false);
-    }
+    }, 'Failed to delete images');
   };
 
   const handleRemoveFromCollection = async () => {
@@ -238,10 +203,7 @@ export function useImageMetadataSubmit({
     const confirmed = window.confirm(confirmMessage);
     if (!confirmed) return;
 
-    try {
-      setSaving(true);
-      setError(null);
-
+    await runSave(async () => {
       const imageUpdates: ContentImageUpdateRequest[] = imageSubset.map(img => {
         const trimmedCollections = (img.collections || []).filter(
           c => c.collectionId !== currentCollectionId
@@ -254,18 +216,11 @@ export function useImageMetadataSubmit({
       });
 
       const response = await updateImages(imageUpdates);
-
       if (response !== null) {
         onRemoveFromCollectionSuccess?.(selectedImageIds);
         onClose();
       }
-    } catch (error_) {
-      setError(
-        error_ instanceof Error ? error_.message : 'Failed to remove images from collection'
-      );
-    } finally {
-      setSaving(false);
-    }
+    }, 'Failed to remove images from collection');
   };
 
   return {

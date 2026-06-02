@@ -5,8 +5,10 @@
  * Used by ImageMetadataModal for both single and bulk editing.
  */
 
+import type { ContentGifUpdateRequest } from '@/app/lib/api/content';
 import type { LocationModel } from '@/app/types/Collection';
 import type {
+  ContentGifModel,
   ContentImageModel,
   ContentImageUpdateRequest,
   ContentImageUpdateResponse,
@@ -748,6 +750,76 @@ export function buildContentPeopleLocationsDiff(
   buildLocationsDiffField(updateState.locations, currentState.locations, diff);
 
   return diff;
+}
+
+/**
+ * Build the PATCH payload for a single GIF/MP4 save.
+ *
+ * GIF analog of {@link buildImageUpdateForSingleEdit}: compares the editor's `updateState` against
+ * the original GIF and returns a {@link ContentGifUpdateRequest} carrying only the fields that
+ * changed. Keeps the dense diff logic out of the submit hook (and unit-testable in isolation),
+ * restoring symmetry with the image save path which already delegates to a builder.
+ *
+ * - title/rating: simple change detection (a blank title and a null rating are normalized so an
+ *   unset value never counts as a change).
+ * - collections: membership diff against `originalCollectionIds` → `{ newValue, remove }`. Unlike
+ *   the image path ({@link buildCollectionsDiff}) the full ChildCollection objects are sent as
+ *   `newValue` — the GIF endpoint does not require orderIndex stripping.
+ * - people/locations: delegated to {@link buildContentPeopleLocationsDiff} so the
+ *   prev/newValue/remove logic is never duplicated.
+ *
+ * @param updateState - The edited fields from the modal (only content fields are read)
+ * @param original - The original GIF/MP4 content block
+ * @param originalCollectionIds - The collection IDs the GIF belonged to before editing
+ * @returns A ContentGifUpdateRequest with only changed keys; `{}` when nothing changed
+ */
+export function buildGifUpdatePayload(
+  updateState: {
+    title?: string | null;
+    rating?: number | null;
+    collections?: ContentImageModel['collections'];
+    people?: ContentImageModel['people'];
+    locations?: LocationModel[];
+  },
+  original: ContentGifModel,
+  originalCollectionIds: Set<number>
+): ContentGifUpdateRequest {
+  const payload: ContentGifUpdateRequest = {};
+
+  if ((updateState.title ?? '') !== (original.title ?? '')) {
+    payload.title = updateState.title ?? '';
+  }
+
+  if (updateState.rating !== undefined && updateState.rating !== (original.rating ?? null)) {
+    payload.rating = updateState.rating ?? 0;
+  }
+
+  // Collections: newValue/remove built from originalCollectionIds vs the current selection.
+  const currentCollectionIds = new Set((updateState.collections || []).map(c => c.collectionId));
+  const add = (updateState.collections || []).filter(
+    c => !originalCollectionIds.has(c.collectionId)
+  );
+  const remove: number[] = [];
+  for (const id of originalCollectionIds) {
+    if (!currentCollectionIds.has(id)) remove.push(id);
+  }
+  if (add.length > 0 || remove.length > 0) {
+    payload.collections = {
+      newValue: add.length > 0 ? add : undefined,
+      remove: remove.length > 0 ? remove : undefined,
+    };
+  }
+
+  // People + locations: reuse the exact prev/newValue/remove builders the image path uses.
+  const { people, locations } = buildContentPeopleLocationsDiff(updateState, original);
+  if (people !== undefined) {
+    payload.people = people;
+  }
+  if (locations !== undefined) {
+    payload.locations = locations;
+  }
+
+  return payload;
 }
 
 // ============================================================================
