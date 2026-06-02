@@ -3,6 +3,7 @@
  * Tests content normalization and position class determination
  */
 
+import { CollectionType } from '@/app/types/Collection';
 import type { AnyContentModel } from '@/app/types/Content';
 import {
   buildParallaxWrapperClassName,
@@ -91,7 +92,8 @@ describe('contentRendererUtils', () => {
         expect(result.imageHeight).toBe(1080);
         expect(result.alt).toBe('Collection 1');
         expect(result.overlayText).toBe('Collection 1');
-        expect(result.cardTypeBadge).toBe('PORTFOLIO');
+        // PORTFOLIO is an internal type — suppressed from public badges.
+        expect(result.cardTypeBadge).toBeUndefined();
         expect(result.enableParallax).toBe(true);
         expect(result.hasSlug).toBe('collection-1');
         expect(result.isCollection).toBe(true);
@@ -99,6 +101,14 @@ describe('contentRendererUtils', () => {
         expect(result.height).toBe(300);
         expect(result.className).toBe('imageSingle');
         expect(result.isMobile).toBe(false);
+      });
+
+      it('maps a public collection type to its curated badge label', () => {
+        const collection = createCollectionContent(1, {
+          collectionType: CollectionType.ART_GALLERY,
+        });
+        const result = normalizeContentToRendererProps(collection, 500, 300, 'imageSingle', false);
+        expect(result.cardTypeBadge).toBe('Gallery');
       });
 
       it('should handle collection without coverImage', () => {
