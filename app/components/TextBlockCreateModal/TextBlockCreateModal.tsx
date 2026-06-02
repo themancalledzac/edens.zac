@@ -133,7 +133,7 @@ export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCre
               {saving ? (
                 <>
                   <LoadingSpinner size="small" color="white" />
-                  <span style={{ marginLeft: '8px' }}>Creating...</span>
+                  <span className={styles.loadingLabel}>Creating...</span>
                 </>
               ) : (
                 'Create Text Block'

@@ -177,7 +177,7 @@ export default function ContentBlockWithFullScreen({
 
       {hasMore && (
         <div>
-          <div ref={sentinelRef} style={{ height: '1px', visibility: 'hidden' }} />
+          <div ref={sentinelRef} className={styles.sentinel} />
           {showButton && (
             <div className={styles.loadMoreContainer}>
               <button type="button" onClick={handleLoadMore} className={styles.loadMoreButton}>

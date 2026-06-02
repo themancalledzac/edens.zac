@@ -86,13 +86,7 @@ function renderSinglePreview({
         poster={previewImageAsGif.thumbnailUrl ?? undefined}
         width={previewImageAsGif.width || IMAGE.defaultWidth}
         height={previewImageAsGif.height || IMAGE.defaultHeight}
-        style={{
-          maxWidth: '100%',
-          maxHeight: '100%',
-          width: 'auto',
-          height: 'auto',
-          objectFit: 'contain',
-        }}
+        className={styles.previewMedia}
       >
         <source src={previewImageAsGif.gifUrl} type="video/mp4" />
       </video>
@@ -105,13 +99,7 @@ function renderSinglePreview({
         alt={previewImageAsImage.alt || previewImageAsImage.title || 'Image preview'}
         width={previewImageAsImage.imageWidth || IMAGE.defaultWidth}
         height={previewImageAsImage.imageHeight || IMAGE.defaultHeight}
-        style={{
-          maxWidth: '100%',
-          maxHeight: '100%',
-          width: 'auto',
-          height: 'auto',
-          objectFit: 'contain',
-        }}
+        className={styles.previewMedia}
         priority
         unoptimized
       />
@@ -125,8 +113,7 @@ interface ImageMetadataModalProps {
   onSaveSuccess?: (response: ContentImageUpdateResponse) => void;
   /**
    * Fired after a single-GIF save. Separate from `onSaveSuccess` because the GIF update endpoint
-   * returns one record instead of the batched ImageUpdate response. ManageClient hands these to
-   * the same collection-refresh handler that GIF saves used to call from `GifMetadataModal`.
+   * returns one record instead of the batched ImageUpdate response.
    */
   onGifSaveSuccess?: (gif: ContentGifModel) => void;
   onDeleteSuccess?: (deletedIds: number[]) => void;
@@ -489,17 +476,7 @@ export default function ImageMetadataModal({
         {/* Image Section - Left Side */}
         <div className={styles.imageSection}>
           {isBulkEdit ? (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-                gap: '8px',
-                width: '100%',
-                height: '100%',
-                overflowY: 'auto',
-                padding: '8px',
-              }}
-            >
+            <div className={styles.bulkEditGrid}>
               {selectedImageIds.map(imageId => {
                 const item = selectedImages.find(i => i.id === imageId);
                 if (!item) return null;
@@ -510,23 +487,12 @@ export default function ImageMetadataModal({
                     : ((item as ContentImageModel).imageUrl ?? '');
                 if (!thumbSrc) return null;
                 return (
-                  <div
-                    key={imageId}
-                    style={{
-                      position: 'relative',
-                      aspectRatio: '1',
-                      borderRadius: '4px',
-                      overflow: 'hidden',
-                      backgroundColor: '#f0f0f0',
-                    }}
-                  >
+                  <div key={imageId} className={styles.bulkEditThumb}>
                     <Image
                       src={thumbSrc}
                       alt={item.alt || item.title || 'Selected media'}
                       fill
-                      style={{
-                        objectFit: 'cover',
-                      }}
+                      className={styles.bulkEditThumbImg}
                       sizes="150px"
                       unoptimized
                     />
@@ -1070,7 +1036,7 @@ export default function ImageMetadataModal({
                   {saving ? (
                     <>
                       <LoadingSpinner size="small" color="white" />
-                      <span style={{ marginLeft: '8px' }}>Deleting...</span>
+                      <span className={styles.loadingLabel}>Deleting...</span>
                     </>
                   ) : (
                     `Delete ${isBulkEdit ? `${selectedImageIds.length} Images` : 'Image'}`
@@ -1087,7 +1053,7 @@ export default function ImageMetadataModal({
                     {saving ? (
                       <>
                         <LoadingSpinner size="small" color="white" />
-                        <span style={{ marginLeft: '8px' }}>Removing...</span>
+                        <span className={styles.loadingLabel}>Removing...</span>
                       </>
                     ) : (
                       `Remove ${isBulkEdit ? `${selectedImageIds.length} Images` : 'Image'}`
@@ -1112,7 +1078,7 @@ export default function ImageMetadataModal({
                   {saving ? (
                     <>
                       <LoadingSpinner size="small" color="white" />
-                      <span style={{ marginLeft: '8px' }}>Saving...</span>
+                      <span className={styles.loadingLabel}>Saving...</span>
                     </>
                   ) : (
                     'Save Changes'

@@ -14,6 +14,7 @@ import { getLensType } from '@/app/utils/focalLength';
 import { sortByDate } from '@/app/utils/sortByDate';
 
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
+import styles from './CollectionPageClient.module.scss';
 
 type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated'>;
 
@@ -267,9 +268,7 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
         collectionData={collection}
       />
       {hasActiveFilters && filteredImages.length === 0 && (
-        <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-          No images match your filters.
-        </p>
+        <p className={styles.emptyState}>No images match your filters.</p>
       )}
     </>
   );

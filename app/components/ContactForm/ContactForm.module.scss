@@ -1,5 +1,7 @@
 /*
-  ContactForm component styles
+  ContactForm layout styles. Field controls and the submit button come from
+  the shared Field set and <Button>; this module owns layout, status banner
+  colors, and the char counter.
 */
 
 .contactFormContainer {
@@ -21,6 +23,10 @@
   overflow-y: auto;
 }
 
+.statusRegion {
+  min-height: 0;
+}
+
 .contactForm {
   display: flex;
   flex-direction: column;
@@ -29,68 +35,13 @@
   padding-bottom: 5px;
 }
 
-.emailInput {
-  height: var(--menu-item-height);
-  font-size: var(--text-lg);
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: var(--color-fg);
-  }
-
-  &::placeholder {
-    color: var(--color-fg-muted);
-  }
+.messageField {
+  flex: 1;
 }
 
 .messageTextarea {
   flex: 1;
-  font-size: var(--text-md);
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-  resize: none;
-  font-family: inherit;
   min-height: 360px;
-
-  &:focus {
-    outline: none;
-    border-color: var(--color-fg);
-  }
-
-  &::placeholder {
-    color: var(--color-fg-muted);
-  }
-}
-
-.submitButton {
-  height: 60px;
-  font-size: var(--text-lg);
-  background-color: var(--color-fg);
-  color: var(--color-bg);
-  border: none;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  font-family: inherit;
-  font-weight: 500;
-
-  &:hover {
-    background-color: var(--color-fg-muted);
-  }
-
-  &:active {
-    transform: translateY(1px);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
 }
 
 .statusBanner {

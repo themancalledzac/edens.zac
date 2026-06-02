@@ -1253,8 +1253,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         >
                           <h3
                             id="collection-people-heading"
-                            className={styles.formLabel}
-                            style={{ marginBottom: '8px' }}
+                            className={`${styles.formLabel} ${styles.fieldSpacer}`}
                           >
                             People
                           </h3>
@@ -1296,14 +1295,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             showNewIndicator
                             emptyText="No people set"
                           />
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '8px',
-                              marginTop: '12px',
-                            }}
-                          >
+                          <div className={styles.actionRow}>
                             <Button onClick={handleSavePeople} disabled={peopleSaving}>
                               {peopleSaving ? 'Saving…' : 'Save People'}
                             </Button>
@@ -1314,8 +1306,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           {peopleStatus && (
                             <p
                               role="status"
-                              style={{ marginTop: '12px' }}
-                              className={styles.formLabelHint}
+                              className={`${styles.formLabelHint} ${styles.statusMessage}`}
                             >
                               {peopleStatus}
                             </p>
@@ -1420,15 +1411,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           >
                             <h3
                               id="gallery-access-heading"
-                              className={styles.formLabel}
-                              style={{ marginBottom: '8px' }}
+                              className={`${styles.formLabel} ${styles.fieldSpacer}`}
                             >
                               Gallery Access
                             </h3>
-                            <p
-                              className={styles.formLabelHint}
-                              style={{ marginTop: 0, marginBottom: '12px' }}
-                            >
+                            <p className={`${styles.formLabelHint} ${styles.fieldHeading}`}>
                               {collection.isPasswordProtected
                                 ? 'Password is set. Saving a new password replaces the existing one.'
                                 : 'No password set. This gallery is currently unprotected.'}
@@ -1472,14 +1459,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                 />
                               </div>
                             </div>
-                            <div
-                              style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                gap: '8px',
-                                marginTop: '12px',
-                              }}
-                            >
+                            <div className={styles.actionRow}>
                               <Button
                                 onClick={handleSaveAccess}
                                 disabled={gallerySaving || galleryPassword.length === 0}
@@ -1495,8 +1475,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             {galleryStatus && (
                               <p
                                 role="status"
-                                style={{ marginTop: '12px' }}
-                                className={styles.formLabelHint}
+                                className={`${styles.formLabelHint} ${styles.statusMessage}`}
                               >
                                 {galleryStatus}
                               </p>
@@ -1625,20 +1604,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               <h3 id="children-rating-heading" className={styles.formLabel}>
                                 Children (rating)
                               </h3>
-                              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                              <ul className={styles.plainList}>
                                 {(collection.content ?? [])
                                   .filter(isContentCollection)
                                   .map(child => (
-                                    <li
-                                      key={child.id}
-                                      style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        gap: '8px',
-                                        padding: '6px 0',
-                                      }}
-                                    >
+                                    <li key={child.id} className={styles.childRow}>
                                       <span>{child.title ?? child.slug}</span>
                                       <RatingStars
                                         initialRating={child.rating ?? null}

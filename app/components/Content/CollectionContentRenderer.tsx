@@ -3,15 +3,17 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { type Ref, useCallback, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
+import { Badge } from '@/app/components/ui/Badge/Badge';
 import {
   FilterToolbar,
   type ToolbarDimension,
 } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { Tile } from '@/app/components/ui/Tile/Tile';
 import { useParallax } from '@/app/hooks/useParallax';
 import {
   type ContentGifModel,
@@ -31,7 +33,6 @@ import {
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 
-import { BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
@@ -134,6 +135,9 @@ export default function CollectionContentRenderer({
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
 
+  // COLLECTION tiles navigate via href; IMAGE/GIF fullscreen stays on onClick.
+  const isSlugNav = !!_hasSlug && !onImageClick && !isReorderMode && contentType !== 'TEXT';
+
   // Whether a meaningful click action exists for this item (used for cursor/style checks).
   // Mirrors the guard logic in handleClick: TEXT and reorder mode produce no action,
   // slug-only navigation fires when _hasSlug is set and no onImageClick is present,
@@ -148,15 +152,8 @@ export default function CollectionContentRenderer({
   const handleClick = useCallback(() => {
     if (contentType === 'TEXT') return;
     if (isReorderMode) return;
+    if (_hasSlug && !onImageClick) return; // navigation handled by <Tile href>
 
-    if (_hasSlug && !onImageClick) {
-      router.push(`/${_hasSlug}`);
-      return;
-    }
-
-    // Synthetic stand-in passed up to ContentBlockWithFullScreen — that wrapper looks the real
-    // block up by id from its source array and forwards full metadata into the modal. We just
-    // need id + contentType to be honest; everything else is best-effort fallback.
     const fullScreenContent: ViewableContent =
       contentType === 'GIF'
         ? ({
@@ -193,7 +190,6 @@ export default function CollectionContentRenderer({
     enableFullScreenView,
     onFullScreenImageClick,
     _hasSlug,
-    router,
     isReorderMode,
   ]);
 
@@ -233,17 +229,16 @@ export default function CollectionContentRenderer({
     return (
       <div
         key={contentId}
-        className={buildWrapperClassName(className, cbStyles, {
+        className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
           hasClickHandler: false,
           isSelected: false,
-        })}
+        })} ${cbStyles.contentBox}`}
         style={{
           width: Number.isFinite(width) ? width : 300,
           height: height > 0 ? height : 'auto',
-          boxSizing: 'border-box',
         }}
       >
         <div className={cbStyles.blockContainer}>
@@ -349,18 +344,16 @@ export default function CollectionContentRenderer({
     return (
       <div
         key={contentId}
-        className={buildWrapperClassName(className, cbStyles, {
+        className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
           hasClickHandler: hasClickHandler,
           isSelected: false,
-        })}
+        })} ${cbStyles.contentBox}`}
         style={{
           width: Number.isFinite(width) ? width : 300,
           height: Number.isFinite(height) ? height : 200,
-          boxSizing: 'border-box',
-          position: 'relative',
           cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
@@ -375,7 +368,6 @@ export default function CollectionContentRenderer({
             width={imageWidth || undefined}
             height={imageHeight || undefined}
             className={cbStyles.nonParallaxImage}
-            style={{ cursor: hasClickHandler ? 'pointer' : 'default' }}
           >
             <source src={imageUrl} type="video/mp4" />
           </video>
@@ -408,13 +400,13 @@ export default function CollectionContentRenderer({
     return (
       <div
         key={contentId}
-        className={buildWrapperClassName(className, cbStyles, {
+        className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
           hasClickHandler,
           isSelected: false,
-        })}
+        })} ${cbStyles.imagePlaceholder}`}
         onClick={hasClickHandler ? handleClick : undefined}
         role={hasClickHandler ? 'button' : undefined}
         tabIndex={hasClickHandler ? 0 : undefined}
@@ -431,13 +423,6 @@ export default function CollectionContentRenderer({
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
-          boxSizing: 'border-box',
-          position: 'relative',
-          backgroundColor: '#e0e0e0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#757575',
           cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
@@ -453,18 +438,16 @@ export default function CollectionContentRenderer({
     return (
       <div
         key={contentId}
-        className={buildWrapperClassName(className, cbStyles, {
+        className={`${buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax: false,
           isMobile,
           hasClickHandler: false,
           isSelected: false,
-        })}
+        })} ${cbStyles.contentBox}`}
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
-          boxSizing: 'border-box',
-          position: 'relative',
         }}
       >
         <div
@@ -525,12 +508,7 @@ export default function CollectionContentRenderer({
     <>
       <Image {...imageProps} />
       {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
-      {cardTypeBadge && (
-        <BadgeOverlay
-          contentType={isCollection ? 'collection' : 'content'}
-          badgeValue={cardTypeBadge}
-        />
-      )}
+      {cardTypeBadge && <Badge label={cardTypeBadge} tone={isCollection ? 'card' : 'date'} />}
     </>
   );
 
@@ -597,6 +575,31 @@ export default function CollectionContentRenderer({
     },
     ...(enableParallax && { ref: parallaxRef }),
   };
+
+  if (isSlugNav) {
+    return (
+      <Tile
+        key={contentId}
+        href={`/${_hasSlug}`}
+        aria-label={overlayText ?? alt}
+        className={wrapperProps.className}
+        style={wrapperProps.style}
+        {...(enableParallax
+          ? { ref: parallaxRef as Ref<HTMLAnchorElement>, 'data-parallax-container': '' }
+          : { 'data-image-wrapper': '' })}
+      >
+        <span className={cbStyles.imageWrapper}>{imageWrapperContent}</span>
+        {!enableParallax && (
+          <ImageOverlays
+            contentType={contentType}
+            isNotVisible={isNotVisible}
+            shouldShowOverlay={shouldShowOverlay}
+            isSelected={isSelected}
+          />
+        )}
+      </Tile>
+    );
+  }
 
   return (
     <div

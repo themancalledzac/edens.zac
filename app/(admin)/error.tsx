@@ -2,9 +2,8 @@
 
 import { useEffect } from 'react';
 
+import { StatusPage } from '@/app/components/ui/StatusPage/StatusPage';
 import { logger } from '@/app/utils/logger';
-
-import styles from '../styles/layout.module.scss';
 
 export default function AdminError({
   error,
@@ -18,12 +17,11 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <main className={styles.main}>
-      <h1>Admin Error — Something went wrong</h1>
-      {error?.digest ? <p className={styles.errorMessage}>Error ID: {error.digest}</p> : null}
-      <button onClick={() => reset()} className={styles.retryButton}>
-        Try again
-      </button>
-    </main>
+    <StatusPage
+      title="Admin Error — Something went wrong"
+      message="An unexpected error occurred in the admin area."
+      detail={error?.digest ? `Error ID: ${error.digest}` : undefined}
+      onRetry={() => reset()}
+    />
   );
 }

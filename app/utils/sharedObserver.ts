@@ -2,9 +2,9 @@
  * Shared IntersectionObserver Singleton
  *
  * Manages a single IntersectionObserver per unique options signature,
- * dispatching intersection events to per-element callbacks via a Map.
- * Replaces ~50+ individual IntersectionObserver instances across components,
- * reducing memory and CPU overhead.
+ * dispatching intersection events to per-element callbacks via a Map. One
+ * observer per options signature keeps memory and CPU down versus one observer
+ * per element.
  *
  * The registry is keyed by a serialized options string. Root elements are
  * identified via a WeakMap-based ID system to avoid toString() collisions.

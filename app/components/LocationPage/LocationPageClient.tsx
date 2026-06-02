@@ -18,6 +18,7 @@ import { logger } from '@/app/utils/logger';
 import { sortByDate } from '@/app/utils/sortByDate';
 
 import LocationCollections from './LocationCollections';
+import styles from './LocationPageClient.module.scss';
 
 interface LocationPageClientProps {
   images: ContentImageModel[];
@@ -121,9 +122,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
           chunkSize={4}
         />
       ) : (
-        <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary, #888)' }}>
-          No images match the current filters.
-        </p>
+        <p className={styles.emptyState}>No images match the current filters.</p>
       )}
     </>
   );

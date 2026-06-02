@@ -6,6 +6,7 @@
  * so the renderer component doesn't need to know about content types.
  */
 
+import { collectionTypeToPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type AnyContentModel } from '@/app/types/Content';
 import { type ContentRendererProps } from '@/app/types/ContentRenderer';
 import {
@@ -46,7 +47,7 @@ function extractAltText(
 }
 
 /**
- * Normalizes contentType (no longer needed for PARALLAX conversion, but kept for consistency)
+ * Narrows a raw contentType string to the known content-type union.
  */
 function normalizeContentType(contentType: string): 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION' {
   return contentType as 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION';
@@ -170,7 +171,7 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(undefined, content.title, undefined, content.slug, 'Collection'),
       overlayText: content.title,
-      cardTypeBadge: content.collectionType,
+      cardTypeBadge: collectionTypeToPublicLabel(content.collectionType) ?? undefined,
       enableParallax: true,
       hasSlug: content.slug,
       isCollection: true,
@@ -193,7 +194,10 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(content.alt, content.title, content.caption),
       overlayText: content.overlayText,
-      cardTypeBadge: 'collectionType' in content ? content.collectionType : undefined,
+      cardTypeBadge:
+        'collectionType' in content && content.collectionType
+          ? (collectionTypeToPublicLabel(content.collectionType) ?? undefined)
+          : undefined,
       enableParallax: true,
       hasSlug: 'slug' in content ? content.slug : undefined,
       isCollection: false,
