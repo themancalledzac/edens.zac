@@ -144,6 +144,29 @@ describe('proxy middleware — existing /comments admin gating (regression)', ()
   });
 });
 
+describe('proxy middleware — /explore admin gating', () => {
+  it('passes /explore through on localhost', () => {
+    setLocal();
+    const res = proxy(makeRequest('/explore'));
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('returns 403 on /explore in prod when admin routes disabled', () => {
+    setProd();
+    process.env.ADMIN_ROUTES_ENABLED = 'false';
+    const res = proxy(makeRequest('/explore'));
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 on /explore in prod when admin routes enabled but auth missing', () => {
+    setProd();
+    process.env.ADMIN_ROUTES_ENABLED = 'true';
+    process.env.ADMIN_TOKEN = 'secret123';
+    const res = proxy(makeRequest('/explore'));
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('proxy middleware — non-matching paths', () => {
   it('passes unrelated paths through on localhost', () => {
     setLocal();

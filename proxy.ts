@@ -56,7 +56,9 @@ export function proxy(request: NextRequest) {
     pathname === '/comments' ||
     pathname.startsWith('/comments/') ||
     pathname === '/metadata' ||
-    pathname.startsWith('/metadata/');
+    pathname.startsWith('/metadata/') ||
+    pathname === '/explore' ||
+    pathname.startsWith('/explore/');
 
   if (!isAdminRoute) {
     return NextResponse.next();
@@ -102,5 +104,7 @@ export const config = {
     '/comments/:path*',
     '/metadata',
     '/metadata/:path*',
+    '/explore',
+    '/explore/:path*',
   ],
 };
