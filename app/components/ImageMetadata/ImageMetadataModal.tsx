@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { type SubmitEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
@@ -33,9 +33,8 @@ import {
   type FilmFormatDTO,
 } from '@/app/types/ImageMetadata';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
-import { convertLocationsToModels } from '@/app/utils/locationUtils';
-import { hasObjectChanges } from '@/app/utils/objectComparison';
 
+import { useImageMetadataState } from './hooks/useImageMetadataState';
 import styles from './ImageMetadataModal.module.scss';
 import {
   buildContentPeopleLocationsDiff,
@@ -43,18 +42,8 @@ import {
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
   computeCameraSelectionUpdate,
-  getCommonValues,
   mapUpdateResponseToFrontend,
 } from './imageMetadataUtils';
-
-/**
- * Local edit-state shape. We allow GIF fields too because the same modal now edits both — image-
- * only fields are disabled in the JSX when the current selection is a GIF.
- */
-type ImageUpdateState = Partial<ContentImageModel> &
-  Partial<Pick<ContentGifModel, 'gifUrl' | 'thumbnailUrl' | 'rating'>> & {
-    id: number;
-  };
 
 /** Any content the modal can edit — images and animated GIF/MP4 blocks. */
 type EditableContent = ContentImageModel | ContentGifModel;
@@ -170,102 +159,18 @@ export default function ImageMetadataModal({
     (c): c is ContentImageModel => c.contentType === 'IMAGE'
   );
 
-  const buildInitialState = (): ImageUpdateState => {
-    if (selectedImages.length === 1) {
-      const item = selectedImages[0]!;
-      const itemLocations = 'locations' in item ? item.locations : undefined;
-      return {
-        ...item,
-        locations: convertLocationsToModels(itemLocations, availableLocations),
-      } as ImageUpdateState;
-    }
-    const common = getCommonValues(imageSubset);
-    return {
-      id: 0,
-      ...common,
-      locations: convertLocationsToModels(common.locations, availableLocations),
-    };
-  };
-
-  const [updateState, setUpdateState] = useState<ImageUpdateState>(buildInitialState);
-
-  useEffect(() => {
-    setUpdateState(buildInitialState());
-    // buildInitialState closes over selectedImages + availableLocations only; everything else is
-    // stable. Listing the function in deps would just churn on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedImages, availableLocations]);
-
-  const updateStateField = (updates: Partial<ImageUpdateState>) => {
-    setUpdateState(prev => ({ ...prev, ...updates }));
-  };
-
-  const hasChanges = useMemo(() => {
-    if (isBulkEdit) {
-      const common = getCommonValues(imageSubset);
-      return hasObjectChanges(updateState, { id: 0, ...common });
-    } else {
-      const original = selectedImages[0]!;
-      return hasObjectChanges(updateState, original);
-    }
-    // imageSubset is derived from selectedImages each render; reflect that in deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updateState, selectedImages, isBulkEdit]);
+  const {
+    updateState,
+    updateStateField,
+    hasChanges,
+    originalCollectionIds,
+    pendingAddIds,
+    pendingRemoveIds,
+    handleCollectionToggle,
+  } = useImageMetadataState({ selectedImages, availableLocations });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const originalCollectionIds = useMemo(() => {
-    const ids = new Set<number>();
-    if (!isBulkEdit && selectedImages[0]?.collections) {
-      for (const c of selectedImages[0].collections) {
-        ids.add(c.collectionId);
-      }
-    }
-    return ids;
-  }, [selectedImages, isBulkEdit]);
-
-  const pendingAddIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const c of updateState.collections || []) {
-      if (!originalCollectionIds.has(c.collectionId)) {
-        ids.add(c.collectionId);
-      }
-    }
-    return ids;
-  }, [updateState.collections, originalCollectionIds]);
-
-  const pendingRemoveIds = useMemo(() => {
-    const ids = new Set<number>();
-    const currentIds = new Set((updateState.collections || []).map(c => c.collectionId));
-    for (const id of originalCollectionIds) {
-      if (!currentIds.has(id)) {
-        ids.add(id);
-      }
-    }
-    return ids;
-  }, [updateState.collections, originalCollectionIds]);
-
-  const handleCollectionToggle = useCallback((collection: CollectionListModel) => {
-    setUpdateState(prev => {
-      const currentCollections = prev.collections || [];
-      const exists = currentCollections.some(c => c.collectionId === collection.id);
-
-      const updatedCollections = exists
-        ? currentCollections.filter(c => c.collectionId !== collection.id)
-        : [
-            ...currentCollections,
-            {
-              collectionId: collection.id,
-              name: collection.name,
-              visible: true,
-              orderIndex: currentCollections.length,
-            },
-          ];
-
-      return { ...prev, collections: updatedCollections };
-    });
-  }, []);
 
   const previewImage = selectedImages[0];
 
