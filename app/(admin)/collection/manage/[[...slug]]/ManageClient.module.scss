@@ -66,7 +66,7 @@
   margin: 0;
   color: var(--color-surface-raised);
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-base) var(--ease-standard);
 
   &:hover {
     opacity: 0.8;
@@ -283,7 +283,7 @@
   border: 2px solid transparent;
   border-radius: var(--radius-1);
   overflow: hidden;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--duration-fast) var(--ease-standard);
 
   &:hover {
     border-color: var(--color-primary);
@@ -546,7 +546,7 @@
   font-weight: 500;
   white-space: nowrap;
   opacity: 0.85;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--duration-fast) var(--ease-standard);
 
   &:hover:not(:disabled) {
     opacity: 1;
@@ -576,7 +576,7 @@
   cursor: pointer;
   font-size: var(--text-base);
   color: var(--color-on-surface);
-  transition: all 0.2s ease;
+  transition: all var(--duration-base) var(--ease-standard);
   display: flex;
   align-items: center;
   justify-content: center;

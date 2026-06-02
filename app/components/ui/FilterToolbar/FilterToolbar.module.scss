@@ -34,8 +34,8 @@
   cursor: pointer;
   opacity: 0.5;
   transition:
-    background-color 0.15s ease,
-    opacity 0.15s ease;
+    background-color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
 
   &:hover {
     background-color: var(--color-overlay-soft);
@@ -93,8 +93,8 @@
   cursor: pointer;
   opacity: 0.35;
   transition:
-    opacity 0.15s ease,
-    background-color 0.15s ease;
+    opacity var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
 
   &:hover {
     opacity: 0.7;

@@ -58,7 +58,7 @@
   height: var(--space-6);
   cursor: pointer;
   color: black;
-  transition: color 0.2s ease;
+  transition: color var(--duration-base) var(--ease-standard);
   stroke-width: 2.5; /* Match hamburger menu stroke-width on mobile */
 
   &:hover {
@@ -152,7 +152,7 @@
   font-size: var(--heading-2);
   font-weight: 500;
   color: black;
-  transition: color 0.2s ease;
+  transition: color var(--duration-base) var(--ease-standard);
 
   &:hover {
     color: var(--color-hover-grey);
@@ -186,8 +186,8 @@
   cursor: pointer;
   color: black;
   transition:
-    color 0.2s ease,
-    transform 0.2s ease;
+    color var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
 
   &:hover {
     color: var(--color-hover-grey);

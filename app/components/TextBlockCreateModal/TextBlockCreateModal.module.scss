@@ -79,7 +79,7 @@
   border-radius: var(--radius-1);
   color: white;
   font-family: inherit;
-  transition: border-color 0.2s;
+  transition: border-color var(--duration-base);
 
   &:focus {
     outline: none;
@@ -124,7 +124,7 @@
   font-weight: 500;
   border-radius: var(--radius-1);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--duration-base);
   display: flex;
   align-items: center;
   justify-content: center;

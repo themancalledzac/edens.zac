@@ -34,7 +34,7 @@
   border-radius: 3px;
   overflow: hidden;
   text-decoration: none;
-  transition: opacity 0.15s;
+  transition: opacity var(--duration-fast);
 
   &:hover {
     opacity: 0.85;
@@ -73,7 +73,7 @@
   align-items: center;
   justify-content: center;
   background: rgb(0 0 0 / 35%);
-  transition: background 0.15s;
+  transition: background var(--duration-fast);
 
   .card:hover & {
     background: rgb(0 0 0 / 45%);

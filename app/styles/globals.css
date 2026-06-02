@@ -140,6 +140,14 @@ html,
   /* Shadows */
   --shadow-sm: 0 2px 4px rgb(0, 0, 0, 0.1);
 
+  /* Motion tokens. Replace the magic-number transition durations scattered
+     across the SCSS modules so timing is consistent and tunable in one place.
+     fast = micro UI (hover tint), base = standard, slow = larger affordances. */
+  --duration-fast: 0.15s;
+  --duration-base: 0.2s;
+  --duration-slow: 0.3s;
+  --ease-standard: ease;
+
   /* Z-Index Layers - Systematic stacking order */
 
   /* IMPORTANT: Keep in sync with app/constants/index.ts Z_INDEX */

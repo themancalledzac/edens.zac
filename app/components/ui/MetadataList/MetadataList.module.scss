@@ -62,8 +62,8 @@
   text-decoration: none;
   font-size: var(--text-sm);
   transition:
-    color 0.15s,
-    background-color 0.15s;
+    color var(--duration-fast),
+    background-color var(--duration-fast);
 
   &:hover {
     color: var(--color-accent);
@@ -85,8 +85,8 @@
   min-width: 0;
   font-family: inherit;
   transition:
-    border-color 0.15s,
-    background-color 0.15s;
+    border-color var(--duration-fast),
+    background-color var(--duration-fast);
 
   &:hover {
     border-color: var(--color-border);

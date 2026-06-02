@@ -321,7 +321,7 @@
 /* Image wrapper with selection state */
 .imageContentWrapper {
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-base) var(--ease-standard);
 
   &.selected {
     opacity: 0.6;
@@ -456,8 +456,8 @@
   border-radius: var(--radius-round);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
   text-transform: lowercase;
   letter-spacing: 0.02em;
   font-family: inherit;
