@@ -173,7 +173,7 @@ export default function ImageMetadataModal({
                 pendingRemoveIds={pendingRemoveIds}
                 onToggle={handleCollectionToggle}
                 label="Collections"
-                excludeCollectionId={currentCollectionId}
+                pinnedCollectionId={currentCollectionId}
               />
             </div>
 
