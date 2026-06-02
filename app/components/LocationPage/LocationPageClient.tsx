@@ -26,18 +26,20 @@ interface LocationPageClientProps {
   collections: CollectionModel[];
 }
 
+/** Map the URL's isFilm tristate onto the FilterState film toggle. */
+function filmFilterFromIsFilm(isFilm: boolean | undefined): FilterState['filmFilter'] {
+  if (isFilm === true) return 'film';
+  if (isFilm === false) return 'digital';
+  return 'off';
+}
+
 export default function LocationPageClient({ images, collections }: LocationPageClientProps) {
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
   const [filterState, setFilterState] = useState<FilterState>(() => ({
     ...INITIAL_FILTER_STATE,
     highlyRatedOnly: initialCriteria.minRating !== undefined && initialCriteria.minRating >= 4,
-    filmFilter:
-      initialCriteria.isFilm === true
-        ? 'film'
-        : initialCriteria.isFilm === false
-          ? 'digital'
-          : 'off',
+    filmFilter: filmFilterFromIsFilm(initialCriteria.isFilm),
     selectedTags: initialCriteria.tags ?? [],
     selectedPeople: initialCriteria.people ?? [],
   }));
