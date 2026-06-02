@@ -13,7 +13,6 @@ import {
 } from 'react';
 
 import { INTERACTION } from '@/app/constants';
-import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ViewableContent } from '@/app/types/Content';
 
@@ -71,8 +70,6 @@ export function useFullScreenImage(): {
   }, []);
 
   const isOpen = !!fullScreenState;
-
-  useBodyScrollLock(isOpen);
 
   const navigate = useCallback((direction: 'next' | 'previous') => {
     setFullScreenState(prev => {
@@ -133,9 +130,7 @@ export function useFullScreenImage(): {
     if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        hideImage();
-      } else if (event.key === 'ArrowLeft') {
+      if (event.key === 'ArrowLeft') {
         event.preventDefault();
         navigateToPrevious();
       } else if (event.key === 'ArrowRight') {
@@ -155,7 +150,7 @@ export function useFullScreenImage(): {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('wheel', preventScroll);
     };
-  }, [isOpen, navigateToNext, navigateToPrevious, hideImage]);
+  }, [isOpen, navigateToNext, navigateToPrevious]);
 
   const isMetadataControl = useCallback((target: HTMLElement | null): boolean => {
     if (!target) return false;

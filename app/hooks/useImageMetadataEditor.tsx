@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 /**
@@ -38,8 +37,6 @@ export function useImageMetadataEditor() {
   const closeEditor = useCallback(() => {
     setEditingContent(null);
   }, []);
-
-  useBodyScrollLock(!!editingContent);
 
   useEffect(() => {
     if (!editingContent) return;
