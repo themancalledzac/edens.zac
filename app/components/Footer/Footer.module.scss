@@ -13,7 +13,7 @@
   padding: var(--space-6) var(--page-padding-mobile);
   border-top: 1px solid var(--color-border);
   background-color: var(--color-bg);
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
 
   @media (width >= 768px) {
     padding: var(--space-6) var(--default-padding);
@@ -27,7 +27,7 @@
 }
 
 .link {
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
 
   &:hover {

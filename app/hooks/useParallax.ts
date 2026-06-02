@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { PARALLAX_CONSTANTS } from '@/app/constants/parallax';
 import { computeParallaxOffset, getParallaxBudgets } from '@/app/utils/parallaxMath';
@@ -43,8 +43,31 @@ export function useParallax(options: ParallaxOptions = {}) {
     rootMargin: '0px',
   });
 
+  // Respect the user's motion preference. Read once on mount (SSR-safe) and keep
+  // it in sync if the setting changes mid-session.
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mql.matches);
+
+    const onChange = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !elementRef.current || !enableParallax) return;
+
+    // Honor prefers-reduced-motion: neutralize any existing offset and skip the
+    // scroll/resize work entirely so the image stays put for these users.
+    if (prefersReducedMotion) {
+      const parallaxBg = elementRef.current.querySelector(selector) as HTMLElement | null;
+      if (parallaxBg) parallaxBg.style.transform = 'translate3d(0, 0, 0)';
+      return;
+    }
 
     const element = elementRef.current;
     const parallaxBg = element.querySelector(selector) as HTMLElement;
@@ -126,7 +149,7 @@ export function useParallax(options: ParallaxOptions = {}) {
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [isVisible, selector, enableParallax]);
+  }, [isVisible, selector, enableParallax, prefersReducedMotion]);
 
   return elementRef;
 }

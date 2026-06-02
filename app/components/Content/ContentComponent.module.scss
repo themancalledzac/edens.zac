@@ -321,7 +321,7 @@
 /* Image wrapper with selection state */
 .imageContentWrapper {
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-base) var(--ease-standard);
 
   &.selected {
     opacity: 0.6;
@@ -456,8 +456,8 @@
   border-radius: var(--radius-round);
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
   text-transform: lowercase;
   letter-spacing: 0.02em;
   font-family: inherit;
@@ -534,11 +534,11 @@
 .placeholderImage {
   box-sizing: border-box;
   position: relative;
-  background-color: var(--color-border-medium);
+  background-color: var(--color-surface-sunken);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
+  color: var(--color-on-surface-muted);
   width: 100%;
   height: auto;
   aspect-ratio: 3/2;
@@ -592,7 +592,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-8);
-  color: var(--color-text-muted, #6b7280);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-sm, 0.875rem);
   text-align: center;
 }
@@ -616,7 +616,7 @@
 
 .separatorLabel {
   font-size: var(--text-sm, 0.875rem);
-  color: var(--color-fg-muted, #666);
+  color: var(--color-on-surface-muted);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -648,9 +648,9 @@
   width: 100%;
   background: linear-gradient(
     90deg,
-    var(--color-bg-light) 25%,
-    var(--color-bg-medium) 37%,
-    var(--color-bg-light) 63%
+    var(--color-surface-raised) 25%,
+    var(--color-surface-sunken) 37%,
+    var(--color-surface-raised) 63%
   );
   background-size: 400% 100%;
   animation: layoutSkeletonShimmer 1.4s ease infinite;

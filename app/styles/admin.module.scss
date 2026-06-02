@@ -38,14 +38,14 @@
 
 .blockTypeCode {
   padding: 2px 6px;
-  background: var(--color-bg-light);
+  background: var(--color-surface-raised);
   border-radius: var(--radius-1);
 }
 
 .blockContent {
-  color: var(--color-text-secondary);
+  color: var(--color-on-surface-muted);
 }
 
 .helpText {
-  color: var(--color-text-secondary);
+  color: var(--color-on-surface-muted);
 }

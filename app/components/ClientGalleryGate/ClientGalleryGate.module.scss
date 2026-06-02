@@ -32,7 +32,7 @@
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: var(--color-text-secondary);
+  color: var(--color-on-surface-muted);
   margin: 0 0 var(--space-6) 0;
 }
 
@@ -45,7 +45,7 @@
 
 .gateLabel {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-on-surface-muted);
   margin-bottom: var(--space-1);
 }
 
@@ -53,16 +53,21 @@
   width: 100%;
   padding: var(--space-3) var(--space-4);
   font-size: var(--text-md);
-  border: 1px solid var(--color-border-medium);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
   text-align: center;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color var(--duration-base) var(--ease-standard);
   background-color: var(--color-white);
   color: var(--color-black);
 
   &:focus {
     border-color: var(--color-black);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
   }
 
   &:disabled {
@@ -82,14 +87,14 @@
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--color-on-surface-muted);
   margin: var(--space-4) 0 0 0;
 }
 
 .gateSpinner {
   width: 14px;
   height: 14px;
-  border: 2px solid var(--color-border-medium);
+  border: 2px solid var(--color-border);
   border-top-color: var(--color-black);
   border-radius: 50%;
   animation: gateSpinnerRotate 0.8s linear infinite;

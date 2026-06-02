@@ -36,11 +36,11 @@
 }
 
 .dark {
-  color: var(--color-text-primary);
+  color: var(--color-on-surface);
 }
 
 .grey {
-  color: var(--color-text-muted);
+  color: var(--color-on-surface-muted);
 }
 
 @keyframes spin {

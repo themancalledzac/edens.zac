@@ -10,16 +10,16 @@
 .status {
   text-align: center;
   padding: 1.5rem 1rem;
-  color: var(--text-muted, #777);
+  color: var(--color-on-surface-muted);
   font-size: 0.85rem;
 }
 
 .retry {
   appearance: none;
-  border: 1px solid var(--border-color, #ddd);
+  border: 1px solid var(--color-border);
   border-radius: 3px;
   background: transparent;
-  color: var(--text-primary, #333);
+  color: var(--color-on-surface);
   font-size: 0.8rem;
   font-weight: 500;
   padding: 0.3rem 0.75rem;
@@ -27,7 +27,7 @@
   cursor: pointer;
 
   &:hover {
-    border-color: var(--text-primary, #333);
-    background: var(--color-bg-muted, #f5f5f5);
+    border-color: var(--color-on-surface);
+    background: var(--color-surface-sunken);
   }
 }

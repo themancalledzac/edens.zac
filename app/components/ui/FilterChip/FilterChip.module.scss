@@ -16,9 +16,9 @@
   cursor: pointer;
   opacity: 0.7;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    opacity 0.15s ease;
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
 
   &:hover:not(:disabled) {
     border-color: var(--color-fg);

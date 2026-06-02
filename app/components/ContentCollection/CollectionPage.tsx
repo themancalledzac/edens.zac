@@ -1,6 +1,6 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { type CollectionModel,CollectionType } from '@/app/types/Collection';
+import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
@@ -90,10 +90,14 @@ export default function CollectionPage({
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
+    // The collection title is shown visually as an overlay inside the content
+    // tree, so emit the page's real <h1> visually-hidden for SEO + screen readers.
+    const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
     return (
       <div className={styles.container}>
         <main className={styles.main}>
           <SiteHeader pageType="collection" collectionSlug={collection.slug} />
+          <h1 className={styles.srOnly}>{headingText}</h1>
           <CollectionPageClient collection={collection} chunkSize={chunkSize} />
         </main>
       </div>

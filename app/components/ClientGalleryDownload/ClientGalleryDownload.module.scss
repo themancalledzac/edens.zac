@@ -28,7 +28,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   margin-bottom: var(--space-2);
 }
 
@@ -42,7 +42,7 @@
 .cancelButton {
   padding: var(--space-2) var(--space-3);
   font-size: var(--text-sm);
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   background: none;
   border: none;
   cursor: pointer;
