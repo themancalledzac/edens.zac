@@ -10,7 +10,7 @@
   }
 
   &.pickedUp {
-    outline: 3px solid var(--color-primary, #3b82f6);
+    outline: 3px solid var(--color-accent);
     outline-offset: -3px;
     background: rgb(59, 130, 246, 0.1);
   }
@@ -52,12 +52,12 @@
 }
 
 .pickUpButton {
-  background: var(--color-primary, #3b82f6);
+  background: var(--color-accent);
   color: white;
 }
 
 .cancelButton {
-  background: var(--color-danger, #ef4444);
+  background: var(--color-danger);
   color: white;
 }
 
