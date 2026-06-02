@@ -17,13 +17,8 @@ interface CollectionPageWrapperProps {
 }
 
 /**
- * Collection Page Wrapper
- *
- * Shared component that fetches a collection by slug and renders it using CollectionPage.
- * Eliminates code duplication between home page (slug="home") and dynamic collection pages.
- *
- * @param slug - Collection slug to fetch and display
- * @returns Server component rendering the collection page
+ * Fetches a collection by slug and renders it via CollectionPage. Shared by the
+ * home page (slug="home") and dynamic collection pages.
  */
 export default async function CollectionPageWrapper({
   slug,

@@ -29,9 +29,7 @@ export enum CollectionType {
 export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
 
 /**
- * Base model containing common fields shared across all Collection DTOs.
- * This eliminates duplication between CollectionModel, CollectionPageDTO,
- * and CollectionUpdateRequest.
+ * Common fields shared across all Collection DTOs.
  * Matches backend CollectionBaseModel.java
  */
 export interface CollectionBaseModel {

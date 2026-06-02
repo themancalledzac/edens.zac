@@ -2,11 +2,8 @@
  * Unified filter state for every gallery view (collection detail pages,
  * location/tag/people taxonomy pages, parent pages). One shape with all
  * dimensions present-as-empty-arrays; a given page wires only the dimensions
- * it surfaces. Replaces the former GalleryFilterState + CollectionFilterState.
- *
- * All fields are URL-serializable (see app/utils/contentFilter.ts
- * parseFilterFromParams / serializeFilterToParams) so the state can later be
- * synced to search params (master plan Phase 3 — not this plan).
+ * it surfaces. All fields are URL-serializable (see contentFilter.ts) so the
+ * state can be synced to search params.
  */
 export type DateSortDirection = 'asc' | 'desc' | 'off';
 
@@ -50,8 +47,6 @@ export type ArrayFilterKey =
 
 /**
  * The single canonical date-sort cycle: off -> asc -> desc -> off.
- * (Collapses the two divergent orders that previously lived in
- * CollectionFilterBar and LocationFilterBar.)
  */
 export function cycleDateSort(current: DateSortDirection): DateSortDirection {
   const next: Record<DateSortDirection, DateSortDirection> = {
@@ -64,9 +59,8 @@ export function cycleDateSort(current: DateSortDirection): DateSortDirection {
 
 /**
  * Toggle a value in one of the array dimensions and emit a Partial update.
- * Lifted out of CollectionFilterBar so the toolbar AND tag-click handlers in
- * CollectionContentRenderer share one implementation (replaces the hand-rolled
- * toggleTag / togglePerson in LocationFilterBar).
+ * Shared by the filter toolbar and the tag-click handlers in
+ * CollectionContentRenderer.
  */
 export function toggleArrayFilter(
   state: FilterState,
