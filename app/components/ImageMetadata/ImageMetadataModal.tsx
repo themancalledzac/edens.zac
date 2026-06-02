@@ -1,7 +1,6 @@
 'use client';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
-import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
@@ -26,6 +25,7 @@ import styles from './ImageMetadataModal.module.scss';
 import CameraSettingsSection from './sections/CameraSettingsSection';
 import EssentialInfoSection from './sections/EssentialInfoSection';
 import MediaPreview from './sections/MediaPreview';
+import MetadataActionRow from './sections/MetadataActionRow';
 import TagsPeopleSection from './sections/TagsPeopleSection';
 
 /** Any content the modal can edit — images and animated GIF/MP4 blocks. */
@@ -184,67 +184,16 @@ export default function ImageMetadataModal({
             </div>
 
             {/* Action Buttons */}
-            <div className={styles.buttonRow}>
-              <div className={styles.buttonRowLeft}>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={saving}
-                  className={styles.deleteButton}
-                >
-                  {saving ? (
-                    <>
-                      <LoadingSpinner size="small" color="white" />
-                      <span className={styles.loadingLabel}>Deleting...</span>
-                    </>
-                  ) : (
-                    `Delete ${isBulkEdit ? `${selectedImageIds.length} Images` : 'Image'}`
-                  )}
-                </button>
-                {currentCollectionId && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveFromCollection}
-                    disabled={saving}
-                    className={styles.removeButton}
-                    title="Remove from current collection (image stays in the system)"
-                  >
-                    {saving ? (
-                      <>
-                        <LoadingSpinner size="small" color="white" />
-                        <span className={styles.loadingLabel}>Removing...</span>
-                      </>
-                    ) : (
-                      `Remove ${isBulkEdit ? `${selectedImageIds.length} Images` : 'Image'}`
-                    )}
-                  </button>
-                )}
-              </div>
-              <div className={styles.buttonRowRight}>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className={styles.cancelButton}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || !hasChanges}
-                  className={styles.saveButton}
-                >
-                  {saving ? (
-                    <>
-                      <LoadingSpinner size="small" color="white" />
-                      <span className={styles.loadingLabel}>Saving...</span>
-                    </>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </button>
-              </div>
-            </div>
+            <MetadataActionRow
+              isBulkEdit={isBulkEdit}
+              selectedCount={selectedImageIds.length}
+              saving={saving}
+              hasChanges={hasChanges}
+              showRemove={!!currentCollectionId}
+              onDelete={handleDelete}
+              onRemove={handleRemoveFromCollection}
+              onCancel={handleCancel}
+            />
           </form>
         </div>
       </div>

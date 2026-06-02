@@ -271,87 +271,6 @@
   }
 }
 
-/* Buttons */
-.saveButton,
-.cancelButton,
-.deleteButton,
-.removeButton {
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition: all var(--duration-base);
-  border: none;
-
-  @media (width <= 768px) {
-    width: 100%;
-    padding: 14px;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-.saveButton {
-  background: white;
-  color: black;
-
-  &:hover:not(:disabled) {
-    background: var(--scrim-light-90);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-}
-
-.cancelButton {
-  background: transparent;
-  color: white;
-  border: 1px solid var(--scrim-light-30);
-
-  &:hover:not(:disabled) {
-    background: var(--scrim-light-10);
-    border-color: var(--scrim-light-50);
-  }
-}
-
-.deleteButton {
-  background: var(--color-danger-subtle);
-  color: var(--color-danger-text);
-  border: 1px solid var(--color-danger-dark);
-
-  &:hover:not(:disabled) {
-    background: rgb(220, 38, 38, 0.3);
-    border-color: var(--color-danger-dark);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-}
-
-.removeButton {
-  background: rgb(234, 179, 8, 0.15);
-  color: rgb(250, 204, 21);
-  border: 1px solid rgb(202, 138, 4, 0.6);
-
-  &:hover:not(:disabled) {
-    background: rgb(234, 179, 8, 0.25);
-    border-color: rgb(202, 138, 4);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-}
-
 /* Metadata Dropdown Styles */
 .dropdownHeader {
   display: flex;
@@ -592,8 +511,4 @@
 
 .bulkEditThumbImg {
   object-fit: cover;
-}
-
-.loadingLabel {
-  margin-left: var(--space-2);
 }
