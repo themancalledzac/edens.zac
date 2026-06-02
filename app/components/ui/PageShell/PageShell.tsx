@@ -16,9 +16,8 @@ export interface PageShellProps {
 
 /**
  * Canonical page scaffold: the painted, dark-safe surface (container/main) plus
- * the SiteHeader. Replaces the 8 copy-pasted .container/.main scaffolds. The
- * page-specific header (title/count/cover/breadcrumbs) is composed via
- * <CollectionHeader>, passed as the first child.
+ * the SiteHeader. The page-specific header (title/count/cover/breadcrumbs) is
+ * composed via <CollectionHeader>, passed as the first child.
  */
 export function PageShell({
   children,

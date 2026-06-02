@@ -1,8 +1,6 @@
 /**
- * Global 404 Not Found Page
- *
- * Renders when routes fail to resolve or notFound() is called. Uses the
- * canonical StatusPage on the painted, dark-safe surface (review §5).
+ * Global 404 page. Renders when routes fail to resolve or notFound() is called,
+ * using the canonical StatusPage on the painted, dark-safe surface.
  */
 import { StatusPage } from '@/app/components/ui/StatusPage/StatusPage';
 

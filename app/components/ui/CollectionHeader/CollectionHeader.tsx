@@ -21,9 +21,8 @@ export interface CollectionHeaderProps {
 
 /**
  * Canonical page header: title (real <h1>) + optional count + optional cover
- * thumbnail + optional breadcrumb slot. Replaces the bespoke .pageHeader blocks
- * across taxonomy / location / admin / metadata pages and gives every page a
- * real heading (review §2 — taxonomy pages lacked an orienting name).
+ * thumbnail + optional breadcrumb slot. Gives every page a real, orienting
+ * heading.
  */
 export function CollectionHeader({ title, count, cover, breadcrumb }: CollectionHeaderProps) {
   const info = (

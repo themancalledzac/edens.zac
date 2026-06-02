@@ -21,8 +21,7 @@ export interface StatusPageProps {
 
 /**
  * Canonical 404 / error / empty-state page on the painted, dark-safe surface.
- * Reuses ErrorBoundary's readable pattern (role="alert", type=button retry).
- * Replaces the chrome-less, invisible not-found.tsx / error.tsx. Review §5.
+ * Readable pattern: role="alert", a type=button retry, and a home link.
  */
 export function StatusPage({
   title,
