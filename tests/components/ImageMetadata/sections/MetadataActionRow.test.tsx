@@ -63,10 +63,10 @@ describe('MetadataActionRow', () => {
     expect(screen.getByRole('button', { name: /remove image/i })).toBeInTheDocument();
   });
 
-  it('Remove button uses the danger variant', () => {
+  it('Remove button uses the warning variant', () => {
     render(<MetadataActionRow {...makeProps({ showRemove: true })} />);
     const btn = screen.getByRole('button', { name: /remove image/i });
-    expect(btn.className).toContain('danger');
+    expect(btn.className).toContain('warning');
   });
 
   // ── saving=true propagates aria-busy (loading buttons) + disabled (cancel) ──

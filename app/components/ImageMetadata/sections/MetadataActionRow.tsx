@@ -42,7 +42,7 @@ export default function MetadataActionRow({
         </Button>
         {showRemove && (
           <Button
-            variant="danger"
+            variant="warning"
             loading={saving}
             onClick={onRemove}
             title="Remove from current collection (image stays in the system)"
