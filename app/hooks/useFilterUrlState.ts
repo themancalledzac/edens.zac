@@ -10,6 +10,25 @@ import {
 } from '@/app/utils/contentFilter';
 
 /**
+ * Query keys the filter layer owns. MUST mirror serializeFilterToParams in
+ * contentFilter.ts — these are the only keys syncToUrl is allowed to clear, so
+ * any param it doesn't own (e.g. `image` for the fullscreen deep-link) survives.
+ */
+const FILTER_PARAM_KEYS = [
+  'rating',
+  'people',
+  'location',
+  'tag',
+  'camera',
+  'q',
+  'from',
+  'to',
+  'isFilm',
+  'bw',
+  'collection',
+] as const;
+
+/**
  * Bridges the tested filter-URL helpers (parseFilterFromParams /
  * serializeFilterToParams) to a gallery client's local filter state so filtered
  * views are shareable and Back-correct.
@@ -38,7 +57,13 @@ export function useFilterUrlState(): {
 
   const syncToUrl = useCallback(
     (criteria: ContentFilterCriteria) => {
-      const qs = serializeFilterToParams(criteria).toString();
+      // Merge into the live URL: drop only the filter keys we own (so a removed
+      // filter clears), then write the serialized ones. Params we don't own —
+      // notably `?image=<id>` for the fullscreen deep-link — are preserved.
+      const params = new URLSearchParams(window.location.search);
+      for (const k of FILTER_PARAM_KEYS) params.delete(k);
+      for (const [k, v] of serializeFilterToParams(criteria)) params.append(k, v);
+      const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
     [router, pathname]

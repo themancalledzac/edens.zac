@@ -1,4 +1,7 @@
 .footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   margin-top: var(--space-6);
   padding: var(--space-6) var(--page-padding-mobile);
   border-top: 1px solid var(--color-border);
@@ -14,7 +17,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
-  margin-bottom: var(--space-3);
 }
 
 .link {

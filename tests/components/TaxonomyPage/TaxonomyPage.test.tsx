@@ -40,7 +40,7 @@ describe('TaxonomyPage', () => {
   it('renders a fallback heading when entityName is empty or whitespace', () => {
     render(<TaxonomyPage entityName="   " images={[img(1)]} />);
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading).toHaveTextContent('Untagged');
+    expect(heading).toHaveTextContent('Untitled');
     expect(heading.textContent?.trim()).not.toBe('');
   });
 });

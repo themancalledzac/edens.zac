@@ -14,7 +14,7 @@ export default function TaxonomyPage({ entityName, images }: TaxonomyPageProps) 
   const contentBlocks = processContentBlocks(images, true);
   // Guard against an unresolved/empty entity name so the page still has a real,
   // orienting <h1> instead of an empty heading.
-  const title = entityName?.trim() || 'Untagged';
+  const title = entityName?.trim() || 'Untitled';
 
   return (
     <PageShell>

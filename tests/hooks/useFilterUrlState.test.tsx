@@ -22,10 +22,19 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => searchParams,
 }));
 
+/**
+ * syncToUrl merges into the LIVE URL via window.location.search (so it preserves
+ * params it doesn't own). Drive that in jsdom by setting the search string.
+ */
+function setLocationSearch(search: string): void {
+  window.history.replaceState({}, '', `/some-collection${search}`);
+}
+
 describe('useFilterUrlState', () => {
   beforeEach(() => {
     replaceMock.mockClear();
     searchParams = new URLSearchParams();
+    setLocationSearch('');
   });
 
   it('parses initial criteria from the URL', () => {
@@ -61,6 +70,24 @@ describe('useFilterUrlState', () => {
       result.current.syncToUrl({});
     });
     expect(replaceMock).toHaveBeenCalledWith('/some-collection', { scroll: false });
+  });
+
+  it('preserves a non-filter param (image) while writing and clearing filter keys', () => {
+    // Live URL carries both a non-filter param (image) and a stale filter param (tag).
+    setLocationSearch('?image=42&tag=stale');
+    const { result } = renderHook(() => useFilterUrlState());
+    act(() => {
+      // New criteria set a different filter and drop the stale tag.
+      result.current.syncToUrl({ minRating: 5 });
+    });
+    const [url] = replaceMock.mock.calls[0] as [string];
+    const written = new URL(url, 'http://localhost').searchParams;
+    // Non-filter param survives untouched.
+    expect(written.get('image')).toBe('42');
+    // New filter key is written.
+    expect(written.get('rating')).toBe('5');
+    // The removed filter key is cleared.
+    expect(written.has('tag')).toBe(false);
   });
 
   it('keeps initialCriteria stable across re-renders even if the URL changes', () => {
