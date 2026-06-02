@@ -54,7 +54,9 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/collection/manage/') ||
     /\/collection\/.+\/edit$/.test(pathname) ||
     pathname === '/comments' ||
-    pathname.startsWith('/comments/');
+    pathname.startsWith('/comments/') ||
+    pathname === '/metadata' ||
+    pathname.startsWith('/metadata/');
 
   if (!isAdminRoute) {
     return NextResponse.next();
@@ -98,5 +100,7 @@ export const config = {
     '/collection/:slug/edit',
     '/comments',
     '/comments/:path*',
+    '/metadata',
+    '/metadata/:path*',
   ],
 };

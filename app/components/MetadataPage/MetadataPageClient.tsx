@@ -1,14 +1,12 @@
 'use client';
 
 import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
+import { MetadataList } from '@/app/components/ui/MetadataList/MetadataList';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import type { LocationModel } from '@/app/types/Collection';
 import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
 
-import { MetadataLocationList } from './MetadataLocationList';
 import styles from './MetadataPage.module.scss';
-import { MetadataPersonList } from './MetadataPersonList';
-import { MetadataTagList } from './MetadataTagList';
 
 interface MetadataPageClientProps {
   tags: ContentTagModel[];
@@ -21,9 +19,21 @@ export function MetadataPageClient({ tags, people, locations }: MetadataPageClie
     <PageShell>
       <CollectionHeader title="Metadata" />
       <div className={styles.grid}>
-        <MetadataTagList items={tags} />
-        <MetadataPersonList items={people} />
-        <MetadataLocationList items={locations} />
+        <MetadataList title="Tags" emptyLabel="No tags" items={tags} basePath="/metadata/tags" />
+        <MetadataList
+          title="People"
+          emptyLabel="No people"
+          items={people}
+          basePath="/metadata/people"
+          getHref={item => (item.slug ? `/people/${item.slug}` : null)}
+        />
+        <MetadataList
+          title="Locations"
+          emptyLabel="No locations"
+          items={locations}
+          basePath="/metadata/locations"
+          getHref={item => (item.slug ? `/location/${item.slug}` : null)}
+        />
       </div>
     </PageShell>
   );
