@@ -12,14 +12,17 @@ interface TaxonomyPageProps {
 
 export default function TaxonomyPage({ entityName, images }: TaxonomyPageProps) {
   const contentBlocks = processContentBlocks(images, true);
+  // Guard against an unresolved/empty entity name so the page still has a real,
+  // orienting <h1> instead of an empty heading.
+  const title = entityName?.trim() || 'Untagged';
 
   return (
     <PageShell>
       <CollectionHeader
-        title={entityName}
+        title={title}
         count={images.length}
         breadcrumb={
-          <Breadcrumb items={[{ label: 'Explore', href: '/explore' }, { label: entityName }]} />
+          <Breadcrumb items={[{ label: 'Explore', href: '/explore' }, { label: title }]} />
         }
       />
       {contentBlocks.length > 0 && (
