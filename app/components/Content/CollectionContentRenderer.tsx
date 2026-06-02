@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { type Ref, useCallback, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
@@ -12,6 +12,7 @@ import {
   FilterToolbar,
   type ToolbarDimension,
 } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { Tile } from '@/app/components/ui/Tile/Tile';
 import { useParallax } from '@/app/hooks/useParallax';
 import {
   type ContentGifModel,
@@ -134,6 +135,9 @@ export default function CollectionContentRenderer({
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
 
+  // COLLECTION tiles navigate via href; IMAGE/GIF fullscreen stays on onClick.
+  const isSlugNav = !!_hasSlug && !onImageClick && !isReorderMode && contentType !== 'TEXT';
+
   // Whether a meaningful click action exists for this item (used for cursor/style checks).
   // Mirrors the guard logic in handleClick: TEXT and reorder mode produce no action,
   // slug-only navigation fires when _hasSlug is set and no onImageClick is present,
@@ -148,15 +152,8 @@ export default function CollectionContentRenderer({
   const handleClick = useCallback(() => {
     if (contentType === 'TEXT') return;
     if (isReorderMode) return;
+    if (_hasSlug && !onImageClick) return; // navigation handled by <Tile href>
 
-    if (_hasSlug && !onImageClick) {
-      router.push(`/${_hasSlug}`);
-      return;
-    }
-
-    // Synthetic stand-in passed up to ContentBlockWithFullScreen — that wrapper looks the real
-    // block up by id from its source array and forwards full metadata into the modal. We just
-    // need id + contentType to be honest; everything else is best-effort fallback.
     const fullScreenContent: ViewableContent =
       contentType === 'GIF'
         ? ({
@@ -193,7 +190,6 @@ export default function CollectionContentRenderer({
     enableFullScreenView,
     onFullScreenImageClick,
     _hasSlug,
-    router,
     isReorderMode,
   ]);
 
@@ -597,6 +593,31 @@ export default function CollectionContentRenderer({
     },
     ...(enableParallax && { ref: parallaxRef }),
   };
+
+  if (isSlugNav) {
+    return (
+      <Tile
+        key={contentId}
+        href={`/${_hasSlug}`}
+        aria-label={overlayText ?? alt}
+        className={wrapperProps.className}
+        style={wrapperProps.style}
+        {...(enableParallax
+          ? { ref: parallaxRef as Ref<HTMLAnchorElement>, 'data-parallax-container': '' }
+          : { 'data-image-wrapper': '' })}
+      >
+        <span className={cbStyles.imageWrapper}>{imageWrapperContent}</span>
+        {!enableParallax && (
+          <ImageOverlays
+            contentType={contentType}
+            isNotVisible={isNotVisible}
+            shouldShowOverlay={shouldShowOverlay}
+            isSelected={isSelected}
+          />
+        )}
+      </Tile>
+    );
+  }
 
   return (
     <div
