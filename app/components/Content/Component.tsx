@@ -190,17 +190,13 @@ export default function Component({
   }
 
   if (rows.length === 0) {
-    // While the layout is being measured (contentWidth not yet known) reserve a
-    // screenful so the gallery doesn't collapse to a blank void on first paint.
-    const skeletonHeight = viewportHeight > 0 ? viewportHeight : 600;
+    // Reserve a full viewport via CSS (.layoutSkeleton min-height: 100dvh) so the
+    // footer in the root layout never appears above the fold while contentWidth
+    // is being measured. Independent of the JS-measured viewportHeight, which is
+    // 0 on the first render.
     return (
       <div className={cbStyles.wrapper}>
-        <div
-          className={cbStyles.layoutSkeleton}
-          style={{ height: skeletonHeight }}
-          aria-hidden="true"
-          data-testid="layout-skeleton"
-        />
+        <div className={cbStyles.layoutSkeleton} aria-hidden="true" data-testid="layout-skeleton" />
       </div>
     );
   }

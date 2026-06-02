@@ -646,6 +646,7 @@
    void / layout shift on first paint. Token-driven shimmer, reduced-motion safe. */
 .layoutSkeleton {
   width: 100%;
+  min-height: 100dvh;
   background: linear-gradient(
     90deg,
     var(--color-surface-raised) 25%,
