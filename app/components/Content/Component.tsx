@@ -189,7 +189,21 @@ export default function Component({
     );
   }
 
-  if (rows.length === 0) return <div />;
+  if (rows.length === 0) {
+    // While the layout is being measured (contentWidth not yet known) reserve a
+    // screenful so the gallery doesn't collapse to a blank void on first paint.
+    const skeletonHeight = viewportHeight > 0 ? viewportHeight : 600;
+    return (
+      <div className={cbStyles.wrapper}>
+        <div
+          className={cbStyles.layoutSkeleton}
+          style={{ height: skeletonHeight }}
+          aria-hidden="true"
+          data-testid="layout-skeleton"
+        />
+      </div>
+    );
+  }
 
   /** Renders a row using BoxRenderer (recursive). */
   const renderRow = (row: RowWithPatternAndSizes, rowIndex: number) => {

@@ -49,3 +49,41 @@ describe('CollectionContentRenderer — TEXT branch sibling collections', () => 
     expect(screen.queryByText('Related:')).not.toBeInTheDocument();
   });
 });
+
+describe('CollectionContentRenderer — blur-up placeholder', () => {
+  const imageProps = {
+    contentId: 7,
+    className: 'imageSingle',
+    width: 300,
+    height: 200,
+    isMobile: false,
+    imageUrl: 'https://cdn.example/7.jpg',
+    imageWidth: 300,
+    imageHeight: 200,
+    alt: 'hero',
+    enableParallax: false,
+    contentType: 'IMAGE' as const,
+  };
+
+  // next/image does not surface placeholder="blur" as a DOM attribute; when it is
+  // active it renders the blur-up via inline background-image styles on the <img>
+  // (background-size: cover / background-position / background-repeat). That style
+  // block is the observable signal that the blurDataURL placeholder took effect.
+  it('applies the blur-up placeholder when priority and a blurDataURL is provided', () => {
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        priority
+        blurDataURL="data:image/jpeg;base64,abc"
+      />
+    );
+    const img = screen.getByAltText('hero');
+    expect(img.getAttribute('style')).toContain('background-size: cover');
+  });
+
+  it('omits the blur-up placeholder when no blurDataURL is provided', () => {
+    render(<CollectionContentRenderer {...imageProps} priority />);
+    const img = screen.getByAltText('hero');
+    expect(img.getAttribute('style') ?? '').not.toContain('background-size');
+  });
+});

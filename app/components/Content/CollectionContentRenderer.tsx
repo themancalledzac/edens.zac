@@ -124,6 +124,7 @@ export default function CollectionContentRenderer({
   currentCoverImageId,
   justClickedImageId,
   priority = false,
+  blurDataURL,
   onImageLoadError,
   isClientGallery = false,
   collectionSlug,
@@ -492,6 +493,10 @@ export default function CollectionContentRenderer({
     fetchPriority: priority ? ('high' as const) : undefined,
     unoptimized: isGif,
     onError: handleImageError,
+    // Blur-up only on the priority (first-row) image and only when the model
+    // supplies a blurDataURL. Next requires blurDataURL for placeholder="blur"
+    // on remote images, so the omit-branch preserves today's behavior exactly.
+    ...(priority && blurDataURL ? { placeholder: 'blur' as const, blurDataURL } : {}),
     ...(enableParallax
       ? {
           className: `parallax-bg ${variantStyles.parallaxImage}`,

@@ -91,6 +91,8 @@ export interface CollectionContentRendererProps extends ContentRendererProps {
 
   // LCP optimization
   priority?: boolean;
+  /** Low-res base64 placeholder for next/image blur-up on the priority image. */
+  blurDataURL?: string;
 
   // Error handling
   onImageLoadError?: (contentId: number) => void;
