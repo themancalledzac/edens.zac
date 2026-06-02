@@ -167,6 +167,52 @@ describe('proxy middleware — /explore admin gating', () => {
   });
 });
 
+describe('proxy middleware — /all-collections admin gating', () => {
+  it('passes /all-collections through on localhost', () => {
+    setLocal();
+    const res = proxy(makeRequest('/all-collections'));
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('returns 403 on /all-collections in prod when admin routes disabled', () => {
+    setProd();
+    process.env.ADMIN_ROUTES_ENABLED = 'false';
+    const res = proxy(makeRequest('/all-collections'));
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 on /all-collections in prod when admin routes enabled but auth missing', () => {
+    setProd();
+    process.env.ADMIN_ROUTES_ENABLED = 'true';
+    process.env.ADMIN_TOKEN = 'secret123';
+    const res = proxy(makeRequest('/all-collections'));
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('proxy middleware — /all-images admin gating', () => {
+  it('passes /all-images through on localhost', () => {
+    setLocal();
+    const res = proxy(makeRequest('/all-images'));
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('returns 403 on /all-images in prod when admin routes disabled', () => {
+    setProd();
+    process.env.ADMIN_ROUTES_ENABLED = 'false';
+    const res = proxy(makeRequest('/all-images'));
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 401 on /all-images in prod when admin routes enabled but auth missing', () => {
+    setProd();
+    process.env.ADMIN_ROUTES_ENABLED = 'true';
+    process.env.ADMIN_TOKEN = 'secret123';
+    const res = proxy(makeRequest('/all-images'));
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('proxy middleware — non-matching paths', () => {
   it('passes unrelated paths through on localhost', () => {
     setLocal();

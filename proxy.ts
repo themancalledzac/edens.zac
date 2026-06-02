@@ -58,7 +58,11 @@ export function proxy(request: NextRequest) {
     pathname === '/metadata' ||
     pathname.startsWith('/metadata/') ||
     pathname === '/explore' ||
-    pathname.startsWith('/explore/');
+    pathname.startsWith('/explore/') ||
+    pathname === '/all-collections' ||
+    pathname.startsWith('/all-collections/') ||
+    pathname === '/all-images' ||
+    pathname.startsWith('/all-images/');
 
   if (!isAdminRoute) {
     return NextResponse.next();
@@ -106,5 +110,9 @@ export const config = {
     '/metadata/:path*',
     '/explore',
     '/explore/:path*',
+    '/all-collections',
+    '/all-collections/:path*',
+    '/all-images',
+    '/all-images/:path*',
   ],
 };
