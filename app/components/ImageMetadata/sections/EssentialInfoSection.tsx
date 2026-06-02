@@ -10,6 +10,21 @@ import type { CollectionListModel, LocationModel } from '@/app/types/Collection'
 import type { ImageUpdateState } from '../hooks/useImageMetadataState';
 import modalStyles from '../ImageMetadataModal.module.scss';
 
+// ---------------------------------------------------------------------------
+// Static option list for the Rating <Select>. Hoisted out of the render path
+// because it doesn't reference any component-scope identifier. Per the project
+// "inline JSX config" rule (ai_guidelines/ai_quick_reference.md).
+// ---------------------------------------------------------------------------
+
+const RATING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: '', label: 'No rating' },
+  { value: '1', label: '1 Star' },
+  { value: '2', label: '2 Stars' },
+  { value: '3', label: '3 Stars' },
+  { value: '4', label: '4 Stars' },
+  { value: '5', label: '5 Stars' },
+];
+
 export interface EssentialInfoSectionProps {
   updateState: ImageUpdateState;
   updateStateField: (updates: Partial<ImageUpdateState>) => void;
@@ -130,12 +145,11 @@ export default function EssentialInfoSection({
           }
           className={modalStyles.formSelect}
         >
-          <option value="">No rating</option>
-          <option value="1">1 Star</option>
-          <option value="2">2 Stars</option>
-          <option value="3">3 Stars</option>
-          <option value="4">4 Stars</option>
-          <option value="5">5 Stars</option>
+          {RATING_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
         </Select>
       </div>
 

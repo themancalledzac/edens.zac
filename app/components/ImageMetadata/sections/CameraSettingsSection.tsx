@@ -1,6 +1,6 @@
 'use client';
 
-import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
+import Dropdown, { type AddNewField } from '@/app/components/ui/Dropdown/Dropdown';
 import { Checkbox } from '@/app/components/ui/Field/Checkbox';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Select } from '@/app/components/ui/Field/Select';
@@ -15,6 +15,71 @@ import type {
 import type { ImageUpdateState } from '../hooks/useImageMetadataState';
 import modalStyles from '../ImageMetadataModal.module.scss';
 import { computeCameraSelectionUpdate } from '../imageMetadataUtils';
+
+// ---------------------------------------------------------------------------
+// Static add-new-field schemas. Hoisted out of the render path because they
+// don't reference any component-scope identifier (props / state / closures).
+// Per the project's "inline JSX config" rule (ai_guidelines/ai_quick_reference.md).
+// ---------------------------------------------------------------------------
+
+const LENS_ADD_NEW_FIELDS: AddNewField[] = [
+  {
+    name: 'name',
+    label: 'Lens Name',
+    type: 'text',
+    placeholder: 'e.g., 24-70mm f/2.8',
+    required: true,
+  },
+];
+
+const FILM_STOCK_ADD_NEW_FIELDS: AddNewField[] = [
+  {
+    name: 'name',
+    label: 'Film Stock Name',
+    type: 'text',
+    placeholder: 'e.g., Kodak Portra 400',
+    required: true,
+  },
+  {
+    name: 'defaultIso',
+    label: 'Default ISO',
+    type: 'number',
+    placeholder: 'e.g., 400',
+    required: true,
+    min: 1,
+  },
+];
+
+/**
+ * Camera's add-new schema needs a props-derived field (film-format options),
+ * so it's a builder, not a const. Static parts of each field still don't move
+ * per call; only the `options` list re-derives when `availableFilmFormats` changes.
+ */
+const buildCameraAddNewFields = (availableFilmFormats: FilmFormatDTO[]): AddNewField[] => [
+  {
+    name: 'cameraName',
+    label: 'Camera Name',
+    type: 'text',
+    placeholder: 'e.g., Hasselblad 500cm',
+    required: true,
+  },
+  {
+    name: 'isFilm',
+    label: 'Film Camera',
+    type: 'checkbox',
+  },
+  {
+    name: 'defaultFilmFormat',
+    label: 'Film Format',
+    type: 'select',
+    options: availableFilmFormats.map(f => ({
+      value: f.name,
+      label: f.displayName,
+    })),
+    showWhen: data => data.isFilm === true,
+    placeholder: 'Select format',
+  },
+];
 
 export interface CameraSettingsSectionProps {
   updateState: ImageUpdateState;
@@ -93,31 +158,7 @@ export default function CameraSettingsSection({
               console.error('Failed to create camera', error_);
             });
         }}
-        addNewFields={[
-          {
-            name: 'cameraName',
-            label: 'Camera Name',
-            type: 'text',
-            placeholder: 'e.g., Hasselblad 500cm',
-            required: true,
-          },
-          {
-            name: 'isFilm',
-            label: 'Film Camera',
-            type: 'checkbox',
-          },
-          {
-            name: 'defaultFilmFormat',
-            label: 'Film Format',
-            type: 'select',
-            options: availableFilmFormats.map(f => ({
-              value: f.name,
-              label: f.displayName,
-            })),
-            showWhen: data => data.isFilm === true,
-            placeholder: 'Select format',
-          },
-        ]}
+        addNewFields={buildCameraAddNewFields(availableFilmFormats)}
         getDisplayName={camera => camera.name}
         showNewIndicator
         emptyText="No camera set"
@@ -136,15 +177,7 @@ export default function CameraSettingsSection({
         onAddNew={data => {
           updateStateField({ lens: { id: 0, name: data.name as string } });
         }}
-        addNewFields={[
-          {
-            name: 'name',
-            label: 'Lens Name',
-            type: 'text',
-            placeholder: 'e.g., 24-70mm f/2.8',
-            required: true,
-          },
-        ]}
+        addNewFields={LENS_ADD_NEW_FIELDS}
         getDisplayName={lens => lens.name}
         showNewIndicator
         emptyText="No lens set"
@@ -252,23 +285,7 @@ export default function CameraSettingsSection({
                 iso: defaultIso,
               });
             }}
-            addNewFields={[
-              {
-                name: 'name',
-                label: 'Film Stock Name',
-                type: 'text',
-                placeholder: 'e.g., Kodak Portra 400',
-                required: true,
-              },
-              {
-                name: 'defaultIso',
-                label: 'Default ISO',
-                type: 'number',
-                placeholder: 'e.g., 400',
-                required: true,
-                min: 1,
-              },
-            ]}
+            addNewFields={FILM_STOCK_ADD_NEW_FIELDS}
             getDisplayName={film => `${film.name} (ISO ${film.defaultIso})`}
             showNewIndicator
             emptyText="No film stock set"
