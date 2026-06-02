@@ -16,6 +16,7 @@ import {
   createCollectionContent,
   createGifContent,
   createImageContent,
+  createParallaxContent,
   createTextContent,
 } from '@/tests/fixtures/contentFixtures';
 
@@ -155,6 +156,21 @@ describe('contentRendererUtils', () => {
         const result = normalizeContentToRendererProps(collection, 500, 300, 'imageSingle', false);
 
         expect(result.alt).toBe('Collection');
+      });
+    });
+
+    describe('PARALLAX IMAGE carrying a collectionType', () => {
+      it('suppresses internal collectionType from cardTypeBadge', () => {
+        const tile = createParallaxContent(1, { collectionType: CollectionType.PORTFOLIO });
+        const result = normalizeContentToRendererProps(tile, 500, 300, 'imageSingle', false);
+        expect(result.enableParallax).toBe(true);
+        expect(result.cardTypeBadge).toBeUndefined();
+      });
+
+      it('curates a public collectionType to a friendly label', () => {
+        const tile = createParallaxContent(1, { collectionType: CollectionType.ART_GALLERY });
+        const result = normalizeContentToRendererProps(tile, 500, 300, 'imageSingle', false);
+        expect(result.cardTypeBadge).toBe('Gallery');
       });
     });
 

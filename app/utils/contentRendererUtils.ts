@@ -194,7 +194,10 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(content.alt, content.title, content.caption),
       overlayText: content.overlayText,
-      cardTypeBadge: 'collectionType' in content ? content.collectionType : undefined,
+      cardTypeBadge:
+        'collectionType' in content && content.collectionType
+          ? (collectionTypeToPublicLabel(content.collectionType) ?? undefined)
+          : undefined,
       enableParallax: true,
       hasSlug: 'slug' in content ? content.slug : undefined,
       isCollection: false,
