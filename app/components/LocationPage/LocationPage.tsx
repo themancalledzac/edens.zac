@@ -1,3 +1,4 @@
+import { Breadcrumb } from '@/app/components/Breadcrumb/Breadcrumb';
 import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -24,6 +25,9 @@ export default function LocationPage({
         title={locationName}
         count={images.length}
         cover={coverImage?.imageUrl ? { src: coverImage.imageUrl } : undefined}
+        breadcrumb={
+          <Breadcrumb items={[{ label: 'Explore', href: '/explore' }, { label: locationName }]} />
+        }
       />
       <LocationPageClient images={images} collections={collections} />
     </PageShell>
