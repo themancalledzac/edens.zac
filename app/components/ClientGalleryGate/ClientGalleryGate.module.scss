@@ -65,6 +65,11 @@
     border-color: var(--color-black);
   }
 
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;

@@ -31,6 +31,11 @@ html,
 
   --color-on-accent: var(--color-white); /* text/icons on an accent fill */
 
+  /* Keyboard focus indicator. Pair every bare `outline: none` with a
+     `&:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }`
+     so keyboard users keep a visible ring while mouse/touch users don't. */
+  --focus-ring: 2px solid var(--color-accent);
+
   /* Scrim alpha ramps — one dark + one light scale, 10..90 in steps of 10.
      Replaces the 9-step --color-overlay-light-* ramp + ~94 inline rgb() literals. */
   --scrim-dark-10: rgb(0 0 0 / 10%);

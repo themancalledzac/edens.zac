@@ -173,6 +173,11 @@
     background: rgb(255, 255, 255, 0.08);
   }
 
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+
   &::placeholder {
     color: var(--scrim-light-40);
   }
