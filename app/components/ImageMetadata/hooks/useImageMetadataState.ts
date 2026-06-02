@@ -8,6 +8,7 @@ import { convertLocationsToModels } from '@/app/utils/locationUtils';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
 import { getCommonValues } from '../imageMetadataUtils';
+import type { EditableContent } from '../types';
 
 /**
  * Local edit-state shape. We allow GIF fields too because the same modal now edits both — image-
@@ -17,9 +18,6 @@ export type ImageUpdateState = Partial<ContentImageModel> &
   Partial<Pick<ContentGifModel, 'gifUrl' | 'thumbnailUrl' | 'rating'>> & {
     id: number;
   };
-
-/** Any content the modal can edit — images and animated GIF/MP4 blocks. */
-type EditableContent = ContentImageModel | ContentGifModel;
 
 /**
  * Stable empty array used as the default for `availableLocations` to prevent the
@@ -41,11 +39,13 @@ export interface UseImageMetadataStateResult {
 
 interface UseImageMetadataStateParams {
   selectedImages: EditableContent[];
+  selectedImageIds: number[];
   availableLocations?: LocationModel[];
 }
 
 export function useImageMetadataState({
   selectedImages,
+  selectedImageIds,
   availableLocations,
 }: UseImageMetadataStateParams): UseImageMetadataStateResult {
   // Use a module-scope constant when availableLocations is absent OR empty to prevent the
@@ -55,21 +55,13 @@ export function useImageMetadataState({
   const stableLocations =
     availableLocations && availableLocations.length > 0 ? availableLocations : EMPTY_LOCATIONS;
 
-  const isBulkEdit = selectedImages.length > 1;
+  const isBulkEdit = selectedImageIds.length > 1;
 
   // `getCommonValues` was authored for ContentImageModel only — for GIF blocks we slot the union
   // in but the bulk-edit code path only ever runs on images (ManageClient.handleBulkEdit splits
   // mixed selections), so the cast here is safe at runtime.
   const imageSubset = selectedImages.filter(
     (c): c is ContentImageModel => c.contentType === 'IMAGE'
-  );
-
-  // Stable key derived from the selected image IDs. Using a primitive dep in the effect prevents
-  // re-firing when the caller passes a new array reference with the same contents (e.g. on every
-  // render in tests or in a parent that rebuilds the array inline).
-  const selectedImagesKey = useMemo(
-    () => selectedImages.map(s => s.id).join(','),
-    [selectedImages]
   );
 
   const buildInitialState = (): ImageUpdateState => {
@@ -93,10 +85,13 @@ export function useImageMetadataState({
 
   useEffect(() => {
     setUpdateState(buildInitialState());
-    // buildInitialState closes over selectedImages + stableLocations only; everything else is
-    // stable. selectedImagesKey is a primitive derived from selectedImages IDs so the effect only
-    // fires when the actual selection changes, not on every render.
-  }, [selectedImagesKey, stableLocations]);
+    // Safe to use selectedImages directly: the parent (ManageClient) passes a stable reference
+    // from useState-backed contentToEdit, so this array identity only changes on a real selection
+    // change. stableLocations handles the empty-array default-param footgun (a new [] literal each
+    // render would otherwise trigger an infinite loop via: setState → re-render → new [] → effect).
+    // buildInitialState is an inline closure; omitting it from deps is intentional — its captured
+    // values (selectedImages, stableLocations) are already listed above.
+  }, [selectedImages, stableLocations]);
 
   const updateStateField = (updates: Partial<ImageUpdateState>) => {
     setUpdateState(prev => ({ ...prev, ...updates }));

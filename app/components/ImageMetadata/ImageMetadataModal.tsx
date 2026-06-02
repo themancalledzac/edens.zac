@@ -4,11 +4,7 @@ import CollectionListSelector from '@/app/components/CollectionListSelector/Coll
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
-import {
-  type ContentGifModel,
-  type ContentImageModel,
-  type ContentImageUpdateResponse,
-} from '@/app/types/Content';
+import { type ContentGifModel, type ContentImageUpdateResponse } from '@/app/types/Content';
 import {
   type ContentCameraModel,
   type ContentFilmTypeModel,
@@ -27,9 +23,7 @@ import EssentialInfoSection from './sections/EssentialInfoSection';
 import MediaPreview from './sections/MediaPreview';
 import MetadataActionRow from './sections/MetadataActionRow';
 import TagsPeopleSection from './sections/TagsPeopleSection';
-
-/** Any content the modal can edit — images and animated GIF/MP4 blocks. */
-type EditableContent = ContentImageModel | ContentGifModel;
+import type { EditableContent } from './types';
 
 interface ImageMetadataModalProps {
   onClose: () => void;
@@ -94,7 +88,7 @@ export default function ImageMetadataModal({
     pendingAddIds,
     pendingRemoveIds,
     handleCollectionToggle,
-  } = useImageMetadataState({ selectedImages, availableLocations });
+  } = useImageMetadataState({ selectedImages, selectedImageIds, availableLocations });
 
   const { saving, error, handleSubmit, handleCancel, handleDelete, handleRemoveFromCollection } =
     useImageMetadataSubmit({

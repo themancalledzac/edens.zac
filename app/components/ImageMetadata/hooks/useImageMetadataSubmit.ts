@@ -26,18 +26,8 @@ import {
   buildImageUpdatesForBulkEdit,
   mapUpdateResponseToFrontend,
 } from '../imageMetadataUtils';
-
-/** Any content the modal can edit — images and animated GIF/MP4 blocks. */
-type EditableContent = ContentImageModel | ContentGifModel;
-
-/**
- * Local edit-state shape. We allow GIF fields too because the same modal now edits both — image-
- * only fields are disabled in the JSX when the current selection is a GIF.
- */
-type ImageUpdateState = Partial<ContentImageModel> &
-  Partial<Pick<ContentGifModel, 'gifUrl' | 'thumbnailUrl' | 'rating'>> & {
-    id: number;
-  };
+import type { EditableContent } from '../types';
+import type { ImageUpdateState } from './useImageMetadataState';
 
 export interface UseImageMetadataSubmitParams {
   selectedImages: EditableContent[];

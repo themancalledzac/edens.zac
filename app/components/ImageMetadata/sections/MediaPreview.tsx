@@ -7,9 +7,7 @@ import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 
 import styles from '../ImageMetadataModal.module.scss';
-
-/** Any content the modal can edit — images and animated GIF/MP4 blocks. */
-type EditableContent = ContentImageModel | ContentGifModel;
+import type { EditableContent } from '../types';
 
 /**
  * Render the single-item preview: looping `<video>` for GIF/MP4, `<Image>` for stills.
