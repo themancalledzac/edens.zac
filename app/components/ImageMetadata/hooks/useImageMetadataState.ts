@@ -13,7 +13,7 @@ import { getCommonValues } from '../imageMetadataUtils';
  * Local edit-state shape. We allow GIF fields too because the same modal now edits both — image-
  * only fields are disabled in the JSX when the current selection is a GIF.
  */
-type ImageUpdateState = Partial<ContentImageModel> &
+export type ImageUpdateState = Partial<ContentImageModel> &
   Partial<Pick<ContentGifModel, 'gifUrl' | 'thumbnailUrl' | 'rating'>> & {
     id: number;
   };

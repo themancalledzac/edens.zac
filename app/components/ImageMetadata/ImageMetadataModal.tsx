@@ -26,6 +26,7 @@ import { useImageMetadataState } from './hooks/useImageMetadataState';
 import { useImageMetadataSubmit } from './hooks/useImageMetadataSubmit';
 import styles from './ImageMetadataModal.module.scss';
 import { computeCameraSelectionUpdate } from './imageMetadataUtils';
+import EssentialInfoSection from './sections/EssentialInfoSection';
 import MediaPreview from './sections/MediaPreview';
 
 /** Any content the modal can edit — images and animated GIF/MP4 blocks. */
@@ -144,171 +145,14 @@ export default function ImageMetadataModal({
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* Essential Info */}
-            <div className={styles.formSection}>
-              <h3 className={styles.sectionHeading}>Essential Information</h3>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Title</label>
-                <input
-                  type="text"
-                  value={updateState.title ?? ''}
-                  onChange={e => updateStateField({ title: e.target.value || undefined })}
-                  className={styles.formInput}
-                  placeholder="Enter image title"
-                />
-              </div>
-
-              <div
-                className={styles.formGroup}
-                style={isGif ? { opacity: 0.4, pointerEvents: 'none' } : undefined}
-                aria-disabled={isGif}
-                title={isGif ? 'Caption is not supported on GIF/MP4 content.' : undefined}
-              >
-                <label className={styles.formLabel}>Caption</label>
-                <textarea
-                  value={updateState.caption ?? ''}
-                  onChange={e => updateStateField({ caption: e.target.value || undefined })}
-                  className={styles.formTextarea}
-                  placeholder="Enter caption"
-                  rows={3}
-                  disabled={isGif}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Alt Text (Accessibility)</label>
-                <input
-                  type="text"
-                  value={updateState.alt ?? ''}
-                  onChange={e => updateStateField({ alt: e.target.value || undefined })}
-                  className={styles.formInput}
-                  placeholder="Describe the image for screen readers"
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Author</label>
-                <input
-                  type="text"
-                  value={updateState.author ?? ''}
-                  onChange={e => updateStateField({ author: e.target.value || null })}
-                  className={styles.formInput}
-                  placeholder="Photographer name"
-                />
-              </div>
-
-              <div>
-                <Dropdown<LocationModel>
-                  label="Locations"
-                  multiSelect
-                  options={availableLocations}
-                  selectedValues={updateState.locations ?? []}
-                  onChange={value => {
-                    let locations: LocationModel[];
-                    if (Array.isArray(value)) {
-                      locations = value;
-                    } else if (value) {
-                      locations = [value];
-                    } else {
-                      locations = [];
-                    }
-                    updateStateField({ locations });
-                  }}
-                  allowAddNew
-                  onAddNew={data => {
-                    const newLocation = { id: 0, name: data.name as string, slug: '' };
-                    updateStateField({
-                      locations: [...(updateState.locations ?? []), newLocation],
-                    });
-                  }}
-                  addNewFields={[
-                    {
-                      name: 'name',
-                      label: 'Location Name',
-                      type: 'text',
-                      placeholder: 'e.g., Seattle, WA',
-                      required: true,
-                    },
-                  ]}
-                  getDisplayName={location => location?.name || ''}
-                  showNewIndicator
-                  emptyText="No locations set"
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Rating</label>
-                <select
-                  value={updateState.rating?.toString() || ''}
-                  onChange={e =>
-                    updateStateField({
-                      rating: e.target.value ? Number.parseInt(e.target.value, 10) : undefined,
-                    })
-                  }
-                  className={styles.formSelect}
-                >
-                  <option value="">No rating</option>
-                  <option value="1">1 Star</option>
-                  <option value="2">2 Stars</option>
-                  <option value="3">3 Stars</option>
-                  <option value="4">4 Stars</option>
-                  <option value="5">5 Stars</option>
-                </select>
-              </div>
-
-              {/* Collection Visibility - Available for both single and bulk edit */}
-              {currentCollectionId && (
-                <div className={styles.checkboxGroup}>
-                  <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={(() => {
-                        const currentCollection = updateState.collections?.find(
-                          c => c.collectionId === currentCollectionId
-                        );
-                        return currentCollection?.visible !== false;
-                      })()}
-                      onChange={e => {
-                        const currentCollections = updateState.collections || [];
-                        const collectionIndex = currentCollections.findIndex(
-                          c => c.collectionId === currentCollectionId
-                        );
-
-                        let updatedCollections: Array<{
-                          collectionId: number;
-                          name?: string;
-                          visible?: boolean;
-                          orderIndex?: number;
-                        }>;
-
-                        if (collectionIndex >= 0) {
-                          updatedCollections = currentCollections.map((c, idx) =>
-                            idx === collectionIndex ? { ...c, visible: e.target.checked } : c
-                          );
-                        } else {
-                          const collectionName = availableCollections.find(
-                            c => c.id === currentCollectionId
-                          )?.name;
-                          updatedCollections = [
-                            ...currentCollections,
-                            {
-                              collectionId: currentCollectionId,
-                              name: collectionName,
-                              visible: e.target.checked,
-                              orderIndex: currentCollections.length,
-                            },
-                          ];
-                        }
-
-                        updateStateField({ collections: updatedCollections });
-                      }}
-                    />
-                    <span>Collection Visibility</span>
-                  </label>
-                </div>
-              )}
-            </div>
+            <EssentialInfoSection
+              updateState={updateState}
+              updateStateField={updateStateField}
+              availableLocations={availableLocations}
+              availableCollections={availableCollections}
+              currentCollectionId={currentCollectionId}
+              isGif={isGif}
+            />
 
             {/* Camera Metadata — image-only, greyed out for GIF/MP4 blocks. */}
             <div

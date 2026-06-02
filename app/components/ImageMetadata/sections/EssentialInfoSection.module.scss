@@ -1,0 +1,5 @@
+/* Disabled state for GIF/MP4 sections that don't support a given field. */
+.sectionDisabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
