@@ -8,6 +8,7 @@ html,
   /* Colors */
   --color-fg-muted: #666;
   --color-border: #e5e5e5;
+  --color-border-strong: #adb5bd; /* stronger border hover step (was --color-border-dark) */
   --color-overlay-strong: rgb(0, 0, 0, 0.7);
   --color-overlay-soft: rgb(0, 0, 0, 0.1);
   --color-white: #fff;
@@ -20,6 +21,8 @@ html,
      legacy color-text, color-bg, and overlay-light families are deleted. ── */
   --color-surface: var(--color-white); /* page + card canvas */
   --color-surface-raised: #f8f9fa; /* raised panels (was --color-bg-light) */
+  --color-surface-sunken: #e9ecef; /* recessed/placeholder fill (was --color-bg-medium) */
+  --color-surface-sunken-strong: #dee2e6; /* darker sunken hover step (was --color-bg-dark) */
   --color-on-surface: var(--color-black); /* primary text on surface */
   --color-on-surface-muted: #666; /* secondary/muted text (was --color-fg-muted/-text-secondary) */
   --color-accent: rgb(
@@ -111,14 +114,6 @@ html,
     droid sans, helvetica neue, sans-serif;
 
   /* Admin/Form Colors */
-  --color-bg-light: #f8f9fa;
-  --color-bg-medium: #e9ecef;
-  --color-bg-dark: #dee2e6;
-  --color-border-light: #ccc;
-  --color-border-medium: #dee2e6;
-  --color-text-primary: #333;
-  --color-text-secondary: #666;
-  --color-text-muted: #999;
   --color-error-bg: #fee;
   --color-error-border: #fcc;
   --color-error-text: #c33;
@@ -131,17 +126,6 @@ html,
   --color-danger: #dc3545;
   --color-disabled: #ccc;
 
-  /* Additional overlay variations */
-  --color-overlay-light-05: rgb(255, 255, 255, 0.05);
-  --color-overlay-light-10: rgb(255, 255, 255, 0.1);
-  --color-overlay-light-20: rgb(255, 255, 255, 0.2);
-  --color-overlay-light-30: rgb(255, 255, 255, 0.3);
-  --color-overlay-light-40: rgb(255, 255, 255, 0.4);
-  --color-overlay-light-50: rgb(255, 255, 255, 0.5);
-  --color-overlay-light-60: rgb(255, 255, 255, 0.6);
-  --color-overlay-light-70: rgb(255, 255, 255, 0.7);
-  --color-overlay-light-90: rgb(255, 255, 255, 0.9);
-
   /* Hover state */
   --color-hover-grey: #333;
 
@@ -150,15 +134,11 @@ html,
   --color-danger-subtle: rgb(220, 38, 38, 0.2);
   --color-danger-text: rgb(252, 165, 165);
 
-  /* Blue accent (tailwind blue-500/blue-300) */
-  --color-blue: rgb(59, 130, 246);
+  /* Light-blue text accent on dark surfaces (tailwind blue-300) */
   --color-blue-text: rgb(147, 197, 253);
 
   /* Shadows */
   --shadow-sm: 0 2px 4px rgb(0, 0, 0, 0.1);
-
-  /* Border variations */
-  --color-border-dark: #adb5bd;
 
   /* Z-Index Layers - Systematic stacking order */
 
@@ -172,23 +152,12 @@ html,
   --z-modal-controls: 1002; /* Modal close buttons */
   --z-fullscreen: 9999; /* Fullscreen overlays */
 
-  /* ── Compatibility aliases: map the previously-undeclared "shadow namespace"
-     onto real tokens so silent hex fallbacks stop winning. Non-breaking.
-     These are the migration seam; the Phase 4 token collapse renames usages
-     onto the semantic roles and then deletes this block. ── */
-  --text-primary: var(--color-text-primary); /* was silently #333 */
-  --text-secondary: var(--color-text-secondary); /* was silently #666 */
-  --text-muted: var(--color-text-muted); /* was silently #999 */
-  --text-base: var(--text-md); /* font-size, ManageClient */
-  --border-color: var(--color-border); /* was silently #ddd */
-  --color-bg-subtle: var(--color-bg-light);
-  --color-bg-muted: var(--color-bg-medium);
-  --surface-secondary: var(--color-bg-light);
-  /* stylelint-disable-next-line declaration-block-no-duplicate-custom-properties -- intentional duplicate of the canonical --color-accent in the semantic taxonomy above; same value, alias block removed by TK-3 */
-  --color-accent: var(--color-blue); /* selection/link accent */
+  /* ── Remaining named aliases still referenced by call sites. The legacy
+     text/bg/border/overlay-light families and the duplicate --color-accent
+     alias were migrated onto the semantic taxonomy and deleted (TK-3). ── */
+  --text-base: var(--text-md); /* font-size, ManageClient stepper */
   --radius-sm: var(--radius-1);
-  --color-warning: #f4b400; /* RatingStars; net-new token */
-  --color-overlay-light-80: rgb(255, 255, 255, 0.8); /* gap in the 05..90 ramp */
+  --color-warning: #f4b400; /* RatingStars star fill */
 }
 
 /* Desktop heading sizes */

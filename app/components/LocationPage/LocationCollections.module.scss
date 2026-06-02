@@ -63,7 +63,7 @@
   position: absolute;
   top: -15%; /* symmetric: 15% overflow above and 15% below for parallax travel */
   left: 0;
-  background: var(--surface-secondary, #e0e0e0);
+  background: var(--color-surface-raised);
 }
 
 .overlay {

@@ -5,7 +5,7 @@
   gap: var(--space-3);
   margin-top: var(--space-6);
   padding: var(--space-5);
-  border-top: 1px solid var(--color-border-light);
+  border-top: 1px solid var(--color-border);
   max-width: var(--page-max-width);
 }
 
@@ -20,7 +20,7 @@
   font-weight: 500;
 
   &:hover:not(:disabled) {
-    background: var(--color-text-primary);
+    background: var(--color-on-surface);
   }
 
   &:disabled {
@@ -31,7 +31,7 @@
 }
 
 .paginationInfo {
-  color: var(--color-text-secondary);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
 }
 

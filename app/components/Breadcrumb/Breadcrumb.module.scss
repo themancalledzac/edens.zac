@@ -1,6 +1,6 @@
 .breadcrumb {
   font-size: var(--text-sm);
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
 }
 
 .list {
@@ -18,7 +18,7 @@
 }
 
 .link {
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
 
   &:hover {
     color: var(--color-fg);
@@ -27,7 +27,7 @@
 
 .separator {
   display: inline-flex;
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
 
   &::before {
     content: '/';

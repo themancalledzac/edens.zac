@@ -20,7 +20,7 @@
   font-size: 1.6rem;
   font-weight: 700;
   margin: 0;
-  color: var(--text-primary, #111);
+  color: var(--color-on-surface);
 
   @media (width >= 768px) {
     font-size: 2rem;
@@ -28,6 +28,6 @@
 }
 
 .subtitle {
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-md);
 }

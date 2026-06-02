@@ -21,7 +21,7 @@
 
 .listCount {
   font-size: var(--text-sm);
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   font-weight: 400;
 }
 
@@ -58,7 +58,7 @@
   width: 24px;
   height: 24px;
   border-radius: var(--radius-1);
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   text-decoration: none;
   font-size: var(--text-sm);
   transition:
@@ -95,7 +95,7 @@
   &:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
-    border-color: var(--color-fg-muted);
+    border-color: var(--color-on-surface-muted);
   }
 }
 
@@ -119,6 +119,6 @@
 .emptyState {
   padding: var(--space-4);
   text-align: center;
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
 }

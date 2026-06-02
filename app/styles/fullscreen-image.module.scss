@@ -175,7 +175,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-overlay-light-50);
+    outline: 2px solid var(--scrim-light-50);
     outline-offset: 2px;
   }
 
@@ -232,7 +232,7 @@
 
 .metadataItem {
   margin-bottom: 6px;
-  color: var(--color-overlay-light-90);
+  color: var(--scrim-light-90);
 
   @media (width > 768px) and (height >= 600px) {
     margin-bottom: 8px;
@@ -240,7 +240,7 @@
 }
 
 .metadataSeparator {
-  color: var(--color-overlay-light-50);
+  color: var(--scrim-light-50);
   margin: 0 4px;
 }
 
@@ -250,7 +250,7 @@
   gap: 12px;
   margin-bottom: 12px;
   padding-top: 8px;
-  border-top: 1px solid var(--color-overlay-light-20);
+  border-top: 1px solid var(--scrim-light-20);
 
   @media (width > 768px) and (height >= 600px) {
     gap: 16px;
@@ -266,7 +266,7 @@
 .metadataSection {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--color-overlay-light-20);
+  border-top: 1px solid var(--scrim-light-20);
 
   @media (width > 768px) and (height >= 600px) {
     margin-top: 16px;
@@ -290,7 +290,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: var(--color-overlay-light-70);
+  color: var(--scrim-light-70);
   margin-bottom: 0;
   flex-shrink: 0;
 
@@ -313,10 +313,10 @@
 
 .metadataSectionItem {
   padding: 4px 8px;
-  background: var(--color-overlay-light-10);
+  background: var(--scrim-light-10);
   border-radius: var(--radius-1);
   font-size: 11px;
-  color: var(--color-overlay-light-90);
+  color: var(--scrim-light-90);
   user-select: none;
 
   @media (width > 768px) and (height >= 600px) {
@@ -337,7 +337,7 @@
   touch-action: manipulation;
 
   &:hover {
-    background-color: var(--color-overlay-light-20);
+    background-color: var(--scrim-light-20);
   }
 
   &:active {
@@ -376,7 +376,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-overlay-light-50);
+    outline: 2px solid var(--scrim-light-50);
     outline-offset: 2px;
   }
 
@@ -435,6 +435,6 @@
   z-index: var(--z-modal-controls);
 
   &:hover {
-    background-color: var(--color-overlay-light-30);
+    background-color: var(--scrim-light-30);
   }
 }

@@ -19,7 +19,7 @@
 
 .intro {
   margin: 0;
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-md);
 }
 
@@ -67,19 +67,19 @@
   font-size: var(--text-sm);
 
   &:hover {
-    background-color: var(--color-bg-light);
+    background-color: var(--color-surface-raised);
     text-decoration: none;
   }
 }
 
 .sectionEmpty {
   margin: 0;
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
 }
 
 .empty {
   padding: var(--space-8) var(--page-padding-mobile);
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   text-align: center;
 }

@@ -16,7 +16,7 @@
   font-size: 1.6rem;
   font-weight: 700;
   margin: 0;
-  color: var(--text-primary, #111);
+  color: var(--color-on-surface);
 
   @media (width >= 768px) {
     font-size: 2rem;
@@ -32,12 +32,12 @@
 }
 
 .total {
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-md);
 }
 
 .empty {
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   text-align: center;
   padding: var(--space-6) 0;
 }
@@ -75,7 +75,7 @@
 }
 
 .time {
-  color: var(--color-fg-muted);
+  color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
 }
 
@@ -106,7 +106,7 @@
   line-height: 1.4;
 
   &:hover:not(:disabled) {
-    background: var(--color-bg-subtle, var(--color-bg));
+    background: var(--color-surface-raised);
     border-color: var(--color-fg);
   }
 }
