@@ -340,4 +340,122 @@ describe('useImageMetadataSubmit', () => {
     expect(onDeleteSuccess).toHaveBeenCalledWith([202]);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  // ── handleRemoveFromCollection ───────────────────────────────────────────
+
+  it('handleRemoveFromCollection no-ops (no confirm, no API) when currentCollectionId is absent', async () => {
+    const { result } = renderHook(() =>
+      useImageMetadataSubmit(baseImageParams({ hasChanges: false }))
+    );
+
+    await act(async () => {
+      await result.current.handleRemoveFromCollection();
+    });
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(mockUpdateImages).not.toHaveBeenCalled();
+  });
+
+  it('handleRemoveFromCollection aborts when the user cancels the confirm', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(false);
+    const image = img(1, {
+      collections: [{ collectionId: 7, name: 'Keep', visible: true, orderIndex: 0 }],
+    });
+
+    const { result } = renderHook(() =>
+      useImageMetadataSubmit({
+        selectedImages: [image],
+        selectedImageIds: [1],
+        updateState: { id: 1, collections: [] },
+        hasChanges: false,
+        originalCollectionIds: new Set<number>(),
+        availableFilmTypes: [],
+        currentCollectionId: 7,
+        onClose: jest.fn(),
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleRemoveFromCollection();
+    });
+
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    expect(mockUpdateImages).not.toHaveBeenCalled();
+  });
+
+  it('handleRemoveFromCollection trims only the current collection and reports success', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const onClose = jest.fn();
+    const onRemoveFromCollectionSuccess = jest.fn();
+    const image = img(1, {
+      collections: [
+        { collectionId: 7, name: 'Drop', visible: true, orderIndex: 0 },
+        { collectionId: 9, name: 'Keep', visible: true, orderIndex: 1 },
+      ],
+    });
+
+    mockUpdateImages.mockResolvedValueOnce({ updatedImages: [] });
+
+    const { result } = renderHook(() =>
+      useImageMetadataSubmit({
+        selectedImages: [image],
+        selectedImageIds: [1],
+        updateState: { id: 1, collections: [] },
+        hasChanges: false,
+        originalCollectionIds: new Set<number>(),
+        availableFilmTypes: [],
+        currentCollectionId: 7,
+        onClose,
+        onRemoveFromCollectionSuccess,
+      })
+    );
+
+    await act(async () => {
+      await result.current.handleRemoveFromCollection();
+    });
+
+    expect(mockUpdateImages).toHaveBeenCalledTimes(1);
+    const callArg = mockUpdateImages.mock.calls[0]?.[0];
+    expect(Array.isArray(callArg)).toBe(true);
+    expect(callArg).toHaveLength(1);
+    // The diff removes the current collection (7) but leaves the other membership (9) untouched.
+    expect(callArg?.[0]?.collections?.remove).toContain(7);
+    expect(callArg?.[0]?.collections?.remove).not.toContain(9);
+    expect(onRemoveFromCollectionSuccess).toHaveBeenCalledWith([1]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // ── error handling (runSave catch/finally) ───────────────────────────────
+
+  it('surfaces the thrown message in `error` and clears `saving` when the API rejects', async () => {
+    const onClose = jest.fn();
+    const onSaveSuccess = jest.fn();
+
+    mockUpdateImages.mockRejectedValueOnce(new Error('Backend exploded'));
+
+    const { result } = renderHook(() =>
+      useImageMetadataSubmit({
+        selectedImages: [img(1)],
+        selectedImageIds: [1],
+        updateState: { id: 1, contentType: 'IMAGE' as const, title: 'Changed', collections: [] },
+        hasChanges: true,
+        originalCollectionIds: new Set<number>(),
+        availableFilmTypes: [],
+        onClose,
+        onSaveSuccess,
+      })
+    );
+
+    await act(async () => {
+      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
+        typeof result.current.handleSubmit
+      >[0];
+      await result.current.handleSubmit(fakeEvent);
+    });
+
+    expect(result.current.error).toBe('Backend exploded');
+    expect(result.current.saving).toBe(false);
+    expect(onSaveSuccess).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
