@@ -193,6 +193,9 @@ $type-col-width: 130px;
   padding: 0;
   cursor: pointer;
   font: inherit;
+  // Intentionally no color override here — let .name's color
+  // (var(--color-bg-light)) win. The user-agent <button> default would be
+  // dark text, which is the regression we're avoiding.
 
   &:hover {
     text-decoration: underline;

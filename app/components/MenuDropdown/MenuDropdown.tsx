@@ -189,15 +189,17 @@ export function MenuDropdown({
 
         {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
 
-        <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleNavigation.explore}
-          >
-            <span className={styles.dropdownMenuOptions}>Explore</span>
-          </button>
-        </div>
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.explore}
+            >
+              <span className={styles.dropdownMenuOptions}>Explore</span>
+            </button>
+          </div>
+        )}
 
         {isLocalEnvironment() && (
           <div className={styles.dropdownMenuItem}>

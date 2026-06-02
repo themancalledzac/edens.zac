@@ -5,12 +5,6 @@ import { render, screen } from '@testing-library/react';
 import { Footer } from '@/app/components/Footer/Footer';
 
 describe('Footer', () => {
-  it('renders crawlable internal links to Home and Explore', () => {
-    render(<Footer />);
-    expect(screen.getByRole('link', { name: /home/i })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('link', { name: /explore/i })).toHaveAttribute('href', '/explore');
-  });
-
   it('renders external social links with target and rel="noopener noreferrer"', () => {
     render(<Footer />);
 
@@ -25,11 +19,12 @@ describe('Footer', () => {
     expect(github).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
-  it('does not link the admin-gated /all-collections or /all-images routes', () => {
+  it('is not a nav surface — links only to socials, no internal routes', () => {
     render(<Footer />);
-    const links = screen.getAllByRole('link');
-    const hrefs = links.map(link => link.getAttribute('href'));
-    expect(hrefs).not.toContain('/all-collections');
-    expect(hrefs).not.toContain('/all-images');
+    const hrefs = screen.getAllByRole('link').map(link => link.getAttribute('href'));
+    expect(hrefs).toEqual([
+      'https://instagram.com/themancalledzac',
+      'https://github.com/themancalledzac',
+    ]);
   });
 });

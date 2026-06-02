@@ -1,4 +1,3 @@
-import { Breadcrumb } from '@/app/components/Breadcrumb/Breadcrumb';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
@@ -18,13 +17,7 @@ export default function TaxonomyPage({ entityName, images }: TaxonomyPageProps) 
 
   return (
     <PageShell>
-      <CollectionHeader
-        title={title}
-        count={images.length}
-        breadcrumb={
-          <Breadcrumb items={[{ label: 'Explore', href: '/explore' }, { label: title }]} />
-        }
-      />
+      <CollectionHeader title={title} count={images.length} />
       {contentBlocks.length > 0 && (
         <ContentBlockWithFullScreen
           content={contentBlocks}
