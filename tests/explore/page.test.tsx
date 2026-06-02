@@ -37,27 +37,22 @@ describe('ExplorePage', () => {
     mockGetMetadata.mockReset();
   });
 
-  it('renders a section heading and a NavLink per tag, person, and location', async () => {
+  it('renders a section heading and a NavLink per tag and location', async () => {
     mockGetMetadata.mockResolvedValue({
       ...emptyMetadata,
       tags: [{ id: 1, name: 'Mountains', slug: 'mountains' }],
-      people: [{ id: 2, name: 'Jane Doe', slug: 'jane-doe' }],
       locations: [{ id: 3, name: 'Patagonia', slug: 'patagonia' }],
     });
 
     render(await ExplorePage());
 
     expect(screen.getByRole('heading', { name: 'Locations' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'People' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Tags' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'People' })).not.toBeInTheDocument();
 
     expect(screen.getByRole('link', { name: 'Mountains' })).toHaveAttribute(
       'href',
       '/tag/mountains'
-    );
-    expect(screen.getByRole('link', { name: 'Jane Doe' })).toHaveAttribute(
-      'href',
-      '/people/jane-doe'
     );
     expect(screen.getByRole('link', { name: 'Patagonia' })).toHaveAttribute(
       'href',
@@ -72,7 +67,6 @@ describe('ExplorePage', () => {
         { id: 1, name: 'Mountains', slug: 'mountains' },
         { id: 2, name: 'Rivers', slug: 'rivers' },
       ],
-      people: [{ id: 3, name: 'Jane Doe', slug: 'jane-doe' }],
       locations: [
         { id: 4, name: 'Patagonia', slug: 'patagonia' },
         { id: 5, name: 'Dolomites', slug: 'dolomites' },
@@ -81,8 +75,8 @@ describe('ExplorePage', () => {
 
     render(await ExplorePage());
 
-    // 2 tags + 1 person + 2 locations = 5 directory links.
-    expect(screen.getAllByRole('link')).toHaveLength(5);
+    // 2 tags + 2 locations = 4 directory links (People removed from the directory).
+    expect(screen.getAllByRole('link')).toHaveLength(4);
   });
 
   it('omits locations that have no slug (no /location/undefined links)', async () => {

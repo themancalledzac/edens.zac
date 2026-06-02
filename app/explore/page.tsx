@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Explore — Zac Edens Photography',
-  description: 'Browse the photography archive by tag, person, or location.',
+  description: 'Browse the photography archive by tag or location.',
 };
 
 export default async function ExplorePage() {
@@ -36,17 +36,17 @@ export default async function ExplorePage() {
     );
   }
 
-  const { tags, people } = data;
+  const { tags } = data;
   // LocationModel.slug is optional; a slugless location can't form a valid
   // /location/[slug] link, so drop those rather than emit /location/undefined.
   const locations = data.locations.filter(loc => Boolean(loc.slug));
-  const isEmpty = tags.length === 0 && people.length === 0 && locations.length === 0;
+  const isEmpty = tags.length === 0 && locations.length === 0;
 
   return (
     <PageShell>
       <header className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Explore</h1>
-        <p className={styles.intro}>Browse the archive by tag, person, or location.</p>
+        <p className={styles.intro}>Browse the archive by tag or location.</p>
       </header>
 
       {isEmpty ? (
@@ -65,25 +65,6 @@ export default async function ExplorePage() {
                   <li key={loc.id}>
                     <NavLink href={`/location/${loc.slug}`} className={styles.directoryLink}>
                       {loc.name}
-                    </NavLink>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className={styles.section} aria-labelledby="explore-people">
-            <h2 id="explore-people" className={styles.sectionHeading}>
-              People
-            </h2>
-            {people.length === 0 ? (
-              <p className={styles.sectionEmpty}>No people yet.</p>
-            ) : (
-              <ul className={styles.linkList}>
-                {people.map(person => (
-                  <li key={person.id}>
-                    <NavLink href={`/people/${person.slug}`} className={styles.directoryLink}>
-                      {person.name}
                     </NavLink>
                   </li>
                 ))}
