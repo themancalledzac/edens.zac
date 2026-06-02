@@ -1,13 +1,10 @@
 'use client';
 
-import Image from 'next/image';
-
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { Modal } from '@/app/components/ui/Modal/Modal';
-import { IMAGE } from '@/app/constants';
 import { createCamera } from '@/app/lib/api/content';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import {
@@ -29,58 +26,10 @@ import { useImageMetadataState } from './hooks/useImageMetadataState';
 import { useImageMetadataSubmit } from './hooks/useImageMetadataSubmit';
 import styles from './ImageMetadataModal.module.scss';
 import { computeCameraSelectionUpdate } from './imageMetadataUtils';
+import MediaPreview from './sections/MediaPreview';
 
 /** Any content the modal can edit — images and animated GIF/MP4 blocks. */
 type EditableContent = ContentImageModel | ContentGifModel;
-
-/**
- * Render the single-item preview: looping `<video>` for GIF/MP4, `<Image>` for stills. Extracted
- * so the inline JSX doesn't trigger the unicorn/no-nested-ternary rule, and so the same render
- * can be reused if we ever introduce a single-preview header above the bulk grid.
- */
-function renderSinglePreview({
-  isGif,
-  previewImageAsGif,
-  previewImageAsImage,
-}: {
-  isGif: boolean;
-  previewImageAsGif: ContentGifModel | null;
-  previewImageAsImage: ContentImageModel | null;
-}) {
-  if (isGif && previewImageAsGif) {
-    return (
-      <video
-        key={previewImageAsGif.gifUrl}
-        autoPlay
-        loop
-        muted
-        playsInline
-        controls={false}
-        preload="auto"
-        poster={previewImageAsGif.thumbnailUrl ?? undefined}
-        width={previewImageAsGif.width || IMAGE.defaultWidth}
-        height={previewImageAsGif.height || IMAGE.defaultHeight}
-        className={styles.previewMedia}
-      >
-        <source src={previewImageAsGif.gifUrl} type="video/mp4" />
-      </video>
-    );
-  }
-  if (previewImageAsImage) {
-    return (
-      <Image
-        src={previewImageAsImage.imageUrl}
-        alt={previewImageAsImage.alt || previewImageAsImage.title || 'Image preview'}
-        width={previewImageAsImage.imageWidth || IMAGE.defaultWidth}
-        height={previewImageAsImage.imageHeight || IMAGE.defaultHeight}
-        className={styles.previewMedia}
-        priority
-        unoptimized
-      />
-    );
-  }
-  return null;
-}
 
 interface ImageMetadataModalProps {
   onClose: () => void;
@@ -111,11 +60,11 @@ interface ImageMetadataModalProps {
 }
 
 /**
- * Modal for editing image metadata with split-screen layout
+ * Orchestrator for the image/GIF metadata editor sheet modal.
  *
- * Layout:
- * - Left side: Image preview (~50% width)
- * - Right side: Metadata form with save/cancel buttons (~50% width)
+ * Composes `<MediaPreview>` (left panel) with the metadata form (right panel) via
+ * `useImageMetadataState` and `useImageMetadataSubmit`. Zero business logic lives here —
+ * this file is state-routing + JSX-composition only.
  */
 export default function ImageMetadataModal({
   onClose,
@@ -169,49 +118,18 @@ export default function ImageMetadataModal({
     return null;
   }
 
-  /**
-   * Type-narrowing helpers so the JSX below can stay readable. When `isGif` is true the GIF-
-   * specific fields are available on the union; when false the image-specific ones are. The
-   * disabled-input pattern (rather than rendering nothing) keeps the layout stable.
-   */
+  /** `isGif` drives the disabled-state on caption + camera-settings sections. */
   const isGif = isGifContent(previewImage);
-  const previewImageAsImage = !isGif ? (previewImage as ContentImageModel) : null;
-  const previewImageAsGif = isGif ? (previewImage as ContentGifModel) : null;
 
   return (
     <Modal open onClose={handleCancel} variant="sheet" labelledBy="metadata-modal-title">
       <div className={styles.metadataLayout}>
-        {/* Image Section - Left Side */}
-        <div className={styles.imageSection}>
-          {isBulkEdit ? (
-            <div className={styles.bulkEditGrid}>
-              {selectedImageIds.map(imageId => {
-                const item = selectedImages.find(i => i.id === imageId);
-                if (!item) return null;
-                // Bulk-edit thumbnail src: image uses imageUrl, GIF uses thumbnailUrl (still WebP).
-                const thumbSrc =
-                  item.contentType === 'GIF'
-                    ? (item.thumbnailUrl ?? '')
-                    : ((item as ContentImageModel).imageUrl ?? '');
-                if (!thumbSrc) return null;
-                return (
-                  <div key={imageId} className={styles.bulkEditThumb}>
-                    <Image
-                      src={thumbSrc}
-                      alt={item.alt || item.title || 'Selected media'}
-                      fill
-                      className={styles.bulkEditThumbImg}
-                      sizes="150px"
-                      unoptimized
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            renderSinglePreview({ isGif, previewImageAsGif, previewImageAsImage })
-          )}
-        </div>
+        <MediaPreview
+          isBulkEdit={isBulkEdit}
+          selectedImages={selectedImages}
+          selectedImageIds={selectedImageIds}
+          previewImage={previewImage}
+        />
 
         {/* Metadata Section - Right Side */}
         <div className={styles.metadataSection}>
