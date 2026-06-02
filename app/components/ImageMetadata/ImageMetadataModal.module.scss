@@ -232,6 +232,33 @@
   @media (width <= 768px) {
     flex-direction: column-reverse;
   }
+
+  /*
+   * The metadata sheet renders on a dark surface (.metadataSection), but the <Button> primitive's
+   * ghost/primary variants are tuned for light page surfaces (dark text / dark fill → invisible
+   * here). These scoped overrides restore the legacy dark-surface treatment — a white-filled CTA
+   * (Save) and an outlined light-text secondary (Cancel). Nested under .buttonRow so they outrank
+   * the primitive's single-class variant rules (including :hover) without !important. Delete
+   * (danger) and Remove (warning) keep their saturated fills, which read fine on dark.
+   */
+  .saveOnDark {
+    background-color: var(--color-white);
+    color: var(--color-black);
+    border-color: transparent;
+
+    &:hover:not(:disabled) {
+      background-color: var(--scrim-light-90);
+    }
+  }
+
+  .cancelOnDark {
+    color: var(--color-white);
+    border-color: var(--scrim-light-30);
+
+    &:hover:not(:disabled) {
+      background-color: var(--scrim-light-10);
+    }
+  }
 }
 
 .buttonRowLeft {

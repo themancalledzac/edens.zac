@@ -39,16 +39,19 @@ describe('MetadataActionRow', () => {
     expect(btn.className).toContain('danger');
   });
 
-  it('Cancel button uses the ghost variant', () => {
+  it('Cancel button uses the ghost variant with the on-dark override', () => {
     render(<MetadataActionRow {...makeProps()} />);
     const btn = screen.getByRole('button', { name: /cancel/i });
     expect(btn.className).toContain('ghost');
+    expect(btn.className).toContain('cancelOnDark');
   });
 
-  it('Save button uses the primary variant', () => {
+  it('Save button carries the on-dark CTA override', () => {
     render(<MetadataActionRow {...makeProps({ hasChanges: true })} />);
     const btn = screen.getByRole('button', { name: /save changes/i });
-    expect(btn.className).toContain('primary');
+    // Save renders white-on-dark via the scoped saveOnDark override — the dark editor surface makes
+    // the primitive's dark-fill `primary` variant invisible, so the action row uses a ghost base.
+    expect(btn.className).toContain('saveOnDark');
   });
 
   // ── Remove button visibility ─────────────────────────────────────────────────

@@ -18,8 +18,10 @@ export interface MetadataActionRowProps {
 /**
  * Action button row for the metadata editor.
  *
- * Uses the `<Button>` primitive so the danger/ghost/primary variants handle focus, loading state,
- * and aria-busy automatically. The Save button is `type="submit"` — it triggers the form's
+ * Uses the `<Button>` primitive for focus, loading state, and aria-busy. The editor sheet sits on a
+ * dark surface, so Save and Cancel layer the `saveOnDark`/`cancelOnDark` overrides (white-filled CTA
+ * / outlined light-text) on top of a transparent `ghost` base — Delete (danger) and Remove
+ * (warning) read fine on dark as-is. The Save button is `type="submit"` — it triggers the form's
  * `onSubmit` handler in the parent orchestrator without needing an explicit `onSave` prop.
  */
 export default function MetadataActionRow({
@@ -52,10 +54,21 @@ export default function MetadataActionRow({
         )}
       </div>
       <div className={styles.buttonRowRight}>
-        <Button variant="ghost" disabled={saving} onClick={onCancel}>
+        <Button
+          variant="ghost"
+          className={styles.cancelOnDark}
+          disabled={saving}
+          onClick={onCancel}
+        >
           Cancel
         </Button>
-        <Button type="submit" variant="primary" loading={saving} disabled={!hasChanges}>
+        <Button
+          type="submit"
+          variant="ghost"
+          className={styles.saveOnDark}
+          loading={saving}
+          disabled={!hasChanges}
+        >
           Save Changes
         </Button>
       </div>
