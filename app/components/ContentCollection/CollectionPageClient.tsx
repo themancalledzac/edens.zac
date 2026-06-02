@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { LAYOUT } from '@/app/constants';
+import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
@@ -67,7 +68,16 @@ const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
 const EMPTY_LENSTYPE_DIM = { values: [] as readonly LensType[], filterable: true };
 
 export default function CollectionPageClient({ collection, chunkSize }: CollectionPageClientProps) {
-  const [filterState, setFilterState] = useState<FilterState>(INITIAL_FILTER_STATE);
+  const { initialCriteria, syncToUrl } = useFilterUrlState();
+
+  const [filterState, setFilterState] = useState<FilterState>(() => ({
+    ...INITIAL_FILTER_STATE,
+    highlyRatedOnly: initialCriteria.minRating !== undefined && initialCriteria.minRating >= 4,
+    selectedTags: initialCriteria.tags ?? [],
+    selectedPeople: initialCriteria.people ?? [],
+    selectedCameras: initialCriteria.cameras ?? [],
+    selectedLocations: initialCriteria.locations ?? [],
+  }));
 
   // Row density: defaults to the collection's saved value; slider retunes it live.
   const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
@@ -213,9 +223,32 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
     });
   }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
 
-  const handleFilterChange = useCallback((update: Partial<FilterState>) => {
-    setFilterState(prev => ({ ...prev, ...update }));
-  }, []);
+  const handleFilterChange = useCallback(
+    (update: Partial<FilterState>) => {
+      setFilterState(prev => {
+        const next = { ...prev, ...update };
+        // Mirror the `criteria` mapping above so the URL faithfully serializes
+        // the live filter. selectedLenses / selectedLensTypes have no URL key in
+        // serializeFilterToParams (it has no `lens` key; lens-type is derived),
+        // and dateSortDirection is a sort, not a filter — all stay local by design.
+        syncToUrl({
+          ...(next.highlyRatedOnly ? { minRating: 4 } : {}),
+          ...(next.selectedTags.length > 0
+            ? { tags: [...next.selectedTags], tagMatchMode: 'AND' }
+            : {}),
+          ...(next.selectedPeople.length > 0
+            ? { people: [...next.selectedPeople], peopleMatchMode: 'AND' }
+            : {}),
+          ...(next.selectedCameras.length > 0
+            ? { cameras: [...next.selectedCameras], cameraMatchMode: 'AND' }
+            : {}),
+          ...(next.selectedLocations.length > 0 ? { locations: [...next.selectedLocations] } : {}),
+        });
+        return next;
+      });
+    },
+    [syncToUrl]
+  );
 
   const filterContextValue = useMemo(
     () => ({

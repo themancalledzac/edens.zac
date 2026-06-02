@@ -640,3 +640,32 @@
   justify-content: center;
   color: #757575;
 }
+
+/* Measuring skeleton: reserves a screenful while the BoxTree layout is computed
+   client-side (rows empty until contentWidth is measured), preventing the blank
+   void / layout shift on first paint. Token-driven shimmer, reduced-motion safe. */
+.layoutSkeleton {
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-light) 25%,
+    var(--color-bg-medium) 37%,
+    var(--color-bg-light) 63%
+  );
+  background-size: 400% 100%;
+  animation: layoutSkeletonShimmer 1.4s ease infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes layoutSkeletonShimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0 50%;
+  }
+}

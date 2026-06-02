@@ -57,6 +57,10 @@ export function MenuDropdown({
   };
 
   const handleNavigation = {
+    explore: () => {
+      router.push('/explore');
+      onClose();
+    },
     create: () => {
       router.push('/collection/manage');
       onClose();
@@ -184,6 +188,18 @@ export function MenuDropdown({
         </div>
 
         {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
+
+        {isLocalEnvironment() && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.explore}
+            >
+              <span className={styles.dropdownMenuOptions}>Explore</span>
+            </button>
+          </div>
+        )}
 
         {isLocalEnvironment() && (
           <div className={styles.dropdownMenuItem}>

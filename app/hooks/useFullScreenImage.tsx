@@ -29,6 +29,22 @@ export type FullScreenState = {
   currentIndex: number;
 } | null;
 
+/** Build a search string with `image` set to the given id, preserving other params. */
+function buildImageSearch(id: number): string {
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  params.set('image', String(id));
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+/** Build a search string with `image` removed, preserving other params. */
+function buildSearchWithoutImage(): string {
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  params.delete('image');
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export function useFullScreenImage(): {
   fullScreenState: FullScreenState;
   loadedImageIds: Set<number>;
@@ -53,6 +69,10 @@ export function useFullScreenImage(): {
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
 
+  // Tracks whether *we* pushed a history entry for the open modal, so hideImage
+  // pops exactly one entry and popstate (Back) is distinguished from our own pop.
+  const pushedHistoryRef = useRef<boolean>(false);
+
   const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
     const images = allImages || [image];
     const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
@@ -61,12 +81,55 @@ export function useFullScreenImage(): {
       images,
       currentIndex: currentIndex !== -1 ? currentIndex : 0,
     });
+
+    // Sync ?image=<id> onto the URL so the open viewer is deep-linkable.
+    //
+    // Three cases, distinguished so Back behaves correctly:
+    //  1. Deep-link restore — the page already loaded with this exact ?image=<id>.
+    //     We must NOT push (there's no collection entry behind us to pop back to);
+    //     just REPLACE in place and leave pushedHistoryRef=false so hideImage strips
+    //     the param rather than calling history.back().
+    //  2. Fresh open from a click — no pushed entry yet. PUSH one entry so the
+    //     collection page stays the prior history entry; Back then fires popstate,
+    //     the param disappears, and the modal closes instead of leaving the page.
+    //  3. Re-open while we already own a pushed entry — REPLACE so we never stack
+    //     multiple entries for a single open session.
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.pathname}${buildImageSearch(image.id)}`;
+      const alreadyDeepLinked =
+        !pushedHistoryRef.current &&
+        new URLSearchParams(window.location.search).get('image') === String(image.id);
+
+      if (pushedHistoryRef.current || alreadyDeepLinked) {
+        window.history.replaceState({ fsImage: image.id }, '', url);
+      } else {
+        window.history.pushState({ fsImage: image.id }, '', url);
+        pushedHistoryRef.current = true;
+      }
+    }
   }, []);
 
   const hideImage = useCallback(() => {
     setFullScreenState(null);
     setShowMetadata(false);
     setLoadedImageIds(new Set());
+
+    if (typeof window !== 'undefined') {
+      if (pushedHistoryRef.current) {
+        // We own one pushed entry — pop it so the URL + history return to the
+        // collection. Flip the ref BEFORE history.back() so the popstate handler
+        // (which also fires) sees a clean slate and doesn't double-handle.
+        pushedHistoryRef.current = false;
+        window.history.back();
+      } else {
+        // Opened from a deep link (no pushed entry): just strip ?image in place.
+        window.history.replaceState(
+          {},
+          '',
+          `${window.location.pathname}${buildSearchWithoutImage()}`
+        );
+      }
+    }
   }, []);
 
   const isOpen = !!fullScreenState;
@@ -78,6 +141,16 @@ export function useFullScreenImage(): {
       const newIndex = prev.currentIndex + delta;
 
       if (newIndex >= 0 && newIndex < prev.images.length) {
+        const nextImage = prev.images[newIndex];
+        // REPLACE (never push) so each swipe/arrow doesn't add a history entry —
+        // Back should close the viewer, not step backward through images.
+        if (nextImage && typeof window !== 'undefined') {
+          window.history.replaceState(
+            { fsImage: nextImage.id },
+            '',
+            `${window.location.pathname}${buildImageSearch(nextImage.id)}`
+          );
+        }
         return { ...prev, currentIndex: newIndex };
       }
       return prev;
@@ -151,6 +224,25 @@ export function useFullScreenImage(): {
       document.removeEventListener('wheel', preventScroll);
     };
   }, [isOpen, navigateToNext, navigateToPrevious]);
+
+  // Browser Back: when the user navigates back and the `image` param is gone,
+  // close the modal in place. We do NOT push/replace history here — the URL has
+  // already moved, so touching it would feed back into popstate. Resetting
+  // pushedHistoryRef here means a later hideImage strips the param via
+  // replaceState instead of popping a second time (no double-Back).
+  useEffect(() => {
+    const handlePopState = () => {
+      const hasImageParam = new URLSearchParams(window.location.search).has('image');
+      if (!hasImageParam) {
+        pushedHistoryRef.current = false;
+        setFullScreenState(null);
+        setShowMetadata(false);
+        setLoadedImageIds(new Set());
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const isMetadataControl = useCallback((target: HTMLElement | null): boolean => {
     if (!target) return false;

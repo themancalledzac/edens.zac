@@ -105,6 +105,21 @@ export default function ContentBlockWithFullScreen({
     );
   }, [allBlocks]);
 
+  // Deep-link restore: if the page loads with ?image=<id> and we have that block,
+  // open the viewer to it. Runs once on mount. showImage only replaceState-syncs
+  // the URL here (the param is already present), so no extra history entry is
+  // pushed and Back still returns to whatever preceded this page.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const id = new URLSearchParams(window.location.search).get('image');
+    if (!id) return;
+    const parsed = Number.parseInt(id, 10);
+    if (Number.isNaN(parsed)) return;
+    const block = viewableBlocks.find(b => b.id === parsed);
+    if (block) showImage(block, viewableBlocks);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /**
    * The image arg may be a synthetic from {@link CollectionContentRenderer}'s click handler — it
    * only carries id + contentType + imageUrl/gifUrl. Look up the real block in {@link allBlocks}

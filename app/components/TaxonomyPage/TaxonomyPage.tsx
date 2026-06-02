@@ -11,10 +11,13 @@ interface TaxonomyPageProps {
 
 export default function TaxonomyPage({ entityName, images }: TaxonomyPageProps) {
   const contentBlocks = processContentBlocks(images, true);
+  // Guard against an unresolved/empty entity name so the page still has a real,
+  // orienting <h1> instead of an empty heading.
+  const title = entityName?.trim() || 'Untitled';
 
   return (
     <PageShell>
-      <CollectionHeader title={entityName} count={images.length} />
+      <CollectionHeader title={title} count={images.length} />
       {contentBlocks.length > 0 && (
         <ContentBlockWithFullScreen
           content={contentBlocks}

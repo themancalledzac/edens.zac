@@ -185,6 +185,28 @@ $type-col-width: 130px;
   }
 }
 
+// Name rendered as a button when onNavigate is provided (sibling mode): the row
+// itself can't be the click target because each row hosts two toggles.
+.nameButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  // Intentionally no color override here — let .name's color
+  // (var(--color-bg-light)) win. The user-agent <button> default would be
+  // dark text, which is the regression we're avoiding.
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
 // Right-hand toggle cell — centers its checkbox under the matching header.
 .toggleCell {
   width: $toggle-col-width;

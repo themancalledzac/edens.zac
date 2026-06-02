@@ -399,6 +399,23 @@
   right: 0;
 }
 
+// Unobtrusive "N / total" position indicator, bottom-center over the photo.
+// tabular-nums keeps the digits from shifting width as the index changes.
+.positionCounter {
+  position: fixed;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-1);
+  background-color: var(--color-overlay-strong);
+  color: var(--color-white);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  z-index: var(--z-modal-controls);
+  pointer-events: none;
+}
+
 .closeButton {
   position: absolute;
   top: 20px;

@@ -1,0 +1,41 @@
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+
+  /* Match the page content column (.main) so the footer content lines up with
+     the SiteHeader (top bar): same max-width + centering, and the same
+     horizontal inset — page-padding-mobile on mobile, default-padding on
+     desktop (where the header sits at the container's default-padding edge). */
+  width: 100%;
+  max-width: var(--page-max-width);
+  margin: var(--space-6) auto 0;
+  padding: var(--space-6) var(--page-padding-mobile);
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-bg);
+  color: var(--color-fg-muted);
+
+  @media (width >= 768px) {
+    padding: var(--space-6) var(--default-padding);
+  }
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.link {
+  color: var(--color-fg-muted);
+  font-size: var(--text-sm);
+
+  &:hover {
+    color: var(--color-fg);
+  }
+}
+
+.copyright {
+  margin: 0;
+  font-size: var(--text-xs);
+}

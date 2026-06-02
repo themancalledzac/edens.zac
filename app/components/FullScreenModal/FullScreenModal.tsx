@@ -305,6 +305,12 @@ export function FullScreenModal({
         </button>
       )}
 
+      {fullScreenState.images.length > 1 && (
+        <div className={styles.positionCounter} aria-live="polite">
+          {fullScreenState.currentIndex + 1} / {fullScreenState.images.length}
+        </div>
+      )}
+
       <button
         type="button"
         className={styles.closeButton}
