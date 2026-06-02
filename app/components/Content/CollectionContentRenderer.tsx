@@ -8,6 +8,7 @@ import { type Ref, useCallback, useState } from 'react';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
+import { Badge } from '@/app/components/ui/Badge/Badge';
 import {
   FilterToolbar,
   type ToolbarDimension,
@@ -32,7 +33,6 @@ import {
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 
-import { BadgeOverlay } from './BadgeOverlay';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
@@ -521,12 +521,7 @@ export default function CollectionContentRenderer({
     <>
       <Image {...imageProps} />
       {overlayText && <div className={cbStyles.textOverlay}>{overlayText}</div>}
-      {cardTypeBadge && (
-        <BadgeOverlay
-          contentType={isCollection ? 'collection' : 'content'}
-          badgeValue={cardTypeBadge}
-        />
-      )}
+      {cardTypeBadge && <Badge label={cardTypeBadge} tone={isCollection ? 'card' : 'date'} />}
     </>
   );
 

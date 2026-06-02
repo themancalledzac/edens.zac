@@ -6,6 +6,7 @@
  * so the renderer component doesn't need to know about content types.
  */
 
+import { collectionTypeToPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type AnyContentModel } from '@/app/types/Content';
 import { type ContentRendererProps } from '@/app/types/ContentRenderer';
 import {
@@ -170,7 +171,7 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(undefined, content.title, undefined, content.slug, 'Collection'),
       overlayText: content.title,
-      cardTypeBadge: content.collectionType,
+      cardTypeBadge: collectionTypeToPublicLabel(content.collectionType) ?? undefined,
       enableParallax: true,
       hasSlug: content.slug,
       isCollection: true,
