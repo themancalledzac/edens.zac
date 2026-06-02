@@ -294,5 +294,29 @@ describe('CollectionListSelector', () => {
       expect(screen.getByText('Portfolio A')).toBeInTheDocument();
       expect(screen.queryByText('Blog B')).not.toBeInTheDocument();
     });
+    it('fires onNavigate when the name is clicked in sibling mode', () => {
+      const onNavigate = jest.fn();
+      const onToggle = jest.fn();
+      const onToggleSibling = jest.fn();
+      render(
+        <CollectionListSelector
+          {...twoColProps}
+          onToggle={onToggle}
+          onToggleSibling={onToggleSibling}
+          onNavigate={onNavigate}
+        />
+      );
+
+      fireEvent.click(screen.getByLabelText('Open Blog B'));
+
+      expect(onNavigate).toHaveBeenCalledTimes(1);
+      expect(onNavigate).toHaveBeenCalledWith(mockCollections[1]);
+      expect(onToggle).not.toHaveBeenCalled();
+      expect(onToggleSibling).not.toHaveBeenCalled();
+    });
+    it('renders the name as a plain span (no nav button) when onNavigate is not provided', () => {
+      render(<CollectionListSelector {...twoColProps} />);
+      expect(screen.queryByLabelText('Open Portfolio A')).not.toBeInTheDocument();
+    });
   });
 });

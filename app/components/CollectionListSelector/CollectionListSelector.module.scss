@@ -185,6 +185,26 @@ $type-col-width: 130px;
   }
 }
 
+// Name rendered as a button when onNavigate is provided (sibling mode): the row
+// itself can't be the click target because each row hosts two toggles.
+.nameButton {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
 // Right-hand toggle cell — centers its checkbox under the matching header.
 .toggleCell {
   width: $toggle-col-width;

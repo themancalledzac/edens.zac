@@ -147,7 +147,18 @@ export default function CollectionListSelector({
               role="group"
               aria-label={collection.name}
             >
-              <span className={styles.name}>{collection.name}</span>
+              {onNavigate ? (
+                <button
+                  type="button"
+                  className={`${styles.name} ${styles.nameButton}`}
+                  onClick={() => onNavigate(collection)}
+                  aria-label={`Open ${collection.name}`}
+                >
+                  {collection.name}
+                </button>
+              ) : (
+                <span className={styles.name}>{collection.name}</span>
+              )}
               <span className={styles.type}>{collection.type || 'Portfolio'}</span>
               <span className={styles.toggleCell}>
                 {renderCheckbox(
