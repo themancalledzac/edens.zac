@@ -1,5 +1,4 @@
-/* Dropdown primitive styles — extracted verbatim from ImageMetadataModal.module.scss
-   so the canonical Dropdown<T> is portable (design-review §3 / §6a-rank-4). */
+/* Dropdown primitive styles (portable; owns its own SCSS). */
 
 /* Form scaffolding the inline add-new form reuses */
 .formGroup {

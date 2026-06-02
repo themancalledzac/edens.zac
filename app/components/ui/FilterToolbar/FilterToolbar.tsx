@@ -65,11 +65,8 @@ const DATE_LABELS: Record<FilterState['dateSortDirection'], string> = {
 };
 
 /**
- * Canonical, config-driven filter toolbar. Adopts CollectionFilterBar's
- * dropdown + 3-state availability model as the base, folds in
- * LocationFilterBar's count badges + film toggle (rendered as a neutral
- * tri-state, not saturated green/pink), and includes the density slider.
- * Replaces both filter bars.
+ * Canonical, config-driven filter toolbar: dropdowns with a 3-state availability model, count
+ * badges, highly-rated / film (neutral tri-state) / digital toggles, and an optional density slider.
  */
 export function FilterToolbar({
   filterState,
@@ -100,6 +97,8 @@ export function FilterToolbar({
     const next: Record<FilmFilter, FilmFilter> = { off: 'film', film: 'digital', digital: 'off' };
     onFilterChange({ filmFilter: next[filterState.filmFilter] });
   };
+
+  const filmCount = filterState.filmFilter === 'off' ? undefined : counts?.[filterState.filmFilter];
 
   const hasActiveFilters =
     filterState.dateSortDirection !== 'off' ||
@@ -136,13 +135,7 @@ export function FilterToolbar({
       {showFilm && (
         <FilterChip
           label={filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}
-          count={
-            filterState.filmFilter === 'film'
-              ? counts?.film
-              : (filterState.filmFilter === 'digital'
-                ? counts?.digital
-                : undefined)
-          }
+          count={filmCount}
           tone={filterState.filmFilter === 'digital' ? 'digital' : 'film'}
           active={filterState.filmFilter !== 'off'}
           onToggle={cycleFilm}

@@ -78,9 +78,6 @@ interface DropdownProps<T extends MetadataItem> {
 /**
  * Dropdown<T> — flexible click-to-open selector for metadata fields.
  *
- * Canonical primitive promoted from ImageMetadata/UnifiedMetadataSelector
- * (design-review §3 / §6a-rank-4). Owns its own portable SCSS.
- *
  * UX: the value box itself is the click target. Clicking it toggles the
  * dropdown. The dropdown ends with a big "+" row when `allowAddNew` is set,
  * which opens the inline add-new form. Selecting an item closes the dropdown

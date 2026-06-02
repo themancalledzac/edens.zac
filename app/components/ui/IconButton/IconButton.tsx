@@ -24,8 +24,7 @@ export interface IconButtonProps extends Omit<
 
 /**
  * Icon-only button. The `aria-label` prop is required by the type because there
- * is no visible text to name the control. Replaces the bespoke circular/ghost
- * icon buttons (close buttons, reorder controls, menu toggle, social icons).
+ * is no visible text to name the control.
  *
  * Server-Component-friendly: no hooks, so no 'use client' needed.
  */

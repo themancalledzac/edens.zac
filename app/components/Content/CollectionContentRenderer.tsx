@@ -63,8 +63,7 @@ function toCollectionDimensions(
     (options.lenses.filterable && options.lenses.values.length > 0) ||
     (options.lensTypes.filterable && options.lensTypes.values.length > 0)
   ) {
-    // Lens dropdown is split (types then names) in the old bar; the toolbar
-    // surfaces lens NAMES as one dropdown and lens TYPES as another.
+    // Lens is surfaced as two dropdowns: NAMES and TYPES.
     dims.selectedLenses = {
       label: 'Lens',
       options: options.lenses.values,

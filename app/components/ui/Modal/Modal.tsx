@@ -24,15 +24,13 @@ const FOCUSABLE_SELECTOR =
 
 /**
  * Canonical modal. Owns the portal, the backdrop scrim, Escape-to-close, a focus
- * trap with focus-return, body scroll lock, and dialog ARIA. Replaces the 5
- * per-feature modal shells (review §6a-rank-1). Variants change layout only —
- * the dismissal + focus behavior is identical across all three.
+ * trap with focus-return, body scroll lock, and dialog ARIA. Variants change layout
+ * only — the dismissal + focus behavior is identical across all three.
  */
 export function Modal({ open, onClose, variant = 'overlay', labelledBy, children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
-  // Ref-counted; no-ops when `open` is false. Locks the page behind the modal.
   useBodyScrollLock(open);
 
   const getFocusable = useCallback((): HTMLElement[] => {
