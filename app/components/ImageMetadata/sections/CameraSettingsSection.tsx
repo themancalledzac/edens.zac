@@ -15,7 +15,6 @@ import type {
 import type { ImageUpdateState } from '../hooks/useImageMetadataState';
 import modalStyles from '../ImageMetadataModal.module.scss';
 import { computeCameraSelectionUpdate } from '../imageMetadataUtils';
-import localStyles from './CameraSettingsSection.module.scss';
 
 export interface CameraSettingsSectionProps {
   updateState: ImageUpdateState;
@@ -39,7 +38,7 @@ export default function CameraSettingsSection({
 }: CameraSettingsSectionProps): React.JSX.Element {
   return (
     <div
-      className={[modalStyles.formSection, isGif ? localStyles.sectionDisabled : '']
+      className={[modalStyles.formSection, isGif ? modalStyles.sectionDisabled : '']
         .filter(Boolean)
         .join(' ')}
       aria-disabled={isGif || undefined}

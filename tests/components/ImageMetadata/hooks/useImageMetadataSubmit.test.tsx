@@ -240,6 +240,38 @@ describe('useImageMetadataSubmit', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('does NOT call onGifSaveSuccess when updateGif returns null', async () => {
+    const onClose = jest.fn();
+    const onGifSaveSuccess = jest.fn();
+    const singleGif = gif(303, { title: 'Original GIF' });
+
+    mockUpdateGif.mockResolvedValueOnce(null);
+
+    const { result } = renderHook(() =>
+      useImageMetadataSubmit({
+        selectedImages: [singleGif],
+        selectedImageIds: [303],
+        updateState: { id: 303, title: 'Updated GIF', collections: [] },
+        hasChanges: true,
+        originalCollectionIds: new Set<number>(),
+        availableFilmTypes: [],
+        onClose,
+        onGifSaveSuccess,
+      })
+    );
+
+    await act(async () => {
+      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
+        typeof result.current.handleSubmit
+      >[0];
+      await result.current.handleSubmit(fakeEvent);
+    });
+
+    expect(mockUpdateGif).toHaveBeenCalledTimes(1);
+    expect(onGifSaveSuccess).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   // ── handleDelete ────────────────────────────────────────────────────────
 
   it('handleDelete shows confirm dialog and does NOT call deleteImages when user cancels', async () => {

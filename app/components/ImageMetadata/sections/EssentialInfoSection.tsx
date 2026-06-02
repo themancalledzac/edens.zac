@@ -9,7 +9,6 @@ import type { CollectionListModel, LocationModel } from '@/app/types/Collection'
 
 import type { ImageUpdateState } from '../hooks/useImageMetadataState';
 import modalStyles from '../ImageMetadataModal.module.scss';
-import localStyles from './EssentialInfoSection.module.scss';
 
 export interface EssentialInfoSectionProps {
   updateState: ImageUpdateState;
@@ -44,10 +43,10 @@ export default function EssentialInfoSection({
       </div>
 
       <div
-        className={[modalStyles.formGroup, isGif ? localStyles.sectionDisabled : '']
+        className={[modalStyles.formGroup, isGif ? modalStyles.sectionDisabled : '']
           .filter(Boolean)
           .join(' ')}
-        aria-disabled={isGif}
+        aria-disabled={isGif || undefined}
         title={isGif ? 'Caption is not supported on GIF/MP4 content.' : undefined}
       >
         <label className={modalStyles.formLabel}>Caption</label>
