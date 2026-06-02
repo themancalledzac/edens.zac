@@ -1,24 +1,28 @@
 /* Image Metadata Editor Modal Styles */
 
-/* Main wrapper positioned at current scroll position */
-.metadataModalWrapper {
-  position: absolute;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
+/* Close button floats over the top-right corner of the full-bleed sheet. The sheet
+   fills the viewport, so a fixed slot anchors the control to the corner without
+   depending on the Modal dialog establishing a positioning context. */
+.closeButtonSlot {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: var(--z-modal-controls);
+
+  @media (width <= 768px) {
+    top: 10px;
+    right: 10px;
+  }
+}
+
+/* Split-screen layout inside the Modal's sheet dialog (image left, metadata right). */
+.metadataLayout {
   display: flex;
   flex-direction: row;
+  width: 100%;
+  height: 100%;
   background-color: rgb(0, 0, 0, 0.95);
-  z-index: var(--z-fullscreen);
   overflow: hidden;
-
-  /* Reset inherited styles */
-  margin: 0 !important;
-  padding: 0 !important;
-  transform: none !important;
-  perspective: none !important;
-
-  /* Prevent scrolling interactions */
   overscroll-behavior: none;
 
   @media (width <= 1024px) {
@@ -340,43 +344,6 @@
 
   &:active:not(:disabled) {
     transform: translateY(0);
-  }
-}
-
-/* Close Button */
-.closeButton {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: rgb(0, 0, 0, 0.5);
-  color: white;
-  font-size: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  z-index: var(--z-modal-controls);
-
-  &:hover:not(:disabled) {
-    background-color: var(--color-overlay-light-30);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  @media (width <= 768px) {
-    top: 10px;
-    right: 10px;
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
   }
 }
 

@@ -15,9 +15,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 /**
- * Canonical action button. Replaces the ~30 per-feature *Button classes.
- * Variant drives color; size drives padding/height; loading shows a spinner
- * and disables the control. Forwards all native button attributes.
+ * Canonical action button. Variant drives color; size drives padding/height; loading shows a
+ * spinner and disables the control. Forwards all native button attributes.
  *
  * Server-Component-friendly: no hooks, so no 'use client' needed.
  */

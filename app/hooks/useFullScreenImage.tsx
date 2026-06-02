@@ -13,7 +13,6 @@ import {
 } from 'react';
 
 import { INTERACTION } from '@/app/constants';
-import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ViewableContent } from '@/app/types/Content';
 
@@ -28,7 +27,6 @@ export type ImageBlock = ViewableContent;
 export type FullScreenState = {
   images: ImageBlock[];
   currentIndex: number;
-  scrollPosition: number;
 } | null;
 
 export function useFullScreenImage(): {
@@ -55,9 +53,6 @@ export function useFullScreenImage(): {
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
 
-  /**
-   * @remarks `scrollPosition` is stored for potential future scroll restoration.
-   */
   const showImage = useCallback((image: ImageBlock, allImages?: ImageBlock[]) => {
     const images = allImages || [image];
     const currentIndex = allImages?.findIndex(img => img.id === image.id) ?? 0;
@@ -65,7 +60,6 @@ export function useFullScreenImage(): {
     setFullScreenState({
       images,
       currentIndex: currentIndex !== -1 ? currentIndex : 0,
-      scrollPosition: window.scrollY,
     });
   }, []);
 
@@ -76,8 +70,6 @@ export function useFullScreenImage(): {
   }, []);
 
   const isOpen = !!fullScreenState;
-
-  useBodyScrollLock(isOpen);
 
   const navigate = useCallback((direction: 'next' | 'previous') => {
     setFullScreenState(prev => {
@@ -138,9 +130,7 @@ export function useFullScreenImage(): {
     if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        hideImage();
-      } else if (event.key === 'ArrowLeft') {
+      if (event.key === 'ArrowLeft') {
         event.preventDefault();
         navigateToPrevious();
       } else if (event.key === 'ArrowRight') {
@@ -160,7 +150,7 @@ export function useFullScreenImage(): {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('wheel', preventScroll);
     };
-  }, [isOpen, navigateToNext, navigateToPrevious, hideImage]);
+  }, [isOpen, navigateToNext, navigateToPrevious]);
 
   const isMetadataControl = useCallback((target: HTMLElement | null): boolean => {
     if (!target) return false;

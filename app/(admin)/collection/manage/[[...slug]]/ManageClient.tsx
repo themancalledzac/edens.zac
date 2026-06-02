@@ -124,12 +124,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     title: '',
   });
 
-  const {
-    editingContent,
-    scrollPosition,
-    openEditor,
-    closeEditor: baseCloseEditor,
-  } = useImageMetadataEditor();
+  const { editingContent, openEditor, closeEditor: baseCloseEditor } = useImageMetadataEditor();
 
   /**
    * Wraps `baseCloseEditor` to clear `selectedImageIds` when closing in single-edit mode.
@@ -1723,7 +1718,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
           block is a GIF; image-only fields are greyed out in that branch. */}
       {editingContent && contentToEdit.length > 0 && (
         <ImageMetadataModal
-          scrollPosition={scrollPosition}
           onClose={closeEditor}
           onSaveSuccess={handleMetadataSaveSuccess}
           onGifSaveSuccess={handleGifSaveSuccess}
@@ -1746,7 +1740,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
       {/* Text Block Create Modal */}
       {isTextBlockModalOpen && (
         <TextBlockCreateModal
-          scrollPosition={scrollPosition}
           onClose={() => setIsTextBlockModalOpen(false)}
           onSubmit={handleTextBlockSubmit}
         />

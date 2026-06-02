@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 /**
@@ -18,21 +17,17 @@ export type EditableContent = ContentImageModel | ContentGifModel;
  *
  * Handles:
  * - Opening/closing the metadata editor modal (image or gif)
- * - Scroll position management
  * - Body scroll prevention while modal is open
  *
  * @returns Editor state and control functions
  */
 export function useImageMetadataEditor() {
   const [editingContent, setEditingContent] = useState<EditableContent | null>(null);
-  const [scrollPosition, setScrollPosition] = useState(0);
 
   /**
    * Open the metadata editor for a specific content block (image or gif).
    */
   const openEditor = useCallback((content: EditableContent) => {
-    const currentScroll = window.scrollY;
-    setScrollPosition(currentScroll);
     setEditingContent(content);
   }, []);
 
@@ -42,8 +37,6 @@ export function useImageMetadataEditor() {
   const closeEditor = useCallback(() => {
     setEditingContent(null);
   }, []);
-
-  useBodyScrollLock(!!editingContent);
 
   useEffect(() => {
     if (!editingContent) return;
@@ -65,7 +58,6 @@ export function useImageMetadataEditor() {
     editingContent,
     /** @deprecated use `editingContent` — kept for back-compat until callers migrate. */
     editingImage: editingContent,
-    scrollPosition,
     openEditor,
     closeEditor,
     isOpen: !!editingContent,

@@ -61,7 +61,6 @@ jest.mock('@/app/hooks/useCollectionData', () => {
 jest.mock('@/app/hooks/useImageMetadataEditor', () => ({
   useImageMetadataEditor: () => ({
     editingImage: null,
-    scrollPosition: 0,
     openEditor: jest.fn(),
     closeEditor: jest.fn(),
   }),

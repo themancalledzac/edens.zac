@@ -9,8 +9,7 @@ export interface CloseButtonProps extends Omit<IconButtonProps, 'children' | 'ar
 
 /**
  * Close (✕) button — an IconButton specialized to a single dismiss glyph with a
- * sensible default aria-label. Replaces the 4 byte-divergent close buttons
- * (fullscreen, ImageMetadataModal, TextBlockCreateModal, MenuDropdown).
+ * sensible default aria-label.
  */
 export function CloseButton({ 'aria-label': ariaLabel = 'Close', ...rest }: CloseButtonProps) {
   return (

@@ -1,27 +1,22 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
-/**
- * Module-level lock counter — survives component remounts.
- * Prevents concurrent locks from fighting over body styles.
- */
+// Shared across hook instances so concurrent lockers cooperate over one ref-count and one offset.
 let lockCount = 0;
+let lockedScrollY = 0;
 
 /**
- * Lock body scroll when enabled. Uses position:fixed technique
- * to reliably prevent background scrolling on iOS Safari.
- * Ref-counted: multiple concurrent callers are safe.
+ * Lock body scroll while `enabled`, restoring the exact scroll position on release. Uses the
+ * position:fixed technique for reliable iOS Safari behavior. Ref-counted: concurrent callers are safe.
  */
 export function useBodyScrollLock(enabled: boolean): void {
-  const scrollYRef = useRef(0);
-
   useEffect(() => {
     if (!enabled) return;
 
     lockCount++;
 
     if (lockCount === 1) {
-      scrollYRef.current = window.scrollY;
-      document.body.style.top = `-${scrollYRef.current}px`;
+      lockedScrollY = window.scrollY;
+      document.body.style.top = `-${lockedScrollY}px`;
       document.body.classList.add('scroll-locked');
     }
 
@@ -31,7 +26,7 @@ export function useBodyScrollLock(enabled: boolean): void {
       if (lockCount === 0) {
         document.body.classList.remove('scroll-locked');
         document.body.style.top = '';
-        window.scrollTo(0, scrollYRef.current);
+        window.scrollTo(0, lockedScrollY);
       }
     };
   }, [enabled]);

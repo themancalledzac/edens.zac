@@ -1,28 +1,5 @@
 /* Text Block Create Modal Styles */
 
-/* Main wrapper positioned at current scroll position */
-.modalWrapper {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: rgb(0, 0, 0, 0.85);
-  z-index: var(--z-fullscreen);
-  overflow: auto;
-  padding: 20px;
-
-  /* Reset inherited styles */
-  margin: 0 !important;
-  transform: none !important;
-  perspective: none !important;
-
-  /* Prevent scrolling interactions */
-  overscroll-behavior: none;
-}
-
 /* Modal Content */
 .modalContent {
   width: 100%;
@@ -55,33 +32,6 @@
 
   @media (width <= 768px) {
     font-size: 20px;
-  }
-}
-
-.closeButton {
-  background: none;
-  border: none;
-  color: var(--color-overlay-light-70);
-  font-size: 32px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-1);
-  transition: all 0.2s;
-
-  &:hover {
-    background: var(--color-overlay-light-10);
-    color: white;
-  }
-
-  &:focus {
-    outline: 2px solid var(--color-overlay-light-50);
-    outline-offset: 2px;
   }
 }
 

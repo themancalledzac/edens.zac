@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
+import { Modal } from '@/app/components/ui/Modal/Modal';
 import { ApiError } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 
@@ -102,25 +103,29 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
 
   if (submitState === 'unlocking') {
     return (
-      <div className={styles.gateContainer}>
+      <Modal open onClose={() => {}} variant="overlay" labelledBy="gate-title">
         <div className={styles.gateCard}>
-          <h1 className={styles.gateTitle}>{collection.title}</h1>
+          <h1 id="gate-title" className={styles.gateTitle}>
+            {collection.title}
+          </h1>
           <p className={styles.gateSubtitle}>Client Gallery</p>
           <p className={styles.gateLoading} role="status" aria-live="polite">
             <span className={styles.gateSpinner} aria-hidden="true" />
             Loading gallery…
           </p>
         </div>
-      </div>
+      </Modal>
     );
   }
 
   const isVerifying = submitState === 'verifying';
 
   return (
-    <div className={styles.gateContainer}>
+    <Modal open onClose={() => {}} variant="overlay" labelledBy="gate-title">
       <div className={styles.gateCard}>
-        <h1 className={styles.gateTitle}>{collection.title}</h1>
+        <h1 id="gate-title" className={styles.gateTitle}>
+          {collection.title}
+        </h1>
         <p className={styles.gateSubtitle}>Client Gallery</p>
 
         <form onSubmit={handleSubmit} className={styles.gateForm}>
@@ -144,6 +149,6 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
           </Button>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }
