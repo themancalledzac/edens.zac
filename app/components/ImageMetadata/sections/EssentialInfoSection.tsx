@@ -43,6 +43,48 @@ export default function EssentialInfoSection({
   currentCollectionId,
   isGif,
 }: EssentialInfoSectionProps): React.JSX.Element {
+  // Visibility of the current collection's junction. Absent/undefined means "visible" (only an
+  // explicit `false` hides it), matching the backend default.
+  const currentCollectionVisible =
+    updateState.collections?.find(c => c.collectionId === currentCollectionId)?.visible !== false;
+
+  // Toggle the current collection's `visible` flag in updateState — updating the existing junction
+  // in place, or appending one when the image isn't in this collection's list yet.
+  const handleCollectionVisibilityToggle = (checked: boolean) => {
+    if (currentCollectionId == null) return;
+
+    const currentCollections = updateState.collections || [];
+    const collectionIndex = currentCollections.findIndex(
+      c => c.collectionId === currentCollectionId
+    );
+
+    let updatedCollections: Array<{
+      collectionId: number;
+      name?: string;
+      visible?: boolean;
+      orderIndex?: number;
+    }>;
+
+    if (collectionIndex >= 0) {
+      updatedCollections = currentCollections.map((c, idx) =>
+        idx === collectionIndex ? { ...c, visible: checked } : c
+      );
+    } else {
+      const collectionName = availableCollections.find(c => c.id === currentCollectionId)?.name;
+      updatedCollections = [
+        ...currentCollections,
+        {
+          collectionId: currentCollectionId,
+          name: collectionName,
+          visible: checked,
+          orderIndex: currentCollections.length,
+        },
+      ];
+    }
+
+    updateStateField({ collections: updatedCollections });
+  };
+
   return (
     <div className={modalStyles.formSection}>
       <h3 className={modalStyles.sectionHeading}>Essential Information</h3>
@@ -158,46 +200,8 @@ export default function EssentialInfoSection({
         <div className={modalStyles.checkboxGroup}>
           <label className={modalStyles.checkboxLabel}>
             <Checkbox
-              checked={(() => {
-                const currentCollection = updateState.collections?.find(
-                  c => c.collectionId === currentCollectionId
-                );
-                return currentCollection?.visible !== false;
-              })()}
-              onChange={e => {
-                const currentCollections = updateState.collections || [];
-                const collectionIndex = currentCollections.findIndex(
-                  c => c.collectionId === currentCollectionId
-                );
-
-                let updatedCollections: Array<{
-                  collectionId: number;
-                  name?: string;
-                  visible?: boolean;
-                  orderIndex?: number;
-                }>;
-
-                if (collectionIndex >= 0) {
-                  updatedCollections = currentCollections.map((c, idx) =>
-                    idx === collectionIndex ? { ...c, visible: e.target.checked } : c
-                  );
-                } else {
-                  const collectionName = availableCollections.find(
-                    c => c.id === currentCollectionId
-                  )?.name;
-                  updatedCollections = [
-                    ...currentCollections,
-                    {
-                      collectionId: currentCollectionId,
-                      name: collectionName,
-                      visible: e.target.checked,
-                      orderIndex: currentCollections.length,
-                    },
-                  ];
-                }
-
-                updateStateField({ collections: updatedCollections });
-              }}
+              checked={currentCollectionVisible}
+              onChange={e => handleCollectionVisibilityToggle(e.target.checked)}
             />
             <span>Collection Visibility</span>
           </label>
