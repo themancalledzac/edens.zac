@@ -2,6 +2,10 @@
 
 import { type FormEvent, useState } from 'react';
 
+import { Button } from '@/app/components/ui/Button/Button';
+import { Field } from '@/app/components/ui/Field/Field';
+import { Input } from '@/app/components/ui/Field/Input';
+import { Textarea } from '@/app/components/ui/Field/Textarea';
 import { type ContactResult, submitContactMessage } from '@/app/utils/contactApi';
 
 import styles from './ContactForm.module.scss';
@@ -41,48 +45,56 @@ export function ContactForm({ onSubmit }: ContactFormProps) {
   return (
     <div className={styles.contactFormContainer}>
       <div className={styles.formWrapper}>
-        {status === 'success' && (
-          <div className={`${styles.statusBanner} ${styles.statusBannerSuccess}`}>
-            Message sent!
-          </div>
-        )}
-        {status === 'error' && errorResult && (
-          <div className={`${styles.statusBanner} ${styles.statusBannerError}`}>
-            {errorResult.message}
-          </div>
-        )}
+        <div className={styles.statusRegion} role="status" aria-live="polite">
+          {status === 'success' && (
+            <div className={`${styles.statusBanner} ${styles.statusBannerSuccess}`}>
+              Message sent!
+            </div>
+          )}
+          {status === 'error' && errorResult && (
+            <div className={`${styles.statusBanner} ${styles.statusBannerError}`}>
+              {errorResult.message}
+            </div>
+          )}
+        </div>
         <form aria-label="contact form" className={styles.contactForm} onSubmit={handleSubmit}>
-          <input
-            type="email"
-            name="email"
-            placeholder="Your email"
-            className={styles.emailInput}
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            maxLength={320}
-            required
-          />
-          <textarea
-            name="message"
-            placeholder="Your message"
-            className={styles.messageTextarea}
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            maxLength={5000}
-            required
-          />
+          <Field label="Email" htmlFor="contact-email">
+            <Input
+              id="contact-email"
+              type="email"
+              name="email"
+              placeholder="Your email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              maxLength={320}
+              required
+            />
+          </Field>
+          <Field label="Message" htmlFor="contact-message" className={styles.messageField}>
+            <Textarea
+              id="contact-message"
+              name="message"
+              placeholder="Your message"
+              className={styles.messageTextarea}
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              maxLength={5000}
+              required
+            />
+          </Field>
           <small
             className={`${styles.charCounter} ${message.length > 4500 ? styles.charCounterWarn : ''}`}
           >
             {message.length} / 5000
           </small>
-          <button
+          <Button
             type="submit"
-            className={styles.submitButton}
-            disabled={status === 'submitting' || message.length === 0 || message.length > 5000}
+            variant="primary"
+            loading={status === 'submitting'}
+            disabled={message.length === 0 || message.length > 5000}
           >
             {status === 'submitting' ? 'Sending...' : 'Send'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

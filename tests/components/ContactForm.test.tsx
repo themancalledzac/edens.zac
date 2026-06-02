@@ -254,4 +254,15 @@ describe('ContactForm', () => {
     expect(screen.queryByText(/message sent/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/something went wrong/i)).not.toBeInTheDocument();
   });
+
+  it('associates labels with the email and message controls', () => {
+    render(<ContactForm {...defaultProps} />);
+    expect(screen.getByLabelText('Email')).toHaveAttribute('type', 'email');
+    expect(screen.getByLabelText('Message').tagName).toBe('TEXTAREA');
+  });
+
+  it('renders an aria-live status region', () => {
+    render(<ContactForm {...defaultProps} />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
 });
