@@ -1,25 +1,3 @@
-.container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.main {
-  flex: 1;
-  margin: 0 auto;
-  width: 100%;
-  max-width: var(--page-max-width);
-  padding-left: 0;
-  padding-right: 0;
-  padding-top: var(--page-padding-mobile);
-
-  @media (width >= 768px) {
-    padding-left: var(--default-padding);
-    padding-right: var(--default-padding);
-    padding-top: var(--default-padding);
-  }
-}
-
 .pageHeader {
   display: flex;
   justify-content: space-between;

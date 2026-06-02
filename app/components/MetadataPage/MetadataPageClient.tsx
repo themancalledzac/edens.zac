@@ -1,6 +1,7 @@
 'use client';
 
-import { SiteHeader } from '@/app/components/SiteHeader/SiteHeader';
+import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import type { LocationModel } from '@/app/types/Collection';
 import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
 
@@ -17,19 +18,13 @@ interface MetadataPageClientProps {
 
 export function MetadataPageClient({ tags, people, locations }: MetadataPageClientProps) {
   return (
-    <div className={styles.container}>
-      <main className={styles.main}>
-        <SiteHeader pageType="default" />
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>Metadata</h1>
-        </div>
-
-        <div className={styles.grid}>
-          <MetadataTagList items={tags} />
-          <MetadataPersonList items={people} />
-          <MetadataLocationList items={locations} />
-        </div>
-      </main>
-    </div>
+    <PageShell>
+      <CollectionHeader title="Metadata" />
+      <div className={styles.grid}>
+        <MetadataTagList items={tags} />
+        <MetadataPersonList items={people} />
+        <MetadataLocationList items={locations} />
+      </div>
+    </PageShell>
   );
 }
