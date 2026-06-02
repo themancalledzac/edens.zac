@@ -3,7 +3,6 @@
 import { type SubmitEvent, useState } from 'react';
 
 import { deleteGif, deleteImages, updateGif, updateImages } from '@/app/lib/api/content';
-import { type LocationModel } from '@/app/types/Collection';
 import {
   type ContentGifModel,
   type ContentImageModel,
@@ -110,25 +109,12 @@ export function useImageMetadataSubmit({
   };
 
   const submitImageEdits = async () => {
+    // `imageSubset` (the IMAGE-typed selection) is reused for both paths so the filter +
+    // narrowing happens once. `updateState` (ImageUpdateState) already satisfies the builders'
+    // `Partial<ContentImageModel> & { id }` param, so no casts are needed.
     const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
-      ? buildImageUpdatesForBulkEdit(
-          updateState as Partial<ContentImageModel> & {
-            id: number;
-            location?: LocationModel | null;
-          },
-          selectedImages.filter(
-            (s): s is ContentImageModel => s.contentType === 'IMAGE'
-          ) as ContentImageModel[],
-          selectedImageIds,
-          availableFilmTypes
-        )
-      : [
-          buildImageUpdateForSingleEdit(
-            updateState as ContentImageModel & { location?: LocationModel | null },
-            selectedImages[0] as ContentImageModel,
-            availableFilmTypes
-          ),
-        ];
+      ? buildImageUpdatesForBulkEdit(updateState, imageSubset, selectedImageIds, availableFilmTypes)
+      : [buildImageUpdateForSingleEdit(updateState, imageSubset[0]!, availableFilmTypes)];
 
     const response = await updateImages(imageUpdates);
     if (response !== null) {

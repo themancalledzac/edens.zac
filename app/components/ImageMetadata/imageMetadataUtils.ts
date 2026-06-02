@@ -1060,7 +1060,7 @@ export function buildImageUpdatesForBulkEdit(
  * @returns ContentImageUpdateRequest object for the single image
  */
 export function buildImageUpdateForSingleEdit(
-  updateState: ContentImageModel,
+  updateState: Partial<ContentImageModel> & { id: number },
   originalImage: ContentImageModel,
   availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
 ): ContentImageUpdateRequest {
@@ -1113,13 +1113,7 @@ export function mapUpdateResponseToFrontend(response: {
             defaultIso: f.defaultIso,
           })),
         }
-      : {
-          tags: undefined,
-          people: undefined,
-          cameras: undefined,
-          lenses: undefined,
-          filmTypes: undefined,
-        },
+      : {},
     errors: undefined, // updateImages doesn't return errors in the same format
   };
 }
