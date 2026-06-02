@@ -15,6 +15,40 @@ html,
   --color-bg: var(--color-white);
   --color-fg: var(--color-black);
 
+  /* ── Unified semantic color taxonomy (review §6b). Roles, not raw colors.
+     These are the canonical names; everything below migrates onto them and the
+     legacy color-text, color-bg, and overlay-light families are deleted. ── */
+  --color-surface: var(--color-white); /* page + card canvas */
+  --color-surface-raised: #f8f9fa; /* raised panels (was --color-bg-light) */
+  --color-on-surface: var(--color-black); /* primary text on surface */
+  --color-on-surface-muted: #666; /* secondary/muted text (was --color-fg-muted/-text-secondary) */
+  --color-accent: rgb(
+    59 130 246 / 100%
+  ); /* interactive/selection blue (was the --color-blue collision target) */
+
+  --color-on-accent: var(--color-white); /* text/icons on an accent fill */
+
+  /* Scrim alpha ramps — one dark + one light scale, 10..90 in steps of 10.
+     Replaces the 9-step --color-overlay-light-* ramp + ~94 inline rgb() literals. */
+  --scrim-dark-10: rgb(0 0 0 / 10%);
+  --scrim-dark-20: rgb(0 0 0 / 20%);
+  --scrim-dark-30: rgb(0 0 0 / 30%);
+  --scrim-dark-40: rgb(0 0 0 / 40%);
+  --scrim-dark-50: rgb(0 0 0 / 50%);
+  --scrim-dark-60: rgb(0 0 0 / 60%);
+  --scrim-dark-70: rgb(0 0 0 / 70%);
+  --scrim-dark-80: rgb(0 0 0 / 80%);
+  --scrim-dark-90: rgb(0 0 0 / 90%);
+  --scrim-light-10: rgb(255 255 255 / 10%);
+  --scrim-light-20: rgb(255 255 255 / 20%);
+  --scrim-light-30: rgb(255 255 255 / 30%);
+  --scrim-light-40: rgb(255 255 255 / 40%);
+  --scrim-light-50: rgb(255 255 255 / 50%);
+  --scrim-light-60: rgb(255 255 255 / 60%);
+  --scrim-light-70: rgb(255 255 255 / 70%);
+  --scrim-light-80: rgb(255 255 255 / 80%);
+  --scrim-light-90: rgb(255 255 255 / 90%);
+
   /* Badge and overlay colors */
   --color-badge-bg: rgb(0, 0, 0, 0.9);
   --color-text-overlay-bg: rgb(89, 89, 89, 0.4);
@@ -150,6 +184,7 @@ html,
   --color-bg-subtle: var(--color-bg-light);
   --color-bg-muted: var(--color-bg-medium);
   --surface-secondary: var(--color-bg-light);
+  /* stylelint-disable-next-line declaration-block-no-duplicate-custom-properties -- intentional duplicate of the canonical --color-accent in the semantic taxonomy above; same value, alias block removed by TK-3 */
   --color-accent: var(--color-blue); /* selection/link accent */
   --radius-sm: var(--radius-1);
   --color-warning: #f4b400; /* RatingStars; net-new token */
