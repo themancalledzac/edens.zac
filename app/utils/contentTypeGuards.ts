@@ -46,8 +46,8 @@ export function isContentCollection(block: Content): block is ContentCollectionM
 }
 
 /**
- * Type guard to check if a Content has an image (IMAGE or GIF)
- * Note: PARALLAX is no longer a separate contentType - it's just a boolean flag
+ * Type guard to check if a Content has an image (IMAGE or GIF).
+ * PARALLAX is a boolean flag, not a separate contentType.
  */
 export function hasImage(
   block: Content

@@ -1,20 +1,6 @@
 /**
- * Root App Layout
- *
- * Global layout component for the App Router that defines application-wide
- * configuration including metadata, viewport settings, fonts, and provider
- * wrapping. Replaces _app.tsx and _document.tsx from Pages Router.
- *
- * @dependencies
- * - Inter font from Google Fonts
- * - globals.css for application-wide styles
- *
- * @exports
- * - metadata - Application metadata configuration
- * - viewport - Viewport and theme configuration
- * - RootLayout - Root layout component
- *
- * @returns React Server Component wrapping entire application
+ * Root App Router layout: application-wide metadata, viewport, fonts, and
+ * provider wrapping.
  */
 import '@/app/styles/globals.css';
 

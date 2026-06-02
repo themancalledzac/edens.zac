@@ -13,14 +13,10 @@ export const metadata: Metadata = {
 };
 
 /**
- * Home Page
- *
- * Main landing page component that displays the 'home' collection.
- * Uses shared CollectionPageWrapper to eliminate code duplication.
+ * Landing page; renders the 'home' collection via the shared CollectionPageWrapper.
  *
  * @todo Remove force-dynamic once backend removes the `blocks_per_page` column reference.
  *   Restore: `export const revalidate = 3600; export const dynamic = 'error';`
- * @returns React Server Component displaying home page content
  */
 export const dynamic = 'force-dynamic';
 

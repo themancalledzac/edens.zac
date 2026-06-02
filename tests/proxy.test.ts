@@ -3,10 +3,9 @@
  *
  * Tests for the Next.js middleware (proxy.ts).
  *
- * Covers the new admin hub redirect rules (local-only `/admin` + `/homePage`
- * passthrough; non-local redirects to `/`; localhost `/` → `/admin`) AND a
- * regression net for the existing `/cdn`, `/catalog`, and `/comments` rules.
- * The middleware previously had zero direct test coverage.
+ * Covers the admin hub redirect rules (local-only `/admin` + `/homePage`
+ * passthrough; non-local redirects to `/`; localhost `/` → `/admin`) and the
+ * `/cdn`, `/catalog`, and `/comments` rules.
  */
 
 import { NextRequest } from 'next/server';

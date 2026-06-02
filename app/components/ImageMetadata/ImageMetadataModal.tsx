@@ -125,8 +125,7 @@ interface ImageMetadataModalProps {
   onSaveSuccess?: (response: ContentImageUpdateResponse) => void;
   /**
    * Fired after a single-GIF save. Separate from `onSaveSuccess` because the GIF update endpoint
-   * returns one record instead of the batched ImageUpdate response. ManageClient hands these to
-   * the same collection-refresh handler that GIF saves used to call from `GifMetadataModal`.
+   * returns one record instead of the batched ImageUpdate response.
    */
   onGifSaveSuccess?: (gif: ContentGifModel) => void;
   onDeleteSuccess?: (deletedIds: number[]) => void;

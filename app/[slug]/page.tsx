@@ -63,13 +63,8 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
 }
 
 /**
- * Dynamic Collection Page
- *
- * Route handler for individual collections by slug (e.g., /film, /portfolio-work).
- * Uses shared CollectionPageWrapper to eliminate code duplication with home page.
- *
- * @param params - Next.js dynamic route params containing slug
- * @returns Server component displaying collection content
+ * Route handler for individual collections by slug (e.g. /film, /portfolio-work).
+ * Renders via the shared CollectionPageWrapper.
  */
 export default async function CollectionPage({ params }: CollectionPageProps) {
   const { slug } = await params;

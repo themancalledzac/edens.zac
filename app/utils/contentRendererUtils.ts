@@ -47,7 +47,7 @@ function extractAltText(
 }
 
 /**
- * Normalizes contentType (no longer needed for PARALLAX conversion, but kept for consistency)
+ * Narrows a raw contentType string to the known content-type union.
  */
 function normalizeContentType(contentType: string): 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION' {
   return contentType as 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION';
