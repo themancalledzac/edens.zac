@@ -175,3 +175,29 @@ export const getContentWidth = (viewportWidth: number, isMobile: boolean): numbe
     Math.min(viewportWidth - LAYOUT.desktopPadding, LAYOUT.pageMaxWidth - LAYOUT.desktopPadding)
   );
 };
+
+/**
+ * Decide whether to lay out with the freshly-measured client width or keep the SSR width.
+ *
+ * Keeping the SSR width avoids a hydration reflow, but is only safe when it does not exceed the
+ * real viewport. The check is asymmetric on purpose:
+ *  - client NARROWER than the SSR-assumed width (`measured < server`) → the SSR width would
+ *    overflow the viewport, so we MUST recompute — for ANY shortfall, not just past the tolerance.
+ *    A symmetric `Math.abs(diff) > tolerance` let sub-`tolerance` shortfalls through and overflowed
+ *    the body across the whole `[1236, 1300)` desktop→tablet band.
+ *  - client WIDER than the SSR width → keeping the (narrower) SSR layout can't overflow, so we only
+ *    recompute once the difference exceeds `tolerance`, to avoid a flash on tiny differences.
+ *
+ * @param measuredContentWidth client-measured content width (0 before the first measure)
+ * @param serverContentWidth SSR content width, or null/undefined when no SSR width was provided
+ * @param tolerance px difference tolerated in the "client wider" direction before recomputing
+ */
+export const shouldUseMeasuredWidth = (
+  measuredContentWidth: number,
+  serverContentWidth: number | null | undefined,
+  tolerance: number
+): boolean =>
+  measuredContentWidth > 0 &&
+  (serverContentWidth == null ||
+    measuredContentWidth < serverContentWidth ||
+    measuredContentWidth - serverContentWidth > tolerance);

@@ -3,7 +3,7 @@
 import { Fragment, useMemo } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
-import { LAYOUT } from '@/app/constants';
+import { LAYOUT, shouldUseMeasuredWidth } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
@@ -133,10 +133,14 @@ export default function Component({
 }: ContentComponentProps) {
   const measured = useViewport();
 
-  const useMeasured =
-    measured.contentWidth > 0 &&
-    (serverContentWidth == null ||
-      Math.abs(measured.contentWidth - serverContentWidth) > LAYOUT.ssrRecomputeToleranceWidth);
+  // Use the measured client width once available — but keep the SSR width within tolerance to
+  // avoid a hydration reflow. Asymmetric: a client narrower than the SSR width always recomputes
+  // (else the wider SSR layout overflows the viewport — the [1236,1300) overflow-band fix).
+  const useMeasured = shouldUseMeasuredWidth(
+    measured.contentWidth,
+    serverContentWidth,
+    LAYOUT.ssrRecomputeToleranceWidth
+  );
 
   const effectiveContentWidth = useMeasured
     ? measured.contentWidth
