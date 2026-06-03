@@ -928,6 +928,53 @@ export default function ManageClient({ slug }: ManageClientProps) {
   );
 
   /**
+   * Parent-collection selection state — mirrors the sibling-collection state above,
+   * but `originalParentIds` derives from `collection.parents` (the inverse of the
+   * child containment relation, surfaced by admin/manage reads).
+   */
+  const originalParentIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const parent of collection?.parents ?? []) {
+      ids.add(parent.id);
+    }
+    return ids;
+  }, [collection?.parents]);
+
+  const pendingAddParentIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const parent of updateData.parents?.newValue ?? []) {
+      ids.add(parent.collectionId);
+    }
+    return ids;
+  }, [updateData.parents?.newValue]);
+
+  const pendingRemoveParentIds = useMemo(() => {
+    return new Set<number>(updateData.parents?.remove ?? []);
+  }, [updateData.parents?.remove]);
+
+  /**
+   * Toggle a parent link. Same engine as handleSiblingToggle; parent rows carry
+   * only { collectionId, name } (parents have neither orderIndex nor visible here).
+   */
+  const handleParentToggle = useCallback(
+    (toggledCollection: CollectionListModel) => {
+      setUpdateData(prev => ({
+        ...prev,
+        parents: toggleRelation(
+          prev.parents,
+          toggledCollection,
+          originalParentIds,
+          collection => ({
+            collectionId: collection.id,
+            name: collection.name,
+          })
+        ),
+      }));
+    },
+    [originalParentIds]
+  );
+
+  /**
    * Handle adding new child collection
    */
   const handleAddNewChild = useCallback(async () => {
@@ -1592,6 +1639,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           siblingPendingAddIds={pendingAddSiblingIds}
                           siblingPendingRemoveIds={pendingRemoveSiblingIds}
                           onToggleSibling={handleSiblingToggle}
+                          parentSavedIds={originalParentIds}
+                          parentPendingAddIds={pendingAddParentIds}
+                          parentPendingRemoveIds={pendingRemoveParentIds}
+                          onToggleParent={handleParentToggle}
                         />
 
                         {/* Home: rate child collections inline. Click is immediate (no save button). */}
