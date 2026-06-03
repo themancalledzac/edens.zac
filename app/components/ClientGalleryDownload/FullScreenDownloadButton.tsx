@@ -4,52 +4,38 @@ import { type MouseEvent, useCallback, useEffect, useRef, useState } from 'react
 
 import { type DownloadFormat, downloadImageUrl } from '@/app/lib/api/downloads';
 
-import styles from './ImageDownloadOverlay.module.scss';
+import styles from './FullScreenDownloadButton.module.scss';
 
-interface ImageDownloadOverlayProps {
+interface FullScreenDownloadButtonProps {
   imageId: number;
 }
 
-export default function ImageDownloadOverlay({ imageId }: ImageDownloadOverlayProps) {
+/**
+ * Download control for the fullscreen viewer on CLIENT_GALLERY images. Tapping the icon expands a
+ * Web / Full quality picker and streams the chosen file via a blob download (auth flows through the
+ * `same-origin` gallery cookie). This is the single-image counterpart to the gallery's "Select →
+ * Download" flow — the per-grid-image overlay was removed so a tap on the grid always opens
+ * fullscreen.
+ */
+export default function FullScreenDownloadButton({ imageId }: FullScreenDownloadButtonProps) {
   const [expanded, setExpanded] = useState(false);
   const [downloading, setDownloading] = useState<DownloadFormat | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Collapse on outside click when expanded.
-  // Listening on `mousedown` keeps the picker stable for inside clicks: the
-  // container's `e.stopPropagation()` on outer click is unrelated, but
-  // `containerRef.contains` already excludes the buttons themselves.
+  // Collapse the picker whenever the viewer moves to a different image.
   useEffect(() => {
-    if (!expanded) return;
-    const handler = (e: globalThis.MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setExpanded(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [expanded]);
+    setExpanded(false);
+    setErrorMsg(null);
+  }, [imageId]);
 
-  // Esc collapses while expanded (unless a download is mid-flight).
-  useEffect(() => {
-    if (!expanded || downloading !== null) return;
-    const handler = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setExpanded(false);
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [expanded, downloading]);
-
-  // Clear error timer on unmount.
   useEffect(() => {
     return () => {
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     };
   }, []);
 
-  const handleIconClick = useCallback((e: MouseEvent) => {
+  const handleToggle = useCallback((e: MouseEvent) => {
     e.stopPropagation();
     setExpanded(prev => !prev);
     setErrorMsg(null);
@@ -94,8 +80,7 @@ export default function ImageDownloadOverlay({ imageId }: ImageDownloadOverlayPr
 
   return (
     <div
-      ref={containerRef}
-      className={`${styles.overlayContainer}${expanded ? ` ${styles.expanded}` : ''}`}
+      className={`${styles.container}${expanded ? ` ${styles.expanded}` : ''}`}
       onClick={e => e.stopPropagation()}
     >
       {expanded ? (
@@ -127,8 +112,8 @@ export default function ImageDownloadOverlay({ imageId }: ImageDownloadOverlayPr
       ) : (
         <button
           type="button"
-          onClick={handleIconClick}
-          className={styles.downloadIconButton}
+          onClick={handleToggle}
+          className={styles.iconButton}
           aria-label="Download image"
         >
           <svg

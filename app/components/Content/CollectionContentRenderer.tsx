@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { type Ref, useCallback, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
-import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { Badge } from '@/app/components/ui/Badge/Badge';
 import {
@@ -618,7 +617,6 @@ export default function CollectionContentRenderer({
           isSelected={isSelected}
         />
       )}
-      {isClientGallery && contentType === 'IMAGE' && <ImageDownloadOverlay imageId={contentId} />}
       {isReorderMode &&
         onArrowMove &&
         onPickUp &&
