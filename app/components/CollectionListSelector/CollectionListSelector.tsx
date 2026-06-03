@@ -261,16 +261,18 @@ export default function CollectionListSelector({
           ) : (
             <span className={styles.name}>{collection.name}</span>
           )}
-          <span className={styles.toggleCell}>
-            {renderCheckbox(
-              collection,
-              siblingSelection,
-              onToggleSibling!,
-              hoveredSiblingId,
-              setHoveredSiblingId,
-              `Toggle sibling ${collection.name}`
-            )}
-          </span>
+          {siblingMode && (
+            <span className={styles.toggleCell}>
+              {renderCheckbox(
+                collection,
+                siblingSelection,
+                onToggleSibling!,
+                hoveredSiblingId,
+                setHoveredSiblingId,
+                `Toggle sibling ${collection.name}`
+              )}
+            </span>
+          )}
           <span className={styles.toggleCell}>
             {renderCheckbox(
               collection,
@@ -347,7 +349,7 @@ export default function CollectionListSelector({
         <div className={styles.columnHeaderRow}>
           <span className={styles.columnHeaderName}>Collection Name</span>
           {/* "Catalog Type" column removed — type is the accordion section header */}
-          <span className={styles.columnHeaderToggle}>Sibling</span>
+          {siblingMode && <span className={styles.columnHeaderToggle}>Sibling</span>}
           <span className={styles.columnHeaderToggle}>Child</span>
           {parentMode && <span className={styles.columnHeaderToggle}>Parent</span>}
         </div>
