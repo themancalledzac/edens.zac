@@ -136,29 +136,32 @@ export function useFullScreenImage(): {
 
   const navigate = useCallback((direction: 'next' | 'previous') => {
     setFullScreenState(prev => {
-      if (!prev) return null;
+      if (!prev) return prev;
       const delta = direction === 'next' ? 1 : -1;
       const newIndex = prev.currentIndex + delta;
-
-      if (newIndex >= 0 && newIndex < prev.images.length) {
-        const nextImage = prev.images[newIndex];
-        // REPLACE (never push) so each swipe/arrow doesn't add a history entry —
-        // Back should close the viewer, not step backward through images.
-        if (nextImage && typeof window !== 'undefined') {
-          window.history.replaceState(
-            { fsImage: nextImage.id },
-            '',
-            `${window.location.pathname}${buildImageSearch(nextImage.id)}`
-          );
-        }
-        return { ...prev, currentIndex: newIndex };
-      }
-      return prev;
+      if (newIndex < 0 || newIndex >= prev.images.length) return prev;
+      return { ...prev, currentIndex: newIndex };
     });
   }, []);
 
   const navigateToNext = useCallback(() => navigate('next'), [navigate]);
   const navigateToPrevious = useCallback(() => navigate('previous'), [navigate]);
+
+  // Sync ?image=<id> on swipe/arrow via replaceState (never push) so Back closes
+  // the viewer instead of stepping through images. Lives in an effect — not the
+  // setState updater — because Next.js patches history.replaceState to setState
+  // on its Router, which would fire during render.
+  useEffect(() => {
+    if (!fullScreenState || typeof window === 'undefined') return;
+    const current = fullScreenState.images[fullScreenState.currentIndex];
+    if (!current) return;
+    if (new URLSearchParams(window.location.search).get('image') === String(current.id)) return;
+    window.history.replaceState(
+      { fsImage: current.id },
+      '',
+      `${window.location.pathname}${buildImageSearch(current.id)}`
+    );
+  }, [fullScreenState]);
 
   useEffect(() => {
     if (!fullScreenState) return;
