@@ -68,6 +68,11 @@ interface CollectionListSelectorProps {
   siblingPendingAddIds?: Set<number>;
   siblingPendingRemoveIds?: Set<number>;
   onToggleSibling?: (collection: CollectionListModel) => void;
+  // Optional third ("Parent") toggle column. Engages 3-column "parentMode" when all four are supplied.
+  parentSavedIds?: Set<number>;
+  parentPendingAddIds?: Set<number>;
+  parentPendingRemoveIds?: Set<number>;
+  onToggleParent?: (collection: CollectionListModel) => void;
 }
 
 function getCheckboxState(
@@ -97,6 +102,10 @@ export default function CollectionListSelector({
   siblingPendingAddIds,
   siblingPendingRemoveIds,
   onToggleSibling,
+  parentSavedIds,
+  parentPendingAddIds,
+  parentPendingRemoveIds,
+  onToggleParent,
 }: CollectionListSelectorProps) {
   // Independent hover state per column so remove-intent (red) on one checkbox
   // never lights up the other column's checkbox.
@@ -105,6 +114,10 @@ export default function CollectionListSelector({
 
   const siblingMode =
     !!onToggleSibling && !!siblingSavedIds && !!siblingPendingAddIds && !!siblingPendingRemoveIds;
+
+  const parentMode =
+    !!onToggleParent && !!parentSavedIds && !!parentPendingAddIds && !!parentPendingRemoveIds;
+  const [hoveredParentId, setHoveredParentId] = useState<number | null>(null);
 
   const filteredCollections = excludeCollectionId
     ? allCollections.filter(c => c.id !== excludeCollectionId)
