@@ -3,10 +3,9 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import CollectionListSelector, {
-  COLLECTION_TYPE_ORDER,
   sortGroup,
 } from '@/app/components/CollectionListSelector/CollectionListSelector';
-import type { CollectionListModel } from '@/app/types/Collection';
+import { COLLECTION_TYPE_ORDER, type CollectionListModel } from '@/app/types/Collection';
 
 const mockCollections: CollectionListModel[] = [
   { id: 1, name: 'Portfolio A', slug: 'portfolio-a', type: 'PORTFOLIO' },
@@ -558,8 +557,8 @@ describe('three-column accordion mode', () => {
 
   it('renders 6 collapsed non-HOME type headers by default; no rows beneath', () => {
     renderInThreeColumnMode();
-    for (const l of ['Client Gallery', 'Art Gallery', 'Portfolio', 'Blog', 'Misc']) expect(screen.getByText(l)).toBeInTheDocument()
-    ;
+    for (const l of ['Client Gallery', 'Art Gallery', 'Portfolio', 'Blog', 'Misc'])
+      expect(screen.getByText(l)).toBeInTheDocument();
     // "Parent" is both a column header and an accordion header — assert the header exists via getAllByText.
     expect(screen.getAllByText('Parent').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('P1')).not.toBeInTheDocument();

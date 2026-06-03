@@ -20,6 +20,17 @@ export enum CollectionType {
   MISC = 'MISC',
 }
 
+/** Canonical display/accordion order for collection types (HOME first, MISC last). */
+export const COLLECTION_TYPE_ORDER: CollectionType[] = [
+  CollectionType.HOME,
+  CollectionType.PARENT,
+  CollectionType.CLIENT_GALLERY,
+  CollectionType.ART_GALLERY,
+  CollectionType.PORTFOLIO,
+  CollectionType.BLOG,
+  CollectionType.MISC,
+];
+
 /**
  * Display mode for content collections
  * - CHRONOLOGICAL: Order blocks by creation date

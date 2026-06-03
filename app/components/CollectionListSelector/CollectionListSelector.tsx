@@ -3,23 +3,14 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
-import { type CollectionListModel, CollectionType } from '@/app/types/Collection';
+import {
+  COLLECTION_TYPE_ORDER,
+  type CollectionListModel,
+  CollectionType,
+} from '@/app/types/Collection';
+import { humanizeConstantCase } from '@/app/utils/stringUtils';
 
 import styles from './CollectionListSelector.module.scss';
-
-/**
- * Accordion section order for grouping collections by type on the manage page.
- * HOME leads, then PARENT, CLIENT_GALLERY, ART_GALLERY, PORTFOLIO, BLOG, MISC.
- */
-export const COLLECTION_TYPE_ORDER: CollectionType[] = [
-  CollectionType.HOME,
-  CollectionType.PARENT,
-  CollectionType.CLIENT_GALLERY,
-  CollectionType.ART_GALLERY,
-  CollectionType.PORTFOLIO,
-  CollectionType.BLOG,
-  CollectionType.MISC,
-];
 
 /**
  * Sort rows within a single type group. BLOG rows sort by `collectionDate`
@@ -207,13 +198,6 @@ export default function CollectionListSelector({
     );
   };
 
-  // Turns a SCREAMING_SNAKE CollectionType into a human label (e.g. CLIENT_GALLERY → "Client Gallery").
-  const humanizeType = (t: string) =>
-    t
-      .split('_')
-      .map(w => w.charAt(0) + w.slice(1).toLowerCase())
-      .join(' ');
-
   // Renders one collection row. In accordion (sibling/parent) mode the row carries the
   // Sibling | Child toggles (the type label moves to the accordion header) and gets an
   // `expandedRow` tint when shown under an open group; single-column mode is unchanged.
@@ -371,7 +355,7 @@ export default function CollectionListSelector({
                     aria-expanded={isExpanded}
                   >
                     <span className={styles.typeHeaderChevron}>{isExpanded ? '▾' : '▸'}</span>
-                    <span className={styles.typeHeaderLabel}>{humanizeType(t)}</span>
+                    <span className={styles.typeHeaderLabel}>{humanizeConstantCase(t)}</span>
                     <span className={styles.typeHeaderCount}>({rows.length})</span>
                   </button>
                   {isExpanded && rows.map(c => renderRow(c, true))}
