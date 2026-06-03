@@ -216,3 +216,53 @@ $type-col-width: 130px;
   align-items: center;
   justify-content: center;
 }
+
+:root {
+  --collection-row-expanded-bg: rgb(255, 255, 255, 0.03);
+}
+
+// Accordion type-group header (multi-column mode): a clickable, full-width row
+// that toggles its group open/closed. The type label lives here instead of on
+// each row, so collapsed groups stay compact.
+.typeHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border-subtle, rgb(255, 255, 255, 0.05));
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+
+  &:hover {
+    background: rgb(255, 255, 255, 0.02);
+  }
+}
+
+.typeHeaderRow--expanded {
+  background: rgb(255, 255, 255, 0.04);
+}
+
+.typeHeaderChevron {
+  width: 1rem;
+  opacity: 0.6;
+}
+
+.typeHeaderLabel {
+  flex: 1;
+  font-weight: 600;
+}
+
+.typeHeaderCount {
+  opacity: 0.5;
+  font-size: 0.85em;
+}
+
+// Rows shown under an expanded accordion group get a subtle tint.
+.expandedRow {
+  background-color: var(--collection-row-expanded-bg);
+}

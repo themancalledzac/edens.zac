@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 import { type CollectionListModel, CollectionType } from '@/app/types/Collection';
@@ -119,19 +119,43 @@ export default function CollectionListSelector({
     !!onToggleParent && !!parentSavedIds && !!parentPendingAddIds && !!parentPendingRemoveIds;
   const [hoveredParentId, setHoveredParentId] = useState<number | null>(null);
 
-  const filteredCollections = excludeCollectionId
-    ? allCollections.filter(c => c.id !== excludeCollectionId)
-    : allCollections;
+  const filteredCollections = useMemo(
+    () =>
+      excludeCollectionId
+        ? allCollections.filter(c => c.id !== excludeCollectionId)
+        : allCollections,
+    [allCollections, excludeCollectionId]
+  );
 
   // Pin the "current" collection to the top so the gallery being edited leads the list; every
   // other row keeps its incoming order. No-op when pinnedCollectionId is absent or not in the list.
-  const orderedCollections =
-    pinnedCollectionId == null
-      ? filteredCollections
-      : [
-          ...filteredCollections.filter(c => c.id === pinnedCollectionId),
-          ...filteredCollections.filter(c => c.id !== pinnedCollectionId),
-        ];
+  const orderedCollections = useMemo(
+    () =>
+      pinnedCollectionId == null
+        ? filteredCollections
+        : [
+            ...filteredCollections.filter(c => c.id === pinnedCollectionId),
+            ...filteredCollections.filter(c => c.id !== pinnedCollectionId),
+          ],
+    [filteredCollections, pinnedCollectionId]
+  );
+
+  // Accordion mode engages whenever a second (Sibling) or third (Parent) toggle column is present.
+  // Rows are then grouped + collapsed by CollectionType; single-column mode keeps its flat list.
+  const [expandedType, setExpandedType] = useState<CollectionType | null>(null);
+  const accordionMode = siblingMode || parentMode;
+  const groupsByType = useMemo(() => {
+    if (!accordionMode) return null;
+    const map = new Map<string, CollectionListModel[]>();
+    for (const t of COLLECTION_TYPE_ORDER) map.set(t, []);
+    for (const c of orderedCollections) {
+      const t = (c.type as string) ?? 'MISC';
+      if (!map.has(t)) map.set(t, []);
+      map.get(t)!.push(c);
+    }
+    for (const [t, rows] of map) map.set(t, sortGroup(rows, t));
+    return map;
+  }, [accordionMode, orderedCollections]);
 
   const handleRowClick = useCallback(
     (collection: CollectionListModel) => {
@@ -177,6 +201,96 @@ export default function CollectionListSelector({
     );
   };
 
+  // Turns a SCREAMING_SNAKE CollectionType into a human label (e.g. CLIENT_GALLERY → "Client Gallery").
+  const humanizeType = (t: string) =>
+    t
+      .split('_')
+      .map(w => w.charAt(0) + w.slice(1).toLowerCase())
+      .join(' ');
+
+  // Renders one collection row. In accordion (sibling/parent) mode the row carries the
+  // Sibling | Child toggles (the type label moves to the accordion header) and gets an
+  // `expandedRow` tint when shown under an open group; single-column mode is unchanged.
+  const renderRow = (collection: CollectionListModel, expanded: boolean) => {
+    if (siblingMode || parentMode) {
+      // Two-column mode: name on the left, Sibling | Child toggles aligned on the right.
+      return (
+        <div
+          key={collection.id}
+          className={`${styles.row} ${styles.rowSibling} ${expanded ? styles.expandedRow : ''}`}
+          role="group"
+          aria-label={collection.name}
+        >
+          {onNavigate ? (
+            <button
+              type="button"
+              className={`${styles.name} ${styles.nameButton}`}
+              onClick={() => onNavigate(collection)}
+              aria-label={`Open ${collection.name}`}
+            >
+              {collection.name}
+            </button>
+          ) : (
+            <span className={styles.name}>{collection.name}</span>
+          )}
+          <span className={styles.toggleCell}>
+            {renderCheckbox(
+              collection,
+              siblingSavedIds!,
+              siblingPendingAddIds!,
+              siblingPendingRemoveIds!,
+              onToggleSibling!,
+              hoveredSiblingId,
+              setHoveredSiblingId,
+              `Toggle sibling ${collection.name}`
+            )}
+          </span>
+          <span className={styles.toggleCell}>
+            {renderCheckbox(
+              collection,
+              savedCollectionIds,
+              pendingAddIds,
+              pendingRemoveIds,
+              onToggle,
+              hoveredChildId,
+              setHoveredChildId,
+              `Toggle child ${collection.name}`
+            )}
+          </span>
+          {/* Parent toggle cell — added in Task 3.4 */}
+        </div>
+      );
+    }
+    return (
+      <div
+        key={collection.id}
+        className={`${styles.row} ${onNavigate ? styles.navigable : ''}`}
+        role="button"
+        tabIndex={0}
+        onClick={() => handleRowClick(collection)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleRowClick(collection);
+          }
+        }}
+      >
+        {renderCheckbox(
+          collection,
+          savedCollectionIds,
+          pendingAddIds,
+          pendingRemoveIds,
+          onToggle,
+          hoveredChildId,
+          setHoveredChildId,
+          `Toggle ${collection.name}`
+        )}
+        <span className={styles.type}>{collection.type || 'Portfolio'}</span>
+        <span className={styles.name}>{collection.name}</span>
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -201,84 +315,35 @@ export default function CollectionListSelector({
         </div>
       )}
       <div className={styles.list}>
-        {orderedCollections.length === 0 && (
-          <div className={styles.emptyState}>No collections available</div>
+        {accordionMode && groupsByType ? (
+          <>
+            {/* HOME is pinned above the accordion — always visible, never collapsible. */}
+            {(groupsByType.get(CollectionType.HOME) ?? []).map(c => renderRow(c, false))}
+            {COLLECTION_TYPE_ORDER.filter(t => t !== CollectionType.HOME).map(t => {
+              const rows = groupsByType.get(t) ?? [];
+              const isExpanded = expandedType === t;
+              return (
+                <div key={t}>
+                  <button
+                    type="button"
+                    className={`${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`}
+                    onClick={() => setExpandedType(isExpanded ? null : t)}
+                    aria-expanded={isExpanded}
+                  >
+                    <span className={styles.typeHeaderChevron}>{isExpanded ? '▾' : '▸'}</span>
+                    <span className={styles.typeHeaderLabel}>{humanizeType(t)}</span>
+                    <span className={styles.typeHeaderCount}>({rows.length})</span>
+                  </button>
+                  {isExpanded && rows.map(c => renderRow(c, true))}
+                </div>
+              );
+            })}
+          </>
+        ) : (
+          orderedCollections.map(c => renderRow(c, false))
         )}
-        {orderedCollections.map(collection =>
-          siblingMode ? (
-            // Two-column mode: name on the left, Sibling | Child toggles aligned on the right.
-            <div
-              key={collection.id}
-              className={`${styles.row} ${styles.rowSibling}`}
-              role="group"
-              aria-label={collection.name}
-            >
-              {onNavigate ? (
-                <button
-                  type="button"
-                  className={`${styles.name} ${styles.nameButton}`}
-                  onClick={() => onNavigate(collection)}
-                  aria-label={`Open ${collection.name}`}
-                >
-                  {collection.name}
-                </button>
-              ) : (
-                <span className={styles.name}>{collection.name}</span>
-              )}
-              <span className={styles.type}>{collection.type || 'Portfolio'}</span>
-              <span className={styles.toggleCell}>
-                {renderCheckbox(
-                  collection,
-                  siblingSavedIds!,
-                  siblingPendingAddIds!,
-                  siblingPendingRemoveIds!,
-                  onToggleSibling!,
-                  hoveredSiblingId,
-                  setHoveredSiblingId,
-                  `Toggle sibling ${collection.name}`
-                )}
-              </span>
-              <span className={styles.toggleCell}>
-                {renderCheckbox(
-                  collection,
-                  savedCollectionIds,
-                  pendingAddIds,
-                  pendingRemoveIds,
-                  onToggle,
-                  hoveredChildId,
-                  setHoveredChildId,
-                  `Toggle child ${collection.name}`
-                )}
-              </span>
-            </div>
-          ) : (
-            <div
-              key={collection.id}
-              className={`${styles.row} ${onNavigate ? styles.navigable : ''}`}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleRowClick(collection)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleRowClick(collection);
-                }
-              }}
-            >
-              {renderCheckbox(
-                collection,
-                savedCollectionIds,
-                pendingAddIds,
-                pendingRemoveIds,
-                onToggle,
-                hoveredChildId,
-                setHoveredChildId,
-                `Toggle ${collection.name}`
-              )}
-              <span className={styles.type}>{collection.type || 'Portfolio'}</span>
-              <span className={styles.name}>{collection.name}</span>
-            </div>
-          )
+        {!accordionMode && orderedCollections.length === 0 && (
+          <div className={styles.emptyState}>No collections available</div>
         )}
       </div>
     </div>
