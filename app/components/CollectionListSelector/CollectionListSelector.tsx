@@ -3,9 +3,45 @@
 import { useCallback, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
-import type { CollectionListModel } from '@/app/types/Collection';
+import { type CollectionListModel, CollectionType } from '@/app/types/Collection';
 
 import styles from './CollectionListSelector.module.scss';
+
+/**
+ * Accordion section order for grouping collections by type on the manage page.
+ * HOME leads, then PARENT, CLIENT_GALLERY, ART_GALLERY, PORTFOLIO, BLOG, MISC.
+ */
+export const COLLECTION_TYPE_ORDER: CollectionType[] = [
+  CollectionType.HOME,
+  CollectionType.PARENT,
+  CollectionType.CLIENT_GALLERY,
+  CollectionType.ART_GALLERY,
+  CollectionType.PORTFOLIO,
+  CollectionType.BLOG,
+  CollectionType.MISC,
+];
+
+/**
+ * Sort rows within a single type group. BLOG rows sort by `collectionDate`
+ * descending (newest first) with null dates last, falling back to name when both
+ * dates are null; every other type sorts alphabetically by name.
+ */
+export function sortGroup(
+  rows: CollectionListModel[],
+  type: CollectionType | string | undefined
+): CollectionListModel[] {
+  if (type === CollectionType.BLOG) {
+    return [...rows].sort((a, b) => {
+      const da = a.collectionDate ?? null;
+      const db = b.collectionDate ?? null;
+      if (da == null && db == null) return a.name.localeCompare(b.name);
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return db.localeCompare(da);
+    });
+  }
+  return [...rows].sort((a, b) => a.name.localeCompare(b.name));
+}
 
 type CheckboxState = 'empty' | 'saved' | 'pending-add' | 'pending-remove';
 

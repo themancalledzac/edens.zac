@@ -2,7 +2,10 @@ import '@testing-library/jest-dom';
 
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
+import CollectionListSelector, {
+  COLLECTION_TYPE_ORDER,
+  sortGroup,
+} from '@/app/components/CollectionListSelector/CollectionListSelector';
 import type { CollectionListModel } from '@/app/types/Collection';
 
 const mockCollections: CollectionListModel[] = [
@@ -357,5 +360,56 @@ describe('CollectionListSelector', () => {
       expect(rows[2]).toHaveTextContent('Gallery C');
       expect(rows[3]).toHaveTextContent('No Type D');
     });
+  });
+});
+
+describe('COLLECTION_TYPE_ORDER', () => {
+  it('lists HOME first then PARENT, CLIENT_GALLERY, ART_GALLERY, PORTFOLIO, BLOG, MISC', () => {
+    expect(COLLECTION_TYPE_ORDER).toEqual([
+      'HOME',
+      'PARENT',
+      'CLIENT_GALLERY',
+      'ART_GALLERY',
+      'PORTFOLIO',
+      'BLOG',
+      'MISC',
+    ]);
+  });
+});
+
+describe('sortGroup', () => {
+  it('sorts BLOG by collectionDate desc, null last', () => {
+    const sorted = sortGroup(
+      [
+        { id: 1, name: 'B', collectionDate: '2025-01-15' },
+        { id: 2, name: 'C', collectionDate: null },
+        { id: 3, name: 'A', collectionDate: '2025-06-01' },
+      ],
+      'BLOG'
+    );
+    expect(sorted.map(c => c.id)).toEqual([3, 1, 2]);
+  });
+
+  it('sorts non-BLOG alphabetically by name', () => {
+    const sorted = sortGroup(
+      [
+        { id: 1, name: 'Charlie' },
+        { id: 2, name: 'Alpha' },
+        { id: 3, name: 'Bravo' },
+      ],
+      'PORTFOLIO'
+    );
+    expect(sorted.map(c => c.id)).toEqual([2, 3, 1]);
+  });
+
+  it('falls back to name when both BLOG entries have null collectionDate', () => {
+    const sorted = sortGroup(
+      [
+        { id: 1, name: 'B', collectionDate: null },
+        { id: 2, name: 'A', collectionDate: null },
+      ],
+      'BLOG'
+    );
+    expect(sorted.map(c => c.id)).toEqual([2, 1]);
   });
 });
