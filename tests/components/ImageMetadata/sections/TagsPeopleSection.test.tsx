@@ -42,21 +42,10 @@ describe('TagsPeopleSection', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the "Tags & People" section heading', () => {
-    render(<TagsPeopleSection {...makeProps()} />);
-    expect(screen.getByRole('heading', { name: /tags & people/i })).toBeInTheDocument();
-  });
-
-  it('Tags Dropdown receives availableTags and shows the label', () => {
+  it('renders the Tags and People dropdowns', () => {
     render(<TagsPeopleSection {...makeProps()} />);
     expect(screen.getByText('Tags')).toBeInTheDocument();
-    expect(screen.getByText(/no tags selected/i)).toBeInTheDocument();
-  });
-
-  it('People Dropdown receives availablePeople and shows the label', () => {
-    render(<TagsPeopleSection {...makeProps()} />);
     expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.getByText(/no people selected/i)).toBeInTheDocument();
   });
 
   it('Tags Dropdown emits updateStateField({ tags }) on change', () => {

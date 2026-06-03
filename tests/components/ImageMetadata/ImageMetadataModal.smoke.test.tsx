@@ -102,16 +102,8 @@ describe('ImageMetadataModal — smoke', () => {
     expect(window.confirm).toHaveBeenCalled();
   });
 
-  it('Delete button label reflects bulk-edit count', () => {
-    render(
-      <ImageMetadataModal
-        {...baseProps}
-        selectedImageIds={[101, 102]}
-        selectedImages={[imageFixture(101), imageFixture(102)]}
-      />
-    );
-    expect(screen.getByRole('button', { name: /delete 2 images/i })).toBeInTheDocument();
-  });
+  // The Delete/Remove count-label wording is exercised in MetadataActionRow.test.tsx; the modal
+  // just threads isBulkEdit/selectedCount through, so it isn't re-asserted at the integration level.
 
   it('renders Remove-from-collection only when currentCollectionId is set', () => {
     const { rerender } = render(<ImageMetadataModal {...baseProps} />);

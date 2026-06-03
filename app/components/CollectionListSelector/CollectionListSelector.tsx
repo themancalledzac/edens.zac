@@ -116,6 +116,9 @@ export default function CollectionListSelector({
     return (
       <button
         type="button"
+        // `data-state` is the stable contract tests assert against; the CSS-module class drives
+        // styling. Keeping them separate means a class rename can't silently break the tests.
+        data-state={state}
         className={`${styles.checkbox} ${styles[`checkbox--${state}`]} ${showRemoveIntent ? styles['checkbox--remove-intent'] : ''}`}
         onClick={e => {
           e.stopPropagation();

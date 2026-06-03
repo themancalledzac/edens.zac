@@ -1,6 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 
-import { useImageMetadataSubmit } from '@/app/components/ImageMetadata/hooks/useImageMetadataSubmit';
+import {
+  useImageMetadataSubmit,
+  type UseImageMetadataSubmitParams,
+  type UseImageMetadataSubmitResult,
+} from '@/app/components/ImageMetadata/hooks/useImageMetadataSubmit';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 // ---------------------------------------------------------------------------
@@ -57,17 +61,40 @@ const gif = (id: number, overrides: Partial<ContentGifModel> = {}): ContentGifMo
     ...overrides,
   }) as ContentGifModel;
 
-// Base hook params for single-image, no changes
-const baseImageParams = (overrides = {}) => ({
+// ---------------------------------------------------------------------------
+// Harness — single-image / no-changes defaults; override per test.
+// ---------------------------------------------------------------------------
+const defaultParams = (
+  overrides: Partial<UseImageMetadataSubmitParams> = {}
+): UseImageMetadataSubmitParams => ({
   selectedImages: [img(1)],
   selectedImageIds: [1],
-  updateState: { id: 1, title: 'Image 1', contentType: 'IMAGE' as const, collections: [] },
+  updateState: { id: 1, title: 'Image 1', contentType: 'IMAGE', collections: [] },
   hasChanges: false,
   originalCollectionIds: new Set<number>(),
   availableFilmTypes: [],
   onClose: jest.fn(),
   ...overrides,
 });
+
+const renderSubmit = (overrides: Partial<UseImageMetadataSubmitParams> = {}) =>
+  renderHook(() => useImageMetadataSubmit(defaultParams(overrides)));
+
+/** Run an async hook action inside act(). */
+const runAct = async (fn: () => Promise<void> | void): Promise<void> => {
+  await act(async () => {
+    await fn();
+  });
+};
+
+/** Drive handleSubmit with a stub form event. */
+const submitForm = (result: { current: UseImageMetadataSubmitResult }): Promise<void> =>
+  runAct(() => {
+    const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
+      typeof result.current.handleSubmit
+    >[0];
+    return result.current.handleSubmit(fakeEvent);
+  });
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -82,16 +109,9 @@ describe('useImageMetadataSubmit', () => {
 
   it('handleSubmit calls onClose immediately when !hasChanges (no API call)', async () => {
     const onClose = jest.fn();
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit(baseImageParams({ onClose, hasChanges: false }))
-    );
+    const { result } = renderSubmit({ onClose, hasChanges: false });
 
-    await act(async () => {
-      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
-        typeof result.current.handleSubmit
-      >[0];
-      await result.current.handleSubmit(fakeEvent);
-    });
+    await submitForm(result);
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(mockUpdateImages).not.toHaveBeenCalled();
@@ -106,25 +126,16 @@ describe('useImageMetadataSubmit', () => {
 
     mockUpdateGif.mockResolvedValueOnce(updatedGif as ContentGifModel);
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: [singleGif],
-        selectedImageIds: [202],
-        updateState: { id: 202, title: 'Updated GIF', collections: [] },
-        hasChanges: true,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        onClose,
-        onGifSaveSuccess,
-      })
-    );
-
-    await act(async () => {
-      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
-        typeof result.current.handleSubmit
-      >[0];
-      await result.current.handleSubmit(fakeEvent);
+    const { result } = renderSubmit({
+      selectedImages: [singleGif],
+      selectedImageIds: [202],
+      updateState: { id: 202, title: 'Updated GIF', collections: [] },
+      hasChanges: true,
+      onClose,
+      onGifSaveSuccess,
     });
+
+    await submitForm(result);
 
     expect(mockUpdateGif).toHaveBeenCalledTimes(1);
     expect(mockUpdateImages).not.toHaveBeenCalled();
@@ -137,29 +148,18 @@ describe('useImageMetadataSubmit', () => {
     const onSaveSuccess = jest.fn();
     const images = [img(1), img(2)];
 
-    mockUpdateImages.mockResolvedValueOnce({
-      updatedImages: [],
+    mockUpdateImages.mockResolvedValueOnce({ updatedImages: [] });
+
+    const { result } = renderSubmit({
+      selectedImages: images,
+      selectedImageIds: [1, 2],
+      updateState: { id: 0, contentType: 'IMAGE', title: 'Bulk Title', collections: [] },
+      hasChanges: true,
+      onClose,
+      onSaveSuccess,
     });
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: images,
-        selectedImageIds: [1, 2],
-        updateState: { id: 0, contentType: 'IMAGE' as const, title: 'Bulk Title', collections: [] },
-        hasChanges: true,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        onClose,
-        onSaveSuccess,
-      })
-    );
-
-    await act(async () => {
-      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
-        typeof result.current.handleSubmit
-      >[0];
-      await result.current.handleSubmit(fakeEvent);
-    });
+    await submitForm(result);
 
     expect(mockUpdateImages).toHaveBeenCalledTimes(1);
     // Bulk edit passes an array with one entry per image
@@ -175,29 +175,18 @@ describe('useImageMetadataSubmit', () => {
     const onSaveSuccess = jest.fn();
     const singleImage = img(1, { title: 'Original' });
 
-    mockUpdateImages.mockResolvedValueOnce({
-      updatedImages: [],
+    mockUpdateImages.mockResolvedValueOnce({ updatedImages: [] });
+
+    const { result } = renderSubmit({
+      selectedImages: [singleImage],
+      selectedImageIds: [1],
+      updateState: { id: 1, contentType: 'IMAGE', title: 'Renamed', collections: [] },
+      hasChanges: true,
+      onClose,
+      onSaveSuccess,
     });
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: [singleImage],
-        selectedImageIds: [1],
-        updateState: { id: 1, contentType: 'IMAGE' as const, title: 'Renamed', collections: [] },
-        hasChanges: true,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        onClose,
-        onSaveSuccess,
-      })
-    );
-
-    await act(async () => {
-      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
-        typeof result.current.handleSubmit
-      >[0];
-      await result.current.handleSubmit(fakeEvent);
-    });
+    await submitForm(result);
 
     expect(mockUpdateImages).toHaveBeenCalledTimes(1);
     // Single edit passes an array with exactly one entry
@@ -214,25 +203,14 @@ describe('useImageMetadataSubmit', () => {
 
     mockUpdateImages.mockResolvedValueOnce(null);
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: [img(1)],
-        selectedImageIds: [1],
-        updateState: { id: 1, contentType: 'IMAGE' as const, title: 'Changed', collections: [] },
-        hasChanges: true,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        onClose,
-        onSaveSuccess,
-      })
-    );
-
-    await act(async () => {
-      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
-        typeof result.current.handleSubmit
-      >[0];
-      await result.current.handleSubmit(fakeEvent);
+    const { result } = renderSubmit({
+      updateState: { id: 1, contentType: 'IMAGE', title: 'Changed', collections: [] },
+      hasChanges: true,
+      onClose,
+      onSaveSuccess,
     });
+
+    await submitForm(result);
 
     expect(mockUpdateImages).toHaveBeenCalledTimes(1);
     expect(onSaveSuccess).not.toHaveBeenCalled();
@@ -247,28 +225,53 @@ describe('useImageMetadataSubmit', () => {
 
     mockUpdateGif.mockResolvedValueOnce(null);
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: [singleGif],
-        selectedImageIds: [303],
-        updateState: { id: 303, title: 'Updated GIF', collections: [] },
-        hasChanges: true,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        onClose,
-        onGifSaveSuccess,
-      })
-    );
-
-    await act(async () => {
-      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
-        typeof result.current.handleSubmit
-      >[0];
-      await result.current.handleSubmit(fakeEvent);
+    const { result } = renderSubmit({
+      selectedImages: [singleGif],
+      selectedImageIds: [303],
+      updateState: { id: 303, title: 'Updated GIF', collections: [] },
+      hasChanges: true,
+      onClose,
+      onGifSaveSuccess,
     });
+
+    await submitForm(result);
 
     expect(mockUpdateGif).toHaveBeenCalledTimes(1);
     expect(onGifSaveSuccess).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  // ── handleCancel ──────────────────────────────────────────────────────────
+
+  it('handleCancel closes immediately without a confirm when there are no changes', async () => {
+    const onClose = jest.fn();
+    const { result } = renderSubmit({ onClose, hasChanges: false });
+
+    await runAct(() => result.current.handleCancel());
+
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('handleCancel confirms and closes when there are unsaved changes and the user accepts', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const onClose = jest.fn();
+    const { result } = renderSubmit({ onClose, hasChanges: true });
+
+    await runAct(() => result.current.handleCancel());
+
+    expect(window.confirm).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('handleCancel stays open when there are unsaved changes and the user dismisses the confirm', async () => {
+    jest.spyOn(window, 'confirm').mockReturnValue(false);
+    const onClose = jest.fn();
+    const { result } = renderSubmit({ onClose, hasChanges: true });
+
+    await runAct(() => result.current.handleCancel());
+
+    expect(window.confirm).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -277,13 +280,9 @@ describe('useImageMetadataSubmit', () => {
   it('handleDelete shows confirm dialog and does NOT call deleteImages when user cancels', async () => {
     jest.spyOn(window, 'confirm').mockReturnValue(false);
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit(baseImageParams({ hasChanges: false }))
-    );
+    const { result } = renderSubmit({ hasChanges: false });
 
-    await act(async () => {
-      await result.current.handleDelete();
-    });
+    await runAct(() => result.current.handleDelete());
 
     expect(window.confirm).toHaveBeenCalledTimes(1);
     expect(mockDeleteImages).not.toHaveBeenCalled();
@@ -297,13 +296,9 @@ describe('useImageMetadataSubmit', () => {
 
     mockDeleteImages.mockResolvedValueOnce({ deletedIds: [1] });
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit(baseImageParams({ onClose, onDeleteSuccess, hasChanges: false }))
-    );
+    const { result } = renderSubmit({ onClose, onDeleteSuccess, hasChanges: false });
 
-    await act(async () => {
-      await result.current.handleDelete();
-    });
+    await runAct(() => result.current.handleDelete());
 
     expect(mockDeleteImages).toHaveBeenCalledWith([1]);
     expect(onDeleteSuccess).toHaveBeenCalledWith([1]);
@@ -318,22 +313,16 @@ describe('useImageMetadataSubmit', () => {
 
     mockDeleteGif.mockResolvedValueOnce({ deletedId: 202 });
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: [singleGif],
-        selectedImageIds: [202],
-        updateState: { id: 202, collections: [] },
-        hasChanges: false,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        onClose,
-        onDeleteSuccess,
-      })
-    );
-
-    await act(async () => {
-      await result.current.handleDelete();
+    const { result } = renderSubmit({
+      selectedImages: [singleGif],
+      selectedImageIds: [202],
+      updateState: { id: 202, collections: [] },
+      hasChanges: false,
+      onClose,
+      onDeleteSuccess,
     });
+
+    await runAct(() => result.current.handleDelete());
 
     expect(mockDeleteGif).toHaveBeenCalledWith(202);
     expect(mockDeleteImages).not.toHaveBeenCalled();
@@ -344,13 +333,9 @@ describe('useImageMetadataSubmit', () => {
   // ── handleRemoveFromCollection ───────────────────────────────────────────
 
   it('handleRemoveFromCollection no-ops (no confirm, no API) when currentCollectionId is absent', async () => {
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit(baseImageParams({ hasChanges: false }))
-    );
+    const { result } = renderSubmit({ hasChanges: false });
 
-    await act(async () => {
-      await result.current.handleRemoveFromCollection();
-    });
+    await runAct(() => result.current.handleRemoveFromCollection());
 
     expect(window.confirm).not.toHaveBeenCalled();
     expect(mockUpdateImages).not.toHaveBeenCalled();
@@ -362,22 +347,15 @@ describe('useImageMetadataSubmit', () => {
       collections: [{ collectionId: 7, name: 'Keep', visible: true, orderIndex: 0 }],
     });
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: [image],
-        selectedImageIds: [1],
-        updateState: { id: 1, collections: [] },
-        hasChanges: false,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        currentCollectionId: 7,
-        onClose: jest.fn(),
-      })
-    );
-
-    await act(async () => {
-      await result.current.handleRemoveFromCollection();
+    const { result } = renderSubmit({
+      selectedImages: [image],
+      selectedImageIds: [1],
+      updateState: { id: 1, collections: [] },
+      hasChanges: false,
+      currentCollectionId: 7,
     });
+
+    await runAct(() => result.current.handleRemoveFromCollection());
 
     expect(window.confirm).toHaveBeenCalledTimes(1);
     expect(mockUpdateImages).not.toHaveBeenCalled();
@@ -396,23 +374,17 @@ describe('useImageMetadataSubmit', () => {
 
     mockUpdateImages.mockResolvedValueOnce({ updatedImages: [] });
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: [image],
-        selectedImageIds: [1],
-        updateState: { id: 1, collections: [] },
-        hasChanges: false,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        currentCollectionId: 7,
-        onClose,
-        onRemoveFromCollectionSuccess,
-      })
-    );
-
-    await act(async () => {
-      await result.current.handleRemoveFromCollection();
+    const { result } = renderSubmit({
+      selectedImages: [image],
+      selectedImageIds: [1],
+      updateState: { id: 1, collections: [] },
+      hasChanges: false,
+      currentCollectionId: 7,
+      onClose,
+      onRemoveFromCollectionSuccess,
     });
+
+    await runAct(() => result.current.handleRemoveFromCollection());
 
     expect(mockUpdateImages).toHaveBeenCalledTimes(1);
     const callArg = mockUpdateImages.mock.calls[0]?.[0];
@@ -433,25 +405,14 @@ describe('useImageMetadataSubmit', () => {
 
     mockUpdateImages.mockRejectedValueOnce(new Error('Backend exploded'));
 
-    const { result } = renderHook(() =>
-      useImageMetadataSubmit({
-        selectedImages: [img(1)],
-        selectedImageIds: [1],
-        updateState: { id: 1, contentType: 'IMAGE' as const, title: 'Changed', collections: [] },
-        hasChanges: true,
-        originalCollectionIds: new Set<number>(),
-        availableFilmTypes: [],
-        onClose,
-        onSaveSuccess,
-      })
-    );
-
-    await act(async () => {
-      const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
-        typeof result.current.handleSubmit
-      >[0];
-      await result.current.handleSubmit(fakeEvent);
+    const { result } = renderSubmit({
+      updateState: { id: 1, contentType: 'IMAGE', title: 'Changed', collections: [] },
+      hasChanges: true,
+      onClose,
+      onSaveSuccess,
     });
+
+    await submitForm(result);
 
     expect(result.current.error).toBe('Backend exploded');
     expect(result.current.saving).toBe(false);
