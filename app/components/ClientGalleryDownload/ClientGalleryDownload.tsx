@@ -138,7 +138,7 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
       </Button>
       {preparing === null && (
         <button type="button" onClick={closePicker} className={styles.cancelButton}>
-          Cancel
+          {pickerTarget === 'selected' ? 'Back' : 'Cancel'}
         </button>
       )}
     </div>

@@ -133,9 +133,7 @@ export default function Component({
 }: ContentComponentProps) {
   const measured = useViewport();
 
-  // Use the measured client width once available — but keep the SSR width within tolerance to
-  // avoid a hydration reflow. Asymmetric: a client narrower than the SSR width always recomputes
-  // (else the wider SSR layout overflows the viewport — the [1236,1300) overflow-band fix).
+  // Prefer the measured width; fall back to the SSR width within tolerance to avoid a reflow.
   const useMeasured = shouldUseMeasuredWidth(
     measured.contentWidth,
     serverContentWidth,

@@ -222,4 +222,23 @@ describe('ClientGalleryDownload — Select flow (with context)', () => {
     expect(screen.getByText('0 selected')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^download$/i })).toBeDisabled();
   });
+
+  it('the picker shows "Back" (not Cancel) and returns to the count view without leaving select mode', () => {
+    const { value } = renderWithProvider('smith-wedding', {
+      isSelectMode: true,
+      selectedImageIds: [10, 20],
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
+    expect(screen.getByRole('button', { name: /^web$/i })).toBeInTheDocument();
+    // In the Select flow the third button is "Back", not "Cancel".
+    expect(screen.getByRole('button', { name: /^back$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^cancel$/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
+
+    expect(screen.queryByRole('button', { name: /^web$/i })).not.toBeInTheDocument();
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^download$/i })).toBeInTheDocument();
+    expect(value.exitSelectMode).not.toHaveBeenCalled();
+  });
 });
