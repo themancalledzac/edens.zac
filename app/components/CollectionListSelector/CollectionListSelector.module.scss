@@ -105,6 +105,14 @@
     background: rgb(244, 67, 54, 0.7) !important;
     border-color: var(--color-danger) !important;
   }
+
+  // Disabled (Child↔Parent mutual exclusion). pointer-events stay enabled so the
+  // disabled button still shows its `title` tooltip on hover.
+  &--disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: auto;
+  }
 }
 
 .type {

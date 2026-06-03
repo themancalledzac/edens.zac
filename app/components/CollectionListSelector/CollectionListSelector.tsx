@@ -171,6 +171,8 @@ export default function CollectionListSelector({
   );
 
   // Renders one checkbox button for a column, with its own hover/remove-intent.
+  // When `disabled` is set (Child↔Parent mutual exclusion) the button is dimmed,
+  // ignores clicks/hover, and exposes its `disabledReason` as a hover tooltip.
   const renderCheckbox = (
     collection: CollectionListModel,
     savedIds: Set<number>,
@@ -179,24 +181,28 @@ export default function CollectionListSelector({
     onClick: (collection: CollectionListModel) => void,
     hoveredId: number | null,
     setHoveredId: (id: number | null) => void,
-    ariaLabel: string
+    ariaLabel: string,
+    disabled: boolean = false,
+    disabledReason?: string
   ) => {
     const state = getCheckboxState(collection.id, savedIds, pendingAdd, pendingRemove);
     const isHovered = hoveredId === collection.id;
     const isSelected = state === 'saved' || state === 'pending-add';
-    const showRemoveIntent = isHovered && isSelected;
+    const showRemoveIntent = !disabled && isHovered && isSelected;
 
     return (
       <button
         type="button"
-        className={`${styles.checkbox} ${styles[`checkbox--${state}`]} ${showRemoveIntent ? styles['checkbox--remove-intent'] : ''}`}
+        className={`${styles.checkbox} ${styles[`checkbox--${state}`]} ${showRemoveIntent ? styles['checkbox--remove-intent'] : ''} ${disabled ? styles['checkbox--disabled'] : ''}`}
         onClick={e => {
           e.stopPropagation();
-          onClick(collection);
+          if (!disabled) onClick(collection);
         }}
-        onMouseEnter={() => setHoveredId(collection.id)}
+        onMouseEnter={() => !disabled && setHoveredId(collection.id)}
         onMouseLeave={() => setHoveredId(null)}
         aria-label={ariaLabel}
+        aria-disabled={disabled || undefined}
+        title={disabled ? disabledReason : undefined}
       />
     );
   };
@@ -213,6 +219,22 @@ export default function CollectionListSelector({
   // `expandedRow` tint when shown under an open group; single-column mode is unchanged.
   const renderRow = (collection: CollectionListModel, expanded: boolean) => {
     if (siblingMode || parentMode) {
+      // Child↔Parent mutual exclusion: a row that is *actively* a Child (saved & not
+      // pending-removal, or pending-add) may not also be a Parent, and vice-versa.
+      // A saved-but-pending-removal selection is NOT active, so it doesn't disable the other.
+      const isActivelyChild =
+        (savedCollectionIds.has(collection.id) && !pendingRemoveIds.has(collection.id)) ||
+        pendingAddIds.has(collection.id);
+      const isActivelyParent =
+        parentMode &&
+        (((parentSavedIds?.has(collection.id) ?? false) &&
+          !(parentPendingRemoveIds?.has(collection.id) ?? false)) ||
+          (parentPendingAddIds?.has(collection.id) ?? false));
+      const parentDisabled = parentMode && isActivelyChild;
+      const childDisabled = parentMode && isActivelyParent;
+      const disabledReason =
+        'A collection cannot be both a parent and a child of the same collection.';
+
       // Two-column mode: name on the left, Sibling | Child toggles aligned on the right.
       return (
         <div
@@ -254,7 +276,9 @@ export default function CollectionListSelector({
               onToggle,
               hoveredChildId,
               setHoveredChildId,
-              `Toggle child ${collection.name}`
+              `Toggle child ${collection.name}`,
+              childDisabled,
+              childDisabled ? disabledReason : undefined
             )}
           </span>
           {parentMode && (
@@ -267,7 +291,9 @@ export default function CollectionListSelector({
                 onToggleParent!,
                 hoveredParentId,
                 setHoveredParentId,
-                `Toggle parent ${collection.name}`
+                `Toggle parent ${collection.name}`,
+                parentDisabled,
+                parentDisabled ? disabledReason : undefined
               )}
             </span>
           )}

@@ -319,6 +319,79 @@ describe('CollectionListSelector', () => {
     });
   });
 
+  describe('child/parent mutual exclusion', () => {
+    it('disables Parent checkbox when row is currently checked as Child', () => {
+      const onToggleParent = jest.fn();
+      render(
+        <CollectionListSelector
+          allCollections={[{ id: 10, name: 'X', type: 'PORTFOLIO' }]}
+          savedCollectionIds={new Set([10])}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={onToggleParent}
+        />
+      );
+      fireEvent.click(screen.getByText('Portfolio'));
+      const btn = screen.getByLabelText('Toggle parent X');
+      expect(btn).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(btn);
+      expect(onToggleParent).not.toHaveBeenCalled();
+    });
+
+    it('disables Child checkbox when row is currently checked as Parent', () => {
+      const onToggleChild = jest.fn();
+      render(
+        <CollectionListSelector
+          allCollections={[{ id: 11, name: 'Y', type: 'PORTFOLIO' }]}
+          savedCollectionIds={new Set()}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={onToggleChild}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set([11])}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByText('Portfolio'));
+      expect(screen.getByLabelText('Toggle child Y')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('does NOT disable Parent when row is saved-but-pending-removal as Child', () => {
+      render(
+        <CollectionListSelector
+          allCollections={[{ id: 12, name: 'Z', type: 'PORTFOLIO' }]}
+          savedCollectionIds={new Set([12])}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set([12])}
+          onToggle={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByText('Portfolio'));
+      expect(screen.getByLabelText('Toggle parent Z')).not.toHaveAttribute('aria-disabled', 'true');
+    });
+  });
+
   describe('pinnedCollectionId', () => {
     // Single-column rows are role="button" elements that contain the collection name; the checkbox
     // buttons render empty. Filtering to text-bearing buttons yields the rows in DOM order.
