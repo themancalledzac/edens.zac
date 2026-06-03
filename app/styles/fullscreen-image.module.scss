@@ -48,6 +48,14 @@
 
 .imageWrapper {
   position: relative;
+
+  // Single source of truth for the white matte width. The loaded wrapper's padding, the loaded
+  // image's max-size, and the metadata overlay's insets all derive from this so they can't drift
+  // out of alignment — the overlay must hug the framed photo exactly. (The drift between these
+  // literals WAS the regression: the matte grew to 40px on desktop while the overlay stayed at
+  // --default-padding ≈ 12.8px, so the overlay no longer matched the image edges.)
+  --fs-matte: 8px;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -63,17 +71,18 @@
   touch-action: pan-x;
   -webkit-touch-callout: none;
   user-select: none;
+
+  @media (width >= 768px) and (height >= 600px) {
+    --fs-matte: 40px;
+  }
 }
 
 // White matte appears after the image loads: a small border on mobile, the larger 40px matte on
-// desktop. The matte also absorbs any few-px lvh overshoot so it's the border that trims, not the photo.
+// desktop (see --fs-matte). The matte also absorbs any few-px lvh overshoot so it's the border that
+// trims, not the photo.
 .imageWrapperLoaded {
-  padding: 8px;
+  padding: var(--fs-matte);
   background-color: white;
-
-  @media (width >= 768px) and (height >= 600px) {
-    padding: 40px;
-  }
 }
 
 .fullScreenImage {
@@ -106,23 +115,25 @@
 }
 
 // Image becomes visible after loading.
-// Mobile: subtract the 8px matte (16px both axes) so the framed photo fits within the visible glass.
+// Mobile: subtract the matte on both axes (--fs-matte * 2) so the framed photo fits the glass.
 .fullScreenImageLoaded {
   opacity: 1;
-  max-width: calc(100vw - 16px);
-  max-height: calc(var(--fs-height, 100dvh) - 16px);
+  max-width: calc(100vw - calc(var(--fs-matte) * 2));
+  max-height: calc(var(--fs-height, 100dvh) - calc(var(--fs-matte) * 2));
 
   @media (width >= 768px) and (height >= 600px) {
-    max-width: calc(100vw - calc(var(--default-padding) * 2) - 80px); // 40px matte
-    max-height: calc(100dvh - calc(var(--default-padding) * 2) - 80px);
+    max-width: calc(100vw - calc(var(--default-padding) * 2) - calc(var(--fs-matte) * 2));
+    max-height: calc(100dvh - calc(var(--default-padding) * 2) - calc(var(--fs-matte) * 2));
   }
 }
 
 .metadataOverlay {
   position: absolute;
-  left: var(--default-padding);
-  right: var(--default-padding);
-  bottom: var(--default-padding);
+  // Inset to the matte (not --default-padding) so the overlay box matches the framed photo exactly:
+  // same width, flush to the photo's bottom edge. Shares --fs-matte with the wrapper to stay locked.
+  left: var(--fs-matte);
+  right: var(--fs-matte);
+  bottom: var(--fs-matte);
   pointer-events: none;
   display: flex;
   flex-direction: row;

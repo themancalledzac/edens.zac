@@ -6,7 +6,6 @@ html,
   --page-max-width: 1300px;
 
   /* Colors */
-  --color-fg-muted: #666;
   --color-border: #e5e5e5;
   --color-border-strong: #adb5bd; /* stronger border hover step (was --color-border-dark) */
   --color-overlay-strong: rgb(0, 0, 0, 0.7);
@@ -18,8 +17,10 @@ html,
 
   /* ── Unified semantic color taxonomy (review §6b). Roles, not raw colors.
      These are the canonical names; everything below migrates onto them and the
-     legacy color-text, color-bg, and overlay-light families are deleted. ── */
-  --color-surface: var(--color-white); /* page + card canvas */
+     legacy color-text, color-bg, and overlay-light families are deleted.
+     Surface/on-accent base roles are implicit: --color-bg already plays the
+     surface role and --color-white covers on-accent; both were declared then
+     stayed at 0 refs through the migration. ── */
   --color-surface-raised: #f8f9fa; /* raised panels (was --color-bg-light) */
   --color-surface-sunken: #e9ecef; /* recessed/placeholder fill (was --color-bg-medium) */
   --color-surface-sunken-strong: #dee2e6; /* darker sunken hover step (was --color-bg-dark) */
@@ -29,24 +30,16 @@ html,
     59 130 246 / 100%
   ); /* interactive/selection blue (was the --color-blue collision target) */
 
-  --color-on-accent: var(--color-white); /* text/icons on an accent fill */
-
   /* Keyboard focus indicator. Pair every bare `outline: none` with a
      `&:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }`
      so keyboard users keep a visible ring while mouse/touch users don't. */
   --focus-ring: 2px solid var(--color-accent);
 
-  /* Scrim alpha ramps — one dark + one light scale, 10..90 in steps of 10.
-     Replaces the 9-step --color-overlay-light-* ramp + ~94 inline rgb() literals. */
-  --scrim-dark-10: rgb(0 0 0 / 10%);
-  --scrim-dark-20: rgb(0 0 0 / 20%);
-  --scrim-dark-30: rgb(0 0 0 / 30%);
-  --scrim-dark-40: rgb(0 0 0 / 40%);
-  --scrim-dark-50: rgb(0 0 0 / 50%);
-  --scrim-dark-60: rgb(0 0 0 / 60%);
-  --scrim-dark-70: rgb(0 0 0 / 70%);
-  --scrim-dark-80: rgb(0 0 0 / 80%);
-  --scrim-dark-90: rgb(0 0 0 / 90%);
+  /* Scrim alpha ramp — light scale, 10..90 in steps of 10. Replaces the 9-step
+     --color-overlay-light-* ramp + the inline rgb() literals it absorbed.
+     The matching --scrim-dark-* scale was declared and never picked up a call
+     site through the entire migration, so it was dropped; reintroduce per-step
+     on first real need rather than carrying the whole ramp speculatively. */
   --scrim-light-10: rgb(255 255 255 / 10%);
   --scrim-light-20: rgb(255 255 255 / 20%);
   --scrim-light-30: rgb(255 255 255 / 30%);

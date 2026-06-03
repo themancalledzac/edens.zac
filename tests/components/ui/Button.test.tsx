@@ -26,6 +26,12 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'More' }).className).toMatch(/outline/);
   });
 
+  it('renders a warning variant', () => {
+    render(<Button variant="warning">Remove</Button>);
+    const btn = screen.getByRole('button', { name: 'Remove' });
+    expect(btn.className).toMatch(/warning/);
+  });
+
   it('is disabled and aria-busy while loading', () => {
     render(<Button loading>Saving</Button>);
     const btn = screen.getByRole('button', { name: /saving/i });

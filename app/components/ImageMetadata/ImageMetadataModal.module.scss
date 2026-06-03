@@ -136,23 +136,12 @@
   margin-bottom: 16px;
 }
 
-.formLabelRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
 .formLabel {
   display: block;
   font-size: 13px;
   font-weight: 500;
   margin-bottom: 6px;
   color: var(--scrim-light-70);
-
-  .formLabelRow & {
-    margin-bottom: 0;
-  }
 }
 
 .formInput,
@@ -191,14 +180,6 @@
 
 .formSelect {
   cursor: pointer;
-}
-
-.formHint {
-  display: block;
-  font-size: 12px;
-  color: var(--scrim-light-50);
-  margin-top: 4px;
-  font-style: italic;
 }
 
 /* Form Grid */
@@ -251,6 +232,33 @@
   @media (width <= 768px) {
     flex-direction: column-reverse;
   }
+
+  /*
+   * The metadata sheet renders on a dark surface (.metadataSection), but the <Button> primitive's
+   * ghost/primary variants are tuned for light page surfaces (dark text / dark fill → invisible
+   * here). These scoped overrides restore the legacy dark-surface treatment — a white-filled CTA
+   * (Save) and an outlined light-text secondary (Cancel). Nested under .buttonRow so they outrank
+   * the primitive's single-class variant rules (including :hover) without !important. Delete
+   * (danger) and Remove (warning) keep their saturated fills, which read fine on dark.
+   */
+  .saveOnDark {
+    background-color: var(--color-white);
+    color: var(--color-black);
+    border-color: transparent;
+
+    &:hover:not(:disabled) {
+      background-color: var(--scrim-light-90);
+    }
+  }
+
+  .cancelOnDark {
+    color: var(--color-white);
+    border-color: var(--scrim-light-30);
+
+    &:hover:not(:disabled) {
+      background-color: var(--scrim-light-10);
+    }
+  }
 }
 
 .buttonRowLeft {
@@ -271,296 +279,10 @@
   }
 }
 
-/* Buttons */
-.saveButton,
-.cancelButton,
-.deleteButton,
-.removeButton {
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition: all var(--duration-base);
-  border: none;
-
-  @media (width <= 768px) {
-    width: 100%;
-    padding: 14px;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-.saveButton {
-  background: white;
-  color: black;
-
-  &:hover:not(:disabled) {
-    background: var(--scrim-light-90);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-}
-
-.cancelButton {
-  background: transparent;
-  color: white;
-  border: 1px solid var(--scrim-light-30);
-
-  &:hover:not(:disabled) {
-    background: var(--scrim-light-10);
-    border-color: var(--scrim-light-50);
-  }
-}
-
-.deleteButton {
-  background: var(--color-danger-subtle);
-  color: var(--color-danger-text);
-  border: 1px solid var(--color-danger-dark);
-
-  &:hover:not(:disabled) {
-    background: rgb(220, 38, 38, 0.3);
-    border-color: var(--color-danger-dark);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-}
-
-.removeButton {
-  background: rgb(234, 179, 8, 0.15);
-  color: rgb(250, 204, 21);
-  border: 1px solid rgb(202, 138, 4, 0.6);
-
-  &:hover:not(:disabled) {
-    background: rgb(234, 179, 8, 0.25);
-    border-color: rgb(202, 138, 4);
-    transform: translateY(-1px);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-  }
-}
-
-/* Metadata Dropdown Styles */
-.dropdownHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.dropdownActions {
-  display: flex;
-  gap: 8px;
-}
-
-.addNewButton,
-.clearButton {
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition: all var(--duration-base);
-  border: none;
-}
-
-.addNewButton {
-  background: var(--scrim-light-10);
-  color: var(--scrim-light-90);
-  border: 1px solid var(--scrim-light-30);
-
-  &:hover {
-    background: var(--scrim-light-20);
-    border-color: var(--scrim-light-50);
-  }
-}
-
-.clearButton {
-  background: var(--color-danger-subtle);
-  color: var(--color-danger-text);
-  border: 1px solid rgb(220 38 38 / 50%);
-
-  &:hover {
-    background: rgb(220, 38, 38, 0.3);
-    border-color: var(--color-danger-dark);
-  }
-}
-
-.addNewInput {
-  margin-bottom: 12px;
-  padding: 12px;
-  background: var(--scrim-light-10);
-  border: 1px solid var(--scrim-light-30);
-  border-radius: var(--radius-1);
-}
-
-.addNewButtons {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.confirmButton,
-.cancelSmallButton {
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition: all var(--duration-base);
-  border: none;
-}
-
-.confirmButton {
-  background: white;
-  color: black;
-
-  &:hover:not(:disabled) {
-    background: var(--scrim-light-90);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-.cancelSmallButton {
-  background: transparent;
-  color: white;
-  border: 1px solid var(--scrim-light-30);
-
-  &:hover {
-    background: var(--scrim-light-10);
-  }
-}
-
-.selectedDisplay {
-  margin-bottom: 8px;
-  padding: 8px 12px;
-  background: var(--scrim-light-10);
-  border-radius: var(--radius-1);
-  font-size: 13px;
-}
-
-.selectedLabel {
-  color: var(--scrim-light-60);
-  margin-right: 8px;
-  font-weight: 500;
-}
-
-.selectedText {
-  color: var(--scrim-light-90);
-}
-
-.optionsList {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid var(--scrim-light-20);
-  border-radius: var(--radius-1);
-  background: rgb(255, 255, 255, 0.03);
-
-  /* Custom scrollbar */
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: var(--scrim-light-10);
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrim-light-20);
-    border-radius: 3px;
-
-    &:hover {
-      background: var(--scrim-light-30);
-    }
-  }
-}
-
-.optionItem {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  cursor: pointer;
-  transition: background-color var(--duration-fast);
-  border-bottom: 1px solid var(--scrim-light-10);
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  &:hover {
-    background: rgb(255, 255, 255, 0.08);
-  }
-}
-
-.optionItemSelected {
-  background: rgb(255, 255, 255, 0.15);
-
-  &:hover {
-    background: var(--scrim-light-20);
-  }
-}
-
-.optionInput {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: white;
-  margin-right: 10px;
-}
-
-.optionLabel {
-  font-size: 14px;
-  color: var(--scrim-light-90);
-  user-select: none;
-}
-
-.emptyState {
-  padding: 20px;
-  text-align: center;
-  color: var(--scrim-light-50);
-  font-size: 13px;
-  font-style: italic;
-}
-
-/* New Items Display (for newly created tags/people) */
-.newItemsDisplay {
-  margin-top: 12px;
-  padding: 12px;
-  background: rgb(59, 130, 246, 0.1);
-  border: 1px dashed rgb(59, 130, 246, 0.3);
-  border-radius: var(--radius-1);
-}
-
-.newItemsLabel {
-  display: block;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-blue-text);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.newItemsChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+/* Disabled state for GIF/MP4 sections that don't support a given field. */
+.sectionDisabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 /* Single-image/GIF preview: fit within the section without upscaling. */
@@ -592,8 +314,4 @@
 
 .bulkEditThumbImg {
   object-fit: cover;
-}
-
-.loadingLabel {
-  margin-left: var(--space-2);
 }

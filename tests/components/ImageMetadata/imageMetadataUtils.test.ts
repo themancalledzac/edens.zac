@@ -6,6 +6,7 @@
 import {
   applyPartialUpdate,
   buildContentPeopleLocationsDiff,
+  buildGifUpdatePayload,
   buildImageUpdateDiff,
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
@@ -22,7 +23,11 @@ import {
   handleDropdownChange,
   mapUpdateResponseToFrontend,
 } from '@/app/components/ImageMetadata/imageMetadataUtils';
-import type { ContentImageModel, ContentImageUpdateRequest } from '@/app/types/Content';
+import type {
+  ContentGifModel,
+  ContentImageModel,
+  ContentImageUpdateRequest,
+} from '@/app/types/Content';
 import type { ContentCameraModel, ContentFilmTypeModel } from '@/app/types/ImageMetadata';
 
 // Test fixtures
@@ -62,6 +67,24 @@ const createFilmType = (
   name,
   filmTypeName: name.toUpperCase().replace(/\s+/g, '_'),
   defaultIso: 400,
+  ...overrides,
+});
+
+const createGifContent = (id: number, overrides?: Partial<ContentGifModel>): ContentGifModel => ({
+  id,
+  contentType: 'GIF',
+  orderIndex: id,
+  gifUrl: `https://example.com/gif-${id}.mp4`,
+  thumbnailUrl: `https://example.com/gif-${id}.webp`,
+  width: 1920,
+  height: 1080,
+  title: `Gif ${id}`,
+  alt: `Alt ${id}`,
+  rating: null,
+  tags: [],
+  people: [],
+  locations: [],
+  collections: [],
   ...overrides,
 });
 
@@ -2261,6 +2284,151 @@ describe('buildContentPeopleLocationsDiff (shared people/locations builder for G
     expect(result).toEqual({
       people: { prev: [3] },
       locations: { prev: [7] },
+    });
+  });
+});
+
+describe('buildGifUpdatePayload (single-GIF save payload builder)', () => {
+  // collection membership fixture matching the ChildCollection shape produced by
+  // handleCollectionToggle ({ collectionId, name, visible, orderIndex }).
+  const childCollection = (collectionId: number, name: string, orderIndex = 0) => ({
+    collectionId,
+    name,
+    visible: true,
+    orderIndex,
+  });
+
+  it('returns an empty payload when nothing changed', () => {
+    const original = createGifContent(1, { title: 'Untitled', rating: 4 });
+    const updateState = {
+      title: 'Untitled',
+      rating: 4,
+      collections: [],
+      people: [],
+      locations: [],
+    };
+
+    const result = buildGifUpdatePayload(updateState, original, new Set<number>());
+
+    expect(result).toEqual({});
+  });
+
+  it('includes title only when it changed', () => {
+    const original = createGifContent(1, { title: 'Old' });
+
+    const result = buildGifUpdatePayload({ title: 'New' }, original, new Set<number>());
+
+    expect(result.title).toBe('New');
+  });
+
+  it('treats null/empty title equivalently (no diff when both blank)', () => {
+    const original = createGifContent(1, { title: undefined });
+
+    const result = buildGifUpdatePayload({ title: '' }, original, new Set<number>());
+
+    expect(result.title).toBeUndefined();
+  });
+
+  it('includes rating only when it changed', () => {
+    const original = createGifContent(1, { rating: 2 });
+
+    const result = buildGifUpdatePayload({ rating: 5 }, original, new Set<number>());
+
+    expect(result.rating).toBe(5);
+  });
+
+  it('omits rating when updateState.rating is undefined', () => {
+    const original = createGifContent(1, { rating: 2 });
+
+    const result = buildGifUpdatePayload({ title: 'New' }, original, new Set<number>());
+
+    expect(result.rating).toBeUndefined();
+  });
+
+  it('builds collections.newValue for newly-added collections', () => {
+    const original = createGifContent(1);
+    const added = childCollection(10, 'Trips');
+
+    const result = buildGifUpdatePayload({ collections: [added] }, original, new Set<number>());
+
+    expect(result.collections).toEqual({ newValue: [added] });
+  });
+
+  it('builds collections.remove for dropped collections', () => {
+    const original = createGifContent(1);
+
+    const result = buildGifUpdatePayload({ collections: [] }, original, new Set<number>([10, 11]));
+
+    expect(result.collections).toEqual({ remove: [10, 11] });
+  });
+
+  it('builds both newValue and remove when collections are added and dropped at once', () => {
+    const original = createGifContent(1);
+    const kept = childCollection(10, 'Kept');
+    const added = childCollection(20, 'Added', 1);
+
+    const result = buildGifUpdatePayload(
+      { collections: [kept, added] },
+      original,
+      new Set<number>([10, 30])
+    );
+
+    expect(result.collections).toEqual({ newValue: [added], remove: [30] });
+  });
+
+  it('omits collections when membership is unchanged', () => {
+    const original = createGifContent(1);
+    const same = childCollection(10, 'Same');
+
+    const result = buildGifUpdatePayload({ collections: [same] }, original, new Set<number>([10]));
+
+    expect(result.collections).toBeUndefined();
+  });
+
+  it('delegates people + locations to the shared diff builder', () => {
+    const original = createGifContent(1, { people: [], locations: [] });
+
+    const result = buildGifUpdatePayload(
+      {
+        people: [{ id: 7, name: 'Alex', slug: 'alex' }],
+        locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
+      },
+      original,
+      new Set<number>()
+    );
+
+    expect(result.people).toEqual({ prev: [7] });
+    expect(result.locations).toEqual({ prev: [5] });
+  });
+
+  it('combines title, rating, collections, people and locations in one payload', () => {
+    const original = createGifContent(1, {
+      title: 'Old',
+      rating: 1,
+      people: [],
+      locations: [],
+      collections: [],
+    });
+    const added = childCollection(10, 'Trips');
+
+    const result = buildGifUpdatePayload(
+      {
+        title: 'New',
+        rating: 5,
+        collections: [added],
+        people: [{ id: 7, name: 'Alex', slug: 'alex' }],
+        locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
+      },
+      original,
+      new Set<number>()
+    );
+
+    expect(result).toEqual({
+      title: 'New',
+      rating: 5,
+      collections: { newValue: [added] },
+      people: { prev: [7] },
+      locations: { prev: [5] },
     });
   });
 });
