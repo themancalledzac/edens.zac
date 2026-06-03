@@ -209,7 +209,10 @@ $toggle-col-width: 60px;
 }
 
 :root {
-  --collection-row-expanded-bg: rgb(255, 255, 255, 0.03);
+  // Expanded accordion rows sit LIGHTER than the type-header row (0.04) so the
+  // grouped rows read as visually distinct from their section header. Kept below
+  // the .row:hover tint (0.08) so hover still provides feedback. Tunable.
+  --collection-row-expanded-bg: rgb(255, 255, 255, 0.07);
 }
 
 // Accordion type-group header (multi-column mode): a clickable, full-width row
