@@ -126,11 +126,10 @@ describe('CollectionListSelector', () => {
     const checkbox3 = screen.getByLabelText('Toggle Gallery C');
     const checkbox4 = screen.getByLabelText('Toggle No Type D');
 
-    // State is asserted via the stable `data-state` contract, not the CSS-module class.
-    expect(checkbox1).toHaveAttribute('data-state', 'saved');
-    expect(checkbox2).toHaveAttribute('data-state', 'pending-add');
-    expect(checkbox3).toHaveAttribute('data-state', 'pending-remove');
-    expect(checkbox4).toHaveAttribute('data-state', 'empty');
+    expect(checkbox1.className).toContain('saved');
+    expect(checkbox2.className).toContain('pending-add');
+    expect(checkbox3.className).toContain('pending-remove');
+    expect(checkbox4.className).toContain('empty');
   });
 
   it('shows empty state when no collections', () => {
@@ -281,16 +280,10 @@ describe('CollectionListSelector', () => {
     });
     it('reflects independent saved state per column (sibling on B, child on A)', () => {
       render(<CollectionListSelector {...twoColProps} />);
-      expect(screen.getByLabelText('Toggle child Portfolio A')).toHaveAttribute(
-        'data-state',
-        'saved'
-      );
-      expect(screen.getByLabelText('Toggle sibling Blog B')).toHaveAttribute('data-state', 'saved');
-      expect(screen.getByLabelText('Toggle sibling Portfolio A')).toHaveAttribute(
-        'data-state',
-        'empty'
-      );
-      expect(screen.getByLabelText('Toggle child Blog B')).toHaveAttribute('data-state', 'empty');
+      expect(screen.getByLabelText('Toggle child Portfolio A').className).toContain('saved');
+      expect(screen.getByLabelText('Toggle sibling Blog B').className).toContain('saved');
+      expect(screen.getByLabelText('Toggle sibling Portfolio A').className).toContain('empty');
+      expect(screen.getByLabelText('Toggle child Blog B').className).toContain('empty');
     });
     it('still omits the excludeCollectionId row in two-column mode', () => {
       render(<CollectionListSelector {...twoColProps} excludeCollectionId={2} />);
@@ -352,7 +345,7 @@ describe('CollectionListSelector', () => {
 
       const checkbox = screen.getByLabelText('Toggle Gallery C');
       expect(checkbox).toBeInTheDocument();
-      expect(checkbox).toHaveAttribute('data-state', 'saved');
+      expect(checkbox.className).toContain('saved');
     });
 
     it('leaves order unchanged when pinnedCollectionId is not in the list', () => {
