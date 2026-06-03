@@ -98,7 +98,7 @@ export function buildContentRows(
  */
 export function computeFirstNonVisibleRowIndex(
   rows: RowWithPatternAndSizes[],
-  currentCollectionId: number | undefined
+  currentCollectionId?: number
 ): number {
   if (!currentCollectionId || rows.length === 0) return -1;
 
