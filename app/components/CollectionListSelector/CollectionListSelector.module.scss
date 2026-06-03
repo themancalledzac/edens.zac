@@ -7,6 +7,10 @@
   --sel-text: #f1f3f5; /* primary text on dark */
   --sel-text-muted: #adb5bd; /* secondary text — passes AA on dark */
   --sel-text-faint: #868e96; /* tertiary; large/decorative only */
+  --sel-elev-1: rgb(255 255 255 / 5%); /* expanded section-header bg */
+  --sel-elev-2: rgb(255 255 255 / 10%); /* expanded-row bg */
+  --sel-elev-hover: rgb(255 255 255 / 14%);
+  --sel-border: rgb(255 255 255 / 12%);
 }
 
 .header {
@@ -59,7 +63,7 @@
   }
 
   &:hover {
-    background: rgb(255, 255, 255, 0.08);
+    background: var(--sel-elev-hover);
   }
 
   &.navigable {
@@ -213,13 +217,6 @@ $toggle-col-width: 60px;
   justify-content: center;
 }
 
-:root {
-  // Expanded accordion rows sit LIGHTER than the type-header row (0.04) so the
-  // grouped rows read as visually distinct from their section header. Kept below
-  // the .row:hover tint (0.08) so hover still provides feedback. Tunable.
-  --collection-row-expanded-bg: rgb(255, 255, 255, 0.07);
-}
-
 // Accordion type-group header (multi-column mode): a clickable, full-width row
 // that toggles its group open/closed. The type label lives here instead of on
 // each row, so collapsed groups stay compact.
@@ -238,12 +235,15 @@ $toggle-col-width: 60px;
   font: inherit;
 
   &:hover {
-    background: rgb(255, 255, 255, 0.02);
+    background: var(--sel-elev-1);
   }
 }
 
+// Open section header: sits one elevation step ABOVE its rows (which use
+// --sel-elev-2) and gets a bottom divider so it reads as an anchor over them.
 .typeHeaderRow--expanded {
-  background: rgb(255, 255, 255, 0.04);
+  background: var(--sel-elev-1);
+  border-bottom: 1px solid var(--sel-border);
 }
 
 .typeHeaderChevron {
@@ -264,9 +264,11 @@ $toggle-col-width: 60px;
   font-size: 0.85em;
 }
 
-// Rows shown under an expanded accordion group get a subtle tint.
+// Rows shown under an expanded accordion group get a subtle tint — one step
+// above the open section header (--sel-elev-1) so the grouped rows read as
+// distinct content, but below the .row:hover tint (--sel-elev-hover).
 .expandedRow {
-  background-color: var(--collection-row-expanded-bg);
+  background-color: var(--sel-elev-2);
 }
 
 // The current collection (the one being edited) shown greyed-out in its group as a
