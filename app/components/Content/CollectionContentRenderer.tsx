@@ -255,11 +255,14 @@ export default function CollectionContentRenderer({
                 )}
               </div>
             )}
-            {descriptionItem && (
-              <div className={cbStyles.metadataDescriptionContainer}>
+            {/* Always render the description container so it stays the
+                flex-grow spacer that pushes the download bar + toolbar to the
+                bottom — even when this gallery has no description text. */}
+            <div className={cbStyles.metadataDescriptionContainer}>
+              {descriptionItem && (
                 <p className={cbStyles.metadataDescription}>{descriptionItem.value}</p>
-              </div>
-            )}
+              )}
+            </div>
             {filterItems.length > 0 && (
               <div className={cbStyles.metadataFilters}>
                 {filterItems.map(item => (
