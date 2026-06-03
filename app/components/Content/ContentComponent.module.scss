@@ -63,6 +63,15 @@
     .metadataBlockInner {
       height: auto;
       flex: 0 0 auto;
+
+      /* Desktop: the inner block grows to fill the column so its
+         flex-grow description (.metadataDescriptionContainer) can expand,
+         pushing the download bar + filter toolbar to the bottom — no
+         margin hacks. Mobile stays content-height. */
+      @media (width >= 768px) {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
     }
   }
 }
