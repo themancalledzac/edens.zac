@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import CollectionListSelector, {
   COLLECTION_TYPE_ORDER,
@@ -248,6 +248,8 @@ describe('CollectionListSelector', () => {
     });
     it('exposes a Sibling and a Child toggle per collection row', () => {
       render(<CollectionListSelector {...twoColProps} />);
+      // Portfolio A lives in the (default-collapsed) PORTFOLIO accordion section — expand it first.
+      fireEvent.click(screen.getByText('Portfolio'));
       expect(screen.getByLabelText('Toggle sibling Portfolio A')).toBeInTheDocument();
       expect(screen.getByLabelText('Toggle child Portfolio A')).toBeInTheDocument();
     });
@@ -261,6 +263,7 @@ describe('CollectionListSelector', () => {
           onToggleSibling={onToggleSibling}
         />
       );
+      fireEvent.click(screen.getByText('Portfolio'));
       fireEvent.click(screen.getByLabelText('Toggle sibling Portfolio A'));
       expect(onToggleSibling).toHaveBeenCalledTimes(1);
       expect(onToggleSibling).toHaveBeenCalledWith(mockCollections[0]);
@@ -276,13 +279,22 @@ describe('CollectionListSelector', () => {
           onToggleSibling={onToggleSibling}
         />
       );
+      fireEvent.click(screen.getByText('Portfolio'));
       fireEvent.click(screen.getByLabelText('Toggle child Portfolio A'));
       expect(onToggle).toHaveBeenCalledTimes(1);
       expect(onToggle).toHaveBeenCalledWith(mockCollections[0]);
       expect(onToggleSibling).not.toHaveBeenCalled();
     });
     it('reflects independent saved state per column (sibling on B, child on A)', () => {
-      render(<CollectionListSelector {...twoColProps} />);
+      // Child-saved (id 1) and sibling-saved (id 2) rows must be visible together, but the accordion
+      // only opens ONE section at a time — put both rows in a single PORTFOLIO section so one expand
+      // reveals both. Ids/saved-sets are unchanged, so the per-column saved/empty assertions hold.
+      const sameSection: CollectionListModel[] = [
+        { id: 1, name: 'Portfolio A', slug: 'portfolio-a', type: 'PORTFOLIO' },
+        { id: 2, name: 'Blog B', slug: 'blog-b', type: 'PORTFOLIO' },
+      ];
+      render(<CollectionListSelector {...twoColProps} allCollections={sameSection} />);
+      fireEvent.click(screen.getByText('Portfolio'));
       expect(screen.getByLabelText('Toggle child Portfolio A').className).toContain('saved');
       expect(screen.getByLabelText('Toggle sibling Blog B').className).toContain('saved');
       expect(screen.getByLabelText('Toggle sibling Portfolio A').className).toContain('empty');
@@ -290,6 +302,8 @@ describe('CollectionListSelector', () => {
     });
     it('still omits the excludeCollectionId row in two-column mode', () => {
       render(<CollectionListSelector {...twoColProps} excludeCollectionId={2} />);
+      // Portfolio A lives in the collapsed PORTFOLIO section — expand it to assert it renders.
+      fireEvent.click(screen.getByText('Portfolio'));
       expect(screen.getByText('Portfolio A')).toBeInTheDocument();
       expect(screen.queryByText('Blog B')).not.toBeInTheDocument();
     });
@@ -306,6 +320,8 @@ describe('CollectionListSelector', () => {
         />
       );
 
+      // Blog B lives in the collapsed BLOG section — expand it before clicking its name button.
+      fireEvent.click(screen.getByText('Blog'));
       fireEvent.click(screen.getByLabelText('Open Blog B'));
 
       expect(onNavigate).toHaveBeenCalledTimes(1);
@@ -484,5 +500,98 @@ describe('sortGroup', () => {
       'BLOG'
     );
     expect(sorted.map(c => c.id)).toEqual([2, 1]);
+  });
+});
+
+describe('three-column accordion mode', () => {
+  const allTypes: CollectionListModel[] = [
+    { id: 1, name: 'Home', type: 'HOME' },
+    { id: 2, name: 'P1', type: 'PORTFOLIO' },
+    { id: 3, name: 'P2', type: 'PORTFOLIO' },
+    { id: 4, name: 'B1', type: 'BLOG', collectionDate: '2025-01-01' },
+    { id: 5, name: 'B2', type: 'BLOG', collectionDate: '2025-06-01' },
+    { id: 6, name: 'M', type: 'MISC' },
+  ];
+
+  function renderInThreeColumnMode(rows = allTypes) {
+    return render(
+      <CollectionListSelector
+        allCollections={rows}
+        savedCollectionIds={new Set()}
+        pendingAddIds={new Set()}
+        pendingRemoveIds={new Set()}
+        onToggle={jest.fn()}
+        siblingSavedIds={new Set()}
+        siblingPendingAddIds={new Set()}
+        siblingPendingRemoveIds={new Set()}
+        onToggleSibling={jest.fn()}
+        parentSavedIds={new Set()}
+        parentPendingAddIds={new Set()}
+        parentPendingRemoveIds={new Set()}
+        onToggleParent={jest.fn()}
+      />
+    );
+  }
+
+  it('renders Collection Name header (not Catalog Name) in 3-column mode', () => {
+    renderInThreeColumnMode();
+    expect(screen.getByText('Collection Name')).toBeInTheDocument();
+    expect(screen.queryByText('Catalog Name')).not.toBeInTheDocument();
+    expect(screen.queryByText('Catalog Type')).not.toBeInTheDocument();
+  });
+
+  it('renders Parent column header', () => {
+    renderInThreeColumnMode();
+    // "Parent" renders twice: the column header AND the PARENT accordion section header.
+    // Scope to the column-header row so we assert the COLUMN header specifically.
+    const columnHeaderRow = screen.getByText('Collection Name').parentElement as HTMLElement;
+    expect(within(columnHeaderRow).getByText('Parent')).toBeInTheDocument();
+  });
+
+  it('renders HOME row always visible at top, no Home accordion header', () => {
+    renderInThreeColumnMode();
+    // The pinned HOME row renders its name as a plain span (no onNavigate → no nav button),
+    // and HOME has no accordion header — so there is no button named exactly "Home".
+    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: /^Home$/ })).toHaveLength(0);
+  });
+
+  it('renders 6 collapsed non-HOME type headers by default; no rows beneath', () => {
+    renderInThreeColumnMode();
+    for (const l of ['Client Gallery', 'Art Gallery', 'Portfolio', 'Blog', 'Misc']) expect(screen.getByText(l)).toBeInTheDocument()
+    ;
+    // "Parent" is both a column header and an accordion header — assert the header exists via getAllByText.
+    expect(screen.getAllByText('Parent').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('P1')).not.toBeInTheDocument();
+    expect(screen.queryByText('B1')).not.toBeInTheDocument();
+  });
+
+  it('expand-collapse accordion: opening Blog closes Portfolio', () => {
+    renderInThreeColumnMode();
+    fireEvent.click(screen.getByText('Portfolio'));
+    expect(screen.getByText('P1')).toBeInTheDocument();
+    expect(screen.getByText('P2')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Blog'));
+    expect(screen.queryByText('P1')).not.toBeInTheDocument();
+    expect(screen.getByText('B1')).toBeInTheDocument();
+    expect(screen.getByText('B2')).toBeInTheDocument();
+  });
+
+  it('BLOG group renders rows in collectionDate desc order', () => {
+    renderInThreeColumnMode();
+    fireEvent.click(screen.getByText('Blog'));
+    const rows = screen.getAllByText(/^B\d$/);
+    expect(rows.map(r => r.textContent)).toEqual(['B2', 'B1']);
+  });
+
+  it('PORTFOLIO group renders rows alphabetically', () => {
+    renderInThreeColumnMode([
+      { id: 1, name: 'Charlie', type: 'PORTFOLIO' },
+      { id: 2, name: 'Alpha', type: 'PORTFOLIO' },
+      { id: 3, name: 'Bravo', type: 'PORTFOLIO' },
+    ]);
+    fireEvent.click(screen.getByText('Portfolio'));
+    const names = screen.getAllByText(/Charlie|Alpha|Bravo/);
+    expect(names.map(n => n.textContent)).toEqual(['Alpha', 'Bravo', 'Charlie']);
   });
 });
