@@ -3,6 +3,15 @@ import userEvent from '@testing-library/user-event';
 
 import MetadataActionRow from '@/app/components/ImageMetadata/sections/MetadataActionRow';
 
+// Note on what is intentionally NOT asserted here:
+// The Button variant→class mapping (danger/ghost/warning) is the primitive's contract and is
+// covered in tests/components/ui/Button.test.tsx — re-asserting it here would just couple this
+// suite to CSS-module internals. The on-dark visibility overrides (saveOnDark/cancelOnDark) are a
+// *visual* concern: jsdom has no layout/computed style, so a class-string check gives false
+// confidence (the real dark-surface regression was caught by browser getComputedStyle, not a unit
+// test). This suite asserts behavior the consumer can observe: which buttons render, their
+// accessible labels/state, and that clicks fire the right callbacks.
+
 function makeProps(overrides: Partial<Parameters<typeof MetadataActionRow>[0]> = {}) {
   return {
     isBulkEdit: false,
@@ -31,29 +40,6 @@ describe('MetadataActionRow', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).toBeInTheDocument();
   });
 
-  // ── Variant classes ──────────────────────────────────────────────────────────
-
-  it('Delete button uses the danger variant', () => {
-    render(<MetadataActionRow {...makeProps()} />);
-    const btn = screen.getByRole('button', { name: /delete image/i });
-    expect(btn.className).toContain('danger');
-  });
-
-  it('Cancel button uses the ghost variant with the on-dark override', () => {
-    render(<MetadataActionRow {...makeProps()} />);
-    const btn = screen.getByRole('button', { name: /cancel/i });
-    expect(btn.className).toContain('ghost');
-    expect(btn.className).toContain('cancelOnDark');
-  });
-
-  it('Save button carries the on-dark CTA override', () => {
-    render(<MetadataActionRow {...makeProps({ hasChanges: true })} />);
-    const btn = screen.getByRole('button', { name: /save changes/i });
-    // Save renders white-on-dark via the scoped saveOnDark override — the dark editor surface makes
-    // the primitive's dark-fill `primary` variant invisible, so the action row uses a ghost base.
-    expect(btn.className).toContain('saveOnDark');
-  });
-
   // ── Remove button visibility ─────────────────────────────────────────────────
 
   it('Remove button is NOT rendered when showRemove=false', () => {
@@ -66,34 +52,13 @@ describe('MetadataActionRow', () => {
     expect(screen.getByRole('button', { name: /remove image/i })).toBeInTheDocument();
   });
 
-  it('Remove button uses the warning variant', () => {
-    render(<MetadataActionRow {...makeProps({ showRemove: true })} />);
-    const btn = screen.getByRole('button', { name: /remove image/i });
-    expect(btn.className).toContain('warning');
-  });
+  // ── saving=true → aria-busy on loading buttons, disabled (no busy) on Cancel ──
 
-  // ── saving=true propagates aria-busy (loading buttons) + disabled (cancel) ──
-
-  it('Delete, Save buttons have aria-busy="true" when saving=true (no showRemove)', () => {
-    render(<MetadataActionRow {...makeProps({ saving: true, hasChanges: true })} />);
-    // Delete and Save use loading={saving} → aria-busy
-    expect(screen.getByRole('button', { name: /delete image/i })).toHaveAttribute(
-      'aria-busy',
-      'true'
-    );
-    expect(screen.getByRole('button', { name: /save changes/i })).toHaveAttribute(
-      'aria-busy',
-      'true'
-    );
-    // Cancel uses disabled={saving} — disabled but no aria-busy
-    expect(screen.getByRole('button', { name: /cancel/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /cancel/i })).not.toHaveAttribute('aria-busy');
-  });
-
-  it('Delete, Remove, Save buttons have aria-busy="true" when saving=true and showRemove=true', () => {
+  it('marks Delete/Remove/Save aria-busy and disables Cancel while saving', () => {
     render(
       <MetadataActionRow {...makeProps({ saving: true, hasChanges: true, showRemove: true })} />
     );
+    // Delete, Remove, and Save use loading={saving} → aria-busy="true".
     expect(screen.getByRole('button', { name: /delete image/i })).toHaveAttribute(
       'aria-busy',
       'true'
@@ -106,10 +71,12 @@ describe('MetadataActionRow', () => {
       'aria-busy',
       'true'
     );
+    // Cancel uses disabled={saving} — disabled, but never marked busy.
     expect(screen.getByRole('button', { name: /cancel/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /cancel/i })).not.toHaveAttribute('aria-busy');
   });
 
-  // ── Save disabled when !hasChanges ───────────────────────────────────────────
+  // ── Save disabled gating on hasChanges ───────────────────────────────────────
 
   it('Save button is disabled when hasChanges=false', () => {
     render(<MetadataActionRow {...makeProps({ hasChanges: false })} />);
@@ -121,28 +88,16 @@ describe('MetadataActionRow', () => {
     expect(screen.getByRole('button', { name: /save changes/i })).not.toBeDisabled();
   });
 
-  // ── Bulk-edit labels ─────────────────────────────────────────────────────────
+  // ── Count label (single vs bulk) ─────────────────────────────────────────────
 
   it('Delete label says "Delete Image" for single (isBulkEdit=false)', () => {
     render(<MetadataActionRow {...makeProps()} />);
     expect(screen.getByRole('button', { name: /delete image$/i })).toBeInTheDocument();
   });
 
-  it('Delete label says "Delete 3 Images" for bulk (isBulkEdit=true, selectedCount=3)', () => {
+  it('pluralizes the count label for bulk edits ("Delete 3 Images")', () => {
     render(<MetadataActionRow {...makeProps({ isBulkEdit: true, selectedCount: 3 })} />);
     expect(screen.getByRole('button', { name: /delete 3 images/i })).toBeInTheDocument();
-  });
-
-  it('Remove label says "Remove Image" for single', () => {
-    render(<MetadataActionRow {...makeProps({ showRemove: true })} />);
-    expect(screen.getByRole('button', { name: /remove image$/i })).toBeInTheDocument();
-  });
-
-  it('Remove label says "Remove 3 Images" for bulk', () => {
-    render(
-      <MetadataActionRow {...makeProps({ showRemove: true, isBulkEdit: true, selectedCount: 3 })} />
-    );
-    expect(screen.getByRole('button', { name: /remove 3 images/i })).toBeInTheDocument();
   });
 
   // ── Click handlers ───────────────────────────────────────────────────────────

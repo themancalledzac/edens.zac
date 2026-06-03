@@ -126,13 +126,9 @@ describe('CollectionListSelector', () => {
     const checkbox3 = screen.getByLabelText('Toggle Gallery C');
     const checkbox4 = screen.getByLabelText('Toggle No Type D');
 
-    // Saved → checkbox--saved class
     expect(checkbox1.className).toContain('saved');
-    // Pending add → checkbox--pending-add class
     expect(checkbox2.className).toContain('pending-add');
-    // Pending remove → checkbox--pending-remove class
     expect(checkbox3.className).toContain('pending-remove');
-    // Empty → checkbox--empty class
     expect(checkbox4.className).toContain('empty');
   });
 
