@@ -593,4 +593,79 @@ describe('three-column accordion mode', () => {
     const names = screen.getAllByText(/Charlie|Alpha|Bravo/);
     expect(names.map(n => n.textContent)).toEqual(['Alpha', 'Bravo', 'Charlie']);
   });
+
+  it('leaves the Sibling checkbox unaffected when the row is actively a Child', () => {
+    // Mutual exclusion only governs Child↔Parent, never Sibling. A row saved as a
+    // Child must still expose an enabled, clickable Sibling toggle.
+    const onToggleSibling = jest.fn();
+    render(
+      <CollectionListSelector
+        allCollections={[{ id: 20, name: 'Active Child', type: 'PORTFOLIO' }]}
+        savedCollectionIds={new Set([20])}
+        pendingAddIds={new Set()}
+        pendingRemoveIds={new Set()}
+        onToggle={jest.fn()}
+        siblingSavedIds={new Set()}
+        siblingPendingAddIds={new Set()}
+        siblingPendingRemoveIds={new Set()}
+        onToggleSibling={onToggleSibling}
+        parentSavedIds={new Set()}
+        parentPendingAddIds={new Set()}
+        parentPendingRemoveIds={new Set()}
+        onToggleParent={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('Portfolio'));
+    const siblingBtn = screen.getByLabelText('Toggle sibling Active Child');
+    expect(siblingBtn).not.toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(siblingBtn);
+    expect(onToggleSibling).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires onToggleParent when the Parent checkbox is clicked on a plain row', () => {
+    const onToggleParent = jest.fn();
+    render(
+      <CollectionListSelector
+        allCollections={[{ id: 21, name: 'Plain Row', type: 'PORTFOLIO' }]}
+        savedCollectionIds={new Set()}
+        pendingAddIds={new Set()}
+        pendingRemoveIds={new Set()}
+        onToggle={jest.fn()}
+        siblingSavedIds={new Set()}
+        siblingPendingAddIds={new Set()}
+        siblingPendingRemoveIds={new Set()}
+        onToggleSibling={jest.fn()}
+        parentSavedIds={new Set()}
+        parentPendingAddIds={new Set()}
+        parentPendingRemoveIds={new Set()}
+        onToggleParent={onToggleParent}
+      />
+    );
+    fireEvent.click(screen.getByText('Portfolio'));
+    const parentBtn = screen.getByLabelText('Toggle parent Plain Row');
+    expect(parentBtn).not.toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(parentBtn);
+    expect(onToggleParent).toHaveBeenCalledTimes(1);
+    expect(onToggleParent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 21, name: 'Plain Row' })
+    );
+  });
+
+  it('applies the expandedRow class to rows revealed under an open section', () => {
+    // CSS modules are mocked by next/jest as an identity proxy, so
+    // `styles.expandedRow === 'expandedRow'` — query by the literal class name.
+    const { container } = renderInThreeColumnMode();
+    expect(container.querySelector('.expandedRow')).toBeNull();
+    fireEvent.click(screen.getByText('Portfolio'));
+    expect(container.querySelector('.expandedRow')).not.toBeNull();
+  });
+
+  it('buckets an unknown collection type under the Misc section', () => {
+    // FIX 1: a type not in COLLECTION_TYPE_ORDER must fall into MISC rather than
+    // creating a phantom group key the render loop never shows (which would hide it).
+    renderInThreeColumnMode([{ id: 30, name: 'Weird Row', type: 'WEIRD_TYPE' }]);
+    expect(screen.queryByText('Weird Row')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Misc'));
+    expect(screen.getByText('Weird Row')).toBeInTheDocument();
+  });
 });
