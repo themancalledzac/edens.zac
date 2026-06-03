@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 import {
@@ -54,6 +54,13 @@ interface CollectionListSelectorProps {
   label?: string;
   excludeCollectionId?: number;
   /**
+   * When set, this collection stays VISIBLE in its accordion type group but is rendered
+   * greyed-out with all toggles disabled — a "you are here" marker for the collection being
+   * edited (unlike `excludeCollectionId`, which removes the row entirely). It also drives
+   * auto-expansion of the section the current collection lives in, on load.
+   */
+  currentCollectionId?: number;
+  /**
    * When set, this collection is sorted to the TOP of the list (all other rows keep their incoming
    * order). Used by the image metadata editor to surface the gallery currently being edited — it
    * stays visible and shows its saved (green) state instead of being hidden.
@@ -93,6 +100,7 @@ export default function CollectionListSelector({
   onAddNewChild,
   label = 'Collections',
   excludeCollectionId,
+  currentCollectionId,
   pinnedCollectionId,
   siblingSavedIds,
   siblingPendingAddIds,
@@ -136,9 +144,31 @@ export default function CollectionListSelector({
     [filteredCollections, pinnedCollectionId]
   );
 
+  // The type of the current ("you are here") collection, used to auto-open its section.
+  const currentCollectionType = useMemo(
+    () =>
+      currentCollectionId == null
+        ? null
+        : (allCollections.find(c => c.id === currentCollectionId)?.type ?? null),
+    [allCollections, currentCollectionId]
+  );
+
   // Accordion mode engages whenever a second (Sibling) or third (Parent) toggle column is present.
   // Rows are then grouped + collapsed by CollectionType; single-column mode keeps its flat list.
   const [expandedType, setExpandedType] = useState<CollectionType | null>(null);
+
+  // Auto-expand the section the current collection lives in, on load and whenever
+  // we navigate to a different collection. Only fires when currentCollectionType
+  // changes, so it never overrides a manual collapse/expand within the same collection.
+  useEffect(() => {
+    if (
+      currentCollectionType &&
+      currentCollectionType !== CollectionType.HOME &&
+      COLLECTION_TYPE_ORDER.includes(currentCollectionType as CollectionType)
+    ) {
+      setExpandedType(currentCollectionType as CollectionType);
+    }
+  }, [currentCollectionType]);
   const accordionMode = siblingMode || parentMode;
   const groupsByType = useMemo(() => {
     if (!accordionMode) return null;
@@ -216,6 +246,10 @@ export default function CollectionListSelector({
       pendingAddIds,
       pendingRemoveIds,
     };
+    // The current ("you are here") collection stays visible but greyed-out with every toggle
+    // disabled — it can't be a sibling/child/parent of itself.
+    const isCurrent = currentCollectionId != null && collection.id === currentCollectionId;
+    const currentReason = "This is the collection you're editing — it can't be related to itself.";
     if (siblingMode || parentMode) {
       // Child↔Parent mutual exclusion: a row that is *actively* a Child (saved & not
       // pending-removal, or pending-add) may not also be a Parent, and vice-versa.
@@ -233,6 +267,16 @@ export default function CollectionListSelector({
       const disabledReason =
         'A collection cannot be both a parent and a child of the same collection.';
 
+      // Precompute each toggle's disabled-reason tooltip: the "current" collection always
+      // wins (it can't relate to itself); otherwise fall back to the mutual-exclusion reason.
+      // Hoisted to locals to avoid a nested ternary at the call sites below.
+      let childReason: string | undefined;
+      if (isCurrent) childReason = currentReason;
+      else if (childDisabled) childReason = disabledReason;
+      let parentReason: string | undefined;
+      if (isCurrent) parentReason = currentReason;
+      else if (parentDisabled) parentReason = disabledReason;
+
       // These optional sets are only read under their respective mode guards
       // (siblingMode for sibling, parentMode for parent), so the non-null
       // assertions are safe at every call site below.
@@ -247,26 +291,41 @@ export default function CollectionListSelector({
         pendingRemoveIds: parentPendingRemoveIds!,
       };
 
+      // The name cell: the current collection renders a plain "(current)" label (never a
+      // navigate button — it must not self-navigate); otherwise a navigate button when
+      // onNavigate is supplied, else a plain span. Hoisted to avoid a nested ternary in JSX.
+      let nameElement: ReactNode;
+      if (isCurrent) {
+        nameElement = (
+          <span className={styles.name}>
+            {collection.name}
+            <span className={styles.currentTag}>(current)</span>
+          </span>
+        );
+      } else if (onNavigate) {
+        nameElement = (
+          <button
+            type="button"
+            className={`${styles.name} ${styles.nameButton}`}
+            onClick={() => onNavigate(collection)}
+            aria-label={`Open ${collection.name}`}
+          >
+            {collection.name}
+          </button>
+        );
+      } else {
+        nameElement = <span className={styles.name}>{collection.name}</span>;
+      }
+
       // Two-column mode: name on the left, Sibling | Child toggles aligned on the right.
       return (
         <div
           key={collection.id}
-          className={`${styles.row} ${styles.rowSibling} ${expanded ? styles.expandedRow : ''}`}
+          className={`${styles.row} ${styles.rowSibling} ${expanded ? styles.expandedRow : ''} ${isCurrent ? styles.currentRow : ''}`}
           role="group"
           aria-label={collection.name}
         >
-          {onNavigate ? (
-            <button
-              type="button"
-              className={`${styles.name} ${styles.nameButton}`}
-              onClick={() => onNavigate(collection)}
-              aria-label={`Open ${collection.name}`}
-            >
-              {collection.name}
-            </button>
-          ) : (
-            <span className={styles.name}>{collection.name}</span>
-          )}
+          {nameElement}
           {siblingMode && (
             <span className={styles.toggleCell}>
               {renderCheckbox(
@@ -275,7 +334,9 @@ export default function CollectionListSelector({
                 onToggleSibling!,
                 hoveredSiblingId,
                 setHoveredSiblingId,
-                `Toggle sibling ${collection.name}`
+                `Toggle sibling ${collection.name}`,
+                isCurrent,
+                isCurrent ? currentReason : undefined
               )}
             </span>
           )}
@@ -287,8 +348,8 @@ export default function CollectionListSelector({
               hoveredChildId,
               setHoveredChildId,
               `Toggle child ${collection.name}`,
-              childDisabled,
-              childDisabled ? disabledReason : undefined
+              isCurrent || childDisabled,
+              childReason
             )}
           </span>
           {parentMode && (
@@ -300,8 +361,8 @@ export default function CollectionListSelector({
                 hoveredParentId,
                 setHoveredParentId,
                 `Toggle parent ${collection.name}`,
-                parentDisabled,
-                parentDisabled ? disabledReason : undefined
+                isCurrent || parentDisabled,
+                parentReason
               )}
             </span>
           )}

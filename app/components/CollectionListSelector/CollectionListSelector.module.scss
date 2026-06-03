@@ -263,3 +263,16 @@ $toggle-col-width: 60px;
 .expandedRow {
   background-color: var(--collection-row-expanded-bg);
 }
+
+// The current collection (the one being edited) shown greyed-out in its group as a
+// "you are here" marker. Toggles are disabled separately via .checkbox--disabled.
+.currentRow {
+  opacity: 0.55;
+}
+
+.currentTag {
+  margin-left: 0.4rem;
+  font-size: 0.8em;
+  font-style: italic;
+  color: var(--color-on-surface-muted);
+}

@@ -668,4 +668,106 @@ describe('three-column accordion mode', () => {
     fireEvent.click(screen.getByText('Misc'));
     expect(screen.getByText('Weird Row')).toBeInTheDocument();
   });
+
+  describe('currentCollectionId (you-are-here marker)', () => {
+    // Same render helper as the rest of the suite, plus a currentCollectionId prop. P1 (id 2)
+    // is a PORTFOLIO row used as the "current" collection across these cases.
+    function renderWithCurrent(currentCollectionId: number, rows = allTypes) {
+      return render(
+        <CollectionListSelector
+          allCollections={rows}
+          savedCollectionIds={new Set()}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+          currentCollectionId={currentCollectionId}
+        />
+      );
+    }
+
+    it('keeps the current row visible (not excluded) with all toggles disabled', () => {
+      // P1 (id 2) is the current collection — its PORTFOLIO section auto-opens, so the row
+      // is present without any click. The excludeCollectionId path would have removed it.
+      renderWithCurrent(2);
+      expect(screen.getByText('P1')).toBeInTheDocument();
+      expect(screen.getByLabelText('Toggle sibling P1')).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByLabelText('Toggle child P1')).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByLabelText('Toggle parent P1')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it("auto-opens the current collection's type section on load, leaving others collapsed", () => {
+      renderWithCurrent(2); // PORTFOLIO
+      // PORTFOLIO is open by default → P1/P2 visible without clicking the header.
+      expect(screen.getByText('P1')).toBeInTheDocument();
+      expect(screen.getByText('P2')).toBeInTheDocument();
+      // A different section (BLOG) stays collapsed.
+      expect(screen.queryByText('B1')).not.toBeInTheDocument();
+      expect(screen.queryByText('B2')).not.toBeInTheDocument();
+    });
+
+    it("renders the '(current)' marker for the current row", () => {
+      renderWithCurrent(2);
+      expect(screen.getByText('(current)')).toBeInTheDocument();
+    });
+
+    it('does not render a navigate button for the current row', () => {
+      // The current collection must not self-navigate — no "Open P1" button.
+      render(
+        <CollectionListSelector
+          allCollections={allTypes}
+          savedCollectionIds={new Set()}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={jest.fn()}
+          onNavigate={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+          currentCollectionId={2}
+        />
+      );
+      expect(screen.queryByLabelText('Open P1')).not.toBeInTheDocument();
+      // A non-current PORTFOLIO sibling (P2) still navigates.
+      expect(screen.getByLabelText('Open P2')).toBeInTheDocument();
+    });
+
+    it('still excludes (not greys) a row passed via excludeCollectionId', () => {
+      // excludeCollectionId behavior is independent of currentCollectionId and still removes
+      // the row entirely. Expand PORTFOLIO to assert P1 is absent while P2 remains.
+      render(
+        <CollectionListSelector
+          allCollections={allTypes}
+          savedCollectionIds={new Set()}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+          excludeCollectionId={2}
+        />
+      );
+      fireEvent.click(screen.getByText('Portfolio'));
+      expect(screen.queryByText('P1')).not.toBeInTheDocument();
+      expect(screen.getByText('P2')).toBeInTheDocument();
+    });
+  });
 });

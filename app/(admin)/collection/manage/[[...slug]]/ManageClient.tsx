@@ -1634,7 +1634,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           }}
                           onAddNewChild={handleAddNewChild}
                           label="Collections"
-                          excludeCollectionId={collection.id}
+                          currentCollectionId={collection.id}
                           siblingSavedIds={originalSiblingIds}
                           siblingPendingAddIds={pendingAddSiblingIds}
                           siblingPendingRemoveIds={pendingRemoveSiblingIds}
