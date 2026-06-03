@@ -36,6 +36,13 @@ export function sortGroup(
 
 type CheckboxState = 'empty' | 'saved' | 'pending-add' | 'pending-remove';
 
+/** The three id-sets that together describe one toggle column's selection state. */
+export interface SelectionState {
+  savedIds: Set<number>;
+  pendingAddIds: Set<number>;
+  pendingRemoveIds: Set<number>;
+}
+
 interface CollectionListSelectorProps {
   allCollections: CollectionListModel[];
   savedCollectionIds: Set<number>;
@@ -68,9 +75,7 @@ interface CollectionListSelectorProps {
 
 function getCheckboxState(
   collectionId: number,
-  savedIds: Set<number>,
-  pendingAddIds: Set<number>,
-  pendingRemoveIds: Set<number>
+  { savedIds, pendingAddIds, pendingRemoveIds }: SelectionState
 ): CheckboxState {
   if (pendingRemoveIds.has(collectionId)) return 'pending-remove';
   if (pendingAddIds.has(collectionId)) return 'pending-add';
@@ -166,9 +171,7 @@ export default function CollectionListSelector({
   // ignores clicks/hover, and exposes its `disabledReason` as a hover tooltip.
   const renderCheckbox = (
     collection: CollectionListModel,
-    savedIds: Set<number>,
-    pendingAdd: Set<number>,
-    pendingRemove: Set<number>,
+    selection: SelectionState,
     onClick: (collection: CollectionListModel) => void,
     hoveredId: number | null,
     setHoveredId: (id: number | null) => void,
@@ -176,7 +179,7 @@ export default function CollectionListSelector({
     disabled: boolean = false,
     disabledReason?: string
   ) => {
-    const state = getCheckboxState(collection.id, savedIds, pendingAdd, pendingRemove);
+    const state = getCheckboxState(collection.id, selection);
     const isHovered = hoveredId === collection.id;
     const isSelected = state === 'saved' || state === 'pending-add';
     const showRemoveIntent = !disabled && isHovered && isSelected;
@@ -202,6 +205,11 @@ export default function CollectionListSelector({
   // Sibling | Child toggles (the type label moves to the accordion header) and gets an
   // `expandedRow` tint when shown under an open group; single-column mode is unchanged.
   const renderRow = (collection: CollectionListModel, expanded: boolean) => {
+    const childSelection: SelectionState = {
+      savedIds: savedCollectionIds,
+      pendingAddIds,
+      pendingRemoveIds,
+    };
     if (siblingMode || parentMode) {
       // Child↔Parent mutual exclusion: a row that is *actively* a Child (saved & not
       // pending-removal, or pending-add) may not also be a Parent, and vice-versa.
@@ -218,6 +226,20 @@ export default function CollectionListSelector({
       const childDisabled = parentMode && isActivelyParent;
       const disabledReason =
         'A collection cannot be both a parent and a child of the same collection.';
+
+      // These optional sets are only read under their respective mode guards
+      // (siblingMode for sibling, parentMode for parent), so the non-null
+      // assertions are safe at every call site below.
+      const siblingSelection: SelectionState = {
+        savedIds: siblingSavedIds!,
+        pendingAddIds: siblingPendingAddIds!,
+        pendingRemoveIds: siblingPendingRemoveIds!,
+      };
+      const parentSelection: SelectionState = {
+        savedIds: parentSavedIds!,
+        pendingAddIds: parentPendingAddIds!,
+        pendingRemoveIds: parentPendingRemoveIds!,
+      };
 
       // Two-column mode: name on the left, Sibling | Child toggles aligned on the right.
       return (
@@ -242,9 +264,7 @@ export default function CollectionListSelector({
           <span className={styles.toggleCell}>
             {renderCheckbox(
               collection,
-              siblingSavedIds!,
-              siblingPendingAddIds!,
-              siblingPendingRemoveIds!,
+              siblingSelection,
               onToggleSibling!,
               hoveredSiblingId,
               setHoveredSiblingId,
@@ -254,9 +274,7 @@ export default function CollectionListSelector({
           <span className={styles.toggleCell}>
             {renderCheckbox(
               collection,
-              savedCollectionIds,
-              pendingAddIds,
-              pendingRemoveIds,
+              childSelection,
               onToggle,
               hoveredChildId,
               setHoveredChildId,
@@ -269,9 +287,7 @@ export default function CollectionListSelector({
             <span className={styles.toggleCell}>
               {renderCheckbox(
                 collection,
-                parentSavedIds!,
-                parentPendingAddIds!,
-                parentPendingRemoveIds!,
+                parentSelection,
                 onToggleParent!,
                 hoveredParentId,
                 setHoveredParentId,
@@ -300,9 +316,7 @@ export default function CollectionListSelector({
       >
         {renderCheckbox(
           collection,
-          savedCollectionIds,
-          pendingAddIds,
-          pendingRemoveIds,
+          childSelection,
           onToggle,
           hoveredChildId,
           setHoveredChildId,
