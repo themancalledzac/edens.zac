@@ -50,6 +50,10 @@ export interface CollectionBaseModel {
   slug?: string;
   description?: string;
   locations: LocationModel[];
+  /**
+   * ISO date. The full-detail model excludes `null` — the list model
+   * (`CollectionListModel.collectionDate`) allows an explicit `null` from the backend.
+   */
   collectionDate?: string;
   visibility?: CollectionVisibility;
   /** Rating 0-5, nullable. Used for ordering multi-collection list views. */

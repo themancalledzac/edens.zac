@@ -246,6 +246,9 @@ $toggle-col-width: 60px;
 .typeHeaderLabel {
   flex: 1;
   font-weight: 600;
+  // Match .name's color so the section label renders white instead of inheriting
+  // the dim `.typeHeaderRow` color.
+  color: var(--color-surface-raised);
 }
 
 .typeHeaderCount {

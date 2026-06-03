@@ -145,8 +145,14 @@ export default function CollectionListSelector({
     const map = new Map<string, CollectionListModel[]>();
     for (const t of COLLECTION_TYPE_ORDER) map.set(t, []);
     for (const c of orderedCollections) {
-      const t = (c.type as string) ?? 'MISC';
-      if (!map.has(t)) map.set(t, []);
+      // Bucket any unknown/missing type into MISC so it can't create a phantom
+      // map key the render loop (which iterates only COLLECTION_TYPE_ORDER) never
+      // shows. `t` is therefore always one of the pre-seeded keys, so `map.get(t)!`
+      // is safe.
+      const t =
+        c.type && COLLECTION_TYPE_ORDER.includes(c.type as CollectionType)
+          ? (c.type as string)
+          : CollectionType.MISC;
       map.get(t)!.push(c);
     }
     for (const [t, rows] of map) map.set(t, sortGroup(rows, t));
@@ -330,6 +336,39 @@ export default function CollectionListSelector({
     );
   };
 
+  // Body shown when there is at least one collection: the grouped accordion when a
+  // second/third toggle column is active, otherwise the flat single-column list.
+  // Kept as a local so the empty-state vs. content choice stays a single (non-nested)
+  // ternary in the JSX below.
+  const listBody =
+    accordionMode && groupsByType ? (
+      <>
+        {/* HOME is pinned above the accordion — always visible, never collapsible. */}
+        {(groupsByType.get(CollectionType.HOME) ?? []).map(c => renderRow(c, false))}
+        {COLLECTION_TYPE_ORDER.filter(t => t !== CollectionType.HOME).map(t => {
+          const rows = groupsByType.get(t) ?? [];
+          const isExpanded = expandedType === t;
+          return (
+            <div key={t}>
+              <button
+                type="button"
+                className={`${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`}
+                onClick={() => setExpandedType(isExpanded ? null : t)}
+                aria-expanded={isExpanded}
+              >
+                <span className={styles.typeHeaderChevron}>{isExpanded ? '▾' : '▸'}</span>
+                <span className={styles.typeHeaderLabel}>{humanizeConstantCase(t)}</span>
+                <span className={styles.typeHeaderCount}>({rows.length})</span>
+              </button>
+              {isExpanded && rows.map(c => renderRow(c, true))}
+            </div>
+          );
+        })}
+      </>
+    ) : (
+      orderedCollections.map(c => renderRow(c, false))
+    );
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -355,35 +394,10 @@ export default function CollectionListSelector({
         </div>
       )}
       <div className={styles.list}>
-        {accordionMode && groupsByType ? (
-          <>
-            {/* HOME is pinned above the accordion — always visible, never collapsible. */}
-            {(groupsByType.get(CollectionType.HOME) ?? []).map(c => renderRow(c, false))}
-            {COLLECTION_TYPE_ORDER.filter(t => t !== CollectionType.HOME).map(t => {
-              const rows = groupsByType.get(t) ?? [];
-              const isExpanded = expandedType === t;
-              return (
-                <div key={t}>
-                  <button
-                    type="button"
-                    className={`${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`}
-                    onClick={() => setExpandedType(isExpanded ? null : t)}
-                    aria-expanded={isExpanded}
-                  >
-                    <span className={styles.typeHeaderChevron}>{isExpanded ? '▾' : '▸'}</span>
-                    <span className={styles.typeHeaderLabel}>{humanizeConstantCase(t)}</span>
-                    <span className={styles.typeHeaderCount}>({rows.length})</span>
-                  </button>
-                  {isExpanded && rows.map(c => renderRow(c, true))}
-                </div>
-              );
-            })}
-          </>
-        ) : (
-          orderedCollections.map(c => renderRow(c, false))
-        )}
-        {!accordionMode && orderedCollections.length === 0 && (
+        {orderedCollections.length === 0 ? (
           <div className={styles.emptyState}>No collections available</div>
+        ) : (
+          listBody
         )}
       </div>
     </div>
