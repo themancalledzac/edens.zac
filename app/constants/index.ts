@@ -55,6 +55,10 @@ export const LAYOUT = {
   ssrDefaultViewportWidthMobile: 390,
   ssrDefaultViewportHeightDesktop: 900,
   ssrDefaultViewportHeightMobile: 844,
+  // Component keeps the server-side layout as long as the measured
+  // contentWidth is within this many px of the server fallback. Beyond it,
+  // the client recomputes once against the real viewport.
+  ssrRecomputeToleranceWidth: 64,
 } as const;
 
 // Fixed-weight cv formula: cv = BASE_WEIGHT[rating] × arFactor

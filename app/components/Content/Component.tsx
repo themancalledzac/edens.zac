@@ -133,9 +133,18 @@ export default function Component({
 }: ContentComponentProps) {
   const measured = useViewport();
 
-  const effectiveContentWidth = measured.contentWidth || serverContentWidth || 0;
-  const effectiveViewportHeight = measured.viewportHeight || serverViewportHeight || 0;
-  const effectiveIsMobile = measured.contentWidth ? measured.isMobile : (serverIsMobile ?? false);
+  const useMeasured =
+    measured.contentWidth > 0 &&
+    (serverContentWidth == null ||
+      Math.abs(measured.contentWidth - serverContentWidth) > LAYOUT.ssrRecomputeToleranceWidth);
+
+  const effectiveContentWidth = useMeasured
+    ? measured.contentWidth
+    : (serverContentWidth ?? measured.contentWidth ?? 0);
+  const effectiveViewportHeight = useMeasured
+    ? measured.viewportHeight
+    : (serverViewportHeight ?? measured.viewportHeight ?? 0);
+  const effectiveIsMobile = useMeasured ? measured.isMobile : (serverIsMobile ?? measured.isMobile);
 
   const { rows, layoutError } = useMemo(() => {
     if (!effectiveContentWidth) {
