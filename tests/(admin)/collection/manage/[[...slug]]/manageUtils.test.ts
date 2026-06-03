@@ -793,6 +793,24 @@ describe('buildUpdatePayload', () => {
         visibility: CollectionVisibility.LISTED,
       });
     });
+
+    it('includes parents when formData.parents is defined', () => {
+      const original = { id: 7, type: 'PORTFOLIO' } as unknown as CollectionModel;
+      const formData = {
+        id: 7,
+        parents: { newValue: [{ collectionId: 42, name: 'New Parent' }] },
+      } as CollectionUpdateRequest;
+      expect(buildUpdatePayload(formData, original).parents).toEqual({
+        newValue: [{ collectionId: 42, name: 'New Parent' }],
+      });
+    });
+
+    it('omits parents when formData.parents is undefined', () => {
+      const original = { id: 7, type: 'PORTFOLIO' } as unknown as CollectionModel;
+      expect(
+        buildUpdatePayload({ id: 7 } as CollectionUpdateRequest, original).parents
+      ).toBeUndefined();
+    });
   });
 });
 
