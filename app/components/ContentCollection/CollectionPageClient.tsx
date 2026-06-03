@@ -5,15 +5,20 @@ import { useCallback, useMemo, useState } from 'react';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { LAYOUT } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
-import { type CollectionModel } from '@/app/types/Collection';
+import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
 import { extractFilterOptions, filterContent, isImageContent } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { getLensType } from '@/app/utils/focalLength';
+import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { sortByDate } from '@/app/utils/sortByDate';
 
+import {
+  type ClientGalleryDownloadContextValue,
+  ClientGalleryDownloadProvider,
+} from './ClientGalleryDownloadContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
 
@@ -95,6 +100,29 @@ export default function CollectionPageClient({
   const handleDensityChange = useCallback((value: number) => {
     setDensity(Math.max(1, Math.min(10, Math.round(value))));
   }, []);
+
+  // ── Client-gallery "Select to download" state ──────────────────────────────
+  // Owned here so the deep-in-the-tree ClientGalleryDownload control (and the grid images) can both
+  // see it via ClientGalleryDownloadContext. When select mode is on, an onImageClick toggle is
+  // threaded to the images so a tap selects instead of opening fullscreen.
+  const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
+
+  const handleSelectToggle = useCallback((imageId: number) => {
+    setSelectedImageIds(prev => toggleImageSelection(imageId, prev));
+  }, []);
+
+  const enterSelectMode = useCallback(() => setIsSelectMode(true), []);
+  const exitSelectMode = useCallback(() => {
+    setIsSelectMode(false);
+    setSelectedImageIds([]);
+  }, []);
+
+  const downloadContextValue = useMemo<ClientGalleryDownloadContextValue>(
+    () => ({ isSelectMode, selectedImageIds, enterSelectMode, exitSelectMode }),
+    [isSelectMode, selectedImageIds, enterSelectMode, exitSelectMode]
+  );
 
   const allContent = useMemo(() => collection.content ?? [], [collection.content]);
 
@@ -312,6 +340,8 @@ export default function CollectionPageClient({
         serverContentWidth={serverContentWidth}
         serverViewportHeight={serverViewportHeight}
         serverIsMobile={serverIsMobile}
+        selectedImageIds={isClientGallery ? selectedImageIds : undefined}
+        onImageClick={isClientGallery && isSelectMode ? handleSelectToggle : undefined}
       />
       {hasActiveFilters && filteredImages.length === 0 && (
         <p className={styles.emptyState}>No images match your filters.</p>
@@ -319,8 +349,22 @@ export default function CollectionPageClient({
     </>
   );
 
-  // Only wrap with filter context if there are options to filter by
-  if (!hasOptions) return content;
+  // Client galleries get the select/download provider so the in-tree Download control can drive
+  // (and read) the page-level selection state.
+  const maybeWrappedContent = isClientGallery ? (
+    <ClientGalleryDownloadProvider value={downloadContextValue}>
+      {content}
+    </ClientGalleryDownloadProvider>
+  ) : (
+    content
+  );
 
-  return <CollectionFilterProvider value={filterContextValue}>{content}</CollectionFilterProvider>;
+  // Only wrap with filter context if there are options to filter by
+  if (!hasOptions) return maybeWrappedContent;
+
+  return (
+    <CollectionFilterProvider value={filterContextValue}>
+      {maybeWrappedContent}
+    </CollectionFilterProvider>
+  );
 }

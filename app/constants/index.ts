@@ -175,3 +175,18 @@ export const getContentWidth = (viewportWidth: number, isMobile: boolean): numbe
     Math.min(viewportWidth - LAYOUT.desktopPadding, LAYOUT.pageMaxWidth - LAYOUT.desktopPadding)
   );
 };
+
+/**
+ * Whether to lay out with the client-measured width rather than the SSR width: true once measured
+ * and the client is either narrower than the SSR width (which would otherwise overflow) or wider
+ * than it by more than `tolerance` (small differences keep the SSR width to avoid a reflow).
+ */
+export const shouldUseMeasuredWidth = (
+  measuredContentWidth: number,
+  serverContentWidth: number | null | undefined,
+  tolerance: number
+): boolean =>
+  measuredContentWidth > 0 &&
+  (serverContentWidth == null ||
+    measuredContentWidth < serverContentWidth ||
+    measuredContentWidth - serverContentWidth > tolerance);

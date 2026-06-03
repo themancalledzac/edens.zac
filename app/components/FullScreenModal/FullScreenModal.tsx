@@ -10,10 +10,11 @@ import {
   useEffect,
 } from 'react';
 
+import FullScreenDownloadButton from '@/app/components/ClientGalleryDownload/FullScreenDownloadButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
-import type { CollectionModel } from '@/app/types/Collection';
+import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import type { ContentGifModel, ViewableContent } from '@/app/types/Content';
 
 type ImageBlock = ViewableContent;
@@ -319,6 +320,10 @@ export function FullScreenModal({
       >
         <span aria-hidden="true">&#10005;</span>
       </button>
+
+      {collectionData?.type === CollectionType.CLIENT_GALLERY && !isGif && (
+        <FullScreenDownloadButton imageId={currentImage.id} />
+      )}
     </div>
   );
 

@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { type Ref, useCallback, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
-import ImageDownloadOverlay from '@/app/components/ClientGalleryDownload/ImageDownloadOverlay';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { Badge } from '@/app/components/ui/Badge/Badge';
 import {
@@ -256,11 +255,14 @@ export default function CollectionContentRenderer({
                 )}
               </div>
             )}
-            {descriptionItem && (
-              <div className={cbStyles.metadataDescriptionContainer}>
+            {/* Always render the description container so it stays the
+                flex-grow spacer that pushes the download bar + toolbar to the
+                bottom — even when this gallery has no description text. */}
+            <div className={cbStyles.metadataDescriptionContainer}>
+              {descriptionItem && (
                 <p className={cbStyles.metadataDescription}>{descriptionItem.value}</p>
-              </div>
-            )}
+              )}
+            </div>
             {filterItems.length > 0 && (
               <div className={cbStyles.metadataFilters}>
                 {filterItems.map(item => (
@@ -618,7 +620,6 @@ export default function CollectionContentRenderer({
           isSelected={isSelected}
         />
       )}
-      {isClientGallery && contentType === 'IMAGE' && <ImageDownloadOverlay imageId={contentId} />}
       {isReorderMode &&
         onArrowMove &&
         onPickUp &&

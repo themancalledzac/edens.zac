@@ -6,7 +6,11 @@
  * shape, defaults, format selection, and slug encoding.
  */
 
-import { downloadCollectionUrl, downloadImageUrl } from '@/app/lib/api/downloads';
+import {
+  downloadCollectionSelectionUrl,
+  downloadCollectionUrl,
+  downloadImageUrl,
+} from '@/app/lib/api/downloads';
 
 describe('downloadImageUrl', () => {
   it('defaults to format=web', () => {
@@ -57,6 +61,32 @@ describe('downloadCollectionUrl', () => {
   it('URL-encodes slashes inside the slug so they cannot escape the path segment', () => {
     expect(downloadCollectionUrl('foo/bar')).toBe(
       '/api/proxy/api/read/collections/foo%2Fbar/download?format=web'
+    );
+  });
+});
+
+describe('downloadCollectionSelectionUrl', () => {
+  it('appends a comma-separated imageIds filter and defaults to format=web', () => {
+    expect(downloadCollectionSelectionUrl('smith-wedding', [3, 1, 2])).toBe(
+      '/api/proxy/api/read/collections/smith-wedding/download?format=web&imageIds=3,1,2'
+    );
+  });
+
+  it('preserves the chosen format', () => {
+    expect(downloadCollectionSelectionUrl('smith-wedding', [7], 'original')).toBe(
+      '/api/proxy/api/read/collections/smith-wedding/download?format=original&imageIds=7'
+    );
+  });
+
+  it('URL-encodes the slug but leaves the imageIds list as bare numbers', () => {
+    expect(downloadCollectionSelectionUrl('hello world & more', [10, 20])).toBe(
+      '/api/proxy/api/read/collections/hello%20world%20%26%20more/download?format=web&imageIds=10,20'
+    );
+  });
+
+  it('produces an empty imageIds value for an empty selection', () => {
+    expect(downloadCollectionSelectionUrl('smith-wedding', [])).toBe(
+      '/api/proxy/api/read/collections/smith-wedding/download?format=web&imageIds='
     );
   });
 });

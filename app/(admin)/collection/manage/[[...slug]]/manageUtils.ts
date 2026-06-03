@@ -21,6 +21,7 @@ import {
 } from '@/app/types/Content';
 import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
+import { toggleImageSelection } from '@/app/utils/imageSelection';
 
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
@@ -255,18 +256,18 @@ export function handleCollectionNavigation(
 }
 
 /**
- * Handle multi-select toggle
- * Returns the new array of selected image IDs after toggling
+ * Handle multi-select toggle.
+ *
+ * Thin re-export of the shared {@link toggleImageSelection} util — the toggling logic now lives in
+ * `app/utils/imageSelection.ts` so the public client-gallery "Select" flow can reuse it. The name
+ * is preserved here for existing admin/manage callers and tests.
  *
  * @param imageId - ID of the image to toggle
  * @param currentSelectedIds - Current array of selected image IDs
  * @returns New array of selected image IDs
  */
 export function handleMultiSelectToggle(imageId: number, currentSelectedIds: number[]): number[] {
-  if (currentSelectedIds.includes(imageId)) {
-    return currentSelectedIds.filter(id => id !== imageId);
-  }
-  return [...currentSelectedIds, imageId];
+  return toggleImageSelection(imageId, currentSelectedIds);
 }
 
 /**
