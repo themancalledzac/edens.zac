@@ -67,6 +67,8 @@ export interface CollectionListModel {
   name: string;
   slug?: string;
   type?: string;
+  /** ISO date — used to sort BLOG group rows on the manage page. */
+  collectionDate?: string | null;
 }
 
 /**
@@ -155,6 +157,11 @@ export interface CollectionUpdateRequest {
    * and the `orderIndex`/`visible` fields of each `ChildCollection` are ignored.
    */
   siblings?: CollectionUpdate;
+  /**
+   * Parent-collection updates (hierarchical association). Reuses the `CollectionUpdate`
+   * wire shape, mirroring `siblings`.
+   */
+  parents?: CollectionUpdate;
 }
 
 /**
@@ -210,6 +217,12 @@ export interface CollectionModel extends CollectionBaseModel {
    * in the metadata block. Mirrors backend CollectionModel.siblings (List<CollectionList>).
    */
   siblings?: CollectionListModel[];
+
+  /**
+   * Parent collections this collection belongs to (hierarchical association).
+   * Mirrors `siblings`. Admin/manage reads populate this for the parent column.
+   */
+  parents?: CollectionListModel[];
 
   // Content
   content?: AnyContentModel[];
