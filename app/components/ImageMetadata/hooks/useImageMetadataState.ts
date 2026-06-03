@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import { type ContentGifModel, type ContentImageModel } from '@/app/types/Content';
+import { type ContentCameraModel } from '@/app/types/ImageMetadata';
 import { convertLocationsToModels } from '@/app/utils/locationUtils';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
@@ -35,6 +36,7 @@ export interface UseImageMetadataStateResult {
   pendingAddIds: Set<number>;
   pendingRemoveIds: Set<number>;
   handleCollectionToggle: (collection: CollectionListModel) => void;
+  replaceOptimisticCamera: (optimisticName: string, replacement: ContentCameraModel | null) => void;
 }
 
 interface UseImageMetadataStateParams {
@@ -96,6 +98,26 @@ export function useImageMetadataState({
   const updateStateField = (updates: Partial<ImageUpdateState>) => {
     setUpdateState(prev => ({ ...prev, ...updates }));
   };
+
+  /**
+   * Swap (or revert) the optimistic `{ id: 0 }` camera created by the Camera
+   * "add new" flow — but ONLY if the current selection is still that exact
+   * placeholder. If the user changed or cleared the camera while the create was
+   * in flight, this is a no-op so their newer choice survives (fixes the
+   * stale-write race that a blind `updateStateField` swap would cause). Pass the
+   * server-assigned camera on success, or the prior camera / null to revert on
+   * failure.
+   */
+  const replaceOptimisticCamera = useCallback(
+    (optimisticName: string, replacement: ContentCameraModel | null) => {
+      setUpdateState(prev =>
+        prev.camera?.id === 0 && prev.camera.name === optimisticName
+          ? { ...prev, camera: replacement }
+          : prev
+      );
+    },
+    []
+  );
 
   const hasChanges = useMemo(() => {
     if (isBulkEdit) {
@@ -168,5 +190,6 @@ export function useImageMetadataState({
     pendingAddIds,
     pendingRemoveIds,
     handleCollectionToggle,
+    replaceOptimisticCamera,
   };
 }
