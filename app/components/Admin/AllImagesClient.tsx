@@ -6,13 +6,15 @@ import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { useInViewport } from '@/app/hooks/inViewport';
 import { useImageBrowser } from '@/app/hooks/useImageBrowser';
 import { type PagedImages } from '@/app/lib/api/content';
-import { type CollectionModel,CollectionType } from '@/app/types/Collection';
+import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './AllImagesClient.module.scss';
 
 interface AllImagesClientProps {
   initial: PagedImages;
+  ssrViewport?: SsrViewport;
 }
 
 /**
@@ -30,7 +32,7 @@ interface AllImagesClientProps {
  * {@code CHRONOLOGICAL} mode) would slot newly-loaded pages into the middle
  * of the grid for any backfilled photos.
  */
-export default function AllImagesClient({ initial }: AllImagesClientProps) {
+export default function AllImagesClient({ initial, ssrViewport }: AllImagesClientProps) {
   const { items, loadNext, isLoading, isDone, error } = useImageBrowser(initial);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -72,7 +74,7 @@ export default function AllImagesClient({ initial }: AllImagesClientProps) {
 
   return (
     <>
-      <CollectionPage collection={mockCollection} chunkSize={4} />
+      <CollectionPage collection={mockCollection} chunkSize={4} ssrViewport={ssrViewport} />
 
       <div ref={sentinelRef} className={styles.sentinel} aria-hidden />
 

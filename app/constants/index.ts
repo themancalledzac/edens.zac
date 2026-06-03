@@ -47,6 +47,18 @@ export const LAYOUT = {
   headerRowHeightRatio: 0.38, // Max row height as ratio of componentWidth (e.g., 0.38 = 38%)
   headerCoverMinRatio: 0.3, // Minimum cover image width as ratio of row width
   headerCoverMaxRatio: 0.5, // Maximum cover image width as ratio of row width
+
+  // SSR fallback viewport, picked by UA detection in resolveSsrViewport().
+  // Desktop width is picked above pageMaxWidth so getContentWidth() returns
+  // the capped value any viewport ≥ pageMaxWidth would measure.
+  ssrDefaultViewportWidthDesktop: 1440,
+  ssrDefaultViewportWidthMobile: 390,
+  ssrDefaultViewportHeightDesktop: 900,
+  ssrDefaultViewportHeightMobile: 844,
+  // Component keeps the server-side layout as long as the measured
+  // contentWidth is within this many px of the server fallback. Beyond it,
+  // the client recomputes once against the real viewport.
+  ssrRecomputeToleranceWidth: 64,
 } as const;
 
 // Fixed-weight cv formula: cv = BASE_WEIGHT[rating] × arFactor

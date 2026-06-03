@@ -4,6 +4,7 @@ import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import CollectionPageClient from './CollectionPageClient';
 import styles from './ContentCollectionPage.module.scss';
@@ -19,6 +20,8 @@ interface ContentCollectionPageProps {
    * anonymous public list views.
    */
   showProtectedCovers?: boolean;
+  /** UA-derived SSR fallback viewport from {@link resolveSsrViewport}. */
+  ssrViewport?: SsrViewport;
 }
 
 /**
@@ -87,6 +90,7 @@ export default function CollectionPage({
   collection,
   chunkSize,
   showProtectedCovers = false,
+  ssrViewport,
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
@@ -98,7 +102,13 @@ export default function CollectionPage({
         <main className={styles.main}>
           <SiteHeader pageType="collection" collectionSlug={collection.slug} />
           <h1 className={styles.srOnly}>{headingText}</h1>
-          <CollectionPageClient collection={collection} chunkSize={chunkSize} />
+          <CollectionPageClient
+            collection={collection}
+            chunkSize={chunkSize}
+            serverContentWidth={ssrViewport?.contentWidth}
+            serverViewportHeight={ssrViewport?.viewportHeight}
+            serverIsMobile={ssrViewport?.isMobile}
+          />
         </main>
       </div>
     );
@@ -120,6 +130,9 @@ export default function CollectionPage({
             enableFullScreenView
             initialPageSize={30}
             chunkSize={chunkSize}
+            serverContentWidth={ssrViewport?.contentWidth}
+            serverViewportHeight={ssrViewport?.viewportHeight}
+            serverIsMobile={ssrViewport?.isMobile}
           />
         ) : null}
       </main>

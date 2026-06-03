@@ -39,6 +39,13 @@ jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
   revalidateTag: jest.fn(),
 }));
+jest.mock('@/app/utils/ssrViewport', () => ({
+  resolveSsrViewport: jest.fn(async () => ({
+    contentWidth: 1274,
+    viewportHeight: 800,
+    isMobile: false,
+  })),
+}));
 
 const mockGetCollectionBySlug = collectionsApi.getCollectionBySlug as jest.MockedFunction<
   typeof collectionsApi.getCollectionBySlug

@@ -12,12 +12,10 @@ import { type AnyContentModel, type ViewableContent } from '@/app/types/Content'
 import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
 
-const FullScreenModal = dynamic(
-  () =>
-    import('@/app/components/FullScreenModal/FullScreenModal').then(m => ({
-      default: m.FullScreenModal,
-    })),
-  { ssr: false }
+const FullScreenModal = dynamic(() =>
+  import('@/app/components/FullScreenModal/FullScreenModal').then(m => ({
+    default: m.FullScreenModal,
+  }))
 );
 
 const LOAD_MORE_THRESHOLD = '400px';
@@ -47,6 +45,10 @@ interface ContentBlockWithFullScreenProps {
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
   onImageLoadError?: (contentId: number) => void;
+  /** SSR fallback viewport, forwarded to Component. */
+  serverContentWidth?: number;
+  serverViewportHeight?: number;
+  serverIsMobile?: boolean;
 }
 export default function ContentBlockWithFullScreen({
   content: allBlocks,
@@ -71,6 +73,9 @@ export default function ContentBlockWithFullScreen({
   onPlace,
   onCancelImageMove,
   onImageLoadError,
+  serverContentWidth,
+  serverViewportHeight,
+  serverIsMobile,
 }: ContentBlockWithFullScreenProps) {
   const {
     showImage,
@@ -136,6 +141,12 @@ export default function ContentBlockWithFullScreen({
   const [showButton, setShowButton] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  /** Gates the FullScreenModal so it never renders during SSR. */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const visibleBlocks = initialPageSize ? allBlocks.slice(0, visibleCount) : allBlocks;
   const hasMore = visibleCount < allBlocks.length;
 
@@ -188,6 +199,9 @@ export default function ContentBlockWithFullScreen({
         onPlace={onPlace}
         onCancelImageMove={onCancelImageMove}
         onImageLoadError={onImageLoadError}
+        serverContentWidth={serverContentWidth}
+        serverViewportHeight={serverViewportHeight}
+        serverIsMobile={serverIsMobile}
       />
 
       {hasMore && (
@@ -206,20 +220,22 @@ export default function ContentBlockWithFullScreen({
         </div>
       )}
 
-      <FullScreenModal
-        fullScreenState={fullScreenState}
-        loadedImageIds={loadedImageIds}
-        setLoadedImageIds={setLoadedImageIds}
-        modalRef={modalRef}
-        hideImage={hideImage}
-        isSwiping={isSwiping}
-        showMetadata={showMetadata}
-        toggleMetadata={toggleMetadata}
-        router={router}
-        collectionData={collectionData}
-        navigateToNext={navigateToNext}
-        navigateToPrevious={navigateToPrevious}
-      />
+      {mounted && (
+        <FullScreenModal
+          fullScreenState={fullScreenState}
+          loadedImageIds={loadedImageIds}
+          setLoadedImageIds={setLoadedImageIds}
+          modalRef={modalRef}
+          hideImage={hideImage}
+          isSwiping={isSwiping}
+          showMetadata={showMetadata}
+          toggleMetadata={toggleMetadata}
+          router={router}
+          collectionData={collectionData}
+          navigateToNext={navigateToNext}
+          navigateToPrevious={navigateToPrevious}
+        />
+      )}
     </>
   );
 }

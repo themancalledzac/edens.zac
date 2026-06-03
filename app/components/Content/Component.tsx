@@ -92,6 +92,10 @@ export interface ContentComponentProps {
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
   onImageLoadError?: (contentId: number) => void;
+  /** SSR fallback viewport. Used when `useViewport()` hasn't measured yet. */
+  serverContentWidth?: number;
+  serverViewportHeight?: number;
+  serverIsMobile?: boolean;
 }
 
 /**
@@ -123,11 +127,27 @@ export default function Component({
   onPlace,
   onCancelImageMove,
   onImageLoadError,
+  serverContentWidth,
+  serverViewportHeight,
+  serverIsMobile,
 }: ContentComponentProps) {
-  const { contentWidth, isMobile, viewportHeight } = useViewport();
+  const measured = useViewport();
+
+  const useMeasured =
+    measured.contentWidth > 0 &&
+    (serverContentWidth == null ||
+      Math.abs(measured.contentWidth - serverContentWidth) > LAYOUT.ssrRecomputeToleranceWidth);
+
+  const effectiveContentWidth = useMeasured
+    ? measured.contentWidth
+    : (serverContentWidth ?? measured.contentWidth ?? 0);
+  const effectiveViewportHeight = useMeasured
+    ? measured.viewportHeight
+    : (serverViewportHeight ?? measured.viewportHeight ?? 0);
+  const effectiveIsMobile = useMeasured ? measured.isMobile : (serverIsMobile ?? measured.isMobile);
 
   const { rows, layoutError } = useMemo(() => {
-    if (!contentWidth) {
+    if (!effectiveContentWidth) {
       return { rows: [], layoutError: null };
     }
 
@@ -138,11 +158,13 @@ export default function Component({
 
     // Row AR ≈ screen AR so each row ≈ one screenful; density then drives image size. Clamp [1.0, 2.5].
     const targetAR =
-      viewportHeight > 0 ? Math.max(1.0, Math.min(2.5, contentWidth / viewportHeight)) : 1.5;
+      effectiveViewportHeight > 0
+        ? Math.max(1.0, Math.min(2.5, effectiveContentWidth / effectiveViewportHeight))
+        : 1.5;
 
     try {
-      const result = processContentForDisplay(content || [], contentWidth, chunkSize, {
-        isMobile,
+      const result = processContentForDisplay(content || [], effectiveContentWidth, chunkSize, {
+        isMobile: effectiveIsMobile,
         collectionData,
         displayMode: collectionData?.displayMode,
         targetAR,
@@ -153,7 +175,14 @@ export default function Component({
       const message = error instanceof Error ? error.message : 'Unknown layout error';
       return { rows: [], layoutError: message };
     }
-  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight]);
+  }, [
+    content,
+    effectiveContentWidth,
+    chunkSize,
+    effectiveIsMobile,
+    collectionData,
+    effectiveViewportHeight,
+  ]);
 
   // Must be called before early return to satisfy React Hooks rules
   const firstNonVisibleRowIndex = useMemo(() => {
@@ -190,17 +219,9 @@ export default function Component({
   }
 
   if (rows.length === 0) {
-    // While the layout is being measured (contentWidth not yet known) reserve a
-    // screenful so the gallery doesn't collapse to a blank void on first paint.
-    const skeletonHeight = viewportHeight > 0 ? viewportHeight : 600;
     return (
       <div className={cbStyles.wrapper}>
-        <div
-          className={cbStyles.layoutSkeleton}
-          style={{ height: skeletonHeight }}
-          aria-hidden="true"
-          data-testid="layout-skeleton"
-        />
+        <div className={cbStyles.layoutSkeleton} aria-hidden="true" data-testid="layout-skeleton" />
       </div>
     );
   }
@@ -226,7 +247,7 @@ export default function Component({
         <BoxRenderer
           tree={tree}
           sizes={sizesMap}
-          isMobile={isMobile}
+          isMobile={effectiveIsMobile}
           onImageClick={onImageClick}
           enableFullScreenView={enableFullScreenView}
           onFullScreenImageClick={onFullScreenImageClick}
