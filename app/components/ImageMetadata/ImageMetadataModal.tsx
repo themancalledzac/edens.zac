@@ -88,6 +88,7 @@ export default function ImageMetadataModal({
     pendingAddIds,
     pendingRemoveIds,
     handleCollectionToggle,
+    replaceOptimisticCamera,
   } = useImageMetadataState({ selectedImages, selectedImageIds, availableLocations });
 
   const { saving, error, handleSubmit, handleCancel, handleDelete, handleRemoveFromCollection } =
@@ -150,6 +151,7 @@ export default function ImageMetadataModal({
             <CameraSettingsSection
               updateState={updateState}
               updateStateField={updateStateField}
+              replaceOptimisticCamera={replaceOptimisticCamera}
               availableCameras={availableCameras}
               availableLenses={availableLenses}
               availableFilmTypes={availableFilmTypes}
