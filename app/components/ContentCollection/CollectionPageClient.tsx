@@ -22,7 +22,7 @@ type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated'>;
 interface CollectionPageClientProps {
   collection: CollectionModel;
   chunkSize?: number;
-  /** SSR fallback viewport (see Component.tsx). Forwarded through unchanged. */
+  /** SSR fallback viewport, forwarded to Component. */
   serverContentWidth?: number;
   serverViewportHeight?: number;
   serverIsMobile?: boolean;

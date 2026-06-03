@@ -92,15 +92,7 @@ export interface ContentComponentProps {
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
   onImageLoadError?: (contentId: number) => void;
-  /**
-   * SSR fallback viewport. When present, the BoxTree is composed using these
-   * values on the server (and on the client's first render, before useEffect
-   * has measured the real viewport). Once `useViewport()` reports a measured
-   * width, the layout is recomposed against the actual viewport. When the
-   * UA-derived server defaults match the measured viewport (the common case
-   * for desktop/mobile traffic), useMemo's dependency comparison keeps the
-   * same row set across the hydration boundary and no layout shift occurs.
-   */
+  /** SSR fallback viewport. Used when `useViewport()` hasn't measured yet. */
   serverContentWidth?: number;
   serverViewportHeight?: number;
   serverIsMobile?: boolean;
@@ -141,9 +133,6 @@ export default function Component({
 }: ContentComponentProps) {
   const measured = useViewport();
 
-  // Fall back to UA-derived defaults when the client hasn't measured yet (SSR
-  // and the first client render). When measured ≈ server, useMemo's dep
-  // comparison keeps the row set stable across hydration → no layout shift.
   const effectiveContentWidth = measured.contentWidth || serverContentWidth || 0;
   const effectiveViewportHeight = measured.viewportHeight || serverViewportHeight || 0;
   const effectiveIsMobile = measured.contentWidth ? measured.isMobile : (serverIsMobile ?? false);
@@ -221,10 +210,6 @@ export default function Component({
   }
 
   if (rows.length === 0) {
-    // Reserve a full viewport via CSS (.layoutSkeleton min-height: 100dvh) so the
-    // footer in the root layout never appears above the fold while contentWidth
-    // is being measured. Independent of the JS-measured viewportHeight, which is
-    // 0 on the first render.
     return (
       <div className={cbStyles.wrapper}>
         <div className={cbStyles.layoutSkeleton} aria-hidden="true" data-testid="layout-skeleton" />

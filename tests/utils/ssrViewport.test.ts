@@ -1,14 +1,4 @@
-/**
- * Tests for resolveSsrViewport.
- *
- * Pins the UA-based device split: mobile UAs get the mobile fallback
- * viewport, everything else (desktop, tablet, bots, unknown) gets the
- * desktop fallback. The returned values must match `LAYOUT.ssrDefault*`
- * exactly — Component.tsx's hydration-stability guarantee depends on the
- * server-rendered fallback matching the constants the client reads from.
- */
-
-import { LAYOUT } from '@/app/constants';
+import { getContentWidth, LAYOUT } from '@/app/constants';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 let mockUaDeviceType: string | undefined;
@@ -32,7 +22,7 @@ describe('resolveSsrViewport', () => {
     mockUaDeviceType = undefined;
     const v = await resolveSsrViewport();
     expect(v).toEqual({
-      contentWidth: LAYOUT.ssrDefaultContentWidthDesktop,
+      contentWidth: getContentWidth(LAYOUT.ssrDefaultViewportWidthDesktop, false),
       viewportHeight: LAYOUT.ssrDefaultViewportHeightDesktop,
       isMobile: false,
     });
@@ -42,17 +32,17 @@ describe('resolveSsrViewport', () => {
     mockUaDeviceType = 'mobile';
     const v = await resolveSsrViewport();
     expect(v).toEqual({
-      contentWidth: LAYOUT.ssrDefaultContentWidthMobile,
+      contentWidth: getContentWidth(LAYOUT.ssrDefaultViewportWidthMobile, true),
       viewportHeight: LAYOUT.ssrDefaultViewportHeightMobile,
       isMobile: true,
     });
   });
 
-  it('treats tablet UAs as desktop (wider SSR layout is the safer default)', async () => {
+  it('treats tablet UAs as desktop', async () => {
     mockUaDeviceType = 'tablet';
     const v = await resolveSsrViewport();
     expect(v.isMobile).toBe(false);
-    expect(v.contentWidth).toBe(LAYOUT.ssrDefaultContentWidthDesktop);
+    expect(v.contentWidth).toBe(getContentWidth(LAYOUT.ssrDefaultViewportWidthDesktop, false));
   });
 
   it('returns desktop defaults for bots and unknown UAs', async () => {

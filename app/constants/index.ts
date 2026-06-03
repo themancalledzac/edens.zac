@@ -48,20 +48,13 @@ export const LAYOUT = {
   headerCoverMinRatio: 0.3, // Minimum cover image width as ratio of row width
   headerCoverMaxRatio: 0.5, // Maximum cover image width as ratio of row width
 
-  // SSR fallback viewport — used when the BoxTree is composed server-side
-  // (no window measurements). UA detection in the RSC entry picks desktop vs.
-  // mobile; the client recomputes on first useEffect if the measured viewport
-  // differs from the assumed default by more than ssrRecomputeToleranceWidth px.
-  ssrDefaultContentWidthDesktop: 1274, // 1280 viewport - 2× 12.8px page padding
-  ssrDefaultContentWidthMobile: 390, // typical phone (iPhone 14-class)
-  ssrDefaultViewportHeightDesktop: 800,
-  ssrDefaultViewportHeightMobile: 844, // typical phone
-  // Recompute tolerance: if measured contentWidth is within ±N px of the SSR
-  // assumption, the client treats them as equivalent and skips the layout
-  // recompute (and the resulting layout shift). 32px covers a scrollbar's worth
-  // of variance plus normal pixel rounding without letting real desktop/mobile
-  // mismatches sneak through (those are 600px+ apart).
-  ssrRecomputeToleranceWidth: 32,
+  // SSR fallback viewport, picked by UA detection in resolveSsrViewport().
+  // Desktop width is picked above pageMaxWidth so getContentWidth() returns
+  // the capped value any viewport ≥ pageMaxWidth would measure.
+  ssrDefaultViewportWidthDesktop: 1440,
+  ssrDefaultViewportWidthMobile: 390,
+  ssrDefaultViewportHeightDesktop: 900,
+  ssrDefaultViewportHeightMobile: 844,
 } as const;
 
 // Fixed-weight cv formula: cv = BASE_WEIGHT[rating] × arFactor

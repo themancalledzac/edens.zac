@@ -1,18 +1,3 @@
-/**
- * Tests for Component's SSR fallback behavior.
- *
- * When `useViewport()` reports zero (SSR, or the first client render before
- * useEffect has measured the real viewport), Component falls back to the
- * `serverContentWidth` / `serverViewportHeight` / `serverIsMobile` props so
- * the BoxTree can compose server-side with reserved per-item dimensions.
- *
- * These tests pin two contracts:
- *  - With ssrViewport props + zero measurements, Component renders the row
- *    grid (not the measuring skeleton).
- *  - Without ssrViewport props + zero measurements, Component renders the
- *    measuring skeleton (legacy behavior).
- */
-
 import '@testing-library/jest-dom';
 
 import { render, screen } from '@testing-library/react';
@@ -25,8 +10,6 @@ jest.mock('@/app/hooks/useViewport', () => ({
   useViewport: () => measured,
 }));
 
-// CollectionContentRenderer pulls in next/navigation, useParallax, filter
-// context, and a download-overlay tree — all are noise for this contract test.
 jest.mock('@/app/components/Content/CollectionContentRenderer', () => ({
   __esModule: true,
   default: ({ contentId }: { contentId: number }) => (
@@ -101,8 +84,6 @@ describe('Component — SSR fallback viewport', () => {
       />
     );
 
-    // No skeleton — measured viewport satisfies the layout engine even when
-    // ssr props disagree (the post-mount measurement path takes over).
     expect(screen.queryByTestId('layout-skeleton')).not.toBeInTheDocument();
     expect(screen.getByTestId('item-1')).toBeInTheDocument();
   });

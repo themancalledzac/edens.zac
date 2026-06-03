@@ -20,14 +20,7 @@ interface ContentCollectionPageProps {
    * anonymous public list views.
    */
   showProtectedCovers?: boolean;
-  /**
-   * UA-derived SSR fallback viewport. Resolved upstream in the RSC entry
-   * (CollectionPageWrapper / route page.tsx) via `resolveSsrViewport()`, then
-   * threaded into the client layout engine so the BoxTree is composed
-   * server-side with reserved per-item dimensions. Optional — when omitted,
-   * the layout engine falls back to the client-measured viewport (legacy
-   * post-mount-only composition).
-   */
+  /** UA-derived SSR fallback viewport from {@link resolveSsrViewport}. */
   ssrViewport?: SsrViewport;
 }
 

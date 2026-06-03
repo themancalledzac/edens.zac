@@ -14,7 +14,6 @@ import styles from './AllImagesClient.module.scss';
 
 interface AllImagesClientProps {
   initial: PagedImages;
-  /** UA-derived SSR fallback viewport resolved in the RSC entry. */
   ssrViewport?: SsrViewport;
 }
 

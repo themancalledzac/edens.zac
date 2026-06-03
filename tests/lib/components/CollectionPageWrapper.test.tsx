@@ -39,9 +39,6 @@ jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
   revalidateTag: jest.fn(),
 }));
-// resolveSsrViewport → next/server → Request (not defined under jsdom). The
-// wrapper just passes the resolved object through to CollectionPage, so we
-// can stub it without affecting the routing logic these tests cover.
 jest.mock('@/app/utils/ssrViewport', () => ({
   resolveSsrViewport: jest.fn(async () => ({
     contentWidth: 1274,
