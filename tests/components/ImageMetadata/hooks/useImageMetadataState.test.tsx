@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useImageMetadataState } from '@/app/components/ImageMetadata/hooks/useImageMetadataState';
 import type { CollectionListModel } from '@/app/types/Collection';
 import type { ContentImageModel } from '@/app/types/Content';
+import type { ContentCameraModel } from '@/app/types/ImageMetadata';
 
 const coll = (id: number, name: string): CollectionListModel => ({ id, name });
 
@@ -87,5 +88,63 @@ describe('useImageMetadataState', () => {
     act(() => result.current.handleCollectionToggle(coll(10, 'A')));
     expect([...result.current.pendingAddIds]).toEqual([20]);
     expect([...result.current.pendingRemoveIds]).toEqual([10]);
+  });
+
+  describe('replaceOptimisticCamera (guarded swap)', () => {
+    const optimistic = (name: string): ContentCameraModel => ({
+      id: 0,
+      name,
+      isFilm: false,
+      defaultFilmFormat: null,
+    });
+    const real: ContentCameraModel = {
+      id: 99,
+      name: 'Hasselblad 500cm',
+      isFilm: true,
+      defaultFilmFormat: 'MM_120',
+    };
+
+    it('swaps the optimistic {id:0} camera for the real one when the selection is unchanged', () => {
+      const selectedImages = [img(1)];
+      const { result } = renderHook(() =>
+        useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+      );
+      act(() => result.current.updateStateField({ camera: optimistic('Hasselblad 500cm') }));
+      act(() => result.current.replaceOptimisticCamera('Hasselblad 500cm', real));
+      expect(result.current.updateState.camera).toEqual(real);
+    });
+
+    it('does NOT swap when the user picked a different camera mid-flight', () => {
+      const selectedImages = [img(1)];
+      const { result } = renderHook(() =>
+        useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+      );
+      const userPick: ContentCameraModel = { id: 7, name: 'Sony A7R IV', isFilm: false };
+      act(() => result.current.updateStateField({ camera: optimistic('Hasselblad 500cm') }));
+      act(() => result.current.updateStateField({ camera: userPick }));
+      act(() => result.current.replaceOptimisticCamera('Hasselblad 500cm', real));
+      expect(result.current.updateState.camera).toEqual(userPick);
+    });
+
+    it('does NOT swap when the camera was cleared mid-flight', () => {
+      const selectedImages = [img(1)];
+      const { result } = renderHook(() =>
+        useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+      );
+      act(() => result.current.updateStateField({ camera: optimistic('Hasselblad 500cm') }));
+      act(() => result.current.updateStateField({ camera: null }));
+      act(() => result.current.replaceOptimisticCamera('Hasselblad 500cm', real));
+      expect(result.current.updateState.camera).toBeNull();
+    });
+
+    it('reverts the optimistic camera to null when still unchanged (failure path)', () => {
+      const selectedImages = [img(1)];
+      const { result } = renderHook(() =>
+        useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+      );
+      act(() => result.current.updateStateField({ camera: optimistic('Hasselblad 500cm') }));
+      act(() => result.current.replaceOptimisticCamera('Hasselblad 500cm', null));
+      expect(result.current.updateState.camera).toBeNull();
+    });
   });
 });

@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import Dropdown, { type AddNewField } from '@/app/components/ui/Dropdown/Dropdown';
 import { Checkbox } from '@/app/components/ui/Field/Checkbox';
 import { Input } from '@/app/components/ui/Field/Input';
@@ -84,6 +86,12 @@ const buildCameraAddNewFields = (availableFilmFormats: FilmFormatDTO[]): AddNewF
 export interface CameraSettingsSectionProps {
   updateState: ImageUpdateState;
   updateStateField: (updates: Partial<ImageUpdateState>) => void;
+  /**
+   * Guarded swap/revert for the optimistic add-new camera. Only mutates the
+   * selection when it is still the `{ id: 0 }` placeholder — see
+   * `useImageMetadataState.replaceOptimisticCamera`.
+   */
+  replaceOptimisticCamera: (optimisticName: string, replacement: ContentCameraModel | null) => void;
   availableCameras: ContentCameraModel[];
   availableLenses: ContentLensModel[];
   availableFilmTypes: ContentFilmTypeModel[];
@@ -95,12 +103,17 @@ export interface CameraSettingsSectionProps {
 export default function CameraSettingsSection({
   updateState,
   updateStateField,
+  replaceOptimisticCamera,
   availableCameras,
   availableLenses,
   availableFilmTypes,
   availableFilmFormats,
   isGif,
 }: CameraSettingsSectionProps): React.JSX.Element {
+  // Inline feedback when an eager camera-create fails (the only add-new picker
+  // that persists before save — see onAddNew below).
+  const [createError, setCreateError] = useState<string | null>(null);
+
   return (
     <div
       className={[modalStyles.formSection, isGif ? modalStyles.sectionDisabled : '']
@@ -124,38 +137,48 @@ export default function CameraSettingsSection({
         onAddNew={data => {
           const cameraName = (data.cameraName as string | null) ?? '';
           if (!cameraName.trim()) return;
+          const trimmedName = cameraName.trim();
           const isFilm = data.isFilm === true;
           const defaultFilmFormat = isFilm
             ? ((data.defaultFilmFormat as string | null) ?? null)
             : null;
+          // Snapshot the prior selection so a failed create can revert to it
+          // rather than nuking a camera the user already had chosen.
+          const previousCamera = updateState.camera ?? null;
+          setCreateError(null);
           // Optimistic local update — assume the create succeeds. Reuses the
           // same auto-toggle helper as picking an existing film camera.
           const optimisticCamera: ContentCameraModel = {
             id: 0,
-            name: cameraName.trim(),
+            name: trimmedName,
             isFilm,
             defaultFilmFormat,
           };
           updateStateField(computeCameraSelectionUpdate(optimisticCamera, updateState));
-          // Fire the create async — when it resolves, swap the camera with the real id.
-          void createCamera({
-            cameraName: optimisticCamera.name,
-            isFilm,
-            defaultFilmFormat,
-          })
+          // Camera is the only add-new that eagerly persists: the save-time diff
+          // (buildCameraDiff) emits a name-only `newValue` that would drop
+          // isFilm/defaultFilmFormat, so we POST to /metadata/cameras here.
+          void createCamera({ cameraName: trimmedName, isFilm, defaultFilmFormat })
             .then(created => {
+              // A null body is a 204 success — keep the optimistic { id: 0 }
+              // camera; the save-time newValue path persists it. NOT a failure.
               if (!created) return;
-              updateStateField({
-                camera: {
-                  id: created.id,
-                  name: created.cameraName,
-                  isFilm: created.isFilm,
-                  defaultFilmFormat,
-                },
+              // Guarded: only swaps if the selection is still our placeholder, so
+              // a camera the user picked while this was in flight is preserved.
+              replaceOptimisticCamera(trimmedName, {
+                id: created.id,
+                name: created.cameraName,
+                isFilm: created.isFilm,
+                defaultFilmFormat,
               });
             })
             .catch(error_ => {
+              // Real failure (createCamera throws on non-2xx). Revert the phantom
+              // camera (guarded — preserves a newer selection) and surface it so
+              // the user isn't left with a camera that was never persisted.
               console.error('Failed to create camera', error_);
+              replaceOptimisticCamera(trimmedName, previousCamera);
+              setCreateError(`Couldn't save camera "${trimmedName}". Please try again.`);
             });
         }}
         addNewFields={buildCameraAddNewFields(availableFilmFormats)}
@@ -163,6 +186,12 @@ export default function CameraSettingsSection({
         showNewIndicator
         emptyText="No camera set"
       />
+
+      {createError && (
+        <div className={modalStyles.errorMessage} role="alert">
+          {createError}
+        </div>
+      )}
 
       <Dropdown<ContentLensModel>
         label="Lens"
