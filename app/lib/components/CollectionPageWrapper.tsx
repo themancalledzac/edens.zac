@@ -5,6 +5,7 @@ import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import { CollectionType } from '@/app/types/Collection';
+import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 interface CollectionPageWrapperProps {
   slug: string;
@@ -29,7 +30,10 @@ export default async function CollectionPageWrapper({
   }
 
   try {
-    const fetched = await getCollectionBySlug(slug, 0, 500);
+    const [fetched, ssrViewport] = await Promise.all([
+      getCollectionBySlug(slug, 0, 500),
+      resolveSsrViewport(),
+    ]);
 
     const collection =
       excludeContentSlugs && excludeContentSlugs.length > 0 && Array.isArray(fetched.content)
@@ -60,12 +64,16 @@ export default async function CollectionPageWrapper({
     if (isGateableType) {
       const isAuthenticated = Array.isArray(collection.content);
       if (!collection.isPasswordProtected || isAuthenticated) {
-        return <CollectionPage collection={collection} chunkSize={chunkSize} />;
+        return (
+          <CollectionPage collection={collection} chunkSize={chunkSize} ssrViewport={ssrViewport} />
+        );
       }
       return <ClientGalleryGate collection={collection} />;
     }
 
-    return <CollectionPage collection={collection} chunkSize={chunkSize} />;
+    return (
+      <CollectionPage collection={collection} chunkSize={chunkSize} ssrViewport={ssrViewport} />
+    );
   } catch (error) {
     // Re-throw Next.js sentinel errors (notFound(), redirect()) so the framework
     // can handle them. Their digest property starts with `NEXT_`.

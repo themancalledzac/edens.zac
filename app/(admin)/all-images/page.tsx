@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import AllImagesClient from '@/app/components/Admin/AllImagesClient';
 import { getAllImages } from '@/app/lib/api/content';
 import { ApiError } from '@/app/lib/api/core';
+import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 /**
  * All Images Page (Dev/Admin Only)
@@ -17,8 +18,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function AllImagesPage() {
   try {
-    const page0 = await getAllImages({ page: 0, size: 150 });
-    return <AllImagesClient initial={page0} />;
+    const [page0, ssrViewport] = await Promise.all([
+      getAllImages({ page: 0, size: 150 }),
+      resolveSsrViewport(),
+    ]);
+    return <AllImagesClient initial={page0} ssrViewport={ssrViewport} />;
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       notFound();

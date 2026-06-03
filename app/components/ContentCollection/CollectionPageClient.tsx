@@ -22,6 +22,10 @@ type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated'>;
 interface CollectionPageClientProps {
   collection: CollectionModel;
   chunkSize?: number;
+  /** SSR fallback viewport (see Component.tsx). Forwarded through unchanged. */
+  serverContentWidth?: number;
+  serverViewportHeight?: number;
+  serverIsMobile?: boolean;
 }
 
 /**
@@ -67,7 +71,13 @@ function extractCollectionFilterOptions(
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
 const EMPTY_LENSTYPE_DIM = { values: [] as readonly LensType[], filterable: true };
 
-export default function CollectionPageClient({ collection, chunkSize }: CollectionPageClientProps) {
+export default function CollectionPageClient({
+  collection,
+  chunkSize,
+  serverContentWidth,
+  serverViewportHeight,
+  serverIsMobile,
+}: CollectionPageClientProps) {
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
   const [filterState, setFilterState] = useState<FilterState>(() => ({
@@ -299,6 +309,9 @@ export default function CollectionPageClient({ collection, chunkSize }: Collecti
         chunkSize={density}
         collectionSlug={collection.slug}
         collectionData={collection}
+        serverContentWidth={serverContentWidth}
+        serverViewportHeight={serverViewportHeight}
+        serverIsMobile={serverIsMobile}
       />
       {hasActiveFilters && filteredImages.length === 0 && (
         <p className={styles.emptyState}>No images match your filters.</p>

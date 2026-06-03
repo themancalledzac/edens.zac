@@ -92,6 +92,18 @@ export interface ContentComponentProps {
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
   onImageLoadError?: (contentId: number) => void;
+  /**
+   * SSR fallback viewport. When present, the BoxTree is composed using these
+   * values on the server (and on the client's first render, before useEffect
+   * has measured the real viewport). Once `useViewport()` reports a measured
+   * width, the layout is recomposed against the actual viewport. When the
+   * UA-derived server defaults match the measured viewport (the common case
+   * for desktop/mobile traffic), useMemo's dependency comparison keeps the
+   * same row set across the hydration boundary and no layout shift occurs.
+   */
+  serverContentWidth?: number;
+  serverViewportHeight?: number;
+  serverIsMobile?: boolean;
 }
 
 /**
@@ -123,11 +135,21 @@ export default function Component({
   onPlace,
   onCancelImageMove,
   onImageLoadError,
+  serverContentWidth,
+  serverViewportHeight,
+  serverIsMobile,
 }: ContentComponentProps) {
-  const { contentWidth, isMobile, viewportHeight } = useViewport();
+  const measured = useViewport();
+
+  // Fall back to UA-derived defaults when the client hasn't measured yet (SSR
+  // and the first client render). When measured ≈ server, useMemo's dep
+  // comparison keeps the row set stable across hydration → no layout shift.
+  const effectiveContentWidth = measured.contentWidth || serverContentWidth || 0;
+  const effectiveViewportHeight = measured.viewportHeight || serverViewportHeight || 0;
+  const effectiveIsMobile = measured.contentWidth ? measured.isMobile : (serverIsMobile ?? false);
 
   const { rows, layoutError } = useMemo(() => {
-    if (!contentWidth) {
+    if (!effectiveContentWidth) {
       return { rows: [], layoutError: null };
     }
 
@@ -138,11 +160,13 @@ export default function Component({
 
     // Row AR ≈ screen AR so each row ≈ one screenful; density then drives image size. Clamp [1.0, 2.5].
     const targetAR =
-      viewportHeight > 0 ? Math.max(1.0, Math.min(2.5, contentWidth / viewportHeight)) : 1.5;
+      effectiveViewportHeight > 0
+        ? Math.max(1.0, Math.min(2.5, effectiveContentWidth / effectiveViewportHeight))
+        : 1.5;
 
     try {
-      const result = processContentForDisplay(content || [], contentWidth, chunkSize, {
-        isMobile,
+      const result = processContentForDisplay(content || [], effectiveContentWidth, chunkSize, {
+        isMobile: effectiveIsMobile,
         collectionData,
         displayMode: collectionData?.displayMode,
         targetAR,
@@ -153,7 +177,14 @@ export default function Component({
       const message = error instanceof Error ? error.message : 'Unknown layout error';
       return { rows: [], layoutError: message };
     }
-  }, [content, contentWidth, chunkSize, isMobile, collectionData, viewportHeight]);
+  }, [
+    content,
+    effectiveContentWidth,
+    chunkSize,
+    effectiveIsMobile,
+    collectionData,
+    effectiveViewportHeight,
+  ]);
 
   // Must be called before early return to satisfy React Hooks rules
   const firstNonVisibleRowIndex = useMemo(() => {
@@ -222,7 +253,7 @@ export default function Component({
         <BoxRenderer
           tree={tree}
           sizes={sizesMap}
-          isMobile={isMobile}
+          isMobile={effectiveIsMobile}
           onImageClick={onImageClick}
           enableFullScreenView={enableFullScreenView}
           onFullScreenImageClick={onFullScreenImageClick}

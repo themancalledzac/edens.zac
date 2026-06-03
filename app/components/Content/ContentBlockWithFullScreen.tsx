@@ -12,12 +12,16 @@ import { type AnyContentModel, type ViewableContent } from '@/app/types/Content'
 import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
 
-const FullScreenModal = dynamic(
-  () =>
-    import('@/app/components/FullScreenModal/FullScreenModal').then(m => ({
-      default: m.FullScreenModal,
-    })),
-  { ssr: false }
+// Lazy-load on the client only. Previously this used `dynamic(..., { ssr: false })`,
+// but in Next 16 that triggers a SSR bailout that propagates past Suspense and
+// forces the entire route — including the BoxTree grid — to render client-side.
+// Loading without `ssr: false` lets the parent tree SSR cleanly; the modal
+// itself is only mounted after hydration via the `mounted` guard below, so
+// nothing about it actually runs on the server.
+const FullScreenModal = dynamic(() =>
+  import('@/app/components/FullScreenModal/FullScreenModal').then(m => ({
+    default: m.FullScreenModal,
+  }))
 );
 
 const LOAD_MORE_THRESHOLD = '400px';
@@ -47,6 +51,10 @@ interface ContentBlockWithFullScreenProps {
   onPlace?: (targetId: number) => void;
   onCancelImageMove?: (contentId: number) => void;
   onImageLoadError?: (contentId: number) => void;
+  /** SSR fallback viewport (see Component.tsx). Forwarded through unchanged. */
+  serverContentWidth?: number;
+  serverViewportHeight?: number;
+  serverIsMobile?: boolean;
 }
 export default function ContentBlockWithFullScreen({
   content: allBlocks,
@@ -71,6 +79,9 @@ export default function ContentBlockWithFullScreen({
   onPlace,
   onCancelImageMove,
   onImageLoadError,
+  serverContentWidth,
+  serverViewportHeight,
+  serverIsMobile,
 }: ContentBlockWithFullScreenProps) {
   const {
     showImage,
@@ -136,6 +147,16 @@ export default function ContentBlockWithFullScreen({
   const [showButton, setShowButton] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
+  // Mount guard: the FullScreenModal is loaded via next/dynamic but we don't
+  // render it during SSR (and the first hydration pass) so its presence in
+  // the tree doesn't bail the route out of SSR. After hydration this flips
+  // true and the modal renders normally — it's not visible until the user
+  // opens the viewer, so there's no perceived delay.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const visibleBlocks = initialPageSize ? allBlocks.slice(0, visibleCount) : allBlocks;
   const hasMore = visibleCount < allBlocks.length;
 
@@ -188,6 +209,9 @@ export default function ContentBlockWithFullScreen({
         onPlace={onPlace}
         onCancelImageMove={onCancelImageMove}
         onImageLoadError={onImageLoadError}
+        serverContentWidth={serverContentWidth}
+        serverViewportHeight={serverViewportHeight}
+        serverIsMobile={serverIsMobile}
       />
 
       {hasMore && (
@@ -206,20 +230,22 @@ export default function ContentBlockWithFullScreen({
         </div>
       )}
 
-      <FullScreenModal
-        fullScreenState={fullScreenState}
-        loadedImageIds={loadedImageIds}
-        setLoadedImageIds={setLoadedImageIds}
-        modalRef={modalRef}
-        hideImage={hideImage}
-        isSwiping={isSwiping}
-        showMetadata={showMetadata}
-        toggleMetadata={toggleMetadata}
-        router={router}
-        collectionData={collectionData}
-        navigateToNext={navigateToNext}
-        navigateToPrevious={navigateToPrevious}
-      />
+      {mounted && (
+        <FullScreenModal
+          fullScreenState={fullScreenState}
+          loadedImageIds={loadedImageIds}
+          setLoadedImageIds={setLoadedImageIds}
+          modalRef={modalRef}
+          hideImage={hideImage}
+          isSwiping={isSwiping}
+          showMetadata={showMetadata}
+          toggleMetadata={toggleMetadata}
+          router={router}
+          collectionData={collectionData}
+          navigateToNext={navigateToNext}
+          navigateToPrevious={navigateToPrevious}
+        />
+      )}
     </>
   );
 }

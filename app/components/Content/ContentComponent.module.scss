@@ -134,12 +134,16 @@
   /* Don't override padding - let Home module classes handle it */
 }
 
-/* Wrapper around just the image to contain overlays within image bounds */
+/* Wrapper around just the image to contain overlays within image bounds.
+   The sunken background shows through while next/image is still downloading,
+   giving each item a visible grey reservation instead of blank-white space
+   between when the SSR BoxTree renders and when the bytes arrive. */
 .imageWrapper {
   position: relative;
   display: block;
   width: 100%;
   height: 100%;
+  background: var(--color-surface-sunken);
   box-sizing: border-box;
   overflow: hidden;
   container-type: inline-size;
