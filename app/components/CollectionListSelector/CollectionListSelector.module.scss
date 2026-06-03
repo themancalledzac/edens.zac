@@ -132,12 +132,11 @@
   text-align: right;
 }
 
-// Two-column (Sibling | Child) mode.
-// Column order: Catalog Name (flex) | Catalog Type (fixed) | Sibling | Child.
-// Each fixed-width header column shares its width with the matching cell below
+// Multi-column (Sibling | Child | Parent) accordion mode.
+// Column order: Collection Name (flex) | Sibling | Child | Parent.
+// Each fixed-width toggle column shares its width with the matching cell below
 // so headers sit directly above their content/checkboxes.
 $toggle-col-width: 60px;
-$type-col-width: 130px;
 
 // Header row mirrors `.row` horizontal padding + gap so columns line up.
 .columnHeaderRow {
@@ -149,16 +148,6 @@ $type-col-width: 130px;
 
 .columnHeaderName {
   flex: 1;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-on-surface-muted);
-  text-align: left;
-}
-
-.columnHeaderType {
-  width: $type-col-width;
-  min-width: $type-col-width;
-  flex-shrink: 0;
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-on-surface-muted);
@@ -184,12 +173,6 @@ $type-col-width: 130px;
   .name {
     flex: 1;
     text-align: left;
-  }
-
-  .type {
-    width: $type-col-width;
-    min-width: $type-col-width;
-    flex-shrink: 0;
   }
 }
 
