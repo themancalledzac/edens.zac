@@ -319,4 +319,47 @@ describe('CollectionListSelector', () => {
       expect(screen.queryByLabelText('Open Portfolio A')).not.toBeInTheDocument();
     });
   });
+
+  describe('pinnedCollectionId', () => {
+    // Single-column rows are role="button" elements that contain the collection name; the checkbox
+    // buttons render empty. Filtering to text-bearing buttons yields the rows in DOM order.
+    const getRowsInOrder = () =>
+      screen
+        .getAllByRole('button')
+        .filter(el => el.textContent && el.textContent.trim().length > 0);
+
+    it('sorts the pinned collection to the top, keeping all other rows in order', () => {
+      render(<CollectionListSelector {...defaultProps} pinnedCollectionId={3} />);
+
+      const rows = getRowsInOrder();
+      expect(rows[0]).toHaveTextContent('Gallery C'); // id 3 pinned to top
+      expect(rows[1]).toHaveTextContent('Portfolio A');
+      expect(rows[2]).toHaveTextContent('Blog B');
+      expect(rows[3]).toHaveTextContent('No Type D');
+    });
+
+    it('keeps the pinned collection visible and reflects its saved (green) state', () => {
+      render(
+        <CollectionListSelector
+          {...defaultProps}
+          pinnedCollectionId={3}
+          savedCollectionIds={new Set([3])}
+        />
+      );
+
+      const checkbox = screen.getByLabelText('Toggle Gallery C');
+      expect(checkbox).toBeInTheDocument();
+      expect(checkbox.className).toContain('saved');
+    });
+
+    it('leaves order unchanged when pinnedCollectionId is not in the list', () => {
+      render(<CollectionListSelector {...defaultProps} pinnedCollectionId={999} />);
+
+      const rows = getRowsInOrder();
+      expect(rows[0]).toHaveTextContent('Portfolio A');
+      expect(rows[1]).toHaveTextContent('Blog B');
+      expect(rows[2]).toHaveTextContent('Gallery C');
+      expect(rows[3]).toHaveTextContent('No Type D');
+    });
+  });
 });

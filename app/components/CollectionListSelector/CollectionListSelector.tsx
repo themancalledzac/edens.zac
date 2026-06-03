@@ -19,6 +19,12 @@ interface CollectionListSelectorProps {
   onAddNewChild?: () => void;
   label?: string;
   excludeCollectionId?: number;
+  /**
+   * When set, this collection is sorted to the TOP of the list (all other rows keep their incoming
+   * order). Used by the image metadata editor to surface the gallery currently being edited — it
+   * stays visible and shows its saved (green) state instead of being hidden.
+   */
+  pinnedCollectionId?: number;
   // Optional second ("Sibling") toggle column. When the full set is supplied the
   // selector switches to a two-column Sibling | Child grid; otherwise it renders
   // its original single-column layout unchanged.
@@ -50,6 +56,7 @@ export default function CollectionListSelector({
   onAddNewChild,
   label = 'Collections',
   excludeCollectionId,
+  pinnedCollectionId,
   siblingSavedIds,
   siblingPendingAddIds,
   siblingPendingRemoveIds,
@@ -66,6 +73,16 @@ export default function CollectionListSelector({
   const filteredCollections = excludeCollectionId
     ? allCollections.filter(c => c.id !== excludeCollectionId)
     : allCollections;
+
+  // Pin the "current" collection to the top so the gallery being edited leads the list; every
+  // other row keeps its incoming order. No-op when pinnedCollectionId is absent or not in the list.
+  const orderedCollections =
+    pinnedCollectionId == null
+      ? filteredCollections
+      : [
+          ...filteredCollections.filter(c => c.id === pinnedCollectionId),
+          ...filteredCollections.filter(c => c.id !== pinnedCollectionId),
+        ];
 
   const handleRowClick = useCallback(
     (collection: CollectionListModel) => {
@@ -135,10 +152,10 @@ export default function CollectionListSelector({
         </div>
       )}
       <div className={styles.list}>
-        {filteredCollections.length === 0 && (
+        {orderedCollections.length === 0 && (
           <div className={styles.emptyState}>No collections available</div>
         )}
-        {filteredCollections.map(collection =>
+        {orderedCollections.map(collection =>
           siblingMode ? (
             // Two-column mode: name on the left, Sibling | Child toggles aligned on the right.
             <div

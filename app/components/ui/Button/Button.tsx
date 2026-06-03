@@ -4,7 +4,7 @@ import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 
 import styles from './Button.module.scss';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'warning' | 'ghost' | 'outline';
 export type ButtonSize = 'sm' | 'md';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

@@ -24,6 +24,7 @@ Import order (strict):
 8. Relative imports (same directory)
 
 ### Example
+
 ```typescript
 // 1. React/Next.js imports (named imports only — never `import React`)
 import { type SubmitEvent, useState } from 'react';
@@ -93,6 +94,29 @@ app/
 5. **Caching**: Use Next.js cache tags and revalidation for API responses
 6. **Content Processing**: Use utilities in `app/utils/contentLayout.ts` for content transformation
 
+## Inline JSX Config Rule
+
+A literal `Array` or `Object` passed as a prop in JSX **must be lifted out of the render function** when **both** of the following hold:
+
+1. It spans **more than 5 lines** (Prettier-formatted), AND
+2. **None** of its values reference a component-scope identifier (props, state, closure variables, hook return values, or values computed earlier in the function body).
+
+**Lift to** (in order of preference):
+
+- **Module-scope `const` above the function** — the default. Keeps the data co-located with its single consumer.
+- **A typed const next to the relevant type/enum** in `app/types/` — when the data is a label/description for a domain enum (mirror the existing `COLLECTION_VISIBILITY_LABELS` pattern in `app/types/CollectionVisibility.ts`).
+- **A sibling `<feature>.config.ts`** — only when the literal is consumed by **2+ files** OR exceeds **~80 LoC** of pure config. Crossing a file boundary is indirection cost; pay it only when there's a real DRY or test-reuse win.
+
+If a literal is _mostly_ static but contains one props-derived field (e.g. an `addNewFields` array where one field's `options` comes from a prop): **extract a `buildXxx(deps)` helper at module scope** that takes the dependencies and returns the array.
+
+**Do NOT lift:**
+
+- 1-line literals (button labels, single placeholders, trivial display-name arrow functions like `getDisplayName={lens => lens.name}`).
+- Literals whose surrounding markup conditionally renders them or whose handler shapes differ — forcing them into a uniform array-of-configs driving a `.map()` makes the file harder to read.
+- One-line closure-bound event handlers — extracting to `useCallback` adds ceremony without measurable benefit absent profiler evidence.
+
+**Auditable by greppability:** anywhere `addNewFields={[`, `options={[`, or 3+ consecutive `<option value=` lines appear inside a render function and reference only string/number literals, the rule has likely been violated. Reference example: `app/components/ImageMetadata/sections/CameraSettingsSection.tsx` lifts `LENS_ADD_NEW_FIELDS` / `FILM_STOCK_ADD_NEW_FIELDS` / `buildCameraAddNewFields(...)` to module scope.
+
 ## Common Mistakes to Avoid
 
 - ❌ Using `'use client'` unnecessarily - prefer Server Components
@@ -105,3 +129,4 @@ app/
 - ❌ Not using `next/image` for images (always use CloudFront URLs)
 - ❌ Using `import React` namespace — always use named imports from `'react'`
 - ❌ Using deprecated `FormEvent` — use `SubmitEvent<HTMLFormElement>` instead
+- ❌ Inline static config (>5 LoC array/object literal with no component-scope refs) in JSX — see "Inline JSX Config Rule" above
