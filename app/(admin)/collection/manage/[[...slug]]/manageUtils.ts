@@ -156,6 +156,10 @@ export function buildUpdatePayload(
     payload.locations = formData.locations;
   }
 
+  if (formData.tags !== undefined) {
+    payload.tags = formData.tags;
+  }
+
   return payload;
 }
 

@@ -702,6 +702,25 @@ describe('buildUpdatePayload', () => {
       });
     });
 
+    it('should include tags when set', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        tags: { prev: [1, 2], newValue: ['sunset'] },
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        tags: { prev: [1, 2], newValue: ['sunset'] },
+      });
+    });
+
+    it('omits tags when formData.tags is undefined', () => {
+      const result = buildUpdatePayload({ id: 1 } as CollectionUpdateRequest, originalCollection);
+      expect(result.tags).toBeUndefined();
+    });
+
     it('should handle empty string vs undefined distinction for description', () => {
       const originalWithEmpty = createCollectionModel({
         ...originalCollection,

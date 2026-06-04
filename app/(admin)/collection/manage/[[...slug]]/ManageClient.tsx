@@ -19,6 +19,7 @@ import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
+import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
@@ -41,6 +42,7 @@ import {
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type ContentPersonModel,
+  type ContentTagModel,
   type DisplayMode,
   type LocationModel,
 } from '@/app/types/Collection';
@@ -64,6 +66,7 @@ import {
   isParentType,
 } from '@/app/utils/contentTypeGuards';
 import { convertLocationsToModels, createLocationsUpdate } from '@/app/utils/locationUtils';
+import { convertTagsToModels, createTagsUpdate } from '@/app/utils/tagUtils';
 
 import styles from './ManageClient.module.scss';
 import {
@@ -857,6 +860,46 @@ export default function ManageClient({ slug }: ManageClientProps) {
   }, []);
 
   /**
+   * Derive current tags from `collection.tags` and `updateData.tags`. Mirrors
+   * `currentLocations`.
+   *
+   * Priority: pending `updateData.tags` overrides the saved collection tags. Saved
+   * tags arrive as `string[]` names, so they are resolved against the available tag
+   * list to recover IDs.
+   */
+  const currentTags: ContentTagModel[] = useMemo(() => {
+    const availableTags = currentState?.tags || [];
+
+    const tagsUpdate = updateData.tags;
+    if (tagsUpdate) {
+      const result: ContentTagModel[] = [];
+      // Resolve prev IDs to models
+      for (const id of tagsUpdate.prev ?? []) {
+        const found = availableTags.find(tag => tag.id === id);
+        if (found) result.push(found);
+      }
+      // Add new tags (not yet created)
+      for (const name of tagsUpdate.newValue ?? []) {
+        result.push({ id: 0, name, slug: '' });
+      }
+      return result;
+    }
+
+    return convertTagsToModels(collection?.tags, availableTags);
+  }, [collection?.tags, currentState?.tags, updateData.tags]);
+
+  /**
+   * Handle tags selection changes (multi-select). Mirrors `handleLocationsChange`,
+   * but `TagsSelector` already hands back a normalized `ContentTagModel[]`.
+   */
+  const handleTagsChange = useCallback((tags: ContentTagModel[]) => {
+    setUpdateData(prev => ({
+      ...prev,
+      tags: createTagsUpdate(tags),
+    }));
+  }, []);
+
+  /**
    * Handle child-collection toggle from CollectionListSelector. Child rows carry
    * `visible`/`orderIndex` in their `newValue` entry (containment metadata).
    */
@@ -1287,6 +1330,17 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           getDisplayName={location => location?.name || ''}
                           showNewIndicator
                           emptyText="No locations set"
+                        />
+
+                        {/* Tags — collection-level associations. Saved via the
+                            "Update Metadata" payload (like Locations), not a
+                            separate endpoint. Reuses the shared TagsSelector so the
+                            picker matches the image editor. */}
+                        <TagsSelector
+                          selectedTags={currentTags}
+                          availableTags={currentState?.tags || []}
+                          onChange={handleTagsChange}
+                          emptyText="No tags set"
                         />
 
                         {/* People — collection-level associations. Saved via
