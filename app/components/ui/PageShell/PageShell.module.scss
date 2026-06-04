@@ -1,5 +1,9 @@
 .container {
-  min-height: 100vh;
+  /* Match the route loading fallback (app/loading.module.scss, 100dvh) so the
+     site-wide <Footer> — rendered after this container in the root layout —
+     keeps a constant anchor across the loading -> loaded handoff. 100vh > 100dvh
+     on mobile, so a mismatch shifts the footer down when content arrives. */
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }

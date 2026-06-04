@@ -4,7 +4,12 @@
 */
 
 .container {
-  min-height: 100vh;
+  /* Match the route loading fallback (app/loading.module.scss) and the client
+     measuring skeleton (ContentComponent .layoutSkeleton), which both reserve
+     100dvh. The site-wide <Footer> renders after this container in the root
+     layout, so any mismatch between the loading reservation and this one shifts
+     the footer at handoff (100vh > 100dvh on mobile). Keep all three on dvh. */
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
