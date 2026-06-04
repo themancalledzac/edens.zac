@@ -96,6 +96,20 @@
   line-height: 1;
   transition: all var(--duration-fast) var(--ease-standard);
   flex-shrink: 0;
+  position: relative;
+
+  // Visible keyboard focus ring (mouse/touch users don't see it via :focus-visible).
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  // Expand the click/tap target to ~28px without growing the 16px visual box.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
 
   &--empty {
     background: transparent;
@@ -296,6 +310,11 @@ $toggle-col-width: 60px;
 
   &:hover {
     background: var(--sel-elev-1);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: -2px;
   }
 }
 
