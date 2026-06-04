@@ -15,6 +15,7 @@ import type {
 } from '@/app/types/Content';
 import type { ContentCameraModel } from '@/app/types/ImageMetadata';
 import { buildLocationsDiff } from '@/app/utils/locationUtils';
+import { formatShutterSpeed } from '@/app/utils/shutterSpeed';
 
 // ============================================================================
 // Generic Update Utilities
@@ -684,7 +685,6 @@ export function buildImageUpdateDiff(
     'rating',
     'blackAndWhite',
     'isFilm',
-    'shutterSpeed',
     'focalLength',
     'fStop',
     'iso',
@@ -700,6 +700,22 @@ export function buildImageUpdateDiff(
       diff,
       field in updateState
     );
+  }
+
+  // Shutter speed is normalized to canonical photographic notation on save
+  // (e.g. "0.01 sec" -> "1/100 sec") so edits persist a clean value instead of
+  // the raw decimal exposure time. Both sides are normalized before comparison
+  // so a purely cosmetic difference (e.g. "1/125" vs "1/125 sec") isn't treated
+  // as a change, while a genuine edit still heals the stored value. The root
+  // cause of the bad decimals is upstream EXIF extraction (backend), but any
+  // value re-saved through the admin UI is corrected here. See
+  // utils/shutterSpeed.ts.
+  if ('shutterSpeed' in updateState) {
+    const normalizedUpdate = formatShutterSpeed(updateState.shutterSpeed) || null;
+    const normalizedCurrent = formatShutterSpeed(currentState.shutterSpeed) || null;
+    if (normalizedUpdate !== normalizedCurrent) {
+      diff.shutterSpeed = normalizedUpdate;
+    }
   }
 
   // Handle complex fields using specialized builders

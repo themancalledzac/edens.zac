@@ -16,6 +16,7 @@ import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import type { ContentGifModel, ViewableContent } from '@/app/types/Content';
+import { formatShutterSpeed } from '@/app/utils/shutterSpeed';
 
 type ImageBlock = ViewableContent;
 
@@ -219,7 +220,9 @@ export function FullScreenModal({
                       currentImage.focalLength) && (
                       <div className={styles.metadataSettingsRow}>
                         {currentImage.iso && <span>{currentImage.iso}</span>}
-                        {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
+                        {currentImage.shutterSpeed && (
+                          <span>{formatShutterSpeed(currentImage.shutterSpeed)}</span>
+                        )}
                         {currentImage.fStop && <span>{currentImage.fStop}</span>}
                         {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
                       </div>

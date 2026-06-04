@@ -1970,6 +1970,26 @@ describe('buildImageUpdateForSingleEdit', () => {
     expect(result.id).toBe(1);
     expect(Object.keys(result).length).toBe(1);
   });
+
+  it('normalizes an edited decimal shutter speed to a fraction', () => {
+    const current = createImageContent(1, { shutterSpeed: '1/125' });
+    const updateState: ContentImageModel = { ...current, shutterSpeed: '0.01 sec' };
+
+    const result = buildImageUpdateForSingleEdit(updateState, current, availableFilmTypes);
+
+    expect(result.shutterSpeed).toBe('1/100 sec');
+  });
+
+  it('does not diff a shutter speed that is only cosmetically different', () => {
+    // Stored "1/125" and edited "1/125 sec" normalize to the same value, so no
+    // spurious update is emitted.
+    const current = createImageContent(1, { shutterSpeed: '1/125' });
+    const updateState: ContentImageModel = { ...current, shutterSpeed: '1/125 sec' };
+
+    const result = buildImageUpdateForSingleEdit(updateState, current, availableFilmTypes);
+
+    expect(result.shutterSpeed).toBeUndefined();
+  });
 });
 
 describe('mapUpdateResponseToFrontend', () => {
