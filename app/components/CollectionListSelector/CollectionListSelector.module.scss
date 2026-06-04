@@ -11,6 +11,9 @@
   --sel-elev-2: rgb(255 255 255 / 10%); /* expanded-row bg */
   --sel-elev-hover: rgb(255 255 255 / 14%);
   --sel-border: rgb(255 255 255 / 12%);
+  --sel-accent-sibling: #20c997; /* teal */
+  --sel-accent-child: #4dabf7; /* blue */
+  --sel-accent-parent: #cc5de8; /* grape */
 }
 
 .header {
@@ -45,7 +48,7 @@
 .emptyState {
   padding: var(--space-3);
   text-align: center;
-  color: var(--color-on-surface-muted);
+  color: var(--sel-text-muted);
   font-size: var(--text-sm);
 }
 
@@ -73,8 +76,13 @@
   }
 }
 
-// Checkbox: 16x16 square with visual states
+// Checkbox: 16x16 square with visual states. A centered flex box so the
+// state ::before glyph (✓ / + / −) sits dead-center — glyphs keep the state
+// legible in grayscale (color-blind safety), not just via fill color.
 .checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 16px;
   height: 16px;
   min-width: 16px;
@@ -83,6 +91,8 @@
   background: transparent;
   cursor: pointer;
   padding: 0;
+  font-size: 11px;
+  line-height: 1;
   transition: all var(--duration-fast) var(--ease-standard);
   flex-shrink: 0;
 
@@ -91,28 +101,46 @@
     border-color: var(--color-border);
   }
 
-  // Saved (persisted on server) — solid green
+  // Saved (persisted on server) — solid green fill + check glyph.
   &--saved {
     background: var(--color-success);
     border-color: var(--color-success);
+
+    &::before {
+      content: '✓';
+      color: #fff;
+    }
   }
 
-  // Pending add (not yet saved) — pale green
+  // Pending add (not yet saved) — OUTLINE/ring (not fill) so committed vs
+  // pending reads as fill-vs-outline, never opacity. Plus a "+" glyph.
   &--pending-add {
-    background: rgb(76, 175, 80, 0.4);
-    border-color: rgb(76, 175, 80, 0.6);
+    background: rgb(34 197 94 / 15%);
+    border-color: var(--color-success);
+
+    &::before {
+      content: '+';
+      color: var(--color-success);
+    }
   }
 
-  // Pending remove — shows as strikethrough / dimmed
+  // Pending remove — outline ring in token red + "−" glyph.
   &--pending-remove {
-    background: rgb(244, 67, 54, 0.3);
-    border-color: rgb(244, 67, 54, 0.5);
+    background: rgb(220 53 69 / 18%);
+    border-color: var(--color-danger);
+
+    &::before {
+      content: '−';
+      color: var(--color-danger);
+    }
   }
 
-  // Hover on any green checkbox → red intent
+  // Hover on any green checkbox → red intent. Defined AFTER the state rules so
+  // its (equal-specificity) background/border win by source order — no
+  // !important needed.
   &--remove-intent {
-    background: rgb(244, 67, 54, 0.7) !important;
-    border-color: var(--color-danger) !important;
+    background: rgb(220 53 69 / 70%);
+    border-color: var(--color-danger);
   }
 
   // Disabled (Child↔Parent mutual exclusion). pointer-events stay enabled so the
@@ -126,7 +154,7 @@
 
 .type {
   font-size: var(--text-xs);
-  color: var(--color-on-surface-muted);
+  color: var(--sel-text-muted);
   min-width: 70px;
   text-transform: capitalize;
 }
@@ -173,6 +201,20 @@ $toggle-col-width: 60px;
   text-align: center;
 }
 
+// Per-relationship column-header tint so the three toggle columns are
+// identifiable at a glance (the checkbox ring below echoes the same hue).
+.columnHeaderSibling {
+  color: var(--sel-accent-sibling);
+}
+
+.columnHeaderChild {
+  color: var(--sel-accent-child);
+}
+
+.columnHeaderParent {
+  color: var(--sel-accent-parent);
+}
+
 // Sibling-mode row: name on the left (flex), type as its own fixed column
 // right before the toggles. Not clickable as a whole (each toggle handles its
 // own click), so drop the row-level pointer cursor.
@@ -215,6 +257,23 @@ $toggle-col-width: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+// Per-column accent ring on a CHECKED box (saved or pending-add) so the
+// relationship is readable at the checkbox itself, echoing the header hue.
+.toggleCellSibling .checkbox--saved,
+.toggleCellSibling .checkbox--pending-add {
+  box-shadow: 0 0 0 1px var(--sel-accent-sibling);
+}
+
+.toggleCellChild .checkbox--saved,
+.toggleCellChild .checkbox--pending-add {
+  box-shadow: 0 0 0 1px var(--sel-accent-child);
+}
+
+.toggleCellParent .checkbox--saved,
+.toggleCellParent .checkbox--pending-add {
+  box-shadow: 0 0 0 1px var(--sel-accent-parent);
 }
 
 // Accordion type-group header (multi-column mode): a clickable, full-width row

@@ -327,7 +327,7 @@ export default function CollectionListSelector({
         >
           {nameElement}
           {siblingMode && (
-            <span className={styles.toggleCell}>
+            <span className={`${styles.toggleCell} ${styles.toggleCellSibling}`}>
               {renderCheckbox(
                 collection,
                 siblingSelection,
@@ -340,7 +340,7 @@ export default function CollectionListSelector({
               )}
             </span>
           )}
-          <span className={styles.toggleCell}>
+          <span className={`${styles.toggleCell} ${styles.toggleCellChild}`}>
             {renderCheckbox(
               collection,
               childSelection,
@@ -353,7 +353,7 @@ export default function CollectionListSelector({
             )}
           </span>
           {parentMode && (
-            <span className={styles.toggleCell}>
+            <span className={`${styles.toggleCell} ${styles.toggleCellParent}`}>
               {renderCheckbox(
                 collection,
                 parentSelection,
@@ -449,9 +449,17 @@ export default function CollectionListSelector({
         <div className={styles.columnHeaderRow}>
           <span className={styles.columnHeaderName}>Collection Name</span>
           {/* "Catalog Type" column removed — type is the accordion section header */}
-          {siblingMode && <span className={styles.columnHeaderToggle}>Sibling</span>}
-          <span className={styles.columnHeaderToggle}>Child</span>
-          {parentMode && <span className={styles.columnHeaderToggle}>Parent</span>}
+          {siblingMode && (
+            <span className={`${styles.columnHeaderToggle} ${styles.columnHeaderSibling}`}>
+              Sibling
+            </span>
+          )}
+          <span className={`${styles.columnHeaderToggle} ${styles.columnHeaderChild}`}>Child</span>
+          {parentMode && (
+            <span className={`${styles.columnHeaderToggle} ${styles.columnHeaderParent}`}>
+              Parent
+            </span>
+          )}
         </div>
       )}
       <div className={styles.list}>
