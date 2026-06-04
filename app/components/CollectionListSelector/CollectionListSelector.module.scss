@@ -14,6 +14,7 @@
   --sel-accent-sibling: #20c997; /* teal */
   --sel-accent-child: #4dabf7; /* blue */
   --sel-accent-parent: #cc5de8; /* grape */
+  --sel-current-accent: var(--color-accent); /* "you are here" blue */
 }
 
 .header {
@@ -330,15 +331,18 @@ $toggle-col-width: 60px;
   background-color: var(--sel-elev-2);
 }
 
-// The current collection (the one being edited) shown greyed-out in its group as a
-// "you are here" marker. Toggles are disabled separately via .checkbox--disabled.
+// The current collection (the one being edited) shown in its group as a "you are
+// here" marker: a left accent bar + subtle fill, NOT a full-row opacity dim (which
+// reads as "disabled" and crushes the name's contrast). Only the toggles are
+// dimmed, via .checkbox--disabled.
 .currentRow {
-  opacity: 0.55;
+  background: var(--sel-elev-1);
+  box-shadow: inset 3px 0 0 var(--sel-current-accent);
 }
 
 .currentTag {
   margin-left: 0.4rem;
-  font-size: 0.8em;
-  font-style: italic;
-  color: var(--sel-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--sel-current-accent);
 }
