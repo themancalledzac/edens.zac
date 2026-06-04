@@ -3,8 +3,9 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
-import { LAYOUT } from '@/app/constants';
+import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
+import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
@@ -94,12 +95,33 @@ export default function CollectionPageClient({
     selectedLocations: initialCriteria.locations ?? [],
   }));
 
-  // Row density: defaults to the collection's saved value; slider retunes it live.
+  // Row density is stored on the canonical desktop scale (1-10), defaulting to
+  // the collection's saved value; the slider retunes it live.
   const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
 
-  const handleDensityChange = useCallback((value: number) => {
-    setDensity(Math.max(1, Math.min(10, Math.round(value))));
-  }, []);
+  // Mobile confines the slider to 1-5 and defaults to half the saved density.
+  // Until the client has measured, fall back to the SSR mobile flag so the
+  // initial render (and the slider it paints) matches what hydrates.
+  const measured = useViewport();
+  const isMobile = measured.width > 0 ? measured.isMobile : (serverIsMobile ?? false);
+
+  // Value the slider shows + the mobile-scale density handed to the layout.
+  const mobileDensity = toMobileDensity(density);
+  const displayDensity = isMobile ? mobileDensity : density;
+  const densityMax = isMobile ? LAYOUT.maxDensityMobile : LAYOUT.maxDensityDesktop;
+
+  const handleDensityChange = useCallback(
+    (value: number) => {
+      // The slider emits values in the active viewport's scale; normalize back to
+      // the canonical desktop scale before storing.
+      setDensity(
+        isMobile
+          ? fromMobileDensity(value)
+          : Math.max(LAYOUT.minDensity, Math.min(LAYOUT.maxDensityDesktop, Math.round(value)))
+      );
+    },
+    [isMobile]
+  );
 
   // ── Client-gallery "Select to download" state ──────────────────────────────
   // Owned here so the deep-in-the-tree ClientGalleryDownload control (and the grid images) can both
@@ -294,7 +316,8 @@ export default function CollectionPageClient({
       filterOptions: availableOptions,
       filteredAvailable: filteredAvailableOptions,
       onFilterChange: handleFilterChange,
-      density,
+      density: displayDensity,
+      densityMax,
       onDensityChange: handleDensityChange,
     }),
     [
@@ -302,7 +325,8 @@ export default function CollectionPageClient({
       availableOptions,
       filteredAvailableOptions,
       handleFilterChange,
-      density,
+      displayDensity,
+      densityMax,
       handleDensityChange,
     ]
   );
@@ -335,6 +359,7 @@ export default function CollectionPageClient({
         enableFullScreenView
         initialPageSize={pageSize}
         chunkSize={density}
+        mobileChunkSize={mobileDensity}
         collectionSlug={collection.slug}
         collectionData={collection}
         serverContentWidth={serverContentWidth}

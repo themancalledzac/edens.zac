@@ -44,8 +44,10 @@ export interface FilterToolbarProps {
   showDateSort?: boolean;
   showHighlyRated?: boolean;
   showFilm?: boolean;
-  /** When provided, renders the row-density slider (1-10). */
+  /** When provided, renders the row-density slider (min 1, max {@link densityMax}). */
   density?: number;
+  /** Upper bound of the density slider. Defaults to 10 (desktop scale). */
+  densityMax?: number;
   onDensityChange?: (value: number) => void;
 }
 
@@ -78,6 +80,7 @@ export function FilterToolbar({
   showHighlyRated = false,
   showFilm = false,
   density,
+  densityMax = 10,
   onDensityChange,
 }: FilterToolbarProps) {
   const [openDropdown, setOpenDropdown] = useState<ArrayFilterKey | null>(null);
@@ -206,7 +209,7 @@ export function FilterToolbar({
           <input
             type="range"
             min={1}
-            max={10}
+            max={densityMax}
             step={1}
             value={density}
             onChange={e => onDensityChange(Number(e.target.value))}

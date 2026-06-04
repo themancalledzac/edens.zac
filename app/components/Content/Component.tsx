@@ -36,6 +36,12 @@ export interface ContentComponentProps {
   currentCollectionId?: number;
   /** Number of images per row (default: 2) */
   chunkSize?: number;
+  /**
+   * Mobile-scale density (1-5) driving the row-width budget on mobile. Forwarded
+   * to the layout so the collection page's density slider takes effect on touch
+   * viewports; omit it to keep the default narrow mobile layout.
+   */
+  mobileChunkSize?: number;
   /** Collection model for creating header row (cover image + metadata) */
   collectionData?: CollectionModel;
   /** Reorder mode props */
@@ -73,6 +79,7 @@ export default function Component({
   selectedImageIds = [],
   currentCollectionId,
   chunkSize = LAYOUT.defaultChunkSize,
+  mobileChunkSize,
   collectionData,
   isReorderMode = false,
   reorderMoves,
@@ -100,8 +107,8 @@ export default function Component({
   );
 
   const { rows, layoutError } = useMemo(
-    () => buildContentRows(content, collectionData, viewport, chunkSize),
-    [content, collectionData, viewport, chunkSize]
+    () => buildContentRows(content, collectionData, viewport, chunkSize, mobileChunkSize),
+    [content, collectionData, viewport, chunkSize, mobileChunkSize]
   );
 
   // Must be computed before the early returns to satisfy the Rules of Hooks.

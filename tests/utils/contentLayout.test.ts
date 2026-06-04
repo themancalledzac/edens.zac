@@ -1265,6 +1265,48 @@ describe('processContentForDisplay', () => {
     });
   });
 
+  describe('mobileChunkSize drives the mobile row-width budget', () => {
+    const content = [H(1, 1), H(2, 1), H(3, 1), H(4, 1), H(5, 1), H(6, 1)];
+
+    it('packs more images per row as mobileChunkSize grows', () => {
+      const sparse = processContentForDisplay(content, 400, 4, {
+        isMobile: true,
+        mobileChunkSize: 1, // rowWidth ≈ 3
+      });
+      const dense = processContentForDisplay(content, 400, 4, {
+        isMobile: true,
+        mobileChunkSize: 5, // rowWidth ≈ 13
+      });
+
+      // A wider budget fits more per row, so it yields fewer rows.
+      expect(dense.length).toBeLessThan(sparse.length);
+
+      for (const row of [...sparse, ...dense]) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThan(0);
+          expect(item.height).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    it('falls back to the pinned mobile slot width when mobileChunkSize is omitted', () => {
+      // mobileChunkSize 1 rounds to rowWidth 3, which equals LAYOUT.mobileSlotWidth,
+      // so omitting it must produce the same row count as the legacy mobile path.
+      const omitted = processContentForDisplay(content, 400, 4, { isMobile: true });
+      const explicit = processContentForDisplay(content, 400, 4, {
+        isMobile: true,
+        mobileChunkSize: 1,
+      });
+      expect(omitted.length).toBe(explicit.length);
+    });
+
+    it('does not affect desktop layout', () => {
+      const withOption = processContentForDisplay(content, 1000, 4, { mobileChunkSize: 2 });
+      const without = processContentForDisplay(content, 1000, 4);
+      expect(withOption.length).toBe(without.length);
+    });
+  });
+
   describe('targetAR option affects row composition', () => {
     it('should produce valid rows for both low and high targetAR values', () => {
       const content = [H(1, 2), H(2, 2), H(3, 2), H(4, 2), H(5, 2), H(6, 2)];

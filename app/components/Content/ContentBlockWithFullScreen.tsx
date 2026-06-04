@@ -27,6 +27,8 @@ interface ContentBlockWithFullScreenProps {
   enableFullScreenView?: boolean;
   initialPageSize?: number;
   chunkSize?: number;
+  /** Mobile-scale density (1-5) forwarded to the layout; see {@link Component}. */
+  mobileChunkSize?: number;
   collectionSlug?: string;
   collectionData?: CollectionModel;
   isSelectingCoverImage?: boolean;
@@ -56,6 +58,7 @@ export default function ContentBlockWithFullScreen({
   enableFullScreenView,
   initialPageSize,
   chunkSize,
+  mobileChunkSize,
   collectionSlug,
   collectionData,
   isSelectingCoverImage,
@@ -189,6 +192,7 @@ export default function ContentBlockWithFullScreen({
         selectedImageIds={selectedImageIds}
         currentCollectionId={currentCollectionId}
         chunkSize={chunkSize}
+        mobileChunkSize={mobileChunkSize}
         collectionData={collectionData}
         isReorderMode={isReorderMode}
         reorderMoves={reorderMoves}
