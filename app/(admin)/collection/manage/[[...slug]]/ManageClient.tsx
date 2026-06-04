@@ -79,6 +79,7 @@ import {
   revalidateMetadataCache,
   toggleRelation,
 } from './manageUtils';
+import { useCollectionRetype } from './useCollectionRetype';
 import { useContentReordering } from './useContentReordering';
 import { useCoverImageSelection } from './useCoverImageSelection';
 import { useImageClickHandler } from './useImageClickHandler';
@@ -156,6 +157,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
       if (meta !== null) setAllCollections(meta.collections);
     });
   }, []);
+
+  // Drag-and-drop retype: drop a collection on a different type header to reassign
+  // its type. Optimistically re-buckets it in the selector accordion; reverts on failure.
+  const { handleChangeType } = useCollectionRetype({ setAllCollections, setError });
 
   const [updateData, setUpdateData] = useState<CollectionUpdateRequest>(() => {
     if (collection) {
@@ -1697,6 +1702,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           parentPendingAddIds={pendingAddParentIds}
                           parentPendingRemoveIds={pendingRemoveParentIds}
                           onToggleParent={handleParentToggle}
+                          onChangeType={handleChangeType}
                         />
 
                         {/* Home: rate child collections inline. Click is immediate (no save button). */}
