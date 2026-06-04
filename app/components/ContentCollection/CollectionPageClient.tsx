@@ -95,25 +95,17 @@ export default function CollectionPageClient({
     selectedLocations: initialCriteria.locations ?? [],
   }));
 
-  // Row density is stored on the canonical desktop scale (1-10), defaulting to
-  // the collection's saved value; the slider retunes it live.
   const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
 
-  // Mobile confines the slider to 1-5 and defaults to half the saved density.
-  // Until the client has measured, fall back to the SSR mobile flag so the
-  // initial render (and the slider it paints) matches what hydrates.
   const measured = useViewport();
   const isMobile = measured.width > 0 ? measured.isMobile : (serverIsMobile ?? false);
 
-  // Value the slider shows + the mobile-scale density handed to the layout.
   const mobileDensity = toMobileDensity(density);
   const displayDensity = isMobile ? mobileDensity : density;
   const densityMax = isMobile ? LAYOUT.maxDensityMobile : LAYOUT.maxDensityDesktop;
 
   const handleDensityChange = useCallback(
     (value: number) => {
-      // The slider emits values in the active viewport's scale; normalize back to
-      // the canonical desktop scale before storing.
       setDensity(
         isMobile
           ? fromMobileDensity(value)

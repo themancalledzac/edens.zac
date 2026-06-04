@@ -9,19 +9,19 @@ import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 
 describe('toMobileDensity', () => {
   it('halves the saved density (the spec examples)', () => {
-    expect(toMobileDensity(4)).toBe(2); // default 4 -> 2 on mobile
-    expect(toMobileDensity(10)).toBe(5); // desktop max -> mobile max
+    expect(toMobileDensity(4)).toBe(2);
+    expect(toMobileDensity(10)).toBe(5);
   });
 
   it('clamps into the 1-5 mobile range', () => {
-    expect(toMobileDensity(1)).toBe(LAYOUT.minDensity); // 0.5 rounds up, floored at 1
+    expect(toMobileDensity(1)).toBe(LAYOUT.minDensity);
     expect(toMobileDensity(2)).toBe(1);
-    expect(toMobileDensity(20)).toBe(LAYOUT.maxDensityMobile); // never exceeds 5
+    expect(toMobileDensity(20)).toBe(LAYOUT.maxDensityMobile);
   });
 
   it('rounds odd densities to the nearest mobile step', () => {
-    expect(toMobileDensity(3)).toBe(2); // 1.5 -> 2
-    expect(toMobileDensity(5)).toBe(3); // 2.5 -> 3
+    expect(toMobileDensity(3)).toBe(2);
+    expect(toMobileDensity(5)).toBe(3);
   });
 });
 
