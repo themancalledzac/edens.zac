@@ -27,9 +27,6 @@ export const LAYOUT = {
   defaultChunkSize: 4, // Max items per row (1-2 star images get 1 slot, 3+ star get 2 slots)
   minChunkSize: 2, // Minimum chunk size (ensures halfSlot is at least 1)
 
-  // Row-density slider bounds. Desktop runs 1-10; mobile is confined to 1-5
-  // (roughly half the desktop scale) so a touch viewport never gets denser than
-  // ~5 images per row. See toMobileDensity / fromMobileDensity below.
   minDensity: 1,
   maxDensityDesktop: 10,
   maxDensityMobile: 5,

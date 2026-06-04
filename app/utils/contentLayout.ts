@@ -117,10 +117,6 @@ export function processContentForDisplay(
     }
   }
 
-  // Row density (chunkSize) maps to the per-row cv budget via ×2.5, so density ≈
-  // images-per-row for typical 3★ content (cv 2.5). Mobile uses the same ×2.5
-  // mapping against its 1-5 mobileChunkSize when provided (so the density slider
-  // works on touch), otherwise it pins to the narrow slot width as before.
   const rowWidth = options?.isMobile
     ? (options?.mobileChunkSize !== undefined
       ? Math.round(options.mobileChunkSize * 2.5)

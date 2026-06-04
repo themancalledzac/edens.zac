@@ -1271,14 +1271,13 @@ describe('processContentForDisplay', () => {
     it('packs more images per row as mobileChunkSize grows', () => {
       const sparse = processContentForDisplay(content, 400, 4, {
         isMobile: true,
-        mobileChunkSize: 1, // rowWidth ≈ 3
+        mobileChunkSize: 1,
       });
       const dense = processContentForDisplay(content, 400, 4, {
         isMobile: true,
-        mobileChunkSize: 5, // rowWidth ≈ 13
+        mobileChunkSize: 5,
       });
 
-      // A wider budget fits more per row, so it yields fewer rows.
       expect(dense.length).toBeLessThan(sparse.length);
 
       for (const row of [...sparse, ...dense]) {
@@ -1290,8 +1289,6 @@ describe('processContentForDisplay', () => {
     });
 
     it('falls back to the pinned mobile slot width when mobileChunkSize is omitted', () => {
-      // mobileChunkSize 1 rounds to rowWidth 3, which equals LAYOUT.mobileSlotWidth,
-      // so omitting it must produce the same row count as the legacy mobile path.
       const omitted = processContentForDisplay(content, 400, 4, { isMobile: true });
       const explicit = processContentForDisplay(content, 400, 4, {
         isMobile: true,
