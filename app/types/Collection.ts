@@ -32,6 +32,19 @@ export const COLLECTION_TYPE_ORDER: CollectionType[] = [
 ];
 
 /**
+ * Collection types an admin can assign to a collection — the set the create/update
+ * form selects offer and the valid drag-and-drop retype drop targets. Excludes
+ * HOME (pinned singleton) and MISC (catch-all for unknown/missing types).
+ */
+export const ASSIGNABLE_COLLECTION_TYPES: CollectionType[] = [
+  CollectionType.PORTFOLIO,
+  CollectionType.ART_GALLERY,
+  CollectionType.BLOG,
+  CollectionType.CLIENT_GALLERY,
+  CollectionType.PARENT,
+];
+
+/**
  * Display mode for content collections
  * - CHRONOLOGICAL: Order blocks by creation date
  * - ORDERED: Manual ordering via orderIndex

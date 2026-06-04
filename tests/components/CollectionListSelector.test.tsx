@@ -5,7 +5,11 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import CollectionListSelector, {
   sortGroup,
 } from '@/app/components/CollectionListSelector/CollectionListSelector';
-import { COLLECTION_TYPE_ORDER, type CollectionListModel } from '@/app/types/Collection';
+import {
+  ASSIGNABLE_COLLECTION_TYPES,
+  COLLECTION_TYPE_ORDER,
+  type CollectionListModel,
+} from '@/app/types/Collection';
 
 const mockCollections: CollectionListModel[] = [
   { id: 1, name: 'Portfolio A', slug: 'portfolio-a', type: 'PORTFOLIO' },
@@ -465,6 +469,18 @@ describe('COLLECTION_TYPE_ORDER', () => {
   });
 });
 
+describe('ASSIGNABLE_COLLECTION_TYPES', () => {
+  it('lists the 5 user-assignable types, excluding HOME and MISC', () => {
+    expect(ASSIGNABLE_COLLECTION_TYPES).toEqual([
+      'PORTFOLIO',
+      'ART_GALLERY',
+      'BLOG',
+      'CLIENT_GALLERY',
+      'PARENT',
+    ]);
+  });
+});
+
 describe('sortGroup', () => {
   it('sorts BLOG by collectionDate desc, null last', () => {
     const sorted = sortGroup(
@@ -769,5 +785,83 @@ describe('three-column accordion mode', () => {
       expect(screen.queryByText('P1')).not.toBeInTheDocument();
       expect(screen.getByText('P2')).toBeInTheDocument();
     });
+  });
+});
+
+describe('drag-and-drop retype', () => {
+  const rows: CollectionListModel[] = [
+    { id: 1, name: 'Home', type: 'HOME' },
+    { id: 2, name: 'P1', type: 'PORTFOLIO' },
+    { id: 3, name: 'B1', type: 'BLOG', collectionDate: '2025-01-01' },
+    { id: 6, name: 'M1', type: 'MISC' },
+  ];
+
+  function renderWithRetype(onChangeType = jest.fn(), extra: Record<string, unknown> = {}) {
+    render(
+      <CollectionListSelector
+        allCollections={rows}
+        savedCollectionIds={new Set()}
+        pendingAddIds={new Set()}
+        pendingRemoveIds={new Set()}
+        onToggle={jest.fn()}
+        siblingSavedIds={new Set()}
+        siblingPendingAddIds={new Set()}
+        siblingPendingRemoveIds={new Set()}
+        onToggleSibling={jest.fn()}
+        parentSavedIds={new Set()}
+        parentPendingAddIds={new Set()}
+        parentPendingRemoveIds={new Set()}
+        onToggleParent={jest.fn()}
+        onChangeType={onChangeType}
+        {...extra}
+      />
+    );
+    return { onChangeType };
+  }
+
+  it('fires onChangeType when a row is dropped on a different assignable header', () => {
+    const { onChangeType } = renderWithRetype();
+    fireEvent.click(screen.getByText('Blog')); // expand BLOG to reach B1
+    const row = screen.getByText('B1').closest('[role="group"]')!;
+    fireEvent.dragStart(row);
+    fireEvent.drop(screen.getByText('Portfolio'));
+    expect(onChangeType).toHaveBeenCalledTimes(1);
+    expect(onChangeType).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 3, name: 'B1' }),
+      'PORTFOLIO'
+    );
+  });
+
+  it('does not fire onChangeType when dropped on the type it already has', () => {
+    const { onChangeType } = renderWithRetype();
+    fireEvent.click(screen.getByText('Blog'));
+    const row = screen.getByText('B1').closest('[role="group"]')!;
+    fireEvent.dragStart(row);
+    fireEvent.drop(screen.getByText('Blog'));
+    expect(onChangeType).not.toHaveBeenCalled();
+  });
+
+  it('does not treat MISC headers as drop targets', () => {
+    const { onChangeType } = renderWithRetype();
+    fireEvent.click(screen.getByText('Blog'));
+    const row = screen.getByText('B1').closest('[role="group"]')!;
+    fireEvent.dragStart(row);
+    fireEvent.drop(screen.getByText('Misc'));
+    expect(onChangeType).not.toHaveBeenCalled();
+  });
+
+  it('marks assignable rows draggable but never the HOME row', () => {
+    renderWithRetype();
+    const homeRow = screen.getByText('Home').closest('[role="group"]')!;
+    expect(homeRow).not.toHaveAttribute('draggable', 'true');
+    fireEvent.click(screen.getByText('Portfolio'));
+    const p1Row = screen.getByText('P1').closest('[role="group"]')!;
+    expect(p1Row).toHaveAttribute('draggable', 'true');
+  });
+
+  it('does not make the current ("you are here") row draggable', () => {
+    renderWithRetype(jest.fn(), { currentCollectionId: 2 }); // P1 auto-expands PORTFOLIO
+    const p1Row = screen.getByText('P1').closest('[role="group"]')!;
+    expect(p1Row).not.toHaveAttribute('draggable', 'true');
   });
 });

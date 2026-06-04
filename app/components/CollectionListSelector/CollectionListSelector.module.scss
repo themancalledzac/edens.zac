@@ -365,3 +365,24 @@ $toggle-col-width: 60px;
   font-weight: 600;
   color: var(--sel-current-accent);
 }
+
+// Drag-and-drop retype affordances (accordion mode). Draggable rows show a grab
+// cursor; the row being dragged dims; the assignable type-header under the pointer
+// highlights as a drop target.
+.draggable {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.dragging {
+  opacity: 0.4;
+}
+
+.typeHeaderRow--dropTarget {
+  background: var(--sel-elev-hover);
+  outline: 2px dashed var(--sel-accent-child);
+  outline-offset: -2px;
+}
