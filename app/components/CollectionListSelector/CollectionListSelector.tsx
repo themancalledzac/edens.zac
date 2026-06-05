@@ -91,6 +91,11 @@ interface CollectionListSelectorProps {
    * Drag-and-drop retype. When provided AND the selector is in accordion mode,
    * rows become draggable and the assignable type-headers become drop targets;
    * dropping a row on a different assignable type fires this with the new type.
+   *
+   * Pointer-only by design: this is a convenience shortcut. The keyboard-accessible
+   * path to change a collection's type is to open it (the row name is a navigate
+   * button) and use the type `<select>` in its edit form — so no admin action is
+   * gated solely behind drag-and-drop.
    */
   onChangeType?: (collection: CollectionListModel, targetType: CollectionType) => void;
 }
@@ -243,6 +248,10 @@ export default function CollectionListSelector({
     [onChangeType]
   );
 
+  // Accordion grouping re-sorts each type group via sortGroup, so `pinnedCollectionId` ordering
+  // does NOT survive here — pinning is a single-column-mode feature only. The two are mutually
+  // exclusive in practice (pinnedCollectionId is used by the flat image-metadata selector;
+  // accordion mode by the manage page), so they never need to compose.
   const groupsByType = useMemo(() => {
     if (!accordionMode) return null;
     const map = new Map<string, CollectionListModel[]>();
