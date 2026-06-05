@@ -54,6 +54,69 @@ describe('SegmentedControl', () => {
     expect(onChange).toHaveBeenCalledWith('HIDDEN');
   });
 
+  it('uses a roving tabindex — only the selected radio is in the tab order', () => {
+    render(
+      <SegmentedControl<Vis>
+        ariaLabel="Visibility"
+        options={OPTIONS}
+        value="UNLISTED"
+        onChange={() => {}}
+      />
+    );
+
+    expect(screen.getByRole('radio', { name: 'Listed' })).toHaveAttribute('tabindex', '-1');
+    expect(screen.getByRole('radio', { name: 'Unlisted' })).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('radio', { name: 'Hidden' })).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('moves selection to the next option on ArrowRight (and wraps)', () => {
+    const onChange = jest.fn();
+    render(
+      <SegmentedControl<Vis>
+        ariaLabel="Visibility"
+        options={OPTIONS}
+        value="HIDDEN"
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Hidden' }), { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalledWith('LISTED'); // wraps from last to first
+  });
+
+  it('moves selection to the previous option on ArrowLeft (and wraps)', () => {
+    const onChange = jest.fn();
+    render(
+      <SegmentedControl<Vis>
+        ariaLabel="Visibility"
+        options={OPTIONS}
+        value="LISTED"
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Listed' }), { key: 'ArrowLeft' });
+    expect(onChange).toHaveBeenCalledWith('HIDDEN'); // wraps from first to last
+  });
+
+  it('jumps to first/last with Home/End', () => {
+    const onChange = jest.fn();
+    render(
+      <SegmentedControl<Vis>
+        ariaLabel="Visibility"
+        options={OPTIONS}
+        value="UNLISTED"
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Unlisted' }), { key: 'End' });
+    expect(onChange).toHaveBeenLastCalledWith('HIDDEN');
+
+    fireEvent.keyDown(screen.getByRole('radio', { name: 'Unlisted' }), { key: 'Home' });
+    expect(onChange).toHaveBeenLastCalledWith('LISTED');
+  });
+
   it('shows the selected option description only when showDescription is set', () => {
     const { rerender } = render(
       <SegmentedControl<Vis>
