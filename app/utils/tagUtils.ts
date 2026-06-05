@@ -105,7 +105,6 @@ export function buildTagsDiff(
   const updatedNewNames = updated.filter(t => t.id === 0).map(t => t.name);
   const currentNewNames = current.filter(t => t.id === 0).map(t => t.name);
 
-  // Removed IDs: existing tags in current but no longer in the updated set.
   const removeIds = [...currentIds].filter(id => !updatedIds.has(id));
 
   const sameExisting =

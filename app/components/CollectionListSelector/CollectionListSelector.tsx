@@ -73,6 +73,10 @@ interface CollectionListSelectorProps {
    * When set, this collection is sorted to the TOP of the list (all other rows keep their incoming
    * order). Used by the image metadata editor to surface the gallery currently being edited — it
    * stays visible and shows its saved (green) state instead of being hidden.
+   *
+   * Single-column mode only: accordion grouping re-sorts each type group, so pin ordering does not
+   * survive there. The two never compose in practice — pinning is the flat image-metadata selector,
+   * accordion is the manage page.
    */
   pinnedCollectionId?: number;
   // Optional second ("Sibling") toggle column. When the full set is supplied the
@@ -248,10 +252,6 @@ export default function CollectionListSelector({
     [onChangeType]
   );
 
-  // Accordion grouping re-sorts each type group via sortGroup, so `pinnedCollectionId` ordering
-  // does NOT survive here — pinning is a single-column-mode feature only. The two are mutually
-  // exclusive in practice (pinnedCollectionId is used by the flat image-metadata selector;
-  // accordion mode by the manage page), so they never need to compose.
   const groupsByType = useMemo(() => {
     if (!accordionMode) return null;
     const map = new Map<string, CollectionListModel[]>();

@@ -95,14 +95,15 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
     };
   }, []);
 
+  /**
+   * Start a download for the active picker target. Ids come from the memoized context (so this
+   * callback stays stable across renders), and an empty "selected" set is a no-op — the button is
+   * already disabled, and bailing also keeps the URL builder's empty-selection throw from leaving
+   * `preparing` stuck.
+   */
   const handleFormatDownload = useCallback(
     (format: DownloadFormat) => {
-      // Read ids from the (stable, memoized) context here rather than closing over a freshly
-      // derived array, so this callback only changes when the selection actually changes.
       const ids = download?.selectedImageIds ?? [];
-      // Guard the "selected" flow against an empty selection: the UI already disables the button
-      // and backs the picker out, but bail here too so the URL builder's empty-selection throw can
-      // never leave `preparing` stuck.
       if (pickerTarget === 'selected' && ids.length === 0) return;
 
       setPreparing(format);

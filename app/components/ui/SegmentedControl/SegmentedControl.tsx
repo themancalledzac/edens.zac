@@ -24,7 +24,8 @@ interface SegmentedControlProps<T extends string> {
 /**
  * Single-select segmented control — a compact alternative to a stacked radio group for a small,
  * mutually-exclusive set of options. Implements the WAI-ARIA radio-group pattern: a single tab stop
- * (roving `tabindex`) with Arrow / Home / End keys moving selection between segments, plus
+ * (roving `tabindex` — only the selected segment, or the first when `value` matches none) with
+ * Arrow / Home / End keys moving selection between segments (Arrows wrap at the ends), plus
  * `radiogroup`/`radio` + `aria-checked` semantics. The selected segment is a high-contrast light
  * pill so the control reads correctly on both light surfaces and the dark admin panel.
  */
@@ -39,7 +40,6 @@ export function SegmentedControl<T extends string>({
   const selectedIndex = options.findIndex(option => option.value === value);
   const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // Select the option at `index` and move DOM focus to it (keeps the roving tab stop in sync).
   const focusAndSelect = (index: number) => {
     const next = options[index];
     if (!next) return;
@@ -53,12 +53,12 @@ export function SegmentedControl<T extends string>({
       case 'ArrowRight':
       case 'ArrowDown':
         e.preventDefault();
-        focusAndSelect(index === last ? 0 : index + 1); // wrap to first
+        focusAndSelect(index === last ? 0 : index + 1);
         break;
       case 'ArrowLeft':
       case 'ArrowUp':
         e.preventDefault();
-        focusAndSelect(index === 0 ? last : index - 1); // wrap to last
+        focusAndSelect(index === 0 ? last : index - 1);
         break;
       case 'Home':
         e.preventDefault();
@@ -78,8 +78,6 @@ export function SegmentedControl<T extends string>({
       <div role="radiogroup" aria-label={ariaLabel} className={styles.group}>
         {options.map((option, index) => {
           const isSelected = option.value === value;
-          // Roving tabindex: only the selected segment is in the tab order (or the first segment
-          // when `value` matches none); the arrow keys move within the group.
           const tabbable = isSelected || (selectedIndex === -1 && index === 0);
           return (
             <button

@@ -27,14 +27,13 @@ interface UseCollectionRetypeParams {
  * revert to a stale `previousType` after the first request settles.
  */
 export function useCollectionRetype({ setAllCollections, setError }: UseCollectionRetypeParams) {
-  // Collection ids with a retype request currently in flight.
   const inFlightRef = useRef<Set<number>>(new Set());
 
   const handleChangeType = useCallback(
     async (collection: CollectionListModel, targetType: CollectionType) => {
       const previousType = collection.type;
       if (previousType === targetType) return; // no-op: already this type
-      if (inFlightRef.current.has(collection.id)) return; // a retype for this collection is pending
+      if (inFlightRef.current.has(collection.id)) return;
 
       const setType = (type: CollectionType | string | undefined) =>
         setAllCollections(prev => prev.map(c => (c.id === collection.id ? { ...c, type } : c)));

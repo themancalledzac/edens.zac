@@ -863,7 +863,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     return convertLocationsToModels(collection?.locations, availableLocations);
   }, [collection?.locations, currentState?.locations, updateData.locations]);
 
-  // Saved baseline used to diff selection changes into prev/newValue/**remove**.
   const originalLocations = useMemo(
     () => convertLocationsToModels(collection?.locations, currentState?.locations || []),
     [collection?.locations, currentState?.locations]
@@ -877,7 +876,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
    */
   const handleLocationsChange = useCallback(
     (value: LocationModel | LocationModel[] | null) => {
-      const locations = Array.isArray(value) ? value : (value ? [value] : []);
+      let locations: LocationModel[] = [];
+      if (Array.isArray(value)) locations = value;
+      else if (value) locations = [value];
+
       setUpdateData(prev => ({
         ...prev,
         locations: buildLocationsDiff(locations, originalLocations),
@@ -915,7 +917,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
     return convertTagsToModels(collection?.tags, availableTags);
   }, [collection?.tags, currentState?.tags, updateData.tags]);
 
-  // Saved baseline used to diff tag changes into prev/newValue/**remove**.
   const originalTags = useMemo(
     () => convertTagsToModels(collection?.tags, currentState?.tags || []),
     [collection?.tags, currentState?.tags]
