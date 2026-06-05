@@ -52,8 +52,10 @@ export function convertTagsToModels(
  * Create a TagUpdate from a ContentTagModel array for API submission.
  * Splits models into `prev` (existing, id > 0) and `newValue` (new, id === 0).
  *
- * No explicit `remove` is sent — the backend reconciles `prev` as the authoritative
- * kept-set (matching the collection Locations selector behavior).
+ * NOTE: this sends no `remove`, so it can only ADD tags — the backend reconciler
+ * never drops a tag that's merely absent from `prev`. For edit flows that must
+ * support deselection/clearing, use {@link buildTagsDiff} instead. Kept for
+ * add-only callers and tests.
  *
  * @param tags - Selected tags from UI
  * @returns TagUpdate with prev/newValue arrays
@@ -74,4 +76,51 @@ export function createTagsUpdate(tags: ContentTagModel[]): TagUpdate {
     ...(prev.length > 0 ? { prev } : {}),
     ...(newValue.length > 0 ? { newValue } : {}),
   };
+}
+
+/**
+ * Build a TagUpdate diff by comparing updated vs current tag arrays.
+ * Returns undefined if nothing changed.
+ *
+ * - prev: IDs of tags in the updated set (existing ones to keep/add)
+ * - newValue: names of brand-new tags to create
+ * - remove: IDs of tags in current but not in updated (to remove)
+ *
+ * Unlike {@link createTagsUpdate} — which only sends `prev`/`newValue` and so can
+ * never DROP a tag (the backend `updateTags` reconciler treats `prev` as additive,
+ * removing only what is in `remove`) — this computes the `remove` set, so
+ * deselecting or clearing tags actually persists. Mirrors `buildLocationsDiff` in
+ * `locationUtils.ts`.
+ *
+ * @param updated - New desired tags
+ * @param current - Current (saved) tags on the entity
+ * @returns TagUpdate if changed, undefined if identical
+ */
+export function buildTagsDiff(
+  updated: ContentTagModel[],
+  current: ContentTagModel[] = []
+): TagUpdate | undefined {
+  const currentIds = new Set(current.filter(t => t.id > 0).map(t => t.id));
+  const updatedIds = new Set(updated.filter(t => t.id > 0).map(t => t.id));
+  const updatedNewNames = updated.filter(t => t.id === 0).map(t => t.name);
+  const currentNewNames = current.filter(t => t.id === 0).map(t => t.name);
+
+  // Removed IDs: existing tags in current but no longer in the updated set.
+  const removeIds = [...currentIds].filter(id => !updatedIds.has(id));
+
+  const sameExisting =
+    currentIds.size === updatedIds.size && [...currentIds].every(id => updatedIds.has(id));
+  const sameNew =
+    updatedNewNames.length === currentNewNames.length &&
+    updatedNewNames.every((n, i) => n === currentNewNames[i]);
+
+  if (sameExisting && sameNew) return undefined;
+
+  const result: TagUpdate = {};
+  const prevIds = [...updatedIds];
+  if (prevIds.length > 0) result.prev = prevIds;
+  if (updatedNewNames.length > 0) result.newValue = updatedNewNames;
+  if (removeIds.length > 0) result.remove = removeIds;
+
+  return result;
 }

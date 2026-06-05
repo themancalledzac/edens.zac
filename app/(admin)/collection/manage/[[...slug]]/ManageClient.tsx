@@ -66,8 +66,8 @@ import {
   isGifContent,
   isParentType,
 } from '@/app/utils/contentTypeGuards';
-import { convertLocationsToModels, createLocationsUpdate } from '@/app/utils/locationUtils';
-import { convertTagsToModels, createTagsUpdate } from '@/app/utils/tagUtils';
+import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
+import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import styles from './ManageClient.module.scss';
 import {
@@ -863,18 +863,28 @@ export default function ManageClient({ slug }: ManageClientProps) {
     return convertLocationsToModels(collection?.locations, availableLocations);
   }, [collection?.locations, currentState?.locations, updateData.locations]);
 
-  /**
-   * Handle locations selection changes (multi-select)
-   */
-  const handleLocationsChange = useCallback((value: LocationModel | LocationModel[] | null) => {
-    const locations = Array.isArray(value) ? value : (value ? [value] : []);
-    const locationsUpdate = createLocationsUpdate(locations);
+  // Saved baseline used to diff selection changes into prev/newValue/**remove**.
+  const originalLocations = useMemo(
+    () => convertLocationsToModels(collection?.locations, currentState?.locations || []),
+    [collection?.locations, currentState?.locations]
+  );
 
-    setUpdateData(prev => ({
-      ...prev,
-      locations: locationsUpdate,
-    }));
-  }, []);
+  /**
+   * Handle locations selection changes (multi-select). Diffs the new selection
+   * against the saved baseline so deselecting a location emits `remove` — the
+   * backend reconciler only drops what is in `remove`, never what's absent from
+   * `prev`.
+   */
+  const handleLocationsChange = useCallback(
+    (value: LocationModel | LocationModel[] | null) => {
+      const locations = Array.isArray(value) ? value : (value ? [value] : []);
+      setUpdateData(prev => ({
+        ...prev,
+        locations: buildLocationsDiff(locations, originalLocations),
+      }));
+    },
+    [originalLocations]
+  );
 
   /**
    * Derive current tags from `collection.tags` and `updateData.tags`. Mirrors
@@ -905,16 +915,27 @@ export default function ManageClient({ slug }: ManageClientProps) {
     return convertTagsToModels(collection?.tags, availableTags);
   }, [collection?.tags, currentState?.tags, updateData.tags]);
 
+  // Saved baseline used to diff tag changes into prev/newValue/**remove**.
+  const originalTags = useMemo(
+    () => convertTagsToModels(collection?.tags, currentState?.tags || []),
+    [collection?.tags, currentState?.tags]
+  );
+
   /**
-   * Handle tags selection changes (multi-select). Mirrors `handleLocationsChange`,
-   * but `TagsSelector` already hands back a normalized `ContentTagModel[]`.
+   * Handle tags selection changes (multi-select). Mirrors `handleLocationsChange`:
+   * diffs against the saved baseline so deselecting/clearing tags emits `remove`
+   * and actually persists. `TagsSelector` already hands back a normalized
+   * `ContentTagModel[]`.
    */
-  const handleTagsChange = useCallback((tags: ContentTagModel[]) => {
-    setUpdateData(prev => ({
-      ...prev,
-      tags: createTagsUpdate(tags),
-    }));
-  }, []);
+  const handleTagsChange = useCallback(
+    (tags: ContentTagModel[]) => {
+      setUpdateData(prev => ({
+        ...prev,
+        tags: buildTagsDiff(tags, originalTags),
+      }));
+    },
+    [originalTags]
+  );
 
   /**
    * Handle child-collection toggle from CollectionListSelector. Child rows carry
@@ -1020,15 +1041,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
     (toggledCollection: CollectionListModel) => {
       setUpdateData(prev => ({
         ...prev,
-        parents: toggleRelation(
-          prev.parents,
-          toggledCollection,
-          originalParentIds,
-          collection => ({
-            collectionId: collection.id,
-            name: collection.name,
-          })
-        ),
+        parents: toggleRelation(prev.parents, toggledCollection, originalParentIds, collection => ({
+          collectionId: collection.id,
+          name: collection.name,
+        })),
       }));
     },
     [originalParentIds]

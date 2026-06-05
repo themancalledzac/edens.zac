@@ -87,7 +87,7 @@ export function toggleRelation(
  * - `undefined` and `null` and `''` are treated as equivalent (normalized to `undefined`).
  * - `collectionDate`: `null` means "explicitly clear"; `''` means unchanged from a null original.
  *   When the date is cleared and was previously set, `clearCollectionDate: true` is sent instead.
- * - `coverImageId`, `collections`, `siblings`, `parents`, and `locations` use presence-check
+ * - `coverImageId`, `collections`, `siblings`, `parents`, `locations`, and `tags` use presence-check
  *   (`!== undefined`) rather than value-diff because each has its own update semantics.
  * - New text blocks are added via a separate POST endpoint, not through this payload.
  * - Content reordering is handled via the Image Update endpoint (orderIndex field).

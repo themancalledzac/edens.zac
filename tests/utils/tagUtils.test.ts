@@ -5,7 +5,7 @@
  * prev/newValue wire shape.
  */
 import type { ContentTagModel } from '@/app/types/ImageMetadata';
-import { convertTagsToModels, createTagsUpdate } from '@/app/utils/tagUtils';
+import { buildTagsDiff, convertTagsToModels, createTagsUpdate } from '@/app/utils/tagUtils';
 
 const availableTags: ContentTagModel[] = [
   { id: 1, name: 'landscape', slug: 'landscape' },
@@ -132,5 +132,58 @@ describe('createTagsUpdate', () => {
     expect(createTagsUpdate([{ id: 5, name: 'mountains', slug: 'mountains' }])).not.toHaveProperty(
       'newValue'
     );
+  });
+});
+
+describe('buildTagsDiff', () => {
+  const tag = (id: number, name: string): ContentTagModel => ({ id, name, slug: name });
+
+  it('returns undefined when the selection is unchanged', () => {
+    const current = [tag(1, 'landscape'), tag(5, 'mountains')];
+    const updated = [tag(5, 'mountains'), tag(1, 'landscape')]; // order-insensitive for existing
+    expect(buildTagsDiff(updated, current)).toBeUndefined();
+  });
+
+  it('emits remove for a deselected existing tag (the removal-bug fix)', () => {
+    const current = [tag(1, 'landscape'), tag(5, 'mountains')];
+    const updated = [tag(1, 'landscape')]; // dropped mountains
+    expect(buildTagsDiff(updated, current)).toEqual({ prev: [1], remove: [5] });
+  });
+
+  it('emits remove for ALL ids when clearing every tag', () => {
+    const current = [tag(1, 'landscape'), tag(5, 'mountains')];
+    expect(buildTagsDiff([], current)).toEqual({ remove: [1, 5] });
+  });
+
+  it('emits prev for a newly added existing tag', () => {
+    const current = [tag(1, 'landscape')];
+    const updated = [tag(1, 'landscape'), tag(2, 'portrait')];
+    expect(buildTagsDiff(updated, current)).toEqual({ prev: [1, 2] });
+  });
+
+  it('emits newValue for a brand-new tag (id 0) without remove', () => {
+    const current = [tag(1, 'landscape')];
+    const updated = [tag(1, 'landscape'), tag(0, 'sunset')];
+    expect(buildTagsDiff(updated, current)).toEqual({ prev: [1], newValue: ['sunset'] });
+  });
+
+  it('combines prev, newValue, and remove in one diff', () => {
+    const current = [tag(1, 'landscape'), tag(5, 'mountains')];
+    const updated = [tag(1, 'landscape'), tag(0, 'sunset')]; // keep 1, drop 5, add new
+    expect(buildTagsDiff(updated, current)).toEqual({
+      prev: [1],
+      newValue: ['sunset'],
+      remove: [5],
+    });
+  });
+
+  it('treats a missing current as an empty baseline (everything is an add)', () => {
+    expect(buildTagsDiff([tag(1, 'landscape')])).toEqual({ prev: [1] });
+  });
+
+  it('detects a change when only the new-tag names differ', () => {
+    const current = [tag(0, 'sunset')];
+    const updated = [tag(0, 'golden hour')];
+    expect(buildTagsDiff(updated, current)).toEqual({ newValue: ['golden hour'] });
   });
 });
