@@ -81,4 +81,24 @@ describe('useCollectionRetype', () => {
     expect(mockUpdateCollection).not.toHaveBeenCalled();
     expect(setAllCollections).not.toHaveBeenCalled();
   });
+
+  it('ignores a second retype of the same collection while one is in flight (single-flight)', async () => {
+    let resolveFirst: (value: unknown) => void = () => {};
+    mockUpdateCollection.mockImplementationOnce(
+      () => new Promise(resolve => (resolveFirst = resolve)) as never
+    );
+    const { result } = setup();
+
+    await act(async () => {
+      // Start the first retype but leave its PUT pending.
+      const first = result.current.handleChangeType(dragged, CollectionType.PORTFOLIO);
+      // A second drag on the same collection while the first is pending must be dropped.
+      await result.current.handleChangeType(dragged, CollectionType.ART_GALLERY);
+      resolveFirst({ collection: { id: 7 } });
+      await first;
+    });
+
+    expect(mockUpdateCollection).toHaveBeenCalledTimes(1);
+    expect(mockUpdateCollection).toHaveBeenCalledWith(7, { id: 7, type: 'PORTFOLIO' });
+  });
 });
