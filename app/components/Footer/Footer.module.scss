@@ -3,20 +3,17 @@
   flex-direction: column;
   gap: var(--space-3);
 
-  /* Match the page content column (.main) so the footer content lines up with
-     the SiteHeader (top bar): same max-width + centering, and the same
-     horizontal inset — page-padding-mobile on mobile, default-padding on
-     desktop (where the header sits at the container's default-padding edge). */
+  /* Mirrors the SiteHeader spacing, flipped vertically. */
   width: 100%;
   max-width: var(--page-max-width);
-  margin: var(--space-6) auto 0;
-  padding: var(--space-6) var(--page-padding-mobile);
-  border-top: 1px solid var(--color-border);
+  margin: var(--page-padding-mobile) auto 0;
+  padding: 0 var(--page-padding-mobile) var(--page-padding-mobile);
   background-color: var(--color-bg);
   color: var(--color-on-surface-muted);
 
   @media (width >= 768px) {
-    padding: var(--space-6) var(--default-padding);
+    margin-top: var(--page-padding-desktop);
+    padding: 0 var(--default-padding) var(--default-padding);
   }
 }
 
