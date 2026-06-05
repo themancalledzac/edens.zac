@@ -117,6 +117,7 @@ html,
   --color-error-text: #c33;
   --color-primary: #212226;
   --color-primary-dark: #1a1b1e;
+  --color-on-primary-muted: #adb5bd; /* AA-safe muted text on the dark --color-primary admin panel (~7.7:1); the light-surface --color-on-surface-muted #666 fails AA there */
   --color-secondary: #6c757d;
   --color-secondary-dark: #5a6268;
   --color-success: #22c55e;

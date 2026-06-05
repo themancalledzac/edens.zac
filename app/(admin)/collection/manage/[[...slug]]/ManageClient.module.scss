@@ -1,5 +1,8 @@
 .container {
-  min-height: 100vh;
+  /* Match the route loading fallback (app/loading.module.scss, 100dvh) so the
+     site-wide <Footer> in the root layout keeps a constant anchor across the
+     loading -> loaded handoff (100vh > 100dvh on mobile shifts the footer). */
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -110,39 +113,6 @@
   min-width: 0;
 }
 
-// Visibility fieldset: 3 stacked radios for LISTED / UNLISTED / HIDDEN
-.visibilityFieldset {
-  border: 1px solid var(--color-border, rgb(255 255 255 / 0.1));
-  border-radius: var(--radius-sm, 4px);
-  padding: var(--space-2) var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.visibilityRadioLabel {
-  display: grid;
-  grid-template-columns: auto auto 1fr;
-  align-items: baseline;
-  gap: var(--space-2);
-  cursor: pointer;
-  color: var(--color-surface-raised);
-  font-size: var(--text-sm);
-
-  input[type='radio'] {
-    cursor: pointer;
-  }
-}
-
-.visibilityRadioName {
-  font-weight: 600;
-}
-
-.visibilityRadioDesc {
-  opacity: 0.75;
-  font-size: var(--text-xs, 0.75rem);
-}
-
 // Left/Right Layout for Update Form
 .updateFormLayout {
   display: grid;
@@ -151,8 +121,9 @@
   margin-bottom: var(--space-5);
 
   @media (width >= 768px) {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr);
     gap: var(--space-6);
+    align-items: start;
   }
 }
 
@@ -166,6 +137,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+
+  // Keep the relationships selector in view while editing the long left column.
+  @media (width >= 768px) {
+    position: sticky;
+    top: var(--space-4);
+    align-self: start;
+  }
 }
 
 // Error Styles
@@ -244,13 +222,17 @@
 }
 
 .coverImageWrapper {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-1);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-sunken);
+  overflow: hidden;
+
   img {
     width: 100%;
-    height: auto;
-    max-height: 300px;
+    height: 100%;
     object-fit: contain;
-    border-radius: var(--radius-1);
-    border: 1px solid var(--color-border);
   }
 }
 
@@ -261,7 +243,7 @@
 
 .noCoverImage {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 3;
   background: var(--color-surface-sunken);
   border-radius: var(--radius-1);
   display: flex;
@@ -309,7 +291,7 @@
 
   .uploadingText {
     margin-top: var(--space-2);
-    color: var(--color-on-surface-muted);
+    color: var(--color-on-primary-muted);
   }
 }
 
@@ -619,7 +601,7 @@
 
 .formLabelHint {
   font-size: var(--text-sm);
-  color: var(--color-on-surface-muted);
+  color: var(--color-on-primary-muted);
   font-weight: normal;
 }
 
@@ -663,13 +645,26 @@
   margin-top: var(--space-3);
 }
 
-.fieldSpacer {
-  margin-bottom: var(--space-2);
-}
-
 .fieldHeading {
   margin-top: 0;
   margin-bottom: var(--space-3);
+}
+
+// Group divider heading inside the dark admin panel — separates the left-column
+// field groups (Details / Presentation / People & places / Gallery / Content).
+.sectionTitle {
+  margin: var(--space-4) 0 var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--scrim-light-10);
+  color: var(--color-surface-raised);
+  font-size: var(--text-md);
+  font-weight: 700;
+
+  &:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+  }
 }
 
 .plainList {

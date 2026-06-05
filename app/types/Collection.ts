@@ -20,6 +20,30 @@ export enum CollectionType {
   MISC = 'MISC',
 }
 
+/** Canonical display/accordion order for collection types (HOME first, MISC last). */
+export const COLLECTION_TYPE_ORDER: CollectionType[] = [
+  CollectionType.HOME,
+  CollectionType.PARENT,
+  CollectionType.CLIENT_GALLERY,
+  CollectionType.ART_GALLERY,
+  CollectionType.PORTFOLIO,
+  CollectionType.BLOG,
+  CollectionType.MISC,
+];
+
+/**
+ * Collection types an admin can assign to a collection — the set the create/update
+ * form selects offer and the valid drag-and-drop retype drop targets. Excludes
+ * HOME (pinned singleton) and MISC (catch-all for unknown/missing types).
+ */
+export const ASSIGNABLE_COLLECTION_TYPES: CollectionType[] = [
+  CollectionType.PORTFOLIO,
+  CollectionType.ART_GALLERY,
+  CollectionType.BLOG,
+  CollectionType.CLIENT_GALLERY,
+  CollectionType.PARENT,
+];
+
 /**
  * Display mode for content collections
  * - CHRONOLOGICAL: Order blocks by creation date
@@ -39,6 +63,10 @@ export interface CollectionBaseModel {
   slug?: string;
   description?: string;
   locations: LocationModel[];
+  /**
+   * ISO date. The full-detail model excludes `null` — the list model
+   * (`CollectionListModel.collectionDate`) allows an explicit `null` from the backend.
+   */
   collectionDate?: string;
   visibility?: CollectionVisibility;
   /** Rating 0-5, nullable. Used for ordering multi-collection list views. */
@@ -67,6 +95,8 @@ export interface CollectionListModel {
   name: string;
   slug?: string;
   type?: string;
+  /** ISO date — used to sort BLOG group rows on the manage page. */
+  collectionDate?: string | null;
 }
 
 /**
@@ -155,6 +185,11 @@ export interface CollectionUpdateRequest {
    * and the `orderIndex`/`visible` fields of each `ChildCollection` are ignored.
    */
   siblings?: CollectionUpdate;
+  /**
+   * Parent-collection updates (hierarchical association). Reuses the `CollectionUpdate`
+   * wire shape, mirroring `siblings`.
+   */
+  parents?: CollectionUpdate;
 }
 
 /**
@@ -210,6 +245,12 @@ export interface CollectionModel extends CollectionBaseModel {
    * in the metadata block. Mirrors backend CollectionModel.siblings (List<CollectionList>).
    */
   siblings?: CollectionListModel[];
+
+  /**
+   * Parent collections this collection belongs to (hierarchical association).
+   * Mirrors `siblings`. Admin/manage reads populate this for the parent column.
+   */
+  parents?: CollectionListModel[];
 
   // Content
   content?: AnyContentModel[];

@@ -46,8 +46,10 @@ const DownloadIcon = () => (
  * "download" is always in the same place. The bar is portaled to `document.body` so it survives
  * scroll and any transformed ancestor in the content tree.
  *
- * Degrades gracefully when no download context is present (e.g. mounted outside a client gallery):
- * only the "All" action is shown (which still uses the bottom picker).
+ * Degrades gracefully when no download context is present: only the "All" action is shown (which
+ * still uses the bottom picker). In production this control is only ever mounted inside a client
+ * gallery (which always provides the context via ClientGalleryDownloadProvider), so this branch is
+ * effectively a standalone/test fallback rather than a runtime mode.
  */
 export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryDownloadProps) {
   const download = useClientGalleryDownload();
@@ -93,12 +95,18 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
     };
   }, []);
 
+  /**
+   * Start a download for the active picker target. Ids come from the memoized context (so this
+   * callback stays stable across renders), and an empty "selected" set is a no-op — the button is
+   * already disabled, and bailing also keeps the URL builder's empty-selection throw from leaving
+   * `preparing` stuck.
+   */
   const handleFormatDownload = useCallback(
     (format: DownloadFormat) => {
-      setPreparing(format);
-      // Read ids from the (stable, memoized) context here rather than closing over a freshly
-      // derived array, so this callback only changes when the selection actually changes.
       const ids = download?.selectedImageIds ?? [];
+      if (pickerTarget === 'selected' && ids.length === 0) return;
+
+      setPreparing(format);
       const url =
         pickerTarget === 'selected'
           ? downloadCollectionSelectionUrl(collectionSlug, ids, format)

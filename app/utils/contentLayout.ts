@@ -51,6 +51,13 @@ export interface ProcessContentOptions {
   displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
   /** Target aspect ratio for AR-aware tree structure selection (default 1.5) */
   targetAR?: number;
+  /**
+   * Mobile-scale density (1-5) that drives the row-width budget on mobile.
+   * Supplied by the collection page so its density slider takes effect on touch
+   * viewports. When omitted, mobile pins to {@link LAYOUT.mobileSlotWidth} as
+   * before, so other callers keep their existing single-column-ish layout.
+   */
+  mobileChunkSize?: number;
 }
 
 /**
@@ -73,8 +80,9 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * Runs the single row-composition algorithm: {@link buildRows} greedily fills
  * each row to the per-viewport cv budget, then composes its BoxTree via
  * {@link buildAtomic}. The only mobile/desktop difference is the row-width budget
- * (mobile pins to a narrow slot width; desktop derives it from the density
- * chunkSize) — there is no separate pattern-detection or slot-based mode.
+ * (desktop derives it from the density chunkSize; mobile derives it from the
+ * 1-5 mobileChunkSize when supplied, else pins to a narrow slot width) — there
+ * is no separate pattern-detection or slot-based mode.
  *
  * If collectionData is provided, creates a header row (cover image + metadata)
  * as the first row, before processing regular content.
@@ -109,9 +117,11 @@ export function processContentForDisplay(
     }
   }
 
-  // Row density (chunkSize) maps to the per-row cv budget via ×2.5, so density ≈
-  // images-per-row for typical 3★ content (cv 2.5). Mobile pins to a slot width.
-  const rowWidth = options?.isMobile ? LAYOUT.mobileSlotWidth : Math.round(chunkSize * 2.5);
+  const rowWidth = options?.isMobile
+    ? (options?.mobileChunkSize !== undefined
+      ? Math.round(options.mobileChunkSize * 2.5)
+      : LAYOUT.mobileSlotWidth)
+    : Math.round(chunkSize * 2.5);
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 

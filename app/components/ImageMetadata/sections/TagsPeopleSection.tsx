@@ -1,6 +1,7 @@
 'use client';
 
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
+import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
 
 import type { ImageUpdateState } from '../hooks/useImageMetadataState';
@@ -23,32 +24,10 @@ export default function TagsPeopleSection({
     <div className={modalStyles.formSection}>
       <h3 className={modalStyles.sectionHeading}>Tags & People</h3>
 
-      <Dropdown<ContentTagModel>
-        label="Tags"
-        multiSelect
-        options={availableTags}
-        selectedValues={updateState.tags || []}
-        onChange={value => {
-          const tags = (value as ContentTagModel[] | null) ?? [];
-          updateStateField({ tags });
-        }}
-        allowAddNew
-        onAddNew={data => {
-          const newTag: ContentTagModel = { id: 0, name: data.name as string, slug: '' };
-          const currentTags = updateState.tags || [];
-          updateStateField({ tags: [...currentTags, newTag] });
-        }}
-        addNewFields={[
-          {
-            name: 'name',
-            label: 'Tag Name',
-            type: 'text',
-            placeholder: 'Enter new tag',
-            required: true,
-          },
-        ]}
-        getDisplayName={tag => tag.name}
-        emptyText="No tags selected"
+      <TagsSelector
+        selectedTags={updateState.tags || []}
+        availableTags={availableTags}
+        onChange={tags => updateStateField({ tags })}
       />
 
       <div>

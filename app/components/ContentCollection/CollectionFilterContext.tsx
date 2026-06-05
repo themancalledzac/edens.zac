@@ -38,7 +38,11 @@ interface CollectionFilterContextValue {
   filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<FilterState>) => void;
+  /** Density value in the active viewport's scale (desktop 1-10, mobile 1-5). */
   density: number;
+  /** Upper bound of the density slider for the active viewport (10 or 5). */
+  densityMax: number;
+  /** Receives a value in the active viewport's scale; see {@link density}. */
   onDensityChange: (value: number) => void;
 }
 

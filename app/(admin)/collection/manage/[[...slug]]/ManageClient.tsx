@@ -19,6 +19,8 @@ import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
+import { SegmentedControl } from '@/app/components/ui/SegmentedControl/SegmentedControl';
+import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
 import {
@@ -41,6 +43,7 @@ import {
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type ContentPersonModel,
+  type ContentTagModel,
   type DisplayMode,
   type LocationModel,
 } from '@/app/types/Collection';
@@ -63,7 +66,8 @@ import {
   isGifContent,
   isParentType,
 } from '@/app/utils/contentTypeGuards';
-import { convertLocationsToModels, createLocationsUpdate } from '@/app/utils/locationUtils';
+import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
+import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import styles from './ManageClient.module.scss';
 import {
@@ -76,6 +80,7 @@ import {
   revalidateMetadataCache,
   toggleRelation,
 } from './manageUtils';
+import { useCollectionRetype } from './useCollectionRetype';
 import { useContentReordering } from './useContentReordering';
 import { useCoverImageSelection } from './useCoverImageSelection';
 import { useImageClickHandler } from './useImageClickHandler';
@@ -153,6 +158,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
       if (meta !== null) setAllCollections(meta.collections);
     });
   }, []);
+
+  // Drag-and-drop retype: drop a collection on a different type header to reassign
+  // its type. Optimistically re-buckets it in the selector accordion; reverts on failure.
+  const { handleChangeType } = useCollectionRetype({ setAllCollections, setError });
 
   const [updateData, setUpdateData] = useState<CollectionUpdateRequest>(() => {
     if (collection) {
@@ -342,6 +351,17 @@ export default function ManageClient({ slug }: ManageClientProps) {
         currentState?.childCollectionImages
       ),
     [collection, updateData.coverImageId, currentState?.childCollectionImages]
+  );
+
+  // Images offered in the inline cover picker. Parent collections pick from their child
+  // collections' images; every other type picks from its own image content. Same affordance
+  // either way (replaces the old "enter select mode then click the grid below" flow).
+  const coverPickerImages: ContentImageModel[] = useMemo(
+    () =>
+      isParent
+        ? (currentState?.childCollectionImages ?? [])
+        : (collection?.content?.filter(isContentImage) ?? []),
+    [isParent, currentState?.childCollectionImages, collection?.content]
   );
 
   const handleImageLoadError = useCallback((contentId: number) => {
@@ -843,18 +863,80 @@ export default function ManageClient({ slug }: ManageClientProps) {
     return convertLocationsToModels(collection?.locations, availableLocations);
   }, [collection?.locations, currentState?.locations, updateData.locations]);
 
-  /**
-   * Handle locations selection changes (multi-select)
-   */
-  const handleLocationsChange = useCallback((value: LocationModel | LocationModel[] | null) => {
-    const locations = Array.isArray(value) ? value : (value ? [value] : []);
-    const locationsUpdate = createLocationsUpdate(locations);
+  const originalLocations = useMemo(
+    () => convertLocationsToModels(collection?.locations, currentState?.locations || []),
+    [collection?.locations, currentState?.locations]
+  );
 
-    setUpdateData(prev => ({
-      ...prev,
-      locations: locationsUpdate,
-    }));
-  }, []);
+  /**
+   * Handle locations selection changes (multi-select). Diffs the new selection
+   * against the saved baseline so deselecting a location emits `remove` — the
+   * backend reconciler only drops what is in `remove`, never what's absent from
+   * `prev`.
+   */
+  const handleLocationsChange = useCallback(
+    (value: LocationModel | LocationModel[] | null) => {
+      let locations: LocationModel[] = [];
+      if (Array.isArray(value)) locations = value;
+      else if (value) locations = [value];
+
+      setUpdateData(prev => ({
+        ...prev,
+        locations: buildLocationsDiff(locations, originalLocations),
+      }));
+    },
+    [originalLocations]
+  );
+
+  /**
+   * Derive current tags from `collection.tags` and `updateData.tags`. Mirrors
+   * `currentLocations`.
+   *
+   * Priority: pending `updateData.tags` overrides the saved collection tags. Saved
+   * tags arrive as `string[]` names, so they are resolved against the available tag
+   * list to recover IDs.
+   */
+  const currentTags: ContentTagModel[] = useMemo(() => {
+    const availableTags = currentState?.tags || [];
+
+    const tagsUpdate = updateData.tags;
+    if (tagsUpdate) {
+      const result: ContentTagModel[] = [];
+      // Resolve prev IDs to models
+      for (const id of tagsUpdate.prev ?? []) {
+        const found = availableTags.find(tag => tag.id === id);
+        if (found) result.push(found);
+      }
+      // Add new tags (not yet created)
+      for (const name of tagsUpdate.newValue ?? []) {
+        result.push({ id: 0, name, slug: '' });
+      }
+      return result;
+    }
+
+    return convertTagsToModels(collection?.tags, availableTags);
+  }, [collection?.tags, currentState?.tags, updateData.tags]);
+
+  const originalTags = useMemo(
+    () => convertTagsToModels(collection?.tags, currentState?.tags || []),
+    [collection?.tags, currentState?.tags]
+  );
+
+  /**
+   * Handle tags selection changes (multi-select). Mirrors `handleLocationsChange`:
+   * diffs against the saved baseline so deselecting/clearing tags emits `remove`
+   * and actually persists. `TagsSelector` already hands back a normalized
+   * `ContentTagModel[]`.
+   */
+  const handleTagsChange = useCallback(
+    (tags: ContentTagModel[]) => {
+      setUpdateData(prev => ({
+        ...prev,
+        tags: buildTagsDiff(tags, originalTags),
+      }));
+    },
+    [originalTags]
+  );
 
   /**
    * Handle child-collection toggle from CollectionListSelector. Child rows carry
@@ -925,6 +1007,48 @@ export default function ManageClient({ slug }: ManageClientProps) {
       }));
     },
     [originalSiblingIds]
+  );
+
+  /**
+   * Parent-collection selection state — mirrors the sibling-collection state above,
+   * but `originalParentIds` derives from `collection.parents` (the inverse of the
+   * child containment relation, surfaced by admin/manage reads).
+   */
+  const originalParentIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const parent of collection?.parents ?? []) {
+      ids.add(parent.id);
+    }
+    return ids;
+  }, [collection?.parents]);
+
+  const pendingAddParentIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const parent of updateData.parents?.newValue ?? []) {
+      ids.add(parent.collectionId);
+    }
+    return ids;
+  }, [updateData.parents?.newValue]);
+
+  const pendingRemoveParentIds = useMemo(() => {
+    return new Set<number>(updateData.parents?.remove ?? []);
+  }, [updateData.parents?.remove]);
+
+  /**
+   * Toggle a parent link. Same engine as handleSiblingToggle; parent rows carry
+   * only { collectionId, name } (parents have neither orderIndex nor visible here).
+   */
+  const handleParentToggle = useCallback(
+    (toggledCollection: CollectionListModel) => {
+      setUpdateData(prev => ({
+        ...prev,
+        parents: toggleRelation(prev.parents, toggledCollection, originalParentIds, collection => ({
+          collectionId: collection.id,
+          name: collection.name,
+        })),
+      }));
+    },
+    [originalParentIds]
   );
 
   /**
@@ -1117,11 +1241,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             disabled={isLoading}
                             className={styles.headingSubmitButton}
                           >
-                            {saving ? 'Updating...' : 'Update Metadata'}
+                            {saving ? 'Saving…' : 'Save'}
                           </Button>
                         </div>
 
                         {displayError && <div className={styles.errorMessage}>{displayError}</div>}
+
+                        <h3 className={styles.sectionTitle}>Details</h3>
 
                         {/* Title */}
                         <div className={styles.titleRow}>
@@ -1139,26 +1265,20 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         </div>
 
                         {/* Visibility */}
-                        <fieldset className={styles.visibilityFieldset}>
-                          <legend className={styles.formLabel}>Visibility</legend>
-                          {Object.values(CollectionVisibility).map(v => (
-                            <label key={v} className={styles.visibilityRadioLabel}>
-                              <input
-                                type="radio"
-                                name="visibility"
-                                value={v}
-                                checked={updateData.visibility === v}
-                                onChange={() => setUpdateData(prev => ({ ...prev, visibility: v }))}
-                              />
-                              <span className={styles.visibilityRadioName}>
-                                {COLLECTION_VISIBILITY_LABELS[v]}
-                              </span>
-                              <span className={styles.visibilityRadioDesc}>
-                                {COLLECTION_VISIBILITY_DESCRIPTIONS[v]}
-                              </span>
-                            </label>
-                          ))}
-                        </fieldset>
+                        <div className={styles.formGroup}>
+                          <label className={styles.formLabel}>Visibility</label>
+                          <SegmentedControl<CollectionVisibility>
+                            ariaLabel="Visibility"
+                            value={updateData.visibility ?? CollectionVisibility.HIDDEN}
+                            onChange={v => setUpdateData(prev => ({ ...prev, visibility: v }))}
+                            options={Object.values(CollectionVisibility).map(v => ({
+                              value: v,
+                              label: COLLECTION_VISIBILITY_LABELS[v],
+                              description: COLLECTION_VISIBILITY_DESCRIPTIONS[v],
+                            }))}
+                            showDescription
+                          />
+                        </div>
 
                         {/* Collection Date / Collection Type */}
                         <div className={styles.formGridHalf}>
@@ -1212,6 +1332,20 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           </div>
                         </div>
 
+                        {/* Description */}
+                        <div className={styles.formGroup}>
+                          <label className={styles.formLabel}>Description</label>
+                          <textarea
+                            value={updateData.description}
+                            onChange={e =>
+                              setUpdateData(prev => ({ ...prev, description: e.target.value }))
+                            }
+                            className={styles.formTextarea}
+                          />
+                        </div>
+
+                        <h3 className={styles.sectionTitle}>Tags, people &amp; places</h3>
+
                         {/* Locations */}
                         <Dropdown<LocationModel>
                           label="Locations"
@@ -1242,6 +1376,17 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           emptyText="No locations set"
                         />
 
+                        {/* Tags — collection-level associations. Saved via the
+                            "Update Metadata" payload (like Locations), not a
+                            separate endpoint. Reuses the shared TagsSelector so the
+                            picker matches the image editor. */}
+                        <TagsSelector
+                          selectedTags={currentTags}
+                          availableTags={currentState?.tags || []}
+                          onChange={handleTagsChange}
+                          emptyText="No tags set"
+                        />
+
                         {/* People — collection-level associations. Saved via
                             its own endpoint (separate from Update Metadata)
                             because the backend reconciles to an exact set of
@@ -1251,10 +1396,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           aria-labelledby="collection-people-heading"
                           className={styles.formGroup}
                         >
-                          <h3
-                            id="collection-people-heading"
-                            className={`${styles.formLabel} ${styles.fieldSpacer}`}
-                          >
+                          <h3 id="collection-people-heading" className={styles.formLabel}>
                             People
                           </h3>
                           <Dropdown<ContentPersonModel>
@@ -1313,7 +1455,8 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           )}
                         </section>
 
-                        {/* Display Mode / Row Length — hidden for parent-type collections */}
+                        {/* Presentation — image layout controls; hidden for parent-type collections */}
+                        {!isParent && <h3 className={styles.sectionTitle}>Presentation</h3>}
                         {!isParent && (
                           <div className={styles.formGridHalf}>
                             <div>
@@ -1352,7 +1495,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                   disabled={(updateData.rowsWide ?? 4) <= 1}
                                   aria-label="Decrease row density"
                                 >
-                                  ←
+                                  −
                                 </button>
                                 <input
                                   type="number"
@@ -1383,24 +1526,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                   disabled={(updateData.rowsWide ?? 4) >= 10}
                                   aria-label="Increase row density"
                                 >
-                                  →
+                                  +
                                 </button>
                               </div>
                             </div>
                           </div>
                         )}
-
-                        {/* Description */}
-                        <div className={styles.formGroup}>
-                          <label className={styles.formLabel}>Description</label>
-                          <textarea
-                            value={updateData.description}
-                            onChange={e =>
-                              setUpdateData(prev => ({ ...prev, description: e.target.value }))
-                            }
-                            className={styles.formTextarea}
-                          />
-                        </div>
 
                         {/* Gallery Access — meaningful for CLIENT_GALLERY and PARENT */}
                         {(updateData.type === CollectionType.CLIENT_GALLERY ||
@@ -1409,10 +1540,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             aria-labelledby="gallery-access-heading"
                             className={styles.formGroup}
                           >
-                            <h3
-                              id="gallery-access-heading"
-                              className={`${styles.formLabel} ${styles.fieldSpacer}`}
-                            >
+                            <h3 id="gallery-access-heading" className={styles.sectionTitle}>
                               Gallery Access
                             </h3>
                             <p className={`${styles.formLabelHint} ${styles.fieldHeading}`}>
@@ -1464,7 +1592,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                 onClick={handleSaveAccess}
                                 disabled={gallerySaving || galleryPassword.length === 0}
                               >
-                                {gallerySaving ? 'Saving…' : 'Save'}
+                                {gallerySaving ? 'Saving…' : 'Save access'}
                               </Button>
                               {collection.isPasswordProtected && (
                                 <Button onClick={handleClearPassword} disabled={gallerySaving}>
@@ -1482,6 +1610,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             )}
                           </section>
                         )}
+
+                        <h3 className={styles.sectionTitle}>
+                          {isParent ? 'Cover image' : 'Cover & content'}
+                        </h3>
 
                         {/* Cover Image + media row (non-parent: side by side; parent: stacked) */}
                         <div className={!isParent ? styles.coverAndMediaRow : undefined}>
@@ -1507,33 +1639,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               {isSelectingCoverImage ? 'Cancel' : 'Select'}
                             </Button>
                           </div>
-
-                          {/* Picker grid — parent only */}
-                          {isParent && isSelectingCoverImage && (
-                            <div className={styles.coverImagePickerGrid}>
-                              {currentState?.childCollectionImages &&
-                              currentState.childCollectionImages.length > 0 ? (
-                                currentState.childCollectionImages.map(img => (
-                                  <div
-                                    key={img.id}
-                                    className={styles.coverImagePickerItem}
-                                    onClick={() => handleCoverImageClick(img.id)}
-                                  >
-                                    <Image
-                                      src={img.imageUrl}
-                                      alt={img.title || ''}
-                                      width={120}
-                                      height={90}
-                                    />
-                                  </div>
-                                ))
-                              ) : (
-                                <div className={styles.noCoverImage}>
-                                  Add child collections with images to select a cover image.
-                                </div>
-                              )}
-                            </div>
-                          )}
 
                           {/* Upload Media + Add Text Block — non-parent only */}
                           {!isParent && (
@@ -1567,6 +1672,35 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             </div>
                           )}
                         </div>
+
+                        {/* Inline cover picker — same affordance for parent and non-parent.
+                            Pick a cover here instead of scrolling down to click the grid. */}
+                        {isSelectingCoverImage && (
+                          <div className={styles.coverImagePickerGrid}>
+                            {coverPickerImages.length > 0 ? (
+                              coverPickerImages.map(img => (
+                                <div
+                                  key={img.id}
+                                  className={styles.coverImagePickerItem}
+                                  onClick={() => handleCoverImageClick(img.id)}
+                                >
+                                  <Image
+                                    src={img.imageUrl}
+                                    alt={img.title || ''}
+                                    width={120}
+                                    height={90}
+                                  />
+                                </div>
+                              ))
+                            ) : (
+                              <div className={styles.noCoverImage}>
+                                {isParent
+                                  ? 'Add child collections with images to select a cover image.'
+                                  : 'Add images to this collection to choose a cover.'}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* RIGHT SECTION */}
@@ -1587,11 +1721,16 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           }}
                           onAddNewChild={handleAddNewChild}
                           label="Collections"
-                          excludeCollectionId={collection.id}
+                          currentCollectionId={collection.id}
                           siblingSavedIds={originalSiblingIds}
                           siblingPendingAddIds={pendingAddSiblingIds}
                           siblingPendingRemoveIds={pendingRemoveSiblingIds}
                           onToggleSibling={handleSiblingToggle}
+                          parentSavedIds={originalParentIds}
+                          parentPendingAddIds={pendingAddParentIds}
+                          parentPendingRemoveIds={pendingRemoveParentIds}
+                          onToggleParent={handleParentToggle}
+                          onChangeType={handleChangeType}
                         />
 
                         {/* Home: rate child collections inline. Click is immediate (no save button). */}

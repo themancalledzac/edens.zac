@@ -154,6 +154,7 @@ amplifyconfiguration*
 .claude/skills/
 .claude/worktrees/
 .claude/agent-memory/
+.worktrees/
 
 # Local-only authoring artifacts (handoffs, plans, specs, spikes)
 docs/handoffs/

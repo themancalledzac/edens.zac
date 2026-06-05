@@ -27,6 +27,10 @@ export const LAYOUT = {
   defaultChunkSize: 4, // Max items per row (1-2 star images get 1 slot, 3+ star get 2 slots)
   minChunkSize: 2, // Minimum chunk size (ensures halfSlot is at least 1)
 
+  minDensity: 1,
+  maxDensityDesktop: 10,
+  maxDensityMobile: 5,
+
   // Grid gap between items (CSS: 0.4rem from each adjacent item = 0.8rem total)
   // This is the visual gap between adjacent items in a row or stacked column
   gridGap: 12.8, // 0.8rem = 12.8px (0.4rem padding on each side)
@@ -175,6 +179,23 @@ export const getContentWidth = (viewportWidth: number, isMobile: boolean): numbe
     Math.min(viewportWidth - LAYOUT.desktopPadding, LAYOUT.pageMaxWidth - LAYOUT.desktopPadding)
   );
 };
+
+/**
+ * Map a desktop-scale row density (1-10) onto the mobile slider scale (1-5):
+ * half it, round, and clamp. The mobile default is therefore half the
+ * collection's saved density (e.g. saved 4 -> 2), and the desktop max (10) maps
+ * to the mobile max (5).
+ */
+export const toMobileDensity = (desktopDensity: number): number =>
+  Math.max(LAYOUT.minDensity, Math.min(LAYOUT.maxDensityMobile, Math.round(desktopDensity / 2)));
+
+/**
+ * Inverse of {@link toMobileDensity}: map a mobile-scale value (1-5) the user
+ * picked on the slider back onto the canonical desktop scale (1-10) that the
+ * density state is stored in.
+ */
+export const fromMobileDensity = (mobileDensity: number): number =>
+  Math.max(LAYOUT.minDensity, Math.min(LAYOUT.maxDensityDesktop, Math.round(mobileDensity) * 2));
 
 /**
  * Whether to lay out with the client-measured width rather than the SSR width: true once measured

@@ -219,7 +219,7 @@ describe('ManageClient — Gallery Access section', () => {
     expect(screen.getByText('Gallery Access')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByLabelText('Recipient email')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^save access$/i })).toBeInTheDocument();
   });
 
   it('hides the Clear Password button when the gallery has no password', async () => {
@@ -260,7 +260,7 @@ describe('ManageClient — Gallery Access section', () => {
     fireEvent.change(screen.getByLabelText('Recipient email'), {
       target: { value: 'client@example.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save access$/i }));
 
     await waitFor(() => {
       expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {
@@ -282,7 +282,7 @@ describe('ManageClient — Gallery Access section', () => {
     await renderManageClient();
 
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'abc' } });
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save access$/i }));
 
     await waitFor(() => {
       expect(screen.getByText('Password must be at least 4 characters.')).toBeInTheDocument();
@@ -308,7 +308,7 @@ describe('ManageClient — Gallery Access section', () => {
     fireEvent.change(screen.getByLabelText('Recipient email'), {
       target: { value: 'client@example.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save access$/i }));
 
     await waitFor(() => {
       expect(
@@ -332,7 +332,7 @@ describe('ManageClient — Gallery Access section', () => {
     fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'gallery-pw' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save access$/i }));
 
     await waitFor(() => {
       expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {
@@ -382,7 +382,7 @@ describe('ManageClient — Gallery Access section', () => {
     fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'gallery-pw' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^save access$/i }));
 
     await waitFor(() => {
       expect(mockedCollectionsApi.saveGalleryAccess).toHaveBeenCalledWith(42, {

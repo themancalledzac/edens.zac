@@ -332,6 +332,7 @@ export default function CollectionContentRenderer({
                 showDateSort
                 showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
                 density={collectionFilter.density}
+                densityMax={collectionFilter.densityMax}
                 onDensityChange={collectionFilter.onDensityChange}
               />
             </div>

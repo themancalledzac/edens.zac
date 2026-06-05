@@ -1,9 +1,15 @@
 import '@testing-library/jest-dom';
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
-import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
-import type { CollectionListModel } from '@/app/types/Collection';
+import CollectionListSelector, {
+  sortGroup,
+} from '@/app/components/CollectionListSelector/CollectionListSelector';
+import {
+  ASSIGNABLE_COLLECTION_TYPES,
+  COLLECTION_TYPE_ORDER,
+  type CollectionListModel,
+} from '@/app/types/Collection';
 
 const mockCollections: CollectionListModel[] = [
   { id: 1, name: 'Portfolio A', slug: 'portfolio-a', type: 'PORTFOLIO' },
@@ -245,6 +251,8 @@ describe('CollectionListSelector', () => {
     });
     it('exposes a Sibling and a Child toggle per collection row', () => {
       render(<CollectionListSelector {...twoColProps} />);
+      // Portfolio A lives in the (default-collapsed) PORTFOLIO accordion section — expand it first.
+      fireEvent.click(screen.getByText('Portfolio'));
       expect(screen.getByLabelText('Toggle sibling Portfolio A')).toBeInTheDocument();
       expect(screen.getByLabelText('Toggle child Portfolio A')).toBeInTheDocument();
     });
@@ -258,6 +266,7 @@ describe('CollectionListSelector', () => {
           onToggleSibling={onToggleSibling}
         />
       );
+      fireEvent.click(screen.getByText('Portfolio'));
       fireEvent.click(screen.getByLabelText('Toggle sibling Portfolio A'));
       expect(onToggleSibling).toHaveBeenCalledTimes(1);
       expect(onToggleSibling).toHaveBeenCalledWith(mockCollections[0]);
@@ -273,13 +282,22 @@ describe('CollectionListSelector', () => {
           onToggleSibling={onToggleSibling}
         />
       );
+      fireEvent.click(screen.getByText('Portfolio'));
       fireEvent.click(screen.getByLabelText('Toggle child Portfolio A'));
       expect(onToggle).toHaveBeenCalledTimes(1);
       expect(onToggle).toHaveBeenCalledWith(mockCollections[0]);
       expect(onToggleSibling).not.toHaveBeenCalled();
     });
     it('reflects independent saved state per column (sibling on B, child on A)', () => {
-      render(<CollectionListSelector {...twoColProps} />);
+      // Child-saved (id 1) and sibling-saved (id 2) rows must be visible together, but the accordion
+      // only opens ONE section at a time — put both rows in a single PORTFOLIO section so one expand
+      // reveals both. Ids/saved-sets are unchanged, so the per-column saved/empty assertions hold.
+      const sameSection: CollectionListModel[] = [
+        { id: 1, name: 'Portfolio A', slug: 'portfolio-a', type: 'PORTFOLIO' },
+        { id: 2, name: 'Blog B', slug: 'blog-b', type: 'PORTFOLIO' },
+      ];
+      render(<CollectionListSelector {...twoColProps} allCollections={sameSection} />);
+      fireEvent.click(screen.getByText('Portfolio'));
       expect(screen.getByLabelText('Toggle child Portfolio A').className).toContain('saved');
       expect(screen.getByLabelText('Toggle sibling Blog B').className).toContain('saved');
       expect(screen.getByLabelText('Toggle sibling Portfolio A').className).toContain('empty');
@@ -287,6 +305,8 @@ describe('CollectionListSelector', () => {
     });
     it('still omits the excludeCollectionId row in two-column mode', () => {
       render(<CollectionListSelector {...twoColProps} excludeCollectionId={2} />);
+      // Portfolio A lives in the collapsed PORTFOLIO section — expand it to assert it renders.
+      fireEvent.click(screen.getByText('Portfolio'));
       expect(screen.getByText('Portfolio A')).toBeInTheDocument();
       expect(screen.queryByText('Blog B')).not.toBeInTheDocument();
     });
@@ -303,6 +323,8 @@ describe('CollectionListSelector', () => {
         />
       );
 
+      // Blog B lives in the collapsed BLOG section — expand it before clicking its name button.
+      fireEvent.click(screen.getByText('Blog'));
       fireEvent.click(screen.getByLabelText('Open Blog B'));
 
       expect(onNavigate).toHaveBeenCalledTimes(1);
@@ -313,6 +335,79 @@ describe('CollectionListSelector', () => {
     it('renders the name as a plain span (no nav button) when onNavigate is not provided', () => {
       render(<CollectionListSelector {...twoColProps} />);
       expect(screen.queryByLabelText('Open Portfolio A')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('child/parent mutual exclusion', () => {
+    it('disables Parent checkbox when row is currently checked as Child', () => {
+      const onToggleParent = jest.fn();
+      render(
+        <CollectionListSelector
+          allCollections={[{ id: 10, name: 'X', type: 'PORTFOLIO' }]}
+          savedCollectionIds={new Set([10])}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={onToggleParent}
+        />
+      );
+      fireEvent.click(screen.getByText('Portfolio'));
+      const btn = screen.getByLabelText('Toggle parent X');
+      expect(btn).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(btn);
+      expect(onToggleParent).not.toHaveBeenCalled();
+    });
+
+    it('disables Child checkbox when row is currently checked as Parent', () => {
+      const onToggleChild = jest.fn();
+      render(
+        <CollectionListSelector
+          allCollections={[{ id: 11, name: 'Y', type: 'PORTFOLIO' }]}
+          savedCollectionIds={new Set()}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={onToggleChild}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set([11])}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByText('Portfolio'));
+      expect(screen.getByLabelText('Toggle child Y')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('does NOT disable Parent when row is saved-but-pending-removal as Child', () => {
+      render(
+        <CollectionListSelector
+          allCollections={[{ id: 12, name: 'Z', type: 'PORTFOLIO' }]}
+          savedCollectionIds={new Set([12])}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set([12])}
+          onToggle={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+        />
+      );
+      fireEvent.click(screen.getByText('Portfolio'));
+      expect(screen.getByLabelText('Toggle parent Z')).not.toHaveAttribute('aria-disabled', 'true');
     });
   });
 
@@ -357,5 +452,416 @@ describe('CollectionListSelector', () => {
       expect(rows[2]).toHaveTextContent('Gallery C');
       expect(rows[3]).toHaveTextContent('No Type D');
     });
+  });
+});
+
+describe('COLLECTION_TYPE_ORDER', () => {
+  it('lists HOME first then PARENT, CLIENT_GALLERY, ART_GALLERY, PORTFOLIO, BLOG, MISC', () => {
+    expect(COLLECTION_TYPE_ORDER).toEqual([
+      'HOME',
+      'PARENT',
+      'CLIENT_GALLERY',
+      'ART_GALLERY',
+      'PORTFOLIO',
+      'BLOG',
+      'MISC',
+    ]);
+  });
+});
+
+describe('ASSIGNABLE_COLLECTION_TYPES', () => {
+  it('lists the 5 user-assignable types, excluding HOME and MISC', () => {
+    expect(ASSIGNABLE_COLLECTION_TYPES).toEqual([
+      'PORTFOLIO',
+      'ART_GALLERY',
+      'BLOG',
+      'CLIENT_GALLERY',
+      'PARENT',
+    ]);
+  });
+});
+
+describe('sortGroup', () => {
+  it('sorts BLOG by collectionDate desc, null last', () => {
+    const sorted = sortGroup(
+      [
+        { id: 1, name: 'B', collectionDate: '2025-01-15' },
+        { id: 2, name: 'C', collectionDate: null },
+        { id: 3, name: 'A', collectionDate: '2025-06-01' },
+      ],
+      'BLOG'
+    );
+    expect(sorted.map(c => c.id)).toEqual([3, 1, 2]);
+  });
+
+  it('sorts non-BLOG alphabetically by name', () => {
+    const sorted = sortGroup(
+      [
+        { id: 1, name: 'Charlie' },
+        { id: 2, name: 'Alpha' },
+        { id: 3, name: 'Bravo' },
+      ],
+      'PORTFOLIO'
+    );
+    expect(sorted.map(c => c.id)).toEqual([2, 3, 1]);
+  });
+
+  it('falls back to name when both BLOG entries have null collectionDate', () => {
+    const sorted = sortGroup(
+      [
+        { id: 1, name: 'B', collectionDate: null },
+        { id: 2, name: 'A', collectionDate: null },
+      ],
+      'BLOG'
+    );
+    expect(sorted.map(c => c.id)).toEqual([2, 1]);
+  });
+});
+
+describe('three-column accordion mode', () => {
+  const allTypes: CollectionListModel[] = [
+    { id: 1, name: 'Home', type: 'HOME' },
+    { id: 2, name: 'P1', type: 'PORTFOLIO' },
+    { id: 3, name: 'P2', type: 'PORTFOLIO' },
+    { id: 4, name: 'B1', type: 'BLOG', collectionDate: '2025-01-01' },
+    { id: 5, name: 'B2', type: 'BLOG', collectionDate: '2025-06-01' },
+    { id: 6, name: 'M', type: 'MISC' },
+  ];
+
+  function renderInThreeColumnMode(rows = allTypes) {
+    return render(
+      <CollectionListSelector
+        allCollections={rows}
+        savedCollectionIds={new Set()}
+        pendingAddIds={new Set()}
+        pendingRemoveIds={new Set()}
+        onToggle={jest.fn()}
+        siblingSavedIds={new Set()}
+        siblingPendingAddIds={new Set()}
+        siblingPendingRemoveIds={new Set()}
+        onToggleSibling={jest.fn()}
+        parentSavedIds={new Set()}
+        parentPendingAddIds={new Set()}
+        parentPendingRemoveIds={new Set()}
+        onToggleParent={jest.fn()}
+      />
+    );
+  }
+
+  it('renders Collection Name header (not Catalog Name) in 3-column mode', () => {
+    renderInThreeColumnMode();
+    expect(screen.getByText('Collection Name')).toBeInTheDocument();
+    expect(screen.queryByText('Catalog Name')).not.toBeInTheDocument();
+    expect(screen.queryByText('Catalog Type')).not.toBeInTheDocument();
+  });
+
+  it('renders Parent column header', () => {
+    renderInThreeColumnMode();
+    // "Parent" renders twice: the column header AND the PARENT accordion section header.
+    // Scope to the column-header row so we assert the COLUMN header specifically.
+    const columnHeaderRow = screen.getByText('Collection Name').parentElement as HTMLElement;
+    expect(within(columnHeaderRow).getByText('Parent')).toBeInTheDocument();
+  });
+
+  it('renders HOME row always visible at top, no Home accordion header', () => {
+    renderInThreeColumnMode();
+    // The pinned HOME row renders its name as a plain span (no onNavigate → no nav button),
+    // and HOME has no accordion header — so there is no button named exactly "Home".
+    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.queryAllByRole('button', { name: /^Home$/ })).toHaveLength(0);
+  });
+
+  it('renders 6 collapsed non-HOME type headers by default; no rows beneath', () => {
+    renderInThreeColumnMode();
+    for (const l of ['Client Gallery', 'Art Gallery', 'Portfolio', 'Blog', 'Misc'])
+      expect(screen.getByText(l)).toBeInTheDocument();
+    // "Parent" is both a column header and an accordion header — assert the header exists via getAllByText.
+    expect(screen.getAllByText('Parent').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('P1')).not.toBeInTheDocument();
+    expect(screen.queryByText('B1')).not.toBeInTheDocument();
+  });
+
+  it('expand-collapse accordion: opening Blog closes Portfolio', () => {
+    renderInThreeColumnMode();
+    fireEvent.click(screen.getByText('Portfolio'));
+    expect(screen.getByText('P1')).toBeInTheDocument();
+    expect(screen.getByText('P2')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Blog'));
+    expect(screen.queryByText('P1')).not.toBeInTheDocument();
+    expect(screen.getByText('B1')).toBeInTheDocument();
+    expect(screen.getByText('B2')).toBeInTheDocument();
+  });
+
+  it('BLOG group renders rows in collectionDate desc order', () => {
+    renderInThreeColumnMode();
+    fireEvent.click(screen.getByText('Blog'));
+    const rows = screen.getAllByText(/^B\d$/);
+    expect(rows.map(r => r.textContent)).toEqual(['B2', 'B1']);
+  });
+
+  it('PORTFOLIO group renders rows alphabetically', () => {
+    renderInThreeColumnMode([
+      { id: 1, name: 'Charlie', type: 'PORTFOLIO' },
+      { id: 2, name: 'Alpha', type: 'PORTFOLIO' },
+      { id: 3, name: 'Bravo', type: 'PORTFOLIO' },
+    ]);
+    fireEvent.click(screen.getByText('Portfolio'));
+    const names = screen.getAllByText(/Charlie|Alpha|Bravo/);
+    expect(names.map(n => n.textContent)).toEqual(['Alpha', 'Bravo', 'Charlie']);
+  });
+
+  it('leaves the Sibling checkbox unaffected when the row is actively a Child', () => {
+    // Mutual exclusion only governs Child↔Parent, never Sibling. A row saved as a
+    // Child must still expose an enabled, clickable Sibling toggle.
+    const onToggleSibling = jest.fn();
+    render(
+      <CollectionListSelector
+        allCollections={[{ id: 20, name: 'Active Child', type: 'PORTFOLIO' }]}
+        savedCollectionIds={new Set([20])}
+        pendingAddIds={new Set()}
+        pendingRemoveIds={new Set()}
+        onToggle={jest.fn()}
+        siblingSavedIds={new Set()}
+        siblingPendingAddIds={new Set()}
+        siblingPendingRemoveIds={new Set()}
+        onToggleSibling={onToggleSibling}
+        parentSavedIds={new Set()}
+        parentPendingAddIds={new Set()}
+        parentPendingRemoveIds={new Set()}
+        onToggleParent={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('Portfolio'));
+    const siblingBtn = screen.getByLabelText('Toggle sibling Active Child');
+    expect(siblingBtn).not.toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(siblingBtn);
+    expect(onToggleSibling).toHaveBeenCalledTimes(1);
+  });
+
+  it('fires onToggleParent when the Parent checkbox is clicked on a plain row', () => {
+    const onToggleParent = jest.fn();
+    render(
+      <CollectionListSelector
+        allCollections={[{ id: 21, name: 'Plain Row', type: 'PORTFOLIO' }]}
+        savedCollectionIds={new Set()}
+        pendingAddIds={new Set()}
+        pendingRemoveIds={new Set()}
+        onToggle={jest.fn()}
+        siblingSavedIds={new Set()}
+        siblingPendingAddIds={new Set()}
+        siblingPendingRemoveIds={new Set()}
+        onToggleSibling={jest.fn()}
+        parentSavedIds={new Set()}
+        parentPendingAddIds={new Set()}
+        parentPendingRemoveIds={new Set()}
+        onToggleParent={onToggleParent}
+      />
+    );
+    fireEvent.click(screen.getByText('Portfolio'));
+    const parentBtn = screen.getByLabelText('Toggle parent Plain Row');
+    expect(parentBtn).not.toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(parentBtn);
+    expect(onToggleParent).toHaveBeenCalledTimes(1);
+    expect(onToggleParent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 21, name: 'Plain Row' })
+    );
+  });
+
+  it('applies the expandedRow class to rows revealed under an open section', () => {
+    // CSS modules are mocked by next/jest as an identity proxy, so
+    // `styles.expandedRow === 'expandedRow'` — query by the literal class name.
+    const { container } = renderInThreeColumnMode();
+    expect(container.querySelector('.expandedRow')).toBeNull();
+    fireEvent.click(screen.getByText('Portfolio'));
+    expect(container.querySelector('.expandedRow')).not.toBeNull();
+  });
+
+  it('buckets an unknown collection type under the Misc section', () => {
+    // FIX 1: a type not in COLLECTION_TYPE_ORDER must fall into MISC rather than
+    // creating a phantom group key the render loop never shows (which would hide it).
+    renderInThreeColumnMode([{ id: 30, name: 'Weird Row', type: 'WEIRD_TYPE' }]);
+    expect(screen.queryByText('Weird Row')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Misc'));
+    expect(screen.getByText('Weird Row')).toBeInTheDocument();
+  });
+
+  describe('currentCollectionId (you-are-here marker)', () => {
+    // Same render helper as the rest of the suite, plus a currentCollectionId prop. P1 (id 2)
+    // is a PORTFOLIO row used as the "current" collection across these cases.
+    function renderWithCurrent(currentCollectionId: number, rows = allTypes) {
+      return render(
+        <CollectionListSelector
+          allCollections={rows}
+          savedCollectionIds={new Set()}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+          currentCollectionId={currentCollectionId}
+        />
+      );
+    }
+
+    it('keeps the current row visible (not excluded) with all toggles disabled', () => {
+      // P1 (id 2) is the current collection — its PORTFOLIO section auto-opens, so the row
+      // is present without any click. The excludeCollectionId path would have removed it.
+      renderWithCurrent(2);
+      expect(screen.getByText('P1')).toBeInTheDocument();
+      expect(screen.getByLabelText('Toggle sibling P1')).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByLabelText('Toggle child P1')).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByLabelText('Toggle parent P1')).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it("auto-opens the current collection's type section on load, leaving others collapsed", () => {
+      renderWithCurrent(2); // PORTFOLIO
+      // PORTFOLIO is open by default → P1/P2 visible without clicking the header.
+      expect(screen.getByText('P1')).toBeInTheDocument();
+      expect(screen.getByText('P2')).toBeInTheDocument();
+      // A different section (BLOG) stays collapsed.
+      expect(screen.queryByText('B1')).not.toBeInTheDocument();
+      expect(screen.queryByText('B2')).not.toBeInTheDocument();
+    });
+
+    it("renders the '(current)' marker for the current row", () => {
+      renderWithCurrent(2);
+      expect(screen.getByText('(current)')).toBeInTheDocument();
+    });
+
+    it('does not render a navigate button for the current row', () => {
+      // The current collection must not self-navigate — no "Open P1" button.
+      render(
+        <CollectionListSelector
+          allCollections={allTypes}
+          savedCollectionIds={new Set()}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={jest.fn()}
+          onNavigate={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+          currentCollectionId={2}
+        />
+      );
+      expect(screen.queryByLabelText('Open P1')).not.toBeInTheDocument();
+      // A non-current PORTFOLIO sibling (P2) still navigates.
+      expect(screen.getByLabelText('Open P2')).toBeInTheDocument();
+    });
+
+    it('still excludes (not greys) a row passed via excludeCollectionId', () => {
+      // excludeCollectionId behavior is independent of currentCollectionId and still removes
+      // the row entirely. Expand PORTFOLIO to assert P1 is absent while P2 remains.
+      render(
+        <CollectionListSelector
+          allCollections={allTypes}
+          savedCollectionIds={new Set()}
+          pendingAddIds={new Set()}
+          pendingRemoveIds={new Set()}
+          onToggle={jest.fn()}
+          siblingSavedIds={new Set()}
+          siblingPendingAddIds={new Set()}
+          siblingPendingRemoveIds={new Set()}
+          onToggleSibling={jest.fn()}
+          parentSavedIds={new Set()}
+          parentPendingAddIds={new Set()}
+          parentPendingRemoveIds={new Set()}
+          onToggleParent={jest.fn()}
+          excludeCollectionId={2}
+        />
+      );
+      fireEvent.click(screen.getByText('Portfolio'));
+      expect(screen.queryByText('P1')).not.toBeInTheDocument();
+      expect(screen.getByText('P2')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('drag-and-drop retype', () => {
+  const rows: CollectionListModel[] = [
+    { id: 1, name: 'Home', type: 'HOME' },
+    { id: 2, name: 'P1', type: 'PORTFOLIO' },
+    { id: 3, name: 'B1', type: 'BLOG', collectionDate: '2025-01-01' },
+    { id: 6, name: 'M1', type: 'MISC' },
+  ];
+
+  function renderWithRetype(onChangeType = jest.fn(), extra: Record<string, unknown> = {}) {
+    render(
+      <CollectionListSelector
+        allCollections={rows}
+        savedCollectionIds={new Set()}
+        pendingAddIds={new Set()}
+        pendingRemoveIds={new Set()}
+        onToggle={jest.fn()}
+        siblingSavedIds={new Set()}
+        siblingPendingAddIds={new Set()}
+        siblingPendingRemoveIds={new Set()}
+        onToggleSibling={jest.fn()}
+        parentSavedIds={new Set()}
+        parentPendingAddIds={new Set()}
+        parentPendingRemoveIds={new Set()}
+        onToggleParent={jest.fn()}
+        onChangeType={onChangeType}
+        {...extra}
+      />
+    );
+    return { onChangeType };
+  }
+
+  it('fires onChangeType when a row is dropped on a different assignable header', () => {
+    const { onChangeType } = renderWithRetype();
+    fireEvent.click(screen.getByText('Blog')); // expand BLOG to reach B1
+    const row = screen.getByText('B1').closest('[role="group"]')!;
+    fireEvent.dragStart(row);
+    fireEvent.drop(screen.getByText('Portfolio'));
+    expect(onChangeType).toHaveBeenCalledTimes(1);
+    expect(onChangeType).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 3, name: 'B1' }),
+      'PORTFOLIO'
+    );
+  });
+
+  it('does not fire onChangeType when dropped on the type it already has', () => {
+    const { onChangeType } = renderWithRetype();
+    fireEvent.click(screen.getByText('Blog'));
+    const row = screen.getByText('B1').closest('[role="group"]')!;
+    fireEvent.dragStart(row);
+    fireEvent.drop(screen.getByText('Blog'));
+    expect(onChangeType).not.toHaveBeenCalled();
+  });
+
+  it('does not treat MISC headers as drop targets', () => {
+    const { onChangeType } = renderWithRetype();
+    fireEvent.click(screen.getByText('Blog'));
+    const row = screen.getByText('B1').closest('[role="group"]')!;
+    fireEvent.dragStart(row);
+    fireEvent.drop(screen.getByText('Misc'));
+    expect(onChangeType).not.toHaveBeenCalled();
+  });
+
+  it('marks assignable rows draggable but never the HOME row', () => {
+    renderWithRetype();
+    const homeRow = screen.getByText('Home').closest('[role="group"]')!;
+    expect(homeRow).not.toHaveAttribute('draggable', 'true');
+    fireEvent.click(screen.getByText('Portfolio'));
+    const p1Row = screen.getByText('P1').closest('[role="group"]')!;
+    expect(p1Row).toHaveAttribute('draggable', 'true');
+  });
+
+  it('does not make the current ("you are here") row draggable', () => {
+    renderWithRetype(jest.fn(), { currentCollectionId: 2 }); // P1 auto-expands PORTFOLIO
+    const p1Row = screen.getByText('P1').closest('[role="group"]')!;
+    expect(p1Row).not.toHaveAttribute('draggable', 'true');
   });
 });

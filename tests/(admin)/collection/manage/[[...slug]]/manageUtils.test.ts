@@ -702,6 +702,25 @@ describe('buildUpdatePayload', () => {
       });
     });
 
+    it('should include tags when set', () => {
+      const formData: CollectionUpdateRequest = {
+        id: 1,
+        tags: { prev: [1, 2], newValue: ['sunset'] },
+      };
+
+      const result = buildUpdatePayload(formData, originalCollection);
+
+      expect(result).toEqual({
+        id: 1,
+        tags: { prev: [1, 2], newValue: ['sunset'] },
+      });
+    });
+
+    it('omits tags when formData.tags is undefined', () => {
+      const result = buildUpdatePayload({ id: 1 } as CollectionUpdateRequest, originalCollection);
+      expect(result.tags).toBeUndefined();
+    });
+
     it('should handle empty string vs undefined distinction for description', () => {
       const originalWithEmpty = createCollectionModel({
         ...originalCollection,
@@ -792,6 +811,24 @@ describe('buildUpdatePayload', () => {
         id: 1,
         visibility: CollectionVisibility.LISTED,
       });
+    });
+
+    it('includes parents when formData.parents is defined', () => {
+      const original = { id: 7, type: 'PORTFOLIO' } as unknown as CollectionModel;
+      const formData = {
+        id: 7,
+        parents: { newValue: [{ collectionId: 42, name: 'New Parent' }] },
+      } as CollectionUpdateRequest;
+      expect(buildUpdatePayload(formData, original).parents).toEqual({
+        newValue: [{ collectionId: 42, name: 'New Parent' }],
+      });
+    });
+
+    it('omits parents when formData.parents is undefined', () => {
+      const original = { id: 7, type: 'PORTFOLIO' } as unknown as CollectionModel;
+      expect(
+        buildUpdatePayload({ id: 7 } as CollectionUpdateRequest, original).parents
+      ).toBeUndefined();
     });
   });
 });
