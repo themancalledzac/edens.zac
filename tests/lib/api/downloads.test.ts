@@ -84,9 +84,9 @@ describe('downloadCollectionSelectionUrl', () => {
     );
   });
 
-  it('produces an empty imageIds value for an empty selection', () => {
-    expect(downloadCollectionSelectionUrl('smith-wedding', [])).toBe(
-      '/api/proxy/api/read/collections/smith-wedding/download?format=web&imageIds='
+  it('throws on an empty selection rather than emitting an ambiguous bare imageIds=', () => {
+    expect(() => downloadCollectionSelectionUrl('smith-wedding', [])).toThrow(
+      /at least one imageid/i
     );
   });
 });
