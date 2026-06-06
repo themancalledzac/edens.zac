@@ -1,7 +1,7 @@
 'use client';
 
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
-import type { ContentTagModel } from '@/app/types/ImageMetadata';
+import type { ContentTagModel } from '@/app/types/Metadata';
 
 export interface TagsSelectorProps {
   /** Currently-selected tags (resolved to full models; id === 0 means not-yet-created). */

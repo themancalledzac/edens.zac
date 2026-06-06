@@ -372,13 +372,25 @@ describe('saveGalleryAccess', () => {
       status: 200,
       json: jest
         .fn()
-        .mockResolvedValue({ saved: true, emailsSent: false, reason: null, password: 'gallery-pw', emails: [] }),
+        .mockResolvedValue({
+          saved: true,
+          emailsSent: false,
+          reason: null,
+          password: 'gallery-pw',
+          emails: [],
+        }),
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 
     const result = await saveGalleryAccess(42, { password: 'gallery-pw' });
 
-    expect(result).toEqual({ saved: true, emailsSent: false, reason: null, password: 'gallery-pw', emails: [] });
+    expect(result).toEqual({
+      saved: true,
+      emailsSent: false,
+      reason: null,
+      password: 'gallery-pw',
+      emails: [],
+    });
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/collections/42/gallery-access'),
       expect.objectContaining({
@@ -429,7 +441,13 @@ describe('saveGalleryAccess', () => {
       status: 200,
       json: jest
         .fn()
-        .mockResolvedValue({ saved: true, emailsSent: false, reason: null, password: null, emails: [] }),
+        .mockResolvedValue({
+          saved: true,
+          emailsSent: false,
+          reason: null,
+          password: null,
+          emails: [],
+        }),
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 

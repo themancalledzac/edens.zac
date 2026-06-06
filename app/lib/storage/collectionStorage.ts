@@ -14,6 +14,7 @@
 import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
 import { isLocalEnvironment } from '@/app/utils/environment';
+import { logger } from '@/app/utils/logger';
 
 const STORAGE_KEY_PREFIX = 'collection_cache_';
 const STORAGE_KEY_PREFIX_FULL = 'collection_full_cache_';
@@ -63,7 +64,7 @@ export const collectionStorage = {
       const key = getStorageKey(slug);
       sessionStorage.setItem(key, JSON.stringify(cached));
     } catch (error) {
-      console.warn('[collectionStorage] set: failed to write cache for slug:', slug, error);
+      logger.warn('collectionStorage', `set: failed to write cache for slug: ${slug}`, { error });
     }
   },
 
@@ -97,7 +98,7 @@ export const collectionStorage = {
 
       return cached.data;
     } catch (error) {
-      console.warn('[collectionStorage] get: failed to read cache for slug:', slug, error);
+      logger.warn('collectionStorage', `get: failed to read cache for slug: ${slug}`, { error });
       return null;
     }
   },
@@ -114,7 +115,7 @@ export const collectionStorage = {
       const key = getStorageKey(slug);
       sessionStorage.removeItem(key);
     } catch (error) {
-      console.warn('[collectionStorage] clear: failed to remove cache for slug:', slug, error);
+      logger.warn('collectionStorage', `clear: failed to remove cache for slug: ${slug}`, { error });
     }
   },
 
@@ -135,7 +136,7 @@ export const collectionStorage = {
         sessionStorage.removeItem(key);
       }
     } catch (error) {
-      console.warn('[collectionStorage] clearAll: failed to clear cache', error);
+      logger.warn('collectionStorage', 'clearAll: failed to clear cache', { error });
     }
   },
 
@@ -165,7 +166,7 @@ export const collectionStorage = {
       const cached = this.get(slug);
       if (!cached) {
         if (isLocalEnvironment()) {
-          console.warn(`[collectionStorage] No cache found for slug: ${slug}`);
+          logger.warn('collectionStorage', `No cache found for slug: ${slug}`);
         }
         return; // No cache to update
       }
@@ -188,7 +189,7 @@ export const collectionStorage = {
       this.set(slug, updatedCollection);
     } catch (error) {
       if (isLocalEnvironment()) {
-        console.error('[collectionStorage] Error updating cache:', error);
+        logger.error('collectionStorage', 'Error updating cache', error);
       }
       // Ignore errors when updating cache - fail silently to not break the UI
     }
@@ -211,11 +212,7 @@ export const collectionStorage = {
       const key = getFullStorageKey(slug);
       sessionStorage.setItem(key, JSON.stringify(cached));
     } catch (error) {
-      console.warn(
-        '[collectionStorage] setFull: failed to write full cache for slug:',
-        slug,
-        error
-      );
+      logger.warn('collectionStorage', `setFull: failed to write full cache for slug: ${slug}`, { error });
     }
   },
 
@@ -249,7 +246,7 @@ export const collectionStorage = {
 
       return cached.data;
     } catch (error) {
-      console.warn('[collectionStorage] getFull: failed to read full cache for slug:', slug, error);
+      logger.warn('collectionStorage', `getFull: failed to read full cache for slug: ${slug}`, { error });
       return null;
     }
   },
@@ -275,11 +272,7 @@ export const collectionStorage = {
       const key = getFullStorageKey(slug);
       sessionStorage.removeItem(key);
     } catch (error) {
-      console.warn(
-        '[collectionStorage] clearFull: failed to remove full cache for slug:',
-        slug,
-        error
-      );
+      logger.warn('collectionStorage', `clearFull: failed to remove full cache for slug: ${slug}`, { error });
     }
   },
 };

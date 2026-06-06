@@ -58,8 +58,8 @@ jest.mock('@/app/hooks/useCollectionData', () => {
   };
 });
 
-jest.mock('@/app/hooks/useImageMetadataEditor', () => ({
-  useImageMetadataEditor: () => ({
+jest.mock('@/app/hooks/useMetadataEditor', () => ({
+  useMetadataEditor: () => ({
     editingImage: null,
     openEditor: jest.fn(),
     closeEditor: jest.fn(),
@@ -134,7 +134,7 @@ jest.mock('@/app/components/ui/Dropdown/Dropdown', () => ({
   default: () => null,
 }));
 
-jest.mock('@/app/components/ImageMetadata/ImageMetadataModal', () => ({
+jest.mock('@/app/components/Metadata/MetadataModal', () => ({
   __esModule: true,
   default: () => null,
 }));

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import MetadataActionRow from '@/app/components/ImageMetadata/sections/MetadataActionRow';
+import MetadataActionRow from '@/app/components/Metadata/sections/MetadataActionRow';
 
 // Note on what is intentionally NOT asserted here:
 // The Button variant→class mapping (danger/ghost/warning) is the primitive's contract and is

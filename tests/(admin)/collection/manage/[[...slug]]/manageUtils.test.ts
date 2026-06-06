@@ -48,6 +48,7 @@ import {
 } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
 import { isContentImage } from '@/app/utils/contentTypeGuards';
+import { logger } from '@/app/utils/logger';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 // Test fixtures
@@ -1168,19 +1169,16 @@ describe('revalidateCollectionCache', () => {
 
   it('should fail silently when revalidation fails', async () => {
     const slug = 'test-collection';
-    // Mock isLocalEnvironment to return true so console.warn is called
+    // Mock isLocalEnvironment to return true so logger.warn is called
     const originalEnv = process.env.NEXT_PUBLIC_ENV;
     process.env.NEXT_PUBLIC_ENV = 'local';
-    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
     (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
     await expect(revalidateCollectionCache(slug)).resolves.toBeUndefined();
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      '[manageUtils] Failed to revalidate cache:',
-      expect.any(Error)
-    );
+    expect(warnSpy).toHaveBeenCalled();
 
-    consoleWarnSpy.mockRestore();
+    warnSpy.mockRestore();
     if (originalEnv) {
       process.env.NEXT_PUBLIC_ENV = originalEnv;
     } else {

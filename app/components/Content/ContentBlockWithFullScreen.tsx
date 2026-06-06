@@ -35,7 +35,7 @@ interface ContentBlockWithFullScreenProps {
   currentCoverImageId?: number;
   onImageClick?: (imageId: number) => void;
   justClickedImageId?: number | null;
-  selectedImageIds?: number[];
+  selectedIds?: number[];
   currentCollectionId?: number;
   // Reorder mode props
   isReorderMode?: boolean;
@@ -65,7 +65,7 @@ export default function ContentBlockWithFullScreen({
   currentCoverImageId,
   onImageClick,
   justClickedImageId,
-  selectedImageIds,
+  selectedIds,
   currentCollectionId,
   isReorderMode = false,
   reorderMoves,
@@ -189,7 +189,7 @@ export default function ContentBlockWithFullScreen({
         currentCoverImageId={currentCoverImageId}
         onImageClick={onImageClick}
         justClickedImageId={justClickedImageId}
-        selectedImageIds={selectedImageIds}
+        selectedIds={selectedIds}
         currentCollectionId={currentCollectionId}
         chunkSize={chunkSize}
         mobileChunkSize={mobileChunkSize}

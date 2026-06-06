@@ -1,4 +1,5 @@
 import { isLocalEnvironment } from '@/app/utils/environment';
+import { logger } from '@/app/utils/logger';
 
 const READ = 'read';
 const WRITE = 'write';
@@ -53,7 +54,7 @@ export async function getServerCookieHeader(): Promise<string | null> {
       return null;
     }
     // Any other unexpected error: warn and degrade gracefully rather than breaking the fetch.
-    console.warn('[getServerCookieHeader] Unexpected error reading cookies:', error);
+    logger.warn('getServerCookieHeader', 'Unexpected error reading cookies', { error });
     return null;
   }
 }

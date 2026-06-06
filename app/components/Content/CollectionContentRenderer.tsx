@@ -117,7 +117,7 @@ export default function CollectionContentRenderer({
   onImageClick,
   enableFullScreenView,
   onFullScreenImageClick,
-  selectedImageIds = [],
+  selectedIds = [],
   currentCollectionId,
   isSelectingCoverImage = false,
   currentCoverImageId,
@@ -465,7 +465,7 @@ export default function CollectionContentRenderer({
 
   const isCurrentCover = contentType === 'IMAGE' && currentCoverImageId === contentId;
   const isJustClicked = contentType === 'IMAGE' && justClickedImageId === contentId;
-  const isSelected = contentType === 'IMAGE' && selectedImageIds.includes(contentId);
+  const isSelected = contentType === 'IMAGE' && selectedIds.includes(contentId);
   const shouldShowOverlay =
     contentType === 'IMAGE' && ((isSelectingCoverImage && isCurrentCover) || isJustClicked);
 
@@ -560,14 +560,14 @@ export default function CollectionContentRenderer({
     className: enableParallax
       ? buildParallaxWrapperClassName(className, cbStyles, {
           isMobile,
-          isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
+          isSelected: contentType === 'IMAGE' && selectedIds.includes(contentId),
         })
       : buildWrapperClassName(className, cbStyles, {
           includeDragContainer: false,
           enableParallax,
           isMobile,
           hasClickHandler: hasClickHandler,
-          isSelected: contentType === 'IMAGE' && selectedImageIds.includes(contentId),
+          isSelected: contentType === 'IMAGE' && selectedIds.includes(contentId),
         }),
     style: {
       width: validWidth,

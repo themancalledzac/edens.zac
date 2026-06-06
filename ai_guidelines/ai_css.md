@@ -21,6 +21,7 @@ Padding exists **INSIDE** boxes (reduces content area with `box-sizing: border-b
 ```
 
 **What happens:**
+
 1. Calculate sizes: `availableWidth = 1044px - 12.8px = 1031.2px`
 2. Distribute: `img1 = 573px, img2 = 458px`
 3. CSS adds padding **INSIDE** img1's box: content becomes `573 - 12.8 = 560.2px`
@@ -38,6 +39,7 @@ Padding exists **INSIDE** boxes (reduces content area with `box-sizing: border-b
 ```
 
 **What happens:**
+
 1. Calculate sizes: `availableWidth = 1044px - 12.8px = 1031.2px`
 2. Distribute: `img1 = 573px, img2 = 458px`
 3. Gap sits **BETWEEN** boxes (outside them)

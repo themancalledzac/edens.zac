@@ -5,7 +5,7 @@
 
 import { type CollectionVisibility } from './CollectionVisibility';
 import type { AnyContentModel, ContentImageModel } from './Content';
-import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './ImageMetadata';
+import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './Metadata';
 
 /**
  * Collection type enum - matches backend CollectionType
@@ -43,6 +43,17 @@ export const ASSIGNABLE_COLLECTION_TYPES: CollectionType[] = [
   CollectionType.CLIENT_GALLERY,
   CollectionType.PARENT,
 ];
+
+/** Human-readable labels for every collection type (mirrors COLLECTION_VISIBILITY_LABELS). */
+export const COLLECTION_TYPE_LABELS: Record<CollectionType, string> = {
+  [CollectionType.HOME]: 'Home',
+  [CollectionType.PARENT]: 'Parent',
+  [CollectionType.CLIENT_GALLERY]: 'Client Gallery',
+  [CollectionType.ART_GALLERY]: 'Art Gallery',
+  [CollectionType.PORTFOLIO]: 'Portfolio',
+  [CollectionType.BLOG]: 'Blog',
+  [CollectionType.MISC]: 'Misc',
+};
 
 /**
  * Display mode for content collections
@@ -298,7 +309,7 @@ export interface CollectionPageDTO extends CollectionBaseModel {
 }
 
 /**
- * Re-export metadata types from ImageMetadata for convenience
+ * Re-export metadata types from Metadata for convenience
  * These are the source of truth - Collection.ts just re-exports them
  */
 export type {
@@ -308,7 +319,7 @@ export type {
   ContentPersonModel,
   ContentTagModel,
   FilmFormatDTO,
-} from './ImageMetadata';
+} from './Metadata';
 
 /**
  * Re-export CollectionVisibility for callers importing from Collection.ts.

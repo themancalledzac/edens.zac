@@ -4,7 +4,7 @@ import { CollectionHeader } from '@/app/components/ui/CollectionHeader/Collectio
 import { MetadataList } from '@/app/components/ui/MetadataList/MetadataList';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import type { LocationModel } from '@/app/types/Collection';
-import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
+import type { ContentPersonModel, ContentTagModel } from '@/app/types/Metadata';
 
 import styles from './MetadataPage.module.scss';
 

@@ -24,6 +24,7 @@
 ## Common ESLint Issues & Fixes
 
 ### Unused Imports
+
 ```typescript
 // Bad - useEffect is unused
 import { useState, useEffect } from 'react';
@@ -33,6 +34,7 @@ import { useState } from 'react';
 ```
 
 ### Import Order
+
 ```typescript
 // Bad
 import styles from './Component.module.scss';
@@ -61,6 +63,7 @@ import styles from './Component.module.scss';
 ## Pre-commit Checks
 
 Before committing:
+
 1. Run ESLint and fix all issues
 2. Run type checking (`tsc --noEmit`)
 3. Run tests

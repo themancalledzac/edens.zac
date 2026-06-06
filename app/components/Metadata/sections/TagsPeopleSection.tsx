@@ -1,11 +1,12 @@
 'use client';
 
+import { PERSON_ADD_NEW_FIELDS } from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
-import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
+import type { ContentPersonModel, ContentTagModel } from '@/app/types/Metadata';
 
-import type { ImageUpdateState } from '../hooks/useImageMetadataState';
-import modalStyles from '../ImageMetadataModal.module.scss';
+import type { ImageUpdateState } from '../hooks/useMetadataState';
+import modalStyles from '../MetadataModal.module.scss';
 
 export interface TagsPeopleSectionProps {
   updateState: ImageUpdateState;
@@ -50,15 +51,7 @@ export default function TagsPeopleSection({
             const currentPeople = updateState.people || [];
             updateStateField({ people: [...currentPeople, newPerson] });
           }}
-          addNewFields={[
-            {
-              name: 'name',
-              label: 'Person Name',
-              type: 'text',
-              placeholder: 'Enter person name',
-              required: true,
-            },
-          ]}
+          addNewFields={PERSON_ADD_NEW_FIELDS}
           getDisplayName={person => person.name}
           emptyText="No people selected"
         />

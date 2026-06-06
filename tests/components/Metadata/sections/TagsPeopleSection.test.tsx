@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import type { ImageUpdateState } from '@/app/components/ImageMetadata/hooks/useImageMetadataState';
-import TagsPeopleSection from '@/app/components/ImageMetadata/sections/TagsPeopleSection';
-import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
+import type { ImageUpdateState } from '@/app/components/Metadata/hooks/useMetadataState';
+import TagsPeopleSection from '@/app/components/Metadata/sections/TagsPeopleSection';
+import type { ContentPersonModel, ContentTagModel } from '@/app/types/Metadata';
 
 const baseUpdateState: ImageUpdateState = {
   id: 101,

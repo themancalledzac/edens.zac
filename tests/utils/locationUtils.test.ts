@@ -49,7 +49,10 @@ describe('convertLocationsToModels', () => {
     });
 
     it('should find existing location by name when id does not match', () => {
-      const result = convertLocationsToModels({ id: 999, name: 'Portland, OR' }, availableLocations);
+      const result = convertLocationsToModels(
+        { id: 999, name: 'Portland, OR' },
+        availableLocations
+      );
       expect(result).toEqual([{ id: 5, name: 'Portland, OR', slug: 'portland-or' }]);
     });
 

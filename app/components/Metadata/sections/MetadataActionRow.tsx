@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 
-import styles from '../ImageMetadataModal.module.scss';
+import styles from '../MetadataModal.module.scss';
 
 export interface MetadataActionRowProps {
   isBulkEdit: boolean;

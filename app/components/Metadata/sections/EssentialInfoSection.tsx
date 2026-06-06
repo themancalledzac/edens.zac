@@ -1,5 +1,6 @@
 'use client';
 
+import { LOCATION_ADD_NEW_FIELDS } from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { Checkbox } from '@/app/components/ui/Field/Checkbox';
 import { Input } from '@/app/components/ui/Field/Input';
@@ -7,8 +8,8 @@ import { Select } from '@/app/components/ui/Field/Select';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
 import type { CollectionListModel, LocationModel } from '@/app/types/Collection';
 
-import type { ImageUpdateState } from '../hooks/useImageMetadataState';
-import modalStyles from '../ImageMetadataModal.module.scss';
+import type { ImageUpdateState } from '../hooks/useMetadataState';
+import modalStyles from '../MetadataModal.module.scss';
 
 // ---------------------------------------------------------------------------
 // Static option list for the Rating <Select>. Hoisted out of the render path
@@ -161,15 +162,7 @@ export default function EssentialInfoSection({
               locations: [...(updateState.locations ?? []), newLocation],
             });
           }}
-          addNewFields={[
-            {
-              name: 'name',
-              label: 'Location Name',
-              type: 'text',
-              placeholder: 'e.g., Seattle, WA',
-              required: true,
-            },
-          ]}
+          addNewFields={LOCATION_ADD_NEW_FIELDS}
           getDisplayName={location => location?.name || ''}
           showNewIndicator
           emptyText="No locations set"

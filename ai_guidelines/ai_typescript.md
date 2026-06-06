@@ -99,11 +99,11 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 
 React 19 deprecated several event types. Always use the non-deprecated replacements:
 
-| Event Handler | Deprecated | Correct (React 19) |
-|---|---|---|
-| `onSubmit` | `FormEvent` | `SubmitEvent<HTMLFormElement>` |
-| `onChange` (input) | — | `ChangeEvent<HTMLInputElement>` |
-| `onChange` (textarea) | — | `ChangeEvent<HTMLTextAreaElement>` |
+| Event Handler         | Deprecated  | Correct (React 19)                 |
+| --------------------- | ----------- | ---------------------------------- |
+| `onSubmit`            | `FormEvent` | `SubmitEvent<HTMLFormElement>`     |
+| `onChange` (input)    | —           | `ChangeEvent<HTMLInputElement>`    |
+| `onChange` (textarea) | —           | `ChangeEvent<HTMLTextAreaElement>` |
 
 ### Import Rules
 

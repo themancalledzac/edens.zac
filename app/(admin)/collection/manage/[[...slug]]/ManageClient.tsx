@@ -13,16 +13,20 @@ import {
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
-import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
+import MetadataModal from '@/app/components/Metadata/MetadataModal';
 import RatingStars from '@/app/components/RatingStars/RatingStars';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { Button } from '@/app/components/ui/Button/Button';
+import {
+  LOCATION_ADD_NEW_FIELDS,
+  PERSON_ADD_NEW_FIELDS,
+} from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { SegmentedControl } from '@/app/components/ui/SegmentedControl/SegmentedControl';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
-import { useImageMetadataEditor } from '@/app/hooks/useImageMetadataEditor';
+import { useMetadataEditor } from '@/app/hooks/useMetadataEditor';
 import {
   createChildCollection,
   createCollection,
@@ -37,6 +41,8 @@ import {
 import { createGif, createImages, createTextContent, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
+  ASSIGNABLE_COLLECTION_TYPES,
+  COLLECTION_TYPE_LABELS,
   type CollectionCreateRequest,
   type CollectionListModel,
   CollectionType,
@@ -67,6 +73,7 @@ import {
   isParentType,
 } from '@/app/utils/contentTypeGuards';
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
+import { logger } from '@/app/utils/logger';
 import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import styles from './ManageClient.module.scss';
@@ -121,7 +128,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const isLoading = loading || operationLoading;
 
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
-  const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isTextBlockModalOpen, setIsTextBlockModalOpen] = useState(false);
 
   const [createData, setCreateData] = useState<CollectionCreateRequest>({
@@ -129,21 +136,21 @@ export default function ManageClient({ slug }: ManageClientProps) {
     title: '',
   });
 
-  const { editingContent, openEditor, closeEditor: baseCloseEditor } = useImageMetadataEditor();
+  const { editingContent, openEditor, closeEditor: baseCloseEditor } = useMetadataEditor();
 
   /**
-   * Wraps `baseCloseEditor` to clear `selectedImageIds` when closing in single-edit mode.
+   * Wraps `baseCloseEditor` to clear `selectedIds` when closing in single-edit mode.
    */
   const closeEditor = useCallback(() => {
     if (!isMultiSelectMode) {
-      setSelectedImageIds([]);
+      setSelectedIds([]);
     }
     baseCloseEditor();
   }, [isMultiSelectMode, baseCloseEditor]);
 
   useEffect(() => {
     if (!editingContent && !isMultiSelectMode) {
-      setSelectedImageIds([]);
+      setSelectedIds([]);
     }
   }, [editingContent, isMultiSelectMode]);
 
@@ -321,7 +328,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     setError,
     onExitMultiSelect: useCallback(() => {
       setIsMultiSelectMode(false);
-      setSelectedImageIds([]);
+      setSelectedIds([]);
     }, []),
   });
 
@@ -336,9 +343,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
       (collection?.content?.filter(
         contentItem =>
           (isContentImage(contentItem) || isGifContent(contentItem)) &&
-          selectedImageIds.includes(contentItem.id)
+          selectedIds.includes(contentItem.id)
       ) as (ContentImageModel | ContentGifModel)[]) || [],
-    [selectedImageIds, collection?.content]
+    [selectedIds, collection?.content]
   );
 
   const isParent = isParentType(updateData.type);
@@ -365,7 +372,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   );
 
   const handleImageLoadError = useCallback((contentId: number) => {
-    console.warn(`[ManageClient] Image failed to load: contentId=${contentId}`);
+    logger.warn('ManageClient', `Image failed to load: contentId=${contentId}`);
   }, []);
 
   /**
@@ -502,7 +509,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   }
                 })
                 .catch(error_ => {
-                  console.error('Failed to inherit locations to images:', error_);
+                  logger.error('ManageClient', 'Failed to inherit locations to images', error_);
                   setError('Collection saved, but failed to inherit locations to images.');
                 });
             }
@@ -653,17 +660,17 @@ export default function ManageClient({ slug }: ManageClientProps) {
    * Handle multi-select toggle
    */
   const handleMultiSelectToggle = useCallback((imageId: number) => {
-    setSelectedImageIds(prev => handleMultiSelectToggleUtil(imageId, prev));
+    setSelectedIds(prev => handleMultiSelectToggleUtil(imageId, prev));
   }, []);
 
   /**
    * Handle bulk edit - open modal with selected images
    */
   const handleBulkEdit = useCallback(() => {
-    if (selectedImageIds.length === 0 || !collection?.content) return;
+    if (selectedIds.length === 0 || !collection?.content) return;
 
     const selectedImages = collection.content.filter(
-      block => isContentImage(block) && selectedImageIds.includes(block.id)
+      block => isContentImage(block) && selectedIds.includes(block.id)
     ) as ContentImageModel[];
 
     const firstImage = selectedImages[0];
@@ -675,14 +682,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
     // No images in the selection — fall back to editing the first selected GIF/MP4.
     // The GIF modal is single-content for now; a future phase will add a real bulk flow.
     const selectedGif = collection.content.find(
-      (block): block is ContentGifModel =>
-        isGifContent(block) && selectedImageIds.includes(block.id)
+      (block): block is ContentGifModel => isGifContent(block) && selectedIds.includes(block.id)
     );
     const firstGif = selectedGif;
     if (firstGif) {
       openEditor(firstGif);
     }
-  }, [selectedImageIds, collection, openEditor]);
+  }, [selectedIds, collection, openEditor]);
 
   const { handleImageClick } = useImageClickHandler({
     isSelectingCoverImage,
@@ -692,7 +698,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
     collection,
     processedContent,
     openEditor,
-    setSelectedImageIds,
+    setSelectedIds,
     setIsMultiSelectMode,
   });
 
@@ -736,7 +742,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           });
         }
 
-        setSelectedImageIds([]);
+        setSelectedIds([]);
         setIsMultiSelectMode(false);
       } catch (error) {
         setError(handleApiError(error, 'An error occurred. Try reloading the page.'));
@@ -761,7 +767,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           collectionStorage.updateFull(slug, fullResponse);
           await revalidateCollectionCache(slug);
         }
-        setSelectedImageIds([]);
+        setSelectedIds([]);
         setIsMultiSelectMode(false);
       } catch (error) {
         setError(handleApiError(error, `Failed to refresh after GIF ${updated.id} update`));
@@ -785,9 +791,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const handleDeleteSuccess = useCallback(
     async (_deletedIds: number[]) => {
       if (!currentState?.collection.slug) {
-        console.warn(
-          'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection'
-        );
+        logger.warn('ManageClient', 'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection');
         setError('Unable to refresh collection after deletion — please reload the page.');
         return;
       }
@@ -804,7 +808,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           void revalidateMetadataCache();
         }
 
-        setSelectedImageIds([]);
+        setSelectedIds([]);
         setIsMultiSelectMode(false);
       } catch (error) {
         setError(handleApiError(error, 'Failed to refresh collection after deletion'));
@@ -1056,7 +1060,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
    */
   const handleAddNewChild = useCallback(async () => {
     if (!collection) {
-      console.warn('handleAddNewChild: collection unavailable, cannot create child');
+      logger.warn('ManageClient', 'handleAddNewChild: collection unavailable, cannot create child');
       setError('Collection data unavailable — please reload the page.');
       return;
     }
@@ -1114,7 +1118,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           <button
             type="button"
             onClick={() => {
-              setSelectedImageIds([]);
+              setSelectedIds([]);
               setIsMultiSelectMode(false);
             }}
             className={styles.toolbarButton}
@@ -1127,7 +1131,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
             onClick={() => {
               const allImageIds =
                 collection?.content?.filter(isContentImage).map(img => img.id) || [];
-              setSelectedImageIds(allImageIds);
+              setSelectedIds(allImageIds);
             }}
             className={styles.toolbarButton}
           >
@@ -1138,10 +1142,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
             type="button"
             onClick={handleBulkEdit}
             className={styles.toolbarButton}
-            disabled={selectedImageIds.length === 0}
+            disabled={selectedIds.length === 0}
           >
-            Edit {selectedImageIds.length} Image
-            {selectedImageIds.length !== 1 ? 's' : ''}
+            Edit {selectedIds.length} Image
+            {selectedIds.length !== 1 ? 's' : ''}
           </button>
         </>
       );
@@ -1191,11 +1195,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     className={styles.formSelect}
                     required
                   >
-                    <option value={CollectionType.PORTFOLIO}>Portfolio</option>
-                    <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
-                    <option value={CollectionType.BLOG}>Blog</option>
-                    <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
-                    <option value={CollectionType.PARENT}>Parent</option>
+                    {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+                      <option key={type} value={type}>
+                        {COLLECTION_TYPE_LABELS[type]}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1323,11 +1327,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               }
                               className={styles.formSelect}
                             >
-                              <option value={CollectionType.PORTFOLIO}>Portfolio</option>
-                              <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
-                              <option value={CollectionType.BLOG}>Blog</option>
-                              <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
-                              <option value={CollectionType.PARENT}>Parent</option>
+                              {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+                                <option key={type} value={type}>
+                                  {COLLECTION_TYPE_LABELS[type]}
+                                </option>
+                              ))}
                             </select>
                           </div>
                         </div>
@@ -1362,15 +1366,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             };
                             handleLocationsChange([...currentLocations, newLoc]);
                           }}
-                          addNewFields={[
-                            {
-                              name: 'name',
-                              label: 'Location Name',
-                              type: 'text',
-                              placeholder: 'e.g., Seattle, WA',
-                              required: true,
-                            },
-                          ]}
+                          addNewFields={LOCATION_ADD_NEW_FIELDS}
                           getDisplayName={location => location?.name || ''}
                           showNewIndicator
                           emptyText="No locations set"
@@ -1424,15 +1420,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               };
                               setCollectionPeopleState(prev => [...prev, newPerson]);
                             }}
-                            addNewFields={[
-                              {
-                                name: 'name',
-                                label: 'Person Name',
-                                type: 'text',
-                                placeholder: 'Enter person name',
-                                required: true,
-                              },
-                            ]}
+                            addNewFields={PERSON_ADD_NEW_FIELDS}
                             getDisplayName={person => person?.name || ''}
                             showNewIndicator
                             emptyText="No people set"
@@ -1715,7 +1703,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             if (col.slug) {
                               router.push(`/collection/manage/${col.slug}`);
                             } else {
-                              console.error('Cannot navigate to collection: missing slug', col);
+                              logger.error('ManageClient', 'Cannot navigate to collection: missing slug', col);
                               setError(`Cannot navigate to collection "${col.name}": missing slug`);
                             }
                           }}
@@ -1778,13 +1766,13 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     <div className={styles.toolbarActions}>{renderToolbarActions()}</div>
 
                     {(isSelectingCoverImage ||
-                      (isMultiSelectMode && selectedImageIds.length > 0) ||
+                      (isMultiSelectMode && selectedIds.length > 0) ||
                       reorderState.active) && (
                       <span className={styles.toolbarStatus}>
                         {isSelectingCoverImage && 'Click any image to set as cover'}
                         {isMultiSelectMode &&
-                          selectedImageIds.length > 0 &&
-                          `${selectedImageIds.length} image${selectedImageIds.length !== 1 ? 's' : ''} selected`}
+                          selectedIds.length > 0 &&
+                          `${selectedIds.length} image${selectedIds.length !== 1 ? 's' : ''} selected`}
                         {reorderState.active && 'Reorder mode \u2014 use arrows or pick and place'}
                       </span>
                     )}
@@ -1800,7 +1788,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     currentCoverImageId={collection.coverImage?.id}
                     onImageClick={reorderState.active ? undefined : handleImageClick}
                     justClickedImageId={justClickedImageId}
-                    selectedImageIds={isMultiSelectMode ? selectedImageIds : []}
+                    selectedIds={isMultiSelectMode ? selectedIds : []}
                     currentCollectionId={collection.id}
                     collectionSlug={collection.slug}
                     collectionData={collection}
@@ -1826,7 +1814,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           <video> preview and dispatches save/delete to the GIF endpoints when the previewed
           block is a GIF; image-only fields are greyed out in that branch. */}
       {editingContent && contentToEdit.length > 0 && (
-        <ImageMetadataModal
+        <MetadataModal
           onClose={closeEditor}
           onSaveSuccess={handleMetadataSaveSuccess}
           onGifSaveSuccess={handleGifSaveSuccess}
@@ -1840,7 +1828,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
           availableFilmFormats={currentState?.filmFormats || []}
           availableCollections={allCollections}
           availableLocations={currentState?.locations || []}
-          selectedImageIds={selectedImageIds}
+          selectedIds={selectedIds}
           selectedImages={contentToEdit}
           currentCollectionId={collection?.id}
         />
