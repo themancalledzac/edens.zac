@@ -13,6 +13,7 @@ import type {
   ContentLensModel,
   FilmFormatDTO,
 } from '@/app/types/Metadata';
+import { logger } from '@/app/utils/logger';
 
 import type { ImageUpdateState } from '../hooks/useMetadataState';
 import modalStyles from '../MetadataModal.module.scss';
@@ -176,7 +177,7 @@ export default function CameraSettingsSection({
               // Real failure (createCamera throws on non-2xx). Revert the phantom
               // camera (guarded — preserves a newer selection) and surface it so
               // the user isn't left with a camera that was never persisted.
-              console.error('Failed to create camera', error_);
+              logger.error('CameraSettingsSection', 'Failed to create camera', error_);
               replaceOptimisticCamera(trimmedName, previousCamera);
               setCreateError(`Couldn't save camera "${trimmedName}". Please try again.`);
             });

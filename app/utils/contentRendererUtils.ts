@@ -15,6 +15,7 @@ import {
   isGifContent,
   isTextContent,
 } from '@/app/utils/contentTypeGuards';
+import { logger } from '@/app/utils/logger';
 
 /**
  * Extracts image dimensions with fallback logic
@@ -94,9 +95,7 @@ export function normalizeContentToRendererProps(
     (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) &&
     process.env.NODE_ENV === 'development'
   ) {
-    console.warn(
-      `[normalizeContentToRendererProps] Non-finite dimensions for content ${content.id} (${content.contentType}): width=${calculatedWidth}, height=${calculatedHeight}`
-    );
+    logger.warn('normalizeContentToRendererProps', `Non-finite dimensions for content ${content.id} (${content.contentType}): width=${calculatedWidth}, height=${calculatedHeight}`);
   }
 
   let validWidth = calculatedWidth;
@@ -351,9 +350,7 @@ export function determineContentRendererProps(
     (!Number.isFinite(item.width) || !Number.isFinite(item.height)) &&
     process.env.NODE_ENV === 'development'
   ) {
-    console.warn(
-      `[determineContentRendererProps] Non-finite dimensions for content ${item.content.id} (${item.content.contentType}): width=${item.width}, height=${item.height}, row=${index}/${totalInRow}`
-    );
+    logger.warn('determineContentRendererProps', `Non-finite dimensions for content ${item.content.id} (${item.content.contentType}): width=${item.width}, height=${item.height}, row=${index}/${totalInRow}`);
   }
 
   const positionClassName = determinePositionClassName(totalInRow, index, styles);

@@ -67,6 +67,7 @@ import {
   isParentType,
 } from '@/app/utils/contentTypeGuards';
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
+import { logger } from '@/app/utils/logger';
 import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import styles from './ManageClient.module.scss';
@@ -365,7 +366,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   );
 
   const handleImageLoadError = useCallback((contentId: number) => {
-    console.warn(`[ManageClient] Image failed to load: contentId=${contentId}`);
+    logger.warn('ManageClient', `Image failed to load: contentId=${contentId}`);
   }, []);
 
   /**
@@ -502,7 +503,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   }
                 })
                 .catch(error_ => {
-                  console.error('Failed to inherit locations to images:', error_);
+                  logger.error('ManageClient', 'Failed to inherit locations to images', error_);
                   setError('Collection saved, but failed to inherit locations to images.');
                 });
             }
@@ -784,9 +785,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const handleDeleteSuccess = useCallback(
     async (_deletedIds: number[]) => {
       if (!currentState?.collection.slug) {
-        console.warn(
-          'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection'
-        );
+        logger.warn('ManageClient', 'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection');
         setError('Unable to refresh collection after deletion — please reload the page.');
         return;
       }
@@ -1055,7 +1054,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
    */
   const handleAddNewChild = useCallback(async () => {
     if (!collection) {
-      console.warn('handleAddNewChild: collection unavailable, cannot create child');
+      logger.warn('ManageClient', 'handleAddNewChild: collection unavailable, cannot create child');
       setError('Collection data unavailable — please reload the page.');
       return;
     }
@@ -1714,7 +1713,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             if (col.slug) {
                               router.push(`/collection/manage/${col.slug}`);
                             } else {
-                              console.error('Cannot navigate to collection: missing slug', col);
+                              logger.error('ManageClient', 'Cannot navigate to collection: missing slug', col);
                               setError(`Cannot navigate to collection "${col.name}": missing slug`);
                             }
                           }}
