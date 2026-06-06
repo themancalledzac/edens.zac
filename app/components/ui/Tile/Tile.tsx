@@ -1,7 +1,7 @@
 'use client';
 
 import Link, { type LinkProps } from 'next/link';
-import { type AnchorHTMLAttributes, forwardRef, type ReactNode } from 'react';
+import { type AnchorHTMLAttributes, type ReactNode, type Ref } from 'react';
 
 import styles from './Tile.module.scss';
 
@@ -11,6 +11,8 @@ export interface TileProps
   'aria-label': string;
   children: ReactNode;
   className?: string;
+  /** Forwarded to the underlying next/link `<a>` (React 19 ref-as-prop). */
+  ref?: Ref<HTMLAnchorElement>;
 }
 
 /**
@@ -20,14 +22,11 @@ export interface TileProps
  * is reserved for genuine non-nav actions (fullscreen-open); navigation is the
  * <a href>, so middle-click / cmd-click keep working.
  */
-export const Tile = forwardRef<HTMLAnchorElement, TileProps>(function Tile(
-  { children, className, ...rest },
-  ref
-) {
+export function Tile({ children, className, ref, ...rest }: TileProps) {
   const classes = [styles.tile, className].filter(Boolean).join(' ');
   return (
     <Link ref={ref} className={classes} {...rest}>
       {children}
     </Link>
   );
-});
+}
