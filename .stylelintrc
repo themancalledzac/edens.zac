@@ -1,8 +1,5 @@
 {
-  "extends": [
-    "stylelint-config-standard-scss",
-    "stylelint-prettier/recommended"
-  ],
+  "extends": ["stylelint-config-standard-scss", "stylelint-prettier/recommended"],
   "rules": {
     "alpha-value-notation": null,
     "at-rule-no-vendor-prefix": null,
@@ -11,9 +8,7 @@
     "declaration-block-no-duplicate-properties": [
       true,
       {
-        "ignore": [
-          "consecutive-duplicates-with-different-values"
-        ]
+        "ignore": ["consecutive-duplicates-with-different-values"]
       }
     ],
     "declaration-block-no-redundant-longhand-properties": null,
@@ -27,10 +22,7 @@
     "property-no-unknown": [
       true,
       {
-        "ignoreSelectors": [
-          ":export",
-          ":global"
-        ]
+        "ignoreSelectors": [":export", ":global"]
       }
     ],
     "scss/at-extend-no-missing-placeholder": null,
@@ -44,9 +36,7 @@
     "selector-pseudo-class-no-unknown": [
       true,
       {
-        "ignorePseudoClasses": [
-          "global"
-        ]
+        "ignorePseudoClasses": ["global"]
       }
     ],
     "comment-empty-line-before": null,

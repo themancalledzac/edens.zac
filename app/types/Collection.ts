@@ -44,6 +44,17 @@ export const ASSIGNABLE_COLLECTION_TYPES: CollectionType[] = [
   CollectionType.PARENT,
 ];
 
+/** Human-readable labels for every collection type (mirrors COLLECTION_VISIBILITY_LABELS). */
+export const COLLECTION_TYPE_LABELS: Record<CollectionType, string> = {
+  [CollectionType.HOME]: 'Home',
+  [CollectionType.PARENT]: 'Parent',
+  [CollectionType.CLIENT_GALLERY]: 'Client Gallery',
+  [CollectionType.ART_GALLERY]: 'Art Gallery',
+  [CollectionType.PORTFOLIO]: 'Portfolio',
+  [CollectionType.BLOG]: 'Blog',
+  [CollectionType.MISC]: 'Misc',
+};
+
 /**
  * Display mode for content collections
  * - CHRONOLOGICAL: Order blocks by creation date

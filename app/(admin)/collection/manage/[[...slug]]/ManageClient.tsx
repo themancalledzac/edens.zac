@@ -18,6 +18,10 @@ import RatingStars from '@/app/components/RatingStars/RatingStars';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { Button } from '@/app/components/ui/Button/Button';
+import {
+  LOCATION_ADD_NEW_FIELDS,
+  PERSON_ADD_NEW_FIELDS,
+} from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { SegmentedControl } from '@/app/components/ui/SegmentedControl/SegmentedControl';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
@@ -37,6 +41,8 @@ import {
 import { createGif, createImages, createTextContent, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
+  ASSIGNABLE_COLLECTION_TYPES,
+  COLLECTION_TYPE_LABELS,
   type CollectionCreateRequest,
   type CollectionListModel,
   CollectionType,
@@ -1189,11 +1195,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     className={styles.formSelect}
                     required
                   >
-                    <option value={CollectionType.PORTFOLIO}>Portfolio</option>
-                    <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
-                    <option value={CollectionType.BLOG}>Blog</option>
-                    <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
-                    <option value={CollectionType.PARENT}>Parent</option>
+                    {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+                      <option key={type} value={type}>
+                        {COLLECTION_TYPE_LABELS[type]}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1321,11 +1327,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               }
                               className={styles.formSelect}
                             >
-                              <option value={CollectionType.PORTFOLIO}>Portfolio</option>
-                              <option value={CollectionType.ART_GALLERY}>Art Gallery</option>
-                              <option value={CollectionType.BLOG}>Blog</option>
-                              <option value={CollectionType.CLIENT_GALLERY}>Client Gallery</option>
-                              <option value={CollectionType.PARENT}>Parent</option>
+                              {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+                                <option key={type} value={type}>
+                                  {COLLECTION_TYPE_LABELS[type]}
+                                </option>
+                              ))}
                             </select>
                           </div>
                         </div>
@@ -1360,15 +1366,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             };
                             handleLocationsChange([...currentLocations, newLoc]);
                           }}
-                          addNewFields={[
-                            {
-                              name: 'name',
-                              label: 'Location Name',
-                              type: 'text',
-                              placeholder: 'e.g., Seattle, WA',
-                              required: true,
-                            },
-                          ]}
+                          addNewFields={LOCATION_ADD_NEW_FIELDS}
                           getDisplayName={location => location?.name || ''}
                           showNewIndicator
                           emptyText="No locations set"
@@ -1422,15 +1420,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               };
                               setCollectionPeopleState(prev => [...prev, newPerson]);
                             }}
-                            addNewFields={[
-                              {
-                                name: 'name',
-                                label: 'Person Name',
-                                type: 'text',
-                                placeholder: 'Enter person name',
-                                required: true,
-                              },
-                            ]}
+                            addNewFields={PERSON_ADD_NEW_FIELDS}
                             getDisplayName={person => person?.name || ''}
                             showNewIndicator
                             emptyText="No people set"

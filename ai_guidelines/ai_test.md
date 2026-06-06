@@ -11,35 +11,37 @@
 ## Testing Patterns
 
 ### API Function Test
+
 ```typescript
 describe('fetchCollectionBySlug', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
   });
-  
+
   it('should return collection data for valid slug', async () => {
     const mockData = { id: 1, slug: 'test', title: 'Test Collection' };
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => mockData,
     });
-    
+
     const result = await fetchCollectionBySlug('test');
     expect(result).toEqual(mockData);
   });
-  
+
   it('should throw error for invalid slug', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: false,
       status: 404,
     });
-    
+
     await expect(fetchCollectionBySlug('invalid')).rejects.toThrow();
   });
 });
 ```
 
 ### Component Test
+
 ```typescript
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
@@ -52,9 +54,9 @@ describe('GridSection', () => {
       title: 'Test Title',
       image: { src: '/test.jpg', alt: 'Test Image' },
     };
-    
+
     render(<GridSection data={mockData} />);
-    
+
     expect(screen.getByText('Test Title')).toBeInTheDocument();
     expect(screen.getByAltText('Test Image')).toBeInTheDocument();
   });
@@ -62,6 +64,7 @@ describe('GridSection', () => {
 ```
 
 ### Utility Function Test
+
 ```typescript
 import { processContentLayout } from '@/app/utils/contentLayout';
 import { describe, it, expect } from '@jest/globals';
@@ -72,7 +75,7 @@ describe('processContentLayout', () => {
       { type: 'IMAGE', width: 100, height: 100 },
       { type: 'TEXT', content: 'Test' },
     ];
-    
+
     const result = processContentLayout(content);
     expect(result).toHaveLength(2);
     expect(result[0].type).toBe('IMAGE');
@@ -83,12 +86,14 @@ describe('processContentLayout', () => {
 ## Test Setup
 
 ### Jest Configuration
+
 - Uses `jest.config.mjs` for configuration
 - Setup file: `jest.setup.ts`
 - Test environment: jsdom for React components
 - Coverage: Aim for >80% coverage on new code
 
 ### Mocking Patterns
+
 ```typescript
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
@@ -131,6 +136,7 @@ Object.defineProperty(window, 'matchMedia', {
 ## Test Fixture Gotchas
 
 When creating test fixtures, match the current type definitions exactly:
+
 - `CollectionModel` uses `type: CollectionType` (enum import), NOT `collectionType: string`
 - `ContentCollectionModel` requires `referencedCollectionId: number`
 - `ContentImageModel.location` is `{ id: number; name: string } | null`, NOT a string
@@ -140,6 +146,7 @@ When creating test fixtures, match the current type definitions exactly:
 ## Testing Backlog Items
 
 Based on current state, prioritize tests for:
+
 - [x] `app/lib/api/collections.ts` - API parsing functions
 - [ ] `app/components/` - All new App Router components
 - [ ] `app/[slug]/page.tsx` - Dynamic route components

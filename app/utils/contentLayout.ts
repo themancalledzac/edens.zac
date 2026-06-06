@@ -118,9 +118,9 @@ export function processContentForDisplay(
   }
 
   const rowWidth = options?.isMobile
-    ? (options?.mobileChunkSize !== undefined
+    ? options?.mobileChunkSize !== undefined
       ? Math.round(options.mobileChunkSize * 2.5)
-      : LAYOUT.mobileSlotWidth)
+      : LAYOUT.mobileSlotWidth
     : Math.round(chunkSize * 2.5);
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;

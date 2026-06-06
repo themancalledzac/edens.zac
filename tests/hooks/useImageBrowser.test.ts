@@ -61,9 +61,7 @@ describe('useImageBrowser', () => {
 
     await waitFor(() => expect(result.current.items).toHaveLength(100));
     expect(mockedGetAllImages).toHaveBeenCalledTimes(1);
-    expect(mockedGetAllImages).toHaveBeenCalledWith(
-      expect.objectContaining({ page: 1, size: 50 })
-    );
+    expect(mockedGetAllImages).toHaveBeenCalledWith(expect.objectContaining({ page: 1, size: 50 }));
   });
 
   it('does not auto-prefetch when SSR returned the last page', async () => {
@@ -96,5 +94,4 @@ describe('useImageBrowser', () => {
     act(() => result.current.loadNext());
     expect(mockedGetAllImages).toHaveBeenCalledTimes(2);
   });
-
 });
