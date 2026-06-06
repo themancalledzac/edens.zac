@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import { type ContentGifModel, type ContentImageModel } from '@/app/types/Content';
-import { type ContentCameraModel } from '@/app/types/ImageMetadata';
+import { type ContentCameraModel } from '@/app/types/Metadata';
 import { convertLocationsToModels } from '@/app/utils/locationUtils';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
-import { getCommonValues } from '../imageMetadataUtils';
+import { getCommonValues } from '../metadataUtils';
 import type { EditableContent } from '../types';
 
 /**
@@ -28,7 +28,7 @@ export type ImageUpdateState = Partial<ContentImageModel> &
  */
 const EMPTY_LOCATIONS: LocationModel[] = [];
 
-export interface UseImageMetadataStateResult {
+export interface UseMetadataStateResult {
   updateState: ImageUpdateState;
   updateStateField: (updates: Partial<ImageUpdateState>) => void;
   hasChanges: boolean;
@@ -39,17 +39,17 @@ export interface UseImageMetadataStateResult {
   replaceOptimisticCamera: (optimisticName: string, replacement: ContentCameraModel | null) => void;
 }
 
-interface UseImageMetadataStateParams {
+interface UseMetadataStateParams {
   selectedImages: EditableContent[];
-  selectedImageIds: number[];
+  selectedIds: number[];
   availableLocations?: LocationModel[];
 }
 
-export function useImageMetadataState({
+export function useMetadataState({
   selectedImages,
-  selectedImageIds,
+  selectedIds,
   availableLocations,
-}: UseImageMetadataStateParams): UseImageMetadataStateResult {
+}: UseMetadataStateParams): UseMetadataStateResult {
   // Use a module-scope constant when availableLocations is absent OR empty to prevent the
   // effect from re-firing every render due to a new [] reference. The ?? operator alone is
   // insufficient — a caller that passes `[]` literally would produce a new array each render.
@@ -57,7 +57,7 @@ export function useImageMetadataState({
   const stableLocations =
     availableLocations && availableLocations.length > 0 ? availableLocations : EMPTY_LOCATIONS;
 
-  const isBulkEdit = selectedImageIds.length > 1;
+  const isBulkEdit = selectedIds.length > 1;
 
   // `getCommonValues` was authored for ContentImageModel only — for GIF blocks we slot the union
   // in but the bulk-edit code path only ever runs on images (ManageClient.handleBulkEdit splits

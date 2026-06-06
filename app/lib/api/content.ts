@@ -25,7 +25,7 @@ import {
   type ContentImageModel,
   type ContentImageUpdateRequest,
 } from '@/app/types/Content';
-import { type ContentPersonModel, type ContentTagModel } from '@/app/types/ImageMetadata';
+import { type ContentPersonModel, type ContentTagModel } from '@/app/types/Metadata';
 
 // ============================================================================
 // READ Endpoints (Production - /api/read/content)
@@ -369,9 +369,9 @@ export async function getAllImages(params: GetAllImagesParams = {}): Promise<Pag
     const totalPages =
       typeof env.totalPages === 'number'
         ? env.totalPages
-        : (size > 0
+        : size > 0
           ? Math.ceil(totalElements / size)
-          : 1);
+          : 1;
     const number = typeof env.number === 'number' ? env.number : page;
     const last = typeof env.last === 'boolean' ? env.last : number >= totalPages - 1;
     return { items, page: number, totalPages, totalElements, isLast: last };

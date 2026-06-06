@@ -20,7 +20,7 @@ interface UseImageClickHandlerParams {
   collection: CollectionModel | null;
   processedContent: AnyContentModel[];
   openEditor: (content: ContentImageModel | ContentGifModel) => void;
-  setSelectedImageIds: Dispatch<SetStateAction<number[]>>;
+  setSelectedIds: Dispatch<SetStateAction<number[]>>;
   setIsMultiSelectMode: Dispatch<SetStateAction<boolean>>;
 }
 
@@ -32,7 +32,7 @@ export function useImageClickHandler({
   collection,
   processedContent,
   openEditor,
-  setSelectedImageIds,
+  setSelectedIds,
   setIsMultiSelectMode,
 }: UseImageClickHandlerParams) {
   const router = useRouter();
@@ -59,7 +59,7 @@ export function useImageClickHandler({
         // Mode 4: Single image edit
         const imageBlock = handleSingleImageEdit(imageId, collection?.content, processedContent);
         if (imageBlock) {
-          setSelectedImageIds([imageId]);
+          setSelectedIds([imageId]);
           setIsMultiSelectMode(false);
           openEditor(imageBlock);
         }
@@ -73,7 +73,7 @@ export function useImageClickHandler({
       collection?.content,
       processedContent,
       openEditor,
-      setSelectedImageIds,
+      setSelectedIds,
       setIsMultiSelectMode,
       router,
     ]

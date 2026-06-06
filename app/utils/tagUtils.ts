@@ -11,7 +11,7 @@
  */
 
 import type { TagUpdate } from '@/app/types/Collection';
-import type { ContentTagModel } from '@/app/types/ImageMetadata';
+import type { ContentTagModel } from '@/app/types/Metadata';
 
 /**
  * Convert tag input (array of models, array of names, single name, or null) to a

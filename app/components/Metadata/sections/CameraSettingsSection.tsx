@@ -12,11 +12,11 @@ import type {
   ContentFilmTypeModel,
   ContentLensModel,
   FilmFormatDTO,
-} from '@/app/types/ImageMetadata';
+} from '@/app/types/Metadata';
 
-import type { ImageUpdateState } from '../hooks/useImageMetadataState';
-import modalStyles from '../ImageMetadataModal.module.scss';
-import { computeCameraSelectionUpdate } from '../imageMetadataUtils';
+import type { ImageUpdateState } from '../hooks/useMetadataState';
+import modalStyles from '../MetadataModal.module.scss';
+import { computeCameraSelectionUpdate } from '../metadataUtils';
 
 // ---------------------------------------------------------------------------
 // Static add-new-field schemas. Hoisted out of the render path because they
@@ -89,7 +89,7 @@ export interface CameraSettingsSectionProps {
   /**
    * Guarded swap/revert for the optimistic add-new camera. Only mutates the
    * selection when it is still the `{ id: 0 }` placeholder — see
-   * `useImageMetadataState.replaceOptimisticCamera`.
+   * `useMetadataState.replaceOptimisticCamera`.
    */
   replaceOptimisticCamera: (optimisticName: string, replacement: ContentCameraModel | null) => void;
   availableCameras: ContentCameraModel[];

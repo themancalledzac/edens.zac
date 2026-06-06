@@ -19,7 +19,7 @@ interface BoxRendererProps {
   onImageClick?: (imageId: number) => void;
   enableFullScreenView?: boolean;
   onFullScreenImageClick?: (image: ViewableContent) => void;
-  selectedImageIds?: number[];
+  selectedIds?: number[];
   currentCollectionId?: number;
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
@@ -47,7 +47,7 @@ export function BoxRenderer({
   onImageClick,
   enableFullScreenView,
   onFullScreenImageClick,
-  selectedImageIds = [],
+  selectedIds = [],
   currentCollectionId,
   isSelectingCoverImage,
   currentCoverImageId,
@@ -100,7 +100,7 @@ export function BoxRenderer({
       onImageClick,
       enableFullScreenView,
       onFullScreenImageClick,
-      selectedImageIds,
+      selectedIds,
       currentCollectionId,
       isSelectingCoverImage,
       currentCoverImageId,
@@ -132,7 +132,7 @@ export function BoxRenderer({
     onImageClick,
     enableFullScreenView,
     onFullScreenImageClick,
-    selectedImageIds,
+    selectedIds,
     currentCollectionId,
     isSelectingCoverImage,
     currentCoverImageId,

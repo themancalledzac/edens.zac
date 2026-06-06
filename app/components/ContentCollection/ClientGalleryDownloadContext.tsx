@@ -15,7 +15,7 @@ export interface ClientGalleryDownloadContextValue {
   /** True when the user is picking a subset of images to download. */
   isSelectMode: boolean;
   /** Currently selected image ids. */
-  selectedImageIds: number[];
+  selectedIds: number[];
   /** Enter select mode (tapping an image now toggles selection instead of opening fullscreen). */
   enterSelectMode: () => void;
   /** Leave select mode and clear the current selection. */

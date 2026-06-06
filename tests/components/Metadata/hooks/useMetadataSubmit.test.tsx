@@ -1,10 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 
 import {
-  useImageMetadataSubmit,
-  type UseImageMetadataSubmitParams,
-  type UseImageMetadataSubmitResult,
-} from '@/app/components/ImageMetadata/hooks/useImageMetadataSubmit';
+  useMetadataSubmit,
+  type UseMetadataSubmitParams,
+  type UseMetadataSubmitResult,
+} from '@/app/components/Metadata/hooks/useMetadataSubmit';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 // ---------------------------------------------------------------------------
@@ -65,10 +65,10 @@ const gif = (id: number, overrides: Partial<ContentGifModel> = {}): ContentGifMo
 // Harness — single-image / no-changes defaults; override per test.
 // ---------------------------------------------------------------------------
 const defaultParams = (
-  overrides: Partial<UseImageMetadataSubmitParams> = {}
-): UseImageMetadataSubmitParams => ({
+  overrides: Partial<UseMetadataSubmitParams> = {}
+): UseMetadataSubmitParams => ({
   selectedImages: [img(1)],
-  selectedImageIds: [1],
+  selectedIds: [1],
   updateState: { id: 1, title: 'Image 1', contentType: 'IMAGE', collections: [] },
   hasChanges: false,
   originalCollectionIds: new Set<number>(),
@@ -77,8 +77,8 @@ const defaultParams = (
   ...overrides,
 });
 
-const renderSubmit = (overrides: Partial<UseImageMetadataSubmitParams> = {}) =>
-  renderHook(() => useImageMetadataSubmit(defaultParams(overrides)));
+const renderSubmit = (overrides: Partial<UseMetadataSubmitParams> = {}) =>
+  renderHook(() => useMetadataSubmit(defaultParams(overrides)));
 
 /** Run an async hook action inside act(). */
 const runAct = async (fn: () => Promise<void> | void): Promise<void> => {
@@ -88,7 +88,7 @@ const runAct = async (fn: () => Promise<void> | void): Promise<void> => {
 };
 
 /** Drive handleSubmit with a stub form event. */
-const submitForm = (result: { current: UseImageMetadataSubmitResult }): Promise<void> =>
+const submitForm = (result: { current: UseMetadataSubmitResult }): Promise<void> =>
   runAct(() => {
     const fakeEvent = { preventDefault: jest.fn() } as unknown as Parameters<
       typeof result.current.handleSubmit
@@ -99,7 +99,7 @@ const submitForm = (result: { current: UseImageMetadataSubmitResult }): Promise<
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-describe('useImageMetadataSubmit', () => {
+describe('useMetadataSubmit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(window, 'confirm').mockReturnValue(false);
@@ -128,7 +128,7 @@ describe('useImageMetadataSubmit', () => {
 
     const { result } = renderSubmit({
       selectedImages: [singleGif],
-      selectedImageIds: [202],
+      selectedIds: [202],
       updateState: { id: 202, title: 'Updated GIF', collections: [] },
       hasChanges: true,
       onClose,
@@ -152,7 +152,7 @@ describe('useImageMetadataSubmit', () => {
 
     const { result } = renderSubmit({
       selectedImages: images,
-      selectedImageIds: [1, 2],
+      selectedIds: [1, 2],
       updateState: { id: 0, contentType: 'IMAGE', title: 'Bulk Title', collections: [] },
       hasChanges: true,
       onClose,
@@ -179,7 +179,7 @@ describe('useImageMetadataSubmit', () => {
 
     const { result } = renderSubmit({
       selectedImages: [singleImage],
-      selectedImageIds: [1],
+      selectedIds: [1],
       updateState: { id: 1, contentType: 'IMAGE', title: 'Renamed', collections: [] },
       hasChanges: true,
       onClose,
@@ -227,7 +227,7 @@ describe('useImageMetadataSubmit', () => {
 
     const { result } = renderSubmit({
       selectedImages: [singleGif],
-      selectedImageIds: [303],
+      selectedIds: [303],
       updateState: { id: 303, title: 'Updated GIF', collections: [] },
       hasChanges: true,
       onClose,
@@ -315,7 +315,7 @@ describe('useImageMetadataSubmit', () => {
 
     const { result } = renderSubmit({
       selectedImages: [singleGif],
-      selectedImageIds: [202],
+      selectedIds: [202],
       updateState: { id: 202, collections: [] },
       hasChanges: false,
       onClose,
@@ -349,7 +349,7 @@ describe('useImageMetadataSubmit', () => {
 
     const { result } = renderSubmit({
       selectedImages: [image],
-      selectedImageIds: [1],
+      selectedIds: [1],
       updateState: { id: 1, collections: [] },
       hasChanges: false,
       currentCollectionId: 7,
@@ -376,7 +376,7 @@ describe('useImageMetadataSubmit', () => {
 
     const { result } = renderSubmit({
       selectedImages: [image],
-      selectedImageIds: [1],
+      selectedIds: [1],
       updateState: { id: 1, collections: [] },
       hasChanges: false,
       currentCollectionId: 7,

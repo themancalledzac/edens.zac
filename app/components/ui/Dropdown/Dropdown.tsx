@@ -45,7 +45,7 @@ export interface AddNewField {
 
 /**
  * Chip rendering style for multi-select values.
- * - `detailed` (default): pill with an explicit "×" remove button (used in ImageMetadataModal).
+ * - `detailed` (default): pill with an explicit "×" remove button (used in MetadataModal).
  * - `simple`: borderless click-to-remove pill, no × button (used in admin ManageClient lists).
  */
 export type DropdownVariant = 'detailed' | 'simple';

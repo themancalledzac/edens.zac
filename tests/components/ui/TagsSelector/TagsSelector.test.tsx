@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
-import type { ContentTagModel } from '@/app/types/ImageMetadata';
+import type { ContentTagModel } from '@/app/types/Metadata';
 
 const availableTags: ContentTagModel[] = [
   { id: 1, name: 'landscape', slug: 'landscape' },

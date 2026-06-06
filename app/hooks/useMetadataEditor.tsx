@@ -21,7 +21,7 @@ export type EditableContent = ContentImageModel | ContentGifModel;
  *
  * @returns Editor state and control functions
  */
-export function useImageMetadataEditor() {
+export function useMetadataEditor() {
   const [editingContent, setEditingContent] = useState<EditableContent | null>(null);
 
   /**

@@ -83,7 +83,7 @@ export interface CollectionContentRendererProps extends ContentRendererProps {
   onFullScreenImageClick?: (image: ViewableContent) => void;
 
   // Image-specific overlays (only for IMAGE type)
-  selectedImageIds?: number[];
+  selectedIds?: number[];
   currentCollectionId?: number;
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;

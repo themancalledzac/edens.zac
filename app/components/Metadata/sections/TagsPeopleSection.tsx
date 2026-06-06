@@ -2,10 +2,10 @@
 
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
-import type { ContentPersonModel, ContentTagModel } from '@/app/types/ImageMetadata';
+import type { ContentPersonModel, ContentTagModel } from '@/app/types/Metadata';
 
-import type { ImageUpdateState } from '../hooks/useImageMetadataState';
-import modalStyles from '../ImageMetadataModal.module.scss';
+import type { ImageUpdateState } from '../hooks/useMetadataState';
+import modalStyles from '../MetadataModal.module.scss';
 
 export interface TagsPeopleSectionProps {
   updateState: ImageUpdateState;

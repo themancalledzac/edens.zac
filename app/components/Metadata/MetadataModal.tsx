@@ -12,12 +12,12 @@ import {
   type ContentPersonModel,
   type ContentTagModel,
   type FilmFormatDTO,
-} from '@/app/types/ImageMetadata';
+} from '@/app/types/Metadata';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 
-import { useImageMetadataState } from './hooks/useImageMetadataState';
-import { useImageMetadataSubmit } from './hooks/useImageMetadataSubmit';
-import styles from './ImageMetadataModal.module.scss';
+import { useMetadataState } from './hooks/useMetadataState';
+import { useMetadataSubmit } from './hooks/useMetadataSubmit';
+import styles from './MetadataModal.module.scss';
 import CameraSettingsSection from './sections/CameraSettingsSection';
 import EssentialInfoSection from './sections/EssentialInfoSection';
 import MediaPreview from './sections/MediaPreview';
@@ -25,7 +25,7 @@ import MetadataActionRow from './sections/MetadataActionRow';
 import TagsPeopleSection from './sections/TagsPeopleSection';
 import type { EditableContent } from './types';
 
-interface ImageMetadataModalProps {
+interface MetadataModalProps {
   onClose: () => void;
   onSaveSuccess?: (response: ContentImageUpdateResponse) => void;
   /**
@@ -43,7 +43,7 @@ interface ImageMetadataModalProps {
   availableFilmFormats?: FilmFormatDTO[];
   availableCollections?: CollectionListModel[];
   availableLocations?: LocationModel[];
-  selectedImageIds: number[]; // Array of selected content IDs (1 for single edit, N for bulk edit)
+  selectedIds: number[]; // Array of selected content IDs (1 for single edit, N for bulk edit)
   /**
    * Content blocks to edit. May include images and GIF/MP4 blocks. Bulk edit only operates on
    * the IMAGE subset (the EXIF-heavy fields don't have GIF analogs); when the selection is a
@@ -57,10 +57,10 @@ interface ImageMetadataModalProps {
  * Orchestrator for the image/GIF metadata editor sheet modal.
  *
  * Composes `<MediaPreview>` (left panel) with the metadata form (right panel) via
- * `useImageMetadataState` and `useImageMetadataSubmit`. Zero business logic lives here —
+ * `useMetadataState` and `useMetadataSubmit`. Zero business logic lives here —
  * this file is state-routing + JSX-composition only.
  */
-export default function ImageMetadataModal({
+export default function MetadataModal({
   onClose,
   onSaveSuccess,
   onGifSaveSuccess,
@@ -74,11 +74,11 @@ export default function ImageMetadataModal({
   availableFilmFormats = [],
   availableCollections = [],
   availableLocations = [],
-  selectedImageIds,
+  selectedIds,
   selectedImages,
   currentCollectionId,
-}: ImageMetadataModalProps) {
-  const isBulkEdit = selectedImageIds.length > 1;
+}: MetadataModalProps) {
+  const isBulkEdit = selectedIds.length > 1;
 
   const {
     updateState,
@@ -89,12 +89,12 @@ export default function ImageMetadataModal({
     pendingRemoveIds,
     handleCollectionToggle,
     replaceOptimisticCamera,
-  } = useImageMetadataState({ selectedImages, selectedImageIds, availableLocations });
+  } = useMetadataState({ selectedImages, selectedIds, availableLocations });
 
   const { saving, error, handleSubmit, handleCancel, handleDelete, handleRemoveFromCollection } =
-    useImageMetadataSubmit({
+    useMetadataSubmit({
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       updateState,
       hasChanges,
       originalCollectionIds,
@@ -122,14 +122,14 @@ export default function ImageMetadataModal({
         <MediaPreview
           isBulkEdit={isBulkEdit}
           selectedImages={selectedImages}
-          selectedImageIds={selectedImageIds}
+          selectedIds={selectedIds}
           previewImage={previewImage}
         />
 
         {/* Metadata Section - Right Side */}
         <div className={styles.metadataSection}>
           <h2 id="metadata-modal-title" className={styles.heading}>
-            {isBulkEdit ? `Edit ${selectedImageIds.length} Images` : 'Edit Image Metadata'}
+            {isBulkEdit ? `Edit ${selectedIds.length} Images` : 'Edit Image Metadata'}
           </h2>
 
           {error && (
@@ -182,7 +182,7 @@ export default function ImageMetadataModal({
             {/* Action Buttons */}
             <MetadataActionRow
               isBulkEdit={isBulkEdit}
-              selectedCount={selectedImageIds.length}
+              selectedCount={selectedIds.length}
               saving={saving}
               hasChanges={hasChanges}
               showRemove={!!currentCollectionId}

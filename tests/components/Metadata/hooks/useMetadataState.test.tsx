@@ -1,9 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 
-import { useImageMetadataState } from '@/app/components/ImageMetadata/hooks/useImageMetadataState';
+import { useMetadataState } from '@/app/components/Metadata/hooks/useMetadataState';
 import type { CollectionListModel } from '@/app/types/Collection';
 import type { ContentImageModel } from '@/app/types/Content';
-import type { ContentCameraModel } from '@/app/types/ImageMetadata';
+import type { ContentCameraModel } from '@/app/types/Metadata';
 
 const coll = (id: number, name: string): CollectionListModel => ({ id, name });
 
@@ -18,12 +18,12 @@ const img = (id: number, overrides: Partial<ContentImageModel> = {}) =>
     ...overrides,
   }) as ContentImageModel;
 
-describe('useImageMetadataState', () => {
+describe('useMetadataState', () => {
   it('seeds updateState from the single selected image', () => {
     // Array created outside the hook callback so it's a stable reference across renders.
     const selectedImages = [img(1, { title: 'Hero' })];
     const { result } = renderHook(() =>
-      useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+      useMetadataState({ selectedImages, selectedIds: [1], availableLocations: [] })
     );
     expect(result.current.updateState.title).toBe('Hero');
     expect(result.current.hasChanges).toBe(false);
@@ -35,7 +35,7 @@ describe('useImageMetadataState', () => {
       img(2, { title: 'Same', rating: 4 }),
     ];
     const { result } = renderHook(() =>
-      useImageMetadataState({ selectedImages, selectedImageIds: [1, 2], availableLocations: [] })
+      useMetadataState({ selectedImages, selectedIds: [1, 2], availableLocations: [] })
     );
     expect(result.current.updateState.title).toBe('Same');
     expect(result.current.updateState.rating).toBe(4);
@@ -44,7 +44,7 @@ describe('useImageMetadataState', () => {
   it('updateStateField merges partial updates', () => {
     const selectedImages = [img(1)];
     const { result } = renderHook(() =>
-      useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+      useMetadataState({ selectedImages, selectedIds: [1], availableLocations: [] })
     );
     act(() => result.current.updateStateField({ title: 'Renamed' }));
     expect(result.current.updateState.title).toBe('Renamed');
@@ -54,7 +54,7 @@ describe('useImageMetadataState', () => {
   it('handleCollectionToggle adds a collection when absent and removes when present', () => {
     const selectedImages = [img(1)];
     const { result } = renderHook(() =>
-      useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+      useMetadataState({ selectedImages, selectedIds: [1], availableLocations: [] })
     );
     act(() => result.current.handleCollectionToggle(coll(5, 'Iceland')));
     expect(result.current.updateState.collections?.[0]?.collectionId).toBe(5);
@@ -66,7 +66,7 @@ describe('useImageMetadataState', () => {
     const initial = img(42, { title: 'Old' });
     const { result, rerender } = renderHook(
       ({ selectedImages }) =>
-        useImageMetadataState({ selectedImages, selectedImageIds: [42], availableLocations: [] }),
+        useMetadataState({ selectedImages, selectedIds: [42], availableLocations: [] }),
       { initialProps: { selectedImages: [initial] as ContentImageModel[] } }
     );
     expect(result.current.updateState.title).toBe('Old');
@@ -82,7 +82,7 @@ describe('useImageMetadataState', () => {
     });
     const selectedImages = [original];
     const { result } = renderHook(() =>
-      useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+      useMetadataState({ selectedImages, selectedIds: [1], availableLocations: [] })
     );
     act(() => result.current.handleCollectionToggle(coll(20, 'B')));
     act(() => result.current.handleCollectionToggle(coll(10, 'A')));
@@ -107,7 +107,7 @@ describe('useImageMetadataState', () => {
     it('swaps the optimistic {id:0} camera for the real one when the selection is unchanged', () => {
       const selectedImages = [img(1)];
       const { result } = renderHook(() =>
-        useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+        useMetadataState({ selectedImages, selectedIds: [1], availableLocations: [] })
       );
       act(() => result.current.updateStateField({ camera: optimistic('Hasselblad 500cm') }));
       act(() => result.current.replaceOptimisticCamera('Hasselblad 500cm', real));
@@ -117,7 +117,7 @@ describe('useImageMetadataState', () => {
     it('does NOT swap when the user picked a different camera mid-flight', () => {
       const selectedImages = [img(1)];
       const { result } = renderHook(() =>
-        useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+        useMetadataState({ selectedImages, selectedIds: [1], availableLocations: [] })
       );
       const userPick: ContentCameraModel = { id: 7, name: 'Sony A7R IV', isFilm: false };
       act(() => result.current.updateStateField({ camera: optimistic('Hasselblad 500cm') }));
@@ -129,7 +129,7 @@ describe('useImageMetadataState', () => {
     it('does NOT swap when the camera was cleared mid-flight', () => {
       const selectedImages = [img(1)];
       const { result } = renderHook(() =>
-        useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+        useMetadataState({ selectedImages, selectedIds: [1], availableLocations: [] })
       );
       act(() => result.current.updateStateField({ camera: optimistic('Hasselblad 500cm') }));
       act(() => result.current.updateStateField({ camera: null }));
@@ -140,7 +140,7 @@ describe('useImageMetadataState', () => {
     it('reverts the optimistic camera to null when still unchanged (failure path)', () => {
       const selectedImages = [img(1)];
       const { result } = renderHook(() =>
-        useImageMetadataState({ selectedImages, selectedImageIds: [1], availableLocations: [] })
+        useMetadataState({ selectedImages, selectedIds: [1], availableLocations: [] })
       );
       act(() => result.current.updateStateField({ camera: optimistic('Hasselblad 500cm') }));
       act(() => result.current.replaceOptimisticCamera('Hasselblad 500cm', null));

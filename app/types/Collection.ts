@@ -5,7 +5,7 @@
 
 import { type CollectionVisibility } from './CollectionVisibility';
 import type { AnyContentModel, ContentImageModel } from './Content';
-import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './ImageMetadata';
+import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './Metadata';
 
 /**
  * Collection type enum - matches backend CollectionType
@@ -298,7 +298,7 @@ export interface CollectionPageDTO extends CollectionBaseModel {
 }
 
 /**
- * Re-export metadata types from ImageMetadata for convenience
+ * Re-export metadata types from Metadata for convenience
  * These are the source of truth - Collection.ts just re-exports them
  */
 export type {
@@ -308,7 +308,7 @@ export type {
   ContentPersonModel,
   ContentTagModel,
   FilmFormatDTO,
-} from './ImageMetadata';
+} from './Metadata';
 
 /**
  * Re-export CollectionVisibility for callers importing from Collection.ts.
