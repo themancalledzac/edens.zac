@@ -236,30 +236,32 @@ const model: CollectionModel = { type: 'PORTFOLIO', ... };
 
 ## Known Type Issues
 
-### React 18 Runtime / @types/react 19 Mismatch
+### React 18 → 19 Runtime Upgrade (RESOLVED 2026-06-06)
 
-**Status**: Documented, intentionally not fixed.
+**Status**: ✅ Resolved. The runtime is now React 19; runtime and types are aligned.
 
-The project uses `react: ^18.3.1` (runtime) with `@types/react: ^19.2.10` (type definitions).
-This mismatch exists because:
+The project uses `react`/`react-dom: ^19.2.7` (runtime) with `@types/react: ^19.2.10` and
+`@types/react-dom: ^19.2.3` (types). The prior 18-runtime / 19-types mismatch is gone.
 
-- Next.js 15+ ships React 19 types and recommends the newer type definitions
-- The actual React runtime remains at 18.x for stability
-- Upgrading React to 19 would require testing all components and hooks for breaking changes
-  (e.g., `ref` as prop, removal of implicit `children`, new `use()` hook semantics)
+The upgrade was transparent: `tsc` clean and the full jest suite green with **no source changes**.
+`types-react-codemod preset-19` was run and produced no _necessary_ changes — the codebase was
+already authored against the React 19 types, so its only proposals were spurious (`RefObject<T>`
+null-widening that reduced precision) or rule-violating (`ReactElement<any>`, which trips
+`@typescript-eslint/no-explicit-any`); all were reverted. The migration surface was tiny: one
+`forwardRef` (`Tile.tsx`, still valid in 19), two `createContext` (`.Provider` still valid), no
+string refs, no bare `useRef()`, no `propTypes`/`defaultProps`, no legacy `ReactDOM` APIs.
 
-**Impact**: Mostly transparent. Some React 19 type features (like `SubmitEvent<HTMLFormElement>`)
-are available in types but not in the runtime. Use `FormEvent<HTMLFormElement>` if the React 19
-`SubmitEvent` causes runtime issues.
+`SubmitEvent<HTMLFormElement>` (imported from `react`) works under the React 19 runtime and is
+kept as-is — see the **React 19 Event Types** section above.
 
-**Resolution plan**: Upgrade React to 19 when Next.js 15 is fully stable and all dependencies
-(MUI, react-zoom-pan-pinch, @react-spring/parallax) confirm React 19 compatibility.
+### Dependency Notes (as of 2026-06)
 
-### Dependency Notes (as of 2026-03)
-
-- `lucide-react: ^0.399.0` - Current. Check for major version bumps periodically.
-- `@react-spring/parallax: ^9.6.1` - Does not yet support React 19 runtime. Keep React 18.
-- `react-zoom-pan-pinch: ^3.4.4` - Check React 19 compat before upgrading React.
+- `react` / `react-dom: ^19.2.7` - upgraded from `^18.3.1` (2026-06-06).
+- `lucide-react: ^1.17.0` - upgraded from `^0.399.0` (a `0.x` → `1.x` major bump; named-icon
+  import API is stable, verified via `tsc` + `next build`).
+- The former React-19 blockers (`@react-spring/parallax`, `react-zoom-pan-pinch`, MUI) are no
+  longer dependencies — they were removed in the chapter-006 dead-dep cleanup, which is what
+  unblocked this upgrade.
 
 ## Type Safety Checklist
 

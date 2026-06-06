@@ -199,6 +199,11 @@ export function useFullScreenImage(): {
     const timeoutId = setTimeout(checkImageLoaded, 100);
 
     return () => clearTimeout(timeoutId);
+    // Intentionally keyed to currentIndex only. This effect re-checks whether the
+    // newly-shown image has finished loading; it should re-run when the viewer moves
+    // to a different image, not on every fullScreenState mutation (e.g. scrollPosition
+    // changes). It reads the current image via fullScreenState and calls the stable
+    // setLoadedImageIds dispatcher — listing either would only cause redundant re-runs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullScreenState?.currentIndex]);
 
