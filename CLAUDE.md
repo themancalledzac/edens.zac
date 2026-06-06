@@ -23,6 +23,7 @@ alwaysApply: true
 ```
 
 Common flags:
+
 - All tests: `/opt/homebrew/bin/node node_modules/.bin/jest`
 - Single file: `/opt/homebrew/bin/node node_modules/.bin/jest tests/utils/contentLayout.test.ts`
 - Watch mode: `/opt/homebrew/bin/node node_modules/.bin/jest --watch`
@@ -41,6 +42,7 @@ After editing files, run the same pipeline Cursor runs on save — Prettier, the
 ```
 
 For SCSS files, also run Stylelint:
+
 ```bash
 /opt/homebrew/bin/node node_modules/.bin/stylelint --fix <files>
 ```
@@ -60,12 +62,12 @@ For detailed guidance on specific topics, refer to the files in `ai_guidelines/`
 
 | Topic                                       | Reference File                        |
 | ------------------------------------------- | ------------------------------------- |
-| **Core principles & project context**       | `ai_guidelines/ai_main.md`           |
+| **Core principles & project context**       | `ai_guidelines/ai_main.md`            |
 | **File naming, imports, project structure** | `ai_guidelines/ai_quick_reference.md` |
-| **Testing strategy & patterns**             | `ai_guidelines/ai_test.md`           |
-| **ESLint & Stylelint config**               | `ai_guidelines/ai_lint.md`           |
-| **API patterns & backend integration**      | `ai_guidelines/ai_api.md`            |
-| **TypeScript guidelines & known issues**    | `ai_guidelines/ai_typescript.md`     |
-| **CSS/SCSS conventions (gap rule)**         | `ai_guidelines/ai_css.md`            |
+| **Testing strategy & patterns**             | `ai_guidelines/ai_test.md`            |
+| **ESLint & Stylelint config**               | `ai_guidelines/ai_lint.md`            |
+| **API patterns & backend integration**      | `ai_guidelines/ai_api.md`             |
+| **TypeScript guidelines & known issues**    | `ai_guidelines/ai_typescript.md`      |
+| **CSS/SCSS conventions (gap rule)**         | `ai_guidelines/ai_css.md`             |
 
 **Note**: These files are modular and should be referenced when working in the relevant area.

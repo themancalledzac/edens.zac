@@ -12,17 +12,20 @@
 ## Core Principles
 
 ### 1. App Router Migration (Complete)
+
 - Legacy `pages-old/` and `Components/` directories have been removed
 - All new features use App Router (`app/` directory)
 - No legacy Pages Router files remain
 
 ### 2. App Router First
+
 - **All new features** must use App Router structure (`app/` directory)
 - **Favor Server Components**: Minimize `'use client'` usage
 - **Use RSC patterns**: Async data fetching, streaming, Suspense boundaries
 - **File organization**: Use route groups like `(admin)` for logical organization
 
 ### 3. Performance & Best Practices
+
 - **SSR-first approach**: Keep components server-side when possible
 - **Minimize context usage**: Prefer URL state and RSC props over React Context
 - **Optimize images**: Use `next/image` with S3/CloudFront URLs, WebP/AVIF formats
@@ -32,6 +35,7 @@
 ## Project Context
 
 ### Current Architecture
+
 - **Frontend**: Next.js 15 with App Router (migrating from Pages Router)
 - **Backend**: Java Spring Boot with Hibernate/JPA and MySQL RDS
 - **Storage**: S3 for media files with CloudFront CDN distribution
@@ -39,6 +43,7 @@
 - **Content System**: Transitioning from legacy Catalog/Image system to new ContentCollection system
 
 ### Development Environment
+
 - **Default assumption**: Localhost development unless specified otherwise
 - **Backend access**: Both localhost Spring Boot server and production RDS available
 - **Port configuration**: Frontend typically runs on 3001, backend on 8080

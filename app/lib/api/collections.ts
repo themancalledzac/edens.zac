@@ -174,9 +174,9 @@ export async function validateClientGalleryAccess(
     const message =
       typeof detail === 'string' && detail
         ? detail
-        : (detail && typeof detail === 'object'
+        : detail && typeof detail === 'object'
           ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
-          : `API error: ${res.status}`);
+          : `API error: ${res.status}`;
     if (res.status === 404) throw new ApiError('Gallery not found', 404);
     throw new ApiError(message, res.status);
   }

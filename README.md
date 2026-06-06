@@ -14,16 +14,16 @@ A full-stack photography portfolio and content management platform. Built for pe
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
+| Layer        | Technology                                        |
+| ------------ | ------------------------------------------------- |
 | **Frontend** | Next.js 15 (App Router), React 18, TypeScript 5.8 |
-| **Styling** | SCSS Modules, responsive design |
-| **Backend** | Spring Boot, Hibernate/JPA, RESTful API |
-| **Database** | PostgreSQL on EC2 |
-| **Storage** | AWS S3 + CloudFront CDN |
-| **Hosting** | AWS (S3 + CloudFront) |
-| **Testing** | Jest, React Testing Library |
-| **Linting** | ESLint 9 (flat config), Stylelint, Prettier |
+| **Styling**  | SCSS Modules, responsive design                   |
+| **Backend**  | Spring Boot, Hibernate/JPA, RESTful API           |
+| **Database** | PostgreSQL on EC2                                 |
+| **Storage**  | AWS S3 + CloudFront CDN                           |
+| **Hosting**  | AWS (S3 + CloudFront)                             |
+| **Testing**  | Jest, React Testing Library                       |
+| **Linting**  | ESLint 9 (flat config), Stylelint, Prettier       |
 
 ---
 
@@ -220,12 +220,12 @@ API functions in `app/lib/api/` use Next.js cache tags for ISR and on-demand rev
 
 ## Screenshots
 
-| Home Page | Collection Page |
-|---|---|
+| Home Page                         | Collection Page                               |
+| --------------------------------- | --------------------------------------------- |
 | ![Home](docs/screenshot-home.png) | ![Collection](docs/screenshot-collection.png) |
 
-| Admin Panel | Mobile View |
-|---|---|
+| Admin Panel                         | Mobile View                           |
+| ----------------------------------- | ------------------------------------- |
 | ![Admin](docs/screenshot-admin.png) | ![Mobile](docs/screenshot-mobile.png) |
 
 ---
