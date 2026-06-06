@@ -27,6 +27,7 @@ import { SegmentedControl } from '@/app/components/ui/SegmentedControl/Segmented
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { useMetadataEditor } from '@/app/hooks/useMetadataEditor';
+import { useToggleTriple } from '@/app/hooks/useToggleTriple';
 import {
   createChildCollection,
   createCollection,
@@ -791,7 +792,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const handleDeleteSuccess = useCallback(
     async (_deletedIds: number[]) => {
       if (!currentState?.collection.slug) {
-        logger.warn('ManageClient', 'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection');
+        logger.warn(
+          'ManageClient',
+          'handleDeleteSuccess: currentState or slug unavailable, cannot refresh collection'
+        );
         setError('Unable to refresh collection after deletion — please reload the page.');
         return;
       }
@@ -817,29 +821,25 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [currentState]
   );
 
-  const originalCollectionIds = useMemo(() => {
-    const ids = new Set<number>();
-    if (collection?.content) {
-      for (const block of collection.content) {
-        if (isContentCollection(block)) {
-          ids.add(block.referencedCollectionId);
-        }
-      }
-    }
-    return ids;
-  }, [collection?.content]);
-
-  const pendingAddIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const child of updateData.collections?.newValue || []) {
-      ids.add(child.collectionId);
-    }
-    return ids;
-  }, [updateData.collections?.newValue]);
-
-  const pendingRemoveIds = useMemo(() => {
-    return new Set<number>(updateData.collections?.remove || []);
-  }, [updateData.collections?.remove]);
+  // Child-collection picker triple. Saved children come from the content blocks (containment);
+  // pending add/remove come from the discrete `collections` update.
+  const originalChildIds = useMemo(
+    () =>
+      (collection?.content ?? [])
+        .filter(isContentCollection)
+        .map(block => block.referencedCollectionId),
+    [collection?.content]
+  );
+  const {
+    savedIds: originalCollectionIds,
+    pendingAddIds,
+    pendingRemoveIds,
+  } = useToggleTriple(
+    originalChildIds,
+    updateData.collections?.newValue,
+    updateData.collections?.remove,
+    child => child.collectionId
+  );
 
   /**
    * Derive current locations from `collection.locations` and `updateData.locations`.
@@ -968,28 +968,23 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   /**
    * Sibling-collection selection state — mirrors the child-collection state above,
-   * but `originalSiblingIds` derives from `collection.siblings` (mutual association)
-   * rather than from `collection.content` (containment).
+   * but the saved IDs derive from `collection.siblings` (mutual association) rather
+   * than from `collection.content` (containment).
    */
-  const originalSiblingIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const sib of collection?.siblings ?? []) {
-      ids.add(sib.id);
-    }
-    return ids;
-  }, [collection?.siblings]);
-
-  const pendingAddSiblingIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const sib of updateData.siblings?.newValue ?? []) {
-      ids.add(sib.collectionId);
-    }
-    return ids;
-  }, [updateData.siblings?.newValue]);
-
-  const pendingRemoveSiblingIds = useMemo(() => {
-    return new Set<number>(updateData.siblings?.remove ?? []);
-  }, [updateData.siblings?.remove]);
+  const originalSiblingIdsArray = useMemo(
+    () => (collection?.siblings ?? []).map(sib => sib.id),
+    [collection?.siblings]
+  );
+  const {
+    savedIds: originalSiblingIds,
+    pendingAddIds: pendingAddSiblingIds,
+    pendingRemoveIds: pendingRemoveSiblingIds,
+  } = useToggleTriple(
+    originalSiblingIdsArray,
+    updateData.siblings?.newValue,
+    updateData.siblings?.remove,
+    sib => sib.collectionId
+  );
 
   /**
    * Toggle a sibling link. Same engine as handleCollectionToggle, but sibling rows carry
@@ -1015,28 +1010,23 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   /**
    * Parent-collection selection state — mirrors the sibling-collection state above,
-   * but `originalParentIds` derives from `collection.parents` (the inverse of the
-   * child containment relation, surfaced by admin/manage reads).
+   * but the saved IDs derive from `collection.parents` (the inverse of the child
+   * containment relation, surfaced by admin/manage reads).
    */
-  const originalParentIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const parent of collection?.parents ?? []) {
-      ids.add(parent.id);
-    }
-    return ids;
-  }, [collection?.parents]);
-
-  const pendingAddParentIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const parent of updateData.parents?.newValue ?? []) {
-      ids.add(parent.collectionId);
-    }
-    return ids;
-  }, [updateData.parents?.newValue]);
-
-  const pendingRemoveParentIds = useMemo(() => {
-    return new Set<number>(updateData.parents?.remove ?? []);
-  }, [updateData.parents?.remove]);
+  const originalParentIdsArray = useMemo(
+    () => (collection?.parents ?? []).map(parent => parent.id),
+    [collection?.parents]
+  );
+  const {
+    savedIds: originalParentIds,
+    pendingAddIds: pendingAddParentIds,
+    pendingRemoveIds: pendingRemoveParentIds,
+  } = useToggleTriple(
+    originalParentIdsArray,
+    updateData.parents?.newValue,
+    updateData.parents?.remove,
+    parent => parent.collectionId
+  );
 
   /**
    * Toggle a parent link. Same engine as handleSiblingToggle; parent rows carry
@@ -1703,7 +1693,11 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             if (col.slug) {
                               router.push(`/collection/manage/${col.slug}`);
                             } else {
-                              logger.error('ManageClient', 'Cannot navigate to collection: missing slug', col);
+                              logger.error(
+                                'ManageClient',
+                                'Cannot navigate to collection: missing slug',
+                                col
+                              );
                               setError(`Cannot navigate to collection "${col.name}": missing slug`);
                             }
                           }}

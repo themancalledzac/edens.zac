@@ -529,66 +529,47 @@ function buildFilmTypeDiff(
 }
 
 /**
- * Build diff for tags field using prev/newValue/remove pattern
+ * Build diff for a many-to-many association field (tags or people) using the
+ * prev/newValue/remove pattern.
+ *
+ * Both fields share the exact same mechanic: existing items (`id > 0`) become `prev`,
+ * brand-new items (`id` 0/undefined) contribute their names to `newValue`, and items
+ * present in `currentItems` but dropped from `updateItems` become `remove`. The field is
+ * only written onto `diff` when at least one of add/remove/new-name actually changed.
+ *
+ * @param field - Which association to write (`'tags'` or `'people'`)
+ * @param updateItems - The edited selection (existing + new items)
+ * @param currentItems - The original selection on the content block
+ * @param diff - The diff object to mutate in place
  */
-function buildTagsDiff(
-  updateTags: ContentImageModel['tags'],
-  currentTags: ContentImageModel['tags'],
-  diff: ContentImageUpdateRequest
+function buildAssociationDiff<T extends { id?: number; name: string }>(
+  field: 'tags' | 'people',
+  updateItems: T[] | undefined,
+  currentItems: T[] | undefined,
+  diff: Pick<ContentImageUpdateRequest, 'tags' | 'people'>
 ): void {
-  const updateTagsArray = updateTags || [];
-  const currentTagsArray = currentTags || [];
-  const updateTagIds = updateTagsArray.filter(t => t.id && t.id > 0).map(t => t.id!);
-  const currentTagIds = currentTagsArray.filter(t => t.id && t.id > 0).map(t => t.id!);
-  const updateTagNames = updateTagsArray.filter(t => !t.id || t.id === 0).map(t => t.name);
+  const updateArray = updateItems || [];
+  const currentArray = currentItems || [];
+  const updateIds = updateArray.filter(item => item.id && item.id > 0).map(item => item.id!);
+  const currentIds = currentArray.filter(item => item.id && item.id > 0).map(item => item.id!);
+  const updateNames = updateArray.filter(item => !item.id || item.id === 0).map(item => item.name);
 
-  const addedTagIds = updateTagIds.filter(id => !currentTagIds.includes(id));
-  const removedTagIds = currentTagIds.filter(id => !updateTagIds.includes(id));
-  const hasNewTagNames = updateTagNames.length > 0;
+  const addedIds = updateIds.filter(id => !currentIds.includes(id));
+  const removedIds = currentIds.filter(id => !updateIds.includes(id));
+  const hasNewNames = updateNames.length > 0;
 
-  if (addedTagIds.length > 0 || removedTagIds.length > 0 || hasNewTagNames) {
-    diff.tags = {};
-    if (updateTagIds.length > 0) {
-      diff.tags.prev = updateTagIds;
+  if (addedIds.length > 0 || removedIds.length > 0 || hasNewNames) {
+    const update: { prev?: number[]; newValue?: string[]; remove?: number[] } = {};
+    if (updateIds.length > 0) {
+      update.prev = updateIds;
     }
-    if (updateTagNames.length > 0) {
-      diff.tags.newValue = updateTagNames;
+    if (updateNames.length > 0) {
+      update.newValue = updateNames;
     }
-    if (removedTagIds.length > 0) {
-      diff.tags.remove = removedTagIds;
+    if (removedIds.length > 0) {
+      update.remove = removedIds;
     }
-  }
-}
-
-/**
- * Build diff for people field using prev/newValue/remove pattern
- */
-function buildPeopleDiff(
-  updatePeople: ContentImageModel['people'],
-  currentPeople: ContentImageModel['people'],
-  diff: Pick<ContentImageUpdateRequest, 'people'>
-): void {
-  const updatePeopleArray = updatePeople || [];
-  const currentPeopleArray = currentPeople || [];
-  const updatePeopleIds = updatePeopleArray.filter(p => p.id && p.id > 0).map(p => p.id!);
-  const currentPeopleIds = currentPeopleArray.filter(p => p.id && p.id > 0).map(p => p.id!);
-  const updatePeopleNames = updatePeopleArray.filter(p => !p.id || p.id === 0).map(p => p.name);
-
-  const addedPeopleIds = updatePeopleIds.filter(id => !currentPeopleIds.includes(id));
-  const removedPeopleIds = currentPeopleIds.filter(id => !updatePeopleIds.includes(id));
-  const hasNewPeopleNames = updatePeopleNames.length > 0;
-
-  if (addedPeopleIds.length > 0 || removedPeopleIds.length > 0 || hasNewPeopleNames) {
-    diff.people = {};
-    if (updatePeopleIds.length > 0) {
-      diff.people.prev = updatePeopleIds;
-    }
-    if (updatePeopleNames.length > 0) {
-      diff.people.newValue = updatePeopleNames;
-    }
-    if (removedPeopleIds.length > 0) {
-      diff.people.remove = removedPeopleIds;
-    }
+    diff[field] = update;
   }
 }
 
@@ -715,8 +696,8 @@ export function buildImageUpdateDiff(
     availableFilmTypes,
     diff
   );
-  buildTagsDiff(updateState.tags, currentState.tags, diff);
-  buildPeopleDiff(updateState.people, currentState.people, diff);
+  buildAssociationDiff('tags', updateState.tags, currentState.tags, diff);
+  buildAssociationDiff('people', updateState.people, currentState.people, diff);
   buildCollectionsDiff(updateState.collections, currentState.collections, diff);
 
   return diff;
@@ -725,7 +706,7 @@ export function buildImageUpdateDiff(
 /**
  * Build ONLY the people + locations diffs (prev/newValue/remove) for any content type.
  *
- * Reuses the exact same private builders as the image diff path ({@link buildPeopleDiff} and
+ * Reuses the exact same private builders as the image diff path ({@link buildAssociationDiff} and
  * {@link buildLocationsDiffField}) so the prev/newValue/remove logic is never duplicated. The
  * GIF/MP4 save path calls this and copies the resulting keys onto its own update request — people
  * and locations are general relational metadata that both images and GIFs share.
@@ -746,7 +727,7 @@ export function buildContentPeopleLocationsDiff(
 ): Pick<ContentImageUpdateRequest, 'people' | 'locations'> {
   const diff: Pick<ContentImageUpdateRequest, 'people' | 'locations'> = {};
 
-  buildPeopleDiff(updateState.people, currentState.people, diff);
+  buildAssociationDiff('people', updateState.people, currentState.people, diff);
   buildLocationsDiffField(updateState.locations, currentState.locations, diff);
 
   return diff;

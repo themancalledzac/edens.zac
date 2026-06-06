@@ -1,7 +1,10 @@
 import { act, renderHook } from '@testing-library/react';
 
-import { useMetadataState } from '@/app/components/Metadata/hooks/useMetadataState';
-import type { CollectionListModel } from '@/app/types/Collection';
+import {
+  toggleCollectionFlat,
+  useMetadataState,
+} from '@/app/components/Metadata/hooks/useMetadataState';
+import type { ChildCollection, CollectionListModel } from '@/app/types/Collection';
 import type { ContentImageModel } from '@/app/types/Content';
 import type { ContentCameraModel } from '@/app/types/Metadata';
 
@@ -146,5 +149,44 @@ describe('useMetadataState', () => {
       act(() => result.current.replaceOptimisticCamera('Hasselblad 500cm', null));
       expect(result.current.updateState.camera).toBeNull();
     });
+  });
+});
+
+describe('toggleCollectionFlat (image-side flat-array adapter)', () => {
+  const saved = (id: number, name: string): ChildCollection => ({
+    collectionId: id,
+    name,
+    visible: true,
+    orderIndex: 0,
+  });
+
+  it('add: appends a not-yet-saved collection with image-row shape', () => {
+    const result = toggleCollectionFlat([], coll(5, 'Iceland'), new Set<number>());
+    expect(result).toEqual([{ collectionId: 5, name: 'Iceland', visible: true, orderIndex: 0 }]);
+  });
+
+  it('un-add: toggling a pending addition removes it from the flat array', () => {
+    const current: ChildCollection[] = [saved(5, 'Iceland')];
+    const result = toggleCollectionFlat(current, coll(5, 'Iceland'), new Set<number>());
+    expect(result).toEqual([]);
+  });
+
+  it('remove: toggling a saved collection drops it from the flat array', () => {
+    const current: ChildCollection[] = [saved(10, 'A')];
+    const result = toggleCollectionFlat(current, coll(10, 'A'), new Set<number>([10]));
+    expect(result).toEqual([]);
+  });
+
+  it('re-add after remove: toggling a removed saved collection restores it', () => {
+    // Start with the saved item removed (absent from the flat array), then toggle it back.
+    const result = toggleCollectionFlat([], coll(10, 'A'), new Set<number>([10]));
+    expect(result).toEqual([{ collectionId: 10, name: 'A', visible: true, orderIndex: 0 }]);
+  });
+
+  it('preserves saved-item metadata for kept collections while adding a new one', () => {
+    const kept = saved(10, 'A');
+    const result = toggleCollectionFlat([kept], coll(20, 'B'), new Set<number>([10]));
+    // The kept saved object is reused verbatim; the new one is appended in image-row shape.
+    expect(result).toEqual([kept, { collectionId: 20, name: 'B', visible: true, orderIndex: 0 }]);
   });
 });
