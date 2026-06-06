@@ -2,9 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
+import { useToggleTriple } from '@/app/hooks/useToggleTriple';
+import {
+  type ChildCollection,
+  type CollectionListModel,
+  type CollectionUpdate,
+  type LocationModel,
+} from '@/app/types/Collection';
 import { type ContentGifModel, type ContentImageModel } from '@/app/types/Content';
 import { type ContentCameraModel } from '@/app/types/Metadata';
+import { toggleRelation } from '@/app/utils/collectionToggle';
 import { convertLocationsToModels } from '@/app/utils/locationUtils';
 import { hasObjectChanges } from '@/app/utils/objectComparison';
 
@@ -27,6 +34,67 @@ export type ImageUpdateState = Partial<ContentImageModel> &
  * re-render → new `[]` → infinite loop.)
  */
 const EMPTY_LOCATIONS: LocationModel[] = [];
+
+/**
+ * Toggle one collection on the image-side FLAT array (`ChildCollection[]`) representation.
+ *
+ * The image editor stores collection membership as a single flat array of `ChildCollection`
+ * (saved-and-kept items + pending additions; a removed saved item is simply absent). The shared
+ * pure {@link toggleRelation} engine speaks the discrete `prev`/`newValue`/`remove`
+ * `CollectionUpdate` shape that the collection editor uses, so this adapter:
+ *
+ * 1. Projects the current flat array into a `CollectionUpdate` (`newValue` = pending adds not in
+ *    `originalIds`; `remove` = saved IDs absent from the flat array).
+ * 2. Runs the shared engine.
+ * 3. Re-flattens: every saved ID still kept (not in the engine's `remove`) plus every pending add
+ *    in `newValue`. Existing flat objects are reused so saved-item metadata (name/slug/cover) is
+ *    preserved; an un-removed saved item is rebuilt from the toggled `CollectionListModel`.
+ *
+ * Engine stays pure; this flat-array adaptation is the only image-specific glue.
+ */
+export function toggleCollectionFlat(
+  currentCollections: ChildCollection[],
+  toggled: CollectionListModel,
+  originalIds: Set<number>
+): ChildCollection[] {
+  const buildEntry = (collection: CollectionListModel, index: number): ChildCollection => ({
+    collectionId: collection.id,
+    name: collection.name,
+    visible: true,
+    orderIndex: index,
+  });
+
+  // 1. Flat array → CollectionUpdate (discrete prev/newValue/remove the engine understands).
+  const pendingAdds = currentCollections.filter(c => !originalIds.has(c.collectionId));
+  const currentIds = new Set(currentCollections.map(c => c.collectionId));
+  const pendingRemoves: number[] = [];
+  for (const id of originalIds) {
+    if (!currentIds.has(id)) pendingRemoves.push(id);
+  }
+  const current: CollectionUpdate = {
+    newValue: pendingAdds.length > 0 ? pendingAdds : undefined,
+    remove: pendingRemoves.length > 0 ? pendingRemoves : undefined,
+  };
+
+  // 2. Run the shared pure engine.
+  const next = toggleRelation(current, toggled, originalIds, buildEntry);
+
+  // 3. CollectionUpdate → flat array. Reuse existing objects to preserve saved-item metadata.
+  const nextRemove = new Set(next?.remove ?? []);
+  const existingById = new Map(currentCollections.map(c => [c.collectionId, c]));
+  const kept: ChildCollection[] = [];
+  for (const id of originalIds) {
+    if (nextRemove.has(id)) continue;
+    const existing = existingById.get(id);
+    if (existing) {
+      kept.push(existing);
+    } else if (id === toggled.id) {
+      // Saved item just un-removed: rebuild from the toggled CollectionListModel.
+      kept.push(buildEntry(toggled, kept.length));
+    }
+  }
+  return [...kept, ...(next?.newValue ?? [])];
+}
 
 export interface UseMetadataStateResult {
   updateState: ImageUpdateState;
@@ -130,57 +198,38 @@ export function useMetadataState({
     // imageSubset is derived from selectedImages each render; reflect that in deps.
   }, [updateState, selectedImages, isBulkEdit]);
 
-  const originalCollectionIds = useMemo(() => {
-    const ids = new Set<number>();
-    if (!isBulkEdit && selectedImages[0]?.collections) {
-      for (const c of selectedImages[0].collections) {
-        ids.add(c.collectionId);
-      }
-    }
-    return ids;
-  }, [selectedImages, isBulkEdit]);
+  // Saved collection membership (single-edit only — bulk edit has no per-collection picker).
+  const originalIds = useMemo(
+    () => (isBulkEdit ? [] : (selectedImages[0]?.collections ?? []).map(c => c.collectionId)),
+    [selectedImages, isBulkEdit]
+  );
 
-  const pendingAddIds = useMemo(() => {
-    const ids = new Set<number>();
-    for (const c of updateState.collections || []) {
-      if (!originalCollectionIds.has(c.collectionId)) {
-        ids.add(c.collectionId);
-      }
-    }
-    return ids;
-  }, [updateState.collections, originalCollectionIds]);
+  // Image-side removes are implicit: a saved ID absent from the flat membership array is "removed".
+  // Convert that to the discrete `remove` list the shared triple hook expects.
+  const pendingRemoves = useMemo(() => {
+    const currentIds = new Set((updateState.collections ?? []).map(c => c.collectionId));
+    return originalIds.filter(id => !currentIds.has(id));
+  }, [updateState.collections, originalIds]);
 
-  const pendingRemoveIds = useMemo(() => {
-    const ids = new Set<number>();
-    const currentIds = new Set((updateState.collections || []).map(c => c.collectionId));
-    for (const id of originalCollectionIds) {
-      if (!currentIds.has(id)) {
-        ids.add(id);
-      }
-    }
-    return ids;
-  }, [updateState.collections, originalCollectionIds]);
+  const {
+    savedIds: originalCollectionIds,
+    pendingAddIds,
+    pendingRemoveIds,
+  } = useToggleTriple(originalIds, updateState.collections, pendingRemoves, c => c.collectionId);
 
-  const handleCollectionToggle = useCallback((collection: CollectionListModel) => {
-    setUpdateState(prev => {
-      const currentCollections = prev.collections || [];
-      const exists = currentCollections.some(c => c.collectionId === collection.id);
-
-      const updatedCollections = exists
-        ? currentCollections.filter(c => c.collectionId !== collection.id)
-        : [
-            ...currentCollections,
-            {
-              collectionId: collection.id,
-              name: collection.name,
-              visible: true,
-              orderIndex: currentCollections.length,
-            },
-          ];
-
-      return { ...prev, collections: updatedCollections };
-    });
-  }, []);
+  const handleCollectionToggle = useCallback(
+    (collection: CollectionListModel) => {
+      setUpdateState(prev => ({
+        ...prev,
+        collections: toggleCollectionFlat(
+          prev.collections || [],
+          collection,
+          originalCollectionIds
+        ),
+      }));
+    },
+    [originalCollectionIds]
+  );
 
   return {
     updateState,
