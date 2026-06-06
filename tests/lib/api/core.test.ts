@@ -86,13 +86,8 @@ describe('handleApiError (tested via public API functions)', () => {
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
 
-      try {
-        await fetchPostJsonApi('/test', {});
-        fail('Should have thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiError);
-        expect((error as ApiError).status).toBe(403);
-      }
+      await expect(fetchPostJsonApi('/test', {})).rejects.toBeInstanceOf(ApiError);
+      await expect(fetchPostJsonApi('/test', {})).rejects.toHaveProperty('status', 403);
     });
   });
 
@@ -102,14 +97,7 @@ describe('handleApiError (tested via public API functions)', () => {
 
       await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(ApiError);
       await expect(fetchPostJsonApi('/test', {})).rejects.toThrow('Network error');
-
-      try {
-        await fetchPostJsonApi('/test', {});
-        fail('Should have thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiError);
-        expect((error as ApiError).status).toBe(500);
-      }
+      await expect(fetchPostJsonApi('/test', {})).rejects.toHaveProperty('status', 500);
     });
 
     it('should re-throw ApiError without modification', async () => {
@@ -125,14 +113,7 @@ describe('handleApiError (tested via public API functions)', () => {
 
       await expect(fetchPostJsonApi('/test', {})).rejects.toThrow(ApiError);
       await expect(fetchPostJsonApi('/test', {})).rejects.toThrow('Unknown error occurred');
-
-      try {
-        await fetchPostJsonApi('/test', {});
-        fail('Should have thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiError);
-        expect((error as ApiError).status).toBe(500);
-      }
+      await expect(fetchPostJsonApi('/test', {})).rejects.toHaveProperty('status', 500);
     });
   });
 });
