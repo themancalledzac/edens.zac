@@ -130,15 +130,41 @@ export interface TextBlockItem {
 }
 
 /**
+ * Selectable text-block format options. Single source of truth for both the
+ * `TextFormat` union below and the `<option>` ladder in `TextBlockCreateModal`.
+ */
+export const TEXT_FORMAT_OPTIONS = [
+  { value: 'plain', label: 'Plain Text' },
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'html', label: 'HTML' },
+] as const;
+
+/** Frontend text-block format union, derived from {@link TEXT_FORMAT_OPTIONS}. */
+export type TextFormat = (typeof TEXT_FORMAT_OPTIONS)[number]['value'];
+
+/**
+ * Selectable text-block alignment options. Single source of truth for both the
+ * `TextAlign` union below and the `<option>` ladder in `TextBlockCreateModal`.
+ */
+export const TEXT_ALIGN_OPTIONS = [
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Center' },
+  { value: 'right', label: 'Right' },
+] as const;
+
+/** Frontend text-block alignment union, derived from {@link TEXT_ALIGN_OPTIONS}. */
+export type TextAlign = (typeof TEXT_ALIGN_OPTIONS)[number]['value'];
+
+/**
  * Text content model - displays structured text content as items
  * Each text block contains an array of items that can be individually styled/edited
  */
 export interface ContentTextModel extends Content {
   contentType: 'TEXT';
   items: TextBlockItem[]; // Array of text items (required)
-  format: 'plain' | 'markdown' | 'html'; // Frontend format type
+  format: TextFormat; // Frontend format type
   formatType?: 'plain' | 'markdown' | 'html' | 'js' | 'css' | 'json'; // Backend field (maps to format)
-  align: 'left' | 'center' | 'right';
+  align: TextAlign;
 }
 
 /**

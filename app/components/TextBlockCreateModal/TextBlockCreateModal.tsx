@@ -5,16 +5,18 @@ import { type SubmitEvent, useState } from 'react';
 import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
+import {
+  TEXT_ALIGN_OPTIONS,
+  TEXT_FORMAT_OPTIONS,
+  type TextAlign,
+  type TextFormat,
+} from '@/app/types/Content';
 
 import styles from './TextBlockCreateModal.module.scss';
 
 interface TextBlockCreateModalProps {
   onClose: () => void;
-  onSubmit: (data: {
-    content: string;
-    format: 'plain' | 'markdown' | 'html';
-    align: 'left' | 'center' | 'right';
-  }) => Promise<void>;
+  onSubmit: (data: { content: string; format: TextFormat; align: TextAlign }) => Promise<void>;
 }
 
 /**
@@ -28,8 +30,8 @@ interface TextBlockCreateModalProps {
  */
 export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCreateModalProps) {
   const [content, setContent] = useState('');
-  const [format, setFormat] = useState<'plain' | 'markdown' | 'html'>('plain');
-  const [align, setAlign] = useState<'left' | 'center' | 'right'>('left');
+  const [format, setFormat] = useState<TextFormat>('plain');
+  const [align, setAlign] = useState<TextAlign>('left');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -93,12 +95,14 @@ export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCre
               <label className={styles.formLabel}>Format</label>
               <select
                 value={format}
-                onChange={e => setFormat(e.target.value as 'plain' | 'markdown' | 'html')}
+                onChange={e => setFormat(e.target.value as TextFormat)}
                 className={styles.formSelect}
               >
-                <option value="plain">Plain Text</option>
-                <option value="markdown">Markdown</option>
-                <option value="html">HTML</option>
+                {TEXT_FORMAT_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -106,12 +110,14 @@ export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCre
               <label className={styles.formLabel}>Alignment</label>
               <select
                 value={align}
-                onChange={e => setAlign(e.target.value as 'left' | 'center' | 'right')}
+                onChange={e => setAlign(e.target.value as TextAlign)}
                 className={styles.formSelect}
               >
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-                <option value="right">Right</option>
+                {TEXT_ALIGN_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
