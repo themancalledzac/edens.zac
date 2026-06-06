@@ -24,10 +24,10 @@
     "test:ci": "jest --ci --coverage"
   },
   "dependencies": {
-    "lucide-react": "^0.399.0",
+    "lucide-react": "^1.17.0",
     "next": "^16.2.6",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "sass": "^1.77.8"
   },
   "overrides": {
