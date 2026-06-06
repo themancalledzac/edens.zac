@@ -31,11 +31,7 @@ export function ClientGalleryDownloadProvider({
   children: React.ReactNode;
   value: ClientGalleryDownloadContextValue;
 }) {
-  return (
-    <ClientGalleryDownloadContext.Provider value={value}>
-      {children}
-    </ClientGalleryDownloadContext.Provider>
-  );
+  return <ClientGalleryDownloadContext value={value}>{children}</ClientGalleryDownloadContext>;
 }
 
 /** Returns the download/select state, or null when rendered outside a client gallery. */
