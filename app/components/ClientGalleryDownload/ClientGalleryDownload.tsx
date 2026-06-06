@@ -54,8 +54,8 @@ const DownloadIcon = () => (
 export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryDownloadProps) {
   const download = useClientGalleryDownload();
   const isSelectMode = download?.isSelectMode ?? false;
-  const selectedImageIds = download?.selectedImageIds ?? [];
-  const selectedCount = selectedImageIds.length;
+  const selectedIds = download?.selectedIds ?? [];
+  const selectedCount = selectedIds.length;
 
   const [pickerTarget, setPickerTarget] = useState<PickerTarget | null>(null);
   const [preparing, setPreparing] = useState<DownloadFormat | null>(null);
@@ -103,7 +103,7 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
    */
   const handleFormatDownload = useCallback(
     (format: DownloadFormat) => {
-      const ids = download?.selectedImageIds ?? [];
+      const ids = download?.selectedIds ?? [];
       if (pickerTarget === 'selected' && ids.length === 0) return;
 
       setPreparing(format);

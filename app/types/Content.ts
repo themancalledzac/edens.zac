@@ -23,7 +23,7 @@ import type {
   ContentLensModel,
   ContentPersonModel,
   ContentTagModel,
-} from './ImageMetadata';
+} from './Metadata';
 
 /** Content type discriminator - maps to backend Content contentType field */
 export type ContentType = 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION';

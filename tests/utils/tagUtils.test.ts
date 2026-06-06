@@ -4,7 +4,7 @@
  * Mirrors locationUtils — tags are many-to-many (array-based) with the same
  * prev/newValue wire shape.
  */
-import type { ContentTagModel } from '@/app/types/ImageMetadata';
+import type { ContentTagModel } from '@/app/types/Metadata';
 import { buildTagsDiff, convertTagsToModels, createTagsUpdate } from '@/app/utils/tagUtils';
 
 const availableTags: ContentTagModel[] = [

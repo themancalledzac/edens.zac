@@ -6,7 +6,7 @@ import { IMAGE } from '@/app/constants';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 
-import styles from '../ImageMetadataModal.module.scss';
+import styles from '../MetadataModal.module.scss';
 import type { EditableContent } from '../types';
 
 /**
@@ -60,13 +60,13 @@ function renderSinglePreview({
 interface MediaPreviewProps {
   isBulkEdit: boolean;
   selectedImages: EditableContent[];
-  selectedImageIds: number[];
+  selectedIds: number[];
   /** The first selected item used for the single-item preview. `undefined` causes a `null` render. */
   previewImage: EditableContent | undefined;
 }
 
 /**
- * Renders the left-side media preview panel of the ImageMetadataModal.
+ * Renders the left-side media preview panel of the MetadataModal.
  *
  * Three render paths:
  * - Bulk edit: a grid of thumbnails, one per selected item.
@@ -76,7 +76,7 @@ interface MediaPreviewProps {
 export default function MediaPreview({
   isBulkEdit,
   selectedImages,
-  selectedImageIds,
+  selectedIds,
   previewImage,
 }: MediaPreviewProps) {
   if (!previewImage) {
@@ -87,7 +87,7 @@ export default function MediaPreview({
     return (
       <div className={styles.imageSection}>
         <div className={styles.bulkEditGrid} data-testid="media-preview-bulk-grid">
-          {selectedImageIds.map(imageId => {
+          {selectedIds.map(imageId => {
             const item = selectedImages.find(i => i.id === imageId);
             if (!item) return null;
             // Bulk-edit thumbnail src: image uses imageUrl, GIF uses thumbnailUrl (still WebP).

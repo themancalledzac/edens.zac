@@ -1,14 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
-import type { ImageUpdateState } from '@/app/components/ImageMetadata/hooks/useImageMetadataState';
-import CameraSettingsSection from '@/app/components/ImageMetadata/sections/CameraSettingsSection';
+import type { ImageUpdateState } from '@/app/components/Metadata/hooks/useMetadataState';
+import CameraSettingsSection from '@/app/components/Metadata/sections/CameraSettingsSection';
 import { createCamera } from '@/app/lib/api/content';
 import type {
   ContentCameraModel,
   ContentFilmTypeModel,
   ContentLensModel,
   FilmFormatDTO,
-} from '@/app/types/ImageMetadata';
+} from '@/app/types/Metadata';
 
 jest.mock('@/app/lib/api/content', () => ({
   createCamera: jest.fn(),

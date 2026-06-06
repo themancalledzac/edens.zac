@@ -9,7 +9,7 @@ import {
   type ContentImageUpdateRequest,
   type ContentImageUpdateResponse,
 } from '@/app/types/Content';
-import { type ContentFilmTypeModel } from '@/app/types/ImageMetadata';
+import { type ContentFilmTypeModel } from '@/app/types/Metadata';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 
 import {
@@ -18,13 +18,13 @@ import {
   buildImageUpdateForSingleEdit,
   buildImageUpdatesForBulkEdit,
   mapUpdateResponseToFrontend,
-} from '../imageMetadataUtils';
+} from '../metadataUtils';
 import type { EditableContent } from '../types';
-import type { ImageUpdateState } from './useImageMetadataState';
+import type { ImageUpdateState } from './useMetadataState';
 
-export interface UseImageMetadataSubmitParams {
+export interface UseMetadataSubmitParams {
   selectedImages: EditableContent[];
-  selectedImageIds: number[];
+  selectedIds: number[];
   updateState: ImageUpdateState;
   hasChanges: boolean;
   originalCollectionIds: Set<number>;
@@ -37,7 +37,7 @@ export interface UseImageMetadataSubmitParams {
   onRemoveFromCollectionSuccess?: (removedImageIds: number[]) => void;
 }
 
-export interface UseImageMetadataSubmitResult {
+export interface UseMetadataSubmitResult {
   saving: boolean;
   error: string | null;
   handleSubmit: (e: SubmitEvent<HTMLFormElement>) => Promise<void>;
@@ -46,9 +46,9 @@ export interface UseImageMetadataSubmitResult {
   handleRemoveFromCollection: () => Promise<void>;
 }
 
-export function useImageMetadataSubmit({
+export function useMetadataSubmit({
   selectedImages,
-  selectedImageIds,
+  selectedIds,
   updateState,
   hasChanges,
   originalCollectionIds,
@@ -59,11 +59,11 @@ export function useImageMetadataSubmit({
   onGifSaveSuccess,
   onDeleteSuccess,
   onRemoveFromCollectionSuccess,
-}: UseImageMetadataSubmitParams): UseImageMetadataSubmitResult {
+}: UseMetadataSubmitParams): UseMetadataSubmitResult {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isBulkEdit = selectedImageIds.length > 1;
+  const isBulkEdit = selectedIds.length > 1;
 
   // "Remove from collection" only operates on IMAGE blocks today — the bulk diff helper is
   // typed to ContentImageModel. Skip GIF entries; they'll be a follow-up.
@@ -113,7 +113,7 @@ export function useImageMetadataSubmit({
     // narrowing happens once. `updateState` (ImageUpdateState) already satisfies the builders'
     // `Partial<ContentImageModel> & { id }` param, so no casts are needed.
     const imageUpdates: ContentImageUpdateRequest[] = isBulkEdit
-      ? buildImageUpdatesForBulkEdit(updateState, imageSubset, selectedImageIds, availableFilmTypes)
+      ? buildImageUpdatesForBulkEdit(updateState, imageSubset, selectedIds, availableFilmTypes)
       : [buildImageUpdateForSingleEdit(updateState, imageSubset[0]!, availableFilmTypes)];
 
     const response = await updateImages(imageUpdates);
@@ -146,7 +146,7 @@ export function useImageMetadataSubmit({
   };
 
   const handleDelete = async () => {
-    const imageCount = selectedImageIds.length;
+    const imageCount = selectedIds.length;
     const noun = isGif ? 'GIF/MP4' : 'image';
     const nounPlural = isGif ? 'GIFs/MP4s' : 'images';
     const confirmMessage =
@@ -169,7 +169,7 @@ export function useImageMetadataSubmit({
         return;
       }
 
-      const response = await deleteImages(selectedImageIds);
+      const response = await deleteImages(selectedIds);
       if (response !== null) {
         onDeleteSuccess?.(response.deletedIds);
         onClose();
@@ -180,7 +180,7 @@ export function useImageMetadataSubmit({
   const handleRemoveFromCollection = async () => {
     if (!currentCollectionId) return;
 
-    const imageCount = selectedImageIds.length;
+    const imageCount = selectedIds.length;
     const confirmMessage =
       imageCount === 1
         ? 'Remove this image from the current collection? The image and its metadata will remain in the system.'
@@ -203,7 +203,7 @@ export function useImageMetadataSubmit({
 
       const response = await updateImages(imageUpdates);
       if (response !== null) {
-        onRemoveFromCollectionSuccess?.(selectedImageIds);
+        onRemoveFromCollectionSuccess?.(selectedIds);
         onClose();
       }
     }, 'Failed to remove images from collection');

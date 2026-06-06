@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 
-import MediaPreview from '@/app/components/ImageMetadata/sections/MediaPreview';
+import MediaPreview from '@/app/components/Metadata/sections/MediaPreview';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 type EditableContent = ContentImageModel | ContentGifModel;
@@ -46,7 +46,7 @@ describe('MediaPreview', () => {
       <MediaPreview
         isBulkEdit={false}
         selectedImages={[gif]}
-        selectedImageIds={[202]}
+        selectedIds={[202]}
         previewImage={gif}
       />
     );
@@ -60,7 +60,7 @@ describe('MediaPreview', () => {
       <MediaPreview
         isBulkEdit={false}
         selectedImages={[image]}
-        selectedImageIds={[101]}
+        selectedIds={[101]}
         previewImage={image}
       />
     );
@@ -76,7 +76,7 @@ describe('MediaPreview', () => {
       <MediaPreview
         isBulkEdit
         selectedImages={images}
-        selectedImageIds={[101, 102, 103]}
+        selectedIds={[101, 102, 103]}
         previewImage={images[0]}
       />
     );
@@ -91,7 +91,7 @@ describe('MediaPreview', () => {
       <MediaPreview
         isBulkEdit={false}
         selectedImages={[]}
-        selectedImageIds={[]}
+        selectedIds={[]}
         previewImage={undefined}
       />
     );

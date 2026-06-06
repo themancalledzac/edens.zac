@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import ImageMetadataModal from '@/app/components/ImageMetadata/ImageMetadataModal';
+import MetadataModal from '@/app/components/Metadata/MetadataModal';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 // Stable empty-array constants prevent infinite useEffect loops caused by the component's
@@ -43,10 +43,10 @@ const gifFixture = (id: number, overrides: Partial<ContentGifModel> = {}): Conte
     ...overrides,
   }) as ContentGifModel;
 
-describe('ImageMetadataModal — smoke', () => {
+describe('MetadataModal — smoke', () => {
   const baseProps = {
     onClose: jest.fn(),
-    selectedImageIds: [101],
+    selectedIds: [101],
     selectedImages: [imageFixture(101)],
     // Pass stable references to prevent infinite useEffect loops from default parameter `[]`s.
     availableLocations: EMPTY_LOCATIONS,
@@ -58,19 +58,13 @@ describe('ImageMetadataModal — smoke', () => {
   });
 
   it('renders the edit-image heading for a single-image edit', () => {
-    render(<ImageMetadataModal {...baseProps} />);
+    render(<MetadataModal {...baseProps} />);
     expect(screen.getByRole('heading', { name: /edit image metadata/i })).toBeInTheDocument();
   });
 
   it('renders a bulk-edit heading with the count', () => {
     const images = [imageFixture(101), imageFixture(102), imageFixture(103)];
-    render(
-      <ImageMetadataModal
-        {...baseProps}
-        selectedImageIds={[101, 102, 103]}
-        selectedImages={images}
-      />
-    );
+    render(<MetadataModal {...baseProps} selectedIds={[101, 102, 103]} selectedImages={images} />);
     expect(screen.getByRole('heading', { name: /edit 3 images/i })).toBeInTheDocument();
   });
 
@@ -78,26 +72,26 @@ describe('ImageMetadataModal — smoke', () => {
     const gif = gifFixture(202);
     // Modal uses createPortal to render into document.body, so container.querySelector
     // misses it — query the document instead.
-    render(<ImageMetadataModal {...baseProps} selectedImageIds={[202]} selectedImages={[gif]} />);
+    render(<MetadataModal {...baseProps} selectedIds={[202]} selectedImages={[gif]} />);
     expect(document.querySelector('video')).toBeInTheDocument();
   });
 
   it('disables Save when there are no pending changes', () => {
-    render(<ImageMetadataModal {...baseProps} />);
+    render(<MetadataModal {...baseProps} />);
     const save = screen.getByRole('button', { name: /save changes/i });
     expect(save).toBeDisabled();
   });
 
   it('Cancel calls onClose when there are no changes (no confirm)', () => {
     const onClose = jest.fn();
-    render(<ImageMetadataModal {...baseProps} onClose={onClose} />);
+    render(<MetadataModal {...baseProps} onClose={onClose} />);
     fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(window.confirm).not.toHaveBeenCalled();
   });
 
   it('Delete shows a confirmation dialog before doing anything', () => {
-    render(<ImageMetadataModal {...baseProps} />);
+    render(<MetadataModal {...baseProps} />);
     fireEvent.click(screen.getByRole('button', { name: /^delete image$/i }));
     expect(window.confirm).toHaveBeenCalled();
   });
@@ -106,9 +100,9 @@ describe('ImageMetadataModal — smoke', () => {
   // just threads isBulkEdit/selectedCount through, so it isn't re-asserted at the integration level.
 
   it('renders Remove-from-collection only when currentCollectionId is set', () => {
-    const { rerender } = render(<ImageMetadataModal {...baseProps} />);
+    const { rerender } = render(<MetadataModal {...baseProps} />);
     expect(screen.queryByRole('button', { name: /remove image/i })).not.toBeInTheDocument();
-    rerender(<ImageMetadataModal {...baseProps} currentCollectionId={42} />);
+    rerender(<MetadataModal {...baseProps} currentCollectionId={42} />);
     expect(screen.getByRole('button', { name: /remove image/i })).toBeInTheDocument();
   });
 });

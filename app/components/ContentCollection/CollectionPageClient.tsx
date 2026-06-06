@@ -121,21 +121,21 @@ export default function CollectionPageClient({
   // threaded to the images so a tap selects instead of opening fullscreen.
   const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
   const [isSelectMode, setIsSelectMode] = useState(false);
-  const [selectedImageIds, setSelectedImageIds] = useState<number[]>([]);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const handleSelectToggle = useCallback((imageId: number) => {
-    setSelectedImageIds(prev => toggleImageSelection(imageId, prev));
+    setSelectedIds(prev => toggleImageSelection(imageId, prev));
   }, []);
 
   const enterSelectMode = useCallback(() => setIsSelectMode(true), []);
   const exitSelectMode = useCallback(() => {
     setIsSelectMode(false);
-    setSelectedImageIds([]);
+    setSelectedIds([]);
   }, []);
 
   const downloadContextValue = useMemo<ClientGalleryDownloadContextValue>(
-    () => ({ isSelectMode, selectedImageIds, enterSelectMode, exitSelectMode }),
-    [isSelectMode, selectedImageIds, enterSelectMode, exitSelectMode]
+    () => ({ isSelectMode, selectedIds, enterSelectMode, exitSelectMode }),
+    [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
   const allContent = useMemo(() => collection.content ?? [], [collection.content]);
@@ -357,7 +357,7 @@ export default function CollectionPageClient({
         serverContentWidth={serverContentWidth}
         serverViewportHeight={serverViewportHeight}
         serverIsMobile={serverIsMobile}
-        selectedImageIds={isClientGallery ? selectedImageIds : undefined}
+        selectedIds={isClientGallery ? selectedIds : undefined}
         onImageClick={isClientGallery && isSelectMode ? handleSelectToggle : undefined}
       />
       {hasActiveFilters && filteredImages.length === 0 && (

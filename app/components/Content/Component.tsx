@@ -31,7 +31,7 @@ export interface ContentComponentProps {
   /** Accepts any viewable content (image, parallax image, or GIF/MP4 — normalized in renderer) */
   onFullScreenImageClick?: (image: ViewableContent) => void;
   /** Array of selected image IDs for bulk editing */
-  selectedImageIds?: number[];
+  selectedIds?: number[];
   /** ID of current collection (for checking collection-specific visibility) */
   currentCollectionId?: number;
   /** Number of images per row (default: 2) */
@@ -76,7 +76,7 @@ export default function Component({
   priorityIndex = 0,
   enableFullScreenView = false,
   onFullScreenImageClick,
-  selectedImageIds = [],
+  selectedIds = [],
   currentCollectionId,
   chunkSize = LAYOUT.defaultChunkSize,
   mobileChunkSize,
@@ -158,7 +158,7 @@ export default function Component({
           onImageClick={onImageClick}
           enableFullScreenView={enableFullScreenView}
           onFullScreenImageClick={onFullScreenImageClick}
-          selectedImageIds={selectedImageIds}
+          selectedIds={selectedIds}
           currentCollectionId={currentCollectionId}
           isSelectingCoverImage={isSelectingCoverImage}
           currentCoverImageId={currentCoverImageId}

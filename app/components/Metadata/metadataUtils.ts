@@ -2,7 +2,7 @@
  * Image Metadata Utilities
  *
  * Helper functions for building and processing image metadata updates.
- * Used by ImageMetadataModal for both single and bulk editing.
+ * Used by MetadataModal for both single and bulk editing.
  */
 
 import type { ContentGifUpdateRequest } from '@/app/lib/api/content';
@@ -13,7 +13,7 @@ import type {
   ContentImageUpdateRequest,
   ContentImageUpdateResponse,
 } from '@/app/types/Content';
-import type { ContentCameraModel } from '@/app/types/ImageMetadata';
+import type { ContentCameraModel } from '@/app/types/Metadata';
 import { buildLocationsDiff } from '@/app/utils/locationUtils';
 
 // ============================================================================
@@ -973,7 +973,7 @@ export function handleDropdownChange(
  *
  * @param updateState - Common update state containing shared values to apply to all images
  * @param selectedImages - Array of all selected images to update
- * @param selectedImageIds - Array of image IDs to update (must match selectedImages)
+ * @param selectedIds - Array of image IDs to update (must match selectedImages)
  * @param availableFilmTypes - Optional list of available film types for filmType validation
  * @returns Array of ContentImageUpdateRequest objects, one for each image
  * @throws Error if an image ID is not found in selectedImages
@@ -983,7 +983,7 @@ export function buildImageUpdatesForBulkEdit(
     id: number;
   },
   selectedImages: ContentImageModel[],
-  selectedImageIds: number[],
+  selectedIds: number[],
   availableFilmTypes?: Array<{ id: number; name: string; filmTypeName?: string }>
 ): ContentImageUpdateRequest[] {
   // Get original common values to identify which people/tags were originally common
@@ -1004,7 +1004,7 @@ export function buildImageUpdatesForBulkEdit(
       .filter((id): id is number => id !== undefined && id > 0)
   );
 
-  return selectedImageIds.map(imageId => {
+  return selectedIds.map(imageId => {
     // Find the current image state
     const currentImage = selectedImages.find(img => img.id === imageId);
     if (!currentImage) {

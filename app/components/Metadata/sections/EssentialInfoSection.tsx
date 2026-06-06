@@ -7,8 +7,8 @@ import { Select } from '@/app/components/ui/Field/Select';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
 import type { CollectionListModel, LocationModel } from '@/app/types/Collection';
 
-import type { ImageUpdateState } from '../hooks/useImageMetadataState';
-import modalStyles from '../ImageMetadataModal.module.scss';
+import type { ImageUpdateState } from '../hooks/useMetadataState';
+import modalStyles from '../MetadataModal.module.scss';
 
 // ---------------------------------------------------------------------------
 // Static option list for the Rating <Select>. Hoisted out of the render path

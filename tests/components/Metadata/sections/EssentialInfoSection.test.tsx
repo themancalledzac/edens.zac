@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 
-import type { ImageUpdateState } from '@/app/components/ImageMetadata/hooks/useImageMetadataState';
-import EssentialInfoSection from '@/app/components/ImageMetadata/sections/EssentialInfoSection';
+import type { ImageUpdateState } from '@/app/components/Metadata/hooks/useMetadataState';
+import EssentialInfoSection from '@/app/components/Metadata/sections/EssentialInfoSection';
 import type { CollectionListModel, LocationModel } from '@/app/types/Collection';
 
 const baseUpdateState: ImageUpdateState = {

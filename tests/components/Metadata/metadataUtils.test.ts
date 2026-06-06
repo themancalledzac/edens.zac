@@ -1,5 +1,5 @@
 /**
- * Unit tests for imageMetadataUtils.ts
+ * Unit tests for metadataUtils.ts
  * Tests all utility functions for building image metadata updates
  */
 
@@ -22,13 +22,13 @@ import {
   getFormValue,
   handleDropdownChange,
   mapUpdateResponseToFrontend,
-} from '@/app/components/ImageMetadata/imageMetadataUtils';
+} from '@/app/components/Metadata/metadataUtils';
 import type {
   ContentGifModel,
   ContentImageModel,
   ContentImageUpdateRequest,
 } from '@/app/types/Content';
-import type { ContentCameraModel, ContentFilmTypeModel } from '@/app/types/ImageMetadata';
+import type { ContentCameraModel, ContentFilmTypeModel } from '@/app/types/Metadata';
 
 // Test fixtures
 const createImageContent = (
@@ -1289,7 +1289,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
   //
   // Failing test cases:
   // - Throws error if image ID not found in selectedImages
-  // - Handles empty selectedImageIds array
+  // - Handles empty selectedIds array
   // - Handles empty selectedImages array
 
   const image1 = createImageContent(1, {
@@ -1318,12 +1318,12 @@ describe('buildImageUpdatesForBulkEdit', () => {
     };
 
     const selectedImages = [image1, image2, image3];
-    const selectedImageIds = [1, 2, 3];
+    const selectedIds = [1, 2, 3];
 
     const result = buildImageUpdatesForBulkEdit(
       updateState,
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       availableFilmTypes
     );
 
@@ -1340,12 +1340,12 @@ describe('buildImageUpdatesForBulkEdit', () => {
     };
 
     const selectedImages = [image1, image2];
-    const selectedImageIds = [1, 2];
+    const selectedIds = [1, 2];
 
     const result = buildImageUpdatesForBulkEdit(
       updateState,
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       availableFilmTypes
     );
 
@@ -1361,31 +1361,26 @@ describe('buildImageUpdatesForBulkEdit', () => {
     };
 
     const selectedImages = [image1, image2];
-    const selectedImageIds = [1, 999]; // 999 doesn't exist
+    const selectedIds = [1, 999]; // 999 doesn't exist
 
     expect(() => {
-      buildImageUpdatesForBulkEdit(
-        updateState,
-        selectedImages,
-        selectedImageIds,
-        availableFilmTypes
-      );
+      buildImageUpdatesForBulkEdit(updateState, selectedImages, selectedIds, availableFilmTypes);
     }).toThrow('Image 999 not found in selectedImages');
   });
 
-  it('should handle empty selectedImageIds array', () => {
+  it('should handle empty selectedIds array', () => {
     const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
       title: 'Updated Title',
     };
 
     const selectedImages = [image1];
-    const selectedImageIds: number[] = [];
+    const selectedIds: number[] = [];
 
     const result = buildImageUpdatesForBulkEdit(
       updateState,
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       availableFilmTypes
     );
 
@@ -1399,12 +1394,12 @@ describe('buildImageUpdatesForBulkEdit', () => {
     };
 
     const selectedImages = [image1, image2, image3];
-    const selectedImageIds = [3, 1, 2]; // Out of order
+    const selectedIds = [3, 1, 2]; // Out of order
 
     const result = buildImageUpdatesForBulkEdit(
       updateState,
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       availableFilmTypes
     );
 
@@ -1433,12 +1428,12 @@ describe('buildImageUpdatesForBulkEdit', () => {
     };
 
     const selectedImages = [imageWithPerson, imageWithoutPeople, imageWithoutPeople2];
-    const selectedImageIds = [1, 2, 3];
+    const selectedIds = [1, 2, 3];
 
     const result = buildImageUpdatesForBulkEdit(
       updateState,
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       availableFilmTypes
     );
 
@@ -1483,12 +1478,12 @@ describe('buildImageUpdatesForBulkEdit', () => {
     };
 
     const selectedImages = [imageWithPerson, imageWithoutPeople, imageWithoutPeople2];
-    const selectedImageIds = [1, 2, 3];
+    const selectedIds = [1, 2, 3];
 
     const result = buildImageUpdatesForBulkEdit(
       updateState,
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       availableFilmTypes
     );
 
@@ -1535,12 +1530,12 @@ describe('buildImageUpdatesForBulkEdit', () => {
     };
 
     const selectedImages = [image1, image2, image3];
-    const selectedImageIds = [1, 2, 3];
+    const selectedIds = [1, 2, 3];
 
     const result = buildImageUpdatesForBulkEdit(
       updateState,
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       availableFilmTypes
     );
 
@@ -1583,12 +1578,12 @@ describe('buildImageUpdatesForBulkEdit', () => {
     };
 
     const selectedImages = [imageWithTag, imageWithoutTags, imageWithoutTags2];
-    const selectedImageIds = [1, 2, 3];
+    const selectedIds = [1, 2, 3];
 
     const result = buildImageUpdatesForBulkEdit(
       updateState,
       selectedImages,
-      selectedImageIds,
+      selectedIds,
       availableFilmTypes
     );
 

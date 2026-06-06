@@ -37,7 +37,7 @@ function makeValue(
 ): ClientGalleryDownloadContextValue {
   return {
     isSelectMode: false,
-    selectedImageIds: [],
+    selectedIds: [],
     enterSelectMode: jest.fn(),
     exitSelectMode: jest.fn(),
     ...overrides,
@@ -165,20 +165,20 @@ describe('ClientGalleryDownload — Select flow (with context)', () => {
   });
 
   it('shows the action bar with the live count while in select mode', () => {
-    renderWithProvider('smith-wedding', { isSelectMode: true, selectedImageIds: [10, 20] });
+    renderWithProvider('smith-wedding', { isSelectMode: true, selectedIds: [10, 20] });
     expect(screen.getByText('2 selected')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^download$/i })).toBeEnabled();
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
   });
 
   it('disables Download when nothing is selected', () => {
-    renderWithProvider('smith-wedding', { isSelectMode: true, selectedImageIds: [] });
+    renderWithProvider('smith-wedding', { isSelectMode: true, selectedIds: [] });
     expect(screen.getByText('0 selected')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^download$/i })).toBeDisabled();
   });
 
   it('navigates to the subset download URL with the selected ids', () => {
-    renderWithProvider('smith-wedding', { isSelectMode: true, selectedImageIds: [10, 20] });
+    renderWithProvider('smith-wedding', { isSelectMode: true, selectedIds: [10, 20] });
     fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
     fireEvent.click(screen.getByRole('button', { name: /^web$/i }));
 
@@ -190,7 +190,7 @@ describe('ClientGalleryDownload — Select flow (with context)', () => {
   it('calls exitSelectMode when the bar Cancel is clicked', () => {
     const { value } = renderWithProvider('smith-wedding', {
       isSelectMode: true,
-      selectedImageIds: [10],
+      selectedIds: [10],
     });
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(value.exitSelectMode).toHaveBeenCalledTimes(1);
@@ -199,9 +199,7 @@ describe('ClientGalleryDownload — Select flow (with context)', () => {
   it('auto-backs-out of the open picker when the selection drops to zero', () => {
     const slug = 'smith-wedding';
     const { rerender } = render(
-      <ClientGalleryDownloadProvider
-        value={makeValue({ isSelectMode: true, selectedImageIds: [10] })}
-      >
+      <ClientGalleryDownloadProvider value={makeValue({ isSelectMode: true, selectedIds: [10] })}>
         <ClientGalleryDownload collectionSlug={slug} />
       </ClientGalleryDownloadProvider>
     );
@@ -211,9 +209,7 @@ describe('ClientGalleryDownload — Select flow (with context)', () => {
 
     // Deselect the last image — the picker should auto-close back to the count view.
     rerender(
-      <ClientGalleryDownloadProvider
-        value={makeValue({ isSelectMode: true, selectedImageIds: [] })}
-      >
+      <ClientGalleryDownloadProvider value={makeValue({ isSelectMode: true, selectedIds: [] })}>
         <ClientGalleryDownload collectionSlug={slug} />
       </ClientGalleryDownloadProvider>
     );
@@ -226,7 +222,7 @@ describe('ClientGalleryDownload — Select flow (with context)', () => {
   it('the picker shows "Back" (not Cancel) and returns to the count view without leaving select mode', () => {
     const { value } = renderWithProvider('smith-wedding', {
       isSelectMode: true,
-      selectedImageIds: [10, 20],
+      selectedIds: [10, 20],
     });
     fireEvent.click(screen.getByRole('button', { name: /^download$/i }));
     expect(screen.getByRole('button', { name: /^web$/i })).toBeInTheDocument();
