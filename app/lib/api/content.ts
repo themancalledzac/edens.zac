@@ -26,6 +26,7 @@ import {
   type ContentImageUpdateRequest,
 } from '@/app/types/Content';
 import { type ContentPersonModel, type ContentTagModel } from '@/app/types/Metadata';
+import { logger } from '@/app/utils/logger';
 
 // ============================================================================
 // READ Endpoints (Production - /api/read/content)
@@ -139,11 +140,7 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   // Handle both array response and paginated wrapper
   if (Array.isArray(result)) return result;
   if ('content' in result && Array.isArray(result.content)) return result.content;
-  console.error(
-    '[searchImages] Unexpected response shape:',
-    typeof result,
-    result !== null && typeof result === 'object' ? Object.keys(result) : ''
-  );
+  logger.error('searchImages', 'Unexpected response shape', undefined, { type: typeof result, keys: result !== null && typeof result === 'object' ? Object.keys(result) : [] });
   throw new Error(
     `[searchImages] Unexpected response shape: expected array or { content: [] }, got ${typeof result}`
   );
@@ -369,9 +366,9 @@ export async function getAllImages(params: GetAllImagesParams = {}): Promise<Pag
     const totalPages =
       typeof env.totalPages === 'number'
         ? env.totalPages
-        : size > 0
+        : (size > 0
           ? Math.ceil(totalElements / size)
-          : 1;
+          : 1);
     const number = typeof env.number === 'number' ? env.number : page;
     const last = typeof env.last === 'boolean' ? env.last : number >= totalPages - 1;
     return { items, page: number, totalPages, totalElements, isLast: last };

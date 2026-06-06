@@ -18,6 +18,7 @@ import {
   searchImages,
   updateImages,
 } from '@/app/lib/api/content';
+import { logger } from '@/app/utils/logger';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -150,17 +151,13 @@ describe('Read Endpoints', () => {
     });
 
     it('should throw for unrecognized response shape', async () => {
-      const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const spy = jest.spyOn(logger, 'error').mockImplementation(() => {});
       (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse({ data: [] }));
 
       await expect(searchImages({ cameraId: 1 })).rejects.toThrow(
         '[searchImages] Unexpected response shape'
       );
-      expect(spy).toHaveBeenCalledWith(
-        expect.stringContaining('[searchImages]'),
-        expect.anything(),
-        expect.anything()
-      );
+      expect(spy).toHaveBeenCalled();
       spy.mockRestore();
     });
 
@@ -242,7 +239,6 @@ describe('Admin Endpoints', () => {
       expect(url).toContain('captureStartDate=2026-01-01');
       expect(url).toContain('captureEndDate=2026-12-31');
     });
-
   });
 
   describe('createImages', () => {

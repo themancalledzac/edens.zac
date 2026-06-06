@@ -22,6 +22,7 @@ import {
 import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 import { isLocalEnvironment } from '@/app/utils/environment';
 import { toggleImageSelection } from '@/app/utils/imageSelection';
+import { logger } from '@/app/utils/logger';
 
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 export const DEFAULT_PAGE_SIZE = 50;
@@ -325,7 +326,7 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
     ]);
   } catch (error) {
     if (isLocalEnvironment()) {
-      console.warn('[manageUtils] Failed to revalidate cache:', error);
+      logger.warn('manageUtils', 'Failed to revalidate cache', { error });
     }
   }
 }
@@ -353,7 +354,7 @@ export async function revalidateMetadataCache(): Promise<void> {
     });
   } catch (error) {
     if (isLocalEnvironment()) {
-      console.warn('[manageUtils] Failed to revalidate metadata cache:', error);
+      logger.warn('manageUtils', 'Failed to revalidate metadata cache', { error });
     }
   }
 }
@@ -538,9 +539,7 @@ export function replayMoves(originalOrder: number[], moves: ReorderMove[]): numb
   for (const move of moves) {
     const fromIndex = order.indexOf(move.imageId);
     if (fromIndex === -1) {
-      console.warn(
-        `[replayMoves] imageId ${move.imageId} not found in current order — move skipped`
-      );
+      logger.warn('replayMoves', `imageId ${move.imageId} not found in current order — move skipped`);
       continue;
     }
     // Remove from current position

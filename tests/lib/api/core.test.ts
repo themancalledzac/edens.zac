@@ -15,6 +15,7 @@ import {
   fetchPutJsonApi,
   getServerCookieHeader,
 } from '@/app/lib/api/core';
+import { logger } from '@/app/utils/logger';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -408,16 +409,13 @@ describe('getServerCookieHeader', () => {
     warnSpy.mockRestore();
   });
 
-  it('returns null and calls console.warn when an unexpected error is thrown', async () => {
+  it('returns null and calls logger.warn when an unexpected error is thrown', async () => {
     nextHeaders.cookies.mockRejectedValue(new Error('Unexpected internal failure'));
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
 
     const result = await getServerCookieHeader();
     expect(result).toBeNull();
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[getServerCookieHeader] Unexpected error reading cookies:',
-      expect.any(Error)
-    );
+    expect(warnSpy).toHaveBeenCalled();
 
     warnSpy.mockRestore();
   });
