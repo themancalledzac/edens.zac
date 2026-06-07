@@ -55,9 +55,7 @@ export function CollectionFilterProvider({
   children: React.ReactNode;
   value: CollectionFilterContextValue;
 }) {
-  return (
-    <CollectionFilterContext.Provider value={value}>{children}</CollectionFilterContext.Provider>
-  );
+  return <CollectionFilterContext value={value}>{children}</CollectionFilterContext>;
 }
 
 export function useCollectionFilter(): CollectionFilterContextValue | null {
