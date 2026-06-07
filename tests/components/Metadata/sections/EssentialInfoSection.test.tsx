@@ -78,4 +78,98 @@ describe('EssentialInfoSection', () => {
     const { container } = render(<EssentialInfoSection {...makeProps({ isGif: true })} />);
     expect(container.querySelector('[aria-disabled="true"]')).toBeInTheDocument();
   });
+
+  // Characterization tests for the collection-visibility toggle. These pin the current
+  // append-vs-update junction behavior through the rendered checkbox before the logic is
+  // extracted into essentialInfoUtils, proving the extraction is behavior-preserving.
+  describe('Collection Visibility toggle (characterization)', () => {
+    it('checkbox is checked by default when no junction exists (absent === visible)', () => {
+      render(<EssentialInfoSection {...makeProps({ currentCollectionId: 42 })} />);
+      expect(screen.getByRole('checkbox')).toBeChecked();
+    });
+
+    it('checkbox is checked when the existing junction is not explicitly hidden', () => {
+      const updateState: ImageUpdateState = {
+        ...baseUpdateState,
+        collections: [
+          { collectionId: 42, name: 'Pacific Northwest', visible: true, orderIndex: 0 },
+        ],
+      };
+      render(<EssentialInfoSection {...makeProps({ currentCollectionId: 42, updateState })} />);
+      expect(screen.getByRole('checkbox')).toBeChecked();
+    });
+
+    it('checkbox is unchecked only when the junction is explicitly visible=false', () => {
+      const updateState: ImageUpdateState = {
+        ...baseUpdateState,
+        collections: [
+          { collectionId: 42, name: 'Pacific Northwest', visible: false, orderIndex: 0 },
+        ],
+      };
+      render(<EssentialInfoSection {...makeProps({ currentCollectionId: 42, updateState })} />);
+      expect(screen.getByRole('checkbox')).not.toBeChecked();
+    });
+
+    it('APPEND branch: unchecking when the image is not yet in the collection appends a new junction with the collection name and trailing orderIndex', () => {
+      const updateStateField = jest.fn();
+      const updateState: ImageUpdateState = {
+        ...baseUpdateState,
+        collections: [{ collectionId: 7, name: 'Other', visible: true, orderIndex: 0 }],
+      };
+      render(
+        <EssentialInfoSection
+          {...makeProps({ currentCollectionId: 42, updateState, updateStateField })}
+        />
+      );
+      // Default-visible (no junction for 42) → checkbox starts checked; uncheck it.
+      fireEvent.click(screen.getByRole('checkbox'));
+      expect(updateStateField).toHaveBeenCalledWith({
+        collections: [
+          { collectionId: 7, name: 'Other', visible: true, orderIndex: 0 },
+          { collectionId: 42, name: 'Pacific Northwest', visible: false, orderIndex: 1 },
+        ],
+      });
+    });
+
+    it('APPEND branch: name is undefined when the collection is not in availableCollections', () => {
+      const updateStateField = jest.fn();
+      render(
+        <EssentialInfoSection
+          {...makeProps({
+            currentCollectionId: 999,
+            availableCollections: baseCollections,
+            updateStateField,
+          })}
+        />
+      );
+      fireEvent.click(screen.getByRole('checkbox'));
+      expect(updateStateField).toHaveBeenCalledWith({
+        collections: [{ collectionId: 999, name: undefined, visible: false, orderIndex: 0 }],
+      });
+    });
+
+    it('UPDATE branch: toggling an existing junction updates visible in place without re-ordering', () => {
+      const updateStateField = jest.fn();
+      const updateState: ImageUpdateState = {
+        ...baseUpdateState,
+        collections: [
+          { collectionId: 7, name: 'Other', visible: true, orderIndex: 0 },
+          { collectionId: 42, name: 'Pacific Northwest', visible: true, orderIndex: 1 },
+        ],
+      };
+      render(
+        <EssentialInfoSection
+          {...makeProps({ currentCollectionId: 42, updateState, updateStateField })}
+        />
+      );
+      // Junction for 42 exists and is visible → checkbox starts checked; uncheck it.
+      fireEvent.click(screen.getByRole('checkbox'));
+      expect(updateStateField).toHaveBeenCalledWith({
+        collections: [
+          { collectionId: 7, name: 'Other', visible: true, orderIndex: 0 },
+          { collectionId: 42, name: 'Pacific Northwest', visible: false, orderIndex: 1 },
+        ],
+      });
+    });
+  });
 });

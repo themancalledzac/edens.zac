@@ -10,6 +10,7 @@ import type { CollectionListModel, LocationModel } from '@/app/types/Collection'
 
 import type { ImageUpdateState } from '../hooks/useMetadataState';
 import modalStyles from '../MetadataModal.module.scss';
+import { isCurrentCollectionVisible, toggleCollectionVisibility } from './essentialInfoUtils';
 
 // ---------------------------------------------------------------------------
 // Static option list for the Rating <Select>. Hoisted out of the render path
@@ -46,44 +47,23 @@ export default function EssentialInfoSection({
 }: EssentialInfoSectionProps): React.JSX.Element {
   // Visibility of the current collection's junction. Absent/undefined means "visible" (only an
   // explicit `false` hides it), matching the backend default.
-  const currentCollectionVisible =
-    updateState.collections?.find(c => c.collectionId === currentCollectionId)?.visible !== false;
+  const currentCollectionVisible = isCurrentCollectionVisible(
+    updateState.collections,
+    currentCollectionId
+  );
 
   // Toggle the current collection's `visible` flag in updateState — updating the existing junction
   // in place, or appending one when the image isn't in this collection's list yet.
   const handleCollectionVisibilityToggle = (checked: boolean) => {
     if (currentCollectionId == null) return;
-
-    const currentCollections = updateState.collections || [];
-    const collectionIndex = currentCollections.findIndex(
-      c => c.collectionId === currentCollectionId
-    );
-
-    let updatedCollections: Array<{
-      collectionId: number;
-      name?: string;
-      visible?: boolean;
-      orderIndex?: number;
-    }>;
-
-    if (collectionIndex >= 0) {
-      updatedCollections = currentCollections.map((c, idx) =>
-        idx === collectionIndex ? { ...c, visible: checked } : c
-      );
-    } else {
-      const collectionName = availableCollections.find(c => c.id === currentCollectionId)?.name;
-      updatedCollections = [
-        ...currentCollections,
-        {
-          collectionId: currentCollectionId,
-          name: collectionName,
-          visible: checked,
-          orderIndex: currentCollections.length,
-        },
-      ];
-    }
-
-    updateStateField({ collections: updatedCollections });
+    updateStateField({
+      collections: toggleCollectionVisibility(
+        updateState.collections,
+        currentCollectionId,
+        checked,
+        availableCollections
+      ),
+    });
   };
 
   return (
