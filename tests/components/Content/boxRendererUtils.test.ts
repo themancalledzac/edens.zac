@@ -16,6 +16,18 @@ describe('computeReorderFlags', () => {
       expect(flags.isPickedUp).toBe(false);
       expect(flags.hasMoved).toBe(false);
     });
+
+    it('treats undefined reorder mode as inactive (the !!isReorderMode coercion)', () => {
+      // BoxRenderer leaves isReorderMode undefined (no default), unlike CollectionContentRenderer.
+      // The original `isReorderMode && …` returned undefined; the helper's `!!isReorderMode`
+      // returns false. This locks that exact divergent input.
+      const flags = computeReorderFlags(7, {
+        pickedUpImageId: 7,
+        reorderMoves: [{ imageId: 7, toIndex: 0 }],
+      });
+      expect(flags.isPickedUp).toBe(false);
+      expect(flags.hasMoved).toBe(false);
+    });
   });
 
   describe('isPickedUp', () => {

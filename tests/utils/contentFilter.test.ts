@@ -1232,6 +1232,14 @@ describe('hasValueVariance', () => {
     expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(true);
   });
 
+  it('drops rating 0 WITHOUT the String() wrapper — proves the call-site wrapper is load-bearing', () => {
+    // CollectionPageClient must pass `String(img.rating ?? 0)`, not the raw number. Without the
+    // wrapper, 0 is falsy → dropped → only {5} remains → no variance, silently hiding the
+    // Highly-Rated control on an all-0-vs-some-rated collection. This documents WHY the wrapper exists.
+    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 0 })];
+    expect(hasValueVariance(images, img => img.rating)).toBe(false);
+  });
+
   it('drops falsy (missing) capture dates so a single real date has no variance', () => {
     const images = [
       makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
