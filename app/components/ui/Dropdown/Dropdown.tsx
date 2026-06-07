@@ -6,6 +6,18 @@ import { useCallback, useRef, useState } from 'react';
 import { useClickOutsideMultiple } from '@/app/hooks/useClickOutside';
 
 import styles from './Dropdown.module.scss';
+import {
+  findMissingRequiredFields,
+  getItemDisplayName as resolveItemDisplayName,
+  getKey as resolveKey,
+  isAddNewFormValid as checkAddNewFormValid,
+  isFieldVisible as checkFieldVisible,
+  isItemSelected as checkItemSelected,
+  itemExistsInDatabase as checkItemExistsInDatabase,
+  processAddNewFormData,
+  removeFromSelection,
+  toggleMultiSelection,
+} from './dropdownUtils';
 
 /**
  * Generic metadata item interface.
@@ -113,43 +125,16 @@ export default function Dropdown<T extends MetadataItem>({
 
   useClickOutsideMultiple(containerRef, [isSelectingFromDropdown, isAddingNew], handleCloseAll);
 
-  /**
-   * Uses custom getter if provided, otherwise falls back to displayName or name.
-   * Always returns a string, never an object.
-   */
-  const getItemDisplayName = (item: T | null | undefined): string => {
-    if (!item) return '';
-    if (getDisplayName) {
-      const result = getDisplayName(item);
-      if (typeof result === 'string') return result;
-      return '';
-    }
-    return item.displayName || item.name || '';
-  };
+  const getItemDisplayName = (item: T | null | undefined): string =>
+    resolveItemDisplayName(item, getDisplayName);
 
-  /** Uses custom getter if provided, otherwise uses id or name. */
-  const getKey = (item: T): string | number => {
-    if (getItemKey) return getItemKey(item);
-    return item.id ?? item.name ?? '';
-  };
+  const getKey = (item: T): string | number => resolveKey(item, getItemKey);
 
-  /** Check if an item exists in the database (has a valid id > 0). */
-  const itemExistsInDatabase = (item: T | null | undefined): boolean => {
-    if (!item) return true;
-    return Boolean(item.id && item.id > 0);
-  };
+  const itemExistsInDatabase = (item: T | null | undefined): boolean =>
+    checkItemExistsInDatabase(item);
 
-  const isItemSelected = (item: T): boolean => {
-    if (multiSelect) {
-      return selectedValues.some(selected => {
-        if (selected.id && item.id) return selected.id === item.id;
-        return getItemDisplayName(selected) === getItemDisplayName(item);
-      });
-    }
-    if (!selectedValue) return false;
-    if (selectedValue.id && item.id) return selectedValue.id === item.id;
-    return getItemDisplayName(selectedValue) === getItemDisplayName(item);
-  };
+  const isItemSelected = (item: T): boolean =>
+    checkItemSelected(item, selectedValue, selectedValues, multiSelect, getDisplayName);
 
   const handleToggleDropdown = () => {
     setIsSelectingFromDropdown(prev => !prev);
@@ -174,16 +159,7 @@ export default function Dropdown<T extends MetadataItem>({
 
   const handleSelectItem = (item: T) => {
     if (multiSelect) {
-      const isCurrentlySelected = isItemSelected(item);
-      if (isCurrentlySelected) {
-        const newSelection = selectedValues.filter(selected => {
-          if (selected.id && item.id) return selected.id !== item.id;
-          return getItemDisplayName(selected) !== getItemDisplayName(item);
-        });
-        onChange(newSelection);
-      } else {
-        onChange([...selectedValues, item]);
-      }
+      onChange(toggleMultiSelection(selectedValues, item, getDisplayName));
     } else {
       onChange(item);
     }
@@ -195,45 +171,16 @@ export default function Dropdown<T extends MetadataItem>({
   const handleRemoveItem = (e: React.MouseEvent | React.KeyboardEvent, item: T) => {
     e.stopPropagation();
     if (!multiSelect) return;
-
-    const newSelection = selectedValues.filter(selected => {
-      if (selected.id && item.id) return selected.id !== item.id;
-      return getItemDisplayName(selected) !== getItemDisplayName(item);
-    });
-    onChange(newSelection);
+    onChange(removeFromSelection(selectedValues, item, getDisplayName));
   };
 
-  const isFieldVisible = (field: AddNewField): boolean =>
-    field.showWhen ? field.showWhen(formData) : true;
+  const isFieldVisible = (field: AddNewField): boolean => checkFieldVisible(field, formData);
 
   const handleAddNew = () => {
     // Validate visible, required fields. Hidden fields (showWhen → false) are skipped.
-    const missing = addNewFields.filter(isFieldVisible).filter(field => {
-      if (!field.required) return false;
-      const value = formData[field.name];
-      if (field.type === 'checkbox') return false; // checkboxes never "missing"
-      if (value === undefined || value === null) return true;
-      return value.toString().trim() === '';
-    });
-    if (missing.length > 0) return;
+    if (findMissingRequiredFields(addNewFields, formData).length > 0) return;
 
-    const processedData: Record<string, string | number | boolean | null> = {};
-    for (const field of addNewFields) {
-      // Drop fields that are hidden so the parent doesn't get stale values from
-      // a sibling toggle (e.g. defaultFilmFormat when isFilm flips off).
-      if (!isFieldVisible(field)) continue;
-      const value = formData[field.name];
-      if (field.type === 'checkbox') {
-        processedData[field.name] = value === true;
-      } else if (field.type === 'number') {
-        processedData[field.name] =
-          typeof value === 'string' && value !== '' ? Number.parseInt(value, 10) : null;
-      } else if (typeof value === 'string') {
-        processedData[field.name] = value.trim() || null;
-      } else {
-        processedData[field.name] = value ? String(value) : null;
-      }
-    }
+    const processedData = processAddNewFormData(addNewFields, formData);
 
     if (onAddNew) {
       onAddNew(processedData);
@@ -243,21 +190,7 @@ export default function Dropdown<T extends MetadataItem>({
     setIsAddingNew(false);
   };
 
-  const isAddNewFormValid = (): boolean => {
-    return addNewFields
-      .filter(isFieldVisible)
-      .filter(field => field.required)
-      .every(field => {
-        const value = formData[field.name];
-        if (field.type === 'checkbox') return true;
-        if (value === undefined || value === null) return false;
-        if (field.type === 'number') {
-          const numValue = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;
-          return !Number.isNaN(numValue) && numValue > 0;
-        }
-        return value.toString().trim().length > 0;
-      });
-  };
+  const isAddNewFormValid = (): boolean => checkAddNewFormValid(addNewFields, formData);
 
   const handleFieldChange = (fieldName: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [fieldName]: value }));
