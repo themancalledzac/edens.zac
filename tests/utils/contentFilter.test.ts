@@ -1,13 +1,24 @@
 import {
   type AnyContentModel,
+  type ContentCollectionModel,
   type ContentImageModel,
   type ContentTextModel,
 } from '@/app/types/Content';
+import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
 import {
+  applyCollectionFilters,
+  buildCollectionCriteria,
+  buildLocationCriteria,
   computeFilterCounts,
   type ContentFilterCriteria,
+  extractCollectionFilterOptions,
   extractFilterOptions,
+  filmFilterFromIsFilm,
   filterContent,
+  hasAnyActiveFilter,
+  hasFilterableOptions,
+  hasValueVariance,
+  mergeDateSortedImages,
   parseFilterFromParams,
   serializeFilterToParams,
 } from '@/app/utils/contentFilter';
@@ -977,5 +988,405 @@ describe('extractFilterOptions tag frequency', () => {
     ];
     const options = extractFilterOptions(images);
     expect(options.tags).toHaveLength(10);
+  });
+});
+
+// ─── Collection-page filter derivations ───
+
+function makeCollectionRef(
+  overrides: Partial<ContentCollectionModel> = {}
+): ContentCollectionModel {
+  return {
+    id: 1000,
+    contentType: 'COLLECTION',
+    orderIndex: 0,
+    slug: 'child',
+    collectionType: 'COLLECTION' as ContentCollectionModel['collectionType'],
+    referencedCollectionId: 1,
+    ...overrides,
+  };
+}
+
+function makeFilterState(overrides: Partial<FilterState> = {}): FilterState {
+  return { ...INITIAL_FILTER_STATE, ...overrides };
+}
+
+describe('extractCollectionFilterOptions', () => {
+  it('returns all dimensions empty for an empty input', () => {
+    const dims = extractCollectionFilterOptions([]);
+    expect(dims.tags.values).toEqual([]);
+    expect(dims.people.values).toEqual([]);
+    expect(dims.cameras.values).toEqual([]);
+    expect(dims.lenses.values).toEqual([]);
+    expect(dims.locations.values).toEqual([]);
+    expect(dims.lensTypes.values).toEqual([]);
+  });
+
+  it('marks tags and people filterable regardless of count', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }], people: [] }),
+    ]);
+    expect(dims.tags.filterable).toBe(true);
+    expect(dims.people.filterable).toBe(true);
+  });
+
+  it('marks single-value cameras/lenses/locations non-filterable (info-mode)', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({
+        id: 1,
+        camera: { id: 1, name: 'Sony A7III' },
+        lens: { id: 1, name: 'FE 35mm' },
+        locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }],
+      }),
+    ]);
+    expect(dims.cameras.values).toEqual(['Sony A7III']);
+    expect(dims.cameras.filterable).toBe(false);
+    expect(dims.lenses.filterable).toBe(false);
+    expect(dims.locations.filterable).toBe(false);
+  });
+
+  it('marks cameras/lenses/locations filterable when 2+ distinct values', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({
+        id: 1,
+        camera: { id: 1, name: 'Sony A7III' },
+        lens: { id: 1, name: 'FE 35mm' },
+        locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }],
+      }),
+      makeImage({
+        id: 2,
+        camera: { id: 2, name: 'Nikon Z6' },
+        lens: { id: 2, name: 'NIKKOR 50mm' },
+        locations: [{ id: 2, name: 'Tokyo', slug: 'tokyo' }],
+      }),
+    ]);
+    expect(dims.cameras.filterable).toBe(true);
+    expect(dims.lenses.filterable).toBe(true);
+    expect(dims.locations.filterable).toBe(true);
+  });
+
+  it('surfaces lens types only with 2+ distinct categories AND 2+ distinct lenses', () => {
+    // wide (24mm) + telephoto (200mm), two distinct lenses → lens types surface, ordered.
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
+      makeImage({ id: 2, focalLength: '200mm', lens: { id: 2, name: 'FE 200mm' } }),
+    ]);
+    expect(dims.lensTypes.values).toEqual(['wide', 'telephoto']);
+  });
+
+  it('suppresses lens types when only one category present', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
+      makeImage({ id: 2, focalLength: '28mm', lens: { id: 2, name: 'FE 28mm' } }),
+    ]);
+    // both 'wide' → only one distinct category
+    expect(dims.lensTypes.values).toEqual([]);
+  });
+
+  it('suppresses lens types when fewer than 2 distinct lenses', () => {
+    // two categories but a single lens object → lenses < 2
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
+      makeImage({ id: 2, focalLength: '200mm', lens: { id: 1, name: 'FE 24mm' } }),
+    ]);
+    expect(dims.lensTypes.values).toEqual([]);
+  });
+
+  it('aggregates tags/people/locations from collection refs', () => {
+    const dims = extractCollectionFilterOptions(
+      [],
+      [
+        makeCollectionRef({
+          id: 2000,
+          tags: [{ id: 1, name: 'travel', slug: 'travel' }],
+          people: [{ id: 1, name: 'Alice', slug: 'alice' }],
+          locations: [{ id: 1, name: 'Rome', slug: 'rome' }],
+        }),
+      ]
+    );
+    expect(dims.tags.values).toEqual(['travel']);
+    expect(dims.people.values).toEqual(['Alice']);
+    expect(dims.locations.values).toEqual(['Rome']);
+  });
+});
+
+describe('buildCollectionCriteria', () => {
+  it('returns an empty object for the initial (no-op) state', () => {
+    expect(buildCollectionCriteria(makeFilterState())).toEqual({});
+  });
+
+  it('maps highlyRatedOnly to minRating 4', () => {
+    expect(buildCollectionCriteria(makeFilterState({ highlyRatedOnly: true }))).toEqual({
+      minRating: 4,
+    });
+  });
+
+  it('uses AND match mode for tags/people/cameras/lenses', () => {
+    const criteria = buildCollectionCriteria(
+      makeFilterState({
+        selectedTags: ['a', 'b'],
+        selectedPeople: ['Alice'],
+        selectedCameras: ['Sony A7III'],
+        selectedLenses: ['FE 35mm'],
+      })
+    );
+    expect(criteria).toEqual({
+      tags: ['a', 'b'],
+      tagMatchMode: 'AND',
+      people: ['Alice'],
+      peopleMatchMode: 'AND',
+      cameras: ['Sony A7III'],
+      cameraMatchMode: 'AND',
+      lenses: ['FE 35mm'],
+      lensMatchMode: 'AND',
+    });
+  });
+
+  it('maps locations with no match mode (OR by default)', () => {
+    expect(buildCollectionCriteria(makeFilterState({ selectedLocations: ['Rome'] }))).toEqual({
+      locations: ['Rome'],
+    });
+  });
+
+  it('omits empty array dimensions', () => {
+    const criteria = buildCollectionCriteria(makeFilterState({ selectedTags: [] }));
+    expect(criteria).toEqual({});
+  });
+
+  it('does not include lens types (applied as a post-filter, not criteria)', () => {
+    const criteria = buildCollectionCriteria(
+      makeFilterState({ selectedLensTypes: ['wide' as LensType] })
+    );
+    expect(criteria).toEqual({});
+  });
+});
+
+describe('hasAnyActiveFilter', () => {
+  it('is false for the initial state', () => {
+    expect(hasAnyActiveFilter(makeFilterState())).toBe(false);
+  });
+
+  it.each<[string, Partial<FilterState>]>([
+    ['highlyRatedOnly', { highlyRatedOnly: true }],
+    ['selectedTags', { selectedTags: ['a'] }],
+    ['selectedPeople', { selectedPeople: ['Alice'] }],
+    ['selectedCameras', { selectedCameras: ['Sony'] }],
+    ['selectedLenses', { selectedLenses: ['FE 35mm'] }],
+    ['selectedLensTypes', { selectedLensTypes: ['wide' as LensType] }],
+    ['selectedLocations', { selectedLocations: ['Rome'] }],
+  ])('is true when %s is active', (_label, overrides) => {
+    expect(hasAnyActiveFilter(makeFilterState(overrides))).toBe(true);
+  });
+
+  it('ignores dateSortDirection (a sort, not a filter)', () => {
+    expect(hasAnyActiveFilter(makeFilterState({ dateSortDirection: 'desc' }))).toBe(false);
+  });
+});
+
+describe('applyCollectionFilters', () => {
+  const images = [
+    makeImage({ id: 1, rating: 5, focalLength: '24mm' }), // wide
+    makeImage({ id: 2, rating: 3, focalLength: '200mm' }), // telephoto
+    makeImage({ id: 3, rating: 5, focalLength: undefined }), // unparseable focal length
+  ];
+  const text = makeTextBlock();
+  const allContent: AnyContentModel[] = [images[0]!, images[1]!, text, images[2]!];
+
+  it('filters images by criteria and keeps non-image content in place', () => {
+    const result = applyCollectionFilters(allContent, images, { minRating: 5 }, []);
+    // images 1 & 3 (rating 5) survive; text block passes through; image 2 dropped
+    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100', 'IMAGE:3']);
+  });
+
+  it('applies lens-type post-filter, retaining images with unparseable focal length', () => {
+    const result = applyCollectionFilters(allContent, images, {}, ['wide']);
+    // image 1 is wide; image 3 has no parseable focalLength → kept; image 2 (telephoto) dropped
+    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100', 'IMAGE:3']);
+  });
+
+  it('combines criteria and lens-type post-filter', () => {
+    const result = applyCollectionFilters(allContent, images, { minRating: 5 }, ['telephoto']);
+    // rating 5 → images 1 & 3; telephoto post-filter keeps image 3 (unparseable) only (image 1 is wide)
+    expect(result.map(c => c.id)).toEqual([100, 3]);
+  });
+});
+
+describe('hasValueVariance', () => {
+  it('returns false for an empty array', () => {
+    expect(hasValueVariance([], img => img.rating)).toBe(false);
+  });
+
+  it('returns false when all selected values are identical', () => {
+    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 5 })];
+    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(false);
+  });
+
+  it('returns true when selected values differ', () => {
+    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 3 })];
+    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(true);
+  });
+
+  it('counts a rating of 0 as a distinct value when stringified', () => {
+    // Regression: the helper drops falsy outputs, so 0 must be stringified to count.
+    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 0 })];
+    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(true);
+  });
+
+  it('drops falsy (missing) capture dates so a single real date has no variance', () => {
+    const images = [
+      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
+      makeImage({ id: 2, captureDate: undefined }),
+    ];
+    expect(hasValueVariance(images, img => img.captureDate)).toBe(false);
+  });
+
+  it('returns true when two distinct real dates are present', () => {
+    const images = [
+      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
+      makeImage({ id: 2, captureDate: '2024-06-01T00:00:00Z' }),
+    ];
+    expect(hasValueVariance(images, img => img.captureDate)).toBe(true);
+  });
+});
+
+describe('mergeDateSortedImages', () => {
+  it('replaces image slots in order while leaving non-image blocks in place', () => {
+    const img1 = makeImage({ id: 1 });
+    const img2 = makeImage({ id: 2 });
+    const text = makeTextBlock();
+    const processed: AnyContentModel[] = [img1, text, img2];
+    // Sorted order reverses the two images.
+    const sorted = [img2, img1];
+    const result = mergeDateSortedImages(processed, sorted);
+    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:2', 'TEXT:100', 'IMAGE:1']);
+  });
+
+  it('falls back to the original item when sorted runs out', () => {
+    const img1 = makeImage({ id: 1 });
+    const img2 = makeImage({ id: 2 });
+    const result = mergeDateSortedImages([img1, img2], [img2]);
+    // second image slot has no sorted entry → keeps the original
+    expect(result.map(c => c.id)).toEqual([2, 2]);
+  });
+
+  it('returns the array unchanged when there are no images', () => {
+    const text = makeTextBlock();
+    const result = mergeDateSortedImages([text], []);
+    expect(result).toEqual([text]);
+  });
+});
+
+describe('hasFilterableOptions', () => {
+  const emptyDims = extractCollectionFilterOptions([]);
+
+  it('is false when nothing is filterable', () => {
+    expect(hasFilterableOptions(emptyDims, false, false)).toBe(false);
+  });
+
+  it('is true when Highly Rated is shown', () => {
+    expect(hasFilterableOptions(emptyDims, true, false)).toBe(true);
+  });
+
+  it('is true when capture dates vary', () => {
+    expect(hasFilterableOptions(emptyDims, false, true)).toBe(true);
+  });
+
+  it('is true when a tag dimension has values', () => {
+    // The 0.9 exclusion ratio drops tags on >=90% of images, so the tag must
+    // appear on under that share — give the second image no tags.
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
+      makeImage({ id: 2, tags: [] }),
+    ]);
+    expect(dims.tags.values).toEqual(['alpine']);
+    expect(hasFilterableOptions(dims, false, false)).toBe(true);
+  });
+
+  it('does not trigger on a single-value (non-filterable) location alone', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }] }),
+    ]);
+    // single location → locations.filterable is false, and no other dimension qualifies
+    expect(dims.locations.filterable).toBe(false);
+    expect(hasFilterableOptions(dims, false, false)).toBe(false);
+  });
+
+  it('triggers on a multi-value (filterable) location', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }] }),
+      makeImage({ id: 2, locations: [{ id: 2, name: 'Tokyo', slug: 'tokyo' }] }),
+    ]);
+    expect(dims.locations.filterable).toBe(true);
+    expect(hasFilterableOptions(dims, false, false)).toBe(true);
+  });
+});
+
+// ─── Location-page filter derivations ───
+
+describe('filmFilterFromIsFilm', () => {
+  it('maps true to film', () => {
+    expect(filmFilterFromIsFilm(true)).toBe('film');
+  });
+
+  it('maps false to digital', () => {
+    expect(filmFilterFromIsFilm(false)).toBe('digital');
+  });
+
+  it('maps undefined to off', () => {
+    const noValue: boolean | undefined = undefined;
+    expect(filmFilterFromIsFilm(noValue)).toBe('off');
+  });
+});
+
+describe('buildLocationCriteria', () => {
+  it('returns an empty object for the initial (no-op) state', () => {
+    expect(buildLocationCriteria(makeFilterState())).toEqual({});
+  });
+
+  it('maps highlyRatedOnly to minRating 4', () => {
+    expect(buildLocationCriteria(makeFilterState({ highlyRatedOnly: true }))).toEqual({
+      minRating: 4,
+    });
+  });
+
+  it('maps film filter to isFilm:true', () => {
+    expect(buildLocationCriteria(makeFilterState({ filmFilter: 'film' }))).toEqual({
+      isFilm: true,
+    });
+  });
+
+  it('maps digital filter to isFilm:false', () => {
+    expect(buildLocationCriteria(makeFilterState({ filmFilter: 'digital' }))).toEqual({
+      isFilm: false,
+    });
+  });
+
+  it('omits isFilm when film filter is off', () => {
+    expect(buildLocationCriteria(makeFilterState({ filmFilter: 'off' }))).toEqual({});
+  });
+
+  it('uses default (OR) match mode for tags and people — no match-mode keys', () => {
+    const criteria = buildLocationCriteria(
+      makeFilterState({ selectedTags: ['a', 'b'], selectedPeople: ['Alice'] })
+    );
+    expect(criteria).toEqual({ tags: ['a', 'b'], people: ['Alice'] });
+    expect(criteria).not.toHaveProperty('tagMatchMode');
+    expect(criteria).not.toHaveProperty('peopleMatchMode');
+  });
+
+  it('does not include collection-only dimensions (locations/cameras/lenses)', () => {
+    const criteria = buildLocationCriteria(
+      makeFilterState({
+        selectedLocations: ['Rome'],
+        selectedCameras: ['Sony'],
+        selectedLenses: ['FE 35mm'],
+      })
+    );
+    expect(criteria).toEqual({});
+  });
+
+  it('round-trips with filmFilterFromIsFilm for the film toggle', () => {
+    const criteria = buildLocationCriteria(makeFilterState({ filmFilter: 'film' }));
+    expect(filmFilterFromIsFilm(criteria.isFilm)).toBe('film');
   });
 });

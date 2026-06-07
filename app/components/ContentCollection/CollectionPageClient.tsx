@@ -7,12 +7,19 @@ import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
-import { type ContentCollectionModel, type ContentImageModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
-import { extractFilterOptions, filterContent, isImageContent } from '@/app/utils/contentFilter';
+import {
+  applyCollectionFilters,
+  buildCollectionCriteria,
+  extractCollectionFilterOptions,
+  hasAnyActiveFilter,
+  hasFilterableOptions,
+  hasValueVariance,
+  isImageContent,
+  mergeDateSortedImages,
+} from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
-import { getLensType } from '@/app/utils/focalLength';
 import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { sortByDate } from '@/app/utils/sortByDate';
 
@@ -32,46 +39,6 @@ interface CollectionPageClientProps {
   serverContentWidth?: number;
   serverViewportHeight?: number;
   serverIsMobile?: boolean;
-}
-
-/**
- * Extracts filter options specific to collection pages.
- *
- * Returns per-dimension data with a `filterable` flag. When a dimension has
- * exactly one value and the dimension's policy allows info-mode (cameras /
- * lenses / locations), filterable is set to false so the bar renders it as
- * an inline info chip instead of a dropdown.
- */
-function extractCollectionFilterOptions(
-  images: ContentImageModel[],
-  collectionRefs: ContentCollectionModel[] = []
-): CollectionDimensions {
-  // Pass images + refs together so extractFilterOptions can aggregate filter
-  // dimensions from collection refs too. This is what populates the filter bar
-  // on synthetic PARENT pages whose `content` is 100% collection refs and 0
-  // images (e.g. /all-collections, /all-blog).
-  const baseOptions = extractFilterOptions([...images, ...collectionRefs], 0.9);
-
-  // Lens types: only show if 2+ distinct categories present (image-only signal)
-  const lensTypeSet = new Set<LensType>();
-  for (const img of images) {
-    const lt = getLensType(img.focalLength);
-    if (lt !== null) lensTypeSet.add(lt);
-  }
-  const typeOrder: LensType[] = ['wide', 'normal', 'telephoto'];
-  const lensTypes =
-    lensTypeSet.size >= 2 && baseOptions.lenses.length >= 2
-      ? typeOrder.filter(t => lensTypeSet.has(t))
-      : [];
-
-  return {
-    tags: { values: baseOptions.tags, filterable: true },
-    people: { values: baseOptions.people, filterable: true },
-    cameras: { values: baseOptions.cameras, filterable: baseOptions.cameras.length >= 2 },
-    lenses: { values: baseOptions.lenses, filterable: baseOptions.lenses.length >= 2 },
-    locations: { values: baseOptions.locations, filterable: baseOptions.locations.length >= 2 },
-    lensTypes: { values: lensTypes, filterable: true },
-  };
 }
 
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
@@ -167,68 +134,26 @@ export default function CollectionPageClient({
   }, [allImages, allCollections, isCollectionDominant]);
 
   // Build criteria from filter state — all AND mode for collection page
-  const criteria = useMemo(
-    () => ({
-      ...(filterState.highlyRatedOnly ? { minRating: 4 } : {}),
-      ...(filterState.selectedTags.length > 0
-        ? { tags: filterState.selectedTags, tagMatchMode: 'AND' as const }
-        : {}),
-      ...(filterState.selectedPeople.length > 0
-        ? { people: filterState.selectedPeople, peopleMatchMode: 'AND' as const }
-        : {}),
-      ...(filterState.selectedCameras.length > 0
-        ? { cameras: filterState.selectedCameras, cameraMatchMode: 'AND' as const }
-        : {}),
-      ...(filterState.selectedLenses.length > 0
-        ? { lenses: filterState.selectedLenses, lensMatchMode: 'AND' as const }
-        : {}),
-      ...(filterState.selectedLocations.length > 0
-        ? { locations: filterState.selectedLocations }
-        : {}),
-    }),
-    [filterState]
-  );
+  const criteria = useMemo(() => buildCollectionCriteria(filterState), [filterState]);
 
-  const hasActiveFilters = useMemo(
-    () =>
-      filterState.highlyRatedOnly ||
-      filterState.selectedTags.length > 0 ||
-      filterState.selectedPeople.length > 0 ||
-      filterState.selectedCameras.length > 0 ||
-      filterState.selectedLenses.length > 0 ||
-      filterState.selectedLensTypes.length > 0 ||
-      filterState.selectedLocations.length > 0,
-    [filterState]
-  );
+  const hasActiveFilters = useMemo(() => hasAnyActiveFilter(filterState), [filterState]);
 
   // Filter only images (for filter UI); non-image content (COLLECTION, TEXT, etc.) passes through
   const filteredContent = useMemo(() => {
     if (!hasActiveFilters) return allContent;
-    let filtered = filterContent(allImages, criteria).filter(isImageContent);
-
-    // Apply lens type filter — images without parseable focalLength are
-    // included intentionally so they aren't silently hidden by a lens-type chip.
-    if (filterState.selectedLensTypes.length > 0) {
-      filtered = filtered.filter(img => {
-        const lt = getLensType(img.focalLength);
-        return lt === null || filterState.selectedLensTypes.includes(lt);
-      });
-    }
-
-    const filteredImageIds = new Set(filtered.map(img => img.id));
-    // Keep non-image content as-is, only filter images
-    return allContent.filter(item => !isImageContent(item) || filteredImageIds.has(item.id));
+    return applyCollectionFilters(allContent, allImages, criteria, filterState.selectedLensTypes);
   }, [allContent, allImages, criteria, hasActiveFilters, filterState.selectedLensTypes]);
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
   // Date sort is applied after processContentBlocks (which has its own orderIndex sort)
 
-  const hasRatingVariance = useMemo(() => {
-    if (allImages.length === 0) return false;
-    const ratings = new Set(allImages.map(img => img.rating ?? 0));
-    return ratings.size > 1;
-  }, [allImages]);
+  // Stringify so a rating of 0 (falsy) still counts as a distinct value — the
+  // helper drops falsy selector outputs (intended for date variance below).
+  const hasRatingVariance = useMemo(
+    () => hasValueVariance(allImages, img => String(img.rating ?? 0)),
+    [allImages]
+  );
 
   const showHighlyRated = hasRatingVariance && !isCollectionDominant;
 
@@ -266,36 +191,19 @@ export default function CollectionPageClient({
     );
     if (filterState.dateSortDirection === 'off') return processed;
     // Apply date sort after layout processing to override orderIndex sort
-    const images = processed.filter(isImageContent);
-    const sorted = sortByDate(images, filterState.dateSortDirection);
-    let imageIdx = 0;
-    return processed.map(item => {
-      if (!isImageContent(item)) return item;
-      return sorted[imageIdx++] ?? item;
-    });
+    const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
+    return mergeDateSortedImages(processed, sorted);
   }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
 
   const handleFilterChange = useCallback(
     (update: Partial<FilterState>) => {
       setFilterState(prev => {
         const next = { ...prev, ...update };
-        // Mirror the `criteria` mapping above so the URL faithfully serializes
-        // the live filter. selectedLenses / selectedLensTypes have no URL key in
-        // serializeFilterToParams (it has no `lens` key; lens-type is derived),
-        // and dateSortDirection is a sort, not a filter — all stay local by design.
-        syncToUrl({
-          ...(next.highlyRatedOnly ? { minRating: 4 } : {}),
-          ...(next.selectedTags.length > 0
-            ? { tags: [...next.selectedTags], tagMatchMode: 'AND' }
-            : {}),
-          ...(next.selectedPeople.length > 0
-            ? { people: [...next.selectedPeople], peopleMatchMode: 'AND' }
-            : {}),
-          ...(next.selectedCameras.length > 0
-            ? { cameras: [...next.selectedCameras], cameraMatchMode: 'AND' }
-            : {}),
-          ...(next.selectedLocations.length > 0 ? { locations: [...next.selectedLocations] } : {}),
-        });
+        // Single source of truth with the `criteria` memo. selectedLenses /
+        // selectedLensTypes have no URL key in serializeFilterToParams (lens-type
+        // is derived) so they're silently dropped, and dateSortDirection is a
+        // sort, not a filter — all stay local by design.
+        syncToUrl(buildCollectionCriteria(next));
         return next;
       });
     },
@@ -325,23 +233,12 @@ export default function CollectionPageClient({
 
   const pageSize = collection.contentPerPage ?? 30;
 
-  const hasDateVariance = useMemo(() => {
-    const dates = new Set(allImages.map(img => img.captureDate).filter(Boolean));
-    return dates.size > 1;
-  }, [allImages]);
+  const hasDateVariance = useMemo(
+    () => hasValueVariance(allImages, img => img.captureDate),
+    [allImages]
+  );
 
-  const hasOptions =
-    showHighlyRated ||
-    hasDateVariance ||
-    baseCollectionOptions.tags.values.length > 0 ||
-    baseCollectionOptions.people.values.length > 0 ||
-    baseCollectionOptions.cameras.values.length > 0 ||
-    baseCollectionOptions.lenses.values.length > 0 ||
-    baseCollectionOptions.lensTypes.values.length > 0 ||
-    // Locations contributes only when multi-value (filterable) — single-value
-    // locations are intentionally not surfaced (extractCollectionFilterOptions
-    // marks them non-filterable) and so should not trigger the toolbar alone.
-    baseCollectionOptions.locations.filterable;
+  const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, hasDateVariance);
 
   const content = (
     <>
