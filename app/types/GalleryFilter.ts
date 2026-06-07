@@ -46,6 +46,20 @@ export type ArrayFilterKey =
   | 'selectedLensTypes';
 
 /**
+ * The canonical list of array dimensions in {@link FilterState} — the single source of truth for
+ * "which keys are arrays" (mirrors the array fields in {@link INITIAL_FILTER_STATE}). Consumers
+ * iterate this to surface dropdowns and detect active array filters.
+ */
+export const ARRAY_FILTER_KEYS: readonly ArrayFilterKey[] = [
+  'selectedTags',
+  'selectedPeople',
+  'selectedCameras',
+  'selectedLenses',
+  'selectedLocations',
+  'selectedLensTypes',
+];
+
+/**
  * The single canonical date-sort cycle: off -> asc -> desc -> off.
  */
 export function cycleDateSort(current: DateSortDirection): DateSortDirection {
@@ -53,6 +67,18 @@ export function cycleDateSort(current: DateSortDirection): DateSortDirection {
     off: 'asc',
     asc: 'desc',
     desc: 'off',
+  };
+  return next[current];
+}
+
+/**
+ * The single canonical film-filter cycle: off -> film -> digital -> off.
+ */
+export function cycleFilmFilter(current: FilmFilter): FilmFilter {
+  const next: Record<FilmFilter, FilmFilter> = {
+    off: 'film',
+    film: 'digital',
+    digital: 'off',
   };
   return next[current];
 }
