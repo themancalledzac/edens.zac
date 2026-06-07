@@ -39,10 +39,16 @@ export function resolveEffectiveViewport(
   server: ServerViewport,
   tolerance: number
 ): EffectiveViewport {
+  // The tolerance keeps the SSR width across hydration to avoid a reflow. On desktop the SSR
+  // width is capped at pageMaxWidth, so it matches most real viewports exactly and keeping it is
+  // free. Mobile has no width cap, so a real device wider than the SSR fallback (e.g. a 430px
+  // phone vs the 390px default) would stay short of full-bleed. On mobile we therefore drop the
+  // tolerance and always adopt the measured width.
+  const effectiveTolerance = measured.isMobile ? 0 : tolerance;
   const useMeasured = shouldUseMeasuredWidth(
     measured.contentWidth,
     server.serverContentWidth,
-    tolerance
+    effectiveTolerance
   );
   return {
     contentWidth: useMeasured
