@@ -75,6 +75,38 @@ describe('resolveEffectiveViewport', () => {
     const result = resolveEffectiveViewport(measured({ contentWidth: 1100 }), {}, TOL);
     expect(result.contentWidth).toBe(1100);
   });
+
+  it('recomputes to the measured width on mobile even within tolerance (full-bleed)', () => {
+    // iPhone 14 Pro Max: SSR assumes 390px, the device measures 430px. The 40px gap is
+    // within the 64px desktop tolerance, but mobile has no width cap and must fill the
+    // viewport edge-to-edge, so it adopts the measured width instead of keeping 390.
+    const mobileServer = {
+      serverContentWidth: 390,
+      serverViewportHeight: 844,
+      serverIsMobile: true,
+    };
+    const result = resolveEffectiveViewport(
+      measured({ contentWidth: 430, width: 430, viewportHeight: 932, isMobile: true }),
+      mobileServer,
+      TOL
+    );
+    expect(result).toEqual<EffectiveViewport>({
+      contentWidth: 430,
+      viewportHeight: 932,
+      isMobile: true,
+    });
+  });
+
+  it('keeps the SSR width on desktop when the measured width is wider within tolerance', () => {
+    // Desktop guard: the anti-flash tolerance still applies off mobile, so a 26px-wider
+    // measurement keeps the SSR width (no hydration reflow).
+    const result = resolveEffectiveViewport(
+      measured({ contentWidth: 1300, viewportHeight: 700, isMobile: false }),
+      server,
+      TOL
+    );
+    expect(result.contentWidth).toBe(1274);
+  });
 });
 
 describe('computeTargetAspectRatio', () => {
