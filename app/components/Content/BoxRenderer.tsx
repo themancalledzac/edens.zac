@@ -8,6 +8,7 @@ import { logger } from '@/app/utils/logger';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
 import styles from './BoxRenderer.module.scss';
+import { computeReorderFlags } from './boxRendererUtils';
 import CollectionContentRenderer from './CollectionContentRenderer';
 import cbStyles from './ContentComponent.module.scss';
 
@@ -89,11 +90,12 @@ export function BoxRenderer({
     );
 
     const contentId = tree.content.id;
-    const isPickedUp = isReorderMode && pickedUpImageId === contentId;
-    const hasMoved = isReorderMode && (reorderMoves?.some(m => m.imageId === contentId) ?? false);
-    const orderIndex = reorderDisplayOrder?.indexOf(contentId) ?? -1;
-    const isFirstInOrder = orderIndex === 0;
-    const isLastInOrder = orderIndex === (reorderDisplayOrder?.length ?? 0) - 1;
+    const { isPickedUp, hasMoved, isFirstInOrder, isLastInOrder } = computeReorderFlags(contentId, {
+      isReorderMode,
+      pickedUpImageId,
+      reorderMoves,
+      reorderDisplayOrder,
+    });
 
     const fullProps: CollectionContentRendererProps = {
       ...rendererProps,

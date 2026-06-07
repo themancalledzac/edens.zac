@@ -5,15 +5,17 @@ import { useCallback, useRef, useState } from 'react';
 import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
 import { useClickOutside } from '@/app/hooks/useClickOutside';
 import {
+  ARRAY_FILTER_KEYS,
   type ArrayFilterKey,
   cycleDateSort,
-  type FilmFilter,
+  cycleFilmFilter,
   type FilterState,
   INITIAL_FILTER_STATE,
   toggleArrayFilter,
 } from '@/app/types/GalleryFilter';
 
 import styles from './FilterToolbar.module.scss';
+import { computeHasActiveFilters, isOptionAvailable } from './filterToolbarUtils';
 
 /** One filterable dimension: which state key it writes, its dropdown label, its options, and optional value->label/count maps. */
 export interface ToolbarDimension {
@@ -51,15 +53,6 @@ export interface FilterToolbarProps {
   onDensityChange?: (value: number) => void;
 }
 
-const ARRAY_KEYS: readonly ArrayFilterKey[] = [
-  'selectedTags',
-  'selectedPeople',
-  'selectedCameras',
-  'selectedLenses',
-  'selectedLocations',
-  'selectedLensTypes',
-];
-
 const DATE_LABELS: Record<FilterState['dateSortDirection'], string> = {
   asc: 'Date ↑',
   desc: 'Date ↓',
@@ -90,24 +83,11 @@ export function FilterToolbar({
 
   const toggleOpen = (key: ArrayFilterKey) => setOpenDropdown(prev => (prev === key ? null : key));
 
-  const isAvailable = (key: ArrayFilterKey, value: string): boolean => {
-    const avail = filteredAvailable?.[key];
-    if (!avail) return true;
-    return avail.includes(value);
-  };
-
-  const cycleFilm = () => {
-    const next: Record<FilmFilter, FilmFilter> = { off: 'film', film: 'digital', digital: 'off' };
-    onFilterChange({ filmFilter: next[filterState.filmFilter] });
-  };
+  const cycleFilm = () => onFilterChange({ filmFilter: cycleFilmFilter(filterState.filmFilter) });
 
   const filmCount = filterState.filmFilter === 'off' ? undefined : counts?.[filterState.filmFilter];
 
-  const hasActiveFilters =
-    filterState.dateSortDirection !== 'off' ||
-    filterState.highlyRatedOnly ||
-    filterState.filmFilter !== 'off' ||
-    ARRAY_KEYS.some(k => (filterState[k] as readonly string[]).length > 0);
+  const hasActiveFilters = computeHasActiveFilters(filterState, ARRAY_FILTER_KEYS);
 
   const resetAll = () => {
     onFilterChange({ ...INITIAL_FILTER_STATE });
@@ -145,7 +125,7 @@ export function FilterToolbar({
         />
       )}
 
-      {ARRAY_KEYS.map(key => {
+      {ARRAY_FILTER_KEYS.map(key => {
         const dim = dimensions[key];
         if (!dim || dim.options.length === 0) return null;
         const selected = filterState[key] as readonly string[];
@@ -168,7 +148,7 @@ export function FilterToolbar({
               <div className={styles.panel}>
                 {dim.options.map(option => {
                   const isSelected = selected.includes(option);
-                  const available = isSelected || isAvailable(key, option);
+                  const available = isSelected || isOptionAvailable(filteredAvailable, key, option);
                   return (
                     <FilterChip
                       key={`${key}-${option}`}

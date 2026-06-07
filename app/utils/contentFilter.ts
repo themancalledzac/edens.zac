@@ -13,6 +13,8 @@ import {
   type ContentCollectionModel,
   type ContentImageModel,
 } from '@/app/types/Content';
+import { type FilmFilter, type FilterState, type LensType } from '@/app/types/GalleryFilter';
+import { getLensType } from '@/app/utils/focalLength';
 
 /**
  * Filter criteria for content arrays.
@@ -585,4 +587,253 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   for (const id of criteria.collectionIds ?? []) params.append('collection', String(id));
 
   return params;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Collection-page filter derivations
+//
+// Pure helpers consolidated here (rather than forked into a co-located
+// *Utils.ts) because they belong to the same filter domain as the functions
+// above and share its fixtures/tests. Used by CollectionPageClient (and the
+// location/taxonomy pages) so those components read as hooks → helpers → JSX.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Per-dimension data for the collection filter bar: values + whether it renders as a dropdown. */
+export interface FilterDimension<T = string> {
+  values: readonly T[];
+  filterable: boolean;
+}
+
+/**
+ * Filter dimensions specific to collection pages — structurally compatible with
+ * `CollectionInfoOptions` minus `showHighlyRated`.
+ */
+export interface CollectionFilterDimensions {
+  tags: FilterDimension;
+  people: FilterDimension;
+  cameras: FilterDimension;
+  lenses: FilterDimension;
+  locations: FilterDimension;
+  lensTypes: FilterDimension<LensType>;
+}
+
+/**
+ * Extract filter options specific to collection pages.
+ *
+ * Returns per-dimension data with a `filterable` flag. When a dimension has a
+ * single value and the dimension's policy allows info-mode (cameras / lenses /
+ * locations need 2+ values), `filterable` is false so the bar renders it as an
+ * inline info chip instead of a dropdown. Lens types only surface when 2+
+ * distinct categories AND 2+ distinct lenses are present (an image-only signal).
+ *
+ * @param images - Image content to aggregate dimensions from
+ * @param collectionRefs - Collection refs (synthetic PARENT pages aggregate from these too)
+ */
+export function extractCollectionFilterOptions(
+  images: ContentImageModel[],
+  collectionRefs: ContentCollectionModel[] = []
+): CollectionFilterDimensions {
+  // Pass images + refs together so extractFilterOptions can aggregate filter
+  // dimensions from collection refs too. This is what populates the filter bar
+  // on synthetic PARENT pages whose `content` is 100% collection refs and 0
+  // images (e.g. /all-collections, /all-blog).
+  const baseOptions = extractFilterOptions([...images, ...collectionRefs], 0.9);
+
+  // Lens types: only show if 2+ distinct categories present (image-only signal)
+  const lensTypeSet = new Set<LensType>();
+  for (const img of images) {
+    const lt = getLensType(img.focalLength);
+    if (lt !== null) lensTypeSet.add(lt);
+  }
+  const typeOrder: LensType[] = ['wide', 'normal', 'telephoto'];
+  const lensTypes =
+    lensTypeSet.size >= 2 && baseOptions.lenses.length >= 2
+      ? typeOrder.filter(t => lensTypeSet.has(t))
+      : [];
+
+  return {
+    tags: { values: baseOptions.tags, filterable: true },
+    people: { values: baseOptions.people, filterable: true },
+    cameras: { values: baseOptions.cameras, filterable: baseOptions.cameras.length >= 2 },
+    lenses: { values: baseOptions.lenses, filterable: baseOptions.lenses.length >= 2 },
+    locations: { values: baseOptions.locations, filterable: baseOptions.locations.length >= 2 },
+    lensTypes: { values: lensTypes, filterable: true },
+  };
+}
+
+/**
+ * Build filter criteria from a collection page's filter state — all-AND match
+ * mode. Single source of truth for both the live filter and the URL sync (the
+ * `lenses` key has no URL param, so it is silently dropped by
+ * {@link serializeFilterToParams}). `selectedLensTypes` is applied separately as
+ * a post-filter (see {@link applyCollectionFilters}) since it derives from focal
+ * length rather than a stored field.
+ */
+export function buildCollectionCriteria(filterState: FilterState): ContentFilterCriteria {
+  return {
+    ...(filterState.highlyRatedOnly ? { minRating: 4 } : {}),
+    ...(filterState.selectedTags.length > 0
+      ? { tags: filterState.selectedTags, tagMatchMode: 'AND' as const }
+      : {}),
+    ...(filterState.selectedPeople.length > 0
+      ? { people: filterState.selectedPeople, peopleMatchMode: 'AND' as const }
+      : {}),
+    ...(filterState.selectedCameras.length > 0
+      ? { cameras: filterState.selectedCameras, cameraMatchMode: 'AND' as const }
+      : {}),
+    ...(filterState.selectedLenses.length > 0
+      ? { lenses: filterState.selectedLenses, lensMatchMode: 'AND' as const }
+      : {}),
+    ...(filterState.selectedLocations.length > 0
+      ? { locations: filterState.selectedLocations }
+      : {}),
+  };
+}
+
+/**
+ * Whether any collection-page filter is active. Includes `selectedLensTypes`
+ * (a post-filter not represented in {@link ContentFilterCriteria}).
+ */
+export function hasAnyActiveFilter(filterState: FilterState): boolean {
+  return (
+    filterState.highlyRatedOnly ||
+    filterState.selectedTags.length > 0 ||
+    filterState.selectedPeople.length > 0 ||
+    filterState.selectedCameras.length > 0 ||
+    filterState.selectedLenses.length > 0 ||
+    filterState.selectedLensTypes.length > 0 ||
+    filterState.selectedLocations.length > 0
+  );
+}
+
+/**
+ * Apply the collection page's filters to its content.
+ *
+ * Filters only images by `criteria`, applies the lens-type post-filter (images
+ * with an unparseable focalLength are kept so a lens-type chip never silently
+ * hides them), then reattaches: non-image content passes through unchanged and
+ * images survive only if their id is in the filtered set.
+ *
+ * @param allContent - The full content array (images + non-image blocks)
+ * @param allImages - The image subset of `allContent`
+ * @param criteria - Filter criteria (from {@link buildCollectionCriteria})
+ * @param selectedLensTypes - Active lens-type chips (post-filter)
+ */
+export function applyCollectionFilters(
+  allContent: AnyContentModel[],
+  allImages: ContentImageModel[],
+  criteria: ContentFilterCriteria,
+  selectedLensTypes: readonly LensType[]
+): AnyContentModel[] {
+  let filtered = filterContent(allImages, criteria).filter(isImageContent);
+
+  // Apply lens type filter — images without parseable focalLength are
+  // included intentionally so they aren't silently hidden by a lens-type chip.
+  if (selectedLensTypes.length > 0) {
+    filtered = filtered.filter(img => {
+      const lt = getLensType(img.focalLength);
+      return lt === null || selectedLensTypes.includes(lt);
+    });
+  }
+
+  const filteredImageIds = new Set(filtered.map(img => img.id));
+  // Keep non-image content as-is, only filter images
+  return allContent.filter(item => !isImageContent(item) || filteredImageIds.has(item.id));
+}
+
+/**
+ * Whether a per-image selector yields more than one distinct value across the
+ * images (drives "show this control only when it varies"). Covers both rating
+ * variance and capture-date variance. Returns false for an empty array.
+ *
+ * @param images - Images to inspect
+ * @param selector - Maps an image to the value whose variance is checked
+ */
+export function hasValueVariance<T>(
+  images: ContentImageModel[],
+  selector: (image: ContentImageModel) => T
+): boolean {
+  if (images.length === 0) return false;
+  const values = new Set(images.map(selector).filter(Boolean));
+  return values.size > 1;
+}
+
+/**
+ * Re-interleave date-sorted images back into a processed content array.
+ *
+ * Date sort runs after `processContentBlocks` (which sorts by orderIndex), so
+ * this walks the processed array and replaces each image slot, in order, with
+ * the next date-sorted image — leaving non-image blocks in place.
+ *
+ * @param processed - Content already processed for layout
+ * @param sortedImages - The processed images re-sorted by date
+ */
+export function mergeDateSortedImages(
+  processed: AnyContentModel[],
+  sortedImages: ContentImageModel[]
+): AnyContentModel[] {
+  let imageIdx = 0;
+  return processed.map(item => {
+    if (!isImageContent(item)) return item;
+    return sortedImages[imageIdx++] ?? item;
+  });
+}
+
+/**
+ * Whether the collection filter bar has anything to show (controls the
+ * decision to wrap the page in the filter provider at all). Locations
+ * contribute only when multi-value (`filterable`) — single-value locations are
+ * intentionally surfaced elsewhere and must not trigger the bar alone.
+ *
+ * @param baseOptions - The page's base dimensions
+ * @param showHighlyRated - Whether the Highly Rated control is shown
+ * @param hasDateVariance - Whether capture dates vary (date-sort control)
+ */
+export function hasFilterableOptions(
+  baseOptions: CollectionFilterDimensions,
+  showHighlyRated: boolean,
+  hasDateVariance: boolean
+): boolean {
+  return (
+    showHighlyRated ||
+    hasDateVariance ||
+    baseOptions.tags.values.length > 0 ||
+    baseOptions.people.values.length > 0 ||
+    baseOptions.cameras.values.length > 0 ||
+    baseOptions.lenses.values.length > 0 ||
+    baseOptions.lensTypes.values.length > 0 ||
+    baseOptions.locations.filterable
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Location/taxonomy-page filter derivations
+//
+// The location page shares the filter domain but its criteria differ from the
+// collection page: it surfaces a film/digital toggle (mapped to `isFilm`) and
+// uses default (OR) match mode on tags/people with no location/camera/lens
+// dimensions — so it gets its own criteria builder rather than parameterizing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Map the URL's isFilm tristate onto the FilterState film toggle. */
+export function filmFilterFromIsFilm(isFilm: boolean | undefined): FilmFilter {
+  if (isFilm === true) return 'film';
+  if (isFilm === false) return 'digital';
+  return 'off';
+}
+
+/**
+ * Build filter criteria from a location page's filter state. Single source of
+ * truth for both the live filter and the URL sync. Differs from
+ * {@link buildCollectionCriteria}: includes the film/digital toggle and uses
+ * default (OR) match mode on tags/people with no location/camera/lens keys.
+ */
+export function buildLocationCriteria(filterState: FilterState): ContentFilterCriteria {
+  return {
+    ...(filterState.highlyRatedOnly ? { minRating: 4 } : {}),
+    ...(filterState.filmFilter === 'film' ? { isFilm: true as const } : {}),
+    ...(filterState.filmFilter === 'digital' ? { isFilm: false as const } : {}),
+    ...(filterState.selectedTags.length > 0 ? { tags: filterState.selectedTags } : {}),
+    ...(filterState.selectedPeople.length > 0 ? { people: filterState.selectedPeople } : {}),
+  };
 }

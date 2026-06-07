@@ -1,5 +1,7 @@
 import {
+  ARRAY_FILTER_KEYS,
   cycleDateSort,
+  cycleFilmFilter,
   type FilterState,
   INITIAL_FILTER_STATE,
   toggleArrayFilter,
@@ -26,6 +28,20 @@ describe('FilterState helpers', () => {
     expect(cycleDateSort('off')).toBe('asc');
     expect(cycleDateSort('asc')).toBe('desc');
     expect(cycleDateSort('desc')).toBe('off');
+  });
+
+  it('cycleFilmFilter uses one canonical order: off -> film -> digital -> off', () => {
+    expect(cycleFilmFilter('off')).toBe('film');
+    expect(cycleFilmFilter('film')).toBe('digital');
+    expect(cycleFilmFilter('digital')).toBe('off');
+  });
+
+  it('ARRAY_FILTER_KEYS lists exactly the array dimensions of INITIAL_FILTER_STATE', () => {
+    const arrayKeysFromState = Object.entries(INITIAL_FILTER_STATE)
+      .filter(([, value]) => Array.isArray(value))
+      .map(([key]) => key)
+      .sort();
+    expect([...ARRAY_FILTER_KEYS].sort()).toEqual(arrayKeysFromState);
   });
 
   it('toggleArrayFilter adds a value not present', () => {

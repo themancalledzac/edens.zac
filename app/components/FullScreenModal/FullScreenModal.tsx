@@ -15,7 +15,9 @@ import { Modal } from '@/app/components/ui/Modal/Modal';
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
-import type { ContentGifModel, ViewableContent } from '@/app/types/Content';
+import type { ViewableContent } from '@/app/types/Content';
+
+import { isGifBlock, resolveDisplayDate, resolveDisplayLocations } from './fullScreenModalUtils';
 
 type ImageBlock = ViewableContent;
 
@@ -23,10 +25,6 @@ type FullScreenState = {
   images: ImageBlock[];
   currentIndex: number;
 };
-
-function isGifBlock(block: ImageBlock): block is ContentGifModel {
-  return block.contentType === 'GIF';
-}
 
 interface FullScreenModalProps {
   fullScreenState: FullScreenState | null;
@@ -95,18 +93,10 @@ export function FullScreenModal({
 
   const isGif = isGifBlock(currentImage);
 
-  // Resolve locations: image locations take priority, fall back to collection locations.
-  // GIF blocks don't carry locations today — fall straight through to the collection.
-  const imageLocations = !isGif ? currentImage.locations : undefined;
-  const displayLocations = imageLocations?.length
-    ? imageLocations
-    : (collectionData?.locations ?? []);
-
-  // Resolve date: image captureDate takes priority, fall back to collection collectionDate.
-  // GIFs don't have captureDate — fall back immediately.
-  const displayDate = !isGif
-    ? (currentImage.captureDate ?? collectionData?.collectionDate ?? null)
-    : (collectionData?.collectionDate ?? null);
+  // Resolve locations/date: image fields take priority, falling back to the collection. GIF blocks
+  // carry neither, so they fall straight through to the collection.
+  const displayLocations = resolveDisplayLocations(currentImage, collectionData, isGif);
+  const displayDate = resolveDisplayDate(currentImage, collectionData, isGif);
 
   const currentImageLoaded = loadedImageIds.has(currentImage.id);
   const hasPrevious = fullScreenState.currentIndex > 0;

@@ -9,8 +9,10 @@ import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import {
+  buildLocationCriteria,
   computeFilterCounts,
   extractFilterOptions,
+  filmFilterFromIsFilm,
   filterContent,
   type FilterCounts,
 } from '@/app/utils/contentFilter';
@@ -26,13 +28,6 @@ interface LocationPageClientProps {
   collections: CollectionModel[];
 }
 
-/** Map the URL's isFilm tristate onto the FilterState film toggle. */
-function filmFilterFromIsFilm(isFilm: boolean | undefined): FilterState['filmFilter'] {
-  if (isFilm === true) return 'film';
-  if (isFilm === false) return 'digital';
-  return 'off';
-}
-
 export default function LocationPageClient({ images, collections }: LocationPageClientProps) {
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
@@ -46,16 +41,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
 
   const availableOptions = useMemo(() => extractFilterOptions(images), [images]);
 
-  const criteria = useMemo(
-    () => ({
-      ...(filterState.highlyRatedOnly ? { minRating: 4 } : {}),
-      ...(filterState.filmFilter === 'film' ? { isFilm: true as const } : {}),
-      ...(filterState.filmFilter === 'digital' ? { isFilm: false as const } : {}),
-      ...(filterState.selectedTags.length > 0 ? { tags: filterState.selectedTags } : {}),
-      ...(filterState.selectedPeople.length > 0 ? { people: filterState.selectedPeople } : {}),
-    }),
-    [filterState]
-  );
+  const criteria = useMemo(() => buildLocationCriteria(filterState), [filterState]);
 
   const filteredImages = useMemo(() => {
     const filtered = filterContent(images, criteria).filter(
@@ -92,16 +78,10 @@ export default function LocationPageClient({ images, collections }: LocationPage
     (update: Partial<FilterState>) => {
       setFilterState(prev => {
         const next = { ...prev, ...update };
-        // Mirror the `criteria` mapping above so the URL is a faithful
-        // serialization of the live filter. dateSortDirection / lens dimensions
-        // have no URL key in serializeFilterToParams and stay local by design.
-        syncToUrl({
-          ...(next.highlyRatedOnly ? { minRating: 4 } : {}),
-          ...(next.filmFilter === 'film' ? { isFilm: true } : {}),
-          ...(next.filmFilter === 'digital' ? { isFilm: false } : {}),
-          ...(next.selectedTags.length > 0 ? { tags: [...next.selectedTags] } : {}),
-          ...(next.selectedPeople.length > 0 ? { people: [...next.selectedPeople] } : {}),
-        });
+        // Single source of truth with the `criteria` memo. dateSortDirection /
+        // lens dimensions have no URL key in serializeFilterToParams and stay
+        // local by design.
+        syncToUrl(buildLocationCriteria(next));
         return next;
       });
     },

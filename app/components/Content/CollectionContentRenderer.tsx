@@ -8,10 +8,7 @@ import { type Ref, useCallback, useState } from 'react';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { Badge } from '@/app/components/ui/Badge/Badge';
-import {
-  FilterToolbar,
-  type ToolbarDimension,
-} from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { Tile } from '@/app/components/ui/Tile/Tile';
 import { useParallax } from '@/app/hooks/useParallax';
 import {
@@ -20,7 +17,7 @@ import {
   type ViewableContent,
 } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
-import { type ArrayFilterKey, toggleArrayFilter } from '@/app/types/GalleryFilter';
+import { toggleArrayFilter } from '@/app/types/GalleryFilter';
 import {
   checkImageVisibility,
   createContentClickHandler,
@@ -32,52 +29,15 @@ import {
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 
+import {
+  getClickEligibility,
+  resolveValidDimensions,
+  toCollectionDimensions,
+} from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 import ReorderOverlay from './ReorderOverlay';
-
-/**
- * Maps the collection page's CollectionInfoOptions (per-dimension `filterable`
- * + values) into the toolbar's `dimensions` config. Only filterable dimensions
- * with at least one value become dropdowns; lens names and lens-type chips are
- * surfaced as separate dropdowns (types carry display labels).
- */
-function toCollectionDimensions(
-  options: NonNullable<ReturnType<typeof useCollectionFilter>>['filterOptions']
-): Partial<Record<ArrayFilterKey, ToolbarDimension>> {
-  const dims: Partial<Record<ArrayFilterKey, ToolbarDimension>> = {};
-  if (options.people.filterable && options.people.values.length > 0) {
-    dims.selectedPeople = { label: 'People', options: options.people.values };
-  }
-  if (options.tags.filterable && options.tags.values.length > 0) {
-    dims.selectedTags = { label: 'Tags', options: options.tags.values };
-  }
-  if (options.cameras.filterable && options.cameras.values.length > 0) {
-    dims.selectedCameras = { label: 'Camera', options: options.cameras.values };
-  }
-  if (options.locations.filterable && options.locations.values.length > 0) {
-    dims.selectedLocations = { label: 'Location', options: options.locations.values };
-  }
-  if (
-    (options.lenses.filterable && options.lenses.values.length > 0) ||
-    (options.lensTypes.filterable && options.lensTypes.values.length > 0)
-  ) {
-    // Lens is surfaced as two dropdowns: NAMES and TYPES.
-    dims.selectedLenses = {
-      label: 'Lens',
-      options: options.lenses.values,
-    };
-    if (options.lensTypes.values.length > 0) {
-      dims.selectedLensTypes = {
-        label: 'Lens type',
-        options: options.lensTypes.values,
-        optionLabels: { wide: 'Wide', normal: 'Normal', telephoto: 'Telephoto' },
-      };
-    }
-  }
-  return dims;
-}
 
 /**
  * Renders a single content item: IMAGE, GIF, COLLECTION, or TEXT metadata block.
@@ -134,19 +94,16 @@ export default function CollectionContentRenderer({
   // Parallax hook (always called, but disabled if enableParallax = false)
   const parallaxRef = useParallax({ enableParallax });
 
-  // COLLECTION tiles navigate via href; IMAGE/GIF fullscreen stays on onClick.
-  const isSlugNav = !!_hasSlug && !onImageClick && !isReorderMode && contentType !== 'TEXT';
-
-  // Whether a meaningful click action exists for this item (used for cursor/style checks).
-  // Mirrors the guard logic in handleClick: TEXT and reorder mode produce no action,
-  // slug-only navigation fires when _hasSlug is set and no onImageClick is present,
-  // otherwise a handler exists when onImageClick or fullscreen is configured.
-  const hasClickHandler =
-    contentType !== 'TEXT' &&
-    !isReorderMode &&
-    ((_hasSlug !== undefined && !onImageClick) ||
-      !!onImageClick ||
-      !!(enableFullScreenView && onFullScreenImageClick));
+  // COLLECTION tiles navigate via href; IMAGE/GIF fullscreen stays on onClick. `hasClickHandler`
+  // mirrors the guard logic in handleClick (TEXT/reorder produce no action).
+  const { hasClickHandler, isSlugNav } = getClickEligibility({
+    contentType,
+    isReorderMode,
+    hasSlug: _hasSlug,
+    onImageClick,
+    enableFullScreenView,
+    onFullScreenImageClick,
+  });
 
   const handleClick = useCallback(() => {
     if (contentType === 'TEXT') return;
@@ -529,32 +486,12 @@ export default function CollectionContentRenderer({
     });
   }
 
-  let validWidth = width;
-  let validHeight = height;
-
-  if (!Number.isFinite(width) || !Number.isFinite(height)) {
-    if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
-      if (!Number.isFinite(width) && Number.isFinite(height)) {
-        validWidth = (height * imageWidth) / imageHeight;
-      } else if (!Number.isFinite(height) && Number.isFinite(width)) {
-        validHeight = (width * imageHeight) / imageWidth;
-      } else {
-        validWidth = 300;
-        validHeight = 200;
-      }
-    } else {
-      if (!Number.isFinite(width)) {
-        validWidth = Number.isFinite(height) ? height * 1.5 : 300;
-      }
-      if (!Number.isFinite(height)) {
-        validHeight = Number.isFinite(width) ? width / 1.5 : 200;
-      }
-      if (!Number.isFinite(validWidth) && !Number.isFinite(validHeight)) {
-        validWidth = 300;
-        validHeight = 200;
-      }
-    }
-  }
+  const { width: validWidth, height: validHeight } = resolveValidDimensions({
+    width,
+    height,
+    imageWidth,
+    imageHeight,
+  });
 
   const wrapperProps = {
     className: enableParallax
