@@ -27,13 +27,13 @@ import MetadataActionRow from './sections/MetadataActionRow';
 import TagsPeopleSection from './sections/TagsPeopleSection';
 import type { EditableContent } from './types';
 
-type TabId = 'info' | 'camera' | 'tags' | 'sets';
+type TabId = 'info' | 'camera' | 'tags' | 'collections';
 
 const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'info', label: 'Info' },
   { id: 'camera', label: 'Camera' },
   { id: 'tags', label: 'Tags' },
-  { id: 'sets', label: 'Sets' },
+  { id: 'collections', label: 'Collections' },
 ];
 
 interface MetadataModalProps {
@@ -67,10 +67,10 @@ interface MetadataModalProps {
 /**
  * Orchestrator for the image/GIF metadata editor sheet modal.
  *
- * Layout: pinned photo (top strip on mobile, left sidebar on desktop) + tabbed form (Info ·
- * Camera · Tags · Sets) + a sticky action bar at the bottom. The sheet lives on the dark
- * admin surface — primitives adapt automatically via [data-surface] token inheritance; no
- * per-component dark overrides are needed here.
+ * Layout: pinned photo (top strip on mobile, left sidebar on desktop) + scrollable form + a
+ * pinned bottom bar holding the tab row (Info · Camera · Tags · Collections) above the sticky
+ * action bar. The sheet lives on the dark admin surface — primitives adapt automatically via
+ * [data-surface] token inheritance; no per-component dark overrides are needed here.
  */
 export default function MetadataModal({
   onClose,
@@ -152,102 +152,107 @@ export default function MetadataModal({
             )}
           </div>
 
-          <div className={styles.tabBar} role="tablist" aria-label="Metadata sections">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                id={`tab-${tab.id}`}
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                aria-controls={`tabpanel-${tab.id}`}
-                className={[styles.tabButton, activeTab === tab.id ? styles.tabButtonActive : '']
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => setActiveTab(tab.id)}
+          <form onSubmit={handleSubmit} className={styles.formColumn}>
+            <div className={styles.tabContent}>
+              <div
+                id="tabpanel-info"
+                role="tabpanel"
+                aria-labelledby="tab-info"
+                hidden={activeTab !== 'info'}
               >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={handleSubmit} className={styles.tabContent}>
-            <div
-              id="tabpanel-info"
-              role="tabpanel"
-              aria-labelledby="tab-info"
-              hidden={activeTab !== 'info'}
-            >
-              <EssentialInfoSection
-                updateState={updateState}
-                updateStateField={updateStateField}
-                availableLocations={availableLocations}
-                availableCollections={availableCollections}
-                currentCollectionId={currentCollectionId}
-                isGif={isGif}
-              />
-            </div>
-
-            <div
-              id="tabpanel-camera"
-              role="tabpanel"
-              aria-labelledby="tab-camera"
-              hidden={activeTab !== 'camera'}
-            >
-              <CameraSettingsSection
-                updateState={updateState}
-                updateStateField={updateStateField}
-                replaceOptimisticCamera={replaceOptimisticCamera}
-                availableCameras={availableCameras}
-                availableLenses={availableLenses}
-                availableFilmTypes={availableFilmTypes}
-                availableFilmFormats={availableFilmFormats}
-                isGif={isGif}
-              />
-            </div>
-
-            <div
-              id="tabpanel-tags"
-              role="tabpanel"
-              aria-labelledby="tab-tags"
-              hidden={activeTab !== 'tags'}
-            >
-              <TagsPeopleSection
-                updateState={updateState}
-                updateStateField={updateStateField}
-                availableTags={availableTags}
-                availablePeople={availablePeople}
-              />
-            </div>
-
-            <div
-              id="tabpanel-sets"
-              role="tabpanel"
-              aria-labelledby="tab-sets"
-              hidden={activeTab !== 'sets'}
-            >
-              <div className={styles.formSection}>
-                <CollectionListSelector
-                  allCollections={availableCollections}
-                  savedCollectionIds={originalCollectionIds}
-                  pendingAddIds={pendingAddIds}
-                  pendingRemoveIds={pendingRemoveIds}
-                  onToggle={handleCollectionToggle}
-                  label="Collections"
-                  pinnedCollectionId={currentCollectionId}
+                <EssentialInfoSection
+                  updateState={updateState}
+                  updateStateField={updateStateField}
+                  availableLocations={availableLocations}
+                  availableCollections={availableCollections}
+                  currentCollectionId={currentCollectionId}
+                  isGif={isGif}
                 />
+              </div>
+
+              <div
+                id="tabpanel-camera"
+                role="tabpanel"
+                aria-labelledby="tab-camera"
+                hidden={activeTab !== 'camera'}
+              >
+                <CameraSettingsSection
+                  updateState={updateState}
+                  updateStateField={updateStateField}
+                  replaceOptimisticCamera={replaceOptimisticCamera}
+                  availableCameras={availableCameras}
+                  availableLenses={availableLenses}
+                  availableFilmTypes={availableFilmTypes}
+                  availableFilmFormats={availableFilmFormats}
+                  isGif={isGif}
+                />
+              </div>
+
+              <div
+                id="tabpanel-tags"
+                role="tabpanel"
+                aria-labelledby="tab-tags"
+                hidden={activeTab !== 'tags'}
+              >
+                <TagsPeopleSection
+                  updateState={updateState}
+                  updateStateField={updateStateField}
+                  availableTags={availableTags}
+                  availablePeople={availablePeople}
+                />
+              </div>
+
+              <div
+                id="tabpanel-collections"
+                role="tabpanel"
+                aria-labelledby="tab-collections"
+                hidden={activeTab !== 'collections'}
+              >
+                <div className={styles.formSection}>
+                  <CollectionListSelector
+                    allCollections={availableCollections}
+                    savedCollectionIds={originalCollectionIds}
+                    pendingAddIds={pendingAddIds}
+                    pendingRemoveIds={pendingRemoveIds}
+                    onToggle={handleCollectionToggle}
+                    label="Collections"
+                    pinnedCollectionId={currentCollectionId}
+                  />
+                </div>
               </div>
             </div>
 
-            <MetadataActionRow
-              isBulkEdit={isBulkEdit}
-              selectedCount={selectedIds.length}
-              saving={saving}
-              hasChanges={hasChanges}
-              showRemove={!!currentCollectionId}
-              onDelete={handleDelete}
-              onRemove={handleRemoveFromCollection}
-              onCancel={handleCancel}
-            />
+            <div className={styles.bottomBar}>
+              <nav className={styles.bottomTabRow} role="tablist" aria-label="Metadata sections">
+                {TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    id={`tab-${tab.id}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    aria-controls={`tabpanel-${tab.id}`}
+                    className={[styles.barCell, activeTab === tab.id ? styles.barCellActive : '']
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </nav>
+
+              <MetadataActionRow
+                isBulkEdit={isBulkEdit}
+                selectedCount={selectedIds.length}
+                saving={saving}
+                hasChanges={hasChanges}
+                showRemove={!!currentCollectionId}
+                onDelete={handleDelete}
+                onRemove={handleRemoveFromCollection}
+                onCancel={handleCancel}
+              />
+            </div>
           </form>
         </div>
       </div>

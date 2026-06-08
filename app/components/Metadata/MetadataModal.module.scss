@@ -51,8 +51,8 @@
 }
 
 /* ── Right / bottom pane ──────────────────────────────────────────────────────
-   Flex column: heading + tab bar at top, scrollable tab content in the middle,
-   sticky action bar pinned at the bottom. */
+   Flex column: heading+error at top, scrollable tab content in the middle,
+   pinned bottom bar (tab row + action row) at the bottom. */
 .metadataSection {
   flex: 1;
   display: flex;
@@ -97,51 +97,13 @@
   font-size: var(--text-sm);
 }
 
-/* ── Tab bar ──────────────────────────────────────────────────────────────── */
-.tabBar {
+/* ── Form column (fills the section; scroll region + pinned bottom bar) ──── */
+.formColumn {
+  flex: 1;
   display: flex;
-  gap: 0;
-  padding: 0 var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-  overflow-x: auto;
-  scrollbar-width: none;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
-
-  @media (width >= 768px) {
-    padding: 0 var(--space-5);
-  }
-}
-
-.tabButton {
-  flex-shrink: 0;
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  color: var(--color-on-surface-muted);
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
-
-  &:hover:not(:disabled) {
-    color: var(--color-on-surface);
-  }
-
-  &:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: -2px;
-  }
-}
-
-.tabButtonActive {
-  color: var(--color-on-surface);
-  border-bottom-color: var(--color-fg);
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* ── Tab content (scrollable region) ─────────────────────────────────────── */
@@ -149,6 +111,7 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--space-4);
+  min-height: 0;
 
   &::-webkit-scrollbar {
     width: 6px;
@@ -166,6 +129,57 @@
   @media (width >= 768px) {
     padding: var(--space-5);
   }
+}
+
+/* ── Bottom bar (tab row + action row, pinned at the bottom) ─────────────── */
+.bottomBar {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+/* Tab row inside the bottom bar — uniform equal-width cells, ≥44px touch target. */
+.bottomTabRow {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* Uniform bar cell — emphasis by color/weight, never by size. */
+.barCell {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  background: none;
+  border: none;
+  color: var(--color-on-surface-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
+
+  &:hover:not(:disabled) {
+    opacity: 0.7;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: -2px;
+  }
+}
+
+/* Active tab — accent on the TOP border (bar sits at the bottom). */
+.barCellActive {
+  font-weight: 700;
+  color: var(--color-fg);
+  box-shadow: inset 0 2px 0 0 var(--color-fg);
 }
 
 /* ── Form primitives ──────────────────────────────────────────────────────── */
