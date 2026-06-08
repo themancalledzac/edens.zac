@@ -127,6 +127,8 @@ export interface TextBlockItem {
   value: string;
   slug?: string; // URL slug for navigation (location, tag, and sibling-collection items)
   label?: string; // Optional display label (e.g., "Date:", "Location:")
+  /** Cover image URL for collection-type items — drives the series tile row. */
+  imageUrl?: string;
 }
 
 /**

@@ -108,6 +108,8 @@ export interface CollectionListModel {
   type?: string;
   /** ISO date — used to sort BLOG group rows on the manage page. */
   collectionDate?: string | null;
+  /** Cover image URL for the collection — used in series tile rows on the public page. */
+  coverImageUrl?: string;
 }
 
 /**
