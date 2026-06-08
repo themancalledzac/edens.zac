@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
@@ -24,6 +26,15 @@ import MediaPreview from './sections/MediaPreview';
 import MetadataActionRow from './sections/MetadataActionRow';
 import TagsPeopleSection from './sections/TagsPeopleSection';
 import type { EditableContent } from './types';
+
+type TabId = 'info' | 'camera' | 'tags' | 'sets';
+
+const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
+  { id: 'info', label: 'Info' },
+  { id: 'camera', label: 'Camera' },
+  { id: 'tags', label: 'Tags' },
+  { id: 'sets', label: 'Sets' },
+];
 
 interface MetadataModalProps {
   onClose: () => void;
@@ -56,9 +67,10 @@ interface MetadataModalProps {
 /**
  * Orchestrator for the image/GIF metadata editor sheet modal.
  *
- * Composes `<MediaPreview>` (left panel) with the metadata form (right panel) via
- * `useMetadataState` and `useMetadataSubmit`. Zero business logic lives here —
- * this file is state-routing + JSX-composition only.
+ * Layout: pinned photo (top strip on mobile, left sidebar on desktop) + tabbed form (Info ·
+ * Camera · Tags · Sets) + a sticky action bar at the bottom. The sheet lives on the dark
+ * admin surface — primitives adapt automatically via [data-surface] token inheritance; no
+ * per-component dark overrides are needed here.
  */
 export default function MetadataModal({
   onClose,
@@ -78,6 +90,8 @@ export default function MetadataModal({
   selectedImages,
   currentCollectionId,
 }: MetadataModalProps) {
+  const [activeTab, setActiveTab] = useState<TabId>('info');
+
   const isBulkEdit = selectedIds.length > 1;
 
   const {
@@ -113,7 +127,6 @@ export default function MetadataModal({
     return null;
   }
 
-  /** `isGif` drives the disabled-state on caption + camera-settings sections. */
   const isGif = isGifContent(previewImage);
 
   return (
@@ -126,60 +139,104 @@ export default function MetadataModal({
           previewImage={previewImage}
         />
 
-        {/* Metadata Section - Right Side */}
         <div className={styles.metadataSection}>
-          <h2 id="metadata-modal-title" className={styles.heading}>
-            {isBulkEdit ? `Edit ${selectedIds.length} Images` : 'Edit Image Metadata'}
-          </h2>
+          <div className={styles.sectionTop}>
+            <h2 id="metadata-modal-title" className={styles.heading}>
+              {isBulkEdit ? `Edit ${selectedIds.length} Images` : 'Edit Image Metadata'}
+            </h2>
 
-          {error && (
-            <div className={styles.errorMessage} role="alert">
-              {error}
-            </div>
-          )}
+            {error && (
+              <div className={styles.errorMessage} role="alert">
+                {error}
+              </div>
+            )}
+          </div>
 
-          <form onSubmit={handleSubmit}>
-            <EssentialInfoSection
-              updateState={updateState}
-              updateStateField={updateStateField}
-              availableLocations={availableLocations}
-              availableCollections={availableCollections}
-              currentCollectionId={currentCollectionId}
-              isGif={isGif}
-            />
+          <div className={styles.tabBar} role="tablist" aria-label="Metadata sections">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`tabpanel-${tab.id}`}
+                className={[styles.tabButton, activeTab === tab.id ? styles.tabButtonActive : '']
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-            <CameraSettingsSection
-              updateState={updateState}
-              updateStateField={updateStateField}
-              replaceOptimisticCamera={replaceOptimisticCamera}
-              availableCameras={availableCameras}
-              availableLenses={availableLenses}
-              availableFilmTypes={availableFilmTypes}
-              availableFilmFormats={availableFilmFormats}
-              isGif={isGif}
-            />
-
-            <TagsPeopleSection
-              updateState={updateState}
-              updateStateField={updateStateField}
-              availableTags={availableTags}
-              availablePeople={availablePeople}
-            />
-
-            {/* Collections */}
-            <div className={styles.formSection}>
-              <CollectionListSelector
-                allCollections={availableCollections}
-                savedCollectionIds={originalCollectionIds}
-                pendingAddIds={pendingAddIds}
-                pendingRemoveIds={pendingRemoveIds}
-                onToggle={handleCollectionToggle}
-                label="Collections"
-                pinnedCollectionId={currentCollectionId}
+          <form onSubmit={handleSubmit} className={styles.tabContent}>
+            <div
+              id="tabpanel-info"
+              role="tabpanel"
+              aria-labelledby="tab-info"
+              hidden={activeTab !== 'info'}
+            >
+              <EssentialInfoSection
+                updateState={updateState}
+                updateStateField={updateStateField}
+                availableLocations={availableLocations}
+                availableCollections={availableCollections}
+                currentCollectionId={currentCollectionId}
+                isGif={isGif}
               />
             </div>
 
-            {/* Action Buttons */}
+            <div
+              id="tabpanel-camera"
+              role="tabpanel"
+              aria-labelledby="tab-camera"
+              hidden={activeTab !== 'camera'}
+            >
+              <CameraSettingsSection
+                updateState={updateState}
+                updateStateField={updateStateField}
+                replaceOptimisticCamera={replaceOptimisticCamera}
+                availableCameras={availableCameras}
+                availableLenses={availableLenses}
+                availableFilmTypes={availableFilmTypes}
+                availableFilmFormats={availableFilmFormats}
+                isGif={isGif}
+              />
+            </div>
+
+            <div
+              id="tabpanel-tags"
+              role="tabpanel"
+              aria-labelledby="tab-tags"
+              hidden={activeTab !== 'tags'}
+            >
+              <TagsPeopleSection
+                updateState={updateState}
+                updateStateField={updateStateField}
+                availableTags={availableTags}
+                availablePeople={availablePeople}
+              />
+            </div>
+
+            <div
+              id="tabpanel-sets"
+              role="tabpanel"
+              aria-labelledby="tab-sets"
+              hidden={activeTab !== 'sets'}
+            >
+              <div className={styles.formSection}>
+                <CollectionListSelector
+                  allCollections={availableCollections}
+                  savedCollectionIds={originalCollectionIds}
+                  pendingAddIds={pendingAddIds}
+                  pendingRemoveIds={pendingRemoveIds}
+                  onToggle={handleCollectionToggle}
+                  label="Collections"
+                  pinnedCollectionId={currentCollectionId}
+                />
+              </div>
+            </div>
+
             <MetadataActionRow
               isBulkEdit={isBulkEdit}
               selectedCount={selectedIds.length}
@@ -194,7 +251,6 @@ export default function MetadataModal({
         </div>
       </div>
 
-      {/* Close Button — floats over the top-right corner of the sheet. */}
       <div className={styles.closeButtonSlot}>
         <CloseButton onClick={handleCancel} aria-label="Close metadata editor" disabled={saving} />
       </div>

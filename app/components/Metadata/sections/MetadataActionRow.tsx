@@ -16,13 +16,11 @@ export interface MetadataActionRowProps {
 }
 
 /**
- * Action button row for the metadata editor.
+ * Sticky action bar rendered at the bottom of the metadata editor sheet.
  *
- * Uses the `<Button>` primitive for focus, loading state, and aria-busy. The editor sheet sits on a
- * dark surface, so Save and Cancel layer the `saveOnDark`/`cancelOnDark` overrides (white-filled CTA
- * / outlined light-text) on top of a transparent `ghost` base — Delete (danger) and Remove
- * (warning) read fine on dark as-is. The Save button is `type="submit"` — it triggers the form's
- * `onSubmit` handler in the parent orchestrator without needing an explicit `onSave` prop.
+ * Save uses `variant="primary"` which resolves to white-fill / dark-text under
+ * [data-surface="dark"] — no manual override needed. Cancel uses `variant="outline"`.
+ * The Save button is `type="submit"` so it triggers the form's `onSubmit` handler.
  */
 export default function MetadataActionRow({
   isBulkEdit,
@@ -37,14 +35,15 @@ export default function MetadataActionRow({
   const countLabel = isBulkEdit ? `${selectedCount} Images` : 'Image';
 
   return (
-    <div className={styles.buttonRow}>
-      <div className={styles.buttonRowLeft}>
-        <Button variant="danger" loading={saving} onClick={onDelete}>
+    <div className={styles.actionBar}>
+      <div className={styles.actionBarLeft}>
+        <Button variant="danger" size="sm" loading={saving} onClick={onDelete}>
           {`Delete ${countLabel}`}
         </Button>
         {showRemove && (
           <Button
             variant="warning"
+            size="sm"
             loading={saving}
             onClick={onRemove}
             title="Remove from current collection (image stays in the system)"
@@ -53,22 +52,11 @@ export default function MetadataActionRow({
           </Button>
         )}
       </div>
-      <div className={styles.buttonRowRight}>
-        <Button
-          variant="ghost"
-          className={styles.cancelOnDark}
-          disabled={saving}
-          onClick={onCancel}
-        >
+      <div className={styles.actionBarRight}>
+        <Button variant="outline" size="sm" disabled={saving} onClick={onCancel}>
           Cancel
         </Button>
-        <Button
-          type="submit"
-          variant="ghost"
-          className={styles.saveOnDark}
-          loading={saving}
-          disabled={!hasChanges}
-        >
+        <Button type="submit" variant="primary" size="sm" loading={saving} disabled={!hasChanges}>
           Save Changes
         </Button>
       </div>
