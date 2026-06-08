@@ -1,4 +1,4 @@
-import { hasValidAdminAuth, isAdminRoutesEnabled } from '@/app/utils/admin';
+import { hasValidAdminAuth, isAdminRoutesEnabled, requireAdmin } from '@/app/utils/admin';
 
 function createMockRequest(options: { headerToken?: string; cookieToken?: string }) {
   return {
@@ -20,6 +20,12 @@ beforeEach(() => {
 
 afterAll(() => {
   process.env = originalEnv;
+});
+
+describe('requireAdmin', () => {
+  it('resolves to undefined (non-enforcing today)', async () => {
+    await expect(requireAdmin()).resolves.toBeUndefined();
+  });
 });
 
 describe('isAdminRoutesEnabled', () => {
