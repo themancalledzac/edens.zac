@@ -9,6 +9,5 @@ import { requireAdmin } from '@/app/utils/admin';
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   await requireAdmin(); // non-enforcing today
-  // eslint-disable-next-line react/jsx-no-useless-fragment
-  return <>{children}</>;
+  return children;
 }
