@@ -60,7 +60,7 @@ jest.mock('@/app/hooks/useMetadataEditor', () => ({
   }),
 }));
 
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useContentReordering', () => ({
+jest.mock('@/app/components/ContentCollection/edit/hooks/useContentReordering', () => ({
   useContentReordering: () => ({
     reorderState: { active: false, moves: [], pickedUpImageId: null },
     reorderDisplayOrder: [],
@@ -75,7 +75,7 @@ jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useContentReordering', ()
   }),
 }));
 
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useCoverImageSelection', () => ({
+jest.mock('@/app/components/ContentCollection/edit/hooks/useCoverImageSelection', () => ({
   useCoverImageSelection: () => ({
     isSelectingCoverImage: false,
     setIsSelectingCoverImage: jest.fn(),
@@ -84,7 +84,7 @@ jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useCoverImageSelection', 
   }),
 }));
 
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useImageClickHandler', () => ({
+jest.mock('@/app/components/ContentCollection/edit/hooks/useImageClickHandler', () => ({
   useImageClickHandler: () => ({ handleImageClick: jest.fn() }),
 }));
 

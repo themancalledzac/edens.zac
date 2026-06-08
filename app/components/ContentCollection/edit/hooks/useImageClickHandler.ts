@@ -10,7 +10,7 @@ import {
   type ContentImageModel,
 } from '@/app/types/Content';
 
-import { handleCollectionNavigation, handleSingleImageEdit } from './manageUtils';
+import { handleCollectionNavigation, handleSingleImageEdit } from '../collectionEditUtils';
 
 interface UseImageClickHandlerParams {
   isSelectingCoverImage: boolean;

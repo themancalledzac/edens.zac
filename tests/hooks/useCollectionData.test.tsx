@@ -35,7 +35,7 @@ import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 // Mock dependencies
 jest.mock('@/app/lib/api/collections');
 jest.mock('@/app/lib/storage/collectionStorage');
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/manageUtils', () => ({
+jest.mock('@/app/components/ContentCollection/edit/collectionEditUtils', () => ({
   handleApiError: jest.fn((error, defaultMessage) =>
     error instanceof Error ? error.message : defaultMessage
   ),

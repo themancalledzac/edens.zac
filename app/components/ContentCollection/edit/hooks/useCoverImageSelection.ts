@@ -16,7 +16,7 @@ import { type AnyContentModel, type ContentImageModel } from '@/app/types/Conten
 import { handleApiError } from '@/app/utils/apiUtils';
 import { isParentType } from '@/app/utils/contentTypeGuards';
 
-import { COVER_IMAGE_FLASH_DURATION, handleCoverImageSelection } from './manageUtils';
+import { COVER_IMAGE_FLASH_DURATION, handleCoverImageSelection } from '../collectionEditUtils';
 
 interface UseCoverImageSelectionParams {
   collection: CollectionModel | null;

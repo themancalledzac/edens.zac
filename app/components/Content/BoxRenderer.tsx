@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import type { ViewableContent } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';

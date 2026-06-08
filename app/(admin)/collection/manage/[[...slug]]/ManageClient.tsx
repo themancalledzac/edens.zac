@@ -15,6 +15,20 @@ import {
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import {
+  buildUpdatePayload,
+  getDisplayedCoverImage,
+  handleMultiSelectToggle as handleMultiSelectToggleUtil,
+  mergeNewMetadata,
+  refreshCollectionAfterOperation,
+  revalidateCollectionCache,
+  revalidateMetadataCache,
+  toggleRelation,
+} from '@/app/components/ContentCollection/edit/collectionEditUtils';
+import { useCollectionRetype } from '@/app/components/ContentCollection/edit/hooks/useCollectionRetype';
+import { useContentReordering } from '@/app/components/ContentCollection/edit/hooks/useContentReordering';
+import { useCoverImageSelection } from '@/app/components/ContentCollection/edit/hooks/useCoverImageSelection';
+import { useImageClickHandler } from '@/app/components/ContentCollection/edit/hooks/useImageClickHandler';
 import MetadataModal from '@/app/components/Metadata/MetadataModal';
 import { buildImageUpdateDiff } from '@/app/components/Metadata/metadataUtils';
 import RatingStars from '@/app/components/RatingStars/RatingStars';
@@ -85,20 +99,6 @@ import { logger } from '@/app/utils/logger';
 import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import styles from './ManageClient.module.scss';
-import {
-  buildUpdatePayload,
-  getDisplayedCoverImage,
-  handleMultiSelectToggle as handleMultiSelectToggleUtil,
-  mergeNewMetadata,
-  refreshCollectionAfterOperation,
-  revalidateCollectionCache,
-  revalidateMetadataCache,
-  toggleRelation,
-} from './manageUtils';
-import { useCollectionRetype } from './useCollectionRetype';
-import { useContentReordering } from './useContentReordering';
-import { useCoverImageSelection } from './useCoverImageSelection';
-import { useImageClickHandler } from './useImageClickHandler';
 
 interface ManageClientProps {
   slug?: string; // Collection slug for UPDATE mode, undefined for CREATE mode

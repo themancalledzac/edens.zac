@@ -66,8 +66,8 @@ jest.mock('@/app/hooks/useMetadataEditor', () => ({
   }),
 }));
 
-// Local hooks under the manage page directory
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useContentReordering', () => ({
+// Local hooks under the ContentCollection/edit directory
+jest.mock('@/app/components/ContentCollection/edit/hooks/useContentReordering', () => ({
   useContentReordering: () => ({
     reorderState: { active: false, moves: [], pickedUpImageId: null },
     reorderDisplayOrder: [],
@@ -82,7 +82,7 @@ jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useContentReordering', ()
   }),
 }));
 
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useCoverImageSelection', () => ({
+jest.mock('@/app/components/ContentCollection/edit/hooks/useCoverImageSelection', () => ({
   useCoverImageSelection: () => ({
     isSelectingCoverImage: false,
     setIsSelectingCoverImage: jest.fn(),
@@ -91,11 +91,11 @@ jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useCoverImageSelection', 
   }),
 }));
 
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useImageClickHandler', () => ({
+jest.mock('@/app/components/ContentCollection/edit/hooks/useImageClickHandler', () => ({
   useImageClickHandler: () => ({ handleImageClick: jest.fn() }),
 }));
 
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/manageUtils', () => ({
+jest.mock('@/app/components/ContentCollection/edit/collectionEditUtils', () => ({
   buildUpdatePayload: jest.fn(() => ({ id: 1 })),
   getDisplayedCoverImage: () => null,
   handleMultiSelectToggle: jest.fn(),

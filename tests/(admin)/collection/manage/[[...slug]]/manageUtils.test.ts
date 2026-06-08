@@ -28,7 +28,7 @@ import {
   toggleRelation,
   updateBlockOrderIndex,
   validateCoverImageSelection,
-} from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+} from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import * as collectionsApi from '@/app/lib/api/collections';
 import {
   type CollectionListModel,
