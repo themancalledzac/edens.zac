@@ -1721,7 +1721,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             </div>
                           )}
 
-                          {/* Read-only cover preview; set the cover via Select mode in the grid. */}
+                          {/* Cover image. Non-parents set it via Select mode in the
+                              grid (the grid shows their own images); parents pick
+                              from their child collections' images here, since their
+                              grid shows child collections, not images. */}
                           <div className={styles.coverImageSection}>
                             <label className={styles.formLabel}>Cover Image</label>
                             {displayedCoverImage && isContentImage(displayedCoverImage) ? (
@@ -1736,7 +1739,46 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             ) : (
                               <div className={styles.noCoverImage}>No cover image</div>
                             )}
+                            {isParent ? (
+                              <Button
+                                variant={isSelectingCoverImage ? 'danger' : 'secondary'}
+                                onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                              >
+                                {isSelectingCoverImage ? 'Cancel' : 'Set cover from child images'}
+                              </Button>
+                            ) : (
+                              <p className={styles.formLabelHint}>
+                                Set the cover from the grid: Select an image, then “Set as cover”.
+                              </p>
+                            )}
                           </div>
+
+                          {/* Parent cover picker — child-collection images. */}
+                          {isParent && isSelectingCoverImage && (
+                            <div className={styles.coverImagePickerGrid}>
+                              {(currentState?.childCollectionImages ?? []).length > 0 ? (
+                                (currentState?.childCollectionImages ?? []).map(img => (
+                                  <button
+                                    key={img.id}
+                                    type="button"
+                                    className={styles.coverImagePickerItem}
+                                    onClick={() => handleCoverImageClick(img.id)}
+                                  >
+                                    <Image
+                                      src={img.imageUrl}
+                                      alt={img.title || ''}
+                                      width={120}
+                                      height={90}
+                                    />
+                                  </button>
+                                ))
+                              ) : (
+                                <div className={styles.noCoverImage}>
+                                  Add child collections with images to select a cover image.
+                                </div>
+                              )}
+                            </div>
+                          )}
 
                           <CollectionListSelector
                             allCollections={allCollections}
@@ -1893,18 +1935,20 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 {collection.title}
               </button>
 
-              {/* Status line above the bar for active, transient modes. */}
-              {(isSelectingCoverImage ||
-                (isMultiSelectMode && selectedIds.length > 0) ||
-                reorderState.active) && (
-                <div className={styles.barStatus}>
-                  {isSelectingCoverImage && 'Tap any image to set as cover'}
-                  {isMultiSelectMode &&
-                    selectedIds.length > 0 &&
-                    `${selectedIds.length} image${selectedIds.length !== 1 ? 's' : ''} selected`}
-                  {reorderState.active && 'Reorder \u2014 use arrows or pick and place'}
-                </div>
-              )}
+              {/* Status line above the bar for active, transient grid modes.
+                  Hidden in the Edit sheet, which has its own inline affordances. */}
+              {manageMode !== 'edit' &&
+                ((isSelectingCoverImage && !isParent) ||
+                  (isMultiSelectMode && selectedIds.length > 0) ||
+                  reorderState.active) && (
+                  <div className={styles.barStatus}>
+                    {isSelectingCoverImage && !isParent && 'Tap any image to set as cover'}
+                    {isMultiSelectMode &&
+                      selectedIds.length > 0 &&
+                      `${selectedIds.length} image${selectedIds.length !== 1 ? 's' : ''} selected`}
+                    {reorderState.active && 'Reorder \u2014 use arrows or pick and place'}
+                  </div>
+                )}
 
               {/* Persistent, mode-morphing bottom bar (uniform-height cells). */}
               <nav className={styles.bottomBar} aria-label="Manage actions">

@@ -37,11 +37,12 @@
 }
 
 // Bottom bar — persistent, thumb-reachable, uniform-height cells. Fixed to the
-// viewport bottom so it stays reachable as the canvas scrolls.
+// viewport bottom so it stays reachable as the canvas scrolls. Sits above the
+// Edit sheet (z-modal) because in Edit view it holds the tab row + Save cell.
 .bottomBar {
   position: fixed;
   inset: auto 0 0;
-  z-index: var(--z-sticky, 30);
+  z-index: var(--z-modal-controls, 1002);
   display: flex;
   align-items: stretch;
   height: var(--bottom-bar-height);
@@ -415,6 +416,33 @@
   justify-content: center;
   color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
+}
+
+// Parent cover picker grid — child-collection image thumbnails.
+.coverImagePickerGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.coverImagePickerItem {
+  padding: 0;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: var(--radius-1);
+  overflow: hidden;
+  background: none;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+
+  &:hover {
+    border-color: var(--color-fg);
+  }
+
+  img {
+    display: block;
+    object-fit: cover;
+  }
 }
 
 // Grid Layouts
