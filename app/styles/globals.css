@@ -128,6 +128,10 @@ html,
   --color-error-text: #c33;
   --color-primary: #212226;
   --color-primary-dark: #1a1b1e;
+  --color-primary-hover: var(
+    --color-primary-dark
+  ); /* hover step for the primary <Button>. Light surface: the dark fill deepens. The dark scope re-points this so the white-fill button dims toward gray instead of inverting to near-black. */
+
   --color-on-primary-muted: #adb5bd; /* AA-safe muted text on the dark --color-primary admin panel (~7.7:1); the light-surface --color-on-surface-muted #666 fails AA there */
   --color-secondary: #6c757d;
   --color-secondary-dark: #5a6268;
@@ -207,6 +211,17 @@ html,
   /* Low-alpha white hairline so borders read on dark without harsh lines. */
   --color-border: rgb(255 255 255 / 14%);
   --color-border-strong: rgb(255 255 255 / 28%);
+
+  /* Hover/active surface tint flips to low-alpha WHITE so it lifts on dark instead
+     of the near-invisible black wash the :root rgb(0 0 0 / 10%) would give. Drives
+     every ghost/outline/list-row/segment/dropdown hover that reads this role.
+     (--color-overlay-strong is intentionally NOT overridden — the modal scrim and
+     image overlays must stay dark regardless of surface.) */
+  --color-overlay-soft: rgb(255 255 255 / 8%);
+
+  /* The primary <Button> fill is --color-fg (near-white) on dark, so its hover must
+     DIM toward gray, not deepen toward black like the light-surface default does. */
+  --color-primary-hover: #d4d4d6;
 }
 
 /* Desktop heading sizes */
