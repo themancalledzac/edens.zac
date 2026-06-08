@@ -116,6 +116,13 @@
   font-weight: 600;
 }
 
+// Active tab cell — emphasis by weight + a top accent rule, never by size.
+.barCellActive {
+  font-weight: 700;
+  color: var(--color-fg);
+  box-shadow: inset 0 2px 0 0 var(--color-fg);
+}
+
 // The Upload cell wraps a hidden <input type=file>; the label is the cell.
 .barCellUpload {
   position: relative;
@@ -206,6 +213,20 @@
   }
 }
 
+// Compact sheet header — the collection title (links to the public page).
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-3);
+}
+
+// One tab's fields. Single column on mobile; relationships flow naturally.
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 // Create Mode Styles
 .createContainer {
   background: var(--color-surface-raised);
@@ -235,15 +256,6 @@
   }
 }
 
-// Heading row with checkbox on right
-.headingRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-2);
-}
-
 .updateHeading {
   margin: 0;
   color: var(--color-fg);
@@ -259,31 +271,6 @@
   }
 }
 
-.headingCheckboxLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--color-surface-raised);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  flex-shrink: 0;
-  cursor: pointer;
-
-  input[type='checkbox'] {
-    cursor: pointer;
-  }
-
-  span {
-    font-weight: 500;
-  }
-}
-
-// Update-Metadata submit button in the heading row — keep it from shrinking
-// next to the title; <Button variant="secondary"> owns the rest of the look.
-.headingSubmitButton {
-  flex-shrink: 0;
-}
-
 // Title row: title input occupies the full width (visibility moved to its own fieldset)
 .titleRow {
   display: flex;
@@ -294,39 +281,6 @@
 .titleInputWrapper {
   flex: 1;
   min-width: 0;
-}
-
-// Left/Right Layout for Update Form
-.updateFormLayout {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
-
-  @media (width >= 768px) {
-    grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr);
-    gap: var(--space-6);
-    align-items: start;
-  }
-}
-
-.leftSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.rightSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-
-  // Keep the relationships selector in view while editing the long left column.
-  @media (width >= 768px) {
-    position: sticky;
-    top: var(--space-4);
-    align-self: start;
-  }
 }
 
 // Error Styles
@@ -409,32 +363,9 @@
   }
 }
 
-// Cover image + media side by side for non-parent collections
-.coverAndMediaRow {
-  display: flex;
-  gap: var(--space-4);
-  align-items: flex-start;
-
-  & > .coverImageSection {
-    flex: 0 0 180px;
-    width: 180px;
-  }
-
-  & > .mediaSection {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
-// Upload Images + Add Text Block — always stacked single column
-.mediaSection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
 .coverImageSection {
   width: 100%;
+  max-width: 16rem;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -455,11 +386,6 @@
   }
 }
 
-// Full-width cover-image toggle; <Button variant="secondary|danger"> owns color.
-.coverImageButton {
-  width: 100%;
-}
-
 .noCoverImage {
   width: 100%;
   aspect-ratio: 4 / 3;
@@ -470,62 +396,6 @@
   justify-content: center;
   color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
-}
-
-.coverImagePickerGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  padding: var(--space-2) 0;
-}
-
-.coverImagePickerItem {
-  cursor: pointer;
-  border: 2px solid transparent;
-  border-radius: var(--radius-1);
-  overflow: hidden;
-  transition: border-color var(--duration-fast) var(--ease-standard);
-
-  &:hover {
-    border-color: var(--color-primary);
-  }
-
-  img {
-    display: block;
-    object-fit: cover;
-  }
-}
-
-.uploadSection {
-  display: flex;
-  flex-direction: column;
-
-  .uploadInput {
-    padding: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-1);
-    width: 100%;
-    cursor: pointer;
-    background: var(--color-bg);
-    color: var(--color-fg);
-
-    &::file-selector-button {
-      background: var(--color-surface-sunken);
-      color: var(--color-fg);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-1);
-      padding: var(--space-1) var(--space-2);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: var(--text-sm);
-      margin-right: var(--space-2);
-    }
-  }
-
-  .uploadingText {
-    margin-top: var(--space-2);
-    color: var(--color-on-primary-muted);
-  }
 }
 
 // Grid Layouts
@@ -653,18 +523,6 @@
   }
 }
 
-// Text Block Section
-.textBlockSection {
-  display: flex;
-  flex-direction: column;
-}
-
-// Full-width "add text block" action; <Button variant="secondary"> owns the look.
-.addTextBlockButton {
-  width: 100%;
-}
-
-// Load More Section
 .loadMoreContainer {
   display: flex;
   flex-direction: column;

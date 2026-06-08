@@ -186,10 +186,13 @@ async function renderManageClient() {
   await act(async () => {
     utils = render(<ManageClient slug="smith-wedding" />);
   });
-  // The collection-update form (incl. Gallery Access) lives in the Edit sheet,
-  // which is opened from the bottom bar's "Edit" cell.
+  // The collection-update form lives in the Edit sheet (opened from the bottom
+  // bar's "Edit" cell); Gallery Access is on the "Access" tab.
   await act(async () => {
     fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+  });
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /^access$/i }));
   });
   return utils;
 }

@@ -148,6 +148,9 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [isAddMode, setIsAddMode] = useState(false);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
 
+  // Active tab within the Edit sheet. The tab row + Save live in the bottom bar.
+  const [editTab, setEditTab] = useState<'info' | 'tags' | 'structure' | 'access'>('info');
+
   const [createData, setCreateData] = useState<CollectionCreateRequest>({
     type: CollectionType.PORTFOLIO,
     title: '',
@@ -408,17 +411,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
         currentState?.childCollectionImages
       ),
     [collection, updateData.coverImageId, currentState?.childCollectionImages]
-  );
-
-  // Images offered in the inline cover picker. Parent collections pick from their child
-  // collections' images; every other type picks from its own image content. Same affordance
-  // either way (replaces the old "enter select mode then click the grid below" flow).
-  const coverPickerImages: ContentImageModel[] = useMemo(
-    () =>
-      isParent
-        ? (currentState?.childCollectionImages ?? [])
-        : (collection?.content?.filter(isContentImage) ?? []),
-    [isParent, currentState?.childCollectionImages, collection?.content]
   );
 
   const handleImageLoadError = useCallback((contentId: number) => {
@@ -1260,8 +1252,25 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
 
     if (manageMode === 'edit') {
+      const tabs: Array<{ id: typeof editTab; label: string }> = [
+        { id: 'info', label: 'Info' },
+        { id: 'tags', label: 'Tags' },
+        { id: 'structure', label: 'Structure' },
+        { id: 'access', label: 'Access' },
+      ];
       return (
         <>
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setEditTab(tab.id)}
+              className={`${styles.barCell} ${editTab === tab.id ? styles.barCellActive : ''}`}
+              aria-pressed={editTab === tab.id}
+            >
+              {tab.label}
+            </button>
+          ))}
           <button
             type="button"
             onClick={() => void handleUpdate()}
@@ -1391,33 +1400,20 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 <div className={styles.editSheet}>
                   <div className={styles.updateContainer}>
                     <form onSubmit={handleUpdate}>
-                      <div className={styles.updateFormLayout}>
-                        {/* LEFT SECTION */}
-                        <div className={styles.leftSection}>
-                          <div className={styles.headingRow}>
-                            <h2
-                              className={styles.updateHeading}
-                              onClick={() => router.push(`/${collection.slug}`)}
-                            >
-                              {collection.title}
-                            </h2>
-                            <Button
-                              variant="secondary"
-                              type="submit"
-                              loading={saving}
-                              disabled={isLoading}
-                              className={styles.headingSubmitButton}
-                            >
-                              {saving ? 'Saving…' : 'Save'}
-                            </Button>
-                          </div>
+                      <div className={styles.sheetHeader}>
+                        <h2
+                          className={styles.updateHeading}
+                          onClick={() => router.push(`/${collection.slug}`)}
+                        >
+                          {collection.title}
+                        </h2>
+                      </div>
 
-                          {displayError && (
-                            <div className={styles.errorMessage}>{displayError}</div>
-                          )}
+                      {displayError && <div className={styles.errorMessage}>{displayError}</div>}
 
-                          <h3 className={styles.sectionTitle}>Details</h3>
-
+                      {/* INFO TAB — title, description, date, locations */}
+                      {editTab === 'info' && (
+                        <div className={styles.tabPanel}>
                           {/* Title */}
                           <div className={styles.titleRow}>
                             <div className={styles.titleInputWrapper}>
@@ -1433,72 +1429,33 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             </div>
                           </div>
 
-                          {/* Visibility */}
+                          {/* Collection Date */}
                           <div className={styles.formGroup}>
-                            <label className={styles.formLabel}>Visibility</label>
-                            <SegmentedControl<CollectionVisibility>
-                              ariaLabel="Visibility"
-                              value={updateData.visibility ?? CollectionVisibility.HIDDEN}
-                              onChange={v => setUpdateData(prev => ({ ...prev, visibility: v }))}
-                              options={Object.values(CollectionVisibility).map(v => ({
-                                value: v,
-                                label: COLLECTION_VISIBILITY_LABELS[v],
-                                description: COLLECTION_VISIBILITY_DESCRIPTIONS[v],
-                              }))}
-                              showDescription
-                            />
-                          </div>
-
-                          {/* Collection Date / Collection Type */}
-                          <div className={styles.formGridHalf}>
-                            <div>
-                              <label className={styles.formLabel}>Collection Date</label>
-                              <div className={styles.dateInputWrapper}>
-                                <input
-                                  type="date"
-                                  value={updateData.collectionDate ?? ''}
-                                  onChange={e =>
-                                    setUpdateData(prev => ({
-                                      ...prev,
-                                      collectionDate: e.target.value,
-                                    }))
+                            <label className={styles.formLabel}>Collection Date</label>
+                            <div className={styles.dateInputWrapper}>
+                              <input
+                                type="date"
+                                value={updateData.collectionDate ?? ''}
+                                onChange={e =>
+                                  setUpdateData(prev => ({
+                                    ...prev,
+                                    collectionDate: e.target.value,
+                                  }))
+                                }
+                                className={styles.dateInput}
+                              />
+                              {updateData.collectionDate && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setUpdateData(prev => ({ ...prev, collectionDate: null }))
                                   }
-                                  className={styles.dateInput}
-                                />
-                                {updateData.collectionDate && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setUpdateData(prev => ({ ...prev, collectionDate: null }))
-                                    }
-                                    className={styles.dateClearButton}
-                                    aria-label="Clear date"
-                                  >
-                                    ✕
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            <div>
-                              <Field label="Collection Type" htmlFor="update-type">
-                                <Select
-                                  id="update-type"
-                                  value={updateData.type}
-                                  onChange={e =>
-                                    setUpdateData(prev => ({
-                                      ...prev,
-                                      type: e.target.value as CollectionType,
-                                    }))
-                                  }
+                                  className={styles.dateClearButton}
+                                  aria-label="Clear date"
                                 >
-                                  {ASSIGNABLE_COLLECTION_TYPES.map(type => (
-                                    <option key={type} value={type}>
-                                      {COLLECTION_TYPE_LABELS[type]}
-                                    </option>
-                                  ))}
-                                </Select>
-                              </Field>
+                                  ✕
+                                </button>
+                              )}
                             </div>
                           </div>
 
@@ -1514,8 +1471,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               />
                             </Field>
                           </div>
-
-                          <h3 className={styles.sectionTitle}>Tags, people &amp; places</h3>
 
                           {/* Locations */}
                           <Dropdown<LocationModel>
@@ -1538,7 +1493,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             showNewIndicator
                             emptyText="No locations set"
                           />
+                        </div>
+                      )}
 
+                      {/* TAGS TAB — collection tags + people */}
+                      {editTab === 'tags' && (
+                        <div className={styles.tabPanel}>
                           {/* Tags — collection-level associations. Saved via the
                             "Update Metadata" payload (like Locations), not a
                             separate endpoint. Reuses the shared TagsSelector so the
@@ -1609,6 +1569,49 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               </p>
                             )}
                           </section>
+                        </div>
+                      )}
+
+                      {/* STRUCTURE TAB — type, visibility, presentation, relationships */}
+                      {editTab === 'structure' && (
+                        <div className={styles.tabPanel}>
+                          {/* Collection Type */}
+                          <div className={styles.formGroup}>
+                            <Field label="Collection Type" htmlFor="update-type">
+                              <Select
+                                id="update-type"
+                                value={updateData.type}
+                                onChange={e =>
+                                  setUpdateData(prev => ({
+                                    ...prev,
+                                    type: e.target.value as CollectionType,
+                                  }))
+                                }
+                              >
+                                {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+                                  <option key={type} value={type}>
+                                    {COLLECTION_TYPE_LABELS[type]}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
+                          </div>
+
+                          {/* Visibility */}
+                          <div className={styles.formGroup}>
+                            <label className={styles.formLabel}>Visibility</label>
+                            <SegmentedControl<CollectionVisibility>
+                              ariaLabel="Visibility"
+                              value={updateData.visibility ?? CollectionVisibility.HIDDEN}
+                              onChange={v => setUpdateData(prev => ({ ...prev, visibility: v }))}
+                              options={Object.values(CollectionVisibility).map(v => ({
+                                value: v,
+                                label: COLLECTION_VISIBILITY_LABELS[v],
+                                description: COLLECTION_VISIBILITY_DESCRIPTIONS[v],
+                              }))}
+                              showDescription
+                            />
+                          </div>
 
                           {/* Presentation — image layout controls; hidden for parent-type collections */}
                           {!isParent && <h3 className={styles.sectionTitle}>Presentation</h3>}
@@ -1692,6 +1695,94 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             </div>
                           )}
 
+                          {/* Read-only cover preview; set the cover via Select mode in the grid. */}
+                          <div className={styles.coverImageSection}>
+                            <label className={styles.formLabel}>Cover Image</label>
+                            {displayedCoverImage && isContentImage(displayedCoverImage) ? (
+                              <div className={styles.coverImageWrapper}>
+                                <Image
+                                  src={displayedCoverImage.imageUrl}
+                                  alt="Cover"
+                                  width={400}
+                                  height={300}
+                                />
+                              </div>
+                            ) : (
+                              <div className={styles.noCoverImage}>No cover image</div>
+                            )}
+                          </div>
+
+                          <CollectionListSelector
+                            allCollections={allCollections}
+                            savedCollectionIds={originalCollectionIds}
+                            pendingAddIds={pendingAddIds}
+                            pendingRemoveIds={pendingRemoveIds}
+                            onToggle={handleCollectionToggle}
+                            onNavigate={col => {
+                              if (col.slug) {
+                                router.push(`/collection/manage/${col.slug}`);
+                              } else {
+                                logger.error(
+                                  'ManageClient',
+                                  'Cannot navigate to collection: missing slug',
+                                  col
+                                );
+                                setError(
+                                  `Cannot navigate to collection "${col.name}": missing slug`
+                                );
+                              }
+                            }}
+                            onAddNewChild={handleAddNewChild}
+                            label="Collections"
+                            currentCollectionId={collection.id}
+                            siblingSavedIds={originalSiblingIds}
+                            siblingPendingAddIds={pendingAddSiblingIds}
+                            siblingPendingRemoveIds={pendingRemoveSiblingIds}
+                            onToggleSibling={handleSiblingToggle}
+                            parentSavedIds={originalParentIds}
+                            parentPendingAddIds={pendingAddParentIds}
+                            parentPendingRemoveIds={pendingRemoveParentIds}
+                            onToggleParent={handleParentToggle}
+                            onChangeType={handleChangeType}
+                          />
+
+                          {/* Home: rate child collections inline. Click is immediate (no save button). */}
+                          {slug === 'home' &&
+                            (collection.content?.some(isContentCollection) ?? false) && (
+                              <section
+                                aria-labelledby="children-rating-heading"
+                                className={styles.formGroup}
+                              >
+                                <h3 id="children-rating-heading" className={styles.formLabel}>
+                                  Children (rating)
+                                </h3>
+                                <ul className={styles.plainList}>
+                                  {(collection.content ?? [])
+                                    .filter(isContentCollection)
+                                    .map(child => (
+                                      <li key={child.id} className={styles.childRow}>
+                                        <span>{child.title ?? child.slug}</span>
+                                        <RatingStars
+                                          initialRating={child.rating ?? null}
+                                          onChange={async next => {
+                                            await updateCollectionRating(
+                                              child.referencedCollectionId,
+                                              next
+                                            );
+                                          }}
+                                          ariaLabel={`Rate ${child.title ?? child.slug}`}
+                                        />
+                                      </li>
+                                    ))}
+                                </ul>
+                              </section>
+                            )}
+                        </div>
+                      )}
+
+                      {/* ACCESS TAB - gallery password and recipients */}
+                      {editTab === 'access' && (
+                        <div className={styles.tabPanel}>
                           {/* Gallery Access — meaningful for CLIENT_GALLERY and PARENT */}
                           {(updateData.type === CollectionType.CLIENT_GALLERY ||
                             updateData.type === CollectionType.PARENT) && (
@@ -1760,168 +1851,8 @@ export default function ManageClient({ slug }: ManageClientProps) {
                               )}
                             </section>
                           )}
-
-                          <h3 className={styles.sectionTitle}>
-                            {isParent ? 'Cover image' : 'Cover & content'}
-                          </h3>
-
-                          {/* Cover Image + media row (non-parent: side by side; parent: stacked) */}
-                          <div className={!isParent ? styles.coverAndMediaRow : undefined}>
-                            <div className={styles.coverImageSection}>
-                              <label className={styles.formLabel}>Cover Image</label>
-                              {displayedCoverImage && isContentImage(displayedCoverImage) ? (
-                                <div className={styles.coverImageWrapper}>
-                                  <Image
-                                    src={displayedCoverImage.imageUrl}
-                                    alt="Cover"
-                                    width={400}
-                                    height={300}
-                                  />
-                                </div>
-                              ) : (
-                                <div className={styles.noCoverImage}>No cover image</div>
-                              )}
-                              <Button
-                                variant={isSelectingCoverImage ? 'danger' : 'secondary'}
-                                onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                                className={styles.coverImageButton}
-                              >
-                                {isSelectingCoverImage ? 'Cancel' : 'Select'}
-                              </Button>
-                            </div>
-
-                            {/* Upload Media + Add Text Block — non-parent only */}
-                            {!isParent && (
-                              <div className={styles.mediaSection}>
-                                <div className={styles.uploadSection}>
-                                  <label className={styles.formLabel}>Upload Media</label>
-                                  <input
-                                    type="file"
-                                    multiple
-                                    accept="image/*,video/mp4,video/quicktime,.gif,.mp4,.mov"
-                                    onChange={handleMediaUpload}
-                                    disabled={isLoading}
-                                    className={styles.uploadInput}
-                                  />
-                                  {isLoading && (
-                                    <div className={styles.uploadingText}>Uploading...</div>
-                                  )}
-                                </div>
-
-                                <div className={styles.textBlockSection}>
-                                  <label className={styles.formLabel}>Add Text Block</label>
-                                  <Button
-                                    variant="secondary"
-                                    onClick={handleCreateNewTextBlock}
-                                    disabled={isLoading}
-                                    className={styles.addTextBlockButton}
-                                  >
-                                    + Create New Text Block
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Inline cover picker — same affordance for parent and non-parent.
-                            Pick a cover here instead of scrolling down to click the grid. */}
-                          {isSelectingCoverImage && (
-                            <div className={styles.coverImagePickerGrid}>
-                              {coverPickerImages.length > 0 ? (
-                                coverPickerImages.map(img => (
-                                  <div
-                                    key={img.id}
-                                    className={styles.coverImagePickerItem}
-                                    onClick={() => handleCoverImageClick(img.id)}
-                                  >
-                                    <Image
-                                      src={img.imageUrl}
-                                      alt={img.title || ''}
-                                      width={120}
-                                      height={90}
-                                    />
-                                  </div>
-                                ))
-                              ) : (
-                                <div className={styles.noCoverImage}>
-                                  {isParent
-                                    ? 'Add child collections with images to select a cover image.'
-                                    : 'Add images to this collection to choose a cover.'}
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </div>
-
-                        {/* RIGHT SECTION */}
-                        <div className={styles.rightSection}>
-                          <CollectionListSelector
-                            allCollections={allCollections}
-                            savedCollectionIds={originalCollectionIds}
-                            pendingAddIds={pendingAddIds}
-                            pendingRemoveIds={pendingRemoveIds}
-                            onToggle={handleCollectionToggle}
-                            onNavigate={col => {
-                              if (col.slug) {
-                                router.push(`/collection/manage/${col.slug}`);
-                              } else {
-                                logger.error(
-                                  'ManageClient',
-                                  'Cannot navigate to collection: missing slug',
-                                  col
-                                );
-                                setError(
-                                  `Cannot navigate to collection "${col.name}": missing slug`
-                                );
-                              }
-                            }}
-                            onAddNewChild={handleAddNewChild}
-                            label="Collections"
-                            currentCollectionId={collection.id}
-                            siblingSavedIds={originalSiblingIds}
-                            siblingPendingAddIds={pendingAddSiblingIds}
-                            siblingPendingRemoveIds={pendingRemoveSiblingIds}
-                            onToggleSibling={handleSiblingToggle}
-                            parentSavedIds={originalParentIds}
-                            parentPendingAddIds={pendingAddParentIds}
-                            parentPendingRemoveIds={pendingRemoveParentIds}
-                            onToggleParent={handleParentToggle}
-                            onChangeType={handleChangeType}
-                          />
-
-                          {/* Home: rate child collections inline. Click is immediate (no save button). */}
-                          {slug === 'home' &&
-                            (collection.content?.some(isContentCollection) ?? false) && (
-                              <section
-                                aria-labelledby="children-rating-heading"
-                                className={styles.formGroup}
-                              >
-                                <h3 id="children-rating-heading" className={styles.formLabel}>
-                                  Children (rating)
-                                </h3>
-                                <ul className={styles.plainList}>
-                                  {(collection.content ?? [])
-                                    .filter(isContentCollection)
-                                    .map(child => (
-                                      <li key={child.id} className={styles.childRow}>
-                                        <span>{child.title ?? child.slug}</span>
-                                        <RatingStars
-                                          initialRating={child.rating ?? null}
-                                          onChange={async next => {
-                                            await updateCollectionRating(
-                                              child.referencedCollectionId,
-                                              next
-                                            );
-                                          }}
-                                          ariaLabel={`Rate ${child.title ?? child.slug}`}
-                                        />
-                                      </li>
-                                    ))}
-                                </ul>
-                              </section>
-                            )}
-                        </div>
-                      </div>
+                      )}
                     </form>
                   </div>
                 </div>
