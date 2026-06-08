@@ -16,6 +16,7 @@ import {
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import MetadataModal from '@/app/components/Metadata/MetadataModal';
+import { buildImageUpdateDiff } from '@/app/components/Metadata/metadataUtils';
 import RatingStars from '@/app/components/RatingStars/RatingStars';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
@@ -45,13 +46,7 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
-import {
-  createGif,
-  createImages,
-  createTextContent,
-  deleteImages,
-  updateImages,
-} from '@/app/lib/api/content';
+import { createGif, createImages, createTextContent, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   ASSIGNABLE_COLLECTION_TYPES,
@@ -880,29 +875,48 @@ export default function ManageClient({ slug }: ManageClientProps) {
   );
 
   /**
-   * Remove the selected images from the bottom bar's Select mode. Confirms
-   * first (hard delete from S3 + DB), then reuses the same `deleteImages`
-   * endpoint and `handleDeleteSuccess` refresh path the metadata editor uses.
+   * Remove the selected images from THIS collection (non-destructive) — the bar's
+   * Select-mode "Remove". Mirrors the metadata editor's remove-from-collection:
+   * trim `currentCollectionId` from each image's `collections` and persist the diff
+   * via `updateImages`. The image and its metadata stay in the system; hard delete
+   * remains available only via the per-image metadata modal's Delete.
    */
   const handleBulkRemove = useCallback(async () => {
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0 || !collection) return;
+    const imageSubset =
+      (collection.content?.filter(
+        block => isContentImage(block) && selectedIds.includes(block.id)
+      ) as ContentImageModel[]) ?? [];
+    if (imageSubset.length === 0) return;
     if (
       !window.confirm(
-        `Permanently delete ${selectedIds.length} image${selectedIds.length === 1 ? '' : 's'}? This removes them from storage and cannot be undone.`
+        `Remove ${imageSubset.length} image${imageSubset.length === 1 ? '' : 's'} from this collection? The image${imageSubset.length === 1 ? '' : 's'} and their metadata remain in the system.`
       )
     )
       return;
     try {
       setOperationLoading(true);
       setError(null);
-      const response = await deleteImages(selectedIds);
-      await handleDeleteSuccess(response?.deletedIds ?? selectedIds);
+      const imageUpdates: ContentImageUpdateRequest[] = imageSubset.map(img => {
+        const trimmedCollections = (img.collections || []).filter(
+          c => c.collectionId !== collection.id
+        );
+        return buildImageUpdateDiff(
+          { id: img.id, collections: trimmedCollections },
+          img,
+          currentState?.filmTypes
+        );
+      });
+      const response = await updateImages(imageUpdates);
+      if (response !== null) {
+        await handleDeleteSuccess(imageSubset.map(img => img.id));
+      }
     } catch (error) {
-      setError(handleApiError(error, 'Failed to remove images.'));
+      setError(handleApiError(error, 'Failed to remove images from collection.'));
     } finally {
       setOperationLoading(false);
     }
-  }, [selectedIds, handleDeleteSuccess]);
+  }, [selectedIds, collection, currentState?.filmTypes, handleDeleteSuccess]);
 
   // Child-collection picker triple. Saved children come from the content blocks (containment);
   // pending add/remove come from the discrete `collections` update.
