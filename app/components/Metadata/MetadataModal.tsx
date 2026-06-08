@@ -156,6 +156,7 @@ export default function MetadataModal({
             {TABS.map(tab => (
               <button
                 key={tab.id}
+                id={`tab-${tab.id}`}
                 role="tab"
                 aria-selected={activeTab === tab.id}
                 aria-controls={`tabpanel-${tab.id}`}
