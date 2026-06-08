@@ -1,169 +1,57 @@
-/* Text Block Create Modal Styles */
-
-/* Modal Content */
 .modalContent {
   width: 100%;
-  max-width: 600px;
-  background: rgb(20, 20, 20, 0.98);
+  padding: var(--space-5);
+  background-color: var(--color-bg);
+  color: var(--color-fg);
   border-radius: var(--radius-2);
-  padding: 32px;
-  color: white;
-  box-shadow: 0 20px 60px rgb(0, 0, 0, 0.5);
 
-  @media (width <= 768px) {
-    padding: 24px;
-    max-width: 100%;
+  @media (width >= 768px) {
+    max-width: 600px;
+    padding: var(--space-6);
   }
 }
 
-/* Modal Header */
 .modalHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-5);
 }
 
 .heading {
-  font-size: 24px;
-  font-weight: 600;
   margin: 0;
-  color: white;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-fg);
 
-  @media (width <= 768px) {
-    font-size: 20px;
+  @media (width >= 768px) {
+    font-size: var(--text-2xl);
   }
 }
 
-/* Error Message */
-.errorMessage {
-  background: var(--color-danger-subtle);
-  border: 1px solid var(--color-danger-dark);
-  color: var(--color-danger-text);
-  padding: 12px 16px;
-  border-radius: var(--radius-1);
-  margin-bottom: 20px;
-  font-size: 14px;
-}
-
-/* Form Elements */
 .formGroup {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .formRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 
-  @media (width <= 768px) {
-    grid-template-columns: 1fr;
+  @media (width >= 768px) {
+    flex-direction: row;
+
+    > * {
+      flex: 1;
+    }
   }
 }
 
-.formLabel {
-  display: block;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 6px;
-  color: var(--scrim-light-70);
-}
-
-.formTextarea,
-.formSelect {
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 14px;
-  background: var(--scrim-light-10);
-  border: 1px solid var(--scrim-light-20);
-  border-radius: var(--radius-1);
-  color: white;
-  font-family: inherit;
-  transition: border-color var(--duration-base);
-
-  &:focus {
-    outline: none;
-    border-color: var(--scrim-light-40);
-  }
-
-  &:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: 2px;
-  }
-
-  &::placeholder {
-    color: var(--scrim-light-40);
-  }
-}
-
-.formTextarea {
-  resize: vertical;
-  min-height: 120px;
-  font-family: inherit;
-  line-height: 1.5;
-}
-
-.formSelect {
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-}
-
-/* Form Actions */
 .formActions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--scrim-light-10);
-}
-
-.cancelButton,
-.submitButton {
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: var(--radius-1);
-  cursor: pointer;
-  transition: all var(--duration-base);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
-.cancelButton {
-  background: var(--scrim-light-10);
-  color: white;
-
-  &:hover:not(:disabled) {
-    background: var(--scrim-light-20);
-  }
-}
-
-.submitButton {
-  background: rgb(59, 130, 246, 0.8);
-  color: white;
-
-  &:hover:not(:disabled) {
-    background: rgb(59, 130, 246, 1);
-  }
-
-  &:focus {
-    outline: 2px solid rgb(59, 130, 246, 0.5);
-    outline-offset: 2px;
-  }
-}
-
-.loadingLabel {
-  margin-left: var(--space-2);
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
 }
