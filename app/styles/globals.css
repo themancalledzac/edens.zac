@@ -71,6 +71,8 @@ html,
   /* Special spacing values */
   --space-mobile-border: 4px; /* Mobile image borders */
   --space-mobile-border-header: 2px; /* Lighter separator for text/metadata blocks on mobile */
+  --gap-box-mobile: 0.4rem; /* BoxRenderer hbox/vbox gap — mobile (= LAYOUT.mobileGridGap / 2) */
+  --gap-box-desktop: 0.8rem; /* BoxRenderer hbox/vbox gap — desktop (= LAYOUT.gridGap / 2) */
 
   /* Breakpoints */
   --breakpoint-mobile: 768px;

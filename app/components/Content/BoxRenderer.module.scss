@@ -1,20 +1,20 @@
 .hbox {
   display: flex;
   flex-direction: row;
-  gap: 0.4rem;
+  gap: var(--gap-box-mobile);
 
   @media (width >= 768px) {
-    gap: 0.8rem;
+    gap: var(--gap-box-desktop);
   }
 }
 
 .vbox {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--gap-box-mobile);
 
   @media (width >= 768px) {
-    gap: 0.8rem;
+    gap: var(--gap-box-desktop);
   }
 }
 

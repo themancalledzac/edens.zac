@@ -25,15 +25,12 @@ import {
 import {
   buildParallaxWrapperClassName,
   buildWrapperClassName,
+  resolveValidDimensions,
 } from '@/app/utils/contentRendererUtils';
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 
-import {
-  getClickEligibility,
-  resolveValidDimensions,
-  toCollectionDimensions,
-} from './collectionContentRendererUtils';
+import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';

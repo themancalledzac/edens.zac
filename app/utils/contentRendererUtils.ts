@@ -14,6 +14,7 @@ import {
   isContentImage,
   isGifContent,
   isTextContent,
+  pickImageDimensions,
 } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 
@@ -28,9 +29,10 @@ function extractImageDimensions(
   height?: number,
   defaultDimension = 800
 ): { imageWidth: number; imageHeight: number } {
+  const dims = pickImageDimensions({ imageWidth, width, imageHeight, height });
   return {
-    imageWidth: imageWidth ?? width ?? defaultDimension,
-    imageHeight: imageHeight ?? height ?? defaultDimension,
+    imageWidth: dims.width ?? defaultDimension,
+    imageHeight: dims.height ?? defaultDimension,
   };
 }
 
@@ -73,6 +75,64 @@ export function determinePositionClassName(
   return styles.imageMiddle || '';
 }
 
+/** The four dimension inputs subject to NaN recovery. */
+export interface DimensionInput {
+  width: number;
+  height: number;
+  imageWidth?: number;
+  imageHeight?: number;
+}
+
+/** A width/height pair guaranteed finite after recovery. */
+export interface ResolvedDimensions {
+  width: number;
+  height: number;
+}
+
+/**
+ * Recover finite render dimensions when `width`/`height` arrive as NaN. Prefers the image's
+ * intrinsic aspect ratio; falls back to a 1.5 aspect ratio against the finite dimension, then to a
+ * 300×200 default. When both width and height are already finite this is a no-op passthrough.
+ *
+ * Shared by {@link normalizeContentToRendererProps} and CollectionContentRenderer; the diagnostic
+ * NaN log (`logger.warn`/`logger.error`) stays at each call site.
+ */
+export function resolveValidDimensions({
+  width,
+  height,
+  imageWidth,
+  imageHeight,
+}: DimensionInput): ResolvedDimensions {
+  let validWidth = width;
+  let validHeight = height;
+
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
+      if (!Number.isFinite(width) && Number.isFinite(height)) {
+        validWidth = (height * imageWidth) / imageHeight;
+      } else if (!Number.isFinite(height) && Number.isFinite(width)) {
+        validHeight = (width * imageHeight) / imageWidth;
+      } else {
+        validWidth = 300;
+        validHeight = 200;
+      }
+    } else {
+      if (!Number.isFinite(width)) {
+        validWidth = Number.isFinite(height) ? height * 1.5 : 300;
+      }
+      if (!Number.isFinite(height)) {
+        validHeight = Number.isFinite(width) ? width / 1.5 : 200;
+      }
+      if (!Number.isFinite(validWidth) && !Number.isFinite(validHeight)) {
+        validWidth = 300;
+        validHeight = 200;
+      }
+    }
+  }
+
+  return { width: validWidth, height: validHeight };
+}
+
 /**
  * Normalizes any content type to ContentRendererProps
  * Handles all content type checking and data extraction
@@ -95,49 +155,32 @@ export function normalizeContentToRendererProps(
     (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) &&
     process.env.NODE_ENV === 'development'
   ) {
-    logger.warn('normalizeContentToRendererProps', `Non-finite dimensions for content ${content.id} (${content.contentType}): width=${calculatedWidth}, height=${calculatedHeight}`);
+    logger.warn(
+      'normalizeContentToRendererProps',
+      `Non-finite dimensions for content ${content.id} (${content.contentType}): width=${calculatedWidth}, height=${calculatedHeight}`
+    );
   }
 
-  let validWidth = calculatedWidth;
-  let validHeight = calculatedHeight;
+  let imageWidth: number | undefined;
+  let imageHeight: number | undefined;
 
-  if (!Number.isFinite(calculatedWidth) || !Number.isFinite(calculatedHeight)) {
-    let imageWidth: number | undefined;
-    let imageHeight: number | undefined;
-
-    if (isContentImage(content)) {
-      imageWidth = content.imageWidth ?? content.width;
-      imageHeight = content.imageHeight ?? content.height;
-    } else if (isContentCollection(content)) {
-      imageWidth = content.coverImage?.imageWidth ?? content.coverImage?.width;
-      imageHeight = content.coverImage?.imageHeight ?? content.coverImage?.height;
-    } else if (isGifContent(content)) {
-      imageWidth = content.width;
-      imageHeight = content.height;
-    }
-
-    if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
-      if (!Number.isFinite(calculatedWidth) && Number.isFinite(calculatedHeight)) {
-        validWidth = (calculatedHeight * imageWidth) / imageHeight;
-      } else if (!Number.isFinite(calculatedHeight) && Number.isFinite(calculatedWidth)) {
-        validHeight = (calculatedWidth * imageHeight) / imageWidth;
-      } else {
-        validWidth = 300;
-        validHeight = 200;
-      }
-    } else {
-      if (!Number.isFinite(calculatedWidth)) {
-        validWidth = Number.isFinite(calculatedHeight) ? calculatedHeight * 1.5 : 300;
-      }
-      if (!Number.isFinite(calculatedHeight)) {
-        validHeight = Number.isFinite(calculatedWidth) ? calculatedWidth / 1.5 : 200;
-      }
-      if (!Number.isFinite(validWidth) && !Number.isFinite(validHeight)) {
-        validWidth = 300;
-        validHeight = 200;
-      }
-    }
+  if (isContentImage(content)) {
+    imageWidth = content.imageWidth ?? content.width;
+    imageHeight = content.imageHeight ?? content.height;
+  } else if (isContentCollection(content)) {
+    imageWidth = content.coverImage?.imageWidth ?? content.coverImage?.width;
+    imageHeight = content.coverImage?.imageHeight ?? content.coverImage?.height;
+  } else if (isGifContent(content)) {
+    imageWidth = content.width;
+    imageHeight = content.height;
   }
+
+  const { width: validWidth, height: validHeight } = resolveValidDimensions({
+    width: calculatedWidth,
+    height: calculatedHeight,
+    imageWidth,
+    imageHeight,
+  });
 
   const baseProps: ContentRendererProps = {
     contentId: content.id,
@@ -350,7 +393,10 @@ export function determineContentRendererProps(
     (!Number.isFinite(item.width) || !Number.isFinite(item.height)) &&
     process.env.NODE_ENV === 'development'
   ) {
-    logger.warn('determineContentRendererProps', `Non-finite dimensions for content ${item.content.id} (${item.content.contentType}): width=${item.width}, height=${item.height}, row=${index}/${totalInRow}`);
+    logger.warn(
+      'determineContentRendererProps',
+      `Non-finite dimensions for content ${item.content.id} (${item.content.contentType}): width=${item.width}, height=${item.height}, row=${index}/${totalInRow}`
+    );
   }
 
   const positionClassName = determinePositionClassName(totalInRow, index, styles);

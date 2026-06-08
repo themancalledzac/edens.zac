@@ -1,5 +1,7 @@
 import { type RefObject, useEffect } from 'react';
 
+import { useEscapeKey } from '@/app/hooks/useEscapeKey';
+
 /**
  * Custom hook to handle click outside and escape key events
  * Commonly used for dropdowns, modals, and other dismissible UI elements
@@ -25,6 +27,8 @@ export function useClickOutside(
   isOpen: boolean,
   onClose: () => void
 ): void {
+  useEscapeKey(onClose, isOpen);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -34,18 +38,10 @@ export function useClickOutside(
       }
     };
 
-    const handleEscapeKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
     document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscapeKey);
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [ref, isOpen, onClose]);
 }
