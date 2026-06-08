@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import {
   type ChangeEvent,
   type SubmitEvent,
+  type TouchEvent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -384,6 +386,21 @@ export default function ManageClient({ slug }: ManageClientProps) {
     setIsEditSheetOpen(false);
     if (isSelectingCoverImage) setIsSelectingCoverImage(false);
   }, [isSelectingCoverImage, setIsSelectingCoverImage]);
+
+  // Swipe-down on the Edit sheet's drag handle exits manage back to the canvas.
+  const sheetTouchStartY = useRef<number | null>(null);
+  const handleSheetTouchStart = useCallback((event: TouchEvent<HTMLDivElement>) => {
+    sheetTouchStartY.current = event.touches[0]?.clientY ?? null;
+  }, []);
+  const handleSheetTouchEnd = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => {
+      const start = sheetTouchStartY.current;
+      const end = event.changedTouches[0]?.clientY ?? null;
+      sheetTouchStartY.current = null;
+      if (start !== null && end !== null && end - start > 60) resetToBrowse();
+    },
+    [resetToBrowse]
+  );
 
   /**
    * Content blocks the metadata modal should edit. Mixes images and GIFs so the unified modal can
@@ -1398,6 +1415,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   tapped in the bottom bar; otherwise the grid is the page. */}
               {manageMode === 'edit' && (
                 <div className={styles.editSheet}>
+                  {/* Drag handle — swipe down to exit manage back to the canvas. */}
+                  <div
+                    className={styles.sheetGrabber}
+                    onTouchStart={handleSheetTouchStart}
+                    onTouchEnd={handleSheetTouchEnd}
+                    role="presentation"
+                  >
+                    <span className={styles.sheetGrabberBar} />
+                  </div>
                   <div className={styles.updateContainer}>
                     <form onSubmit={handleUpdate}>
                       <div className={styles.sheetHeader}>

@@ -213,6 +213,25 @@
   }
 }
 
+// Drag handle at the top of the Edit sheet — swipe down to exit.
+.sheetGrabber {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: var(--space-6);
+  margin-bottom: var(--space-2);
+  touch-action: none;
+  cursor: grab;
+}
+
+.sheetGrabberBar {
+  width: 2.5rem;
+  height: 4px;
+  border-radius: var(--radius-pill, 999px);
+  background: var(--color-on-surface-muted);
+  opacity: 0.6;
+}
+
 // Compact sheet header — the collection title (links to the public page).
 .sheetHeader {
   display: flex;
