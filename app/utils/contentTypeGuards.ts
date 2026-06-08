@@ -102,6 +102,28 @@ export function getContentDimensions(
 }
 
 /**
+ * Pick raw display dimensions from an image-like source, preferring the explicit
+ * `imageWidth`/`imageHeight` over the generic `width`/`height` (nullish coalescing,
+ * so a stored `0` is kept and only `null`/`undefined` falls through). Returns
+ * `undefined` for a dimension when neither field is present — callers apply their
+ * own placeholder default.
+ *
+ * Centralizes the `imageWidth ?? width` selection previously duplicated across
+ * `extractImageDimensions` (contentRendererUtils), `extractCollectionDimensions`
+ * (contentLayout), and the `LocationCollections` card. Distinct from
+ * {@link getContentDimensions}, which discriminates a full `Content` block and uses
+ * `&&` semantics with a placeholder default.
+ */
+export function pickImageDimensions(
+  source?: { imageWidth?: number; width?: number; imageHeight?: number; height?: number } | null
+): { width?: number; height?: number } {
+  return {
+    width: source?.imageWidth ?? source?.width,
+    height: source?.imageHeight ?? source?.height,
+  };
+}
+
+/**
  * Validation function to ensure a Content has required fields
  */
 export function validateContentBlock(block: unknown): block is Content {

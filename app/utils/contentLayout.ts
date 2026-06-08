@@ -8,7 +8,7 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
-import { isContentCollection } from '@/app/utils/contentTypeGuards';
+import { isContentCollection, pickImageDimensions } from '@/app/utils/contentTypeGuards';
 import {
   acToBoxTree,
   type BoxTree,
@@ -118,9 +118,9 @@ export function processContentForDisplay(
   }
 
   const rowWidth = options?.isMobile
-    ? options?.mobileChunkSize !== undefined
+    ? (options?.mobileChunkSize !== undefined
       ? Math.round(options.mobileChunkSize * 2.5)
-      : LAYOUT.mobileSlotWidth
+      : LAYOUT.mobileSlotWidth)
     : Math.round(chunkSize * 2.5);
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
@@ -151,10 +151,8 @@ function extractCollectionDimensions(coverImage?: ContentImageModel | null): {
   imageWidth?: number;
   imageHeight?: number;
 } {
-  return {
-    imageWidth: coverImage?.imageWidth ?? coverImage?.width,
-    imageHeight: coverImage?.imageHeight ?? coverImage?.height,
-  };
+  const { width, height } = pickImageDimensions(coverImage);
+  return { imageWidth: width, imageHeight: height };
 }
 
 /**

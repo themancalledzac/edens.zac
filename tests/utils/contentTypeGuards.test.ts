@@ -12,6 +12,7 @@ import {
   isContentImage,
   isGifContent,
   isTextContent,
+  pickImageDimensions,
   validateContentBlock,
 } from '@/app/utils/contentTypeGuards';
 import {
@@ -276,6 +277,41 @@ describe('getContentDimensions', () => {
       const gif = createGifContent(1, { width: undefined, height: undefined });
       expect(getContentDimensions(gif)).toEqual({ width: 1300, height: 867 });
     });
+  });
+});
+
+// ===================== pickImageDimensions =====================
+
+describe('pickImageDimensions', () => {
+  it('prefers imageWidth/imageHeight over width/height', () => {
+    expect(
+      pickImageDimensions({ imageWidth: 1920, imageHeight: 1080, width: 800, height: 600 })
+    ).toEqual({ width: 1920, height: 1080 });
+  });
+
+  it('falls back to width/height when imageWidth/imageHeight are absent', () => {
+    expect(pickImageDimensions({ width: 800, height: 600 })).toEqual({ width: 800, height: 600 });
+  });
+
+  it('returns undefined for a dimension when neither field is present', () => {
+    expect(pickImageDimensions({ imageWidth: 1920 })).toEqual({
+      width: 1920,
+      height: undefined,
+    });
+  });
+
+  it('keeps a stored 0 (nullish coalescing, not falsy)', () => {
+    expect(pickImageDimensions({ imageWidth: 0, width: 800, imageHeight: 0, height: 600 })).toEqual(
+      { width: 0, height: 0 }
+    );
+  });
+
+  it('returns undefined dimensions for a null source', () => {
+    expect(pickImageDimensions(null)).toEqual({ width: undefined, height: undefined });
+  });
+
+  it('returns undefined dimensions for an undefined source', () => {
+    expect(pickImageDimensions()).toEqual({ width: undefined, height: undefined });
   });
 });
 
