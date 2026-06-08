@@ -1,8 +1,9 @@
 /**
- * Pure helpers for {@link CollectionContentRenderer} — filter-dimension mapping, click-eligibility
- * derivation, and NaN-dimension recovery. Kept out of the component so the JSX stays thin and the
- * logic is unit-testable in isolation. No hooks, no JSX, no side effects (the NaN `logger.error`
- * stays in the component).
+ * Pure helpers for {@link CollectionContentRenderer} — filter-dimension mapping and
+ * click-eligibility derivation. Kept out of the component so the JSX stays thin and the logic is
+ * unit-testable in isolation. No hooks, no JSX, no side effects. NaN-dimension recovery
+ * (`resolveValidDimensions`) lives in `@/app/utils/contentRendererUtils` and is shared with the
+ * generic content renderer.
  */
 
 import { type CollectionInfoOptions } from '@/app/components/ContentCollection/CollectionFilterContext';
@@ -95,61 +96,4 @@ export function getClickEligibility(input: ClickEligibilityInput): ClickEligibil
       !!(enableFullScreenView && onFullScreenImageClick));
 
   return { hasClickHandler, isSlugNav };
-}
-
-/** The four dimension inputs subject to NaN recovery. */
-export interface DimensionInput {
-  width: number;
-  height: number;
-  imageWidth?: number;
-  imageHeight?: number;
-}
-
-/** A width/height pair guaranteed finite after recovery. */
-export interface ResolvedDimensions {
-  width: number;
-  height: number;
-}
-
-/**
- * Recover finite render dimensions when `width`/`height` arrive as NaN. Prefers the image's
- * intrinsic aspect ratio; falls back to a 1.5 aspect ratio against the finite dimension, then to a
- * 300×200 default. When both width and height are already finite this is a no-op passthrough.
- *
- * Pure — the diagnostic `logger.error` for the NaN case stays in the component.
- */
-export function resolveValidDimensions({
-  width,
-  height,
-  imageWidth,
-  imageHeight,
-}: DimensionInput): ResolvedDimensions {
-  let validWidth = width;
-  let validHeight = height;
-
-  if (!Number.isFinite(width) || !Number.isFinite(height)) {
-    if (imageWidth && imageHeight && imageWidth > 0 && imageHeight > 0) {
-      if (!Number.isFinite(width) && Number.isFinite(height)) {
-        validWidth = (height * imageWidth) / imageHeight;
-      } else if (!Number.isFinite(height) && Number.isFinite(width)) {
-        validHeight = (width * imageHeight) / imageWidth;
-      } else {
-        validWidth = 300;
-        validHeight = 200;
-      }
-    } else {
-      if (!Number.isFinite(width)) {
-        validWidth = Number.isFinite(height) ? height * 1.5 : 300;
-      }
-      if (!Number.isFinite(height)) {
-        validHeight = Number.isFinite(width) ? width / 1.5 : 200;
-      }
-      if (!Number.isFinite(validWidth) && !Number.isFinite(validHeight)) {
-        validWidth = 300;
-        validHeight = 200;
-      }
-    }
-  }
-
-  return { width: validWidth, height: validHeight };
 }

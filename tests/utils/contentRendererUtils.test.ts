@@ -11,6 +11,7 @@ import {
   determineContentRendererProps,
   determinePositionClassName,
   normalizeContentToRendererProps,
+  resolveValidDimensions,
 } from '@/app/utils/contentRendererUtils';
 import {
   createCollectionContent,
@@ -692,5 +693,72 @@ describe('normalizeContentToRendererProps — NaN fallback recovery', () => {
       expect(result.width).toBe(300);
       expect(result.height).toBe(200);
     });
+  });
+});
+
+describe('resolveValidDimensions', () => {
+  it('passes finite dimensions through unchanged', () => {
+    expect(resolveValidDimensions({ width: 300, height: 200 })).toEqual({
+      width: 300,
+      height: 200,
+    });
+  });
+
+  it('recovers width from the image aspect ratio when width is NaN', () => {
+    // height 400, image 1920x1080 → width = 400 * 1920 / 1080 ≈ 711.1
+    const result = resolveValidDimensions({
+      width: Number.NaN,
+      height: 400,
+      imageWidth: 1920,
+      imageHeight: 1080,
+    });
+    expect(result.height).toBe(400);
+    expect(result.width).toBeCloseTo(711.11, 1);
+  });
+
+  it('recovers height from the image aspect ratio when height is NaN', () => {
+    // width 600, image 1000x500 → height = 600 * 500 / 1000 = 300
+    const result = resolveValidDimensions({
+      width: 600,
+      height: Number.NaN,
+      imageWidth: 1000,
+      imageHeight: 500,
+    });
+    expect(result).toEqual({ width: 600, height: 300 });
+  });
+
+  it('falls back to 300x200 when both are NaN and image dims exist', () => {
+    expect(
+      resolveValidDimensions({
+        width: Number.NaN,
+        height: Number.NaN,
+        imageWidth: 1920,
+        imageHeight: 1080,
+      })
+    ).toEqual({ width: 300, height: 200 });
+  });
+
+  it('uses a 1.5 aspect ratio off the finite dimension when no image dims', () => {
+    expect(resolveValidDimensions({ width: Number.NaN, height: 200 })).toEqual({
+      width: 300,
+      height: 200,
+    });
+    expect(resolveValidDimensions({ width: 300, height: Number.NaN })).toEqual({
+      width: 300,
+      height: 200,
+    });
+  });
+
+  it('falls back to 300x200 when both are NaN and no image dims', () => {
+    expect(resolveValidDimensions({ width: Number.NaN, height: Number.NaN })).toEqual({
+      width: 300,
+      height: 200,
+    });
+  });
+
+  it('ignores zero image dims and uses the ratio fallback', () => {
+    expect(
+      resolveValidDimensions({ width: Number.NaN, height: 200, imageWidth: 0, imageHeight: 0 })
+    ).toEqual({ width: 300, height: 200 });
   });
 });
