@@ -50,4 +50,17 @@ describe('EditBar', () => {
     );
     expect(screen.getByText('Upload').tagName).toBe('LABEL');
   });
+
+  it('applies the fixed class when fixed=true (default)', () => {
+    const { container } = render(<EditBar cells={[{ key: 'save', label: 'Save' }]} />);
+    expect(container.firstElementChild?.className).toMatch(/fixed/);
+  });
+
+  it('applies the static class (not fixed) when fixed=false', () => {
+    const { container } = render(
+      <EditBar fixed={false} cells={[{ key: 'save', label: 'Save' }]} />
+    );
+    expect(container.firstElementChild?.className).toMatch(/static/);
+    expect(container.firstElementChild?.className).not.toMatch(/fixed/);
+  });
 });

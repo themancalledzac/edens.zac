@@ -78,7 +78,7 @@ describe('MetadataModal — smoke', () => {
 
   it('disables Save when there are no pending changes', () => {
     render(<MetadataModal {...baseProps} />);
-    const save = screen.getByRole('button', { name: /save changes/i });
+    const save = screen.getByRole('button', { name: /^save$/i });
     expect(save).toBeDisabled();
   });
 
@@ -92,17 +92,20 @@ describe('MetadataModal — smoke', () => {
 
   it('Delete shows a confirmation dialog before doing anything', () => {
     render(<MetadataModal {...baseProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /^delete image$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
     expect(window.confirm).toHaveBeenCalled();
   });
 
-  // The Delete/Remove count-label wording is exercised in MetadataActionRow.test.tsx; the modal
-  // just threads isBulkEdit/selectedCount through, so it isn't re-asserted at the integration level.
+  it('bulk Save button shows the image count in its label', () => {
+    const images = [imageFixture(101), imageFixture(102), imageFixture(103)];
+    render(<MetadataModal {...baseProps} selectedIds={[101, 102, 103]} selectedImages={images} />);
+    expect(screen.getByRole('button', { name: /^save 3$/i })).toBeInTheDocument();
+  });
 
   it('renders Remove-from-collection only when currentCollectionId is set', () => {
     const { rerender } = render(<MetadataModal {...baseProps} />);
-    expect(screen.queryByRole('button', { name: /remove image/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^remove$/i })).not.toBeInTheDocument();
     rerender(<MetadataModal {...baseProps} currentCollectionId={42} />);
-    expect(screen.getByRole('button', { name: /remove image/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^remove$/i })).toBeInTheDocument();
   });
 });

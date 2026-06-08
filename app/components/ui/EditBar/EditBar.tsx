@@ -14,13 +14,26 @@ function cellClassName(variant: EditBarCell['variant']): string {
 }
 
 /**
- * EditBar — the single fixed bottom bar used across collection-edit, image-edit,
+ * EditBar — the single shared bottom bar used across collection-edit, image-edit,
  * and the transient manage modes. Two shapes: an optional tab row above an action
  * row of uniform-height cells. Emphasis is by color/weight, never size.
+ *
+ * Pass `fixed={false}` when embedding as a flex footer inside a modal sheet — the bar
+ * then participates in normal block flow instead of escaping to the viewport bottom.
  */
-export function EditBar({ tabs, activeTab, onTabChange, cells, ariaLabel }: EditBarProps) {
+export function EditBar({
+  tabs,
+  activeTab,
+  onTabChange,
+  cells,
+  ariaLabel,
+  fixed = true,
+}: EditBarProps) {
+  const rootClass = [styles.bottomBar, fixed ? styles.fixed : styles.static]
+    .filter(Boolean)
+    .join(' ');
   return (
-    <div className={styles.bottomBar} role="toolbar" aria-label={ariaLabel}>
+    <div className={rootClass} role="toolbar" aria-label={ariaLabel}>
       {tabs && tabs.length > 0 && (
         <nav className={styles.tabRow} role="tablist" aria-label={ariaLabel}>
           {tabs.map(tab => (

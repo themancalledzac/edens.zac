@@ -23,4 +23,11 @@ export interface EditBarProps {
   /** Action cells. In mode shape this is the only row. */
   cells: ReadonlyArray<EditBarCell>;
   ariaLabel?: string;
+  /**
+   * When true (default), the bar is `position: fixed` pinned to the viewport bottom.
+   * When false, the bar renders as a normal block element — use this inside a flex
+   * container (e.g. the MetadataModal sheet footer) where fixed positioning would escape
+   * the layout context.
+   */
+  fixed?: boolean;
 }

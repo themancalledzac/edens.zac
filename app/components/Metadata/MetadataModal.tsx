@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
+import { EditBar } from '@/app/components/ui/EditBar/EditBar';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import { type ContentGifModel, type ContentImageUpdateResponse } from '@/app/types/Content';
@@ -23,7 +24,6 @@ import styles from './MetadataModal.module.scss';
 import CameraSettingsSection from './sections/CameraSettingsSection';
 import EssentialInfoSection from './sections/EssentialInfoSection';
 import MediaPreview from './sections/MediaPreview';
-import MetadataActionRow from './sections/MetadataActionRow';
 import TagsPeopleSection from './sections/TagsPeopleSection';
 import type { EditableContent } from './types';
 
@@ -91,6 +91,7 @@ export default function MetadataModal({
   currentCollectionId,
 }: MetadataModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('info');
+  const formRef = useRef<HTMLFormElement>(null);
 
   const isBulkEdit = selectedIds.length > 1;
 
@@ -152,7 +153,7 @@ export default function MetadataModal({
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className={styles.formColumn}>
+          <form ref={formRef} onSubmit={handleSubmit} className={styles.formColumn}>
             <div className={styles.tabContent}>
               <div
                 id="tabpanel-info"
@@ -222,37 +223,42 @@ export default function MetadataModal({
               </div>
             </div>
 
-            <div className={styles.bottomBar}>
-              <nav className={styles.bottomTabRow} role="tablist" aria-label="Metadata sections">
-                {TABS.map(tab => (
-                  <button
-                    key={tab.id}
-                    id={`tab-${tab.id}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={activeTab === tab.id}
-                    aria-controls={`tabpanel-${tab.id}`}
-                    className={[styles.barCell, activeTab === tab.id ? styles.barCellActive : '']
-                      .filter(Boolean)
-                      .join(' ')}
-                    onClick={() => setActiveTab(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-
-              <MetadataActionRow
-                isBulkEdit={isBulkEdit}
-                selectedCount={selectedIds.length}
-                saving={saving}
-                hasChanges={hasChanges}
-                showRemove={!!currentCollectionId}
-                onDelete={handleDelete}
-                onRemove={handleRemoveFromCollection}
-                onCancel={handleCancel}
-              />
-            </div>
+            <EditBar
+              fixed={false}
+              ariaLabel="Metadata sections"
+              tabs={TABS}
+              activeTab={activeTab}
+              onTabChange={id => setActiveTab(id as TabId)}
+              cells={[
+                ...(currentCollectionId
+                  ? [
+                      {
+                        key: 'remove',
+                        label: 'Remove',
+                        variant: 'danger' as const,
+                        onClick: handleRemoveFromCollection,
+                        disabled: saving,
+                      },
+                    ]
+                  : [
+                      {
+                        key: 'delete',
+                        label: 'Delete',
+                        variant: 'danger' as const,
+                        onClick: handleDelete,
+                        disabled: saving,
+                      },
+                    ]),
+                { key: 'cancel', label: 'Cancel', onClick: handleCancel, disabled: saving },
+                {
+                  key: 'save',
+                  label: isBulkEdit ? `Save ${selectedIds.length}` : 'Save',
+                  variant: 'primary' as const,
+                  disabled: !hasChanges || saving,
+                  onClick: () => formRef.current?.requestSubmit(),
+                },
+              ]}
+            />
           </form>
         </div>
       </div>
