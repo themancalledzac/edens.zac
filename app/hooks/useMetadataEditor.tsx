@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
+import { useEscapeKey } from '@/app/hooks/useEscapeKey';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 /**
@@ -38,21 +39,7 @@ export function useMetadataEditor() {
     setEditingContent(null);
   }, []);
 
-  useEffect(() => {
-    if (!editingContent) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        closeEditor();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [editingContent, closeEditor]);
+  useEscapeKey(closeEditor, !!editingContent);
 
   return {
     editingContent,
