@@ -3,8 +3,6 @@
 import { Fragment, useMemo } from 'react';
 
 import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
-import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
-import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
@@ -12,7 +10,6 @@ import { type AnyContentModel, type ViewableContent } from '@/app/types/Content'
 import { type RowWithPatternAndSizes } from '@/app/utils/contentLayout';
 
 import { BoxRenderer } from './BoxRenderer';
-import { toCollectionDimensions } from './collectionContentRendererUtils';
 import {
   buildContentRows,
   computeFirstNonVisibleRowIndex,
@@ -61,43 +58,6 @@ export interface ContentComponentProps {
   serverContentWidth?: number;
   serverViewportHeight?: number;
   serverIsMobile?: boolean;
-}
-
-/**
- * Reads the collection filter context (when present) and renders the filter
- * toolbar as a standalone bar below the content grid. Renders nothing when the
- * context is absent (non-filterable pages) or when there are no options.
- */
-function CollectionFilterBar() {
-  const collectionFilter = useCollectionFilter();
-  if (!collectionFilter) return null;
-
-  return (
-    <div className={cbStyles.collectionFilterBar}>
-      <FilterToolbar
-        filterState={collectionFilter.filterState}
-        onFilterChange={collectionFilter.onFilterChange}
-        dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
-        filteredAvailable={
-          collectionFilter.filteredAvailable
-            ? {
-                selectedTags: collectionFilter.filteredAvailable.tags,
-                selectedPeople: collectionFilter.filteredAvailable.people,
-                selectedCameras: collectionFilter.filteredAvailable.cameras,
-                selectedLenses: collectionFilter.filteredAvailable.lenses,
-                selectedLensTypes: collectionFilter.filteredAvailable.lensTypes,
-                selectedLocations: collectionFilter.filteredAvailable.locations,
-              }
-            : null
-        }
-        showDateSort
-        showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
-        density={collectionFilter.density}
-        densityMax={collectionFilter.densityMax}
-        onDensityChange={collectionFilter.onDensityChange}
-      />
-    </div>
-  );
 }
 
 /**
@@ -222,7 +182,6 @@ export default function Component({
 
   return (
     <div className={cbStyles.wrapper}>
-      <CollectionFilterBar />
       <div className={cbStyles.inner}>
         {rows.map((row, rowIndex) => {
           const shouldShowSeparator =

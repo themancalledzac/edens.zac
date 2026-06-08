@@ -473,11 +473,7 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   if (collection.siblings && collection.siblings.length > 0) {
     for (const sib of collection.siblings) {
       if (sib.slug) {
-        const item: TextBlockItem = { type: 'collection', value: sib.name, slug: `/${sib.slug}` };
-        if (sib.coverImageUrl) {
-          item.imageUrl = sib.coverImageUrl;
-        }
-        items.push(item);
+        items.push({ type: 'collection', value: sib.name, slug: `/${sib.slug}` });
       }
     }
   }

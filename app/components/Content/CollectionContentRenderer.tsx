@@ -8,6 +8,7 @@ import { type Ref, useCallback, useState } from 'react';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { Badge } from '@/app/components/ui/Badge/Badge';
+import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { Tile } from '@/app/components/ui/Tile/Tile';
 import { useParallax } from '@/app/hooks/useParallax';
 import {
@@ -29,7 +30,7 @@ import {
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 
-import { getClickEligibility } from './collectionContentRendererUtils';
+import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
@@ -151,8 +152,6 @@ export default function CollectionContentRenderer({
     onImageLoadError?.(contentId);
   }, [contentId, onImageLoadError]);
 
-  // Used by handleTagClick: when a filter context is present, tag clicks toggle
-  // the in-page filter instead of navigating to the tag route.
   const collectionFilter = useCollectionFilter();
 
   if (contentType === 'TEXT') {
@@ -179,8 +178,6 @@ export default function CollectionContentRenderer({
         router.push(`/tag/${tagSlug ?? slugify(tagName)}`);
       }
     };
-
-    const hasCoverTiles = collectionItems.some(item => !!item.imageUrl);
 
     return (
       <div
@@ -212,7 +209,9 @@ export default function CollectionContentRenderer({
                 )}
               </div>
             )}
-            {/* Description grows to fill available space, anchoring content below to the bottom. */}
+            {/* Always render the description container so it stays the
+                flex-grow spacer that pushes the download bar + toolbar to the
+                bottom — even when this gallery has no description text. */}
             <div className={cbStyles.metadataDescriptionContainer}>
               {descriptionItem && (
                 <p className={cbStyles.metadataDescription}>{descriptionItem.value}</p>
@@ -230,7 +229,7 @@ export default function CollectionContentRenderer({
                 ))}
               </div>
             )}
-            {tagItems.length > 0 && (
+            {!collectionFilter && tagItems.length > 0 && (
               <div className={cbStyles.metadataTagsContainer}>
                 <div className={cbStyles.metadataTagsRow}>
                   {tagItems.map(item => (
@@ -247,49 +246,51 @@ export default function CollectionContentRenderer({
               </div>
             )}
             {collectionItems.length > 0 && (
-              <div className={cbStyles.seriesSection}>
-                <span className={cbStyles.seriesLabel}>More in this series</span>
-                {hasCoverTiles ? (
-                  <div className={cbStyles.seriesTilesRow}>
-                    {collectionItems.map(item => (
-                      <Link
-                        key={`series-tile-${contentId}-${item.slug}`}
-                        href={item.slug!}
-                        className={cbStyles.seriesTile}
-                        aria-label={item.value}
-                      >
-                        <span className={cbStyles.seriesTileFrame}>
-                          <Image
-                            src={item.imageUrl!}
-                            alt={item.value}
-                            fill
-                            className={cbStyles.seriesTileImage}
-                            sizes="96px"
-                          />
-                        </span>
-                        <span className={cbStyles.seriesTileName}>{item.value}</span>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={cbStyles.seriesLinksRow}>
-                    {collectionItems.map(item => (
-                      <Link
-                        key={`series-link-${contentId}-${item.slug}`}
-                        href={item.slug!}
-                        className={cbStyles.seriesLink}
-                      >
-                        {item.value}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+              <div className={cbStyles.metadataSiblingsContainer}>
+                <span className={cbStyles.metadataSiblingLabel}>Related:</span>
+                <div className={cbStyles.metadataSiblingsRow}>
+                  {collectionItems.map(item => (
+                    <Link
+                      key={`sibling-${contentId}-${item.slug}`}
+                      href={item.slug!}
+                      className={cbStyles.metadataSiblingCollection}
+                    >
+                      {item.value}
+                    </Link>
+                  ))}
+                </div>
               </div>
             )}
             {isClientGallery && collectionSlug && (
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
           </div>
+          {collectionFilter && (
+            <div className={cbStyles.filterBarWrapper}>
+              <FilterToolbar
+                filterState={collectionFilter.filterState}
+                onFilterChange={collectionFilter.onFilterChange}
+                dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
+                filteredAvailable={
+                  collectionFilter.filteredAvailable
+                    ? {
+                        selectedTags: collectionFilter.filteredAvailable.tags,
+                        selectedPeople: collectionFilter.filteredAvailable.people,
+                        selectedCameras: collectionFilter.filteredAvailable.cameras,
+                        selectedLenses: collectionFilter.filteredAvailable.lenses,
+                        selectedLensTypes: collectionFilter.filteredAvailable.lensTypes,
+                        selectedLocations: collectionFilter.filteredAvailable.locations,
+                      }
+                    : null
+                }
+                showDateSort
+                showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
+                density={collectionFilter.density}
+                densityMax={collectionFilter.densityMax}
+                onDensityChange={collectionFilter.onDensityChange}
+              />
+            </div>
+          )}
         </div>
       </div>
     );
