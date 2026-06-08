@@ -1,3 +1,4 @@
+// NOTE: this file is currently UNWIRED — there is no middleware.ts and next.config.js does not reference it, so none of this runs. Wiring it as middleware is the open 007 task. Real perimeter protection today = the BFF INTERNAL_API_SECRET channel gate (app/api/proxy/[...path]/route.ts).
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { hasValidAdminAuth, isAdminRoutesEnabled } from '@/app/utils/admin';
