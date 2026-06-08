@@ -350,7 +350,7 @@ describe('fetchBase (tested via public API functions)', () => {
   });
 });
 
-describe('getApiBaseUrl — LAN hostname derivation (tested via fetchReadApi)', () => {
+describe('getApiBaseUrl — dev routes browser calls through the same-origin proxy', () => {
   const originalWindow = global.window;
 
   beforeEach(() => {
@@ -362,8 +362,10 @@ describe('getApiBaseUrl — LAN hostname derivation (tested via fetchReadApi)', 
     Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
   });
 
-  it('uses the page hostname (not localhost) for read fetches when accessed from a LAN device', async () => {
-    // Simulate a phone on the LAN: window.location.hostname is the dev box IP
+  it('routes browser reads through the relative /api/proxy path (reachable from any LAN device, no CORS)', async () => {
+    // Simulate any browser — e.g. a phone on the LAN at <lan-ip>:3000. The exact hostname must
+    // NOT matter: the call is same-origin and the Next server proxies it to the backend, so no
+    // device ever talks to the backend directly.
     Object.defineProperty(global, 'window', {
       value: { location: { hostname: '192.168.68.60' } },
       writable: true,
@@ -380,17 +382,14 @@ describe('getApiBaseUrl — LAN hostname derivation (tested via fetchReadApi)', 
     await fetchRead('/collections');
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringMatching(/^http:\/\/192\.168\.68\.60:8080\/api\/read\//),
+      expect.stringMatching(/^\/api\/proxy\/api\/read\//),
       expect.any(Object)
     );
   });
 
-  it('keeps using localhost when accessed from the dev machine itself', async () => {
-    // Standard dev machine: window.location.hostname is 'localhost'
-    Object.defineProperty(global, 'window', {
-      value: { location: { hostname: 'localhost' } },
-      writable: true,
-    });
+  it('calls the backend directly on localhost for server-side (RSC) reads', async () => {
+    // No window → server runtime. The Next server reaches the dev backend on localhost directly.
+    Object.defineProperty(global, 'window', { value: undefined, writable: true });
 
     const mockResponse = {
       ok: true,

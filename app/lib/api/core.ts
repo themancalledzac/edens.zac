@@ -64,23 +64,17 @@ export async function getServerCookieHeader(): Promise<string | null> {
  */
 
 /**
- * Get the base API URL for a given endpoint type
+ * Base API URL for an endpoint type. Browser uses the relative same-origin proxy (LAN-reachable
+ * in dev, BFF in prod); server-side hits the backend directly on localhost in dev, else the proxy.
  */
 function getApiBaseUrl(endpointType: string): string {
-  if (isLocalEnvironment()) {
-    // In the browser, derive the host from the current page so the API is reachable from any
-    // device on the LAN. A phone hitting the dev box at <lan-ip>:3000 must not call
-    // `localhost:8080` (that would resolve to the phone). On the dev machine the hostname is
-    // `localhost`, so behavior there is unchanged. Server-side has no page host → keep localhost.
-    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    return `http://${host}:8080/api/${endpointType}`;
+  if (typeof window !== 'undefined') {
+    return `/api/proxy/api/${endpointType}`;
   }
-  // All production calls go through the Next.js proxy — never directly to EC2
-  const appBase =
-    typeof window !== 'undefined'
-      ? '' // browser: relative URL
-      : (process.env.NEXT_PUBLIC_APP_URL ?? ''); // server component: needs absolute
-  return `${appBase}/api/proxy/api/${endpointType}`;
+  if (isLocalEnvironment()) {
+    return `http://localhost:8080/api/${endpointType}`;
+  }
+  return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/proxy/api/${endpointType}`;
 }
 
 /**

@@ -127,7 +127,11 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
 
   if (writeMethods.has(method)) {
     const origin = req.headers.get('origin');
-    if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+    const isDevLanOrigin =
+      process.env.NODE_ENV === 'development' &&
+      !!origin &&
+      /^http:\/\/(?:localhost|127\.0\.0\.1|(?:\d{1,3}\.){3}\d{1,3}):(?:3000|3001)$/.test(origin);
+    if (!origin || !(ALLOWED_ORIGINS.has(origin) || isDevLanOrigin)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     const declaredLength = Number(req.headers.get('content-length') ?? '0');
