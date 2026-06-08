@@ -43,7 +43,13 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
-import { createGif, createImages, createTextContent, updateImages } from '@/app/lib/api/content';
+import {
+  createGif,
+  createImages,
+  createTextContent,
+  deleteImages,
+  updateImages,
+} from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   ASSIGNABLE_COLLECTION_TYPES,
@@ -135,6 +141,12 @@ export default function ManageClient({ slug }: ManageClientProps) {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isTextBlockModalOpen, setIsTextBlockModalOpen] = useState(false);
+
+  // Bottom-bar mode flags for the two modes with no pre-existing state of their
+  // own. Select and Reorder are still driven by `isMultiSelectMode` and
+  // `reorderState.active`; `manageMode` (below) unifies all five for the bar.
+  const [isAddMode, setIsAddMode] = useState(false);
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
 
   const [createData, setCreateData] = useState<CollectionCreateRequest>({
     type: CollectionType.PORTFOLIO,
@@ -338,6 +350,39 @@ export default function ManageClient({ slug }: ManageClientProps) {
   });
 
   /**
+   * The active bottom-bar mode, derived from the underlying state so it can
+   * never desync from the hooks that own that state. Reorder wins over Select
+   * (they are mutually exclusive in practice); Edit and Add are explicit.
+   */
+  const deriveManageMode = (): 'browse' | 'select' | 'reorder' | 'add' | 'edit' => {
+    if (reorderState.active) return 'reorder';
+    if (isMultiSelectMode) return 'select';
+    if (isEditSheetOpen) return 'edit';
+    if (isAddMode) return 'add';
+    return 'browse';
+  };
+  const manageMode = deriveManageMode();
+
+  /**
+   * Whether the collection-update form has unsaved changes, used to fill/dim the
+   * Edit-sheet Save cell. Reuses `buildUpdatePayload` (the same diff the save
+   * path runs); a payload of just `{ id }` means nothing changed.
+   */
+  const isUpdateDirty = useMemo(
+    () => (collection ? Object.keys(buildUpdatePayload(updateData, collection)).length > 1 : false),
+    [updateData, collection]
+  );
+
+  /** Leave any non-browse mode and clear its transient state. */
+  const resetToBrowse = useCallback(() => {
+    setIsMultiSelectMode(false);
+    setSelectedIds([]);
+    setIsAddMode(false);
+    setIsEditSheetOpen(false);
+    if (isSelectingCoverImage) setIsSelectingCoverImage(false);
+  }, [isSelectingCoverImage, setIsSelectingCoverImage]);
+
+  /**
    * Content blocks the metadata modal should edit. Mixes images and GIFs so the unified modal can
    * dispatch to the right backend endpoint based on the previewed type. Bulk-edit semantics still
    * key off the IMAGE subset — the modal greys out IMAGE-only fields when the previewed block is
@@ -462,8 +507,8 @@ export default function ManageClient({ slug }: ManageClientProps) {
   /**
    * Handle update form submission
    */
-  const handleUpdate = async (e: SubmitEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleUpdate = async (e?: SubmitEvent<HTMLFormElement>) => {
+    e?.preventDefault();
 
     if (!collection || !currentState) return;
 
@@ -825,6 +870,31 @@ export default function ManageClient({ slug }: ManageClientProps) {
     [currentState]
   );
 
+  /**
+   * Remove the selected images from the bottom bar's Select mode. Confirms
+   * first (hard delete from S3 + DB), then reuses the same `deleteImages`
+   * endpoint and `handleDeleteSuccess` refresh path the metadata editor uses.
+   */
+  const handleBulkRemove = useCallback(async () => {
+    if (selectedIds.length === 0) return;
+    if (
+      !window.confirm(
+        `Permanently delete ${selectedIds.length} image${selectedIds.length === 1 ? '' : 's'}? This removes them from storage and cannot be undone.`
+      )
+    )
+      return;
+    try {
+      setOperationLoading(true);
+      setError(null);
+      const response = await deleteImages(selectedIds);
+      await handleDeleteSuccess(response?.deletedIds ?? selectedIds);
+    } catch (error) {
+      setError(handleApiError(error, 'Failed to remove images.'));
+    } finally {
+      setOperationLoading(false);
+    }
+  }, [selectedIds, handleDeleteSuccess]);
+
   // Child-collection picker triple. Saved children come from the content blocks (containment);
   // pending add/remove come from the discrete `collections` update.
   const originalChildIds = useMemo(
@@ -1080,46 +1150,33 @@ export default function ManageClient({ slug }: ManageClientProps) {
     }
   }, [collection, router]);
 
-  const renderToolbarActions = () => {
-    const divider = <span className={styles.toolbarDivider} />;
-
-    if (reorderState.active) {
+  /**
+   * Render the persistent bottom bar's cells for the active mode. All cells are
+   * the same height; emphasis is by color/weight (`barCellPrimary` fills,
+   * `barCellDanger` colors) — never by size.
+   */
+  const renderBottomBar = () => {
+    if (manageMode === 'reorder') {
       return (
         <>
-          {reorderState.moves.length > 0 && (
-            <>
-              <button
-                type="button"
-                onClick={handleSaveReorder}
-                className={styles.toolbarButton}
-                disabled={isLoading}
-              >
-                Save Order
-              </button>
-              {divider}
-            </>
-          )}
-          <button type="button" onClick={handleCancelReorder} className={styles.toolbarButton}>
+          <button
+            type="button"
+            onClick={handleSaveReorder}
+            className={`${styles.barCell} ${styles.barCellPrimary}`}
+            disabled={isLoading || reorderState.moves.length === 0}
+          >
+            Done
+          </button>
+          <button type="button" onClick={handleCancelReorder} className={styles.barCell}>
             Cancel
           </button>
         </>
       );
     }
 
-    if (isMultiSelectMode) {
+    if (manageMode === 'select') {
       return (
         <>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedIds([]);
-              setIsMultiSelectMode(false);
-            }}
-            className={styles.toolbarButton}
-          >
-            Cancel
-          </button>
-          {divider}
           <button
             type="button"
             onClick={() => {
@@ -1127,19 +1184,94 @@ export default function ManageClient({ slug }: ManageClientProps) {
                 collection?.content?.filter(isContentImage).map(img => img.id) || [];
               setSelectedIds(allImageIds);
             }}
-            className={styles.toolbarButton}
+            className={styles.barCell}
           >
-            Select All
+            All
           </button>
-          {divider}
           <button
             type="button"
             onClick={handleBulkEdit}
-            className={styles.toolbarButton}
+            className={`${styles.barCell} ${styles.barCellPrimary}`}
             disabled={selectedIds.length === 0}
           >
-            Edit {selectedIds.length} Image
-            {selectedIds.length !== 1 ? 's' : ''}
+            Edit{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}
+          </button>
+          {selectedIds.length === 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                const onlyId = selectedIds[0];
+                if (onlyId !== undefined) handleCoverImageClick(onlyId);
+                resetToBrowse();
+              }}
+              className={styles.barCell}
+            >
+              Set as cover
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleBulkRemove}
+            className={`${styles.barCell} ${styles.barCellDanger}`}
+            disabled={selectedIds.length === 0 || isLoading}
+          >
+            Remove
+          </button>
+          <button type="button" onClick={resetToBrowse} className={styles.barCell}>
+            Cancel
+          </button>
+        </>
+      );
+    }
+
+    if (manageMode === 'add') {
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              handleCreateNewTextBlock();
+              setIsAddMode(false);
+            }}
+            className={styles.barCell}
+            disabled={isLoading}
+          >
+            Text
+          </button>
+          <label className={`${styles.barCell} ${styles.barCellUpload}`}>
+            Upload
+            <input
+              type="file"
+              multiple
+              accept="image/*,video/mp4,video/quicktime,.gif,.mp4,.mov"
+              onChange={event => {
+                void handleMediaUpload(event);
+                setIsAddMode(false);
+              }}
+              disabled={isLoading}
+              className={styles.barUploadInput}
+            />
+          </label>
+          <button type="button" onClick={() => setIsAddMode(false)} className={styles.barCell}>
+            Cancel
+          </button>
+        </>
+      );
+    }
+
+    if (manageMode === 'edit') {
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => void handleUpdate()}
+            className={`${styles.barCell} ${isUpdateDirty ? styles.barCellPrimary : ''}`}
+            disabled={!isUpdateDirty || saving || isLoading}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button type="button" onClick={resetToBrowse} className={styles.barCell}>
+            Close
           </button>
         </>
       );
@@ -1147,21 +1279,25 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
     return (
       <>
+        <button type="button" onClick={() => setIsMultiSelectMode(true)} className={styles.barCell}>
+          Select
+        </button>
         <button
           type="button"
-          onClick={() => setIsMultiSelectMode(true)}
-          className={styles.toolbarButton}
+          onClick={handleEnterReorderMode}
+          className={styles.barCell}
+          disabled={collection?.displayMode === 'CHRONOLOGICAL'}
         >
-          Select Multiple
+          Reorder
         </button>
-        {collection?.displayMode !== 'CHRONOLOGICAL' && (
-          <>
-            {divider}
-            <button type="button" onClick={handleEnterReorderMode} className={styles.toolbarButton}>
-              Reorder
-            </button>
-          </>
+        {!isParent && (
+          <button type="button" onClick={() => setIsAddMode(true)} className={styles.barCell}>
+            Add
+          </button>
         )}
+        <button type="button" onClick={() => setIsEditSheetOpen(true)} className={styles.barCell}>
+          Edit
+        </button>
       </>
     );
   };
@@ -1220,562 +1356,10 @@ export default function ManageClient({ slug }: ManageClientProps) {
           {/* UPDATE MODE */}
           {collection && (
             <>
-              <div className={styles.updateAndToolbarWrapper}>
-                <div className={styles.updateContainer}>
-                  <form onSubmit={handleUpdate}>
-                    <div className={styles.updateFormLayout}>
-                      {/* LEFT SECTION */}
-                      <div className={styles.leftSection}>
-                        <div className={styles.headingRow}>
-                          <h2
-                            className={styles.updateHeading}
-                            onClick={() => router.push(`/${collection.slug}`)}
-                          >
-                            {collection.title}
-                          </h2>
-                          <Button
-                            variant="secondary"
-                            type="submit"
-                            loading={saving}
-                            disabled={isLoading}
-                            className={styles.headingSubmitButton}
-                          >
-                            {saving ? 'Saving…' : 'Save'}
-                          </Button>
-                        </div>
-
-                        {displayError && <div className={styles.errorMessage}>{displayError}</div>}
-
-                        <h3 className={styles.sectionTitle}>Details</h3>
-
-                        {/* Title */}
-                        <div className={styles.titleRow}>
-                          <div className={styles.titleInputWrapper}>
-                            <Field label="Title" htmlFor="update-title">
-                              <Input
-                                id="update-title"
-                                value={updateData.title}
-                                onChange={e =>
-                                  setUpdateData(prev => ({ ...prev, title: e.target.value }))
-                                }
-                              />
-                            </Field>
-                          </div>
-                        </div>
-
-                        {/* Visibility */}
-                        <div className={styles.formGroup}>
-                          <label className={styles.formLabel}>Visibility</label>
-                          <SegmentedControl<CollectionVisibility>
-                            ariaLabel="Visibility"
-                            value={updateData.visibility ?? CollectionVisibility.HIDDEN}
-                            onChange={v => setUpdateData(prev => ({ ...prev, visibility: v }))}
-                            options={Object.values(CollectionVisibility).map(v => ({
-                              value: v,
-                              label: COLLECTION_VISIBILITY_LABELS[v],
-                              description: COLLECTION_VISIBILITY_DESCRIPTIONS[v],
-                            }))}
-                            showDescription
-                          />
-                        </div>
-
-                        {/* Collection Date / Collection Type */}
-                        <div className={styles.formGridHalf}>
-                          <div>
-                            <label className={styles.formLabel}>Collection Date</label>
-                            <div className={styles.dateInputWrapper}>
-                              <input
-                                type="date"
-                                value={updateData.collectionDate ?? ''}
-                                onChange={e =>
-                                  setUpdateData(prev => ({
-                                    ...prev,
-                                    collectionDate: e.target.value,
-                                  }))
-                                }
-                                className={styles.dateInput}
-                              />
-                              {updateData.collectionDate && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setUpdateData(prev => ({ ...prev, collectionDate: null }))
-                                  }
-                                  className={styles.dateClearButton}
-                                  aria-label="Clear date"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div>
-                            <Field label="Collection Type" htmlFor="update-type">
-                              <Select
-                                id="update-type"
-                                value={updateData.type}
-                                onChange={e =>
-                                  setUpdateData(prev => ({
-                                    ...prev,
-                                    type: e.target.value as CollectionType,
-                                  }))
-                                }
-                              >
-                                {ASSIGNABLE_COLLECTION_TYPES.map(type => (
-                                  <option key={type} value={type}>
-                                    {COLLECTION_TYPE_LABELS[type]}
-                                  </option>
-                                ))}
-                              </Select>
-                            </Field>
-                          </div>
-                        </div>
-
-                        {/* Description */}
-                        <div className={styles.formGroup}>
-                          <Field label="Description" htmlFor="update-description">
-                            <Textarea
-                              id="update-description"
-                              value={updateData.description}
-                              onChange={e =>
-                                setUpdateData(prev => ({ ...prev, description: e.target.value }))
-                              }
-                            />
-                          </Field>
-                        </div>
-
-                        <h3 className={styles.sectionTitle}>Tags, people &amp; places</h3>
-
-                        {/* Locations */}
-                        <Dropdown<LocationModel>
-                          label="Locations"
-                          multiSelect
-                          options={currentState?.locations || []}
-                          selectedValues={currentLocations}
-                          onChange={handleLocationsChange}
-                          allowAddNew
-                          onAddNew={data => {
-                            const newLoc: LocationModel = {
-                              id: 0,
-                              name: data.name as string,
-                              slug: '',
-                            };
-                            handleLocationsChange([...currentLocations, newLoc]);
-                          }}
-                          addNewFields={LOCATION_ADD_NEW_FIELDS}
-                          getDisplayName={location => location?.name || ''}
-                          showNewIndicator
-                          emptyText="No locations set"
-                        />
-
-                        {/* Tags — collection-level associations. Saved via the
-                            "Update Metadata" payload (like Locations), not a
-                            separate endpoint. Reuses the shared TagsSelector so the
-                            picker matches the image editor. */}
-                        <TagsSelector
-                          selectedTags={currentTags}
-                          availableTags={currentState?.tags || []}
-                          onChange={handleTagsChange}
-                          emptyText="No tags set"
-                        />
-
-                        {/* People — collection-level associations. Saved via
-                            its own endpoint (separate from Update Metadata)
-                            because the backend reconciles to an exact set of
-                            IDs; "Regenerate" computes the union from contained
-                            images' people. */}
-                        <section
-                          aria-labelledby="collection-people-heading"
-                          className={styles.formGroup}
-                        >
-                          <h3 id="collection-people-heading" className={styles.formLabel}>
-                            People
-                          </h3>
-                          <Dropdown<ContentPersonModel>
-                            label=""
-                            multiSelect
-                            options={currentState?.people || []}
-                            selectedValues={collectionPeople}
-                            onChange={value => {
-                              let next: ContentPersonModel[];
-                              if (Array.isArray(value)) {
-                                next = value;
-                              } else if (value) {
-                                next = [value];
-                              } else {
-                                next = [];
-                              }
-                              setCollectionPeopleState(next);
-                            }}
-                            allowAddNew
-                            onAddNew={data => {
-                              const newPerson: ContentPersonModel = {
-                                id: 0,
-                                name: data.name as string,
-                                slug: '',
-                              };
-                              setCollectionPeopleState(prev => [...prev, newPerson]);
-                            }}
-                            addNewFields={PERSON_ADD_NEW_FIELDS}
-                            getDisplayName={person => person?.name || ''}
-                            showNewIndicator
-                            emptyText="No people set"
-                          />
-                          <div className={styles.actionRow}>
-                            <Button onClick={handleSavePeople} disabled={peopleSaving}>
-                              {peopleSaving ? 'Saving…' : 'Save People'}
-                            </Button>
-                            <Button onClick={handleRegeneratePeople} disabled={peopleSaving}>
-                              Regenerate from contents
-                            </Button>
-                          </div>
-                          {peopleStatus && (
-                            <p
-                              role="status"
-                              className={`${styles.formLabelHint} ${styles.statusMessage}`}
-                            >
-                              {peopleStatus}
-                            </p>
-                          )}
-                        </section>
-
-                        {/* Presentation — image layout controls; hidden for parent-type collections */}
-                        {!isParent && <h3 className={styles.sectionTitle}>Presentation</h3>}
-                        {!isParent && (
-                          <div className={styles.formGridHalf}>
-                            <div>
-                              <Field label="Display" htmlFor="update-display-mode">
-                                <Select
-                                  id="update-display-mode"
-                                  value={updateData.displayMode}
-                                  onChange={e =>
-                                    setUpdateData(prev => ({
-                                      ...prev,
-                                      displayMode: e.target.value as DisplayMode,
-                                    }))
-                                  }
-                                >
-                                  <option value="ORDERED">Default</option>
-                                  <option value="CHRONOLOGICAL">Chronological</option>
-                                  <option value="FIXED">Fixed</option>
-                                </Select>
-                              </Field>
-                            </div>
-
-                            <div>
-                              <Field
-                                label="Row Density"
-                                htmlFor="update-rows-wide"
-                                hint="Default: 4"
-                              >
-                                <div className={styles.numberStepperWrapper}>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setUpdateData(prev => ({
-                                        ...prev,
-                                        rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
-                                      }))
-                                    }
-                                    className={styles.stepperButton}
-                                    disabled={(updateData.rowsWide ?? 4) <= 1}
-                                    aria-label="Decrease row density"
-                                  >
-                                    −
-                                  </button>
-                                  <input
-                                    id="update-rows-wide"
-                                    type="number"
-                                    min="1"
-                                    max="10"
-                                    value={updateData.rowsWide ?? ''}
-                                    placeholder="4"
-                                    onChange={e => {
-                                      const value =
-                                        e.target.value === ''
-                                          ? undefined
-                                          : Number.parseInt(e.target.value);
-                                      if (value === undefined || (value >= 1 && value <= 10)) {
-                                        setUpdateData(prev => ({ ...prev, rowsWide: value }));
-                                      }
-                                    }}
-                                    className={styles.numberInput}
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setUpdateData(prev => ({
-                                        ...prev,
-                                        rowsWide: Math.min(10, (prev.rowsWide ?? 4) + 1),
-                                      }))
-                                    }
-                                    className={styles.stepperButton}
-                                    disabled={(updateData.rowsWide ?? 4) >= 10}
-                                    aria-label="Increase row density"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </Field>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Gallery Access — meaningful for CLIENT_GALLERY and PARENT */}
-                        {(updateData.type === CollectionType.CLIENT_GALLERY ||
-                          updateData.type === CollectionType.PARENT) && (
-                          <section
-                            aria-labelledby="gallery-access-heading"
-                            className={styles.formGroup}
-                          >
-                            <h3 id="gallery-access-heading" className={styles.sectionTitle}>
-                              Gallery Access
-                            </h3>
-                            <p className={`${styles.formLabelHint} ${styles.fieldHeading}`}>
-                              {collection.isPasswordProtected
-                                ? 'Password is set. Saving a new password replaces the existing one.'
-                                : 'No password set. This gallery is currently unprotected.'}
-                            </p>
-                            <div className={styles.formGridHalf}>
-                              <div>
-                                <Field label="Password" htmlFor="gallery-password-input">
-                                  <Input
-                                    id="gallery-password-input"
-                                    type="text"
-                                    minLength={4}
-                                    value={galleryPassword}
-                                    onChange={e => setGalleryPasswordInput(e.target.value)}
-                                    placeholder="At least 4 characters"
-                                    disabled={gallerySaving}
-                                    autoComplete="off"
-                                  />
-                                </Field>
-                              </div>
-                              <div>
-                                <Field label="Recipient email" htmlFor="gallery-email-input">
-                                  <Input
-                                    id="gallery-email-input"
-                                    type="email"
-                                    multiple
-                                    value={galleryEmail}
-                                    onChange={e => setGalleryEmail(e.target.value)}
-                                    placeholder="client@example.com, other@example.com"
-                                    disabled={gallerySaving}
-                                    autoComplete="off"
-                                  />
-                                </Field>
-                              </div>
-                            </div>
-                            <div className={styles.actionRow}>
-                              <Button
-                                onClick={handleSaveAccess}
-                                disabled={gallerySaving || galleryPassword.length === 0}
-                              >
-                                {gallerySaving ? 'Saving…' : 'Save access'}
-                              </Button>
-                              {collection.isPasswordProtected && (
-                                <Button onClick={handleClearPassword} disabled={gallerySaving}>
-                                  Clear Password
-                                </Button>
-                              )}
-                            </div>
-                            {galleryStatus && (
-                              <p
-                                role="status"
-                                className={`${styles.formLabelHint} ${styles.statusMessage}`}
-                              >
-                                {galleryStatus}
-                              </p>
-                            )}
-                          </section>
-                        )}
-
-                        <h3 className={styles.sectionTitle}>
-                          {isParent ? 'Cover image' : 'Cover & content'}
-                        </h3>
-
-                        {/* Cover Image + media row (non-parent: side by side; parent: stacked) */}
-                        <div className={!isParent ? styles.coverAndMediaRow : undefined}>
-                          <div className={styles.coverImageSection}>
-                            <label className={styles.formLabel}>Cover Image</label>
-                            {displayedCoverImage && isContentImage(displayedCoverImage) ? (
-                              <div className={styles.coverImageWrapper}>
-                                <Image
-                                  src={displayedCoverImage.imageUrl}
-                                  alt="Cover"
-                                  width={400}
-                                  height={300}
-                                />
-                              </div>
-                            ) : (
-                              <div className={styles.noCoverImage}>No cover image</div>
-                            )}
-                            <Button
-                              variant={isSelectingCoverImage ? 'danger' : 'secondary'}
-                              onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-                              className={styles.coverImageButton}
-                            >
-                              {isSelectingCoverImage ? 'Cancel' : 'Select'}
-                            </Button>
-                          </div>
-
-                          {/* Upload Media + Add Text Block — non-parent only */}
-                          {!isParent && (
-                            <div className={styles.mediaSection}>
-                              <div className={styles.uploadSection}>
-                                <label className={styles.formLabel}>Upload Media</label>
-                                <input
-                                  type="file"
-                                  multiple
-                                  accept="image/*,video/mp4,video/quicktime,.gif,.mp4,.mov"
-                                  onChange={handleMediaUpload}
-                                  disabled={isLoading}
-                                  className={styles.uploadInput}
-                                />
-                                {isLoading && (
-                                  <div className={styles.uploadingText}>Uploading...</div>
-                                )}
-                              </div>
-
-                              <div className={styles.textBlockSection}>
-                                <label className={styles.formLabel}>Add Text Block</label>
-                                <Button
-                                  variant="secondary"
-                                  onClick={handleCreateNewTextBlock}
-                                  disabled={isLoading}
-                                  className={styles.addTextBlockButton}
-                                >
-                                  + Create New Text Block
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Inline cover picker — same affordance for parent and non-parent.
-                            Pick a cover here instead of scrolling down to click the grid. */}
-                        {isSelectingCoverImage && (
-                          <div className={styles.coverImagePickerGrid}>
-                            {coverPickerImages.length > 0 ? (
-                              coverPickerImages.map(img => (
-                                <div
-                                  key={img.id}
-                                  className={styles.coverImagePickerItem}
-                                  onClick={() => handleCoverImageClick(img.id)}
-                                >
-                                  <Image
-                                    src={img.imageUrl}
-                                    alt={img.title || ''}
-                                    width={120}
-                                    height={90}
-                                  />
-                                </div>
-                              ))
-                            ) : (
-                              <div className={styles.noCoverImage}>
-                                {isParent
-                                  ? 'Add child collections with images to select a cover image.'
-                                  : 'Add images to this collection to choose a cover.'}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* RIGHT SECTION */}
-                      <div className={styles.rightSection}>
-                        <CollectionListSelector
-                          allCollections={allCollections}
-                          savedCollectionIds={originalCollectionIds}
-                          pendingAddIds={pendingAddIds}
-                          pendingRemoveIds={pendingRemoveIds}
-                          onToggle={handleCollectionToggle}
-                          onNavigate={col => {
-                            if (col.slug) {
-                              router.push(`/collection/manage/${col.slug}`);
-                            } else {
-                              logger.error(
-                                'ManageClient',
-                                'Cannot navigate to collection: missing slug',
-                                col
-                              );
-                              setError(`Cannot navigate to collection "${col.name}": missing slug`);
-                            }
-                          }}
-                          onAddNewChild={handleAddNewChild}
-                          label="Collections"
-                          currentCollectionId={collection.id}
-                          siblingSavedIds={originalSiblingIds}
-                          siblingPendingAddIds={pendingAddSiblingIds}
-                          siblingPendingRemoveIds={pendingRemoveSiblingIds}
-                          onToggleSibling={handleSiblingToggle}
-                          parentSavedIds={originalParentIds}
-                          parentPendingAddIds={pendingAddParentIds}
-                          parentPendingRemoveIds={pendingRemoveParentIds}
-                          onToggleParent={handleParentToggle}
-                          onChangeType={handleChangeType}
-                        />
-
-                        {/* Home: rate child collections inline. Click is immediate (no save button). */}
-                        {slug === 'home' &&
-                          (collection.content?.some(isContentCollection) ?? false) && (
-                            <section
-                              aria-labelledby="children-rating-heading"
-                              className={styles.formGroup}
-                            >
-                              <h3 id="children-rating-heading" className={styles.formLabel}>
-                                Children (rating)
-                              </h3>
-                              <ul className={styles.plainList}>
-                                {(collection.content ?? [])
-                                  .filter(isContentCollection)
-                                  .map(child => (
-                                    <li key={child.id} className={styles.childRow}>
-                                      <span>{child.title ?? child.slug}</span>
-                                      <RatingStars
-                                        initialRating={child.rating ?? null}
-                                        onChange={async next => {
-                                          await updateCollectionRating(
-                                            child.referencedCollectionId,
-                                            next
-                                          );
-                                        }}
-                                        ariaLabel={`Rate ${child.title ?? child.slug}`}
-                                      />
-                                    </li>
-                                  ))}
-                              </ul>
-                            </section>
-                          )}
-                      </div>
-                    </div>
-                  </form>
-                </div>
-
-                {/* Content Toolbar — inside wrapper so margin groups them */}
-                {displayContent && displayContent.length > 0 && (
-                  <div className={styles.contentToolbar}>
-                    <span className={styles.toolbarItemCount}>{displayContent.length}</span>
-                    <span className={styles.toolbarDivider} />
-
-                    <div className={styles.toolbarActions}>{renderToolbarActions()}</div>
-
-                    {(isSelectingCoverImage ||
-                      (isMultiSelectMode && selectedIds.length > 0) ||
-                      reorderState.active) && (
-                      <span className={styles.toolbarStatus}>
-                        {isSelectingCoverImage && 'Click any image to set as cover'}
-                        {isMultiSelectMode &&
-                          selectedIds.length > 0 &&
-                          `${selectedIds.length} image${selectedIds.length !== 1 ? 's' : ''} selected`}
-                        {reorderState.active && 'Reorder mode \u2014 use arrows or pick and place'}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {/* Image Grid — inside wrapper so toolbar can stick over it */}
-                {displayContent && displayContent.length > 0 && (
+              {/* Resting canvas: the BoxTree grid is the page. A small title chip
+                  and the persistent bottom bar are the only chrome at rest. */}
+              {displayContent && displayContent.length > 0 && (
+                <div className={styles.canvas}>
                   <ContentBlockWithFullScreen
                     content={displayContent}
                     priorityBlockIndex={0}
@@ -1798,9 +1382,581 @@ export default function ManageClient({ slug }: ManageClientProps) {
                     onCancelImageMove={handleCancelImageMove}
                     onImageLoadError={handleImageLoadError}
                   />
-                )}
-              </div>
-              {/* close updateAndToolbarWrapper */}
+                </div>
+              )}
+
+              {/* Edit sheet — the collection-update form. Slides up when Edit is
+                  tapped in the bottom bar; otherwise the grid is the page. */}
+              {manageMode === 'edit' && (
+                <div className={styles.editSheet}>
+                  <div className={styles.updateContainer}>
+                    <form onSubmit={handleUpdate}>
+                      <div className={styles.updateFormLayout}>
+                        {/* LEFT SECTION */}
+                        <div className={styles.leftSection}>
+                          <div className={styles.headingRow}>
+                            <h2
+                              className={styles.updateHeading}
+                              onClick={() => router.push(`/${collection.slug}`)}
+                            >
+                              {collection.title}
+                            </h2>
+                            <Button
+                              variant="secondary"
+                              type="submit"
+                              loading={saving}
+                              disabled={isLoading}
+                              className={styles.headingSubmitButton}
+                            >
+                              {saving ? 'Saving…' : 'Save'}
+                            </Button>
+                          </div>
+
+                          {displayError && (
+                            <div className={styles.errorMessage}>{displayError}</div>
+                          )}
+
+                          <h3 className={styles.sectionTitle}>Details</h3>
+
+                          {/* Title */}
+                          <div className={styles.titleRow}>
+                            <div className={styles.titleInputWrapper}>
+                              <Field label="Title" htmlFor="update-title">
+                                <Input
+                                  id="update-title"
+                                  value={updateData.title}
+                                  onChange={e =>
+                                    setUpdateData(prev => ({ ...prev, title: e.target.value }))
+                                  }
+                                />
+                              </Field>
+                            </div>
+                          </div>
+
+                          {/* Visibility */}
+                          <div className={styles.formGroup}>
+                            <label className={styles.formLabel}>Visibility</label>
+                            <SegmentedControl<CollectionVisibility>
+                              ariaLabel="Visibility"
+                              value={updateData.visibility ?? CollectionVisibility.HIDDEN}
+                              onChange={v => setUpdateData(prev => ({ ...prev, visibility: v }))}
+                              options={Object.values(CollectionVisibility).map(v => ({
+                                value: v,
+                                label: COLLECTION_VISIBILITY_LABELS[v],
+                                description: COLLECTION_VISIBILITY_DESCRIPTIONS[v],
+                              }))}
+                              showDescription
+                            />
+                          </div>
+
+                          {/* Collection Date / Collection Type */}
+                          <div className={styles.formGridHalf}>
+                            <div>
+                              <label className={styles.formLabel}>Collection Date</label>
+                              <div className={styles.dateInputWrapper}>
+                                <input
+                                  type="date"
+                                  value={updateData.collectionDate ?? ''}
+                                  onChange={e =>
+                                    setUpdateData(prev => ({
+                                      ...prev,
+                                      collectionDate: e.target.value,
+                                    }))
+                                  }
+                                  className={styles.dateInput}
+                                />
+                                {updateData.collectionDate && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setUpdateData(prev => ({ ...prev, collectionDate: null }))
+                                    }
+                                    className={styles.dateClearButton}
+                                    aria-label="Clear date"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div>
+                              <Field label="Collection Type" htmlFor="update-type">
+                                <Select
+                                  id="update-type"
+                                  value={updateData.type}
+                                  onChange={e =>
+                                    setUpdateData(prev => ({
+                                      ...prev,
+                                      type: e.target.value as CollectionType,
+                                    }))
+                                  }
+                                >
+                                  {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+                                    <option key={type} value={type}>
+                                      {COLLECTION_TYPE_LABELS[type]}
+                                    </option>
+                                  ))}
+                                </Select>
+                              </Field>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <div className={styles.formGroup}>
+                            <Field label="Description" htmlFor="update-description">
+                              <Textarea
+                                id="update-description"
+                                value={updateData.description}
+                                onChange={e =>
+                                  setUpdateData(prev => ({ ...prev, description: e.target.value }))
+                                }
+                              />
+                            </Field>
+                          </div>
+
+                          <h3 className={styles.sectionTitle}>Tags, people &amp; places</h3>
+
+                          {/* Locations */}
+                          <Dropdown<LocationModel>
+                            label="Locations"
+                            multiSelect
+                            options={currentState?.locations || []}
+                            selectedValues={currentLocations}
+                            onChange={handleLocationsChange}
+                            allowAddNew
+                            onAddNew={data => {
+                              const newLoc: LocationModel = {
+                                id: 0,
+                                name: data.name as string,
+                                slug: '',
+                              };
+                              handleLocationsChange([...currentLocations, newLoc]);
+                            }}
+                            addNewFields={LOCATION_ADD_NEW_FIELDS}
+                            getDisplayName={location => location?.name || ''}
+                            showNewIndicator
+                            emptyText="No locations set"
+                          />
+
+                          {/* Tags — collection-level associations. Saved via the
+                            "Update Metadata" payload (like Locations), not a
+                            separate endpoint. Reuses the shared TagsSelector so the
+                            picker matches the image editor. */}
+                          <TagsSelector
+                            selectedTags={currentTags}
+                            availableTags={currentState?.tags || []}
+                            onChange={handleTagsChange}
+                            emptyText="No tags set"
+                          />
+
+                          {/* People — collection-level associations. Saved via
+                            its own endpoint (separate from Update Metadata)
+                            because the backend reconciles to an exact set of
+                            IDs; "Regenerate" computes the union from contained
+                            images' people. */}
+                          <section
+                            aria-labelledby="collection-people-heading"
+                            className={styles.formGroup}
+                          >
+                            <h3 id="collection-people-heading" className={styles.formLabel}>
+                              People
+                            </h3>
+                            <Dropdown<ContentPersonModel>
+                              label=""
+                              multiSelect
+                              options={currentState?.people || []}
+                              selectedValues={collectionPeople}
+                              onChange={value => {
+                                let next: ContentPersonModel[];
+                                if (Array.isArray(value)) {
+                                  next = value;
+                                } else if (value) {
+                                  next = [value];
+                                } else {
+                                  next = [];
+                                }
+                                setCollectionPeopleState(next);
+                              }}
+                              allowAddNew
+                              onAddNew={data => {
+                                const newPerson: ContentPersonModel = {
+                                  id: 0,
+                                  name: data.name as string,
+                                  slug: '',
+                                };
+                                setCollectionPeopleState(prev => [...prev, newPerson]);
+                              }}
+                              addNewFields={PERSON_ADD_NEW_FIELDS}
+                              getDisplayName={person => person?.name || ''}
+                              showNewIndicator
+                              emptyText="No people set"
+                            />
+                            <div className={styles.actionRow}>
+                              <Button onClick={handleSavePeople} disabled={peopleSaving}>
+                                {peopleSaving ? 'Saving…' : 'Save People'}
+                              </Button>
+                              <Button onClick={handleRegeneratePeople} disabled={peopleSaving}>
+                                Regenerate from contents
+                              </Button>
+                            </div>
+                            {peopleStatus && (
+                              <p
+                                role="status"
+                                className={`${styles.formLabelHint} ${styles.statusMessage}`}
+                              >
+                                {peopleStatus}
+                              </p>
+                            )}
+                          </section>
+
+                          {/* Presentation — image layout controls; hidden for parent-type collections */}
+                          {!isParent && <h3 className={styles.sectionTitle}>Presentation</h3>}
+                          {!isParent && (
+                            <div className={styles.formGridHalf}>
+                              <div>
+                                <Field label="Display" htmlFor="update-display-mode">
+                                  <Select
+                                    id="update-display-mode"
+                                    value={updateData.displayMode}
+                                    onChange={e =>
+                                      setUpdateData(prev => ({
+                                        ...prev,
+                                        displayMode: e.target.value as DisplayMode,
+                                      }))
+                                    }
+                                  >
+                                    <option value="ORDERED">Default</option>
+                                    <option value="CHRONOLOGICAL">Chronological</option>
+                                    <option value="FIXED">Fixed</option>
+                                  </Select>
+                                </Field>
+                              </div>
+
+                              <div>
+                                <Field
+                                  label="Row Density"
+                                  htmlFor="update-rows-wide"
+                                  hint="Default: 4"
+                                >
+                                  <div className={styles.numberStepperWrapper}>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setUpdateData(prev => ({
+                                          ...prev,
+                                          rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
+                                        }))
+                                      }
+                                      className={styles.stepperButton}
+                                      disabled={(updateData.rowsWide ?? 4) <= 1}
+                                      aria-label="Decrease row density"
+                                    >
+                                      −
+                                    </button>
+                                    <input
+                                      id="update-rows-wide"
+                                      type="number"
+                                      min="1"
+                                      max="10"
+                                      value={updateData.rowsWide ?? ''}
+                                      placeholder="4"
+                                      onChange={e => {
+                                        const value =
+                                          e.target.value === ''
+                                            ? undefined
+                                            : Number.parseInt(e.target.value);
+                                        if (value === undefined || (value >= 1 && value <= 10)) {
+                                          setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                                        }
+                                      }}
+                                      className={styles.numberInput}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setUpdateData(prev => ({
+                                          ...prev,
+                                          rowsWide: Math.min(10, (prev.rowsWide ?? 4) + 1),
+                                        }))
+                                      }
+                                      className={styles.stepperButton}
+                                      disabled={(updateData.rowsWide ?? 4) >= 10}
+                                      aria-label="Increase row density"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </Field>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Gallery Access — meaningful for CLIENT_GALLERY and PARENT */}
+                          {(updateData.type === CollectionType.CLIENT_GALLERY ||
+                            updateData.type === CollectionType.PARENT) && (
+                            <section
+                              aria-labelledby="gallery-access-heading"
+                              className={styles.formGroup}
+                            >
+                              <h3 id="gallery-access-heading" className={styles.sectionTitle}>
+                                Gallery Access
+                              </h3>
+                              <p className={`${styles.formLabelHint} ${styles.fieldHeading}`}>
+                                {collection.isPasswordProtected
+                                  ? 'Password is set. Saving a new password replaces the existing one.'
+                                  : 'No password set. This gallery is currently unprotected.'}
+                              </p>
+                              <div className={styles.formGridHalf}>
+                                <div>
+                                  <Field label="Password" htmlFor="gallery-password-input">
+                                    <Input
+                                      id="gallery-password-input"
+                                      type="text"
+                                      minLength={4}
+                                      value={galleryPassword}
+                                      onChange={e => setGalleryPasswordInput(e.target.value)}
+                                      placeholder="At least 4 characters"
+                                      disabled={gallerySaving}
+                                      autoComplete="off"
+                                    />
+                                  </Field>
+                                </div>
+                                <div>
+                                  <Field label="Recipient email" htmlFor="gallery-email-input">
+                                    <Input
+                                      id="gallery-email-input"
+                                      type="email"
+                                      multiple
+                                      value={galleryEmail}
+                                      onChange={e => setGalleryEmail(e.target.value)}
+                                      placeholder="client@example.com, other@example.com"
+                                      disabled={gallerySaving}
+                                      autoComplete="off"
+                                    />
+                                  </Field>
+                                </div>
+                              </div>
+                              <div className={styles.actionRow}>
+                                <Button
+                                  onClick={handleSaveAccess}
+                                  disabled={gallerySaving || galleryPassword.length === 0}
+                                >
+                                  {gallerySaving ? 'Saving…' : 'Save access'}
+                                </Button>
+                                {collection.isPasswordProtected && (
+                                  <Button onClick={handleClearPassword} disabled={gallerySaving}>
+                                    Clear Password
+                                  </Button>
+                                )}
+                              </div>
+                              {galleryStatus && (
+                                <p
+                                  role="status"
+                                  className={`${styles.formLabelHint} ${styles.statusMessage}`}
+                                >
+                                  {galleryStatus}
+                                </p>
+                              )}
+                            </section>
+                          )}
+
+                          <h3 className={styles.sectionTitle}>
+                            {isParent ? 'Cover image' : 'Cover & content'}
+                          </h3>
+
+                          {/* Cover Image + media row (non-parent: side by side; parent: stacked) */}
+                          <div className={!isParent ? styles.coverAndMediaRow : undefined}>
+                            <div className={styles.coverImageSection}>
+                              <label className={styles.formLabel}>Cover Image</label>
+                              {displayedCoverImage && isContentImage(displayedCoverImage) ? (
+                                <div className={styles.coverImageWrapper}>
+                                  <Image
+                                    src={displayedCoverImage.imageUrl}
+                                    alt="Cover"
+                                    width={400}
+                                    height={300}
+                                  />
+                                </div>
+                              ) : (
+                                <div className={styles.noCoverImage}>No cover image</div>
+                              )}
+                              <Button
+                                variant={isSelectingCoverImage ? 'danger' : 'secondary'}
+                                onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+                                className={styles.coverImageButton}
+                              >
+                                {isSelectingCoverImage ? 'Cancel' : 'Select'}
+                              </Button>
+                            </div>
+
+                            {/* Upload Media + Add Text Block — non-parent only */}
+                            {!isParent && (
+                              <div className={styles.mediaSection}>
+                                <div className={styles.uploadSection}>
+                                  <label className={styles.formLabel}>Upload Media</label>
+                                  <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*,video/mp4,video/quicktime,.gif,.mp4,.mov"
+                                    onChange={handleMediaUpload}
+                                    disabled={isLoading}
+                                    className={styles.uploadInput}
+                                  />
+                                  {isLoading && (
+                                    <div className={styles.uploadingText}>Uploading...</div>
+                                  )}
+                                </div>
+
+                                <div className={styles.textBlockSection}>
+                                  <label className={styles.formLabel}>Add Text Block</label>
+                                  <Button
+                                    variant="secondary"
+                                    onClick={handleCreateNewTextBlock}
+                                    disabled={isLoading}
+                                    className={styles.addTextBlockButton}
+                                  >
+                                    + Create New Text Block
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Inline cover picker — same affordance for parent and non-parent.
+                            Pick a cover here instead of scrolling down to click the grid. */}
+                          {isSelectingCoverImage && (
+                            <div className={styles.coverImagePickerGrid}>
+                              {coverPickerImages.length > 0 ? (
+                                coverPickerImages.map(img => (
+                                  <div
+                                    key={img.id}
+                                    className={styles.coverImagePickerItem}
+                                    onClick={() => handleCoverImageClick(img.id)}
+                                  >
+                                    <Image
+                                      src={img.imageUrl}
+                                      alt={img.title || ''}
+                                      width={120}
+                                      height={90}
+                                    />
+                                  </div>
+                                ))
+                              ) : (
+                                <div className={styles.noCoverImage}>
+                                  {isParent
+                                    ? 'Add child collections with images to select a cover image.'
+                                    : 'Add images to this collection to choose a cover.'}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* RIGHT SECTION */}
+                        <div className={styles.rightSection}>
+                          <CollectionListSelector
+                            allCollections={allCollections}
+                            savedCollectionIds={originalCollectionIds}
+                            pendingAddIds={pendingAddIds}
+                            pendingRemoveIds={pendingRemoveIds}
+                            onToggle={handleCollectionToggle}
+                            onNavigate={col => {
+                              if (col.slug) {
+                                router.push(`/collection/manage/${col.slug}`);
+                              } else {
+                                logger.error(
+                                  'ManageClient',
+                                  'Cannot navigate to collection: missing slug',
+                                  col
+                                );
+                                setError(
+                                  `Cannot navigate to collection "${col.name}": missing slug`
+                                );
+                              }
+                            }}
+                            onAddNewChild={handleAddNewChild}
+                            label="Collections"
+                            currentCollectionId={collection.id}
+                            siblingSavedIds={originalSiblingIds}
+                            siblingPendingAddIds={pendingAddSiblingIds}
+                            siblingPendingRemoveIds={pendingRemoveSiblingIds}
+                            onToggleSibling={handleSiblingToggle}
+                            parentSavedIds={originalParentIds}
+                            parentPendingAddIds={pendingAddParentIds}
+                            parentPendingRemoveIds={pendingRemoveParentIds}
+                            onToggleParent={handleParentToggle}
+                            onChangeType={handleChangeType}
+                          />
+
+                          {/* Home: rate child collections inline. Click is immediate (no save button). */}
+                          {slug === 'home' &&
+                            (collection.content?.some(isContentCollection) ?? false) && (
+                              <section
+                                aria-labelledby="children-rating-heading"
+                                className={styles.formGroup}
+                              >
+                                <h3 id="children-rating-heading" className={styles.formLabel}>
+                                  Children (rating)
+                                </h3>
+                                <ul className={styles.plainList}>
+                                  {(collection.content ?? [])
+                                    .filter(isContentCollection)
+                                    .map(child => (
+                                      <li key={child.id} className={styles.childRow}>
+                                        <span>{child.title ?? child.slug}</span>
+                                        <RatingStars
+                                          initialRating={child.rating ?? null}
+                                          onChange={async next => {
+                                            await updateCollectionRating(
+                                              child.referencedCollectionId,
+                                              next
+                                            );
+                                          }}
+                                          ariaLabel={`Rate ${child.title ?? child.slug}`}
+                                        />
+                                      </li>
+                                    ))}
+                                </ul>
+                              </section>
+                            )}
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Resting title chip: minimal chrome over the canvas. */}
+              <button
+                type="button"
+                className={styles.titleChip}
+                onClick={() => router.push(`/${collection.slug}`)}
+              >
+                {collection.title}
+              </button>
+
+              {/* Status line above the bar for active, transient modes. */}
+              {(isSelectingCoverImage ||
+                (isMultiSelectMode && selectedIds.length > 0) ||
+                reorderState.active) && (
+                <div className={styles.barStatus}>
+                  {isSelectingCoverImage && 'Tap any image to set as cover'}
+                  {isMultiSelectMode &&
+                    selectedIds.length > 0 &&
+                    `${selectedIds.length} image${selectedIds.length !== 1 ? 's' : ''} selected`}
+                  {reorderState.active && 'Reorder \u2014 use arrows or pick and place'}
+                </div>
+              )}
+
+              {/* Persistent, mode-morphing bottom bar (uniform-height cells). */}
+              <nav className={styles.bottomBar} aria-label="Manage actions">
+                {renderBottomBar()}
+              </nav>
+
+              {displayError && manageMode !== 'edit' && (
+                <div className={styles.canvasError}>{displayError}</div>
+              )}
             </>
           )}
         </main>

@@ -96,7 +96,7 @@ jest.mock('@/app/(admin)/collection/manage/[[...slug]]/useImageClickHandler', ()
 }));
 
 jest.mock('@/app/(admin)/collection/manage/[[...slug]]/manageUtils', () => ({
-  buildUpdatePayload: jest.fn(),
+  buildUpdatePayload: jest.fn(() => ({ id: 1 })),
   getDisplayedCoverImage: () => null,
   handleMultiSelectToggle: jest.fn(),
   mergeNewMetadata: jest.fn(),
@@ -185,6 +185,11 @@ async function renderManageClient() {
   let utils!: ReturnType<typeof render>;
   await act(async () => {
     utils = render(<ManageClient slug="smith-wedding" />);
+  });
+  // The collection-update form (incl. Gallery Access) lives in the Edit sheet,
+  // which is opened from the bottom bar's "Edit" cell.
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /^edit$/i }));
   });
   return utils;
 }

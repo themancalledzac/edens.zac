@@ -5,6 +5,10 @@
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+
+  /* Shared height for the fixed bottom bar; canvas/sheets reserve this much
+     space so content is never hidden behind it. >=44px touch target. */
+  --bottom-bar-height: 3.25rem;
 }
 
 .main {
@@ -26,6 +30,182 @@
   }
 }
 
+// Resting canvas: the BoxTree grid is the page. Padding-bottom clears the fixed
+// bottom bar so the last row is never hidden behind it.
+.canvas {
+  padding-bottom: calc(var(--bottom-bar-height) + var(--space-6));
+}
+
+// Bottom bar — persistent, thumb-reachable, uniform-height cells. Fixed to the
+// viewport bottom so it stays reachable as the canvas scrolls.
+.bottomBar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: var(--z-sticky, 30);
+  display: flex;
+  align-items: stretch;
+  height: var(--bottom-bar-height);
+  background: var(--color-surface-raised);
+  border-top: 1px solid var(--color-border);
+  padding: 0 max(var(--space-2), env(safe-area-inset-left)) env(safe-area-inset-bottom)
+    max(var(--space-2), env(safe-area-inset-right));
+
+  @media (width >= 768px) {
+    max-width: var(--page-max-width);
+    inset: auto auto 0 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+    border-radius: var(--radius-2) var(--radius-2) 0 0;
+  }
+}
+
+// Uniform-height bar cell. Emphasis is by color/weight (the modifiers below),
+// never by size: every cell is the same height and shares the row evenly.
+.barCell {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: none;
+  border: none;
+  color: var(--color-on-surface);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+
+  &:hover:not(:disabled) {
+    opacity: 0.7;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+}
+
+// Primary emphasis: white fill, dark text (Save/Done). On dark, --color-fg is
+// near-white and --color-bg is charcoal, so this reads as the white-fill action.
+.barCellPrimary {
+  margin: var(--space-1);
+  border-radius: var(--radius-1);
+  background: var(--color-fg);
+  color: var(--color-bg);
+  font-weight: 700;
+
+  &:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  &:disabled {
+    background: var(--color-surface-sunken);
+    color: var(--color-on-surface-muted);
+    opacity: 1;
+  }
+}
+
+// Destructive emphasis by color, same height as every other cell.
+.barCellDanger {
+  color: var(--color-danger-text);
+  font-weight: 600;
+}
+
+// The Upload cell wraps a hidden <input type=file>; the label is the cell.
+.barCellUpload {
+  position: relative;
+  overflow: hidden;
+}
+
+.barUploadInput {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+// Translucent resting title chip; tapping it opens the public collection page.
+.titleChip {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + var(--space-3));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-sticky, 30);
+  max-width: min(90vw, 24rem);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+  background: var(--scrim-dark-40, rgb(0 0 0 / 40%));
+  color: var(--color-fg);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+// Transient mode status, sits just above the bottom bar.
+.barStatus {
+  position: fixed;
+  inset: auto 0 var(--bottom-bar-height);
+  z-index: var(--z-sticky, 30);
+  padding: var(--space-2) var(--space-4);
+  text-align: center;
+  background: var(--color-surface-raised);
+  color: var(--color-on-surface-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border-top: 1px solid var(--color-border);
+
+  @media (width >= 768px) {
+    max-width: var(--page-max-width);
+    left: 50%;
+    right: auto;
+    width: 100%;
+    transform: translateX(-50%);
+  }
+}
+
+// Error banner shown over the canvas when the edit sheet is closed.
+.canvasError {
+  position: fixed;
+  inset: auto var(--space-4) calc(var(--bottom-bar-height) + var(--space-3));
+  z-index: var(--z-sticky, 30);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-1);
+  color: var(--color-error-text);
+  font-size: var(--text-sm);
+}
+
+// Edit sheet — the collection-update form, slid up over the canvas.
+.editSheet {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 40);
+  overflow-y: auto;
+  background: var(--color-bg);
+  padding: calc(env(safe-area-inset-top) + var(--space-4)) var(--space-3)
+    calc(var(--bottom-bar-height) + var(--space-6));
+
+  @media (width >= 768px) {
+    padding-left: var(--default-padding);
+    padding-right: var(--default-padding);
+  }
+}
+
 // Create Mode Styles
 .createContainer {
   background: var(--color-surface-raised);
@@ -40,24 +220,15 @@
   color: var(--color-on-surface);
 }
 
-// Wrapper for updateContainer + contentToolbar — owns the bottom margin
-.updateAndToolbarWrapper {
-  margin-bottom: var(--space-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3); // Default spacing between items (12.8px)
-}
-
-// Update Mode Styles
+// Update Mode Styles — the collection-update form panel inside the Edit sheet.
 .updateContainer {
-  background: var(--color-primary);
+  background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2);
   padding: var(--space-3);
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
 
   @media (width >= 768px) {
     padding: var(--space-5);
@@ -482,54 +653,6 @@
   }
 }
 
-// Submit Button
-// Content Toolbar — sticky bar above image grid (outside the form)
-.contentToolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  position: sticky;
-  top: var(--space-3);
-  // margin-bottom: var(--space-3);
-  z-index: 10;
-  background: var(--color-primary);
-  border: none;
-  border-radius: var(--radius-2);
-  padding: var(--space-3) var(--space-4);
-  box-shadow: var(--shadow-sm);
-}
-
-.toolbarItemCount {
-  font-weight: bold;
-  font-size: var(--text-lg);
-  color: var(--color-surface-raised);
-  flex-shrink: 0;
-}
-
-.toolbarDivider {
-  width: 1px;
-  height: 1.2em;
-  background: var(--color-surface-raised);
-  opacity: 0.3;
-  flex-shrink: 0;
-}
-
-.toolbarActions {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  transition: max-width 0.125s ease-out;
-}
-
-.toolbarStatus {
-  margin-left: auto;
-  color: var(--color-surface-raised);
-  opacity: 0.7;
-  font-weight: bold;
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-
 // Text Block Section
 .textBlockSection {
   display: flex;
@@ -576,30 +699,6 @@
 .paginationInfo {
   color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
-}
-
-// Toolbar Button Styles — plain text on dark background, no button chrome
-
-.toolbarButton {
-  padding: var(--space-1) var(--space-2);
-  background: none;
-  color: var(--color-surface-raised);
-  border: none;
-  cursor: pointer;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0.85;
-  transition: opacity var(--duration-fast) var(--ease-standard);
-
-  &:hover:not(:disabled) {
-    opacity: 1;
-  }
-
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
 }
 
 // Number Stepper for rowsWide field
