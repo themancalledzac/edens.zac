@@ -173,6 +173,12 @@
   padding: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
+  background: var(--color-bg);
+  color: var(--color-fg);
+
+  &::placeholder {
+    color: var(--color-on-surface-muted);
+  }
 }
 
 .formTextarea {
@@ -181,6 +187,8 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
   min-height: 100px;
+  background: var(--color-bg);
+  color: var(--color-fg);
 }
 
 .formSelect {
@@ -188,6 +196,32 @@
   padding: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
+.dateInput {
+  width: 100%;
+  padding: var(--space-2);
+  padding-right: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: inherit;
+  font-size: var(--text-md);
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-color: var(--color-fg);
+  }
+
+  &::-webkit-calendar-picker-indicator {
+    filter: var(--calendar-icon-filter, none);
+    opacity: 0.7;
+    cursor: pointer;
+  }
 }
 
 // Cover image + media side by side for non-parent collections
@@ -287,6 +321,20 @@
     border-radius: var(--radius-1);
     width: 100%;
     cursor: pointer;
+    background: var(--color-bg);
+    color: var(--color-fg);
+
+    &::file-selector-button {
+      background: var(--color-surface-sunken);
+      color: var(--color-fg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-1);
+      padding: var(--space-1) var(--space-2);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: var(--text-sm);
+      margin-right: var(--space-2);
+    }
   }
 
   .uploadingText {
@@ -583,6 +631,8 @@
   text-align: center;
   font-size: var(--text-base);
   min-width: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
 
   /* Remove default number input arrows */
   -moz-appearance: textfield;
@@ -597,6 +647,12 @@
     color: var(--color-on-surface-muted);
     opacity: 0.6;
   }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-color: var(--color-fg);
+  }
 }
 
 .formLabelHint {
@@ -610,10 +666,6 @@
   position: relative;
   display: flex;
   align-items: center;
-
-  .formInput {
-    padding-right: 2rem;
-  }
 }
 
 .dateClearButton {

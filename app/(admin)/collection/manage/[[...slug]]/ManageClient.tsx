@@ -23,6 +23,10 @@ import {
   PERSON_ADD_NEW_FIELDS,
 } from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
+import { Field } from '@/app/components/ui/Field/Field';
+import { Input } from '@/app/components/ui/Field/Input';
+import { Select } from '@/app/components/ui/Field/Select';
+import { Textarea } from '@/app/components/ui/Field/Textarea';
 import { SegmentedControl } from '@/app/components/ui/SegmentedControl/SegmentedControl';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
@@ -1176,33 +1180,34 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
               <form onSubmit={handleCreate}>
                 <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Collection Type *</label>
-                  <select
-                    value={createData.type}
-                    onChange={e =>
-                      setCreateData(prev => ({ ...prev, type: e.target.value as CollectionType }))
-                    }
-                    className={styles.formSelect}
-                    required
-                  >
-                    {ASSIGNABLE_COLLECTION_TYPES.map(type => (
-                      <option key={type} value={type}>
-                        {COLLECTION_TYPE_LABELS[type]}
-                      </option>
-                    ))}
-                  </select>
+                  <Field label="Collection Type *" htmlFor="create-type">
+                    <Select
+                      id="create-type"
+                      value={createData.type}
+                      onChange={e =>
+                        setCreateData(prev => ({ ...prev, type: e.target.value as CollectionType }))
+                      }
+                      required
+                    >
+                      {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+                        <option key={type} value={type}>
+                          {COLLECTION_TYPE_LABELS[type]}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Title *</label>
-                  <input
-                    type="text"
-                    value={createData.title}
-                    onChange={e => setCreateData(prev => ({ ...prev, title: e.target.value }))}
-                    className={styles.formInput}
-                    required
-                    placeholder="e.g., Film Pack 002"
-                  />
+                  <Field label="Title *" htmlFor="create-title">
+                    <Input
+                      id="create-title"
+                      value={createData.title}
+                      onChange={e => setCreateData(prev => ({ ...prev, title: e.target.value }))}
+                      required
+                      placeholder="e.g., Film Pack 002"
+                    />
+                  </Field>
                 </div>
 
                 <Button type="submit" disabled={isLoading}>
@@ -1246,15 +1251,15 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         {/* Title */}
                         <div className={styles.titleRow}>
                           <div className={styles.titleInputWrapper}>
-                            <label className={styles.formLabel}>Title</label>
-                            <input
-                              type="text"
-                              value={updateData.title}
-                              onChange={e =>
-                                setUpdateData(prev => ({ ...prev, title: e.target.value }))
-                              }
-                              className={styles.formInput}
-                            />
+                            <Field label="Title" htmlFor="update-title">
+                              <Input
+                                id="update-title"
+                                value={updateData.title}
+                                onChange={e =>
+                                  setUpdateData(prev => ({ ...prev, title: e.target.value }))
+                                }
+                              />
+                            </Field>
                           </div>
                         </div>
 
@@ -1288,7 +1293,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                                     collectionDate: e.target.value,
                                   }))
                                 }
-                                className={styles.formInput}
+                                className={styles.dateInput}
                               />
                               {updateData.collectionDate && (
                                 <button
@@ -1306,36 +1311,38 @@ export default function ManageClient({ slug }: ManageClientProps) {
                           </div>
 
                           <div>
-                            <label className={styles.formLabel}>Collection Type</label>
-                            <select
-                              value={updateData.type}
-                              onChange={e =>
-                                setUpdateData(prev => ({
-                                  ...prev,
-                                  type: e.target.value as CollectionType,
-                                }))
-                              }
-                              className={styles.formSelect}
-                            >
-                              {ASSIGNABLE_COLLECTION_TYPES.map(type => (
-                                <option key={type} value={type}>
-                                  {COLLECTION_TYPE_LABELS[type]}
-                                </option>
-                              ))}
-                            </select>
+                            <Field label="Collection Type" htmlFor="update-type">
+                              <Select
+                                id="update-type"
+                                value={updateData.type}
+                                onChange={e =>
+                                  setUpdateData(prev => ({
+                                    ...prev,
+                                    type: e.target.value as CollectionType,
+                                  }))
+                                }
+                              >
+                                {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+                                  <option key={type} value={type}>
+                                    {COLLECTION_TYPE_LABELS[type]}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
                           </div>
                         </div>
 
                         {/* Description */}
                         <div className={styles.formGroup}>
-                          <label className={styles.formLabel}>Description</label>
-                          <textarea
-                            value={updateData.description}
-                            onChange={e =>
-                              setUpdateData(prev => ({ ...prev, description: e.target.value }))
-                            }
-                            className={styles.formTextarea}
-                          />
+                          <Field label="Description" htmlFor="update-description">
+                            <Textarea
+                              id="update-description"
+                              value={updateData.description}
+                              onChange={e =>
+                                setUpdateData(prev => ({ ...prev, description: e.target.value }))
+                              }
+                            />
+                          </Field>
                         </div>
 
                         <h3 className={styles.sectionTitle}>Tags, people &amp; places</h3>
@@ -1438,75 +1445,79 @@ export default function ManageClient({ slug }: ManageClientProps) {
                         {!isParent && (
                           <div className={styles.formGridHalf}>
                             <div>
-                              <label className={styles.formLabel}>Display</label>
-                              <select
-                                value={updateData.displayMode}
-                                onChange={e =>
-                                  setUpdateData(prev => ({
-                                    ...prev,
-                                    displayMode: e.target.value as DisplayMode,
-                                  }))
-                                }
-                                className={styles.formSelect}
-                              >
-                                <option value="ORDERED">Default</option>
-                                <option value="CHRONOLOGICAL">Chronological</option>
-                                <option value="FIXED">Fixed</option>
-                              </select>
+                              <Field label="Display" htmlFor="update-display-mode">
+                                <Select
+                                  id="update-display-mode"
+                                  value={updateData.displayMode}
+                                  onChange={e =>
+                                    setUpdateData(prev => ({
+                                      ...prev,
+                                      displayMode: e.target.value as DisplayMode,
+                                    }))
+                                  }
+                                >
+                                  <option value="ORDERED">Default</option>
+                                  <option value="CHRONOLOGICAL">Chronological</option>
+                                  <option value="FIXED">Fixed</option>
+                                </Select>
+                              </Field>
                             </div>
 
                             <div>
-                              <label className={styles.formLabel}>
-                                Row Density
-                                <span className={styles.formLabelHint}> (Default: 4)</span>
-                              </label>
-                              <div className={styles.numberStepperWrapper}>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setUpdateData(prev => ({
-                                      ...prev,
-                                      rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
-                                    }))
-                                  }
-                                  className={styles.stepperButton}
-                                  disabled={(updateData.rowsWide ?? 4) <= 1}
-                                  aria-label="Decrease row density"
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="10"
-                                  value={updateData.rowsWide ?? ''}
-                                  placeholder="4"
-                                  onChange={e => {
-                                    const value =
-                                      e.target.value === ''
-                                        ? undefined
-                                        : Number.parseInt(e.target.value);
-                                    if (value === undefined || (value >= 1 && value <= 10)) {
-                                      setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                              <Field
+                                label="Row Density"
+                                htmlFor="update-rows-wide"
+                                hint="Default: 4"
+                              >
+                                <div className={styles.numberStepperWrapper}>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setUpdateData(prev => ({
+                                        ...prev,
+                                        rowsWide: Math.max(1, (prev.rowsWide ?? 4) - 1),
+                                      }))
                                     }
-                                  }}
-                                  className={styles.numberInput}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setUpdateData(prev => ({
-                                      ...prev,
-                                      rowsWide: Math.min(10, (prev.rowsWide ?? 4) + 1),
-                                    }))
-                                  }
-                                  className={styles.stepperButton}
-                                  disabled={(updateData.rowsWide ?? 4) >= 10}
-                                  aria-label="Increase row density"
-                                >
-                                  +
-                                </button>
-                              </div>
+                                    className={styles.stepperButton}
+                                    disabled={(updateData.rowsWide ?? 4) <= 1}
+                                    aria-label="Decrease row density"
+                                  >
+                                    −
+                                  </button>
+                                  <input
+                                    id="update-rows-wide"
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={updateData.rowsWide ?? ''}
+                                    placeholder="4"
+                                    onChange={e => {
+                                      const value =
+                                        e.target.value === ''
+                                          ? undefined
+                                          : Number.parseInt(e.target.value);
+                                      if (value === undefined || (value >= 1 && value <= 10)) {
+                                        setUpdateData(prev => ({ ...prev, rowsWide: value }));
+                                      }
+                                    }}
+                                    className={styles.numberInput}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setUpdateData(prev => ({
+                                        ...prev,
+                                        rowsWide: Math.min(10, (prev.rowsWide ?? 4) + 1),
+                                      }))
+                                    }
+                                    className={styles.stepperButton}
+                                    disabled={(updateData.rowsWide ?? 4) >= 10}
+                                    aria-label="Increase row density"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </Field>
                             </div>
                           </div>
                         )}
@@ -1528,41 +1539,32 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             </p>
                             <div className={styles.formGridHalf}>
                               <div>
-                                <label
-                                  htmlFor="gallery-password-input"
-                                  className={styles.formLabel}
-                                >
-                                  Password
-                                </label>
-                                {/* Backend stores plaintext (admin-only field) so the photographer can see and re-share the current password. */}
-                                <input
-                                  id="gallery-password-input"
-                                  type="text"
-                                  minLength={4}
-                                  value={galleryPassword}
-                                  onChange={e => setGalleryPasswordInput(e.target.value)}
-                                  className={styles.formInput}
-                                  placeholder="At least 4 characters"
-                                  disabled={gallerySaving}
-                                  autoComplete="off"
-                                />
+                                <Field label="Password" htmlFor="gallery-password-input">
+                                  <Input
+                                    id="gallery-password-input"
+                                    type="text"
+                                    minLength={4}
+                                    value={galleryPassword}
+                                    onChange={e => setGalleryPasswordInput(e.target.value)}
+                                    placeholder="At least 4 characters"
+                                    disabled={gallerySaving}
+                                    autoComplete="off"
+                                  />
+                                </Field>
                               </div>
                               <div>
-                                <label htmlFor="gallery-email-input" className={styles.formLabel}>
-                                  Recipient email
-                                </label>
-                                {/* TODO: pre-populate with collection.recipientEmail when backend returns it */}
-                                <input
-                                  id="gallery-email-input"
-                                  type="email"
-                                  multiple
-                                  value={galleryEmail}
-                                  onChange={e => setGalleryEmail(e.target.value)}
-                                  className={styles.formInput}
-                                  placeholder="client@example.com, other@example.com"
-                                  disabled={gallerySaving}
-                                  autoComplete="off"
-                                />
+                                <Field label="Recipient email" htmlFor="gallery-email-input">
+                                  <Input
+                                    id="gallery-email-input"
+                                    type="email"
+                                    multiple
+                                    value={galleryEmail}
+                                    onChange={e => setGalleryEmail(e.target.value)}
+                                    placeholder="client@example.com, other@example.com"
+                                    disabled={gallerySaving}
+                                    autoComplete="off"
+                                  />
+                                </Field>
                               </div>
                             </div>
                             <div className={styles.actionRow}>
