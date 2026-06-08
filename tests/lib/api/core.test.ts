@@ -350,6 +350,65 @@ describe('fetchBase (tested via public API functions)', () => {
   });
 });
 
+describe('getApiBaseUrl — LAN hostname derivation (tested via fetchReadApi)', () => {
+  const originalWindow = global.window;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // Restore window to whatever it was before
+    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+  });
+
+  it('uses the page hostname (not localhost) for read fetches when accessed from a LAN device', async () => {
+    // Simulate a phone on the LAN: window.location.hostname is the dev box IP
+    Object.defineProperty(global, 'window', {
+      value: { location: { hostname: '192.168.68.60' } },
+      writable: true,
+    });
+
+    const mockResponse = {
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    };
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+    const { fetchReadApi: fetchRead } = await import('@/app/lib/api/core');
+    await fetchRead('/collections');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/^http:\/\/192\.168\.68\.60:8080\/api\/read\//),
+      expect.any(Object)
+    );
+  });
+
+  it('keeps using localhost when accessed from the dev machine itself', async () => {
+    // Standard dev machine: window.location.hostname is 'localhost'
+    Object.defineProperty(global, 'window', {
+      value: { location: { hostname: 'localhost' } },
+      writable: true,
+    });
+
+    const mockResponse = {
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    };
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+    const { fetchReadApi: fetchRead2 } = await import('@/app/lib/api/core');
+    await fetchRead2('/collections');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/^http:\/\/localhost:8080\/api\/read\//),
+      expect.any(Object)
+    );
+  });
+});
+
 describe('getServerCookieHeader', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nextHeaders = require('next/headers') as { cookies: jest.Mock };

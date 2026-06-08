@@ -68,7 +68,12 @@ export async function getServerCookieHeader(): Promise<string | null> {
  */
 function getApiBaseUrl(endpointType: string): string {
   if (isLocalEnvironment()) {
-    return `http://localhost:8080/api/${endpointType}`;
+    // In the browser, derive the host from the current page so the API is reachable from any
+    // device on the LAN. A phone hitting the dev box at <lan-ip>:3000 must not call
+    // `localhost:8080` (that would resolve to the phone). On the dev machine the hostname is
+    // `localhost`, so behavior there is unchanged. Server-side has no page host → keep localhost.
+    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    return `http://${host}:8080/api/${endpointType}`;
   }
   // All production calls go through the Next.js proxy — never directly to EC2
   const appBase =
