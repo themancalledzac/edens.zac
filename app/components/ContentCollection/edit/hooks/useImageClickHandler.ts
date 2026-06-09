@@ -40,13 +40,10 @@ export function useImageClickHandler({
   const handleImageClick = useCallback(
     (imageId: number) => {
       if (isSelectingCoverImage) {
-        // Mode 1: Cover image selection
         handleCoverImageClick(imageId);
         return;
       }
 
-      // Mode 2: Collection navigation — stay in the edit surface on the child's /[slug] route
-      // via ?manage=1 (soft same-route entry), not the separate /collection/manage segment.
       const collectionSlug = handleCollectionNavigation(imageId, collection?.content);
       if (collectionSlug) {
         router.push(`/${collectionSlug}?manage=1`);
@@ -54,10 +51,8 @@ export function useImageClickHandler({
       }
 
       if (isMultiSelectMode) {
-        // Mode 3: Multi-select toggle
         handleMultiSelectToggle(imageId);
       } else {
-        // Mode 4: Single image edit
         const imageBlock = handleSingleImageEdit(imageId, collection?.content, processedContent);
         if (imageBlock) {
           setSelectedIds([imageId]);
