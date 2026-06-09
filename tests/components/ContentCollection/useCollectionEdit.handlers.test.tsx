@@ -456,6 +456,155 @@ describe('useCollectionEdit — handler tests', () => {
     });
   });
 
+  describe('handleSaveAccess — save/clear behavior', () => {
+    // The hook derives `collection` from currentState once the metadata fetch
+    // resolves, and the seed effect re-runs off that collection. Mirror the
+    // PARENT tests above: drive the password/email through the exposed setters
+    // after currentState settles, so the seed effect can't wipe them.
+    function renderGallery() {
+      const collection = makeCollection({ type: CollectionType.CLIENT_GALLERY });
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ type: CollectionType.CLIENT_GALLERY })
+      );
+      return renderEdit({ enabled: true, collection });
+    }
+
+    it('rejects passwords shorter than 4 characters before calling saveGalleryAccess', async () => {
+      const { result } = renderGallery();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.setGalleryPassword('abc'));
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(mockSaveGalleryAccess).not.toHaveBeenCalled();
+      expect(result.current.galleryStatus).toBe('Password must be at least 4 characters.');
+    });
+
+    it('saves WITH email and reports success when emailsSent is true', async () => {
+      mockSaveGalleryAccess.mockResolvedValue({
+        saved: true,
+        emailsSent: true,
+        reason: null,
+        password: 'pass1234',
+        emails: ['a@b.com'],
+      });
+
+      const { result } = renderGallery();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => {
+        result.current.setGalleryPassword('pass1234');
+        result.current.setGalleryEmail('a@b.com');
+      });
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(mockSaveGalleryAccess).toHaveBeenCalledWith(
+        42,
+        expect.objectContaining({
+          password: 'pass1234',
+          emails: ['a@b.com'],
+          propagateToChildren: false,
+        })
+      );
+      expect(result.current.galleryStatus).toBe('Password saved and sent to a@b.com.');
+    });
+
+    it('reports "email not sent" when emailsSent is false', async () => {
+      mockSaveGalleryAccess.mockResolvedValue({
+        saved: true,
+        emailsSent: false,
+        reason: 'email-disabled',
+        password: 'pass1234',
+        emails: ['a@b.com'],
+      });
+
+      const { result } = renderGallery();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => {
+        result.current.setGalleryPassword('pass1234');
+        result.current.setGalleryEmail('a@b.com');
+      });
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(result.current.galleryStatus).toBe('Password saved, email not sent (email-disabled).');
+    });
+
+    it('saves WITHOUT email and reports no email sent', async () => {
+      mockSaveGalleryAccess.mockResolvedValue({
+        saved: true,
+        emailsSent: false,
+        reason: null,
+        password: 'pass1234',
+        emails: [],
+      });
+
+      const { result } = renderGallery();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.setGalleryPassword('pass1234'));
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(mockSaveGalleryAccess).toHaveBeenCalledWith(
+        42,
+        expect.objectContaining({
+          password: 'pass1234',
+          emails: undefined,
+          propagateToChildren: false,
+        })
+      );
+      expect(result.current.galleryStatus).toBe('Password saved. No email sent.');
+    });
+
+    it('handleClearPassword clears the password and reports it', async () => {
+      mockSaveGalleryAccess.mockResolvedValue({
+        saved: true,
+        emailsSent: false,
+        reason: null,
+        password: null,
+        emails: [],
+      });
+
+      const { result } = renderGallery();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      await act(async () => {
+        await result.current.handleClearPassword();
+      });
+
+      expect(mockSaveGalleryAccess).toHaveBeenCalledWith(42, { password: null });
+      expect(result.current.galleryStatus).toBe('Password cleared. Gallery is now unprotected.');
+    });
+
+    it('reports the error message when saveGalleryAccess throws', async () => {
+      mockSaveGalleryAccess.mockRejectedValue(new Error('boom'));
+
+      const { result } = renderGallery();
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.setGalleryPassword('pass1234'));
+
+      await act(async () => {
+        await result.current.handleSaveAccess();
+      });
+
+      expect(mockSaveGalleryAccess).toHaveBeenCalled();
+      expect(result.current.galleryStatus).toBe('boom');
+    });
+  });
+
   describe('handleSavePeople', () => {
     it('calls setCollectionPeople with filtered positive-id person ids', async () => {
       mockSetCollectionPeople.mockResolvedValue();

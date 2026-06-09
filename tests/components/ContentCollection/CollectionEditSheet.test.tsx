@@ -229,6 +229,34 @@ describe('CollectionEditSheet — InfoTab', () => {
     expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
   });
 
+  it('shows the Clear Password button when the gallery already has a password set', () => {
+    const edit = makeEdit({
+      editTab: 'info',
+      currentState: makeState({
+        type: CollectionType.CLIENT_GALLERY,
+        isPasswordProtected: true,
+      }),
+      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      isParent: false,
+    });
+    render(<CollectionEditSheet edit={edit} />);
+    expect(screen.getByRole('button', { name: 'Clear Password' })).toBeInTheDocument();
+  });
+
+  it('hides the Clear Password button when the gallery has no password', () => {
+    const edit = makeEdit({
+      editTab: 'info',
+      currentState: makeState({
+        type: CollectionType.CLIENT_GALLERY,
+        isPasswordProtected: false,
+      }),
+      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      isParent: false,
+    });
+    render(<CollectionEditSheet edit={edit} />);
+    expect(screen.queryByRole('button', { name: 'Clear Password' })).not.toBeInTheDocument();
+  });
+
   it('has no "access" tab rendering path — editTab="access" renders nothing', () => {
     const edit = makeEdit({
       // @ts-expect-error intentionally testing the removed tab
