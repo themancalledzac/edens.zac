@@ -63,8 +63,8 @@ jest.mock('@/app/components/ContentCollection/edit/collectionEditUtils', () => {
   ) as Record<string, unknown>;
   return {
     ...actual,
-    revalidateCollectionCache: jest.fn().mockResolvedValue(undefined),
-    revalidateMetadataCache: jest.fn().mockResolvedValue(undefined),
+    revalidateCollectionCache: jest.fn().mockResolvedValue(),
+    revalidateMetadataCache: jest.fn().mockResolvedValue(),
   };
 });
 
