@@ -77,10 +77,6 @@ export function InfoTab({ edit }: InfoTabProps) {
     ? (childCollectionImages ?? [])
     : (collection?.content ?? []).filter(isContentImage);
 
-  let coverButtonLabel = 'Set cover image';
-  if (isSelectingCoverImage) coverButtonLabel = 'Cancel cover selection';
-  else if (displayedCoverImage) coverButtonLabel = 'Change cover image';
-
   return (
     <div className={styles.tabPanel}>
       <div className={styles.titleRow}>
@@ -186,42 +182,60 @@ export function InfoTab({ edit }: InfoTabProps) {
           </Field>
         </div>
 
-        <div className={styles.formGroup}>
-          <label className={styles.formLabel}>Cover image</label>
-          <Button
-            variant={isSelectingCoverImage ? 'danger' : 'secondary'}
-            onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-          >
-            {coverButtonLabel}
-          </Button>
-          {isSelectingCoverImage &&
-            (coverCandidates.length > 0 ? (
-              <div className={styles.coverPickerGrid}>
-                {coverCandidates.map(img => (
-                  <button
-                    type="button"
-                    key={img.id}
-                    className={styles.coverPickerItem}
-                    onClick={() => handleCoverImageClick(img.id)}
-                    aria-label={`Set ${img.title || 'image'} as cover`}
-                  >
-                    <Image
-                      src={img.imageUrl}
-                      alt={img.title || ''}
-                      width={120}
-                      height={90}
-                      unoptimized
-                    />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className={styles.fieldHint}>
-                {isParent
-                  ? 'Add child collections with images to choose a cover.'
-                  : 'Add images to this collection to choose a cover.'}
-              </p>
-            ))}
+        <div>
+          <Field label="Cover image" htmlFor="edit-sheet-cover">
+            <button
+              type="button"
+              id="edit-sheet-cover"
+              className={`${styles.coverButton} ${
+                isSelectingCoverImage ? styles.coverButtonActive : ''
+              }`}
+              onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+              aria-pressed={isSelectingCoverImage}
+              aria-label={displayedCoverImage ? 'Change cover image' : 'Set cover image'}
+            >
+              {displayedCoverImage ? (
+                <Image
+                  src={displayedCoverImage.imageUrl}
+                  alt=""
+                  fill
+                  sizes="200px"
+                  style={{ objectFit: 'cover' }}
+                  unoptimized
+                />
+              ) : (
+                <span className={styles.coverButtonPlaceholder}>Select</span>
+              )}
+            </button>
+            {isSelectingCoverImage &&
+              (coverCandidates.length > 0 ? (
+                <div className={styles.coverPickerGrid}>
+                  {coverCandidates.map(img => (
+                    <button
+                      type="button"
+                      key={img.id}
+                      className={styles.coverPickerItem}
+                      onClick={() => handleCoverImageClick(img.id)}
+                      aria-label={`Set ${img.title || 'image'} as cover`}
+                    >
+                      <Image
+                        src={img.imageUrl}
+                        alt={img.title || ''}
+                        width={120}
+                        height={90}
+                        unoptimized
+                      />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.fieldHint}>
+                  {isParent
+                    ? 'Add child collections with images to choose a cover.'
+                    : 'Add images to this collection to choose a cover.'}
+                </p>
+              ))}
+          </Field>
         </div>
       </div>
 
