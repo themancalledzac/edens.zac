@@ -108,4 +108,16 @@ describe('MetadataModal — smoke', () => {
     rerender(<MetadataModal {...baseProps} currentCollectionId={42} />);
     expect(screen.getByRole('button', { name: /^remove$/i })).toBeInTheDocument();
   });
+
+  it('renders null without crashing when the selection is empty', () => {
+    // Hooks (useMetadataState/useMetadataSubmit) run before the `!previewImage` guard, so an empty
+    // selection must not throw while deriving state — e.g. hasChanges dereferencing selectedImages[0].
+    // Pass the props verbatim (no availableLocations) to also exercise the default-param `[]` path.
+    const { container } = render(
+      <MetadataModal selectedIds={[]} selectedImages={[]} onClose={jest.fn()} />
+    );
+    // Component returns null before portaling, so nothing lands in the container or document body.
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByRole('heading', { name: /edit/i })).not.toBeInTheDocument();
+  });
 });
