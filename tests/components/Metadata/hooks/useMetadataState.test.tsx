@@ -32,6 +32,14 @@ describe('useMetadataState', () => {
     expect(result.current.hasChanges).toBe(false);
   });
 
+  it('does not crash and reports no changes when selectedImages is empty', () => {
+    const selectedImages: ContentImageModel[] = [];
+    const { result } = renderHook(() =>
+      useMetadataState({ selectedImages, selectedIds: [], availableLocations: [] })
+    );
+    expect(result.current.hasChanges).toBe(false);
+  });
+
   it('seeds updateState with common values for bulk edit', () => {
     const selectedImages = [
       img(1, { title: 'Same', rating: 4 }),

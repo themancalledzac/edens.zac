@@ -191,11 +191,10 @@ export function useMetadataState({
     if (isBulkEdit) {
       const common = getCommonValues(imageSubset);
       return hasObjectChanges(updateState, { id: 0, ...common });
-    } else {
-      const original = selectedImages[0]!;
-      return hasObjectChanges(updateState, original);
     }
-    // imageSubset is derived from selectedImages each render; reflect that in deps.
+    const original = selectedImages[0];
+    if (!original) return false;
+    return hasObjectChanges(updateState, original);
   }, [updateState, selectedImages, isBulkEdit]);
 
   // Saved collection membership (single-edit only — bulk edit has no per-collection picker).
