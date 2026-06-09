@@ -7,12 +7,7 @@ import RatingStars from '@/app/components/RatingStars/RatingStars';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { Select } from '@/app/components/ui/Field/Select';
-import {
-  ASSIGNABLE_COLLECTION_TYPES,
-  COLLECTION_TYPE_LABELS,
-  type CollectionType,
-  type DisplayMode,
-} from '@/app/types/Collection';
+import { type DisplayMode } from '@/app/types/Collection';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 
@@ -52,30 +47,13 @@ export function StructureTab({ edit }: StructureTabProps) {
 
   return (
     <div className={styles.tabPanel}>
-      {/* Collection Type */}
-      <div className={styles.formGroup}>
-        <Field label="Collection Type" htmlFor="edit-sheet-type">
-          <Select
-            id="edit-sheet-type"
-            value={updateData.type}
-            onChange={e => setUpdateField('type', e.target.value as CollectionType)}
-          >
-            {ASSIGNABLE_COLLECTION_TYPES.map(type => (
-              <option key={type} value={type}>
-                {COLLECTION_TYPE_LABELS[type]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-
       {/* Presentation — hidden for parent-type collections */}
       {!isParent && (
         <>
           <h3 className={styles.sectionTitle}>Presentation</h3>
           <div className={styles.formGridHalf}>
             <div>
-              <Field label="Display" htmlFor="edit-sheet-display-mode">
+              <Field label="Order" htmlFor="edit-sheet-display-mode">
                 <Select
                   id="edit-sheet-display-mode"
                   value={updateData.displayMode}
@@ -157,7 +135,7 @@ export function StructureTab({ edit }: StructureTabProps) {
         onToggle={handleChildToggle}
         onNavigate={col => {
           if (col.slug) {
-            router.push(`/collection/manage/${col.slug}`);
+            router.push(`/${col.slug}?manage=1`);
           } else {
             logger.error('StructureTab', 'Cannot navigate to collection: missing slug', col);
           }

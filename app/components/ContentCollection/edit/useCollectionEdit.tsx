@@ -72,7 +72,7 @@ function isAnimatedMediaFile(file: File): boolean {
 }
 
 export type ManageMode = 'browse' | 'select' | 'reorder' | 'add' | 'edit';
-export type CollectionEditTab = 'info' | 'tags' | 'structure';
+export type CollectionEditTab = 'info' | 'structure';
 
 export interface UseCollectionEditParams {
   /** The collection being edited (already fetched by the consumer). */
@@ -1400,7 +1400,6 @@ export function useCollectionEdit({
     if (manageMode !== 'edit') return;
     return [
       { id: 'info', label: 'Info' },
-      { id: 'tags', label: 'Tags' },
       { id: 'structure', label: 'Structure' },
     ];
   }, [manageMode]);

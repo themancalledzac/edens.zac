@@ -1,18 +1,24 @@
 'use client';
 
-import { LOCATION_ADD_NEW_FIELDS } from '@/app/components/ui/Dropdown/commonAddNewFields';
+import {
+  LOCATION_ADD_NEW_FIELDS,
+  PERSON_ADD_NEW_FIELDS,
+} from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { Field } from '@/app/components/ui/Field/Field';
 import { Input } from '@/app/components/ui/Field/Input';
+import { Select } from '@/app/components/ui/Field/Select';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
-import { SegmentedControl } from '@/app/components/ui/SegmentedControl/SegmentedControl';
+import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import {
+  ASSIGNABLE_COLLECTION_TYPES,
+  COLLECTION_TYPE_LABELS,
   CollectionType,
   type CollectionUpdateRequest,
+  type ContentPersonModel,
   type LocationModel,
 } from '@/app/types/Collection';
 import {
-  COLLECTION_VISIBILITY_DESCRIPTIONS,
   COLLECTION_VISIBILITY_LABELS,
   CollectionVisibility,
 } from '@/app/types/CollectionVisibility';
@@ -25,7 +31,10 @@ interface InfoTabProps {
   edit: UseCollectionEditResult;
 }
 
-/** Info tab: title, date, description, locations, visibility, and (when applicable) gallery access. */
+/**
+ * Info tab: title, type, date, description, locations, visibility, tags, people, and (when
+ * applicable) gallery access. Tags + people were consolidated here from a former Tags tab.
+ */
 export function InfoTab({ edit }: InfoTabProps) {
   const {
     updateData,
@@ -33,6 +42,14 @@ export function InfoTab({ edit }: InfoTabProps) {
     currentState,
     currentLocations,
     handleLocationsChange,
+    currentTags,
+    handleTagsChange,
+    collectionPeople,
+    setCollectionPeople,
+    peopleSaving,
+    peopleStatus,
+    handleSavePeople,
+    handleRegeneratePeople,
     galleryPassword,
     setGalleryPassword,
     galleryEmail,
@@ -60,6 +77,23 @@ export function InfoTab({ edit }: InfoTabProps) {
             />
           </Field>
         </div>
+      </div>
+
+      {/* Collection Type */}
+      <div className={styles.formGroup}>
+        <Field label="Collection Type" htmlFor="edit-sheet-type">
+          <Select
+            id="edit-sheet-type"
+            value={updateData.type}
+            onChange={e => setUpdateField('type', e.target.value as CollectionType)}
+          >
+            {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+              <option key={type} value={type}>
+                {COLLECTION_TYPE_LABELS[type]}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
 
       {/* Collection Date */}
@@ -123,21 +157,79 @@ export function InfoTab({ edit }: InfoTabProps) {
         emptyText="No locations set"
       />
 
-      {/* Visibility */}
+      {/* Visibility — condensed to a simple dropdown (Listed / Unlisted / Hidden). */}
       <div className={styles.formGroup}>
-        <label className={styles.formLabel}>Visibility</label>
-        <SegmentedControl<CollectionVisibility>
-          ariaLabel="Visibility"
-          value={updateData.visibility ?? CollectionVisibility.HIDDEN}
-          onChange={v => setUpdateField('visibility', v)}
-          options={Object.values(CollectionVisibility).map(v => ({
-            value: v,
-            label: COLLECTION_VISIBILITY_LABELS[v],
-            description: COLLECTION_VISIBILITY_DESCRIPTIONS[v],
-          }))}
-          showDescription
+        <Field label="Visibility" htmlFor="edit-sheet-visibility">
+          <Select
+            id="edit-sheet-visibility"
+            value={updateData.visibility ?? CollectionVisibility.HIDDEN}
+            onChange={e => setUpdateField('visibility', e.target.value as CollectionVisibility)}
+          >
+            {Object.values(CollectionVisibility).map(v => (
+              <option key={v} value={v}>
+                {COLLECTION_VISIBILITY_LABELS[v]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+
+      {/* Tags */}
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>Tags</label>
+        <TagsSelector
+          selectedTags={currentTags}
+          availableTags={currentState?.tags || []}
+          onChange={handleTagsChange}
+          emptyText="No tags set"
         />
       </div>
+
+      {/* People */}
+      <section aria-labelledby="edit-sheet-people-heading" className={styles.formGroup}>
+        <label id="edit-sheet-people-heading" className={styles.formLabel}>
+          People
+        </label>
+        <Dropdown<ContentPersonModel>
+          label=""
+          multiSelect
+          options={currentState?.people || []}
+          selectedValues={collectionPeople}
+          onChange={value => {
+            let next: ContentPersonModel[];
+            if (Array.isArray(value)) {
+              next = value;
+            } else if (value) {
+              next = [value];
+            } else {
+              next = [];
+            }
+            setCollectionPeople(next);
+          }}
+          allowAddNew
+          onAddNew={data => {
+            const newPerson: ContentPersonModel = { id: 0, name: data.name as string, slug: '' };
+            setCollectionPeople([...collectionPeople, newPerson]);
+          }}
+          addNewFields={PERSON_ADD_NEW_FIELDS}
+          getDisplayName={person => person?.name || ''}
+          showNewIndicator
+          emptyText="No people set"
+        />
+        <div className={styles.actionRow}>
+          <Button onClick={() => void handleSavePeople()} disabled={peopleSaving}>
+            {peopleSaving ? 'Saving…' : 'Save People'}
+          </Button>
+          <Button onClick={() => void handleRegeneratePeople()} disabled={peopleSaving}>
+            Regenerate from contents
+          </Button>
+        </div>
+        {peopleStatus && (
+          <p role="status" className={styles.statusMessage}>
+            {peopleStatus}
+          </p>
+        )}
+      </section>
 
       {/* Gallery Access — shown for CLIENT_GALLERY or PARENT collections */}
       {showGalleryAccess && (

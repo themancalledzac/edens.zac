@@ -194,12 +194,11 @@ describe('useCollectionEdit', () => {
       expect(result.current.bottomBarTabs).toBeUndefined();
     });
 
-    it('is [info, tags, structure] in edit mode', () => {
+    it('is [info, structure] in edit mode', () => {
       const { result } = renderEdit({ enabled: false });
       act(() => result.current.enterEdit());
       expect(result.current.bottomBarTabs).toEqual([
         { id: 'info', label: 'Info' },
-        { id: 'tags', label: 'Tags' },
         { id: 'structure', label: 'Structure' },
       ]);
     });

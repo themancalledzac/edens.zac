@@ -204,11 +204,18 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
 // ── InfoTab tests ──────────────────────────────────────────────────────────────
 
 describe('CollectionEditSheet — InfoTab', () => {
-  it('renders Title field and Visibility control', () => {
+  it('renders Title, Collection Type, and the Visibility dropdown', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);
     expect(screen.getByLabelText('Title')).toBeInTheDocument();
-    // SegmentedControl with ariaLabel="Visibility"
-    expect(screen.getByRole('radiogroup', { name: 'Visibility' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Collection Type')).toBeInTheDocument();
+    // Visibility is now a simple <select> (Listed / Unlisted / Hidden), not a segmented control.
+    expect(screen.getByLabelText('Visibility')).toBeInTheDocument();
+  });
+
+  it('renders Tags and People (consolidated into Info)', () => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);
+    expect(screen.getByTestId('tags-selector')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
   });
 
   it('shows gallery access group for CLIENT_GALLERY collection', () => {
@@ -262,32 +269,22 @@ describe('CollectionEditSheet — InfoTab', () => {
   });
 });
 
-// ── TagsTab tests ──────────────────────────────────────────────────────────────
-
-describe('CollectionEditSheet — TagsTab', () => {
-  it('renders TagsSelector and People section', () => {
-    render(<CollectionEditSheet edit={makeEdit({ editTab: 'tags' })} />);
-    expect(screen.getByTestId('tags-selector')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'People' })).toBeInTheDocument();
-  });
-});
-
 // ── StructureTab tests ─────────────────────────────────────────────────────────
 
 describe('CollectionEditSheet — StructureTab', () => {
-  it('renders Collection Type select and the collection selector', () => {
+  it('renders the collection selector; Collection Type moved to Info', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure' })} />);
-    expect(screen.getByLabelText('Collection Type')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Collection Type')).not.toBeInTheDocument();
     expect(screen.getByTestId('collection-list-selector')).toBeInTheDocument();
   });
 
-  it('shows Display and Row Density for non-parent collection', () => {
+  it('shows Order and Row Density for non-parent collection', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure', isParent: false })} />);
-    expect(screen.getByLabelText('Display')).toBeInTheDocument();
+    expect(screen.getByLabelText('Order')).toBeInTheDocument();
     expect(screen.getByLabelText(/Row Density/)).toBeInTheDocument();
   });
 
-  it('hides Display and Row Density for parent collection', () => {
+  it('hides Order and Row Density for parent collection', () => {
     render(
       <CollectionEditSheet
         edit={makeEdit({
@@ -297,7 +294,7 @@ describe('CollectionEditSheet — StructureTab', () => {
         })}
       />
     );
-    expect(screen.queryByLabelText('Display')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Order')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/Row Density/)).not.toBeInTheDocument();
   });
 

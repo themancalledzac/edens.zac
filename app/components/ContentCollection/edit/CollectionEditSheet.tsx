@@ -3,7 +3,6 @@
 import styles from './CollectionEditSheet.module.scss';
 import { InfoTab } from './sections/InfoTab';
 import { StructureTab } from './sections/StructureTab';
-import { TagsTab } from './sections/TagsTab';
 import { type UseCollectionEditResult } from './useCollectionEdit';
 
 interface CollectionEditSheetProps {
@@ -23,7 +22,6 @@ export function CollectionEditSheet({ edit }: CollectionEditSheetProps) {
   return (
     <div className={styles.editSheet}>
       {editTab === 'info' && <InfoTab edit={edit} />}
-      {editTab === 'tags' && <TagsTab edit={edit} />}
       {editTab === 'structure' && <StructureTab edit={edit} />}
     </div>
   );
