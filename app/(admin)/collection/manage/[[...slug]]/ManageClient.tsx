@@ -262,9 +262,14 @@ export default function ManageClient({ slug }: ManageClientProps) {
 
   /**
    * Regenerate the collection's people list from the union of all contained
-   * images' people. Confirms first because it overwrites the current list.
-   * Reloads the page on success so the refreshed list re-hydrates from the
-   * server (simpler than re-fetching just the metadata payload).
+   * images' people. Confirms first because it overwrites the current list, then
+   * re-fetches the collection metadata and updates state in place (mirroring the
+   * other save handlers) so the new list re-hydrates without a full page reload.
+   *
+   * A full `window.location.reload()` here parked the viewport on the footer:
+   * with the browser default `scrollRestoration: 'auto'`, the reload restored
+   * the pre-reload offset against this client-loaded, asynchronously-growing
+   * page. Refetching avoids the reload entirely.
    */
   const handleRegeneratePeople = useCallback(async () => {
     if (!collection) return;
@@ -278,10 +283,18 @@ export default function ManageClient({ slug }: ManageClientProps) {
     setPeopleStatus(null);
     try {
       await regenerateCollectionPeople(collection.id);
-      setPeopleStatus('People regenerated. Reloading...');
-      window.location.reload();
+      const slug = collection.slug;
+      const fullResponse = await getCollectionUpdateMetadata(slug);
+      if (fullResponse !== null) {
+        setCurrentState(fullResponse);
+        collectionStorage.update(slug, fullResponse.collection);
+        collectionStorage.updateFull(slug, fullResponse);
+        await revalidateCollectionCache(slug);
+      }
+      setPeopleStatus('People regenerated.');
     } catch (error) {
       setPeopleStatus(handleApiError(error, 'Failed to regenerate people.'));
+    } finally {
       setPeopleSaving(false);
     }
   }, [collection]);

@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 
 import { requireAdmin } from '@/app/utils/admin';
 
+import { AdminScrollManager } from './AdminScrollManager';
 import styles from './layout.module.scss';
 
 /**
@@ -23,6 +24,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   await requireAdmin(); // non-enforcing today
   return (
     <div data-surface="dark" className={styles.surface}>
+      <AdminScrollManager />
       {children}
     </div>
   );
