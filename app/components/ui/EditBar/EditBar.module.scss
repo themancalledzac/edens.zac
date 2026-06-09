@@ -4,14 +4,15 @@
   border-top: 1px solid var(--color-border);
 }
 
-// Fixed positioning — sits above page content but below any open modal.
-// z-index uses --z-sticky (500) intentionally — BELOW --z-modal (1000)
-// so the bar never floats over an open modal sheet.
+// Fixed positioning (collection-page manage bar). Sits ABOVE the edit sheet so its
+// tab row + Save are reachable. Safe to be above --z-modal because the consumer unmounts
+// this bar whenever an actual modal (image editor / text-block) is open, so the bar and a
+// modal never coexist (no bleed-through).
 .fixed {
   position: fixed;
   inset-inline: 0;
   bottom: 0;
-  z-index: var(--z-sticky, 30);
+  z-index: var(--z-modal-controls, 1002);
 }
 
 // Static positioning — flex footer inside a sheet/modal column.

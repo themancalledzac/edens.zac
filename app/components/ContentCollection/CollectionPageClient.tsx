@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import MetadataModal from '@/app/components/Metadata/MetadataModal';
@@ -80,6 +80,19 @@ export default function CollectionPageClient({
     onExitManage: editMode ? handleExitManage : undefined,
   });
 
+  // Escape exits manage mode (same as the bar's ✕). When the image/text-block modals are open they
+  // own Escape (they close themselves first), so defer to them.
+  useEffect(() => {
+    if (!editMode) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (edit.editingContent || edit.isTextBlockModalOpen) return;
+      handleExitManage();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [editMode, edit.editingContent, edit.isTextBlockModalOpen, handleExitManage]);
+
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
   const [filterState, setFilterState] = useState<FilterState>(() => ({
@@ -134,7 +147,16 @@ export default function CollectionPageClient({
     [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
-  const allContent = useMemo(() => collection.content ?? [], [collection.content]);
+  // In edit mode the base content comes from the admin metadata payload (full editable content,
+  // incl. hidden) when loaded; otherwise the public collection content. editMode=false → identical
+  // to the original `collection.content ?? []`.
+  const allContent = useMemo(
+    () =>
+      editMode
+        ? (edit.currentState?.collection?.content ?? collection.content ?? [])
+        : (collection.content ?? []),
+    [editMode, edit.currentState, collection.content]
+  );
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 
@@ -212,9 +234,11 @@ export default function CollectionPageClient({
   );
 
   const contentBlocks = useMemo(() => {
+    // Edit mode keeps hidden content visible (filterVisible=false) so it can be managed; the public
+    // path filters it out exactly as before.
     const processed = processContentBlocks(
       filteredContent,
-      true,
+      !editMode,
       collection.id,
       collection.displayMode
     );
@@ -222,7 +246,13 @@ export default function CollectionPageClient({
     // Apply date sort after layout processing to override orderIndex sort
     const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
     return mergeDateSortedImages(processed, sorted);
-  }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
+  }, [
+    filteredContent,
+    collection.id,
+    collection.displayMode,
+    filterState.dateSortDirection,
+    editMode,
+  ]);
 
   const handleFilterChange = useCallback(
     (update: Partial<FilterState>) => {
@@ -269,129 +299,146 @@ export default function CollectionPageClient({
 
   const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, hasDateVariance);
 
-  // ── Edit mode ──────────────────────────────────────────────────────────────
-  // All hooks above have run; everything below this guard is plain render, so an early return
-  // here keeps the Rules of Hooks intact. The public (editMode=false) path is the original render
-  // below and is never touched by this branch — the edit grid/bar/modals read ONLY `edit.*`.
-  if (editMode) {
-    const reorderActive = edit.reorder.active;
-    return (
-      <>
-        {/* Light edit canvas — leaves room for the fixed EditBar so content isn't hidden. */}
-        <div className={styles.editCanvas}>
-          <ContentBlockWithFullScreen
-            content={edit.displayContent}
-            priorityBlockIndex={0}
-            enableFullScreenView={false}
-            isSelectingCoverImage={edit.isSelectingCoverImage}
-            currentCoverImageId={edit.currentCoverImageId}
-            onImageClick={reorderActive ? undefined : edit.handleImageClick}
-            justClickedImageId={edit.justClickedImageId}
-            selectedIds={edit.isMultiSelectMode ? edit.selectedIds : []}
-            currentCollectionId={collection.id}
-            collectionSlug={collection.slug}
-            collectionData={collection}
-            isReorderMode={reorderActive}
-            reorderMoves={reorderActive ? edit.reorder.moves : undefined}
-            pickedUpImageId={reorderActive ? edit.reorder.pickedUpImageId : undefined}
-            reorderDisplayOrder={reorderActive ? edit.reorder.displayOrder : undefined}
-            onArrowMove={reorderActive ? edit.reorder.onArrowMove : undefined}
-            onPickUp={reorderActive ? edit.reorder.onPickUp : undefined}
-            onPlace={reorderActive ? edit.reorder.onPlace : undefined}
-            onCancelImageMove={reorderActive ? edit.reorder.onCancelImageMove : undefined}
-          />
-        </div>
+  // ── One render for both modes ────────────────────────────────────────────────
+  // The edit page IS the public render (same filter provider, toolbar, layout). editMode only swaps
+  // the grid's interaction props and overlays the EditBar/sheet/modals. editMode=false renders
+  // byte-identically to before.
+  const reorderActive = editMode && edit.reorder.active;
 
-        {/* Collection-edit sheet — the active tab's fields. The tab row + Save live in the bar. */}
-        {edit.manageMode === 'edit' && <CollectionEditSheet edit={edit} />}
-
-        {/* Fixed bottom bar. Hidden while the image modal is open — the modal owns the bar then,
-            so this never bleeds through behind it (the bleed-fix pattern). */}
-        {!edit.editingContent && (
-          <EditBar
-            ariaLabel="Manage"
-            fixed
-            cells={edit.bottomBarCells}
-            tabs={edit.bottomBarTabs}
-            activeTab={edit.editTab}
-            // EditBar's generic `onTabChange` is `(id: string) => void`; it only ever fires with
-            // one of `bottomBarTabs[].id` (info·tags·structure), so narrowing here is safe.
-            onTabChange={id => edit.setEditTab(id as typeof edit.editTab)}
-          />
-        )}
-
-        {/* Unified image/GIF metadata editor. */}
-        {edit.editingContent && edit.contentToEdit.length > 0 && (
-          <MetadataModal
-            onClose={edit.closeEditor}
-            onSaveSuccess={edit.handleMetadataSaveSuccess}
-            onGifSaveSuccess={edit.handleGifSaveSuccess}
-            onDeleteSuccess={edit.handleDeleteSuccess}
-            onRemoveFromCollectionSuccess={edit.handleDeleteSuccess}
-            availableTags={edit.currentState?.tags || []}
-            availablePeople={edit.currentState?.people || []}
-            availableCameras={edit.currentState?.cameras || []}
-            availableLenses={edit.currentState?.lenses || []}
-            availableFilmTypes={edit.currentState?.filmTypes || []}
-            availableFilmFormats={edit.currentState?.filmFormats || []}
-            availableCollections={edit.allCollections}
-            availableLocations={edit.currentState?.locations || []}
-            selectedIds={edit.selectedIds}
-            selectedImages={edit.contentToEdit}
-            currentCollectionId={collection.id}
-          />
-        )}
-
-        {/* Text-block create modal. */}
-        {edit.isTextBlockModalOpen && (
-          <TextBlockCreateModal
-            onClose={edit.closeTextBlockModal}
-            onSubmit={edit.handleTextBlockSubmit}
-          />
-        )}
-      </>
-    );
-  }
+  // During an active reorder the hook's pre-ordered list drives the grid; otherwise the shared
+  // filter pipeline (contentBlocks) does, so the toolbar stays functional in edit mode too.
+  const grid = editMode ? (
+    <ContentBlockWithFullScreen
+      content={reorderActive ? edit.displayContent : contentBlocks}
+      priorityBlockIndex={0}
+      enableFullScreenView={false}
+      isSelectingCoverImage={edit.isSelectingCoverImage}
+      currentCoverImageId={edit.currentCoverImageId}
+      onImageClick={reorderActive ? undefined : edit.handleImageClick}
+      justClickedImageId={edit.justClickedImageId}
+      selectedIds={edit.isMultiSelectMode ? edit.selectedIds : []}
+      currentCollectionId={collection.id}
+      collectionSlug={collection.slug}
+      collectionData={collection}
+      isReorderMode={reorderActive}
+      reorderMoves={reorderActive ? edit.reorder.moves : undefined}
+      pickedUpImageId={reorderActive ? edit.reorder.pickedUpImageId : undefined}
+      reorderDisplayOrder={reorderActive ? edit.reorder.displayOrder : undefined}
+      onArrowMove={reorderActive ? edit.reorder.onArrowMove : undefined}
+      onPickUp={reorderActive ? edit.reorder.onPickUp : undefined}
+      onPlace={reorderActive ? edit.reorder.onPlace : undefined}
+      onCancelImageMove={reorderActive ? edit.reorder.onCancelImageMove : undefined}
+    />
+  ) : (
+    <ContentBlockWithFullScreen
+      content={contentBlocks}
+      priorityBlockIndex={0}
+      enableFullScreenView
+      initialPageSize={pageSize}
+      chunkSize={density}
+      mobileChunkSize={mobileDensity}
+      collectionSlug={collection.slug}
+      collectionData={collection}
+      serverContentWidth={serverContentWidth}
+      serverViewportHeight={serverViewportHeight}
+      serverIsMobile={serverIsMobile}
+      selectedIds={isClientGallery ? selectedIds : undefined}
+      onImageClick={isClientGallery && isSelectMode ? handleSelectToggle : undefined}
+    />
+  );
 
   const content = (
     <>
-      <ContentBlockWithFullScreen
-        content={contentBlocks}
-        priorityBlockIndex={0}
-        enableFullScreenView
-        initialPageSize={pageSize}
-        chunkSize={density}
-        mobileChunkSize={mobileDensity}
-        collectionSlug={collection.slug}
-        collectionData={collection}
-        serverContentWidth={serverContentWidth}
-        serverViewportHeight={serverViewportHeight}
-        serverIsMobile={serverIsMobile}
-        selectedIds={isClientGallery ? selectedIds : undefined}
-        onImageClick={isClientGallery && isSelectMode ? handleSelectToggle : undefined}
-      />
-      {hasActiveFilters && filteredImages.length === 0 && (
+      {/* In edit mode the canvas leaves room for the fixed EditBar so content isn't hidden. */}
+      {editMode ? <div className={styles.editCanvas}>{grid}</div> : grid}
+      {!editMode && hasActiveFilters && filteredImages.length === 0 && (
         <p className={styles.emptyState}>No images match your filters.</p>
       )}
     </>
   );
 
   // Client galleries get the select/download provider so the in-tree Download control can drive
-  // (and read) the page-level selection state.
-  const maybeWrappedContent = isClientGallery ? (
-    <ClientGalleryDownloadProvider value={downloadContextValue}>
-      {content}
-    </ClientGalleryDownloadProvider>
-  ) : (
-    content
-  );
+  // (and read) the page-level selection state. In edit mode the EditBar owns selection instead.
+  const maybeWrappedContent =
+    isClientGallery && !editMode ? (
+      <ClientGalleryDownloadProvider value={downloadContextValue}>
+        {content}
+      </ClientGalleryDownloadProvider>
+    ) : (
+      content
+    );
 
-  // Only wrap with filter context if there are options to filter by
-  if (!hasOptions) return maybeWrappedContent;
+  // Edit affordances overlay the same render — only the bar/sheet/modals are added.
+  const editOverlays = editMode ? (
+    <>
+      {/* Collection-edit sheet — the active tab's fields. The tab row + Save live in the bar. */}
+      {edit.manageMode === 'edit' && <CollectionEditSheet edit={edit} />}
+
+      {/* Fixed bottom bar — above the edit sheet so its tabs + Save are reachable. Hidden while a
+          modal (image editor / text-block) is open, since the modal owns the bottom then and the
+          bar must not bleed over it. */}
+      {!edit.editingContent && !edit.isTextBlockModalOpen && (
+        <EditBar
+          ariaLabel="Manage"
+          fixed
+          cells={edit.bottomBarCells}
+          tabs={edit.bottomBarTabs}
+          activeTab={edit.editTab}
+          // EditBar's generic `onTabChange` is `(id: string) => void`; it only ever fires with one
+          // of `bottomBarTabs[].id` (info·tags·structure), so narrowing here is safe.
+          onTabChange={id => edit.setEditTab(id as typeof edit.editTab)}
+        />
+      )}
+
+      {/* Unified image/GIF metadata editor. */}
+      {edit.editingContent && edit.contentToEdit.length > 0 && (
+        <MetadataModal
+          onClose={edit.closeEditor}
+          onSaveSuccess={edit.handleMetadataSaveSuccess}
+          onGifSaveSuccess={edit.handleGifSaveSuccess}
+          onDeleteSuccess={edit.handleDeleteSuccess}
+          onRemoveFromCollectionSuccess={edit.handleDeleteSuccess}
+          availableTags={edit.currentState?.tags || []}
+          availablePeople={edit.currentState?.people || []}
+          availableCameras={edit.currentState?.cameras || []}
+          availableLenses={edit.currentState?.lenses || []}
+          availableFilmTypes={edit.currentState?.filmTypes || []}
+          availableFilmFormats={edit.currentState?.filmFormats || []}
+          availableCollections={edit.allCollections}
+          availableLocations={edit.currentState?.locations || []}
+          selectedIds={edit.selectedIds}
+          selectedImages={edit.contentToEdit}
+          currentCollectionId={collection.id}
+        />
+      )}
+
+      {/* Text-block create modal. */}
+      {edit.isTextBlockModalOpen && (
+        <TextBlockCreateModal
+          onClose={edit.closeTextBlockModal}
+          onSubmit={edit.handleTextBlockSubmit}
+        />
+      )}
+    </>
+  ) : null;
+
+  // Only wrap with filter context if there are options to filter by — identical for both modes, so
+  // the filter toolbar renders in edit mode exactly as it does on the public page.
+  if (!hasOptions) {
+    return editMode ? (
+      <>
+        {maybeWrappedContent}
+        {editOverlays}
+      </>
+    ) : (
+      maybeWrappedContent
+    );
+  }
 
   return (
     <CollectionFilterProvider value={filterContextValue}>
       {maybeWrappedContent}
+      {editMode && editOverlays}
     </CollectionFilterProvider>
   );
 }
