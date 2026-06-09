@@ -67,8 +67,9 @@ export function Modal({ open, onClose, variant = 'overlay', labelledBy, children
     previouslyFocusedRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-    const focusable = getFocusable();
-    (focusable[0] ?? dialogRef.current)?.focus();
+    // Focus the dialog container itself, not the first field — auto-focusing an
+    // input pops the on-screen keyboard on mobile. Tab still moves into the trap.
+    dialogRef.current?.focus();
 
     return () => {
       previouslyFocusedRef.current?.focus();

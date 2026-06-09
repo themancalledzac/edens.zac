@@ -41,14 +41,15 @@ describe('Modal', () => {
     expect(dialog).toHaveAttribute('aria-labelledby', 'dialog-title');
   });
 
-  it('moves focus to the first focusable child on open', () => {
+  it('moves focus to the dialog on open (not an input, so mobile keyboards stay closed)', () => {
     const { rerender } = render(<Harness open={false} onClose={jest.fn()} />);
     const trigger = screen.getByTestId('trigger');
     trigger.focus();
     expect(trigger).toHaveFocus();
 
     rerender(<Harness open onClose={jest.fn()} />);
-    expect(screen.getByTestId('first')).toHaveFocus();
+    expect(screen.getByRole('dialog')).toHaveFocus();
+    expect(screen.getByTestId('first')).not.toHaveFocus();
   });
 
   it('calls onClose when Escape is pressed', () => {
@@ -91,7 +92,7 @@ describe('Modal', () => {
     trigger.focus();
 
     rerender(<Harness open onClose={jest.fn()} />);
-    expect(screen.getByTestId('first')).toHaveFocus();
+    expect(screen.getByRole('dialog')).toHaveFocus();
 
     rerender(<Harness open={false} onClose={jest.fn()} />);
     expect(trigger).toHaveFocus();
