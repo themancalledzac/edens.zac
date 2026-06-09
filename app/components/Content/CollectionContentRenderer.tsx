@@ -55,7 +55,7 @@ export default function CollectionContentRenderer({
   overlayText,
   cardTypeBadge,
   enableParallax,
-  hasSlug: _hasSlug,
+  hasSlug,
   isCollection = false,
   contentType,
   textItems,
@@ -98,7 +98,7 @@ export default function CollectionContentRenderer({
   const { hasClickHandler, isSlugNav } = getClickEligibility({
     contentType,
     isReorderMode,
-    hasSlug: _hasSlug,
+    hasSlug: hasSlug,
     onImageClick,
     enableFullScreenView,
     onFullScreenImageClick,
@@ -107,7 +107,7 @@ export default function CollectionContentRenderer({
   const handleClick = useCallback(() => {
     if (contentType === 'TEXT') return;
     if (isReorderMode) return;
-    if (_hasSlug && !onImageClick) return; // navigation handled by <Tile href>
+    if (hasSlug && !onImageClick) return; // navigation handled by <Tile href>
 
     const fullScreenContent: ViewableContent =
       contentType === 'GIF'
@@ -144,7 +144,7 @@ export default function CollectionContentRenderer({
     onImageClick,
     enableFullScreenView,
     onFullScreenImageClick,
-    _hasSlug,
+    hasSlug,
     isReorderMode,
   ]);
 
@@ -401,7 +401,7 @@ export default function CollectionContentRenderer({
       return (
         <Tile
           key={contentId}
-          href={`/${_hasSlug}`}
+          href={`/${hasSlug}`}
           aria-label={overlayText ?? alt}
           className={placeholderClassName}
           style={{ width: placeholderWidth, height: placeholderHeight }}
@@ -568,7 +568,7 @@ export default function CollectionContentRenderer({
     return (
       <Tile
         key={contentId}
-        href={`/${_hasSlug}`}
+        href={`/${hasSlug}`}
         aria-label={overlayText ?? alt}
         className={wrapperProps.className}
         style={wrapperProps.style}
