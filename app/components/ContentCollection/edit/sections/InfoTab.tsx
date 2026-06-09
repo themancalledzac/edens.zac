@@ -169,7 +169,7 @@ export function InfoTab({ edit }: InfoTabProps) {
         emptyText="No locations set"
       />
 
-      <div className={styles.formGridHalf}>
+      <div className={styles.inlineHalfRow}>
         <div>
           <Field label="Visibility" htmlFor="edit-sheet-visibility">
             <Select

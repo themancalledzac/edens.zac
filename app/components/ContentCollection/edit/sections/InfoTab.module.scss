@@ -98,6 +98,17 @@
   }
 }
 
+.inlineHalfRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  align-items: start;
+
+  > * {
+    min-width: 0;
+  }
+}
+
 .actionRow {
   display: flex;
   flex-wrap: wrap;
