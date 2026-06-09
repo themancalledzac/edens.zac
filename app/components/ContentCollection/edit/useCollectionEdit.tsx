@@ -81,22 +81,16 @@ export interface UseCollectionEditParams {
   slug: string;
   /** When false the hook is inert — no fetch, browse defaults only. */
   enabled: boolean;
-  /**
-   * Optional exit-manage handler. When provided, a ✕ cell is appended to the BROWSE bottom bar
-   * (Select · Reorder · Add · Edit · ✕) that calls this to leave the edit surface back to the
-   * public view. Other modes have their own Cancel/Done, so the ✕ is browse-only.
-   */
+  /** Optional exit-manage handler; appends the rightmost browse-bar Cancel that leaves to public. */
   onExitManage?: () => void;
 }
 
 export interface UseCollectionEditResult {
   manageMode: ManageMode;
 
-  // Fetched metadata (tags/people/.../editable collection) — null until loaded or when disabled.
   currentState: CollectionUpdateResponseDTO | null;
   isLoadingState: boolean;
 
-  // Grid wiring
   displayContent: AnyContentModel[];
   handleImageClick: (imageId: number) => void;
   reorder: {
@@ -121,11 +115,9 @@ export interface UseCollectionEditResult {
   /** True for PARENT-type collections: hides density/display, shows the child cover picker. */
   isParent: boolean;
 
-  // Selection
   selectedIds: number[];
   isMultiSelectMode: boolean;
 
-  // Edit sheet
   editTab: CollectionEditTab;
   setEditTab: (tab: CollectionEditTab) => void;
   updateData: CollectionUpdateRequest;
@@ -137,7 +129,6 @@ export interface UseCollectionEditResult {
   saving: boolean;
   handleUpdate: () => Promise<void>;
 
-  // People / access (separate-save handlers lifted as-is)
   collectionPeople: ContentPersonModel[];
   setCollectionPeople: (people: ContentPersonModel[]) => void;
   peopleSaving: boolean;
@@ -153,11 +144,9 @@ export interface UseCollectionEditResult {
   handleSaveAccess: () => Promise<void>;
   handleClearPassword: () => Promise<void>;
 
-  // Child-collection picker — original (pre-existing) surface, kept for back-compat.
   originalCollectionIds: Set<number>;
   handleCollectionToggle: (toggled: CollectionListModel) => void;
 
-  // Structure tab — collection selectors (child / sibling / parent triples), retype, rating.
   /** Every collection in the system — the option list for the collection selectors. */
   allCollections: CollectionListModel[];
   /** Drag-to-retype a collection in the selector accordion. */
@@ -166,24 +155,19 @@ export interface UseCollectionEditResult {
   childIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleChildToggle: (toggled: CollectionListModel) => void;
   handleAddNewChild: () => Promise<void>;
-  /** Sibling-collection (mutual association) triple. */
   siblingIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleSiblingToggle: (toggled: CollectionListModel) => void;
-  /** Parent-collection (inverse containment) triple. */
   parentIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleParentToggle: (toggled: CollectionListModel) => void;
   /** Rate a child collection inline (home collection only). Immediate — no save button. */
   updateCollectionRating: (id: number, rating: number | null) => Promise<void>;
 
-  // Info tab — locations.
   currentLocations: LocationModel[];
   handleLocationsChange: (value: LocationModel | LocationModel[] | null) => void;
 
-  // Tags tab — collection tags.
   currentTags: ContentTagModel[];
   handleTagsChange: (tags: ContentTagModel[]) => void;
 
-  // Text-block create flow.
   isTextBlockModalOpen: boolean;
   closeTextBlockModal: () => void;
   handleTextBlockSubmit: (data: {
@@ -192,39 +176,27 @@ export interface UseCollectionEditResult {
     align: 'left' | 'center' | 'right';
   }) => Promise<void>;
 
-  // Image modal
   editingContent: EditableContent | null;
   closeEditor: () => void;
   contentToEdit: EditableContent[];
 
-  // Metadata-save success handlers
   handleMetadataSaveSuccess: (response: ContentImageUpdateResponse) => Promise<void>;
   handleGifSaveSuccess: (updated: ContentGifModel) => Promise<void>;
   handleDeleteSuccess: (deletedIds: number[]) => Promise<void>;
 
-  // Mode transitions
   enterSelect: () => void;
   enterReorder: () => void;
   enterAdd: () => void;
   enterEdit: () => void;
   exitToBrowse: () => void;
 
-  // EditBar config for the COLLECTION contexts (NOT the image modal).
   bottomBarTabs?: EditBarTab[];
   bottomBarCells: EditBarCell[];
   error: string | null;
 }
 
 /**
- * Faithful lift of ManageClient's collection-edit brain into a reusable hook.
- *
- * Owns the same `currentState` (full CollectionUpdateResponseDTO) source of truth that
- * ManageClient owns. When `enabled`, performs the same cache-first metadata fetch
- * (collectionStorage.getFull(slug) → getCollectionUpdateMetadata(slug)) ManageClient runs
- * via useCollectionData. When not enabled, it is inert: no fetch, browse defaults.
- *
- * The consumer-provided `collection` seeds all derived logic until the metadata fetch
- * resolves — internal `collection` = currentState?.collection ?? props.collection.
+ * Collection-edit state and actions for the manage surface; inert when `enabled` is false.
  */
 export function useCollectionEdit({
   collection: seedCollection,
@@ -235,14 +207,11 @@ export function useCollectionEdit({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
-  // Single source of truth: CollectionUpdateResponseDTO contains collection + all metadata.
   const [currentState, setCurrentState] = useState<CollectionUpdateResponseDTO | null>(null);
 
-  // Separate loading state for operations (update, upload, etc.).
   const [operationLoading, setOperationLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Cache-first metadata fetch — lifted from useCollectionData. Inert when disabled.
   const [isLoadingState, setIsLoadingState] = useState(enabled);
 
   useEffect(() => {
@@ -251,7 +220,6 @@ export function useCollectionEdit({
       return;
     }
 
-    // Already loaded this slug — skip refetch (mirrors useCollectionData's currentSlug guard).
     if (currentState?.collection.slug === slug) {
       setIsLoadingState(false);
       return;
@@ -265,7 +233,6 @@ export function useCollectionEdit({
         setIsLoadingState(true);
         setError(null);
 
-        // Check full cache first for instant load (includes metadata arrays).
         const cachedResponse = collectionStorage.getFull(slug);
         if (cachedResponse) {
           if (isMounted && !abortController.signal.aborted) {
@@ -300,11 +267,8 @@ export function useCollectionEdit({
     };
   }, [enabled, slug, currentState?.collection.slug]);
 
-  // Working collection: the fetched metadata's collection wins; otherwise the consumer seed.
   const collection = currentState?.collection ?? seedCollection;
 
-  // All collections in the system — the option list for the Structure-tab collection selectors.
-  // Inert when disabled (mirrors the metadata fetch above).
   const [allCollections, setAllCollections] = useState<CollectionListModel[]>([]);
 
   useEffect(() => {
@@ -314,26 +278,19 @@ export function useCollectionEdit({
     });
   }, [enabled]);
 
-  // Drag-and-drop retype: drop a collection on a different type header to reassign its type.
-  // Optimistically re-buckets it in the selector accordion; reverts on failure.
   const { handleChangeType } = useCollectionRetype({ setAllCollections, setError });
 
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isTextBlockModalOpen, setIsTextBlockModalOpen] = useState(false);
 
-  // Bottom-bar mode flags for the two modes with no pre-existing state of their own.
   const [isAddMode, setIsAddMode] = useState(false);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
 
-  // Active tab within the Edit sheet (Access tab removed — Info·Tags·Structure).
   const [editTab, setEditTab] = useState<CollectionEditTab>('info');
 
   const { editingContent, openEditor, closeEditor: baseCloseEditor } = useMetadataEditor();
 
-  /**
-   * Wraps `baseCloseEditor` to clear `selectedIds` when closing in single-edit mode.
-   */
   const closeEditor = useCallback(() => {
     if (!isMultiSelectMode) {
       setSelectedIds([]);
@@ -378,8 +335,6 @@ export function useCollectionEdit({
     []
   );
 
-  // People — collection-level people list, edited inline. Saved/regenerated via their own
-  // admin endpoints (separate from the metadata Update flow).
   const [collectionPeople, setCollectionPeopleState] = useState<ContentPersonModel[]>([]);
   const [peopleSaving, setPeopleSaving] = useState(false);
   const [peopleStatus, setPeopleStatus] = useState<string | null>(null);
@@ -389,10 +344,6 @@ export function useCollectionEdit({
     setPeopleStatus(null);
   }, [collection.id, collection.people]);
 
-  /**
-   * Save the current people list. Sends only existing person IDs; new people created inline
-   * (id === 0) are skipped because the backend endpoint reconciles by ID.
-   */
   const handleSavePeople = useCallback(async () => {
     if (!collection) return;
     setPeopleSaving(true);
@@ -408,10 +359,6 @@ export function useCollectionEdit({
     }
   }, [collection, collectionPeople]);
 
-  /**
-   * Regenerate the collection's people list from the union of all contained images' people.
-   * Confirms first; reloads the page on success.
-   */
   const handleRegeneratePeople = useCallback(async () => {
     if (!collection) return;
     if (
@@ -432,7 +379,6 @@ export function useCollectionEdit({
     }
   }, [collection]);
 
-  // Gallery Access — local state for the CLIENT_GALLERY password section.
   const [galleryPassword, setGalleryPasswordInput] = useState('');
   const [galleryEmail, setGalleryEmail] = useState('');
   const [galleryStatus, setGalleryStatus] = useState<string | null>(null);
@@ -487,10 +433,6 @@ export function useCollectionEdit({
     }, []),
   });
 
-  /**
-   * The active bottom-bar mode, derived from the underlying state so it can never desync.
-   * Reorder wins over Select; Edit and Add are explicit.
-   */
   const deriveManageMode = (): ManageMode => {
     if (reorderState.active) return 'reorder';
     if (isMultiSelectMode) return 'select';
@@ -500,16 +442,11 @@ export function useCollectionEdit({
   };
   const manageMode = deriveManageMode();
 
-  /**
-   * Whether the collection-update form has unsaved changes. Reuses `buildUpdatePayload`;
-   * a payload of just `{ id }` means nothing changed.
-   */
   const isUpdateDirty = useMemo(
     () => (collection ? Object.keys(buildUpdatePayload(updateData, collection)).length > 1 : false),
     [updateData, collection]
   );
 
-  /** Leave any non-browse mode and clear its transient state. */
   const resetToBrowse = useCallback(() => {
     setIsMultiSelectMode(false);
     setSelectedIds([]);
@@ -518,19 +455,10 @@ export function useCollectionEdit({
     if (isSelectingCoverImage) setIsSelectingCoverImage(false);
   }, [isSelectingCoverImage, setIsSelectingCoverImage]);
 
-  // Leaving manage: the same CollectionPageClient instance stays mounted across the soft nav back
-  // to the public view (the no-remount design), so this hook's mode state would otherwise persist
-  // and a later re-entry would reopen the previously-open sub-view. Reset to browse on exit so
-  // re-entering manage always starts on the manage page. The `!enabled` guard means this never
-  // fires mid-session, only when manage is left.
   useEffect(() => {
     if (!enabled) resetToBrowse();
   }, [enabled, resetToBrowse]);
 
-  /**
-   * Content blocks the metadata modal should edit. Mixes images and GIFs; bulk-edit semantics
-   * key off the IMAGE subset.
-   */
   const contentToEdit = useMemo(
     () =>
       (collection.content?.filter(
@@ -541,9 +469,6 @@ export function useCollectionEdit({
     [selectedIds, collection.content]
   );
 
-  // PARENT-type collections hide the density/display controls and pick their cover from child
-  // images instead of their own grid. Gated off the in-flight `updateData.type` (not the saved
-  // type) so the controls react live as the user changes the type in the Structure tab.
   const isParent = isParentType(updateData.type);
 
   const displayedCoverImage = useMemo(
@@ -556,17 +481,11 @@ export function useCollectionEdit({
     [collection, updateData.coverImageId, currentState?.childCollectionImages]
   );
 
-  /**
-   * Handle opening the text block creation modal.
-   */
   const handleCreateNewTextBlock = useCallback(() => {
     if (!collection) return;
     setIsTextBlockModalOpen(true);
   }, [collection]);
 
-  /**
-   * Handle update form submission.
-   */
   const handleUpdate = useCallback(async () => {
     if (!collection || !currentState) return;
 
@@ -584,12 +503,9 @@ export function useCollectionEdit({
         void revalidateCollectionCache(response.collection.slug);
 
         if (response.collection.slug !== collection.slug) {
-          // Renaming the slug: stay in edit mode on the new slug's /[slug] route via ?manage=1.
           router.replace(`/${response.collection.slug}?manage=1`);
         }
 
-        // Location inheritance: if locations were just set (not all removed), apply them to
-        // all images in this collection that have no locations.
         const locationsUpdate = payload.locations;
         if (
           locationsUpdate &&
@@ -638,10 +554,6 @@ export function useCollectionEdit({
     }
   }, [collection, currentState, updateData, router]);
 
-  /**
-   * Save gallery access. If a recipient email is provided, sets the password and emails it;
-   * otherwise stores the password only.
-   */
   const handleSaveAccess = useCallback(async () => {
     if (!collection) return;
     if (galleryPassword.length < 4) {
@@ -657,7 +569,6 @@ export function useCollectionEdit({
             .map(e => e.trim())
             .filter(Boolean)
         : undefined;
-      // PARENT collections can share their password with every child client gallery.
       const isParent = collection.type === CollectionType.PARENT;
       const propagateToChildren = isParent
         ? window.confirm(
@@ -687,9 +598,6 @@ export function useCollectionEdit({
     }
   }, [collection, galleryPassword, galleryEmail]);
 
-  /**
-   * "Clear Password" — sends null to the backend, which nulls out the password hash.
-   */
   const handleClearPassword = useCallback(async () => {
     if (!collection) return;
     setGallerySaving(true);
@@ -706,10 +614,6 @@ export function useCollectionEdit({
     }
   }, [collection]);
 
-  /**
-   * Handle media upload. Partitions selected files by type: gif/mp4/mov → gifs endpoint,
-   * everything else → images endpoint.
-   */
   const handleMediaUpload = useCallback(
     async (files: FileList) => {
       if (!collection || files.length === 0) return;
@@ -729,7 +633,7 @@ export function useCollectionEdit({
             if (imageFiles.length > 0) {
               const formData = new FormData();
               for (const file of imageFiles) {
-                formData.append('files', file); // Backend expects 'files' field
+                formData.append('files', file);
               }
               await createImages(collection.id, formData);
             }
@@ -762,10 +666,6 @@ export function useCollectionEdit({
     [collection]
   );
 
-  /**
-   * Handle text block creation (kept here for the Add-mode "Text" flow; the modal that
-   * collects the body lives in the consumer).
-   */
   const handleTextBlockSubmit = useCallback(
     async (data: {
       content: string;
@@ -809,16 +709,10 @@ export function useCollectionEdit({
   );
   const closeTextBlockModal = useCallback(() => setIsTextBlockModalOpen(false), []);
 
-  /**
-   * Handle multi-select toggle.
-   */
   const handleMultiSelectToggle = useCallback((imageId: number) => {
     setSelectedIds(prev => handleMultiSelectToggleUtil(imageId, prev));
   }, []);
 
-  /**
-   * Handle bulk edit - open modal with selected images.
-   */
   const handleBulkEdit = useCallback(() => {
     if (selectedIds.length === 0 || !collection?.content) return;
 
@@ -832,7 +726,6 @@ export function useCollectionEdit({
       return;
     }
 
-    // No images in the selection — fall back to editing the first selected GIF/MP4.
     const selectedGif = collection.content.find(
       (block): block is ContentGifModel => isGifContent(block) && selectedIds.includes(block.id)
     );
@@ -854,9 +747,6 @@ export function useCollectionEdit({
     setIsMultiSelectMode,
   });
 
-  /**
-   * Handle successful metadata save - updates currentState with API response.
-   */
   const handleMetadataSaveSuccess = useCallback(
     async (response: ContentImageUpdateResponse) => {
       if (!currentState?.collection.content || !currentState.collection.slug) return;
@@ -875,7 +765,6 @@ export function useCollectionEdit({
           await revalidateCollectionCache(stateSlug);
           void revalidateMetadataCache();
 
-          // Merge metadata into the fresh response using functional updater to avoid stale closure.
           setCurrentState(prev => {
             const base = fullResponse;
             const metadataUpdater = mergeNewMetadata(response, prev ?? base);
@@ -892,10 +781,6 @@ export function useCollectionEdit({
     [currentState]
   );
 
-  /**
-   * Handle successful GIF metadata save — refreshes the collection so the new rating flows
-   * into the layout.
-   */
   const handleGifSaveSuccess = useCallback(
     async (updated: ContentGifModel) => {
       if (!currentState?.collection.slug) return;
@@ -917,9 +802,6 @@ export function useCollectionEdit({
     [currentState]
   );
 
-  /**
-   * Handle successful image deletion - refreshes collection data.
-   */
   const handleDeleteSuccess = useCallback(
     async (_deletedIds: number[]) => {
       if (!currentState?.collection.slug) {
@@ -952,10 +834,6 @@ export function useCollectionEdit({
     [currentState]
   );
 
-  /**
-   * Remove the selected images from THIS collection (non-destructive). Mirrors the metadata
-   * editor's remove-from-collection.
-   */
   const handleBulkRemove = useCallback(async () => {
     if (selectedIds.length === 0 || !collection) return;
     const imageSubset =
@@ -993,8 +871,6 @@ export function useCollectionEdit({
     }
   }, [selectedIds, collection, currentState?.filmTypes, handleDeleteSuccess]);
 
-  // Child-collection picker triple. Saved children come from the content blocks (containment);
-  // pending add/remove come from the discrete `collections` update.
   const originalChildIds = useMemo(
     () =>
       (collection.content ?? [])
@@ -1013,23 +889,16 @@ export function useCollectionEdit({
     child => child.collectionId
   );
 
-  /**
-   * Derive current locations from `collection.locations` and `updateData.locations`.
-   *
-   * Priority: pending `updateData.locations` overrides the saved collection locations.
-   */
   const currentLocations: LocationModel[] = useMemo(() => {
     const availableLocations = currentState?.locations || [];
 
     const locationsUpdate = updateData.locations;
     if (locationsUpdate) {
       const result: LocationModel[] = [];
-      // Resolve prev IDs to models
       for (const id of locationsUpdate.prev ?? []) {
         const found = availableLocations.find(loc => loc.id === id);
         if (found) result.push(found);
       }
-      // Add new locations (not yet created)
       for (const name of locationsUpdate.newValue ?? []) {
         result.push({ id: 0, name, slug: '' });
       }
@@ -1044,11 +913,6 @@ export function useCollectionEdit({
     [collection.locations, currentState?.locations]
   );
 
-  /**
-   * Handle locations selection changes (multi-select). Diffs the new selection against the saved
-   * baseline so deselecting a location emits `remove` — the backend reconciler only drops what is
-   * in `remove`, never what's absent from `prev`.
-   */
   const handleLocationsChange = useCallback(
     (value: LocationModel | LocationModel[] | null) => {
       let locations: LocationModel[] = [];
@@ -1063,24 +927,16 @@ export function useCollectionEdit({
     [originalLocations]
   );
 
-  /**
-   * Derive current tags from `collection.tags` and `updateData.tags`. Mirrors `currentLocations`.
-   *
-   * Priority: pending `updateData.tags` overrides the saved collection tags. Saved tags arrive as
-   * `string[]` names, so they are resolved against the available tag list to recover IDs.
-   */
   const currentTags: ContentTagModel[] = useMemo(() => {
     const availableTags = currentState?.tags || [];
 
     const tagsUpdate = updateData.tags;
     if (tagsUpdate) {
       const result: ContentTagModel[] = [];
-      // Resolve prev IDs to models
       for (const id of tagsUpdate.prev ?? []) {
         const found = availableTags.find(tag => tag.id === id);
         if (found) result.push(found);
       }
-      // Add new tags (not yet created)
       for (const name of tagsUpdate.newValue ?? []) {
         result.push({ id: 0, name, slug: '' });
       }
@@ -1095,11 +951,6 @@ export function useCollectionEdit({
     [collection.tags, currentState?.tags]
   );
 
-  /**
-   * Handle tags selection changes (multi-select). Mirrors `handleLocationsChange`: diffs against
-   * the saved baseline so deselecting/clearing tags emits `remove` and actually persists.
-   * `TagsSelector` already hands back a normalized `ContentTagModel[]`.
-   */
   const handleTagsChange = useCallback(
     (tags: ContentTagModel[]) => {
       setUpdateData(prev => ({
@@ -1110,10 +961,6 @@ export function useCollectionEdit({
     [originalTags]
   );
 
-  /**
-   * Handle child-collection toggle from CollectionListSelector. Child rows carry
-   * `visible`/`orderIndex` in their `newValue` entry (containment metadata).
-   */
   const handleCollectionToggle = useCallback(
     (toggledCollection: CollectionListModel) => {
       setUpdateData(prev => ({
@@ -1134,11 +981,6 @@ export function useCollectionEdit({
     [originalCollectionIds]
   );
 
-  /**
-   * Sibling-collection selection state — mirrors the child-collection state above, but the saved
-   * IDs derive from `collection.siblings` (mutual association) rather than from `collection.content`
-   * (containment).
-   */
   const originalSiblingIdsArray = useMemo(
     () => (collection.siblings ?? []).map(sib => sib.id),
     [collection.siblings]
@@ -1154,10 +996,6 @@ export function useCollectionEdit({
     sib => sib.collectionId
   );
 
-  /**
-   * Toggle a sibling link. Same engine as handleCollectionToggle, but sibling rows carry only
-   * { collectionId, name } — no orderIndex/visible (siblings have neither).
-   */
   const handleSiblingToggle = useCallback(
     (toggledCollection: CollectionListModel) => {
       setUpdateData(prev => ({
@@ -1171,11 +1009,6 @@ export function useCollectionEdit({
     [originalSiblingIds]
   );
 
-  /**
-   * Parent-collection selection state — mirrors the sibling-collection state above, but the saved
-   * IDs derive from `collection.parents` (the inverse of the child containment relation, surfaced
-   * by admin/manage reads).
-   */
   const originalParentIdsArray = useMemo(
     () => (collection.parents ?? []).map(parent => parent.id),
     [collection.parents]
@@ -1191,10 +1024,6 @@ export function useCollectionEdit({
     parent => parent.collectionId
   );
 
-  /**
-   * Toggle a parent link. Same engine as handleSiblingToggle; parent rows carry only
-   * { collectionId, name } (parents have neither orderIndex nor visible here).
-   */
   const handleParentToggle = useCallback(
     (toggledCollection: CollectionListModel) => {
       setUpdateData(prev => ({
@@ -1208,9 +1037,6 @@ export function useCollectionEdit({
     [originalParentIds]
   );
 
-  /**
-   * Handle adding new child collection.
-   */
   const handleAddNewChild = useCallback(async () => {
     if (!collection) {
       logger.warn(
@@ -1233,7 +1059,6 @@ export function useCollectionEdit({
       await revalidateCollectionCache(collection.slug);
 
       if (response !== null) {
-        // New child opens in the edit surface on its own /[slug] route via ?manage=1.
         router.push(`/${response.collection.slug}?manage=1`);
       }
     } catch (error_) {
@@ -1243,25 +1068,17 @@ export function useCollectionEdit({
     }
   }, [collection, router]);
 
-  // ── Mode transitions ──
   const enterSelect = useCallback(() => setIsMultiSelectMode(true), []);
   const enterReorder = useCallback(() => handleEnterReorderMode(), [handleEnterReorderMode]);
   const enterAdd = useCallback(() => setIsAddMode(true), []);
   const enterEdit = useCallback(() => setIsEditSheetOpen(true), []);
   const exitToBrowse = resetToBrowse;
 
-  // ── EditBar config builders ──
-
-  /**
-   * Reproduce ManageClient.renderBottomBar's per-mode cell sets exactly, as EditBarCell[].
-   */
   const isParentCollection = collection.type === CollectionType.PARENT;
   const isLoading = isLoadingState || operationLoading;
 
   const bottomBarCells = useMemo<EditBarCell[]>(() => {
     if (manageMode === 'reorder') {
-      // "Save" (not "Done") so the commit action reads + sits identically to the edit views:
-      // primary, second-from-right, with Cancel on the far right.
       return [
         {
           key: 'save',
@@ -1275,8 +1092,6 @@ export function useCollectionEdit({
     }
 
     if (manageMode === 'select') {
-      // Slot order mirrors the edit views: … · [destructive] · [primary] · Cancel. So the rightmost
-      // cells line up everywhere — Remove (danger) third, Edit(n) (primary) second, Cancel last.
       const cells: EditBarCell[] = [
         {
           key: 'all',
@@ -1358,7 +1173,6 @@ export function useCollectionEdit({
       ];
     }
 
-    // browse
     const cells: EditBarCell[] = [
       { key: 'select', label: 'Select', onClick: () => setIsMultiSelectMode(true) },
       {
@@ -1372,9 +1186,6 @@ export function useCollectionEdit({
       cells.push({ key: 'add', label: 'Add', onClick: () => setIsAddMode(true) });
     }
     cells.push({ key: 'edit', label: 'Edit', onClick: () => setIsEditSheetOpen(true) });
-    // The rightmost cell is always "Cancel" (back one level). In browse that means exit the manage
-    // surface back to the public view; in every other state it returns to browse. Same label, same
-    // spot, everywhere.
     if (onExitManage) {
       cells.push({ key: 'cancel', label: 'Cancel', onClick: onExitManage });
     }
@@ -1466,7 +1277,6 @@ export function useCollectionEdit({
     originalCollectionIds,
     handleCollectionToggle,
 
-    // Structure tab — collection selectors, retype, rating.
     allCollections,
     handleChangeType,
     childIds: {
@@ -1490,7 +1300,6 @@ export function useCollectionEdit({
     handleParentToggle,
     updateCollectionRating,
 
-    // Info / Tags tabs — locations + tags field wiring.
     currentLocations,
     handleLocationsChange,
     currentTags,

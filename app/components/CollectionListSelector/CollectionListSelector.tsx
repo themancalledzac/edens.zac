@@ -144,8 +144,6 @@ export default function CollectionListSelector({
   onChangeType,
   grouped,
 }: CollectionListSelectorProps) {
-  // Independent hover state per column so remove-intent (red) on one checkbox
-  // never lights up the other column's checkbox.
   const [hoveredChildId, setHoveredChildId] = useState<number | null>(null);
   const [hoveredSiblingId, setHoveredSiblingId] = useState<number | null>(null);
 
@@ -164,8 +162,6 @@ export default function CollectionListSelector({
     [allCollections, excludeCollectionId]
   );
 
-  // Pin the "current" collection to the top so the gallery being edited leads the list; every
-  // other row keeps its incoming order. No-op when pinnedCollectionId is absent or not in the list.
   const orderedCollections = useMemo(
     () =>
       pinnedCollectionId == null
@@ -177,7 +173,6 @@ export default function CollectionListSelector({
     [filteredCollections, pinnedCollectionId]
   );
 
-  // The type of the current ("you are here") collection, used to auto-open its section.
   const currentCollectionType = useMemo(
     () =>
       currentCollectionId == null
@@ -186,13 +181,8 @@ export default function CollectionListSelector({
     [allCollections, currentCollectionId]
   );
 
-  // Accordion mode engages whenever a second (Sibling) or third (Parent) toggle column is present.
-  // Rows are then grouped + collapsed by CollectionType; single-column mode keeps its flat list.
   const [expandedType, setExpandedType] = useState<CollectionType | null>(null);
 
-  // Auto-expand the section the current collection lives in, on load and whenever
-  // we navigate to a different collection. Only fires when currentCollectionType
-  // changes, so it never overrides a manual collapse/expand within the same collection.
   useEffect(() => {
     if (
       currentCollectionType &&
@@ -204,9 +194,6 @@ export default function CollectionListSelector({
   }, [currentCollectionType]);
   const accordionMode = siblingMode || parentMode || Boolean(grouped);
 
-  // Drag-and-drop retype state. `draggedRef` is the source of truth for a drop
-  // (set on dragstart, read on drop); `draggedId` dims the dragged row;
-  // `dragOverType` highlights the assignable header under the pointer.
   const draggedRef = useRef<CollectionListModel | null>(null);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [dragOverType, setDragOverType] = useState<CollectionType | null>(null);
@@ -233,7 +220,7 @@ export default function CollectionListSelector({
   const handleHeaderDragOver = useCallback(
     (type: CollectionType) => (e: DragEvent<HTMLButtonElement>) => {
       if (!draggedRef.current) return;
-      e.preventDefault(); // allow drop
+      e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
       setDragOverType(type);
     },
@@ -242,7 +229,7 @@ export default function CollectionListSelector({
 
   const handleHeaderDragLeave = useCallback(
     (type: CollectionType) => (e: DragEvent<HTMLButtonElement>) => {
-      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return; // child still inside
+      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
       setDragOverType(prev => (prev === type ? null : prev));
     },
     []
@@ -265,10 +252,6 @@ export default function CollectionListSelector({
     const map = new Map<string, CollectionListModel[]>();
     for (const t of COLLECTION_TYPE_ORDER) map.set(t, []);
     for (const c of orderedCollections) {
-      // Bucket any unknown/missing type into MISC so it can't create a phantom
-      // map key the render loop (which iterates only COLLECTION_TYPE_ORDER) never
-      // shows. `t` is therefore always one of the pre-seeded keys, so `map.get(t)!`
-      // is safe.
       const t =
         c.type && COLLECTION_TYPE_ORDER.includes(c.type as CollectionType)
           ? (c.type as string)
@@ -281,8 +264,6 @@ export default function CollectionListSelector({
 
   const handleRowClick = useCallback(
     (collection: CollectionListModel) => {
-      // In two-column mode the row hosts two independent toggles, so a bare
-      // row-body click is a no-op unless an explicit navigate handler is given.
       if (onNavigate) {
         onNavigate(collection);
       } else if (!siblingMode) {
@@ -292,9 +273,6 @@ export default function CollectionListSelector({
     [onNavigate, onToggle, siblingMode]
   );
 
-  // Renders one checkbox button for a column, with its own hover/remove-intent.
-  // When `disabled` is set (Child↔Parent mutual exclusion) the button is dimmed,
-  // ignores clicks/hover, and exposes its `disabledReason` as a hover tooltip.
   const renderCheckbox = (
     collection: CollectionListModel,
     selection: SelectionState,
@@ -327,23 +305,15 @@ export default function CollectionListSelector({
     );
   };
 
-  // Renders one collection row. In accordion (sibling/parent) mode the row carries the
-  // Sibling | Child toggles (the type label moves to the accordion header) and gets an
-  // `expandedRow` tint when shown under an open group; single-column mode is unchanged.
   const renderRow = (collection: CollectionListModel, expanded: boolean) => {
     const childSelection: SelectionState = {
       savedIds: savedCollectionIds,
       pendingAddIds,
       pendingRemoveIds,
     };
-    // The current ("you are here") collection stays visible but greyed-out with every toggle
-    // disabled — it can't be a sibling/child/parent of itself.
     const isCurrent = currentCollectionId != null && collection.id === currentCollectionId;
     const currentReason = "This is the collection you're editing — it can't be related to itself.";
     if (siblingMode || parentMode || grouped) {
-      // Child↔Parent mutual exclusion: a row that is *actively* a Child (saved & not
-      // pending-removal, or pending-add) may not also be a Parent, and vice-versa.
-      // A saved-but-pending-removal selection is NOT active, so it doesn't disable the other.
       const isActivelyChild =
         (savedCollectionIds.has(collection.id) && !pendingRemoveIds.has(collection.id)) ||
         pendingAddIds.has(collection.id);
@@ -357,9 +327,6 @@ export default function CollectionListSelector({
       const disabledReason =
         'A collection cannot be both a parent and a child of the same collection.';
 
-      // Precompute each toggle's disabled-reason tooltip: the "current" collection always
-      // wins (it can't relate to itself); otherwise fall back to the mutual-exclusion reason.
-      // Hoisted to locals to avoid a nested ternary at the call sites below.
       let childReason: string | undefined;
       if (isCurrent) childReason = currentReason;
       else if (childDisabled) childReason = disabledReason;
@@ -367,9 +334,6 @@ export default function CollectionListSelector({
       if (isCurrent) parentReason = currentReason;
       else if (parentDisabled) parentReason = disabledReason;
 
-      // These optional sets are only read under their respective mode guards
-      // (siblingMode for sibling, parentMode for parent), so the non-null
-      // assertions are safe at every call site below.
       const siblingSelection: SelectionState = {
         savedIds: siblingSavedIds!,
         pendingAddIds: siblingPendingAddIds!,
@@ -381,9 +345,6 @@ export default function CollectionListSelector({
         pendingRemoveIds: parentPendingRemoveIds!,
       };
 
-      // The name cell: the current collection renders a plain "(current)" label (never a
-      // navigate button — it must not self-navigate); otherwise a navigate button when
-      // onNavigate is supplied, else a plain span. Hoisted to avoid a nested ternary in JSX.
       let nameElement: ReactNode;
       if (isCurrent) {
         nameElement = (
@@ -407,12 +368,9 @@ export default function CollectionListSelector({
         nameElement = <span className={styles.name}>{collection.name}</span>;
       }
 
-      // A row is draggable (to retype it) only when DnD is enabled, and never for the
-      // current ("you are here") collection or a HOME row (HOME is a pinned singleton).
       const isHome = collection.type === CollectionType.HOME;
       const rowDraggable = dragEnabled && !isCurrent && !isHome;
 
-      // Two-column mode: name on the left, Sibling | Child toggles aligned on the right.
       return (
         <div
           key={collection.id}
@@ -495,14 +453,9 @@ export default function CollectionListSelector({
     );
   };
 
-  // Body shown when there is at least one collection: the grouped accordion when a
-  // second/third toggle column is active, otherwise the flat single-column list.
-  // Kept as a local so the empty-state vs. content choice stays a single (non-nested)
-  // ternary in the JSX below.
   const listBody =
     accordionMode && groupsByType ? (
       <>
-        {/* HOME is pinned above the accordion — always visible, never collapsible. */}
         {(groupsByType.get(CollectionType.HOME) ?? []).map(c => renderRow(c, false))}
         {COLLECTION_TYPE_ORDER.filter(t => t !== CollectionType.HOME).map(t => {
           const rows = groupsByType.get(t) ?? [];
@@ -552,7 +505,6 @@ export default function CollectionListSelector({
       {(siblingMode || parentMode) && (
         <div className={styles.columnHeaderRow}>
           <span className={styles.columnHeaderName}>Collection Name</span>
-          {/* "Catalog Type" column removed — type is the accordion section header */}
           {siblingMode && (
             <span className={`${styles.columnHeaderToggle} ${styles.columnHeaderSibling}`}>
               Sibling

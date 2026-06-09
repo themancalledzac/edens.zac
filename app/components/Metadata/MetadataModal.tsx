@@ -53,14 +53,14 @@ interface MetadataModalProps {
   availableFilmFormats?: FilmFormatDTO[];
   availableCollections?: CollectionListModel[];
   availableLocations?: LocationModel[];
-  selectedIds: number[]; // Array of selected content IDs (1 for single edit, N for bulk edit)
+  selectedIds: number[];
   /**
    * Content blocks to edit. May include images and GIF/MP4 blocks. Bulk edit only operates on
    * the IMAGE subset (the EXIF-heavy fields don't have GIF analogs); when the selection is a
    * single GIF the modal routes title/rating/tags/collections through `updateGif()`.
    */
   selectedImages: EditableContent[];
-  currentCollectionId?: number; // ID of the collection being edited (for visibility checkbox)
+  currentCollectionId?: number;
 }
 
 /**

@@ -1,19 +1,3 @@
-/**
- * Behavior tests for CollectionPageClient's `editMode` thread (Task 6c).
- *
- * Contract under test:
- *  - editMode false/absent: BYTE-IDENTICAL public render — no "Manage" toolbar, the public grid
- *    mounts with the fullscreen viewer enabled.
- *  - editMode true: the consolidated edit experience mounts — the fixed EditBar (role="toolbar",
- *    name "Manage") is present and the grid mounts with the fullscreen viewer DISABLED (a tap
- *    routes to edit handlers, never to a fullscreen viewer).
- *
- * `ContentBlockWithFullScreen` is mocked to a thin probe that records the props the page passes —
- * specifically `enableFullScreenView` and whether an `onImageClick` handler was threaded — so the
- * "no fullscreen viewer on click" guarantee can be asserted structurally without the heavy layout
- * pipeline. The API/storage layers are mocked so the (enabled) edit hook performs no real I/O.
- */
-
 import { act, render, screen } from '@testing-library/react';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
@@ -32,13 +16,10 @@ jest.mock('@/app/lib/api/collections');
 jest.mock('@/app/lib/api/content');
 jest.mock('@/app/lib/storage/collectionStorage');
 
-// Keep layout work out of the page — return content unchanged.
 jest.mock('@/app/utils/contentLayout', () => ({
   processContentBlocks: (content: unknown[]) => content,
 }));
 
-// Probe for the grid: record the props the page threads so we can assert the fullscreen-viewer
-// state and click routing without rendering the real BoxTree pipeline.
 const gridProbe = jest.fn();
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
@@ -48,7 +29,6 @@ jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   },
 }));
 
-// The modals are not exercised here; stub them so the edit tree mounts cheaply.
 jest.mock('@/app/components/Metadata/MetadataModal', () => ({
   __esModule: true,
   default: () => <div data-testid="metadata-modal" />,
@@ -87,7 +67,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
 
 beforeEach(() => {
   gridProbe.mockClear();
-  // Inert/enabled hook resolves with no extra metadata and an empty cache.
   mockGetCollectionUpdateMetadata.mockResolvedValue(null);
   mockGetMetadata.mockResolvedValue(null);
   mockStorageGetFull.mockReturnValue(null);
@@ -103,13 +82,11 @@ describe('CollectionPageClient — editMode false (public, default)', () => {
     render(<CollectionPageClient collection={makeCollection()} />);
     const grid = screen.getByTestId('grid');
     expect(grid).toHaveAttribute('data-fullscreen', 'true');
-    // Public, non-client-gallery grid threads no edit click handler.
     expect(gridProbe).toHaveBeenCalledWith(expect.objectContaining({ enableFullScreenView: true }));
   });
 });
 
 describe('CollectionPageClient — editMode true', () => {
-  // Flush the enabled hook's initial metadata effect so its state settles inside act().
   const flush = () => act(async () => {});
 
   it('renders the fixed "Manage" toolbar (EditBar)', async () => {
@@ -123,7 +100,6 @@ describe('CollectionPageClient — editMode true', () => {
     await flush();
     const grid = screen.getByTestId('grid');
     expect(grid).toHaveAttribute('data-fullscreen', 'false');
-    // The grid receives an edit click handler (routes to edit, not to a fullscreen viewer).
     const lastCall = gridProbe.mock.calls.at(-1)?.[0];
     expect(lastCall.enableFullScreenView).toBe(false);
     expect(typeof lastCall.onImageClick).toBe('function');

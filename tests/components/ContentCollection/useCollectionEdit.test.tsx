@@ -1,11 +1,3 @@
-/**
- * Behavior tests for the useCollectionEdit hook (faithful lift of ManageClient's edit brain).
- *
- * Strategy: render the hook in isolation with renderHook. The collections API and
- * collectionStorage are mocked at the module boundary so no real network/storage happens.
- * processContentBlocks is mocked to a passthrough so layout work doesn't run.
- */
-
 import { act, renderHook, waitFor } from '@testing-library/react';
 
 import { useCollectionEdit } from '@/app/components/ContentCollection/edit/useCollectionEdit';
@@ -33,7 +25,6 @@ jest.mock('@/app/lib/api/collections');
 jest.mock('@/app/lib/api/content');
 jest.mock('@/app/lib/storage/collectionStorage');
 
-// Keep layout work out of the hook — return content unchanged.
 jest.mock('@/app/utils/contentLayout', () => ({
   processContentBlocks: (content: unknown[]) => content,
 }));
@@ -107,10 +98,6 @@ function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdat
   };
 }
 
-/**
- * Like {@link makeResponse}, but lets a test set the DTO root-level metadata arrays
- * (`tags`/`locations` — the *available* option lists) separately from the collection overrides.
- */
 function makeResponseWith(
   collectionOverrides: Partial<CollectionModel>,
   metadata: Partial<CollectionUpdateResponseDTO>
@@ -310,7 +297,6 @@ describe('useCollectionEdit', () => {
     it('does not fetch and keeps currentState null when disabled', async () => {
       const { result } = renderEdit({ enabled: false });
 
-      // Give any (mistaken) async effects a chance to run.
       await new Promise(resolve => setTimeout(resolve, 50));
 
       expect(mockGetCollectionUpdateMetadata).not.toHaveBeenCalled();
@@ -380,10 +366,8 @@ describe('useCollectionEdit', () => {
         expect(result.current.currentState).not.toBeNull();
       });
 
-      // Saved baseline resolves from collection.locations against currentState.locations.
       expect(result.current.currentLocations).toEqual([{ id: 5, name: 'Paris', slug: 'paris' }]);
 
-      // Selecting a new location writes a diff into updateData and reflects in currentLocations.
       act(() =>
         result.current.handleLocationsChange([
           { id: 5, name: 'Paris', slug: 'paris' },
@@ -416,7 +400,6 @@ describe('useCollectionEdit', () => {
 
   describe('tags field wiring', () => {
     it('derives currentTags from collection + updateData diff', async () => {
-      // CollectionModel.tags arrives as string[] names — resolved against the DTO available tags.
       mockGetCollectionUpdateMetadata.mockResolvedValue(
         makeResponseWith(
           { tags: ['film'] },
@@ -456,7 +439,6 @@ describe('useCollectionEdit', () => {
     });
 
     it('child toggle: removing a saved (contained) collection stages it in pendingRemove', () => {
-      // A child block in content makes id 7 a "saved" child.
       const collection = makeCollection({
         content: [
           {

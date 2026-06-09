@@ -12,12 +12,6 @@ import type { ImageUpdateState } from '../hooks/useMetadataState';
 import modalStyles from '../MetadataModal.module.scss';
 import { isCurrentCollectionVisible, toggleCollectionVisibility } from './essentialInfoUtils';
 
-// ---------------------------------------------------------------------------
-// Static option list for the Rating <Select>. Hoisted out of the render path
-// because it doesn't reference any component-scope identifier. Per the project
-// "inline JSX config" rule (ai_guidelines/ai_quick_reference.md).
-// ---------------------------------------------------------------------------
-
 const RATING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: '', label: 'No rating' },
   { value: '1', label: '1 Star' },
@@ -48,15 +42,11 @@ export default function EssentialInfoSection({
   isGif,
   isBulkEdit = false,
 }: EssentialInfoSectionProps): React.JSX.Element {
-  // Visibility of the current collection's junction. Absent/undefined means "visible" (only an
-  // explicit `false` hides it), matching the backend default.
   const currentCollectionVisible = isCurrentCollectionVisible(
     updateState.collections,
     currentCollectionId
   );
 
-  // Toggle the current collection's `visible` flag in updateState — updating the existing junction
-  // in place, or appending one when the image isn't in this collection's list yet.
   const handleCollectionVisibilityToggle = (checked: boolean) => {
     if (currentCollectionId == null) return;
     updateStateField({
@@ -73,7 +63,6 @@ export default function EssentialInfoSection({
     <div className={modalStyles.formSection}>
       <h3 className={modalStyles.sectionHeading}>Essential Information</h3>
 
-      {/* Per-item fields — hidden in bulk edit (multiple images never share these). */}
       {!isBulkEdit && (
         <>
           <div className={modalStyles.formGroup}>
@@ -147,7 +136,6 @@ export default function EssentialInfoSection({
         />
       </div>
 
-      {/* Author · Rating · Collection Visibility — compact half-width siblings to save space. */}
       <div className={modalStyles.formGridHalf}>
         <div className={modalStyles.formGroup}>
           <label className={modalStyles.formLabel}>Author</label>
@@ -178,7 +166,6 @@ export default function EssentialInfoSection({
           </Select>
         </div>
 
-        {/* Collection Visibility — available for both single and bulk edit */}
         {currentCollectionId && (
           <div className={modalStyles.checkboxGroup}>
             <label className={modalStyles.checkboxLabel}>

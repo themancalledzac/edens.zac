@@ -47,7 +47,6 @@ export function StructureTab({ edit }: StructureTabProps) {
 
   return (
     <div className={styles.tabPanel}>
-      {/* Presentation — hidden for parent-type collections */}
       {!isParent && (
         <>
           <h3 className={styles.sectionTitle}>Presentation</h3>
@@ -114,7 +113,6 @@ export function StructureTab({ edit }: StructureTabProps) {
         </>
       )}
 
-      {/* Cover — parents only: button that activates cover-image picking on the grid. */}
       {isParent && (
         <div className={styles.formGroup}>
           <Button
@@ -126,7 +124,6 @@ export function StructureTab({ edit }: StructureTabProps) {
         </div>
       )}
 
-      {/* Collections — child / sibling / parent selectors */}
       <CollectionListSelector
         allCollections={allCollections}
         savedCollectionIds={childIds.saved}
@@ -154,7 +151,6 @@ export function StructureTab({ edit }: StructureTabProps) {
         onChangeType={handleChangeType}
       />
 
-      {/* Home: rate child collections inline (immediate — no save button). */}
       {isHomeCollection && (collection?.content?.some(isContentCollection) ?? false) && (
         <section aria-labelledby="edit-sheet-children-rating-heading" className={styles.formGroup}>
           <h3 id="edit-sheet-children-rating-heading" className={styles.formLabel}>

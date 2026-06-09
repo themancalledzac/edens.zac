@@ -66,7 +66,6 @@ export function InfoTab({ edit }: InfoTabProps) {
 
   return (
     <div className={styles.tabPanel}>
-      {/* Title */}
       <div className={styles.titleRow}>
         <div className={styles.titleInputWrapper}>
           <Field label="Title" htmlFor="edit-sheet-title">
@@ -79,7 +78,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         </div>
       </div>
 
-      {/* Collection Type */}
       <div className={styles.formGroup}>
         <Field label="Collection Type" htmlFor="edit-sheet-type">
           <Select
@@ -96,7 +94,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         </Field>
       </div>
 
-      {/* Collection Date */}
       <div className={styles.formGroup}>
         <label className={styles.formLabel}>Collection Date</label>
         <div className={styles.dateInputWrapper}>
@@ -124,7 +121,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         </div>
       </div>
 
-      {/* Description */}
       <div className={styles.formGroup}>
         <Field label="Description" htmlFor="edit-sheet-description">
           <Textarea
@@ -135,7 +131,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         </Field>
       </div>
 
-      {/* Locations */}
       <Dropdown<LocationModel>
         label="Locations"
         multiSelect
@@ -157,7 +152,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         emptyText="No locations set"
       />
 
-      {/* Visibility — condensed to a simple dropdown (Listed / Unlisted / Hidden). */}
       <div className={styles.formGroup}>
         <Field label="Visibility" htmlFor="edit-sheet-visibility">
           <Select
@@ -174,7 +168,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         </Field>
       </div>
 
-      {/* Tags */}
       <div className={styles.formGroup}>
         <label className={styles.formLabel}>Tags</label>
         <TagsSelector
@@ -185,7 +178,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         />
       </div>
 
-      {/* People */}
       <section aria-labelledby="edit-sheet-people-heading" className={styles.formGroup}>
         <label id="edit-sheet-people-heading" className={styles.formLabel}>
           People
@@ -231,7 +223,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         )}
       </section>
 
-      {/* Gallery Access — shown for CLIENT_GALLERY or PARENT collections */}
       {showGalleryAccess && (
         <section aria-labelledby="gallery-access-heading" className={styles.formGroup}>
           <h3 id="gallery-access-heading" className={styles.sectionTitle}>

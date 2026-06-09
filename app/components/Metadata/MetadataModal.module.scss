@@ -1,6 +1,3 @@
-/* Image Metadata Editor Modal Styles — mobile-first (base = mobile, @media up for desktop) */
-
-/* Close button floats over the top-right corner of the sheet. */
 .closeButtonSlot {
   position: fixed;
   top: 10px;
@@ -13,9 +10,6 @@
   }
 }
 
-/* ── Root layout ──────────────────────────────────────────────────────────────
-   Mobile: single column — pinned photo strip at top, scrollable form below.
-   Desktop (≥ 768 px): two columns — image sidebar left, form right. */
 .metadataLayout {
   display: flex;
   flex-direction: column;
@@ -30,10 +24,6 @@
   }
 }
 
-/* ── Pinned photo ─────────────────────────────────────────────────────────────
-   Mobile: fixed-height strip at the very top, showing the image/thumbnail.
-   Desktop: sidebar that fills the left half; the white mat sits on the dark surface.
-   --content-frame keeps the mat white even on dark (per spec §5.1). */
 .imageSection {
   flex-shrink: 0;
   display: flex;
@@ -50,9 +40,6 @@
   }
 }
 
-/* ── Right / bottom pane ──────────────────────────────────────────────────────
-   Flex column: heading+error at top, scrollable tab content in the middle,
-   pinned bottom bar (tab row + action row) at the bottom. */
 .metadataSection {
   flex: 1;
   display: flex;
@@ -62,7 +49,6 @@
   color: var(--color-on-surface);
 }
 
-/* ── Top area (heading + error) ───────────────────────────────────────────── */
 .sectionTop {
   padding: var(--space-4);
   padding-bottom: 0;
@@ -73,7 +59,6 @@
   }
 }
 
-/* Heading */
 .heading {
   font-size: var(--text-lg);
   font-weight: 600;
@@ -86,7 +71,6 @@
   }
 }
 
-/* Error Message */
 .errorMessage {
   background: var(--color-danger-subtle);
   border: 1px solid var(--color-danger-dark);
@@ -97,7 +81,6 @@
   font-size: var(--text-sm);
 }
 
-/* ── Form column (fills the section; scroll region + pinned bottom bar) ──── */
 .formColumn {
   flex: 1;
   display: flex;
@@ -106,7 +89,6 @@
   min-height: 0;
 }
 
-/* ── Tab content (scrollable region) ─────────────────────────────────────── */
 .tabContent {
   flex: 1;
   overflow-y: auto;
@@ -131,9 +113,6 @@
   }
 }
 
-/* ── Form primitives ──────────────────────────────────────────────────────── */
-
-/* Form Sections (within each tab) */
 .formSection {
   margin-bottom: var(--space-5);
   padding-bottom: var(--space-5);
@@ -165,7 +144,6 @@
   color: var(--color-on-surface-muted);
 }
 
-/* Native form controls reuse the surface-sunken token so they adapt to dark. */
 .formInput,
 .formTextarea,
 .formSelect {
@@ -203,7 +181,6 @@
   cursor: pointer;
 }
 
-/* Two-column grid for paired fields (ISO + F-stop, etc.). Collapses to single on mobile. */
 .formGrid2Col {
   display: grid;
   grid-template-columns: 1fr;
@@ -214,7 +191,6 @@
   }
 }
 
-/* Compact half-width pairs that STAY side-by-side on mobile (Author · Rating · Visibility). */
 .formGridHalf {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -222,7 +198,6 @@
   align-items: start;
 }
 
-/* Checkbox Group */
 .checkboxGroup {
   display: flex;
   gap: var(--space-5);
@@ -246,7 +221,6 @@
   }
 }
 
-/* ── Sticky action bar ────────────────────────────────────────────────────── */
 .actionBar {
   flex-shrink: 0;
   display: flex;
@@ -272,15 +246,11 @@
   gap: var(--space-3);
 }
 
-/* Disabled state for GIF/MP4 sections that don't support a given field. */
 .sectionDisabled {
   opacity: 0.4;
   pointer-events: none;
 }
 
-/* ── Media preview renderers ─────────────────────────────────────────────── */
-
-/* Single-image/GIF preview: fit within the section without upscaling. */
 .previewMedia {
   max-width: 100%;
   max-height: 100%;
@@ -289,7 +259,6 @@
   object-fit: contain;
 }
 
-/* Bulk-edit grid: shows a thumbnail per selection. */
 .bulkEditGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));

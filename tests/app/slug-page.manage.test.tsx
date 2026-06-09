@@ -1,12 +1,3 @@
-/**
- * Route-level tests for app/[slug]/page.tsx — the same-route `?manage=1` edit entry.
- *
- * The page is an async Server Component. We mock CollectionPageWrapper (so we can assert which
- * props it receives) and requireAdmin (the admin gate seam). The key invariant: `editMode` is true
- * ONLY when `?manage=1` is present, and the wrapper is otherwise invoked exactly as the public
- * path — slug forwarded, editMode false.
- */
-
 import { render } from '@testing-library/react';
 
 import CollectionPage from '@/app/[slug]/page';
@@ -19,8 +10,6 @@ jest.mock('@/app/lib/components/CollectionPageWrapper', () => ({
 }));
 
 jest.mock('@/app/utils/admin', () => ({
-  // Async no-op — mirrors the real requireAdmin's Promise<void> without passing an explicit
-  // `undefined` to mockResolvedValue (which trips both no-useless-undefined and the void-arg type).
   requireAdmin: jest.fn(async () => {}),
 }));
 

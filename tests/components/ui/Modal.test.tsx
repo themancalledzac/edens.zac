@@ -67,7 +67,6 @@ describe('Modal', () => {
     fireEvent.click(dialog);
     expect(onClose).not.toHaveBeenCalled();
 
-    // The dialog's parent is the backdrop.
     fireEvent.click(dialog.parentElement as HTMLElement);
     expect(onClose).toHaveBeenCalledTimes(1);
   });

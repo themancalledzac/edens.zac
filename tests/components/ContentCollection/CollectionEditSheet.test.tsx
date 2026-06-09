@@ -1,12 +1,3 @@
-/**
- * Render tests for CollectionEditSheet and its three tab sections.
- *
- * We construct a minimal `edit` object (plain object matching UseCollectionEditResult)
- * rather than rendering the full hook. Two fixture collections are used:
- *   - CLIENT_GALLERY  — should show the gallery-access group in InfoTab
- *   - PORTFOLIO       — should NOT show gallery-access group (non-gallery, non-parent)
- */
-
 import '@testing-library/jest-dom';
 
 import { render, screen } from '@testing-library/react';
@@ -23,12 +14,10 @@ import {
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type ContentImageModel } from '@/app/types/Content';
 
-// CollectionListSelector uses next/navigation for row navigation.
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
 }));
 
-// Keep heavy UI sub-components from blowing up in jsdom.
 jest.mock('@/app/components/CollectionListSelector/CollectionListSelector', () => ({
   __esModule: true,
   default: () => <div data-testid="collection-list-selector" />,
@@ -45,8 +34,6 @@ jest.mock('@/app/components/RatingStars/RatingStars', () => ({
   __esModule: true,
   default: () => <div data-testid="rating-stars" />,
 }));
-
-// ── helpers ────────────────────────────────────────────────────────────────────
 
 function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {
@@ -100,7 +87,6 @@ const emptyTriple = { saved: emptySet, pendingAdd: emptySet, pendingRemove: empt
 
 function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollectionEditResult {
   return {
-    // Core edit surface
     currentState: makeState(),
     isLoadingState: false,
     editTab: 'info',
@@ -111,10 +97,8 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
     saving: false,
     handleUpdate: jest.fn(),
 
-    // Parent flag (derives from updateData.type in the real hook)
     isParent: false,
 
-    // People
     collectionPeople: [],
     setCollectionPeople: jest.fn(),
     peopleSaving: false,
@@ -122,7 +106,6 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
     handleSavePeople: jest.fn(),
     handleRegeneratePeople: jest.fn(),
 
-    // Gallery access
     galleryPassword: '',
     setGalleryPassword: jest.fn(),
     galleryEmail: '',
@@ -132,15 +115,12 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
     handleSaveAccess: jest.fn(),
     handleClearPassword: jest.fn(),
 
-    // Locations
     currentLocations: [],
     handleLocationsChange: jest.fn(),
 
-    // Tags
     currentTags: [],
     handleTagsChange: jest.fn(),
 
-    // Structure tab
     allCollections: [] as CollectionListModel[],
     handleChangeType: jest.fn(),
     childIds: emptyTriple,
@@ -152,7 +132,6 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
     handleParentToggle: jest.fn(),
     updateCollectionRating: jest.fn(),
 
-    // Cover image
     isSelectingCoverImage: false,
     setIsSelectingCoverImage: jest.fn(),
     handleCoverImageClick: jest.fn(),
@@ -160,7 +139,6 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
     displayedCoverImage: null as ContentImageModel | null,
     childCollectionImages: undefined,
 
-    // Mode/selection (not used by the sheet but part of the result type)
     manageMode: 'edit',
     displayContent: [],
     handleImageClick: jest.fn(),
@@ -201,14 +179,11 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
   } as UseCollectionEditResult;
 }
 
-// ── InfoTab tests ──────────────────────────────────────────────────────────────
-
 describe('CollectionEditSheet — InfoTab', () => {
   it('renders Title, Collection Type, and the Visibility dropdown', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);
     expect(screen.getByLabelText('Title')).toBeInTheDocument();
     expect(screen.getByLabelText('Collection Type')).toBeInTheDocument();
-    // Visibility is now a simple <select> (Listed / Unlisted / Hidden), not a segmented control.
     expect(screen.getByLabelText('Visibility')).toBeInTheDocument();
   });
 
@@ -255,21 +230,16 @@ describe('CollectionEditSheet — InfoTab', () => {
   });
 
   it('has no "access" tab rendering path — editTab="access" renders nothing', () => {
-    // Cast: access is not a valid CollectionEditTab in the new type, but guard against
-    // any legacy value that might slip through at runtime.
     const edit = makeEdit({
       // @ts-expect-error intentionally testing the removed tab
       editTab: 'access',
     });
     render(<CollectionEditSheet edit={edit} />);
-    // None of the three tab panels should be present
     expect(screen.queryByLabelText('Title')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tags-selector')).not.toBeInTheDocument();
     expect(screen.queryByText('Collection Type')).not.toBeInTheDocument();
   });
 });
-
-// ── StructureTab tests ─────────────────────────────────────────────────────────
 
 describe('CollectionEditSheet — StructureTab', () => {
   it('renders the collection selector; Collection Type moved to Info', () => {

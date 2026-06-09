@@ -23,19 +23,9 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Canonical modal. Owns the portal, the backdrop scrim, Escape-to-close, a focus
- * trap with focus-return, body scroll lock, and dialog ARIA. Variants change layout
- * only — the dismissal + focus behavior is identical across all three.
- *
- * Surface propagation: the dialog is portaled to `document.body`, which sits OUTSIDE
- * any `[data-surface]` scope wrapper (e.g. the dark admin layout). Custom properties
- * cascade by DOM position, so without help a modal opened from the dark admin surface
- * would render with the light `:root` tokens. We bridge that by reading the nearest
- * `data-surface` from a sentinel rendered at the Modal's *in-tree* position and
- * re-applying it to the portaled backdrop — so every descendant (Button, Field,
- * Dropdown…) adapts via the normal token cascade with zero per-component overrides.
- * Public-site modals have no surface ancestor, so the attribute stays unset and they
- * remain light.
+ * Canonical modal. Owns the portal, backdrop, Escape-to-close, focus trap, body scroll lock, and
+ * dialog ARIA. Note: portaled to `document.body` (outside any `[data-surface]` scope) — a sentinel
+ * rendered at the in-tree position bridges the surface token so dark-admin descendants adapt correctly.
  */
 export function Modal({ open, onClose, variant = 'overlay', labelledBy, children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -45,8 +35,6 @@ export function Modal({ open, onClose, variant = 'overlay', labelledBy, children
 
   useBodyScrollLock(open);
 
-  // Read the surface from the in-tree mount point (the sentinel inherits the scope
-  // the Modal was rendered into) so we can mirror it onto the portaled backdrop.
   useLayoutEffect(() => {
     if (!open) return;
     const scope = sentinelRef.current?.closest<HTMLElement>('[data-surface]');
@@ -59,16 +47,12 @@ export function Modal({ open, onClose, variant = 'overlay', labelledBy, children
     return [...node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)];
   }, []);
 
-  // On open: record the trigger and move focus to the first focusable child.
-  // On close/unmount: return focus to the recorded trigger.
   useEffect(() => {
     if (!open) return;
 
     previouslyFocusedRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
-    // Focus the dialog container itself, not the first field — auto-focusing an
-    // input pops the on-screen keyboard on mobile. Tab still moves into the trap.
     dialogRef.current?.focus();
 
     return () => {
@@ -110,8 +94,6 @@ export function Modal({ open, onClose, variant = 'overlay', labelledBy, children
 
   return (
     <>
-      {/* Sits in the in-tree position so it inherits the surface scope; carries no
-          layout or paint. The effect reads its nearest [data-surface] ancestor. */}
       <span ref={sentinelRef} hidden aria-hidden="true" />
       {createPortal(
         <div

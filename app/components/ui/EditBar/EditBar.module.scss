@@ -1,13 +1,8 @@
-// Bottom bar: background/border tokens common to both positioning modes.
 .bottomBar {
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
 }
 
-// Fixed positioning (collection-page manage bar). Sits ABOVE the edit sheet so its
-// tab row + Save are reachable. Safe to be above --z-modal because the consumer unmounts
-// this bar whenever an actual modal (image editor / text-block) is open, so the bar and a
-// modal never coexist (no bleed-through).
 .fixed {
   position: fixed;
   inset-inline: 0;
@@ -15,26 +10,21 @@
   z-index: var(--z-modal-controls, 1002);
 }
 
-// Static positioning — flex footer inside a sheet/modal column.
-// flex-shrink: 0 prevents the bar from being crushed by the scrollable content above.
 .static {
   flex-shrink: 0;
 }
 
-// Tab row (edit shape) — rendered above the action row when tabs are present.
 .tabRow {
   display: flex;
   align-items: stretch;
   border-bottom: 1px solid var(--color-border);
 }
 
-// Action row — always rendered; in mode shape (no tabs) this is the only row.
 .actionRow {
   display: flex;
   align-items: stretch;
 }
 
-// Uniform bar cell — emphasis by color/weight, never by size.
 .barCell {
   flex: 1 1 0;
   min-width: 0;
@@ -69,15 +59,12 @@
   }
 }
 
-// Active tab — accent on the TOP border (bar sits at the bottom of screen).
 .barCellActive {
   font-weight: 700;
   color: var(--color-fg);
   box-shadow: inset 0 2px 0 0 var(--color-fg);
 }
 
-// Primary emphasis: white fill, dark text (Save/Done).
-// On dark surface, --color-fg is near-white and --color-bg is charcoal.
 .barCellPrimary {
   margin: var(--space-1);
   border-radius: var(--radius-1);
@@ -96,7 +83,6 @@
   }
 }
 
-// Destructive emphasis by color, same height as every other cell.
 .barCellDanger {
   color: var(--color-danger-text);
   font-weight: 600;

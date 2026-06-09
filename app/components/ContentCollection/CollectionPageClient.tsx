@@ -66,13 +66,10 @@ export default function CollectionPageClient({
 }: CollectionPageClientProps) {
   const router = useRouter();
 
-  // Soft-navigate back to the public view (drops ?manage) — same route, no remount.
   const handleExitManage = useCallback(() => {
     router.push(`/${collection.slug}`);
   }, [router, collection.slug]);
 
-  // Always-on (Rules of Hooks). Inert when `enabled` is false: no fetch, browse defaults — its
-  // return surface MUST NOT be read in the public render path below.
   const edit = useCollectionEdit({
     collection,
     slug: collection.slug,
@@ -80,9 +77,6 @@ export default function CollectionPageClient({
     onExitManage: editMode ? handleExitManage : undefined,
   });
 
-  // Escape steps back one level: an open sub-view (edit sheet / select / add) returns to the manage
-  // page; on the manage page it exits to the public collection (same as the bar's ✕). The image/
-  // text-block modals own Escape first (they close themselves), so defer while one is open.
   useEffect(() => {
     if (!editMode) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -96,8 +90,6 @@ export default function CollectionPageClient({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-    // Depend on the specific edit.* fields, not the whole `edit` object (a fresh reference each
-    // render, which would re-bind the listener constantly).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     editMode,
@@ -139,10 +131,6 @@ export default function CollectionPageClient({
     [isMobile]
   );
 
-  // ── Client-gallery "Select to download" state ──────────────────────────────
-  // Owned here so the deep-in-the-tree ClientGalleryDownload control (and the grid images) can both
-  // see it via ClientGalleryDownloadContext. When select mode is on, an onImageClick toggle is
-  // threaded to the images so a tap selects instead of opening fullscreen.
   const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -162,9 +150,6 @@ export default function CollectionPageClient({
     [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
-  // In edit mode the base content comes from the admin metadata payload (full editable content,
-  // incl. hidden) when loaded; otherwise the public collection content. editMode=false → identical
-  // to the original `collection.content ?? []`.
   const allContent = useMemo(
     () =>
       editMode
@@ -177,16 +162,9 @@ export default function CollectionPageClient({
 
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
-  // A page is "collection-dominant" when it has more child-collection items than images.
-  // On these pages, image-specific filters (people, cameras, lenses, focal length, highly rated)
-  // are suppressed since the page's purpose is browsing sub-collections, not filtering images.
   const isCollectionDominant = allCollections.length > allImages.length;
 
   const baseCollectionOptions = useMemo<CollectionDimensions>(() => {
-    // On collection-dominant pages we still want tags/people/locations aggregated
-    // from collection refs, so we always pass refs through. The post-filter below
-    // suppresses image-only dimensions (cameras/lenses/lensTypes) on those pages,
-    // but keeps tags, people, AND locations from collection-ref aggregation.
     const options = extractCollectionFilterOptions(allImages, allCollections);
     if (isCollectionDominant) {
       return {
@@ -199,12 +177,10 @@ export default function CollectionPageClient({
     return options;
   }, [allImages, allCollections, isCollectionDominant]);
 
-  // Build criteria from filter state — all AND mode for collection page
   const criteria = useMemo(() => buildCollectionCriteria(filterState), [filterState]);
 
   const hasActiveFilters = useMemo(() => hasAnyActiveFilter(filterState), [filterState]);
 
-  // Filter only images (for filter UI); non-image content (COLLECTION, TEXT, etc.) passes through
   const filteredContent = useMemo(() => {
     if (!hasActiveFilters) return allContent;
     return applyCollectionFilters(allContent, allImages, criteria, filterState.selectedLensTypes);
@@ -212,10 +188,6 @@ export default function CollectionPageClient({
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
-  // Date sort is applied after processContentBlocks (which has its own orderIndex sort)
-
-  // Stringify so a rating of 0 (falsy) still counts as a distinct value — the
-  // helper drops falsy selector outputs (intended for date variance below).
   const hasRatingVariance = useMemo(
     () => hasValueVariance(allImages, img => String(img.rating ?? 0)),
     [allImages]
@@ -223,11 +195,8 @@ export default function CollectionPageClient({
 
   const showHighlyRated = hasRatingVariance && !isCollectionDominant;
 
-  // Available options from filtered results — used to determine which chips are "available" vs "unavailable"
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;
-    // Collection refs aren't filtered (image-only filters don't touch them),
-    // so the full collection-ref list still contributes to "available" tags.
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
     return {
       tags: dims.tags.values,
@@ -239,7 +208,6 @@ export default function CollectionPageClient({
     };
   }, [hasActiveFilters, filteredImages, allCollections]);
 
-  // All base options are always shown; filteredAvailableOptions determines grey-out state
   const availableOptions = useMemo<CollectionInfoOptions>(
     () => ({
       ...baseCollectionOptions,
@@ -249,8 +217,6 @@ export default function CollectionPageClient({
   );
 
   const contentBlocks = useMemo(() => {
-    // Edit mode keeps hidden content visible (filterVisible=false) so it can be managed; the public
-    // path filters it out exactly as before.
     const processed = processContentBlocks(
       filteredContent,
       !editMode,
@@ -258,7 +224,6 @@ export default function CollectionPageClient({
       collection.displayMode
     );
     if (filterState.dateSortDirection === 'off') return processed;
-    // Apply date sort after layout processing to override orderIndex sort
     const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
     return mergeDateSortedImages(processed, sorted);
   }, [
@@ -273,10 +238,6 @@ export default function CollectionPageClient({
     (update: Partial<FilterState>) => {
       setFilterState(prev => {
         const next = { ...prev, ...update };
-        // Single source of truth with the `criteria` memo. selectedLenses /
-        // selectedLensTypes have no URL key in serializeFilterToParams (lens-type
-        // is derived) so they're silently dropped, and dateSortDirection is a
-        // sort, not a filter — all stay local by design.
         syncToUrl(buildCollectionCriteria(next));
         return next;
       });
@@ -314,14 +275,8 @@ export default function CollectionPageClient({
 
   const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, hasDateVariance);
 
-  // ── One render for both modes ────────────────────────────────────────────────
-  // The edit page IS the public render (same filter provider, toolbar, layout). editMode only swaps
-  // the grid's interaction props and overlays the EditBar/sheet/modals. editMode=false renders
-  // byte-identically to before.
   const reorderActive = editMode && edit.reorder.active;
 
-  // During an active reorder the hook's pre-ordered list drives the grid; otherwise the shared
-  // filter pipeline (contentBlocks) does, so the toolbar stays functional in edit mode too.
   const grid = editMode ? (
     <ContentBlockWithFullScreen
       content={reorderActive ? edit.displayContent : contentBlocks}
@@ -364,7 +319,6 @@ export default function CollectionPageClient({
 
   const content = (
     <>
-      {/* In edit mode the canvas leaves room for the fixed EditBar so content isn't hidden. */}
       {editMode ? <div className={styles.editCanvas}>{grid}</div> : grid}
       {!editMode && hasActiveFilters && filteredImages.length === 0 && (
         <p className={styles.emptyState}>No images match your filters.</p>
@@ -372,8 +326,6 @@ export default function CollectionPageClient({
     </>
   );
 
-  // Client galleries get the select/download provider so the in-tree Download control can drive
-  // (and read) the page-level selection state. In edit mode the EditBar owns selection instead.
   const maybeWrappedContent =
     isClientGallery && !editMode ? (
       <ClientGalleryDownloadProvider value={downloadContextValue}>
@@ -383,15 +335,10 @@ export default function CollectionPageClient({
       content
     );
 
-  // Edit affordances overlay the same render — only the bar/sheet/modals are added.
   const editOverlays = editMode ? (
     <>
-      {/* Collection-edit sheet — the active tab's fields. The tab row + Save live in the bar. */}
       {edit.manageMode === 'edit' && <CollectionEditSheet edit={edit} />}
 
-      {/* Fixed bottom bar — above the edit sheet so its tabs + Save are reachable. Hidden while a
-          modal (image editor / text-block) is open, since the modal owns the bottom then and the
-          bar must not bleed over it. */}
       {!edit.editingContent && !edit.isTextBlockModalOpen && (
         <EditBar
           ariaLabel="Manage"
@@ -399,13 +346,10 @@ export default function CollectionPageClient({
           cells={edit.bottomBarCells}
           tabs={edit.bottomBarTabs}
           activeTab={edit.editTab}
-          // EditBar's generic `onTabChange` is `(id: string) => void`; it only ever fires with one
-          // of `bottomBarTabs[].id` (info·tags·structure), so narrowing here is safe.
           onTabChange={id => edit.setEditTab(id as typeof edit.editTab)}
         />
       )}
 
-      {/* Unified image/GIF metadata editor. */}
       {edit.editingContent && edit.contentToEdit.length > 0 && (
         <MetadataModal
           onClose={edit.closeEditor}
@@ -427,7 +371,6 @@ export default function CollectionPageClient({
         />
       )}
 
-      {/* Text-block create modal. */}
       {edit.isTextBlockModalOpen && (
         <TextBlockCreateModal
           onClose={edit.closeTextBlockModal}
@@ -437,8 +380,6 @@ export default function CollectionPageClient({
     </>
   ) : null;
 
-  // Only wrap with filter context if there are options to filter by — identical for both modes, so
-  // the filter toolbar renders in edit mode exactly as it does on the public page.
   if (!hasOptions) {
     return editMode ? (
       <>
