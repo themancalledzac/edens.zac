@@ -281,8 +281,8 @@ describe('CollectionEditSheet — StructureTab', () => {
     expect(screen.getByRole('button', { name: /set cover image/i })).toBeInTheDocument();
   });
 
-  it('does NOT show cover button for non-parent collection', () => {
+  it('shows the cover button for a non-parent collection too', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure', isParent: false })} />);
-    expect(screen.queryByRole('button', { name: /set cover image/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /set cover image/i })).toBeInTheDocument();
   });
 });
