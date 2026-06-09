@@ -518,6 +518,15 @@ export function useCollectionEdit({
     if (isSelectingCoverImage) setIsSelectingCoverImage(false);
   }, [isSelectingCoverImage, setIsSelectingCoverImage]);
 
+  // Leaving manage: the same CollectionPageClient instance stays mounted across the soft nav back
+  // to the public view (the no-remount design), so this hook's mode state would otherwise persist
+  // and a later re-entry would reopen the previously-open sub-view. Reset to browse on exit so
+  // re-entering manage always starts on the manage page. The `!enabled` guard means this never
+  // fires mid-session, only when manage is left.
+  useEffect(() => {
+    if (!enabled) resetToBrowse();
+  }, [enabled, resetToBrowse]);
+
   /**
    * Content blocks the metadata modal should edit. Mixes images and GIFs; bulk-edit semantics
    * key off the IMAGE subset.

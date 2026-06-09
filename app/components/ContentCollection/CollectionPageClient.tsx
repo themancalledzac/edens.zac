@@ -80,18 +80,33 @@ export default function CollectionPageClient({
     onExitManage: editMode ? handleExitManage : undefined,
   });
 
-  // Escape exits manage mode (same as the bar's ✕). When the image/text-block modals are open they
-  // own Escape (they close themselves first), so defer to them.
+  // Escape steps back one level: an open sub-view (edit sheet / select / add) returns to the manage
+  // page; on the manage page it exits to the public collection (same as the bar's ✕). The image/
+  // text-block modals own Escape first (they close themselves), so defer while one is open.
   useEffect(() => {
     if (!editMode) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       if (edit.editingContent || edit.isTextBlockModalOpen) return;
-      handleExitManage();
+      if (edit.manageMode !== 'browse') {
+        edit.exitToBrowse();
+      } else {
+        handleExitManage();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [editMode, edit.editingContent, edit.isTextBlockModalOpen, handleExitManage]);
+    // Depend on the specific edit.* fields, not the whole `edit` object (a fresh reference each
+    // render, which would re-bind the listener constantly).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    editMode,
+    edit.editingContent,
+    edit.isTextBlockModalOpen,
+    edit.manageMode,
+    edit.exitToBrowse,
+    handleExitManage,
+  ]);
 
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
