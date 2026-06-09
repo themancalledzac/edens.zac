@@ -45,10 +45,11 @@ export function useImageClickHandler({
         return;
       }
 
-      // Mode 2: Collection navigation
+      // Mode 2: Collection navigation — stay in the edit surface on the child's /[slug] route
+      // via ?manage=1 (soft same-route entry), not the separate /collection/manage segment.
       const collectionSlug = handleCollectionNavigation(imageId, collection?.content);
       if (collectionSlug) {
-        router.push(`/collection/manage/${collectionSlug}`);
+        router.push(`/${collectionSlug}?manage=1`);
         return;
       }
 

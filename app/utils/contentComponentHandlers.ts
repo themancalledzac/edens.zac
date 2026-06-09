@@ -77,5 +77,7 @@ export function createContentClickHandler(
  * @returns The navigation path
  */
 export function getCollectionNavigationPath(slug: string, isAdminContext: boolean): string {
-  return isAdminContext ? `/collection/manage/${slug}` : `/${slug}`;
+  // Admin nav stays on the public /[slug] route via ?manage=1 (a soft, same-route entry into the
+  // edit surface — no full remount), rather than the separate /collection/manage/<slug> segment.
+  return isAdminContext ? `/${slug}?manage=1` : `/${slug}`;
 }

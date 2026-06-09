@@ -22,6 +22,12 @@ interface ContentCollectionPageProps {
   showProtectedCovers?: boolean;
   /** UA-derived SSR fallback viewport from {@link resolveSsrViewport}. */
   ssrViewport?: SsrViewport;
+  /**
+   * When true, mount the consolidated admin edit surface in CollectionPageClient. Only meaningful
+   * for the single-collection branch (admin edits one collection at a time). When false/absent the
+   * render is byte-identical to the public view.
+   */
+  editMode?: boolean;
 }
 
 /**
@@ -91,6 +97,7 @@ export default function CollectionPage({
   chunkSize,
   showProtectedCovers = false,
   ssrViewport,
+  editMode = false,
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
@@ -108,6 +115,7 @@ export default function CollectionPage({
             serverContentWidth={ssrViewport?.contentWidth}
             serverViewportHeight={ssrViewport?.viewportHeight}
             serverIsMobile={ssrViewport?.isMobile}
+            editMode={editMode}
           />
         </main>
       </div>

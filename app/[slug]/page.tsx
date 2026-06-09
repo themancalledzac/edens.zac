@@ -4,10 +4,14 @@ import { notFound } from 'next/navigation';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { CollectionType } from '@/app/types/Collection';
+import { requireAdmin } from '@/app/utils/admin';
 
 interface CollectionPageProps {
   params: Promise<{
     slug: string;
+  }>;
+  searchParams: Promise<{
+    manage?: string;
   }>;
 }
 
@@ -66,7 +70,7 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
  * Route handler for individual collections by slug (e.g. /film, /portfolio-work).
  * Renders via the shared CollectionPageWrapper.
  */
-export default async function CollectionPage({ params }: CollectionPageProps) {
+export default async function CollectionPage({ params, searchParams }: CollectionPageProps) {
   const { slug } = await params;
 
   if (!slug) {
@@ -77,5 +81,17 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
     notFound();
   }
 
-  return <CollectionPageWrapper slug={slug} />;
+  // `?manage=1` turns this same route into the consolidated admin edit surface — a soft
+  // navigation that does NOT remount CollectionPageClient (vs. /collection/manage/<slug>,
+  // a different segment that fully remounts). Without the param, the render path below is
+  // byte-identical to the public view.
+  const editMode = (await searchParams)?.manage === '1';
+
+  // Admin gate seam (no-op today; 009 plugs enforcement in here). Only meaningful in editMode,
+  // but calling it unconditionally keeps the seam in one place; it never blocks today.
+  if (editMode) {
+    await requireAdmin();
+  }
+
+  return <CollectionPageWrapper slug={slug} editMode={editMode} />;
 }

@@ -81,6 +81,12 @@ export interface UseCollectionEditParams {
   slug: string;
   /** When false the hook is inert — no fetch, browse defaults only. */
   enabled: boolean;
+  /**
+   * Optional exit-manage handler. When provided, a ✕ cell is appended to the BROWSE bottom bar
+   * (Select · Reorder · Add · Edit · ✕) that calls this to leave the edit surface back to the
+   * public view. Other modes have their own Cancel/Done, so the ✕ is browse-only.
+   */
+  onExitManage?: () => void;
 }
 
 export interface UseCollectionEditResult {
@@ -224,6 +230,7 @@ export function useCollectionEdit({
   collection: seedCollection,
   slug,
   enabled,
+  onExitManage,
 }: UseCollectionEditParams): UseCollectionEditResult {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
@@ -568,7 +575,8 @@ export function useCollectionEdit({
         void revalidateCollectionCache(response.collection.slug);
 
         if (response.collection.slug !== collection.slug) {
-          router.replace(`/collection/manage/${response.collection.slug}`);
+          // Renaming the slug: stay in edit mode on the new slug's /[slug] route via ?manage=1.
+          router.replace(`/${response.collection.slug}?manage=1`);
         }
 
         // Location inheritance: if locations were just set (not all removed), apply them to
@@ -1216,7 +1224,8 @@ export function useCollectionEdit({
       await revalidateCollectionCache(collection.slug);
 
       if (response !== null) {
-        router.push(`/collection/manage/${response.collection.slug}`);
+        // New child opens in the edit surface on its own /[slug] route via ?manage=1.
+        router.push(`/${response.collection.slug}?manage=1`);
       }
     } catch (error_) {
       setError(handleApiError(error_, 'Failed to create child collection'));
@@ -1350,6 +1359,10 @@ export function useCollectionEdit({
       cells.push({ key: 'add', label: 'Add', onClick: () => setIsAddMode(true) });
     }
     cells.push({ key: 'edit', label: 'Edit', onClick: () => setIsEditSheetOpen(true) });
+    // ✕ exits the manage surface back to the public view. Browse-only — other modes have Cancel.
+    if (onExitManage) {
+      cells.push({ key: 'exit', label: '✕', onClick: onExitManage });
+    }
     return cells;
   }, [
     manageMode,
@@ -1371,6 +1384,7 @@ export function useCollectionEdit({
     handleUpdate,
     handleEnterReorderMode,
     isParentCollection,
+    onExitManage,
   ]);
 
   const bottomBarTabs = useMemo<EditBarTab[] | undefined>(() => {

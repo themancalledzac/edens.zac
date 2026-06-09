@@ -121,13 +121,16 @@ function makeResponseWith(
   };
 }
 
-function renderEdit(opts: { enabled?: boolean; collection?: CollectionModel } = {}) {
+function renderEdit(
+  opts: { enabled?: boolean; collection?: CollectionModel; onExitManage?: () => void } = {}
+) {
   const collection = opts.collection ?? makeCollection();
   return renderHook(() =>
     useCollectionEdit({
       collection,
       slug: collection.slug,
       enabled: opts.enabled ?? true,
+      onExitManage: opts.onExitManage,
     })
   );
 }
@@ -225,6 +228,34 @@ describe('useCollectionEdit', () => {
       });
       const reorderCell = result.current.bottomBarCells.find(c => c.label === 'Reorder');
       expect(reorderCell?.disabled).toBe(true);
+    });
+
+    it('browse has no exit (✕) cell when onExitManage is absent', () => {
+      const { result } = renderEdit({ enabled: false });
+      const exit = result.current.bottomBarCells.find(c => c.key === 'exit');
+      expect(exit).toBeUndefined();
+    });
+
+    it('browse appends a ✕ exit cell that calls onExitManage when provided', () => {
+      const onExitManage = jest.fn();
+      const { result } = renderEdit({ enabled: false, onExitManage });
+
+      const labels = result.current.bottomBarCells.map(c => c.label);
+      expect(labels).toEqual(['Select', 'Reorder', 'Add', 'Edit', '✕']);
+
+      const exit = result.current.bottomBarCells.find(c => c.key === 'exit');
+      expect(exit).toBeDefined();
+      exit?.onClick?.();
+      expect(onExitManage).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not add the ✕ exit cell to non-browse modes (e.g. select)', () => {
+      const onExitManage = jest.fn();
+      const { result } = renderEdit({ enabled: false, onExitManage });
+
+      act(() => result.current.enterSelect());
+      const exit = result.current.bottomBarCells.find(c => c.key === 'exit');
+      expect(exit).toBeUndefined();
     });
 
     it('edit contains a primary Save (disabled when not dirty) + Close', () => {

@@ -188,10 +188,8 @@ describe('createContentClickHandler', () => {
 });
 
 describe('getCollectionNavigationPath', () => {
-  it('should return admin path when isAdminContext is true', () => {
-    expect(getCollectionNavigationPath('test-collection', true)).toBe(
-      '/collection/manage/test-collection'
-    );
+  it('should return admin ?manage=1 path when isAdminContext is true', () => {
+    expect(getCollectionNavigationPath('test-collection', true)).toBe('/test-collection?manage=1');
   });
 
   it('should return public path when isAdminContext is false', () => {

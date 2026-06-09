@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
@@ -63,12 +64,20 @@ export default function CollectionPageClient({
   serverIsMobile,
   editMode = false,
 }: CollectionPageClientProps) {
+  const router = useRouter();
+
+  // Soft-navigate back to the public view (drops ?manage) — same route, no remount.
+  const handleExitManage = useCallback(() => {
+    router.push(`/${collection.slug}`);
+  }, [router, collection.slug]);
+
   // Always-on (Rules of Hooks). Inert when `enabled` is false: no fetch, browse defaults — its
   // return surface MUST NOT be read in the public render path below.
   const edit = useCollectionEdit({
     collection,
     slug: collection.slug,
     enabled: Boolean(editMode),
+    onExitManage: editMode ? handleExitManage : undefined,
   });
 
   const { initialCriteria, syncToUrl } = useFilterUrlState();
