@@ -6,10 +6,12 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
+let mockSearchParams = new URLSearchParams();
+
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
   usePathname: () => '/smith-wedding',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams,
 }));
 
 jest.mock('@/app/lib/api/collections');
@@ -23,9 +25,19 @@ jest.mock('@/app/utils/contentLayout', () => ({
 const gridProbe = jest.fn();
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
   __esModule: true,
-  default: (props: { enableFullScreenView?: boolean; onImageClick?: unknown }) => {
+  default: (props: {
+    enableFullScreenView?: boolean;
+    onImageClick?: unknown;
+    content?: unknown[];
+  }) => {
     gridProbe(props);
-    return <div data-testid="grid" data-fullscreen={String(Boolean(props.enableFullScreenView))} />;
+    return (
+      <div
+        data-testid="grid"
+        data-fullscreen={String(Boolean(props.enableFullScreenView))}
+        data-content-count={String(props.content?.length ?? 0)}
+      />
+    );
   },
 }));
 
@@ -67,6 +79,7 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
 
 beforeEach(() => {
   gridProbe.mockClear();
+  mockSearchParams = new URLSearchParams();
   mockGetCollectionUpdateMetadata.mockResolvedValue(null);
   mockGetMetadata.mockResolvedValue(null);
   mockStorageGetFull.mockReturnValue(null);
@@ -103,5 +116,43 @@ describe('CollectionPageClient — editMode true', () => {
     const lastCall = gridProbe.mock.calls.at(-1)?.[0];
     expect(lastCall.enableFullScreenView).toBe(false);
     expect(typeof lastCall.onImageClick).toBe('function');
+  });
+
+  it('clears the active filter when entering reorder so the grid shows the full set (I4)', async () => {
+    mockSearchParams = new URLSearchParams('rating=4');
+
+    const content = [
+      {
+        id: 1,
+        contentType: 'IMAGE' as const,
+        orderIndex: 0,
+        imageUrl: 'a.jpg',
+        rating: 5,
+        locations: [],
+      },
+      {
+        id: 2,
+        contentType: 'IMAGE' as const,
+        orderIndex: 1,
+        imageUrl: 'b.jpg',
+        rating: 2,
+        locations: [],
+      },
+    ];
+    const collection = makeCollection({ displayMode: 'ORDERED', content });
+
+    render(<CollectionPageClient collection={collection} editMode />);
+    await flush();
+
+    expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '1');
+
+    act(() => {
+      screen.getByRole('button', { name: 'Reorder' }).click();
+    });
+    act(() => {
+      screen.getByRole('button', { name: 'Cancel' }).click();
+    });
+
+    expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
   });
 });

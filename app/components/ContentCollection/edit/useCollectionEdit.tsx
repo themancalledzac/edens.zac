@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type EditBarCell, type EditBarTab } from '@/app/components/ui/EditBar/types';
 import { type EditableContent, useMetadataEditor } from '@/app/hooks/useMetadataEditor';
@@ -127,7 +127,7 @@ export interface UseCollectionEditResult {
   ) => void;
   isUpdateDirty: boolean;
   saving: boolean;
-  handleUpdate: () => Promise<void>;
+  handleUpdate: (patch?: Partial<CollectionUpdateRequest>) => Promise<void>;
 
   collectionPeople: ContentPersonModel[];
   setCollectionPeople: (people: ContentPersonModel[]) => void;
@@ -304,29 +304,25 @@ export function useCollectionEdit({
     }
   }, [editingContent, isMultiSelectMode]);
 
-  const [updateData, setUpdateData] = useState<CollectionUpdateRequest>(() => ({
-    id: collection.id,
-    type: collection.type || CollectionType.PORTFOLIO,
-    title: collection.title || '',
-    description: collection.description || '',
-    collectionDate: collection.collectionDate || '',
-    visibility: collection.visibility ?? CollectionVisibility.HIDDEN,
-    displayMode: collection.displayMode || 'CHRONOLOGICAL',
-    rowsWide: collection.rowsWide ?? undefined,
-  }));
+  const seedUpdateData = useCallback(
+    (source: CollectionModel): CollectionUpdateRequest => ({
+      id: source.id,
+      type: source.type || CollectionType.PORTFOLIO,
+      title: source.title || '',
+      description: source.description || '',
+      collectionDate: source.collectionDate || '',
+      visibility: source.visibility ?? CollectionVisibility.HIDDEN,
+      displayMode: source.displayMode || 'CHRONOLOGICAL',
+      rowsWide: source.rowsWide ?? undefined,
+    }),
+    []
+  );
 
-  useEffect(() => {
-    setUpdateData({
-      id: collection.id,
-      type: collection.type || CollectionType.PORTFOLIO,
-      title: collection.title || '',
-      description: collection.description || '',
-      collectionDate: collection.collectionDate || '',
-      visibility: collection.visibility ?? CollectionVisibility.HIDDEN,
-      displayMode: collection.displayMode || 'CHRONOLOGICAL',
-      rowsWide: collection.rowsWide ?? undefined,
-    });
-  }, [collection]);
+  const [updateData, setUpdateData] = useState<CollectionUpdateRequest>(() =>
+    seedUpdateData(collection)
+  );
+
+  const seededCollectionIdRef = useRef(collection.id);
 
   const setUpdateField = useCallback(
     <K extends keyof CollectionUpdateRequest>(key: K, value: CollectionUpdateRequest[K]) => {
@@ -371,10 +367,17 @@ export function useCollectionEdit({
     setPeopleStatus(null);
     try {
       await regenerateCollectionPeople(collection.id);
-      setPeopleStatus('People regenerated. Reloading...');
-      window.location.reload();
+      const refreshed = await getCollectionUpdateMetadata(collection.slug);
+      if (refreshed !== null) {
+        setCurrentState(refreshed);
+        collectionStorage.update(refreshed.collection.slug, refreshed.collection);
+        collectionStorage.updateFull(refreshed.collection.slug, refreshed);
+        setCollectionPeopleState(refreshed.collection.people ?? []);
+      }
+      setPeopleStatus('People regenerated.');
     } catch (error_) {
       setPeopleStatus(handleApiError(error_, 'Failed to regenerate people.'));
+    } finally {
       setPeopleSaving(false);
     }
   }, [collection]);
@@ -459,6 +462,20 @@ export function useCollectionEdit({
     if (!enabled) resetToBrowse();
   }, [enabled, resetToBrowse]);
 
+  /**
+   * Re-seed and reset only when the underlying collection IDENTITY changes (a different collection,
+   * e.g. a soft-nav between two `?manage=1` pages). Re-seeding on every `collection` reference
+   * change would wipe typed-but-unsaved buffer edits on each save/background refresh.
+   */
+  useEffect(() => {
+    if (collection.id === seededCollectionIdRef.current) return;
+    seededCollectionIdRef.current = collection.id;
+    setUpdateData(seedUpdateData(collection));
+    setSelectedIds([]);
+    setEditTab('info');
+    resetToBrowse();
+  }, [collection, seedUpdateData, resetToBrowse]);
+
   const contentToEdit = useMemo(
     () =>
       (collection.content?.filter(
@@ -486,73 +503,78 @@ export function useCollectionEdit({
     setIsTextBlockModalOpen(true);
   }, [collection]);
 
-  const handleUpdate = useCallback(async () => {
-    if (!collection || !currentState) return;
+  const handleUpdate = useCallback(
+    async (patch?: Partial<CollectionUpdateRequest>) => {
+      if (!collection || !currentState) return;
 
-    try {
-      setSaving(true);
-      setError(null);
+      try {
+        setSaving(true);
+        setError(null);
 
-      const payload = buildUpdatePayload(updateData, collection);
-      const response = await updateCollection(collection.id, payload);
+        const payload = buildUpdatePayload({ ...updateData, ...patch }, collection);
+        const response = await updateCollection(collection.id, payload);
 
-      if (response !== null) {
-        setCurrentState(response);
-        collectionStorage.update(response.collection.slug, response.collection);
-        collectionStorage.updateFull(response.collection.slug, response);
-        void revalidateCollectionCache(response.collection.slug);
+        if (response !== null) {
+          setCurrentState(response);
+          collectionStorage.update(response.collection.slug, response.collection);
+          collectionStorage.updateFull(response.collection.slug, response);
+          void revalidateCollectionCache(response.collection.slug);
 
-        if (response.collection.slug !== collection.slug) {
-          router.replace(`/${response.collection.slug}?manage=1`);
-        }
+          if (response.collection.slug !== collection.slug) {
+            router.replace(`/${response.collection.slug}?manage=1`);
+          }
 
-        const locationsUpdate = payload.locations;
-        if (
-          locationsUpdate &&
-          !locationsUpdate.remove?.length &&
-          (locationsUpdate.prev?.length || locationsUpdate.newValue?.length)
-        ) {
-          const resolvedLocations = response.collection.locations ?? [];
-          if (resolvedLocations.length > 0) {
-            const imagesWithoutLocation = (collection.content ?? []).filter(
-              (item): item is ContentImageModel =>
-                item.contentType === 'IMAGE' && (!item.locations || item.locations.length === 0)
-            );
+          const locationsUpdate = payload.locations;
+          if (
+            locationsUpdate &&
+            !locationsUpdate.remove?.length &&
+            (locationsUpdate.prev?.length || locationsUpdate.newValue?.length)
+          ) {
+            const resolvedLocations = response.collection.locations ?? [];
+            if (resolvedLocations.length > 0) {
+              const imagesWithoutLocation = (collection.content ?? []).filter(
+                (item): item is ContentImageModel =>
+                  item.contentType === 'IMAGE' && (!item.locations || item.locations.length === 0)
+              );
 
-            if (imagesWithoutLocation.length > 0) {
-              const imageUpdates: ContentImageUpdateRequest[] = imagesWithoutLocation.map(img => ({
-                id: img.id,
-                locations: { prev: resolvedLocations.map(l => l.id) },
-              }));
-              updateImages(imageUpdates)
-                .then(async () => {
-                  const refreshed = await getCollectionUpdateMetadata(response.collection.slug);
-                  if (refreshed) {
-                    setCurrentState(refreshed);
-                    collectionStorage.update(refreshed.collection.slug, refreshed.collection);
-                    collectionStorage.updateFull(refreshed.collection.slug, refreshed);
-                  }
-                })
-                .catch((error_: unknown) => {
-                  logger.error(
-                    'useCollectionEdit',
-                    'Failed to inherit locations to images',
-                    error_
-                  );
-                  setError('Collection saved, but failed to inherit locations to images.');
-                });
+              if (imagesWithoutLocation.length > 0) {
+                const imageUpdates: ContentImageUpdateRequest[] = imagesWithoutLocation.map(
+                  img => ({
+                    id: img.id,
+                    locations: { prev: resolvedLocations.map(l => l.id) },
+                  })
+                );
+                updateImages(imageUpdates)
+                  .then(async () => {
+                    const refreshed = await getCollectionUpdateMetadata(response.collection.slug);
+                    if (refreshed) {
+                      setCurrentState(refreshed);
+                      collectionStorage.update(refreshed.collection.slug, refreshed.collection);
+                      collectionStorage.updateFull(refreshed.collection.slug, refreshed);
+                    }
+                  })
+                  .catch((error_: unknown) => {
+                    logger.error(
+                      'useCollectionEdit',
+                      'Failed to inherit locations to images',
+                      error_
+                    );
+                    setError('Collection saved, but failed to inherit locations to images.');
+                  });
+              }
             }
           }
         }
-      }
 
-      setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
-    } catch (error_) {
-      setError(handleApiError(error_, 'Failed to update collection'));
-    } finally {
-      setSaving(false);
-    }
-  }, [collection, currentState, updateData, router]);
+        setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
+      } catch (error_) {
+        setError(handleApiError(error_, 'Failed to update collection'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [collection, currentState, updateData, router]
+  );
 
   const handleSaveAccess = useCallback(async () => {
     if (!collection) return;

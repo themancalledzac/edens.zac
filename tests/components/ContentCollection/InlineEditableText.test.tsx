@@ -13,6 +13,13 @@ describe('InlineEditableText', () => {
     expect(screen.getByRole('textbox')).toHaveValue('Dolomites');
   });
 
+  it('marks the active control with data-inline-editing so the page Escape handler can bail (I1)', () => {
+    render(<InlineEditableText as="input" value="Dolomites" onCommit={jest.fn()} />);
+
+    fireEvent.click(screen.getByText('Dolomites'));
+    expect(screen.getByRole('textbox')).toHaveAttribute('data-inline-editing', 'true');
+  });
+
   it('commits the new value on blur', () => {
     const onCommit = jest.fn();
     render(<InlineEditableText as="input" value="old" onCommit={onCommit} />);

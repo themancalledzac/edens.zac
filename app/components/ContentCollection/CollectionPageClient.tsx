@@ -87,6 +87,12 @@ export default function CollectionPageClient({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       if (edit.editingContent || edit.isTextBlockModalOpen) return;
+      if (
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement.closest('[data-inline-editing]')
+      ) {
+        return;
+      }
       if (edit.manageMode !== 'browse') {
         edit.exitToBrowse();
       } else {
@@ -282,10 +288,17 @@ export default function CollectionPageClient({
 
   const reorderActive = editMode && edit.reorder.active;
 
+  useEffect(() => {
+    if (!editMode || edit.manageMode !== 'reorder') return;
+    if (!hasAnyActiveFilter(filterState)) return;
+    setFilterState(INITIAL_FILTER_STATE);
+    syncToUrl(buildCollectionCriteria(INITIAL_FILTER_STATE));
+  }, [editMode, edit.manageMode, filterState, syncToUrl]);
+
   const handleCommitField = useCallback(
     (field: InlineEditField, value: string) => {
       edit.setUpdateField(field, value);
-      void edit.handleUpdate();
+      void edit.handleUpdate({ [field]: value });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [edit.setUpdateField, edit.handleUpdate]

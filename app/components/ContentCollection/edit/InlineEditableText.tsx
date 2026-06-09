@@ -98,6 +98,7 @@ export function InlineEditableText({
     value: draft,
     placeholder,
     'aria-label': ariaLabel,
+    'data-inline-editing': 'true',
     onChange: (event: { target: { value: string } }) => setDraft(event.target.value),
     onBlur: commit,
     onKeyDown: handleKeyDown,

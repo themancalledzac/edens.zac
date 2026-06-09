@@ -517,4 +517,82 @@ describe('useCollectionEdit', () => {
       expect(mockUpdateCollectionRating).toHaveBeenCalledWith(700, 4);
     });
   });
+
+  describe('handleUpdate(patch) — same-tick inline save (C1)', () => {
+    it('saves the patched value even when setUpdateField and handleUpdate fire on the same tick', async () => {
+      const { result } = renderEdit({ enabled: true });
+
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      await act(async () => {
+        result.current.setUpdateField('title', 'Typed Title');
+        await result.current.handleUpdate({ title: 'Typed Title' });
+      });
+
+      expect(mockUpdateCollection).toHaveBeenCalledTimes(1);
+      expect(mockUpdateCollection).toHaveBeenCalledWith(
+        42,
+        expect.objectContaining({ title: 'Typed Title' })
+      );
+    });
+
+    it('falls back to the committed buffer when no patch is provided', async () => {
+      const { result } = renderEdit({ enabled: true });
+
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.setUpdateField('title', 'Buffered Title'));
+
+      await act(async () => {
+        await result.current.handleUpdate();
+      });
+
+      expect(mockUpdateCollection).toHaveBeenCalledWith(
+        42,
+        expect.objectContaining({ title: 'Buffered Title' })
+      );
+    });
+  });
+
+  describe('collection.id change (I2 + I3)', () => {
+    it('re-seeds updateData, resets to browse, and clears selectedIds on a new collection id', async () => {
+      const collectionA = makeCollection({ id: 42, slug: 'collection-a', title: 'Alpha' });
+      const collectionB = makeCollection({ id: 99, slug: 'collection-b', title: 'Beta' });
+
+      const { result, rerender } = renderHook(
+        ({ collection }: { collection: CollectionModel }) =>
+          useCollectionEdit({ collection, slug: collection.slug, enabled: true }),
+        { initialProps: { collection: collectionA } }
+      );
+
+      act(() => result.current.enterSelect());
+      act(() => result.current.setUpdateField('title', 'Unsaved Edit'));
+      expect(result.current.manageMode).toBe('select');
+      expect(result.current.updateData.title).toBe('Unsaved Edit');
+
+      rerender({ collection: collectionB });
+
+      expect(result.current.manageMode).toBe('browse');
+      expect(result.current.selectedIds).toEqual([]);
+      expect(result.current.updateData.id).toBe(99);
+      expect(result.current.updateData.title).toBe('Beta');
+    });
+
+    it('does NOT wipe unsaved buffer edits when the same collection reference merely updates', async () => {
+      const collection = makeCollection({ id: 42, slug: 'collection-a', title: 'Alpha' });
+
+      const { result, rerender } = renderHook(
+        ({ collection: c }: { collection: CollectionModel }) =>
+          useCollectionEdit({ collection: c, slug: c.slug, enabled: false }),
+        { initialProps: { collection } }
+      );
+
+      act(() => result.current.setUpdateField('title', 'Unsaved Edit'));
+      expect(result.current.updateData.title).toBe('Unsaved Edit');
+
+      rerender({ collection: { ...collection } });
+
+      expect(result.current.updateData.title).toBe('Unsaved Edit');
+    });
+  });
 });
