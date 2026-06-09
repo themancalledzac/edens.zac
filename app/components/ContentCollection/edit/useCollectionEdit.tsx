@@ -1260,10 +1260,12 @@ export function useCollectionEdit({
 
   const bottomBarCells = useMemo<EditBarCell[]>(() => {
     if (manageMode === 'reorder') {
+      // "Save" (not "Done") so the commit action reads + sits identically to the edit views:
+      // primary, second-from-right, with Cancel on the far right.
       return [
         {
-          key: 'done',
-          label: 'Done',
+          key: 'save',
+          label: 'Save',
           variant: 'primary',
           disabled: isLoading || reorderState.moves.length === 0,
           onClick: () => void handleSaveReorder(),
@@ -1273,6 +1275,8 @@ export function useCollectionEdit({
     }
 
     if (manageMode === 'select') {
+      // Slot order mirrors the edit views: … · [destructive] · [primary] · Cancel. So the rightmost
+      // cells line up everywhere — Remove (danger) third, Edit(n) (primary) second, Cancel last.
       const cells: EditBarCell[] = [
         {
           key: 'all',
@@ -1281,13 +1285,6 @@ export function useCollectionEdit({
             const allImageIds = collection.content?.filter(isContentImage).map(img => img.id) || [];
             setSelectedIds(allImageIds);
           },
-        },
-        {
-          key: 'edit',
-          label: `Edit${selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}`,
-          variant: 'primary',
-          disabled: selectedIds.length === 0,
-          onClick: handleBulkEdit,
         },
       ];
       if (selectedIds.length === 1) {
@@ -1308,6 +1305,13 @@ export function useCollectionEdit({
           variant: 'danger',
           disabled: selectedIds.length === 0 || isLoading,
           onClick: () => void handleBulkRemove(),
+        },
+        {
+          key: 'edit',
+          label: `Edit${selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}`,
+          variant: 'primary',
+          disabled: selectedIds.length === 0,
+          onClick: handleBulkEdit,
         },
         { key: 'cancel', label: 'Cancel', onClick: resetToBrowse }
       );

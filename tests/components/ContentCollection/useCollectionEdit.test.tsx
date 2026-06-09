@@ -260,6 +260,25 @@ describe('useCollectionEdit', () => {
       expect(result.current.manageMode).toBe('browse');
     });
 
+    it('reorder commit cell is a primary "Save" (second-from-right), then Cancel', () => {
+      const { result } = renderEdit({ enabled: false });
+      act(() => result.current.enterReorder());
+      const labels = result.current.bottomBarCells.map(c => c.label);
+      expect(labels).toEqual(['Save', 'Cancel']);
+      expect(result.current.bottomBarCells.find(c => c.key === 'save')?.variant).toBe('primary');
+    });
+
+    it('select locks the right slots: … Remove · Edit · Cancel', () => {
+      const { result } = renderEdit({ enabled: false });
+      act(() => result.current.enterSelect());
+      const cells = result.current.bottomBarCells;
+      expect(cells.map(c => c.label).slice(-3)).toEqual(['Remove', 'Edit', 'Cancel']);
+      expect(cells[cells.length - 1]?.key).toBe('cancel');
+      expect(cells[cells.length - 2]?.key).toBe('edit');
+      expect(cells[cells.length - 2]?.variant).toBe('primary');
+      expect(cells[cells.length - 3]?.key).toBe('remove');
+    });
+
     it('edit contains a primary Save (disabled when not dirty) + a rightmost Cancel', () => {
       const { result } = renderEdit({ enabled: false });
       act(() => result.current.enterEdit());
