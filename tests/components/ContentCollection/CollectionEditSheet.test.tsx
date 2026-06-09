@@ -257,6 +257,21 @@ describe('CollectionEditSheet — InfoTab', () => {
     expect(screen.queryByRole('button', { name: 'Clear Password' })).not.toBeInTheDocument();
   });
 
+  it('renders galleryStatus into the role="status" element', () => {
+    const statusText = 'Password saved. No email sent.';
+    const edit = makeEdit({
+      editTab: 'info',
+      currentState: makeState({ type: CollectionType.CLIENT_GALLERY }),
+      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      isParent: false,
+      galleryStatus: statusText,
+    });
+    render(<CollectionEditSheet edit={edit} />);
+    const statusEl = screen.getByRole('status');
+    expect(statusEl).toBeInTheDocument();
+    expect(statusEl).toHaveTextContent(statusText);
+  });
+
   it('has no "access" tab rendering path — editTab="access" renders nothing', () => {
     const edit = makeEdit({
       // @ts-expect-error intentionally testing the removed tab

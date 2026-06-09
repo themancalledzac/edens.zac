@@ -1,6 +1,6 @@
 /* The (admin) dark surface. Carries data-surface="dark" (see layout.tsx) so the
    scoped token overrides in globals.css apply to the whole admin subtree, AND
-   paints the surface itself — PageShell/ManageClient's own .container only set
+   paints the surface itself — PageShell/the collection-edit pages' own .container only set
    height (min-height:100dvh) and otherwise show through to the white <body>, so
    without this paint the scope would flip text light but leave the page white.
 

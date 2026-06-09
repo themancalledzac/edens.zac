@@ -177,7 +177,7 @@ html,
   /* ── Remaining named aliases still referenced by call sites. The legacy
      text/bg/border/overlay-light families and the duplicate --color-accent
      alias were migrated onto the semantic taxonomy and deleted (TK-3). ── */
-  --text-base: var(--text-md); /* font-size, ManageClient stepper */
+  --text-base: var(--text-md); /* font-size, collection-edit stepper */
   --radius-sm: var(--radius-1);
   --color-warning: #f4b400; /* RatingStars star fill */
 }

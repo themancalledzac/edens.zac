@@ -54,4 +54,20 @@ describe('CreateCollectionForm', () => {
     expect(await screen.findByText(/failed to create collection/i)).toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
   });
+
+  it('does not redirect when createCollection resolves to null', async () => {
+    mockCreate.mockResolvedValue(null as unknown as Awaited<ReturnType<typeof createCollection>>);
+
+    render(<CreateCollectionForm />);
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Null Result Test' } });
+    fireEvent.click(screen.getByRole('button', { name: /create collection/i }));
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Null Result Test' })
+      );
+    });
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(screen.queryByText(/failed to create collection/i)).not.toBeInTheDocument();
+  });
 });
