@@ -15,7 +15,6 @@ import {
   cancelImageMoves,
   executeReorderOperation,
   findImageBlockById,
-  getContentOrderIndex,
   getDisplayedCoverImage,
   handleCollectionNavigation,
   handleCoverImageSelection,
@@ -1580,63 +1579,6 @@ describe('refreshCollectionAfterOperation', () => {
   });
 });
 
-describe('getContentOrderIndex', () => {
-  it('should return direct orderIndex for image content', () => {
-    const imageBlock: ContentImageModel = {
-      id: 1,
-      contentType: 'IMAGE',
-      orderIndex: 5,
-      imageUrl: 'test.jpg',
-      locations: [],
-    };
-
-    const result = getContentOrderIndex(imageBlock);
-
-    expect(result).toBe(5);
-  });
-
-  it('should return direct orderIndex for text content', () => {
-    const textBlock = {
-      id: 2,
-      contentType: 'TEXT' as const,
-      orderIndex: 3,
-      items: [{ type: 'text' as const, value: 'Test' }],
-      format: 'plain' as const,
-      align: 'left' as const,
-    } as AnyContentModel;
-
-    const result = getContentOrderIndex(textBlock);
-
-    expect(result).toBe(3);
-  });
-
-  it('should return direct orderIndex for collection content', () => {
-    const collectionBlock = {
-      id: 3,
-      contentType: 'COLLECTION' as const,
-      orderIndex: 7,
-      slug: 'test-collection',
-      collectionType: 'BLOG' as const,
-    } as AnyContentModel;
-
-    const result = getContentOrderIndex(collectionBlock);
-
-    expect(result).toBe(7);
-  });
-
-  it('should return undefined when orderIndex is undefined', () => {
-    const imageBlock = {
-      id: 1,
-      contentType: 'IMAGE',
-      imageUrl: 'test.jpg',
-    } as ContentImageModel;
-
-    const result = getContentOrderIndex(imageBlock);
-
-    expect(result).toBeUndefined();
-  });
-});
-
 describe('updateBlockOrderIndex', () => {
   it('should update direct orderIndex for image content', () => {
     const imageBlock: ContentImageModel = {
@@ -1720,9 +1662,9 @@ describe('applyReorderChangesOptimistically', () => {
     const result = applyReorderChangesOptimistically(collection, reorders);
 
     expect(result.content).toBeDefined();
-    expect(getContentOrderIndex(result.content![0]!)).toBe(2);
-    expect(getContentOrderIndex(result.content![1]!)).toBe(0);
-    expect(getContentOrderIndex(result.content![2]!)).toBe(1);
+    expect(result.content![0]!.orderIndex).toBe(2);
+    expect(result.content![1]!.orderIndex).toBe(0);
+    expect(result.content![2]!.orderIndex).toBe(1);
   });
 
   it('should return unchanged collection when reorders is empty', () => {

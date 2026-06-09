@@ -23,7 +23,6 @@ import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { logger } from '@/app/utils/logger';
 
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
-export const DEFAULT_PAGE_SIZE = 50;
 
 /**
  * Re-export the shared, pure collection-toggle engine so existing collection-side callers
@@ -418,17 +417,6 @@ export function applyReorderChangesOptimistically(
     ...collection,
     content: updatedContent,
   };
-}
-
-/**
- * Get the orderIndex for a content block
- * Uses direct orderIndex property - works for all content types (images, collections, text, GIFs)
- *
- * @param block - Content block (any type)
- * @returns orderIndex value, or undefined if not found
- */
-export function getContentOrderIndex(block: AnyContentModel): number | undefined {
-  return block.orderIndex;
 }
 
 /**
