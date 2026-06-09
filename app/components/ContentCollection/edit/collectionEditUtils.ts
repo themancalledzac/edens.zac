@@ -131,33 +131,6 @@ export function findImageBlockById(
 }
 
 /**
- * Get the displayed cover image - either pending selection or current.
- *
- * @remarks
- * Casts `collection.content` to `AnyContentModel[]` — safe because the API response
- * always populates content with `AnyContentModel` instances at runtime.
- */
-export function getDisplayedCoverImage(
-  collection: CollectionModel | null,
-  pendingCoverImageId: number | undefined,
-  childCollectionImages?: ContentImageModel[] | null
-): ContentImageModel | null | undefined {
-  if (pendingCoverImageId) {
-    const blocks = collection?.content;
-    if (blocks && Array.isArray(blocks)) {
-      const found = findImageBlockById(blocks as AnyContentModel[], pendingCoverImageId);
-      if (found) return found;
-    }
-    // Fallback: search childCollectionImages (for parent-type collections)
-    if (childCollectionImages) {
-      return childCollectionImages.find(img => img.id === pendingCoverImageId) ?? undefined;
-    }
-    return undefined;
-  }
-  return collection?.coverImage;
-}
-
-/**
  * Validate that a cover image selection is valid
  * Returns true if the image exists and is an image block
  */

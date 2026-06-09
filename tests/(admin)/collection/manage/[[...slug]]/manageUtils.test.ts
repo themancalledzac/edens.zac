@@ -15,7 +15,6 @@ import {
   cancelImageMoves,
   executeReorderOperation,
   findImageBlockById,
-  getDisplayedCoverImage,
   handleCollectionNavigation,
   handleCoverImageSelection,
   handleMultiSelectToggle,
@@ -956,81 +955,6 @@ describe('findImageBlockById', () => {
   });
 });
 
-describe('getDisplayedCoverImage', () => {
-  const image1 = createImageContent(1);
-  const image2 = createImageContent(2);
-  const coverImage = createImageContent(10);
-
-  describe('passing cases', () => {
-    it('should return pending image when pendingCoverImageId provided and exists in collection', () => {
-      const collection = createCollectionModel({
-        content: [image1, image2],
-      });
-
-      const result = getDisplayedCoverImage(collection, 1);
-
-      expect(result).toEqual(image1);
-    });
-
-    it('should return collection.coverImage when pendingCoverImageId not provided', () => {
-      const collection = createCollectionModel({
-        coverImage: coverImage,
-      });
-
-      // @ts-expect-error should return collection.coverImage when pendingCoverImageId not provided
-      const result = getDisplayedCoverImage(collection);
-
-      expect(result).toEqual(coverImage);
-    });
-
-    it('should return null when collection.coverImage is null', () => {
-      const collection = createCollectionModel({
-        coverImage: null,
-      });
-
-      // @ts-expect-error should return null when collection.coverImage is null
-      const result = getDisplayedCoverImage(collection);
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('failing cases', () => {
-    it('should return undefined when pendingCoverImageId provided but does not exist in collection', () => {
-      const collection = createCollectionModel({
-        content: [image1, image2],
-      });
-
-      const result = getDisplayedCoverImage(collection, 999);
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined when collection is null and pendingCoverImageId provided', () => {
-      const result = getDisplayedCoverImage(null, 1);
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined when collection is null and no pendingCoverImageId', () => {
-      // @ts-expect-error should return undefined when collection is null and no pendingCoverImageId
-      const result = getDisplayedCoverImage(null);
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined when pendingCoverImageId points to non-image content', () => {
-      const text1 = createTextContent(3);
-      const collection = createCollectionModel({
-        content: [image1, text1],
-      });
-
-      const result = getDisplayedCoverImage(collection, 3);
-
-      expect(result).toBeUndefined();
-    });
-  });
-});
 describe('handleApiError', () => {
   describe('passing cases', () => {
     it('should return error.message when error is Error object', () => {
