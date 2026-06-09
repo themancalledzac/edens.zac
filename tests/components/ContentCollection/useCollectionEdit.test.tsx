@@ -229,47 +229,51 @@ describe('useCollectionEdit', () => {
       expect(reorderCell?.disabled).toBe(true);
     });
 
-    it('browse has no exit (✕) cell when onExitManage is absent', () => {
+    it('browse has no Cancel cell when onExitManage is absent', () => {
       const { result } = renderEdit({ enabled: false });
-      const exit = result.current.bottomBarCells.find(c => c.key === 'exit');
-      expect(exit).toBeUndefined();
+      const cancel = result.current.bottomBarCells.find(c => c.key === 'cancel');
+      expect(cancel).toBeUndefined();
     });
 
-    it('browse appends a ✕ exit cell that calls onExitManage when provided', () => {
+    it('browse appends a rightmost Cancel cell that calls onExitManage when provided', () => {
       const onExitManage = jest.fn();
       const { result } = renderEdit({ enabled: false, onExitManage });
 
       const labels = result.current.bottomBarCells.map(c => c.label);
-      expect(labels).toEqual(['Select', 'Reorder', 'Add', 'Edit', '✕']);
+      expect(labels).toEqual(['Select', 'Reorder', 'Add', 'Edit', 'Cancel']);
 
-      const exit = result.current.bottomBarCells.find(c => c.key === 'exit');
-      expect(exit).toBeDefined();
-      exit?.onClick?.();
+      const cancel = result.current.bottomBarCells.find(c => c.key === 'cancel');
+      expect(cancel).toBeDefined();
+      cancel?.onClick?.();
       expect(onExitManage).toHaveBeenCalledTimes(1);
     });
 
-    it('does not add the ✕ exit cell to non-browse modes (e.g. select)', () => {
+    it('select Cancel returns to browse and does NOT exit manage', () => {
       const onExitManage = jest.fn();
       const { result } = renderEdit({ enabled: false, onExitManage });
 
       act(() => result.current.enterSelect());
-      const exit = result.current.bottomBarCells.find(c => c.key === 'exit');
-      expect(exit).toBeUndefined();
+      const cancel = result.current.bottomBarCells.find(c => c.key === 'cancel');
+      expect(cancel).toBeDefined();
+      act(() => cancel?.onClick?.());
+      expect(onExitManage).not.toHaveBeenCalled();
+      expect(result.current.manageMode).toBe('browse');
     });
 
-    it('edit contains a primary Save (disabled when not dirty) + Close', () => {
+    it('edit contains a primary Save (disabled when not dirty) + a rightmost Cancel', () => {
       const { result } = renderEdit({ enabled: false });
       act(() => result.current.enterEdit());
 
       const cells = result.current.bottomBarCells;
       const save = cells.find(c => c.key === 'save');
-      const close = cells.find(c => c.key === 'close');
+      const cancel = cells.find(c => c.key === 'cancel');
 
       expect(save).toBeDefined();
       expect(save?.label).toBe('Save');
       expect(save?.disabled).toBe(true); // not dirty yet
-      expect(close).toBeDefined();
-      expect(close?.label).toBe('Close');
+      expect(cancel).toBeDefined();
+      expect(cancel?.label).toBe('Cancel');
+      expect(cells[cells.length - 1]).toBe(cancel); // always the rightmost cell
     });
 
     it('edit Save becomes primary + enabled once a field changes', () => {

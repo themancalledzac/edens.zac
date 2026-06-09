@@ -1350,7 +1350,7 @@ export function useCollectionEdit({
           disabled: !isUpdateDirty || saving || isLoading,
           onClick: () => void handleUpdate(),
         },
-        { key: 'close', label: 'Close', onClick: resetToBrowse },
+        { key: 'cancel', label: 'Cancel', onClick: resetToBrowse },
       ];
     }
 
@@ -1368,9 +1368,11 @@ export function useCollectionEdit({
       cells.push({ key: 'add', label: 'Add', onClick: () => setIsAddMode(true) });
     }
     cells.push({ key: 'edit', label: 'Edit', onClick: () => setIsEditSheetOpen(true) });
-    // ✕ exits the manage surface back to the public view. Browse-only — other modes have Cancel.
+    // The rightmost cell is always "Cancel" (back one level). In browse that means exit the manage
+    // surface back to the public view; in every other state it returns to browse. Same label, same
+    // spot, everywhere.
     if (onExitManage) {
-      cells.push({ key: 'exit', label: '✕', onClick: onExitManage });
+      cells.push({ key: 'cancel', label: 'Cancel', onClick: onExitManage });
     }
     return cells;
   }, [
