@@ -389,17 +389,32 @@ export default function CollectionContentRenderer({
   if (!hasValidImage) {
     const placeholderWidth = width || 300;
     const placeholderHeight = height || (placeholderWidth * 2) / 3;
+    const placeholderClassName = `${buildWrapperClassName(className, cbStyles, {
+      includeDragContainer: false,
+      enableParallax: false,
+      isMobile,
+      hasClickHandler,
+      isSelected: false,
+    })} ${cbStyles.imagePlaceholder}`;
+
+    if (isSlugNav) {
+      return (
+        <Tile
+          key={contentId}
+          href={`/${_hasSlug}`}
+          aria-label={overlayText ?? alt}
+          className={placeholderClassName}
+          style={{ width: placeholderWidth, height: placeholderHeight }}
+        >
+          {overlayText || 'No Image'}
+        </Tile>
+      );
+    }
 
     return (
       <div
         key={contentId}
-        className={`${buildWrapperClassName(className, cbStyles, {
-          includeDragContainer: false,
-          enableParallax: false,
-          isMobile,
-          hasClickHandler,
-          isSelected: false,
-        })} ${cbStyles.imagePlaceholder}`}
+        className={placeholderClassName}
         onClick={hasClickHandler ? handleClick : undefined}
         role={hasClickHandler ? 'button' : undefined}
         tabIndex={hasClickHandler ? 0 : undefined}

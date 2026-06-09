@@ -102,3 +102,34 @@ describe('CollectionContentRenderer — TEXT branch inline edit context', () => 
     expect(onEditLocation).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('CollectionContentRenderer — coverless collection tile (regression)', () => {
+  const coverlessCollectionProps = {
+    contentId: 99,
+    className: 'imageSingle',
+    width: 300,
+    height: 200,
+    isMobile: false,
+    imageUrl: '',
+    imageWidth: 300,
+    imageHeight: 200,
+    alt: 'Lisbon collection',
+    enableParallax: false,
+    contentType: 'COLLECTION' as const,
+    isCollection: true,
+    hasSlug: 'lisbon',
+    overlayText: 'Lisbon',
+  };
+
+  it('renders a navigation link to the collection even with no cover image', () => {
+    render(<CollectionContentRenderer {...coverlessCollectionProps} />);
+    const link = screen.getByRole('link', { name: 'Lisbon' });
+    expect(link).toHaveAttribute('href', '/lisbon');
+  });
+
+  it('shows the collection title (not a generic "No Image") on the coverless tile', () => {
+    render(<CollectionContentRenderer {...coverlessCollectionProps} />);
+    expect(screen.getByText('Lisbon')).toBeInTheDocument();
+    expect(screen.queryByText('No Image')).not.toBeInTheDocument();
+  });
+});
