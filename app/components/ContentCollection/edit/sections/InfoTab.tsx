@@ -207,37 +207,38 @@ export function InfoTab({ edit }: InfoTabProps) {
                 <span className={styles.coverButtonPlaceholder}>Select</span>
               )}
             </button>
-            {isSelectingCoverImage &&
-              (coverCandidates.length > 0 ? (
-                <div className={styles.coverPickerGrid}>
-                  {coverCandidates.map(img => (
-                    <button
-                      type="button"
-                      key={img.id}
-                      className={styles.coverPickerItem}
-                      onClick={() => handleCoverImageClick(img.id)}
-                      aria-label={`Set ${img.title || 'image'} as cover`}
-                    >
-                      <Image
-                        src={img.imageUrl}
-                        alt={img.title || ''}
-                        width={120}
-                        height={90}
-                        unoptimized
-                      />
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className={styles.fieldHint}>
-                  {isParent
-                    ? 'Add child collections with images to choose a cover.'
-                    : 'Add images to this collection to choose a cover.'}
-                </p>
-              ))}
           </Field>
         </div>
       </div>
+
+      {isSelectingCoverImage &&
+        (coverCandidates.length > 0 ? (
+          <div className={styles.coverPickerGrid}>
+            {coverCandidates.map(img => (
+              <button
+                type="button"
+                key={img.id}
+                className={styles.coverPickerItem}
+                onClick={() => handleCoverImageClick(img.id)}
+                aria-label={`Set ${img.title || 'image'} as cover`}
+              >
+                <Image
+                  src={img.imageUrl}
+                  alt={img.title || ''}
+                  width={120}
+                  height={90}
+                  unoptimized
+                />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.fieldHint}>
+            {isParent
+              ? 'Add child collections with images to choose a cover.'
+              : 'Add images to this collection to choose a cover.'}
+          </p>
+        ))}
 
       <div className={styles.formGroup}>
         <label className={styles.formLabel}>Tags</label>
