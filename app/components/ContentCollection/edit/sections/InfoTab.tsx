@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import {
   LOCATION_ADD_NEW_FIELDS,
   PERSON_ADD_NEW_FIELDS,
@@ -22,6 +24,8 @@ import {
   COLLECTION_VISIBILITY_LABELS,
   CollectionVisibility,
 } from '@/app/types/CollectionVisibility';
+import { type ContentImageModel } from '@/app/types/Content';
+import { isContentImage } from '@/app/utils/contentTypeGuards';
 
 import { Button } from '../../../ui/Button/Button';
 import { type UseCollectionEditResult } from '../useCollectionEdit';
@@ -59,10 +63,23 @@ export function InfoTab({ edit }: InfoTabProps) {
     handleSaveAccess,
     handleClearPassword,
     isParent,
+    isSelectingCoverImage,
+    setIsSelectingCoverImage,
+    handleCoverImageClick,
+    displayedCoverImage,
+    childCollectionImages,
   } = edit;
 
   const collection = currentState?.collection;
   const showGalleryAccess = updateData.type === CollectionType.CLIENT_GALLERY || isParent;
+
+  const coverCandidates: ContentImageModel[] = isParent
+    ? (childCollectionImages ?? [])
+    : (collection?.content ?? []).filter(isContentImage);
+
+  let coverButtonLabel = 'Set cover image';
+  if (isSelectingCoverImage) coverButtonLabel = 'Cancel cover selection';
+  else if (displayedCoverImage) coverButtonLabel = 'Change cover image';
 
   return (
     <div className={styles.tabPanel}>
@@ -129,6 +146,44 @@ export function InfoTab({ edit }: InfoTabProps) {
             onChange={e => setUpdateField('description', e.target.value)}
           />
         </Field>
+      </div>
+
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>Cover image</label>
+        <Button
+          variant={isSelectingCoverImage ? 'danger' : 'secondary'}
+          onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+        >
+          {coverButtonLabel}
+        </Button>
+        {isSelectingCoverImage &&
+          (coverCandidates.length > 0 ? (
+            <div className={styles.coverPickerGrid}>
+              {coverCandidates.map(img => (
+                <button
+                  type="button"
+                  key={img.id}
+                  className={styles.coverPickerItem}
+                  onClick={() => handleCoverImageClick(img.id)}
+                  aria-label={`Set ${img.title || 'image'} as cover`}
+                >
+                  <Image
+                    src={img.imageUrl}
+                    alt={img.title || ''}
+                    width={120}
+                    height={90}
+                    unoptimized
+                  />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className={styles.fieldHint}>
+              {isParent
+                ? 'Add child collections with images to choose a cover.'
+                : 'Add images to this collection to choose a cover.'}
+            </p>
+          ))}
       </div>
 
       <Dropdown<LocationModel>

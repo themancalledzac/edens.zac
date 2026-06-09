@@ -268,21 +268,13 @@ describe('CollectionEditSheet — StructureTab', () => {
     expect(screen.queryByLabelText(/Row Density/)).not.toBeInTheDocument();
   });
 
-  it('shows "Set cover image" button for parent collection', () => {
-    render(
-      <CollectionEditSheet
-        edit={makeEdit({
-          editTab: 'structure',
-          isParent: true,
-          updateData: makeUpdateData({ type: CollectionType.PARENT }),
-        })}
-      />
-    );
+  it('shows the cover button on the Info tab', () => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'info', isParent: false })} />);
     expect(screen.getByRole('button', { name: /set cover image/i })).toBeInTheDocument();
   });
 
-  it('shows the cover button for a non-parent collection too', () => {
+  it('does not show the cover button on the Structure tab', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure', isParent: false })} />);
-    expect(screen.getByRole('button', { name: /set cover image/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /cover image/i })).not.toBeInTheDocument();
   });
 });

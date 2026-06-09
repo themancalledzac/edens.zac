@@ -1,16 +1,13 @@
 'use client';
 
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import RatingStars from '@/app/components/RatingStars/RatingStars';
-import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { Select } from '@/app/components/ui/Field/Select';
 import { type DisplayMode } from '@/app/types/Collection';
-import { type ContentImageModel } from '@/app/types/Content';
-import { isContentCollection, isContentImage } from '@/app/utils/contentTypeGuards';
+import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 
 import { type UseCollectionEditResult } from '../useCollectionEdit';
@@ -20,7 +17,7 @@ interface StructureTabProps {
   edit: UseCollectionEditResult;
 }
 
-/** Structure tab: display/density, cover image, relationships, ratings. */
+/** Structure tab: display/density, relationships, ratings. */
 export function StructureTab({ edit }: StructureTabProps) {
   const router = useRouter();
 
@@ -39,24 +36,11 @@ export function StructureTab({ edit }: StructureTabProps) {
     parentIds,
     handleParentToggle,
     updateCollectionRating,
-    isSelectingCoverImage,
-    setIsSelectingCoverImage,
-    handleCoverImageClick,
-    displayedCoverImage,
-    childCollectionImages,
   } = edit;
 
   const collection = currentState?.collection;
   const collectionSlug = collection?.slug;
   const isHomeCollection = collectionSlug === 'home';
-
-  const coverCandidates: ContentImageModel[] = isParent
-    ? (childCollectionImages ?? [])
-    : (collection?.content ?? []).filter(isContentImage);
-
-  let coverButtonLabel = 'Set cover image';
-  if (isSelectingCoverImage) coverButtonLabel = 'Cancel cover selection';
-  else if (displayedCoverImage) coverButtonLabel = 'Change cover image';
 
   return (
     <div className={styles.tabPanel}>
@@ -125,54 +109,6 @@ export function StructureTab({ edit }: StructureTabProps) {
           </div>
         </>
       )}
-
-      <div className={styles.formGroup}>
-        <label className={styles.formLabel}>Cover image</label>
-        {displayedCoverImage && !isSelectingCoverImage && (
-          <Image
-            src={displayedCoverImage.imageUrl}
-            alt={displayedCoverImage.title || 'Cover image'}
-            width={120}
-            height={90}
-            className={styles.coverThumb}
-            unoptimized
-          />
-        )}
-        <Button
-          variant={isSelectingCoverImage ? 'danger' : 'secondary'}
-          onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-        >
-          {coverButtonLabel}
-        </Button>
-        {isSelectingCoverImage &&
-          (coverCandidates.length > 0 ? (
-            <div className={styles.coverPickerGrid}>
-              {coverCandidates.map(img => (
-                <button
-                  type="button"
-                  key={img.id}
-                  className={styles.coverPickerItem}
-                  onClick={() => handleCoverImageClick(img.id)}
-                  aria-label={`Set ${img.title || 'image'} as cover`}
-                >
-                  <Image
-                    src={img.imageUrl}
-                    alt={img.title || ''}
-                    width={120}
-                    height={90}
-                    unoptimized
-                  />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className={styles.fieldHint}>
-              {isParent
-                ? 'Add child collections with images to choose a cover.'
-                : 'Add images to this collection to choose a cover.'}
-            </p>
-          ))}
-      </div>
 
       <CollectionListSelector
         allCollections={allCollections}

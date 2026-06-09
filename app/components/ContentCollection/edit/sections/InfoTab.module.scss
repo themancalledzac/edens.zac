@@ -109,3 +109,35 @@
   font-size: var(--text-sm);
   color: var(--color-on-surface-muted);
 }
+
+.coverPickerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--space-2);
+}
+
+.coverPickerItem {
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+  line-height: 0;
+
+  &:hover {
+    border-color: var(--color-fg);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+  }
+}
