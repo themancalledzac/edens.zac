@@ -1977,9 +1977,6 @@ export default function ManageClient({ slug }: ManageClientProps) {
                   </div>
                 )}
 
-              {/* Persistent, mode-morphing bottom bar (uniform-height cells).
-                  Hidden while the image editor modal is open — the modal owns the
-                  bottom bar then, so this never bleeds through behind it. */}
               {!editingContent && (
                 <nav className={styles.bottomBar} aria-label="Manage actions">
                   {renderBottomBar()}
