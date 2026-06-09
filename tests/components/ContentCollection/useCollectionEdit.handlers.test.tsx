@@ -18,10 +18,7 @@ import {
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
-import {
-  type ContentImageModel,
-  type ContentImageUpdateResponse,
-} from '@/app/types/Content';
+import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: mockRouterReplace }),
@@ -140,9 +137,9 @@ describe('useCollectionEdit — handler tests', () => {
     mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse());
     mockUpdateCollection.mockResolvedValue(makeResponse());
     mockGetMetadata.mockResolvedValue(makeMetadata());
-    (updateCollectionRating as jest.MockedFunction<typeof updateCollectionRating>).mockResolvedValue(
-      
-    );
+    (
+      updateCollectionRating as jest.MockedFunction<typeof updateCollectionRating>
+    ).mockResolvedValue();
   });
 
   describe('handleUpdate — cache write + slug-change navigation', () => {
@@ -182,20 +179,6 @@ describe('useCollectionEdit — handler tests', () => {
       });
 
       expect(mockRouterReplace).not.toHaveBeenCalled();
-    });
-
-    it('clears the pending coverImageId from updateData after a successful save', async () => {
-      const { result } = renderEdit({ enabled: true });
-      await waitFor(() => expect(result.current.currentState).not.toBeNull());
-
-      act(() => result.current.setUpdateField('coverImageId', 999));
-      expect(result.current.updateData.coverImageId).toBe(999);
-
-      await act(async () => {
-        await result.current.handleUpdate();
-      });
-
-      expect(result.current.updateData.coverImageId).toBeUndefined();
     });
 
     it('propagates the save error to result.current.error when updateCollection throws', async () => {
@@ -243,9 +226,7 @@ describe('useCollectionEdit — handler tests', () => {
       const { result } = renderEdit({ enabled: true, collection });
       await waitFor(() => expect(result.current.currentState).not.toBeNull());
 
-      act(() =>
-        result.current.setUpdateField('locations', { prev: [locationId] })
-      );
+      act(() => result.current.setUpdateField('locations', { prev: [locationId] }));
 
       await act(async () => {
         await result.current.handleUpdate();
@@ -397,7 +378,9 @@ describe('useCollectionEdit — handler tests', () => {
       });
 
       const collection = makeCollection({ type: CollectionType.PARENT });
-      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({ type: CollectionType.PARENT }));
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ type: CollectionType.PARENT })
+      );
       const { result } = renderEdit({ enabled: true, collection });
       await waitFor(() => expect(result.current.currentState).not.toBeNull());
 
@@ -426,7 +409,9 @@ describe('useCollectionEdit — handler tests', () => {
       });
 
       const collection = makeCollection({ type: CollectionType.PARENT });
-      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({ type: CollectionType.PARENT }));
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ type: CollectionType.PARENT })
+      );
       const { result } = renderEdit({ enabled: true, collection });
       await waitFor(() => expect(result.current.currentState).not.toBeNull());
 

@@ -51,7 +51,6 @@ import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 import { buildImageUpdateDiff } from '../../Metadata/metadataUtils';
 import {
   buildUpdatePayload,
-  getDisplayedCoverImage,
   handleMultiSelectToggle as handleMultiSelectToggleUtil,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
@@ -111,7 +110,7 @@ export interface UseCollectionEditResult {
   handleCoverImageClick: (imageId: number) => void;
   justClickedImageId: number | null;
   currentCoverImageId?: number;
-  /** The cover image to render in the Edit sheet — pending selection wins over the saved one. */
+  /** The collection's saved cover image, shown in the Edit sheet (cover changes save immediately). */
   displayedCoverImage: ContentImageModel | null | undefined;
   /** Child-collection images a PARENT picks its cover from. */
   childCollectionImages?: ContentImageModel[] | null;
@@ -500,15 +499,7 @@ export function useCollectionEdit({
 
   const isParent = isParentType(updateData.type);
 
-  const displayedCoverImage = useMemo(
-    () =>
-      getDisplayedCoverImage(
-        collection,
-        updateData.coverImageId,
-        currentState?.childCollectionImages
-      ),
-    [collection, updateData.coverImageId, currentState?.childCollectionImages]
-  );
+  const displayedCoverImage = collection.coverImage ?? null;
 
   const handleCreateNewTextBlock = useCallback(() => {
     if (!collection) return;
@@ -577,8 +568,6 @@ export function useCollectionEdit({
             }
           }
         }
-
-        setUpdateData(prev => ({ ...prev, coverImageId: undefined }));
       } catch (error_) {
         setError(handleApiError(error_, 'Failed to update collection'));
       } finally {
