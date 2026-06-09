@@ -43,6 +43,16 @@ describe('EssentialInfoSection', () => {
     jest.clearAllMocks();
   });
 
+  it('hides Title, Caption, and Alt in bulk edit but keeps Author', () => {
+    render(<EssentialInfoSection {...makeProps({ isBulkEdit: true })} />);
+    expect(screen.queryByPlaceholderText('Enter image title')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Enter caption')).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText('Describe the image for screen readers')
+    ).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Photographer name')).toBeInTheDocument();
+  });
+
   it('Title input round-trips a change through updateStateField', () => {
     const updateStateField = jest.fn();
     render(<EssentialInfoSection {...makeProps({ updateStateField })} />);

@@ -214,6 +214,14 @@
   }
 }
 
+/* Compact half-width pairs that STAY side-by-side on mobile (Author · Rating · Visibility). */
+.formGridHalf {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
 /* Checkbox Group */
 .checkboxGroup {
   display: flex;

@@ -35,6 +35,8 @@ export interface EssentialInfoSectionProps {
   currentCollectionId?: number;
   /** Controls the disabled state on the Caption field — GIF/MP4 content does not support captions. */
   isGif: boolean;
+  /** Bulk edit hides per-item fields (Title/Caption/Alt) that should never be shared across images. */
+  isBulkEdit?: boolean;
 }
 
 export default function EssentialInfoSection({
@@ -44,6 +46,7 @@ export default function EssentialInfoSection({
   availableCollections,
   currentCollectionId,
   isGif,
+  isBulkEdit = false,
 }: EssentialInfoSectionProps): React.JSX.Element {
   // Visibility of the current collection's junction. Absent/undefined means "visible" (only an
   // explicit `false` hides it), matching the backend default.
@@ -70,53 +73,48 @@ export default function EssentialInfoSection({
     <div className={modalStyles.formSection}>
       <h3 className={modalStyles.sectionHeading}>Essential Information</h3>
 
-      <div className={modalStyles.formGroup}>
-        <label className={modalStyles.formLabel}>Title</label>
-        <Input
-          value={updateState.title ?? ''}
-          onChange={e => updateStateField({ title: e.target.value || undefined })}
-          className={modalStyles.formInput}
-          placeholder="Enter image title"
-        />
-      </div>
+      {/* Per-item fields — hidden in bulk edit (multiple images never share these). */}
+      {!isBulkEdit && (
+        <>
+          <div className={modalStyles.formGroup}>
+            <label className={modalStyles.formLabel}>Title</label>
+            <Input
+              value={updateState.title ?? ''}
+              onChange={e => updateStateField({ title: e.target.value || undefined })}
+              className={modalStyles.formInput}
+              placeholder="Enter image title"
+            />
+          </div>
 
-      <div
-        className={[modalStyles.formGroup, isGif ? modalStyles.sectionDisabled : '']
-          .filter(Boolean)
-          .join(' ')}
-        aria-disabled={isGif || undefined}
-        title={isGif ? 'Caption is not supported on GIF/MP4 content.' : undefined}
-      >
-        <label className={modalStyles.formLabel}>Caption</label>
-        <Textarea
-          value={updateState.caption ?? ''}
-          onChange={e => updateStateField({ caption: e.target.value || undefined })}
-          className={modalStyles.formTextarea}
-          placeholder="Enter caption"
-          rows={3}
-          disabled={isGif}
-        />
-      </div>
+          <div
+            className={[modalStyles.formGroup, isGif ? modalStyles.sectionDisabled : '']
+              .filter(Boolean)
+              .join(' ')}
+            aria-disabled={isGif || undefined}
+            title={isGif ? 'Caption is not supported on GIF/MP4 content.' : undefined}
+          >
+            <label className={modalStyles.formLabel}>Caption</label>
+            <Textarea
+              value={updateState.caption ?? ''}
+              onChange={e => updateStateField({ caption: e.target.value || undefined })}
+              className={modalStyles.formTextarea}
+              placeholder="Enter caption"
+              rows={3}
+              disabled={isGif}
+            />
+          </div>
 
-      <div className={modalStyles.formGroup}>
-        <label className={modalStyles.formLabel}>Alt Text (Accessibility)</label>
-        <Input
-          value={updateState.alt ?? ''}
-          onChange={e => updateStateField({ alt: e.target.value || undefined })}
-          className={modalStyles.formInput}
-          placeholder="Describe the image for screen readers"
-        />
-      </div>
-
-      <div className={modalStyles.formGroup}>
-        <label className={modalStyles.formLabel}>Author</label>
-        <Input
-          value={updateState.author ?? ''}
-          onChange={e => updateStateField({ author: e.target.value || null })}
-          className={modalStyles.formInput}
-          placeholder="Photographer name"
-        />
-      </div>
+          <div className={modalStyles.formGroup}>
+            <label className={modalStyles.formLabel}>Alt Text (Accessibility)</label>
+            <Input
+              value={updateState.alt ?? ''}
+              onChange={e => updateStateField({ alt: e.target.value || undefined })}
+              className={modalStyles.formInput}
+              placeholder="Describe the image for screen readers"
+            />
+          </div>
+        </>
+      )}
 
       <div>
         <Dropdown<LocationModel>
@@ -149,37 +147,50 @@ export default function EssentialInfoSection({
         />
       </div>
 
-      <div className={modalStyles.formGroup}>
-        <label className={modalStyles.formLabel}>Rating</label>
-        <Select
-          value={updateState.rating?.toString() || ''}
-          onChange={e =>
-            updateStateField({
-              rating: e.target.value ? Number.parseInt(e.target.value, 10) : undefined,
-            })
-          }
-          className={modalStyles.formSelect}
-        >
-          {RATING_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      {/* Collection Visibility — available for both single and bulk edit */}
-      {currentCollectionId && (
-        <div className={modalStyles.checkboxGroup}>
-          <label className={modalStyles.checkboxLabel}>
-            <Checkbox
-              checked={currentCollectionVisible}
-              onChange={e => handleCollectionVisibilityToggle(e.target.checked)}
-            />
-            <span>Collection Visibility</span>
-          </label>
+      {/* Author · Rating · Collection Visibility — compact half-width siblings to save space. */}
+      <div className={modalStyles.formGridHalf}>
+        <div className={modalStyles.formGroup}>
+          <label className={modalStyles.formLabel}>Author</label>
+          <Input
+            value={updateState.author ?? ''}
+            onChange={e => updateStateField({ author: e.target.value || null })}
+            className={modalStyles.formInput}
+            placeholder="Photographer name"
+          />
         </div>
-      )}
+
+        <div className={modalStyles.formGroup}>
+          <label className={modalStyles.formLabel}>Rating</label>
+          <Select
+            value={updateState.rating?.toString() || ''}
+            onChange={e =>
+              updateStateField({
+                rating: e.target.value ? Number.parseInt(e.target.value, 10) : undefined,
+              })
+            }
+            className={modalStyles.formSelect}
+          >
+            {RATING_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        {/* Collection Visibility — available for both single and bulk edit */}
+        {currentCollectionId && (
+          <div className={modalStyles.checkboxGroup}>
+            <label className={modalStyles.checkboxLabel}>
+              <Checkbox
+                checked={currentCollectionVisible}
+                onChange={e => handleCollectionVisibilityToggle(e.target.checked)}
+              />
+              <span>Collection Visibility</span>
+            </label>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

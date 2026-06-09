@@ -27,12 +27,11 @@ import MediaPreview from './sections/MediaPreview';
 import TagsPeopleSection from './sections/TagsPeopleSection';
 import type { EditableContent } from './types';
 
-type TabId = 'info' | 'camera' | 'tags' | 'collections';
+type TabId = 'info' | 'camera' | 'collections';
 
 const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
   { id: 'info', label: 'Info' },
   { id: 'camera', label: 'Camera' },
-  { id: 'tags', label: 'Tags' },
   { id: 'collections', label: 'Collections' },
 ];
 
@@ -168,6 +167,13 @@ export default function MetadataModal({
                   availableCollections={availableCollections}
                   currentCollectionId={currentCollectionId}
                   isGif={isGif}
+                  isBulkEdit={isBulkEdit}
+                />
+                <TagsPeopleSection
+                  updateState={updateState}
+                  updateStateField={updateStateField}
+                  availableTags={availableTags}
+                  availablePeople={availablePeople}
                 />
               </div>
 
@@ -186,20 +192,6 @@ export default function MetadataModal({
                   availableFilmTypes={availableFilmTypes}
                   availableFilmFormats={availableFilmFormats}
                   isGif={isGif}
-                />
-              </div>
-
-              <div
-                id="tabpanel-tags"
-                role="tabpanel"
-                aria-labelledby="tab-tags"
-                hidden={activeTab !== 'tags'}
-              >
-                <TagsPeopleSection
-                  updateState={updateState}
-                  updateStateField={updateStateField}
-                  availableTags={availableTags}
-                  availablePeople={availablePeople}
                 />
               </div>
 
