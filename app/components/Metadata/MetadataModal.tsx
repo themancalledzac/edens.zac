@@ -249,7 +249,6 @@ export default function MetadataModal({
                         disabled: saving,
                       },
                     ]),
-                { key: 'cancel', label: 'Cancel', onClick: handleCancel, disabled: saving },
                 {
                   key: 'save',
                   label: isBulkEdit ? `Save ${selectedIds.length}` : 'Save',
@@ -257,6 +256,7 @@ export default function MetadataModal({
                   disabled: !hasChanges || saving,
                   onClick: () => formRef.current?.requestSubmit(),
                 },
+                { key: 'cancel', label: 'Cancel', onClick: handleCancel, disabled: saving },
               ]}
             />
           </form>
