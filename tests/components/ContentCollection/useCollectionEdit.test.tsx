@@ -122,6 +122,13 @@ function renderEdit(
   );
 }
 
+async function flushEffects() {
+  // drain the data-load + getMetadata promise chains inside act
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, 0));
+  });
+}
+
 describe('useCollectionEdit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -317,6 +324,7 @@ describe('useCollectionEdit', () => {
       expect(mockStorageGetFull).toHaveBeenCalledWith('smith-wedding');
       expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledWith('smith-wedding');
       expect(result.current.isLoadingState).toBe(false);
+      await flushEffects();
     });
 
     it('uses cached full response and skips the API on cache hit', async () => {
@@ -329,6 +337,7 @@ describe('useCollectionEdit', () => {
 
       expect(mockStorageGetFull).toHaveBeenCalledWith('smith-wedding');
       expect(mockGetCollectionUpdateMetadata).not.toHaveBeenCalled();
+      await flushEffects();
     });
 
     it('populates allCollections from getMetadata when enabled', async () => {
@@ -341,6 +350,7 @@ describe('useCollectionEdit', () => {
       });
       expect(mockGetMetadata).toHaveBeenCalledTimes(1);
       expect(result.current.allCollections.map(c => c.id)).toEqual([7, 8]);
+      await flushEffects();
     });
   });
 
@@ -376,6 +386,7 @@ describe('useCollectionEdit', () => {
       );
       expect(result.current.currentLocations.map(l => l.id)).toEqual([5, 9]);
       expect(result.current.updateData.locations?.prev).toEqual([5, 9]);
+      await flushEffects();
     });
 
     it('emits remove when a saved location is deselected', async () => {
@@ -395,6 +406,7 @@ describe('useCollectionEdit', () => {
       act(() => result.current.handleLocationsChange([]));
       expect(result.current.updateData.locations?.remove).toEqual([5]);
       expect(result.current.currentLocations).toEqual([]);
+      await flushEffects();
     });
   });
 
@@ -426,6 +438,7 @@ describe('useCollectionEdit', () => {
       );
       expect(result.current.currentTags.map(t => t.id)).toEqual([3, 4]);
       expect(result.current.updateData.tags?.prev).toEqual([3, 4]);
+      await flushEffects();
     });
   });
 
@@ -534,6 +547,7 @@ describe('useCollectionEdit', () => {
         42,
         expect.objectContaining({ title: 'Typed Title' })
       );
+      await flushEffects();
     });
 
     it('falls back to the committed buffer when no patch is provided', async () => {
@@ -551,6 +565,7 @@ describe('useCollectionEdit', () => {
         42,
         expect.objectContaining({ title: 'Buffered Title' })
       );
+      await flushEffects();
     });
   });
 
@@ -576,6 +591,7 @@ describe('useCollectionEdit', () => {
       expect(result.current.selectedIds).toEqual([]);
       expect(result.current.updateData.id).toBe(99);
       expect(result.current.updateData.title).toBe('Beta');
+      await flushEffects();
     });
 
     it('does NOT wipe unsaved buffer edits when the same collection reference merely updates', async () => {
