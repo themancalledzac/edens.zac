@@ -67,6 +67,9 @@ import { useImageClickHandler } from './hooks/useImageClickHandler';
 const ANIMATED_MEDIA_MIME_TYPES = new Set(['image/gif', 'video/mp4', 'video/quicktime']);
 const ANIMATED_MEDIA_EXTENSION_REGEX = /\.(gif|mp4|mov)$/i;
 
+/** Stable empty content array so the public (disabled) path never re-runs the layout pass. */
+const EMPTY_CONTENT: AnyContentModel[] = [];
+
 function isAnimatedMediaFile(file: File): boolean {
   return ANIMATED_MEDIA_MIME_TYPES.has(file.type) || ANIMATED_MEDIA_EXTENSION_REGEX.test(file.name);
 }
@@ -79,7 +82,7 @@ export interface UseCollectionEditParams {
   collection: CollectionModel;
   /** Slug used for the cache-first metadata fetch and cache writes. */
   slug: string;
-  /** When false the hook is inert — no fetch, browse defaults only. */
+  /** When false the hook is inert — no fetch, no layout pass, browse defaults only. */
   enabled: boolean;
   /** Optional exit-manage handler; appends the rightmost browse-bar Cancel that leaves to public. */
   onExitManage?: () => void;
@@ -336,9 +339,10 @@ export function useCollectionEdit({
   const [peopleStatus, setPeopleStatus] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     setCollectionPeopleState(collection.people ?? []);
     setPeopleStatus(null);
-  }, [collection.id, collection.people]);
+  }, [enabled, collection.id, collection.people]);
 
   const handleSavePeople = useCallback(async () => {
     if (!collection) return;
@@ -388,15 +392,23 @@ export function useCollectionEdit({
   const [gallerySaving, setGallerySaving] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return;
     setGalleryPasswordInput(collection.galleryPassword ?? '');
     setGalleryEmail(collection.recipientEmails?.join(', ') ?? '');
     setGalleryStatus(null);
-  }, [collection.id, collection.galleryPassword, collection.recipientEmails]);
+  }, [enabled, collection.id, collection.galleryPassword, collection.recipientEmails]);
 
   const processedContent = useMemo(
     () =>
-      processContentBlocks(collection.content ?? [], false, collection.id, collection.displayMode),
-    [collection.content, collection.id, collection.displayMode]
+      enabled
+        ? processContentBlocks(
+            collection.content ?? [],
+            false,
+            collection.id,
+            collection.displayMode
+          )
+        : EMPTY_CONTENT,
+    [enabled, collection.content, collection.id, collection.displayMode]
   );
 
   const {
