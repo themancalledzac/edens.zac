@@ -1,4 +1,5 @@
-// Admin = perimeter today (BFF INTERNAL_API_SECRET) → authenticated admin principal later (see docs 009). Gating centralized in app/(admin)/layout.tsx.
+import { redirect } from 'next/navigation';
+
 import ManageClient from './ManageClient';
 
 interface ManageCollectionPageProps {
@@ -9,23 +10,13 @@ interface ManageCollectionPageProps {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Admin Collection Management Page (Server Component)
- *
- * Optimized flow leveraging client-side collection caching:
- * - If no slug: Shows create mode
- * - If slug exists: Passes slug to client, which checks cache first
- *   - Cache hit: Uses cached collection + fetches only metadata (~300ms)
- *   - Cache miss: Falls back to full fetchCollectionUpdateMetadata (~6s)
- *
- * Performance improvement: 76% faster when cache hit (5.7s saved)
- *
- * @param params - Route parameters containing optional slug
- * @returns Server component with client component for UI logic
- */
 export default async function ManageCollectionPage({ params }: ManageCollectionPageProps) {
   const { slug: slugArray } = await params;
   const slug = slugArray?.[0];
 
-  return <ManageClient slug={slug} />;
+  if (slug) {
+    redirect(`/${slug}?manage=1`);
+  }
+
+  return <ManageClient slug={undefined} />;
 }

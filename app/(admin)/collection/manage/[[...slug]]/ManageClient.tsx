@@ -512,7 +512,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       if (response !== null) {
         setCurrentState(response);
         await revalidateCollectionCache(response.collection.slug);
-        router.replace(`/collection/manage/${response.collection.slug}`);
+        router.replace(`/${response.collection.slug}?manage=1`);
       }
     } catch (error: unknown) {
       setError(handleApiError(error, 'Failed to create collection'));
@@ -543,7 +543,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
         void revalidateCollectionCache(response.collection.slug);
 
         if (response.collection.slug !== collection.slug) {
-          router.replace(`/collection/manage/${response.collection.slug}`);
+          router.replace(`/${response.collection.slug}?manage=1`);
         }
 
         // Location inheritance: if locations were just set (not all removed),
@@ -1177,7 +1177,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
       await revalidateCollectionCache(collection.slug);
 
       if (response !== null) {
-        router.push(`/collection/manage/${response.collection.slug}`);
+        router.push(`/${response.collection.slug}?manage=1`);
       }
     } catch (error) {
       setError(handleApiError(error, 'Failed to create child collection'));
@@ -1815,7 +1815,7 @@ export default function ManageClient({ slug }: ManageClientProps) {
                             onToggle={handleCollectionToggle}
                             onNavigate={col => {
                               if (col.slug) {
-                                router.push(`/collection/manage/${col.slug}`);
+                                router.push(`/${col.slug}?manage=1`);
                               } else {
                                 logger.error(
                                   'ManageClient',
