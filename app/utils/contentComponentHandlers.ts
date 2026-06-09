@@ -39,7 +39,7 @@ export function checkImageVisibility(
 /**
  * Create a unified click handler for any content type (IMAGE, COLLECTION, GIF, TEXT).
  * Delegates to parent via onContentClick callback.
- * Navigation/editing decisions are made by the parent component (ManageClient).
+ * Navigation/editing decisions are made by the parent component (the collection edit surface).
  *
  * Priority 1: If onContentClick is provided (admin/manage pages), the parent
  * component decides whether to navigate (collection) or edit metadata (image).

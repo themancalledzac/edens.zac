@@ -2,7 +2,7 @@
  * Shared, pure collection-toggle engine.
  *
  * Extracted from the admin/manage page so both the collection side (children +
- * siblings + parents in ManageClient) and the image side (collection membership in
+ * siblings + parents in the collection edit sheet) and the image side (collection membership in
  * the metadata editor) can drive the exact same `prev`/`newValue`/`remove` toggle
  * logic. Keep this file engine-only — no React, no component imports — so it stays
  * trivially unit-testable.
@@ -17,7 +17,7 @@ import {
 /**
  * Toggle one collection within a `prev`/`newValue`/`remove` association — the shared
  * engine behind both the collection-side pickers (children / siblings / parents in
- * ManageClient) and the image-side collection picker (via a thin adapter).
+ * the collection edit sheet) and the image-side collection picker (via a thin adapter).
  *
  * Pure and exhaustive over the four transitions:
  * - add a not-yet-saved collection  → appended to `newValue`

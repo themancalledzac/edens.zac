@@ -1,5 +1,5 @@
 /**
- * Utility functions for ManageClient component
+ * Utility functions for the collection edit surface (useCollectionEdit)
  * Handles data normalization, state management, and type guards
  */
 
@@ -26,7 +26,7 @@ export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 
 /**
  * Re-export the shared, pure collection-toggle engine so existing collection-side callers
- * (ManageClient children/siblings/parents pickers) and tests keep importing it from here
+ * (the edit sheet / useCollectionEdit pickers) and tests keep importing it from here
  * unchanged. The implementation now lives in `@/app/utils/collectionToggle` so the image
  * side can adapt the same engine.
  */

@@ -16,7 +16,7 @@ import styles from './layout.module.scss';
  * Surface: the wrapper carries data-surface="dark" so the scoped token
  * overrides in globals.css apply to every admin descendant, and paints the
  * surface itself (background/color). The page containers (PageShell,
- * ManageClient) only own height and otherwise show through to the white body,
+ * the collection manage/edit pages) only own height and otherwise show through to the white body,
  * so this wrapper is what actually makes admin render dark. The public site is
  * untouched — only the (admin) segment opts in.
  */

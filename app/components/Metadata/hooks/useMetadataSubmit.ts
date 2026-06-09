@@ -76,7 +76,7 @@ export function useMetadataSubmit({
   const previewImageAsGif = isGif ? (previewImage as ContentGifModel) : null;
 
   // The single-GIF edit/delete path applies only to a non-bulk GIF selection. Bulk-edit on GIF is
-  // not supported yet — ManageClient.handleBulkEdit splits mixed selections, so a batch never
+  // not supported yet — the bulk-edit path splits mixed selections, so a batch never
   // reaches here as a "GIF edit". When set, handleSubmit/handleDelete route through the GIF
   // endpoints; otherwise the image path runs.
   const singleGifTarget = isBulkEdit ? null : previewImageAsGif;

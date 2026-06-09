@@ -1,6 +1,6 @@
 /**
  * Unit tests for manageUtils.ts
- * Tests all utility functions used by ManageClient component
+ * Tests utility functions in collectionEditUtils (the collection edit surface)
  */
 
 // Mock the collections API module
