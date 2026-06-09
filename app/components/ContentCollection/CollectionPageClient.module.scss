@@ -3,3 +3,9 @@
   padding: 3rem;
   color: var(--color-on-surface-muted);
 }
+
+// Edit-mode canvas: reserve space for the fixed EditBar (action row, optional tab row above it,
+// and the device safe-area) so the last grid row is never hidden behind the bar.
+.editCanvas {
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
