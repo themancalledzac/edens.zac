@@ -373,6 +373,21 @@
   }
 }
 
+/* Editable title row — only rendered in on-page edit mode */
+.metadataTitleRow {
+  display: flex;
+  width: 100%;
+}
+
+.metadataTitle {
+  display: block;
+  width: 100%;
+  font-family: var(--font-serif), serif;
+  font-weight: 700;
+  font-size: var(--text-xl);
+  color: var(--color-black);
+}
+
 /* Date + Location header row */
 .metadataHeaderRow {
   display: flex;
@@ -391,6 +406,11 @@
 }
 
 .metadataLocation {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
   font-weight: 600;
   color: var(--color-black);
   font-size: var(--text-sm);

@@ -34,6 +34,11 @@ import {
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
 import CollectionEditSheet from './edit/CollectionEditSheet';
+import {
+  type InlineEditContextValue,
+  type InlineEditField,
+  InlineEditProvider,
+} from './edit/InlineEditContext';
 import { useCollectionEdit } from './edit/useCollectionEdit';
 
 type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated'>;
@@ -277,6 +282,31 @@ export default function CollectionPageClient({
 
   const reorderActive = editMode && edit.reorder.active;
 
+  const handleCommitField = useCallback(
+    (field: InlineEditField, value: string) => {
+      edit.setUpdateField(field, value);
+      void edit.handleUpdate();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [edit.setUpdateField, edit.handleUpdate]
+  );
+
+  const handleEditLocation = useCallback(() => {
+    edit.enterEdit();
+    edit.setEditTab('info');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edit.enterEdit, edit.setEditTab]);
+
+  const inlineEditValue = useMemo<InlineEditContextValue>(
+    () => ({
+      title: edit.updateData.title ?? '',
+      description: edit.updateData.description ?? '',
+      onCommitField: handleCommitField,
+      onEditLocation: handleEditLocation,
+    }),
+    [edit.updateData.title, edit.updateData.description, handleCommitField, handleEditLocation]
+  );
+
   const grid = editMode ? (
     <ContentBlockWithFullScreen
       content={reorderActive ? edit.displayContent : contentBlocks}
@@ -319,7 +349,13 @@ export default function CollectionPageClient({
 
   const content = (
     <>
-      {editMode ? <div className={styles.editCanvas}>{grid}</div> : grid}
+      {editMode ? (
+        <InlineEditProvider value={inlineEditValue}>
+          <div className={styles.editCanvas}>{grid}</div>
+        </InlineEditProvider>
+      ) : (
+        grid
+      )}
       {!editMode && hasActiveFilters && filteredImages.length === 0 && (
         <p className={styles.emptyState}>No images match your filters.</p>
       )}
