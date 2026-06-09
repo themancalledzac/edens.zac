@@ -148,44 +148,6 @@ export function InfoTab({ edit }: InfoTabProps) {
         </Field>
       </div>
 
-      <div className={styles.formGroup}>
-        <label className={styles.formLabel}>Cover image</label>
-        <Button
-          variant={isSelectingCoverImage ? 'danger' : 'secondary'}
-          onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-        >
-          {coverButtonLabel}
-        </Button>
-        {isSelectingCoverImage &&
-          (coverCandidates.length > 0 ? (
-            <div className={styles.coverPickerGrid}>
-              {coverCandidates.map(img => (
-                <button
-                  type="button"
-                  key={img.id}
-                  className={styles.coverPickerItem}
-                  onClick={() => handleCoverImageClick(img.id)}
-                  aria-label={`Set ${img.title || 'image'} as cover`}
-                >
-                  <Image
-                    src={img.imageUrl}
-                    alt={img.title || ''}
-                    width={120}
-                    height={90}
-                    unoptimized
-                  />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className={styles.fieldHint}>
-              {isParent
-                ? 'Add child collections with images to choose a cover.'
-                : 'Add images to this collection to choose a cover.'}
-            </p>
-          ))}
-      </div>
-
       <Dropdown<LocationModel>
         label="Locations"
         multiSelect
@@ -207,20 +169,60 @@ export function InfoTab({ edit }: InfoTabProps) {
         emptyText="No locations set"
       />
 
-      <div className={styles.formGroup}>
-        <Field label="Visibility" htmlFor="edit-sheet-visibility">
-          <Select
-            id="edit-sheet-visibility"
-            value={updateData.visibility ?? CollectionVisibility.HIDDEN}
-            onChange={e => setUpdateField('visibility', e.target.value as CollectionVisibility)}
+      <div className={styles.formGridHalf}>
+        <div>
+          <Field label="Visibility" htmlFor="edit-sheet-visibility">
+            <Select
+              id="edit-sheet-visibility"
+              value={updateData.visibility ?? CollectionVisibility.HIDDEN}
+              onChange={e => setUpdateField('visibility', e.target.value as CollectionVisibility)}
+            >
+              {Object.values(CollectionVisibility).map(v => (
+                <option key={v} value={v}>
+                  {COLLECTION_VISIBILITY_LABELS[v]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Cover image</label>
+          <Button
+            variant={isSelectingCoverImage ? 'danger' : 'secondary'}
+            onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
           >
-            {Object.values(CollectionVisibility).map(v => (
-              <option key={v} value={v}>
-                {COLLECTION_VISIBILITY_LABELS[v]}
-              </option>
+            {coverButtonLabel}
+          </Button>
+          {isSelectingCoverImage &&
+            (coverCandidates.length > 0 ? (
+              <div className={styles.coverPickerGrid}>
+                {coverCandidates.map(img => (
+                  <button
+                    type="button"
+                    key={img.id}
+                    className={styles.coverPickerItem}
+                    onClick={() => handleCoverImageClick(img.id)}
+                    aria-label={`Set ${img.title || 'image'} as cover`}
+                  >
+                    <Image
+                      src={img.imageUrl}
+                      alt={img.title || ''}
+                      width={120}
+                      height={90}
+                      unoptimized
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.fieldHint}>
+                {isParent
+                  ? 'Add child collections with images to choose a cover.'
+                  : 'Add images to this collection to choose a cover.'}
+              </p>
             ))}
-          </Select>
-        </Field>
+        </div>
       </div>
 
       <div className={styles.formGroup}>
