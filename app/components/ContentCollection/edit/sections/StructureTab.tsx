@@ -1,0 +1,203 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+
+import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
+import RatingStars from '@/app/components/RatingStars/RatingStars';
+import { Button } from '@/app/components/ui/Button/Button';
+import { Field } from '@/app/components/ui/Field/Field';
+import { Select } from '@/app/components/ui/Field/Select';
+import {
+  ASSIGNABLE_COLLECTION_TYPES,
+  COLLECTION_TYPE_LABELS,
+  type CollectionType,
+  type DisplayMode,
+} from '@/app/types/Collection';
+import { isContentCollection } from '@/app/utils/contentTypeGuards';
+import { logger } from '@/app/utils/logger';
+
+import { type UseCollectionEditResult } from '../useCollectionEdit';
+import styles from './StructureTab.module.scss';
+
+interface StructureTabProps {
+  edit: UseCollectionEditResult;
+}
+
+/** Structure tab: collection type, display/density, cover (parent-only), relationships, ratings. */
+export function StructureTab({ edit }: StructureTabProps) {
+  const router = useRouter();
+
+  const {
+    currentState,
+    updateData,
+    setUpdateField,
+    isParent,
+    allCollections,
+    handleChangeType,
+    childIds,
+    handleChildToggle,
+    handleAddNewChild,
+    siblingIds,
+    handleSiblingToggle,
+    parentIds,
+    handleParentToggle,
+    updateCollectionRating,
+    isSelectingCoverImage,
+    setIsSelectingCoverImage,
+  } = edit;
+
+  const collection = currentState?.collection;
+  const collectionSlug = collection?.slug;
+  const isHomeCollection = collectionSlug === 'home';
+
+  return (
+    <div className={styles.tabPanel}>
+      {/* Collection Type */}
+      <div className={styles.formGroup}>
+        <Field label="Collection Type" htmlFor="edit-sheet-type">
+          <Select
+            id="edit-sheet-type"
+            value={updateData.type}
+            onChange={e => setUpdateField('type', e.target.value as CollectionType)}
+          >
+            {ASSIGNABLE_COLLECTION_TYPES.map(type => (
+              <option key={type} value={type}>
+                {COLLECTION_TYPE_LABELS[type]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+
+      {/* Presentation — hidden for parent-type collections */}
+      {!isParent && (
+        <>
+          <h3 className={styles.sectionTitle}>Presentation</h3>
+          <div className={styles.formGridHalf}>
+            <div>
+              <Field label="Display" htmlFor="edit-sheet-display-mode">
+                <Select
+                  id="edit-sheet-display-mode"
+                  value={updateData.displayMode}
+                  onChange={e => setUpdateField('displayMode', e.target.value as DisplayMode)}
+                >
+                  <option value="ORDERED">Default</option>
+                  <option value="CHRONOLOGICAL">Chronological</option>
+                  <option value="FIXED">Fixed</option>
+                </Select>
+              </Field>
+            </div>
+
+            <div>
+              <Field label="Row Density" htmlFor="edit-sheet-rows-wide" hint="Default: 4">
+                <div className={styles.numberStepperWrapper}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setUpdateField('rowsWide', Math.max(1, (updateData.rowsWide ?? 4) - 1))
+                    }
+                    className={styles.stepperButton}
+                    disabled={(updateData.rowsWide ?? 4) <= 1}
+                    aria-label="Decrease row density"
+                  >
+                    −
+                  </button>
+                  <input
+                    id="edit-sheet-rows-wide"
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={updateData.rowsWide ?? ''}
+                    placeholder="4"
+                    onChange={e => {
+                      const value =
+                        e.target.value === '' ? undefined : Number.parseInt(e.target.value);
+                      if (value === undefined || (value >= 1 && value <= 10)) {
+                        setUpdateField('rowsWide', value);
+                      }
+                    }}
+                    className={styles.numberInput}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setUpdateField('rowsWide', Math.min(10, (updateData.rowsWide ?? 4) + 1))
+                    }
+                    className={styles.stepperButton}
+                    disabled={(updateData.rowsWide ?? 4) >= 10}
+                    aria-label="Increase row density"
+                  >
+                    +
+                  </button>
+                </div>
+              </Field>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Cover — parents only: button that activates cover-image picking on the grid. */}
+      {isParent && (
+        <div className={styles.formGroup}>
+          <Button
+            variant={isSelectingCoverImage ? 'danger' : 'secondary'}
+            onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
+          >
+            {isSelectingCoverImage ? 'Cancel cover selection' : 'Set cover image'}
+          </Button>
+        </div>
+      )}
+
+      {/* Collections — child / sibling / parent selectors */}
+      <CollectionListSelector
+        allCollections={allCollections}
+        savedCollectionIds={childIds.saved}
+        pendingAddIds={childIds.pendingAdd}
+        pendingRemoveIds={childIds.pendingRemove}
+        onToggle={handleChildToggle}
+        onNavigate={col => {
+          if (col.slug) {
+            router.push(`/collection/manage/${col.slug}`);
+          } else {
+            logger.error('StructureTab', 'Cannot navigate to collection: missing slug', col);
+          }
+        }}
+        onAddNewChild={handleAddNewChild}
+        label="Collections"
+        currentCollectionId={collection?.id}
+        siblingSavedIds={siblingIds.saved}
+        siblingPendingAddIds={siblingIds.pendingAdd}
+        siblingPendingRemoveIds={siblingIds.pendingRemove}
+        onToggleSibling={handleSiblingToggle}
+        parentSavedIds={parentIds.saved}
+        parentPendingAddIds={parentIds.pendingAdd}
+        parentPendingRemoveIds={parentIds.pendingRemove}
+        onToggleParent={handleParentToggle}
+        onChangeType={handleChangeType}
+      />
+
+      {/* Home: rate child collections inline (immediate — no save button). */}
+      {isHomeCollection && (collection?.content?.some(isContentCollection) ?? false) && (
+        <section aria-labelledby="edit-sheet-children-rating-heading" className={styles.formGroup}>
+          <h3 id="edit-sheet-children-rating-heading" className={styles.formLabel}>
+            Children (rating)
+          </h3>
+          <ul className={styles.plainList}>
+            {(collection?.content ?? []).filter(isContentCollection).map(child => (
+              <li key={child.id} className={styles.childRow}>
+                <span>{child.title ?? child.slug}</span>
+                <RatingStars
+                  initialRating={child.rating ?? null}
+                  onChange={next => updateCollectionRating(child.referencedCollectionId, next)}
+                  ariaLabel={`Rate ${child.title ?? child.slug}`}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+export default StructureTab;

@@ -1,0 +1,17 @@
+// Slide-up sheet — light surface, scrollable, sits above the canvas with bottom
+// clearance for the EditBar. Uses surface tokens only — never hardcodes colors or
+// applies a dark scope.
+.editSheet {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 40);
+  overflow-y: auto;
+  background: var(--color-bg);
+  padding: calc(env(safe-area-inset-top) + var(--space-4)) var(--space-3)
+    calc(var(--bottom-bar-height, 4rem) + var(--space-6));
+
+  @media (width >= 768px) {
+    padding-left: var(--default-padding, var(--space-6));
+    padding-right: var(--default-padding, var(--space-6));
+  }
+}
