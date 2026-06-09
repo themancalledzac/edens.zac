@@ -9,11 +9,9 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
 }));
 
-jest.mock('@/app/(admin)/collection/manage/[[...slug]]/ManageClient', () => ({
+jest.mock('@/app/(admin)/collection/manage/[[...slug]]/CreateCollectionForm', () => ({
   __esModule: true,
-  default: ({ slug }: { slug: string | undefined }) => (
-    <div data-testid="manage-client" data-slug={slug ?? ''} />
-  ),
+  default: () => <div data-testid="create-collection-form" />,
 }));
 
 describe('ManageCollectionPage', () => {
@@ -29,21 +27,20 @@ describe('ManageCollectionPage', () => {
     expect(mockRedirect).toHaveBeenCalledTimes(1);
   });
 
-  it('renders ManageClient without a slug when no slug segment is present', async () => {
+  it('renders CreateCollectionForm when no slug segment is present', async () => {
     const ui = await ManageCollectionPage({ params: Promise.resolve({ slug: undefined }) });
     render(ui);
 
     expect(mockRedirect).not.toHaveBeenCalled();
-    expect(screen.getByTestId('manage-client')).toBeInTheDocument();
-    expect(screen.getByTestId('manage-client').dataset.slug).toBe('');
+    expect(screen.getByTestId('create-collection-form')).toBeInTheDocument();
   });
 
-  it('renders ManageClient without a slug when the slug array is empty', async () => {
+  it('renders CreateCollectionForm when the slug array is empty', async () => {
     const ui = await ManageCollectionPage({ params: Promise.resolve({ slug: [] }) });
     render(ui);
 
     expect(mockRedirect).not.toHaveBeenCalled();
-    expect(screen.getByTestId('manage-client')).toBeInTheDocument();
+    expect(screen.getByTestId('create-collection-form')).toBeInTheDocument();
   });
 
   it('calls redirect with only the first slug segment when multiple segments are present', async () => {

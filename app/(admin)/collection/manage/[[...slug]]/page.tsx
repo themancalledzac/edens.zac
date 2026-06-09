@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
-import ManageClient from './ManageClient';
+import CreateCollectionForm from './CreateCollectionForm';
 
 interface ManageCollectionPageProps {
   params: Promise<{
@@ -18,5 +18,5 @@ export default async function ManageCollectionPage({ params }: ManageCollectionP
     redirect(`/${slug}?manage=1`);
   }
 
-  return <ManageClient slug={undefined} />;
+  return <CreateCollectionForm />;
 }
