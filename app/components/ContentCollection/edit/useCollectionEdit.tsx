@@ -7,11 +7,14 @@ import { type EditBarCell, type EditBarTab } from '@/app/components/ui/EditBar/t
 import { type EditableContent, useMetadataEditor } from '@/app/hooks/useMetadataEditor';
 import { useToggleTriple } from '@/app/hooks/useToggleTriple';
 import {
+  createChildCollection,
   getCollectionUpdateMetadata,
+  getMetadata,
   regenerateCollectionPeople,
   saveGalleryAccess,
   setCollectionPeople,
   updateCollection,
+  updateCollectionRating,
 } from '@/app/lib/api/collections';
 import { createGif, createImages, createTextContent, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
@@ -22,6 +25,8 @@ import {
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type ContentPersonModel,
+  type ContentTagModel,
+  type LocationModel,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
@@ -33,12 +38,20 @@ import {
 } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
 import { processContentBlocks } from '@/app/utils/contentLayout';
-import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
+import {
+  isContentCollection,
+  isContentImage,
+  isGifContent,
+  isParentType,
+} from '@/app/utils/contentTypeGuards';
+import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
+import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import { buildImageUpdateDiff } from '../../Metadata/metadataUtils';
 import {
   buildUpdatePayload,
+  getDisplayedCoverImage,
   handleMultiSelectToggle as handleMultiSelectToggleUtil,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
@@ -46,6 +59,7 @@ import {
   revalidateMetadataCache,
   toggleRelation,
 } from './collectionEditUtils';
+import { useCollectionRetype } from './hooks/useCollectionRetype';
 import { useContentReordering } from './hooks/useContentReordering';
 import { useCoverImageSelection } from './hooks/useCoverImageSelection';
 import { useImageClickHandler } from './hooks/useImageClickHandler';
@@ -90,8 +104,16 @@ export interface UseCollectionEditResult {
     pickedUpImageId: number | null;
   };
   isSelectingCoverImage: boolean;
+  setIsSelectingCoverImage: (value: boolean) => void;
+  handleCoverImageClick: (imageId: number) => void;
   justClickedImageId: number | null;
   currentCoverImageId?: number;
+  /** The cover image to render in the Edit sheet — pending selection wins over the saved one. */
+  displayedCoverImage: ContentImageModel | null | undefined;
+  /** Child-collection images a PARENT picks its cover from. */
+  childCollectionImages?: ContentImageModel[] | null;
+  /** True for PARENT-type collections: hides density/display, shows the child cover picker. */
+  isParent: boolean;
 
   // Selection
   selectedIds: number[];
@@ -125,9 +147,37 @@ export interface UseCollectionEditResult {
   handleSaveAccess: () => Promise<void>;
   handleClearPassword: () => Promise<void>;
 
-  // Child-collection picker (Structure tab) + text-block create flow
+  // Child-collection picker — original (pre-existing) surface, kept for back-compat.
   originalCollectionIds: Set<number>;
   handleCollectionToggle: (toggled: CollectionListModel) => void;
+
+  // Structure tab — collection selectors (child / sibling / parent triples), retype, rating.
+  /** Every collection in the system — the option list for the collection selectors. */
+  allCollections: CollectionListModel[];
+  /** Drag-to-retype a collection in the selector accordion. */
+  handleChangeType: (collection: CollectionListModel, targetType: CollectionType) => Promise<void>;
+  /** Child-collection (containment) triple. `saved` derives from content blocks. */
+  childIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
+  handleChildToggle: (toggled: CollectionListModel) => void;
+  handleAddNewChild: () => Promise<void>;
+  /** Sibling-collection (mutual association) triple. */
+  siblingIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
+  handleSiblingToggle: (toggled: CollectionListModel) => void;
+  /** Parent-collection (inverse containment) triple. */
+  parentIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
+  handleParentToggle: (toggled: CollectionListModel) => void;
+  /** Rate a child collection inline (home collection only). Immediate — no save button. */
+  updateCollectionRating: (id: number, rating: number | null) => Promise<void>;
+
+  // Info tab — locations.
+  currentLocations: LocationModel[];
+  handleLocationsChange: (value: LocationModel | LocationModel[] | null) => void;
+
+  // Tags tab — collection tags.
+  currentTags: ContentTagModel[];
+  handleTagsChange: (tags: ContentTagModel[]) => void;
+
+  // Text-block create flow.
   isTextBlockModalOpen: boolean;
   closeTextBlockModal: () => void;
   handleTextBlockSubmit: (data: {
@@ -245,6 +295,21 @@ export function useCollectionEdit({
 
   // Working collection: the fetched metadata's collection wins; otherwise the consumer seed.
   const collection = currentState?.collection ?? seedCollection;
+
+  // All collections in the system — the option list for the Structure-tab collection selectors.
+  // Inert when disabled (mirrors the metadata fetch above).
+  const [allCollections, setAllCollections] = useState<CollectionListModel[]>([]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    getMetadata().then(meta => {
+      if (meta !== null) setAllCollections(meta.collections);
+    });
+  }, [enabled]);
+
+  // Drag-and-drop retype: drop a collection on a different type header to reassign its type.
+  // Optimistically re-buckets it in the selector accordion; reverts on failure.
+  const { handleChangeType } = useCollectionRetype({ setAllCollections, setError });
 
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -458,6 +523,21 @@ export function useCollectionEdit({
           selectedIds.includes(contentItem.id)
       ) as (ContentImageModel | ContentGifModel)[]) || [],
     [selectedIds, collection.content]
+  );
+
+  // PARENT-type collections hide the density/display controls and pick their cover from child
+  // images instead of their own grid. Gated off the in-flight `updateData.type` (not the saved
+  // type) so the controls react live as the user changes the type in the Structure tab.
+  const isParent = isParentType(updateData.type);
+
+  const displayedCoverImage = useMemo(
+    () =>
+      getDisplayedCoverImage(
+        collection,
+        updateData.coverImageId,
+        currentState?.childCollectionImages
+      ),
+    [collection, updateData.coverImageId, currentState?.childCollectionImages]
   );
 
   /**
@@ -905,7 +985,11 @@ export function useCollectionEdit({
         .map(block => block.referencedCollectionId),
     [collection.content]
   );
-  const { savedIds: originalCollectionIds } = useToggleTriple(
+  const {
+    savedIds: originalCollectionIds,
+    pendingAddIds,
+    pendingRemoveIds,
+  } = useToggleTriple(
     originalChildIds,
     updateData.collections?.newValue,
     updateData.collections?.remove,
@@ -913,7 +997,105 @@ export function useCollectionEdit({
   );
 
   /**
-   * Handle child-collection toggle from CollectionListSelector.
+   * Derive current locations from `collection.locations` and `updateData.locations`.
+   *
+   * Priority: pending `updateData.locations` overrides the saved collection locations.
+   */
+  const currentLocations: LocationModel[] = useMemo(() => {
+    const availableLocations = currentState?.locations || [];
+
+    const locationsUpdate = updateData.locations;
+    if (locationsUpdate) {
+      const result: LocationModel[] = [];
+      // Resolve prev IDs to models
+      for (const id of locationsUpdate.prev ?? []) {
+        const found = availableLocations.find(loc => loc.id === id);
+        if (found) result.push(found);
+      }
+      // Add new locations (not yet created)
+      for (const name of locationsUpdate.newValue ?? []) {
+        result.push({ id: 0, name, slug: '' });
+      }
+      return result;
+    }
+
+    return convertLocationsToModels(collection.locations, availableLocations);
+  }, [collection.locations, currentState?.locations, updateData.locations]);
+
+  const originalLocations = useMemo(
+    () => convertLocationsToModels(collection.locations, currentState?.locations || []),
+    [collection.locations, currentState?.locations]
+  );
+
+  /**
+   * Handle locations selection changes (multi-select). Diffs the new selection against the saved
+   * baseline so deselecting a location emits `remove` — the backend reconciler only drops what is
+   * in `remove`, never what's absent from `prev`.
+   */
+  const handleLocationsChange = useCallback(
+    (value: LocationModel | LocationModel[] | null) => {
+      let locations: LocationModel[] = [];
+      if (Array.isArray(value)) locations = value;
+      else if (value) locations = [value];
+
+      setUpdateData(prev => ({
+        ...prev,
+        locations: buildLocationsDiff(locations, originalLocations),
+      }));
+    },
+    [originalLocations]
+  );
+
+  /**
+   * Derive current tags from `collection.tags` and `updateData.tags`. Mirrors `currentLocations`.
+   *
+   * Priority: pending `updateData.tags` overrides the saved collection tags. Saved tags arrive as
+   * `string[]` names, so they are resolved against the available tag list to recover IDs.
+   */
+  const currentTags: ContentTagModel[] = useMemo(() => {
+    const availableTags = currentState?.tags || [];
+
+    const tagsUpdate = updateData.tags;
+    if (tagsUpdate) {
+      const result: ContentTagModel[] = [];
+      // Resolve prev IDs to models
+      for (const id of tagsUpdate.prev ?? []) {
+        const found = availableTags.find(tag => tag.id === id);
+        if (found) result.push(found);
+      }
+      // Add new tags (not yet created)
+      for (const name of tagsUpdate.newValue ?? []) {
+        result.push({ id: 0, name, slug: '' });
+      }
+      return result;
+    }
+
+    return convertTagsToModels(collection.tags, availableTags);
+  }, [collection.tags, currentState?.tags, updateData.tags]);
+
+  const originalTags = useMemo(
+    () => convertTagsToModels(collection.tags, currentState?.tags || []),
+    [collection.tags, currentState?.tags]
+  );
+
+  /**
+   * Handle tags selection changes (multi-select). Mirrors `handleLocationsChange`: diffs against
+   * the saved baseline so deselecting/clearing tags emits `remove` and actually persists.
+   * `TagsSelector` already hands back a normalized `ContentTagModel[]`.
+   */
+  const handleTagsChange = useCallback(
+    (tags: ContentTagModel[]) => {
+      setUpdateData(prev => ({
+        ...prev,
+        tags: buildTagsDiff(tags, originalTags),
+      }));
+    },
+    [originalTags]
+  );
+
+  /**
+   * Handle child-collection toggle from CollectionListSelector. Child rows carry
+   * `visible`/`orderIndex` in their `newValue` entry (containment metadata).
    */
   const handleCollectionToggle = useCallback(
     (toggledCollection: CollectionListModel) => {
@@ -934,6 +1116,114 @@ export function useCollectionEdit({
     },
     [originalCollectionIds]
   );
+
+  /**
+   * Sibling-collection selection state — mirrors the child-collection state above, but the saved
+   * IDs derive from `collection.siblings` (mutual association) rather than from `collection.content`
+   * (containment).
+   */
+  const originalSiblingIdsArray = useMemo(
+    () => (collection.siblings ?? []).map(sib => sib.id),
+    [collection.siblings]
+  );
+  const {
+    savedIds: originalSiblingIds,
+    pendingAddIds: pendingAddSiblingIds,
+    pendingRemoveIds: pendingRemoveSiblingIds,
+  } = useToggleTriple(
+    originalSiblingIdsArray,
+    updateData.siblings?.newValue,
+    updateData.siblings?.remove,
+    sib => sib.collectionId
+  );
+
+  /**
+   * Toggle a sibling link. Same engine as handleCollectionToggle, but sibling rows carry only
+   * { collectionId, name } — no orderIndex/visible (siblings have neither).
+   */
+  const handleSiblingToggle = useCallback(
+    (toggledCollection: CollectionListModel) => {
+      setUpdateData(prev => ({
+        ...prev,
+        siblings: toggleRelation(prev.siblings, toggledCollection, originalSiblingIds, col => ({
+          collectionId: col.id,
+          name: col.name,
+        })),
+      }));
+    },
+    [originalSiblingIds]
+  );
+
+  /**
+   * Parent-collection selection state — mirrors the sibling-collection state above, but the saved
+   * IDs derive from `collection.parents` (the inverse of the child containment relation, surfaced
+   * by admin/manage reads).
+   */
+  const originalParentIdsArray = useMemo(
+    () => (collection.parents ?? []).map(parent => parent.id),
+    [collection.parents]
+  );
+  const {
+    savedIds: originalParentIds,
+    pendingAddIds: pendingAddParentIds,
+    pendingRemoveIds: pendingRemoveParentIds,
+  } = useToggleTriple(
+    originalParentIdsArray,
+    updateData.parents?.newValue,
+    updateData.parents?.remove,
+    parent => parent.collectionId
+  );
+
+  /**
+   * Toggle a parent link. Same engine as handleSiblingToggle; parent rows carry only
+   * { collectionId, name } (parents have neither orderIndex nor visible here).
+   */
+  const handleParentToggle = useCallback(
+    (toggledCollection: CollectionListModel) => {
+      setUpdateData(prev => ({
+        ...prev,
+        parents: toggleRelation(prev.parents, toggledCollection, originalParentIds, col => ({
+          collectionId: col.id,
+          name: col.name,
+        })),
+      }));
+    },
+    [originalParentIds]
+  );
+
+  /**
+   * Handle adding new child collection.
+   */
+  const handleAddNewChild = useCallback(async () => {
+    if (!collection) {
+      logger.warn(
+        'useCollectionEdit',
+        'handleAddNewChild: collection unavailable, cannot create child'
+      );
+      setError('Collection data unavailable — please reload the page.');
+      return;
+    }
+
+    try {
+      setOperationLoading(true);
+      setError(null);
+
+      const response = await createChildCollection(collection.id, {
+        type: CollectionType.PORTFOLIO,
+        title: 'New Child Collection',
+      });
+
+      await revalidateCollectionCache(collection.slug);
+
+      if (response !== null) {
+        router.push(`/collection/manage/${response.collection.slug}`);
+      }
+    } catch (error_) {
+      setError(handleApiError(error_, 'Failed to create child collection'));
+    } finally {
+      setOperationLoading(false);
+    }
+  }, [collection, router]);
 
   // ── Mode transitions ──
   const enterSelect = useCallback(() => setIsMultiSelectMode(true), []);
@@ -1011,7 +1301,6 @@ export function useCollectionEdit({
         {
           key: 'text',
           label: 'Text',
-          disabled: isLoading,
           onClick: () => {
             handleCreateNewTextBlock();
             setIsAddMode(false);
@@ -1112,8 +1401,13 @@ export function useCollectionEdit({
       pickedUpImageId: reorderState.pickedUpImageId,
     },
     isSelectingCoverImage,
+    setIsSelectingCoverImage,
+    handleCoverImageClick,
     justClickedImageId,
     currentCoverImageId: collection.coverImage?.id,
+    displayedCoverImage,
+    childCollectionImages: currentState?.childCollectionImages,
+    isParent,
 
     selectedIds,
     isMultiSelectMode,
@@ -1143,6 +1437,37 @@ export function useCollectionEdit({
 
     originalCollectionIds,
     handleCollectionToggle,
+
+    // Structure tab — collection selectors, retype, rating.
+    allCollections,
+    handleChangeType,
+    childIds: {
+      saved: originalCollectionIds,
+      pendingAdd: pendingAddIds,
+      pendingRemove: pendingRemoveIds,
+    },
+    handleChildToggle: handleCollectionToggle,
+    handleAddNewChild,
+    siblingIds: {
+      saved: originalSiblingIds,
+      pendingAdd: pendingAddSiblingIds,
+      pendingRemove: pendingRemoveSiblingIds,
+    },
+    handleSiblingToggle,
+    parentIds: {
+      saved: originalParentIds,
+      pendingAdd: pendingAddParentIds,
+      pendingRemove: pendingRemoveParentIds,
+    },
+    handleParentToggle,
+    updateCollectionRating,
+
+    // Info / Tags tabs — locations + tags field wiring.
+    currentLocations,
+    handleLocationsChange,
+    currentTags,
+    handleTagsChange,
+
     isTextBlockModalOpen,
     closeTextBlockModal,
     handleTextBlockSubmit,

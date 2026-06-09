@@ -9,12 +9,19 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 
 import { useCollectionEdit } from '@/app/components/ContentCollection/edit/useCollectionEdit';
-import { getCollectionUpdateMetadata, updateCollection } from '@/app/lib/api/collections';
+import {
+  getCollectionUpdateMetadata,
+  getMetadata,
+  updateCollection,
+  updateCollectionRating,
+} from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
+  type CollectionListModel,
   type CollectionModel,
   CollectionType,
   type CollectionUpdateResponseDTO,
+  type GeneralMetadataDTO,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
@@ -35,9 +42,37 @@ const mockGetCollectionUpdateMetadata = getCollectionUpdateMetadata as jest.Mock
   typeof getCollectionUpdateMetadata
 >;
 const mockUpdateCollection = updateCollection as jest.MockedFunction<typeof updateCollection>;
+const mockGetMetadata = getMetadata as jest.MockedFunction<typeof getMetadata>;
+const mockUpdateCollectionRating = updateCollectionRating as jest.MockedFunction<
+  typeof updateCollectionRating
+>;
 const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
   typeof collectionStorage.getFull
 >;
+
+function makeMetadata(overrides: Partial<GeneralMetadataDTO> = {}): GeneralMetadataDTO {
+  return {
+    tags: [],
+    people: [],
+    locations: [],
+    cameras: [],
+    lenses: [],
+    filmTypes: [],
+    filmFormats: [],
+    collections: [],
+    ...overrides,
+  };
+}
+
+function makeListModel(overrides: Partial<CollectionListModel> = {}): CollectionListModel {
+  return {
+    id: 7,
+    name: 'Sibling Collection',
+    slug: 'sibling-collection',
+    type: CollectionType.PORTFOLIO,
+    ...overrides,
+  };
+}
 
 function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {
@@ -72,6 +107,20 @@ function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdat
   };
 }
 
+/**
+ * Like {@link makeResponse}, but lets a test set the DTO root-level metadata arrays
+ * (`tags`/`locations` — the *available* option lists) separately from the collection overrides.
+ */
+function makeResponseWith(
+  collectionOverrides: Partial<CollectionModel>,
+  metadata: Partial<CollectionUpdateResponseDTO>
+): CollectionUpdateResponseDTO {
+  return {
+    ...makeResponse(collectionOverrides),
+    ...metadata,
+  };
+}
+
 function renderEdit(opts: { enabled?: boolean; collection?: CollectionModel } = {}) {
   const collection = opts.collection ?? makeCollection();
   return renderHook(() =>
@@ -89,6 +138,8 @@ describe('useCollectionEdit', () => {
     mockStorageGetFull.mockReturnValue(null);
     mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse());
     mockUpdateCollection.mockResolvedValue(makeResponse());
+    mockGetMetadata.mockResolvedValue(makeMetadata());
+    mockUpdateCollectionRating.mockResolvedValue();
   });
 
   describe('mode transitions', () => {
@@ -211,8 +262,10 @@ describe('useCollectionEdit', () => {
 
       expect(mockGetCollectionUpdateMetadata).not.toHaveBeenCalled();
       expect(mockStorageGetFull).not.toHaveBeenCalled();
+      expect(mockGetMetadata).not.toHaveBeenCalled();
       expect(result.current.currentState).toBeNull();
       expect(result.current.isLoadingState).toBe(false);
+      expect(result.current.allCollections).toEqual([]);
     });
 
     it('performs the cache-first metadata fetch when enabled', async () => {
@@ -237,6 +290,196 @@ describe('useCollectionEdit', () => {
 
       expect(mockStorageGetFull).toHaveBeenCalledWith('smith-wedding');
       expect(mockGetCollectionUpdateMetadata).not.toHaveBeenCalled();
+    });
+
+    it('populates allCollections from getMetadata when enabled', async () => {
+      const options = [makeListModel({ id: 7 }), makeListModel({ id: 8, name: 'Other' })];
+      mockGetMetadata.mockResolvedValue(makeMetadata({ collections: options }));
+      const { result } = renderEdit({ enabled: true });
+
+      await waitFor(() => {
+        expect(result.current.allCollections).toHaveLength(2);
+      });
+      expect(mockGetMetadata).toHaveBeenCalledTimes(1);
+      expect(result.current.allCollections.map(c => c.id)).toEqual([7, 8]);
+    });
+  });
+
+  describe('locations field wiring', () => {
+    it('derives currentLocations from collection + updateData diff', async () => {
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponseWith(
+          { locations: [{ id: 5, name: 'Paris', slug: 'paris' }] },
+          {
+            locations: [
+              { id: 5, name: 'Paris', slug: 'paris' },
+              { id: 9, name: 'Lyon', slug: 'lyon' },
+            ],
+          }
+        )
+      );
+      const collection = makeCollection({
+        locations: [{ id: 5, name: 'Paris', slug: 'paris' }],
+      });
+      const { result } = renderEdit({ enabled: true, collection });
+
+      await waitFor(() => {
+        expect(result.current.currentState).not.toBeNull();
+      });
+
+      // Saved baseline resolves from collection.locations against currentState.locations.
+      expect(result.current.currentLocations).toEqual([{ id: 5, name: 'Paris', slug: 'paris' }]);
+
+      // Selecting a new location writes a diff into updateData and reflects in currentLocations.
+      act(() =>
+        result.current.handleLocationsChange([
+          { id: 5, name: 'Paris', slug: 'paris' },
+          { id: 9, name: 'Lyon', slug: 'lyon' },
+        ])
+      );
+      expect(result.current.currentLocations.map(l => l.id)).toEqual([5, 9]);
+      expect(result.current.updateData.locations?.prev).toEqual([5, 9]);
+    });
+
+    it('emits remove when a saved location is deselected', async () => {
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponseWith(
+          { locations: [{ id: 5, name: 'Paris', slug: 'paris' }] },
+          { locations: [{ id: 5, name: 'Paris', slug: 'paris' }] }
+        )
+      );
+      const collection = makeCollection({
+        locations: [{ id: 5, name: 'Paris', slug: 'paris' }],
+      });
+      const { result } = renderEdit({ enabled: true, collection });
+
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.handleLocationsChange([]));
+      expect(result.current.updateData.locations?.remove).toEqual([5]);
+      expect(result.current.currentLocations).toEqual([]);
+    });
+  });
+
+  describe('tags field wiring', () => {
+    it('derives currentTags from collection + updateData diff', async () => {
+      // CollectionModel.tags arrives as string[] names — resolved against the DTO available tags.
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponseWith(
+          { tags: ['film'] },
+          {
+            tags: [
+              { id: 3, name: 'film', slug: 'film' },
+              { id: 4, name: 'bw', slug: 'bw' },
+            ],
+          }
+        )
+      );
+      const collection = makeCollection({ tags: ['film'] });
+      const { result } = renderEdit({ enabled: true, collection });
+
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      expect(result.current.currentTags).toEqual([{ id: 3, name: 'film', slug: 'film' }]);
+
+      act(() =>
+        result.current.handleTagsChange([
+          { id: 3, name: 'film', slug: 'film' },
+          { id: 4, name: 'bw', slug: 'bw' },
+        ])
+      );
+      expect(result.current.currentTags.map(t => t.id)).toEqual([3, 4]);
+      expect(result.current.updateData.tags?.prev).toEqual([3, 4]);
+    });
+  });
+
+  describe('collection selectors (child / sibling / parent toggles)', () => {
+    it('child toggle: adding an unsaved collection stages it in pendingAdd', () => {
+      const { result } = renderEdit({ enabled: false });
+
+      expect(result.current.childIds.saved.size).toBe(0);
+      act(() => result.current.handleChildToggle(makeListModel({ id: 7 })));
+      expect(result.current.childIds.pendingAdd.has(7)).toBe(true);
+    });
+
+    it('child toggle: removing a saved (contained) collection stages it in pendingRemove', () => {
+      // A child block in content makes id 7 a "saved" child.
+      const collection = makeCollection({
+        content: [
+          {
+            id: 100,
+            contentType: 'COLLECTION',
+            orderIndex: 0,
+            slug: 'child-7',
+            collectionType: CollectionType.PORTFOLIO,
+            referencedCollectionId: 7,
+          },
+        ],
+      });
+      const { result } = renderEdit({ enabled: false, collection });
+
+      expect(result.current.childIds.saved.has(7)).toBe(true);
+      act(() => result.current.handleChildToggle(makeListModel({ id: 7 })));
+      expect(result.current.childIds.pendingRemove.has(7)).toBe(true);
+    });
+
+    it('sibling toggle: stages an unsaved sibling in pendingAdd', () => {
+      const { result } = renderEdit({ enabled: false });
+
+      expect(result.current.siblingIds.saved.size).toBe(0);
+      act(() => result.current.handleSiblingToggle(makeListModel({ id: 11 })));
+      expect(result.current.siblingIds.pendingAdd.has(11)).toBe(true);
+    });
+
+    it('parent toggle: stages an unsaved parent in pendingAdd', () => {
+      const { result } = renderEdit({ enabled: false });
+
+      expect(result.current.parentIds.saved.size).toBe(0);
+      act(() => result.current.handleParentToggle(makeListModel({ id: 12 })));
+      expect(result.current.parentIds.pendingAdd.has(12)).toBe(true);
+    });
+
+    it('sibling/parent saved sets derive from collection.siblings / collection.parents', () => {
+      const collection = makeCollection({
+        siblings: [makeListModel({ id: 21, name: 'Sib' })],
+        parents: [makeListModel({ id: 31, name: 'Par' })],
+      });
+      const { result } = renderEdit({ enabled: false, collection });
+
+      expect(result.current.siblingIds.saved.has(21)).toBe(true);
+      expect(result.current.parentIds.saved.has(31)).toBe(true);
+    });
+  });
+
+  describe('isParent gating', () => {
+    it('is true for a PARENT-type collection (and false for a PORTFOLIO)', () => {
+      const portfolio = renderEdit({ enabled: false });
+      expect(portfolio.result.current.isParent).toBe(false);
+
+      const parent = renderEdit({
+        enabled: false,
+        collection: makeCollection({ type: CollectionType.PARENT }),
+      });
+      expect(parent.result.current.isParent).toBe(true);
+    });
+
+    it('tracks updateData.type live (PORTFOLIO → PARENT flips isParent)', () => {
+      const { result } = renderEdit({ enabled: false });
+      expect(result.current.isParent).toBe(false);
+      act(() => result.current.setUpdateField('type', CollectionType.PARENT));
+      expect(result.current.isParent).toBe(true);
+    });
+  });
+
+  describe('updateCollectionRating', () => {
+    it('calls the rating API with the child collection id + rating', async () => {
+      const { result } = renderEdit({ enabled: false });
+
+      await act(async () => {
+        await result.current.updateCollectionRating(700, 4);
+      });
+
+      expect(mockUpdateCollectionRating).toHaveBeenCalledWith(700, 4);
     });
   });
 });
