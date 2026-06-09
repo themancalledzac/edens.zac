@@ -3,10 +3,12 @@
   flex-direction: column;
   gap: var(--space-2);
 
-  /* Dark-theme palette for the admin selector (alpha overlays = bg-agnostic). */
-  --sel-text: #f1f3f5; /* primary text on dark */
-  --sel-text-muted: #adb5bd; /* secondary text — passes AA on dark */
-  --sel-text-faint: #868e96; /* tertiary; large/decorative only */
+  /* Surface-aware text: dark on the light in-page editor, light on the dark admin surface
+     (these --color-* tokens flip under [data-surface="dark"]). Elevation/accent overlays
+     below are alpha and bg-agnostic. */
+  --sel-text: var(--color-fg); /* primary text */
+  --sel-text-muted: var(--color-on-surface-muted); /* secondary text */
+  --sel-text-faint: var(--color-on-surface-muted); /* tertiary; large/decorative only */
   --sel-elev-1: rgb(255 255 255 / 5%); /* expanded section-header bg */
   --sel-elev-2: rgb(255 255 255 / 10%); /* expanded-row bg */
   --sel-elev-hover: rgb(255 255 255 / 14%);
