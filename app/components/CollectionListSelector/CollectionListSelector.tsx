@@ -92,6 +92,13 @@ interface CollectionListSelectorProps {
   parentPendingRemoveIds?: Set<number>;
   onToggleParent?: (collection: CollectionListModel) => void;
   /**
+   * Single-column accordion. Groups rows by CollectionType into collapsible sections (names on the
+   * LEFT, one membership toggle on the right) WITHOUT the sibling/parent columns. Lets the image
+   * metadata editor reuse the manage page's grouped layout for its collection-membership picker.
+   * Composes with the single `onToggle` column only — ignore sibling/parent props when set.
+   */
+  grouped?: boolean;
+  /**
    * Drag-and-drop retype. When provided AND the selector is in accordion mode,
    * rows become draggable and the assignable type-headers become drop targets;
    * dropping a row on a different assignable type fires this with the new type.
@@ -135,6 +142,7 @@ export default function CollectionListSelector({
   parentPendingRemoveIds,
   onToggleParent,
   onChangeType,
+  grouped,
 }: CollectionListSelectorProps) {
   // Independent hover state per column so remove-intent (red) on one checkbox
   // never lights up the other column's checkbox.
@@ -194,7 +202,7 @@ export default function CollectionListSelector({
       setExpandedType(currentCollectionType as CollectionType);
     }
   }, [currentCollectionType]);
-  const accordionMode = siblingMode || parentMode;
+  const accordionMode = siblingMode || parentMode || Boolean(grouped);
 
   // Drag-and-drop retype state. `draggedRef` is the source of truth for a drop
   // (set on dragstart, read on drop); `draggedId` dims the dragged row;
@@ -332,7 +340,7 @@ export default function CollectionListSelector({
     // disabled — it can't be a sibling/child/parent of itself.
     const isCurrent = currentCollectionId != null && collection.id === currentCollectionId;
     const currentReason = "This is the collection you're editing — it can't be related to itself.";
-    if (siblingMode || parentMode) {
+    if (siblingMode || parentMode || grouped) {
       // Child↔Parent mutual exclusion: a row that is *actively* a Child (saved & not
       // pending-removal, or pending-add) may not also be a Parent, and vice-versa.
       // A saved-but-pending-removal selection is NOT active, so it doesn't disable the other.

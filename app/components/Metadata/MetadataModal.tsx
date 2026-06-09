@@ -217,7 +217,7 @@ export default function MetadataModal({
                     pendingRemoveIds={pendingRemoveIds}
                     onToggle={handleCollectionToggle}
                     label="Collections"
-                    pinnedCollectionId={currentCollectionId}
+                    grouped
                   />
                 </div>
               </div>
