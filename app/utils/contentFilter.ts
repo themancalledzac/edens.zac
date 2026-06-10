@@ -444,6 +444,9 @@ export function applyActiveOverride(
   visibility: FilterVisibility,
   filterState: FilterState
 ): FilterVisibility {
+  // dateSort and film are included here (unlike hasAnyActiveFilter, which scopes
+  // to content-reducing collection filters) because this is a visibility concern:
+  // if a control's filter is active, keep the control on screen so it can be cleared.
   return {
     dateSort: visibility.dateSort || filterState.dateSortDirection !== 'off',
     highlyRated: visibility.highlyRated || filterState.highlyRatedOnly,

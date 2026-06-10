@@ -1500,6 +1500,11 @@ describe('applyActiveOverride', () => {
     expect(result.tags).toBe(true);
   });
 
+  it('forces dateSort and highlyRated visible when those filters are active', () => {
+    expect(applyActiveOverride(hiddenAll, makeFilterState({ dateSortDirection: 'desc' })).dateSort).toBe(true);
+    expect(applyActiveOverride(hiddenAll, makeFilterState({ highlyRatedOnly: true })).highlyRated).toBe(true);
+  });
+
   it('leaves an all-false verdict untouched when no filter is active', () => {
     expect(applyActiveOverride(hiddenAll, makeFilterState())).toEqual(hiddenAll);
   });
