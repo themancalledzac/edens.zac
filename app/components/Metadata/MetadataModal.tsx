@@ -222,25 +222,29 @@ export default function MetadataModal({
               activeTab={activeTab}
               onTabChange={id => setActiveTab(id as TabId)}
               cells={[
+                // Remove is only available when viewing images inside a collection context.
+                // It is rendered before Delete (less destructive first) and uses the default
+                // variant to visually distinguish it from the permanent Delete action.
                 ...(currentCollectionId
                   ? [
                       {
                         key: 'remove',
                         label: 'Remove',
-                        variant: 'danger' as const,
+                        variant: 'default' as const,
                         onClick: handleRemoveFromCollection,
                         disabled: saving,
                       },
                     ]
-                  : [
-                      {
-                        key: 'delete',
-                        label: 'Delete',
-                        variant: 'danger' as const,
-                        onClick: handleDelete,
-                        disabled: saving,
-                      },
-                    ]),
+                  : []),
+                // Delete is always rendered — permanent deletion must always be reachable,
+                // including for GIFs which have no Remove equivalent.
+                {
+                  key: 'delete',
+                  label: 'Delete',
+                  variant: 'danger' as const,
+                  onClick: handleDelete,
+                  disabled: saving,
+                },
                 {
                   key: 'save',
                   label: isBulkEdit ? `Save ${selectedIds.length}` : 'Save',

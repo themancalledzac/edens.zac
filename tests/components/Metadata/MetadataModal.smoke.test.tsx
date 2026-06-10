@@ -102,11 +102,28 @@ describe('MetadataModal — smoke', () => {
     expect(screen.getByRole('button', { name: /^save 3$/i })).toBeInTheDocument();
   });
 
-  it('renders Remove-from-collection only when currentCollectionId is set', () => {
+  it('renders Delete always and Remove only when currentCollectionId is set', () => {
+    // Without a collection context: Delete present, Remove absent.
     const { rerender } = render(<MetadataModal {...baseProps} />);
+    expect(screen.getByRole('button', { name: /^delete$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^remove$/i })).not.toBeInTheDocument();
+
+    // With a collection context: both Delete AND Remove present.
     rerender(<MetadataModal {...baseProps} currentCollectionId={42} />);
+    expect(screen.getByRole('button', { name: /^delete$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^remove$/i })).toBeInTheDocument();
+  });
+
+  it('Delete triggers a confirmation dialog when currentCollectionId is set', () => {
+    render(<MetadataModal {...baseProps} currentCollectionId={42} />);
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    expect(window.confirm).toHaveBeenCalled();
+  });
+
+  it('Remove triggers a confirmation dialog when currentCollectionId is set', () => {
+    render(<MetadataModal {...baseProps} currentCollectionId={42} />);
+    fireEvent.click(screen.getByRole('button', { name: /^remove$/i }));
+    expect(window.confirm).toHaveBeenCalled();
   });
 
   it('renders null without crashing when the selection is empty', () => {
