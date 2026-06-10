@@ -9,7 +9,7 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
-import { updateImages } from '@/app/lib/api/content';
+import { createGif, createImages, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionModel,
@@ -44,6 +44,8 @@ const mockSetCollectionPeople = setCollectionPeople as jest.MockedFunction<
   typeof setCollectionPeople
 >;
 const mockUpdateImages = updateImages as jest.MockedFunction<typeof updateImages>;
+const mockCreateImages = createImages as jest.MockedFunction<typeof createImages>;
+const mockCreateGif = createGif as jest.MockedFunction<typeof createGif>;
 const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
   typeof collectionStorage.getFull
 >;
@@ -113,6 +115,21 @@ function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdat
     filmFormats: [],
     collections: [],
   };
+}
+
+/** Build an array-backed FileList stand-in (jsdom has no FileList constructor). */
+function makeFileList(files: File[]): FileList {
+  const fileList = {
+    length: files.length,
+    item: (index: number) => files[index] ?? null,
+    [Symbol.iterator]() {
+      return files[Symbol.iterator]();
+    },
+  };
+  for (const [index, file] of files.entries()) {
+    Object.defineProperty(fileList, index, { value: file, enumerable: true });
+  }
+  return fileList as unknown as FileList;
 }
 
 function renderEdit(
@@ -602,6 +619,72 @@ describe('useCollectionEdit — handler tests', () => {
 
       expect(mockSaveGalleryAccess).toHaveBeenCalled();
       expect(result.current.galleryStatus).toBe('boom');
+    });
+  });
+
+  describe('handleMediaUpload — per-file image uploads', () => {
+    function makeImageFiles(names: string[]): FileList {
+      return makeFileList(names.map(name => new File(['data'], name, { type: 'image/jpeg' })));
+    }
+
+    /** Drive an upload through the add-mode Upload cell, the hook's public surface. */
+    async function uploadViaAddCell(
+      result: ReturnType<typeof renderEdit>['result'],
+      files: FileList
+    ) {
+      act(() => result.current.enterAdd());
+      const upload = result.current.bottomBarCells.find(c => c.key === 'upload');
+      expect(upload?.fileInput).toBeDefined();
+      await act(async () => {
+        upload?.fileInput?.onFiles(files);
+      });
+    }
+
+    it('uploads each still image in its own POST and refreshes exactly once', async () => {
+      mockCreateImages.mockResolvedValue({ successful: [], failed: [], skipped: [] });
+
+      const { result } = renderEdit({ enabled: true });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+      mockGetCollectionUpdateMetadata.mockClear();
+
+      await uploadViaAddCell(result, makeImageFiles(['one.jpg', 'two.jpg', 'three.jpg']));
+
+      // One createImages POST per file, each carrying exactly that single file.
+      await waitFor(() => expect(mockCreateImages).toHaveBeenCalledTimes(3));
+      const uploadedNames = mockCreateImages.mock.calls.map(call => {
+        const formData = call[1];
+        expect(formData.getAll('files')).toHaveLength(1);
+        return (formData.get('files') as File).name;
+      });
+      expect(uploadedNames).toEqual(['one.jpg', 'two.jpg', 'three.jpg']);
+      expect(mockCreateGif).not.toHaveBeenCalled();
+
+      // Exactly ONE refresh fetch after the whole loop, not one per file.
+      await waitFor(() => expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledTimes(1));
+      expect(result.current.error).toBeNull();
+    });
+
+    it('reports a failing file by name while the rest upload and the refresh still runs', async () => {
+      mockCreateImages.mockImplementation(async (_collectionId, formData) => {
+        const file = formData.get('files') as File;
+        if (file.name === 'two.jpg') throw new Error('boom');
+        return { successful: [], failed: [], skipped: [] };
+      });
+
+      const { result } = renderEdit({ enabled: true });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+      mockGetCollectionUpdateMetadata.mockClear();
+
+      await uploadViaAddCell(result, makeImageFiles(['one.jpg', 'two.jpg', 'three.jpg']));
+
+      // All three files were attempted despite the middle one failing.
+      await waitFor(() => expect(mockCreateImages).toHaveBeenCalledTimes(3));
+      // The single refresh still happened, so succeeded files land in state.
+      await waitFor(() => expect(mockGetCollectionUpdateMetadata).toHaveBeenCalledTimes(1));
+      // The error names the failed file — and only that file.
+      await waitFor(() => expect(result.current.error).toContain('two.jpg'));
+      expect(result.current.error).not.toContain('one.jpg');
+      expect(result.current.error).not.toContain('three.jpg');
     });
   });
 

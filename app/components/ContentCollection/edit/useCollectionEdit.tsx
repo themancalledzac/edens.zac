@@ -712,23 +712,28 @@ export function useCollectionEdit({
         const fileArray = Array.from(files);
         const animatedFiles = fileArray.filter(isAnimatedMediaFile);
         const imageFiles = fileArray.filter(f => !isAnimatedMediaFile(f));
-        const gifFailures: string[] = [];
+        const uploadFailures: string[] = [];
 
         const response = await refreshCollectionAfterOperation(
           collection.slug,
           async () => {
-            if (imageFiles.length > 0) {
-              const formData = new FormData();
-              for (const file of imageFiles) {
+            // One POST per still image: dev admin writes go through the same-origin
+            // proxy, whose 25 MB multipart cap a whole batch easily exceeds (413).
+            // Per-file requests stay under the cap and make failures attributable.
+            for (const file of imageFiles) {
+              try {
+                const formData = new FormData();
                 formData.append('files', file);
+                await createImages(collection.id, formData);
+              } catch (imageError) {
+                uploadFailures.push(`${file.name}: ${handleApiError(imageError, 'upload failed')}`);
               }
-              await createImages(collection.id, formData);
             }
             for (const file of animatedFiles) {
               try {
                 await createGif(collection.id, file);
               } catch (gifError) {
-                gifFailures.push(`${file.name}: ${handleApiError(gifError, 'upload failed')}`);
+                uploadFailures.push(`${file.name}: ${handleApiError(gifError, 'upload failed')}`);
               }
             }
           },
@@ -741,8 +746,8 @@ export function useCollectionEdit({
           collection: response.collection,
         }));
 
-        if (gifFailures.length > 0) {
-          setError(`Some files failed to upload:\n${gifFailures.join('\n')}`);
+        if (uploadFailures.length > 0) {
+          setError(`Some files failed to upload:\n${uploadFailures.join('\n')}`);
         }
       } catch (error_) {
         setError(handleApiError(error_, 'Failed to upload media'));
