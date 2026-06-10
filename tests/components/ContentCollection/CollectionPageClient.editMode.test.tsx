@@ -73,10 +73,14 @@ jest.mock('@/app/utils/contentLayout', () => ({
 
 const gridProbe = jest.fn();
 jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => {
-  // Real context hook so the mock grid can report whether the InlineEditProvider is mounted
-  // above it (the readiness gate) — the real grid's content renderers consume the same hook.
+  // Real context hooks so the mock grid can report whether the InlineEditProvider (the
+  // readiness gate) and the collection filter context (the filter-UI gate) are live above it —
+  // the real grid's content renderers consume the same hooks.
   const { useInlineEdit } = jest.requireActual<{ useInlineEdit: () => unknown }>(
     '@/app/components/ContentCollection/edit/InlineEditContext'
+  );
+  const { useCollectionFilter } = jest.requireActual<{ useCollectionFilter: () => unknown }>(
+    '@/app/components/ContentCollection/CollectionFilterContext'
   );
 
   const MockGrid = (props: {
@@ -86,12 +90,14 @@ jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => {
   }) => {
     gridProbe(props);
     const inlineEdit = useInlineEdit();
+    const collectionFilter = useCollectionFilter();
     return (
       <div
         data-testid="grid"
         data-fullscreen={String(Boolean(props.enableFullScreenView))}
         data-content-count={String(props.content?.length ?? 0)}
         data-inline-edit={String(Boolean(inlineEdit))}
+        data-filter-context={String(Boolean(collectionFilter))}
       />
     );
   };
@@ -423,6 +429,41 @@ describe('CollectionPageClient — editMode true', () => {
       const lastCall = gridProbe.mock.calls.at(-1)?.[0];
       const ids = (lastCall.content as { id: number }[]).map(block => block.id);
       expect(ids).toEqual([3, 1, 2]);
+    });
+  });
+
+  describe('filter options — track live content in edit mode', () => {
+    it('mounts the filter UI once the admin DTO delivers filterable content (empty seed)', async () => {
+      // NEW collection: the server seed has no content yet, so first paint has no filter options.
+      const seed = makeCollection({ content: [] });
+
+      // The admin DTO carries freshly uploaded images with tag variance — exactly the state
+      // after an in-session upload. The filter UI must appear without a hard reload.
+      const dtoContent = [
+        {
+          id: 1,
+          contentType: 'IMAGE' as const,
+          orderIndex: 0,
+          imageUrl: 'a.jpg',
+          tags: [{ id: 10, name: 'sunset', slug: 'sunset' }],
+          locations: [],
+        },
+        {
+          id: 2,
+          contentType: 'IMAGE' as const,
+          orderIndex: 1,
+          imageUrl: 'b.jpg',
+          locations: [],
+        },
+      ];
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({ content: dtoContent }));
+
+      render(<CollectionPageClient collection={seed} editMode />);
+      await flush();
+
+      // Pre-fix, the parent derived filter options from the frozen seed ([]), so the filter
+      // context never went live and the toolbar could never mount.
+      expect(screen.getByTestId('grid')).toHaveAttribute('data-filter-context', 'true');
     });
   });
 

@@ -15,6 +15,7 @@ import MetadataModal from '@/app/components/Metadata/MetadataModal';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { EditBar } from '@/app/components/ui/EditBar/EditBar';
 import { type CollectionModel } from '@/app/types/Collection';
+import { type AnyContentModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import {
   applyCollectionFilters,
@@ -46,6 +47,14 @@ export interface EditModeLayerProps {
   syncToUrl: (criteria: ContentFilterCriteria) => void;
   /** Fired pre-paint on mount so the parent can drop its public-grid loading fallback. */
   onMounted: () => void;
+  /**
+   * Reports this layer's live content upward. Contract: called with the content array whenever
+   * its identity changes (seed on mount, then the admin DTO's content once loaded and after
+   * every save), and with null on unmount so the parent falls back to the server seed. The
+   * parent derives the filter options from this, keeping the filter UI in sync with the
+   * content this layer's grid actually renders.
+   */
+  onLiveContentChange?: (content: AnyContentModel[] | null) => void;
 }
 
 /**
@@ -66,6 +75,7 @@ export default function EditModeLayer({
   setFilterState,
   syncToUrl,
   onMounted,
+  onLiveContentChange,
 }: EditModeLayerProps) {
   const router = useRouter();
 
@@ -138,6 +148,15 @@ export default function EditModeLayer({
     () => liveCollection.content ?? collection.content ?? [],
     [liveCollection.content, collection.content]
   );
+
+  // Mirror the live content up to the parent (see the onLiveContentChange contract). Keyed on
+  // the memoized allContent so it only fires when the identity actually changes; the
+  // cleanup-then-setup pair on a change batches into one parent render, and on unmount only the
+  // cleanup runs, resetting the parent to the seed.
+  useEffect(() => {
+    onLiveContentChange?.(allContent);
+    return () => onLiveContentChange?.(null);
+  }, [allContent, onLiveContentChange]);
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 

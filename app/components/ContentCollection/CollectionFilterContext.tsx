@@ -48,12 +48,18 @@ interface CollectionFilterContextValue {
 
 const CollectionFilterContext = createContext<CollectionFilterContextValue | null>(null);
 
+/**
+ * `value` may be null: providing null is observationally identical to not mounting the provider
+ * (consumers null-check), which lets owners gate the filter UI on a value that changes over time
+ * (e.g. edit mode, where options appear after an upload) WITHOUT reparenting the subtree — a
+ * mount/unmount of the provider would remount every child and reset their state.
+ */
 export function CollectionFilterProvider({
   children,
   value,
 }: {
   children: React.ReactNode;
-  value: CollectionFilterContextValue;
+  value: CollectionFilterContextValue | null;
 }) {
   return <CollectionFilterContext value={value}>{children}</CollectionFilterContext>;
 }

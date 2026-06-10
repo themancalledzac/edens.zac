@@ -8,6 +8,7 @@ import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type AnyContentModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
 import {
   applyCollectionFilters,
@@ -127,9 +128,19 @@ export default function CollectionPageClient({
     [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
-  // The public render works off the server seed; live (post-save) content is EditModeLayer's
-  // concern, which runs its own content pipeline against the admin DTO.
-  const allContent = useMemo(() => collection.content ?? [], [collection.content]);
+  /**
+   * Live content reported up from EditModeLayer (per its onLiveContentChange contract: the
+   * layer's current content on every identity change, null on unmount). The filter options
+   * below must be derived from the SAME content the edit grid renders — the admin DTO after
+   * loads/saves — or in-session uploads and tag edits never surface in the filter UI.
+   */
+  const [liveEditContent, setLiveEditContent] = useState<AnyContentModel[] | null>(null);
+
+  // Public render works off the server seed; edit mode tracks the layer's live content.
+  const allContent = useMemo(
+    () => (editMode && liveEditContent ? liveEditContent : (collection.content ?? [])),
+    [editMode, liveEditContent, collection.content]
+  );
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 
@@ -269,6 +280,7 @@ export default function CollectionPageClient({
         setFilterState={setFilterState}
         syncToUrl={syncToUrl}
         onMounted={handleEditLayerMounted}
+        onLiveContentChange={setLiveEditContent}
       />
     </>
   ) : (
@@ -289,12 +301,12 @@ export default function CollectionPageClient({
       content
     );
 
-  if (!hasOptions) {
-    return maybeWrappedContent;
-  }
-
+  // Always mount the provider and gate the filter UI via a null VALUE (observationally the same
+  // for consumers, which null-check). hasOptions is live in edit mode — it flips when an upload
+  // gives an empty collection its first filterable content — and conditionally mounting the
+  // provider on it would reparent the subtree, remounting EditModeLayer and resetting its state.
   return (
-    <CollectionFilterProvider value={filterContextValue}>
+    <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
       {maybeWrappedContent}
     </CollectionFilterProvider>
   );
