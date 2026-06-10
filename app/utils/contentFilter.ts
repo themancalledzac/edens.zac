@@ -859,23 +859,6 @@ export function applyCollectionFilters(
 }
 
 /**
- * Whether a per-image selector yields more than one distinct value across the
- * images (drives "show this control only when it varies"). Covers both rating
- * variance and capture-date variance. Returns false for an empty array.
- *
- * @param images - Images to inspect
- * @param selector - Maps an image to the value whose variance is checked
- */
-export function hasValueVariance<T>(
-  images: ContentImageModel[],
-  selector: (image: ContentImageModel) => T
-): boolean {
-  if (images.length === 0) return false;
-  const values = new Set(images.map(selector).filter(Boolean));
-  return values.size > 1;
-}
-
-/**
  * Re-interleave date-sorted images back into a processed content array.
  *
  * Date sort runs after `processContentBlocks` (which sorts by orderIndex), so

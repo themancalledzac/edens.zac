@@ -16,12 +16,10 @@ import {
   type ContentFilterCriteria,
   extractCollectionFilterOptions,
   extractFilterOptions,
-  type FilterVisibility,
   filmFilterFromIsFilm,
   filterContent,
   hasAnyActiveFilter,
   hasFilterableOptions,
-  hasValueVariance,
   mergeDateSortedImages,
   parseFilterFromParams,
   serializeFilterToParams,
@@ -1041,7 +1039,13 @@ describe('extractCollectionFilterOptions', () => {
     // Now alpine (2/2) is still excluded but forest (1/2) is included. One value
     // does not cover all items → filterable.
     const splits = extractCollectionFilterOptions([
-      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }, { id: 2, name: 'forest', slug: 'forest' }] }),
+      makeImage({
+        id: 1,
+        tags: [
+          { id: 1, name: 'alpine', slug: 'alpine' },
+          { id: 2, name: 'forest', slug: 'forest' },
+        ],
+      }),
       makeImage({ id: 2, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
     ]);
     expect(splits.tags.filterable).toBe(true);
@@ -1228,52 +1232,6 @@ describe('applyCollectionFilters', () => {
   });
 });
 
-describe('hasValueVariance', () => {
-  it('returns false for an empty array', () => {
-    expect(hasValueVariance([], img => img.rating)).toBe(false);
-  });
-
-  it('returns false when all selected values are identical', () => {
-    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 5 })];
-    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(false);
-  });
-
-  it('returns true when selected values differ', () => {
-    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 3 })];
-    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(true);
-  });
-
-  it('counts a rating of 0 as a distinct value when stringified', () => {
-    // Regression: the helper drops falsy outputs, so 0 must be stringified to count.
-    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 0 })];
-    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(true);
-  });
-
-  it('drops rating 0 WITHOUT the String() wrapper — proves the call-site wrapper is load-bearing', () => {
-    // CollectionPageClient must pass `String(img.rating ?? 0)`, not the raw number. Without the
-    // wrapper, 0 is falsy → dropped → only {5} remains → no variance, silently hiding the
-    // Highly-Rated control on an all-0-vs-some-rated collection. This documents WHY the wrapper exists.
-    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 0 })];
-    expect(hasValueVariance(images, img => img.rating)).toBe(false);
-  });
-
-  it('drops falsy (missing) capture dates so a single real date has no variance', () => {
-    const images = [
-      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
-      makeImage({ id: 2, captureDate: undefined }),
-    ];
-    expect(hasValueVariance(images, img => img.captureDate)).toBe(false);
-  });
-
-  it('returns true when two distinct real dates are present', () => {
-    const images = [
-      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
-      makeImage({ id: 2, captureDate: '2024-06-01T00:00:00Z' }),
-    ];
-    expect(hasValueVariance(images, img => img.captureDate)).toBe(true);
-  });
-});
-
 describe('mergeDateSortedImages', () => {
   it('replaces image slots in order while leaving non-image blocks in place', () => {
     const img1 = makeImage({ id: 1 });
@@ -1419,10 +1377,19 @@ describe('buildLocationCriteria', () => {
 describe('computeFilterVisibility', () => {
   it('hides every control for an empty or single-image page', () => {
     expect(computeFilterVisibility([])).toEqual({
-      dateSort: false, highlyRated: false, film: false, tags: false,
-      people: false, cameras: false, lenses: false, locations: false, lensTypes: false,
+      dateSort: false,
+      highlyRated: false,
+      film: false,
+      tags: false,
+      people: false,
+      cameras: false,
+      lenses: false,
+      locations: false,
+      lensTypes: false,
     });
-    expect(computeFilterVisibility([makeImage({ id: 1, isFilm: true, rating: 5 })]).film).toBe(false);
+    expect(computeFilterVisibility([makeImage({ id: 1, isFilm: true, rating: 5 })]).film).toBe(
+      false
+    );
   });
 
   it('shows film only when both film and digital are present', () => {
@@ -1455,7 +1422,9 @@ describe('computeFilterVisibility', () => {
 
 describe('canFilter', () => {
   it('returns false below 2 items (nothing to split)', () => {
-    expect(canFilter([makeImage({ id: 1, isFilm: true })], img => [img.isFilm ? 'film' : 'digital'])).toBe(false);
+    expect(
+      canFilter([makeImage({ id: 1, isFilm: true })], img => [img.isFilm ? 'film' : 'digital'])
+    ).toBe(false);
     expect(canFilter([], () => ['x'])).toBe(false);
   });
 
@@ -1472,7 +1441,13 @@ describe('canFilter', () => {
   it('counts each item once per distinct value (multi-valued dimensions)', () => {
     // both images carry 'sky'; only img 1 also carries 'sea' → 'sea' splits the set.
     const images = [
-      makeImage({ id: 1, tags: [{ id: 1, name: 'sky', slug: 'sky' }, { id: 2, name: 'sea', slug: 'sea' }] }),
+      makeImage({
+        id: 1,
+        tags: [
+          { id: 1, name: 'sky', slug: 'sky' },
+          { id: 2, name: 'sea', slug: 'sea' },
+        ],
+      }),
       makeImage({ id: 2, tags: [{ id: 1, name: 'sky', slug: 'sky' }] }),
     ];
     expect(canFilter(images, img => (img.tags ?? []).map(t => t.name))).toBe(true);
@@ -1498,8 +1473,15 @@ describe('canFilter', () => {
 
 describe('applyActiveOverride', () => {
   const hiddenAll = {
-    dateSort: false, highlyRated: false, film: false, tags: false,
-    people: false, cameras: false, lenses: false, locations: false, lensTypes: false,
+    dateSort: false,
+    highlyRated: false,
+    film: false,
+    tags: false,
+    people: false,
+    cameras: false,
+    lenses: false,
+    locations: false,
+    lensTypes: false,
   };
 
   it('keeps a control visible when its filter is active even if the gate hid it', () => {
@@ -1514,8 +1496,12 @@ describe('applyActiveOverride', () => {
   });
 
   it('forces dateSort and highlyRated visible when those filters are active', () => {
-    expect(applyActiveOverride(hiddenAll, makeFilterState({ dateSortDirection: 'desc' })).dateSort).toBe(true);
-    expect(applyActiveOverride(hiddenAll, makeFilterState({ highlyRatedOnly: true })).highlyRated).toBe(true);
+    expect(
+      applyActiveOverride(hiddenAll, makeFilterState({ dateSortDirection: 'desc' })).dateSort
+    ).toBe(true);
+    expect(
+      applyActiveOverride(hiddenAll, makeFilterState({ highlyRatedOnly: true })).highlyRated
+    ).toBe(true);
   });
 
   it('leaves an all-false verdict untouched when no filter is active', () => {
