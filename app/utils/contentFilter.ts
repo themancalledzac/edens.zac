@@ -752,12 +752,29 @@ export function extractCollectionFilterOptions(
       ? typeOrder.filter(t => lensTypeSet.has(t))
       : [];
 
+  const combined = [...images, ...collectionRefs];
+
   return {
-    tags: { values: baseOptions.tags, filterable: true },
-    people: { values: baseOptions.people, filterable: true },
-    cameras: { values: baseOptions.cameras, filterable: baseOptions.cameras.length >= 2 },
-    lenses: { values: baseOptions.lenses, filterable: baseOptions.lenses.length >= 2 },
-    locations: { values: baseOptions.locations, filterable: baseOptions.locations.length >= 2 },
+    tags: {
+      values: baseOptions.tags,
+      filterable: canFilter(combined, item => (item.tags ?? []).map(t => t.name)),
+    },
+    people: {
+      values: baseOptions.people,
+      filterable: canFilter(combined, item => (item.people ?? []).map(p => p.name)),
+    },
+    cameras: {
+      values: baseOptions.cameras,
+      filterable: canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])),
+    },
+    lenses: {
+      values: baseOptions.lenses,
+      filterable: canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])),
+    },
+    locations: {
+      values: baseOptions.locations,
+      filterable: canFilter(combined, item => (item.locations ?? []).map(l => l.name)),
+    },
     lensTypes: { values: lensTypes, filterable: true },
   };
 }

@@ -1026,12 +1026,25 @@ describe('extractCollectionFilterOptions', () => {
     expect(dims.lensTypes.values).toEqual([]);
   });
 
-  it('marks tags and people filterable regardless of count', () => {
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }], people: [] }),
+  it('marks a dimension filterable only when a value splits the set', () => {
+    // Two images: 'alpine' on both (100% frequency → excluded by 0.9 blanket
+    // threshold in extractFilterOptions, so values is []).  canFilter on an
+    // empty projection returns false → not filterable.
+    const blanketOnly = extractCollectionFilterOptions([
+      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
+      makeImage({ id: 2, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
     ]);
-    expect(dims.tags.filterable).toBe(true);
-    expect(dims.people.filterable).toBe(true);
+    expect(blanketOnly.tags.values).toEqual([]);
+    expect(blanketOnly.tags.filterable).toBe(false);
+
+    // 'forest' appears on only one image (50% < 90%) so it survives the threshold.
+    // Now alpine (2/2) is still excluded but forest (1/2) is included. One value
+    // does not cover all items → filterable.
+    const splits = extractCollectionFilterOptions([
+      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }, { id: 2, name: 'forest', slug: 'forest' }] }),
+      makeImage({ id: 2, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
+    ]);
+    expect(splits.tags.filterable).toBe(true);
   });
 
   it('marks single-value cameras/lenses/locations non-filterable (info-mode)', () => {
