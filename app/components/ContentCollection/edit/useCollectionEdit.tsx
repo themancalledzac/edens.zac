@@ -1168,8 +1168,13 @@ export function useCollectionEdit({
       handleEnterReorderMode();
       return;
     }
+    if (!currentState) {
+      // Defense-in-depth: browse cells are disabled while the admin DTO loads, but after a
+      // FAILED load they re-enable with currentState still null — say so instead of no-opping.
+      setError('Collection data has not loaded — reorder is unavailable.');
+      return;
+    }
     void (async () => {
-      if (!currentState) return;
       try {
         setOperationLoading(true);
         setError(null);
@@ -1296,19 +1301,24 @@ export function useCollectionEdit({
     }
 
     // Browse cells stay disabled until the admin DTO load (or any operation) settles, so the
-    // bar communicates "not ready yet" instead of offering modes that cannot act. Cancel stays
-    // enabled — leaving the manage surface never needs the richer DTO.
+    // bar communicates "not ready yet" instead of offering modes that cannot act. An in-flight
+    // inline save (`saving`) gates them too: entering a mode mid-save races the save's
+    // setCurrentState/buffer reseed (Reorder's auto-convert even fires a SECOND concurrent
+    // updateCollection, and a late inline response could reinstate displayMode CHRONOLOGICAL
+    // mid-reorder-session). Cancel stays enabled — leaving the manage surface never needs the
+    // richer DTO and mutates nothing.
+    const browseBusy = isLoading || saving;
     const cells: EditBarCell[] = [
       {
         key: 'select',
         label: 'Select',
-        disabled: isLoading,
+        disabled: browseBusy,
         onClick: () => setIsMultiSelectMode(true),
       },
       {
         key: 'reorder',
         label: 'Reorder',
-        disabled: isLoading,
+        disabled: browseBusy,
         onClick: enterReorder,
       },
     ];
@@ -1316,14 +1326,14 @@ export function useCollectionEdit({
       cells.push({
         key: 'add',
         label: operationLoading ? 'Uploading…' : 'Add',
-        disabled: isLoading,
+        disabled: browseBusy,
         onClick: () => setIsAddMode(true),
       });
     }
     cells.push({
       key: 'edit',
       label: 'Edit',
-      disabled: isLoading,
+      disabled: browseBusy,
       onClick: () => setIsEditSheetOpen(true),
     });
     if (onExitManage) {

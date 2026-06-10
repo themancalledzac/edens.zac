@@ -282,6 +282,62 @@ describe('useCollectionEdit', () => {
       expect(result.current.reorder.active).toBe(true);
     });
 
+    it('enterReorder on CHRONOLOGICAL surfaces an error when the admin DTO never loaded', async () => {
+      // Failed admin load: the fetch settles null, cells re-enable, currentState stays null.
+      mockGetCollectionUpdateMetadata.mockResolvedValue(null);
+      const { result } = renderEdit({
+        collection: makeCollection({ displayMode: 'CHRONOLOGICAL' }),
+      });
+      await flushEffects();
+      expect(result.current.currentState).toBeNull();
+      expect(result.current.isLoadingState).toBe(false);
+
+      // Dismiss the load error so the assertion below can only see enterReorder's own error.
+      act(() => result.current.clearError());
+
+      act(() => result.current.enterReorder());
+
+      expect(mockUpdateCollection).not.toHaveBeenCalled();
+      expect(result.current.error).toMatch(/not loaded/i);
+      expect(result.current.manageMode).toBe('browse');
+    });
+
+    it('browse cells (Select/Reorder/Add/Edit) are disabled while an inline save is in flight', async () => {
+      const { result } = renderEdit({ enabled: true });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      // Hold the save open so `saving` stays true.
+      let resolveSave!: (value: CollectionUpdateResponseDTO | null) => void;
+      mockUpdateCollection.mockReturnValue(
+        new Promise<CollectionUpdateResponseDTO | null>(resolve => {
+          resolveSave = resolve;
+        })
+      );
+
+      let savePromise!: Promise<void>;
+      act(() => {
+        savePromise = result.current.handleUpdate({ title: 'Inline Save' });
+      });
+      expect(result.current.saving).toBe(true);
+
+      // Mid-save, every mode-mutating browse cell is disabled (Reorder would fire a SECOND
+      // concurrent updateCollection via the auto-convert and race the in-flight response).
+      const byKey = (key: string) => result.current.bottomBarCells.find(c => c.key === key);
+      expect(byKey('select')?.disabled).toBe(true);
+      expect(byKey('reorder')?.disabled).toBe(true);
+      expect(byKey('add')?.disabled).toBe(true);
+      expect(byKey('edit')?.disabled).toBe(true);
+
+      await act(async () => {
+        resolveSave(makeResponse());
+        await savePromise;
+      });
+
+      expect(result.current.saving).toBe(false);
+      expect(byKey('reorder')?.disabled).toBe(false);
+      await flushEffects();
+    });
+
     it('browse has no Cancel cell when onExitManage is absent', () => {
       const { result } = renderEdit({ enabled: false });
       const cancel = result.current.bottomBarCells.find(c => c.key === 'cancel');
