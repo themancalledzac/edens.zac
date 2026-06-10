@@ -13,7 +13,9 @@ import {
   buildRows,
   estimateRowAR,
   hChain,
+  HERO_FULLWIDTH_MAX_ROWWIDTH,
   hPair,
+  isFullWidthHero,
   isRowComplete,
   MAX_FILL_RATIO,
   MAX_ROW_IMAGES,
@@ -30,6 +32,9 @@ import {
   createCollectionContent,
   createGifContent,
   createHorizontalImage,
+  createImageContent,
+  createPanorama,
+  createSquareImage,
   createTextContent,
   createVerticalImage,
 } from '@/tests/fixtures/contentFixtures';
@@ -1340,5 +1345,125 @@ describe('row density packing', () => {
     const items = Array.from({ length: 30 }, (_, i) => createHorizontalImage(i + 1, 1));
     const rows = buildRows(items, 25, 1.0);
     for (const r of rows) expect(r.components.length).toBeLessThanOrEqual(MAX_ROW_IMAGES);
+  });
+});
+
+// ===================== Full-width hero promotion =====================
+
+describe('full-width hero promotion', () => {
+  describe('isFullWidthHero predicate', () => {
+    it('promotes a wide 5★ horizontal panorama at low/medium density', () => {
+      expect(isFullWidthHero(createPanorama(1, 5), 10)).toBe(true);
+    });
+
+    it('honours the AR floor (2.0) at the boundary', () => {
+      // getAspectRatio reads imageWidth/imageHeight, not the aspectRatio field.
+      const ar2 = createImageContent(1, { imageWidth: 2000, imageHeight: 1000, rating: 5 });
+      const ar199 = createImageContent(2, { imageWidth: 1990, imageHeight: 1000, rating: 5 });
+      expect(isFullWidthHero(ar2, 10)).toBe(true);
+      expect(isFullWidthHero(ar199, 10)).toBe(false);
+    });
+
+    it('rejects a normal-AR (1.78) 5★ horizontal — not a panorama', () => {
+      expect(isFullWidthHero(createHorizontalImage(1, 5), 10)).toBe(false);
+    });
+
+    it('rejects a wide panorama below the rating floor (5)', () => {
+      expect(isFullWidthHero(createPanorama(1, 4), 10)).toBe(false);
+    });
+
+    it('rejects vertical and square images regardless of rating', () => {
+      expect(isFullWidthHero(createVerticalImage(1, 5), 10)).toBe(false);
+      expect(isFullWidthHero(createSquareImage(2, 5), 10)).toBe(false);
+    });
+
+    it('applies the density ceiling at HERO_FULLWIDTH_MAX_ROWWIDTH', () => {
+      expect(isFullWidthHero(createPanorama(1, 5), HERO_FULLWIDTH_MAX_ROWWIDTH)).toBe(true);
+      expect(isFullWidthHero(createPanorama(1, 5), HERO_FULLWIDTH_MAX_ROWWIDTH + 1)).toBe(false);
+    });
+  });
+
+  describe('buildRows promotion', () => {
+    const soloPanoRow = (rows: RowResult[], panoId: number): RowResult | undefined =>
+      rows.find(
+        r =>
+          r.components.length === 1 &&
+          (r.components[0] as { id: number }).id === panoId &&
+          r.boxTree.type === 'leaf'
+      );
+    const totalItems = (rows: RowResult[]): number =>
+      rows.reduce((n, r) => n + r.components.length, 0);
+
+    it('gives a mid-stream wide 5★ panorama its own full-width row (gorge regression)', () => {
+      // Mirrors the real /gorge-climbing row: V3, H3, V3, then the wide 5★ pano.
+      const items = [
+        createVerticalImage(1, 3),
+        createHorizontalImage(2, 3),
+        createVerticalImage(3, 3),
+        createPanorama(4, 5),
+        createHorizontalImage(5, 4),
+      ];
+      const rows = buildRows(items, 10, 1.4);
+      // The pano is its own leaf row — never nested as a vStack sliver.
+      expect(soloPanoRow(rows, 4)).toBeDefined();
+      const panoRow = rows.find(r => r.components.some(c => (c as { id: number }).id === 4));
+      expect(panoRow!.boxTree.type).toBe('leaf');
+      expect(totalItems(rows)).toBe(items.length); // nothing dropped
+    });
+
+    it('gives a leading wide 5★ panorama its own full-width row', () => {
+      const items = [
+        createPanorama(1, 5),
+        createHorizontalImage(2, 3),
+        createHorizontalImage(3, 3),
+        createHorizontalImage(4, 4),
+      ];
+      const rows = buildRows(items, 10, 1.4);
+      expect(rows[0]!.components).toHaveLength(1);
+      expect((rows[0]!.components[0] as { id: number }).id).toBe(1);
+      expect(rows[0]!.boxTree.type).toBe('leaf');
+      expect(totalItems(rows)).toBe(items.length);
+    });
+
+    it('does NOT promote a wide panorama below 5★ — it shares a row', () => {
+      const items = [
+        createHorizontalImage(1, 3),
+        createPanorama(2, 4),
+        createHorizontalImage(3, 3),
+      ];
+      const rows = buildRows(items, 10, 1.4);
+      expect(soloPanoRow(rows, 2)).toBeUndefined();
+      expect(totalItems(rows)).toBe(items.length);
+    });
+
+    it('does NOT promote at high density (rowWidth above the ceiling)', () => {
+      const items = [
+        createHorizontalImage(1, 3),
+        createPanorama(2, 5),
+        createHorizontalImage(3, 3),
+        createHorizontalImage(4, 3),
+      ];
+      const rows = buildRows(items, HERO_FULLWIDTH_MAX_ROWWIDTH + 5, 1.4);
+      expect(soloPanoRow(rows, 2)).toBeUndefined();
+      expect(totalItems(rows)).toBe(items.length);
+    });
+
+    it('does NOT promote a normal 5★ horizontal (AR 1.78)', () => {
+      const items = [
+        createHorizontalImage(1, 5),
+        createHorizontalImage(2, 3),
+        createHorizontalImage(3, 3),
+      ];
+      const rows = buildRows(items, 10, 1.4);
+      expect(soloPanoRow(rows, 1)).toBeUndefined();
+    });
+
+    it('promotes multiple wide 5★ panoramas each to their own row', () => {
+      const items = [createPanorama(1, 5), createPanorama(2, 5), createHorizontalImage(3, 3)];
+      const rows = buildRows(items, 10, 1.4);
+      expect(soloPanoRow(rows, 1)).toBeDefined();
+      expect(soloPanoRow(rows, 2)).toBeDefined();
+      expect(totalItems(rows)).toBe(items.length);
+    });
   });
 });

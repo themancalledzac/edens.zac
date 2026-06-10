@@ -180,6 +180,41 @@ export const AR_FLOOR_MULTIPLIER = 0.7;
 export const MAX_ROW_IMAGES = 12;
 
 /**
+ * Full-width hero promotion thresholds.
+ *
+ * A wide, top-rated horizontal panorama is the one composition the in-row
+ * algorithm structurally cannot serve. A 2:1+ image forced into a near-square
+ * shared row is always crushed into a vStack sliver (vStack area ∝ 1/AR), and
+ * giving it a proportional area would push the row AR far past the floor/target
+ * — so it can never both share a row AND be sized to its prominence. The only
+ * correct answer is to promote it to its own full-width row.
+ *
+ * Gated three ways so only genuine heroes qualify (product decision 2026-06-09:
+ * "a 5★ horizontal panorama, 1:2 and up, should always be full width, up until
+ * the higher density numbers"): wide enough (AR), rated highly enough (rating),
+ * and not at high density — at high density (large rowWidth) even a wide
+ * panorama shares the row.
+ */
+export const HERO_FULLWIDTH_MIN_AR = 2.0;
+export const HERO_FULLWIDTH_MIN_RATING = 5;
+export const HERO_FULLWIDTH_MAX_ROWWIDTH = 15;
+
+/**
+ * Whether an item should claim its own full-width row. True only for a
+ * horizontal image at least {@link HERO_FULLWIDTH_MIN_AR} wide and rated at
+ * least {@link HERO_FULLWIDTH_MIN_RATING}, and only while the row-width budget
+ * is at or below {@link HERO_FULLWIDTH_MAX_ROWWIDTH} (low/medium density).
+ *
+ * AR ≥ 2 already implies horizontal, so {@link getEffectiveRating} (which only
+ * penalises verticals) equals the raw rating here.
+ */
+export function isFullWidthHero(item: AnyContentModel, rowWidth: number): boolean {
+  if (rowWidth > HERO_FULLWIDTH_MAX_ROWWIDTH) return false;
+  if (getAspectRatio(item) < HERO_FULLWIDTH_MIN_AR) return false;
+  return getEffectiveRating(item) >= HERO_FULLWIDTH_MIN_RATING;
+}
+
+/**
  * Estimate a row's combined aspect ratio. Routes through the canonical composer
  * so the Stage-1 estimate matches the composition that actually renders.
  */
@@ -211,8 +246,14 @@ function collectRowItems(
 
 /**
  * Row-first layout algorithm. Builds rows one at a time over a lookahead
- * window: standalone-skip a hero past low-rated items, greedy sequential fill,
- * best-fit fallback, then build each row's atomic tree.
+ * window: promote a full-width hero (see isFullWidthHero) to its own row,
+ * standalone-skip a hero past low-rated items, greedy sequential fill, best-fit
+ * fallback, then build each row's atomic tree.
+ *
+ * A full-width hero is promoted whether it leads the window (handled before
+ * fill) or appears mid-window (skipped during fill so it surfaces as a leading
+ * hero on the next iteration); the first window slot is therefore never a hero
+ * by the time the fill loop runs.
  *
  * A would-overfill item that fills a row on its own (cv >= rowWidth *
  * MIN_FILL_RATIO) is skipped to get its own row next iteration. The AR-floor
@@ -236,6 +277,16 @@ export function buildRows(
 
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
+
+    if (isFullWidthHero(window[0]!, rowWidth)) {
+      const heroItem = window[0]!;
+      rows.push({
+        components: [heroItem],
+        boxTree: acToBoxTree(single(toImageType(heroItem, rowWidth))),
+      });
+      remaining.splice(0, 1);
+      continue;
+    }
 
     const item0Rating = getEffectiveRating(window[0]!);
 
@@ -276,6 +327,11 @@ export function buildRows(
     let slotCountComplete = false;
 
     for (let i = 0; i < expandedWindow.length; i++) {
+      if (seqCount > 0 && isFullWidthHero(expandedWindow[i]!, rowWidth)) {
+        skippedStandalones.push(i);
+        continue;
+      }
+
       const cv = getItemComponentValue(expandedWindow[i]!);
       const newFill = (seqTotal + cv) / rowWidth;
 
