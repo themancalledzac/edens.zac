@@ -6,14 +6,23 @@
   --sel-text: var(--color-fg);
   --sel-text-muted: var(--color-on-surface-muted);
   --sel-text-faint: var(--color-on-surface-muted);
-  --sel-elev-1: rgb(255 255 255 / 5%);
-  --sel-elev-2: rgb(255 255 255 / 10%);
-  --sel-elev-hover: rgb(255 255 255 / 14%);
-  --sel-border: rgb(255 255 255 / 12%);
+  /* Light-surface defaults: black-alpha so affordances read on white backgrounds. */
+  --sel-elev-1: rgb(0 0 0 / 4%);
+  --sel-elev-2: rgb(0 0 0 / 8%);
+  --sel-elev-hover: rgb(0 0 0 / 7%);
+  --sel-border: rgb(0 0 0 / 10%);
   --sel-accent-sibling: #20c997;
   --sel-accent-child: #4dabf7;
   --sel-accent-parent: #cc5de8;
   --sel-current-accent: var(--color-accent);
+}
+
+/* Dark-surface override: flip elevation locals back to white-alpha so they lift on charcoal. */
+[data-surface='dark'] .container {
+  --sel-elev-1: rgb(255 255 255 / 5%);
+  --sel-elev-2: rgb(255 255 255 / 10%);
+  --sel-elev-hover: rgb(255 255 255 / 14%);
+  --sel-border: rgb(255 255 255 / 12%);
 }
 
 .header {
@@ -68,7 +77,7 @@
 
   &.navigable {
     &:hover {
-      background: rgb(255, 255, 255, 0.12);
+      background: var(--sel-elev-hover);
     }
   }
 }
@@ -263,7 +272,7 @@ $toggle-col-width: 60px;
   padding: 0.5rem 0.75rem;
   background: transparent;
   border: none;
-  border-top: 1px solid var(--border-subtle, rgb(255, 255, 255, 0.05));
+  border-top: 1px solid var(--sel-border);
   text-align: left;
   cursor: pointer;
   color: inherit;
