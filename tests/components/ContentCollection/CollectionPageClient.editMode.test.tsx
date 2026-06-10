@@ -1,5 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { type ComponentType, useEffect, useState } from 'react';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { getCollectionUpdateMetadata, getMetadata } from '@/app/lib/api/collections';
@@ -19,6 +20,33 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/smith-wedding',
   useSearchParams: () => mockSearchParams,
 }));
+
+/**
+ * next/dynamic mock that mirrors the real lazy semantics: the loader (chunk request) only runs
+ * when the dynamic component first RENDERS, and the loaded component mounts on the next
+ * microtask — covered by the `flush()` every edit-mode test already performs. This keeps
+ * "public mode never loads the edit chunk" observable via the probe below.
+ *
+ * Function declaration (not const) so it is initialized before the hoisted jest.mock factory
+ * runs during module imports.
+ */
+const mockDynamicLoadProbe = jest.fn();
+
+type UnknownProps = Record<string, unknown>;
+
+function mockNextDynamic(loader: () => Promise<{ default: ComponentType<UnknownProps> }>) {
+  function DynamicStub(props: UnknownProps) {
+    const [Loaded, setLoaded] = useState<ComponentType<UnknownProps> | null>(null);
+    useEffect(() => {
+      mockDynamicLoadProbe();
+      void loader().then(mod => setLoaded(() => mod.default));
+    }, []);
+    return Loaded ? <Loaded {...props} /> : null;
+  }
+  return DynamicStub;
+}
+
+jest.mock('next/dynamic', () => ({ __esModule: true, default: mockNextDynamic }));
 
 jest.mock('@/app/lib/api/collections');
 jest.mock('@/app/lib/api/content');
@@ -110,6 +138,7 @@ const pendingForever = () => new Promise<CollectionUpdateResponseDTO | null>(() 
 
 beforeEach(() => {
   gridProbe.mockClear();
+  mockDynamicLoadProbe.mockClear();
   mockPush.mockClear();
   mockSearchParams = new URLSearchParams();
   mockGetCollectionUpdateMetadata.mockResolvedValue(null);
@@ -129,6 +158,13 @@ describe('CollectionPageClient — editMode false (public, default)', () => {
     expect(grid).toHaveAttribute('data-fullscreen', 'true');
     expect(gridProbe).toHaveBeenCalledWith(expect.objectContaining({ enableFullScreenView: true }));
   });
+
+  it('never requests the edit-layer chunk (dynamic loader not invoked)', async () => {
+    render(<CollectionPageClient collection={makeCollection()} />);
+    // Flush microtasks so a wrongly-rendered dynamic stub would have had time to load.
+    await act(async () => {});
+    expect(mockDynamicLoadProbe).not.toHaveBeenCalled();
+  });
 });
 
 describe('CollectionPageClient — editMode true', () => {
@@ -138,6 +174,8 @@ describe('CollectionPageClient — editMode true', () => {
     render(<CollectionPageClient collection={makeCollection()} editMode />);
     await flush();
     expect(screen.getByRole('toolbar', { name: 'Manage' })).toBeInTheDocument();
+    // Sanity for the dynamic mock: edit mode DOES request the edit-layer chunk.
+    expect(mockDynamicLoadProbe).toHaveBeenCalled();
   });
 
   it('mounts the grid with the fullscreen viewer DISABLED so a tap never opens it', async () => {

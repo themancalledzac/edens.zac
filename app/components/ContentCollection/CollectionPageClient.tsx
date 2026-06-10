@@ -1,12 +1,9 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
-import MetadataModal from '@/app/components/Metadata/MetadataModal';
-import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
-import { EditBar } from '@/app/components/ui/EditBar/EditBar';
 import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
@@ -33,13 +30,14 @@ import {
 } from './ClientGalleryDownloadContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
-import CollectionEditSheet from './edit/CollectionEditSheet';
-import {
-  type InlineEditContextValue,
-  type InlineEditField,
-  InlineEditProvider,
-} from './edit/InlineEditContext';
-import { useCollectionEdit } from './edit/useCollectionEdit';
+
+/**
+ * The entire edit experience (useCollectionEdit, EditBar, edit sheet, modals, inline-edit
+ * context) lives in EditModeLayer, loaded as a separate client-only chunk so public visitors
+ * never download admin code. editMode is server-gated to local dev, so on public pages this
+ * dynamic factory is never invoked and the chunk is never requested.
+ */
+const EditModeLayer = dynamic(() => import('./edit/EditModeLayer'), { ssr: false });
 
 type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated'>;
 
@@ -52,8 +50,9 @@ interface CollectionPageClientProps {
   serverIsMobile?: boolean;
   /**
    * When true, mount the consolidated edit experience (EditBar, edit sheet, image/text modals,
-   * click-routing) on this light surface. When false/absent the page renders byte-identically to
-   * the public view and the edit hook is inert.
+   * click-routing) on this light surface via the dynamically imported EditModeLayer. When
+   * false/absent the page renders byte-identically to the public view and no edit code is
+   * loaded.
    */
   editMode?: boolean;
 }
@@ -69,61 +68,14 @@ export default function CollectionPageClient({
   serverIsMobile,
   editMode = false,
 }: CollectionPageClientProps) {
-  const router = useRouter();
-
-  const handleExitManage = useCallback(() => {
-    router.push(`/${collection.slug}`);
-  }, [router, collection.slug]);
-
-  const edit = useCollectionEdit({
-    collection,
-    slug: collection.slug,
-    enabled: Boolean(editMode),
-    onExitManage: editMode ? handleExitManage : undefined,
-  });
-
   /**
-   * Edit interactions are gated until the richer admin DTO (`currentState`) is in. Before that,
-   * inline commits and post-save refreshes hit `!currentState` early-returns in the hook and
-   * silently drop — so until ready the page shows the public read-only render plus a disabled
-   * bar instead of edit affordances that cannot act.
+   * While the edit chunk streams in, the public grid doubles as the loading fallback so an
+   * edit-mode load never flashes blank. EditModeLayer flips this flag pre-paint on mount and
+   * takes over the grid render — edit affordances appearing a beat after the content is
+   * consistent with the layer's own editReady gating.
    */
-  const editReady = !edit.isLoadingState && edit.currentState !== null;
-
-  useEffect(() => {
-    if (!editMode) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      // Inline editors call event.preventDefault() on their own Escape handler. Bail here so a
-      // single Escape never both reverts an inline edit AND exits manage mode. The activeElement
-      // guard below is a belt-and-braces backup, but it is unreliable in React 19: the component
-      // can unmount (and focus collapse to <body>) via a microtask flush that runs before this
-      // window-level bubble listener fires.
-      if (event.defaultPrevented) return;
-      if (edit.editingContent || edit.isTextBlockModalOpen) return;
-      if (
-        document.activeElement instanceof HTMLElement &&
-        document.activeElement.closest('[data-inline-editing]')
-      ) {
-        return;
-      }
-      if (edit.manageMode !== 'browse') {
-        edit.exitToBrowse();
-      } else {
-        handleExitManage();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    editMode,
-    edit.editingContent,
-    edit.isTextBlockModalOpen,
-    edit.manageMode,
-    edit.exitToBrowse,
-    handleExitManage,
-  ]);
+  const [editLayerMounted, setEditLayerMounted] = useState(false);
+  const handleEditLayerMounted = useCallback(() => setEditLayerMounted(true), []);
 
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
@@ -175,13 +127,9 @@ export default function CollectionPageClient({
     [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
-  const allContent = useMemo(
-    () =>
-      editMode
-        ? (edit.currentState?.collection?.content ?? collection.content ?? [])
-        : (collection.content ?? []),
-    [editMode, edit.currentState, collection.content]
-  );
+  // The public render works off the server seed; live (post-save) content is EditModeLayer's
+  // concern, which runs its own content pipeline against the admin DTO.
+  const allContent = useMemo(() => collection.content ?? [], [collection.content]);
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 
@@ -244,20 +192,14 @@ export default function CollectionPageClient({
   const contentBlocks = useMemo(() => {
     const processed = processContentBlocks(
       filteredContent,
-      !editMode,
+      true,
       collection.id,
       collection.displayMode
     );
     if (filterState.dateSortDirection === 'off') return processed;
     const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
     return mergeDateSortedImages(processed, sorted);
-  }, [
-    filteredContent,
-    collection.id,
-    collection.displayMode,
-    filterState.dateSortDirection,
-    editMode,
-  ]);
+  }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
 
   const handleFilterChange = useCallback(
     (update: Partial<FilterState>) => {
@@ -300,67 +242,7 @@ export default function CollectionPageClient({
 
   const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, hasDateVariance);
 
-  const reorderActive = editMode && edit.reorder.active;
-
-  // Both reorder and select modes must operate on the unfiltered list:
-  //   reorder: positions are meaningless on a subset of the collection.
-  //   select: 'All' selects every image in the full collection, so the grid must show all of them.
-  useEffect(() => {
-    if (!editMode) return;
-    if (edit.manageMode !== 'reorder' && edit.manageMode !== 'select') return;
-    if (!hasAnyActiveFilter(filterState)) return;
-    setFilterState(INITIAL_FILTER_STATE);
-    syncToUrl(buildCollectionCriteria(INITIAL_FILTER_STATE));
-  }, [editMode, edit.manageMode, filterState, syncToUrl]);
-
-  const handleCommitField = useCallback(
-    (field: InlineEditField, value: string) => {
-      edit.setUpdateField(field, value);
-      void edit.handleUpdate({ [field]: value });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [edit.setUpdateField, edit.handleUpdate]
-  );
-
-  const handleEditLocation = useCallback(() => {
-    edit.enterEdit();
-    edit.setEditTab('info');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [edit.enterEdit, edit.setEditTab]);
-
-  const inlineEditValue = useMemo<InlineEditContextValue>(
-    () => ({
-      title: edit.updateData.title ?? '',
-      description: edit.updateData.description ?? '',
-      onCommitField: handleCommitField,
-      onEditLocation: handleEditLocation,
-    }),
-    [edit.updateData.title, edit.updateData.description, handleCommitField, handleEditLocation]
-  );
-
-  const grid = editMode ? (
-    <ContentBlockWithFullScreen
-      content={reorderActive ? edit.displayContent : contentBlocks}
-      priorityBlockIndex={0}
-      enableFullScreenView={false}
-      isSelectingCoverImage={edit.isSelectingCoverImage}
-      currentCoverImageId={edit.currentCoverImageId}
-      onImageClick={reorderActive || !editReady ? undefined : edit.handleImageClick}
-      justClickedImageId={edit.justClickedImageId}
-      selectedIds={edit.isMultiSelectMode ? edit.selectedIds : []}
-      currentCollectionId={collection.id}
-      collectionSlug={collection.slug}
-      collectionData={edit.currentState?.collection ?? collection}
-      isReorderMode={reorderActive}
-      reorderMoves={reorderActive ? edit.reorder.moves : undefined}
-      pickedUpImageId={reorderActive ? edit.reorder.pickedUpImageId : undefined}
-      reorderDisplayOrder={reorderActive ? edit.reorder.displayOrder : undefined}
-      onArrowMove={reorderActive ? edit.reorder.onArrowMove : undefined}
-      onPickUp={reorderActive ? edit.reorder.onPickUp : undefined}
-      onPlace={reorderActive ? edit.reorder.onPlace : undefined}
-      onCancelImageMove={reorderActive ? edit.reorder.onCancelImageMove : undefined}
-    />
-  ) : (
+  const grid = (
     <ContentBlockWithFullScreen
       content={contentBlocks}
       priorityBlockIndex={0}
@@ -378,22 +260,21 @@ export default function CollectionPageClient({
     />
   );
 
-  const content = (
+  const content = editMode ? (
     <>
-      {editMode ? (
-        editReady ? (
-          <InlineEditProvider value={inlineEditValue}>
-            <div className={styles.editCanvas}>{grid}</div>
-          </InlineEditProvider>
-        ) : (
-          // No provider while the admin DTO loads → the header card degrades to the public
-          // read-only render, so a tap cannot buffer an edit the hook would silently drop.
-          <div className={styles.editCanvas}>{grid}</div>
-        )
-      ) : (
-        grid
-      )}
-      {!editMode && hasActiveFilters && filteredImages.length === 0 && (
+      {!editLayerMounted && grid}
+      <EditModeLayer
+        collection={collection}
+        filterState={filterState}
+        setFilterState={setFilterState}
+        syncToUrl={syncToUrl}
+        onMounted={handleEditLayerMounted}
+      />
+    </>
+  ) : (
+    <>
+      {grid}
+      {hasActiveFilters && filteredImages.length === 0 && (
         <p className={styles.emptyState}>No images match your filters.</p>
       )}
     </>
@@ -408,80 +289,13 @@ export default function CollectionPageClient({
       content
     );
 
-  const editOverlays = editMode ? (
-    <>
-      {edit.error && (
-        <div className={styles.errorBanner} role="alert">
-          <span className={styles.errorBannerText}>{edit.error}</span>
-          <button
-            type="button"
-            className={styles.errorBannerDismiss}
-            aria-label="Dismiss error"
-            onClick={edit.clearError}
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {edit.manageMode === 'edit' && <CollectionEditSheet edit={edit} />}
-
-      {!edit.editingContent && !edit.isTextBlockModalOpen && (
-        <EditBar
-          ariaLabel="Manage"
-          fixed
-          cells={edit.bottomBarCells}
-          tabs={edit.bottomBarTabs}
-          activeTab={edit.editTab}
-          onTabChange={id => edit.setEditTab(id as typeof edit.editTab)}
-        />
-      )}
-
-      {edit.editingContent && edit.contentToEdit.length > 0 && (
-        <MetadataModal
-          onClose={edit.closeEditor}
-          onSaveSuccess={edit.handleMetadataSaveSuccess}
-          onGifSaveSuccess={edit.handleGifSaveSuccess}
-          onDeleteSuccess={edit.handleDeleteSuccess}
-          onRemoveFromCollectionSuccess={edit.handleDeleteSuccess}
-          availableTags={edit.currentState?.tags || []}
-          availablePeople={edit.currentState?.people || []}
-          availableCameras={edit.currentState?.cameras || []}
-          availableLenses={edit.currentState?.lenses || []}
-          availableFilmTypes={edit.currentState?.filmTypes || []}
-          availableFilmFormats={edit.currentState?.filmFormats || []}
-          availableCollections={edit.allCollections}
-          availableLocations={edit.currentState?.locations || []}
-          selectedIds={edit.selectedIds}
-          selectedImages={edit.contentToEdit}
-          currentCollectionId={collection.id}
-        />
-      )}
-
-      {edit.isTextBlockModalOpen && (
-        <TextBlockCreateModal
-          onClose={edit.closeTextBlockModal}
-          onSubmit={edit.handleTextBlockSubmit}
-        />
-      )}
-    </>
-  ) : null;
-
   if (!hasOptions) {
-    return editMode ? (
-      <>
-        {maybeWrappedContent}
-        {editOverlays}
-      </>
-    ) : (
-      maybeWrappedContent
-    );
+    return maybeWrappedContent;
   }
 
   return (
     <CollectionFilterProvider value={filterContextValue}>
       {maybeWrappedContent}
-      {editMode && editOverlays}
     </CollectionFilterProvider>
   );
 }
