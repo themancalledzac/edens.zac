@@ -21,6 +21,7 @@ export interface CollectionInfoOptions {
   locations: DimensionData;
   lensTypes: DimensionData<LensType>;
   showHighlyRated: boolean;
+  showDateSort: boolean;
 }
 
 /** Subset of options available after current filters are applied (for grey-out logic). null = no active filters. */

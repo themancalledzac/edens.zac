@@ -79,6 +79,18 @@ export const BASE_WEIGHT: Record<number, number> = {
 // Reference AR for the AR factor in cv calculation
 export const REFERENCE_AR = 1.5;
 
+// Panorama arFactor ramp: at/above PANORAMA_AR the arFactor climbs linearly instead of
+// being sqrt-capped, giving wide panoramas substantially more cv than same-rated horizontals.
+export const PANORAMA_AR = 2.0;
+export const PANORAMA_AR_FACTOR = 1.4; // arFactor exactly at PANORAMA_AR (5★ → 7.0)
+export const PANORAMA_AR_SLOPE = 0.6; // arFactor gained per 1.0 of AR beyond PANORAMA_AR
+
+// Prominence extremeness ramp: symmetric version of the panorama ramp (applies to tall images too).
+// Keyed on EXTREMENESS = max(AR, 1/AR). Currently mirrors PANORAMA_AR_* values.
+export const EXTREMENESS_RAMP_START = 2.0;
+export const EXTREMENESS_RAMP_BASE = 1.4;
+export const EXTREMENESS_RAMP_SLOPE = 0.6;
+
 // =============================================================================
 // INTERACTION & TIMING
 // =============================================================================

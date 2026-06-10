@@ -15,7 +15,11 @@
  */
 
 import type { AnyContentModel } from '@/app/types/Content';
-import { getEffectiveRating, getItemComponentValue } from '@/app/utils/contentRatingUtils';
+import {
+  getEffectiveRating,
+  getItemComponentValue,
+  getProminence,
+} from '@/app/utils/contentRatingUtils';
 import { getAspectRatio } from '@/app/utils/contentTypeGuards';
 import { calculateBoxTreeAspectRatio } from '@/app/utils/rowStructureAlgorithm';
 
@@ -97,6 +101,8 @@ export interface ImageType {
   numericAR: number;
   effectiveRating: number;
   componentValue: number;
+  /** Orientation-agnostic prominence P — used as the equity-target for area allocation. */
+  prominence: number;
 }
 
 /** Recursive composition structure */
@@ -118,9 +124,10 @@ export function toImageType(item: AnyContentModel, _rowWidth: number): ImageType
   const ar: OrientationShort = numericAR > 1.0 ? 'H' : 'V';
   const effectiveRating = getEffectiveRating(item);
   const componentValue = getItemComponentValue(item);
+  const prominence = getProminence(item);
   const title = 'title' in item ? String(item.title) : `item-${item.id}`;
 
-  return { source: item, title, ar, numericAR, effectiveRating, componentValue };
+  return { source: item, title, ar, numericAR, effectiveRating, componentValue, prominence };
 }
 
 /** Create a single-image AtomicComponent */
@@ -180,6 +187,28 @@ export const AR_FLOOR_MULTIPLIER = 0.7;
 export const MAX_ROW_IMAGES = 12;
 
 /**
+ * Full-width hero promotion thresholds. A wide, top-rated horizontal panorama
+ * can't be sized to its prominence inside a shared row, so it gets its own
+ * full-width row. Gated by AR, rating, and density (at high density even a wide
+ * panorama shares the row).
+ */
+export const HERO_FULLWIDTH_MIN_AR = 2.0;
+export const HERO_FULLWIDTH_MIN_RATING = 5;
+export const HERO_FULLWIDTH_MAX_ROWWIDTH = 15;
+
+/**
+ * Whether an item should claim its own full-width row: a horizontal image at
+ * least {@link HERO_FULLWIDTH_MIN_AR} wide, rated at least
+ * {@link HERO_FULLWIDTH_MIN_RATING}, while the row-width budget is at or below
+ * {@link HERO_FULLWIDTH_MAX_ROWWIDTH} (low/medium density).
+ */
+export function isFullWidthHero(item: AnyContentModel, rowWidth: number): boolean {
+  if (rowWidth > HERO_FULLWIDTH_MAX_ROWWIDTH) return false;
+  if (getAspectRatio(item) < HERO_FULLWIDTH_MIN_AR) return false;
+  return getEffectiveRating(item) >= HERO_FULLWIDTH_MIN_RATING;
+}
+
+/**
  * Estimate a row's combined aspect ratio. Routes through the canonical composer
  * so the Stage-1 estimate matches the composition that actually renders.
  */
@@ -210,14 +239,11 @@ function collectRowItems(
 }
 
 /**
- * Row-first layout algorithm. Builds rows one at a time over a lookahead
- * window: standalone-skip a hero past low-rated items, greedy sequential fill,
- * best-fit fallback, then build each row's atomic tree.
- *
- * A would-overfill item that fills a row on its own (cv >= rowWidth *
- * MIN_FILL_RATIO) is skipped to get its own row next iteration. The AR-floor
- * check is disabled on mobile (rowWidth <= 2), where items render full-width or
- * stacked and single verticals naturally have low AR.
+ * Row-first layout algorithm. Builds rows over a lookahead window: promotes a
+ * full-width hero ({@link isFullWidthHero}) to its own row (whether leading or
+ * mid-window), standalone-skips a hero past low-rated items, greedy sequential
+ * fill, best-fit fallback, then builds each row's atomic tree. AR-floor check
+ * is disabled on mobile (rowWidth <= 2).
  *
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
  * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
@@ -236,6 +262,16 @@ export function buildRows(
 
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
+
+    if (isFullWidthHero(window[0]!, rowWidth)) {
+      const heroItem = window[0]!;
+      rows.push({
+        components: [heroItem],
+        boxTree: acToBoxTree(single(toImageType(heroItem, rowWidth))),
+      });
+      remaining.splice(0, 1);
+      continue;
+    }
 
     const item0Rating = getEffectiveRating(window[0]!);
 
@@ -276,6 +312,11 @@ export function buildRows(
     let slotCountComplete = false;
 
     for (let i = 0; i < expandedWindow.length; i++) {
+      if (seqCount > 0 && isFullWidthHero(expandedWindow[i]!, rowWidth)) {
+        skippedStandalones.push(i);
+        continue;
+      }
+
       const cv = getItemComponentValue(expandedWindow[i]!);
       const newFill = (seqTotal + cv) / rowWidth;
 
@@ -519,18 +560,18 @@ function rowAR_Cost(rowAR: number, target: number): number {
 const AR_EQUITY_BAND = 0.3;
 
 /**
- * Relative area each leaf occupies (and its cv) for a fully direction-assigned
- * subtree. Area splits geometrically at each node: an hPair divides area in
- * proportion to child AR (siblings share height, so width — hence area — ∝ AR);
- * a vStack divides ∝ 1/AR (siblings share width, so height ∝ 1/AR). Returned
- * leaf shares sum to 1 within the subtree.
+ * Relative area each leaf occupies (and its prominence P) for a fully
+ * direction-assigned subtree. Area splits geometrically: hPair ∝ AR, vStack ∝ 1/AR.
+ * Leaf shares sum to 1 within the subtree. `value` is prominence P (orientation-agnostic),
+ * so {@link equitySpread} rewards high-rated verticals with more area rather than
+ * penalising them via the packing cv.
  */
 function leafShares(ac: AtomicComponent): {
   ar: number;
-  leaves: Array<{ cv: number; share: number }>;
+  leaves: Array<{ value: number; share: number }>;
 } {
   if (ac.type === 'single') {
-    return { ar: ac.img.numericAR, leaves: [{ cv: ac.img.componentValue, share: 1 }] };
+    return { ar: ac.img.numericAR, leaves: [{ value: ac.img.prominence, share: 1 }] };
   }
   const left = leafShares(ac.children[0]);
   const right = leafShares(ac.children[1]);
@@ -545,25 +586,26 @@ function leafShares(ac: AtomicComponent): {
   return {
     ar,
     leaves: [
-      ...left.leaves.map(l => ({ cv: l.cv, share: l.share * leftFactor })),
-      ...right.leaves.map(l => ({ cv: l.cv, share: l.share * rightFactor })),
+      ...left.leaves.map(l => ({ value: l.value, share: l.share * leftFactor })),
+      ...right.leaves.map(l => ({ value: l.value, share: l.share * rightFactor })),
     ],
   };
 }
 
 /**
- * How unevenly a candidate sizes its images relative to their cv. Returns
- * max(area/cv) / min(area/cv) across leaves: 1.0 means every image's area is
- * exactly proportional to its cv (equal-rated → equal-size); larger means some
- * image is over- or under-sized for its rating. Lower is more equitable.
+ * How unevenly a candidate sizes its images relative to their prominence.
+ * Returns max(area/value) / min(area/value) across leaves: 1.0 = perfectly
+ * proportional; larger = some image is over- or under-sized. Lower is better.
+ * Uses prominence P (orientation-agnostic) so high-rated verticals are not
+ * penalised by the vertical-penalty baked into packing cv.
  */
 function equitySpread(ac: AtomicComponent): number {
   const { leaves } = leafShares(ac);
   let min = Infinity;
   let max = 0;
-  for (const { cv, share } of leaves) {
-    if (cv <= 0) continue;
-    const ratio = share / cv;
+  for (const { value, share } of leaves) {
+    if (value <= 0) continue;
+    const ratio = share / value;
     if (ratio < min) min = ratio;
     if (ratio > max) max = ratio;
   }

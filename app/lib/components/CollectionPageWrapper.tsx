@@ -54,19 +54,10 @@ export default async function CollectionPageWrapper({
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
-    // Gate any password-protected gallery — CLIENT_GALLERY directly, and PARENT collections
-    // that have a password (typically set with propagate=true to share with their CLIENT_GALLERY
-    // children). Auth signal: backend (CollectionControllerProd.getCollectionBySlug) sets
-    // `content` to null when neither the per-slug nor the shared password-fingerprint cookie
-    // validates, and returns an array (possibly empty) once a cookie validates. So
-    // `Array.isArray(content)` is the authoritative authenticated signal — `isPasswordProtected`
-    // describes the gallery, not the viewer's session.
-    //
-    // Routing here, rather than wrapping <CollectionPage> as gate children, means we never
-    // serialize the page's RSC payload (cover image, grid) for a locked viewer (FE-H6 invariant,
-    // structurally enforced).
-    // editMode is admin-only: bypass the per-gallery password gate entirely (an admin editing
-    // their own gallery shouldn't be password-walled). The non-edit path below is unchanged.
+    // Gate password-protected galleries. `Array.isArray(content)` is the auth signal —
+    // the backend sets content to null when the password cookie fails to validate.
+    // Routing here (not wrapping children) prevents RSC payload serialization for locked viewers.
+    // editMode bypasses the gate entirely — admins are never password-walled.
     const isGateableType =
       !editMode &&
       (collection.type === CollectionType.CLIENT_GALLERY ||

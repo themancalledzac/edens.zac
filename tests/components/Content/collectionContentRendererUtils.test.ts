@@ -18,6 +18,7 @@ const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfo
   locations: dim([], false),
   lensTypes: { values: [], filterable: false },
   showHighlyRated: false,
+  showDateSort: false,
   ...overrides,
 });
 

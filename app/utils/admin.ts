@@ -38,16 +38,10 @@ export const hasValidAdminAuth = (request: NextRequest): boolean => {
 };
 
 /**
- * Admin gate seam (SERVER-SIDE). The single future home for "is this request an authenticated
- * admin principal?". TODAY it is PERIMETER-ONLY and NON-ENFORCING — prod protection is the BFF
- * `INTERNAL_API_SECRET` channel gate (app/api/proxy/[...path]/route.ts) plus route-hiding in the
- * (currently UNWIRED) root `proxy.ts` (wiring that is the open 007 task). This function does NOT
- * block today; it is the seam where per-user identity / session / MFA will plug in (see
- * docs/superpowers/specs/009-abac-access-control.md). Called by app/(admin)/layout.tsx so that
- * when 009 lands, enforcement is added in exactly one place.
+ * Admin gate seam (SERVER-SIDE). No-op today — enforcement is perimeter-only via
+ * `INTERNAL_API_SECRET`. This is the single future hook point for identity/session
+ * auth; when that lands, add redirect()/notFound() here.
  */
 export async function requireAdmin(): Promise<void> {
-  // No-op today. Future: resolve the admin principal from the session; redirect()/notFound()
-  // when absent.
   return;
 }

@@ -13,18 +13,11 @@ interface UseCollectionRetypeParams {
 }
 
 /**
- * Drag-and-drop collection retype. Optimistically moves the dragged collection to
- * its new type in `allCollections` (which re-buckets it in the manage-page
- * accordion), then persists via PUT /api/admin/collections/{id}. On any
- * non-success the optimistic move is reverted and an error is surfaced.
- *
- * The PUT response describes the DRAGGED collection (not the manage-page
- * collection being edited), so it is intentionally ignored beyond success/failure
- * — it must never be written into `currentState`.
- *
- * A retype for a given collection is single-flight: while its PUT is in flight,
- * a second drag on the SAME collection is ignored, so a fast double-drag can't
- * revert to a stale `previousType` after the first request settles.
+ * Drag-and-drop collection retype. Optimistically re-buckets the dragged collection
+ * in `allCollections`, then persists via PUT. Reverts on failure. Single-flight per
+ * collection — a second drag while the PUT is in-flight is ignored. The PUT response
+ * describes the dragged collection, not the current page's collection, and is never
+ * written into `currentState`.
  */
 export function useCollectionRetype({ setAllCollections, setError }: UseCollectionRetypeParams) {
   const inFlightRef = useRef<Set<number>>(new Set());
@@ -32,7 +25,7 @@ export function useCollectionRetype({ setAllCollections, setError }: UseCollecti
   const handleChangeType = useCallback(
     async (collection: CollectionListModel, targetType: CollectionType) => {
       const previousType = collection.type;
-      if (previousType === targetType) return; // no-op: already this type
+      if (previousType === targetType) return;
       if (inFlightRef.current.has(collection.id)) return;
 
       const setType = (type: CollectionType | string | undefined) =>
