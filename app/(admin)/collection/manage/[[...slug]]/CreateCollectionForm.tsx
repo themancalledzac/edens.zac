@@ -16,6 +16,7 @@ import {
   CollectionType,
 } from '@/app/types/Collection';
 import { handleApiError } from '@/app/utils/apiUtils';
+import { manageHref } from '@/app/utils/manageUrl';
 
 import styles from './CreateCollectionForm.module.scss';
 
@@ -47,7 +48,7 @@ export function CreateCollectionForm() {
       const response = await createCollection(createData);
       if (response !== null) {
         await revalidateCollectionCache(response.collection.slug);
-        router.replace(`/${response.collection.slug}?manage=1`);
+        router.replace(manageHref(response.collection.slug));
       }
     } catch (error_) {
       const detail = handleApiError(error_, '');

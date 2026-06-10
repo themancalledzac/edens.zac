@@ -8,7 +8,6 @@ import type { ContentImageModel, ContentParallaxImageModel } from '@/app/types/C
 import {
   checkImageVisibility,
   createContentClickHandler,
-  getCollectionNavigationPath,
 } from '@/app/utils/contentComponentHandlers';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
@@ -184,15 +183,5 @@ describe('createContentClickHandler', () => {
     const onFullScreenClick = jest.fn();
     const handler = createContentClickHandler(1, undefined, true, onFullScreenClick);
     expect(handler).toBeUndefined();
-  });
-});
-
-describe('getCollectionNavigationPath', () => {
-  it('should return admin ?manage=1 path when isAdminContext is true', () => {
-    expect(getCollectionNavigationPath('test-collection', true)).toBe('/test-collection?manage=1');
-  });
-
-  it('should return public path when isAdminContext is false', () => {
-    expect(getCollectionNavigationPath('test-collection', false)).toBe('/test-collection');
   });
 });

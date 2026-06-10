@@ -78,28 +78,6 @@ function getApiBaseUrl(endpointType: string): string {
 }
 
 /**
- * Build a complete API URL with optional query parameters
- */
-export function buildApiUrl(
-  endpointType: string,
-  path: string,
-  params?: Record<string, string | number | boolean | undefined>
-): string {
-  const baseUrl = getApiBaseUrl(endpointType);
-  const url = new URL(`${baseUrl}${path.startsWith('/') ? path : '/' + path}`);
-
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
-      }
-    }
-  }
-
-  return url.toString();
-}
-
-/**
  * Build a simple API URL without query parameters (for use with fetch options)
  */
 function buildSimpleApiUrl(endpointType: string, endpoint: string): string {

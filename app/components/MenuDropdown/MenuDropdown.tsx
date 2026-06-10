@@ -13,6 +13,7 @@ import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { isLocalEnvironment } from '@/app/utils/environment';
+import { manageHref } from '@/app/utils/manageUrl';
 
 import styles from './MenuDropdown.module.scss';
 
@@ -68,7 +69,7 @@ export function MenuDropdown({
     update: () => {
       // Soft-navigate to the same /[slug] route with ?manage=1 so CollectionPageClient is NOT
       // remounted (no full refresh) — it just receives editMode=true. No-slug falls back to create.
-      router.push(collectionSlug ? `/${collectionSlug}?manage=1` : '/collection/manage');
+      router.push(collectionSlug ? manageHref(collectionSlug) : '/collection/manage');
       onClose();
     },
     metadata: () => {

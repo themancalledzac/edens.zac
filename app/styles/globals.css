@@ -31,10 +31,6 @@ html,
   --color-surface-sunken-strong: #dee2e6; /* darker sunken hover step (was --color-bg-dark) */
   --color-on-surface: var(--color-black); /* primary text on surface */
   --color-on-surface-muted: #666; /* secondary/muted text (was --color-fg-muted/-text-secondary) */
-  --color-fg-muted: var(
-    --color-on-surface-muted
-  ); /* muted text keyed off the fg pair; tracks the muted role under the dark scope */
-
   --color-accent: rgb(
     59 130 246 / 100%
   ); /* interactive/selection blue (was the --color-blue collision target) */

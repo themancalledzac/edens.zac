@@ -69,13 +69,3 @@ export function createContentClickHandler(
 
   return undefined;
 }
-
-/**
- * Determine the navigation path for a collection
- * @param slug - The collection slug
- * @param isAdminContext - Whether we're in an admin context
- * @returns The navigation path
- */
-export function getCollectionNavigationPath(slug: string, isAdminContext: boolean): string {
-  return isAdminContext ? `/${slug}?manage=1` : `/${slug}`;
-}

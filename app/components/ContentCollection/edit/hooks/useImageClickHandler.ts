@@ -9,6 +9,7 @@ import {
   type ContentGifModel,
   type ContentImageModel,
 } from '@/app/types/Content';
+import { manageHref } from '@/app/utils/manageUrl';
 
 import { handleCollectionNavigation, handleSingleImageEdit } from '../collectionEditUtils';
 
@@ -46,7 +47,7 @@ export function useImageClickHandler({
 
       const collectionSlug = handleCollectionNavigation(imageId, collection?.content);
       if (collectionSlug) {
-        router.push(`/${collectionSlug}?manage=1`);
+        router.push(manageHref(collectionSlug));
         return;
       }
 

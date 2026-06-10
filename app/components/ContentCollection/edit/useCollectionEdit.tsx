@@ -46,6 +46,7 @@ import {
 } from '@/app/utils/contentTypeGuards';
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
+import { manageHref } from '@/app/utils/manageUrl';
 import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import { buildImageUpdateDiff } from '../../Metadata/metadataUtils';
@@ -588,7 +589,7 @@ export function useCollectionEdit({
           void revalidateCollectionCache(response.collection.slug);
 
           if (response.collection.slug !== collection.slug) {
-            router.replace(`/${response.collection.slug}?manage=1`);
+            router.replace(manageHref(response.collection.slug));
           }
 
           const locationsUpdate = payload.locations;
@@ -1151,7 +1152,7 @@ export function useCollectionEdit({
       await revalidateCollectionCache(collection.slug);
 
       if (response !== null) {
-        router.push(`/${response.collection.slug}?manage=1`);
+        router.push(manageHref(response.collection.slug));
       }
     } catch (error_) {
       setError(handleApiError(error_, 'Failed to create child collection'));

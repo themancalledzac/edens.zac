@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 
+import { manageHref } from '@/app/utils/manageUrl';
+
 import CreateCollectionForm from './CreateCollectionForm';
 
 interface ManageCollectionPageProps {
@@ -15,7 +17,7 @@ export default async function ManageCollectionPage({ params }: ManageCollectionP
   const slug = slugArray?.[0];
 
   if (slug) {
-    redirect(`/${slug}?manage=1`);
+    redirect(manageHref(slug));
   }
 
   return <CreateCollectionForm />;

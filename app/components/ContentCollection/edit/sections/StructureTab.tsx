@@ -9,6 +9,7 @@ import { Select } from '@/app/components/ui/Field/Select';
 import { type DisplayMode } from '@/app/types/Collection';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
+import { manageHref } from '@/app/utils/manageUrl';
 
 import { type UseCollectionEditResult } from '../useCollectionEdit';
 import styles from './StructureTab.module.scss';
@@ -118,7 +119,7 @@ export function StructureTab({ edit }: StructureTabProps) {
         onToggle={handleChildToggle}
         onNavigate={col => {
           if (col.slug) {
-            router.push(`/${col.slug}?manage=1`);
+            router.push(manageHref(col.slug));
           } else {
             logger.error('StructureTab', 'Cannot navigate to collection: missing slug', col);
           }
