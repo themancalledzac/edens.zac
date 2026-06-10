@@ -1086,6 +1086,49 @@ describe('extractCollectionFilterOptions', () => {
     expect(dims.locations.filterable).toBe(true);
   });
 
+  it('keeps a single-value location an info chip even when some images lack it', () => {
+    // 'Dolomites' on only one of two images → canFilter alone would call it
+    // filterable; the >= 2 distinct-value guard keeps it an info chip.
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, locations: [{ id: 1, name: 'Dolomites, Italy', slug: 'dolomites' }] }),
+      makeImage({ id: 2, locations: [] }),
+    ]);
+    expect(dims.locations.values).toEqual(['Dolomites, Italy']);
+    expect(dims.locations.filterable).toBe(false);
+  });
+
+  it('keeps a single-value camera an info chip when only some images have it', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, camera: { id: 1, name: 'Hasselblad 500cm' } }),
+      makeImage({ id: 2, camera: null }),
+    ]);
+    expect(dims.cameras.values).toEqual(['Hasselblad 500cm']);
+    expect(dims.cameras.filterable).toBe(false);
+  });
+
+  it('hides a multi-value location dimension where every value blankets all images', () => {
+    // Two images both carry A and B → neither splits → not filterable (the canFilter
+    // half matters here; a bare length>=2 rule would wrongly show a useless dropdown).
+    const dims = extractCollectionFilterOptions([
+      makeImage({
+        id: 1,
+        locations: [
+          { id: 1, name: 'A', slug: 'a' },
+          { id: 2, name: 'B', slug: 'b' },
+        ],
+      }),
+      makeImage({
+        id: 2,
+        locations: [
+          { id: 1, name: 'A', slug: 'a' },
+          { id: 2, name: 'B', slug: 'b' },
+        ],
+      }),
+    ]);
+    expect(dims.locations.values).toEqual(['A', 'B']);
+    expect(dims.locations.filterable).toBe(false);
+  });
+
   it('surfaces lens types only with 2+ distinct categories AND 2+ distinct lenses', () => {
     // wide (24mm) + telephoto (200mm), two distinct lenses → lens types surface, ordered.
     const dims = extractCollectionFilterOptions([

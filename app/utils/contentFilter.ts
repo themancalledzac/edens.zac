@@ -753,6 +753,10 @@ export function extractCollectionFilterOptions(
       ? typeOrder.filter(t => lensTypeSet.has(t))
       : [];
 
+  // For cameras/lenses/locations: require 2+ distinct values to become a dropdown.
+  // A single distinct value stays an info chip regardless of coverage.  The canFilter
+  // half additionally suppresses the case where 2+ values each blanket every item
+  // (no value splits) — a bare length>=2 check alone would wrongly mark that filterable.
   return {
     tags: {
       values: baseOptions.tags,
@@ -764,15 +768,21 @@ export function extractCollectionFilterOptions(
     },
     cameras: {
       values: baseOptions.cameras,
-      filterable: canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])),
+      filterable:
+        canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])) &&
+        baseOptions.cameras.length >= 2,
     },
     lenses: {
       values: baseOptions.lenses,
-      filterable: canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])),
+      filterable:
+        canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])) &&
+        baseOptions.lenses.length >= 2,
     },
     locations: {
       values: baseOptions.locations,
-      filterable: canFilter(combined, item => (item.locations ?? []).map(l => l.name)),
+      filterable:
+        canFilter(combined, item => (item.locations ?? []).map(l => l.name)) &&
+        baseOptions.locations.length >= 2,
     },
     lensTypes: { values: lensTypes, filterable: true },
   };
