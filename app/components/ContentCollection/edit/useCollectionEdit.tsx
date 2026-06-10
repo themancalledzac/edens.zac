@@ -278,6 +278,16 @@ export function useCollectionEdit({
 
   const collection = currentState?.collection ?? seedCollection;
 
+  /**
+   * Latest derived collection, readable from stable callbacks (`resetToBrowse`) without adding
+   * `collection` to their deps — identity churn there would re-trigger the `!enabled` reset
+   * effect on every background refresh and wipe typed-but-unsaved buffer edits.
+   */
+  const latestCollectionRef = useRef(collection);
+  useEffect(() => {
+    latestCollectionRef.current = collection;
+  }, [collection]);
+
   const [allCollections, setAllCollections] = useState<CollectionListModel[]>([]);
 
   useEffect(() => {
@@ -332,6 +342,12 @@ export function useCollectionEdit({
   );
 
   const seededCollectionIdRef = useRef(collection.id);
+  /**
+   * Whether the current buffer seed came from the admin DTO (`currentState`) rather than the
+   * public seed prop. `currentState` is always null on first render, so the initial seed is
+   * always the public DTO; the reseed effect below adopts the admin DTO exactly once.
+   */
+  const seededFromAdminRef = useRef(currentState !== null);
 
   const setUpdateField = useCallback(
     <K extends keyof CollectionUpdateRequest>(key: K, value: CollectionUpdateRequest[K]) => {
@@ -474,25 +490,48 @@ export function useCollectionEdit({
     setIsAddMode(false);
     setIsEditSheetOpen(false);
     if (isSelectingCoverImage) setIsSelectingCoverImage(false);
-  }, [isSelectingCoverImage, setIsSelectingCoverImage]);
+    // Discard moment of the reseed policy (see the reseed effect below): leaving an edit
+    // surface (Cancel, Escape, or the hook becoming disabled) drops uncommitted buffer edits,
+    // so abandoned sheet changes can't silently ride along on a later inline save.
+    setUpdateData(seedUpdateData(latestCollectionRef.current));
+  }, [isSelectingCoverImage, setIsSelectingCoverImage, seedUpdateData]);
 
   useEffect(() => {
     if (!enabled) resetToBrowse();
   }, [enabled, resetToBrowse]);
 
   /**
-   * Re-seed and reset only when the underlying collection IDENTITY changes (a different collection,
-   * e.g. a soft-nav between two `?manage=1` pages). Re-seeding on every `collection` reference
-   * change would wipe typed-but-unsaved buffer edits on each save/background refresh.
+   * The edit buffer reseeds at exactly three moments:
+   *
+   * 1. IDENTITY change (here): a different collection id (e.g. a soft-nav between two
+   *    `?manage=1` pages) re-seeds the buffer and resets modes/selection.
+   * 2. Seed → admin adoption (here, once): the buffer is initially seeded from the PUBLIC DTO,
+   *    whose normalized fallbacks (`visibility ?? HIDDEN`, `displayMode || 'CHRONOLOGICAL'`, …)
+   *    can diverge from the authoritative admin DTO. The first time `currentState` arrives for
+   *    the SAME id, adopt it — otherwise `isUpdateDirty` reports phantom diffs that silently
+   *    write back on the next save. Safe: edit interactions are gated until `currentState`
+   *    exists, so there is no typed input to wipe at that moment.
+   * 3. Save / Cancel (elsewhere): `handleUpdate` rebases the buffer from the save response, and
+   *    `resetToBrowse` discards it back to the current collection.
+   *
+   * Subsequent background refreshes deliberately do NOT reseed — re-seeding on every
+   * `collection` reference change would wipe typed-but-unsaved buffer edits on each
+   * save/background refresh.
    */
   useEffect(() => {
-    if (collection.id === seededCollectionIdRef.current) return;
+    const identityChanged = collection.id !== seededCollectionIdRef.current;
+    const adoptingAdminDto =
+      !identityChanged && !seededFromAdminRef.current && currentState !== null;
+    if (!identityChanged && !adoptingAdminDto) return;
     seededCollectionIdRef.current = collection.id;
+    seededFromAdminRef.current = currentState !== null;
     setUpdateData(seedUpdateData(collection));
-    setSelectedIds([]);
-    setEditTab('info');
-    resetToBrowse();
-  }, [collection, seedUpdateData, resetToBrowse]);
+    if (identityChanged) {
+      setSelectedIds([]);
+      setEditTab('info');
+      resetToBrowse();
+    }
+  }, [collection, currentState, seedUpdateData, resetToBrowse]);
 
   const contentToEdit = useMemo(
     () =>
@@ -531,6 +570,14 @@ export function useCollectionEdit({
 
         if (response !== null) {
           setCurrentState(response);
+          // Rebase moment of the reseed policy (see the reseed effect): the response is the new
+          // saved baseline. Reseeding from it clears already-applied relational diffs
+          // (tags/locations/children/siblings/parents/cover), so they can't replay on the next
+          // save — or resurrect a child the user removes later — and `isUpdateDirty` clears.
+          // Nothing typed is lost: the payload above sent the whole dirty buffer.
+          setUpdateData(seedUpdateData(response.collection));
+          seededCollectionIdRef.current = response.collection.id;
+          seededFromAdminRef.current = true;
           collectionStorage.update(response.collection.slug, response.collection);
           collectionStorage.updateFull(response.collection.slug, response);
           void revalidateCollectionCache(response.collection.slug);
@@ -586,7 +633,7 @@ export function useCollectionEdit({
         setSaving(false);
       }
     },
-    [collection, currentState, updateData, router]
+    [collection, currentState, updateData, router, seedUpdateData]
   );
 
   const handleSaveAccess = useCallback(async () => {
