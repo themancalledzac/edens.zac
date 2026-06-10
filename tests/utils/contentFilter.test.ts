@@ -11,9 +11,11 @@ import {
   buildLocationCriteria,
   canFilter,
   computeFilterCounts,
+  computeFilterVisibility,
   type ContentFilterCriteria,
   extractCollectionFilterOptions,
   extractFilterOptions,
+  type FilterVisibility,
   filmFilterFromIsFilm,
   filterContent,
   hasAnyActiveFilter,
@@ -1397,6 +1399,43 @@ describe('buildLocationCriteria', () => {
   it('round-trips with filmFilterFromIsFilm for the film toggle', () => {
     const criteria = buildLocationCriteria(makeFilterState({ filmFilter: 'film' }));
     expect(filmFilterFromIsFilm(criteria.isFilm)).toBe('film');
+  });
+});
+
+describe('computeFilterVisibility', () => {
+  it('hides every control for an empty or single-image page', () => {
+    expect(computeFilterVisibility([])).toEqual({
+      dateSort: false, highlyRated: false, film: false, tags: false,
+      people: false, cameras: false, lenses: false, locations: false, lensTypes: false,
+    });
+    expect(computeFilterVisibility([makeImage({ id: 1, isFilm: true, rating: 5 })]).film).toBe(false);
+  });
+
+  it('shows film only when both film and digital are present', () => {
+    const filmOnly = [makeImage({ id: 1, isFilm: true }), makeImage({ id: 2, isFilm: true })];
+    const mixed = [makeImage({ id: 1, isFilm: true }), makeImage({ id: 2, isFilm: false })];
+    expect(computeFilterVisibility(filmOnly).film).toBe(false);
+    expect(computeFilterVisibility(mixed).film).toBe(true);
+  });
+
+  it('shows highlyRated only when images straddle the 4-star line', () => {
+    const allHigh = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 4 })];
+    const straddle = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 2 })];
+    expect(computeFilterVisibility(allHigh).highlyRated).toBe(false);
+    expect(computeFilterVisibility(straddle).highlyRated).toBe(true);
+  });
+
+  it('shows dateSort only with 2+ distinct capture dates', () => {
+    const sameDate = [
+      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
+      makeImage({ id: 2, captureDate: '2024-01-01T00:00:00Z' }),
+    ];
+    const varied = [
+      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
+      makeImage({ id: 2, captureDate: '2024-02-01T00:00:00Z' }),
+    ];
+    expect(computeFilterVisibility(sameDate).dateSort).toBe(false);
+    expect(computeFilterVisibility(varied).dateSort).toBe(true);
   });
 });
 

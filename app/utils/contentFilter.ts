@@ -398,6 +398,42 @@ export function canFilter<T>(
   return false;
 }
 
+/** Per-dimension verdict from the single gate ({@link canFilter}). */
+export interface FilterVisibility {
+  dateSort: boolean;
+  highlyRated: boolean;
+  film: boolean;
+  tags: boolean;
+  people: boolean;
+  cameras: boolean;
+  lenses: boolean;
+  locations: boolean;
+  lensTypes: boolean;
+}
+
+/**
+ * Run the single gate across every image-derived dimension once. Visibility is
+ * computed from the FULL image set so controls don't appear/disappear as filters
+ * are applied. The projections here are the canonical home for "what value(s)
+ * does an image contribute to dimension X".
+ */
+export function computeFilterVisibility(images: ContentImageModel[]): FilterVisibility {
+  return {
+    dateSort: canFilter(images, img => (img.captureDate ? [img.captureDate] : [])),
+    highlyRated: canFilter(images, img => [(img.rating ?? 0) >= 4 ? 'hi' : 'lo']),
+    film: canFilter(images, img => [img.isFilm ? 'film' : 'digital']),
+    tags: canFilter(images, img => (img.tags ?? []).map(t => t.name)),
+    people: canFilter(images, img => (img.people ?? []).map(p => p.name)),
+    cameras: canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])),
+    lenses: canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])),
+    locations: canFilter(images, img => (img.locations ?? []).map(l => l.name)),
+    lensTypes: canFilter(images, img => {
+      const lensType = getLensType(img.focalLength);
+      return lensType ? [lensType] : [];
+    }),
+  };
+}
+
 /**
  * Per-option image counts for filter chips, computed contextually.
  * Each count represents: "how many images match if I select only this option
