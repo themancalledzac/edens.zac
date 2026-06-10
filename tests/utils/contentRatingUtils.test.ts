@@ -7,10 +7,12 @@ import {
   getArExtremeness,
   getComponentValue,
   getEffectiveRating,
+  getHeightDemand,
   getItemComponentValue,
   getProminence,
   getProminenceRating,
   getRating,
+  getWidthCost,
   isCollectionCard,
 } from '@/app/utils/contentRatingUtils';
 import {
@@ -362,5 +364,21 @@ describe('getProminence (orientation-agnostic P)', () => {
   it('scales 5★ extremeness 5 → 10 across square-ish and 3:1', () => {
     expect(getProminence(createHorizontalImage(1, 5))).toBeCloseTo(5.0, 1);
     expect(getProminence(createPanorama(2, 5))).toBeCloseTo(10.0, 5);
+  });
+});
+
+// ===================== Hv / Vv Decomposition Tests =====================
+
+describe('Hv / Vv decomposition', () => {
+  it('Hv·Vv ≈ P and Hv/Vv = AR', () => {
+    const pano = createPanorama(1, 5);
+    expect(getWidthCost(pano) * getHeightDemand(pano)).toBeCloseTo(getProminence(pano), 4);
+    expect(getWidthCost(pano) / getHeightDemand(pano)).toBeCloseTo(3.0, 4);
+  });
+  it('a panorama is wide-dominant, a portrait is height-dominant, at equal P', () => {
+    const pano = createPanorama(1, 5);
+    const portrait = createVerticalImage(2, 5);
+    expect(getWidthCost(pano)).toBeGreaterThan(getHeightDemand(pano));
+    expect(getHeightDemand(portrait)).toBeGreaterThan(getWidthCost(portrait));
   });
 });

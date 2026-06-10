@@ -195,3 +195,36 @@ export function getProminence(item: AnyContentModel): number {
   const baseWeight = BASE_WEIGHT[getProminenceRating(item)] ?? 1.0;
   return baseWeight * prominenceFactor(getArExtremeness(getAspectRatio(item)));
 }
+
+/**
+ * Horizontal cost (Hv): the "width" dimension of prominence.
+ *
+ * Hv = sqrt(P × AR)
+ *
+ * A wide panorama has a high Hv (demands horizontal space).
+ * A tall portrait has a low Hv (costs little horizontal space).
+ * Identity: Hv × Vv = P and Hv / Vv = AR.
+ *
+ * @param item - The content item to evaluate
+ * @returns Width cost > 0
+ */
+export function getWidthCost(item: AnyContentModel): number {
+  return Math.sqrt(getProminence(item) * getAspectRatio(item));
+}
+
+/**
+ * Vertical demand (Vv): the "height" dimension of prominence.
+ *
+ * Vv = sqrt(P / AR)
+ *
+ * A tall portrait has a high Vv (demands vertical space).
+ * A wide panorama has a low Vv (costs little vertical space).
+ * Identity: Hv × Vv = P and Hv / Vv = AR.
+ *
+ * @param item - The content item to evaluate
+ * @returns Height demand > 0
+ */
+export function getHeightDemand(item: AnyContentModel): number {
+  const ar = getAspectRatio(item);
+  return ar > 0 ? Math.sqrt(getProminence(item) / ar) : Math.sqrt(getProminence(item));
+}
