@@ -16,7 +16,7 @@ import {
   executeReorderOperation,
   type ReorderMove,
   replayMoves,
-} from './manageUtils';
+} from '../collectionEditUtils';
 
 interface UseContentReorderingParams {
   collection: CollectionModel | null;

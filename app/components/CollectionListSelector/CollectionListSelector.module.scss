@@ -3,18 +3,26 @@
   flex-direction: column;
   gap: var(--space-2);
 
-  /* Dark-theme palette for the admin selector (alpha overlays = bg-agnostic). */
-  --sel-text: #f1f3f5; /* primary text on dark */
-  --sel-text-muted: #adb5bd; /* secondary text — passes AA on dark */
-  --sel-text-faint: #868e96; /* tertiary; large/decorative only */
-  --sel-elev-1: rgb(255 255 255 / 5%); /* expanded section-header bg */
-  --sel-elev-2: rgb(255 255 255 / 10%); /* expanded-row bg */
+  --sel-text: var(--color-fg);
+  --sel-text-muted: var(--color-on-surface-muted);
+  --sel-text-faint: var(--color-on-surface-muted);
+  /* Light-surface defaults: black-alpha so affordances read on white backgrounds. */
+  --sel-elev-1: rgb(0 0 0 / 4%);
+  --sel-elev-2: rgb(0 0 0 / 8%);
+  --sel-elev-hover: rgb(0 0 0 / 7%);
+  --sel-border: rgb(0 0 0 / 10%);
+  --sel-accent-sibling: #20c997;
+  --sel-accent-child: #4dabf7;
+  --sel-accent-parent: #cc5de8;
+  --sel-current-accent: var(--color-accent);
+}
+
+/* Dark-surface override: flip elevation locals back to white-alpha so they lift on charcoal. */
+[data-surface='dark'] .container {
+  --sel-elev-1: rgb(255 255 255 / 5%);
+  --sel-elev-2: rgb(255 255 255 / 10%);
   --sel-elev-hover: rgb(255 255 255 / 14%);
   --sel-border: rgb(255 255 255 / 12%);
-  --sel-accent-sibling: #20c997; /* teal */
-  --sel-accent-child: #4dabf7; /* blue */
-  --sel-accent-parent: #cc5de8; /* grape */
-  --sel-current-accent: var(--color-accent); /* "you are here" blue */
 }
 
 .header {
@@ -32,8 +40,6 @@
   margin: 0;
 }
 
-/* Canonical fill/padding/size/hover/disabled come from <Button variant="secondary" size="sm">.
-   Only nowrap remains (Button doesn't set white-space). */
 .addButton {
   white-space: nowrap;
 }
@@ -43,7 +49,6 @@
   flex-direction: column;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
-  /* No height limit — show all collections */
 }
 
 .emptyState {
@@ -72,14 +77,11 @@
 
   &.navigable {
     &:hover {
-      background: rgb(255, 255, 255, 0.12);
+      background: var(--sel-elev-hover);
     }
   }
 }
 
-// Checkbox: 16x16 square with visual states. A centered flex box so the
-// state ::before glyph (✓ / + / −) sits dead-center — glyphs keep the state
-// legible in grayscale (color-blind safety), not just via fill color.
 .checkbox {
   display: flex;
   align-items: center;
@@ -98,13 +100,11 @@
   flex-shrink: 0;
   position: relative;
 
-  // Visible keyboard focus ring (mouse/touch users don't see it via :focus-visible).
   &:focus-visible {
     outline: var(--focus-ring);
     outline-offset: 2px;
   }
 
-  // Expand the click/tap target to ~28px without growing the 16px visual box.
   &::after {
     content: '';
     position: absolute;
@@ -116,7 +116,6 @@
     border-color: var(--color-border);
   }
 
-  // Saved (persisted on server) — solid green fill + check glyph.
   &--saved {
     background: var(--color-success);
     border-color: var(--color-success);
@@ -127,8 +126,6 @@
     }
   }
 
-  // Pending add (not yet saved) — OUTLINE/ring (not fill) so committed vs
-  // pending reads as fill-vs-outline, never opacity. Plus a "+" glyph.
   &--pending-add {
     background: rgb(34 197 94 / 15%);
     border-color: var(--color-success);
@@ -139,7 +136,6 @@
     }
   }
 
-  // Pending remove — outline ring in token red + "−" glyph.
   &--pending-remove {
     background: rgb(220 53 69 / 18%);
     border-color: var(--color-danger);
@@ -150,16 +146,11 @@
     }
   }
 
-  // Hover on any green checkbox → red intent. Defined AFTER the state rules so
-  // its (equal-specificity) background/border win by source order — no
-  // !important needed.
   &--remove-intent {
     background: rgb(220 53 69 / 70%);
     border-color: var(--color-danger);
   }
 
-  // Disabled (Child↔Parent mutual exclusion). pointer-events stay enabled so the
-  // disabled button still shows its `title` tooltip on hover.
   &--disabled {
     opacity: 0.35;
     cursor: not-allowed;
@@ -184,13 +175,8 @@
   text-align: right;
 }
 
-// Multi-column (Sibling | Child | Parent) accordion mode.
-// Column order: Collection Name (flex) | Sibling | Child | Parent.
-// Each fixed-width toggle column shares its width with the matching cell below
-// so headers sit directly above their content/checkboxes.
 $toggle-col-width: 60px;
 
-// Header row mirrors `.row` horizontal padding + gap so columns line up.
 .columnHeaderRow {
   display: flex;
   align-items: center;
@@ -216,8 +202,6 @@ $toggle-col-width: 60px;
   text-align: center;
 }
 
-// Per-relationship column-header tint so the three toggle columns are
-// identifiable at a glance (the checkbox ring below echoes the same hue).
 .columnHeaderSibling {
   color: var(--sel-accent-sibling);
 }
@@ -230,9 +214,6 @@ $toggle-col-width: 60px;
   color: var(--sel-accent-parent);
 }
 
-// Sibling-mode row: name on the left (flex), type as its own fixed column
-// right before the toggles. Not clickable as a whole (each toggle handles its
-// own click), so drop the row-level pointer cursor.
 .rowSibling {
   cursor: default;
 
@@ -242,17 +223,12 @@ $toggle-col-width: 60px;
   }
 }
 
-// Name rendered as a button when onNavigate is provided (sibling mode): the row
-// itself can't be the click target because each row hosts two toggles.
 .nameButton {
   background: none;
   border: none;
   padding: 0;
   cursor: pointer;
   font: inherit;
-  // Intentionally no color override here — let .name's color
-  // (var(--color-bg-light)) win. The user-agent <button> default would be
-  // dark text, which is the regression we're avoiding.
 
   &:hover {
     text-decoration: underline;
@@ -264,7 +240,6 @@ $toggle-col-width: 60px;
   }
 }
 
-// Right-hand toggle cell — centers its checkbox under the matching header.
 .toggleCell {
   width: $toggle-col-width;
   min-width: $toggle-col-width;
@@ -274,8 +249,6 @@ $toggle-col-width: 60px;
   justify-content: center;
 }
 
-// Per-column accent ring on a CHECKED box (saved or pending-add) so the
-// relationship is readable at the checkbox itself, echoing the header hue.
 .toggleCellSibling .checkbox--saved,
 .toggleCellSibling .checkbox--pending-add {
   box-shadow: 0 0 0 1px var(--sel-accent-sibling);
@@ -291,9 +264,6 @@ $toggle-col-width: 60px;
   box-shadow: 0 0 0 1px var(--sel-accent-parent);
 }
 
-// Accordion type-group header (multi-column mode): a clickable, full-width row
-// that toggles its group open/closed. The type label lives here instead of on
-// each row, so collapsed groups stay compact.
 .typeHeaderRow {
   display: flex;
   align-items: center;
@@ -302,7 +272,7 @@ $toggle-col-width: 60px;
   padding: 0.5rem 0.75rem;
   background: transparent;
   border: none;
-  border-top: 1px solid var(--border-subtle, rgb(255, 255, 255, 0.05));
+  border-top: 1px solid var(--sel-border);
   text-align: left;
   cursor: pointer;
   color: inherit;
@@ -318,8 +288,6 @@ $toggle-col-width: 60px;
   }
 }
 
-// Open section header: sits one elevation step ABOVE its rows (which use
-// --sel-elev-2) and gets a bottom divider so it reads as an anchor over them.
 .typeHeaderRow--expanded {
   background: var(--sel-elev-1);
   border-bottom: 1px solid var(--sel-border);
@@ -333,8 +301,6 @@ $toggle-col-width: 60px;
 .typeHeaderLabel {
   flex: 1;
   font-weight: 600;
-  // Match .name's color so the section label renders white instead of inheriting
-  // the dim `.typeHeaderRow` color.
   color: var(--sel-text);
 }
 
@@ -343,17 +309,10 @@ $toggle-col-width: 60px;
   font-size: 0.85em;
 }
 
-// Rows shown under an expanded accordion group get a subtle tint — one step
-// above the open section header (--sel-elev-1) so the grouped rows read as
-// distinct content, but below the .row:hover tint (--sel-elev-hover).
 .expandedRow {
   background-color: var(--sel-elev-2);
 }
 
-// The current collection (the one being edited) shown in its group as a "you are
-// here" marker: a left accent bar + subtle fill, NOT a full-row opacity dim (which
-// reads as "disabled" and crushes the name's contrast). Only the toggles are
-// dimmed, via .checkbox--disabled.
 .currentRow {
   background: var(--sel-elev-1);
   box-shadow: inset 3px 0 0 var(--sel-current-accent);
@@ -366,9 +325,6 @@ $toggle-col-width: 60px;
   color: var(--sel-current-accent);
 }
 
-// Drag-and-drop retype affordances (accordion mode). Draggable rows show a grab
-// cursor; the row being dragged dims; the assignable type-header under the pointer
-// highlights as a drop target.
 .draggable {
   cursor: grab;
 

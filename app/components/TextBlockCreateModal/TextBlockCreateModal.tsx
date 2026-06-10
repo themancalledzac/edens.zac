@@ -1,9 +1,13 @@
 'use client';
 
-import { type SubmitEvent, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 
-import { LoadingSpinner } from '@/app/components/LoadingSpinner/LoadingSpinner';
+import { Button } from '@/app/components/ui/Button/Button';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
+import { Field } from '@/app/components/ui/Field/Field';
+import { FormError } from '@/app/components/ui/Field/FormError';
+import { Select } from '@/app/components/ui/Field/Select';
+import { Textarea } from '@/app/components/ui/Field/Textarea';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import {
   TEXT_ALIGN_OPTIONS,
@@ -20,13 +24,10 @@ interface TextBlockCreateModalProps {
 }
 
 /**
- * Modal for creating a new text block
+ * Modal for creating a new text block.
  *
- * Provides a form with:
- * - Textarea for content
- * - Format selector (plain, markdown, html)
- * - Alignment selector (left, center, right)
- * - Save and cancel buttons
+ * Renders inside {@link Modal} which propagates the admin dark surface through
+ * its portal, so all ui/ primitives adapt via token cascade with no hardcoded colors.
  */
 export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCreateModalProps) {
   const [content, setContent] = useState('');
@@ -35,7 +36,7 @@ export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCre
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
@@ -46,12 +47,7 @@ export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCre
 
     try {
       setSaving(true);
-      await onSubmit({
-        content: content.trim(),
-        format,
-        align,
-      });
-      // Modal will be closed by parent after successful submission
+      await onSubmit({ content: content.trim(), format, align });
     } catch (error_) {
       setError(error_ instanceof Error ? error_.message : 'Failed to create text block');
       setSaving(false);
@@ -74,77 +70,63 @@ export default function TextBlockCreateModal({ onClose, onSubmit }: TextBlockCre
           <CloseButton onClick={handleCancel} aria-label="Close modal" />
         </div>
 
-        {error && <div className={styles.errorMessage}>{error}</div>}
+        <FormError>{error}</FormError>
 
         <form onSubmit={handleSubmit}>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel}>Text Content *</label>
-            <textarea
+          <Field label="Text Content *" htmlFor="text-block-content" className={styles.formGroup}>
+            <Textarea
+              id="text-block-content"
               value={content}
               onChange={e => setContent(e.target.value)}
-              className={styles.formTextarea}
               placeholder="Enter text content for the new block..."
               rows={8}
               required
               autoFocus
             />
-          </div>
+          </Field>
 
           <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Format</label>
-              <select
+            <Field label="Format" htmlFor="text-block-format" className={styles.formGroup}>
+              <Select
+                id="text-block-format"
                 value={format}
                 onChange={e => setFormat(e.target.value as TextFormat)}
-                className={styles.formSelect}
               >
                 {TEXT_FORMAT_OPTIONS.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </Field>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Alignment</label>
-              <select
+            <Field label="Alignment" htmlFor="text-block-align" className={styles.formGroup}>
+              <Select
+                id="text-block-align"
                 value={align}
                 onChange={e => setAlign(e.target.value as TextAlign)}
-                className={styles.formSelect}
               >
                 {TEXT_ALIGN_OPTIONS.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
-              </select>
-            </div>
+              </Select>
+            </Field>
           </div>
 
           <div className={styles.formActions}>
-            <button
-              type="button"
-              onClick={handleCancel}
-              className={styles.cancelButton}
-              disabled={saving}
-            >
+            <Button variant="ghost" type="button" onClick={handleCancel} disabled={saving}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="primary"
               type="submit"
-              className={styles.submitButton}
+              loading={saving}
               disabled={saving || !content.trim()}
             >
-              {saving ? (
-                <>
-                  <LoadingSpinner size="small" color="white" />
-                  <span className={styles.loadingLabel}>Creating...</span>
-                </>
-              ) : (
-                'Create Text Block'
-              )}
-            </button>
+              Create Text Block
+            </Button>
           </div>
         </form>
       </div>

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 
-import { useCollectionRetype } from '@/app/(admin)/collection/manage/[[...slug]]/useCollectionRetype';
+import { useCollectionRetype } from '@/app/components/ContentCollection/edit/hooks/useCollectionRetype';
 import { updateCollection } from '@/app/lib/api/collections';
 import { type CollectionListModel, CollectionType } from '@/app/types/Collection';
 

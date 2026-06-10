@@ -15,6 +15,12 @@ interface CollectionPageWrapperProps {
    * collections that exist as standalone pages but shouldn't appear in lists.
    */
   excludeContentSlugs?: readonly string[];
+  /**
+   * When true, render the admin edit surface (threaded down to CollectionPageClient) and
+   * bypass the per-gallery password gate — an admin editing shouldn't be password-walled.
+   * When false/absent the fetch, gate, and render are byte-identical to the public view.
+   */
+  editMode?: boolean;
 }
 
 /**
@@ -24,6 +30,7 @@ interface CollectionPageWrapperProps {
 export default async function CollectionPageWrapper({
   slug,
   excludeContentSlugs,
+  editMode = false,
 }: CollectionPageWrapperProps) {
   if (!slug) {
     notFound();
@@ -58,21 +65,34 @@ export default async function CollectionPageWrapper({
     // Routing here, rather than wrapping <CollectionPage> as gate children, means we never
     // serialize the page's RSC payload (cover image, grid) for a locked viewer (FE-H6 invariant,
     // structurally enforced).
+    // editMode is admin-only: bypass the per-gallery password gate entirely (an admin editing
+    // their own gallery shouldn't be password-walled). The non-edit path below is unchanged.
     const isGateableType =
-      collection.type === CollectionType.CLIENT_GALLERY ||
-      collection.type === CollectionType.PARENT;
+      !editMode &&
+      (collection.type === CollectionType.CLIENT_GALLERY ||
+        collection.type === CollectionType.PARENT);
     if (isGateableType) {
       const isAuthenticated = Array.isArray(collection.content);
       if (!collection.isPasswordProtected || isAuthenticated) {
         return (
-          <CollectionPage collection={collection} chunkSize={chunkSize} ssrViewport={ssrViewport} />
+          <CollectionPage
+            collection={collection}
+            chunkSize={chunkSize}
+            ssrViewport={ssrViewport}
+            editMode={editMode}
+          />
         );
       }
       return <ClientGalleryGate collection={collection} />;
     }
 
     return (
-      <CollectionPage collection={collection} chunkSize={chunkSize} ssrViewport={ssrViewport} />
+      <CollectionPage
+        collection={collection}
+        chunkSize={chunkSize}
+        ssrViewport={ssrViewport}
+        editMode={editMode}
+      />
     );
   } catch (error) {
     // Re-throw Next.js sentinel errors (notFound(), redirect()) so the framework

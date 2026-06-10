@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
@@ -7,6 +8,7 @@ import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type AnyContentModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
 import {
   applyCollectionFilters,
@@ -30,6 +32,14 @@ import {
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
 
+/**
+ * The entire edit experience (useCollectionEdit, EditBar, edit sheet, modals, inline-edit
+ * context) lives in EditModeLayer, loaded as a separate client-only chunk so public visitors
+ * never download admin code. editMode is server-gated to local dev, so on public pages this
+ * dynamic factory is never invoked and the chunk is never requested.
+ */
+const EditModeLayer = dynamic(() => import('./edit/EditModeLayer'), { ssr: false });
+
 type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated'>;
 
 interface CollectionPageClientProps {
@@ -39,6 +49,13 @@ interface CollectionPageClientProps {
   serverContentWidth?: number;
   serverViewportHeight?: number;
   serverIsMobile?: boolean;
+  /**
+   * When true, mount the consolidated edit experience (EditBar, edit sheet, image/text modals,
+   * click-routing) on this light surface via the dynamically imported EditModeLayer. When
+   * false/absent the page renders byte-identically to the public view and no edit code is
+   * loaded.
+   */
+  editMode?: boolean;
 }
 
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
@@ -50,7 +67,17 @@ export default function CollectionPageClient({
   serverContentWidth,
   serverViewportHeight,
   serverIsMobile,
+  editMode = false,
 }: CollectionPageClientProps) {
+  /**
+   * While the edit chunk streams in, the public grid doubles as the loading fallback so an
+   * edit-mode load never flashes blank. EditModeLayer flips this flag pre-paint on mount and
+   * takes over the grid render — edit affordances appearing a beat after the content is
+   * consistent with the layer's own editReady gating.
+   */
+  const [editLayerMounted, setEditLayerMounted] = useState(false);
+  const handleEditLayerMounted = useCallback(() => setEditLayerMounted(true), []);
+
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
   const [filterState, setFilterState] = useState<FilterState>(() => ({
@@ -82,10 +109,6 @@ export default function CollectionPageClient({
     [isMobile]
   );
 
-  // ── Client-gallery "Select to download" state ──────────────────────────────
-  // Owned here so the deep-in-the-tree ClientGalleryDownload control (and the grid images) can both
-  // see it via ClientGalleryDownloadContext. When select mode is on, an onImageClick toggle is
-  // threaded to the images so a tap selects instead of opening fullscreen.
   const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -105,22 +128,27 @@ export default function CollectionPageClient({
     [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
-  const allContent = useMemo(() => collection.content ?? [], [collection.content]);
+  /**
+   * Live content reported up from EditModeLayer (per its onLiveContentChange contract: the
+   * layer's current content on every identity change, null on unmount). The filter options
+   * below must be derived from the SAME content the edit grid renders — the admin DTO after
+   * loads/saves — or in-session uploads and tag edits never surface in the filter UI.
+   */
+  const [liveEditContent, setLiveEditContent] = useState<AnyContentModel[] | null>(null);
+
+  // Public render works off the server seed; edit mode tracks the layer's live content.
+  const allContent = useMemo(
+    () => (editMode && liveEditContent ? liveEditContent : (collection.content ?? [])),
+    [editMode, liveEditContent, collection.content]
+  );
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
-  // A page is "collection-dominant" when it has more child-collection items than images.
-  // On these pages, image-specific filters (people, cameras, lenses, focal length, highly rated)
-  // are suppressed since the page's purpose is browsing sub-collections, not filtering images.
   const isCollectionDominant = allCollections.length > allImages.length;
 
   const baseCollectionOptions = useMemo<CollectionDimensions>(() => {
-    // On collection-dominant pages we still want tags/people/locations aggregated
-    // from collection refs, so we always pass refs through. The post-filter below
-    // suppresses image-only dimensions (cameras/lenses/lensTypes) on those pages,
-    // but keeps tags, people, AND locations from collection-ref aggregation.
     const options = extractCollectionFilterOptions(allImages, allCollections);
     if (isCollectionDominant) {
       return {
@@ -133,12 +161,10 @@ export default function CollectionPageClient({
     return options;
   }, [allImages, allCollections, isCollectionDominant]);
 
-  // Build criteria from filter state — all AND mode for collection page
   const criteria = useMemo(() => buildCollectionCriteria(filterState), [filterState]);
 
   const hasActiveFilters = useMemo(() => hasAnyActiveFilter(filterState), [filterState]);
 
-  // Filter only images (for filter UI); non-image content (COLLECTION, TEXT, etc.) passes through
   const filteredContent = useMemo(() => {
     if (!hasActiveFilters) return allContent;
     return applyCollectionFilters(allContent, allImages, criteria, filterState.selectedLensTypes);
@@ -146,10 +172,6 @@ export default function CollectionPageClient({
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
-  // Date sort is applied after processContentBlocks (which has its own orderIndex sort)
-
-  // Stringify so a rating of 0 (falsy) still counts as a distinct value — the
-  // helper drops falsy selector outputs (intended for date variance below).
   const hasRatingVariance = useMemo(
     () => hasValueVariance(allImages, img => String(img.rating ?? 0)),
     [allImages]
@@ -157,11 +179,8 @@ export default function CollectionPageClient({
 
   const showHighlyRated = hasRatingVariance && !isCollectionDominant;
 
-  // Available options from filtered results — used to determine which chips are "available" vs "unavailable"
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;
-    // Collection refs aren't filtered (image-only filters don't touch them),
-    // so the full collection-ref list still contributes to "available" tags.
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
     return {
       tags: dims.tags.values,
@@ -173,7 +192,6 @@ export default function CollectionPageClient({
     };
   }, [hasActiveFilters, filteredImages, allCollections]);
 
-  // All base options are always shown; filteredAvailableOptions determines grey-out state
   const availableOptions = useMemo<CollectionInfoOptions>(
     () => ({
       ...baseCollectionOptions,
@@ -190,7 +208,6 @@ export default function CollectionPageClient({
       collection.displayMode
     );
     if (filterState.dateSortDirection === 'off') return processed;
-    // Apply date sort after layout processing to override orderIndex sort
     const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
     return mergeDateSortedImages(processed, sorted);
   }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
@@ -199,10 +216,6 @@ export default function CollectionPageClient({
     (update: Partial<FilterState>) => {
       setFilterState(prev => {
         const next = { ...prev, ...update };
-        // Single source of truth with the `criteria` memo. selectedLenses /
-        // selectedLensTypes have no URL key in serializeFilterToParams (lens-type
-        // is derived) so they're silently dropped, and dateSortDirection is a
-        // sort, not a filter — all stay local by design.
         syncToUrl(buildCollectionCriteria(next));
         return next;
       });
@@ -240,44 +253,63 @@ export default function CollectionPageClient({
 
   const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, hasDateVariance);
 
-  const content = (
+  const grid = (
+    <ContentBlockWithFullScreen
+      content={contentBlocks}
+      priorityBlockIndex={0}
+      // In edit mode this element is the loading fallback while the edit chunk streams in, and
+      // a tap during that window must not open the viewer the layer will immediately tear down
+      // — edit mode keeps fullscreen disabled from first paint (the layer's grid also does).
+      enableFullScreenView={!editMode}
+      initialPageSize={pageSize}
+      chunkSize={density}
+      mobileChunkSize={mobileDensity}
+      collectionSlug={collection.slug}
+      collectionData={collection}
+      serverContentWidth={serverContentWidth}
+      serverViewportHeight={serverViewportHeight}
+      serverIsMobile={serverIsMobile}
+      selectedIds={isClientGallery ? selectedIds : undefined}
+      onImageClick={isClientGallery && isSelectMode ? handleSelectToggle : undefined}
+    />
+  );
+
+  const content = editMode ? (
     <>
-      <ContentBlockWithFullScreen
-        content={contentBlocks}
-        priorityBlockIndex={0}
-        enableFullScreenView
-        initialPageSize={pageSize}
-        chunkSize={density}
-        mobileChunkSize={mobileDensity}
-        collectionSlug={collection.slug}
-        collectionData={collection}
-        serverContentWidth={serverContentWidth}
-        serverViewportHeight={serverViewportHeight}
-        serverIsMobile={serverIsMobile}
-        selectedIds={isClientGallery ? selectedIds : undefined}
-        onImageClick={isClientGallery && isSelectMode ? handleSelectToggle : undefined}
+      {!editLayerMounted && grid}
+      <EditModeLayer
+        collection={collection}
+        filterState={filterState}
+        setFilterState={setFilterState}
+        syncToUrl={syncToUrl}
+        onMounted={handleEditLayerMounted}
+        onLiveContentChange={setLiveEditContent}
       />
+    </>
+  ) : (
+    <>
+      {grid}
       {hasActiveFilters && filteredImages.length === 0 && (
         <p className={styles.emptyState}>No images match your filters.</p>
       )}
     </>
   );
 
-  // Client galleries get the select/download provider so the in-tree Download control can drive
-  // (and read) the page-level selection state.
-  const maybeWrappedContent = isClientGallery ? (
-    <ClientGalleryDownloadProvider value={downloadContextValue}>
-      {content}
-    </ClientGalleryDownloadProvider>
-  ) : (
-    content
-  );
+  const maybeWrappedContent =
+    isClientGallery && !editMode ? (
+      <ClientGalleryDownloadProvider value={downloadContextValue}>
+        {content}
+      </ClientGalleryDownloadProvider>
+    ) : (
+      content
+    );
 
-  // Only wrap with filter context if there are options to filter by
-  if (!hasOptions) return maybeWrappedContent;
-
+  // Always mount the provider and gate the filter UI via a null VALUE (observationally the same
+  // for consumers, which null-check). hasOptions is live in edit mode — it flips when an upload
+  // gives an empty collection its first filterable content — and conditionally mounting the
+  // provider on it would reparent the subtree, remounting EditModeLayer and resetting its state.
   return (
-    <CollectionFilterProvider value={filterContextValue}>
+    <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
       {maybeWrappedContent}
     </CollectionFilterProvider>
   );

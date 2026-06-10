@@ -43,6 +43,16 @@ describe('EssentialInfoSection', () => {
     jest.clearAllMocks();
   });
 
+  it('hides Title, Caption, and Alt in bulk edit but keeps Author', () => {
+    render(<EssentialInfoSection {...makeProps({ isBulkEdit: true })} />);
+    expect(screen.queryByPlaceholderText('Enter image title')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Enter caption')).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText('Describe the image for screen readers')
+    ).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Photographer name')).toBeInTheDocument();
+  });
+
   it('Title input round-trips a change through updateStateField', () => {
     const updateStateField = jest.fn();
     render(<EssentialInfoSection {...makeProps({ updateStateField })} />);
@@ -79,9 +89,6 @@ describe('EssentialInfoSection', () => {
     expect(container.querySelector('[aria-disabled="true"]')).toBeInTheDocument();
   });
 
-  // Characterization tests for the collection-visibility toggle. These pin the current
-  // append-vs-update junction behavior through the rendered checkbox before the logic is
-  // extracted into essentialInfoUtils, proving the extraction is behavior-preserving.
   describe('Collection Visibility toggle (characterization)', () => {
     it('checkbox is checked by default when no junction exists (absent === visible)', () => {
       render(<EssentialInfoSection {...makeProps({ currentCollectionId: 42 })} />);
@@ -121,7 +128,6 @@ describe('EssentialInfoSection', () => {
           {...makeProps({ currentCollectionId: 42, updateState, updateStateField })}
         />
       );
-      // Default-visible (no junction for 42) → checkbox starts checked; uncheck it.
       fireEvent.click(screen.getByRole('checkbox'));
       expect(updateStateField).toHaveBeenCalledWith({
         collections: [
@@ -162,7 +168,6 @@ describe('EssentialInfoSection', () => {
           {...makeProps({ currentCollectionId: 42, updateState, updateStateField })}
         />
       );
-      // Junction for 42 exists and is visible → checkbox starts checked; uncheck it.
       fireEvent.click(screen.getByRole('checkbox'));
       expect(updateStateField).toHaveBeenCalledWith({
         collections: [

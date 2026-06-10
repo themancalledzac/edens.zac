@@ -1,121 +1,122 @@
-/* Image Metadata Editor Modal Styles */
-
-/* Close button floats over the top-right corner of the full-bleed sheet. The sheet
-   fills the viewport, so a fixed slot anchors the control to the corner without
-   depending on the Modal dialog establishing a positioning context. */
 .closeButtonSlot {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 10px;
+  right: 10px;
   z-index: var(--z-modal-controls);
 
-  @media (width <= 768px) {
-    top: 10px;
-    right: 10px;
+  @media (width >= 768px) {
+    top: 20px;
+    right: 20px;
   }
 }
 
-/* Split-screen layout inside the Modal's sheet dialog (image left, metadata right). */
 .metadataLayout {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   width: 100%;
   height: 100%;
-  background-color: rgb(0, 0, 0, 0.95);
+  background-color: var(--color-bg);
   overflow: hidden;
   overscroll-behavior: none;
 
-  @media (width <= 1024px) {
-    flex-direction: column;
+  @media (width >= 768px) {
+    flex-direction: row;
   }
 }
 
-/* Image Section - Left Side */
 .imageSection {
-  flex: 1;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 40px;
-  background: rgb(0, 0, 0, 0.9);
+  background: var(--content-frame);
+  height: 160px;
+  padding: var(--space-3);
 
-  @media (width <= 1024px) {
-    flex: 0 0 40%;
-    padding: 20px;
-  }
-
-  @media (width <= 768px) {
-    flex: 0 0 30%;
-    padding: 10px;
+  @media (width >= 768px) {
+    flex: 0 0 42%;
+    height: 100%;
+    padding: var(--space-5);
   }
 }
 
-/* Metadata Section - Right Side */
 .metadataSection {
   flex: 1;
-  overflow-y: auto;
-  padding: 40px;
-  background: rgb(20, 20, 20, 0.98);
-  color: white;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-on-surface);
+}
 
-  /* Custom scrollbar */
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
+.sectionTop {
+  padding: var(--space-4);
+  padding-bottom: 0;
 
-  &::-webkit-scrollbar-track {
-    background: var(--scrim-light-10);
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--scrim-light-30);
-    border-radius: var(--radius-1);
-
-    &:hover {
-      background: var(--scrim-light-50);
-    }
-  }
-
-  @media (width <= 1024px) {
-    flex: 0 0 60%;
-    padding: 30px;
-  }
-
-  @media (width <= 768px) {
-    flex: 0 0 70%;
-    padding: 20px;
+  @media (width >= 768px) {
+    padding: var(--space-5);
+    padding-bottom: 0;
   }
 }
 
-/* Heading */
 .heading {
-  font-size: 24px;
+  font-size: var(--text-lg);
   font-weight: 600;
-  margin: 0 0 24px;
-  color: white;
+  margin: 0 0 var(--space-3);
+  color: var(--color-on-surface);
 
-  @media (width <= 768px) {
-    font-size: 20px;
-    margin-bottom: 16px;
+  @media (width >= 768px) {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-4);
   }
 }
 
-/* Error Message */
 .errorMessage {
   background: var(--color-danger-subtle);
   border: 1px solid var(--color-danger-dark);
   color: var(--color-danger-text);
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-1);
-  margin-bottom: 20px;
-  font-size: 14px;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
 }
 
-/* Form Sections */
+.formColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.tabContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+  min-height: 0;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-round);
+  }
+
+  @media (width >= 768px) {
+    padding: var(--space-5);
+  }
+}
+
 .formSection {
-  margin-bottom: 32px;
-  padding-bottom: 32px;
-  border-bottom: 1px solid var(--scrim-light-10);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
 
   &:last-of-type {
     border-bottom: none;
@@ -123,43 +124,41 @@
 }
 
 .sectionHeading {
-  font-size: 16px;
+  font-size: var(--text-sm);
   font-weight: 600;
-  margin: 0 0 16px;
-  color: var(--scrim-light-90);
+  margin: 0 0 var(--space-3);
+  color: var(--color-on-surface-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* Form Elements */
 .formGroup {
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .formLabel {
   display: block;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 500;
-  margin-bottom: 6px;
-  color: var(--scrim-light-70);
+  margin-bottom: var(--space-2);
+  color: var(--color-on-surface-muted);
 }
 
 .formInput,
 .formTextarea,
 .formSelect {
   width: 100%;
-  padding: 10px 12px;
-  font-size: 14px;
-  background: var(--scrim-light-10);
-  border: 1px solid var(--scrim-light-20);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  background: var(--color-surface-sunken);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
-  color: white;
-  transition: all var(--duration-base);
+  color: var(--color-on-surface);
+  transition: border-color var(--duration-base) var(--ease-standard);
 
   &:focus {
     outline: none;
-    border-color: var(--scrim-light-50);
-    background: rgb(255, 255, 255, 0.08);
+    border-color: var(--color-accent);
   }
 
   &:focus-visible {
@@ -168,13 +167,13 @@
   }
 
   &::placeholder {
-    color: var(--scrim-light-40);
+    color: var(--color-on-surface-muted);
   }
 }
 
 .formTextarea {
   resize: vertical;
-  min-height: 80px;
+  min-height: 72px;
   font-family: inherit;
 }
 
@@ -182,110 +181,51 @@
   cursor: pointer;
 }
 
-/* Form Grid */
 .formGrid2Col {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
 
-  @media (width <= 768px) {
-    grid-template-columns: 1fr;
+  @media (width >= 768px) {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-/* Checkbox Group */
+.formGridHalf {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
 .checkboxGroup {
   display: flex;
-  gap: 24px;
-  margin-top: 16px;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
 }
 
 .checkboxLabel {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   cursor: pointer;
-  font-size: 14px;
-  color: var(--scrim-light-90);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
 
   input[type='checkbox'] {
     width: 18px;
     height: 18px;
     cursor: pointer;
-    accent-color: white;
-  }
-
-  &:hover {
-    color: white;
+    accent-color: var(--color-fg);
   }
 }
 
-/* Button Row */
-.buttonRow {
-  display: flex;
-  gap: 12px;
-  margin-top: 32px;
-  justify-content: space-between;
-  padding-top: 24px;
-  border-top: 1px solid var(--scrim-light-10);
-
-  @media (width <= 768px) {
-    flex-direction: column-reverse;
-  }
-
-  /*
-   * The metadata sheet renders on a dark surface (.metadataSection), but the <Button> primitive's
-   * ghost/primary variants are tuned for light page surfaces (dark text / dark fill → invisible
-   * here). These scoped overrides restore the legacy dark-surface treatment — a white-filled CTA
-   * (Save) and an outlined light-text secondary (Cancel). Nested under .buttonRow so they outrank
-   * the primitive's single-class variant rules (including :hover) without !important. Delete
-   * (danger) and Remove (warning) keep their saturated fills, which read fine on dark.
-   */
-  .saveOnDark {
-    background-color: var(--color-white);
-    color: var(--color-black);
-    border-color: transparent;
-
-    &:hover:not(:disabled) {
-      background-color: var(--scrim-light-90);
-    }
-  }
-
-  .cancelOnDark {
-    color: var(--color-white);
-    border-color: var(--scrim-light-30);
-
-    &:hover:not(:disabled) {
-      background-color: var(--scrim-light-10);
-    }
-  }
-}
-
-.buttonRowLeft {
-  display: flex;
-  gap: 12px;
-
-  @media (width <= 768px) {
-    width: 100%;
-  }
-}
-
-.buttonRowRight {
-  display: flex;
-  gap: 12px;
-
-  @media (width <= 768px) {
-    width: 100%;
-  }
-}
-
-/* Disabled state for GIF/MP4 sections that don't support a given field. */
 .sectionDisabled {
   opacity: 0.4;
   pointer-events: none;
 }
 
-/* Single-image/GIF preview: fit within the section without upscaling. */
 .previewMedia {
   max-width: 100%;
   max-height: 100%;
@@ -296,12 +236,16 @@
 
 .bulkEditGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: var(--space-2);
   width: 100%;
   height: 100%;
   overflow-y: auto;
   padding: var(--space-2);
+
+  @media (width >= 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
 }
 
 .bulkEditThumb {
@@ -309,7 +253,7 @@
   aspect-ratio: 1;
   border-radius: var(--radius-1);
   overflow: hidden;
-  background-color: #f0f0f0;
+  background-color: var(--color-surface-sunken);
 }
 
 .bulkEditThumbImg {

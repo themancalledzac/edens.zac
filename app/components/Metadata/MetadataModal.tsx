@@ -1,7 +1,10 @@
 'use client';
 
+import { useRef, useState } from 'react';
+
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
+import { EditBar } from '@/app/components/ui/EditBar/EditBar';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
 import { type ContentGifModel, type ContentImageUpdateResponse } from '@/app/types/Content';
@@ -21,9 +24,16 @@ import styles from './MetadataModal.module.scss';
 import CameraSettingsSection from './sections/CameraSettingsSection';
 import EssentialInfoSection from './sections/EssentialInfoSection';
 import MediaPreview from './sections/MediaPreview';
-import MetadataActionRow from './sections/MetadataActionRow';
 import TagsPeopleSection from './sections/TagsPeopleSection';
 import type { EditableContent } from './types';
+
+type TabId = 'info' | 'camera' | 'collections';
+
+const TABS: ReadonlyArray<{ id: TabId; label: string }> = [
+  { id: 'info', label: 'Info' },
+  { id: 'camera', label: 'Camera' },
+  { id: 'collections', label: 'Collections' },
+];
 
 interface MetadataModalProps {
   onClose: () => void;
@@ -43,22 +53,23 @@ interface MetadataModalProps {
   availableFilmFormats?: FilmFormatDTO[];
   availableCollections?: CollectionListModel[];
   availableLocations?: LocationModel[];
-  selectedIds: number[]; // Array of selected content IDs (1 for single edit, N for bulk edit)
+  selectedIds: number[];
   /**
    * Content blocks to edit. May include images and GIF/MP4 blocks. Bulk edit only operates on
    * the IMAGE subset (the EXIF-heavy fields don't have GIF analogs); when the selection is a
    * single GIF the modal routes title/rating/tags/collections through `updateGif()`.
    */
   selectedImages: EditableContent[];
-  currentCollectionId?: number; // ID of the collection being edited (for visibility checkbox)
+  currentCollectionId?: number;
 }
 
 /**
  * Orchestrator for the image/GIF metadata editor sheet modal.
  *
- * Composes `<MediaPreview>` (left panel) with the metadata form (right panel) via
- * `useMetadataState` and `useMetadataSubmit`. Zero business logic lives here —
- * this file is state-routing + JSX-composition only.
+ * Layout: pinned photo (top strip on mobile, left sidebar on desktop) + scrollable form + a
+ * pinned bottom bar holding the tab row (Info · Camera · Tags · Collections) above the sticky
+ * action bar. The sheet lives on the dark admin surface — primitives adapt automatically via
+ * [data-surface] token inheritance; no per-component dark overrides are needed here.
  */
 export default function MetadataModal({
   onClose,
@@ -78,6 +89,9 @@ export default function MetadataModal({
   selectedImages,
   currentCollectionId,
 }: MetadataModalProps) {
+  const [activeTab, setActiveTab] = useState<TabId>('info');
+  const formRef = useRef<HTMLFormElement>(null);
+
   const isBulkEdit = selectedIds.length > 1;
 
   const {
@@ -113,7 +127,6 @@ export default function MetadataModal({
     return null;
   }
 
-  /** `isGif` drives the disabled-state on caption + camera-settings sections. */
   const isGif = isGifContent(previewImage);
 
   return (
@@ -126,75 +139,126 @@ export default function MetadataModal({
           previewImage={previewImage}
         />
 
-        {/* Metadata Section - Right Side */}
         <div className={styles.metadataSection}>
-          <h2 id="metadata-modal-title" className={styles.heading}>
-            {isBulkEdit ? `Edit ${selectedIds.length} Images` : 'Edit Image Metadata'}
-          </h2>
+          <div className={styles.sectionTop}>
+            <h2 id="metadata-modal-title" className={styles.heading}>
+              {isBulkEdit ? `Edit ${selectedIds.length} Images` : 'Edit Image Metadata'}
+            </h2>
 
-          {error && (
-            <div className={styles.errorMessage} role="alert">
-              {error}
+            {error && (
+              <div className={styles.errorMessage} role="alert">
+                {error}
+              </div>
+            )}
+          </div>
+
+          <form ref={formRef} onSubmit={handleSubmit} className={styles.formColumn}>
+            <div className={styles.tabContent}>
+              <div
+                id="tabpanel-info"
+                role="tabpanel"
+                aria-labelledby="tab-info"
+                hidden={activeTab !== 'info'}
+              >
+                <EssentialInfoSection
+                  updateState={updateState}
+                  updateStateField={updateStateField}
+                  availableLocations={availableLocations}
+                  availableCollections={availableCollections}
+                  currentCollectionId={currentCollectionId}
+                  isGif={isGif}
+                  isBulkEdit={isBulkEdit}
+                />
+                <TagsPeopleSection
+                  updateState={updateState}
+                  updateStateField={updateStateField}
+                  availableTags={availableTags}
+                  availablePeople={availablePeople}
+                />
+              </div>
+
+              <div
+                id="tabpanel-camera"
+                role="tabpanel"
+                aria-labelledby="tab-camera"
+                hidden={activeTab !== 'camera'}
+              >
+                <CameraSettingsSection
+                  updateState={updateState}
+                  updateStateField={updateStateField}
+                  replaceOptimisticCamera={replaceOptimisticCamera}
+                  availableCameras={availableCameras}
+                  availableLenses={availableLenses}
+                  availableFilmTypes={availableFilmTypes}
+                  availableFilmFormats={availableFilmFormats}
+                  isGif={isGif}
+                />
+              </div>
+
+              <div
+                id="tabpanel-collections"
+                role="tabpanel"
+                aria-labelledby="tab-collections"
+                hidden={activeTab !== 'collections'}
+              >
+                <div className={styles.formSection}>
+                  <CollectionListSelector
+                    allCollections={availableCollections}
+                    savedCollectionIds={originalCollectionIds}
+                    pendingAddIds={pendingAddIds}
+                    pendingRemoveIds={pendingRemoveIds}
+                    onToggle={handleCollectionToggle}
+                    label="Collections"
+                    grouped
+                  />
+                </div>
+              </div>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit}>
-            <EssentialInfoSection
-              updateState={updateState}
-              updateStateField={updateStateField}
-              availableLocations={availableLocations}
-              availableCollections={availableCollections}
-              currentCollectionId={currentCollectionId}
-              isGif={isGif}
-            />
-
-            <CameraSettingsSection
-              updateState={updateState}
-              updateStateField={updateStateField}
-              replaceOptimisticCamera={replaceOptimisticCamera}
-              availableCameras={availableCameras}
-              availableLenses={availableLenses}
-              availableFilmTypes={availableFilmTypes}
-              availableFilmFormats={availableFilmFormats}
-              isGif={isGif}
-            />
-
-            <TagsPeopleSection
-              updateState={updateState}
-              updateStateField={updateStateField}
-              availableTags={availableTags}
-              availablePeople={availablePeople}
-            />
-
-            {/* Collections */}
-            <div className={styles.formSection}>
-              <CollectionListSelector
-                allCollections={availableCollections}
-                savedCollectionIds={originalCollectionIds}
-                pendingAddIds={pendingAddIds}
-                pendingRemoveIds={pendingRemoveIds}
-                onToggle={handleCollectionToggle}
-                label="Collections"
-                pinnedCollectionId={currentCollectionId}
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <MetadataActionRow
-              isBulkEdit={isBulkEdit}
-              selectedCount={selectedIds.length}
-              saving={saving}
-              hasChanges={hasChanges}
-              showRemove={!!currentCollectionId}
-              onDelete={handleDelete}
-              onRemove={handleRemoveFromCollection}
-              onCancel={handleCancel}
+            <EditBar
+              fixed={false}
+              ariaLabel="Metadata sections"
+              tabs={TABS}
+              activeTab={activeTab}
+              onTabChange={id => setActiveTab(id as TabId)}
+              cells={[
+                // Remove is only available when viewing images inside a collection context.
+                // It is rendered before Delete (less destructive first) and uses the default
+                // variant to visually distinguish it from the permanent Delete action.
+                ...(currentCollectionId
+                  ? [
+                      {
+                        key: 'remove',
+                        label: 'Remove',
+                        variant: 'default' as const,
+                        onClick: handleRemoveFromCollection,
+                        disabled: saving,
+                      },
+                    ]
+                  : []),
+                // Delete is always rendered — permanent deletion must always be reachable,
+                // including for GIFs which have no Remove equivalent.
+                {
+                  key: 'delete',
+                  label: 'Delete',
+                  variant: 'danger' as const,
+                  onClick: handleDelete,
+                  disabled: saving,
+                },
+                {
+                  key: 'save',
+                  label: isBulkEdit ? `Save ${selectedIds.length}` : 'Save',
+                  variant: 'primary' as const,
+                  disabled: !hasChanges || saving,
+                  onClick: () => formRef.current?.requestSubmit(),
+                },
+                { key: 'cancel', label: 'Cancel', onClick: handleCancel, disabled: saving },
+              ]}
             />
           </form>
         </div>
       </div>
 
-      {/* Close Button — floats over the top-right corner of the sheet. */}
       <div className={styles.closeButtonSlot}>
         <CloseButton onClick={handleCancel} aria-label="Close metadata editor" disabled={saving} />
       </div>

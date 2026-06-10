@@ -1,6 +1,6 @@
 /**
  * Unit tests for manageUtils.ts
- * Tests all utility functions used by ManageClient component
+ * Tests utility functions in collectionEditUtils (the collection edit surface)
  */
 
 // Mock the collections API module
@@ -15,8 +15,6 @@ import {
   cancelImageMoves,
   executeReorderOperation,
   findImageBlockById,
-  getContentOrderIndex,
-  getDisplayedCoverImage,
   handleCollectionNavigation,
   handleCoverImageSelection,
   handleMultiSelectToggle,
@@ -28,7 +26,7 @@ import {
   toggleRelation,
   updateBlockOrderIndex,
   validateCoverImageSelection,
-} from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+} from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import * as collectionsApi from '@/app/lib/api/collections';
 import {
   type CollectionListModel,
@@ -957,81 +955,6 @@ describe('findImageBlockById', () => {
   });
 });
 
-describe('getDisplayedCoverImage', () => {
-  const image1 = createImageContent(1);
-  const image2 = createImageContent(2);
-  const coverImage = createImageContent(10);
-
-  describe('passing cases', () => {
-    it('should return pending image when pendingCoverImageId provided and exists in collection', () => {
-      const collection = createCollectionModel({
-        content: [image1, image2],
-      });
-
-      const result = getDisplayedCoverImage(collection, 1);
-
-      expect(result).toEqual(image1);
-    });
-
-    it('should return collection.coverImage when pendingCoverImageId not provided', () => {
-      const collection = createCollectionModel({
-        coverImage: coverImage,
-      });
-
-      // @ts-expect-error should return collection.coverImage when pendingCoverImageId not provided
-      const result = getDisplayedCoverImage(collection);
-
-      expect(result).toEqual(coverImage);
-    });
-
-    it('should return null when collection.coverImage is null', () => {
-      const collection = createCollectionModel({
-        coverImage: null,
-      });
-
-      // @ts-expect-error should return null when collection.coverImage is null
-      const result = getDisplayedCoverImage(collection);
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('failing cases', () => {
-    it('should return undefined when pendingCoverImageId provided but does not exist in collection', () => {
-      const collection = createCollectionModel({
-        content: [image1, image2],
-      });
-
-      const result = getDisplayedCoverImage(collection, 999);
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined when collection is null and pendingCoverImageId provided', () => {
-      const result = getDisplayedCoverImage(null, 1);
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined when collection is null and no pendingCoverImageId', () => {
-      // @ts-expect-error should return undefined when collection is null and no pendingCoverImageId
-      const result = getDisplayedCoverImage(null);
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return undefined when pendingCoverImageId points to non-image content', () => {
-      const text1 = createTextContent(3);
-      const collection = createCollectionModel({
-        content: [image1, text1],
-      });
-
-      const result = getDisplayedCoverImage(collection, 3);
-
-      expect(result).toBeUndefined();
-    });
-  });
-});
 describe('handleApiError', () => {
   describe('passing cases', () => {
     it('should return error.message when error is Error object', () => {
@@ -1580,63 +1503,6 @@ describe('refreshCollectionAfterOperation', () => {
   });
 });
 
-describe('getContentOrderIndex', () => {
-  it('should return direct orderIndex for image content', () => {
-    const imageBlock: ContentImageModel = {
-      id: 1,
-      contentType: 'IMAGE',
-      orderIndex: 5,
-      imageUrl: 'test.jpg',
-      locations: [],
-    };
-
-    const result = getContentOrderIndex(imageBlock);
-
-    expect(result).toBe(5);
-  });
-
-  it('should return direct orderIndex for text content', () => {
-    const textBlock = {
-      id: 2,
-      contentType: 'TEXT' as const,
-      orderIndex: 3,
-      items: [{ type: 'text' as const, value: 'Test' }],
-      format: 'plain' as const,
-      align: 'left' as const,
-    } as AnyContentModel;
-
-    const result = getContentOrderIndex(textBlock);
-
-    expect(result).toBe(3);
-  });
-
-  it('should return direct orderIndex for collection content', () => {
-    const collectionBlock = {
-      id: 3,
-      contentType: 'COLLECTION' as const,
-      orderIndex: 7,
-      slug: 'test-collection',
-      collectionType: 'BLOG' as const,
-    } as AnyContentModel;
-
-    const result = getContentOrderIndex(collectionBlock);
-
-    expect(result).toBe(7);
-  });
-
-  it('should return undefined when orderIndex is undefined', () => {
-    const imageBlock = {
-      id: 1,
-      contentType: 'IMAGE',
-      imageUrl: 'test.jpg',
-    } as ContentImageModel;
-
-    const result = getContentOrderIndex(imageBlock);
-
-    expect(result).toBeUndefined();
-  });
-});
-
 describe('updateBlockOrderIndex', () => {
   it('should update direct orderIndex for image content', () => {
     const imageBlock: ContentImageModel = {
@@ -1720,9 +1586,9 @@ describe('applyReorderChangesOptimistically', () => {
     const result = applyReorderChangesOptimistically(collection, reorders);
 
     expect(result.content).toBeDefined();
-    expect(getContentOrderIndex(result.content![0]!)).toBe(2);
-    expect(getContentOrderIndex(result.content![1]!)).toBe(0);
-    expect(getContentOrderIndex(result.content![2]!)).toBe(1);
+    expect(result.content![0]!.orderIndex).toBe(2);
+    expect(result.content![1]!.orderIndex).toBe(0);
+    expect(result.content![2]!.orderIndex).toBe(1);
   });
 
   it('should return unchanged collection when reorders is empty', () => {

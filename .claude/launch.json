@@ -4,7 +4,7 @@
     {
       "name": "Next.js Dev Server",
       "runtimeExecutable": "/opt/homebrew/bin/node",
-      "runtimeArgs": ["node_modules/.bin/next", "dev", "--port", "3001"],
+      "runtimeArgs": ["node_modules/.bin/next", "dev", "-H", "0.0.0.0", "--port", "3001"],
       "port": 3001,
       "autoPort": false,
       "env": {

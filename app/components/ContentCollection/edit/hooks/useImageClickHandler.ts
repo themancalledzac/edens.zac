@@ -9,8 +9,9 @@ import {
   type ContentGifModel,
   type ContentImageModel,
 } from '@/app/types/Content';
+import { manageHref } from '@/app/utils/manageUrl';
 
-import { handleCollectionNavigation, handleSingleImageEdit } from './manageUtils';
+import { handleCollectionNavigation, handleSingleImageEdit } from '../collectionEditUtils';
 
 interface UseImageClickHandlerParams {
   isSelectingCoverImage: boolean;
@@ -40,23 +41,19 @@ export function useImageClickHandler({
   const handleImageClick = useCallback(
     (imageId: number) => {
       if (isSelectingCoverImage) {
-        // Mode 1: Cover image selection
         handleCoverImageClick(imageId);
         return;
       }
 
-      // Mode 2: Collection navigation
       const collectionSlug = handleCollectionNavigation(imageId, collection?.content);
       if (collectionSlug) {
-        router.push(`/collection/manage/${collectionSlug}`);
+        router.push(manageHref(collectionSlug));
         return;
       }
 
       if (isMultiSelectMode) {
-        // Mode 3: Multi-select toggle
         handleMultiSelectToggle(imageId);
       } else {
-        // Mode 4: Single image edit
         const imageBlock = handleSingleImageEdit(imageId, collection?.content, processedContent);
         if (imageBlock) {
           setSelectedIds([imageId]);

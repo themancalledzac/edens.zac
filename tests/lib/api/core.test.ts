@@ -350,6 +350,64 @@ describe('fetchBase (tested via public API functions)', () => {
   });
 });
 
+describe('getApiBaseUrl — dev routes browser calls through the same-origin proxy', () => {
+  const originalWindow = global.window;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    // Restore window to whatever it was before
+    Object.defineProperty(global, 'window', { value: originalWindow, writable: true });
+  });
+
+  it('routes browser reads through the relative /api/proxy path (reachable from any LAN device, no CORS)', async () => {
+    // Simulate any browser — e.g. a phone on the LAN at <lan-ip>:3000. The exact hostname must
+    // NOT matter: the call is same-origin and the Next server proxies it to the backend, so no
+    // device ever talks to the backend directly.
+    Object.defineProperty(global, 'window', {
+      value: { location: { hostname: '192.168.68.60' } },
+      writable: true,
+    });
+
+    const mockResponse = {
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    };
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+    const { fetchReadApi: fetchRead } = await import('@/app/lib/api/core');
+    await fetchRead('/collections');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/proxy\/api\/read\//),
+      expect.any(Object)
+    );
+  });
+
+  it('calls the backend directly on localhost for server-side (RSC) reads', async () => {
+    // No window → server runtime. The Next server reaches the dev backend on localhost directly.
+    Object.defineProperty(global, 'window', { value: undefined, writable: true });
+
+    const mockResponse = {
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    };
+    (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
+
+    const { fetchReadApi: fetchRead2 } = await import('@/app/lib/api/core');
+    await fetchRead2('/collections');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/^http:\/\/localhost:8080\/api\/read\//),
+      expect.any(Object)
+    );
+  });
+});
+
 describe('getServerCookieHeader', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nextHeaders = require('next/headers') as { cookies: jest.Mock };

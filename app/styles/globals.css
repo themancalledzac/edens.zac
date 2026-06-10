@@ -15,6 +15,11 @@ html,
   --color-bg: var(--color-white);
   --color-fg: var(--color-black);
 
+  /* Constant white content mat/frame for images and content blocks. The brand
+     signature is white-framed photos floating on the surface; this frame stays
+     white and does NOT invert under [data-surface='dark'] (see that block). */
+  --content-frame: #fff;
+
   /* ── Unified semantic color taxonomy (review §6b). Roles, not raw colors.
      These are the canonical names; everything below migrates onto them and the
      legacy color-text, color-bg, and overlay-light families are deleted.
@@ -119,6 +124,10 @@ html,
   --color-error-text: #c33;
   --color-primary: #212226;
   --color-primary-dark: #1a1b1e;
+  --color-primary-hover: var(
+    --color-primary-dark
+  ); /* hover step for the primary <Button>. Light surface: the dark fill deepens. The dark scope re-points this so the white-fill button dims toward gray instead of inverting to near-black. */
+
   --color-on-primary-muted: #adb5bd; /* AA-safe muted text on the dark --color-primary admin panel (~7.7:1); the light-surface --color-on-surface-muted #666 fails AA there */
   --color-secondary: #6c757d;
   --color-secondary-dark: #5a6268;
@@ -164,9 +173,51 @@ html,
   /* ── Remaining named aliases still referenced by call sites. The legacy
      text/bg/border/overlay-light families and the duplicate --color-accent
      alias were migrated onto the semantic taxonomy and deleted (TK-3). ── */
-  --text-base: var(--text-md); /* font-size, ManageClient stepper */
+  --text-base: var(--text-md); /* font-size, collection-edit stepper */
   --radius-sm: var(--radius-1);
   --color-warning: #f4b400; /* RatingStars star fill */
+}
+
+/* ── Scoped dark surface ──────────────────────────────────────────────────
+   Admin/edit chrome opts into this via app/(admin)/layout.tsx; the public
+   site stays light (the :root defaults above are UNCHANGED — no global flip).
+   We only redefine the SEMANTIC tokens that chrome + ui/ primitives already
+   consume (--color-bg/-fg, the surface + on-surface + border roles), so every
+   descendant adapts with zero per-component overrides. Custom properties
+   inherit through display:contents, so the layout's scope wrapper can paint
+   the surface and still let these cascade.
+
+   Design language: muted neutral charcoal (not black, not purple), light-on-
+   dark text, neutral accents. Primary action = white fill / dark text falls
+   out for free: <Button> primary is `background: var(--color-fg); color:
+   var(--color-bg)`. --content-frame is intentionally NOT overridden — the
+   white image mat stays white on dark (gallery-wall look). ── */
+[data-surface='dark'] {
+  --color-bg: #1b1b1d; /* neutral charcoal page surface */
+  --color-fg: #f1f1f1; /* light-on-dark primary text */
+  --color-on-surface: var(--color-fg); /* headings/titles track fg on dark */
+  --color-on-surface-muted: #9a9aa0; /* muted light-gray secondary text */
+
+  /* Raised/sunken surface roles, lifted a step off the page surface so cards,
+     inputs and steppers read as distinct planes rather than blending in. */
+  --color-surface-raised: #232326; /* panels/cards a step above the page */
+  --color-surface-sunken: #141416; /* recessed wells/placeholders */
+  --color-surface-sunken-strong: #0f0f11; /* deeper sunken hover step */
+
+  /* Low-alpha white hairline so borders read on dark without harsh lines. */
+  --color-border: rgb(255 255 255 / 14%);
+  --color-border-strong: rgb(255 255 255 / 28%);
+
+  /* Hover/active surface tint flips to low-alpha WHITE so it lifts on dark instead
+     of the near-invisible black wash the :root rgb(0 0 0 / 10%) would give. Drives
+     every ghost/outline/list-row/segment/dropdown hover that reads this role.
+     (--color-overlay-strong is intentionally NOT overridden — the modal scrim and
+     image overlays must stay dark regardless of surface.) */
+  --color-overlay-soft: rgb(255 255 255 / 8%);
+
+  /* The primary <Button> fill is --color-fg (near-white) on dark, so its hover must
+     DIM toward gray, not deepen toward black like the light-surface default does. */
+  --color-primary-hover: #d4d4d6;
 }
 
 /* Desktop heading sizes */

@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo } from 'react';
 
-import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';

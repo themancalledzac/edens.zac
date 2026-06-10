@@ -78,7 +78,7 @@ describe('MetadataModal — smoke', () => {
 
   it('disables Save when there are no pending changes', () => {
     render(<MetadataModal {...baseProps} />);
-    const save = screen.getByRole('button', { name: /save changes/i });
+    const save = screen.getByRole('button', { name: /^save$/i });
     expect(save).toBeDisabled();
   });
 
@@ -92,17 +92,49 @@ describe('MetadataModal — smoke', () => {
 
   it('Delete shows a confirmation dialog before doing anything', () => {
     render(<MetadataModal {...baseProps} />);
-    fireEvent.click(screen.getByRole('button', { name: /^delete image$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
     expect(window.confirm).toHaveBeenCalled();
   });
 
-  // The Delete/Remove count-label wording is exercised in MetadataActionRow.test.tsx; the modal
-  // just threads isBulkEdit/selectedCount through, so it isn't re-asserted at the integration level.
+  it('bulk Save button shows the image count in its label', () => {
+    const images = [imageFixture(101), imageFixture(102), imageFixture(103)];
+    render(<MetadataModal {...baseProps} selectedIds={[101, 102, 103]} selectedImages={images} />);
+    expect(screen.getByRole('button', { name: /^save 3$/i })).toBeInTheDocument();
+  });
 
-  it('renders Remove-from-collection only when currentCollectionId is set', () => {
+  it('renders Delete always and Remove only when currentCollectionId is set', () => {
+    // Without a collection context: Delete present, Remove absent.
     const { rerender } = render(<MetadataModal {...baseProps} />);
-    expect(screen.queryByRole('button', { name: /remove image/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^delete$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^remove$/i })).not.toBeInTheDocument();
+
+    // With a collection context: both Delete AND Remove present.
     rerender(<MetadataModal {...baseProps} currentCollectionId={42} />);
-    expect(screen.getByRole('button', { name: /remove image/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^delete$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^remove$/i })).toBeInTheDocument();
+  });
+
+  it('Delete triggers a confirmation dialog when currentCollectionId is set', () => {
+    render(<MetadataModal {...baseProps} currentCollectionId={42} />);
+    fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    expect(window.confirm).toHaveBeenCalled();
+  });
+
+  it('Remove triggers a confirmation dialog when currentCollectionId is set', () => {
+    render(<MetadataModal {...baseProps} currentCollectionId={42} />);
+    fireEvent.click(screen.getByRole('button', { name: /^remove$/i }));
+    expect(window.confirm).toHaveBeenCalled();
+  });
+
+  it('renders null without crashing when the selection is empty', () => {
+    // Hooks (useMetadataState/useMetadataSubmit) run before the `!previewImage` guard, so an empty
+    // selection must not throw while deriving state — e.g. hasChanges dereferencing selectedImages[0].
+    // Pass the props verbatim (no availableLocations) to also exercise the default-param `[]` path.
+    const { container } = render(
+      <MetadataModal selectedIds={[]} selectedImages={[]} onClose={jest.fn()} />
+    );
+    // Component returns null before portaling, so nothing lands in the container or document body.
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByRole('heading', { name: /edit/i })).not.toBeInTheDocument();
   });
 });

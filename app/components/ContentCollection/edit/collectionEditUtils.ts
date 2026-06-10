@@ -1,5 +1,5 @@
 /**
- * Utility functions for ManageClient component
+ * Utility functions for the collection edit surface (useCollectionEdit)
  * Handles data normalization, state management, and type guards
  */
 
@@ -23,11 +23,10 @@ import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { logger } from '@/app/utils/logger';
 
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
-export const DEFAULT_PAGE_SIZE = 50;
 
 /**
  * Re-export the shared, pure collection-toggle engine so existing collection-side callers
- * (ManageClient children/siblings/parents pickers) and tests keep importing it from here
+ * (the edit sheet / useCollectionEdit pickers) and tests keep importing it from here
  * unchanged. The implementation now lives in `@/app/utils/collectionToggle` so the image
  * side can adapt the same engine.
  */
@@ -129,33 +128,6 @@ export function findImageBlockById(
 
   const block = blocks.find(b => b.id === imageId);
   return block && isContentImage(block) ? block : undefined;
-}
-
-/**
- * Get the displayed cover image - either pending selection or current.
- *
- * @remarks
- * Casts `collection.content` to `AnyContentModel[]` — safe because the API response
- * always populates content with `AnyContentModel` instances at runtime.
- */
-export function getDisplayedCoverImage(
-  collection: CollectionModel | null,
-  pendingCoverImageId: number | undefined,
-  childCollectionImages?: ContentImageModel[] | null
-): ContentImageModel | null | undefined {
-  if (pendingCoverImageId) {
-    const blocks = collection?.content;
-    if (blocks && Array.isArray(blocks)) {
-      const found = findImageBlockById(blocks as AnyContentModel[], pendingCoverImageId);
-      if (found) return found;
-    }
-    // Fallback: search childCollectionImages (for parent-type collections)
-    if (childCollectionImages) {
-      return childCollectionImages.find(img => img.id === pendingCoverImageId) ?? undefined;
-    }
-    return undefined;
-  }
-  return collection?.coverImage;
 }
 
 /**
@@ -418,17 +390,6 @@ export function applyReorderChangesOptimistically(
     ...collection,
     content: updatedContent,
   };
-}
-
-/**
- * Get the orderIndex for a content block
- * Uses direct orderIndex property - works for all content types (images, collections, text, GIFs)
- *
- * @param block - Content block (any type)
- * @returns orderIndex value, or undefined if not found
- */
-export function getContentOrderIndex(block: AnyContentModel): number | undefined {
-  return block.orderIndex;
 }
 
 /**

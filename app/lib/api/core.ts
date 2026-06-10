@@ -64,40 +64,17 @@ export async function getServerCookieHeader(): Promise<string | null> {
  */
 
 /**
- * Get the base API URL for a given endpoint type
+ * Base API URL for an endpoint type. Browser uses the relative same-origin proxy (LAN-reachable
+ * in dev, BFF in prod); server-side hits the backend directly on localhost in dev, else the proxy.
  */
 function getApiBaseUrl(endpointType: string): string {
+  if (typeof window !== 'undefined') {
+    return `/api/proxy/api/${endpointType}`;
+  }
   if (isLocalEnvironment()) {
     return `http://localhost:8080/api/${endpointType}`;
   }
-  // All production calls go through the Next.js proxy — never directly to EC2
-  const appBase =
-    typeof window !== 'undefined'
-      ? '' // browser: relative URL
-      : (process.env.NEXT_PUBLIC_APP_URL ?? ''); // server component: needs absolute
-  return `${appBase}/api/proxy/api/${endpointType}`;
-}
-
-/**
- * Build a complete API URL with optional query parameters
- */
-export function buildApiUrl(
-  endpointType: string,
-  path: string,
-  params?: Record<string, string | number | boolean | undefined>
-): string {
-  const baseUrl = getApiBaseUrl(endpointType);
-  const url = new URL(`${baseUrl}${path.startsWith('/') ? path : '/' + path}`);
-
-  if (params) {
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
-      }
-    }
-  }
-
-  return url.toString();
+  return `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/proxy/api/${endpointType}`;
 }
 
 /**

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';

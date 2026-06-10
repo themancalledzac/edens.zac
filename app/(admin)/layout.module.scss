@@ -1,0 +1,14 @@
+/* The (admin) dark surface. Carries data-surface="dark" (see layout.tsx) so the
+   scoped token overrides in globals.css apply to the whole admin subtree, AND
+   paints the surface itself — PageShell/the collection-edit pages' own .container only set
+   height (min-height:100dvh) and otherwise show through to the white <body>, so
+   without this paint the scope would flip text light but leave the page white.
+
+   min-height (not height) lets the inner page containers' own min-height:100dvh
+   grow past the viewport with content; this outer painter grows with them, so
+   the two 100dvh boxes don't fight and the root-layout <Footer> keeps its anchor. */
+.surface {
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-fg);
+}

@@ -127,7 +127,17 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
 
   if (writeMethods.has(method)) {
     const origin = req.headers.get('origin');
-    if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+    // Dev LAN writes: private addresses + mDNS names on dev ports only.
+    // http origins on ports 3000/3001 from localhost, 127.0.0.1, RFC1918
+    // private IPv4 (10.x, 192.168.x, 172.16-31.x), *.local mDNS hostnames,
+    // or *.localhost. Public IPv4 and arbitrary hostnames are rejected.
+    const isDevLanOrigin =
+      process.env.NODE_ENV === 'development' &&
+      !!origin &&
+      /^http:\/\/(?:localhost|127\.0\.0\.1|10(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}|[\da-z-]+\.local|[\da-z-]+\.localhost):(?:3000|3001)$/i.test(
+        origin
+      );
+    if (!origin || !(ALLOWED_ORIGINS.has(origin) || isDevLanOrigin)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     const declaredLength = Number(req.headers.get('content-length') ?? '0');

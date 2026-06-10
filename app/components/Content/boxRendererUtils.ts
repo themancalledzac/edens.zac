@@ -3,7 +3,7 @@
  * prop-plumbing pass and the reorder-flag derivation is unit-testable in isolation.
  */
 
-import { type ReorderMove } from '@/app/(admin)/collection/manage/[[...slug]]/manageUtils';
+import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 
 /** The reorder-mode state available to a single rendered content item. */
 export interface ReorderState {

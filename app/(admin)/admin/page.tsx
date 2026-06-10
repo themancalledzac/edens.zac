@@ -1,3 +1,4 @@
+// Admin = perimeter today (BFF INTERNAL_API_SECRET) → authenticated admin principal later (see docs 009). Gating centralized in app/(admin)/layout.tsx.
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { getAdminHomeTiles } from '@/app/lib/api/adminHome';
 

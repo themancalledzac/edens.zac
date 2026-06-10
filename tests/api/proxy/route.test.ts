@@ -181,3 +181,69 @@ describe('Vercel BFF proxy /api/proxy/[...path] — payload size limits', () => 
     expect(res.status).toBe(413);
   });
 });
+
+describe('Vercel BFF proxy /api/proxy/[...path] — write-method origin allowance', () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NODE_ENV: 'development',
+    };
+    jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+  });
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  async function postFrom(origin: string): Promise<number> {
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/read/messages', {
+      method: 'POST',
+      body: JSON.stringify({ msg: 'hi' }),
+      headers: {
+        'content-type': 'application/json',
+        origin,
+      },
+    });
+    const res = await POST(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'messages'] }),
+    } as never);
+    return res.status;
+  }
+
+  it('allows a private RFC1918 IPv4 origin on a dev port in development', async () => {
+    expect(await postFrom('http://192.168.68.60:3000')).toBe(200);
+  });
+
+  it('allows an mDNS .local hostname origin on a dev port in development', async () => {
+    expect(await postFrom('http://zacs-mbp.local:3000')).toBe(200);
+  });
+
+  it('rejects a public IPv4 origin with 403 even in development', async () => {
+    expect(await postFrom('http://203.0.113.7:3000')).toBe(403);
+  });
+
+  it('rejects an arbitrary public hostname origin with 403', async () => {
+    expect(await postFrom('http://evil.com:3000')).toBe(403);
+  });
+
+  it('rejects https LAN origins — the dev allowance is http only', async () => {
+    expect(await postFrom('https://192.168.68.60:3000')).toBe(403);
+  });
+
+  it('rejects LAN origins outside development NODE_ENV', async () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'https://example.com',
+      NODE_ENV: 'production',
+    };
+    expect(await postFrom('http://192.168.68.60:3000')).toBe(403);
+  });
+});

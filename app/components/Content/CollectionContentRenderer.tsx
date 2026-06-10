@@ -7,6 +7,8 @@ import { type Ref, useCallback, useState } from 'react';
 
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
+import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
+import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import { Badge } from '@/app/components/ui/Badge/Badge';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { Tile } from '@/app/components/ui/Tile/Tile';
@@ -53,7 +55,7 @@ export default function CollectionContentRenderer({
   overlayText,
   cardTypeBadge,
   enableParallax,
-  hasSlug: _hasSlug,
+  hasSlug,
   isCollection = false,
   contentType,
   textItems,
@@ -96,7 +98,7 @@ export default function CollectionContentRenderer({
   const { hasClickHandler, isSlugNav } = getClickEligibility({
     contentType,
     isReorderMode,
-    hasSlug: _hasSlug,
+    hasSlug: hasSlug,
     onImageClick,
     enableFullScreenView,
     onFullScreenImageClick,
@@ -105,7 +107,7 @@ export default function CollectionContentRenderer({
   const handleClick = useCallback(() => {
     if (contentType === 'TEXT') return;
     if (isReorderMode) return;
-    if (_hasSlug && !onImageClick) return; // navigation handled by <Tile href>
+    if (hasSlug && !onImageClick) return; // navigation handled by <Tile href>
 
     const fullScreenContent: ViewableContent =
       contentType === 'GIF'
@@ -142,7 +144,7 @@ export default function CollectionContentRenderer({
     onImageClick,
     enableFullScreenView,
     onFullScreenImageClick,
-    _hasSlug,
+    hasSlug,
     isReorderMode,
   ]);
 
@@ -153,6 +155,7 @@ export default function CollectionContentRenderer({
   }, [contentId, onImageLoadError]);
 
   const collectionFilter = useCollectionFilter();
+  const inlineEdit = useInlineEdit();
 
   if (contentType === 'TEXT') {
     if (!textItems || textItems.length === 0) {
@@ -196,16 +199,38 @@ export default function CollectionContentRenderer({
       >
         <div className={cbStyles.blockContainer}>
           <div className={cbStyles.metadataBlockInner}>
-            {(dateItem || locationItem) && (
+            {inlineEdit && (
+              <div className={cbStyles.metadataTitleRow}>
+                <InlineEditableText
+                  as="input"
+                  value={inlineEdit.title}
+                  onCommit={value => inlineEdit.onCommitField('title', value)}
+                  readOnlyClassName={cbStyles.metadataTitle}
+                  placeholder="Title"
+                  ariaLabel="Collection title"
+                />
+              </div>
+            )}
+            {(dateItem || locationItem || inlineEdit) && (
               <div className={cbStyles.metadataHeaderRow}>
                 {dateItem && <div className={cbStyles.metadataDate}>{dateItem.value}</div>}
-                {locationItem && (
-                  <Link
-                    href={`/location/${locationItem.slug ?? slugify(locationItem.value)}`}
+                {inlineEdit ? (
+                  <button
+                    type="button"
                     className={cbStyles.metadataLocation}
+                    onClick={inlineEdit.onEditLocation}
                   >
-                    {locationItem.value}
-                  </Link>
+                    {locationItem ? locationItem.value : 'Add location'}
+                  </button>
+                ) : (
+                  locationItem && (
+                    <Link
+                      href={`/location/${locationItem.slug ?? slugify(locationItem.value)}`}
+                      className={cbStyles.metadataLocation}
+                    >
+                      {locationItem.value}
+                    </Link>
+                  )
                 )}
               </div>
             )}
@@ -213,8 +238,19 @@ export default function CollectionContentRenderer({
                 flex-grow spacer that pushes the download bar + toolbar to the
                 bottom — even when this gallery has no description text. */}
             <div className={cbStyles.metadataDescriptionContainer}>
-              {descriptionItem && (
-                <p className={cbStyles.metadataDescription}>{descriptionItem.value}</p>
+              {inlineEdit ? (
+                <InlineEditableText
+                  as="textarea"
+                  value={inlineEdit.description}
+                  onCommit={value => inlineEdit.onCommitField('description', value)}
+                  readOnlyClassName={cbStyles.metadataDescription}
+                  placeholder="Add a description"
+                  ariaLabel="Collection description"
+                />
+              ) : (
+                descriptionItem && (
+                  <p className={cbStyles.metadataDescription}>{descriptionItem.value}</p>
+                )
               )}
             </div>
             {filterItems.length > 0 && (
@@ -353,17 +389,32 @@ export default function CollectionContentRenderer({
   if (!hasValidImage) {
     const placeholderWidth = width || 300;
     const placeholderHeight = height || (placeholderWidth * 2) / 3;
+    const placeholderClassName = `${buildWrapperClassName(className, cbStyles, {
+      includeDragContainer: false,
+      enableParallax: false,
+      isMobile,
+      hasClickHandler,
+      isSelected: false,
+    })} ${cbStyles.imagePlaceholder}`;
+
+    if (isSlugNav) {
+      return (
+        <Tile
+          key={contentId}
+          href={`/${hasSlug}`}
+          aria-label={overlayText ?? alt}
+          className={placeholderClassName}
+          style={{ width: placeholderWidth, height: placeholderHeight }}
+        >
+          {overlayText || 'No Image'}
+        </Tile>
+      );
+    }
 
     return (
       <div
         key={contentId}
-        className={`${buildWrapperClassName(className, cbStyles, {
-          includeDragContainer: false,
-          enableParallax: false,
-          isMobile,
-          hasClickHandler,
-          isSelected: false,
-        })} ${cbStyles.imagePlaceholder}`}
+        className={placeholderClassName}
         onClick={hasClickHandler ? handleClick : undefined}
         role={hasClickHandler ? 'button' : undefined}
         tabIndex={hasClickHandler ? 0 : undefined}
@@ -517,7 +568,7 @@ export default function CollectionContentRenderer({
     return (
       <Tile
         key={contentId}
-        href={`/${_hasSlug}`}
+        href={`/${hasSlug}`}
         aria-label={overlayText ?? alt}
         className={wrapperProps.className}
         style={wrapperProps.style}

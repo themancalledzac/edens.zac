@@ -128,7 +128,7 @@ export function useMetadataState({
   const isBulkEdit = selectedIds.length > 1;
 
   // `getCommonValues` was authored for ContentImageModel only — for GIF blocks we slot the union
-  // in but the bulk-edit code path only ever runs on images (ManageClient.handleBulkEdit splits
+  // in but the bulk-edit code path only ever runs on images (the bulk-edit path splits
   // mixed selections), so the cast here is safe at runtime.
   const imageSubset = selectedImages.filter(
     (c): c is ContentImageModel => c.contentType === 'IMAGE'
@@ -155,7 +155,7 @@ export function useMetadataState({
 
   useEffect(() => {
     setUpdateState(buildInitialState());
-    // Safe to use selectedImages directly: the parent (ManageClient) passes a stable reference
+    // Safe to use selectedImages directly: the parent (the collection edit surface) passes a stable reference
     // from useState-backed contentToEdit, so this array identity only changes on a real selection
     // change. stableLocations handles the empty-array default-param footgun (a new [] literal each
     // render would otherwise trigger an infinite loop via: setState → re-render → new [] → effect).
@@ -191,11 +191,10 @@ export function useMetadataState({
     if (isBulkEdit) {
       const common = getCommonValues(imageSubset);
       return hasObjectChanges(updateState, { id: 0, ...common });
-    } else {
-      const original = selectedImages[0]!;
-      return hasObjectChanges(updateState, original);
     }
-    // imageSubset is derived from selectedImages each render; reflect that in deps.
+    const original = selectedImages[0];
+    if (!original) return false;
+    return hasObjectChanges(updateState, original);
   }, [updateState, selectedImages, isBulkEdit]);
 
   // Saved collection membership (single-edit only — bulk edit has no per-collection picker).

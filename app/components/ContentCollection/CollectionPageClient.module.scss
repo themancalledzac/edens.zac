@@ -3,3 +3,6 @@
   padding: 3rem;
   color: var(--color-on-surface-muted);
 }
+
+// Edit-mode styles (editCanvas, errorBanner*) live in edit/EditModeLayer.module.scss —
+// the edit layer is a separate dynamically loaded chunk.
