@@ -435,6 +435,29 @@ export function computeFilterVisibility(images: ContentImageModel[]): FilterVisi
 }
 
 /**
+ * OR "this filter is currently active" onto a {@link FilterVisibility} verdict so
+ * a control is never hidden while it is the active filter — e.g. a `?isFilm=` /
+ * `?rating=` deep-link onto a page where the dimension is otherwise trivial.
+ * Without this the only way to clear such a filter would be the bulk reset.
+ */
+export function applyActiveOverride(
+  visibility: FilterVisibility,
+  filterState: FilterState
+): FilterVisibility {
+  return {
+    dateSort: visibility.dateSort || filterState.dateSortDirection !== 'off',
+    highlyRated: visibility.highlyRated || filterState.highlyRatedOnly,
+    film: visibility.film || filterState.filmFilter !== 'off',
+    tags: visibility.tags || filterState.selectedTags.length > 0,
+    people: visibility.people || filterState.selectedPeople.length > 0,
+    cameras: visibility.cameras || filterState.selectedCameras.length > 0,
+    lenses: visibility.lenses || filterState.selectedLenses.length > 0,
+    locations: visibility.locations || filterState.selectedLocations.length > 0,
+    lensTypes: visibility.lensTypes || filterState.selectedLensTypes.length > 0,
+  };
+}
+
+/**
  * Per-option image counts for filter chips, computed contextually.
  * Each count represents: "how many images match if I select only this option
  * in this dimension, while keeping all other active filters?"

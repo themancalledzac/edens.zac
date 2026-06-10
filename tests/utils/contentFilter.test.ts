@@ -6,6 +6,7 @@ import {
 } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
 import {
+  applyActiveOverride,
   applyCollectionFilters,
   buildCollectionCriteria,
   buildLocationCriteria,
@@ -1479,5 +1480,27 @@ describe('canFilter', () => {
       makeImage({ id: 2, camera: null }),
     ];
     expect(canFilter(images, img => (img.camera?.name ? [img.camera.name] : []))).toBe(true);
+  });
+});
+
+describe('applyActiveOverride', () => {
+  const hiddenAll = {
+    dateSort: false, highlyRated: false, film: false, tags: false,
+    people: false, cameras: false, lenses: false, locations: false, lensTypes: false,
+  };
+
+  it('keeps a control visible when its filter is active even if the gate hid it', () => {
+    const result = applyActiveOverride(hiddenAll, makeFilterState({ filmFilter: 'film' }));
+    expect(result.film).toBe(true);
+    expect(result.highlyRated).toBe(false);
+  });
+
+  it('forces an array dimension visible when it has an active selection', () => {
+    const result = applyActiveOverride(hiddenAll, makeFilterState({ selectedTags: ['sunset'] }));
+    expect(result.tags).toBe(true);
+  });
+
+  it('leaves an all-false verdict untouched when no filter is active', () => {
+    expect(applyActiveOverride(hiddenAll, makeFilterState())).toEqual(hiddenAll);
   });
 });
