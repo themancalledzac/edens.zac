@@ -1161,7 +1161,36 @@ export function useCollectionEdit({
   }, [collection, router]);
 
   const enterSelect = useCallback(() => setIsMultiSelectMode(true), []);
-  const enterReorder = useCallback(() => handleEnterReorderMode(), [handleEnterReorderMode]);
+
+  const enterReorder = useCallback(() => {
+    if (collection.displayMode !== 'CHRONOLOGICAL') {
+      handleEnterReorderMode();
+      return;
+    }
+    void (async () => {
+      if (!currentState) return;
+      try {
+        setOperationLoading(true);
+        setError(null);
+        const payload = buildUpdatePayload({ ...updateData, displayMode: 'ORDERED' }, collection);
+        const response = await updateCollection(collection.id, payload);
+        if (response !== null) {
+          setCurrentState(response);
+          setUpdateData(seedUpdateData(response.collection));
+          seededCollectionIdRef.current = response.collection.id;
+          seededFromAdminRef.current = true;
+          collectionStorage.update(response.collection.slug, response.collection);
+          collectionStorage.updateFull(response.collection.slug, response);
+          void revalidateCollectionCache(response.collection.slug);
+          handleEnterReorderMode();
+        }
+      } catch (error_) {
+        setError(handleApiError(error_, 'Failed to switch to ordered mode.'));
+      } finally {
+        setOperationLoading(false);
+      }
+    })();
+  }, [collection, currentState, updateData, seedUpdateData, handleEnterReorderMode]);
   const enterAdd = useCallback(() => setIsAddMode(true), []);
   const enterEdit = useCallback(() => setIsEditSheetOpen(true), []);
   const exitToBrowse = resetToBrowse;
@@ -1278,8 +1307,8 @@ export function useCollectionEdit({
       {
         key: 'reorder',
         label: 'Reorder',
-        disabled: isLoading || collection.displayMode === 'CHRONOLOGICAL',
-        onClick: handleEnterReorderMode,
+        disabled: isLoading,
+        onClick: enterReorder,
       },
     ];
     if (!isParentCollection) {
@@ -1308,7 +1337,6 @@ export function useCollectionEdit({
     handleSaveReorder,
     handleCancelReorder,
     collection.content,
-    collection.displayMode,
     selectedIds,
     handleBulkEdit,
     handleCoverImageClick,
@@ -1319,7 +1347,7 @@ export function useCollectionEdit({
     saving,
     isUpdateDirty,
     handleUpdate,
-    handleEnterReorderMode,
+    enterReorder,
     isParentCollection,
     onExitManage,
   ]);
