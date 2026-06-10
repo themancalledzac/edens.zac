@@ -490,11 +490,16 @@ export function useCollectionEdit({
     setIsAddMode(false);
     setIsEditSheetOpen(false);
     if (isSelectingCoverImage) setIsSelectingCoverImage(false);
+    // Cancel any active reorder session so Escape and the enabled=false path both land in a
+    // clean browse state.  handleCancelReorder has an empty dep array (stable identity) so
+    // adding it here does not cause the identity churn that latestCollectionRef was introduced
+    // to prevent.
+    handleCancelReorder();
     // Discard moment of the reseed policy (see the reseed effect below): leaving an edit
     // surface (Cancel, Escape, or the hook becoming disabled) drops uncommitted buffer edits,
     // so abandoned sheet changes can't silently ride along on a later inline save.
     setUpdateData(seedUpdateData(latestCollectionRef.current));
-  }, [isSelectingCoverImage, setIsSelectingCoverImage, seedUpdateData]);
+  }, [isSelectingCoverImage, setIsSelectingCoverImage, handleCancelReorder, seedUpdateData]);
 
   useEffect(() => {
     if (!enabled) resetToBrowse();

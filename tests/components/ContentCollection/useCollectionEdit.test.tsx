@@ -172,6 +172,41 @@ describe('useCollectionEdit', () => {
       act(() => result.current.exitToBrowse());
       expect(result.current.manageMode).toBe('browse');
     });
+
+    it('exitToBrowse() cancels an active reorder session (Escape no-op fix)', () => {
+      const { result } = renderEdit({ enabled: false });
+      act(() => result.current.enterReorder());
+      expect(result.current.manageMode).toBe('reorder');
+      expect(result.current.reorder.active).toBe(true);
+
+      act(() => result.current.exitToBrowse());
+
+      expect(result.current.manageMode).toBe('browse');
+      expect(result.current.reorder.active).toBe(false);
+    });
+
+    it('disabled→enabled transition does not resurrect a stale reorder session', () => {
+      const collection = makeCollection();
+      const { result, rerender } = renderHook(
+        ({ enabled }: { enabled: boolean }) =>
+          useCollectionEdit({ collection, slug: collection.slug, enabled }),
+        { initialProps: { enabled: true } }
+      );
+
+      // Enter reorder while enabled
+      act(() => result.current.enterReorder());
+      expect(result.current.manageMode).toBe('reorder');
+
+      // Disable the hook (simulates leaving ?manage=1)
+      rerender({ enabled: false });
+
+      // Re-enable (simulates returning to ?manage=1)
+      rerender({ enabled: true });
+
+      // Session must NOT have been resurrected
+      expect(result.current.manageMode).toBe('browse');
+      expect(result.current.reorder.active).toBe(false);
+    });
   });
 
   describe('isUpdateDirty', () => {
