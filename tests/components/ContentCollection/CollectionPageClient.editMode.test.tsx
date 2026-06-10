@@ -12,9 +12,10 @@ import {
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 let mockSearchParams = new URLSearchParams();
+const mockPush = jest.fn();
 
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: jest.fn(), refresh: jest.fn() }),
   usePathname: () => '/smith-wedding',
   useSearchParams: () => mockSearchParams,
 }));
@@ -109,6 +110,7 @@ const pendingForever = () => new Promise<CollectionUpdateResponseDTO | null>(() 
 
 beforeEach(() => {
   gridProbe.mockClear();
+  mockPush.mockClear();
   mockSearchParams = new URLSearchParams();
   mockGetCollectionUpdateMetadata.mockResolvedValue(null);
   mockGetMetadata.mockResolvedValue(null);
@@ -203,6 +205,41 @@ describe('CollectionPageClient — editMode true', () => {
     });
 
     expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
+  });
+
+  describe('Escape key — manage-mode exit guard', () => {
+    it('does NOT exit manage mode when Escape is dispatched with defaultPrevented=true', async () => {
+      // Arrange: render with a resolved DTO so the hook is active and manageMode is 'browse'.
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse());
+      render(<CollectionPageClient collection={makeCollection()} editMode />);
+      await act(async () => {});
+
+      // Act: dispatch a keydown whose default was already prevented (simulating an inline editor).
+      act(() => {
+        const e = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+        e.preventDefault();
+        window.dispatchEvent(e);
+      });
+
+      // Assert: router.push was NOT called — manage mode was not exited.
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('DOES exit manage mode when Escape is dispatched without defaultPrevented', async () => {
+      // Arrange: render with a resolved DTO so the hook is active and manageMode is 'browse'.
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse());
+      render(<CollectionPageClient collection={makeCollection()} editMode />);
+      await act(async () => {});
+
+      // Act: dispatch a plain Escape (no inline editor involved).
+      act(() => {
+        const e = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+        window.dispatchEvent(e);
+      });
+
+      // Assert: router.push WAS called — manage mode was exited.
+      expect(mockPush).toHaveBeenCalledWith('/smith-wedding');
+    });
   });
 
   describe('readiness gating — edit interactions wait for the admin DTO', () => {

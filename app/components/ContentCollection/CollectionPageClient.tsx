@@ -94,6 +94,12 @@ export default function CollectionPageClient({
     if (!editMode) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
+      // Inline editors call event.preventDefault() on their own Escape handler. Bail here so a
+      // single Escape never both reverts an inline edit AND exits manage mode. The activeElement
+      // guard below is a belt-and-braces backup, but it is unreliable in React 19: the component
+      // can unmount (and focus collapse to <body>) via a microtask flush that runs before this
+      // window-level bubble listener fires.
+      if (event.defaultPrevented) return;
       if (edit.editingContent || edit.isTextBlockModalOpen) return;
       if (
         document.activeElement instanceof HTMLElement &&
