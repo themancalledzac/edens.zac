@@ -80,7 +80,11 @@ export function Modal({ open, onClose, variant = 'overlay', labelledBy, children
     const active = document.activeElement;
 
     if (event.shiftKey) {
-      if (active === first || !dialogRef.current?.contains(active)) {
+      if (
+        active === first ||
+        active === dialogRef.current ||
+        !dialogRef.current?.contains(active)
+      ) {
         event.preventDefault();
         last.focus();
       }

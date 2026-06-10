@@ -85,6 +85,20 @@ describe('Modal', () => {
     expect(last).toHaveFocus();
   });
 
+  it('traps Shift+Tab when focus is on the dialog container itself (post-open default state)', () => {
+    render(<Harness open onClose={jest.fn()} />);
+    const dialog = screen.getByRole('dialog');
+    const last = screen.getByTestId('last');
+
+    // Assert post-open state: focus is on the dialog container, not on a child.
+    expect(dialog).toHaveFocus();
+    expect(screen.getByTestId('first')).not.toHaveFocus();
+
+    // Shift+Tab from the dialog container must wrap to the last focusable child.
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+    expect(last).toHaveFocus();
+  });
+
   it('returns focus to the previously-focused element on close', () => {
     const { rerender } = render(<Harness open={false} onClose={jest.fn()} />);
     const trigger = screen.getByTestId('trigger');
