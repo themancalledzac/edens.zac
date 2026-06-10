@@ -14,6 +14,7 @@ import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWit
 import MetadataModal from '@/app/components/Metadata/MetadataModal';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { EditBar } from '@/app/components/ui/EditBar/EditBar';
+import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
@@ -78,6 +79,12 @@ export default function EditModeLayer({
   onLiveContentChange,
 }: EditModeLayerProps) {
   const router = useRouter();
+
+  // Desktop shows Info + Structure side-by-side (no tab chooser); mobile keeps the either/or
+  // tab row. The role attributes differ per mode, so this is a JS breakpoint, not pure CSS.
+  // EditModeLayer is dynamically imported ssr:false, so useViewport never hydrates server markup.
+  const { isMobile } = useViewport();
+  const twoColumn = !isMobile;
 
   // Signal the parent before paint (layout effect, not effect) so the public-grid fallback is
   // swapped out in the same frame this layer's grid commits — no double-grid flash.
@@ -274,14 +281,15 @@ export default function EditModeLayer({
         </div>
       )}
 
-      {edit.manageMode === 'edit' && <CollectionEditSheet edit={edit} />}
+      {edit.manageMode === 'edit' && <CollectionEditSheet edit={edit} twoColumn={twoColumn} />}
 
       {!edit.editingContent && !edit.isTextBlockModalOpen && (
         <EditBar
           ariaLabel="Manage"
           fixed
           cells={edit.bottomBarCells}
-          tabs={edit.bottomBarTabs}
+          // On desktop both panels are shown side-by-side, so the Info/Structure chooser is dropped.
+          tabs={twoColumn ? undefined : edit.bottomBarTabs}
           activeTab={edit.editTab}
           onTabChange={id => edit.setEditTab(id as typeof edit.editTab)}
         />
