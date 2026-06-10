@@ -96,4 +96,64 @@ describe('MetadataModal — tab structure and bulk-edit field visibility', () =>
     render(<MetadataModal {...baseProps} />);
     expect(screen.getByRole('button', { name: /close metadata editor/i })).toBeInTheDocument();
   });
+
+  describe('ARIA tab/panel associations', () => {
+    it('each role=tab has an id and aria-controls pointing to its panel', () => {
+      render(<MetadataModal {...baseProps} />);
+      const tabs = screen.getAllByRole('tab');
+      for (const tab of tabs) {
+        const tabId = tab.getAttribute('id');
+        expect(tabId).toBeTruthy();
+
+        const controlsId = tab.getAttribute('aria-controls');
+        expect(controlsId).toBeTruthy();
+
+        // The panel element must exist in the document
+         
+        const panel = document.getElementById(controlsId!);
+        expect(panel).not.toBeNull();
+        expect(panel?.getAttribute('role')).toBe('tabpanel');
+      }
+    });
+
+    it('each role=tabpanel aria-labelledby resolves to an existing tab button', () => {
+      render(<MetadataModal {...baseProps} />);
+      const panels = screen.getAllByRole('tabpanel', { hidden: true });
+      expect(panels.length).toBeGreaterThan(0);
+      for (const panel of panels) {
+        const labelledById = panel.getAttribute('aria-labelledby');
+        expect(labelledById).toBeTruthy();
+
+        // The element referenced by aria-labelledby must exist and be a tab button
+         
+        const labelEl = document.getElementById(labelledById!);
+        expect(labelEl).not.toBeNull();
+        expect(labelEl?.getAttribute('role')).toBe('tab');
+      }
+    });
+
+    it('Info tab button id is tab-info and controls tabpanel-info', () => {
+      render(<MetadataModal {...baseProps} />);
+      const infoTab = screen.getByRole('tab', { name: 'Info' });
+      expect(infoTab).toHaveAttribute('id', 'tab-info');
+      expect(infoTab).toHaveAttribute('aria-controls', 'tabpanel-info');
+      expect(document.getElementById('tabpanel-info')).not.toBeNull();
+    });
+
+    it('Camera tab button id is tab-camera and controls tabpanel-camera', () => {
+      render(<MetadataModal {...baseProps} />);
+      const cameraTab = screen.getByRole('tab', { name: 'Camera' });
+      expect(cameraTab).toHaveAttribute('id', 'tab-camera');
+      expect(cameraTab).toHaveAttribute('aria-controls', 'tabpanel-camera');
+      expect(document.getElementById('tabpanel-camera')).not.toBeNull();
+    });
+
+    it('Collections tab button id is tab-collections and controls tabpanel-collections', () => {
+      render(<MetadataModal {...baseProps} />);
+      const collectionsTab = screen.getByRole('tab', { name: 'Collections' });
+      expect(collectionsTab).toHaveAttribute('id', 'tab-collections');
+      expect(collectionsTab).toHaveAttribute('aria-controls', 'tabpanel-collections');
+      expect(document.getElementById('tabpanel-collections')).not.toBeNull();
+    });
+  });
 });

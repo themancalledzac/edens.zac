@@ -41,9 +41,11 @@ export function EditBar({
           {tabs.map(tab => (
             <button
               key={tab.id}
+              id={`tab-${tab.id}`}
               type="button"
               role="tab"
               aria-selected={activeTab === tab.id}
+              aria-controls={`tabpanel-${tab.id}`}
               className={[styles.barCell, activeTab === tab.id ? styles.barCellActive : '']
                 .filter(Boolean)
                 .join(' ')}

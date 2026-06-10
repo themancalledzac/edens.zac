@@ -41,6 +41,27 @@ describe('EditBar', () => {
     expect(onTabChange).toHaveBeenCalledWith('tags');
   });
 
+  it('tab buttons render id and aria-controls derived from tab key', () => {
+    render(
+      <EditBar
+        tabs={[
+          { id: 'info', label: 'Info' },
+          { id: 'camera', label: 'Camera' },
+        ]}
+        activeTab="info"
+        onTabChange={jest.fn()}
+        cells={[{ key: 'save', label: 'Save' }]}
+      />
+    );
+    const infoTab = screen.getByRole('tab', { name: 'Info' });
+    expect(infoTab).toHaveAttribute('id', 'tab-info');
+    expect(infoTab).toHaveAttribute('aria-controls', 'tabpanel-info');
+
+    const cameraTab = screen.getByRole('tab', { name: 'Camera' });
+    expect(cameraTab).toHaveAttribute('id', 'tab-camera');
+    expect(cameraTab).toHaveAttribute('aria-controls', 'tabpanel-camera');
+  });
+
   it('renders an upload cell as a label with a file input', () => {
     const onFiles = jest.fn();
     render(
