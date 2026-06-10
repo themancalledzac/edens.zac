@@ -1,4 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { getCollectionUpdateMetadata, getMetadata } from '@/app/lib/api/collections';
@@ -116,6 +117,24 @@ describe('CollectionPageClient — editMode true', () => {
     const lastCall = gridProbe.mock.calls.at(-1)?.[0];
     expect(lastCall.enableFullScreenView).toBe(false);
     expect(typeof lastCall.onImageClick).toBe('function');
+  });
+
+  it('renders a role="alert" banner when the hook surfaces an error', async () => {
+    mockGetCollectionUpdateMetadata.mockRejectedValue(new Error('Failed to update collection'));
+    render(<CollectionPageClient collection={makeCollection()} editMode />);
+    await flush();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to update collection');
+  });
+
+  it('dismisses the error banner when the × button is clicked', async () => {
+    const user = userEvent.setup();
+    mockGetCollectionUpdateMetadata.mockRejectedValue(new Error('Failed to update collection'));
+    render(<CollectionPageClient collection={makeCollection()} editMode />);
+    await flush();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Dismiss error' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('clears the active filter when entering reorder so the grid shows the full set (I4)', async () => {

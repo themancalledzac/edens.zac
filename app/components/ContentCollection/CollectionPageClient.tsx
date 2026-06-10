@@ -386,6 +386,20 @@ export default function CollectionPageClient({
 
   const editOverlays = editMode ? (
     <>
+      {edit.error && (
+        <div className={styles.errorBanner} role="alert">
+          <span className={styles.errorBannerText}>{edit.error}</span>
+          <button
+            type="button"
+            className={styles.errorBannerDismiss}
+            aria-label="Dismiss error"
+            onClick={edit.clearError}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {edit.manageMode === 'edit' && <CollectionEditSheet edit={edit} />}
 
       {!edit.editingContent && !edit.isTextBlockModalOpen && (

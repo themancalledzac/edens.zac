@@ -195,6 +195,7 @@ export interface UseCollectionEditResult {
   bottomBarTabs?: EditBarTab[];
   bottomBarCells: EditBarCell[];
   error: string | null;
+  clearError: () => void;
 }
 
 /**
@@ -1349,5 +1350,6 @@ export function useCollectionEdit({
     bottomBarTabs,
     bottomBarCells,
     error,
+    clearError: useCallback(() => setError(null), []),
   };
 }

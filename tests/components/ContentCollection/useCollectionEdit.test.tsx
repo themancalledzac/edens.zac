@@ -569,6 +569,17 @@ describe('useCollectionEdit', () => {
     });
   });
 
+  describe('clearError', () => {
+    it('clears the error state when called after a failed fetch', async () => {
+      mockGetCollectionUpdateMetadata.mockRejectedValue(new Error('Network error'));
+      const { result } = renderEdit({ enabled: true });
+      await flushEffects();
+      expect(result.current.error).toBe('Network error');
+      act(() => result.current.clearError());
+      expect(result.current.error).toBeNull();
+    });
+  });
+
   describe('collection.id change (I2 + I3)', () => {
     it('re-seeds updateData, resets to browse, and clears selectedIds on a new collection id', async () => {
       const collectionA = makeCollection({ id: 42, slug: 'collection-a', title: 'Alpha' });
