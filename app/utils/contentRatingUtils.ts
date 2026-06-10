@@ -94,21 +94,10 @@ export function getEffectiveRating(item: AnyContentModel): number {
 }
 
 /**
- * Calculate component value (cv) for an image using the fixed-weight formula.
- *
- * cv = BASE_WEIGHT[effectiveRating] × arFactor
- *
- * The arFactor has two regimes:
- * - Below the panorama threshold (AR < PANORAMA_AR): the legacy curve
- *   `sqrt(min(AR, REFERENCE_AR) / REFERENCE_AR)`. Verticals (AR < 1.5) are
- *   reduced; normal-to-wide horizontals (1.5 ≤ AR < 2) sit at the 1.0 cap.
- * - At/above the panorama threshold (AR ≥ PANORAMA_AR): a linear ramp
- *   `PANORAMA_AR_FACTOR + PANORAMA_AR_SLOPE × (AR − PANORAMA_AR)`, so a panorama
- *   is worth much more than a normal horizontal of the same rating. For a 5★:
- *   2:1 → 7.0, 3:1 → 10.0, 4:1 → 13.0.
- *
- * cv is a FIXED WEIGHT — it does NOT scale with rowWidth.
- * The caller divides cv / rowWidth to get the fill fraction.
+ * Calculate component value (cv) for an image: cv = BASE_WEIGHT[effectiveRating] × arFactor.
+ * Below {@link PANORAMA_AR} uses a sqrt curve; at/above it switches to a linear ramp so panoramas
+ * get substantially more weight than same-rated normal horizontals. cv is a FIXED WEIGHT —
+ * the caller divides cv / rowWidth to get the fill fraction.
  *
  * @param effectiveRating - The effective rating (0-5) from getEffectiveRating()
  * @param imageAR - The actual aspect ratio of the image (width/height)

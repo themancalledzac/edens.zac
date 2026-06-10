@@ -18,15 +18,9 @@ interface CollectionEditSheetProps {
 /**
  * Slide-up sheet that renders the collection's edit fields.
  *
- * Mobile (`twoColumn=false`): renders only the active tab's field area. The tab row
- * and Save button live in the consumer's EditBar. ARIA contract: because only one panel
- * is in the DOM at a time (conditional rendering, not hidden), the container takes
- * `role="tabpanel"` and its `id` changes with the active tab. EditBar emits `aria-controls`
- * only for the selected tab, so the reference always resolves to this mounted element.
- *
- * Desktop (`twoColumn=true`): both Info and Structure are shown at once as two labeled
- * regions (no tab semantics — there is no chooser to control them), so the user sees
- * every option without switching tabs.
+ * Mobile: one tab panel at a time; `role="tabpanel"` id tracks the active tab so
+ * EditBar's `aria-controls` always resolves to the mounted element.
+ * Desktop (`twoColumn`): both sections rendered side-by-side, no tab semantics.
  */
 export function CollectionEditSheet({ edit, twoColumn = false }: CollectionEditSheetProps) {
   const { editTab } = edit;

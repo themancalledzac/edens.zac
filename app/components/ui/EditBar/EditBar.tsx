@@ -16,18 +16,13 @@ function cellClassName(variant: EditBarCell['variant'], disabled?: boolean): str
 }
 
 /**
- * EditBar — the single shared bottom bar used across collection-edit, image-edit,
- * and the transient manage modes. Two shapes: an optional tab row above an action
- * row of uniform-height cells. Emphasis is by color/weight, never size.
+ * Shared bottom bar for collection-edit, image-edit, and manage modes. Two shapes:
+ * an optional tab row above a uniform-height action row. Emphasis is by color/weight.
  *
- * Pass `fixed={false}` when embedding as a flex footer inside a modal sheet — the bar
- * then participates in normal block flow instead of escaping to the viewport bottom.
+ * Pass `fixed={false}` to embed as a flex footer inside a modal sheet.
  *
- * ARIA contract for tabs: `aria-controls` is emitted only for the SELECTED tab.
- * The inactive tab's panel may not be in the DOM (CollectionEditSheet uses conditional
- * rendering), so emitting `aria-controls` unconditionally would create dangling
- * references that axe flags as aria-valid-attr-value violations.  The selected tab's
- * panel is always present — both consumers guarantee this.
+ * ARIA: `aria-controls` is emitted only for the SELECTED tab — inactive tab panels
+ * may not be in the DOM, and unconditional `aria-controls` produces dangling references.
  */
 export function EditBar({
   tabs,

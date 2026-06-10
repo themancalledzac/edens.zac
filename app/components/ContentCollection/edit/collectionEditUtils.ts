@@ -24,26 +24,14 @@ import { logger } from '@/app/utils/logger';
 
 export const COVER_IMAGE_FLASH_DURATION = 500; // milliseconds
 
-/**
- * Re-export the shared, pure collection-toggle engine so existing collection-side callers
- * (the edit sheet / useCollectionEdit pickers) and tests keep importing it from here
- * unchanged. The implementation now lives in `@/app/utils/collectionToggle` so the image
- * side can adapt the same engine.
- */
+/** Re-export of {@link toggleRelation} so existing callers import from here unchanged. */
 export { toggleRelation };
 
 /**
- * Build an update payload containing only changed fields.
- * Compares form data with original collection and only includes differences.
- *
- * @remarks
- * - `undefined` and `null` and `''` are treated as equivalent (normalized to `undefined`).
- * - `collectionDate`: `null` means "explicitly clear"; `''` means unchanged from a null original.
- *   When the date is cleared and was previously set, `clearCollectionDate: true` is sent instead.
- * - `coverImageId`, `collections`, `siblings`, `parents`, `locations`, and `tags` use presence-check
- *   (`!== undefined`) rather than value-diff because each has its own update semantics.
- * - New text blocks are added via a separate POST endpoint, not through this payload.
- * - Content reordering is handled via the Image Update endpoint (orderIndex field).
+ * Build an update payload containing only changed scalar fields. Relational fields
+ * (`collections`, `siblings`, `parents`, `locations`, `tags`, `coverImageId`) are included
+ * as-is when present. `clearCollectionDate: true` is substituted when a previously-set date
+ * is removed. `null`/`undefined`/`''` are treated as equivalent for scalar comparison.
  */
 export function buildUpdatePayload(
   formData: CollectionUpdateRequest,
@@ -116,10 +104,7 @@ export function buildUpdatePayload(
   return payload;
 }
 
-/**
- * Find an image block by ID from the collection's blocks
- * Returns the block if found and it's an image, otherwise undefined
- */
+/** Returns the image block with the given ID, or undefined if absent or wrong type. */
 export function findImageBlockById(
   blocks: AnyContentModel[] | undefined,
   imageId: number | undefined
@@ -130,10 +115,7 @@ export function findImageBlockById(
   return block && isContentImage(block) ? block : undefined;
 }
 
-/**
- * Validate that a cover image selection is valid
- * Returns true if the image exists and is an image block
- */
+/** Returns true if `imageId` resolves to an image block in `blocks`. */
 export function validateCoverImageSelection(
   imageId: number | undefined,
   blocks: AnyContentModel[] | undefined
@@ -143,19 +125,11 @@ export function validateCoverImageSelection(
   return imageBlock !== undefined;
 }
 
-/**
- * Handle cover image selection
- * Validates the selection and returns the result
- *
- * @param imageId - ID of the image to set as cover
- * @param content - Array of content blocks from the collection
- * @returns Object with success status and coverImageId if valid, or error message if invalid
- */
+/** Validates that `imageId` is a real image block; returns a success/error discriminant. */
 export function handleCoverImageSelection(
   imageId: number,
   content: AnyContentModel[] | undefined
 ): { success: true; coverImageId: number } | { success: false; error: string } {
-  // Validate that the selected image exists and is an image block
   if (!validateCoverImageSelection(imageId, content)) {
     return {
       success: false,
@@ -169,14 +143,7 @@ export function handleCoverImageSelection(
   };
 }
 
-/**
- * Handle collection navigation
- * Finds the collection block and returns the navigation path
- *
- * @param imageId - ID of the clicked image (which may be a collection block)
- * @param content - Array of content blocks from the collection
- * @returns Collection slug if found, null otherwise
- */
+/** Returns the slug of the collection block with the given ID, or null if not found. */
 export function handleCollectionNavigation(
   imageId: number,
   content: AnyContentModel[] | undefined
@@ -190,29 +157,14 @@ export function handleCollectionNavigation(
 }
 
 /**
- * Handle multi-select toggle.
- *
- * Thin re-export of the shared {@link toggleImageSelection} util — the toggling logic now lives in
- * `app/utils/imageSelection.ts` so the public client-gallery "Select" flow can reuse it. The name
- * is preserved here for existing admin/manage callers and tests.
- *
- * @param imageId - ID of the image to toggle
- * @param currentSelectedIds - Current array of selected image IDs
- * @returns New array of selected image IDs
+ * Toggle an image in the multi-select list. Delegates to {@link toggleImageSelection}.
+ * Name preserved here for existing callers and tests.
  */
 export function handleMultiSelectToggle(imageId: number, currentSelectedIds: number[]): number[] {
   return toggleImageSelection(imageId, currentSelectedIds);
 }
 
-/**
- * Handle single image edit
- * Finds the image block and returns it for editing
- *
- * @param imageId - ID of the image to edit
- * @param content - Array of content blocks from the collection
- * @param processedContent - Processed content array (may contain converted collection blocks)
- * @returns Image block if found, null otherwise
- */
+/** Returns the image or GIF block with the given ID from content or processedContent, else null. */
 export function handleSingleImageEdit(
   imageId: number,
   content: AnyContentModel[] | undefined,
@@ -228,13 +180,7 @@ export function handleSingleImageEdit(
   return null;
 }
 
-/**
- * Revalidate Next.js cache for a collection
- * Calls the revalidate API endpoint to invalidate Next.js cache
- *
- * @param slug - Collection slug to revalidate
- * @returns Promise that resolves when revalidation is complete (or fails silently)
- */
+/** POSTs to /api/revalidate for the collection's tag, path, and the global indexes. Fails silently in production. */
 export async function revalidateCollectionCache(slug: string): Promise<void> {
   const revalidate = (body: Record<string, string>) =>
     fetch('/api/revalidate', {
@@ -256,10 +202,7 @@ export async function revalidateCollectionCache(slug: string): Promise<void> {
   }
 }
 
-/**
- * Revalidate Next.js cache for metadata (tags, people, cameras, locations, lenses, film)
- * Called after operations that create, update, or delete metadata entities.
- */
+/** Invalidates all metadata cache tags (tags, people, cameras, locations, lenses, film). */
 export async function revalidateMetadataCache(): Promise<void> {
   try {
     await fetch('/api/revalidate', {
@@ -285,12 +228,8 @@ export async function revalidateMetadataCache(): Promise<void> {
 }
 
 /**
- * Merge new metadata entities into current state
- * Combines new metadata from API response with existing metadata in state
- *
- * @param response - ContentImageUpdateResponse containing newMetadata
- * @param _currentState - Current CollectionUpdateResponseDTO state (unused, kept for API compatibility)
- * @returns State updater function for React setState, or null if no new metadata
+ * Returns a setState updater that appends `response.newMetadata` into the DTO's lookup arrays,
+ * or null if there is nothing new to merge.
  */
 export function mergeNewMetadata(
   response: ContentImageUpdateResponse,
@@ -314,21 +253,8 @@ export function mergeNewMetadata(
 }
 
 /**
- * Refresh collection data after an operation
- * Common pattern used by handleImageUpload, handleTextBlockSubmit, etc.
- *
- * Pattern:
- * 1. Execute the operation (async function)
- * 2. Re-fetch collection using admin endpoint
- * 3. Update state with refreshed collection (preserving metadata)
- * 4. Update cache with full admin data
- *
- * @param slug - Collection slug
- * @param operation - Async function to execute before refresh
- * @param getCollectionUpdateMetadata - Function to fetch collection data (injected for testability)
- * @param collectionStorage - Collection storage instance (injected for testability)
- * @returns Promise that resolves with the refreshed CollectionUpdateResponseDTO
- * @throws Error if operation or refresh fails
+ * Execute `operation`, then re-fetch the admin DTO for `slug` and update the cache.
+ * Dependencies are injected for testability. Throws if either step fails.
  */
 export async function refreshCollectionAfterOperation(
   slug: string,
@@ -362,14 +288,7 @@ export async function refreshCollectionAfterOperation(
  */
 export type ReorderChange = { contentId: number; newOrderIndex: number };
 
-/**
- * Apply reorder changes directly to a collection model (for optimistic updates)
- * Simply updates each block's orderIndex according to the provided changes
- *
- * @param collection - Collection model to update
- * @param reorders - Array of ReorderChange with new orderIndex values
- * @returns Updated collection model with new orderIndex values
- */
+/** Returns a new collection model with each listed block's `orderIndex` updated optimistically. */
 export function applyReorderChangesOptimistically(
   collection: CollectionModel,
   reorders: ReorderChange[]
@@ -382,7 +301,6 @@ export function applyReorderChangesOptimistically(
     const newOrderIndex = reorderMap.get(block.id);
     if (newOrderIndex === undefined) return block;
 
-    // All content types have orderIndex in collections array (collection-specific)
     return updateBlockOrderIndex(block, newOrderIndex);
   });
 
@@ -392,12 +310,7 @@ export function applyReorderChangesOptimistically(
   };
 }
 
-/**
- * Execute reorder operation - calls the API and returns the updated collection
- * @param collectionId - ID of the collection
- * @param reorders - Array of {contentId, newOrderIndex} changes
- * @param slug - Collection slug for cache revalidation
- */
+/** Calls the reorder API, revalidates the cache, and returns the updated collection. */
 export async function executeReorderOperation(
   collectionId: number,
   reorders: ReorderChange[],
@@ -420,13 +333,7 @@ export async function executeReorderOperation(
   return response;
 }
 
-/**
- * Update orderIndex for a content block
- * Updates the direct orderIndex property - works for all content types
- * @param block - Content block (any type) to update
- * @param newOrderIndex - New orderIndex value
- * @returns Updated content block
- */
+/** Returns the block with `orderIndex` replaced. */
 export function updateBlockOrderIndex(
   block: AnyContentModel,
   newOrderIndex: number
@@ -459,9 +366,7 @@ export function replayMoves(originalOrder: number[], moves: ReorderMove[]): numb
       );
       continue;
     }
-    // Remove from current position
     order.splice(fromIndex, 1);
-    // Insert at target position
     order.splice(move.toIndex, 0, move.imageId);
   }
   return order;
@@ -483,7 +388,6 @@ export function applyArrowMove(
   if (toIndex < 0 || toIndex >= currentOrder.length) return null;
 
   const newOrder = [...currentOrder];
-  // Swap adjacent items
   newOrder[fromIndex] = currentOrder[toIndex]!;
   newOrder[toIndex] = imageId;
 
@@ -504,9 +408,8 @@ export function applyPickAndPlace(
   if (fromIndex === -1 || targetIndex === -1 || fromIndex === targetIndex) return null;
 
   const newOrder = [...currentOrder];
-  // Remove from current position
   newOrder.splice(fromIndex, 1);
-  // Insert at target position (targetIndex may have shifted after splice)
+  // targetIndex shifts after the splice; re-locate the target
   const insertIndex = newOrder.indexOf(targetId);
   newOrder.splice(insertIndex, 0, pickedId);
 

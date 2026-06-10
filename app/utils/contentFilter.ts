@@ -360,17 +360,7 @@ export function extractFilterOptions(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The single filter-visibility gate
-//
-// One predicate decides whether ANY filter control is shown. A dimension can
-// filter the page iff some value it carries matches a proper, non-empty subset
-// of the items — ∃ v : 0 < count(v) < total. Below 2 items nothing can be split
-// (or reordered), so it returns false. Each item is counted once per DISTINCT
-// value it carries, so a multi-valued dimension (e.g. tags) can't inflate one
-// item's weight. Every control type reduces to this by supplying a projection:
-// boolean toggles project to a two-label space, single-valued dims (camera /
-// lens / date) to one value, multi-valued dims (tags / people / locations) to a
-// value list. See computeFilterVisibility and extractCollectionFilterOptions.
+// The single filter-visibility gate — {@link canFilter}
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -753,10 +743,8 @@ export function extractCollectionFilterOptions(
       ? typeOrder.filter(t => lensTypeSet.has(t))
       : [];
 
-  // For cameras/lenses/locations: require 2+ distinct values to become a dropdown.
-  // A single distinct value stays an info chip regardless of coverage.  The canFilter
-  // half additionally suppresses the case where 2+ values each blanket every item
-  // (no value splits) — a bare length>=2 check alone would wrongly mark that filterable.
+  // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
+  // would wrongly mark a dimension filterable when all values blanket every item).
   return {
     tags: {
       values: baseOptions.tags,

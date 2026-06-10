@@ -187,33 +187,20 @@ export const AR_FLOOR_MULTIPLIER = 0.7;
 export const MAX_ROW_IMAGES = 12;
 
 /**
- * Full-width hero promotion thresholds.
- *
- * A wide, top-rated horizontal panorama is the one composition the in-row
- * algorithm structurally cannot serve. A 2:1+ image forced into a near-square
- * shared row is always crushed into a vStack sliver (vStack area ∝ 1/AR), and
- * giving it a proportional area would push the row AR far past the floor/target
- * — so it can never both share a row AND be sized to its prominence. The only
- * correct answer is to promote it to its own full-width row.
- *
- * Gated three ways so only genuine heroes qualify (product decision 2026-06-09:
- * "a 5★ horizontal panorama, 1:2 and up, should always be full width, up until
- * the higher density numbers"): wide enough (AR), rated highly enough (rating),
- * and not at high density — at high density (large rowWidth) even a wide
- * panorama shares the row.
+ * Full-width hero promotion thresholds. A wide, top-rated horizontal panorama
+ * can't be sized to its prominence inside a shared row, so it gets its own
+ * full-width row. Gated by AR, rating, and density (at high density even a wide
+ * panorama shares the row).
  */
 export const HERO_FULLWIDTH_MIN_AR = 2.0;
 export const HERO_FULLWIDTH_MIN_RATING = 5;
 export const HERO_FULLWIDTH_MAX_ROWWIDTH = 15;
 
 /**
- * Whether an item should claim its own full-width row. True only for a
- * horizontal image at least {@link HERO_FULLWIDTH_MIN_AR} wide and rated at
- * least {@link HERO_FULLWIDTH_MIN_RATING}, and only while the row-width budget
- * is at or below {@link HERO_FULLWIDTH_MAX_ROWWIDTH} (low/medium density).
- *
- * AR ≥ 2 already implies horizontal, so {@link getEffectiveRating} (which only
- * penalises verticals) equals the raw rating here.
+ * Whether an item should claim its own full-width row: a horizontal image at
+ * least {@link HERO_FULLWIDTH_MIN_AR} wide, rated at least
+ * {@link HERO_FULLWIDTH_MIN_RATING}, while the row-width budget is at or below
+ * {@link HERO_FULLWIDTH_MAX_ROWWIDTH} (low/medium density).
  */
 export function isFullWidthHero(item: AnyContentModel, rowWidth: number): boolean {
   if (rowWidth > HERO_FULLWIDTH_MAX_ROWWIDTH) return false;
@@ -252,20 +239,11 @@ function collectRowItems(
 }
 
 /**
- * Row-first layout algorithm. Builds rows one at a time over a lookahead
- * window: promote a full-width hero (see isFullWidthHero) to its own row,
- * standalone-skip a hero past low-rated items, greedy sequential fill, best-fit
- * fallback, then build each row's atomic tree.
- *
- * A full-width hero is promoted whether it leads the window (handled before
- * fill) or appears mid-window (skipped during fill so it surfaces as a leading
- * hero on the next iteration); the first window slot is therefore never a hero
- * by the time the fill loop runs.
- *
- * A would-overfill item that fills a row on its own (cv >= rowWidth *
- * MIN_FILL_RATIO) is skipped to get its own row next iteration. The AR-floor
- * check is disabled on mobile (rowWidth <= 2), where items render full-width or
- * stacked and single verticals naturally have low AR.
+ * Row-first layout algorithm. Builds rows over a lookahead window: promotes a
+ * full-width hero ({@link isFullWidthHero}) to its own row (whether leading or
+ * mid-window), standalone-skips a hero past low-rated items, greedy sequential
+ * fill, best-fit fallback, then builds each row's atomic tree. AR-floor check
+ * is disabled on mobile (rowWidth <= 2).
  *
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
  * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
@@ -582,16 +560,11 @@ function rowAR_Cost(rowAR: number, target: number): number {
 const AR_EQUITY_BAND = 0.3;
 
 /**
- * Relative area each leaf occupies (and its prominence) for a fully
- * direction-assigned subtree. Area splits geometrically at each node: an hPair
- * divides area in proportion to child AR (siblings share height, so width —
- * hence area — ∝ AR); a vStack divides ∝ 1/AR (siblings share width, so
- * height ∝ 1/AR). Returned leaf shares sum to 1 within the subtree.
- *
- * `value` is the prominence P of each leaf (orientation-agnostic, no vertical
- * penalty). This is the equity target: equitySpread compares area/value across
- * leaves, so the tiebreak naturally rewards high-rated verticals with more area
- * rather than penalising them for having a low packing cv.
+ * Relative area each leaf occupies (and its prominence P) for a fully
+ * direction-assigned subtree. Area splits geometrically: hPair ∝ AR, vStack ∝ 1/AR.
+ * Leaf shares sum to 1 within the subtree. `value` is prominence P (orientation-agnostic),
+ * so {@link equitySpread} rewards high-rated verticals with more area rather than
+ * penalising them via the packing cv.
  */
 function leafShares(ac: AtomicComponent): {
   ar: number;
@@ -621,14 +594,10 @@ function leafShares(ac: AtomicComponent): {
 
 /**
  * How unevenly a candidate sizes its images relative to their prominence.
- * Returns max(area/value) / min(area/value) across leaves: 1.0 means every
- * image's area is exactly proportional to its prominence (equal-rated →
- * equal-size); larger means some image is over- or under-sized for its
- * prominence. Lower is more equitable.
- *
- * Using prominence (orientation-agnostic P) rather than packing cv ensures
- * that a high-rated vertical is not penalised by the vertical-penalty built
- * into cv — the equity tiebreak rewards it with more area instead.
+ * Returns max(area/value) / min(area/value) across leaves: 1.0 = perfectly
+ * proportional; larger = some image is over- or under-sized. Lower is better.
+ * Uses prominence P (orientation-agnostic) so high-rated verticals are not
+ * penalised by the vertical-penalty baked into packing cv.
  */
 function equitySpread(ac: AtomicComponent): number {
   const { leaves } = leafShares(ac);

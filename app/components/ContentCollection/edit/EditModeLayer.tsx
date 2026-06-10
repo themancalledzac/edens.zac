@@ -59,16 +59,9 @@ export interface EditModeLayerProps {
 }
 
 /**
- * Edit Mode Layer (client-only, dynamically imported)
- *
- * Owns the ENTIRE consolidated edit experience for a collection page: the useCollectionEdit hook,
- * the edit-mode grid render, the inline-edit context, the window Escape handler, the
- * select/reorder filter reset, and every edit overlay (error banner, edit sheet, EditBar,
- * metadata + text-block modals).
- *
- * CollectionPageClient loads this component via next/dynamic with ssr: false, so none of this
- * code — nor its transitive admin-only dependencies — ships in the public visitor bundle.
- * editMode is server-gated to local dev, so the chunk is only ever requested on admin pages.
+ * Consolidated edit experience for a collection page: grid, inline-edit context, Escape handler,
+ * filter reset, and all edit overlays (EditBar, sheet, metadata + text-block modals).
+ * Loaded via `next/dynamic` with `ssr: false` — admin-only deps stay out of the public bundle.
  */
 export default function EditModeLayer({
   collection,
@@ -80,14 +73,12 @@ export default function EditModeLayer({
 }: EditModeLayerProps) {
   const router = useRouter();
 
-  // Desktop shows Info + Structure side-by-side (no tab chooser); mobile keeps the either/or
-  // tab row. The role attributes differ per mode, so this is a JS breakpoint, not pure CSS.
-  // EditModeLayer is dynamically imported ssr:false, so useViewport never hydrates server markup.
+  // JS breakpoint: desktop shows both panels side-by-side; mobile uses a tab chooser.
+  // Safe to call — this component is dynamically imported ssr:false.
   const { isMobile } = useViewport();
   const twoColumn = !isMobile;
 
-  // Signal the parent before paint (layout effect, not effect) so the public-grid fallback is
-  // swapped out in the same frame this layer's grid commits — no double-grid flash.
+  // Signal before paint so the public-grid fallback swaps out in the same frame — no double-grid flash.
   useLayoutEffect(() => {
     onMounted();
   }, [onMounted]);
@@ -103,22 +94,14 @@ export default function EditModeLayer({
     onExitManage: handleExitManage,
   });
 
-  /**
-   * Edit interactions are gated until the richer admin DTO (`currentState`) is in. Before that,
-   * inline commits and post-save refreshes hit `!currentState` early-returns in the hook and
-   * silently drop — so until ready the page shows the public read-only render plus a disabled
-   * bar instead of edit affordances that cannot act.
-   */
+  /** True once the admin DTO has loaded; until then edit affordances are disabled. */
   const editReady = !edit.isLoadingState && edit.currentState !== null;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      // Inline editors call event.preventDefault() on their own Escape handler. Bail here so a
-      // single Escape never both reverts an inline edit AND exits manage mode. The activeElement
-      // guard below is a belt-and-braces backup, but it is unreliable in React 19: the component
-      // can unmount (and focus collapse to <body>) via a microtask flush that runs before this
-      // window-level bubble listener fires.
+      // Inline editors preventDefault their own Escape; bail so one keypress never both reverts
+      // an inline edit AND exits manage mode. The activeElement guard is a backup.
       if (event.defaultPrevented) return;
       if (edit.editingContent || edit.isTextBlockModalOpen) return;
       if (
@@ -144,22 +127,17 @@ export default function EditModeLayer({
     handleExitManage,
   ]);
 
-  // Live collection: prefer the admin DTO (reflects saves) over the frozen server seed. The whole
-  // content pipeline below must read from it — e.g. after Reorder auto-converts a CHRONOLOGICAL
-  // collection to ORDERED, only the admin DTO carries the new displayMode, and sorting a saved
-  // reorder by the seed's CHRONOLOGICAL mode would visually revert it until a hard reload.
+  // Prefer the admin DTO (reflects saves) over the frozen server seed — e.g. displayMode updates
+  // after a Reorder only appear in the admin DTO.
   const liveCollection = edit.currentState?.collection ?? collection;
 
-  // Live content (falls back to the seed's content if the admin DTO omits it).
+  // Falls back to the seed's content if the admin DTO omits it.
   const allContent = useMemo(
     () => liveCollection.content ?? collection.content ?? [],
     [liveCollection.content, collection.content]
   );
 
-  // Mirror the live content up to the parent (see the onLiveContentChange contract). Keyed on
-  // the memoized allContent so it only fires when the identity actually changes; the
-  // cleanup-then-setup pair on a change batches into one parent render, and on unmount only the
-  // cleanup runs, resetting the parent to the seed.
+  // Mirror live content to parent (see onLiveContentChange contract); cleanup resets to seed.
   useEffect(() => {
     onLiveContentChange?.(allContent);
     return () => onLiveContentChange?.(null);
@@ -196,9 +174,7 @@ export default function EditModeLayer({
 
   const reorderActive = edit.reorder.active;
 
-  // Both reorder and select modes must operate on the unfiltered list:
-  //   reorder: positions are meaningless on a subset of the collection.
-  //   select: 'All' selects every image in the full collection, so the grid must show all of them.
+  // Reorder and select must operate on the full unfiltered list; clear active filters on entry.
   useEffect(() => {
     if (edit.manageMode !== 'reorder' && edit.manageMode !== 'select') return;
     if (!hasAnyActiveFilter(filterState)) return;
@@ -262,8 +238,7 @@ export default function EditModeLayer({
           <div className={styles.editCanvas}>{grid}</div>
         </InlineEditProvider>
       ) : (
-        // No provider while the admin DTO loads → the header card degrades to the public
-        // read-only render, so a tap cannot buffer an edit the hook would silently drop.
+        // No provider while the admin DTO loads — header card degrades to read-only.
         <div className={styles.editCanvas}>{grid}</div>
       )}
 

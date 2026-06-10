@@ -92,10 +92,8 @@ interface CollectionListSelectorProps {
   parentPendingRemoveIds?: Set<number>;
   onToggleParent?: (collection: CollectionListModel) => void;
   /**
-   * Single-column accordion. Groups rows by CollectionType into collapsible sections (names on the
-   * LEFT, one membership toggle on the right) WITHOUT the sibling/parent columns. Lets the image
-   * metadata editor reuse the manage page's grouped layout for its collection-membership picker.
-   * Composes with the single `onToggle` column only — ignore sibling/parent props when set.
+   * Engages accordion grouping with only the single `onToggle` column — no sibling/parent
+   * columns. Lets the image metadata editor reuse the grouped layout without multi-column mode.
    */
   grouped?: boolean;
   /**
