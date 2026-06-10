@@ -41,7 +41,7 @@ describe('EditBar', () => {
     expect(onTabChange).toHaveBeenCalledWith('tags');
   });
 
-  it('tab buttons render id and aria-controls derived from tab key', () => {
+  it('active tab button renders id and aria-controls; inactive tab renders id only', () => {
     render(
       <EditBar
         tabs={[
@@ -53,13 +53,16 @@ describe('EditBar', () => {
         cells={[{ key: 'save', label: 'Save' }]}
       />
     );
+    // Active tab: both id and aria-controls are present
     const infoTab = screen.getByRole('tab', { name: 'Info' });
     expect(infoTab).toHaveAttribute('id', 'tab-info');
     expect(infoTab).toHaveAttribute('aria-controls', 'tabpanel-info');
 
+    // Inactive tab: id is present but aria-controls is NOT emitted (avoids dangling
+    // references when the panel is conditionally rendered by the consumer).
     const cameraTab = screen.getByRole('tab', { name: 'Camera' });
     expect(cameraTab).toHaveAttribute('id', 'tab-camera');
-    expect(cameraTab).toHaveAttribute('aria-controls', 'tabpanel-camera');
+    expect(cameraTab).not.toHaveAttribute('aria-controls');
   });
 
   it('renders an upload cell as a label with a file input', () => {

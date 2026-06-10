@@ -321,3 +321,33 @@ describe('CollectionEditSheet — StructureTab', () => {
     expect(screen.queryByRole('button', { name: /cover image/i })).not.toBeInTheDocument();
   });
 });
+
+describe('CollectionEditSheet — ARIA tabpanel wiring', () => {
+  it('info tab: panel has role=tabpanel, id=tabpanel-info, aria-labelledby=tab-info', () => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);
+    const panel = screen.getByRole('tabpanel');
+    expect(panel).toBeInTheDocument();
+    expect(panel).toHaveAttribute('id', 'tabpanel-info');
+    expect(panel).toHaveAttribute('aria-labelledby', 'tab-info');
+  });
+
+  it('structure tab: panel has role=tabpanel, id=tabpanel-structure, aria-labelledby=tab-structure', () => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure' })} />);
+    const panel = screen.getByRole('tabpanel');
+    expect(panel).toBeInTheDocument();
+    expect(panel).toHaveAttribute('id', 'tabpanel-structure');
+    expect(panel).toHaveAttribute('aria-labelledby', 'tab-structure');
+  });
+
+  it('panel id matches the EditBar tab button id convention (tabpanel-${editTab})', () => {
+    // Verify the naming convention is consistent so aria-controls on the EditBar
+    // tab button resolves to the panel rendered by this sheet.
+    const { rerender } = render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);
+    expect(document.getElementById('tabpanel-info')).not.toBeNull();
+    expect(document.getElementById('tabpanel-structure')).toBeNull();
+
+    rerender(<CollectionEditSheet edit={makeEdit({ editTab: 'structure' })} />);
+    expect(document.getElementById('tabpanel-structure')).not.toBeNull();
+    expect(document.getElementById('tabpanel-info')).toBeNull();
+  });
+});

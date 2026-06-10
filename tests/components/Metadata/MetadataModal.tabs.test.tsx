@@ -98,21 +98,29 @@ describe('MetadataModal — tab structure and bulk-edit field visibility', () =>
   });
 
   describe('ARIA tab/panel associations', () => {
-    it('each role=tab has an id and aria-controls pointing to its panel', () => {
+    it('active tab has aria-controls resolving to a tabpanel; inactive tabs have no aria-controls', () => {
       render(<MetadataModal {...baseProps} />);
+      // Info is the default active tab
       const tabs = screen.getAllByRole('tab');
       for (const tab of tabs) {
         const tabId = tab.getAttribute('id');
         expect(tabId).toBeTruthy();
 
-        const controlsId = tab.getAttribute('aria-controls');
-        expect(controlsId).toBeTruthy();
+        const isSelected = tab.getAttribute('aria-selected') === 'true';
+        if (isSelected) {
+          // Active tab: aria-controls must be present and resolve to a panel in the DOM
+          const controlsId = tab.getAttribute('aria-controls');
+          expect(controlsId).toBeTruthy();
+          // The panel element must exist in the document
 
-        // The panel element must exist in the document
-         
-        const panel = document.getElementById(controlsId!);
-        expect(panel).not.toBeNull();
-        expect(panel?.getAttribute('role')).toBe('tabpanel');
+          const panel = document.getElementById(controlsId!);
+          expect(panel).not.toBeNull();
+          expect(panel?.getAttribute('role')).toBe('tabpanel');
+        } else {
+          // Inactive tab: aria-controls must NOT be emitted to avoid dangling references
+          // when the consumer conditionally renders panels.
+          expect(tab).not.toHaveAttribute('aria-controls');
+        }
       }
     });
 
@@ -125,33 +133,42 @@ describe('MetadataModal — tab structure and bulk-edit field visibility', () =>
         expect(labelledById).toBeTruthy();
 
         // The element referenced by aria-labelledby must exist and be a tab button
-         
+
         const labelEl = document.getElementById(labelledById!);
         expect(labelEl).not.toBeNull();
         expect(labelEl?.getAttribute('role')).toBe('tab');
       }
     });
 
-    it('Info tab button id is tab-info and controls tabpanel-info', () => {
+    it('Info tab (active by default): id=tab-info, aria-controls=tabpanel-info, panel exists', () => {
       render(<MetadataModal {...baseProps} />);
       const infoTab = screen.getByRole('tab', { name: 'Info' });
       expect(infoTab).toHaveAttribute('id', 'tab-info');
+      // Info is the default active tab — aria-controls must be present and resolve
       expect(infoTab).toHaveAttribute('aria-controls', 'tabpanel-info');
       expect(document.getElementById('tabpanel-info')).not.toBeNull();
     });
 
-    it('Camera tab button id is tab-camera and controls tabpanel-camera', () => {
+    it('Camera tab (inactive): id=tab-camera exists; aria-controls emitted only when active', () => {
       render(<MetadataModal {...baseProps} />);
       const cameraTab = screen.getByRole('tab', { name: 'Camera' });
       expect(cameraTab).toHaveAttribute('id', 'tab-camera');
+      // Camera is inactive — no aria-controls while not selected
+      expect(cameraTab).not.toHaveAttribute('aria-controls');
+      // Clicking Camera makes it active; aria-controls must then resolve
+      fireEvent.click(cameraTab);
       expect(cameraTab).toHaveAttribute('aria-controls', 'tabpanel-camera');
       expect(document.getElementById('tabpanel-camera')).not.toBeNull();
     });
 
-    it('Collections tab button id is tab-collections and controls tabpanel-collections', () => {
+    it('Collections tab (inactive): id=tab-collections exists; aria-controls emitted only when active', () => {
       render(<MetadataModal {...baseProps} />);
       const collectionsTab = screen.getByRole('tab', { name: 'Collections' });
       expect(collectionsTab).toHaveAttribute('id', 'tab-collections');
+      // Collections is inactive — no aria-controls while not selected
+      expect(collectionsTab).not.toHaveAttribute('aria-controls');
+      // Clicking Collections makes it active; aria-controls must then resolve
+      fireEvent.click(collectionsTab);
       expect(collectionsTab).toHaveAttribute('aria-controls', 'tabpanel-collections');
       expect(document.getElementById('tabpanel-collections')).not.toBeNull();
     });

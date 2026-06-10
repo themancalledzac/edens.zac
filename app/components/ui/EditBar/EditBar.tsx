@@ -22,6 +22,12 @@ function cellClassName(variant: EditBarCell['variant'], disabled?: boolean): str
  *
  * Pass `fixed={false}` when embedding as a flex footer inside a modal sheet — the bar
  * then participates in normal block flow instead of escaping to the viewport bottom.
+ *
+ * ARIA contract for tabs: `aria-controls` is emitted only for the SELECTED tab.
+ * The inactive tab's panel may not be in the DOM (CollectionEditSheet uses conditional
+ * rendering), so emitting `aria-controls` unconditionally would create dangling
+ * references that axe flags as aria-valid-attr-value violations.  The selected tab's
+ * panel is always present — both consumers guarantee this.
  */
 export function EditBar({
   tabs,
@@ -45,7 +51,7 @@ export function EditBar({
               type="button"
               role="tab"
               aria-selected={activeTab === tab.id}
-              aria-controls={`tabpanel-${tab.id}`}
+              {...(activeTab === tab.id ? { 'aria-controls': `tabpanel-${tab.id}` } : {})}
               className={[styles.barCell, activeTab === tab.id ? styles.barCellActive : '']
                 .filter(Boolean)
                 .join(' ')}
