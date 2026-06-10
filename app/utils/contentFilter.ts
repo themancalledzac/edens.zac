@@ -887,16 +887,16 @@ export function mergeDateSortedImages(
  *
  * @param baseOptions - The page's base dimensions
  * @param showHighlyRated - Whether the Highly Rated control is shown
- * @param hasDateVariance - Whether capture dates vary (date-sort control)
+ * @param showDateSort - Whether the Date Sort control should be shown
  */
 export function hasFilterableOptions(
   baseOptions: CollectionFilterDimensions,
   showHighlyRated: boolean,
-  hasDateVariance: boolean
+  showDateSort: boolean
 ): boolean {
   return (
     showHighlyRated ||
-    hasDateVariance ||
+    showDateSort ||
     baseOptions.tags.values.length > 0 ||
     baseOptions.people.values.length > 0 ||
     baseOptions.cameras.values.length > 0 ||
