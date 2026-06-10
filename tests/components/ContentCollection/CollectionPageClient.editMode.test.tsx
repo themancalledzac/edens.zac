@@ -207,6 +207,43 @@ describe('CollectionPageClient — editMode true', () => {
     expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
   });
 
+  it('clears the active filter when entering select mode so Select-All matches the visible grid (I4)', async () => {
+    mockSearchParams = new URLSearchParams('rating=4');
+
+    const content = [
+      {
+        id: 1,
+        contentType: 'IMAGE' as const,
+        orderIndex: 0,
+        imageUrl: 'a.jpg',
+        rating: 5,
+        locations: [],
+      },
+      {
+        id: 2,
+        contentType: 'IMAGE' as const,
+        orderIndex: 1,
+        imageUrl: 'b.jpg',
+        rating: 2,
+        locations: [],
+      },
+    ];
+    const collection = makeCollection({ displayMode: 'ORDERED', content });
+
+    render(<CollectionPageClient collection={collection} editMode />);
+    await flush();
+
+    // With rating=4 filter active, only image #1 (rating 5) is visible.
+    expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '1');
+
+    act(() => {
+      screen.getByRole('button', { name: 'Select' }).click();
+    });
+
+    // Filter must be cleared so the full collection is visible (2 images).
+    expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
+  });
+
   describe('Escape key — manage-mode exit guard', () => {
     it('does NOT exit manage mode when Escape is dispatched with defaultPrevented=true', async () => {
       // Arrange: render with a resolved DTO so the hook is active and manageMode is 'browse'.

@@ -302,8 +302,12 @@ export default function CollectionPageClient({
 
   const reorderActive = editMode && edit.reorder.active;
 
+  // Both reorder and select modes must operate on the unfiltered list:
+  //   reorder: positions are meaningless on a subset of the collection.
+  //   select: 'All' selects every image in the full collection, so the grid must show all of them.
   useEffect(() => {
-    if (!editMode || edit.manageMode !== 'reorder') return;
+    if (!editMode) return;
+    if (edit.manageMode !== 'reorder' && edit.manageMode !== 'select') return;
     if (!hasAnyActiveFilter(filterState)) return;
     setFilterState(INITIAL_FILTER_STATE);
     syncToUrl(buildCollectionCriteria(INITIAL_FILTER_STATE));
