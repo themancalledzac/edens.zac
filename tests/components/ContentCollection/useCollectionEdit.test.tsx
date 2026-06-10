@@ -7,6 +7,7 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
+import { createImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionListModel,
@@ -40,6 +41,7 @@ const mockUpdateCollectionRating = updateCollectionRating as jest.MockedFunction
 const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
   typeof collectionStorage.getFull
 >;
+const mockCreateImages = createImages as jest.MockedFunction<typeof createImages>;
 
 function makeMetadata(overrides: Partial<GeneralMetadataDTO> = {}): GeneralMetadataDTO {
   return {
@@ -297,6 +299,53 @@ describe('useCollectionEdit', () => {
       const save = result.current.bottomBarCells.find(c => c.key === 'save');
       expect(save?.variant).toBe('primary');
       expect(save?.disabled).toBe(false);
+    });
+
+    it('browse Add cell shows "Uploading…" and is disabled while operationLoading is true', async () => {
+      // Arrange: hold createImages open so operationLoading stays true
+      let resolveUpload!: () => void;
+      const uploadPromise = new Promise<void>(resolve => {
+        resolveUpload = resolve;
+      });
+      mockCreateImages.mockReturnValue(uploadPromise as unknown as ReturnType<typeof createImages>);
+      // refreshCollectionAfterOperation calls getCollectionUpdateMetadata after the inner fn
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse());
+
+      const { result } = renderEdit({ enabled: false });
+
+      // Enter add mode to access the upload cell's onFiles callback
+      act(() => result.current.enterAdd());
+
+      const uploadCell = result.current.bottomBarCells.find(c => c.key === 'upload');
+      expect(uploadCell?.fileInput).toBeDefined();
+
+      // Build a minimal FileList-like object
+      const file = new File(['x'], 'img.jpg', { type: 'image/jpeg' });
+      const files = {
+        0: file,
+        length: 1,
+        item: (i: number) => (i === 0 ? file : null),
+      } as unknown as FileList;
+
+      // Fire the upload — operationLoading goes true; add mode exits and we land in browse
+      act(() => {
+        uploadCell!.fileInput!.onFiles(files);
+      });
+
+      // While in flight the browse Add cell should be labelled 'Uploading…' and disabled
+      const addCell = result.current.bottomBarCells.find(c => c.key === 'add');
+      expect(addCell?.label).toBe('Uploading…');
+      expect(addCell?.disabled).toBe(true);
+
+      // Resolve upload and verify label returns to 'Add'
+      await act(async () => {
+        resolveUpload();
+        await uploadPromise;
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
+
+      const addCellAfter = result.current.bottomBarCells.find(c => c.key === 'add');
+      expect(addCellAfter?.label).toBe('Add');
     });
   });
 

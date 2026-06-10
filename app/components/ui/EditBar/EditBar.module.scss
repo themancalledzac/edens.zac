@@ -87,3 +87,11 @@
   color: var(--color-danger-text);
   font-weight: 600;
 }
+
+/* Applied to <label>-based cells (fileInput) when cell.disabled is true.
+   Mirrors &:disabled on buttons since :disabled doesn't match <label>. */
+.barCellDisabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}

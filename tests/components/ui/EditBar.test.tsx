@@ -51,6 +51,53 @@ describe('EditBar', () => {
     expect(screen.getByText('Upload').tagName).toBe('LABEL');
   });
 
+  it('fileInput cell with disabled:true — input is disabled and onFiles is NOT called on change', () => {
+    const onFiles = jest.fn();
+    const { container } = render(
+      <EditBar
+        cells={[
+          {
+            key: 'upload',
+            label: 'Upload',
+            disabled: true,
+            fileInput: { multiple: true, onFiles },
+          },
+        ]}
+      />
+    );
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    expect(input.disabled).toBe(true);
+
+    const file = new File(['content'], 'photo.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(onFiles).not.toHaveBeenCalled();
+  });
+
+  it('fileInput cell enabled — onFiles is called and input value is reset after selection', () => {
+    const onFiles = jest.fn();
+    const { container } = render(
+      <EditBar
+        cells={[
+          {
+            key: 'upload',
+            label: 'Upload',
+            fileInput: { multiple: true, onFiles },
+          },
+        ]}
+      />
+    );
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input).not.toBeNull();
+    expect(input.disabled).toBe(false);
+
+    const file = new File(['content'], 'photo.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(onFiles).toHaveBeenCalledTimes(1);
+    // value should be reset so the same file can be re-selected
+    expect(input.value).toBe('');
+  });
+
   it('applies the fixed class when fixed=true (default)', () => {
     const { container } = render(<EditBar cells={[{ key: 'save', label: 'Save' }]} />);
     expect(container.firstElementChild?.className).toMatch(/fixed/);

@@ -3,14 +3,16 @@
 import styles from './EditBar.module.scss';
 import { type EditBarCell, type EditBarProps } from './types';
 
-function cellClassName(variant: EditBarCell['variant']): string {
+function cellClassName(variant: EditBarCell['variant'], disabled?: boolean): string {
   const map = {
     primary: styles.barCellPrimary,
     danger: styles.barCellDanger,
     active: styles.barCellActive,
     default: '',
   } as const;
-  return [styles.barCell, variant ? map[variant] : ''].filter(Boolean).join(' ');
+  return [styles.barCell, variant ? map[variant] : '', disabled ? styles.barCellDisabled : '']
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**
@@ -55,15 +57,20 @@ export function EditBar({
       <div className={styles.actionRow}>
         {cells.map(cell =>
           cell.fileInput ? (
-            <label key={cell.key} className={cellClassName(cell.variant)}>
+            <label key={cell.key} className={cellClassName(cell.variant, cell.disabled)}>
               {cell.label}
               <input
                 type="file"
                 hidden
                 accept={cell.fileInput.accept}
                 multiple={cell.fileInput.multiple}
+                disabled={cell.disabled}
                 onChange={e => {
-                  if (e.target.files) cell.fileInput!.onFiles(e.target.files);
+                  if (cell.disabled) return;
+                  if (e.target.files) {
+                    cell.fileInput!.onFiles(e.target.files);
+                    e.target.value = '';
+                  }
                 }}
               />
             </label>

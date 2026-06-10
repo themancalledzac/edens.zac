@@ -1227,7 +1227,7 @@ export function useCollectionEdit({
         },
         {
           key: 'upload',
-          label: 'Upload',
+          label: operationLoading ? 'Uploading…' : 'Upload',
           disabled: isLoading,
           fileInput: {
             accept: 'image/*,video/mp4,video/quicktime,.gif,.mp4,.mov',
@@ -1275,7 +1275,7 @@ export function useCollectionEdit({
     if (!isParentCollection) {
       cells.push({
         key: 'add',
-        label: 'Add',
+        label: operationLoading ? 'Uploading…' : 'Add',
         disabled: isLoading,
         onClick: () => setIsAddMode(true),
       });
@@ -1293,6 +1293,7 @@ export function useCollectionEdit({
   }, [
     manageMode,
     isLoading,
+    operationLoading,
     reorderState.moves.length,
     handleSaveReorder,
     handleCancelReorder,
