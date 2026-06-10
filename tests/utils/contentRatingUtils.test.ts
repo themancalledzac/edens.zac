@@ -4,9 +4,12 @@
  */
 
 import {
+  getArExtremeness,
   getComponentValue,
   getEffectiveRating,
   getItemComponentValue,
+  getProminence,
+  getProminenceRating,
   getRating,
   isCollectionCard,
 } from '@/app/utils/contentRatingUtils';
@@ -297,5 +300,67 @@ describe('getItemComponentValue', () => {
     expect(getItemComponentValue(panorama)).toBeGreaterThan(
       getItemComponentValue(horizontal) * 1.9
     );
+  });
+});
+
+// ===================== getArExtremeness Tests =====================
+
+describe('getArExtremeness', () => {
+  it('is 1 for square, symmetric for wide and tall', () => {
+    expect(getArExtremeness(1.0)).toBeCloseTo(1.0, 5);
+    expect(getArExtremeness(3.0)).toBeCloseTo(3.0, 5);
+    expect(getArExtremeness(1 / 3)).toBeCloseTo(3.0, 5);
+  });
+});
+
+// ===================== getProminenceRating Tests =====================
+
+describe('getProminenceRating', () => {
+  it('returns raw rating for horizontal images (no vertical penalty)', () => {
+    expect(getProminenceRating(createHorizontalImage(1, 5))).toBe(5);
+    expect(getProminenceRating(createHorizontalImage(1, 3))).toBe(3);
+  });
+
+  it('returns raw rating for vertical images (no vertical penalty unlike getEffectiveRating)', () => {
+    expect(getProminenceRating(createVerticalImage(1, 5))).toBe(5);
+    expect(getProminenceRating(createVerticalImage(1, 3))).toBe(3);
+  });
+
+  it('returns 4 for collection cards', () => {
+    const collectionCard = {
+      id: 1,
+      contentType: 'PARALLAX' as const,
+      collectionType: 'TRAVEL',
+    };
+    expect(getProminenceRating(collectionCard as never)).toBe(4);
+  });
+
+  it('returns 1 for non-image content', () => {
+    const textContent = {
+      id: 1,
+      contentType: 'TEXT' as const,
+      textBlock: { title: 'Test' },
+    };
+    expect(getProminenceRating(textContent as never)).toBe(1);
+  });
+});
+
+// ===================== getProminence Tests =====================
+
+describe('getProminence (orientation-agnostic P)', () => {
+  it('gives a 5★ portrait the same P as a 5★ landscape (no vertical penalty)', () => {
+    expect(getProminence(createVerticalImage(1, 5))).toBeCloseTo(
+      getProminence(createHorizontalImage(2, 5)),
+      5
+    );
+  });
+
+  it('gives a 3:1 panorama P=10 at 5★', () => {
+    expect(getProminence(createPanorama(2, 5))).toBeCloseTo(10.0, 5);
+  });
+
+  it('scales 5★ extremeness 5 → 10 across square-ish and 3:1', () => {
+    expect(getProminence(createHorizontalImage(1, 5))).toBeCloseTo(5.0, 1);
+    expect(getProminence(createPanorama(2, 5))).toBeCloseTo(10.0, 5);
   });
 });

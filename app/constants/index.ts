@@ -89,6 +89,13 @@ export const PANORAMA_AR = 2.0;
 export const PANORAMA_AR_FACTOR = 1.4; // arFactor exactly at PANORAMA_AR (5★ → 7.0)
 export const PANORAMA_AR_SLOPE = 0.6; // arFactor gained per 1.0 of AR beyond PANORAMA_AR
 
+// Prominence ramp keyed on aspect-ratio EXTREMENESS = max(AR, 1/AR).
+// EXTREMENESS_RAMP_* temporarily mirrors PANORAMA_AR_* values; both sets are
+// retired together in a later phase when getComponentValue is replaced by getProminence.
+export const EXTREMENESS_RAMP_START = 2.0;
+export const EXTREMENESS_RAMP_BASE = 1.4;
+export const EXTREMENESS_RAMP_SLOPE = 0.6;
+
 // =============================================================================
 // INTERACTION & TIMING
 // =============================================================================

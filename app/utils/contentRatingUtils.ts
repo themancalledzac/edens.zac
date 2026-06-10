@@ -7,6 +7,9 @@
 
 import {
   BASE_WEIGHT,
+  EXTREMENESS_RAMP_BASE,
+  EXTREMENESS_RAMP_SLOPE,
+  EXTREMENESS_RAMP_START,
   PANORAMA_AR,
   PANORAMA_AR_FACTOR,
   PANORAMA_AR_SLOPE,
@@ -132,4 +135,63 @@ export function getItemComponentValue(item: AnyContentModel): number {
   const effectiveRating = getEffectiveRating(item);
   const imageAR = getAspectRatio(item);
   return getComponentValue(effectiveRating, imageAR);
+}
+
+// =============================================================================
+// Phase 0 — Orientation-agnostic prominence P
+// =============================================================================
+
+/**
+ * Aspect-ratio extremeness: how far the image departs from square, direction-
+ * agnostic. A 3:1 panorama and a 1:3 portrait both have extremeness 3.0.
+ *
+ * @param imageAR - Aspect ratio (width / height). Must be > 0.
+ * @returns extremeness ≥ 1.0 (1.0 for a perfect square)
+ */
+export function getArExtremeness(imageAR: number): number {
+  if (imageAR <= 0) return 1;
+  return imageAR >= 1 ? imageAR : 1 / imageAR;
+}
+
+/**
+ * Internal multiplier applied to BASE_WEIGHT when an image's extremeness
+ * exceeds EXTREMENESS_RAMP_START. Mirrors the PANORAMA_AR ramp in
+ * getComponentValue but is symmetric (applies to tall images too).
+ */
+function prominenceFactor(extremeness: number): number {
+  return extremeness >= EXTREMENESS_RAMP_START
+    ? EXTREMENESS_RAMP_BASE + EXTREMENESS_RAMP_SLOPE * (extremeness - EXTREMENESS_RAMP_START)
+    : 1.0;
+}
+
+/**
+ * Raw prominence rating for an item — like getRating but without the vertical
+ * penalty applied by getEffectiveRating. Both a 5★ portrait and a 5★ landscape
+ * return 5; the AR extremeness multiplier handles directionality instead.
+ *
+ * @param item - The content item to evaluate
+ * @returns rating in [0, 5], or 4 for collection cards, or 1 for non-image content
+ */
+export function getProminenceRating(item: AnyContentModel): number {
+  if (isCollectionCard(item)) return 4;
+  if (!isContentImage(item) && !isGifContent(item)) return 1;
+  const rating = (item as { rating?: number | null }).rating ?? 0;
+  return Math.min(Math.max(rating, 0), 5);
+}
+
+/**
+ * Orientation-agnostic prominence P for an item.
+ *
+ * P = BASE_WEIGHT[prominenceRating] × prominenceFactor(extremeness)
+ *
+ * Unlike getItemComponentValue (which applies a vertical penalty via
+ * getEffectiveRating), P treats a 5★ portrait and a 5★ panorama as equally
+ * rated and only scales by how extreme the aspect ratio is — wide OR tall.
+ *
+ * @param item - The content item to evaluate
+ * @returns Prominence value > 0
+ */
+export function getProminence(item: AnyContentModel): number {
+  const baseWeight = BASE_WEIGHT[getProminenceRating(item)] ?? 1.0;
+  return baseWeight * prominenceFactor(getArExtremeness(getAspectRatio(item)));
 }
