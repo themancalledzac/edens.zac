@@ -82,6 +82,14 @@ export default function CollectionPageClient({
     onExitManage: editMode ? handleExitManage : undefined,
   });
 
+  /**
+   * Edit interactions are gated until the richer admin DTO (`currentState`) is in. Before that,
+   * inline commits and post-save refreshes hit `!currentState` early-returns in the hook and
+   * silently drop — so until ready the page shows the public read-only render plus a disabled
+   * bar instead of edit affordances that cannot act.
+   */
+  const editReady = !edit.isLoadingState && edit.currentState !== null;
+
   useEffect(() => {
     if (!editMode) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -327,7 +335,7 @@ export default function CollectionPageClient({
       enableFullScreenView={false}
       isSelectingCoverImage={edit.isSelectingCoverImage}
       currentCoverImageId={edit.currentCoverImageId}
-      onImageClick={reorderActive ? undefined : edit.handleImageClick}
+      onImageClick={reorderActive || !editReady ? undefined : edit.handleImageClick}
       justClickedImageId={edit.justClickedImageId}
       selectedIds={edit.isMultiSelectMode ? edit.selectedIds : []}
       currentCollectionId={collection.id}
@@ -363,9 +371,15 @@ export default function CollectionPageClient({
   const content = (
     <>
       {editMode ? (
-        <InlineEditProvider value={inlineEditValue}>
+        editReady ? (
+          <InlineEditProvider value={inlineEditValue}>
+            <div className={styles.editCanvas}>{grid}</div>
+          </InlineEditProvider>
+        ) : (
+          // No provider while the admin DTO loads → the header card degrades to the public
+          // read-only render, so a tap cannot buffer an edit the hook would silently drop.
           <div className={styles.editCanvas}>{grid}</div>
-        </InlineEditProvider>
+        )
       ) : (
         grid
       )}

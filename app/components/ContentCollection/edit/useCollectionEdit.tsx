@@ -246,10 +246,16 @@ export function useCollectionEdit({
         }
 
         const response = await getCollectionUpdateMetadata(slug);
-        if (isMounted && !abortController.signal.aborted && response !== null) {
-          collectionStorage.update(slug, response.collection);
-          collectionStorage.updateFull(slug, response);
-          setCurrentState(response);
+        if (isMounted && !abortController.signal.aborted) {
+          if (response === null) {
+            // A null response leaves currentState null forever — surface it instead of
+            // silently rendering an edit page whose edit affordances never become ready.
+            setError('Failed to load collection data — editing is unavailable. Reload to retry.');
+          } else {
+            collectionStorage.update(slug, response.collection);
+            collectionStorage.updateFull(slug, response);
+            setCurrentState(response);
+          }
         }
       } catch (error_) {
         if (!abortController.signal.aborted && isMounted) {
@@ -509,7 +515,12 @@ export function useCollectionEdit({
 
   const handleUpdate = useCallback(
     async (patch?: Partial<CollectionUpdateRequest>) => {
-      if (!collection || !currentState) return;
+      if (!collection || !currentState) {
+        // Defense-in-depth: edit affordances are gated on readiness upstream, but if a save
+        // does land here before the admin DTO exists, say so instead of silently dropping it.
+        setError('Collection data has not loaded — your change was not saved.');
+        return;
+      }
 
       try {
         setSaving(true);
@@ -1197,19 +1208,37 @@ export function useCollectionEdit({
       ];
     }
 
+    // Browse cells stay disabled until the admin DTO load (or any operation) settles, so the
+    // bar communicates "not ready yet" instead of offering modes that cannot act. Cancel stays
+    // enabled — leaving the manage surface never needs the richer DTO.
     const cells: EditBarCell[] = [
-      { key: 'select', label: 'Select', onClick: () => setIsMultiSelectMode(true) },
+      {
+        key: 'select',
+        label: 'Select',
+        disabled: isLoading,
+        onClick: () => setIsMultiSelectMode(true),
+      },
       {
         key: 'reorder',
         label: 'Reorder',
-        disabled: collection.displayMode === 'CHRONOLOGICAL',
+        disabled: isLoading || collection.displayMode === 'CHRONOLOGICAL',
         onClick: handleEnterReorderMode,
       },
     ];
     if (!isParentCollection) {
-      cells.push({ key: 'add', label: 'Add', onClick: () => setIsAddMode(true) });
+      cells.push({
+        key: 'add',
+        label: 'Add',
+        disabled: isLoading,
+        onClick: () => setIsAddMode(true),
+      });
     }
-    cells.push({ key: 'edit', label: 'Edit', onClick: () => setIsEditSheetOpen(true) });
+    cells.push({
+      key: 'edit',
+      label: 'Edit',
+      disabled: isLoading,
+      onClick: () => setIsEditSheetOpen(true),
+    });
     if (onExitManage) {
       cells.push({ key: 'cancel', label: 'Cancel', onClick: onExitManage });
     }

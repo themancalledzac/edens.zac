@@ -4,7 +4,11 @@ import userEvent from '@testing-library/user-event';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { getCollectionUpdateMetadata, getMetadata } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import {
+  type CollectionModel,
+  CollectionType,
+  type CollectionUpdateResponseDTO,
+} from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 let mockSearchParams = new URLSearchParams();
@@ -24,23 +28,31 @@ jest.mock('@/app/utils/contentLayout', () => ({
 }));
 
 const gridProbe = jest.fn();
-jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
-  __esModule: true,
-  default: (props: {
+jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => {
+  // Real context hook so the mock grid can report whether the InlineEditProvider is mounted
+  // above it (the readiness gate) — the real grid's content renderers consume the same hook.
+  const { useInlineEdit } = jest.requireActual<{ useInlineEdit: () => unknown }>(
+    '@/app/components/ContentCollection/edit/InlineEditContext'
+  );
+
+  const MockGrid = (props: {
     enableFullScreenView?: boolean;
     onImageClick?: unknown;
     content?: unknown[];
   }) => {
     gridProbe(props);
+    const inlineEdit = useInlineEdit();
     return (
       <div
         data-testid="grid"
         data-fullscreen={String(Boolean(props.enableFullScreenView))}
         data-content-count={String(props.content?.length ?? 0)}
+        data-inline-edit={String(Boolean(inlineEdit))}
       />
     );
-  },
-}));
+  };
+  return { __esModule: true, default: MockGrid };
+});
 
 jest.mock('@/app/components/Metadata/MetadataModal', () => ({
   __esModule: true,
@@ -78,6 +90,23 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
   };
 }
 
+function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdateResponseDTO {
+  return {
+    collection: makeCollection(overrides),
+    tags: [],
+    people: [],
+    locations: [],
+    cameras: [],
+    lenses: [],
+    filmTypes: [],
+    filmFormats: [],
+    collections: [],
+  };
+}
+
+/** A metadata fetch that never settles — models the cold-load window. */
+const pendingForever = () => new Promise<CollectionUpdateResponseDTO | null>(() => {});
+
 beforeEach(() => {
   gridProbe.mockClear();
   mockSearchParams = new URLSearchParams();
@@ -110,6 +139,7 @@ describe('CollectionPageClient — editMode true', () => {
   });
 
   it('mounts the grid with the fullscreen viewer DISABLED so a tap never opens it', async () => {
+    mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse());
     render(<CollectionPageClient collection={makeCollection()} editMode />);
     await flush();
     const grid = screen.getByTestId('grid');
@@ -173,5 +203,54 @@ describe('CollectionPageClient — editMode true', () => {
     });
 
     expect(screen.getByTestId('grid')).toHaveAttribute('data-content-count', '2');
+  });
+
+  describe('readiness gating — edit interactions wait for the admin DTO', () => {
+    it('keeps inline editors unmounted and image taps inert while the admin fetch is pending', async () => {
+      mockGetCollectionUpdateMetadata.mockReturnValue(pendingForever());
+      render(<CollectionPageClient collection={makeCollection()} editMode />);
+      await flush();
+
+      // No InlineEditProvider above the grid → header card renders read-only (no tap-to-edit).
+      expect(screen.getByTestId('grid')).toHaveAttribute('data-inline-edit', 'false');
+      // No click routing → a tap cannot open the image metadata editor off the seed.
+      const lastCall = gridProbe.mock.calls.at(-1)?.[0];
+      expect(lastCall.onImageClick).toBeUndefined();
+    });
+
+    it('disables the browse cells while pending, but keeps Cancel (exit manage) enabled', async () => {
+      mockGetCollectionUpdateMetadata.mockReturnValue(pendingForever());
+      render(<CollectionPageClient collection={makeCollection()} editMode />);
+      await flush();
+
+      expect(screen.getByRole('button', { name: 'Select' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Reorder' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    });
+
+    it('mounts inline editors, enables the cells, and routes taps once the DTO resolves', async () => {
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse());
+      render(<CollectionPageClient collection={makeCollection()} editMode />);
+      await flush();
+
+      expect(screen.getByTestId('grid')).toHaveAttribute('data-inline-edit', 'true');
+      expect(screen.getByRole('button', { name: 'Select' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Reorder' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled();
+      const lastCall = gridProbe.mock.calls.at(-1)?.[0];
+      expect(typeof lastCall.onImageClick).toBe('function');
+    });
+
+    it('stays gated and surfaces an alert when the admin fetch resolves null', async () => {
+      // beforeEach default: getCollectionUpdateMetadata resolves null.
+      render(<CollectionPageClient collection={makeCollection()} editMode />);
+      await flush();
+
+      expect(screen.getByTestId('grid')).toHaveAttribute('data-inline-edit', 'false');
+      expect(screen.getByRole('alert')).toHaveTextContent(/failed to load collection data/i);
+    });
   });
 });

@@ -580,6 +580,59 @@ describe('useCollectionEdit', () => {
     });
   });
 
+  describe('admin DTO readiness', () => {
+    /** Metadata calls that never settle — models the cold-load window without act() noise. */
+    const mockPendingFetches = () => {
+      mockGetCollectionUpdateMetadata.mockReturnValue(
+        new Promise<CollectionUpdateResponseDTO | null>(() => {})
+      );
+      mockGetMetadata.mockReturnValue(new Promise<GeneralMetadataDTO | null>(() => {}));
+    };
+
+    it('sets an error and keeps currentState null when the metadata fetch resolves null', async () => {
+      mockGetCollectionUpdateMetadata.mockResolvedValue(null);
+      const { result } = renderEdit({ enabled: true });
+      await flushEffects();
+
+      expect(result.current.currentState).toBeNull();
+      expect(result.current.isLoadingState).toBe(false);
+      expect(result.current.error).toMatch(/failed to load collection data/i);
+    });
+
+    it('disables the browse cells (Select/Reorder/Add/Edit) while the fetch is in flight', () => {
+      mockPendingFetches();
+      const { result } = renderEdit({ enabled: true });
+
+      const byKey = (key: string) => result.current.bottomBarCells.find(c => c.key === key);
+      expect(result.current.isLoadingState).toBe(true);
+      expect(byKey('select')?.disabled).toBe(true);
+      expect(byKey('reorder')?.disabled).toBe(true);
+      expect(byKey('add')?.disabled).toBe(true);
+      expect(byKey('edit')?.disabled).toBe(true);
+    });
+
+    it('keeps the browse Cancel (exit manage) enabled while the fetch is in flight', () => {
+      mockPendingFetches();
+      const { result } = renderEdit({ enabled: true, onExitManage: jest.fn() });
+
+      const cancel = result.current.bottomBarCells.find(c => c.key === 'cancel');
+      expect(cancel).toBeDefined();
+      expect(cancel?.disabled).toBeUndefined();
+    });
+
+    it('handleUpdate before the DTO loads surfaces an error instead of silently dropping', async () => {
+      mockPendingFetches();
+      const { result } = renderEdit({ enabled: true });
+
+      await act(async () => {
+        await result.current.handleUpdate({ title: 'Typed Early' });
+      });
+
+      expect(mockUpdateCollection).not.toHaveBeenCalled();
+      expect(result.current.error).toMatch(/not saved/i);
+    });
+  });
+
   describe('collection.id change (I2 + I3)', () => {
     it('re-seeds updateData, resets to browse, and clears selectedIds on a new collection id', async () => {
       const collectionA = makeCollection({ id: 42, slug: 'collection-a', title: 'Alpha' });
