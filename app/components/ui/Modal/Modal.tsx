@@ -50,10 +50,19 @@ export function Modal({ open, onClose, variant = 'overlay', labelledBy, children
   useEffect(() => {
     if (!open) return;
 
-    previouslyFocusedRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Capture the element that had focus before the modal opened. If a child
+    // already has focus via autoFocus (committed before this effect runs), the
+    // active element is already inside the dialog — storing it as "previously
+    // focused" would restore focus to an unmounted node on close, so store null.
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previouslyFocusedRef.current = dialogRef.current?.contains(active) ? null : active;
 
-    dialogRef.current?.focus();
+    // Only move focus to the dialog container when nothing inside the dialog
+    // already has focus. This lets child autoFocus win (e.g. the ClientGalleryGate
+    // password input) without stealing it back.
+    if (!dialogRef.current?.contains(document.activeElement)) {
+      dialogRef.current?.focus();
+    }
 
     return () => {
       previouslyFocusedRef.current?.focus();
