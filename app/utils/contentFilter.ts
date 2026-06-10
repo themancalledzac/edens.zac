@@ -738,7 +738,8 @@ export function extractCollectionFilterOptions(
   // dimensions from collection refs too. This is what populates the filter bar
   // on synthetic PARENT pages whose `content` is 100% collection refs and 0
   // images (e.g. /all-collections, /all-blog).
-  const baseOptions = extractFilterOptions([...images, ...collectionRefs], 0.9);
+  const combined = [...images, ...collectionRefs];
+  const baseOptions = extractFilterOptions(combined, 0.9);
 
   // Lens types: only show if 2+ distinct categories present (image-only signal)
   const lensTypeSet = new Set<LensType>();
@@ -751,8 +752,6 @@ export function extractCollectionFilterOptions(
     lensTypeSet.size >= 2 && baseOptions.lenses.length >= 2
       ? typeOrder.filter(t => lensTypeSet.has(t))
       : [];
-
-  const combined = [...images, ...collectionRefs];
 
   return {
     tags: {
