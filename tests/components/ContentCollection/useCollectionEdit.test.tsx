@@ -251,13 +251,35 @@ describe('useCollectionEdit', () => {
       expect(labels).toEqual(['Select', 'Reorder', 'Edit']);
     });
 
-    it('browse disables Reorder for CHRONOLOGICAL displayMode', () => {
+    it('browse keeps Reorder enabled for CHRONOLOGICAL displayMode (auto-converts on click)', () => {
       const { result } = renderEdit({
         enabled: false,
         collection: makeCollection({ displayMode: 'CHRONOLOGICAL' }),
       });
       const reorderCell = result.current.bottomBarCells.find(c => c.label === 'Reorder');
-      expect(reorderCell?.disabled).toBe(true);
+      expect(reorderCell?.disabled).toBe(false);
+    });
+
+    it('clicking Reorder on a CHRONOLOGICAL collection saves displayMode ORDERED, then enters reorder', async () => {
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ displayMode: 'CHRONOLOGICAL' })
+      );
+      const { result } = renderEdit({
+        collection: makeCollection({ displayMode: 'CHRONOLOGICAL' }),
+      });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      const reorderCell = result.current.bottomBarCells.find(c => c.key === 'reorder');
+      await act(async () => {
+        reorderCell?.onClick?.();
+      });
+
+      expect(mockUpdateCollection).toHaveBeenCalledWith(
+        42,
+        expect.objectContaining({ displayMode: 'ORDERED' })
+      );
+      await waitFor(() => expect(result.current.manageMode).toBe('reorder'));
+      expect(result.current.reorder.active).toBe(true);
     });
 
     it('browse has no Cancel cell when onExitManage is absent', () => {
