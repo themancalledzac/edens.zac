@@ -257,7 +257,10 @@ export default function CollectionPageClient({
     <ContentBlockWithFullScreen
       content={contentBlocks}
       priorityBlockIndex={0}
-      enableFullScreenView
+      // In edit mode this element is the loading fallback while the edit chunk streams in, and
+      // a tap during that window must not open the viewer the layer will immediately tear down
+      // — edit mode keeps fullscreen disabled from first paint (the layer's grid also does).
+      enableFullScreenView={!editMode}
       initialPageSize={pageSize}
       chunkSize={density}
       mobileChunkSize={mobileDensity}

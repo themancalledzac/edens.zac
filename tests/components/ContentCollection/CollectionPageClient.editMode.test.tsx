@@ -210,6 +210,22 @@ describe('CollectionPageClient — editMode true', () => {
     expect(typeof lastCall.onImageClick).toBe('function');
   });
 
+  it('keeps fullscreen DISABLED on the fallback grid while the edit chunk is still loading', async () => {
+    render(<CollectionPageClient collection={makeCollection()} editMode />);
+
+    // Assert synchronously, BEFORE flushing: the dynamic mock resolves the edit chunk on a
+    // microtask, so right now the parent-owned loading-fallback grid is the only grid mounted.
+    // A tap during this window must not open the fullscreen viewer the layer will tear down.
+    const grid = screen.getByTestId('grid');
+    expect(grid).toHaveAttribute('data-fullscreen', 'false');
+    expect(gridProbe).toHaveBeenCalledWith(
+      expect.objectContaining({ enableFullScreenView: false })
+    );
+
+    // Flush so the chunk's deferred state updates land inside act before teardown.
+    await flush();
+  });
+
   it('renders a role="alert" banner when the hook surfaces an error', async () => {
     mockGetCollectionUpdateMetadata.mockRejectedValue(new Error('Failed to update collection'));
     render(<CollectionPageClient collection={makeCollection()} editMode />);
