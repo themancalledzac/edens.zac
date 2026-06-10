@@ -79,6 +79,16 @@ export const BASE_WEIGHT: Record<number, number> = {
 // Reference AR for the AR factor in cv calculation
 export const REFERENCE_AR = 1.5;
 
+// Panorama prominence scale. At/above PANORAMA_AR (a 2:1+ wide image) the arFactor
+// stops being capped and climbs linearly, so a panorama is worth far more than a
+// normal horizontal of the same rating: for a 5★ (base weight 5.0) cv goes
+// 2:1 → 7.0, 3:1 → 10.0, 4:1 → 13.0. Below PANORAMA_AR the legacy sqrt/cap curve
+// is unchanged (normal 16:9 horizontals stay at their base weight; verticals keep
+// their penalty). Tune these two knobs to reshape the ramp.
+export const PANORAMA_AR = 2.0;
+export const PANORAMA_AR_FACTOR = 1.4; // arFactor exactly at PANORAMA_AR (5★ → 7.0)
+export const PANORAMA_AR_SLOPE = 0.6; // arFactor gained per 1.0 of AR beyond PANORAMA_AR
+
 // =============================================================================
 // INTERACTION & TIMING
 // =============================================================================

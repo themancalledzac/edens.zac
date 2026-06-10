@@ -5,7 +5,13 @@
  * Used by both contentLayout.ts (mobile/fallback) and rowStructureAlgorithm.ts (desktop).
  */
 
-import { BASE_WEIGHT, REFERENCE_AR } from '@/app/constants';
+import {
+  BASE_WEIGHT,
+  PANORAMA_AR,
+  PANORAMA_AR_FACTOR,
+  PANORAMA_AR_SLOPE,
+  REFERENCE_AR,
+} from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import { getAspectRatio, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 
@@ -89,6 +95,15 @@ export function getEffectiveRating(item: AnyContentModel): number {
  *
  * cv = BASE_WEIGHT[effectiveRating] × arFactor
  *
+ * The arFactor has two regimes:
+ * - Below the panorama threshold (AR < PANORAMA_AR): the legacy curve
+ *   `sqrt(min(AR, REFERENCE_AR) / REFERENCE_AR)`. Verticals (AR < 1.5) are
+ *   reduced; normal-to-wide horizontals (1.5 ≤ AR < 2) sit at the 1.0 cap.
+ * - At/above the panorama threshold (AR ≥ PANORAMA_AR): a linear ramp
+ *   `PANORAMA_AR_FACTOR + PANORAMA_AR_SLOPE × (AR − PANORAMA_AR)`, so a panorama
+ *   is worth much more than a normal horizontal of the same rating. For a 5★:
+ *   2:1 → 7.0, 3:1 → 10.0, 4:1 → 13.0.
+ *
  * cv is a FIXED WEIGHT — it does NOT scale with rowWidth.
  * The caller divides cv / rowWidth to get the fill fraction.
  *
@@ -99,7 +114,10 @@ export function getEffectiveRating(item: AnyContentModel): number {
 export function getComponentValue(effectiveRating: number, imageAR: number): number {
   const clampedRating = Math.min(Math.max(effectiveRating, 0), 5);
   const baseWeight = BASE_WEIGHT[clampedRating] ?? 1.0;
-  const arFactor = Math.sqrt(Math.min(imageAR, REFERENCE_AR) / REFERENCE_AR);
+  const arFactor =
+    imageAR >= PANORAMA_AR
+      ? PANORAMA_AR_FACTOR + PANORAMA_AR_SLOPE * (imageAR - PANORAMA_AR)
+      : Math.sqrt(Math.min(imageAR, REFERENCE_AR) / REFERENCE_AR);
   return baseWeight * arFactor;
 }
 

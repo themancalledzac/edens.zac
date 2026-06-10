@@ -197,9 +197,42 @@ describe('getComponentValue', () => {
     expect(getComponentValue(0, 1.5)).toBe(1.0);
   });
 
-  it('caps arFactor at 1.0 for wide horizontals (AR > 1.5)', () => {
-    expect(getComponentValue(5, 2.0)).toBe(5.0);
-    expect(getComponentValue(3, 2.5)).toBe(2.5);
+  it('caps arFactor at 1.0 for wide horizontals below the panorama threshold (1.5 <= AR < 2.0)', () => {
+    expect(getComponentValue(5, 1.78)).toBe(5.0);
+    expect(getComponentValue(3, 1.9)).toBe(2.5);
+  });
+
+  describe('panorama scale (AR >= 2:1) — cv climbs with width', () => {
+    it('gives a 2:1 panorama a higher value than a normal 5-star horizontal', () => {
+      // 5★ panorama at 2:1 → arFactor 1.4 → cv 7.0 (vs 5.0 for a normal 5★ horizontal)
+      expect(getComponentValue(5, 2.0)).toBeCloseTo(7.0, 5);
+    });
+
+    it('scales a 5-star panorama 5 → 7 → 10 → 13 across 1.78:1, 2:1, 3:1, 4:1', () => {
+      expect(getComponentValue(5, 1.78)).toBeCloseTo(5.0, 5); // below threshold, capped
+      expect(getComponentValue(5, 2.0)).toBeCloseTo(7.0, 5);
+      expect(getComponentValue(5, 3.0)).toBeCloseTo(10.0, 5);
+      expect(getComponentValue(5, 4.0)).toBeCloseTo(13.0, 5);
+    });
+
+    it('interpolates between anchors (2.5:1 → 8.5 for a 5-star)', () => {
+      expect(getComponentValue(5, 2.5)).toBeCloseTo(8.5, 5);
+    });
+
+    it('scales the panorama boost by rating (a 3-star 3:1 panorama → 5.0)', () => {
+      // 3★ base weight 2.5 × arFactor 2.0 = 5.0
+      expect(getComponentValue(3, 3.0)).toBeCloseTo(5.0, 5);
+    });
+
+    it('keeps the value strictly increasing with width past the threshold', () => {
+      expect(getComponentValue(5, 2.0)).toBeLessThan(getComponentValue(5, 2.5));
+      expect(getComponentValue(5, 2.5)).toBeLessThan(getComponentValue(5, 3.0));
+      expect(getComponentValue(5, 3.0)).toBeLessThan(getComponentValue(5, 4.0));
+    });
+
+    it('does not boost just below the 2:1 threshold (AR 1.99 stays capped)', () => {
+      expect(getComponentValue(5, 1.99)).toBe(5.0);
+    });
   });
 
   it('reduces cv for verticals (AR < 1.0) via sqrt factor', () => {
@@ -254,5 +287,15 @@ describe('getItemComponentValue', () => {
     // Just verify it works with no second arg
     expect(typeof getItemComponentValue(image)).toBe('number');
     expect(getItemComponentValue(image)).toBeGreaterThan(0);
+  });
+
+  it('gives a 5-star 3:1 panorama a much higher cv than a 5-star horizontal', () => {
+    const panorama = createPanorama(1, 5); // AR 3.0
+    const horizontal = createHorizontalImage(2, 5); // AR 1.78
+    // Panorama: er=5, arFactor=1.4+0.6*(3-2)=2.0 → cv 10.0; horizontal capped → cv 5.0
+    expect(getItemComponentValue(panorama)).toBeCloseTo(10.0, 5);
+    expect(getItemComponentValue(panorama)).toBeGreaterThan(
+      getItemComponentValue(horizontal) * 1.9
+    );
   });
 });
