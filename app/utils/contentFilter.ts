@@ -393,7 +393,7 @@ export function canFilter<T>(
     }
   }
   for (const count of counts.values()) {
-    if (count > 0 && count < total) return true;
+    if (count < total) return true;
   }
   return false;
 }
