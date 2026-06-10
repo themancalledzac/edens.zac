@@ -9,6 +9,7 @@ import {
   applyCollectionFilters,
   buildCollectionCriteria,
   buildLocationCriteria,
+  canFilter,
   computeFilterCounts,
   type ContentFilterCriteria,
   extractCollectionFilterOptions,
@@ -1396,5 +1397,48 @@ describe('buildLocationCriteria', () => {
   it('round-trips with filmFilterFromIsFilm for the film toggle', () => {
     const criteria = buildLocationCriteria(makeFilterState({ filmFilter: 'film' }));
     expect(filmFilterFromIsFilm(criteria.isFilm)).toBe('film');
+  });
+});
+
+describe('canFilter', () => {
+  it('returns false below 2 items (nothing to split)', () => {
+    expect(canFilter([makeImage({ id: 1, isFilm: true })], img => [img.isFilm ? 'film' : 'digital'])).toBe(false);
+    expect(canFilter([], () => ['x'])).toBe(false);
+  });
+
+  it('returns false when one value covers every item', () => {
+    const allDigital = [makeImage({ id: 1, isFilm: false }), makeImage({ id: 2, isFilm: false })];
+    expect(canFilter(allDigital, img => [img.isFilm ? 'film' : 'digital'])).toBe(false);
+  });
+
+  it('returns true when a value matches a proper non-empty subset', () => {
+    const mixed = [makeImage({ id: 1, isFilm: true }), makeImage({ id: 2, isFilm: false })];
+    expect(canFilter(mixed, img => [img.isFilm ? 'film' : 'digital'])).toBe(true);
+  });
+
+  it('counts each item once per distinct value (multi-valued dimensions)', () => {
+    // both images carry 'sky'; only img 1 also carries 'sea' → 'sea' splits the set.
+    const images = [
+      makeImage({ id: 1, tags: [{ id: 1, name: 'sky', slug: 'sky' }, { id: 2, name: 'sea', slug: 'sea' }] }),
+      makeImage({ id: 2, tags: [{ id: 1, name: 'sky', slug: 'sky' }] }),
+    ];
+    expect(canFilter(images, img => (img.tags ?? []).map(t => t.name))).toBe(true);
+  });
+
+  it('returns false when a single shared value blankets a multi-valued dimension', () => {
+    const images = [
+      makeImage({ id: 1, tags: [{ id: 1, name: 'sky', slug: 'sky' }] }),
+      makeImage({ id: 2, tags: [{ id: 1, name: 'sky', slug: 'sky' }] }),
+    ];
+    expect(canFilter(images, img => (img.tags ?? []).map(t => t.name))).toBe(false);
+  });
+
+  it('treats a value present on a subset (others absent) as splitting', () => {
+    // camera Canon on img 1, img 2 has no camera → Canon splits 1-of-2.
+    const images = [
+      makeImage({ id: 1, camera: { id: 1, name: 'Canon' } }),
+      makeImage({ id: 2, camera: null }),
+    ];
+    expect(canFilter(images, img => (img.camera?.name ? [img.camera.name] : []))).toBe(true);
   });
 });

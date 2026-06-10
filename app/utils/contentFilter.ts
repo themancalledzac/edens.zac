@@ -359,6 +359,45 @@ export function extractFilterOptions(
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// The single filter-visibility gate
+//
+// One predicate decides whether ANY filter control is shown. A dimension can
+// filter the page iff some value it carries matches a proper, non-empty subset
+// of the items — ∃ v : 0 < count(v) < total. Below 2 items nothing can be split
+// (or reordered), so it returns false. Each item is counted once per DISTINCT
+// value it carries, so a multi-valued dimension (e.g. tags) can't inflate one
+// item's weight. Every control type reduces to this by supplying a projection:
+// boolean toggles project to a two-label space, single-valued dims (camera /
+// lens / date) to one value, multi-valued dims (tags / people / locations) to a
+// value list. See computeFilterVisibility and extractCollectionFilterOptions.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Whether a dimension can meaningfully filter the given items.
+ *
+ * @param items - The full, unfiltered item set. Visibility MUST be derived from
+ *   the full set, never a filtered subset, or a control could vanish mid-interaction.
+ * @param valuesOf - The dimension's projection: the value(s) an item contributes.
+ */
+export function canFilter<T>(
+  items: readonly T[],
+  valuesOf: (item: T) => readonly string[]
+): boolean {
+  const total = items.length;
+  if (total < 2) return false;
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    for (const value of new Set(valuesOf(item))) {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+  }
+  for (const count of counts.values()) {
+    if (count > 0 && count < total) return true;
+  }
+  return false;
+}
+
 /**
  * Per-option image counts for filter chips, computed contextually.
  * Each count represents: "how many images match if I select only this option
