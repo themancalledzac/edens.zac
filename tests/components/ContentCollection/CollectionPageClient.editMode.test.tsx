@@ -279,6 +279,52 @@ describe('CollectionPageClient — editMode true', () => {
     });
   });
 
+  describe('collectionData — edit-mode grid receives live collection data', () => {
+    it('passes the admin DTO collection to the grid after load, not the frozen seed prop', async () => {
+      // The seed has no coverImage and an old collectionDate.
+      const seed = makeCollection({ collectionDate: '2026-01-01', coverImage: undefined });
+
+      // The admin DTO carries a different date and a cover image — the header should reflect these.
+      const adminCoverImage = {
+        id: 999,
+        contentType: 'IMAGE' as const,
+        imageUrl: 'https://cdn.example.com/cover.jpg',
+        orderIndex: 0,
+        locations: [],
+      };
+      const adminDto = makeResponse({
+        collectionDate: '2025-06-15',
+        coverImage: adminCoverImage,
+      });
+      mockGetCollectionUpdateMetadata.mockResolvedValue(adminDto);
+
+      render(<CollectionPageClient collection={seed} editMode />);
+      await flush();
+
+      // The last render of the edit-mode grid must receive the ADMIN values, not the seed values.
+      const lastCall = gridProbe.mock.calls.at(-1)?.[0];
+      expect(lastCall.collectionData).toBeDefined();
+      expect(lastCall.collectionData.collectionDate).toBe('2025-06-15');
+      expect(lastCall.collectionData.coverImage?.id).toBe(999);
+      // Seed value must NOT appear.
+      expect(lastCall.collectionData.collectionDate).not.toBe('2026-01-01');
+      expect(lastCall.collectionData.coverImage).not.toBeUndefined();
+    });
+
+    it('falls back to the seed prop collectionData while the admin DTO is still loading', async () => {
+      const seed = makeCollection({ collectionDate: '2026-01-01', coverImage: undefined });
+      mockGetCollectionUpdateMetadata.mockReturnValue(pendingForever());
+
+      render(<CollectionPageClient collection={seed} editMode />);
+      await flush();
+
+      // During load, collectionData must be the seed (no live DTO yet).
+      const lastCall = gridProbe.mock.calls.at(-1)?.[0];
+      expect(lastCall.collectionData).toBeDefined();
+      expect(lastCall.collectionData.collectionDate).toBe('2026-01-01');
+    });
+  });
+
   describe('readiness gating — edit interactions wait for the admin DTO', () => {
     it('keeps inline editors unmounted and image taps inert while the admin fetch is pending', async () => {
       mockGetCollectionUpdateMetadata.mockReturnValue(pendingForever());

@@ -350,7 +350,7 @@ export default function CollectionPageClient({
       selectedIds={edit.isMultiSelectMode ? edit.selectedIds : []}
       currentCollectionId={collection.id}
       collectionSlug={collection.slug}
-      collectionData={collection}
+      collectionData={edit.currentState?.collection ?? collection}
       isReorderMode={reorderActive}
       reorderMoves={reorderActive ? edit.reorder.moves : undefined}
       pickedUpImageId={reorderActive ? edit.reorder.pickedUpImageId : undefined}
