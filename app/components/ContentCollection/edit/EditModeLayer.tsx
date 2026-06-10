@@ -127,10 +127,16 @@ export default function EditModeLayer({
     handleExitManage,
   ]);
 
-  // Live content: prefer the admin DTO (reflects saves) over the frozen server seed.
+  // Live collection: prefer the admin DTO (reflects saves) over the frozen server seed. The whole
+  // content pipeline below must read from it — e.g. after Reorder auto-converts a CHRONOLOGICAL
+  // collection to ORDERED, only the admin DTO carries the new displayMode, and sorting a saved
+  // reorder by the seed's CHRONOLOGICAL mode would visually revert it until a hard reload.
+  const liveCollection = edit.currentState?.collection ?? collection;
+
+  // Live content (falls back to the seed's content if the admin DTO omits it).
   const allContent = useMemo(
-    () => edit.currentState?.collection?.content ?? collection.content ?? [],
-    [edit.currentState, collection.content]
+    () => liveCollection.content ?? collection.content ?? [],
+    [liveCollection.content, collection.content]
   );
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
@@ -149,13 +155,18 @@ export default function EditModeLayer({
     const processed = processContentBlocks(
       filteredContent,
       false,
-      collection.id,
-      collection.displayMode
+      liveCollection.id,
+      liveCollection.displayMode
     );
     if (filterState.dateSortDirection === 'off') return processed;
     const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
     return mergeDateSortedImages(processed, sorted);
-  }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
+  }, [
+    filteredContent,
+    liveCollection.id,
+    liveCollection.displayMode,
+    filterState.dateSortDirection,
+  ]);
 
   const reorderActive = edit.reorder.active;
 
@@ -206,7 +217,7 @@ export default function EditModeLayer({
       selectedIds={edit.isMultiSelectMode ? edit.selectedIds : []}
       currentCollectionId={collection.id}
       collectionSlug={collection.slug}
-      collectionData={edit.currentState?.collection ?? collection}
+      collectionData={liveCollection}
       isReorderMode={reorderActive}
       reorderMoves={reorderActive ? edit.reorder.moves : undefined}
       pickedUpImageId={reorderActive ? edit.reorder.pickedUpImageId : undefined}

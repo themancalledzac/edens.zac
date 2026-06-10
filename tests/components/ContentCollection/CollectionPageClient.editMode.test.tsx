@@ -53,7 +53,22 @@ jest.mock('@/app/lib/api/content');
 jest.mock('@/app/lib/storage/collectionStorage');
 
 jest.mock('@/app/utils/contentLayout', () => ({
-  processContentBlocks: (content: unknown[]) => content,
+  // displayMode-aware stand-in: order-sensitive tests below assert WHICH displayMode reached the
+  // layout pass, so the fake applies the same primary sort the real pipeline does
+  // (createdAt for CHRONOLOGICAL, orderIndex otherwise).
+  processContentBlocks: (
+    content: { orderIndex?: number; createdAt?: string }[],
+    _filterVisible?: boolean,
+    _collectionId?: number,
+    displayMode?: 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED'
+  ) =>
+    displayMode === 'CHRONOLOGICAL'
+      ? [...content].sort(
+          (a, b) =>
+            (a.createdAt ? new Date(a.createdAt).getTime() : 0) -
+            (b.createdAt ? new Date(b.createdAt).getTime() : 0)
+        )
+      : [...content].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)),
 }));
 
 const gridProbe = jest.fn();
@@ -360,6 +375,54 @@ describe('CollectionPageClient — editMode true', () => {
       const lastCall = gridProbe.mock.calls.at(-1)?.[0];
       expect(lastCall.collectionData).toBeDefined();
       expect(lastCall.collectionData.collectionDate).toBe('2026-01-01');
+    });
+  });
+
+  describe('displayMode — the edit grid sorts with the LIVE displayMode', () => {
+    it('renders a saved reorder when the seed says CHRONOLOGICAL but the admin DTO says ORDERED', async () => {
+      // createdAt order is [1, 2, 3]; orderIndex order is [3, 1, 2] (a saved manual reorder).
+      const content = [
+        {
+          id: 1,
+          contentType: 'IMAGE' as const,
+          orderIndex: 1,
+          imageUrl: 'a.jpg',
+          createdAt: '2026-01-01T00:00:00Z',
+          locations: [],
+        },
+        {
+          id: 2,
+          contentType: 'IMAGE' as const,
+          orderIndex: 2,
+          imageUrl: 'b.jpg',
+          createdAt: '2026-01-02T00:00:00Z',
+          locations: [],
+        },
+        {
+          id: 3,
+          contentType: 'IMAGE' as const,
+          orderIndex: 0,
+          imageUrl: 'c.jpg',
+          createdAt: '2026-01-03T00:00:00Z',
+          locations: [],
+        },
+      ];
+
+      // The frozen server seed predates the Reorder auto-convert: still CHRONOLOGICAL.
+      const seed = makeCollection({ displayMode: 'CHRONOLOGICAL', content });
+      // The admin DTO reflects the converted + reordered state.
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ displayMode: 'ORDERED', content })
+      );
+
+      render(<CollectionPageClient collection={seed} editMode />);
+      await flush();
+
+      // The grid must receive orderIndex order [3, 1, 2] — sorting with the seed's
+      // CHRONOLOGICAL mode would yield createdAt order [1, 2, 3] (the reverted-reorder bug).
+      const lastCall = gridProbe.mock.calls.at(-1)?.[0];
+      const ids = (lastCall.content as { id: number }[]).map(block => block.id);
+      expect(ids).toEqual([3, 1, 2]);
     });
   });
 
