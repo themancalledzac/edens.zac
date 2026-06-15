@@ -583,6 +583,26 @@ describe('buildRows', () => {
     });
   });
 
+  describe('vertical overpacking guard (Phase 3.3)', () => {
+    // Penalty-free verticals have a cheap width-cost Hv (a V3★ ≈ 1.19), so a long
+    // run of portraits could pack many-per-row. MAX_ROW_IMAGES bounds the COUNT and
+    // the targetAR-closeness composer nests the run into a 2D grid rather than a
+    // single thin filmstrip (a flat 12-wide strip of verticals would be AR ≈ 6.75).
+    it('tiles a long run of cheap verticals into bounded, sane-AR grids — never a thin filmstrip', () => {
+      const items = Array.from({ length: 24 }, (_, i) => createVerticalImage(i + 1, 3));
+      // High density (rw=20) is where cheap Hv could overpack a flat strip.
+      const rows = buildRows(items, 20, 1.5);
+      for (const row of rows) {
+        expect(row.components.length).toBeLessThanOrEqual(MAX_ROW_IMAGES);
+        const ar = calculateBoxTreeAspectRatio(row.boxTree, 20);
+        // A degenerate wide filmstrip would have AR well above the target band;
+        // the composer keeps even a 12-vertical row near-square (observed ≤ 1.7).
+        expect(ar).toBeLessThanOrEqual(2.5);
+        expect(ar).toBeGreaterThan(0.5);
+      }
+    });
+  });
+
   describe('2×2 nested layout', () => {
     it('builds a balanced two-pair boxTree for a 4-item mixed row (penalty-free ratings)', () => {
       // Real Row 15 scenario: V1★, V2★, V4★, H3★. Vertical penalty retired, so
