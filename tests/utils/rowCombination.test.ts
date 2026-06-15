@@ -3,7 +3,7 @@
  * Tests isRowComplete, buildRows, and the row composition helpers.
  */
 
-import { LAYOUT } from '@/app/constants';
+import { DENSITY_ROW_WIDTH_MULTIPLIER, LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import { getItemComponentValue } from '@/app/utils/contentRatingUtils';
 import type { ImageType, RowResult } from '@/app/utils/rowCombination';
@@ -13,9 +13,7 @@ import {
   buildRows,
   estimateRowAR,
   hChain,
-  HERO_FULLWIDTH_MAX_ROWWIDTH,
   hPair,
-  isFullWidthHero,
   isRowComplete,
   MAX_FILL_RATIO,
   MAX_ROW_IMAGES,
@@ -32,9 +30,7 @@ import {
   createCollectionContent,
   createGifContent,
   createHorizontalImage,
-  createImageContent,
   createPanorama,
-  createSquareImage,
   createTextContent,
   createVerticalImage,
 } from '@/tests/fixtures/contentFixtures';
@@ -83,59 +79,62 @@ describe('isRowComplete', () => {
       expect(isRowComplete([], DESKTOP)).toBe(false);
     });
 
-    it('should return true for three H3* images (3 × 2.5 = 7.5, fill=93.8%)', () => {
+    it('should return false for three H3* images (3 × Hv 2.108 = 6.32, fill=79.1%)', () => {
       const items = [
         createHorizontalImage(1, 3),
         createHorizontalImage(2, 3),
         createHorizontalImage(3, 3),
       ];
-      // 7.5/8=93.8% — above 90% threshold
+      // Hv: 6.32/8=79.1% — below 90% threshold (under cv it was 93.8%; Hv < cv so
+      // a third H3 no longer completes the row — four are needed, see below).
+      expect(isRowComplete(items, DESKTOP)).toBe(false);
+    });
+
+    it('should return true for four H3* images (4 × Hv 2.108 = 8.43, fill=105.4%)', () => {
+      const items = Array.from({ length: 4 }, (_, i) => createHorizontalImage(i + 1, 3));
+      // Hv: 8.43/8=105.4% — within the 90-115% band.
       expect(isRowComplete(items, DESKTOP)).toBe(true);
     });
 
-    it('should return false for five H1* images (5 × 1.25 = 6.25, fill=78.1%)', () => {
-      // 6.25/8=78.1% — below 90% threshold
+    it('should return true for five H1* images (5 × Hv 1.491 = 7.45, fill=93.2%)', () => {
+      // Hv: 7.45/8=93.2% — above 90% threshold (under cv it was 78.1%, incomplete).
       const items = Array.from({ length: 5 }, (_, i) => createHorizontalImage(i + 1, 1));
-      expect(isRowComplete(items, DESKTOP)).toBe(false);
+      expect(isRowComplete(items, DESKTOP)).toBe(true);
     });
   });
 
   describe('threshold behavior', () => {
-    it('should return true at ~91% fill (H4*+H3*+H1*)', () => {
-      // H4*(3.5) + H3*(2.5) + H1*(1.25) = 7.25 → 90.6% ✓
-      const items = [
-        createHorizontalImage(1, 4),
-        createHorizontalImage(2, 3),
-        createHorizontalImage(3, 1),
-      ];
+    it('should return true at ~93% fill (5×H1*)', () => {
+      // Hv: 5 × 1.491 = 7.45 → 93.2% ✓ (within the 90-115% band)
+      const items = Array.from({ length: 5 }, (_, i) => createHorizontalImage(i + 1, 1));
       expect(isRowComplete(items, DESKTOP)).toBe(true);
     });
 
-    it('should return true at ~94% fill (H5*+H3*)', () => {
-      // H5*(5.0) + H3*(2.5) = 7.5 → 93.8% ✓
-      const items = [createHorizontalImage(1, 5), createHorizontalImage(2, 3)];
-      expect(isRowComplete(items, DESKTOP)).toBe(true);
-    });
-
-    it('should return true at ~106% fill (H5*+H4*, within 115% cap)', () => {
-      // H5*(5.0) + H4*(3.5) = 8.5 → 106.3% ✓
-      const items = [createHorizontalImage(1, 5), createHorizontalImage(2, 4)];
-      expect(isRowComplete(items, DESKTOP)).toBe(true);
-    });
-
-    it('should return false when fill exceeds 115% (overfill cap)', () => {
-      // H5*(5.0) + H5*(5.0) = 10.0 → 125% — exceeds cap
-      const items = [createHorizontalImage(1, 5), createHorizontalImage(2, 5)];
-      expect(isRowComplete(items, DESKTOP)).toBe(false);
-    });
-
-    it('should return false for catastrophic overfill like 150%+', () => {
-      // H5*(5.0) + H5*(5.0) + H3*(2.5) = 12.5 → 156%
+    it('should return true at ~101% fill (H5*+H5*+H3*)', () => {
+      // Hv: 2.981 + 2.981 + 2.108 = 8.07 → 100.9% ✓
       const items = [
         createHorizontalImage(1, 5),
         createHorizontalImage(2, 5),
         createHorizontalImage(3, 3),
       ];
+      expect(isRowComplete(items, DESKTOP)).toBe(true);
+    });
+
+    it('should return true at ~112% fill (3×H5*, within 115% cap)', () => {
+      // Hv: 3 × 2.981 = 8.94 → 111.8% ✓
+      const items = Array.from({ length: 3 }, (_, i) => createHorizontalImage(i + 1, 5));
+      expect(isRowComplete(items, DESKTOP)).toBe(true);
+    });
+
+    it('should return false when fill exceeds 115% (overfill cap)', () => {
+      // Hv: 4×H4* = 4 × 2.494 = 9.98 → 124.7% — exceeds cap
+      const items = Array.from({ length: 4 }, (_, i) => createHorizontalImage(i + 1, 4));
+      expect(isRowComplete(items, DESKTOP)).toBe(false);
+    });
+
+    it('should return false for catastrophic overfill like 150%+', () => {
+      // Hv: 6×H3* = 6 × 2.108 = 12.65 → 158%
+      const items = Array.from({ length: 6 }, (_, i) => createHorizontalImage(i + 1, 3));
       expect(isRowComplete(items, DESKTOP)).toBe(false);
     });
 
@@ -257,26 +256,28 @@ describe('buildRows', () => {
   });
 
   it('should work with rowWidth=4 (tablet)', () => {
-    // H4* cv=3.5, fill=3.5/4=87.5% < 90% — not complete as a pair
-    // Each H4* fills 87.5% alone — two H4* go to separate rows (each hero)
+    // Two normal H4★ landscapes (AR 1.78, extremeness < 2) are NOT solo-eligible,
+    // so they pair into one row rather than each claiming a full-width row. (Only
+    // extreme-AR panoramas solo; a normal landscape never does — see isSoloHero.)
     const items = [createHorizontalImage(1, 4), createHorizontalImage(2, 4)];
     const rows = buildRows(items, 4);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]?.components).toHaveLength(1);
-    expect(rows[1]?.components).toHaveLength(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.components).toHaveLength(2);
   });
 
   it('should work with rowWidth=3 (small tablet)', () => {
-    // H1* cv=1.25, 2×1.25=2.5/3=83.3% < MIN_FILL, 3×1.25=3.75/3=125% > MAX
-    // Overfill accepted (125% ≤ 135%) to avoid underfilled row
+    // Hv(H1)≈1.491. Two H1★ = 2.98/3 = 99.4% — within the fill band, so the row
+    // closes cleanly at 2 and the third H1★ forms a second row (under cv the row
+    // needed all 3 at 125% overfill). All items preserved.
     const items = [
       createHorizontalImage(1, 1),
       createHorizontalImage(2, 1),
       createHorizontalImage(3, 1),
     ];
     const rows = buildRows(items, 3);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.components).toHaveLength(3);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.components.map(c => c.id)).toEqual([1, 2]);
+    expect(rows[1]?.components.map(c => c.id)).toEqual([3]);
   });
 
   it('should put H4* + V3* + V3* in one row', () => {
@@ -380,10 +381,11 @@ describe('buildRows', () => {
   });
 
   describe('standalone promotion in greedy fill', () => {
-    it('should split H3★+H5★ | H3★+H3★ across two rows with rw=8', () => {
-      // H3★(2.5) + H5★(5.0) = 7.5, fill=93.8% ✓. The V3 estimate for {H3,H5}
-      // meets the AR floor at 2 items, so the row closes there (was 3 under V1).
-      // Remaining H3★+H3★ form the second row.
+    it('should pack H3★+H5★+H3★+H3★ into one 2×2 row with rw=8', () => {
+      // Hv: H3≈2.11, H5≈2.98. Sum of all four ≈ 9.31 (116%) overshoots, but the
+      // first three (2.11+2.98+2.11=7.20, 90%) close the row — the fourth H3★ then
+      // joins via AR-floor expansion into a single balanced row. Under the cheaper
+      // Hv scale these no longer split (cv split them 2+2).
       const items = [
         createHorizontalImage(1, 3),
         createHorizontalImage(2, 5),
@@ -391,28 +393,22 @@ describe('buildRows', () => {
         createHorizontalImage(4, 3),
       ];
       const rows = buildRows(items, DESKTOP);
-      expect(rows).toHaveLength(2);
-      // First row: H3★+H5★ (fill=93.8%)
-      const row0Ids = rows[0]?.components.map(c => c.id);
-      expect(row0Ids).toEqual([1, 2]);
-      // Second row: remaining H3★+H3★
-      const row1Ids = rows[1]?.components.map(c => c.id);
-      expect(row1Ids).toEqual([3, 4]);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.components.map(c => c.id)).toEqual([1, 2, 3, 4]);
     });
 
-    it('should split H4★+H5★ | H3★ across two rows with rw=8', () => {
-      // H4★(3.5) + H5★(5.0) = 8.5, fill=106% ≤ MAX. The V3 estimate for {H4,H5}
-      // meets the AR floor at 2 items, so the row closes there (was all 3 under
-      // V1). The trailing H3★ becomes its own row.
+    it('should pack H4★+H5★+H3★ into one row with rw=8', () => {
+      // Hv: H4≈2.49 + H5≈2.98 = 5.48 (68%) doesn't fill, so the trailing H3★
+      // (2.11) joins → one 3-item row at 95% fill (under cv, H4+H5 = 8.5 = 106%
+      // closed the row at 2 and orphaned the H3★).
       const items = [
         createHorizontalImage(1, 4),
         createHorizontalImage(2, 5),
         createHorizontalImage(3, 3),
       ];
       const rows = buildRows(items, DESKTOP);
-      expect(rows).toHaveLength(2);
-      expect(rows[0]?.components.map(c => c.id)).toEqual([1, 2]);
-      expect(rows[1]?.components.map(c => c.id)).toEqual([3]);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.components.map(c => c.id)).toEqual([1, 2, 3]);
     });
 
     it('should NOT skip non-standalone items that overfill', () => {
@@ -618,17 +614,18 @@ describe('buildRows', () => {
     });
 
     it('should keep a 4-item row horizontal at the root with only 1 vertical', () => {
-      // 4 items but only 1 vertical - can't form top pair
+      // 4 items, only 1 vertical. Sized at rw=8 so Hv packs all four into one row
+      // (at rw=5 the cheaper Hv scale closes the row at 3 and orphans the V1★).
       const h1a = createHorizontalImage(1, 1);
       const h1b = createHorizontalImage(2, 1);
-      const h2 = createHorizontalImage(3, 2);
+      const h1c = createHorizontalImage(3, 1);
       const v1 = createVerticalImage(4, 1);
 
-      const items = [h1a, h1b, h2, v1];
-      const rows = buildRows(items, 5);
+      const items = [h1a, h1b, h1c, v1];
+      const rows = buildRows(items, 8);
 
       expect(rows).toHaveLength(1);
-      // BoxTree should be flat horizontal (no vertical stacking)
+      // Row root is horizontal (rows are horizontal by definition).
       const boxTree = rows[0]?.boxTree;
       expect(boxTree?.type).toBe('combined');
       if (boxTree?.type === 'combined') {
@@ -1055,11 +1052,12 @@ describe('buildRows AR-aware fill', () => {
 // ===================== buildRows fill at constant MIN_FILL =====================
 
 describe('buildRows fill at constant MIN_FILL', () => {
-  it('rowWidth=12 packs 4 H items per row at the constant 0.9 fill bar', () => {
-    // The fill bar is a constant MIN_FILL (0.9), no longer rowWidth-scaled:
-    // 3×r3 + 1×r4 = cv 11/12 = 92% ≥ 0.9 completes the row after 4 items.
-    // Density itself now comes from the rowWidth = chunkSize×2.5 mapping rather
-    // than a scaled fill bar.
+  it('rowWidth=12 packs 5 H items per row at the constant 0.9 fill bar', () => {
+    // The fill bar is a constant MIN_FILL (0.9), no longer rowWidth-scaled.
+    // Under the width-cost (Hv) scale a 3★ landscape costs ≈2.108 (was cv 2.5),
+    // so a rw=12 row reaches the 90% bar after 5 items (≈4×2.108 + 2.494 = 10.93,
+    // 91%) instead of 4. Density itself comes from rowWidth = chunkSize ×
+    // DENSITY_ROW_WIDTH_MULTIPLIER (calibrated so default density is unchanged).
     const items = [
       createHorizontalImage(1, 3),
       createHorizontalImage(2, 3),
@@ -1069,10 +1067,13 @@ describe('buildRows fill at constant MIN_FILL', () => {
       createHorizontalImage(6, 3),
     ];
     const rows = buildRows(items, 12);
-    expect(rows[0]!.components.length).toBe(4);
+    expect(rows[0]!.components.length).toBe(5);
   });
 
-  it('rowWidth=8 (default) — 3 H items per row at cv 7.5 hits 94% fill', () => {
+  it('rowWidth=8 — 4 H3★ per row under Hv (4 × 2.108 = 8.43, 105% fill)', () => {
+    // Under cv (2.5) only 3 fit per rw=8 row; under the cheaper Hv (2.108) four
+    // pack to 105% — the K calibration in contentLayout.ts compensates at the
+    // density level so a DEFAULT-density collection keeps its old per-row count.
     const items = [
       createHorizontalImage(1, 3),
       createHorizontalImage(2, 3),
@@ -1080,7 +1081,73 @@ describe('buildRows fill at constant MIN_FILL', () => {
       createHorizontalImage(4, 3),
     ];
     const rows = buildRows(items, 8);
-    expect(rows[0]!.components.length).toBe(3);
+    expect(rows[0]!.components.length).toBe(4);
+  });
+});
+
+// ===================== Density calibration (Hv vs cv) =====================
+// Locks the DENSITY_ROW_WIDTH_MULTIPLIER (K) so the switch from the cv packing
+// scale to the width-cost Hv scale does NOT change how many normal 3★ landscapes
+// pack per row at default density. Recorded baseline on the OLD cv code:
+//   buildRows(12×H3, Math.round(4 × 2.5) = 10, 1.5) → row 0 holds 4 items.
+// After switching packing to Hv (H3 cost 2.5 → 2.108, ~30% cheaper) K was retuned
+// from 2.5 to DENSITY_ROW_WIDTH_MULTIPLIER so row 0 still holds 4. The test reads
+// the shared constant so code and calibration can never drift apart.
+
+describe('density calibration: default density packs the same per-row count', () => {
+  it('default density packs the same count of normal 3★ landscapes per row (unchanged)', () => {
+    const rows = buildRows(
+      Array.from({ length: 12 }, (_, i) => createHorizontalImage(i + 1, 3)),
+      Math.round(4 * DENSITY_ROW_WIDTH_MULTIPLIER),
+      1.5
+    );
+    // Recorded baseline (cv code at K=2.5, rowWidth 10): exactly 4 per row.
+    expect(rows[0]!.components.length).toBeGreaterThanOrEqual(4);
+    expect(rows[0]!.components.length).toBeLessThanOrEqual(4);
+  });
+
+  // Regression: the hero-solo check is gated on aspect-ratio extremeness, so a
+  // NORMAL landscape (AR 1.78, extremeness < 2) never claims its own row — even
+  // at a small rowWidth where its width-cost fraction alone would exceed
+  // HERO_SOLO_WIDTH_FRACTION. Without the gate, a 3★ landscape at rowWidth 4
+  // (Hv 2.108 / 4 = 0.527 ≥ 0.5) degenerated to one-per-row, collapsing the
+  // chunk-2 density step into full-width singles.
+  it('a normal 3★ landscape never solos at small rowWidth (rw=4 → 2 per row)', () => {
+    const rows = buildRows(
+      Array.from({ length: 12 }, (_, i) => createHorizontalImage(i + 1, 3)),
+      4,
+      1.5
+    );
+    expect(rows[0]!.components.length).toBe(2);
+  });
+
+  it('a normal 5★ landscape never solos at small rowWidth either (AR 1.78, ext<2)', () => {
+    // The retired isFullWidthHero required AR≥2; a normal 5★ (AR 1.78) must not
+    // qualify regardless of rating. Hv(H5)=2.981, frac at rw=4 = 0.745 ≥ 0.5,
+    // so only the extremeness gate keeps it sharing.
+    const rows = buildRows(
+      [createHorizontalImage(1, 5), createHorizontalImage(2, 3), createHorizontalImage(3, 3)],
+      4,
+      1.5
+    );
+    expect(rows[0]!.components.length).toBeGreaterThan(1);
+  });
+
+  it('per-row count is non-decreasing as rowWidth grows for normal 3★ landscapes', () => {
+    // No degenerate all-singles step anywhere across the density range.
+    const counts = [4, 6, 8, 11, 13].map(
+      rw =>
+        buildRows(
+          Array.from({ length: 12 }, (_, i) => createHorizontalImage(i + 1, 3)),
+          rw,
+          1.5
+        )[0]!.components.length
+    );
+    for (let i = 1; i < counts.length; i++) {
+      expect(counts[i]!).toBeGreaterThanOrEqual(counts[i - 1]!);
+    }
+    // And the first step must be a real 2 (not a collapsed 1).
+    expect(counts[0]).toBe(2);
   });
 });
 
@@ -1348,41 +1415,13 @@ describe('row density packing', () => {
   });
 });
 
-// ===================== Full-width hero promotion =====================
+// ===================== Emergent full-width hero (Hv width-cost) =====================
+// isFullWidthHero (the AR+rating special-case) was retired in the directional-
+// prominence rewrite. A wide top-rated panorama now claims its own row purely
+// because its width-cost Hv = √(P·AR) clears HERO_SOLO_WIDTH_FRACTION of the row
+// budget — emergent, not a hard-coded rule. These exercise that emergent behavior.
 
-describe('full-width hero promotion', () => {
-  describe('isFullWidthHero predicate', () => {
-    it('promotes a wide 5★ horizontal panorama at low/medium density', () => {
-      expect(isFullWidthHero(createPanorama(1, 5), 10)).toBe(true);
-    });
-
-    it('honours the AR floor (2.0) at the boundary', () => {
-      // getAspectRatio reads imageWidth/imageHeight, not the aspectRatio field.
-      const ar2 = createImageContent(1, { imageWidth: 2000, imageHeight: 1000, rating: 5 });
-      const ar199 = createImageContent(2, { imageWidth: 1990, imageHeight: 1000, rating: 5 });
-      expect(isFullWidthHero(ar2, 10)).toBe(true);
-      expect(isFullWidthHero(ar199, 10)).toBe(false);
-    });
-
-    it('rejects a normal-AR (1.78) 5★ horizontal — not a panorama', () => {
-      expect(isFullWidthHero(createHorizontalImage(1, 5), 10)).toBe(false);
-    });
-
-    it('rejects a wide panorama below the rating floor (5)', () => {
-      expect(isFullWidthHero(createPanorama(1, 4), 10)).toBe(false);
-    });
-
-    it('rejects vertical and square images regardless of rating', () => {
-      expect(isFullWidthHero(createVerticalImage(1, 5), 10)).toBe(false);
-      expect(isFullWidthHero(createSquareImage(2, 5), 10)).toBe(false);
-    });
-
-    it('applies the density ceiling at HERO_FULLWIDTH_MAX_ROWWIDTH', () => {
-      expect(isFullWidthHero(createPanorama(1, 5), HERO_FULLWIDTH_MAX_ROWWIDTH)).toBe(true);
-      expect(isFullWidthHero(createPanorama(1, 5), HERO_FULLWIDTH_MAX_ROWWIDTH + 1)).toBe(false);
-    });
-  });
-
+describe('emergent full-width hero (width-cost driven)', () => {
   describe('buildRows promotion', () => {
     const soloPanoRow = (rows: RowResult[], panoId: number): RowResult | undefined =>
       rows.find(
@@ -1436,14 +1475,16 @@ describe('full-width hero promotion', () => {
       expect(totalItems(rows)).toBe(items.length);
     });
 
-    it('does NOT promote at high density (rowWidth above the ceiling)', () => {
+    it('does NOT promote at high density (Hv fraction falls below the bar)', () => {
+      // At rowWidth 20 the pano's Hv (≈5.48) is only ~0.27 of the budget, below
+      // HERO_SOLO_WIDTH_FRACTION (0.5), so it shares instead of soloing.
       const items = [
         createHorizontalImage(1, 3),
         createPanorama(2, 5),
         createHorizontalImage(3, 3),
         createHorizontalImage(4, 3),
       ];
-      const rows = buildRows(items, HERO_FULLWIDTH_MAX_ROWWIDTH + 5, 1.4);
+      const rows = buildRows(items, 20, 1.4);
       expect(soloPanoRow(rows, 2)).toBeUndefined();
       expect(totalItems(rows)).toBe(items.length);
     });

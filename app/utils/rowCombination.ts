@@ -2,7 +2,7 @@
  * Row Combination — row layout engine (two stages).
  *
  * Stage 1 (`buildRows`): greedy sequential fill decides which items go in each
- * row, using a per-row cv budget (rowWidth) and an AR-floor check.
+ * row, using a per-row width-cost budget (rowWidth) and an AR-floor check.
  * Stage 2 (`buildAtomic`): for each row, a point-balance split builds a binary tree,
  * then every hPair/vStack direction assignment is enumerated and scored — a hard
  * AR floor at 1.0 ("never taller than wide") plus closeness to the target row AR,
@@ -10,16 +10,20 @@
  *
  * Key concepts:
  * - A "component" is anything that occupies row space: a single image, gif, text, or combined block.
- * - Component value (cv) = proportion of row width an item occupies (effectiveRating / rowWidth).
- * - A row is "complete" when total component values >= 0.9 (90% threshold).
+ * - Width-cost Hv = √(P·AR) is each item's packing cost (orientation-agnostic): a wide
+ *   panorama costs more horizontal space, a tall portrait less. fill = ΣHv / rowWidth.
+ * - A row is "complete" when total width-cost >= 0.9 of rowWidth (90% threshold).
  */
 
+import { EXTREMENESS_RAMP_START } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import {
+  getArExtremeness,
   getEffectiveRating,
   getHeightDemand,
   getItemComponentValue,
   getProminence,
+  getWidthCost,
 } from '@/app/utils/contentRatingUtils';
 import { getAspectRatio } from '@/app/utils/contentTypeGuards';
 import { calculateBoxTreeAspectRatio } from '@/app/utils/rowStructureAlgorithm';
@@ -42,10 +46,11 @@ export type BoxTree =
 // =============================================================================
 
 /**
- * Calculate the total component value of a set of items.
+ * Total Stage-1 packing cost of a set of items, summing the width-cost
+ * Hv = √(P·AR) (orientation-agnostic) rather than the vertical-biased cv.
  */
 function getTotalCV(components: AnyContentModel[], _rowWidth: number): number {
-  return components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
+  return components.reduce((sum, item) => sum + getWidthCost(item), 0);
 }
 
 // =============================================================================
@@ -71,7 +76,7 @@ export const LOW_RATED_THRESHOLD = 2;
 export function isRowComplete(components: AnyContentModel[], rowWidth: number): boolean {
   if (components.length === 0) return false;
 
-  const totalValue = components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
+  const totalValue = components.reduce((sum, item) => sum + getWidthCost(item), 0);
 
   const fill = totalValue / rowWidth;
   return fill >= MIN_FILL_RATIO && fill <= MAX_FILL_RATIO;
@@ -227,25 +232,39 @@ export function rowTargetAR(items: ImageType[], baseline: number): number {
 export const MAX_ROW_IMAGES = 12;
 
 /**
- * Full-width hero promotion thresholds. A wide, top-rated horizontal panorama
- * can't be sized to its prominence inside a shared row, so it gets its own
- * full-width row. Gated by AR, rating, and density (at high density even a wide
- * panorama shares the row).
+ * Width-cost fraction at or above which an extreme-AR item claims its OWN
+ * full-width row. Paired with an extremeness gate (see {@link isSoloHero}); the
+ * fraction alone is not enough because a normal landscape at a small rowWidth can
+ * exceed it (a 3★ landscape Hv ≈ 2.11 is 0.53 of a rowWidth-4 budget) — that
+ * would collapse low-density rows into full-width singles.
  */
-export const HERO_FULLWIDTH_MIN_AR = 2.0;
-export const HERO_FULLWIDTH_MIN_RATING = 5;
-export const HERO_FULLWIDTH_MAX_ROWWIDTH = 15;
+export const HERO_SOLO_WIDTH_FRACTION = 0.5;
 
 /**
- * Whether an item should claim its own full-width row: a horizontal image at
- * least {@link HERO_FULLWIDTH_MIN_AR} wide, rated at least
- * {@link HERO_FULLWIDTH_MIN_RATING}, while the row-width budget is at or below
- * {@link HERO_FULLWIDTH_MAX_ROWWIDTH} (low/medium density).
+ * Whether an item should claim its own full-width row — the emergent successor to
+ * the retired isFullWidthHero rule. Two gates, both required:
+ *
+ * 1. **Extremeness gate** ({@link getArExtremeness} ≥ {@link EXTREMENESS_RAMP_START}):
+ *    only images far from square in EITHER direction are solo-eligible. This ties
+ *    eligibility to the prominence model's own extremeness concept (no new magic
+ *    number) and subsumes the old AR≥2 gate. A normal landscape (ext 1.78 < 2) is
+ *    never eligible at any rowWidth; the rating gate is correctly dropped per the
+ *    prominence philosophy.
+ * 2. **Width-cost gate** (Hv / rowWidth ≥ {@link HERO_SOLO_WIDTH_FRACTION}):
+ *    the item's width-cost must dominate the row budget. This subsumes the old
+ *    density ceiling — a wide 5★ pano (Hv ≈ 5.48) clears 0.5 of a rowWidth-10
+ *    budget (low/medium density → solos) but only 0.27 of a rowWidth-20 budget
+ *    (high density → shares).
+ *
+ * A tall portrait passes the extremeness gate but its small Hv keeps its
+ * width-fraction below the bar, so it never solos — its prominence is expressed
+ * as row height via {@link rowTargetAR}, not a solo row. Disabled on mobile
+ * (rowWidth ≤ 2) to keep the narrow-slot path unchanged.
  */
-export function isFullWidthHero(item: AnyContentModel, rowWidth: number): boolean {
-  if (rowWidth > HERO_FULLWIDTH_MAX_ROWWIDTH) return false;
-  if (getAspectRatio(item) < HERO_FULLWIDTH_MIN_AR) return false;
-  return getEffectiveRating(item) >= HERO_FULLWIDTH_MIN_RATING;
+export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
+  if (rowWidth <= 2) return false;
+  if (getArExtremeness(getAspectRatio(item)) < EXTREMENESS_RAMP_START) return false;
+  return getWidthCost(item) / rowWidth >= HERO_SOLO_WIDTH_FRACTION;
 }
 
 /**
@@ -279,11 +298,12 @@ function collectRowItems(
 }
 
 /**
- * Row-first layout algorithm. Builds rows over a lookahead window: promotes a
- * full-width hero ({@link isFullWidthHero}) to its own row (whether leading or
- * mid-window), standalone-skips a hero past low-rated items, greedy sequential
- * fill, best-fit fallback, then builds each row's atomic tree. AR-floor check
- * is disabled on mobile (rowWidth <= 2).
+ * Row-first layout algorithm. Builds rows over a lookahead window:
+ * standalone-skips a hero past low-rated items, greedy sequential fill (by the
+ * width-cost Hv = √(P·AR)), best-fit fallback, then builds each row's atomic
+ * tree. A wide top-rated panorama claiming its own row at low/medium density is
+ * an EMERGENT consequence of its large Hv exceeding the row budget — no longer a
+ * hard-coded special case. AR-floor check is disabled on mobile (rowWidth <= 2).
  *
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
  * @param targetARBaseline - Baseline (viewport) target AR. Fill/estimate use it directly;
@@ -304,7 +324,11 @@ export function buildRows(
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
 
-    if (isFullWidthHero(window[0]!, rowWidth)) {
+    // Emergent full-width hero: a leading extreme-AR item whose width-cost
+    // dominates the row budget claims its own row (see {@link isSoloHero}).
+    // Replaces the retired isFullWidthHero AR+rating rule — a wide top-rated
+    // panorama qualifies at low/medium density and shares at high density.
+    if (isSoloHero(window[0]!, rowWidth)) {
       const heroItem = window[0]!;
       rows.push({
         components: [heroItem],
@@ -321,9 +345,7 @@ export function buildRows(
       let heroIdx = -1;
 
       for (let i = 1; i < maxSearch; i++) {
-        const candidate = window[i]!;
-        const cv = getItemComponentValue(candidate);
-        if (cv / rowWidth >= 0.95) {
+        if (isSoloHero(window[i]!, rowWidth)) {
           heroIdx = i;
           break;
         }
@@ -353,19 +375,20 @@ export function buildRows(
     let slotCountComplete = false;
 
     for (let i = 0; i < expandedWindow.length; i++) {
-      if (seqCount > 0 && isFullWidthHero(expandedWindow[i]!, rowWidth)) {
+      const cv = getWidthCost(expandedWindow[i]!);
+
+      // Emergent full-width hero (mid-window): once the row has started, a later
+      // solo-eligible item (see {@link isSoloHero}) is skipped here so it surfaces
+      // as a leading solo hero on the next iteration. Mirrors the leading-item
+      // check above; replaces the retired isFullWidthHero skip.
+      if (seqCount > 0 && isSoloHero(expandedWindow[i]!, rowWidth)) {
         skippedStandalones.push(i);
         continue;
       }
 
-      const cv = getItemComponentValue(expandedWindow[i]!);
       const newFill = (seqTotal + cv) / rowWidth;
 
       if (newFill > MAX_FILL_RATIO && !slotCountComplete) {
-        if (seqCount > 0 && cv / rowWidth >= 0.95) {
-          skippedStandalones.push(i);
-          continue;
-        }
         // Accept moderate overfill when the row is still under the density-
         // scaled MIN_FILL bar — solo underfilled row is worse than slight overfill.
         const currentFill = seqTotal / rowWidth;
@@ -450,7 +473,7 @@ export function buildRows(
         if (!available.has(idx)) continue;
 
         const currentTotal = getTotalCV(bfComponents, rowWidth);
-        const candidateCV = getItemComponentValue(window[idx]!);
+        const candidateCV = getWidthCost(window[idx]!);
         const newTotal = currentTotal + candidateCV;
         const newFill = newTotal / rowWidth;
 

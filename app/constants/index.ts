@@ -65,6 +65,14 @@ export const LAYOUT = {
   ssrRecomputeToleranceWidth: 64,
 } as const;
 
+// Density → row-width multiplier: rowWidth = round(chunkSize × this). The packing
+// cost is the width-cost Hv = √(P·AR) (orientation-agnostic), so K is calibrated
+// against Hv, not cv. At K below, a default 4-chunk collection of normal 3★
+// landscapes (Hv ≈ 2.108) packs the same 4-per-row it did under the old cv scale
+// (cv 2.5, rowWidth 10). Used by contentLayout.ts (desktop + mobile) and referenced
+// by the calibration test so code and test never drift.
+export const DENSITY_ROW_WIDTH_MULTIPLIER = 2.1;
+
 // Fixed-weight cv formula: cv = BASE_WEIGHT[rating] × arFactor
 // cv is a fixed cost. rowWidth is the budget. fraction = cv / rowWidth.
 export const BASE_WEIGHT: Record<number, number> = {

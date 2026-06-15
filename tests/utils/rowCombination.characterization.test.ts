@@ -165,22 +165,18 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 9: V1★ + H5★ + H3★ + H3★ — no hero skip at rw=8
-  // V1★ cv≈0.61, H5★ cv=5.0, H3★ cv=2.5
-  // Sequential: 0.61+5.0=5.61 (70.2%), +2.5=8.11 (101.4%✓) → complete at 3 items
-  // Row 1: V1★+H5★+H3★ (ids [1,2,3]), remaining H3★ in row 2
+  // Test 9: V1★ + H5★ + H3★ + H3★ — width-cost (Hv) packing at rw=8
+  // Hv: V1≈0.84, H5≈2.98, H3≈2.11. Sum of all four ≈ 8.04 (fill≈100.5%), so
+  // under the cheaper Hv scale all four pack into ONE balanced 2×2 row at AR
+  // 1.316 — vs the old cv scale which closed at 3 and orphaned the last H3★.
   // ---------------------------------------------------------------
-  it('9: V1★ + H5★ + H3★ + H3★ → sequential fill, 3 in first row', () => {
+  it('9: V1★ + H5★ + H3★ + H3★ → one 2×2 row under Hv packing', () => {
     const items = [V(1, 1), H(2, 5), H(3, 3), H(4, 3)];
     const rows = buildRows(items, DESKTOP);
 
-    // Row 1: V1★+H5★+H3★ → H(V-pair, leaf)
-    expect(rows).toHaveLength(2);
-    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),L(3))');
-
-    // Row 2: remaining H3★
-    expect(rowIds(rows[1]!)).toEqual([4]);
+    expect(rows).toHaveLength(1);
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),V(L(3),L(4)))');
   });
 
   // ---------------------------------------------------------------
@@ -254,15 +250,13 @@ describe('buildRows characterization', () => {
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
     expect(allIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
-    // Row 1: H5★(5.0) + H4★(3.5) = 8.5, fill≈106% (≤ MAX). The AR estimate for
-    // {H5,H4} already meets the AR floor, so the row closes at 2 items.
-    expect(rowIds(rows[0]!)).toEqual([1, 2]);
-
-    // Row 2: V3★ + V3★ + H3★ + H3★ + H3★ → 3H + 2V
-    expect(rowIds(rows[1]!)).toEqual([3, 4, 5, 6, 7]);
-
-    // Row 3: V1★ + H2★ + V2★ → 1H + 2V
-    expect(rowIds(rows[2]!)).toEqual([8, 9, 10]);
+    // Hv packs cheaper than cv, so each row holds more. Row 1 now takes 4 items
+    // (H5★+H4★ + the two V3★) at AR 2.02; Row 2 takes the three H3★ plus V1★+H2★
+    // (5 items, AR 1.90). That leaves the trailing V2★ as a lone leftover row —
+    // a low-rated vertical orphan, the expected leftover of the denser packing.
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
+    expect(rowIds(rows[1]!)).toEqual([5, 6, 7, 8, 9]);
+    expect(rowIds(rows[2]!)).toEqual([10]);
 
     expect(rows).toHaveLength(3);
   });
@@ -274,11 +268,12 @@ describe('buildRows characterization', () => {
     const items = [H(1, 3), H(2, 3), H(3, 3), H(4, 3), H(5, 3), H(6, 3)];
     const rows = buildRows(items, DESKTOP);
 
-    // H3★ cv=1.67. 3×1.67=5.0 → 100% → row complete
-    // 3 H3★ per row
+    // Hv(H3)≈2.108. 4×2.108=8.43 → 105% fills the rw=8 budget, so the first row
+    // takes 4 (a balanced 2×2 at AR 1.778) and the remaining 2 pair off — vs the
+    // old cv scale (cv 2.5) which fit only 3 per row.
     expect(rows).toHaveLength(2);
-    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(rowIds(rows[1]!)).toEqual([4, 5, 6]);
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
+    expect(rowIds(rows[1]!)).toEqual([5, 6]);
   });
 
   // ---------------------------------------------------------------
@@ -329,24 +324,18 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 17: V4★ + H3★ + H4★ + H1★ — with rw=8
-  // V4★ eff=3 cv≈1.53, H3★ cv=2.5, H4★ cv=3.5, H1★ cv=1.25
-  // Sequential: 1.53(19.1%) + 2.5(50.4%) + 3.5(94.1%✓) → complete at 3
-  // Actual: [1,2,3] → 2H + 1V, remaining [4] alone
+  // Test 17: V4★ + H3★ + H4★ + H1★ — width-cost (Hv) packing at rw=8
+  // Hv: V4≈2.05, H3≈2.11, H4≈2.49, H1≈1.49. Sum ≈ 8.14 (fill≈102%), so under
+  // the cheaper Hv scale all four pack into ONE balanced 2×2 row at AR 1.316 —
+  // vs the old cv scale which closed at 3 and orphaned the trailing H1★.
   // ---------------------------------------------------------------
-  it('17: sequential fill — V4★ + H3★ + H4★ + H1★', () => {
+  it('17: sequential fill — V4★ + H3★ + H4★ + H1★ → one 2×2 row', () => {
     const items = [V(1, 4), H(2, 3), H(3, 4), H(4, 1)];
     const rows = buildRows(items, DESKTOP);
 
-    // Row 1: V4★ + H3★ + H4★ → 2H + 1V
-    expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(rows[0]!.components).toHaveLength(3);
-
-    // Row 2: H1★ alone
-    expect(rowIds(rows[1]!)).toEqual([4]);
-
-    const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
-    expect(allIds).toEqual([1, 2, 3, 4]);
+    expect(rows).toHaveLength(1);
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),V(L(3),L(4)))');
   });
 
   // ---------------------------------------------------------------
@@ -389,7 +378,8 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 21: Large mixed collection — 15 images
-  // With rw=8, H5★ is no longer standalone (cv=5.0, fill=62.5% < 95%)
+  // With rw=8, a normal H5★ never solos: Hv≈2.98, fraction≈0.37 < the 0.5
+  // HERO_SOLO_WIDTH_FRACTION bar (only a wide panorama would clear it).
   // ---------------------------------------------------------------
   it('21: large mixed collection (15 images) — all items consumed', () => {
     const items = [
@@ -415,9 +405,10 @@ describe('buildRows characterization', () => {
     const allIds = rows.flatMap(r => rowIds(r)).sort((a, b) => a - b);
     expect(allIds).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
-    // First row: H5★+H4★ (5.0+3.5=8.5, 106% ≤ MAX). The AR estimate for {H5,H4}
-    // meets the AR floor, so the row closes at 2 items → [1,2].
-    expect(rowIds(rows[0]!)).toEqual([1, 2]);
+    // First row under Hv: H5★+H4★ (Hv 2.98+2.49=5.48, only 68%) doesn't fill the
+    // budget, so the two trailing V3★ join → [1,2,3,4] at AR 2.02. (Under the old
+    // cv scale H5+H4 = 8.5 = 106% closed the row at 2.)
+    expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
   });
 
   // ---------------------------------------------------------------
