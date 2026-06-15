@@ -207,7 +207,7 @@ describe('getProminenceRating', () => {
     expect(getProminenceRating(createHorizontalImage(1, 3))).toBe(3);
   });
 
-  it('returns raw rating for vertical images (no vertical penalty unlike getEffectiveRating)', () => {
+  it('returns raw rating for vertical images (no vertical penalty)', () => {
     expect(getProminenceRating(createVerticalImage(1, 5))).toBe(5);
     expect(getProminenceRating(createVerticalImage(1, 3))).toBe(3);
   });
