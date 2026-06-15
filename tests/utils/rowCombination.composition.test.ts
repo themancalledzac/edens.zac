@@ -13,6 +13,8 @@ import {
   type AtomicComponent,
   type BoxTree,
   buildAtomic,
+  buildRows,
+  rowTargetAR,
   toImageType,
 } from '@/app/utils/rowCombination';
 import {
@@ -461,6 +463,33 @@ describe('buildAtomic — directional prominence (Task 1.1)', () => {
     // V5★ (id=4) must claim more area than either H3★ (id=1 or id=2).
     expect(shares.get(4)).toBeGreaterThan(shares.get(1)!);
     expect(shares.get(4)).toBeGreaterThan(shares.get(2)!);
+  });
+});
+
+describe('rowTargetAR — per-row target AR from peak height-demand (Task 2.1)', () => {
+  // The per-row target AR pulls toward a taller (lower-AR) shape in proportion to
+  // the row's peak Vv ABOVE the wide-image ceiling (ROW_TARGET_AR_VV_LOW). A bland
+  // all-horizontal row (peak Vv ≈ 1.19, below the ceiling) keeps the baseline; a row
+  // holding a 5★ vertical (peak Vv ≈ 2.98) is pulled below it so the hero sizes taller.
+  // A single-anchor pull (Vv / REF) pulled even bland rows off baseline — see the
+  // 2026-06-10 plan revision — hence the wide-image Vv ceiling gates the pull.
+  it('pulls a hero row toward a taller target than a bland row, leaving bland at baseline', () => {
+    const bland = [H(1, 3), H(2, 3)].map(i => toImageType(i, 10));
+    const hero = [H(1, 3), createVerticalImage(2, 5)].map(i => toImageType(i, 10));
+    expect(rowTargetAR(hero, 2.0)).toBeLessThan(rowTargetAR(bland, 2.0));
+    expect(rowTargetAR(bland, 2.0)).toBeCloseTo(2.0, 5); // bland row keeps the baseline
+  });
+
+  it('buildRows composes a hero row taller via the per-row target (end-to-end wiring)', () => {
+    // [H3,H3,V3,V5] land in one row at rowWidth 10. With the neutral baseline target the row
+    // composes wide (AR ≈ 2.0) and the 5★ vertical renders short; buildRows derives a per-row
+    // target from the row's peak Vv (≈2.98) and composes it much taller (AR ≈ 1.17), giving the
+    // hero full height. Reverting the buildRows→rowTargetAR wiring snaps this back toward ≈2.0.
+    const items = [H(1, 3), H(2, 3), createVerticalImage(3, 3), createVerticalImage(4, 5)];
+    const rows = buildRows(items, 10, 1.457);
+    const heroRow = rows.find(r => r.components.some(c => (c as { id?: number }).id === 4))!;
+    const heroRowAR = calculateBoxTreeAspectRatio(heroRow.boxTree, 10);
+    expect(heroRowAR).toBeLessThan(1.5); // pulled well below the baseline-target composition (~2.0)
   });
 });
 

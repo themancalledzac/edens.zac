@@ -65,3 +65,62 @@ Selection is two-tiered, not a stack of special-case rules: (1) the AR floor plu
 to the target row AR pick the acceptable band; (2) within it, the lowest
 area-vs-cv spread wins, so sizing tracks `cv` (the intended signal) rather than
 being an artifact of which subtree a leaf landed in.
+
+## Known limitation — vertical prominence is decided by STRUCTURE, not rating
+
+> Reproduced 2026-06-10 on `/oval-lakes?manage=1` (branch `0179-mobile-first-admin`).
+> This is the concrete, quantified instance of the directional-prominence plan's
+> "Issue #4 — Reachability" ([2026-06-09-directional-prominence.md](../../docs/superpowers/plans/2026-06-09-directional-prominence.md)).
+
+**Symptom:** the two highest-rated images in a row can render as the *smallest*.
+For the reported row `V4★, H3★, V4★, V5★, V5★` (all but the 3★ are 9:16 verticals),
+forced into one row at `rowWidth = 8`, `targetWidth = 1274`:
+
+| Image | effectiveRating | cv | rendered (w×h) | area |
+|------|----|----|----|----|
+| V4★ #1 | 3 | 1.53 | 552×982 | **542,631 ← biggest** |
+| H3★ #2 | 3 | 2.50 | 420×233 | 97,785 |
+| V4★ #3 | 3 | 1.53 | 420×736 | 309,050 |
+| V5★ #4 | 4 | 2.14 | 276×485 | **133,890 ← smallest** |
+| V5★ #5 | 4 | 2.14 | 276×485 | **133,890 ← smallest** |
+
+Winning tree:
+
+```
+H (root, forced hPair)
+├─ H
+│  ├─ leaf V4★ #1            ← solo leaf in an hPair → full row height → BIG
+│  └─ V (vStack) [ H3★ #2, V4★ #3 ]
+└─ V (vStack) [ V5★ #4, V5★ #5 ]   ← two heroes stacked → each half-height, narrow → SMALL
+```
+
+**Root cause (in order of impact):**
+
+1. **Composition geometry, not the value model.** In a justified row, "big" = "got a
+   tall, full-height column." Phase 1 (`splitByPointBalance`) groups the two adjacent,
+   equal-rated 5★s into one sibling subtree; Phase 2 can then only `hPair` them (too wide)
+   or `vStack` them (halves each one's height). It picks `vStack` because that lands the
+   *whole row* near target AR (~1.27). Meanwhile a lone vertical (#1) that happens to land
+   as its own leaf inherits the full row height and balloons. **Which vertical lands solo
+   vs. stacked is not monotonic in rating** — it falls out of adjacency + AR-fitting.
+2. **The AR floor is enforced only at the ROOT**, not at internal nodes
+   ([`rowAR_Cost`](rowCombination.ts) / `pickRootAssignment`), so a sub-tree `vStack` of two
+   verticals at AR 0.28 is permitted as long as the root row clears 1.0.
+3. **The equity tiebreak can't rescue it.** `equitySpread` (the only mechanism that tries to
+   make area track value) is confined to `AR_EQUITY_BAND` (0.3) around the AR-optimal
+   candidate — and every tree where both 5★s get a full-height column falls *outside* that
+   band, so it is never even considered. The realized area/cv spread here is ~5.7×.
+
+**Proof the cv penalty is NOT the cause (counterfactual):** rerunning the identical row with
+the vertical penalty *removed* (so V5★ cv = 3.06, unambiguously the highest value in the row)
+produces **byte-for-byte identical** rendered sizes. Penalty-free ratings `[4,3,4,5,5]` still
+point-balance-split into `left[V4,H3,V4] / right[V5,V5]`, so the two heroes stay grouped and
+stacked. The `−1` penalty does invert the *cv ranking* (V5★ 2.14 < H3★ 2.50 — a latent bug,
+the unresolved "Q9" in the 2026-03-30 design doc), but it does not change *this* layout.
+
+**Implication for the fix:** feeding prominence `P` to the equity metric (plan Phase 1) and
+removing the penalty (plan Phase 3.2) are **insufficient** for this case — neither changes the
+Phase-1 grouping. A row whose top item should dominate needs a **structural / hero-isolation**
+step that pulls a high-prominence vertical out to its own full-height column (analogous to
+`isFullWidthHero` for panoramas, which has no vertical equivalent today). Tracked as the
+upgraded Issue #4 in the directional-prominence plan.

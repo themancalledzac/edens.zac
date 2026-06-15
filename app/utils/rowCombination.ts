@@ -17,6 +17,7 @@
 import type { AnyContentModel } from '@/app/types/Content';
 import {
   getEffectiveRating,
+  getHeightDemand,
   getItemComponentValue,
   getProminence,
 } from '@/app/utils/contentRatingUtils';
@@ -103,6 +104,8 @@ export interface ImageType {
   componentValue: number;
   /** Orientation-agnostic prominence P — used as the equity-target for area allocation. */
   prominence: number;
+  /** Height demand Vv = √(P/AR) — drives the per-row target AR (taller rows for tall heroes). */
+  heightDemand: number;
 }
 
 /** Recursive composition structure */
@@ -125,9 +128,19 @@ export function toImageType(item: AnyContentModel, _rowWidth: number): ImageType
   const effectiveRating = getEffectiveRating(item);
   const componentValue = getItemComponentValue(item);
   const prominence = getProminence(item);
+  const heightDemand = getHeightDemand(item);
   const title = 'title' in item ? String(item.title) : `item-${item.id}`;
 
-  return { source: item, title, ar, numericAR, effectiveRating, componentValue, prominence };
+  return {
+    source: item,
+    title,
+    ar,
+    numericAR,
+    effectiveRating,
+    componentValue,
+    prominence,
+    heightDemand,
+  };
 }
 
 /** Create a single-image AtomicComponent */
@@ -179,6 +192,33 @@ export function acToBoxTree(ac: AtomicComponent): BoxTree {
 
 /** AR floor multiplier: row AR must be at least targetAR * this value */
 export const AR_FLOOR_MULTIPLIER = 0.7;
+
+// Per-row target AR band (Phase 2 — directional prominence). rowTargetAR pulls the
+// viewport baseline toward a floor in proportion to the row's peak height-demand
+// (Vv) ABOVE the Vv ceiling of wide/normal images, so a row holding a tall hero
+// targets a taller (lower-AR) shape and sizes the hero bigger, while rows of
+// landscapes/panos keep the baseline. Two anchors: peak Vv at/below
+// ROW_TARGET_AR_VV_LOW pulls nothing; at/above ROW_TARGET_AR_VV_HIGH the pull is
+// full. Clamped so a row never drops below ROW_TARGET_AR_MIN_FRACTION of the
+// baseline, preserving the density→size monotonicity shipped 2026-05-29.
+export const ROW_TARGET_AR_MIN_FRACTION = 0.6; // never below 60% of the baseline
+export const ROW_TARGET_AR_VV_LOW = 1.85; // ≈ just above a 5★ pano's Vv (1.826)
+export const ROW_TARGET_AR_VV_HIGH = 5.0; // ≈ a 1:3 portrait hero → full pull-down
+
+/**
+ * Per-row target AR: the viewport baseline pulled toward a floor by the row's peak
+ * height-demand (Vv). A bland horizontal row (peak Vv below the wide-image ceiling
+ * ROW_TARGET_AR_VV_LOW) keeps the baseline; a row with a tall vertical hero targets
+ * a taller (lower-AR) shape so the hero renders bigger. The pull is content-driven
+ * (peak Vv), not count-driven, so it does not affect density→size monotonicity.
+ */
+export function rowTargetAR(items: ImageType[], baseline: number): number {
+  const peakVv = items.reduce((max, it) => Math.max(max, it.heightDemand), 0);
+  const span = ROW_TARGET_AR_VV_HIGH - ROW_TARGET_AR_VV_LOW;
+  const pull = Math.min(1, Math.max(0, (peakVv - ROW_TARGET_AR_VV_LOW) / span));
+  const floor = baseline * ROW_TARGET_AR_MIN_FRACTION;
+  return baseline - pull * (baseline - floor);
+}
 
 /**
  * Maximum images per row. Caps greedy fill AND bounds buildAtomic's Phase 2
@@ -246,12 +286,13 @@ function collectRowItems(
  * is disabled on mobile (rowWidth <= 2).
  *
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
- * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
+ * @param targetARBaseline - Baseline (viewport) target AR. Fill/estimate use it directly;
+ *   each row's final composition derives a per-row target from it via {@link rowTargetAR}.
  */
 export function buildRows(
   items: AnyContentModel[],
   rowWidth: number,
-  targetAR: number = 1.5
+  targetARBaseline: number = 1.5
 ): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
@@ -304,7 +345,7 @@ export function buildRows(
       }
     }
 
-    const arFloor = rowWidth <= 2 ? 0 : targetAR * AR_FLOOR_MULTIPLIER;
+    const arFloor = rowWidth <= 2 ? 0 : targetARBaseline * AR_FLOOR_MULTIPLIER;
     const expandedWindow = remaining.slice(0, MAX_ROW_IMAGES);
     let seqTotal = 0;
     let seqCount = 0;
@@ -348,7 +389,7 @@ export function buildRows(
         // Re-check AR with the expanded set
         const expandedItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
         const expandedImgs = expandedItems.map(item => toImageType(item, rowWidth));
-        const expandedAR = estimateRowAR(expandedImgs, targetAR, rowWidth);
+        const expandedAR = estimateRowAR(expandedImgs, targetARBaseline, rowWidth);
         if (expandedAR >= arFloor) break;
         continue;
       }
@@ -359,7 +400,7 @@ export function buildRows(
       if (newFill >= effectiveMinFill) {
         const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
         const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-        const rowAR = estimateRowAR(rowImgs, targetAR, rowWidth);
+        const rowAR = estimateRowAR(rowImgs, targetARBaseline, rowWidth);
 
         if (rowAR >= arFloor) {
           break;
@@ -371,7 +412,7 @@ export function buildRows(
     if (seqCount > 0) {
       const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-      const composition = buildAtomic(rowImgs, targetAR, rowWidth);
+      const composition = buildAtomic(rowImgs, rowTargetAR(rowImgs, targetARBaseline), rowWidth);
       const boxTree = acToBoxTree(composition);
 
       rows.push({
@@ -440,7 +481,7 @@ export function buildRows(
     }
 
     const bfImgs = bfComponents.map(item => toImageType(item, rowWidth));
-    const composition = buildAtomic(bfImgs, targetAR, rowWidth);
+    const composition = buildAtomic(bfImgs, rowTargetAR(bfImgs, targetARBaseline), rowWidth);
     const boxTree = acToBoxTree(composition);
 
     rows.push({
