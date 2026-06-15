@@ -195,33 +195,30 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 11: 4 verticals (V3★, V1★, V1★, V1★) — 2×2 nested
-  // V3★ eff=2, V1★ eff=0. CVs: 1.25 + 1.0 + 1.0 + 1.0 = 4.25, fill=85%
+  // Test 11: 4 verticals (V3★, V1★, V1★, V1★)
+  // Penalty retired: V3★ eff=3, V1★ eff=1 (was 2 and 0). Penalty-free
+  // point-balance (total 6, half 3) splits exactly after the V3★, so the
+  // top-rated vertical claims its own top-level slot instead of being paired.
   // ---------------------------------------------------------------
-  it('11: V3★ + V1★ + V1★ + V1★ → 2×2 nested', () => {
+  it('11: V3★ + V1★ + V1★ + V1★ → hero V3★ splits off, rest nest', () => {
     const items = [V(1, 3), V(2, 1), V(3, 1), V(4, 1)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
 
-    // Builds: H( H(V3★,V1★), V(V1★,V1★) ) — an H pair on the left and a
-    // V stack of two leaves on the right.
+    // Builds: H( V3★, H( V1★, V(V1★,V1★) ) ) — the top-rated V3★ takes the left
+    // slot as a single leaf; the three V1★ nest on the right.
     const tree = rows[0]!.boxTree;
     expect(tree.type).toBe('combined');
     if (tree.type === 'combined') {
       expect(tree.direction).toBe('horizontal');
-      // Left side: horizontal pair
-      expect(tree.children[0].type).toBe('combined');
-      if (tree.children[0].type === 'combined') {
-        expect(tree.children[0].direction).toBe('horizontal');
-      }
-      // Right side: vertical stack of two leaves
+      // Left side: the V3★ hero as a single leaf
+      expect(tree.children[0].type).toBe('leaf');
+      // Right side: the remaining three verticals nested under a horizontal pair
       expect(tree.children[1].type).toBe('combined');
       if (tree.children[1].type === 'combined') {
-        expect(tree.children[1].direction).toBe('vertical');
-        expect(tree.children[1].children[0].type).toBe('leaf');
-        expect(tree.children[1].children[1].type).toBe('leaf');
+        expect(tree.children[1].direction).toBe('horizontal');
       }
     }
   });
@@ -454,25 +451,25 @@ describe('architecture types', () => {
       expect(img.componentValue).toBeCloseTo(3.5); // BASE_WEIGHT[4] × 1.0 (arFactor capped)
     });
 
-    it('should convert vertical image with penalty', () => {
+    it('should convert a vertical image with no penalty (retired)', () => {
       const item = V(2, 3);
       const img = toImageType(item, DESKTOP);
 
       expect(img.source).toBe(item);
       expect(img.ar).toBe('V');
       expect(img.numericAR).toBeCloseTo(0.5625);
-      expect(img.effectiveRating).toBe(2); // V3★ → eff 2 (vertical penalty)
-      expect(img.componentValue).toBeCloseTo(1.0717, 3); // BASE_WEIGHT[2] × sqrt(0.5625/1.5)
+      expect(img.effectiveRating).toBe(3); // V3★ → eff 3 (penalty retired; was 2)
+      expect(img.componentValue).toBeCloseTo(1.5309, 3); // BASE_WEIGHT[3] × sqrt(0.5625/1.5)
     });
 
-    it('should handle V1★ → effective 0', () => {
+    it('should handle V1★ → effective 1 (penalty retired)', () => {
       const item = V(3, 1);
       const img = toImageType(item, DESKTOP);
 
       expect(img.ar).toBe('V');
       expect(img.numericAR).toBeCloseTo(0.5625);
-      expect(img.effectiveRating).toBe(0);
-      expect(img.componentValue).toBeCloseTo(0.6124, 3); // BASE_WEIGHT[0] × sqrt(0.5625/1.5)
+      expect(img.effectiveRating).toBe(1); // was 0 under the penalty
+      expect(img.componentValue).toBeCloseTo(0.7655, 3); // BASE_WEIGHT[1] × sqrt(0.5625/1.5)
     });
 
     it('should preserve source reference', () => {

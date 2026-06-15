@@ -57,40 +57,30 @@ export function getRating(item: AnyContentModel, asStarValue: boolean = false): 
 /**
  * Get the effective rating of an item based on its orientation.
  *
- * The effective rating accounts for:
- * 1. **Vertical penalty**: Vertical images are treated as one rating lower than horizontal
- *    (V5★ → H4★ equivalent, V4★ → H3★ equivalent, etc.)
- *
- * Examples:
- * - H5★ → effectiveRating 5
- * - V5★ → effectiveRating 4 (vertical penalty)
- * - H3★ → effectiveRating 3
- * - V5★ → 4, V4★ → 3, V3★ → 2, V2★ → 1, V1★ → 1, V0★ → 0
- *
- * Note: Slot-width-dependent scaling is handled downstream in getComponentValue().
+ * Orientation-agnostic: the vertical penalty was RETIRED in the directional-
+ * prominence rewrite. A V5★ and an H5★ now both return 5 — directionality is
+ * expressed downstream by AR extremeness (width-cost Hv / height-demand Vv),
+ * not by demoting the rating. Collection cards → 4, non-image/gif → 1, else the
+ * raw 0-5 rating. (Now identical to {@link getProminenceRating}; the two are
+ * slated to consolidate in the Phase 5 cleanup.)
  *
  * @param item - The content item to evaluate
- * @returns The effective rating (0-5) after applying orientation penalty
+ * @returns The effective rating (0-5), clamped, with no orientation penalty
  */
 export function getEffectiveRating(item: AnyContentModel): number {
   if (isCollectionCard(item)) {
     return 4;
   }
 
-  // Animated GIF/MP4 blocks share the image rating semantics (0-5 with vertical penalty). The
-  // earlier `return 1` short-circuit here is what made GIFs always pack as low-priority filler in
-  // the row algorithm even after we added rating to the backend.
+  // Animated GIF/MP4 blocks share the image rating semantics (0-5). The earlier `return 1`
+  // short-circuit here is what made GIFs always pack as low-priority filler in the row algorithm
+  // even after we added rating to the backend.
   if (!isContentImage(item) && !isGifContent(item)) {
     return 1;
   }
 
   const baseRating = (item as { rating?: number | null }).rating ?? 0;
-  const ratio = getAspectRatio(item);
-  const isVertical = ratio <= 1.0;
-
-  const effectiveRating = isVertical ? Math.max(baseRating - 1, 0) : baseRating;
-
-  return Math.min(Math.max(effectiveRating, 0), 5);
+  return Math.min(Math.max(baseRating, 0), 5);
 }
 
 /**

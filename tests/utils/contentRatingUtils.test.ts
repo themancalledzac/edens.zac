@@ -126,24 +126,24 @@ describe('getEffectiveRating', () => {
     });
   });
 
-  describe('vertical images (penalty -1)', () => {
-    it('should return rating - 1 for vertical images', () => {
-      expect(getEffectiveRating(createVerticalImage(1, 5))).toBe(4); // V5★ → H4★ equivalent
-      expect(getEffectiveRating(createVerticalImage(1, 4))).toBe(3); // V4★ → H3★ equivalent
-      expect(getEffectiveRating(createVerticalImage(1, 3))).toBe(2); // V3★ → H2★ equivalent
-      expect(getEffectiveRating(createVerticalImage(1, 2))).toBe(1); // V2★ → H1★ equivalent
+  describe('vertical images (no penalty — retired in directional prominence)', () => {
+    it('should return the raw rating for vertical images (directionality handled by AR extremeness, not a penalty)', () => {
+      expect(getEffectiveRating(createVerticalImage(1, 5))).toBe(5); // V5★ → 5 (was 4 under the penalty)
+      expect(getEffectiveRating(createVerticalImage(1, 4))).toBe(4); // V4★ → 4 (was 3)
+      expect(getEffectiveRating(createVerticalImage(1, 3))).toBe(3); // V3★ → 3 (was 2)
+      expect(getEffectiveRating(createVerticalImage(1, 2))).toBe(2); // V2★ → 2 (was 1)
     });
 
-    it('should not go below 0 for low-rated verticals', () => {
-      expect(getEffectiveRating(createVerticalImage(1, 1))).toBe(0); // V1★ → 0 (clamped)
-      expect(getEffectiveRating(createVerticalImage(1, 0))).toBe(0); // V0★ → 0 (clamped)
+    it('clamps low-rated verticals to [0, 5] without a penalty', () => {
+      expect(getEffectiveRating(createVerticalImage(1, 1))).toBe(1); // V1★ → 1 (was 0 under the penalty)
+      expect(getEffectiveRating(createVerticalImage(1, 0))).toBe(0); // V0★ → 0
     });
   });
 
-  describe('square images (treated as vertical)', () => {
-    it('should apply vertical penalty to square images', () => {
-      expect(getEffectiveRating(createSquareImage(1, 5))).toBe(4);
-      expect(getEffectiveRating(createSquareImage(1, 3))).toBe(2);
+  describe('square images (no penalty)', () => {
+    it('should return the raw rating for square images (no longer treated as penalised verticals)', () => {
+      expect(getEffectiveRating(createSquareImage(1, 5))).toBe(5); // was 4 under the penalty
+      expect(getEffectiveRating(createSquareImage(1, 3))).toBe(3); // was 2
     });
   });
 

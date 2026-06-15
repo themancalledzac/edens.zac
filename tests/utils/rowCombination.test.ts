@@ -5,7 +5,7 @@
 
 import { DENSITY_ROW_WIDTH_MULTIPLIER, LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
-import { getItemComponentValue } from '@/app/utils/contentRatingUtils';
+import { getItemComponentValue, getWidthCost } from '@/app/utils/contentRatingUtils';
 import type { ImageType, RowResult } from '@/app/utils/rowCombination';
 import {
   acToBoxTree,
@@ -519,8 +519,11 @@ describe('buildRows', () => {
       ];
       const rows = buildRows(items, DESKTOP);
       for (const row of rows) {
+        // Fill is measured with the actual Stage-1 packing cost (width-cost Hv),
+        // which is what buildRows fills against — not the legacy cv. (Summing cv
+        // here would over-count verticals now that the vertical penalty is gone.)
         const totalCV = row.components.reduce(
-          (sum: number, item: AnyContentModel) => sum + getItemComponentValue(item),
+          (sum: number, item: AnyContentModel) => sum + getWidthCost(item),
           0
         );
         const fill = totalCV / DESKTOP;
@@ -581,12 +584,12 @@ describe('buildRows', () => {
   });
 
   describe('2×2 nested layout', () => {
-    it('should build a 2×2 nested boxTree for a 4-item row with dominant vertical', () => {
-      // Real Row 15 scenario: V1★, V2★, V4★, H3★
-      // V4★ base rating 4 → effective rating 3 (vertical penalty)
+    it('builds a balanced two-pair boxTree for a 4-item mixed row (penalty-free ratings)', () => {
+      // Real Row 15 scenario: V1★, V2★, V4★, H3★. Vertical penalty retired, so
+      // V4★ now balances at its true rating 4 (was effective 3 under the penalty).
       const v1 = createVerticalImage(1, 1); // V1★ → effective 1
       const v2 = createVerticalImage(2, 2); // V2★ → effective 2
-      const v4 = createVerticalImage(3, 4); // V4★ → effective 3
+      const v4 = createVerticalImage(3, 4); // V4★ → effective 4
       const h3 = createHorizontalImage(4, 3); // H3★ → effective 3
 
       const items = [v1, v2, v4, h3];
@@ -594,21 +597,22 @@ describe('buildRows', () => {
 
       expect(rows).toHaveLength(1);
 
-      // Builds: H[ V[ H[v1,v2], v4 ], h3 ] — a vertical-stack column on the
-      // left and the H3★ as the right leaf.
+      // Penalty-free point-balance splits [V1,V2 | V4,H3] (points 1+2 | 4+3 → halves
+      // 3 | 7) giving H( H(v1,v2), V(v4,h3) ): a horizontal pair on the left, a
+      // vertical stack on the right.
       const boxTree = rows[0]?.boxTree;
       expect(boxTree?.type).toBe('combined');
       if (boxTree?.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
-        // Left child is the vertical stack column
+        // Left child: horizontal pair of the two low-rated verticals
         expect(boxTree.children[0].type).toBe('combined');
         if (boxTree.children[0].type === 'combined') {
-          expect(boxTree.children[0].direction).toBe('vertical');
+          expect(boxTree.children[0].direction).toBe('horizontal');
         }
-        // Right child is the H3★ leaf
-        expect(boxTree.children[1].type).toBe('leaf');
-        if (boxTree.children[1].type === 'leaf') {
-          expect(boxTree.children[1].content).toEqual(h3);
+        // Right child: vertical stack of V4★ + H3★
+        expect(boxTree.children[1].type).toBe('combined');
+        if (boxTree.children[1].type === 'combined') {
+          expect(boxTree.children[1].direction).toBe('vertical');
         }
       }
     });
@@ -810,12 +814,12 @@ describe('toImageType', () => {
     expect(result.ar).toBe('V');
   });
 
-  it('should apply vertical penalty to effective rating', () => {
-    // V3*: rating=3, effectiveRating=2 (penalty -1)
+  it('applies no vertical penalty — a V3★ and an H3★ have equal effective rating', () => {
+    // Vertical penalty retired (directional prominence): directionality is now
+    // expressed by AR extremeness downstream, not by demoting the rating.
     const v3 = createVerticalImage(1, 3);
-    expect(toImageType(v3, DESKTOP).effectiveRating).toBe(2);
+    expect(toImageType(v3, DESKTOP).effectiveRating).toBe(3); // was 2 under the penalty
 
-    // H3*: no penalty
     const h3 = createHorizontalImage(2, 3);
     expect(toImageType(h3, DESKTOP).effectiveRating).toBe(3);
   });

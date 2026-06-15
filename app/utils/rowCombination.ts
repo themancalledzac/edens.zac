@@ -541,7 +541,9 @@ type AbstractNode =
  * boundary whose two halves have the closest effectiveRating sums. Order
  * preserved — no swaps, only splits.
  *
- * effectiveRating (not cv): cv would double-penalise verticals. See ./rowCombination.md.
+ * Balances on effectiveRating (now penalty-free — equal to the raw rating for
+ * both orientations) rather than the width-cost cv, so the split point reflects
+ * prominence, not packing width. See ./rowCombination.md.
  */
 function splitByPointBalance(items: ImageType[]): AbstractNode {
   if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
