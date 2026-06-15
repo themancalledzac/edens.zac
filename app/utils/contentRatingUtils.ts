@@ -10,10 +10,6 @@ import {
   EXTREMENESS_RAMP_BASE,
   EXTREMENESS_RAMP_SLOPE,
   EXTREMENESS_RAMP_START,
-  PANORAMA_AR,
-  PANORAMA_AR_FACTOR,
-  PANORAMA_AR_SLOPE,
-  REFERENCE_AR,
 } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import { getAspectRatio, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
@@ -83,39 +79,6 @@ export function getEffectiveRating(item: AnyContentModel): number {
   return Math.min(Math.max(baseRating, 0), 5);
 }
 
-/**
- * Calculate component value (cv) for an image: cv = BASE_WEIGHT[effectiveRating] × arFactor.
- * Below {@link PANORAMA_AR} uses a sqrt curve; at/above it switches to a linear ramp so panoramas
- * get substantially more weight than same-rated normal horizontals. cv is a FIXED WEIGHT —
- * the caller divides cv / rowWidth to get the fill fraction.
- *
- * @param effectiveRating - The effective rating (0-5) from getEffectiveRating()
- * @param imageAR - The actual aspect ratio of the image (width/height)
- * @returns The component value (fixed weight, independent of rowWidth)
- */
-export function getComponentValue(effectiveRating: number, imageAR: number): number {
-  const clampedRating = Math.min(Math.max(effectiveRating, 0), 5);
-  const baseWeight = BASE_WEIGHT[clampedRating] ?? 1.0;
-  const arFactor =
-    imageAR >= PANORAMA_AR
-      ? PANORAMA_AR_FACTOR + PANORAMA_AR_SLOPE * (imageAR - PANORAMA_AR)
-      : Math.sqrt(Math.min(imageAR, REFERENCE_AR) / REFERENCE_AR);
-  return baseWeight * arFactor;
-}
-
-/**
- * Convenience function: Get component value directly from an item.
- * Combines getEffectiveRating() and getComponentValue() in one call.
- *
- * @param item - The content item to evaluate
- * @returns The component value for this item (fixed weight, rowWidth-independent)
- */
-export function getItemComponentValue(item: AnyContentModel): number {
-  const effectiveRating = getEffectiveRating(item);
-  const imageAR = getAspectRatio(item);
-  return getComponentValue(effectiveRating, imageAR);
-}
-
 // =============================================================================
 // Phase 0 — Orientation-agnostic prominence P
 // =============================================================================
@@ -134,8 +97,8 @@ export function getArExtremeness(imageAR: number): number {
 
 /**
  * Internal multiplier applied to BASE_WEIGHT when an image's extremeness
- * exceeds EXTREMENESS_RAMP_START. Mirrors the PANORAMA_AR ramp in
- * getComponentValue but is symmetric (applies to tall images too).
+ * exceeds EXTREMENESS_RAMP_START. Above the start the factor climbs linearly so
+ * very wide OR very tall images get extra weight (symmetric in orientation).
  */
 function prominenceFactor(extremeness: number): number {
   return extremeness >= EXTREMENESS_RAMP_START
@@ -163,9 +126,10 @@ export function getProminenceRating(item: AnyContentModel): number {
  *
  * P = BASE_WEIGHT[prominenceRating] × prominenceFactor(extremeness)
  *
- * Unlike getItemComponentValue (which applies a vertical penalty via
- * getEffectiveRating), P treats a 5★ portrait and a 5★ panorama as equally
- * rated and only scales by how extreme the aspect ratio is — wide OR tall.
+ * Directionality is never expressed by demoting the rating: P treats a 5★
+ * portrait and a 5★ panorama as equally rated and only scales by how extreme
+ * the aspect ratio is — wide OR tall. The width-cost Hv = √(P·AR) and
+ * height-demand Vv = √(P/AR) split that prominence into the two axes.
  *
  * @param item - The content item to evaluate
  * @returns Prominence value > 0

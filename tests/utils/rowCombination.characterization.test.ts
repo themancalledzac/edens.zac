@@ -68,9 +68,10 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 2: V5★ + V5★ — 2 verticals
-  // V5★ effective=4, cv=2.5. 2×2.5=5.0, fill=100%
+  // Penalty retired: V5★ P=5.0, Hv≈1.68. 2×1.68≈3.35, fill≈42% of rw=8 (verticals
+  // cost little horizontal space) — they still pair into the one available row.
   // ---------------------------------------------------------------
-  it('2: V5★ + V5★ → 2 verticals (100% fill)', () => {
+  it('2: V5★ + V5★ → 2 verticals (~42% fill)', () => {
     const items = [V(1, 5), V(2, 5)];
     const rows = buildRows(items, DESKTOP);
 
@@ -81,9 +82,10 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 3: H3★ + H3★ — greedy sequential fill
-  // H3★ cv=1.67, 2×1.67=3.34, fill=67% < 90% → row incomplete with 2 items
+  // H3★ P=2.5, Hv≈2.11. 2×2.11≈4.22, fill≈53% of rw=8 → row incomplete with 2
+  // items (still pairs since there are only two).
   // ---------------------------------------------------------------
-  it('3: H3★ + H3★ → 2 horizontals (67% fill, below 90%)', () => {
+  it('3: H3★ + H3★ → 2 horizontals (~53% fill, below complete)', () => {
     const items = [H(1, 3), H(2, 3)];
     const rows = buildRows(items, DESKTOP);
 
@@ -94,9 +96,9 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 4: V2★ + V2★ — greedy sequential fill
-  // V2★ effective=1, cv=1.0. 2×1.0=2.0, fill=40% < 90%
+  // Penalty retired: V2★ P=1.75, Hv≈0.99. 2×0.99≈1.98, fill≈25% of rw=8.
   // ---------------------------------------------------------------
-  it('4: V2★ + V2★ → 2 verticals (40% fill)', () => {
+  it('4: V2★ + V2★ → 2 verticals (~25% fill)', () => {
     const items = [V(1, 2), V(2, 2)];
     const rows = buildRows(items, DESKTOP);
 
@@ -107,9 +109,10 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 5: H4★ + V1★ + V1★ — dominant H + stacked V-pair
-  // H4★ cv=2.5, V1★ effective=0 cv=1.0. Total=4.5, fill=90% ✓
+  // Penalty retired: H4★ Hv≈2.49, V1★ P=1.25/Hv≈0.84. Total≈4.17, fill≈52% of
+  // rw=8. The dominant H4★ takes the left slot; the two V1★ stack on the right.
   // ---------------------------------------------------------------
-  it('5: H4★ + V1★ + V1★ → H(leaf, V(leaf,leaf)) (90% fill)', () => {
+  it('5: H4★ + V1★ + V1★ → H(leaf, V(leaf,leaf)) (~52% fill)', () => {
     const items = [H(1, 4), V(2, 1), V(3, 1)];
     const rows = buildRows(items, DESKTOP);
 
@@ -121,9 +124,9 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 6: H4★ + V2★ — H + V
-  // H4★ cv=2.5, V2★ effective=1 cv=1.0. Total=3.5, fill=70% < 90%
+  // Penalty retired: H4★ Hv≈2.49, V2★ P=1.75/Hv≈0.99. Total≈3.49, fill≈44% of rw=8.
   // ---------------------------------------------------------------
-  it('6: H4★ + V2★ → H + V (70% fill)', () => {
+  it('6: H4★ + V2★ → H + V (~44% fill)', () => {
     const items = [H(1, 4), V(2, 2)];
     const rows = buildRows(items, DESKTOP);
 
@@ -134,9 +137,9 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 7: H2★ + H2★ + H2★ — 3 horizontals
-  // H2★ cv=1.25, 3×1.25=3.75, fill=75% < 90% → row incomplete
+  // H2★ P=1.75, Hv≈1.76. 3×1.76≈5.29, fill≈66% of rw=8 → row incomplete.
   // ---------------------------------------------------------------
-  it('7: H2★ + H2★ + H2★ → 3 horizontals (75% fill)', () => {
+  it('7: H2★ + H2★ + H2★ → 3 horizontals (~66% fill)', () => {
     const items = [H(1, 2), H(2, 2), H(3, 2)];
     const rows = buildRows(items, DESKTOP);
 
@@ -150,7 +153,7 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 8: H1★ + V1★ + H1★ + V1★ + H1★ — 5-item row (3H + 2V)
-  // H1★ cv=1.0, V1★ effective=0 cv=1.0. 5×1.0=5.0, fill=100% ✓
+  // Penalty retired: H1★ Hv≈1.49, V1★ Hv≈0.84. 3×1.49 + 2×0.84 ≈ 6.15, fill≈77% of rw=8.
   // ---------------------------------------------------------------
   it('8: H1★ + V1★ + H1★ + V1★ + H1★ → 3H + 2V (5-item row)', () => {
     const items = [H(1, 1), V(2, 1), H(3, 1), V(4, 1), H(5, 1)];
@@ -181,8 +184,8 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 10: V1★ + V2★ + H5★ — all in one row at rw=8
-  // V1★ cv≈0.61, V2★ cv≈0.77, H5★ cv=5.0. Total≈6.38, fill≈79.7%
-  // Sequential fill takes all 3, best-fit completes
+  // Penalty retired: V1★ Hv≈0.84, V2★ Hv≈0.99, H5★ Hv≈2.98. Total≈4.81, fill≈60%
+  // of rw=8. Sequential fill takes all 3, best-fit completes.
   // ---------------------------------------------------------------
   it('10: V1★ + V2★ + H5★ → all in one row (no hero skip at rw=8)', () => {
     const items = [V(1, 1), V(2, 2), H(3, 5)];
@@ -225,21 +228,22 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 12: 10 mixed images — realistic collection
-  // With rw=8: H5★ cv=5.0, H4★ cv=3.5, V3★ cv≈1.07, H3★ cv=2.5,
-  //            V1★ cv≈0.61, H2★ cv=1.75, V2★ cv≈0.77
+  // Penalty retired; packing cost is the width-cost Hv against rw=8:
+  // H5★ Hv≈2.98, H4★ Hv≈2.49, V3★ Hv≈1.19, H3★ Hv≈2.11,
+  // V1★ Hv≈0.84, H2★ Hv≈1.76, V2★ Hv≈0.99
   // ---------------------------------------------------------------
   it('12: 10 mixed images — realistic collection end-to-end', () => {
     const items = [
-      H(1, 5), // cv=5.0
-      H(2, 4), // cv=3.5
-      V(3, 3), // eff=2, cv≈1.07
-      V(4, 3), // eff=2, cv≈1.07
-      H(5, 3), // cv=2.5
-      H(6, 3), // cv=2.5
-      H(7, 3), // cv=2.5
-      V(8, 1), // eff=0, cv≈0.61
-      H(9, 2), // cv=1.75
-      V(10, 2), // eff=1, cv≈0.77
+      H(1, 5), // Hv≈2.98
+      H(2, 4), // Hv≈2.49
+      V(3, 3), // eff=3, Hv≈1.19
+      V(4, 3), // eff=3, Hv≈1.19
+      H(5, 3), // Hv≈2.11
+      H(6, 3), // Hv≈2.11
+      H(7, 3), // Hv≈2.11
+      V(8, 1), // eff=1, Hv≈0.84
+      H(9, 2), // Hv≈1.76
+      V(10, 2), // eff=2, Hv≈0.99
     ];
     const rows = buildRows(items, DESKTOP);
 
@@ -287,9 +291,9 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 15: H4★ + H3★ + V1★ + H2★ + V1★ — with rw=8
-  // H4★ cv=3.5, H3★ cv=2.5, V1★ cv≈0.61, H2★ cv=1.75, V1★ cv≈0.61
-  // Sequential: 3.5(43.8%) + 2.5(75%) + 0.61(82.6%) + 1.75(104.5%✓) → complete at 4
-  // Actual: [1,2,3,4] → 3H + 1V
+  // Penalty retired; width-cost Hv: H4★≈2.49, H3★≈2.11, V1★≈0.84, H2★≈1.76
+  // Cumulative/8: 2.49(31%) + 2.11→4.60(58%) + 0.84→5.44(68%) + 1.76→7.21(90%✓)
+  // → complete at 4. Actual: [1,2,3,4] → 3H + 1V
   // ---------------------------------------------------------------
   it('15: H4★ + H3★ + V1★ + H2★ + V1★ → 3H + 1V first row', () => {
     const items = [H(1, 4), H(2, 3), V(3, 1), H(4, 2), V(5, 1)];
@@ -308,9 +312,9 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 16: H3★ + V1★ + V1★ + H3★ — sequential fill
-  // H3★ cv=1.67, V1★ cv=1.0
-  // Sequential: 1.67+1.0=2.67 (53%), +1.0=3.67 (73%), +1.67=5.34 (107%) ✓
-  // Sequential completes → 2H + 2V
+  // Penalty retired; width-cost Hv: H3★≈2.11, V1★≈0.84
+  // Cumulative/8: 2.11(26%) + 0.84→2.95(37%) + 0.84→3.79(47%) + 2.11→5.89(74%)
+  // These are the only four items, so they all land in the one row → 2H + 2V.
   // ---------------------------------------------------------------
   it('16: H3★ + V1★ + V1★ + H3★ → sequential fill (no best-fit needed)', () => {
     const items = [H(1, 3), V(2, 1), V(3, 1), H(4, 3)];
@@ -338,7 +342,7 @@ describe('buildRows characterization', () => {
   // ---------------------------------------------------------------
   // Test 18: H4★ + H4★ — 2 horizontals (100% fill)
   // ---------------------------------------------------------------
-  it('18: H4★ + H4★ → 2 horizontals (100% fill)', () => {
+  it('18: H4★ + H4★ → 2 horizontals (~62% fill)', () => {
     const items = [H(1, 4), H(2, 4)];
     const rows = buildRows(items, DESKTOP);
 
@@ -350,7 +354,7 @@ describe('buildRows characterization', () => {
   // ---------------------------------------------------------------
   // Test 19: H4★ + V3★ + V3★ — dominant H + stacked V-pair (100% fill)
   // ---------------------------------------------------------------
-  it('19: H4★ + V3★ + V3★ → H(leaf, V(leaf,leaf)) (100% fill)', () => {
+  it('19: H4★ + V3★ + V3★ → H(leaf, V(leaf,leaf)) (~61% fill)', () => {
     const items = [H(1, 4), V(2, 3), V(3, 3)];
     const rows = buildRows(items, DESKTOP);
 
@@ -361,9 +365,9 @@ describe('buildRows characterization', () => {
 
   // ---------------------------------------------------------------
   // Test 20: 5 H1★ images — single-row fallback
-  // H1★ cv=1.0, all same rating (eff=1)
-  // 3×1.0=3.0, fill=60% < 90% → isRowComplete fails for 3
-  // 5×1.0=5.0, fill=100% → all 5 fill into one row
+  // H1★ P=1.25, Hv≈1.49, all same rating (eff=1)
+  // 3×1.49≈4.47, fill≈56% of rw=8 → isRowComplete fails for 3
+  // 5×1.49≈7.46, fill≈93% → all 5 fill into one row
   // ---------------------------------------------------------------
   it('20: 5 H1★ images → single-row fallback', () => {
     const items = [H(1, 1), H(2, 1), H(3, 1), H(4, 1), H(5, 1)];
@@ -380,15 +384,15 @@ describe('buildRows characterization', () => {
   // ---------------------------------------------------------------
   it('21: large mixed collection (15 images) — all items consumed', () => {
     const items = [
-      H(1, 5), // cv=5.0
-      H(2, 4),
+      H(1, 5), // Hv≈2.98
+      H(2, 4), // Hv≈2.49
       V(3, 3),
-      V(4, 3), // cv=3.5, 1.07, 1.07
+      V(4, 3), // V3★ eff=3, Hv≈1.19 each (penalty retired)
       H(5, 3),
       H(6, 3),
-      H(7, 3), // cv=2.5 each
+      H(7, 3), // Hv≈2.11 each
       V(8, 2),
-      V(9, 2), // cv≈0.77 each
+      V(9, 2), // V2★ eff=2, Hv≈0.99 each
       H(10, 1),
       V(11, 1),
       H(12, 1),
@@ -448,7 +452,6 @@ describe('architecture types', () => {
       expect(img.ar).toBe('H');
       expect(img.numericAR).toBeCloseTo(1.7778, 3);
       expect(img.effectiveRating).toBe(4); // horizontal, no penalty
-      expect(img.componentValue).toBeCloseTo(3.5); // BASE_WEIGHT[4] × 1.0 (arFactor capped)
     });
 
     it('should convert a vertical image with no penalty (retired)', () => {
@@ -459,7 +462,6 @@ describe('architecture types', () => {
       expect(img.ar).toBe('V');
       expect(img.numericAR).toBeCloseTo(0.5625);
       expect(img.effectiveRating).toBe(3); // V3★ → eff 3 (penalty retired; was 2)
-      expect(img.componentValue).toBeCloseTo(1.5309, 3); // BASE_WEIGHT[3] × sqrt(0.5625/1.5)
     });
 
     it('should handle V1★ → effective 1 (penalty retired)', () => {
@@ -469,7 +471,6 @@ describe('architecture types', () => {
       expect(img.ar).toBe('V');
       expect(img.numericAR).toBeCloseTo(0.5625);
       expect(img.effectiveRating).toBe(1); // was 0 under the penalty
-      expect(img.componentValue).toBeCloseTo(0.7655, 3); // BASE_WEIGHT[1] × sqrt(0.5625/1.5)
     });
 
     it('should preserve source reference', () => {

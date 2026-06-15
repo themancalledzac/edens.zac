@@ -21,7 +21,6 @@ import {
   getArExtremeness,
   getEffectiveRating,
   getHeightDemand,
-  getItemComponentValue,
   getProminence,
   getWidthCost,
 } from '@/app/utils/contentRatingUtils';
@@ -106,7 +105,6 @@ export interface ImageType {
   ar: OrientationShort;
   numericAR: number;
   effectiveRating: number;
-  componentValue: number;
   /** Orientation-agnostic prominence P — used as the equity-target for area allocation. */
   prominence: number;
   /** Height demand Vv = √(P/AR) — drives the per-row target AR (taller rows for tall heroes). */
@@ -131,7 +129,6 @@ export function toImageType(item: AnyContentModel, _rowWidth: number): ImageType
   const numericAR = getAspectRatio(item);
   const ar: OrientationShort = numericAR > 1.0 ? 'H' : 'V';
   const effectiveRating = getEffectiveRating(item);
-  const componentValue = getItemComponentValue(item);
   const prominence = getProminence(item);
   const heightDemand = getHeightDemand(item);
   const title = 'title' in item ? String(item.title) : `item-${item.id}`;
@@ -142,7 +139,6 @@ export function toImageType(item: AnyContentModel, _rowWidth: number): ImageType
     ar,
     numericAR,
     effectiveRating,
-    componentValue,
     prominence,
     heightDemand,
   };

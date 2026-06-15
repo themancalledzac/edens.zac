@@ -451,8 +451,8 @@ describe('buildAtomic — directional prominence (Task 1.1)', () => {
   //   - NEW prominence: V5★ P=5.0 ≫ H3★ P=2.5, so the prominence-equity-optimal
   //     tree pairs the verticals side by side → the 5★ vertical out-sizes the 3★s.
   // This assertion FLIPS RED→GREEN on the cv→prominence swap in leafShares:
-  // revert the leaf value to `ac.img.componentValue` and it fails (V5★ ≈ 0.12
-  // < H3★ ≈ 0.22). Larger sizing wins compound downstream (Phase 2 per-row
+  // under the retired cv value-model the leaf value put V5★ ≈ 0.12 < H3★ ≈ 0.22
+  // and this failed. Larger sizing wins compound downstream (Phase 2 per-row
   // targetAR + the Hv width-cost packing in later phases).
   it('sizes a 5★ vertical larger than its 3★ horizontal row-mates (equity tiebreak picks prominence)', () => {
     const imgs = [H(1, 3), H(2, 3), createVerticalImage(3, 3), createVerticalImage(4, 5)].map(i =>

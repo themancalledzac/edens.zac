@@ -5,7 +5,7 @@
 
 import { DENSITY_ROW_WIDTH_MULTIPLIER, LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
-import { getItemComponentValue, getWidthCost } from '@/app/utils/contentRatingUtils';
+import { getWidthCost } from '@/app/utils/contentRatingUtils';
 import type { ImageType, RowResult } from '@/app/utils/rowCombination';
 import {
   acToBoxTree,
@@ -248,8 +248,8 @@ describe('buildRows', () => {
     for (let i = 0; i < rows.length - 1; i++) {
       const row = rows[i];
       if (row) {
-        const totalCV = row.components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
-        const fill = totalCV / DESKTOP;
+        const totalHv = row.components.reduce((sum, item) => sum + getWidthCost(item), 0);
+        const fill = totalHv / DESKTOP;
         expect(fill).toBeGreaterThanOrEqual(0.5);
       }
     }
@@ -842,13 +842,6 @@ describe('toImageType', () => {
 
     const h3 = createHorizontalImage(2, 3);
     expect(toImageType(h3, DESKTOP).effectiveRating).toBe(3);
-  });
-
-  it('should set componentValue from getItemComponentValue', () => {
-    const img = createHorizontalImage(1, 5);
-    const result = toImageType(img, DESKTOP);
-    expect(result.componentValue).toBeGreaterThan(0);
-    expect(result.componentValue).toBe(getItemComponentValue(img));
   });
 
   it('should back-reference the source item', () => {
