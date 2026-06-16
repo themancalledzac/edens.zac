@@ -9,7 +9,12 @@ import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
-import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
+import {
+  type FilterState,
+  INITIAL_FILTER_STATE,
+  initialDateSortDirection,
+  type LensType,
+} from '@/app/types/GalleryFilter';
 import {
   applyCollectionFilters,
   buildCollectionCriteria,
@@ -75,8 +80,15 @@ export default function CollectionPageClient({
 
   const { initialCriteria, syncToUrl } = useFilterUrlState();
 
+  // CHRONOLOGICAL collections are inherently date-ordered, so on the PUBLIC view their Date
+  // filter defaults ON (oldest-first) and toggles only between directions. Edit mode is excluded:
+  // an admin manages order against the LIVE displayMode (which may have been converted away from
+  // CHRONOLOGICAL), so auto-engaging date sort there would revert saved manual reorders.
+  const isChronological = !editMode && collection.displayMode === 'CHRONOLOGICAL';
+
   const [filterState, setFilterState] = useState<FilterState>(() => ({
     ...INITIAL_FILTER_STATE,
+    dateSortDirection: editMode ? 'off' : initialDateSortDirection(collection.displayMode),
     highlyRatedOnly: initialCriteria.minRating !== undefined && initialCriteria.minRating >= 4,
     selectedTags: initialCriteria.tags ?? [],
     selectedPeople: initialCriteria.people ?? [],
@@ -221,6 +233,7 @@ export default function CollectionPageClient({
       filterOptions: availableOptions,
       filteredAvailable: filteredAvailableOptions,
       onFilterChange: handleFilterChange,
+      dateTwoState: isChronological,
       density: displayDensity,
       densityMax,
       onDensityChange: handleDensityChange,
@@ -230,6 +243,7 @@ export default function CollectionPageClient({
       availableOptions,
       filteredAvailableOptions,
       handleFilterChange,
+      isChronological,
       displayDensity,
       densityMax,
       handleDensityChange,

@@ -39,6 +39,12 @@ interface CollectionFilterContextValue {
   filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<FilterState>) => void;
+  /**
+   * When true, the Date filter is always engaged and toggles only between directions
+   * (asc <-> desc, never `off`) — used for CHRONOLOGICAL collections, which are inherently
+   * date-ordered. Other views keep the neutral off/asc/desc tri-state.
+   */
+  dateTwoState: boolean;
   /** Density value in the active viewport's scale (desktop 1-10, mobile 1-5). */
   density: number;
   /** Upper bound of the density slider for the active viewport (10 or 5). */

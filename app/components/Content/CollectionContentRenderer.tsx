@@ -320,6 +320,7 @@ export default function CollectionContentRenderer({
                     : null
                 }
                 showDateSort={collectionFilter.filterOptions.showDateSort}
+                dateTwoState={collectionFilter.dateTwoState}
                 showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
                 density={collectionFilter.density}
                 densityMax={collectionFilter.densityMax}

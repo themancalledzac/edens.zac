@@ -29,6 +29,29 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
   });
 
+  it('two-state date toggle cycles asc <-> desc and never shows the off label', () => {
+    const { onFilterChange } = renderToolbar({
+      showDateSort: true,
+      dateTwoState: true,
+      filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' },
+    });
+    // Shows the directional label, not the neutral "Date".
+    const chip = screen.getByRole('button', { name: /date ↑/i });
+    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+    fireEvent.click(chip);
+    expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'desc' });
+  });
+
+  it('two-state date toggle from desc cycles back to asc (never off)', () => {
+    const { onFilterChange } = renderToolbar({
+      showDateSort: true,
+      dateTwoState: true,
+      filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /date ↓/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
+  });
+
   it('renders a highly-rated toggle with its count badge', () => {
     const { onFilterChange } = renderToolbar({
       showHighlyRated: true,
