@@ -6,10 +6,13 @@ import {
 } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
 import {
+  applyActiveOverride,
   applyCollectionFilters,
   buildCollectionCriteria,
   buildLocationCriteria,
+  canFilter,
   computeFilterCounts,
+  computeFilterVisibility,
   type ContentFilterCriteria,
   extractCollectionFilterOptions,
   extractFilterOptions,
@@ -17,7 +20,6 @@ import {
   filterContent,
   hasAnyActiveFilter,
   hasFilterableOptions,
-  hasValueVariance,
   mergeDateSortedImages,
   parseFilterFromParams,
   serializeFilterToParams,
@@ -1022,12 +1024,31 @@ describe('extractCollectionFilterOptions', () => {
     expect(dims.lensTypes.values).toEqual([]);
   });
 
-  it('marks tags and people filterable regardless of count', () => {
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }], people: [] }),
+  it('marks a dimension filterable only when a value splits the set', () => {
+    // Two images: 'alpine' on both (100% frequency → excluded by 0.9 blanket
+    // threshold in extractFilterOptions, so values is []).  canFilter on an
+    // empty projection returns false → not filterable.
+    const blanketOnly = extractCollectionFilterOptions([
+      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
+      makeImage({ id: 2, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
     ]);
-    expect(dims.tags.filterable).toBe(true);
-    expect(dims.people.filterable).toBe(true);
+    expect(blanketOnly.tags.values).toEqual([]);
+    expect(blanketOnly.tags.filterable).toBe(false);
+
+    // 'forest' appears on only one image (50% < 90%) so it survives the threshold.
+    // Now alpine (2/2) is still excluded but forest (1/2) is included. One value
+    // does not cover all items → filterable.
+    const splits = extractCollectionFilterOptions([
+      makeImage({
+        id: 1,
+        tags: [
+          { id: 1, name: 'alpine', slug: 'alpine' },
+          { id: 2, name: 'forest', slug: 'forest' },
+        ],
+      }),
+      makeImage({ id: 2, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
+    ]);
+    expect(splits.tags.filterable).toBe(true);
   });
 
   it('marks single-value cameras/lenses/locations non-filterable (info-mode)', () => {
@@ -1063,6 +1084,49 @@ describe('extractCollectionFilterOptions', () => {
     expect(dims.cameras.filterable).toBe(true);
     expect(dims.lenses.filterable).toBe(true);
     expect(dims.locations.filterable).toBe(true);
+  });
+
+  it('keeps a single-value location an info chip even when some images lack it', () => {
+    // 'Dolomites' on only one of two images → canFilter alone would call it
+    // filterable; the >= 2 distinct-value guard keeps it an info chip.
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, locations: [{ id: 1, name: 'Dolomites, Italy', slug: 'dolomites' }] }),
+      makeImage({ id: 2, locations: [] }),
+    ]);
+    expect(dims.locations.values).toEqual(['Dolomites, Italy']);
+    expect(dims.locations.filterable).toBe(false);
+  });
+
+  it('keeps a single-value camera an info chip when only some images have it', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, camera: { id: 1, name: 'Hasselblad 500cm' } }),
+      makeImage({ id: 2, camera: null }),
+    ]);
+    expect(dims.cameras.values).toEqual(['Hasselblad 500cm']);
+    expect(dims.cameras.filterable).toBe(false);
+  });
+
+  it('hides a multi-value location dimension where every value blankets all images', () => {
+    // Two images both carry A and B → neither splits → not filterable (the canFilter
+    // half matters here; a bare length>=2 rule would wrongly show a useless dropdown).
+    const dims = extractCollectionFilterOptions([
+      makeImage({
+        id: 1,
+        locations: [
+          { id: 1, name: 'A', slug: 'a' },
+          { id: 2, name: 'B', slug: 'b' },
+        ],
+      }),
+      makeImage({
+        id: 2,
+        locations: [
+          { id: 1, name: 'A', slug: 'a' },
+          { id: 2, name: 'B', slug: 'b' },
+        ],
+      }),
+    ]);
+    expect(dims.locations.values).toEqual(['A', 'B']);
+    expect(dims.locations.filterable).toBe(false);
   });
 
   it('surfaces lens types only with 2+ distinct categories AND 2+ distinct lenses', () => {
@@ -1211,52 +1275,6 @@ describe('applyCollectionFilters', () => {
   });
 });
 
-describe('hasValueVariance', () => {
-  it('returns false for an empty array', () => {
-    expect(hasValueVariance([], img => img.rating)).toBe(false);
-  });
-
-  it('returns false when all selected values are identical', () => {
-    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 5 })];
-    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(false);
-  });
-
-  it('returns true when selected values differ', () => {
-    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 3 })];
-    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(true);
-  });
-
-  it('counts a rating of 0 as a distinct value when stringified', () => {
-    // Regression: the helper drops falsy outputs, so 0 must be stringified to count.
-    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 0 })];
-    expect(hasValueVariance(images, img => String(img.rating ?? 0))).toBe(true);
-  });
-
-  it('drops rating 0 WITHOUT the String() wrapper — proves the call-site wrapper is load-bearing', () => {
-    // CollectionPageClient must pass `String(img.rating ?? 0)`, not the raw number. Without the
-    // wrapper, 0 is falsy → dropped → only {5} remains → no variance, silently hiding the
-    // Highly-Rated control on an all-0-vs-some-rated collection. This documents WHY the wrapper exists.
-    const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 0 })];
-    expect(hasValueVariance(images, img => img.rating)).toBe(false);
-  });
-
-  it('drops falsy (missing) capture dates so a single real date has no variance', () => {
-    const images = [
-      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
-      makeImage({ id: 2, captureDate: undefined }),
-    ];
-    expect(hasValueVariance(images, img => img.captureDate)).toBe(false);
-  });
-
-  it('returns true when two distinct real dates are present', () => {
-    const images = [
-      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
-      makeImage({ id: 2, captureDate: '2024-06-01T00:00:00Z' }),
-    ];
-    expect(hasValueVariance(images, img => img.captureDate)).toBe(true);
-  });
-});
-
 describe('mergeDateSortedImages', () => {
   it('replaces image slots in order while leaving non-image blocks in place', () => {
     const img1 = makeImage({ id: 1 });
@@ -1396,5 +1414,140 @@ describe('buildLocationCriteria', () => {
   it('round-trips with filmFilterFromIsFilm for the film toggle', () => {
     const criteria = buildLocationCriteria(makeFilterState({ filmFilter: 'film' }));
     expect(filmFilterFromIsFilm(criteria.isFilm)).toBe('film');
+  });
+});
+
+describe('computeFilterVisibility', () => {
+  it('hides every control for an empty or single-image page', () => {
+    expect(computeFilterVisibility([])).toEqual({
+      dateSort: false,
+      highlyRated: false,
+      film: false,
+      tags: false,
+      people: false,
+      cameras: false,
+      lenses: false,
+      locations: false,
+      lensTypes: false,
+    });
+    expect(computeFilterVisibility([makeImage({ id: 1, isFilm: true, rating: 5 })]).film).toBe(
+      false
+    );
+  });
+
+  it('shows film only when both film and digital are present', () => {
+    const filmOnly = [makeImage({ id: 1, isFilm: true }), makeImage({ id: 2, isFilm: true })];
+    const mixed = [makeImage({ id: 1, isFilm: true }), makeImage({ id: 2, isFilm: false })];
+    expect(computeFilterVisibility(filmOnly).film).toBe(false);
+    expect(computeFilterVisibility(mixed).film).toBe(true);
+  });
+
+  it('shows highlyRated only when images straddle the 4-star line', () => {
+    const allHigh = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 4 })];
+    const straddle = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 2 })];
+    expect(computeFilterVisibility(allHigh).highlyRated).toBe(false);
+    expect(computeFilterVisibility(straddle).highlyRated).toBe(true);
+  });
+
+  it('shows dateSort only with 2+ distinct capture dates', () => {
+    const sameDate = [
+      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
+      makeImage({ id: 2, captureDate: '2024-01-01T00:00:00Z' }),
+    ];
+    const varied = [
+      makeImage({ id: 1, captureDate: '2024-01-01T00:00:00Z' }),
+      makeImage({ id: 2, captureDate: '2024-02-01T00:00:00Z' }),
+    ];
+    expect(computeFilterVisibility(sameDate).dateSort).toBe(false);
+    expect(computeFilterVisibility(varied).dateSort).toBe(true);
+  });
+});
+
+describe('canFilter', () => {
+  it('returns false below 2 items (nothing to split)', () => {
+    expect(
+      canFilter([makeImage({ id: 1, isFilm: true })], img => [img.isFilm ? 'film' : 'digital'])
+    ).toBe(false);
+    expect(canFilter([], () => ['x'])).toBe(false);
+  });
+
+  it('returns false when one value covers every item', () => {
+    const allDigital = [makeImage({ id: 1, isFilm: false }), makeImage({ id: 2, isFilm: false })];
+    expect(canFilter(allDigital, img => [img.isFilm ? 'film' : 'digital'])).toBe(false);
+  });
+
+  it('returns true when a value matches a proper non-empty subset', () => {
+    const mixed = [makeImage({ id: 1, isFilm: true }), makeImage({ id: 2, isFilm: false })];
+    expect(canFilter(mixed, img => [img.isFilm ? 'film' : 'digital'])).toBe(true);
+  });
+
+  it('counts each item once per distinct value (multi-valued dimensions)', () => {
+    // both images carry 'sky'; only img 1 also carries 'sea' → 'sea' splits the set.
+    const images = [
+      makeImage({
+        id: 1,
+        tags: [
+          { id: 1, name: 'sky', slug: 'sky' },
+          { id: 2, name: 'sea', slug: 'sea' },
+        ],
+      }),
+      makeImage({ id: 2, tags: [{ id: 1, name: 'sky', slug: 'sky' }] }),
+    ];
+    expect(canFilter(images, img => (img.tags ?? []).map(t => t.name))).toBe(true);
+  });
+
+  it('returns false when a single shared value blankets a multi-valued dimension', () => {
+    const images = [
+      makeImage({ id: 1, tags: [{ id: 1, name: 'sky', slug: 'sky' }] }),
+      makeImage({ id: 2, tags: [{ id: 1, name: 'sky', slug: 'sky' }] }),
+    ];
+    expect(canFilter(images, img => (img.tags ?? []).map(t => t.name))).toBe(false);
+  });
+
+  it('treats a value present on a subset (others absent) as splitting', () => {
+    // camera Canon on img 1, img 2 has no camera → Canon splits 1-of-2.
+    const images = [
+      makeImage({ id: 1, camera: { id: 1, name: 'Canon' } }),
+      makeImage({ id: 2, camera: null }),
+    ];
+    expect(canFilter(images, img => (img.camera?.name ? [img.camera.name] : []))).toBe(true);
+  });
+});
+
+describe('applyActiveOverride', () => {
+  const hiddenAll = {
+    dateSort: false,
+    highlyRated: false,
+    film: false,
+    tags: false,
+    people: false,
+    cameras: false,
+    lenses: false,
+    locations: false,
+    lensTypes: false,
+  };
+
+  it('keeps a control visible when its filter is active even if the gate hid it', () => {
+    const result = applyActiveOverride(hiddenAll, makeFilterState({ filmFilter: 'film' }));
+    expect(result.film).toBe(true);
+    expect(result.highlyRated).toBe(false);
+  });
+
+  it('forces an array dimension visible when it has an active selection', () => {
+    const result = applyActiveOverride(hiddenAll, makeFilterState({ selectedTags: ['sunset'] }));
+    expect(result.tags).toBe(true);
+  });
+
+  it('forces dateSort and highlyRated visible when those filters are active', () => {
+    expect(
+      applyActiveOverride(hiddenAll, makeFilterState({ dateSortDirection: 'desc' })).dateSort
+    ).toBe(true);
+    expect(
+      applyActiveOverride(hiddenAll, makeFilterState({ highlyRatedOnly: true })).highlyRated
+    ).toBe(true);
+  });
+
+  it('leaves an all-false verdict untouched when no filter is active', () => {
+    expect(applyActiveOverride(hiddenAll, makeFilterState())).toEqual(hiddenAll);
   });
 });

@@ -65,8 +65,16 @@ export const LAYOUT = {
   ssrRecomputeToleranceWidth: 64,
 } as const;
 
-// Fixed-weight cv formula: cv = BASE_WEIGHT[rating] × arFactor
-// cv is a fixed cost. rowWidth is the budget. fraction = cv / rowWidth.
+// Density → row-width multiplier: rowWidth = round(chunkSize × this). The packing
+// cost is the width-cost Hv = √(P·AR) (orientation-agnostic), so K is calibrated
+// against Hv, not cv. At K below, a default 4-chunk collection of normal 3★
+// landscapes (Hv ≈ 2.108) packs the same 4-per-row it did under the old cv scale
+// (cv 2.5, rowWidth 10). Used by contentLayout.ts (desktop + mobile) and referenced
+// by the calibration test so code and test never drift.
+export const DENSITY_ROW_WIDTH_MULTIPLIER = 2.1;
+
+// Per-rating base weight feeding the prominence value P = BASE_WEIGHT[rating] ×
+// prominenceFactor(extremeness). Higher-rated images get more visual weight.
 export const BASE_WEIGHT: Record<number, number> = {
   5: 5.0,
   4: 3.5,
@@ -76,8 +84,11 @@ export const BASE_WEIGHT: Record<number, number> = {
   0: 1.0,
 };
 
-// Reference AR for the AR factor in cv calculation
-export const REFERENCE_AR = 1.5;
+// Prominence extremeness ramp: above EXTREMENESS_RAMP_START the prominence factor climbs
+// linearly so very wide OR very tall images get extra weight. Keyed on EXTREMENESS = max(AR, 1/AR).
+export const EXTREMENESS_RAMP_START = 2.0;
+export const EXTREMENESS_RAMP_BASE = 1.4;
+export const EXTREMENESS_RAMP_SLOPE = 0.6;
 
 // =============================================================================
 // INTERACTION & TIMING

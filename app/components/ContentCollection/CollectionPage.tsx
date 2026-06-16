@@ -22,11 +22,7 @@ interface ContentCollectionPageProps {
   showProtectedCovers?: boolean;
   /** UA-derived SSR fallback viewport from {@link resolveSsrViewport}. */
   ssrViewport?: SsrViewport;
-  /**
-   * When true, mount the consolidated admin edit surface in CollectionPageClient. Only meaningful
-   * for the single-collection branch (admin edits one collection at a time). When false/absent the
-   * render is byte-identical to the public view.
-   */
+  /** Mounts the admin edit surface in CollectionPageClient (single-collection branch only). */
   editMode?: boolean;
 }
 

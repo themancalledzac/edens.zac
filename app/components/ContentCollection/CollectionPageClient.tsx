@@ -13,10 +13,10 @@ import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/typ
 import {
   applyCollectionFilters,
   buildCollectionCriteria,
+  computeFilterVisibility,
   extractCollectionFilterOptions,
   hasAnyActiveFilter,
   hasFilterableOptions,
-  hasValueVariance,
   isImageContent,
   mergeDateSortedImages,
 } from '@/app/utils/contentFilter';
@@ -40,7 +40,7 @@ import styles from './CollectionPageClient.module.scss';
  */
 const EditModeLayer = dynamic(() => import('./edit/EditModeLayer'), { ssr: false });
 
-type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated'>;
+type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated' | 'showDateSort'>;
 
 interface CollectionPageClientProps {
   collection: CollectionModel;
@@ -69,12 +69,7 @@ export default function CollectionPageClient({
   serverIsMobile,
   editMode = false,
 }: CollectionPageClientProps) {
-  /**
-   * While the edit chunk streams in, the public grid doubles as the loading fallback so an
-   * edit-mode load never flashes blank. EditModeLayer flips this flag pre-paint on mount and
-   * takes over the grid render — edit affordances appearing a beat after the content is
-   * consistent with the layer's own editReady gating.
-   */
+  // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
   const handleEditLayerMounted = useCallback(() => setEditLayerMounted(true), []);
 
@@ -128,12 +123,8 @@ export default function CollectionPageClient({
     [isSelectMode, selectedIds, enterSelectMode, exitSelectMode]
   );
 
-  /**
-   * Live content reported up from EditModeLayer (per its onLiveContentChange contract: the
-   * layer's current content on every identity change, null on unmount). The filter options
-   * below must be derived from the SAME content the edit grid renders — the admin DTO after
-   * loads/saves — or in-session uploads and tag edits never surface in the filter UI.
-   */
+  // Live content from EditModeLayer — filter options must match what the edit grid renders
+  // so in-session uploads and tag edits surface in the filter UI.
   const [liveEditContent, setLiveEditContent] = useState<AnyContentModel[] | null>(null);
 
   // Public render works off the server seed; edit mode tracks the layer's live content.
@@ -147,6 +138,8 @@ export default function CollectionPageClient({
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
   const isCollectionDominant = allCollections.length > allImages.length;
+
+  const visibility = useMemo(() => computeFilterVisibility(allImages), [allImages]);
 
   const baseCollectionOptions = useMemo<CollectionDimensions>(() => {
     const options = extractCollectionFilterOptions(allImages, allCollections);
@@ -172,12 +165,10 @@ export default function CollectionPageClient({
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
-  const hasRatingVariance = useMemo(
-    () => hasValueVariance(allImages, img => String(img.rating ?? 0)),
-    [allImages]
-  );
-
-  const showHighlyRated = hasRatingVariance && !isCollectionDominant;
+  // Collection-dominant (parent) pages suppress rating even when it varies — too
+  // few images for it to be a useful control there.
+  const showHighlyRated = visibility.highlyRated && !isCollectionDominant;
+  const showDateSort = visibility.dateSort;
 
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;
@@ -196,8 +187,9 @@ export default function CollectionPageClient({
     () => ({
       ...baseCollectionOptions,
       showHighlyRated,
+      showDateSort,
     }),
-    [baseCollectionOptions, showHighlyRated]
+    [baseCollectionOptions, showHighlyRated, showDateSort]
   );
 
   const contentBlocks = useMemo(() => {
@@ -246,12 +238,7 @@ export default function CollectionPageClient({
 
   const pageSize = collection.contentPerPage ?? 30;
 
-  const hasDateVariance = useMemo(
-    () => hasValueVariance(allImages, img => img.captureDate),
-    [allImages]
-  );
-
-  const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, hasDateVariance);
+  const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort);
 
   const grid = (
     <ContentBlockWithFullScreen

@@ -1289,12 +1289,19 @@ describe('processContentForDisplay', () => {
     });
 
     it('falls back to the pinned mobile slot width when mobileChunkSize is omitted', () => {
-      const omitted = processContentForDisplay(content, 400, 4, { isMobile: true });
-      const explicit = processContentForDisplay(content, 400, 4, {
+      // When mobileChunkSize is omitted the row width pins to LAYOUT.mobileSlotWidth,
+      // independent of the desktop chunkSize arg — so two different chunkSize args
+      // produce identical layouts (the pinned slot ignores them).
+      const pinnedA = processContentForDisplay(content, 400, 4, { isMobile: true });
+      const pinnedB = processContentForDisplay(content, 400, 8, { isMobile: true });
+      expect(pinnedA.length).toBe(pinnedB.length);
+      // And the pinned (narrow) layout is at least as tall as an explicitly dense
+      // mobileChunkSize, confirming it is a fixed narrow slot rather than density-driven.
+      const dense = processContentForDisplay(content, 400, 4, {
         isMobile: true,
-        mobileChunkSize: 1,
+        mobileChunkSize: 5,
       });
-      expect(omitted.length).toBe(explicit.length);
+      expect(pinnedA.length).toBeGreaterThanOrEqual(dense.length);
     });
 
     it('does not affect desktop layout', () => {

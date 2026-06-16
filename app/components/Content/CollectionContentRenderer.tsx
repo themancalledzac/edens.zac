@@ -319,7 +319,7 @@ export default function CollectionContentRenderer({
                       }
                     : null
                 }
-                showDateSort
+                showDateSort={collectionFilter.filterOptions.showDateSort}
                 showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
                 density={collectionFilter.density}
                 densityMax={collectionFilter.densityMax}

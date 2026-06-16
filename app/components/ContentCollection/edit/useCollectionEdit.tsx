@@ -249,8 +249,6 @@ export function useCollectionEdit({
         const response = await getCollectionUpdateMetadata(slug);
         if (isMounted && !abortController.signal.aborted) {
           if (response === null) {
-            // A null response leaves currentState null forever — surface it instead of
-            // silently rendering an edit page whose edit affordances never become ready.
             setError('Failed to load collection data — editing is unavailable. Reload to retry.');
           } else {
             collectionStorage.update(slug, response.collection);
@@ -279,11 +277,7 @@ export function useCollectionEdit({
 
   const collection = currentState?.collection ?? seedCollection;
 
-  /**
-   * Latest derived collection, readable from stable callbacks (`resetToBrowse`) without adding
-   * `collection` to their deps — identity churn there would re-trigger the `!enabled` reset
-   * effect on every background refresh and wipe typed-but-unsaved buffer edits.
-   */
+  /** Stable ref so `resetToBrowse` can read the current collection without taking it as a dep. */
   const latestCollectionRef = useRef(collection);
   useEffect(() => {
     latestCollectionRef.current = collection;
@@ -343,11 +337,7 @@ export function useCollectionEdit({
   );
 
   const seededCollectionIdRef = useRef(collection.id);
-  /**
-   * Whether the current buffer seed came from the admin DTO (`currentState`) rather than the
-   * public seed prop. `currentState` is always null on first render, so the initial seed is
-   * always the public DTO; the reseed effect below adopts the admin DTO exactly once.
-   */
+  /** True once the buffer has been seeded from the admin DTO (not the public seed prop). */
   const seededFromAdminRef = useRef(currentState !== null);
 
   const setUpdateField = useCallback(
@@ -491,14 +481,7 @@ export function useCollectionEdit({
     setIsAddMode(false);
     setIsEditSheetOpen(false);
     if (isSelectingCoverImage) setIsSelectingCoverImage(false);
-    // Cancel any active reorder session so Escape and the enabled=false path both land in a
-    // clean browse state.  handleCancelReorder has an empty dep array (stable identity) so
-    // adding it here does not cause the identity churn that latestCollectionRef was introduced
-    // to prevent.
     handleCancelReorder();
-    // Discard moment of the reseed policy (see the reseed effect below): leaving an edit
-    // surface (Cancel, Escape, or the hook becoming disabled) drops uncommitted buffer edits,
-    // so abandoned sheet changes can't silently ride along on a later inline save.
     setUpdateData(seedUpdateData(latestCollectionRef.current));
   }, [isSelectingCoverImage, setIsSelectingCoverImage, handleCancelReorder, seedUpdateData]);
 
@@ -507,22 +490,8 @@ export function useCollectionEdit({
   }, [enabled, resetToBrowse]);
 
   /**
-   * The edit buffer reseeds at exactly three moments:
-   *
-   * 1. IDENTITY change (here): a different collection id (e.g. a soft-nav between two
-   *    `?manage=1` pages) re-seeds the buffer and resets modes/selection.
-   * 2. Seed → admin adoption (here, once): the buffer is initially seeded from the PUBLIC DTO,
-   *    whose normalized fallbacks (`visibility ?? HIDDEN`, `displayMode || 'CHRONOLOGICAL'`, …)
-   *    can diverge from the authoritative admin DTO. The first time `currentState` arrives for
-   *    the SAME id, adopt it — otherwise `isUpdateDirty` reports phantom diffs that silently
-   *    write back on the next save. Safe: edit interactions are gated until `currentState`
-   *    exists, so there is no typed input to wipe at that moment.
-   * 3. Save / Cancel (elsewhere): `handleUpdate` rebases the buffer from the save response, and
-   *    `resetToBrowse` discards it back to the current collection.
-   *
-   * Subsequent background refreshes deliberately do NOT reseed — re-seeding on every
-   * `collection` reference change would wipe typed-but-unsaved buffer edits on each
-   * save/background refresh.
+   * Reseed the edit buffer on collection identity change or on first admin DTO arrival.
+   * Background refreshes do NOT reseed to avoid wiping in-progress edits.
    */
   useEffect(() => {
     const identityChanged = collection.id !== seededCollectionIdRef.current;
@@ -561,8 +530,6 @@ export function useCollectionEdit({
   const handleUpdate = useCallback(
     async (patch?: Partial<CollectionUpdateRequest>) => {
       if (!collection || !currentState) {
-        // Defense-in-depth: edit affordances are gated on readiness upstream, but if a save
-        // does land here before the admin DTO exists, say so instead of silently dropping it.
         setError('Collection data has not loaded — your change was not saved.');
         return;
       }
@@ -576,12 +543,7 @@ export function useCollectionEdit({
 
         if (response !== null) {
           setCurrentState(response);
-          // Rebase moment of the reseed policy (see the reseed effect): the response is the new
-          // saved baseline. Reseeding from it clears already-applied relational diffs
-          // (tags/locations/children/siblings/parents/cover), so they can't replay on the next
-          // save — or resurrect a child the user removes later — and `isUpdateDirty` clears.
-          // Nothing typed is lost: the payload above sent the whole dirty buffer.
-          setUpdateData(seedUpdateData(response.collection));
+          setUpdateData(seedUpdateData(response.collection)); // rebase buffer on saved baseline
           seededCollectionIdRef.current = response.collection.id;
           seededFromAdminRef.current = true;
           collectionStorage.update(response.collection.slug, response.collection);
@@ -718,10 +680,7 @@ export function useCollectionEdit({
         const response = await refreshCollectionAfterOperation(
           collection.slug,
           async () => {
-            // One POST per still image: dev admin writes go through the same-origin
-            // proxy, whose 25 MB multipart cap a whole batch easily exceeds (413).
-            // Per-file requests stay under the cap and make failures attributable.
-            for (const file of imageFiles) {
+            for (const file of imageFiles) { // one POST per file to stay under the proxy's multipart cap
               try {
                 const formData = new FormData();
                 formData.append('files', file);
@@ -1169,8 +1128,6 @@ export function useCollectionEdit({
       return;
     }
     if (!currentState) {
-      // Defense-in-depth: browse cells are disabled while the admin DTO loads, but after a
-      // FAILED load they re-enable with currentState still null — say so instead of no-opping.
       setError('Collection data has not loaded — reorder is unavailable.');
       return;
     }
@@ -1300,13 +1257,7 @@ export function useCollectionEdit({
       ];
     }
 
-    // Browse cells stay disabled until the admin DTO load (or any operation) settles, so the
-    // bar communicates "not ready yet" instead of offering modes that cannot act. An in-flight
-    // inline save (`saving`) gates them too: entering a mode mid-save races the save's
-    // setCurrentState/buffer reseed (Reorder's auto-convert even fires a SECOND concurrent
-    // updateCollection, and a late inline response could reinstate displayMode CHRONOLOGICAL
-    // mid-reorder-session). Cancel stays enabled — leaving the manage surface never needs the
-    // richer DTO and mutates nothing.
+    // Disabled until admin DTO settles and no operation is in flight (including a mid-save state machine race).
     const browseBusy = isLoading || saving;
     const cells: EditBarCell[] = [
       {

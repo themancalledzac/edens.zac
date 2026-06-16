@@ -359,6 +359,97 @@ export function extractFilterOptions(
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// The single filter-visibility gate — {@link canFilter}
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Whether a dimension can meaningfully filter the given items.
+ *
+ * @param items - The full, unfiltered item set. Visibility MUST be derived from
+ *   the full set, never a filtered subset, or a control could vanish mid-interaction.
+ * @param valuesOf - The dimension's projection: the value(s) an item contributes.
+ */
+export function canFilter<T>(
+  items: readonly T[],
+  valuesOf: (item: T) => readonly string[]
+): boolean {
+  const total = items.length;
+  if (total < 2) return false;
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    for (const value of new Set(valuesOf(item))) {
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+  }
+  for (const count of counts.values()) {
+    if (count < total) return true;
+  }
+  return false;
+}
+
+/** Per-dimension verdict from the single gate ({@link canFilter}). */
+export interface FilterVisibility {
+  dateSort: boolean;
+  highlyRated: boolean;
+  film: boolean;
+  tags: boolean;
+  people: boolean;
+  cameras: boolean;
+  lenses: boolean;
+  locations: boolean;
+  lensTypes: boolean;
+}
+
+/**
+ * Run the single gate across every image-derived dimension once. Visibility is
+ * computed from the FULL image set so controls don't appear/disappear as filters
+ * are applied. The projections here are the canonical home for "what value(s)
+ * does an image contribute to dimension X".
+ */
+export function computeFilterVisibility(images: ContentImageModel[]): FilterVisibility {
+  return {
+    dateSort: canFilter(images, img => (img.captureDate ? [img.captureDate] : [])),
+    highlyRated: canFilter(images, img => [(img.rating ?? 0) >= 4 ? 'hi' : 'lo']),
+    film: canFilter(images, img => [img.isFilm ? 'film' : 'digital']),
+    tags: canFilter(images, img => (img.tags ?? []).map(t => t.name)),
+    people: canFilter(images, img => (img.people ?? []).map(p => p.name)),
+    cameras: canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])),
+    lenses: canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])),
+    locations: canFilter(images, img => (img.locations ?? []).map(l => l.name)),
+    lensTypes: canFilter(images, img => {
+      const lensType = getLensType(img.focalLength);
+      return lensType ? [lensType] : [];
+    }),
+  };
+}
+
+/**
+ * OR "this filter is currently active" onto a {@link FilterVisibility} verdict so
+ * a control is never hidden while it is the active filter — e.g. a `?isFilm=` /
+ * `?rating=` deep-link onto a page where the dimension is otherwise trivial.
+ * Without this the only way to clear such a filter would be the bulk reset.
+ */
+export function applyActiveOverride(
+  visibility: FilterVisibility,
+  filterState: FilterState
+): FilterVisibility {
+  // dateSort and film are included here (unlike hasAnyActiveFilter, which scopes
+  // to content-reducing collection filters) because this is a visibility concern:
+  // if a control's filter is active, keep the control on screen so it can be cleared.
+  return {
+    dateSort: visibility.dateSort || filterState.dateSortDirection !== 'off',
+    highlyRated: visibility.highlyRated || filterState.highlyRatedOnly,
+    film: visibility.film || filterState.filmFilter !== 'off',
+    tags: visibility.tags || filterState.selectedTags.length > 0,
+    people: visibility.people || filterState.selectedPeople.length > 0,
+    cameras: visibility.cameras || filterState.selectedCameras.length > 0,
+    lenses: visibility.lenses || filterState.selectedLenses.length > 0,
+    locations: visibility.locations || filterState.selectedLocations.length > 0,
+    lensTypes: visibility.lensTypes || filterState.selectedLensTypes.length > 0,
+  };
+}
+
 /**
  * Per-option image counts for filter chips, computed contextually.
  * Each count represents: "how many images match if I select only this option
@@ -637,7 +728,8 @@ export function extractCollectionFilterOptions(
   // dimensions from collection refs too. This is what populates the filter bar
   // on synthetic PARENT pages whose `content` is 100% collection refs and 0
   // images (e.g. /all-collections, /all-blog).
-  const baseOptions = extractFilterOptions([...images, ...collectionRefs], 0.9);
+  const combined = [...images, ...collectionRefs];
+  const baseOptions = extractFilterOptions(combined, 0.9);
 
   // Lens types: only show if 2+ distinct categories present (image-only signal)
   const lensTypeSet = new Set<LensType>();
@@ -651,12 +743,35 @@ export function extractCollectionFilterOptions(
       ? typeOrder.filter(t => lensTypeSet.has(t))
       : [];
 
+  // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
+  // would wrongly mark a dimension filterable when all values blanket every item).
   return {
-    tags: { values: baseOptions.tags, filterable: true },
-    people: { values: baseOptions.people, filterable: true },
-    cameras: { values: baseOptions.cameras, filterable: baseOptions.cameras.length >= 2 },
-    lenses: { values: baseOptions.lenses, filterable: baseOptions.lenses.length >= 2 },
-    locations: { values: baseOptions.locations, filterable: baseOptions.locations.length >= 2 },
+    tags: {
+      values: baseOptions.tags,
+      filterable: canFilter(combined, item => (item.tags ?? []).map(t => t.name)),
+    },
+    people: {
+      values: baseOptions.people,
+      filterable: canFilter(combined, item => (item.people ?? []).map(p => p.name)),
+    },
+    cameras: {
+      values: baseOptions.cameras,
+      filterable:
+        canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])) &&
+        baseOptions.cameras.length >= 2,
+    },
+    lenses: {
+      values: baseOptions.lenses,
+      filterable:
+        canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])) &&
+        baseOptions.lenses.length >= 2,
+    },
+    locations: {
+      values: baseOptions.locations,
+      filterable:
+        canFilter(combined, item => (item.locations ?? []).map(l => l.name)) &&
+        baseOptions.locations.length >= 2,
+    },
     lensTypes: { values: lensTypes, filterable: true },
   };
 }
@@ -742,23 +857,6 @@ export function applyCollectionFilters(
 }
 
 /**
- * Whether a per-image selector yields more than one distinct value across the
- * images (drives "show this control only when it varies"). Covers both rating
- * variance and capture-date variance. Returns false for an empty array.
- *
- * @param images - Images to inspect
- * @param selector - Maps an image to the value whose variance is checked
- */
-export function hasValueVariance<T>(
-  images: ContentImageModel[],
-  selector: (image: ContentImageModel) => T
-): boolean {
-  if (images.length === 0) return false;
-  const values = new Set(images.map(selector).filter(Boolean));
-  return values.size > 1;
-}
-
-/**
  * Re-interleave date-sorted images back into a processed content array.
  *
  * Date sort runs after `processContentBlocks` (which sorts by orderIndex), so
@@ -787,16 +885,16 @@ export function mergeDateSortedImages(
  *
  * @param baseOptions - The page's base dimensions
  * @param showHighlyRated - Whether the Highly Rated control is shown
- * @param hasDateVariance - Whether capture dates vary (date-sort control)
+ * @param showDateSort - Whether the Date Sort control should be shown
  */
 export function hasFilterableOptions(
   baseOptions: CollectionFilterDimensions,
   showHighlyRated: boolean,
-  hasDateVariance: boolean
+  showDateSort: boolean
 ): boolean {
   return (
     showHighlyRated ||
-    hasDateVariance ||
+    showDateSort ||
     baseOptions.tags.values.length > 0 ||
     baseOptions.people.values.length > 0 ||
     baseOptions.cameras.values.length > 0 ||

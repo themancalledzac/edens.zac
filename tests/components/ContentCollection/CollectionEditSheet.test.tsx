@@ -351,3 +351,20 @@ describe('CollectionEditSheet — ARIA tabpanel wiring', () => {
     expect(document.getElementById('tabpanel-info')).toBeNull();
   });
 });
+
+describe('CollectionEditSheet — desktop two-column layout', () => {
+  it('renders Info and Structure fields at the same time', () => {
+    // editTab is irrelevant in two-column mode — both panels mount regardless.
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} twoColumn />);
+    expect(screen.getByLabelText('Title')).toBeInTheDocument(); // Info
+    expect(screen.getByLabelText('Order')).toBeInTheDocument(); // Structure
+    expect(screen.getByTestId('collection-list-selector')).toBeInTheDocument(); // Structure
+  });
+
+  it('exposes the Info and Structure columns as labeled regions and no tabpanel (the chooser is dropped on desktop)', () => {
+    render(<CollectionEditSheet edit={makeEdit()} twoColumn />);
+    expect(screen.getByRole('region', { name: 'Info' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Structure' })).toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument();
+  });
+});

@@ -2,7 +2,7 @@
  * Row Combination — row layout engine (two stages).
  *
  * Stage 1 (`buildRows`): greedy sequential fill decides which items go in each
- * row, using a per-row cv budget (rowWidth) and an AR-floor check.
+ * row, using a per-row width-cost budget (rowWidth) and an AR-floor check.
  * Stage 2 (`buildAtomic`): for each row, a point-balance split builds a binary tree,
  * then every hPair/vStack direction assignment is enumerated and scored — a hard
  * AR floor at 1.0 ("never taller than wide") plus closeness to the target row AR,
@@ -10,12 +10,20 @@
  *
  * Key concepts:
  * - A "component" is anything that occupies row space: a single image, gif, text, or combined block.
- * - Component value (cv) = proportion of row width an item occupies (effectiveRating / rowWidth).
- * - A row is "complete" when total component values >= 0.9 (90% threshold).
+ * - Width-cost Hv = √(P·AR) is each item's packing cost (orientation-agnostic): a wide
+ *   panorama costs more horizontal space, a tall portrait less. fill = ΣHv / rowWidth.
+ * - A row is "complete" when total width-cost >= 0.9 of rowWidth (90% threshold).
  */
 
+import { EXTREMENESS_RAMP_START } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
-import { getEffectiveRating, getItemComponentValue } from '@/app/utils/contentRatingUtils';
+import {
+  getArExtremeness,
+  getEffectiveRating,
+  getHeightDemand,
+  getProminence,
+  getWidthCost,
+} from '@/app/utils/contentRatingUtils';
 import { getAspectRatio } from '@/app/utils/contentTypeGuards';
 import { calculateBoxTreeAspectRatio } from '@/app/utils/rowStructureAlgorithm';
 
@@ -37,10 +45,11 @@ export type BoxTree =
 // =============================================================================
 
 /**
- * Calculate the total component value of a set of items.
+ * Total Stage-1 packing cost of a set of items, summing the width-cost
+ * Hv = √(P·AR) (orientation-agnostic) rather than the vertical-biased cv.
  */
 function getTotalCV(components: AnyContentModel[], _rowWidth: number): number {
-  return components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
+  return components.reduce((sum, item) => sum + getWidthCost(item), 0);
 }
 
 // =============================================================================
@@ -66,7 +75,7 @@ export const LOW_RATED_THRESHOLD = 2;
 export function isRowComplete(components: AnyContentModel[], rowWidth: number): boolean {
   if (components.length === 0) return false;
 
-  const totalValue = components.reduce((sum, item) => sum + getItemComponentValue(item), 0);
+  const totalValue = components.reduce((sum, item) => sum + getWidthCost(item), 0);
 
   const fill = totalValue / rowWidth;
   return fill >= MIN_FILL_RATIO && fill <= MAX_FILL_RATIO;
@@ -96,7 +105,10 @@ export interface ImageType {
   ar: OrientationShort;
   numericAR: number;
   effectiveRating: number;
-  componentValue: number;
+  /** Orientation-agnostic prominence P — used as the equity-target for area allocation. */
+  prominence: number;
+  /** Height demand Vv = √(P/AR) — drives the per-row target AR (taller rows for tall heroes). */
+  heightDemand: number;
 }
 
 /** Recursive composition structure */
@@ -117,10 +129,19 @@ export function toImageType(item: AnyContentModel, _rowWidth: number): ImageType
   const numericAR = getAspectRatio(item);
   const ar: OrientationShort = numericAR > 1.0 ? 'H' : 'V';
   const effectiveRating = getEffectiveRating(item);
-  const componentValue = getItemComponentValue(item);
+  const prominence = getProminence(item);
+  const heightDemand = getHeightDemand(item);
   const title = 'title' in item ? String(item.title) : `item-${item.id}`;
 
-  return { source: item, title, ar, numericAR, effectiveRating, componentValue };
+  return {
+    source: item,
+    title,
+    ar,
+    numericAR,
+    effectiveRating,
+    prominence,
+    heightDemand,
+  };
 }
 
 /** Create a single-image AtomicComponent */
@@ -173,11 +194,74 @@ export function acToBoxTree(ac: AtomicComponent): BoxTree {
 /** AR floor multiplier: row AR must be at least targetAR * this value */
 export const AR_FLOOR_MULTIPLIER = 0.7;
 
+// Per-row target AR band (Phase 2 — directional prominence). rowTargetAR pulls the
+// viewport baseline toward a floor in proportion to the row's peak height-demand
+// (Vv) ABOVE the Vv ceiling of wide/normal images, so a row holding a tall hero
+// targets a taller (lower-AR) shape and sizes the hero bigger, while rows of
+// landscapes/panos keep the baseline. Two anchors: peak Vv at/below
+// ROW_TARGET_AR_VV_LOW pulls nothing; at/above ROW_TARGET_AR_VV_HIGH the pull is
+// full. Clamped so a row never drops below ROW_TARGET_AR_MIN_FRACTION of the
+// baseline, preserving the density→size monotonicity shipped 2026-05-29.
+export const ROW_TARGET_AR_MIN_FRACTION = 0.6; // never below 60% of the baseline
+export const ROW_TARGET_AR_VV_LOW = 1.85; // ≈ just above a 5★ pano's Vv (1.826)
+export const ROW_TARGET_AR_VV_HIGH = 5.0; // ≈ a 1:3 portrait hero → full pull-down
+
+/**
+ * Per-row target AR: the viewport baseline pulled toward a floor by the row's peak
+ * height-demand (Vv). A bland horizontal row (peak Vv below the wide-image ceiling
+ * ROW_TARGET_AR_VV_LOW) keeps the baseline; a row with a tall vertical hero targets
+ * a taller (lower-AR) shape so the hero renders bigger. The pull is content-driven
+ * (peak Vv), not count-driven, so it does not affect density→size monotonicity.
+ */
+export function rowTargetAR(items: ImageType[], baseline: number): number {
+  const peakVv = items.reduce((max, it) => Math.max(max, it.heightDemand), 0);
+  const span = ROW_TARGET_AR_VV_HIGH - ROW_TARGET_AR_VV_LOW;
+  const pull = Math.min(1, Math.max(0, (peakVv - ROW_TARGET_AR_VV_LOW) / span));
+  const floor = baseline * ROW_TARGET_AR_MIN_FRACTION;
+  return baseline - pull * (baseline - floor);
+}
+
 /**
  * Maximum images per row. Caps greedy fill AND bounds buildAtomic's Phase 2
  * enumeration (~2^(n-1) candidates for an n-leaf row), so keep this modest.
  */
 export const MAX_ROW_IMAGES = 12;
+
+/**
+ * Width-cost fraction at or above which an extreme-AR item claims its OWN
+ * full-width row. Paired with an extremeness gate (see {@link isSoloHero}); the
+ * fraction alone is not enough because a normal landscape at a small rowWidth can
+ * exceed it (a 3★ landscape Hv ≈ 2.11 is 0.53 of a rowWidth-4 budget) — that
+ * would collapse low-density rows into full-width singles.
+ */
+export const HERO_SOLO_WIDTH_FRACTION = 0.5;
+
+/**
+ * Whether an item should claim its own full-width row — the emergent successor to
+ * the retired isFullWidthHero rule. Two gates, both required:
+ *
+ * 1. **Extremeness gate** ({@link getArExtremeness} ≥ {@link EXTREMENESS_RAMP_START}):
+ *    only images far from square in EITHER direction are solo-eligible. This ties
+ *    eligibility to the prominence model's own extremeness concept (no new magic
+ *    number) and subsumes the old AR≥2 gate. A normal landscape (ext 1.78 < 2) is
+ *    never eligible at any rowWidth; the rating gate is correctly dropped per the
+ *    prominence philosophy.
+ * 2. **Width-cost gate** (Hv / rowWidth ≥ {@link HERO_SOLO_WIDTH_FRACTION}):
+ *    the item's width-cost must dominate the row budget. This subsumes the old
+ *    density ceiling — a wide 5★ pano (Hv ≈ 5.48) clears 0.5 of a rowWidth-10
+ *    budget (low/medium density → solos) but only 0.27 of a rowWidth-20 budget
+ *    (high density → shares).
+ *
+ * A tall portrait passes the extremeness gate but its small Hv keeps its
+ * width-fraction below the bar, so it never solos — its prominence is expressed
+ * as row height via {@link rowTargetAR}, not a solo row. Disabled on mobile
+ * (rowWidth ≤ 2) to keep the narrow-slot path unchanged.
+ */
+export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
+  if (rowWidth <= 2) return false;
+  if (getArExtremeness(getAspectRatio(item)) < EXTREMENESS_RAMP_START) return false;
+  return getWidthCost(item) / rowWidth >= HERO_SOLO_WIDTH_FRACTION;
+}
 
 /**
  * Estimate a row's combined aspect ratio. Routes through the canonical composer
@@ -210,22 +294,21 @@ function collectRowItems(
 }
 
 /**
- * Row-first layout algorithm. Builds rows one at a time over a lookahead
- * window: standalone-skip a hero past low-rated items, greedy sequential fill,
- * best-fit fallback, then build each row's atomic tree.
- *
- * A would-overfill item that fills a row on its own (cv >= rowWidth *
- * MIN_FILL_RATIO) is skipped to get its own row next iteration. The AR-floor
- * check is disabled on mobile (rowWidth <= 2), where items render full-width or
- * stacked and single verticals naturally have low AR.
+ * Row-first layout algorithm. Builds rows over a lookahead window:
+ * standalone-skips a hero past low-rated items, greedy sequential fill (by the
+ * width-cost Hv = √(P·AR)), best-fit fallback, then builds each row's atomic
+ * tree. A wide top-rated panorama claiming its own row at low/medium density is
+ * an EMERGENT consequence of its large Hv exceeding the row budget — no longer a
+ * hard-coded special case. AR-floor check is disabled on mobile (rowWidth <= 2).
  *
  * @param rowWidth - Row width budget (5 for desktop, 4 for tablet, etc.)
- * @param targetAR - Target aspect ratio for AR-aware fill (default 1.5)
+ * @param targetARBaseline - Baseline (viewport) target AR. Fill/estimate use it directly;
+ *   each row's final composition derives a per-row target from it via {@link rowTargetAR}.
  */
 export function buildRows(
   items: AnyContentModel[],
   rowWidth: number,
-  targetAR: number = 1.5
+  targetARBaseline: number = 1.5
 ): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
@@ -237,6 +320,20 @@ export function buildRows(
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
 
+    // Emergent full-width hero: a leading extreme-AR item whose width-cost
+    // dominates the row budget claims its own row (see {@link isSoloHero}).
+    // Replaces the retired isFullWidthHero AR+rating rule — a wide top-rated
+    // panorama qualifies at low/medium density and shares at high density.
+    if (isSoloHero(window[0]!, rowWidth)) {
+      const heroItem = window[0]!;
+      rows.push({
+        components: [heroItem],
+        boxTree: acToBoxTree(single(toImageType(heroItem, rowWidth))),
+      });
+      remaining.splice(0, 1);
+      continue;
+    }
+
     const item0Rating = getEffectiveRating(window[0]!);
 
     if (item0Rating <= LOW_RATED_THRESHOLD) {
@@ -244,9 +341,7 @@ export function buildRows(
       let heroIdx = -1;
 
       for (let i = 1; i < maxSearch; i++) {
-        const candidate = window[i]!;
-        const cv = getItemComponentValue(candidate);
-        if (cv / rowWidth >= 0.95) {
+        if (isSoloHero(window[i]!, rowWidth)) {
           heroIdx = i;
           break;
         }
@@ -268,7 +363,7 @@ export function buildRows(
       }
     }
 
-    const arFloor = rowWidth <= 2 ? 0 : targetAR * AR_FLOOR_MULTIPLIER;
+    const arFloor = rowWidth <= 2 ? 0 : targetARBaseline * AR_FLOOR_MULTIPLIER;
     const expandedWindow = remaining.slice(0, MAX_ROW_IMAGES);
     let seqTotal = 0;
     let seqCount = 0;
@@ -276,14 +371,20 @@ export function buildRows(
     let slotCountComplete = false;
 
     for (let i = 0; i < expandedWindow.length; i++) {
-      const cv = getItemComponentValue(expandedWindow[i]!);
+      const cv = getWidthCost(expandedWindow[i]!);
+
+      // Emergent full-width hero (mid-window): once the row has started, a later
+      // solo-eligible item (see {@link isSoloHero}) is skipped here so it surfaces
+      // as a leading solo hero on the next iteration. Mirrors the leading-item
+      // check above; replaces the retired isFullWidthHero skip.
+      if (seqCount > 0 && isSoloHero(expandedWindow[i]!, rowWidth)) {
+        skippedStandalones.push(i);
+        continue;
+      }
+
       const newFill = (seqTotal + cv) / rowWidth;
 
       if (newFill > MAX_FILL_RATIO && !slotCountComplete) {
-        if (seqCount > 0 && cv / rowWidth >= 0.95) {
-          skippedStandalones.push(i);
-          continue;
-        }
         // Accept moderate overfill when the row is still under the density-
         // scaled MIN_FILL bar — solo underfilled row is worse than slight overfill.
         const currentFill = seqTotal / rowWidth;
@@ -307,7 +408,7 @@ export function buildRows(
         // Re-check AR with the expanded set
         const expandedItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
         const expandedImgs = expandedItems.map(item => toImageType(item, rowWidth));
-        const expandedAR = estimateRowAR(expandedImgs, targetAR, rowWidth);
+        const expandedAR = estimateRowAR(expandedImgs, targetARBaseline, rowWidth);
         if (expandedAR >= arFloor) break;
         continue;
       }
@@ -318,7 +419,7 @@ export function buildRows(
       if (newFill >= effectiveMinFill) {
         const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
         const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-        const rowAR = estimateRowAR(rowImgs, targetAR, rowWidth);
+        const rowAR = estimateRowAR(rowImgs, targetARBaseline, rowWidth);
 
         if (rowAR >= arFloor) {
           break;
@@ -330,7 +431,7 @@ export function buildRows(
     if (seqCount > 0) {
       const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-      const composition = buildAtomic(rowImgs, targetAR, rowWidth);
+      const composition = buildAtomic(rowImgs, rowTargetAR(rowImgs, targetARBaseline), rowWidth);
       const boxTree = acToBoxTree(composition);
 
       rows.push({
@@ -368,7 +469,7 @@ export function buildRows(
         if (!available.has(idx)) continue;
 
         const currentTotal = getTotalCV(bfComponents, rowWidth);
-        const candidateCV = getItemComponentValue(window[idx]!);
+        const candidateCV = getWidthCost(window[idx]!);
         const newTotal = currentTotal + candidateCV;
         const newFill = newTotal / rowWidth;
 
@@ -399,7 +500,7 @@ export function buildRows(
     }
 
     const bfImgs = bfComponents.map(item => toImageType(item, rowWidth));
-    const composition = buildAtomic(bfImgs, targetAR, rowWidth);
+    const composition = buildAtomic(bfImgs, rowTargetAR(bfImgs, targetARBaseline), rowWidth);
     const boxTree = acToBoxTree(composition);
 
     rows.push({
@@ -436,7 +537,9 @@ type AbstractNode =
  * boundary whose two halves have the closest effectiveRating sums. Order
  * preserved — no swaps, only splits.
  *
- * effectiveRating (not cv): cv would double-penalise verticals. See ./rowCombination.md.
+ * Balances on effectiveRating (now penalty-free — equal to the raw rating for
+ * both orientations) rather than the width-cost cv, so the split point reflects
+ * prominence, not packing width. See ./rowCombination.md.
  */
 function splitByPointBalance(items: ImageType[]): AbstractNode {
   if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
@@ -519,18 +622,18 @@ function rowAR_Cost(rowAR: number, target: number): number {
 const AR_EQUITY_BAND = 0.3;
 
 /**
- * Relative area each leaf occupies (and its cv) for a fully direction-assigned
- * subtree. Area splits geometrically at each node: an hPair divides area in
- * proportion to child AR (siblings share height, so width — hence area — ∝ AR);
- * a vStack divides ∝ 1/AR (siblings share width, so height ∝ 1/AR). Returned
- * leaf shares sum to 1 within the subtree.
+ * Relative area each leaf occupies (and its prominence P) for a fully
+ * direction-assigned subtree. Area splits geometrically: hPair ∝ AR, vStack ∝ 1/AR.
+ * Leaf shares sum to 1 within the subtree. `value` is prominence P (orientation-agnostic),
+ * so {@link equitySpread} rewards high-rated verticals with more area rather than
+ * penalising them via the packing cv.
  */
 function leafShares(ac: AtomicComponent): {
   ar: number;
-  leaves: Array<{ cv: number; share: number }>;
+  leaves: Array<{ value: number; share: number }>;
 } {
   if (ac.type === 'single') {
-    return { ar: ac.img.numericAR, leaves: [{ cv: ac.img.componentValue, share: 1 }] };
+    return { ar: ac.img.numericAR, leaves: [{ value: ac.img.prominence, share: 1 }] };
   }
   const left = leafShares(ac.children[0]);
   const right = leafShares(ac.children[1]);
@@ -545,25 +648,26 @@ function leafShares(ac: AtomicComponent): {
   return {
     ar,
     leaves: [
-      ...left.leaves.map(l => ({ cv: l.cv, share: l.share * leftFactor })),
-      ...right.leaves.map(l => ({ cv: l.cv, share: l.share * rightFactor })),
+      ...left.leaves.map(l => ({ value: l.value, share: l.share * leftFactor })),
+      ...right.leaves.map(l => ({ value: l.value, share: l.share * rightFactor })),
     ],
   };
 }
 
 /**
- * How unevenly a candidate sizes its images relative to their cv. Returns
- * max(area/cv) / min(area/cv) across leaves: 1.0 means every image's area is
- * exactly proportional to its cv (equal-rated → equal-size); larger means some
- * image is over- or under-sized for its rating. Lower is more equitable.
+ * How unevenly a candidate sizes its images relative to their prominence.
+ * Returns max(area/value) / min(area/value) across leaves: 1.0 = perfectly
+ * proportional; larger = some image is over- or under-sized. Lower is better.
+ * Uses prominence P (orientation-agnostic) so high-rated verticals are not
+ * penalised by the vertical-penalty baked into packing cv.
  */
 function equitySpread(ac: AtomicComponent): number {
   const { leaves } = leafShares(ac);
   let min = Infinity;
   let max = 0;
-  for (const { cv, share } of leaves) {
-    if (cv <= 0) continue;
-    const ratio = share / cv;
+  for (const { value, share } of leaves) {
+    if (value <= 0) continue;
+    const ratio = share / value;
     if (ratio < min) min = ratio;
     if (ratio > max) max = ratio;
   }

@@ -11,7 +11,10 @@ import { LAYOUT } from '@/app/constants';
 import {
   acToBoxTree,
   type AtomicComponent,
+  type BoxTree,
   buildAtomic,
+  buildRows,
+  rowTargetAR,
   toImageType,
 } from '@/app/utils/rowCombination';
 import {
@@ -22,7 +25,52 @@ import {
   createHorizontalImage,
   createImageContent,
   createVerticalImage,
+  H,
 } from '@/tests/fixtures/contentFixtures';
+
+// ---------------------------------------------------------------------------
+// Area-share walker — mirrors leafShares geometry in rowCombination.ts:
+//   leaf → 1; hPair → split ∝ child AR; vStack → split ∝ 1/child AR
+// Returns a map from content.id to fractional area [0, 1].
+// ---------------------------------------------------------------------------
+function areaShares(tree: BoxTree, parentShare = 1): Map<number, number> {
+  if (tree.type === 'leaf') {
+    const result = new Map<number, number>();
+    const id = (tree.content as { id?: number }).id;
+    if (id !== undefined) result.set(id, parentShare);
+    return result;
+  }
+  const [left, right] = tree.children;
+  const leftAR = aspectOf(left);
+  const rightAR = aspectOf(right);
+  const sum = leftAR + rightAR;
+  const isH = tree.direction === 'horizontal';
+  const leftFactor = isH ? leftAR / sum : rightAR / sum; // vStack: area ∝ 1/AR → left gets rightAR/sum
+  const rightFactor = isH ? rightAR / sum : leftAR / sum;
+  const leftShares = areaShares(left, parentShare * leftFactor);
+  const rightShares = areaShares(right, parentShare * rightFactor);
+  return new Map([...leftShares, ...rightShares]);
+}
+
+/** Intrinsic AR of a BoxTree node (assuming all leaf children have fixed AR). */
+function aspectOf(tree: BoxTree): number {
+  if (tree.type === 'leaf') {
+    const item = tree.content as {
+      aspectRatio?: number;
+      imageWidth?: number;
+      imageHeight?: number;
+    };
+    if (item.aspectRatio !== undefined) return item.aspectRatio;
+    if (item.imageWidth !== undefined && item.imageHeight !== undefined && item.imageHeight > 0) {
+      return item.imageWidth / item.imageHeight;
+    }
+    return 1;
+  }
+  const [l, r] = tree.children;
+  const lAR = aspectOf(l);
+  const rAR = aspectOf(r);
+  return tree.direction === 'horizontal' ? lAR + rAR : (lAR * rAR) / (lAR + rAR);
+}
 
 const DESKTOP = LAYOUT.desktopSlotWidth;
 const TARGET_AR = 1.5;
@@ -389,6 +437,59 @@ describe('buildAtomic — AR fitness', () => {
     // more evenly — so the upper bound allows a little above target.
     expect(ar).toBeGreaterThanOrEqual(1.0);
     expect(ar).toBeLessThan(1.4);
+  });
+});
+
+describe('buildAtomic — directional prominence (Task 1.1)', () => {
+  // The equity tiebreak (within AR_EQUITY_BAND of the AR-optimal candidate)
+  // is what actually decides this row. Two candidates tie on row AR:
+  //   h(v(H3,H3), v(V3,V5))  — the verticals STACKED (each ~0.12 of the row)
+  //   h(v(H3,H3), h(V3,V5))  — the verticals SIDE BY SIDE (each ~0.28 of the row)
+  // The leaf value fed to equitySpread decides which wins:
+  //   - OLD cv value:  V5★ cv≈2.14 < H3★ cv 2.50, so the cv-equity-optimal tree
+  //     STACKS the verticals → the 5★ vertical renders SMALLER than each 3★ H.
+  //   - NEW prominence: V5★ P=5.0 ≫ H3★ P=2.5, so the prominence-equity-optimal
+  //     tree pairs the verticals side by side → the 5★ vertical out-sizes the 3★s.
+  // This assertion FLIPS RED→GREEN on the cv→prominence swap in leafShares:
+  // under the retired cv value-model the leaf value put V5★ ≈ 0.12 < H3★ ≈ 0.22
+  // and this failed. Larger sizing wins compound downstream (Phase 2 per-row
+  // targetAR + the Hv width-cost packing in later phases).
+  it('sizes a 5★ vertical larger than its 3★ horizontal row-mates (equity tiebreak picks prominence)', () => {
+    const imgs = [H(1, 3), H(2, 3), createVerticalImage(3, 3), createVerticalImage(4, 5)].map(i =>
+      toImageType(i, 10)
+    );
+    const tree = acToBoxTree(buildAtomic(imgs, 1.457, 10));
+    const shares = areaShares(tree);
+    // V5★ (id=4) must claim more area than either H3★ (id=1 or id=2).
+    expect(shares.get(4)).toBeGreaterThan(shares.get(1)!);
+    expect(shares.get(4)).toBeGreaterThan(shares.get(2)!);
+  });
+});
+
+describe('rowTargetAR — per-row target AR from peak height-demand (Task 2.1)', () => {
+  // The per-row target AR pulls toward a taller (lower-AR) shape in proportion to
+  // the row's peak Vv ABOVE the wide-image ceiling (ROW_TARGET_AR_VV_LOW). A bland
+  // all-horizontal row (peak Vv ≈ 1.19, below the ceiling) keeps the baseline; a row
+  // holding a 5★ vertical (peak Vv ≈ 2.98) is pulled below it so the hero sizes taller.
+  // A single-anchor pull (Vv / REF) pulled even bland rows off baseline — see the
+  // 2026-06-10 plan revision — hence the wide-image Vv ceiling gates the pull.
+  it('pulls a hero row toward a taller target than a bland row, leaving bland at baseline', () => {
+    const bland = [H(1, 3), H(2, 3)].map(i => toImageType(i, 10));
+    const hero = [H(1, 3), createVerticalImage(2, 5)].map(i => toImageType(i, 10));
+    expect(rowTargetAR(hero, 2.0)).toBeLessThan(rowTargetAR(bland, 2.0));
+    expect(rowTargetAR(bland, 2.0)).toBeCloseTo(2.0, 5); // bland row keeps the baseline
+  });
+
+  it('buildRows composes a hero row taller via the per-row target (end-to-end wiring)', () => {
+    // [H3,H3,V3,V5] land in one row at rowWidth 10. With the neutral baseline target the row
+    // composes wide (AR ≈ 2.0) and the 5★ vertical renders short; buildRows derives a per-row
+    // target from the row's peak Vv (≈2.98) and composes it much taller (AR ≈ 1.17), giving the
+    // hero full height. Reverting the buildRows→rowTargetAR wiring snaps this back toward ≈2.0.
+    const items = [H(1, 3), H(2, 3), createVerticalImage(3, 3), createVerticalImage(4, 5)];
+    const rows = buildRows(items, 10, 1.457);
+    const heroRow = rows.find(r => r.components.some(c => (c as { id?: number }).id === 4))!;
+    const heroRowAR = calculateBoxTreeAspectRatio(heroRow.boxTree, 10);
+    expect(heroRowAR).toBeLessThan(1.5); // pulled well below the baseline-target composition (~2.0)
   });
 });
 

@@ -1,4 +1,4 @@
-import { IMAGE, LAYOUT } from '@/app/constants';
+import { DENSITY_ROW_WIDTH_MULTIPLIER, IMAGE, LAYOUT } from '@/app/constants';
 import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AnyContentModel,
@@ -78,11 +78,11 @@ function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
  * Process content for display, returning sized rows ready to render.
  *
  * Runs the single row-composition algorithm: {@link buildRows} greedily fills
- * each row to the per-viewport cv budget, then composes its BoxTree via
+ * each row to the per-viewport width-cost budget, then composes its BoxTree via
  * {@link buildAtomic}. The only mobile/desktop difference is the row-width budget
- * (desktop derives it from the density chunkSize; mobile derives it from the
- * 1-5 mobileChunkSize when supplied, else pins to a narrow slot width) — there
- * is no separate pattern-detection or slot-based mode.
+ * (desktop derives it from the density chunkSize × {@link DENSITY_ROW_WIDTH_MULTIPLIER};
+ * mobile derives it from the 1-5 mobileChunkSize when supplied, else pins to a
+ * narrow slot width) — there is no separate pattern-detection or slot-based mode.
  *
  * If collectionData is provided, creates a header row (cover image + metadata)
  * as the first row, before processing regular content.
@@ -119,9 +119,9 @@ export function processContentForDisplay(
 
   const rowWidth = options?.isMobile
     ? (options?.mobileChunkSize !== undefined
-      ? Math.round(options.mobileChunkSize * 2.5)
+      ? Math.round(options.mobileChunkSize * DENSITY_ROW_WIDTH_MULTIPLIER)
       : LAYOUT.mobileSlotWidth)
-    : Math.round(chunkSize * 2.5);
+    : Math.round(chunkSize * DENSITY_ROW_WIDTH_MULTIPLIER);
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 

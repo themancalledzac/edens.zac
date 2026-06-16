@@ -9,8 +9,10 @@ import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
 import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import {
+  applyActiveOverride,
   buildLocationCriteria,
   computeFilterCounts,
+  computeFilterVisibility,
   extractFilterOptions,
   filmFilterFromIsFilm,
   filterContent,
@@ -40,6 +42,12 @@ export default function LocationPageClient({ images, collections }: LocationPage
   }));
 
   const availableOptions = useMemo(() => extractFilterOptions(images), [images]);
+
+  const baseVisibility = useMemo(() => computeFilterVisibility(images), [images]);
+  const visibility = useMemo(
+    () => applyActiveOverride(baseVisibility, filterState),
+    [baseVisibility, filterState]
+  );
 
   const criteria = useMemo(() => buildLocationCriteria(filterState), [filterState]);
 
@@ -96,7 +104,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
         filterState={filterState}
         onFilterChange={handleFilterChange}
         dimensions={{
-          ...(availableOptions.tags.length > 0
+          ...(visibility.tags
             ? {
                 selectedTags: {
                   label: 'Tags',
@@ -105,7 +113,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
                 },
               }
             : {}),
-          ...(availableOptions.people.length >= 2
+          ...(visibility.people
             ? {
                 selectedPeople: {
                   label: 'People',
@@ -120,9 +128,9 @@ export default function LocationPageClient({ images, collections }: LocationPage
           film: filterCounts.film,
           digital: filterCounts.digital,
         }}
-        showDateSort
-        showHighlyRated
-        showFilm
+        showDateSort={visibility.dateSort}
+        showHighlyRated={visibility.highlyRated}
+        showFilm={visibility.film}
       />
 
       {contentBlocks.length > 0 ? (

@@ -4,10 +4,13 @@
  */
 
 import {
-  getComponentValue,
+  getArExtremeness,
   getEffectiveRating,
-  getItemComponentValue,
+  getHeightDemand,
+  getProminence,
+  getProminenceRating,
   getRating,
+  getWidthCost,
   isCollectionCard,
 } from '@/app/utils/contentRatingUtils';
 import {
@@ -121,24 +124,24 @@ describe('getEffectiveRating', () => {
     });
   });
 
-  describe('vertical images (penalty -1)', () => {
-    it('should return rating - 1 for vertical images', () => {
-      expect(getEffectiveRating(createVerticalImage(1, 5))).toBe(4); // V5★ → H4★ equivalent
-      expect(getEffectiveRating(createVerticalImage(1, 4))).toBe(3); // V4★ → H3★ equivalent
-      expect(getEffectiveRating(createVerticalImage(1, 3))).toBe(2); // V3★ → H2★ equivalent
-      expect(getEffectiveRating(createVerticalImage(1, 2))).toBe(1); // V2★ → H1★ equivalent
+  describe('vertical images (no penalty — retired in directional prominence)', () => {
+    it('should return the raw rating for vertical images (directionality handled by AR extremeness, not a penalty)', () => {
+      expect(getEffectiveRating(createVerticalImage(1, 5))).toBe(5); // V5★ → 5 (was 4 under the penalty)
+      expect(getEffectiveRating(createVerticalImage(1, 4))).toBe(4); // V4★ → 4 (was 3)
+      expect(getEffectiveRating(createVerticalImage(1, 3))).toBe(3); // V3★ → 3 (was 2)
+      expect(getEffectiveRating(createVerticalImage(1, 2))).toBe(2); // V2★ → 2 (was 1)
     });
 
-    it('should not go below 0 for low-rated verticals', () => {
-      expect(getEffectiveRating(createVerticalImage(1, 1))).toBe(0); // V1★ → 0 (clamped)
-      expect(getEffectiveRating(createVerticalImage(1, 0))).toBe(0); // V0★ → 0 (clamped)
+    it('clamps low-rated verticals to [0, 5] without a penalty', () => {
+      expect(getEffectiveRating(createVerticalImage(1, 1))).toBe(1); // V1★ → 1 (was 0 under the penalty)
+      expect(getEffectiveRating(createVerticalImage(1, 0))).toBe(0); // V0★ → 0
     });
   });
 
-  describe('square images (treated as vertical)', () => {
-    it('should apply vertical penalty to square images', () => {
-      expect(getEffectiveRating(createSquareImage(1, 5))).toBe(4);
-      expect(getEffectiveRating(createSquareImage(1, 3))).toBe(2);
+  describe('square images (no penalty)', () => {
+    it('should return the raw rating for square images (no longer treated as penalised verticals)', () => {
+      expect(getEffectiveRating(createSquareImage(1, 5))).toBe(5); // was 4 under the penalty
+      expect(getEffectiveRating(createSquareImage(1, 3))).toBe(3); // was 2
     });
   });
 
@@ -174,8 +177,8 @@ describe('getEffectiveRating', () => {
   });
 
   describe('orientation-only rating (no slotWidth parameter)', () => {
-    // Note: slotWidth does not affect effective rating — slot-width scaling is
-    // handled downstream in getComponentValue().
+    // Note: slotWidth does not affect effective rating — width scaling is handled
+    // downstream by the prominence width-cost Hv = √(P·AR).
     it('should return the same effective rating independent of slot context', () => {
       const image = createHorizontalImage(1, 4);
       expect(getEffectiveRating(image)).toBe(4);
@@ -184,75 +187,82 @@ describe('getEffectiveRating', () => {
 });
 
 // getEffectiveRatingFromAspectRatio deleted — no production callers
+// getComponentValue / getItemComponentValue deleted — retired cv value-model replaced by prominence P / width-cost Hv
 
-// ===================== getComponentValue Tests =====================
+// ===================== getArExtremeness Tests =====================
 
-describe('getComponentValue', () => {
-  it('returns base weight for standard horizontal (AR=1.5)', () => {
-    expect(getComponentValue(5, 1.5)).toBe(5.0);
-    expect(getComponentValue(4, 1.5)).toBe(3.5);
-    expect(getComponentValue(3, 1.5)).toBe(2.5);
-    expect(getComponentValue(2, 1.5)).toBe(1.75);
-    expect(getComponentValue(1, 1.5)).toBe(1.25);
-    expect(getComponentValue(0, 1.5)).toBe(1.0);
-  });
-
-  it('caps arFactor at 1.0 for wide horizontals (AR > 1.5)', () => {
-    expect(getComponentValue(5, 2.0)).toBe(5.0);
-    expect(getComponentValue(3, 2.5)).toBe(2.5);
-  });
-
-  it('reduces cv for verticals (AR < 1.0) via sqrt factor', () => {
-    const cv = getComponentValue(4, 0.67);
-    expect(cv).toBeCloseTo(3.5 * Math.sqrt(0.67 / 1.5), 2);
-    expect(cv).toBeLessThan(3.5);
-    expect(cv).toBeGreaterThan(2.0);
-  });
-
-  it('reduces cv for square images (AR=1.0)', () => {
-    const cv = getComponentValue(3, 1.0);
-    expect(cv).toBeCloseTo(2.5 * Math.sqrt(1.0 / 1.5), 2);
-  });
-
-  it('handles effectiveRating > 5 by capping at 5', () => {
-    expect(getComponentValue(6, 1.5)).toBe(5.0);
-    expect(getComponentValue(10, 1.5)).toBe(5.0);
-  });
-
-  it('handles effectiveRating < 0 by flooring at 0', () => {
-    expect(getComponentValue(-1, 1.5)).toBe(1.0);
+describe('getArExtremeness', () => {
+  it('is 1 for square, symmetric for wide and tall', () => {
+    expect(getArExtremeness(1.0)).toBeCloseTo(1.0, 5);
+    expect(getArExtremeness(3.0)).toBeCloseTo(3.0, 5);
+    expect(getArExtremeness(1 / 3)).toBeCloseTo(3.0, 5);
   });
 });
 
-// ===================== getItemComponentValue Tests =====================
+// ===================== getProminenceRating Tests =====================
 
-describe('getItemComponentValue', () => {
-  it('returns full base weight for H5★ (AR ~1.78, capped at reference)', () => {
-    const image = createHorizontalImage(1, 5);
-    // H5★: effectiveRating=5, AR=1.78 (capped at 1.5) → arFactor=1.0 → cv=5.0
-    expect(getItemComponentValue(image)).toBe(5.0);
+describe('getProminenceRating', () => {
+  it('returns raw rating for horizontal images (no vertical penalty)', () => {
+    expect(getProminenceRating(createHorizontalImage(1, 5))).toBe(5);
+    expect(getProminenceRating(createHorizontalImage(1, 3))).toBe(3);
   });
 
-  it('applies vertical penalty and AR factor for V5★', () => {
-    const image = createVerticalImage(1, 5);
-    // V5★: effectiveRating=4, AR=0.5625 → arFactor=sqrt(0.5625/1.5)≈0.612 → cv≈2.14
-    const cv = getItemComponentValue(image);
-    expect(cv).toBeGreaterThan(1.5);
-    expect(cv).toBeLessThan(3.5);
+  it('returns raw rating for vertical images (no vertical penalty)', () => {
+    expect(getProminenceRating(createVerticalImage(1, 5))).toBe(5);
+    expect(getProminenceRating(createVerticalImage(1, 3))).toBe(3);
   });
 
-  it('V4★ and H3★ no longer have same cv (AR factor differentiates)', () => {
-    const v4 = createVerticalImage(1, 4);
-    const h3 = createHorizontalImage(2, 3);
-    // V4★: er=3, AR=0.5625, cv = 2.5 * sqrt(0.5625/1.5) ≈ 1.53
-    // H3★: er=3, AR=1.78, cv = 2.5 * 1.0 = 2.5
-    expect(getItemComponentValue(v4)).toBeLessThan(getItemComponentValue(h3));
+  it('returns 4 for collection cards', () => {
+    const collectionCard = {
+      id: 1,
+      contentType: 'PARALLAX' as const,
+      collectionType: 'TRAVEL',
+    };
+    expect(getProminenceRating(collectionCard as never)).toBe(4);
   });
 
-  it('does not take slotWidth parameter', () => {
-    const image = createHorizontalImage(1, 3);
-    // Just verify it works with no second arg
-    expect(typeof getItemComponentValue(image)).toBe('number');
-    expect(getItemComponentValue(image)).toBeGreaterThan(0);
+  it('returns 1 for non-image content', () => {
+    const textContent = {
+      id: 1,
+      contentType: 'TEXT' as const,
+      textBlock: { title: 'Test' },
+    };
+    expect(getProminenceRating(textContent as never)).toBe(1);
+  });
+});
+
+// ===================== getProminence Tests =====================
+
+describe('getProminence (orientation-agnostic P)', () => {
+  it('gives a 5★ portrait the same P as a 5★ landscape (no vertical penalty)', () => {
+    expect(getProminence(createVerticalImage(1, 5))).toBeCloseTo(
+      getProminence(createHorizontalImage(2, 5)),
+      5
+    );
+  });
+
+  it('gives a 3:1 panorama P=10 at 5★', () => {
+    expect(getProminence(createPanorama(2, 5))).toBeCloseTo(10.0, 5);
+  });
+
+  it('scales 5★ extremeness 5 → 10 across square-ish and 3:1', () => {
+    expect(getProminence(createHorizontalImage(1, 5))).toBeCloseTo(5.0, 1);
+    expect(getProminence(createPanorama(2, 5))).toBeCloseTo(10.0, 5);
+  });
+});
+
+// ===================== Hv / Vv Decomposition Tests =====================
+
+describe('Hv / Vv decomposition', () => {
+  it('Hv·Vv ≈ P and Hv/Vv = AR', () => {
+    const pano = createPanorama(1, 5);
+    expect(getWidthCost(pano) * getHeightDemand(pano)).toBeCloseTo(getProminence(pano), 4);
+    expect(getWidthCost(pano) / getHeightDemand(pano)).toBeCloseTo(3.0, 4);
+  });
+  it('a panorama is wide-dominant, a portrait is height-dominant, at equal P', () => {
+    const pano = createPanorama(1, 5);
+    const portrait = createVerticalImage(2, 5);
+    expect(getWidthCost(pano)).toBeGreaterThan(getHeightDemand(pano));
+    expect(getHeightDemand(portrait)).toBeGreaterThan(getWidthCost(portrait));
   });
 });

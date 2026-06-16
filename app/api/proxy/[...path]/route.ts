@@ -3,30 +3,13 @@ import { NextResponse } from 'next/server';
 
 import { logger } from '@/app/utils/logger';
 
-/**
- * Get Backend Base URL
- *
- * Retrieves the backend API base URL from environment variables with
- * fallback to localhost for development. Normalizes URL by removing
- * trailing slashes for consistent path construction.
- *
- * @returns Normalized backend base URL
- */
+/** Returns the backend base URL from `API_URL`, normalized (no trailing slash). */
 function getBackendBase(): string {
   const base = process.env.API_URL || 'http://localhost:8080';
   return base.replace(/\/+$/, '');
 }
 
-/**
- * Build Target URL
- *
- * Constructs the full backend URL from path segments and search parameters.
- * Handles path normalization and query string preservation for proxying.
- *
- * @param pathParts - Array of URL path segments after /api/proxy
- * @param search - Query string including leading '?' if present
- * @returns Complete target URL for backend request
- */
+/** Builds the full backend URL from path segments and the original query string. */
 function buildTargetUrl(pathParts: string[], search: string): string {
   // pathParts already contains everything after /api/proxy
   const targetPath = pathParts.join('/');
@@ -36,14 +19,8 @@ function buildTargetUrl(pathParts: string[], search: string): string {
 }
 
 /**
- * Forward Headers
- *
- * Filters and forwards request headers to the backend, excluding hop-by-hop
- * headers and platform-specific headers that shouldn't be proxied. Ensures
- * JSON accept header for API compatibility.
- *
- * @param req - Incoming Next.js request object
- * @returns Filtered headers safe for backend forwarding
+ * Strips hop-by-hop and platform-specific headers, re-injects a sanitized real-IP,
+ * and adds the internal API secret before forwarding to the backend.
  */
 function forwardHeaders(req: NextRequest): Headers {
   const headers = new Headers();
@@ -71,9 +48,7 @@ function forwardHeaders(req: NextRequest): Headers {
   }
   // Ensure JSON by default for non-multipart when client did not set
   if (!headers.has('accept')) headers.set('accept', 'application/json, */*;q=0.1');
-  // Forward sanitized real client IP for backend rate limiting.
-  // We strip x-forwarded-for / x-vercel-ip-* above to prevent header smuggling,
-  // then re-inject only what we trust.
+  // Re-inject sanitized real IP (stripped above to prevent header smuggling).
   const realIpRaw =
     req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ??
     req.headers.get('x-real-ip') ??
@@ -85,22 +60,7 @@ function forwardHeaders(req: NextRequest): Headers {
   return headers;
 }
 
-/**
- * Proxy Handler
- *
- * Universal handler for all HTTP methods that forwards requests to the backend
- * API. Handles request transformation, error handling, and response streaming
- * with proper header filtering for both directions.
- *
- * @dependencies
- * - Next.js server APIs for request/response handling
- * - Backend API for actual data processing
- * - Helper functions for URL construction and header filtering
- *
- * @param req - Incoming Next.js request
- * @param context - Route context containing dynamic path parameters
- * @returns Proxied response from backend or error response
- */
+/** Universal proxy handler — forwards all HTTP methods to the backend with CORS and size guards. */
 async function handle(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const params = await context.params;
   const method = req.method;
@@ -116,21 +76,15 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
 
   const writeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-  // Tiered body size limit. Public write endpoints (contact form, gallery
-  // password) carry tiny JSON payloads — 16 KB is generous. Multipart uploads
-  // (admin image uploads, dev-only) need real headroom. The Content-Length
-  // header is a fast reject, but is not authoritative — clients may omit or
-  // spoof it. We re-check against the actual buffered body size below.
+  // 16 KB for JSON writes; 25 MB for multipart uploads. Content-Length is a fast
+  // reject only — we re-check against the actual buffered size below.
   const contentType = req.headers.get('content-type') ?? '';
   const isMultipart = contentType.startsWith('multipart/form-data');
   const maxBytes = isMultipart ? 25 * 1024 * 1024 : 16 * 1024;
 
   if (writeMethods.has(method)) {
     const origin = req.headers.get('origin');
-    // Dev LAN writes: private addresses + mDNS names on dev ports only.
-    // http origins on ports 3000/3001 from localhost, 127.0.0.1, RFC1918
-    // private IPv4 (10.x, 192.168.x, 172.16-31.x), *.local mDNS hostnames,
-    // or *.localhost. Public IPv4 and arbitrary hostnames are rejected.
+    // Also allow RFC1918/mDNS origins on dev ports (LAN mobile testing).
     const isDevLanOrigin =
       process.env.NODE_ENV === 'development' &&
       !!origin &&
@@ -146,22 +100,13 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     }
   }
 
-  // Buffer the body: NextRequest.body is a ReadableStream, and undici fetch
-  // requires `duplex: 'half'` to forward streams. Buffering avoids the streaming
-  // path and lets undici set Content-Length.
-  //
-  // The body must be wrapped in a Uint8Array view rather than passed as a raw
-  // ArrayBuffer. AWS Amplify's SSR Lambda runtime ships an undici build that
-  // throws synchronously on bare ArrayBuffer bodies (manifesting as a 502
-  // "Bad Gateway" on every write through this proxy in production while the
-  // Next.js dev server accepts it fine). Uint8Array is what undici handles
-  // uniformly across all Node runtimes — local dev, Vercel, and Amplify.
+  // Uint8Array (not bare ArrayBuffer) — Amplify's undici build rejects ArrayBuffer
+  // bodies with a 502; Uint8Array works uniformly across all runtimes.
   const body = ['GET', 'HEAD'].includes(method)
     ? undefined
     : new Uint8Array(await req.arrayBuffer());
 
-  // Authoritative size check after buffering — guards against missing or
-  // spoofed Content-Length headers that bypassed the early reject above.
+  // Authoritative size check — guards spoofed/missing Content-Length.
   if (writeMethods.has(method) && body && body.byteLength > maxBytes) {
     return NextResponse.json({ error: 'Payload too large' }, { status: 413 });
   }
