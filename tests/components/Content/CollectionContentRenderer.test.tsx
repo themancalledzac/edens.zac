@@ -9,11 +9,19 @@ import {
 } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import type { TextBlockItem } from '@/app/types/Content';
 
-jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }));
+const pushMock = jest.fn();
+jest.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock }) }));
 jest.mock('@/app/hooks/useParallax', () => ({ useParallax: () => ({ current: null }) }));
 jest.mock('@/app/components/ContentCollection/CollectionFilterContext', () => ({
   useCollectionFilter: () => null,
 }));
+jest.mock('@/app/utils/environment', () => ({
+  isLocalEnvironment: jest.fn(() => false),
+}));
+
+import { isLocalEnvironment } from '@/app/utils/environment';
+
+const mockIsLocalEnvironment = isLocalEnvironment as jest.MockedFunction<typeof isLocalEnvironment>;
 
 const baseProps = {
   contentId: 42,
@@ -131,5 +139,62 @@ describe('CollectionContentRenderer — coverless collection tile (regression)',
     render(<CollectionContentRenderer {...coverlessCollectionProps} />);
     expect(screen.getByText('Lisbon')).toBeInTheDocument();
     expect(screen.queryByText('No Image')).not.toBeInTheDocument();
+  });
+});
+
+describe('CollectionContentRenderer — cover "Update" shortcut (localhost public view)', () => {
+  // The header cover image is the parallax IMAGE block with the sentinel id -1.
+  const coverProps = {
+    contentId: -1,
+    className: 'imageSingle',
+    width: 600,
+    height: 400,
+    isMobile: false,
+    imageUrl: 'https://cdn.example.com/cover.jpg',
+    imageWidth: 600,
+    imageHeight: 400,
+    alt: 'Cover',
+    enableParallax: true,
+    contentType: 'IMAGE' as const,
+    overlayText: 'My Gallery',
+    collectionSlug: 'my-gallery',
+  };
+
+  beforeEach(() => {
+    pushMock.mockClear();
+    mockIsLocalEnvironment.mockReturnValue(false);
+  });
+
+  it('shows the shortcut and navigates to ?manage=1 on localhost public view', () => {
+    mockIsLocalEnvironment.mockReturnValue(true);
+    render(<CollectionContentRenderer {...coverProps} />);
+
+    const button = screen.getByRole('button', { name: 'Update' });
+    fireEvent.click(button);
+    expect(pushMock).toHaveBeenCalledWith('/my-gallery?manage=1');
+  });
+
+  it('does not show the shortcut in production (non-localhost)', () => {
+    mockIsLocalEnvironment.mockReturnValue(false);
+    render(<CollectionContentRenderer {...coverProps} />);
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+  });
+
+  it('does not show the shortcut in manage mode (currentCollectionId set)', () => {
+    mockIsLocalEnvironment.mockReturnValue(true);
+    render(<CollectionContentRenderer {...coverProps} currentCollectionId={7} />);
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+  });
+
+  it('does not show the shortcut on a non-cover image (contentId !== -1)', () => {
+    mockIsLocalEnvironment.mockReturnValue(true);
+    render(<CollectionContentRenderer {...coverProps} contentId={123} enableParallax={false} />);
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+  });
+
+  it('does not show the shortcut when no collectionSlug is available', () => {
+    mockIsLocalEnvironment.mockReturnValue(true);
+    render(<CollectionContentRenderer {...coverProps} collectionSlug={undefined} />);
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
   });
 });

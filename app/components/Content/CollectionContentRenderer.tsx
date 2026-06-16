@@ -29,8 +29,16 @@ import {
   buildWrapperClassName,
   resolveValidDimensions,
 } from '@/app/utils/contentRendererUtils';
+import { isLocalEnvironment } from '@/app/utils/environment';
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
+import { manageHref } from '@/app/utils/manageUrl';
+
+/**
+ * Sentinel content id used by createCoverImageBlock (app/utils/contentLayout.ts) for the
+ * header cover image. Lets the renderer single out the cover without a new prop.
+ */
+const COVER_IMAGE_CONTENT_ID = -1;
 
 import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
@@ -156,6 +164,26 @@ export default function CollectionContentRenderer({
 
   const collectionFilter = useCollectionFilter();
   const inlineEdit = useInlineEdit();
+
+  // Localhost-only shortcut into manage mode, pinned to the header cover image. Shown only on the
+  // public view (manage path sets currentCollectionId) for the cover block (contentId === -1).
+  const showCoverUpdateShortcut =
+    contentType === 'IMAGE' &&
+    contentId === COVER_IMAGE_CONTENT_ID &&
+    currentCollectionId == null &&
+    !!collectionSlug &&
+    isLocalEnvironment();
+
+  const handleCoverUpdateClick = useCallback(
+    (event: { stopPropagation: () => void }) => {
+      // Stop the click from bubbling to the parallax wrapper (which opens fullscreen).
+      event.stopPropagation();
+      if (collectionSlug) {
+        router.push(manageHref(collectionSlug));
+      }
+    },
+    [collectionSlug, router]
+  );
 
   if (contentType === 'TEXT') {
     if (!textItems || textItems.length === 0) {
@@ -628,6 +656,15 @@ export default function CollectionContentRenderer({
       <div className={cbStyles.imageWrapper} onClick={handleClick}>
         {imageWrapperContent}
       </div>
+      {showCoverUpdateShortcut && (
+        <button
+          type="button"
+          className={cbStyles.coverUpdateShortcut}
+          onClick={handleCoverUpdateClick}
+        >
+          Update
+        </button>
+      )}
       {!enableParallax && (
         <ImageOverlays
           contentType={contentType}
