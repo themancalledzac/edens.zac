@@ -441,22 +441,51 @@ export default function CollectionContentRenderer({
   }
 
   if (failedImageIds.has(contentId)) {
+    // currentCollectionId is only threaded down on the manage path (EditModeLayer);
+    // the public CollectionPageClient grid, TaxonomyPage, and LocationPage never set it.
+    const isManage = currentCollectionId != null;
+
+    // Public view: a URL that 404s/fails to load has nothing renderable, so drop it.
+    // We intentionally leave the already-allocated grid slot empty (a small gap)
+    // rather than re-flowing the BoxTree layout.
+    if (!isManage) {
+      return null;
+    }
+
     const placeholderWidth = width || 300;
     const placeholderHeight = height || (placeholderWidth * 2) / 3;
+    const placeholderClassName = `${buildWrapperClassName(className, cbStyles, {
+      includeDragContainer: false,
+      enableParallax: false,
+      isMobile,
+      hasClickHandler,
+      isSelected: false,
+    })} ${cbStyles.contentBox}`;
 
+    // Manage view: keep the "Image unavailable" box and make it clickable so the admin
+    // can open the edit/delete modal and remove the broken image. Mirrors the click
+    // wiring of the empty-URL ("No Image") placeholder above.
     return (
       <div
         key={contentId}
-        className={`${buildWrapperClassName(className, cbStyles, {
-          includeDragContainer: false,
-          enableParallax: false,
-          isMobile,
-          hasClickHandler: false,
-          isSelected: false,
-        })} ${cbStyles.contentBox}`}
+        className={placeholderClassName}
+        onClick={hasClickHandler ? handleClick : undefined}
+        role={hasClickHandler ? 'button' : undefined}
+        tabIndex={hasClickHandler ? 0 : undefined}
+        onKeyDown={
+          hasClickHandler
+            ? e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleClick();
+                }
+              }
+            : undefined
+        }
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
+          cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
         <div
