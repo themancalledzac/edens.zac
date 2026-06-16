@@ -309,22 +309,63 @@ export default function CollectionContentRenderer({
                 </div>
               </div>
             )}
-            {collectionItems.length > 0 && (
-              <div className={cbStyles.metadataSiblingsContainer}>
-                <span className={cbStyles.metadataSiblingLabel}>Related:</span>
-                <div className={cbStyles.metadataSiblingsRow}>
-                  {collectionItems.map(item => (
-                    <Link
-                      key={`sibling-${contentId}-${item.slug}`}
-                      href={item.slug!}
-                      className={cbStyles.metadataSiblingCollection}
-                    >
-                      {item.value}
-                    </Link>
-                  ))}
+            {collectionItems.length > 0 &&
+              (collectionItems.some(item => item.coverImageUrl) ? (
+                // Card path: at least one sibling has a cover image. Render a wrapping
+                // row of ~2:1 cover cards; siblings still lacking a cover fall back to a
+                // text-link chip inside the same row (no blank placeholder).
+                <div className={cbStyles.metadataSiblingsContainer}>
+                  <span className={cbStyles.metadataSiblingLabel}>Related:</span>
+                  <div className={cbStyles.metadataSiblingCardRow}>
+                    {collectionItems.map(item =>
+                      item.coverImageUrl ? (
+                        <Link
+                          key={`sibling-${contentId}-${item.slug}`}
+                          href={item.slug!}
+                          className={cbStyles.metadataSiblingCard}
+                          aria-label={item.value}
+                        >
+                          <Image
+                            src={item.coverImageUrl}
+                            alt={item.value}
+                            fill
+                            sizes="(max-width: 768px) 140px, 200px"
+                            className={cbStyles.metadataSiblingCardImage}
+                          />
+                          <span className={cbStyles.metadataSiblingCardOverlay}>
+                            <span className={cbStyles.metadataSiblingCardTitle}>{item.value}</span>
+                          </span>
+                        </Link>
+                      ) : (
+                        <Link
+                          key={`sibling-${contentId}-${item.slug}`}
+                          href={item.slug!}
+                          className={cbStyles.metadataSiblingChip}
+                        >
+                          {item.value}
+                        </Link>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                // Fallback path: no sibling has a cover image (e.g. backend not yet
+                // deployed). Keep the original plain text-link row.
+                <div className={cbStyles.metadataSiblingsContainer}>
+                  <span className={cbStyles.metadataSiblingLabel}>Related:</span>
+                  <div className={cbStyles.metadataSiblingsRow}>
+                    {collectionItems.map(item => (
+                      <Link
+                        key={`sibling-${contentId}-${item.slug}`}
+                        href={item.slug!}
+                        className={cbStyles.metadataSiblingCollection}
+                      >
+                        {item.value}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
             {isClientGallery && collectionSlug && (
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}

@@ -108,6 +108,13 @@ export interface CollectionListModel {
   type?: string;
   /** ISO date — used to sort BLOG group rows on the manage page. */
   collectionDate?: string | null;
+  /**
+   * Cover image URL (CloudFront). Populated by the backend on the public
+   * sibling/related payload to render related collections as cover-image cards.
+   * Absent until that backend change deploys — renderers must fall back to text
+   * links when missing.
+   */
+  coverImageUrl?: string;
 }
 
 /**

@@ -596,6 +596,100 @@
   }
 }
 
+/* Card path: ~2:1 cover-image cards for related collections.
+   Wrapping row of small thumbnails; whole card is a link with the title overlaid. */
+.metadataSiblingCardRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.metadataSiblingCard {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 140px;
+  aspect-ratio: 2 / 1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  text-decoration: none;
+  transition: opacity var(--duration-fast) var(--ease-standard);
+
+  @media (width >= 768px) {
+    width: 200px;
+  }
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+.metadataSiblingCardImage {
+  object-fit: cover;
+}
+
+.metadataSiblingCardOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(to top, rgb(0 0 0 / 55%), rgb(0 0 0 / 0%) 60%);
+  transition: background var(--duration-fast) var(--ease-standard);
+
+  .metadataSiblingCard:hover & {
+    background: linear-gradient(to top, rgb(0 0 0 / 65%), rgb(0 0 0 / 10%) 60%);
+  }
+}
+
+.metadataSiblingCardTitle {
+  padding: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.3;
+  color: #fff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 50%);
+
+  @media (width >= 768px) {
+    font-size: var(--text-sm);
+  }
+}
+
+/* Cover-less sibling inside the card row: a text-link chip, vertically centered
+   so it sits alongside the cover cards instead of leaving a blank placeholder. */
+.metadataSiblingChip {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-fg);
+  text-decoration: none;
+  background-color: rgb(0 0 0 / 6%);
+  border: 1px solid rgb(0 0 0 / 12%);
+  border-radius: var(--radius-round);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard);
+
+  &:hover {
+    background-color: rgb(0 0 0 / 12%);
+    border-color: rgb(0 0 0 / 25%);
+  }
+}
+
+[data-surface='dark'] .metadataSiblingChip {
+  background-color: rgb(255 255 255 / 6%);
+  border-color: rgb(255 255 255 / 12%);
+
+  &:hover {
+    background-color: rgb(255 255 255 / 12%);
+    border-color: rgb(255 255 255 / 25%);
+  }
+}
+
 /* Generic text block item styles (for non-metadata text blocks) */
 .textItem {
   margin-bottom: var(--space-2);

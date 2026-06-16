@@ -62,6 +62,82 @@ describe('CollectionContentRenderer — TEXT branch sibling collections', () => 
   });
 });
 
+describe('CollectionContentRenderer — sibling collections as cover cards', () => {
+  it('renders a cover-image card per sibling when coverImageUrl is present', () => {
+    const textItems: TextBlockItem[] = [
+      {
+        type: 'collection',
+        value: 'Dolomites Film',
+        slug: '/dolomites-film',
+        coverImageUrl: 'https://cdn.example.com/dolomites-film.jpg',
+      },
+      {
+        type: 'collection',
+        value: 'Dolomites 2025',
+        slug: '/dolomites-2025',
+        coverImageUrl: 'https://cdn.example.com/dolomites-2025.jpg',
+      },
+    ];
+    render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
+
+    // Related: context preserved
+    expect(screen.getByText('Related:')).toBeInTheDocument();
+
+    // Each card is a link to /{slug} with an accessible name (the collection title)
+    const filmLink = screen.getByRole('link', { name: /Dolomites Film/ });
+    expect(filmLink).toHaveAttribute('href', '/dolomites-film');
+    const link2025 = screen.getByRole('link', { name: /Dolomites 2025/ });
+    expect(link2025).toHaveAttribute('href', '/dolomites-2025');
+
+    // Cover images render with alt text = collection name
+    const filmImage = screen.getByRole('img', { name: 'Dolomites Film' });
+    expect(filmImage).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Dolomites 2025' })).toBeInTheDocument();
+  });
+
+  it('renders a sibling without coverImageUrl as a text-link chip inside the card row', () => {
+    const textItems: TextBlockItem[] = [
+      {
+        type: 'collection',
+        value: 'Has Cover',
+        slug: '/has-cover',
+        coverImageUrl: 'https://cdn.example.com/has-cover.jpg',
+      },
+      { type: 'collection', value: 'No Cover', slug: '/no-cover' },
+    ];
+    render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
+
+    // Card path is active (one sibling has a cover) so we still see the cover image
+    expect(screen.getByRole('img', { name: 'Has Cover' })).toBeInTheDocument();
+
+    // The cover-less sibling is still a navigable link (rendered as a text chip)
+    const noCoverLink = screen.getByRole('link', { name: 'No Cover' });
+    expect(noCoverLink).toHaveAttribute('href', '/no-cover');
+    // No image rendered for the cover-less sibling
+    expect(screen.queryByRole('img', { name: 'No Cover' })).not.toBeInTheDocument();
+  });
+
+  it('falls back to plain text links when NO sibling has a coverImageUrl', () => {
+    const textItems: TextBlockItem[] = [
+      { type: 'collection', value: 'Dolomites Film', slug: '/dolomites-film' },
+      { type: 'collection', value: 'Dolomites 2025', slug: '/dolomites-2025' },
+    ];
+    render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
+
+    expect(screen.getByText('Related:')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Dolomites Film' })).toHaveAttribute(
+      'href',
+      '/dolomites-film'
+    );
+    expect(screen.getByRole('link', { name: 'Dolomites 2025' })).toHaveAttribute(
+      'href',
+      '/dolomites-2025'
+    );
+    // No images in the pure-fallback path
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+});
+
 describe('CollectionContentRenderer — TEXT branch inline edit context', () => {
   const textItems: TextBlockItem[] = [
     { type: 'date', value: '2026-01-01' },
