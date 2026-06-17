@@ -95,10 +95,15 @@ export function FilterToolbar({
 
   const filmCount = filterState.filmFilter === 'off' ? undefined : counts?.[filterState.filmFilter];
 
-  const hasActiveFilters = computeHasActiveFilters(filterState, ARRAY_FILTER_KEYS);
+  const hasActiveFilters = computeHasActiveFilters(filterState, ARRAY_FILTER_KEYS, dateTwoState);
 
   const resetAll = () => {
-    onFilterChange({ ...INITIAL_FILTER_STATE });
+    onFilterChange({
+      ...INITIAL_FILTER_STATE,
+      // Two-state views are inherently date-ordered, so `off` is invalid there:
+      // preserve the current direction and only clear the other filters.
+      ...(dateTwoState ? { dateSortDirection: filterState.dateSortDirection } : {}),
+    });
     closeAll();
   };
 

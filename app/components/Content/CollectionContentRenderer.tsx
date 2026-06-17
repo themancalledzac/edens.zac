@@ -318,7 +318,7 @@ export default function CollectionContentRenderer({
                 // row of ~2:1 cover cards; siblings still lacking a cover fall back to a
                 // text-link chip inside the same row (no blank placeholder).
                 <div className={cbStyles.metadataSiblingsContainer}>
-                  <span className={cbStyles.metadataSiblingLabel}>Related:</span>
+                  <span className={cbStyles.metadataSiblingLabel}>Related</span>
                   <div className={cbStyles.metadataSiblingCardRow}>
                     {collectionItems.map(item =>
                       item.coverImageUrl ? (
@@ -355,7 +355,7 @@ export default function CollectionContentRenderer({
                 // Fallback path: no sibling has a cover image (e.g. backend not yet
                 // deployed). Keep the original plain text-link row.
                 <div className={cbStyles.metadataSiblingsContainer}>
-                  <span className={cbStyles.metadataSiblingLabel}>Related:</span>
+                  <span className={cbStyles.metadataSiblingLabel}>Related</span>
                   <div className={cbStyles.metadataSiblingsRow}>
                     {collectionItems.map(item => (
                       <Link

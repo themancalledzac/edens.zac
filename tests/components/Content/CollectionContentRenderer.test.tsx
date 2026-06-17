@@ -38,13 +38,13 @@ const baseProps = {
 };
 
 describe('CollectionContentRenderer — TEXT branch sibling collections', () => {
-  it('renders a Related: label and a link per collection item', () => {
+  it('renders a Related label and a link per collection item', () => {
     const textItems: TextBlockItem[] = [
       { type: 'collection', value: 'Dolomites Film', slug: '/dolomites-film' },
       { type: 'collection', value: 'Dolomites 2025', slug: '/dolomites-2025' },
     ];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
-    expect(screen.getByText('Related:')).toBeInTheDocument();
+    expect(screen.getByText('Related')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dolomites Film' })).toHaveAttribute(
       'href',
       '/dolomites-film'
@@ -55,10 +55,10 @@ describe('CollectionContentRenderer — TEXT branch sibling collections', () => 
     );
   });
 
-  it('renders no Related: label when there are no collection items', () => {
+  it('renders no Related label when there are no collection items', () => {
     const textItems: TextBlockItem[] = [{ type: 'description', value: 'Just a description' }];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
-    expect(screen.queryByText('Related:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Related')).not.toBeInTheDocument();
   });
 });
 
@@ -80,8 +80,8 @@ describe('CollectionContentRenderer — sibling collections as cover cards', () 
     ];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
 
-    // Related: context preserved
-    expect(screen.getByText('Related:')).toBeInTheDocument();
+    // Related context preserved
+    expect(screen.getByText('Related')).toBeInTheDocument();
 
     // Each card is a link to /{slug} with an accessible name (the collection title)
     const filmLink = screen.getByRole('link', { name: /Dolomites Film/ });
@@ -124,7 +124,7 @@ describe('CollectionContentRenderer — sibling collections as cover cards', () 
     ];
     render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
 
-    expect(screen.getByText('Related:')).toBeInTheDocument();
+    expect(screen.getByText('Related')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dolomites Film' })).toHaveAttribute(
       'href',
       '/dolomites-film'
