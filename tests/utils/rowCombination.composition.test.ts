@@ -72,7 +72,6 @@ function aspectOf(tree: BoxTree): number {
   return tree.direction === 'horizontal' ? lAR + rAR : (lAR * rAR) / (lAR + rAR);
 }
 
-const DESKTOP = LAYOUT.desktopSlotWidth;
 const TARGET_AR = 1.5;
 
 /** Render the tree shape as `h(L1,v(L2,L3))` for assertion readability. */
@@ -94,17 +93,17 @@ function leafIds(ac: AtomicComponent): number[] {
 
 describe('buildAtomic — degenerate cases', () => {
   it('returns a single() for one image', () => {
-    const img = toImageType(createHorizontalImage(1, 3), DESKTOP);
-    const result = buildAtomic([img], TARGET_AR, DESKTOP);
+    const img = toImageType(createHorizontalImage(1, 3));
+    const result = buildAtomic([img], TARGET_AR);
     expect(result.type).toBe('single');
     if (result.type === 'single') expect(result.img.source.id).toBe(1);
   });
 
   it('returns hPair at the root for two images regardless of orientations', () => {
     const items = [createHorizontalImage(1, 3), createVerticalImage(2, 3)].map(it =>
-      toImageType(it, DESKTOP)
+      toImageType(it)
     );
-    const result = buildAtomic(items, TARGET_AR, DESKTOP);
+    const result = buildAtomic(items, TARGET_AR);
     expect(result.type).toBe('pair');
     if (result.type === 'pair') expect(result.direction).toBe('H');
     expect(leafIds(result)).toEqual([1, 2]);
@@ -120,16 +119,16 @@ describe('buildAtomic — input order is preserved', () => {
       createImageContent(1005, { imageWidth: 1251, imageHeight: 1000, rating: 4 }),
       createImageContent(1006, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(1007, { imageWidth: 714, imageHeight: 1000, rating: 5 }),
-    ].map(it => toImageType(it, 14));
-    const result = buildAtomic(items, TARGET_AR, 14);
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, TARGET_AR);
     expect(leafIds(result)).toEqual([1004, 1005, 1006, 1007]);
   });
 
   it('preserves order on a 6-item all-H row', () => {
     const items = [1, 2, 3, 4, 5, 6]
       .map(id => createHorizontalImage(id, 3))
-      .map(it => toImageType(it, DESKTOP));
-    const result = buildAtomic(items, TARGET_AR, DESKTOP);
+      .map(it => toImageType(it));
+    const result = buildAtomic(items, TARGET_AR);
     expect(leafIds(result)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 });
@@ -138,10 +137,8 @@ describe('buildAtomic — emergence without rules', () => {
   it('produces a stacked-column shape (not a flat 3-wide hChain) for 3 same-rated H images', () => {
     // 3 H4★ images at desktop target 1.5 — a flat hChain has AR ≈ 5.3,
     // the H(V(H,H), H) variant has AR ≈ 2.7 (much closer).
-    const items = [1, 2, 3]
-      .map(id => createHorizontalImage(id, 4))
-      .map(it => toImageType(it, DESKTOP));
-    const result = buildAtomic(items, TARGET_AR, DESKTOP);
+    const items = [1, 2, 3].map(id => createHorizontalImage(id, 4)).map(it => toImageType(it));
+    const result = buildAtomic(items, TARGET_AR);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     expect(result.direction).toBe('H');
@@ -153,10 +150,8 @@ describe('buildAtomic — emergence without rules', () => {
   it('produces a flat hChain on an all-V row of 3 items (no V+V vStack)', () => {
     // 3 V3★ images. vStack of two V atoms is roughly square (AR≈0.5),
     // unattractive vs target 1.5. The algorithm should keep them flat.
-    const items = [1, 2, 3]
-      .map(id => createVerticalImage(id, 3))
-      .map(it => toImageType(it, DESKTOP));
-    const result = buildAtomic(items, TARGET_AR, DESKTOP);
+    const items = [1, 2, 3].map(id => createVerticalImage(id, 3)).map(it => toImageType(it));
+    const result = buildAtomic(items, TARGET_AR);
     const shape = shapeOf(result);
     // No 'v(' substring → all internal nodes are hPair.
     expect(shape).not.toContain('v(');
@@ -166,10 +161,8 @@ describe('buildAtomic — emergence without rules', () => {
     // [H,H,H,H] all rating 3, AR 1.78 each.
     // Flat hChain AR ≈ 7.1 (way above target).
     // 2x2 grid h(v(H,H), v(H,H)) AR ≈ 1.78 — much closer to target 1.5.
-    const items = [1, 2, 3, 4]
-      .map(id => createHorizontalImage(id, 3))
-      .map(it => toImageType(it, DESKTOP));
-    const result = buildAtomic(items, TARGET_AR, DESKTOP);
+    const items = [1, 2, 3, 4].map(id => createHorizontalImage(id, 3)).map(it => toImageType(it));
+    const result = buildAtomic(items, TARGET_AR);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     expect(result.direction).toBe('H');
@@ -196,9 +189,9 @@ describe('buildAtomic — AR fitness', () => {
       createHorizontalImage(2, 3),
       createVerticalImage(3, 4),
       createHorizontalImage(4, 3),
-    ].map(it => toImageType(it, DESKTOP));
-    const result = buildAtomic(items, TARGET_AR, DESKTOP);
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), DESKTOP);
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, TARGET_AR);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result));
     expect(ar).toBeGreaterThan(0.5);
     expect(ar).toBeLessThan(5.0);
   });
@@ -207,10 +200,8 @@ describe('buildAtomic — AR fitness', () => {
     // Two H images. hPair AR ≈ 3.56, vStack AR ≈ 0.89. Target 1.5.
     // vStack is closer to target (distance 0.61 vs 2.06) but rows are
     // horizontal by definition, so root MUST be hPair.
-    const items = [1, 2]
-      .map(id => createHorizontalImage(id, 3))
-      .map(it => toImageType(it, DESKTOP));
-    const result = buildAtomic(items, TARGET_AR, DESKTOP);
+    const items = [1, 2].map(id => createHorizontalImage(id, 3)).map(it => toImageType(it));
+    const result = buildAtomic(items, TARGET_AR);
     expect(result.type).toBe('pair');
     if (result.type === 'pair') expect(result.direction).toBe('H');
   });
@@ -228,9 +219,9 @@ describe('buildAtomic — AR fitness', () => {
       createVerticalImage(6, 3),
       createImageContent(7, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(8, { imageWidth: 1503, imageHeight: 1000, rating: 4 }),
-    ].map(it => toImageType(it, 14));
-    const result = buildAtomic(items, 1.0, 14);
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 14);
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result));
     // Floor guarantees AR >= 1.0 (never taller than wide); upper bound asserts
     // the row stays reasonably close to square, not pathologically wide.
     expect(ar).toBeGreaterThanOrEqual(1.0);
@@ -243,9 +234,9 @@ describe('buildAtomic — AR fitness', () => {
     // algorithm should pick something AT OR ABOVE 1.0, never below.
     const items = [1, 2, 3, 4, 5, 6]
       .map(id => createHorizontalImage(id, 3))
-      .map(it => toImageType(it, 14));
-    const result = buildAtomic(items, 1.0, 14);
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 14);
+      .map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result));
     expect(ar).toBeGreaterThanOrEqual(1.0);
   });
 
@@ -257,9 +248,9 @@ describe('buildAtomic — AR fitness', () => {
     // should find the shape that's closest to target 1.0 while staying ≥ 1.0.
     const items = [1, 2, 3, 4, 5, 6]
       .map(id => createHorizontalImage(id, 3))
-      .map(it => toImageType(it, 14));
-    const result = buildAtomic(items, 1.0, 14);
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 14);
+      .map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result));
     // Should land within ~50% of target — far better than V2's ~3x overshoot.
     expect(ar).toBeLessThan(1.6);
   });
@@ -274,8 +265,8 @@ describe('buildAtomic — AR fitness', () => {
       createHorizontalImage(680, 3),
       createVerticalImage(662, 3),
       createVerticalImage(663, 3),
-    ].map(it => toImageType(it, 8));
-    const result = buildAtomic(items, 1.0, 8);
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
     // Tree shape: h(<left-cluster>, <right-cluster>); both clusters are
     // 2-leaf merges. Each H pairs with its sibling, each V pairs with its
     // sibling.
@@ -311,9 +302,9 @@ describe('buildAtomic — AR fitness', () => {
       createImageContent(709, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(695, { imageWidth: 665, imageHeight: 1000, rating: 5 }),
       createImageContent(727, { imageWidth: 1601, imageHeight: 1000, rating: 4 }),
-    ].map(it => toImageType(it, 10));
-    const result = buildAtomic(items, 1.0, 10);
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 10);
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result));
     expect(ar).toBeGreaterThanOrEqual(1.0);
   });
 
@@ -327,8 +318,8 @@ describe('buildAtomic — AR fitness', () => {
       createImageContent(1005, { imageWidth: 1251, imageHeight: 1000, rating: 4 }),
       createImageContent(1006, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(1007, { imageWidth: 714, imageHeight: 1000, rating: 5 }),
-    ].map(it => toImageType(it, 14));
-    const result = buildAtomic(items, 1.0, 14);
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     const [leftChild, rightChild] = result.children;
@@ -354,43 +345,33 @@ describe('buildAtomic — AR fitness', () => {
     }
   });
 
-  it('builds a balanced [[V4,H4],[H2,V2]] tree for row 3 of /a-mariners-game', () => {
-    // The failure case surfaced 2026-05-28: items [V4★, H4★, H2★, V2★] with
-    // AR-gap split produced `h(v(L660, h(L667, L665)), L685)` — a 2★ vertical
-    // alone at root, getting full prominence over the 4★ items.
-    // effectiveRatings = [3, 4, 2, 1] = 10 total.
-    // idx 0 → 3|7 (diff 4), idx 1 → 7|3 (diff 4), idx 2 → 9|1 (diff 8).
-    // Tied at idx 0/idx 1; middle tiebreak picks idx 1 → [[V4,H4],[H2,V2]].
-    // All 4 items at depth 2 — visual sizes determined by direction choice,
-    // not by tree position.
+  it('sizes the two 4★ images largest for row 3 of /a-mariners-game (area tracks value)', () => {
+    // The failure case surfaced 2026-05-28: items [V4★, H4★, H2★, V2★] where an
+    // AR-gap split once gave a 2★ vertical full prominence over the 4★ items.
+    // Area-to-value: the equity-primary composer now builds
+    //   H( L(660·V4), V( L(667·H4), H( L(665·H2), L(685·V2) ) ) )
+    // — the V4★ takes its own full-height column (biggest area), the H4★ is second,
+    // and the two 2★ images render smallest. We assert the area ORDERING directly
+    // (the property the original 2×2-shape test was really protecting): both 4★
+    // images out-size both 2★ images. The exact tree shape changed by design; the
+    // value→area relationship it now produces is strictly correct.
     const items = [
       createImageContent(660, { imageWidth: 666, imageHeight: 1000, rating: 4 }),
       createImageContent(667, { imageWidth: 1250, imageHeight: 1000, rating: 4 }),
       createImageContent(665, { imageWidth: 1251, imageHeight: 1000, rating: 2 }),
       createImageContent(685, { imageWidth: 666, imageHeight: 1000, rating: 2 }),
-    ].map(it => toImageType(it, 8));
-    const result = buildAtomic(items, 1.0, 8);
-    expect(result.type).toBe('pair');
-    if (result.type !== 'pair') return;
-    const [leftChild, rightChild] = result.children;
-    expect(leftChild.type).toBe('pair');
-    expect(rightChild.type).toBe('pair');
-    if (leftChild.type === 'pair') {
-      if (leftChild.children[0].type === 'single') {
-        expect(leftChild.children[0].img.source.id).toBe(660);
-      }
-      if (leftChild.children[1].type === 'single') {
-        expect(leftChild.children[1].img.source.id).toBe(667);
-      }
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
+    const sizes = calculateSizesFromBoxTree(acToBoxTree(result), 1215, LAYOUT.gridGap, 10);
+    const areaById = new Map<number, number>();
+    for (const s of sizes) {
+      const id = (s.content as { id?: number }).id;
+      if (id !== undefined) areaById.set(id, s.width * s.height);
     }
-    if (rightChild.type === 'pair') {
-      if (rightChild.children[0].type === 'single') {
-        expect(rightChild.children[0].img.source.id).toBe(665);
-      }
-      if (rightChild.children[1].type === 'single') {
-        expect(rightChild.children[1].img.source.id).toBe(685);
-      }
-    }
+    // Both 4★ images render larger than both 2★ images — no value↔area inversion.
+    const fourStarMin = Math.min(areaById.get(660)!, areaById.get(667)!);
+    const twoStarMax = Math.max(areaById.get(665)!, areaById.get(685)!);
+    expect(fourStarMin).toBeGreaterThan(twoStarMax);
   });
 
   it('builds a middle-split tree for 6 uniform-AR items (balanced depth)', () => {
@@ -401,8 +382,8 @@ describe('buildAtomic — AR fitness', () => {
     // splits happen at middles).
     const items = [1, 2, 3, 4, 5, 6]
       .map(id => createHorizontalImage(id, 3))
-      .map(it => toImageType(it, 14));
-    const result = buildAtomic(items, 1.0, 14);
+      .map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
     expect(result.type).toBe('pair');
     if (result.type !== 'pair') return;
     // Root should split 3|3, not 1|5 or 5|1.
@@ -429,9 +410,9 @@ describe('buildAtomic — AR fitness', () => {
       createVerticalImage(6, 3),
       createImageContent(7, { imageWidth: 1250, imageHeight: 1000, rating: 3 }),
       createImageContent(8, { imageWidth: 1503, imageHeight: 1000, rating: 4 }),
-    ].map(it => toImageType(it, 14));
-    const result = buildAtomic(items, 1.0, 14);
-    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result), 14);
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, 1.0);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result));
     // Floor keeps it >= 1.0; the equity tiebreak may pick a slightly wider tree
     // than the pure AR-optimum (within AR_EQUITY_BAND) when it sizes the images
     // more evenly — so the upper bound allows a little above target.
@@ -456,9 +437,9 @@ describe('buildAtomic — directional prominence (Task 1.1)', () => {
   // targetAR + the Hv width-cost packing in later phases).
   it('sizes a 5★ vertical larger than its 3★ horizontal row-mates (equity tiebreak picks prominence)', () => {
     const imgs = [H(1, 3), H(2, 3), createVerticalImage(3, 3), createVerticalImage(4, 5)].map(i =>
-      toImageType(i, 10)
+      toImageType(i)
     );
-    const tree = acToBoxTree(buildAtomic(imgs, 1.457, 10));
+    const tree = acToBoxTree(buildAtomic(imgs, 1.457));
     const shares = areaShares(tree);
     // V5★ (id=4) must claim more area than either H3★ (id=1 or id=2).
     expect(shares.get(4)).toBeGreaterThan(shares.get(1)!);
@@ -474,22 +455,28 @@ describe('rowTargetAR — per-row target AR from peak height-demand (Task 2.1)',
   // A single-anchor pull (Vv / REF) pulled even bland rows off baseline — see the
   // 2026-06-10 plan revision — hence the wide-image Vv ceiling gates the pull.
   it('pulls a hero row toward a taller target than a bland row, leaving bland at baseline', () => {
-    const bland = [H(1, 3), H(2, 3)].map(i => toImageType(i, 10));
-    const hero = [H(1, 3), createVerticalImage(2, 5)].map(i => toImageType(i, 10));
+    const bland = [H(1, 3), H(2, 3)].map(i => toImageType(i));
+    const hero = [H(1, 3), createVerticalImage(2, 5)].map(i => toImageType(i));
     expect(rowTargetAR(hero, 2.0)).toBeLessThan(rowTargetAR(bland, 2.0));
     expect(rowTargetAR(bland, 2.0)).toBeCloseTo(2.0, 5); // bland row keeps the baseline
   });
 
-  it('buildRows composes a hero row taller via the per-row target (end-to-end wiring)', () => {
-    // [H3,H3,V3,V5] land in one row at rowWidth 10. With the neutral baseline target the row
-    // composes wide (AR ≈ 2.0) and the 5★ vertical renders short; buildRows derives a per-row
-    // target from the row's peak Vv (≈2.98) and composes it much taller (AR ≈ 1.17), giving the
-    // hero full height. Reverting the buildRows→rowTargetAR wiring snaps this back toward ≈2.0.
+  it('buildRows composes a hero row WIDER under area-to-value (flatter-but-correct)', () => {
+    // [H3,H3,V3,V5] land in one row at rowWidth 10. Area-to-value (decision §0,
+    // 2026-06-16) INTENTIONALLY relaxes the rowTargetAR hero-pull: the equity-primary
+    // composer equalizes the two verticals into full-height columns, which makes the
+    // row WIDER (AR ≈ 2.0), not taller (the spike's pre-equity wiring composed it
+    // ≈1.17). The 5★ vertical is now correctly sized biggest-in-row (tied with the
+    // 3★ vertical as a full-height column) rather than absolutely dramatic — "heroes
+    // are correctly biggest relative to the row, not necessarily large in absolute px."
     const items = [H(1, 3), H(2, 3), createVerticalImage(3, 3), createVerticalImage(4, 5)];
     const rows = buildRows(items, 10, 1.457);
     const heroRow = rows.find(r => r.components.some(c => (c as { id?: number }).id === 4))!;
-    const heroRowAR = calculateBoxTreeAspectRatio(heroRow.boxTree, 10);
-    expect(heroRowAR).toBeLessThan(1.5); // pulled well below the baseline-target composition (~2.0)
+    const heroRowAR = calculateBoxTreeAspectRatio(heroRow.boxTree);
+    // Wider row (~2.0), within the AR floor (1.0) and ceiling (2× target). The 5★
+    // vertical renders as a full-height column, not a short sliver.
+    expect(heroRowAR).toBeGreaterThan(1.5);
+    expect(heroRowAR).toBeLessThanOrEqual(2.0 * 1.457); // within CEILING_MULT × target
   });
 });
 
@@ -508,8 +495,8 @@ describe('buildAtomic — equitable sizing', () => {
       createImageContent(753, { imageWidth: 1501, imageHeight: 1000, rating: 4 }),
       createImageContent(760, { imageWidth: 1501, imageHeight: 1000, rating: 4 }),
       createImageContent(761, { imageWidth: 1501, imageHeight: 1000, rating: 4 }),
-    ].map(it => toImageType(it, 20));
-    const result = buildAtomic(items, 1.457, 20);
+    ].map(it => toImageType(it));
+    const result = buildAtomic(items, 1.457);
     const sizes = calculateSizesFromBoxTree(acToBoxTree(result), 1215, LAYOUT.gridGap, 20);
 
     // The five horizontal 4★ images should render at comparable sizes; pre-fix

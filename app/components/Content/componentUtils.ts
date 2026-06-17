@@ -130,6 +130,27 @@ export function computeFirstNonVisibleRowIndex(
   return -1;
 }
 
+/**
+ * Drop IMAGE content whose id is in `failedIds`.
+ *
+ * A runtime image-load failure (a valid-looking URL that 404s) can only be detected client-side,
+ * after the BoxTree has already allocated the image's slot and fixed the row height. Rendering the
+ * failed image as nothing then leaves its slot as a blank void. On the public view we instead
+ * remove the block here and let the layout reflow, so the surviving images redistribute. Only
+ * IMAGE blocks are eligible — a TEXT/COLLECTION block sharing an id is never removed. Returns the
+ * same array reference when nothing is filtered, so the layout memo stays stable.
+ */
+export function excludeFailedImages(
+  content: AnyContentModel[],
+  failedIds: ReadonlySet<number>
+): AnyContentModel[] {
+  if (failedIds.size === 0) return content;
+  const filtered = content.filter(
+    block => !(block.contentType === 'IMAGE' && failedIds.has(block.id))
+  );
+  return filtered.length === content.length ? content : filtered;
+}
+
 /** Build a simple left-associative horizontal BoxTree from a flat list of items. */
 export function createSimpleBoxTree(items: CalculatedContentSize[]): BoxTree {
   const contents = items.map(item => item.content);

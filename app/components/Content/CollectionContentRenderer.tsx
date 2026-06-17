@@ -195,7 +195,10 @@ export default function CollectionContentRenderer({
     const descriptionItem = textItems.find(item => item.type === 'description');
     const tagItems = textItems.filter(item => item.type === 'tag');
     const filterItems = textItems.filter(item => item.type === 'text');
-    const collectionItems = textItems.filter(item => item.type === 'collection');
+    const collectionItems = textItems.filter(
+      (item): item is (typeof textItems)[number] & { slug: string } =>
+        item.type === 'collection' && item.slug != null
+    );
 
     const handleTagClick = (tagName: string, tagSlug?: string) => {
       if (collectionFilter) {
@@ -321,7 +324,7 @@ export default function CollectionContentRenderer({
                       item.coverImageUrl ? (
                         <Link
                           key={`sibling-${contentId}-${item.slug}`}
-                          href={item.slug!}
+                          href={item.slug}
                           className={cbStyles.metadataSiblingCard}
                           aria-label={item.value}
                         >
@@ -339,7 +342,7 @@ export default function CollectionContentRenderer({
                       ) : (
                         <Link
                           key={`sibling-${contentId}-${item.slug}`}
-                          href={item.slug!}
+                          href={item.slug}
                           className={cbStyles.metadataSiblingChip}
                         >
                           {item.value}
@@ -514,9 +517,6 @@ export default function CollectionContentRenderer({
     // the public CollectionPageClient grid, TaxonomyPage, and LocationPage never set it.
     const isManage = currentCollectionId != null;
 
-    // Public view: a URL that 404s/fails to load has nothing renderable, so drop it.
-    // We intentionally leave the already-allocated grid slot empty (a small gap)
-    // rather than re-flowing the BoxTree layout.
     if (!isManage) {
       return null;
     }

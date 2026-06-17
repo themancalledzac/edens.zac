@@ -47,8 +47,6 @@ function vNode(top: BoxTree, bottom: BoxTree): BoxTree {
 // =============================================================================
 
 describe('calculateBoxTreeAspectRatio', () => {
-  const chunkSize = 4;
-
   // ---------------------------------------------------------------------------
   // Leaf nodes
   // ---------------------------------------------------------------------------
@@ -57,21 +55,21 @@ describe('calculateBoxTreeAspectRatio', () => {
     it('returns correct AR for a horizontal image (1920x1080)', () => {
       const img = createHorizontalImage(1, 3);
       const tree = leaf(img);
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(ar).toBeCloseTo(1920 / 1080, 5); // ≈ 1.7778
     });
 
     it('returns correct AR for a vertical image (1080x1920)', () => {
       const img = createVerticalImage(1, 3);
       const tree = leaf(img);
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(ar).toBeCloseTo(1080 / 1920, 5); // ≈ 0.5625
     });
 
     it('returns 1.0 for a square image (1000x1000)', () => {
       const img = createImageContent(1, { imageWidth: 1000, imageHeight: 1000 });
       const tree = leaf(img);
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(ar).toBeCloseTo(1.0, 5);
     });
 
@@ -81,7 +79,7 @@ describe('calculateBoxTreeAspectRatio', () => {
       // content with explicit zero dimensions; for IMAGE blocks the fallback prevents it.
       const img = createImageContent(1, { imageWidth: 1920, imageHeight: 0 });
       const tree = leaf(img);
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(Number.isFinite(ar)).toBe(true);
       expect(ar).toBeGreaterThan(0);
       // Default dimensions: 1300 wide, Math.round(1300 / 1.5) = 867 tall → AR ≈ 1.499
@@ -98,7 +96,7 @@ describe('calculateBoxTreeAspectRatio', () => {
       const img1 = createHorizontalImage(1, 3);
       const img2 = createHorizontalImage(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       const expectedAR = 1920 / 1080 + 1920 / 1080; // ≈ 3.5556
       expect(ar).toBeCloseTo(expectedAR, 5);
     });
@@ -107,7 +105,7 @@ describe('calculateBoxTreeAspectRatio', () => {
       const imgH = createHorizontalImage(1, 3); // AR ≈ 1.7778
       const imgV = createVerticalImage(2, 3); // AR ≈ 0.5625
       const tree = hNode(leaf(imgH), leaf(imgV));
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       const expectedAR = 1920 / 1080 + 1080 / 1920; // ≈ 2.3403
       expect(ar).toBeCloseTo(expectedAR, 5);
     });
@@ -117,7 +115,7 @@ describe('calculateBoxTreeAspectRatio', () => {
       const img2 = H(2, 3);
       const tree = hNode(leaf(img1), leaf(img2));
       const singleAR = 1920 / 1080;
-      expect(calculateBoxTreeAspectRatio(tree, chunkSize)).toBeCloseTo(singleAR * 2, 5);
+      expect(calculateBoxTreeAspectRatio(tree)).toBeCloseTo(singleAR * 2, 5);
     });
   });
 
@@ -132,7 +130,7 @@ describe('calculateBoxTreeAspectRatio', () => {
       const tree = vNode(leaf(img1), leaf(img2));
       const singleAR = 1920 / 1080; // ≈ 1.7778
       const expectedAR = 1 / (1 / singleAR + 1 / singleAR); // ≈ 0.8889
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(ar).toBeCloseTo(expectedAR, 5);
     });
 
@@ -142,7 +140,7 @@ describe('calculateBoxTreeAspectRatio', () => {
       const img2 = H(2, 3);
       const tree = vNode(leaf(img1), leaf(img2));
       const singleAR = 1920 / 1080;
-      expect(calculateBoxTreeAspectRatio(tree, chunkSize)).toBeCloseTo(singleAR / 2, 5);
+      expect(calculateBoxTreeAspectRatio(tree)).toBeCloseTo(singleAR / 2, 5);
     });
 
     it('H and V stacked: AR = 1 / (1/AR_h + 1/AR_v)', () => {
@@ -152,7 +150,7 @@ describe('calculateBoxTreeAspectRatio', () => {
       const arH = 1920 / 1080;
       const arV = 1080 / 1920;
       const expectedAR = 1 / (1 / arH + 1 / arV); // ≈ 0.4286
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(ar).toBeCloseTo(expectedAR, 5);
     });
   });
@@ -173,7 +171,7 @@ describe('calculateBoxTreeAspectRatio', () => {
       const expectedAR = singleAR + rightAR; // left + right (horizontal sum)
 
       const tree = hNode(leaf(img1), vNode(leaf(img2), leaf(img3)));
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(ar).toBeCloseTo(expectedAR, 5);
     });
 
@@ -187,14 +185,14 @@ describe('calculateBoxTreeAspectRatio', () => {
       const expectedAR = 1 / (1 / leftAR + 1 / singleAR); // harmonic
 
       const tree = vNode(hNode(leaf(img1), leaf(img2)), leaf(img3));
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(ar).toBeCloseTo(expectedAR, 5);
     });
 
     it('produces a finite, positive AR for a 3-level deep tree', () => {
       // H( V(H1,V1), H( H2, V2 ) )
       const tree = hNode(vNode(leaf(H(1, 3)), leaf(V(2, 3))), hNode(leaf(H(3, 3)), leaf(V(4, 3))));
-      const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+      const ar = calculateBoxTreeAspectRatio(tree);
       expect(Number.isFinite(ar)).toBe(true);
       expect(ar).toBeGreaterThan(0);
     });

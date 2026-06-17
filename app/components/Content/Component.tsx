@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 
 import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { LAYOUT } from '@/app/constants';
@@ -14,6 +14,7 @@ import {
   buildContentRows,
   computeFirstNonVisibleRowIndex,
   createSimpleBoxTree,
+  excludeFailedImages,
   resolveEffectiveViewport,
 } from './componentUtils';
 import cbStyles from './ContentComponent.module.scss';
@@ -106,9 +107,31 @@ export default function Component({
     [measured, serverContentWidth, serverViewportHeight, serverIsMobile]
   );
 
+  // Images whose URL 404s only fail at load time, after the BoxTree slot is allocated. On the
+  // public view we drop the failed image and let the row reflow rather than leaving its slot as a
+  // blank void; manage (currentCollectionId set) keeps it so an admin can open + delete it.
+  const isPublicView = currentCollectionId == null;
+  const [failedImageIds, setFailedImageIds] = useState<ReadonlySet<number>>(() => new Set());
+
+  const handleImageLoadError = useCallback(
+    (contentId: number) => {
+      setFailedImageIds(prev => (prev.has(contentId) ? prev : new Set(prev).add(contentId)));
+      onImageLoadError?.(contentId);
+    },
+    [onImageLoadError]
+  );
+
+  // Note: a failed id is not cleared if `content` is later refetched with a fixed URL — the image
+  // stays hidden until this Component remounts (e.g. navigation). Keying a reset on the `content`
+  // reference would risk a render loop if the parent passes a fresh array each render.
+  const displayContent = useMemo(
+    () => (isPublicView ? excludeFailedImages(content, failedImageIds) : content),
+    [isPublicView, content, failedImageIds]
+  );
+
   const { rows, layoutError } = useMemo(
-    () => buildContentRows(content, collectionData, viewport, chunkSize, mobileChunkSize),
-    [content, collectionData, viewport, chunkSize, mobileChunkSize]
+    () => buildContentRows(displayContent, collectionData, viewport, chunkSize, mobileChunkSize),
+    [displayContent, collectionData, viewport, chunkSize, mobileChunkSize]
   );
 
   // Must be computed before the early returns to satisfy the Rules of Hooks.
@@ -172,7 +195,7 @@ export default function Component({
           onPlace={onPlace}
           onCancelImageMove={onCancelImageMove}
           priority={rowIndex === priorityIndex}
-          onImageLoadError={onImageLoadError}
+          onImageLoadError={handleImageLoadError}
           isClientGallery={isClientGallery}
           collectionSlug={collectionData?.slug}
         />

@@ -63,14 +63,14 @@ export interface ProcessContentOptions {
 /**
  * Build a horizontal BoxTree from content items using the shared hChain helper.
  *
- * @remarks rowWidth=5 is arbitrary here — hChain builds a left-associative
- * horizontal tree without AR scoring, so the value does not affect the result.
+ * @remarks hChain builds a left-associative horizontal tree without AR scoring,
+ * so this is purely a structural conversion of the items into a flat row.
  */
 function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
   if (items.length === 0) {
     throw new Error('Cannot create BoxTree from empty items array');
   }
-  const imageTypes = items.map(item => toImageType(item, 5));
+  const imageTypes = items.map(item => toImageType(item));
   return acToBoxTree(hChain(imageTypes));
 }
 
@@ -277,21 +277,25 @@ export function isContentVisibleInCollection(
 ): boolean {
   if (block.visible === false) return false;
 
-  if (block.contentType === 'IMAGE') {
+  if (block.contentType === 'IMAGE' && collectionId) {
     const imageBlock = block as ContentImageModel;
-
-    // Images with an empty/blank imageUrl have no renderable content. On the public
-    // view they would otherwise occupy a layout slot with a "No Image" placeholder,
-    // so exclude them here. Manage uses processContentBlocks(..., filterVisible=false),
-    // which skips this filter, so admins still see + can delete these blocks.
-    if (!imageBlock.imageUrl || imageBlock.imageUrl.trim() === '') return false;
-
-    if (collectionId) {
-      const entry = imageBlock.collections?.find(c => c.collectionId === collectionId);
-      if (entry?.visible === false) return false;
-    }
+    const entry = imageBlock.collections?.find(c => c.collectionId === collectionId);
+    if (entry?.visible === false) return false;
   }
 
+  return true;
+}
+
+/**
+ * Whether a block has renderable content — false for an IMAGE with a blank imageUrl. Kept separate
+ * from {@link isContentVisibleInCollection} (a visibility concern) so the public filter drops these
+ * while manage keeps them in their orderIndex position.
+ */
+export function hasRenderableContent(block: AnyContentModel): boolean {
+  if (block.contentType === 'IMAGE') {
+    const imageBlock = block as ContentImageModel;
+    if (!imageBlock.imageUrl || imageBlock.imageUrl.trim() === '') return false;
+  }
   return true;
 }
 
@@ -305,7 +309,9 @@ function filterVisibleBlocks(
 ): AnyContentModel[] {
   if (!filterVisible) return content;
 
-  return content.filter(block => isContentVisibleInCollection(block, collectionId));
+  return content.filter(
+    block => isContentVisibleInCollection(block, collectionId) && hasRenderableContent(block)
+  );
 }
 
 /**

@@ -51,14 +51,16 @@ export function getRating(item: AnyContentModel, asStarValue: boolean = false): 
 }
 
 /**
- * Get the effective rating of an item based on its orientation.
+ * Get the effective (orientation-agnostic prominence) rating of an item.
  *
- * Orientation-agnostic: the vertical penalty was RETIRED in the directional-
- * prominence rewrite. A V5★ and an H5★ now both return 5 — directionality is
- * expressed downstream by AR extremeness (width-cost Hv / height-demand Vv),
- * not by demoting the rating. Collection cards → 4, non-image/gif → 1, else the
- * raw 0-5 rating. (Now identical to {@link getProminenceRating}; the two are
- * slated to consolidate in the Phase 5 cleanup.)
+ * The vertical penalty was RETIRED in the directional-prominence rewrite, so a
+ * V5★ and an H5★ both return 5 — directionality is expressed downstream by AR
+ * extremeness (width-cost Hv / height-demand Vv), not by demoting the rating.
+ * Collection cards → 4, non-image/gif → 1, else the raw 0-5 rating (clamped).
+ *
+ * This is the single rating accessor for the layout engine: it is both the
+ * Stage-1 point-balance "points" and the base of the prominence P in
+ * {@link getProminence} (the former getProminenceRating, now consolidated here).
  *
  * @param item - The content item to evaluate
  * @returns The effective rating (0-5), clamped, with no orientation penalty
@@ -107,35 +109,22 @@ function prominenceFactor(extremeness: number): number {
 }
 
 /**
- * Raw prominence rating for an item — like getRating but without the vertical
- * penalty applied by getEffectiveRating. Both a 5★ portrait and a 5★ landscape
- * return 5; the AR extremeness multiplier handles directionality instead.
- *
- * @param item - The content item to evaluate
- * @returns rating in [0, 5], or 4 for collection cards, or 1 for non-image content
- */
-export function getProminenceRating(item: AnyContentModel): number {
-  if (isCollectionCard(item)) return 4;
-  if (!isContentImage(item) && !isGifContent(item)) return 1;
-  const rating = (item as { rating?: number | null }).rating ?? 0;
-  return Math.min(Math.max(rating, 0), 5);
-}
-
-/**
  * Orientation-agnostic prominence P for an item.
  *
- * P = BASE_WEIGHT[prominenceRating] × prominenceFactor(extremeness)
+ * P = BASE_WEIGHT[effectiveRating] × prominenceFactor(extremeness)
  *
  * Directionality is never expressed by demoting the rating: P treats a 5★
  * portrait and a 5★ panorama as equally rated and only scales by how extreme
  * the aspect ratio is — wide OR tall. The width-cost Hv = √(P·AR) and
- * height-demand Vv = √(P/AR) split that prominence into the two axes.
+ * height-demand Vv = √(P/AR) split that prominence into the two axes. The base
+ * rating comes from {@link getEffectiveRating} (penalty-free since the
+ * directional-prominence rewrite — formerly the separate getProminenceRating).
  *
  * @param item - The content item to evaluate
  * @returns Prominence value > 0
  */
 export function getProminence(item: AnyContentModel): number {
-  const baseWeight = BASE_WEIGHT[getProminenceRating(item)] ?? 1.0;
+  const baseWeight = BASE_WEIGHT[getEffectiveRating(item)] ?? 1.0;
   return baseWeight * prominenceFactor(getArExtremeness(getAspectRatio(item)));
 }
 

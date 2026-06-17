@@ -14,6 +14,7 @@ import {
   convertCollectionContentToImage,
   convertCollectionContentToParallax,
   createHeaderRow,
+  hasRenderableContent,
   isContentVisibleInCollection,
   processContentBlocks,
   processContentForDisplay,
@@ -760,17 +761,7 @@ describe('isContentVisibleInCollection', () => {
     expect(isContentVisibleInCollection(block, 42)).toBe(true);
   });
 
-  it('should return false for an IMAGE with an empty imageUrl', () => {
-    const block = createImageContent(1, { visible: true, imageUrl: '' });
-    expect(isContentVisibleInCollection(block)).toBe(false);
-  });
-
-  it('should return false for an IMAGE with a blank (whitespace-only) imageUrl', () => {
-    const block = createImageContent(1, { visible: true, imageUrl: '   ' });
-    expect(isContentVisibleInCollection(block)).toBe(false);
-  });
-
-  it('should return true for an IMAGE with a valid imageUrl', () => {
+  it('should return true for a visible IMAGE with a valid imageUrl', () => {
     const block = createImageContent(1, {
       visible: true,
       imageUrl: 'https://example.com/image-1.jpg',
@@ -778,13 +769,43 @@ describe('isContentVisibleInCollection', () => {
     expect(isContentVisibleInCollection(block)).toBe(true);
   });
 
-  it('should return false for an IMAGE with empty imageUrl even when its collection entry is visible', () => {
-    const block = createImageContent(1, {
+  it('treats a blank-URL IMAGE as visible — renderability is a separate concern', () => {
+    // A blank imageUrl means "no renderable content", not "hidden". isContentVisibleInCollection
+    // stays about the visible flags only, so manage-mode sort/separator do not reorder these.
+    const empty = createImageContent(1, { visible: true, imageUrl: '' });
+    const whitespace = createImageContent(2, { visible: true, imageUrl: '   ' });
+    const blankInVisibleCollection = createImageContent(3, {
       visible: true,
       imageUrl: '',
       collections: [{ collectionId: 42, visible: true, orderIndex: 0 }],
     });
-    expect(isContentVisibleInCollection(block, 42)).toBe(false);
+    expect(isContentVisibleInCollection(empty)).toBe(true);
+    expect(isContentVisibleInCollection(whitespace)).toBe(true);
+    expect(isContentVisibleInCollection(blankInVisibleCollection, 42)).toBe(true);
+  });
+});
+
+describe('hasRenderableContent', () => {
+  it('returns false for an IMAGE with an empty or whitespace-only imageUrl', () => {
+    expect(hasRenderableContent(createImageContent(1, { visible: true, imageUrl: '' }))).toBe(
+      false
+    );
+    expect(hasRenderableContent(createImageContent(2, { visible: true, imageUrl: '   ' }))).toBe(
+      false
+    );
+  });
+
+  it('returns true for an IMAGE with a valid imageUrl', () => {
+    expect(
+      hasRenderableContent(
+        createImageContent(1, { visible: true, imageUrl: 'https://example.com/image-1.jpg' })
+      )
+    ).toBe(true);
+  });
+
+  it('returns true for non-IMAGE content (TEXT/GIF carry no imageUrl requirement)', () => {
+    expect(hasRenderableContent(createTextContent(1, { visible: true }))).toBe(true);
+    expect(hasRenderableContent(createGifContent(1, { visible: true }))).toBe(true);
   });
 });
 
