@@ -63,14 +63,14 @@ export interface ProcessContentOptions {
 /**
  * Build a horizontal BoxTree from content items using the shared hChain helper.
  *
- * @remarks rowWidth=5 is arbitrary here — hChain builds a left-associative
- * horizontal tree without AR scoring, so the value does not affect the result.
+ * @remarks hChain builds a left-associative horizontal tree without AR scoring,
+ * so this is purely a structural conversion of the items into a flat row.
  */
 function createSimpleHorizontalBoxTree(items: AnyContentModel[]): BoxTree {
   if (items.length === 0) {
     throw new Error('Cannot create BoxTree from empty items array');
   }
-  const imageTypes = items.map(item => toImageType(item, 5));
+  const imageTypes = items.map(item => toImageType(item));
   return acToBoxTree(hChain(imageTypes));
 }
 

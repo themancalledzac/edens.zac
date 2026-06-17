@@ -61,17 +61,19 @@ export function computeHeightCoeffs(tree: BoxTree, gap: number): HeightCoeffs {
  * - For horizontal: sum of aspect ratios (children side-by-side)
  * - For vertical: reciprocal of sum of reciprocals (children stacked)
  *
+ * AR is intrinsic to the tree shape — it does not depend on the row's pixel
+ * width — so no width/chunk argument is needed.
+ *
  * @param tree - BoxTree to calculate aspect ratio for
- * @param chunkSize - Number of normal-width items per row (unused at leaf level, kept for API consistency)
  */
-export function calculateBoxTreeAspectRatio(tree: BoxTree, chunkSize: number): number {
+export function calculateBoxTreeAspectRatio(tree: BoxTree): number {
   if (tree.type === 'leaf') {
     const { width, height } = getContentDimensions(tree.content);
     return height === 0 ? 1 : width / height;
   }
 
-  const leftAR = calculateBoxTreeAspectRatio(tree.children[0], chunkSize);
-  const rightAR = calculateBoxTreeAspectRatio(tree.children[1], chunkSize);
+  const leftAR = calculateBoxTreeAspectRatio(tree.children[0]);
+  const rightAR = calculateBoxTreeAspectRatio(tree.children[1]);
 
   return tree.direction === 'horizontal' ? leftAR + rightAR : 1 / (1 / leftAR + 1 / rightAR);
 }
@@ -98,7 +100,7 @@ export function calculateSizesFromBoxTree(
   chunkSize: number = 4
 ): CalculatedContentSize[] {
   if (tree.type === 'leaf') {
-    const ar = calculateBoxTreeAspectRatio(tree, chunkSize);
+    const ar = calculateBoxTreeAspectRatio(tree);
     const height = targetWidth / ar;
     return [{ content: tree.content, width: targetWidth, height }];
   }

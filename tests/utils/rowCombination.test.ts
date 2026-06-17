@@ -5,12 +5,13 @@
 
 import { DENSITY_ROW_WIDTH_MULTIPLIER, LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
-import { getWidthCost } from '@/app/utils/contentRatingUtils';
+import { getProminence, getWidthCost } from '@/app/utils/contentRatingUtils';
 import type { ImageType, RowResult } from '@/app/utils/rowCombination';
 import {
   acToBoxTree,
   buildAtomic,
   buildRows,
+  composeRowWithCandidateCount,
   estimateRowAR,
   hChain,
   hPair,
@@ -30,7 +31,9 @@ import {
   createCollectionContent,
   createGifContent,
   createHorizontalImage,
+  createImageContent,
   createPanorama,
+  createSquareImage,
   createTextContent,
   createVerticalImage,
 } from '@/tests/fixtures/contentFixtures';
@@ -594,7 +597,7 @@ describe('buildRows', () => {
       const rows = buildRows(items, 20, 1.5);
       for (const row of rows) {
         expect(row.components.length).toBeLessThanOrEqual(MAX_ROW_IMAGES);
-        const ar = calculateBoxTreeAspectRatio(row.boxTree, 20);
+        const ar = calculateBoxTreeAspectRatio(row.boxTree);
         // A degenerate wide filmstrip would have AR well above the target band;
         // the composer keeps even a 12-vertical row near-square (observed ≤ 1.7).
         expect(ar).toBeLessThanOrEqual(2.5);
@@ -604,9 +607,15 @@ describe('buildRows', () => {
   });
 
   describe('2×2 nested layout', () => {
-    it('builds a balanced two-pair boxTree for a 4-item mixed row (penalty-free ratings)', () => {
-      // Real Row 15 scenario: V1★, V2★, V4★, H3★. Vertical penalty retired, so
-      // V4★ now balances at its true rating 4 (was effective 3 under the penalty).
+    it('builds a nested 2D boxTree (not a flat strip) for a 4-item mixed row (penalty-free ratings)', () => {
+      // Real Row 15 scenario: V1★, V2★, V4★, H3★.
+      // Area-to-value: the equity-primary composer chooses H( L(v1), V( H(v2,v4), h3) )
+      // — root horizontal with a single leaf on the left and a vertical stack on the
+      // right. This renders MORE equitably than the old balanced 2×2 H(H(v1,v2),V(v4,h3))
+      // (rendered area/P spread ≈ 7.7 vs ≈ 11.1): among all trees within the AR floor
+      // (1.0) and ceiling (2× target), this is the equity-minimum. The squarer 2×2
+      // is no longer the AR-optimum once equity drives selection. Still a nested 2D
+      // shape (one leaf + a vStack), never a flat hChain.
       const v1 = createVerticalImage(1, 1); // V1★ → effective 1
       const v2 = createVerticalImage(2, 2); // V2★ → effective 2
       const v4 = createVerticalImage(3, 4); // V4★ → effective 4
@@ -617,19 +626,13 @@ describe('buildRows', () => {
 
       expect(rows).toHaveLength(1);
 
-      // Penalty-free point-balance splits [V1,V2 | V4,H3] (points 1+2 | 4+3 → halves
-      // 3 | 7) giving H( H(v1,v2), V(v4,h3) ): a horizontal pair on the left, a
-      // vertical stack on the right.
       const boxTree = rows[0]?.boxTree;
       expect(boxTree?.type).toBe('combined');
       if (boxTree?.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
-        // Left child: horizontal pair of the two low-rated verticals
-        expect(boxTree.children[0].type).toBe('combined');
-        if (boxTree.children[0].type === 'combined') {
-          expect(boxTree.children[0].direction).toBe('horizontal');
-        }
-        // Right child: vertical stack of V4★ + H3★
+        // Left child: a single leaf (the leading V1★)
+        expect(boxTree.children[0].type).toBe('leaf');
+        // Right child: a vertical stack (a 2D nested column, not a flat strip)
         expect(boxTree.children[1].type).toBe('combined');
         if (boxTree.children[1].type === 'combined') {
           expect(boxTree.children[1].direction).toBe('vertical');
@@ -735,7 +738,7 @@ describe('buildRows', () => {
       }
     });
 
-    it('should generate a 2×2 nested boxTree for 4 items', () => {
+    it('should generate a nested 2D boxTree for 4 items (leading hero gets its own column)', () => {
       const v4 = createVerticalImage(1, 4);
       const v1 = createVerticalImage(2, 1);
       const v2 = createVerticalImage(3, 2);
@@ -748,18 +751,18 @@ describe('buildRows', () => {
       expect(boxTree?.type).toBe('combined');
       if (boxTree?.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
-        // Builds: H[ H[v4,v1], V[v2,h3] ] — a horizontal pair on the left and
-        // a vertical stack of two leaves on the right.
-        // Left child: horizontal pair
-        expect(boxTree.children[0]?.type).toBe('combined');
-        if (boxTree.children[0]?.type === 'combined') {
-          expect(boxTree.children[0].direction).toBe('horizontal');
-        }
-        // Right child: vertical stack of two leaves
+        // Area-to-value: builds H[ L(v4), V[ H(v1,v2), h3 ] ] — the leading V4★
+        // hero (highest P) takes its OWN full-height left column (rendering biggest),
+        // while v1/v2/h3 nest in the right column. The old uniform 2×2 sized the
+        // V4★ no larger than the low-rated leaves; this is the equity-minimum tree
+        // within the AR floor/ceiling. Still a nested 2D shape, never a flat strip.
+        // Left child: a single leaf (the V4★ hero column)
+        expect(boxTree.children[0]?.type).toBe('leaf');
+        // Right child: a vertical stack containing a nested horizontal pair
         expect(boxTree.children[1]?.type).toBe('combined');
         if (boxTree.children[1]?.type === 'combined') {
           expect(boxTree.children[1].direction).toBe('vertical');
-          expect(boxTree.children[1].children[0]?.type).toBe('leaf');
+          expect(boxTree.children[1].children[0]?.type).toBe('combined');
           expect(boxTree.children[1].children[1]?.type).toBe('leaf');
         }
       }
@@ -824,13 +827,13 @@ describe('buildRows', () => {
 describe('toImageType', () => {
   it('should classify horizontal images as H', () => {
     const img = createHorizontalImage(1, 3);
-    const result = toImageType(img, DESKTOP);
+    const result = toImageType(img);
     expect(result.ar).toBe('H');
   });
 
   it('should classify vertical images as V', () => {
     const img = createVerticalImage(1, 3);
-    const result = toImageType(img, DESKTOP);
+    const result = toImageType(img);
     expect(result.ar).toBe('V');
   });
 
@@ -838,22 +841,22 @@ describe('toImageType', () => {
     // Vertical penalty retired (directional prominence): directionality is now
     // expressed by AR extremeness downstream, not by demoting the rating.
     const v3 = createVerticalImage(1, 3);
-    expect(toImageType(v3, DESKTOP).effectiveRating).toBe(3); // was 2 under the penalty
+    expect(toImageType(v3).effectiveRating).toBe(3); // was 2 under the penalty
 
     const h3 = createHorizontalImage(2, 3);
-    expect(toImageType(h3, DESKTOP).effectiveRating).toBe(3);
+    expect(toImageType(h3).effectiveRating).toBe(3);
   });
 
   it('should back-reference the source item', () => {
     const img = createHorizontalImage(1, 4);
-    const result = toImageType(img, DESKTOP);
+    const result = toImageType(img);
     expect(result.source).toBe(img);
   });
 });
 
 describe('AtomicComponent builders', () => {
-  const imgH = (): ImageType => toImageType(createHorizontalImage(1, 3), DESKTOP);
-  const imgV = (): ImageType => toImageType(createVerticalImage(2, 3), DESKTOP);
+  const imgH = (): ImageType => toImageType(createHorizontalImage(1, 3));
+  const imgV = (): ImageType => toImageType(createVerticalImage(2, 3));
 
   it('single() produces a single-type node', () => {
     const ac = single(imgH());
@@ -908,15 +911,15 @@ describe('AtomicComponent builders', () => {
 describe('acToBoxTree', () => {
   it('converts single node to leaf BoxTree', () => {
     const img = createHorizontalImage(1, 5);
-    const ac = single(toImageType(img, DESKTOP));
+    const ac = single(toImageType(img));
     const bt = acToBoxTree(ac);
     expect(bt.type).toBe('leaf');
     if (bt.type === 'leaf') expect(bt.content).toBe(img);
   });
 
   it('converts H pair to horizontal combined BoxTree', () => {
-    const a = toImageType(createHorizontalImage(1, 3), DESKTOP);
-    const b = toImageType(createVerticalImage(2, 3), DESKTOP);
+    const a = toImageType(createHorizontalImage(1, 3));
+    const b = toImageType(createVerticalImage(2, 3));
     const bt = acToBoxTree(hPair(single(a), single(b)));
     expect(bt.type).toBe('combined');
     if (bt.type === 'combined') {
@@ -927,8 +930,8 @@ describe('acToBoxTree', () => {
   });
 
   it('converts V stack to vertical combined BoxTree', () => {
-    const a = toImageType(createVerticalImage(1, 3), DESKTOP);
-    const b = toImageType(createVerticalImage(2, 2), DESKTOP);
+    const a = toImageType(createVerticalImage(1, 3));
+    const b = toImageType(createVerticalImage(2, 2));
     const bt = acToBoxTree(vStack(single(a), single(b)));
     expect(bt.type).toBe('combined');
     if (bt.type === 'combined') expect(bt.direction).toBe('vertical');
@@ -937,8 +940,8 @@ describe('acToBoxTree', () => {
   it('preserves source references through conversion', () => {
     const img1 = createHorizontalImage(1, 4);
     const img2 = createVerticalImage(2, 3);
-    const a = toImageType(img1, DESKTOP);
-    const b = toImageType(img2, DESKTOP);
+    const a = toImageType(img1);
+    const b = toImageType(img2);
     const bt = acToBoxTree(hPair(single(a), single(b)));
     if (bt.type === 'combined') {
       expect(bt.children[0].type === 'leaf' && bt.children[0].content).toBe(img1);
@@ -951,45 +954,51 @@ describe('buildAtomic — representative row shapes', () => {
   // These pin the composition shapes buildAtomic produces for representative
   // multi-orientation inputs (degenerate 1H/2H cases live in
   // rowCombination.composition.test.ts).
-  it('builds H(leaf, V-pair) for H4★ + 2 verticals', () => {
+  it('builds H(leaf, H-pair) for H4★ + 2 verticals — H4★ dominant left', () => {
     const imgs = [
-      toImageType(createHorizontalImage(1, 4), DESKTOP), // dominant H, effectiveRating=4
-      toImageType(createVerticalImage(2, 3), DESKTOP),
-      toImageType(createVerticalImage(3, 2), DESKTOP),
+      toImageType(createHorizontalImage(1, 4)), // dominant H, effectiveRating=4
+      toImageType(createVerticalImage(2, 3)),
+      toImageType(createVerticalImage(3, 2)),
     ];
-    const composition = buildAtomic(imgs, 1.5, DESKTOP);
-    // Builds: H[ H4★, V[V3★, V2★] ] — leaf left, vStack right.
+    const composition = buildAtomic(imgs, 1.5);
+    // Area-to-value: H[ H4★, H[V3★, V2★] ] — the H4★ (P 3.5) takes the dominant
+    // left leaf (rendering biggest), and the two verticals sit side by side. The
+    // old V[V3,V2] stack is no longer the equity-minimum once area tracks P: the
+    // side-by-side H-pair (rowAR 2.96, just under the 2× ceiling) scores lower.
     expect(composition.type).toBe('pair');
     if (composition.type === 'pair') {
       expect(composition.direction).toBe('H');
+      expect(composition.children[0].type).toBe('single'); // H4★ dominant leaf
       expect(composition.children[1].type).toBe('pair');
       if (composition.children[1].type === 'pair') {
-        expect(composition.children[1].direction).toBe('V');
+        expect(composition.children[1].direction).toBe('H');
       }
     }
   });
 
-  it('builds H(leaf, V-pair) for H3★ + 2 verticals', () => {
+  it('builds H(leaf, H-pair) for H3★ + 2 verticals — H3★ dominant left', () => {
     const imgs = [
-      toImageType(createHorizontalImage(1, 3), DESKTOP),
-      toImageType(createVerticalImage(2, 2), DESKTOP),
-      toImageType(createVerticalImage(3, 2), DESKTOP),
+      toImageType(createHorizontalImage(1, 3)),
+      toImageType(createVerticalImage(2, 2)),
+      toImageType(createVerticalImage(3, 2)),
     ];
-    const composition = buildAtomic(imgs, 1.5, DESKTOP);
-    // Builds: H[ H3★, V[V2★, V2★] ] — leaf left, vStack right.
+    const composition = buildAtomic(imgs, 1.5);
+    // Area-to-value: H[ H3★, H[V2★, V2★] ] — H3★ dominant leaf, the two equal V2★
+    // paired side by side so they render EQUAL area (was V[V2,V2]; the H-pair is the
+    // equity-minimum within the AR floor/ceiling). H3★ remains the biggest.
     expect(composition.type).toBe('pair');
     if (composition.type === 'pair') {
       expect(composition.children[0].type).toBe('single');
       expect(composition.children[1].type).toBe('pair');
       if (composition.children[1].type === 'pair') {
-        expect(composition.children[1].direction).toBe('V');
+        expect(composition.children[1].direction).toBe('H');
       }
     }
   });
 
   it('composes a nested pair for 6 images', () => {
-    const imgs = [1, 2, 3, 4, 5, 6].map(id => toImageType(createHorizontalImage(id, 2), DESKTOP));
-    const composition = buildAtomic(imgs, 1.5, DESKTOP);
+    const imgs = [1, 2, 3, 4, 5, 6].map(id => toImageType(createHorizontalImage(id, 2)));
+    const composition = buildAtomic(imgs, 1.5);
     expect(composition.type).toBe('pair');
   });
 });
@@ -1000,14 +1009,14 @@ describe('buildAtomic — representative row shapes', () => {
 
 describe('estimateRowAR', () => {
   it('returns a positive AR for valid image sets', () => {
-    const imgs = [1, 2, 3].map(id => toImageType(createHorizontalImage(id, 3), DESKTOP));
-    const ar = estimateRowAR(imgs, 1.5, DESKTOP);
+    const imgs = [1, 2, 3].map(id => toImageType(createHorizontalImage(id, 3)));
+    const ar = estimateRowAR(imgs, 1.5);
     expect(ar).toBeGreaterThan(0);
   });
 
   it('4 verticals produce low AR (motivating AR-aware fill)', () => {
-    const imgs = [1, 2, 3, 4].map(id => toImageType(createVerticalImage(id, 3), DESKTOP));
-    const ar = estimateRowAR(imgs, 1.5, DESKTOP);
+    const imgs = [1, 2, 3, 4].map(id => toImageType(createVerticalImage(id, 3)));
+    const ar = estimateRowAR(imgs, 1.5);
     // 4 verticals should have a low combined AR — this is what triggers more filling
     expect(ar).toBeLessThan(1.5);
   });
@@ -1237,9 +1246,9 @@ describe('buildAtomic nests 4-item rows', () => {
       createVerticalImage(2, 2),
       createVerticalImage(3, 2),
       createVerticalImage(4, 2),
-    ].map(item => toImageType(item, 5));
+    ].map(item => toImageType(item));
 
-    const composition = buildAtomic(images, 1.5, 5);
+    const composition = buildAtomic(images, 1.5);
     // The composition should be a pair (nested structure), not a flat chain
     expect(composition.type).toBe('pair');
   });
@@ -1250,9 +1259,9 @@ describe('buildAtomic nests 4-item rows', () => {
       createHorizontalImage(2, 2),
       createVerticalImage(3, 2),
       createVerticalImage(4, 2),
-    ].map(item => toImageType(item, 5));
+    ].map(item => toImageType(item));
 
-    const composition = buildAtomic(images, 1.5, 5);
+    const composition = buildAtomic(images, 1.5);
     expect(composition.type).toBe('pair');
   });
 
@@ -1262,15 +1271,15 @@ describe('buildAtomic nests 4-item rows', () => {
       createVerticalImage(2, 2),
       createVerticalImage(3, 2),
       createVerticalImage(4, 2),
-    ].map(item => toImageType(item, 5));
+    ].map(item => toImageType(item));
 
-    const composition = buildAtomic(images, 1.5, 5);
+    const composition = buildAtomic(images, 1.5);
     const boxTree = acToBoxTree(composition);
 
     // Should produce a valid BoxTree
     expect(boxTree.type).toBe('combined');
     // AR should be a finite positive number
-    const ar = calculateBoxTreeAspectRatio(boxTree, 5);
+    const ar = calculateBoxTreeAspectRatio(boxTree);
     expect(ar).toBeGreaterThan(0);
     expect(Number.isFinite(ar)).toBe(true);
   });
@@ -1523,5 +1532,130 @@ describe('emergent full-width hero (width-cost driven)', () => {
       expect(soloPanoRow(rows, 2)).toBeDefined();
       expect(totalItems(rows)).toBe(items.length);
     });
+  });
+});
+
+// =============================================================================
+// area-to-value (B1) — rendered area tracks prominence P
+// =============================================================================
+describe('area-to-value composition (B1)', () => {
+  const TARGET_WIDTH = 1274;
+
+  /** Map content id → rendered area (px²) for a built row. */
+  const areaById = (row: RowResult): Map<number, number> => {
+    const m = new Map<number, number>();
+    for (const s of calculateSizesFromBoxTree(row.boxTree, TARGET_WIDTH)) {
+      m.set(s.content.id, s.width * s.height);
+    }
+    return m;
+  };
+
+  // The real oval-lakes H3 is 3:2 — NOT the 16:9 of createHorizontalImage.
+  const H32 = (id: number, rating: number) =>
+    createImageContent(id, { imageWidth: 1500, imageHeight: 1000, aspectRatio: 1.5, rating });
+
+  it('oval-lakes [V4,H3,V4,V5,V5]: the two 5★ heroes are no longer the smallest', () => {
+    // Issue #4 motivating bug: under the old single-structure composer the two 5★
+    // verticals rendered SMALLEST. Multi-structure + equity-primary hands each a
+    // full-height column so area tracks value.
+    const items = [
+      createVerticalImage(1, 4),
+      H32(2, 3),
+      createVerticalImage(3, 4),
+      createVerticalImage(4, 5),
+      createVerticalImage(5, 5),
+    ];
+    const rows = buildRows(items, 8, 1.5);
+    expect(rows).toHaveLength(1);
+    const area = areaById(rows[0]!);
+    const v5a = area.get(4)!;
+    const v5b = area.get(5)!;
+    const v4 = area.get(1)!;
+    const h3 = area.get(2)!;
+    const minArea = Math.min(...area.values());
+    // Each 5★ hero is at least as big as the other 4★ and bigger than the 3★.
+    expect(v5a).toBeGreaterThanOrEqual(v4 * 0.99);
+    expect(v5b).toBeGreaterThanOrEqual(v4 * 0.99);
+    expect(v5a).toBeGreaterThan(h3);
+    expect(v5b).toBeGreaterThan(h3);
+    // Neither hero is the smallest image in the row (the original bug).
+    expect(v5a).toBeGreaterThan(minArea * 1.01);
+    expect(v5b).toBeGreaterThan(minArea * 1.01);
+  });
+
+  it('mixed row [V5,H3,H3,H3]: the 5★ hero renders biggest', () => {
+    const items = [
+      createVerticalImage(1, 5),
+      createHorizontalImage(2, 3),
+      createHorizontalImage(3, 3),
+      createHorizontalImage(4, 3),
+    ];
+    const rows = buildRows(items, 8, 1.5);
+    expect(rows).toHaveLength(1);
+    const area = areaById(rows[0]!);
+    const hero = area.get(1)!;
+    for (const id of [2, 3, 4]) expect(hero).toBeGreaterThan(area.get(id)!);
+  });
+
+  it('the most valuable image is (near) the biggest in well-formed rows', () => {
+    // No-gross-inversion invariant, scoped to rows whose justified geometry CAN
+    // honor area∝value. Pathological alternating rows keep an accepted residual
+    // (a fundamental discrete-geometry limit) and are intentionally excluded.
+    const scenarios: ReturnType<typeof createImageContent>[][] = [
+      [
+        createVerticalImage(1, 5),
+        createHorizontalImage(2, 3),
+        createHorizontalImage(3, 3),
+        createHorizontalImage(4, 3),
+      ],
+      [createHorizontalImage(1, 5), createHorizontalImage(2, 3), createHorizontalImage(3, 3)],
+      [
+        createVerticalImage(1, 4),
+        H32(2, 3),
+        createVerticalImage(3, 4),
+        createVerticalImage(4, 5),
+        createVerticalImage(5, 5),
+      ],
+    ];
+    for (const items of scenarios) {
+      for (const row of buildRows(items, 8, 1.5)) {
+        if (row.components.length < 3) continue;
+        const withP = calculateSizesFromBoxTree(row.boxTree, TARGET_WIDTH).map(s => ({
+          p: getProminence(s.content),
+          area: s.width * s.height,
+        }));
+        const maxP = Math.max(...withP.map(x => x.p));
+        const topArea = Math.max(...withP.filter(x => x.p === maxP).map(x => x.area));
+        // The highest-prominence image is at least as big as every lower-P sibling
+        // (5% slack for gap rounding / exact ties).
+        for (const x of withP) {
+          if (x.p < maxP) expect(topArea).toBeGreaterThanOrEqual(x.area * 0.95);
+        }
+      }
+    }
+  });
+
+  it('KNOWN LIMITATION: a 2-item [5★ square + 1★ wide] row cannot honor area∝value', () => {
+    // Documented, NOT a bug to fix here: a justified 2-item hPair renders both at
+    // equal height, so area ∝ AR — the wide 1★ necessarily out-areas the 5★ square,
+    // and a vStack would breach the never-taller-than-wide floor. A fix would need a
+    // Stage-1 membership rule (don't co-locate them), which is out of scope.
+    const items = [createSquareImage(1, 5), createHorizontalImage(2, 1)];
+    const rows = buildRows(items, 8, 1.5);
+    expect(rows).toHaveLength(1);
+    const area = areaById(rows[0]!);
+    expect(area.get(2)!).toBeGreaterThan(area.get(1)!); // the inversion is expected
+  });
+
+  it('perf: an n=12 row stays within the bounded candidate budget', () => {
+    // Full Catalan enumeration would be C(11)=58,786 shapes; the bounded generator
+    // (n > N_FULL) caps shapes at STRUCTURE_CAP so the search never blows up.
+    const items = Array.from({ length: 12 }, (_, i) => createHorizontalImage(i + 1, 3)).map(item =>
+      toImageType(item)
+    );
+    const { component, shapes, candidates } = composeRowWithCandidateCount(items, 1.5);
+    expect(component).toBeDefined();
+    expect(shapes).toBeLessThanOrEqual(64); // STRUCTURE_CAP
+    expect(candidates).toBeLessThan(20000);
   });
 });

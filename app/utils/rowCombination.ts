@@ -2,11 +2,14 @@
  * Row Combination — row layout engine (two stages).
  *
  * Stage 1 (`buildRows`): greedy sequential fill decides which items go in each
- * row, using a per-row width-cost budget (rowWidth) and an AR-floor check.
- * Stage 2 (`buildAtomic`): for each row, a point-balance split builds a binary tree,
- * then every hPair/vStack direction assignment is enumerated and scored — a hard
- * AR floor at 1.0 ("never taller than wide") plus closeness to the target row AR,
- * with an equity tiebreak so equal-rated images render at similar size.
+ * row, using a per-row width-cost budget (rowWidth) and an AR-floor check. Row AR
+ * during fill is estimated cheaply from a single point-balance tree (`estimateRowAR`).
+ * Stage 2 (`buildAtomic`): for each finalized row, a bounded set of order-preserving
+ * tree SHAPES is enumerated (`enumerateStructures`), and across every shape × every
+ * hPair/vStack direction assignment the composition is selected by an equity-primary
+ * objective — `equitySpread + λ·arPenalty` — so each image's rendered AREA tracks its
+ * prominence P (area-to-value), hard-bounded by an AR floor at 1.0 ("never taller than
+ * wide") and a soft ceiling at CEILING_MULT × target ("never a thin strip").
  *
  * Key concepts:
  * - A "component" is anything that occupies row space: a single image, gif, text, or combined block.
@@ -48,7 +51,7 @@ export type BoxTree =
  * Total Stage-1 packing cost of a set of items, summing the width-cost
  * Hv = √(P·AR) (orientation-agnostic) rather than the vertical-biased cv.
  */
-function getTotalCV(components: AnyContentModel[], _rowWidth: number): number {
+function getTotalCV(components: AnyContentModel[]): number {
   return components.reduce((sum, item) => sum + getWidthCost(item), 0);
 }
 
@@ -125,7 +128,7 @@ export type AtomicComponent =
 // =============================================================================
 
 /** Convert AnyContentModel to ImageType for composition decisions */
-export function toImageType(item: AnyContentModel, _rowWidth: number): ImageType {
+export function toImageType(item: AnyContentModel): ImageType {
   const numericAR = getAspectRatio(item);
   const ar: OrientationShort = numericAR > 1.0 ? 'H' : 'V';
   const effectiveRating = getEffectiveRating(item);
@@ -264,12 +267,20 @@ export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
 }
 
 /**
- * Estimate a row's combined aspect ratio. Routes through the canonical composer
- * so the Stage-1 estimate matches the composition that actually renders.
+ * Estimate a row's combined aspect ratio. Routes through the CHEAP single-structure
+ * composer (point-balance tree only) so the Stage-1 fill loop stays fast — the
+ * multi-structure equity search is reserved for final per-row composition. This
+ * keeps the density→size monotonicity shipped 2026-05-29 unchanged (membership
+ * decisions never run the expensive search).
  */
-export function estimateRowAR(images: ImageType[], targetAR: number, rowWidth: number): number {
-  const composition = buildAtomic(images, targetAR, rowWidth);
-  return calculateBoxTreeAspectRatio(acToBoxTree(composition), rowWidth);
+export function estimateRowAR(images: ImageType[], targetAR: number): number {
+  if (images.length === 0) throw new Error('estimateRowAR requires at least 1 image');
+  if (images.length === 1) {
+    return calculateBoxTreeAspectRatio(acToBoxTree(single(images[0]!)));
+  }
+  const tree = splitByPointBalance(images);
+  const composition = pickRootAssignment(tree, targetAR);
+  return calculateBoxTreeAspectRatio(acToBoxTree(composition));
 }
 
 // =============================================================================
@@ -328,7 +339,7 @@ export function buildRows(
       const heroItem = window[0]!;
       rows.push({
         components: [heroItem],
-        boxTree: acToBoxTree(single(toImageType(heroItem, rowWidth))),
+        boxTree: acToBoxTree(single(toImageType(heroItem))),
       });
       remaining.splice(0, 1);
       continue;
@@ -349,7 +360,7 @@ export function buildRows(
 
       if (heroIdx >= 0) {
         const heroItem = window[heroIdx]!;
-        const heroImg = toImageType(heroItem, rowWidth);
+        const heroImg = toImageType(heroItem);
         const composition = single(heroImg);
         const boxTree = acToBoxTree(composition);
 
@@ -407,8 +418,8 @@ export function buildRows(
 
         // Re-check AR with the expanded set
         const expandedItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
-        const expandedImgs = expandedItems.map(item => toImageType(item, rowWidth));
-        const expandedAR = estimateRowAR(expandedImgs, targetARBaseline, rowWidth);
+        const expandedImgs = expandedItems.map(item => toImageType(item));
+        const expandedAR = estimateRowAR(expandedImgs, targetARBaseline);
         if (expandedAR >= arFloor) break;
         continue;
       }
@@ -418,8 +429,8 @@ export function buildRows(
 
       if (newFill >= effectiveMinFill) {
         const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
-        const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-        const rowAR = estimateRowAR(rowImgs, targetARBaseline, rowWidth);
+        const rowImgs = rowItems.map(item => toImageType(item));
+        const rowAR = estimateRowAR(rowImgs, targetARBaseline);
 
         if (rowAR >= arFloor) {
           break;
@@ -430,8 +441,8 @@ export function buildRows(
 
     if (seqCount > 0) {
       const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
-      const rowImgs = rowItems.map(item => toImageType(item, rowWidth));
-      const composition = buildAtomic(rowImgs, rowTargetAR(rowImgs, targetARBaseline), rowWidth);
+      const rowImgs = rowItems.map(item => toImageType(item));
+      const composition = buildAtomic(rowImgs, rowTargetAR(rowImgs, targetARBaseline));
       const boxTree = acToBoxTree(composition);
 
       rows.push({
@@ -468,7 +479,7 @@ export function buildRows(
       for (let idx = 1; idx < window.length; idx++) {
         if (!available.has(idx)) continue;
 
-        const currentTotal = getTotalCV(bfComponents, rowWidth);
+        const currentTotal = getTotalCV(bfComponents);
         const candidateCV = getWidthCost(window[idx]!);
         const newTotal = currentTotal + candidateCV;
         const newFill = newTotal / rowWidth;
@@ -499,8 +510,8 @@ export function buildRows(
       }
     }
 
-    const bfImgs = bfComponents.map(item => toImageType(item, rowWidth));
-    const composition = buildAtomic(bfImgs, rowTargetAR(bfImgs, targetARBaseline), rowWidth);
+    const bfImgs = bfComponents.map(item => toImageType(item));
+    const composition = buildAtomic(bfImgs, rowTargetAR(bfImgs, targetARBaseline));
     const boxTree = acToBoxTree(composition);
 
     rows.push({
@@ -520,12 +531,14 @@ export function buildRows(
 // =============================================================================
 // ROW COMPOSITION
 // =============================================================================
-// buildAtomic — two-phase composer: point-balance split (Phase 1), then
-// direction enumeration with a hard AR-1.0 floor + equity tiebreak (Phase 2).
-// Algorithm & rationale: ./rowCombination.md
-
-// =============================================================================
-// Phase 1 — point-balance hierarchical split
+// buildAtomic — final-row composer. Enumerates candidate tree SHAPES (Phase 1b,
+// multi-structure) × direction assignments (Phase 2), then selects equity-primary
+// (area tracks prominence P) under a hard AR-1.0 floor + soft CEILING_MULT ceiling.
+// The cheap single point-balance split (Phase 1, pickRootAssignment) is reserved
+// for the Stage-1 fill estimator. Algorithm & rationale: ./rowCombination.md
+//
+// Phase 1 (splitByPointBalance) — single point-balance hierarchical split, the
+// Stage-1 AR estimator only.
 // =============================================================================
 
 type AbstractNode =
@@ -589,6 +602,171 @@ function splitByPointBalance(items: ImageType[]): AbstractNode {
 }
 
 // =============================================================================
+// Phase 1b — candidate STRUCTURE generator (area-to-value)
+// =============================================================================
+//
+// Replaces the single point-balance shape with a BOUNDED SET of order-preserving
+// binary tree SHAPES (no direction yet). Order is always preserved — only adjacent
+// splits. The point-balance tree is ALWAYS included so results are never worse than
+// today. Each shape is then fed to enumerateAssignments for H/V directions and
+// scored equity-primary in pickBestComposition.
+
+/**
+ * Full enumeration cutoff. For n ≤ N_FULL we emit ALL order-preserving binary
+ * trees (the Catalan set: C(n-1) shapes — 42 for n=6). For n > N_FULL we fall
+ * back to the bounded generator.
+ */
+const N_FULL = 6;
+
+/**
+ * Hard cap on the number of SHAPES generated for n > N_FULL. Bounds the
+ * structure × direction search so an n=12 row composes within budget
+ * (~11k candidates, a few ms — validated by the perf guard test).
+ */
+const STRUCTURE_CAP = 64;
+
+/**
+ * All order-preserving binary tree shapes over `items` (the Catalan set).
+ * Memoized on (lo, hi) ranges so repeated subranges are not rebuilt. Cost is
+ * C(n-1) shapes — 42 for n=6, 132 for n=7 — so guarded by N_FULL upstream.
+ */
+function enumerateFullShapes(items: ImageType[]): AbstractNode[] {
+  const memo = new Map<string, AbstractNode[]>();
+  const build = (lo: number, hi: number): AbstractNode[] => {
+    if (lo === hi) return [{ kind: 'leaf', img: items[lo]! }];
+    const key = `${lo},${hi}`;
+    const cached = memo.get(key);
+    if (cached) return cached;
+    const out: AbstractNode[] = [];
+    for (let split = lo; split < hi; split++) {
+      const lefts = build(lo, split);
+      const rights = build(split + 1, hi);
+      for (const l of lefts) {
+        for (const r of rights) {
+          out.push({ kind: 'merge', left: l, right: r });
+        }
+      }
+    }
+    memo.set(key, out);
+    return out;
+  };
+  return build(0, items.length - 1);
+}
+
+/**
+ * Bounded shape generator for n > N_FULL. Recursively splits at the top-K most
+ * point-balanced adjacent boundaries (instead of only the single best), capping
+ * the total shape count at STRUCTURE_CAP. Always seeds the legacy point-balance
+ * tree first so the result is never worse than today.
+ */
+function enumerateBoundedShapes(items: ImageType[]): AbstractNode[] {
+  const seen = new Set<string>();
+  const shapes: AbstractNode[] = [];
+
+  const keyOf = (n: AbstractNode): string =>
+    n.kind === 'leaf' ? `L${n.img.title}` : `(${keyOf(n.left)}|${keyOf(n.right)})`;
+
+  const push = (n: AbstractNode): boolean => {
+    const k = keyOf(n);
+    if (seen.has(k)) return true;
+    seen.add(k);
+    shapes.push(n);
+    return shapes.length < STRUCTURE_CAP;
+  };
+
+  // Ranked adjacent split boundaries for a slice, best-balanced first.
+  const rankedSplits = (slice: ImageType[]): number[] => {
+    let total = 0;
+    for (const it of slice) total += it.effectiveRating;
+    const half = total / 2;
+    const scored: Array<{ idx: number; score: number }> = [];
+    let leftSum = 0;
+    for (let i = 0; i < slice.length - 1; i++) {
+      leftSum += slice[i]!.effectiveRating;
+      const rightSum = total - leftSum;
+      scored.push({ idx: i, score: Math.abs(leftSum - half) + Math.abs(rightSum - half) });
+    }
+    scored.sort((a, b) => a.score - b.score);
+    return scored.map(s => s.idx);
+  };
+
+  // Build with the top-K split points at each level. K shrinks with depth to
+  // keep the breadth bounded; STRUCTURE_CAP is the hard stop.
+  const buildShape = (slice: ImageType[], k: number): AbstractNode => {
+    if (slice.length === 1) return { kind: 'leaf', img: slice[0]! };
+    if (slice.length === 2) {
+      return {
+        kind: 'merge',
+        left: { kind: 'leaf', img: slice[0]! },
+        right: { kind: 'leaf', img: slice[1]! },
+      };
+    }
+    // Default to the single best (legacy) split for this builder pass.
+    const best = rankedSplits(slice)[0]! + 1;
+    return {
+      kind: 'merge',
+      left: buildShape(slice.slice(0, best), k),
+      right: buildShape(slice.slice(best), k),
+    };
+  };
+
+  // 1) Legacy point-balance tree first (guarantees never-worse-than-today).
+  if (!push(splitByPointBalance(items))) return shapes;
+
+  // 2) Alternative top-level split points, each recursively point-balanced.
+  const topSplits = rankedSplits(items);
+  for (let r = 0; r < topSplits.length; r++) {
+    const split = topSplits[r]! + 1;
+    const alt: AbstractNode = {
+      kind: 'merge',
+      left: splitByPointBalance(items.slice(0, split)),
+      right: splitByPointBalance(items.slice(split)),
+    };
+    if (!push(alt)) return shapes;
+  }
+
+  // 3) A few extra shapes that pull a single leaf to the root on each side —
+  //    the structural lever that hands a hero its own full-height column.
+  for (let lead = 1; lead <= Math.min(2, items.length - 1); lead++) {
+    const leftLead: AbstractNode = {
+      kind: 'merge',
+      left: buildShape(items.slice(0, lead), 1),
+      right: splitByPointBalance(items.slice(lead)),
+    };
+    if (!push(leftLead)) return shapes;
+    const trail = items.length - lead;
+    const rightLead: AbstractNode = {
+      kind: 'merge',
+      left: splitByPointBalance(items.slice(0, trail)),
+      right: buildShape(items.slice(trail), 1),
+    };
+    if (!push(rightLead)) return shapes;
+  }
+
+  return shapes;
+}
+
+/**
+ * Candidate structure generator. Returns order-preserving binary tree SHAPES
+ * (direction-free AbstractNodes). For n ≤ N_FULL: the full Catalan set. For
+ * n > N_FULL: a bounded set capped at STRUCTURE_CAP, always including the legacy
+ * point-balance tree.
+ */
+function enumerateStructures(items: ImageType[]): AbstractNode[] {
+  if (items.length <= 1) return [{ kind: 'leaf', img: items[0]! }];
+  if (items.length === 2) {
+    return [
+      {
+        kind: 'merge',
+        left: { kind: 'leaf', img: items[0]! },
+        right: { kind: 'leaf', img: items[1]! },
+      },
+    ];
+  }
+  return items.length <= N_FULL ? enumerateFullShapes(items) : enumerateBoundedShapes(items);
+}
+
+// =============================================================================
 // Phase 2 — enumerate direction assignments, score by root-row constraint
 // =============================================================================
 
@@ -612,14 +790,35 @@ function rowAR_Cost(rowAR: number, target: number): number {
   return Math.abs(rowAR - Math.max(target, ROW_AR_FLOOR));
 }
 
+// =============================================================================
+// area-to-value: equity-primary selection across (shape × direction)
+// =============================================================================
+
 /**
- * Width of the AR band used for the equity tiebreak: among root candidates
- * whose row AR is within this distance of the best achievable, the most
- * equitable one is chosen. Small enough that row AR stays visually close to
- * target (preserving the screen-fit behaviour), wide enough to admit a balanced
- * alternative when the AR-optimal tree happens to be lopsided.
+ * Weight of the AR-target deviation term in the equity-primary score. Small so
+ * equitySpread (area tracks prominence P) dominates and the AR-target only pulls
+ * AMONG near-equity options. Replaces the retired AR_EQUITY_BAND tiebreak gate.
  */
-const AR_EQUITY_BAND = 0.3;
+const LAMBDA = 0.15;
+
+/**
+ * Soft upper bound on row AR, expressed as a multiple of the row's target. A row
+ * wider than CEILING_MULT × target is hard-rejected (mirror of the hard lower
+ * floor). Prevents equity from collapsing a horizontal row into a thin strip
+ * without raising λ globally (which would over-square vertical-hero rows).
+ */
+const CEILING_MULT = 2.0;
+
+/**
+ * Scale-symmetric AR distance term: |ln(rowAR / target)|. Symmetric in log space
+ * so being 2× too wide and 2× too tall cost the same; the hard floor (1.0) and
+ * the CEILING_MULT ceiling carry the asymmetric "never taller than wide / never a
+ * thin strip" constraints, leaving this term as a pure closeness-to-target pull.
+ */
+function arPenalty(rowAR: number, target: number): number {
+  const t = Math.max(target, ROW_AR_FLOOR);
+  return Math.abs(Math.log(rowAR / t));
+}
 
 /**
  * Relative area each leaf occupies (and its prominence P) for a fully
@@ -707,11 +906,14 @@ function enumerateAssignments(node: AbstractNode): Candidate[] {
 }
 
 /**
- * Pick the best direction assignment for a row.
+ * Pick the AR-closest direction assignment for a single point-balance tree.
  *
- * Root is forced to hPair (rows are horizontal by definition). Children's
- * direction assignments are enumerated independently, then combined at root
- * with hPair. The combination with the lowest `rowAR_Cost` wins.
+ * Stage-1 ONLY — the cheap estimator behind {@link estimateRowAR}. Root is forced
+ * hPair (rows are horizontal by definition); among the children's direction
+ * assignments the one with the lowest {@link rowAR_Cost} wins (closest to target,
+ * sub-floor candidates carry a huge cost so the floor is preserved). No equity
+ * search here: the multi-structure equity-primary selection runs ONLY at final
+ * composition ({@link pickBestComposition}), keeping the Stage-1 fill loop fast.
  */
 function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicComponent {
   // Leaf-only trees should never reach Phase 2 (handled by buildAtomic entry).
@@ -720,38 +922,102 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
   const leftOptions = enumerateAssignments(tree.left);
   const rightOptions = enumerateAssignments(tree.right);
 
-  // Every root candidate (root is forced hPair), with its AR cost and how
-  // equitably it sizes images. Building all of them is cheap: <= 2^(n-1)
+  // Root forced hPair; pick the lowest-arCost combination. Cheap: <= 2^(n-1)
   // candidates for an n-leaf row, n bounded by MAX_ROW_IMAGES.
-  const candidates: Array<{ component: AtomicComponent; arCost: number; equity: number }> = [];
-  let minArCost = Infinity;
+  let best: AtomicComponent | null = null;
+  let bestArCost = Infinity;
   for (const l of leftOptions) {
     for (const r of rightOptions) {
-      const component = hPair(l.component, r.component);
       const arCost = rowAR_Cost(l.ar + r.ar, targetAR);
-      if (arCost < minArCost) minArCost = arCost;
-      candidates.push({ component, arCost, equity: equitySpread(component) });
+      if (arCost < bestArCost) {
+        bestArCost = arCost;
+        best = hPair(l.component, r.component);
+      }
+    }
+  }
+  // At least one candidate always exists for a non-leaf tree, so `best` is set.
+  return best!;
+}
+
+/**
+ * Equity-primary composition across every candidate STRUCTURE shape and every
+ * (root-forced-hPair) direction assignment — the area-to-value selector. Hard-
+ * rejects rows below the AR floor (1.0) or above the soft ceiling
+ * (CEILING_MULT × target). Among survivors, minimizes
+ *   score = equitySpread + LAMBDA · arPenalty(rowAR, target)
+ * (equitySpread primary — area tracks prominence P; AR-target soft secondary).
+ * Tiebreak: closer rowAR to target. No AR_EQUITY_BAND gate — equity is the
+ * primary objective.
+ *
+ * Counts candidates/shapes evaluated (for the perf-guard test) via the optional
+ * sink.
+ */
+function pickBestComposition(
+  items: ImageType[],
+  targetAR: number,
+  counters?: { shapes: number; candidates: number }
+): AtomicComponent {
+  const shapes = enumerateStructures(items);
+  if (counters) counters.shapes += shapes.length;
+  const target = Math.max(targetAR, ROW_AR_FLOOR);
+  const ceiling = CEILING_MULT > 0 ? CEILING_MULT * target : Infinity;
+
+  let best: AtomicComponent | null = null;
+  let bestScore = Infinity;
+  let bestArDist = Infinity;
+  // Floor-violating fallback: if NOTHING clears the floor, keep the least-tall.
+  let fallback: AtomicComponent | null = null;
+  let fallbackAR = -Infinity;
+
+  for (const shape of shapes) {
+    // Root forced hPair: enumerate the two children's direction assignments,
+    // combine at the root with hPair (rows are horizontal by definition).
+    if (shape.kind === 'leaf') {
+      const ac = single(shape.img);
+      if (counters) counters.candidates += 1;
+      const rowAR = shape.img.numericAR;
+      if (rowAR >= ROW_AR_FLOOR && rowAR <= ceiling) {
+        const score = LAMBDA * arPenalty(rowAR, target);
+        if (score < bestScore) {
+          bestScore = score;
+          best = ac;
+          bestArDist = Math.abs(rowAR - target);
+        }
+      } else if (rowAR > fallbackAR) {
+        fallbackAR = rowAR;
+        fallback = ac;
+      }
+      continue;
+    }
+
+    const leftOptions = enumerateAssignments(shape.left);
+    const rightOptions = enumerateAssignments(shape.right);
+    for (const l of leftOptions) {
+      for (const r of rightOptions) {
+        const component = hPair(l.component, r.component);
+        const rowAR = l.ar + r.ar; // root hPair: AR adds
+        if (counters) counters.candidates += 1;
+        if (rowAR < ROW_AR_FLOOR) {
+          if (rowAR > fallbackAR) {
+            fallbackAR = rowAR;
+            fallback = component;
+          }
+          continue;
+        }
+        if (rowAR > ceiling) continue; // soft upper bound — too-wide strip
+        const eq = equitySpread(component);
+        const score = eq + LAMBDA * arPenalty(rowAR, target);
+        const arDist = Math.abs(rowAR - target);
+        if (score < bestScore || (score === bestScore && arDist < bestArDist)) {
+          bestScore = score;
+          bestArDist = arDist;
+          best = component;
+        }
+      }
     }
   }
 
-  // Tier 1: keep candidates whose row AR is within AR_EQUITY_BAND of the best.
-  // This also preserves the floor — sub-1.0 candidates carry a huge arCost and
-  // fall outside the band. Tier 2: among those, the most equitable wins, with
-  // closer-to-target AR breaking ties.
-  const threshold = minArCost + AR_EQUITY_BAND;
-  let best: { component: AtomicComponent; arCost: number; equity: number } | null = null;
-  for (const c of candidates) {
-    if (c.arCost > threshold) continue;
-    if (
-      best === null ||
-      c.equity < best.equity ||
-      (c.equity === best.equity && c.arCost < best.arCost)
-    ) {
-      best = c;
-    }
-  }
-  // At least the AR-best candidate is always within the band, so `best` is set.
-  return best!.component;
+  return best ?? fallback ?? hChain(items);
 }
 
 // =============================================================================
@@ -759,20 +1025,34 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
 // =============================================================================
 
 /**
- * Build a row's atomic component tree via the two-phase algorithm. Leaves stay
- * in input order. targetAR below ROW_AR_FLOOR (1.0) is lifted to it. rowWidth is
- * unused (AR is intrinsic to the tree); kept for call-site symmetry.
+ * Build a row's atomic component tree. Leaves stay in input order. targetAR below
+ * ROW_AR_FLOOR (1.0) is lifted to it.
+ *
+ * Final per-row composition runs the multi-structure equity-primary search
+ * (enumerateStructures × enumerateAssignments). The cheap single-structure path
+ * (splitByPointBalance + pickRootAssignment) is reserved for estimateRowAR in the
+ * Stage-1 fill loop. targetAR is the per-row target; AR is intrinsic to the tree.
  */
-export function buildAtomic(
-  items: ImageType[],
-  targetAR: number,
-  rowWidth: number
-): AtomicComponent {
+export function buildAtomic(items: ImageType[], targetAR: number): AtomicComponent {
   if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
   if (items.length === 1) return single(items[0]!);
 
-  // rowWidth is unused; touch it so lint doesn't flag it.
-  void rowWidth;
-  const tree = splitByPointBalance(items);
-  return pickRootAssignment(tree, targetAR);
+  return pickBestComposition(items, targetAR);
+}
+
+/**
+ * Compose a row AND report the number of candidate shapes / direction assignments
+ * evaluated. Backs the perf-guard test (asserts the search stays bounded — e.g.
+ * an n=12 row stays well under STRUCTURE_CAP shapes). Not used by production code.
+ */
+export function composeRowWithCandidateCount(
+  items: ImageType[],
+  targetAR: number
+): { component: AtomicComponent; shapes: number; candidates: number } {
+  if (items.length <= 1) {
+    return { component: single(items[0]!), shapes: 1, candidates: 1 };
+  }
+  const counters = { shapes: 0, candidates: 0 };
+  const component = pickBestComposition(items, targetAR, counters);
+  return { component, shapes: counters.shapes, candidates: counters.candidates };
 }

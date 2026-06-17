@@ -108,18 +108,22 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 5: H4★ + V1★ + V1★ — dominant H + stacked V-pair
+  // Test 5: H4★ + V1★ + V1★ — dominant H + V-pair beside it
   // Penalty retired: H4★ Hv≈2.49, V1★ P=1.25/Hv≈0.84. Total≈4.17, fill≈52% of
-  // rw=8. The dominant H4★ takes the left slot; the two V1★ stack on the right.
+  // rw=8. The dominant H4★ takes the left slot; the two V1★ sit beside it.
+  // Area-to-value: equity-primary now pairs the two equal-P V1★ side by side
+  // (H(L2,L3)) so they render EQUAL area, rather than stacking them (the old
+  // V(L2,L3), where the gapless-vs-gap divergence sized them unevenly). Same
+  // shape family, strictly more equitable for two identical-rating verticals.
   // ---------------------------------------------------------------
-  it('5: H4★ + V1★ + V1★ → H(leaf, V(leaf,leaf)) (~52% fill)', () => {
+  it('5: H4★ + V1★ + V1★ → H(leaf, H(leaf,leaf)) (~52% fill)', () => {
     const items = [H(1, 4), V(2, 1), V(3, 1)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    // main | V(stacked1, stacked2)
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),L(3)))');
+    // main | H(V1, V1) — the two equal V1★ paired side by side (equal area)
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),H(L(2),L(3)))');
   });
 
   // ---------------------------------------------------------------
@@ -170,31 +174,39 @@ describe('buildRows characterization', () => {
   // ---------------------------------------------------------------
   // Test 9: V1★ + H5★ + H3★ + H3★ — width-cost (Hv) packing at rw=8
   // Hv: V1≈0.84, H5≈2.98, H3≈2.11. Sum of all four ≈ 8.04 (fill≈100.5%), so
-  // under the cheaper Hv scale all four pack into ONE balanced 2×2 row at AR
-  // 1.316 — vs the old cv scale which closed at 3 and orphaned the last H3★.
+  // under the cheaper Hv scale all four pack into ONE row.
+  // Area-to-value: the equity-primary composer now gives the H5★ (P 5.0, the
+  // row's dominant value) its own top-level column and stacks the two equal H3★
+  // beneath the H5★ → H(L1, V(L2, H(L3,L4))). The H5★ renders BIGGEST (≈405k px²)
+  // and the two equal H3★ render equal — vs the old uniform 2×2 that sized the
+  // 5★ no larger than the 3★s. Strictly better area-tracks-value for the hero.
   // ---------------------------------------------------------------
-  it('9: V1★ + H5★ + H3★ + H3★ → one 2×2 row under Hv packing', () => {
+  it('9: V1★ + H5★ + H3★ + H3★ → H5★ gets its own column (hero biggest)', () => {
     const items = [V(1, 1), H(2, 5), H(3, 3), H(4, 3)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),V(L(3),L(4)))');
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),H(L(3),L(4))))');
   });
 
   // ---------------------------------------------------------------
   // Test 10: V1★ + V2★ + H5★ — all in one row at rw=8
   // Penalty retired: V1★ Hv≈0.84, V2★ Hv≈0.99, H5★ Hv≈2.98. Total≈4.81, fill≈60%
   // of rw=8. Sequential fill takes all 3, best-fit completes.
+  // Area-to-value: the H5★ (P 5.0) renders BIGGEST (≈328k px²) as its own column
+  // while the two low-rated verticals sit beside it as a flat H-pair → H(L1,H(L2,L3))
+  // (was H(V(L1,L2),L3), which stacked the verticals into a tall left column that
+  // oversized the low-P pair). New shape sizes the 5★ dominant — area tracks value.
   // ---------------------------------------------------------------
-  it('10: V1★ + V2★ + H5★ → all in one row (no hero skip at rw=8)', () => {
+  it('10: V1★ + V2★ + H5★ → H5★ dominant, verticals beside it', () => {
     const items = [V(1, 1), V(2, 2), H(3, 5)];
     const rows = buildRows(items, DESKTOP);
 
-    // All 3 in one row → H(V-pair, leaf)
+    // All 3 in one row → H(leaf-V1, H(V2, H5)) — the 5★ horizontal is the biggest
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),L(3))');
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),H(L(2),L(3)))');
   });
 
   // ---------------------------------------------------------------
@@ -327,16 +339,21 @@ describe('buildRows characterization', () => {
   // ---------------------------------------------------------------
   // Test 17: V4★ + H3★ + H4★ + H1★ — width-cost (Hv) packing at rw=8
   // Hv: V4≈2.05, H3≈2.11, H4≈2.49, H1≈1.49. Sum ≈ 8.14 (fill≈102%), so under
-  // the cheaper Hv scale all four pack into ONE balanced 2×2 row at AR 1.316 —
-  // vs the old cv scale which closed at 3 and orphaned the trailing H1★.
+  // the cheaper Hv scale all four pack into ONE row.
+  // Area-to-value: the equity-primary composer now gives the leading V4★ (P 3.5,
+  // the row's highest value) its OWN full-height left column → H(L1, V(L2, V(L3,L4))),
+  // so the 4★ vertical hero renders BIGGEST (≈670k px²). The old uniform 2×2
+  // sized the V4★ no larger than the H1★. The H4★/H1★ stacked in the right column
+  // render equal (an accepted within-stack same-slot residual covered by the
+  // no-inversion tolerance) — but the HERO is now correctly dominant.
   // ---------------------------------------------------------------
-  it('17: sequential fill — V4★ + H3★ + H4★ + H1★ → one 2×2 row', () => {
+  it('17: V4★ + H3★ + H4★ + H1★ → V4★ hero gets its own column', () => {
     const items = [V(1, 4), H(2, 3), H(3, 4), H(4, 1)];
     const rows = buildRows(items, DESKTOP);
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(V(L(1),L(2)),V(L(3),L(4)))');
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),V(L(3),L(4))))');
   });
 
   // ---------------------------------------------------------------
@@ -446,7 +463,7 @@ describe('architecture types', () => {
   describe('toImageType', () => {
     it('should convert horizontal image to ImageType with ar=H', () => {
       const item = H(1, 4);
-      const img = toImageType(item, DESKTOP);
+      const img = toImageType(item);
 
       expect(img.source).toBe(item);
       expect(img.ar).toBe('H');
@@ -456,7 +473,7 @@ describe('architecture types', () => {
 
     it('should convert a vertical image with no penalty (retired)', () => {
       const item = V(2, 3);
-      const img = toImageType(item, DESKTOP);
+      const img = toImageType(item);
 
       expect(img.source).toBe(item);
       expect(img.ar).toBe('V');
@@ -466,7 +483,7 @@ describe('architecture types', () => {
 
     it('should handle V1★ → effective 1 (penalty retired)', () => {
       const item = V(3, 1);
-      const img = toImageType(item, DESKTOP);
+      const img = toImageType(item);
 
       expect(img.ar).toBe('V');
       expect(img.numericAR).toBeCloseTo(0.5625);
@@ -475,7 +492,7 @@ describe('architecture types', () => {
 
     it('should preserve source reference', () => {
       const item = H(5, 5);
-      const img = toImageType(item, DESKTOP);
+      const img = toImageType(item);
       expect(img.source).toBe(item); // Same object reference
     });
   });
@@ -483,7 +500,7 @@ describe('architecture types', () => {
   describe('AtomicComponent builders', () => {
     const makeImg = (id: number, ar: 'H' | 'V', rating: number): ImageType => {
       const item = ar === 'H' ? H(id, rating) : V(id, rating);
-      return toImageType(item, DESKTOP);
+      return toImageType(item);
     };
 
     it('single() creates a single-type node', () => {
@@ -598,7 +615,7 @@ describe('architecture types', () => {
   describe('acToBoxTree', () => {
     const makeImg = (id: number, ar: 'H' | 'V', rating: number): ImageType => {
       const item = ar === 'H' ? H(id, rating) : V(id, rating);
-      return toImageType(item, DESKTOP);
+      return toImageType(item);
     };
 
     it('converts single to leaf', () => {
@@ -640,9 +657,9 @@ describe('architecture types', () => {
       const sec1Item = V(2, 3);
       const sec2Item = V(3, 3);
 
-      const main = toImageType(mainItem, DESKTOP);
-      const sec1 = toImageType(sec1Item, DESKTOP);
-      const sec2 = toImageType(sec2Item, DESKTOP);
+      const main = toImageType(mainItem);
+      const sec1 = toImageType(sec1Item);
+      const sec2 = toImageType(sec2Item);
 
       const ac = hPair(single(main), vStack(single(sec1), single(sec2)));
       const bt = acToBoxTree(ac);

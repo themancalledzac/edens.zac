@@ -8,7 +8,6 @@ import {
   getEffectiveRating,
   getHeightDemand,
   getProminence,
-  getProminenceRating,
   getRating,
   getWidthCost,
   isCollectionCard,
@@ -199,37 +198,9 @@ describe('getArExtremeness', () => {
   });
 });
 
-// ===================== getProminenceRating Tests =====================
-
-describe('getProminenceRating', () => {
-  it('returns raw rating for horizontal images (no vertical penalty)', () => {
-    expect(getProminenceRating(createHorizontalImage(1, 5))).toBe(5);
-    expect(getProminenceRating(createHorizontalImage(1, 3))).toBe(3);
-  });
-
-  it('returns raw rating for vertical images (no vertical penalty)', () => {
-    expect(getProminenceRating(createVerticalImage(1, 5))).toBe(5);
-    expect(getProminenceRating(createVerticalImage(1, 3))).toBe(3);
-  });
-
-  it('returns 4 for collection cards', () => {
-    const collectionCard = {
-      id: 1,
-      contentType: 'PARALLAX' as const,
-      collectionType: 'TRAVEL',
-    };
-    expect(getProminenceRating(collectionCard as never)).toBe(4);
-  });
-
-  it('returns 1 for non-image content', () => {
-    const textContent = {
-      id: 1,
-      contentType: 'TEXT' as const,
-      textBlock: { title: 'Test' },
-    };
-    expect(getProminenceRating(textContent as never)).toBe(1);
-  });
-});
+// getProminenceRating deleted — consolidated into getEffectiveRating (the vertical
+// penalty was already retired, making the two identical). getEffectiveRating's
+// suite above covers the rating semantics; getProminence below covers P.
 
 // ===================== getProminence Tests =====================
 
