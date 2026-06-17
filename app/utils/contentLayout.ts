@@ -277,21 +277,28 @@ export function isContentVisibleInCollection(
 ): boolean {
   if (block.visible === false) return false;
 
-  if (block.contentType === 'IMAGE') {
+  if (block.contentType === 'IMAGE' && collectionId) {
     const imageBlock = block as ContentImageModel;
-
-    // Images with an empty/blank imageUrl have no renderable content. On the public
-    // view they would otherwise occupy a layout slot with a "No Image" placeholder,
-    // so exclude them here. Manage uses processContentBlocks(..., filterVisible=false),
-    // which skips this filter, so admins still see + can delete these blocks.
-    if (!imageBlock.imageUrl || imageBlock.imageUrl.trim() === '') return false;
-
-    if (collectionId) {
-      const entry = imageBlock.collections?.find(c => c.collectionId === collectionId);
-      if (entry?.visible === false) return false;
-    }
+    const entry = imageBlock.collections?.find(c => c.collectionId === collectionId);
+    if (entry?.visible === false) return false;
   }
 
+  return true;
+}
+
+/**
+ * Whether a block has renderable content. An IMAGE with an empty/blank imageUrl has none: on the
+ * public view it would otherwise occupy a layout slot with a "No Image" placeholder, so the public
+ * filter ({@link filterVisibleBlocks}) drops it. This is deliberately NOT folded into
+ * {@link isContentVisibleInCollection}: a blank URL is a renderability concern, not a visibility
+ * one, so in manage mode (filterVisible=false) these blocks keep their orderIndex position — admins
+ * still see + can delete them — instead of being sorted to the bottom as if "hidden".
+ */
+export function hasRenderableContent(block: AnyContentModel): boolean {
+  if (block.contentType === 'IMAGE') {
+    const imageBlock = block as ContentImageModel;
+    if (!imageBlock.imageUrl || imageBlock.imageUrl.trim() === '') return false;
+  }
   return true;
 }
 
@@ -305,7 +312,11 @@ function filterVisibleBlocks(
 ): AnyContentModel[] {
   if (!filterVisible) return content;
 
-  return content.filter(block => isContentVisibleInCollection(block, collectionId));
+  // Public view: drop blocks hidden in this collection AND blocks with no renderable content
+  // (blank-URL images). Manage passes filterVisible=false and never reaches here.
+  return content.filter(
+    block => isContentVisibleInCollection(block, collectionId) && hasRenderableContent(block)
+  );
 }
 
 /**
