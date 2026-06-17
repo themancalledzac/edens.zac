@@ -1658,4 +1658,18 @@ describe('area-to-value composition (B1)', () => {
     expect(shapes).toBeLessThanOrEqual(64); // STRUCTURE_CAP
     expect(candidates).toBeLessThan(20000);
   });
+
+  it('over-ceiling fallback picks the AR-closest tree, not the widest hChain', () => {
+    // Three wide panoramas (AR 3) with a square target: the root is forced hPair,
+    // so EVERY candidate row exceeds the soft ceiling (min achievable ≈ 4.5 > 2×1.0).
+    // The composer must fall back to the AR-closest candidate (≈ 4.5,
+    // hPair(vStack(p1,p2), p3)), NOT the flat hChain (≈ 9, the widest possible).
+    // Regression guard for the over-ceiling branch of pickBestComposition.
+    const imgs = [createPanorama(1, 5), createPanorama(2, 5), createPanorama(3, 5)].map(item =>
+      toImageType(item)
+    );
+    const result = buildAtomic(imgs, 1.0);
+    const ar = calculateBoxTreeAspectRatio(acToBoxTree(result));
+    expect(ar).toBeLessThan(5); // flat hChain would be ≈ 9
+  });
 });

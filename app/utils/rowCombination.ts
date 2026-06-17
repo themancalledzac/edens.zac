@@ -664,7 +664,7 @@ function enumerateBoundedShapes(items: ImageType[]): AbstractNode[] {
   const shapes: AbstractNode[] = [];
 
   const keyOf = (n: AbstractNode): string =>
-    n.kind === 'leaf' ? `L${n.img.title}` : `(${keyOf(n.left)}|${keyOf(n.right)})`;
+    n.kind === 'leaf' ? `L${n.img.source.id}` : `(${keyOf(n.left)}|${keyOf(n.right)})`;
 
   const push = (n: AbstractNode): boolean => {
     const k = keyOf(n);
@@ -690,26 +690,6 @@ function enumerateBoundedShapes(items: ImageType[]): AbstractNode[] {
     return scored.map(s => s.idx);
   };
 
-  // Build with the top-K split points at each level. K shrinks with depth to
-  // keep the breadth bounded; STRUCTURE_CAP is the hard stop.
-  const buildShape = (slice: ImageType[], k: number): AbstractNode => {
-    if (slice.length === 1) return { kind: 'leaf', img: slice[0]! };
-    if (slice.length === 2) {
-      return {
-        kind: 'merge',
-        left: { kind: 'leaf', img: slice[0]! },
-        right: { kind: 'leaf', img: slice[1]! },
-      };
-    }
-    // Default to the single best (legacy) split for this builder pass.
-    const best = rankedSplits(slice)[0]! + 1;
-    return {
-      kind: 'merge',
-      left: buildShape(slice.slice(0, best), k),
-      right: buildShape(slice.slice(best), k),
-    };
-  };
-
   // 1) Legacy point-balance tree first (guarantees never-worse-than-today).
   if (!push(splitByPointBalance(items))) return shapes;
 
@@ -730,7 +710,7 @@ function enumerateBoundedShapes(items: ImageType[]): AbstractNode[] {
   for (let lead = 1; lead <= Math.min(2, items.length - 1); lead++) {
     const leftLead: AbstractNode = {
       kind: 'merge',
-      left: buildShape(items.slice(0, lead), 1),
+      left: splitByPointBalance(items.slice(0, lead)),
       right: splitByPointBalance(items.slice(lead)),
     };
     if (!push(leftLead)) return shapes;
@@ -738,7 +718,7 @@ function enumerateBoundedShapes(items: ImageType[]): AbstractNode[] {
     const rightLead: AbstractNode = {
       kind: 'merge',
       left: splitByPointBalance(items.slice(0, trail)),
-      right: buildShape(items.slice(trail), 1),
+      right: splitByPointBalance(items.slice(trail)),
     };
     if (!push(rightLead)) return shapes;
   }
@@ -960,64 +940,53 @@ function pickBestComposition(
   const shapes = enumerateStructures(items);
   if (counters) counters.shapes += shapes.length;
   const target = Math.max(targetAR, ROW_AR_FLOOR);
-  const ceiling = CEILING_MULT > 0 ? CEILING_MULT * target : Infinity;
+  const ceiling = CEILING_MULT * target;
 
+  // In-band winner: lowest equity-primary score among candidates within
+  // [floor, ceiling]. arClosest is the AR-closest candidate overall (by
+  // rowAR_Cost, which hard-penalises sub-floor) and is used ONLY when nothing
+  // lands in band — so a too-wide row beats a taller-than-wide one, and we never
+  // fall through to the flat (widest-possible) hChain.
   let best: AtomicComponent | null = null;
   let bestScore = Infinity;
   let bestArDist = Infinity;
-  // Floor-violating fallback: if NOTHING clears the floor, keep the least-tall.
-  let fallback: AtomicComponent | null = null;
-  let fallbackAR = -Infinity;
+  let arClosest: AtomicComponent | null = null;
+  let arClosestCost = Infinity;
+
+  // Root forced hPair: rows are horizontal by definition, so a candidate's row AR
+  // is the sum of its two children's ARs.
+  const consider = (component: AtomicComponent, rowAR: number): void => {
+    if (counters) counters.candidates += 1;
+    const cost = rowAR_Cost(rowAR, target);
+    if (cost < arClosestCost) {
+      arClosestCost = cost;
+      arClosest = component;
+    }
+    if (rowAR < ROW_AR_FLOOR || rowAR > ceiling) return; // out of band — fallback only
+    const score = equitySpread(component) + LAMBDA * arPenalty(rowAR, target);
+    const arDist = Math.abs(rowAR - target);
+    if (score < bestScore || (score === bestScore && arDist < bestArDist)) {
+      bestScore = score;
+      bestArDist = arDist;
+      best = component;
+    }
+  };
 
   for (const shape of shapes) {
-    // Root forced hPair: enumerate the two children's direction assignments,
-    // combine at the root with hPair (rows are horizontal by definition).
     if (shape.kind === 'leaf') {
-      const ac = single(shape.img);
-      if (counters) counters.candidates += 1;
-      const rowAR = shape.img.numericAR;
-      if (rowAR >= ROW_AR_FLOOR && rowAR <= ceiling) {
-        const score = LAMBDA * arPenalty(rowAR, target);
-        if (score < bestScore) {
-          bestScore = score;
-          best = ac;
-          bestArDist = Math.abs(rowAR - target);
-        }
-      } else if (rowAR > fallbackAR) {
-        fallbackAR = rowAR;
-        fallback = ac;
-      }
+      consider(single(shape.img), shape.img.numericAR);
       continue;
     }
-
     const leftOptions = enumerateAssignments(shape.left);
     const rightOptions = enumerateAssignments(shape.right);
     for (const l of leftOptions) {
       for (const r of rightOptions) {
-        const component = hPair(l.component, r.component);
-        const rowAR = l.ar + r.ar; // root hPair: AR adds
-        if (counters) counters.candidates += 1;
-        if (rowAR < ROW_AR_FLOOR) {
-          if (rowAR > fallbackAR) {
-            fallbackAR = rowAR;
-            fallback = component;
-          }
-          continue;
-        }
-        if (rowAR > ceiling) continue; // soft upper bound — too-wide strip
-        const eq = equitySpread(component);
-        const score = eq + LAMBDA * arPenalty(rowAR, target);
-        const arDist = Math.abs(rowAR - target);
-        if (score < bestScore || (score === bestScore && arDist < bestArDist)) {
-          bestScore = score;
-          bestArDist = arDist;
-          best = component;
-        }
+        consider(hPair(l.component, r.component), l.ar + r.ar);
       }
     }
   }
 
-  return best ?? fallback ?? hChain(items);
+  return best ?? arClosest ?? hChain(items);
 }
 
 // =============================================================================
