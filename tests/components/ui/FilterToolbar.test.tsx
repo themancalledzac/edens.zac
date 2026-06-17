@@ -122,4 +122,31 @@ describe('FilterToolbar', () => {
     );
     expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
   });
+
+  it('hides the reset button for a two-state date sort with no other filters', () => {
+    // The always-on chronological Date sort must not surface the reset (×) on load.
+    renderToolbar({
+      showDateSort: true,
+      dateTwoState: true,
+      filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' },
+    });
+    expect(screen.queryByRole('button', { name: /reset all filters/i })).toBeNull();
+  });
+
+  it('preserves the date direction when resetting in two-state mode', () => {
+    const { onFilterChange } = renderToolbar({
+      showDateSort: true,
+      showHighlyRated: true,
+      dateTwoState: true,
+      filterState: {
+        ...INITIAL_FILTER_STATE,
+        dateSortDirection: 'desc',
+        highlyRatedOnly: true,
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /reset all filters/i }));
+    expect(onFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ dateSortDirection: 'desc', highlyRatedOnly: false })
+    );
+  });
 });

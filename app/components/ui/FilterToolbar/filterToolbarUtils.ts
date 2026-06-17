@@ -25,13 +25,19 @@ export function isOptionAvailable(
 /**
  * Whether any filter is active: a date sort, the highly-rated toggle, the film/digital filter, or
  * any non-empty array dimension. Drives the reset (×) button's visibility.
+ *
+ * In two-state mode ({@link FilterToolbarProps.dateTwoState}) the date sort is structurally
+ * always engaged (CHRONOLOGICAL collections, asc <-> desc, never `off`), so it is NOT counted as
+ * an active filter — otherwise the reset button would show on load for every chronological view.
  */
 export function computeHasActiveFilters(
   filterState: FilterState,
-  arrayKeys: readonly ArrayFilterKey[]
+  arrayKeys: readonly ArrayFilterKey[],
+  dateTwoState = false
 ): boolean {
+  const dateActive = !dateTwoState && filterState.dateSortDirection !== 'off';
   return (
-    filterState.dateSortDirection !== 'off' ||
+    dateActive ||
     filterState.highlyRatedOnly ||
     filterState.filmFilter !== 'off' ||
     arrayKeys.some(k => (filterState[k] as readonly string[]).length > 0)

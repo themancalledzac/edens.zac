@@ -68,4 +68,20 @@ describe('computeHasActiveFilters', () => {
     // selectedTags is non-empty but excluded from the scanned keys -> still no active filter.
     expect(computeHasActiveFilters(state, ['selectedPeople'])).toBe(false);
   });
+
+  it('ignores the always-on date sort in two-state mode', () => {
+    // CHRONOLOGICAL collections run with the Date sort always engaged (asc/desc, never off);
+    // that structural sort must not count as an active filter or the reset button shows on load.
+    const state: FilterState = { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' };
+    expect(computeHasActiveFilters(state, ARRAY_FILTER_KEYS, true)).toBe(false);
+  });
+
+  it('still reports other filters as active in two-state mode', () => {
+    const state: FilterState = {
+      ...INITIAL_FILTER_STATE,
+      dateSortDirection: 'desc',
+      highlyRatedOnly: true,
+    };
+    expect(computeHasActiveFilters(state, ARRAY_FILTER_KEYS, true)).toBe(true);
+  });
 });
