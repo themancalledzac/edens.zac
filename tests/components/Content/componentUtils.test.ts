@@ -8,11 +8,12 @@ import {
   computeTargetAspectRatio,
   createSimpleBoxTree,
   type EffectiveViewport,
+  excludeFailedImages,
   resolveEffectiveViewport,
 } from '@/app/components/Content/componentUtils';
 import { type ViewportDimensions } from '@/app/hooks/useViewport';
 import { type CalculatedContentSize, type RowWithPatternAndSizes } from '@/app/utils/contentLayout';
-import { createImageContent } from '@/tests/fixtures/contentFixtures';
+import { createImageContent, createTextContent } from '@/tests/fixtures/contentFixtures';
 
 const TOL = 64;
 
@@ -200,5 +201,30 @@ describe('createSimpleBoxTree', () => {
       expect(tree.children[0]!.type).toBe('combined');
       expect(tree.children[1]!.type).toBe('leaf');
     }
+  });
+});
+
+describe('excludeFailedImages', () => {
+  it('returns the same array reference when no ids have failed', () => {
+    const content = [createImageContent(1), createImageContent(2)];
+    expect(excludeFailedImages(content, new Set())).toBe(content);
+  });
+
+  it('returns the same array reference when the failed ids match nothing', () => {
+    const content = [createImageContent(1), createImageContent(2)];
+    expect(excludeFailedImages(content, new Set([99]))).toBe(content);
+  });
+
+  it('removes IMAGE blocks whose id is in the failed set', () => {
+    const content = [createImageContent(1), createImageContent(2), createImageContent(3)];
+    const result = excludeFailedImages(content, new Set([2]));
+    expect(result.map(c => c.id)).toEqual([1, 3]);
+  });
+
+  it('never removes non-IMAGE content even when its id collides with a failed id', () => {
+    // A TEXT block and an IMAGE block share id 5; only the IMAGE must be dropped.
+    const content = [createTextContent(5), createImageContent(5)];
+    const result = excludeFailedImages(content, new Set([5]));
+    expect(result.map(c => c.contentType)).toEqual(['TEXT']);
   });
 });
