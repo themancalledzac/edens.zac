@@ -1,9 +1,11 @@
 import {
   ARRAY_FILTER_KEYS,
   cycleDateSort,
+  cycleDateSortTwoState,
   cycleFilmFilter,
   type FilterState,
   INITIAL_FILTER_STATE,
+  initialDateSortDirection,
   toggleArrayFilter,
 } from '@/app/types/GalleryFilter';
 
@@ -28,6 +30,21 @@ describe('FilterState helpers', () => {
     expect(cycleDateSort('off')).toBe('asc');
     expect(cycleDateSort('asc')).toBe('desc');
     expect(cycleDateSort('desc')).toBe('off');
+  });
+
+  it('cycleDateSortTwoState toggles only between asc and desc (never off)', () => {
+    expect(cycleDateSortTwoState('asc')).toBe('desc');
+    expect(cycleDateSortTwoState('desc')).toBe('asc');
+    // 'off' is not a reachable state in the two-state cycle; defaulting to asc
+    // keeps a chronological collection sorted oldest-first if it somehow lands there.
+    expect(cycleDateSortTwoState('off')).toBe('asc');
+  });
+
+  it('initialDateSortDirection defaults to asc for CHRONOLOGICAL, off otherwise', () => {
+    expect(initialDateSortDirection('CHRONOLOGICAL')).toBe('asc');
+    expect(initialDateSortDirection('ORDERED')).toBe('off');
+    expect(initialDateSortDirection('FIXED')).toBe('off');
+    expect(initialDateSortDirection()).toBe('off');
   });
 
   it('cycleFilmFilter uses one canonical order: off -> film -> digital -> off', () => {

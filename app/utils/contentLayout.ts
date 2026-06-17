@@ -277,10 +277,19 @@ export function isContentVisibleInCollection(
 ): boolean {
   if (block.visible === false) return false;
 
-  if (block.contentType === 'IMAGE' && collectionId) {
+  if (block.contentType === 'IMAGE') {
     const imageBlock = block as ContentImageModel;
-    const entry = imageBlock.collections?.find(c => c.collectionId === collectionId);
-    if (entry?.visible === false) return false;
+
+    // Images with an empty/blank imageUrl have no renderable content. On the public
+    // view they would otherwise occupy a layout slot with a "No Image" placeholder,
+    // so exclude them here. Manage uses processContentBlocks(..., filterVisible=false),
+    // which skips this filter, so admins still see + can delete these blocks.
+    if (!imageBlock.imageUrl || imageBlock.imageUrl.trim() === '') return false;
+
+    if (collectionId) {
+      const entry = imageBlock.collections?.find(c => c.collectionId === collectionId);
+      if (entry?.visible === false) return false;
+    }
   }
 
   return true;
@@ -473,7 +482,17 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   if (collection.siblings && collection.siblings.length > 0) {
     for (const sib of collection.siblings) {
       if (sib.slug) {
-        items.push({ type: 'collection', value: sib.name, slug: `/${sib.slug}` });
+        const siblingItem: TextBlockItem = {
+          type: 'collection',
+          value: sib.name,
+          slug: `/${sib.slug}`,
+        };
+        // Cover image (CloudFront) — present once the backend ships it. Renders the
+        // sibling as a cover card; absent siblings stay plain text links.
+        if (sib.coverImageUrl) {
+          siblingItem.coverImageUrl = sib.coverImageUrl;
+        }
+        items.push(siblingItem);
       }
     }
   }

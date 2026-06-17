@@ -72,6 +72,25 @@ export function cycleDateSort(current: DateSortDirection): DateSortDirection {
 }
 
 /**
+ * Two-state date-sort cycle for views where the date filter is always engaged
+ * (e.g. CHRONOLOGICAL collections, which are inherently date-ordered): asc <-> desc,
+ * never `off`. `off` is not reachable here, but is mapped to `asc` defensively so the
+ * collection stays oldest-first if it ever lands there.
+ */
+export function cycleDateSortTwoState(current: DateSortDirection): DateSortDirection {
+  return current === 'asc' ? 'desc' : 'asc';
+}
+
+/**
+ * Initial date-sort direction for a collection. CHRONOLOGICAL collections are already
+ * stored oldest-first (see contentLayout `sortContentByCreatedAt`), so their Date filter
+ * defaults ON at `asc` to match that order; every other view starts neutral (`off`).
+ */
+export function initialDateSortDirection(displayMode?: string): DateSortDirection {
+  return displayMode === 'CHRONOLOGICAL' ? 'asc' : 'off';
+}
+
+/**
  * The single canonical film-filter cycle: off -> film -> digital -> off.
  */
 export function cycleFilmFilter(current: FilmFilter): FilmFilter {

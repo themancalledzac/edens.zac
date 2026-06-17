@@ -8,6 +8,7 @@ import {
   ARRAY_FILTER_KEYS,
   type ArrayFilterKey,
   cycleDateSort,
+  cycleDateSortTwoState,
   cycleFilmFilter,
   type FilterState,
   INITIAL_FILTER_STATE,
@@ -44,6 +45,12 @@ export interface FilterToolbarProps {
   /** Aggregate counts for the highly-rated / film / digital toggles. */
   counts?: ToolbarCounts;
   showDateSort?: boolean;
+  /**
+   * When true, the Date chip is always active and toggles only between directions
+   * (asc <-> desc, never `off`) — for views that are inherently date-ordered (CHRONOLOGICAL
+   * collections). Defaults to false (the neutral off/asc/desc tri-state).
+   */
+  dateTwoState?: boolean;
   showHighlyRated?: boolean;
   showFilm?: boolean;
   /** When provided, renders the row-density slider (min 1, max {@link densityMax}). */
@@ -70,6 +77,7 @@ export function FilterToolbar({
   filteredAvailable,
   counts,
   showDateSort = false,
+  dateTwoState = false,
   showHighlyRated = false,
   showFilm = false,
   density,
@@ -99,9 +107,14 @@ export function FilterToolbar({
       {showDateSort && (
         <FilterChip
           label={DATE_LABELS[filterState.dateSortDirection]}
-          active={filterState.dateSortDirection !== 'off'}
+          // In two-state mode the date sort is always engaged, so the chip stays active.
+          active={dateTwoState || filterState.dateSortDirection !== 'off'}
           onToggle={() =>
-            onFilterChange({ dateSortDirection: cycleDateSort(filterState.dateSortDirection) })
+            onFilterChange({
+              dateSortDirection: dateTwoState
+                ? cycleDateSortTwoState(filterState.dateSortDirection)
+                : cycleDateSort(filterState.dateSortDirection),
+            })
           }
         />
       )}

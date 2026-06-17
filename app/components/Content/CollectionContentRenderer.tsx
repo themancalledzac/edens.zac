@@ -29,8 +29,16 @@ import {
   buildWrapperClassName,
   resolveValidDimensions,
 } from '@/app/utils/contentRendererUtils';
+import { isLocalEnvironment } from '@/app/utils/environment';
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
+import { manageHref } from '@/app/utils/manageUrl';
+
+/**
+ * Sentinel content id used by createCoverImageBlock (app/utils/contentLayout.ts) for the
+ * header cover image. Lets the renderer single out the cover without a new prop.
+ */
+const COVER_IMAGE_CONTENT_ID = -1;
 
 import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
@@ -157,6 +165,26 @@ export default function CollectionContentRenderer({
   const collectionFilter = useCollectionFilter();
   const inlineEdit = useInlineEdit();
 
+  // Localhost-only shortcut into manage mode, pinned to the header cover image. Shown only on the
+  // public view (manage path sets currentCollectionId) for the cover block (contentId === -1).
+  const showCoverUpdateShortcut =
+    contentType === 'IMAGE' &&
+    contentId === COVER_IMAGE_CONTENT_ID &&
+    currentCollectionId == null &&
+    !!collectionSlug &&
+    isLocalEnvironment();
+
+  const handleCoverUpdateClick = useCallback(
+    (event: { stopPropagation: () => void }) => {
+      // Stop the click from bubbling to the parallax wrapper (which opens fullscreen).
+      event.stopPropagation();
+      if (collectionSlug) {
+        router.push(manageHref(collectionSlug));
+      }
+    },
+    [collectionSlug, router]
+  );
+
   if (contentType === 'TEXT') {
     if (!textItems || textItems.length === 0) {
       return null;
@@ -281,22 +309,63 @@ export default function CollectionContentRenderer({
                 </div>
               </div>
             )}
-            {collectionItems.length > 0 && (
-              <div className={cbStyles.metadataSiblingsContainer}>
-                <span className={cbStyles.metadataSiblingLabel}>Related:</span>
-                <div className={cbStyles.metadataSiblingsRow}>
-                  {collectionItems.map(item => (
-                    <Link
-                      key={`sibling-${contentId}-${item.slug}`}
-                      href={item.slug!}
-                      className={cbStyles.metadataSiblingCollection}
-                    >
-                      {item.value}
-                    </Link>
-                  ))}
+            {collectionItems.length > 0 &&
+              (collectionItems.some(item => item.coverImageUrl) ? (
+                // Card path: at least one sibling has a cover image. Render a wrapping
+                // row of ~2:1 cover cards; siblings still lacking a cover fall back to a
+                // text-link chip inside the same row (no blank placeholder).
+                <div className={cbStyles.metadataSiblingsContainer}>
+                  <span className={cbStyles.metadataSiblingLabel}>Related:</span>
+                  <div className={cbStyles.metadataSiblingCardRow}>
+                    {collectionItems.map(item =>
+                      item.coverImageUrl ? (
+                        <Link
+                          key={`sibling-${contentId}-${item.slug}`}
+                          href={item.slug!}
+                          className={cbStyles.metadataSiblingCard}
+                          aria-label={item.value}
+                        >
+                          <Image
+                            src={item.coverImageUrl}
+                            alt={item.value}
+                            fill
+                            sizes="(max-width: 768px) 140px, 200px"
+                            className={cbStyles.metadataSiblingCardImage}
+                          />
+                          <span className={cbStyles.metadataSiblingCardOverlay}>
+                            <span className={cbStyles.metadataSiblingCardTitle}>{item.value}</span>
+                          </span>
+                        </Link>
+                      ) : (
+                        <Link
+                          key={`sibling-${contentId}-${item.slug}`}
+                          href={item.slug!}
+                          className={cbStyles.metadataSiblingChip}
+                        >
+                          {item.value}
+                        </Link>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                // Fallback path: no sibling has a cover image (e.g. backend not yet
+                // deployed). Keep the original plain text-link row.
+                <div className={cbStyles.metadataSiblingsContainer}>
+                  <span className={cbStyles.metadataSiblingLabel}>Related:</span>
+                  <div className={cbStyles.metadataSiblingsRow}>
+                    {collectionItems.map(item => (
+                      <Link
+                        key={`sibling-${contentId}-${item.slug}`}
+                        href={item.slug!}
+                        className={cbStyles.metadataSiblingCollection}
+                      >
+                        {item.value}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ))}
             {isClientGallery && collectionSlug && (
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
@@ -320,6 +389,7 @@ export default function CollectionContentRenderer({
                     : null
                 }
                 showDateSort={collectionFilter.filterOptions.showDateSort}
+                dateTwoState={collectionFilter.dateTwoState}
                 showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
                 density={collectionFilter.density}
                 densityMax={collectionFilter.densityMax}
@@ -440,22 +510,51 @@ export default function CollectionContentRenderer({
   }
 
   if (failedImageIds.has(contentId)) {
+    // currentCollectionId is only threaded down on the manage path (EditModeLayer);
+    // the public CollectionPageClient grid, TaxonomyPage, and LocationPage never set it.
+    const isManage = currentCollectionId != null;
+
+    // Public view: a URL that 404s/fails to load has nothing renderable, so drop it.
+    // We intentionally leave the already-allocated grid slot empty (a small gap)
+    // rather than re-flowing the BoxTree layout.
+    if (!isManage) {
+      return null;
+    }
+
     const placeholderWidth = width || 300;
     const placeholderHeight = height || (placeholderWidth * 2) / 3;
+    const placeholderClassName = `${buildWrapperClassName(className, cbStyles, {
+      includeDragContainer: false,
+      enableParallax: false,
+      isMobile,
+      hasClickHandler,
+      isSelected: false,
+    })} ${cbStyles.contentBox}`;
 
+    // Manage view: keep the "Image unavailable" box and make it clickable so the admin
+    // can open the edit/delete modal and remove the broken image. Mirrors the click
+    // wiring of the empty-URL ("No Image") placeholder above.
     return (
       <div
         key={contentId}
-        className={`${buildWrapperClassName(className, cbStyles, {
-          includeDragContainer: false,
-          enableParallax: false,
-          isMobile,
-          hasClickHandler: false,
-          isSelected: false,
-        })} ${cbStyles.contentBox}`}
+        className={placeholderClassName}
+        onClick={hasClickHandler ? handleClick : undefined}
+        role={hasClickHandler ? 'button' : undefined}
+        tabIndex={hasClickHandler ? 0 : undefined}
+        onKeyDown={
+          hasClickHandler
+            ? e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleClick();
+                }
+              }
+            : undefined
+        }
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
+          cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
         <div
@@ -598,6 +697,15 @@ export default function CollectionContentRenderer({
       <div className={cbStyles.imageWrapper} onClick={handleClick}>
         {imageWrapperContent}
       </div>
+      {showCoverUpdateShortcut && (
+        <button
+          type="button"
+          className={cbStyles.coverUpdateShortcut}
+          onClick={handleCoverUpdateClick}
+        >
+          Update
+        </button>
+      )}
       {!enableParallax && (
         <ImageOverlays
           contentType={contentType}

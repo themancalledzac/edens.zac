@@ -127,6 +127,7 @@ export interface TextBlockItem {
   value: string;
   slug?: string; // URL slug for navigation (location, tag, and sibling-collection items)
   label?: string; // Optional display label (e.g., "Date:", "Location:")
+  coverImageUrl?: string; // Cover image (CloudFront) for sibling-collection items — renders as a card; absent => text link
 }
 
 /**

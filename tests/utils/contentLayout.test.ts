@@ -759,6 +759,33 @@ describe('isContentVisibleInCollection', () => {
     // collectionId 42 not in collections array — should default to visible
     expect(isContentVisibleInCollection(block, 42)).toBe(true);
   });
+
+  it('should return false for an IMAGE with an empty imageUrl', () => {
+    const block = createImageContent(1, { visible: true, imageUrl: '' });
+    expect(isContentVisibleInCollection(block)).toBe(false);
+  });
+
+  it('should return false for an IMAGE with a blank (whitespace-only) imageUrl', () => {
+    const block = createImageContent(1, { visible: true, imageUrl: '   ' });
+    expect(isContentVisibleInCollection(block)).toBe(false);
+  });
+
+  it('should return true for an IMAGE with a valid imageUrl', () => {
+    const block = createImageContent(1, {
+      visible: true,
+      imageUrl: 'https://example.com/image-1.jpg',
+    });
+    expect(isContentVisibleInCollection(block)).toBe(true);
+  });
+
+  it('should return false for an IMAGE with empty imageUrl even when its collection entry is visible', () => {
+    const block = createImageContent(1, {
+      visible: true,
+      imageUrl: '',
+      collections: [{ collectionId: 42, visible: true, orderIndex: 0 }],
+    });
+    expect(isContentVisibleInCollection(block, 42)).toBe(false);
+  });
 });
 
 describe('convertCollectionContentToImage', () => {
@@ -1035,6 +1062,37 @@ describe('createHeaderRow', () => {
       expect(collectionItems).toHaveLength(1);
       expect(collectionItems[0]?.value).toBe('Has Slug');
       expect(collectionItems[0]?.slug).toBe('/has-slug');
+    });
+
+    it('should thread coverImageUrl onto the collection item when present', () => {
+      const collection = createCollectionModel(1, {
+        siblings: [
+          {
+            id: 70,
+            name: 'With Cover',
+            slug: 'with-cover',
+            coverImageUrl: 'https://cdn.example.com/with-cover.jpg',
+          },
+          { id: 71, name: 'No Cover', slug: 'no-cover' },
+        ],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems).toHaveLength(2);
+      expect(collectionItems[0]).toEqual({
+        type: 'collection',
+        value: 'With Cover',
+        slug: '/with-cover',
+        coverImageUrl: 'https://cdn.example.com/with-cover.jpg',
+      });
+      // No coverImageUrl => key omitted entirely (stays a plain text-link item).
+      expect(collectionItems[1]).toEqual({
+        type: 'collection',
+        value: 'No Cover',
+        slug: '/no-cover',
+      });
+      expect(collectionItems[1]).not.toHaveProperty('coverImageUrl');
     });
   });
 
