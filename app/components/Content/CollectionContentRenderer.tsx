@@ -195,9 +195,6 @@ export default function CollectionContentRenderer({
     const descriptionItem = textItems.find(item => item.type === 'description');
     const tagItems = textItems.filter(item => item.type === 'tag');
     const filterItems = textItems.filter(item => item.type === 'text');
-    // Only collection items that actually carry a slug are navigable. contentLayout only emits
-    // these with a slug, but narrow here so the links below need no non-null assertion — a
-    // slug-less collection item is simply skipped rather than rendering a broken href.
     const collectionItems = textItems.filter(
       (item): item is (typeof textItems)[number] & { slug: string } =>
         item.type === 'collection' && item.slug != null
@@ -520,10 +517,6 @@ export default function CollectionContentRenderer({
     // the public CollectionPageClient grid, TaxonomyPage, and LocationPage never set it.
     const isManage = currentCollectionId != null;
 
-    // Public view: a failed-to-load image has nothing renderable. onImageLoadError (wired below)
-    // bubbles the failure up to the Component, which drops the block via excludeFailedImages and
-    // reflows the layout — so the block is normally removed before this re-renders. Returning null
-    // here is the safety-net render for the frame(s) before that reflow lands.
     if (!isManage) {
       return null;
     }

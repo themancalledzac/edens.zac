@@ -287,12 +287,9 @@ export function isContentVisibleInCollection(
 }
 
 /**
- * Whether a block has renderable content. An IMAGE with an empty/blank imageUrl has none: on the
- * public view it would otherwise occupy a layout slot with a "No Image" placeholder, so the public
- * filter ({@link filterVisibleBlocks}) drops it. This is deliberately NOT folded into
- * {@link isContentVisibleInCollection}: a blank URL is a renderability concern, not a visibility
- * one, so in manage mode (filterVisible=false) these blocks keep their orderIndex position — admins
- * still see + can delete them — instead of being sorted to the bottom as if "hidden".
+ * Whether a block has renderable content — false for an IMAGE with a blank imageUrl. Kept separate
+ * from {@link isContentVisibleInCollection} (a visibility concern) so the public filter drops these
+ * while manage keeps them in their orderIndex position.
  */
 export function hasRenderableContent(block: AnyContentModel): boolean {
   if (block.contentType === 'IMAGE') {
@@ -312,8 +309,6 @@ function filterVisibleBlocks(
 ): AnyContentModel[] {
   if (!filterVisible) return content;
 
-  // Public view: drop blocks hidden in this collection AND blocks with no renderable content
-  // (blank-URL images). Manage passes filterVisible=false and never reaches here.
   return content.filter(
     block => isContentVisibleInCollection(block, collectionId) && hasRenderableContent(block)
   );
