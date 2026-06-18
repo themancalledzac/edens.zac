@@ -86,6 +86,26 @@ describe('TagsPeopleSection', () => {
     });
   });
 
+  it('renders the People options alphabetically (case-insensitive) regardless of input order', () => {
+    const unsortedPeople: ContentPersonModel[] = [
+      { id: 1, name: 'Zara', slug: 'zara' },
+      { id: 2, name: 'adam', slug: 'adam' },
+      { id: 3, name: 'Mia', slug: 'mia' },
+    ];
+    render(<TagsPeopleSection {...makeProps({ availablePeople: unsortedPeople })} />);
+
+    const peopleTrigger = screen.getByRole('button', { name: /people:.*click to change/i });
+    fireEvent.click(peopleTrigger);
+
+    const names = unsortedPeople.map(p => p.name);
+    const optionOrder = screen
+      .getAllByRole('button')
+      .map(b => b.textContent?.trim() ?? '')
+      .filter(text => names.includes(text));
+
+    expect(optionOrder).toEqual(['adam', 'Mia', 'Zara']);
+  });
+
   it('onAddNew for Tags appends to the current tags list', () => {
     const updateStateField = jest.fn();
     const existingTag: ContentTagModel = { id: 5, name: 'existing', slug: 'existing' };

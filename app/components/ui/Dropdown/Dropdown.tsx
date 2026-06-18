@@ -92,8 +92,9 @@ interface DropdownProps<T extends MetadataItem> {
  *
  * UX: the value box itself is the click target. Clicking it toggles the
  * dropdown. The dropdown ends with a big "+" row when `allowAddNew` is set,
- * which opens the inline add-new form. Selecting an item closes the dropdown
- * — single AND multi-select — for consistency across Camera/Lens/Film/Tags/People.
+ * which opens the inline add-new form. Single-select fields (Camera/Lens/Film)
+ * close on pick since one value is terminal; multi-select fields (Tags/People)
+ * stay open so several items can be toggled in one pass, closing on click-outside.
  */
 export default function Dropdown<T extends MetadataItem>({
   label,
@@ -159,13 +160,15 @@ export default function Dropdown<T extends MetadataItem>({
 
   const handleSelectItem = (item: T) => {
     if (multiSelect) {
+      // Multi-select (Tags, People): toggle and KEEP the list open so several items
+      // can be picked in one pass. The list closes on click-outside
+      // (useClickOutsideMultiple) — not on each pick.
       onChange(toggleMultiSelection(selectedValues, item, getDisplayName));
     } else {
+      // Single-select (Camera, Lens, Film): one value is terminal, so close on pick.
       onChange(item);
+      setIsSelectingFromDropdown(false);
     }
-    // Close on every select — single OR multi. To add another item the user
-    // re-opens the dropdown. Same UX across every metadata field.
-    setIsSelectingFromDropdown(false);
   };
 
   const handleRemoveItem = (e: React.MouseEvent | React.KeyboardEvent, item: T) => {

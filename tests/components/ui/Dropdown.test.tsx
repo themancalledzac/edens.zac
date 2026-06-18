@@ -60,6 +60,17 @@ describe('Dropdown', () => {
     expect(screen.getByRole('button', { name: 'Remove Mountains' })).toBeInTheDocument();
   });
 
+  it('multi-select keeps the list open after a select (closes only on outside click)', () => {
+    const onChange = jest.fn();
+    render(<Dropdown<TagItem> label="Tags" multiSelect options={OPTIONS} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: /tags:/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ocean' }));
+    expect(onChange).toHaveBeenCalledWith([OPTIONS[1]]);
+    // List stays open: both options remain in the DOM after the pick.
+    expect(screen.getByRole('button', { name: 'Mountains' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ocean' })).toBeInTheDocument();
+  });
+
   it('inline add-new: opens the form, validates, and calls onAddNew with processed data', () => {
     const onAddNew = jest.fn();
     render(

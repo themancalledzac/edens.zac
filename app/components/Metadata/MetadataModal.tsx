@@ -249,7 +249,14 @@ export default function MetadataModal({
                   disabled: !hasChanges || saving,
                   onClick: () => formRef.current?.requestSubmit(),
                 },
-                { key: 'cancel', label: 'Cancel', onClick: handleCancel, disabled: saving },
+                // "Close" when nothing has been edited (nothing to discard); "Cancel" once
+                // there are unsaved changes, signalling the click abandons them.
+                {
+                  key: 'cancel',
+                  label: hasChanges ? 'Cancel' : 'Close',
+                  onClick: handleCancel,
+                  disabled: saving,
+                },
               ]}
             />
           </form>

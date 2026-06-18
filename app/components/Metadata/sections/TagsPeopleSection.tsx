@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import { PERSON_ADD_NEW_FIELDS } from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
@@ -21,6 +23,15 @@ export default function TagsPeopleSection({
   availableTags,
   availablePeople,
 }: TagsPeopleSectionProps): React.JSX.Element {
+  // People list alphabetical (case-insensitive), matching TagsSelector. Copy before sorting.
+  const sortedPeople = useMemo(
+    () =>
+      [...availablePeople].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      ),
+    [availablePeople]
+  );
+
   return (
     <div className={modalStyles.formSection}>
       <h3 className={modalStyles.sectionHeading}>Tags & People</h3>
@@ -35,7 +46,7 @@ export default function TagsPeopleSection({
         <Dropdown<ContentPersonModel>
           label="People"
           multiSelect
-          options={availablePeople}
+          options={sortedPeople}
           selectedValues={updateState.people || []}
           onChange={value => {
             const people = (value as ContentPersonModel[] | null) ?? [];
