@@ -447,7 +447,8 @@ export function processContentBlocks(
 }
 
 /**
- * Build metadata items array from collection fields (date, location, description, tags, siblings).
+ * Build metadata items array from collection fields (date, location, description, tags, and
+ * related collections — both siblings and parents).
  */
 function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   const items: TextBlockItem[] = [];
@@ -485,22 +486,25 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
     }
   }
 
-  if (collection.siblings && collection.siblings.length > 0) {
-    for (const sib of collection.siblings) {
-      if (sib.slug) {
-        const siblingItem: TextBlockItem = {
-          type: 'collection',
-          value: sib.name,
-          slug: `/${sib.slug}`,
-        };
-        // Cover image (CloudFront) — present once the backend ships it. Renders the
-        // sibling as a cover card; absent siblings stay plain text links.
-        if (sib.coverImageUrl) {
-          siblingItem.coverImageUrl = sib.coverImageUrl;
-        }
-        items.push(siblingItem);
-      }
+  // "Related" collections: curated siblings (peers) followed by the parent collections this
+  // one belongs to. Both share the CollectionListModel shape and render identically — a cover
+  // card when coverImageUrl is present (shipped by the backend), a plain text link otherwise.
+  // Dedup by slug so a collection that is both a sibling and a parent isn't listed — or
+  // React-keyed — twice; siblings win the slot since they come first.
+  const relatedCollections = [...(collection.siblings ?? []), ...(collection.parents ?? [])];
+  const seenRelatedSlugs = new Set<string>();
+  for (const related of relatedCollections) {
+    if (!related.slug || seenRelatedSlugs.has(related.slug)) continue;
+    seenRelatedSlugs.add(related.slug);
+    const relatedItem: TextBlockItem = {
+      type: 'collection',
+      value: related.name,
+      slug: `/${related.slug}`,
+    };
+    if (related.coverImageUrl) {
+      relatedItem.coverImageUrl = related.coverImageUrl;
     }
+    items.push(relatedItem);
   }
 
   return items;
