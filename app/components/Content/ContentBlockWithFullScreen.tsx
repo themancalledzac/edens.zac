@@ -86,6 +86,8 @@ export default function ContentBlockWithFullScreen({
     loadedImageIds,
     setLoadedImageIds,
     modalRef,
+    zoomTargetRef,
+    isZoomed,
     hideImage,
     isSwiping,
     showMetadata,
@@ -230,6 +232,8 @@ export default function ContentBlockWithFullScreen({
           loadedImageIds={loadedImageIds}
           setLoadedImageIds={setLoadedImageIds}
           modalRef={modalRef}
+          zoomTargetRef={zoomTargetRef}
+          isZoomed={isZoomed}
           hideImage={hideImage}
           isSwiping={isSwiping}
           showMetadata={showMetadata}

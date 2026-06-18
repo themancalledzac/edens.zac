@@ -15,6 +15,16 @@ import {
 import { INTERACTION } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import type { ViewableContent } from '@/app/types/Content';
+import {
+  buildTransform,
+  clampScale,
+  clampTranslate,
+  touchDistance,
+} from '@/app/utils/imageZoomPan';
+
+/** Max gap (ms) and movement (px) between two taps to count as a double-tap. */
+const DOUBLE_TAP_MS = 300;
+const DOUBLE_TAP_SLOP = 30;
 
 const SCROLL_BLOCKING_KEYS = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'];
 
@@ -50,6 +60,10 @@ export function useFullScreenImage(): {
   loadedImageIds: Set<number>;
   showMetadata: boolean;
   modalRef: RefObject<HTMLDivElement | null>;
+  /** Attach to the element wrapping ONLY the media — receives the pinch-zoom transform. */
+  zoomTargetRef: RefObject<HTMLDivElement | null>;
+  /** True while the image is pinch-zoomed past 1×; gates swipe-nav and tap-to-close. */
+  isZoomed: boolean;
   isSwiping: RefObject<boolean>;
   showImage: (image: ImageBlock, allImages?: ImageBlock[]) => void;
   hideImage: (e?: MouseEvent) => void;
@@ -68,6 +82,36 @@ export function useFullScreenImage(): {
   const touchStartY = useRef<number>(0);
   const modalRef = useRef<HTMLDivElement>(null);
   const isSwiping = useRef<boolean>(false);
+
+  // --- Pinch-zoom / pan gesture state -------------------------------------------------
+  // The live transform lives in refs and is written imperatively to zoomTargetRef during a
+  // gesture (avoids a React re-render per touchmove frame). `isZoomed` mirrors scale > 1 as
+  // state because it gates *render-affecting* behavior (swipe-nav, tap-to-close).
+  const zoomTargetRef = useRef<HTMLDivElement>(null);
+  const scaleRef = useRef<number>(1);
+  const txRef = useRef<number>(0);
+  const tyRef = useRef<number>(0);
+  const [isZoomed, setIsZoomed] = useState<boolean>(false);
+  // Two-finger pinch in progress: starting finger gap + scale to derive the live scale from.
+  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
+  // One-finger pan in progress (only while zoomed): last seen finger position.
+  const panRef = useRef<{ lastX: number; lastY: number } | null>(null);
+  // Whether the finger actually moved this gesture — separates a real pan from a
+  // stationary tap (which, while zoomed, must reach double-tap detection, not be eaten as a pan).
+  const didMoveRef = useRef<boolean>(false);
+  // Last tap (time + position) for double-tap-to-reset detection.
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+
+  const resetZoom = useCallback(() => {
+    scaleRef.current = 1;
+    txRef.current = 0;
+    tyRef.current = 0;
+    pinchRef.current = null;
+    panRef.current = null;
+    const el = zoomTargetRef.current;
+    if (el) el.style.transform = '';
+    setIsZoomed(false);
+  }, []);
 
   // Tracks whether *we* pushed a history entry for the open modal, so hideImage
   // pops exactly one entry and popstate (Back) is distinguished from our own pop.
@@ -259,55 +303,167 @@ export function useFullScreenImage(): {
     );
   }, []);
 
+  // Zoom is per-image: reset to 1× whenever the viewer moves to a different photo so the
+  // next one never opens pre-zoomed or pre-panned.
+  useEffect(() => {
+    resetZoom();
+  }, [fullScreenState?.currentIndex, resetZoom]);
+
   useEffect(() => {
     if (!isOpen || !modalRef.current) return;
 
     const modalElement = modalRef.current;
 
+    const applyTransform = () => {
+      const el = zoomTargetRef.current;
+      if (el) el.style.transform = buildTransform(scaleRef.current, txRef.current, tyRef.current);
+    };
+
+    // Unscaled size of the media along each axis — the bound for pan clamping.
+    const zoomSize = (): { w: number; h: number } => {
+      const el = zoomTargetRef.current;
+      return el ? { w: el.clientWidth, h: el.clientHeight } : { w: 0, h: 0 };
+    };
+
+    // Mark that a gesture (pinch/pan/double-tap) just ended so the synthetic click it
+    // produces doesn't also fire tap-to-close. Cleared on the next touchstart.
+    const suppressTapClose = () => {
+      isSwiping.current = true;
+    };
+
     const handleTouchStart = (e: TouchEvent) => {
-      if (!e.touches[0]) return;
-      touchStartX.current = e.touches[0].clientX;
-      touchStartY.current = e.touches[0].clientY;
       isSwiping.current = false;
+      didMoveRef.current = false;
+
+      // Two fingers → start a pinch (overrides any swipe/pan).
+      if (e.touches.length === 2 && e.touches[0] && e.touches[1]) {
+        pinchRef.current = {
+          startDist: touchDistance(e.touches[0], e.touches[1]),
+          startScale: scaleRef.current,
+        };
+        panRef.current = null;
+        e.preventDefault();
+        return;
+      }
+
+      const t = e.touches[0];
+      if (!t) return;
+      touchStartX.current = t.clientX;
+      touchStartY.current = t.clientY;
+      // While zoomed, a single finger pans the image instead of navigating.
+      panRef.current = scaleRef.current > 1 ? { lastX: t.clientX, lastY: t.clientY } : null;
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (!e.touches[0] || isMetadataControl(e.target as HTMLElement)) return;
-
-      const currentX = e.touches[0].clientX;
-      const currentY = e.touches[0].clientY;
-      const deltaX = currentX - touchStartX.current;
-      const deltaY = currentY - touchStartY.current;
-
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-        isSwiping.current = true;
+      // Pinch: scale relative to the gap at pinch-start, then re-clamp the pan offsets
+      // (zooming out can push a previously-valid pan past the new, smaller bound).
+      if (pinchRef.current && e.touches.length === 2 && e.touches[0] && e.touches[1]) {
+        const dist = touchDistance(e.touches[0], e.touches[1]);
+        const next = clampScale(pinchRef.current.startScale * (dist / pinchRef.current.startDist));
+        scaleRef.current = next;
+        didMoveRef.current = true;
+        const { w, h } = zoomSize();
+        txRef.current = clampTranslate(txRef.current, next, w);
+        tyRef.current = clampTranslate(tyRef.current, next, h);
+        applyTransform();
         e.preventDefault();
+        return;
+      }
+
+      // Pan: only while zoomed and dragging a single finger.
+      if (panRef.current && scaleRef.current > 1 && e.touches.length === 1 && e.touches[0]) {
+        const t = e.touches[0];
+        const dx = t.clientX - panRef.current.lastX;
+        const dy = t.clientY - panRef.current.lastY;
+        panRef.current = { lastX: t.clientX, lastY: t.clientY };
+        didMoveRef.current = true;
+        const { w, h } = zoomSize();
+        txRef.current = clampTranslate(txRef.current + dx, scaleRef.current, w);
+        tyRef.current = clampTranslate(tyRef.current + dy, scaleRef.current, h);
+        applyTransform();
+        e.preventDefault();
+        return;
+      }
+
+      // Swipe-to-navigate: only at 1× (zoomed gestures pan, not navigate).
+      if (scaleRef.current === 1 && e.touches[0] && !isMetadataControl(e.target as HTMLElement)) {
+        const deltaX = e.touches[0].clientX - touchStartX.current;
+        const deltaY = e.touches[0].clientY - touchStartY.current;
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+          isSwiping.current = true;
+          e.preventDefault();
+        }
       }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (!e.changedTouches[0]) return;
+      // A pinch finished (dropped below two fingers).
+      if (pinchRef.current && e.touches.length < 2) {
+        pinchRef.current = null;
+        setIsZoomed(scaleRef.current > 1);
+        suppressTapClose();
+        // A finger still down after the pinch → hand off to panning from here.
+        if (e.touches[0] && scaleRef.current > 1) {
+          panRef.current = { lastX: e.touches[0].clientX, lastY: e.touches[0].clientY };
+        }
+        return;
+      }
 
-      const touchEndX = e.changedTouches[0].clientX;
-      const touchEndY = e.changedTouches[0].clientY;
-      const deltaX = touchEndX - touchStartX.current;
-      const deltaY = touchEndY - touchStartY.current;
-
-      if (
-        isSwiping.current &&
-        Math.abs(deltaX) > Math.abs(deltaY) &&
-        Math.abs(deltaX) > INTERACTION.swipeThreshold
-      ) {
-        if (deltaX > 0) {
-          navigateToPrevious();
-        } else {
-          navigateToNext();
+      // A pan finished. Only a gesture that actually MOVED counts as a pan — a stationary
+      // touch while zoomed falls through so two of them can register as a double-tap reset.
+      if (panRef.current && e.touches.length === 0) {
+        panRef.current = null;
+        if (didMoveRef.current) {
+          suppressTapClose();
+          return;
         }
       }
 
-      setTimeout(() => {
-        isSwiping.current = false;
-      }, 50);
+      const changed = e.changedTouches[0];
+      if (!changed) return;
+
+      // Double-tap to reset: two quick taps near the same spot while zoomed → back to 1×.
+      if (!isSwiping.current && e.touches.length === 0) {
+        const last = lastTapRef.current;
+        if (
+          last &&
+          e.timeStamp - last.time < DOUBLE_TAP_MS &&
+          Math.abs(changed.clientX - last.x) < DOUBLE_TAP_SLOP &&
+          Math.abs(changed.clientY - last.y) < DOUBLE_TAP_SLOP
+        ) {
+          lastTapRef.current = null;
+          if (scaleRef.current > 1) {
+            scaleRef.current = 1;
+            txRef.current = 0;
+            tyRef.current = 0;
+            applyTransform();
+            setIsZoomed(false);
+            suppressTapClose();
+          }
+          return;
+        }
+        lastTapRef.current = { time: e.timeStamp, x: changed.clientX, y: changed.clientY };
+      }
+
+      // Swipe-to-navigate end: only at 1×.
+      if (scaleRef.current === 1) {
+        const deltaX = changed.clientX - touchStartX.current;
+        const deltaY = changed.clientY - touchStartY.current;
+        if (
+          isSwiping.current &&
+          Math.abs(deltaX) > Math.abs(deltaY) &&
+          Math.abs(deltaX) > INTERACTION.swipeThreshold
+        ) {
+          if (deltaX > 0) {
+            navigateToPrevious();
+          } else {
+            navigateToNext();
+          }
+        }
+        setTimeout(() => {
+          isSwiping.current = false;
+        }, 50);
+      }
     };
 
     modalElement.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -332,6 +488,8 @@ export function useFullScreenImage(): {
     loadedImageIds,
     showMetadata,
     modalRef,
+    zoomTargetRef,
+    isZoomed,
     isSwiping,
     showImage,
     hideImage,

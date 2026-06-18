@@ -34,6 +34,8 @@ const baseProps = {
   loadedImageIds: new Set<number>(),
   setLoadedImageIds: noop,
   modalRef: { current: null },
+  zoomTargetRef: { current: null },
+  isZoomed: false,
   hideImage: noop,
   isSwiping: { current: false },
   showMetadata: false,
