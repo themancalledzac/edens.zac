@@ -82,10 +82,11 @@ describe('MetadataModal — smoke', () => {
     expect(save).toBeDisabled();
   });
 
-  it('Cancel calls onClose when there are no changes (no confirm)', () => {
+  it('Close (no changes) calls onClose without a confirm', () => {
+    // With nothing edited the action reads "Close", not "Cancel" (see MetadataModal).
     const onClose = jest.fn();
     render(<MetadataModal {...baseProps} onClose={onClose} />);
-    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^close$/i }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(window.confirm).not.toHaveBeenCalled();
   });

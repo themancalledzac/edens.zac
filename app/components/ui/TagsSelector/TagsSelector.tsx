@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import type { ContentTagModel } from '@/app/types/Metadata';
 
@@ -31,11 +33,21 @@ export default function TagsSelector({
   label = 'Tags',
   emptyText = 'No tags selected',
 }: TagsSelectorProps): React.JSX.Element {
+  // Present the option list alphabetically (case-insensitive) so it stays scannable
+  // as the tag vocabulary grows. Copy before sorting — never mutate the caller's array.
+  const sortedTags = useMemo(
+    () =>
+      [...availableTags].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      ),
+    [availableTags]
+  );
+
   return (
     <Dropdown<ContentTagModel>
       label={label}
       multiSelect
-      options={availableTags}
+      options={sortedTags}
       selectedValues={selectedTags}
       onChange={value => {
         const tags = (value as ContentTagModel[] | null) ?? [];
