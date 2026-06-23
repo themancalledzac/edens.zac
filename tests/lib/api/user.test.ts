@@ -1,12 +1,15 @@
 /**
  * Unit tests for user.ts
- * Mocks fetchReadApi from core to verify getUserPage delegates correctly.
+ * Mocks fetchReadApi from core (keeping the real ApiError) to verify getUserPage delegates
+ * correctly and maps a 401 to null while propagating other errors.
  */
 
 import * as core from '@/app/lib/api/core';
+import { ApiError } from '@/app/lib/api/core';
 import { getUserPage } from '@/app/lib/api/user';
 
 jest.mock('@/app/lib/api/core', () => ({
+  ...jest.requireActual('@/app/lib/api/core'),
   fetchReadApi: jest.fn(),
 }));
 
@@ -25,8 +28,13 @@ describe('getUserPage', () => {
     expect(result).toBe(fake);
   });
 
-  it('returns null when the endpoint yields null (401/anonymous)', async () => {
-    (core.fetchReadApi as jest.Mock).mockResolvedValue(null);
+  it('returns null when the fetch throws ApiError(401) (no/revoked session)', async () => {
+    (core.fetchReadApi as jest.Mock).mockRejectedValue(new ApiError('Unauthorized', 401));
     expect(await getUserPage()).toBeNull();
+  });
+
+  it('propagates non-401 errors', async () => {
+    (core.fetchReadApi as jest.Mock).mockRejectedValue(new ApiError('Server error', 500));
+    await expect(getUserPage()).rejects.toThrow(ApiError);
   });
 });
