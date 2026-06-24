@@ -25,7 +25,10 @@ import {
  */
 export async function createUser(req: UserCreateRequest): Promise<CreateUserResponse> {
   const result = await fetchAdminPostJsonApi<CreateUserResponse>('/users', req);
-  return result as CreateUserResponse;
+  if (!result) {
+    throw new ApiError('Unexpected empty response from /users', 500);
+  }
+  return result;
 }
 
 /**
