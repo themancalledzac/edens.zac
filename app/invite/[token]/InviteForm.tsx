@@ -14,6 +14,9 @@ import { type AcceptInviteRequest } from '@/app/types/User';
 
 import styles from './InviteForm.module.scss';
 
+/** Mirrors the backend `@Size(min = 8)` rule on the invite-accept password. */
+const PASSWORD_MIN_LENGTH = 8;
+
 export interface InviteFormProps {
   token: string;
   email: string;
@@ -49,6 +52,10 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
       setError('Password is required.');
       return;
     }
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
+      return;
+    }
     if (password !== confirm) {
       setError('Passwords do not match.');
       return;
@@ -80,6 +87,8 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
           message = 'This invite link has already been used.';
         } else if (error_.status === 404) {
           message = 'This invite link is invalid or has expired.';
+        } else if (error_.status === 400) {
+          message = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
         }
       }
       setError(message);
@@ -102,7 +111,11 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
         />
       </Field>
 
-      <Field label="Password *" htmlFor="invite-password">
+      <Field
+        label="Password *"
+        htmlFor="invite-password"
+        hint={`At least ${PASSWORD_MIN_LENGTH} characters`}
+      >
         <Input
           id="invite-password"
           type="password"

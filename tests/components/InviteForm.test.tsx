@@ -53,10 +53,10 @@ describe('InviteForm', () => {
 
     // Display name starts empty (displayName prop is null); fill only the passwords.
     fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.change(screen.getByPlaceholderText(CONFIRM_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
 
@@ -67,11 +67,29 @@ describe('InviteForm', () => {
     expect(mockPush).not.toHaveBeenCalled();
   });
 
+  it('shows a min-length error and does not submit when the password is shorter than 8 characters', async () => {
+    renderForm();
+
+    fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
+      target: { value: 'short' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(CONFIRM_PLACEHOLDER), {
+      target: { value: 'short' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/at least 8 characters/i);
+    });
+    expect(mockAcceptInvite).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   it('shows a mismatch error and does not submit when password !== confirm', async () => {
     renderForm();
 
     fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.change(screen.getByPlaceholderText(CONFIRM_PLACEHOLDER), {
       target: { value: 'different' },
@@ -91,17 +109,17 @@ describe('InviteForm', () => {
     renderForm('Jane');
 
     fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.change(screen.getByPlaceholderText(CONFIRM_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
 
     await waitFor(() => {
       expect(mockAcceptInvite).toHaveBeenCalledWith('tok-123', {
         displayName: 'Jane',
-        password: 'pw12345',
+        password: 'pw123456',
       });
     });
     await waitFor(() => {
@@ -118,10 +136,10 @@ describe('InviteForm', () => {
     renderForm('Jane');
 
     fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.change(screen.getByPlaceholderText(CONFIRM_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.click(screen.getByLabelText(PASSKEY_LABEL));
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
@@ -140,10 +158,10 @@ describe('InviteForm', () => {
     renderForm('Jane');
 
     fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.change(screen.getByPlaceholderText(CONFIRM_PLACEHOLDER), {
-      target: { value: 'pw12345' },
+      target: { value: 'pw123456' },
     });
     fireEvent.click(screen.getByRole('button', { name: /create account/i }));
 
