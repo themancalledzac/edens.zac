@@ -17,6 +17,7 @@ import {
   initialDateSortDirection,
   type LensType,
 } from '@/app/types/GalleryFilter';
+import { canSelect } from '@/app/utils/canSelect';
 import {
   applyCollectionFilters,
   buildCollectionCriteria,
@@ -30,6 +31,7 @@ import {
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { toggleImageSelection } from '@/app/utils/imageSelection';
+import { buildPinnedSelects } from '@/app/utils/pinnedSelects';
 import { sortByDate } from '@/app/utils/sortByDate';
 
 import {
@@ -38,6 +40,7 @@ import {
 } from './ClientGalleryDownloadContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
+import { SelectsProvider } from './SelectsContext';
 
 /**
  * The entire edit experience (useCollectionEdit, EditBar, edit sheet, modals, inline-edit
@@ -65,6 +68,8 @@ interface CollectionPageClientProps {
   editMode?: boolean;
   /** Server-resolved principal, surfaced to deep client consumers via {@link MeProvider}. */
   me?: MeResponse | null;
+  /** The viewer's persisted selected image ids for THIS collection, seeded server-side. */
+  initialSelectedIds?: number[];
 }
 
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
@@ -78,6 +83,7 @@ export default function CollectionPageClient({
   serverIsMobile,
   editMode = false,
   me = null,
+  initialSelectedIds = [],
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -122,6 +128,15 @@ export default function CollectionPageClient({
   );
 
   const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
+
+  // Selects (favorites) are a client-gallery feature, available only to a viewer who canSelect
+  // this collection (admin or a grant holder). Distinct from the download "select mode" below.
+  const selectsEnabled = isClientGallery && !editMode && canSelect(me, collection.id);
+
+  // Mirror of the viewer's selected ids, owned here so the pinned "Your Selects" prepend can react
+  // to toggles. SelectsProvider is seeded from the same initial list and notifies us via onChange.
+  const [pinnedSelectedIds, setPinnedSelectedIds] = useState<number[]>(initialSelectedIds);
+
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
@@ -216,10 +231,32 @@ export default function CollectionPageClient({
       collection.id,
       collection.displayMode
     );
-    if (filterState.dateSortDirection === 'off') return processed;
-    const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
-    return mergeDateSortedImages(processed, sorted);
-  }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
+
+    const ordered =
+      filterState.dateSortDirection === 'off'
+        ? processed
+        : mergeDateSortedImages(
+            processed,
+            sortByDate(processed.filter(isImageContent), filterState.dateSortDirection)
+          );
+
+    if (!selectsEnabled || pinnedSelectedIds.length === 0) {
+      return ordered;
+    }
+
+    // Pinned "Your Selects" region: duplicated, marked clones of the selected images, prepended so
+    // they sit at the top while the originals still render in place. The marker only affects the
+    // React key (see Component.tsx) — layout treats them as normal image blocks.
+    const pinned = buildPinnedSelects(ordered, new Set(pinnedSelectedIds));
+    return [...pinned, ...ordered];
+  }, [
+    filteredContent,
+    collection.id,
+    collection.displayMode,
+    filterState.dateSortDirection,
+    selectsEnabled,
+    pinnedSelectedIds,
+  ]);
 
   const handleFilterChange = useCallback(
     (update: Partial<FilterState>) => {
@@ -301,13 +338,25 @@ export default function CollectionPageClient({
     </>
   );
 
+  const withSelects = selectsEnabled ? (
+    <SelectsProvider
+      collectionId={collection.id}
+      initialSelectedIds={initialSelectedIds}
+      onChange={setPinnedSelectedIds}
+    >
+      {content}
+    </SelectsProvider>
+  ) : (
+    content
+  );
+
   const maybeWrappedContent =
     isClientGallery && !editMode ? (
       <ClientGalleryDownloadProvider value={downloadContextValue}>
-        {content}
+        {withSelects}
       </ClientGalleryDownloadProvider>
     ) : (
-      content
+      withSelects
     );
 
   // Always mount the provider and gate the filter UI via a null VALUE (observationally the same
