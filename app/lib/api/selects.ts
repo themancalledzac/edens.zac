@@ -5,7 +5,7 @@
  * response. Distinct from the ephemeral download "select mode" (see `ClientGalleryDownloadContext`)
  * — these calls persist a user's favorites.
  */
-import { ApiError } from '@/app/lib/api/core';
+import { ApiError, fetchReadApi } from '@/app/lib/api/core';
 import { type SelectGroup } from '@/app/types/Selects';
 
 const BASE = '/api/proxy/api/read/user/selects';
@@ -78,4 +78,20 @@ export async function listAllSelects(): Promise<SelectGroup[]> {
     await throwFromResponse(res);
   }
   return (await res.json()) as SelectGroup[];
+}
+
+/**
+ * Server-side seed read of the viewer's selected image ids for one collection. Uses
+ * `fetchReadApi` (forwards the request cookies server-side) so a Server Component can prime the
+ * SelectsProvider. Returns `[]` when the viewer is anonymous or holds no selects (the backend
+ * returns 401 for anonymous; we treat "no selects" as empty, never an error to the page).
+ */
+export async function listSelectIdsServer(collectionId: number): Promise<number[]> {
+  try {
+    const ids = await fetchReadApi<number[]>(`/user/selects?collectionId=${collectionId}`);
+    return ids ?? [];
+  } catch {
+    // Anonymous (401) or any read failure must not break the gallery render — selects are additive.
+    return [];
+  }
 }
