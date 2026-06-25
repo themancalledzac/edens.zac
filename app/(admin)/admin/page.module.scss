@@ -31,3 +31,9 @@
   color: var(--color-on-surface-muted);
   font-size: var(--text-md);
 }
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}

@@ -5,6 +5,7 @@ import { getAdminHomeTiles } from '@/app/lib/api/adminHome';
 import AdminHubGrid from './AdminHubGrid';
 import { ADMIN_TILES, type AdminTileMerged } from './adminTiles';
 import { CreateUserButton } from './CreateUserButton';
+import { ManageUsersLink } from './ManageUsersLink';
 import styles from './page.module.scss';
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +24,10 @@ export default async function AdminHubPage() {
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>Admin</h1>
         <span className={styles.subtitle}>local dev console</span>
-        <CreateUserButton />
+        <div className={styles.headerActions}>
+          <ManageUsersLink />
+          <CreateUserButton />
+        </div>
       </div>
       <AdminHubGrid tiles={tiles} />
     </PageShell>

@@ -13,10 +13,21 @@ export interface UserCreateRequest {
   role: Role;
 }
 
-/** Response body for `POST /api/admin/users` (HTTP 201). */
+/** Response body for `POST /api/admin/users` (HTTP 201) and `POST /api/admin/users/{id}/invite`. */
 export interface CreateUserResponse {
   userId: number;
   inviteUrl: string;
+}
+
+/** Account lifecycle status — mirrors the backend `UserStatus` enum. */
+export type UserStatus = 'INVITED' | 'ACTIVE' | 'DISABLED';
+
+/** Row in the admin user list (`GET /api/admin/users`). Excludes any secret fields. */
+export interface AdminUserSummary {
+  id: number;
+  email: string;
+  displayName: string | null;
+  status: UserStatus;
 }
 
 /** Response body for `GET /api/auth/invite/{token}` (HTTP 200). */

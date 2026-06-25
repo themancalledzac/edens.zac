@@ -9,9 +9,15 @@
  *   throws `ApiError` otherwise.
  */
 
-import { ApiError, fetchAdminPostJsonApi, getApiBaseUrl } from '@/app/lib/api/core';
+import {
+  ApiError,
+  fetchAdminGetApi,
+  fetchAdminPostJsonApi,
+  getApiBaseUrl,
+} from '@/app/lib/api/core';
 import {
   type AcceptInviteRequest,
+  type AdminUserSummary,
   type CreateUserResponse,
   type InvitePreview,
   type UserCreateRequest,
@@ -27,6 +33,31 @@ export async function createUser(req: UserCreateRequest): Promise<CreateUserResp
   const result = await fetchAdminPostJsonApi<CreateUserResponse>('/users', req);
   if (!result) {
     throw new ApiError('Unexpected empty response from /users', 500);
+  }
+  return result;
+}
+
+/**
+ * List all user accounts via the admin endpoint (newest first). Returns `[]` when the endpoint
+ * yields no body.
+ */
+export async function listUsers(): Promise<AdminUserSummary[]> {
+  const result = await fetchAdminGetApi<AdminUserSummary[]>('/users');
+  return result ?? [];
+}
+
+/**
+ * Re-issue a single-use invite link for an existing user — a resend for an `INVITED` user, a
+ * password-reset link for an `ACTIVE` one. The backend invalidates the user's prior unused invites,
+ * so only the returned link is live.
+ *
+ * @returns `CreateUserResponse` with the fresh `inviteUrl`.
+ * @throws `ApiError(404)` when the user no longer exists.
+ */
+export async function regenerateInvite(userId: number): Promise<CreateUserResponse> {
+  const result = await fetchAdminPostJsonApi<CreateUserResponse>(`/users/${userId}/invite`, {});
+  if (!result) {
+    throw new ApiError('Unexpected empty response from regenerate-invite', 500);
   }
   return result;
 }

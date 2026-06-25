@@ -7,7 +7,13 @@
  */
 
 import { ApiError, getApiBaseUrl } from '@/app/lib/api/core';
-import { acceptInvite, createUser, getInvitePreview } from '@/app/lib/api/users';
+import {
+  acceptInvite,
+  createUser,
+  getInvitePreview,
+  listUsers,
+  regenerateInvite,
+} from '@/app/lib/api/users';
 import { type AcceptInviteRequest, type UserCreateRequest } from '@/app/types/User';
 
 jest.mock('next/headers', () => ({ cookies: jest.fn() }));
@@ -17,6 +23,7 @@ jest.mock('@/app/lib/api/core', () => ({
   getApiBaseUrl: jest.fn(),
   getServerCookieHeader: jest.fn(),
   fetchAdminPostJsonApi: jest.fn(),
+  fetchAdminGetApi: jest.fn(),
 }));
 
 global.fetch = jest.fn();
@@ -169,5 +176,52 @@ describe('acceptInvite', () => {
       name: 'ApiError',
       status: 410,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listUsers
+// ---------------------------------------------------------------------------
+
+describe('listUsers', () => {
+  it('delegates to fetchAdminGetApi(/users) and returns the array', async () => {
+    const users = [
+      { id: 1, email: 'a@x.com', displayName: 'Alice', status: 'ACTIVE' },
+      { id: 2, email: 'b@x.com', displayName: null, status: 'INVITED' },
+    ];
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(users);
+
+    const result = await listUsers();
+
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users');
+    expect(result).toEqual(users);
+  });
+
+  it('returns [] when the endpoint yields no body', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
+
+    expect(await listUsers()).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// regenerateInvite
+// ---------------------------------------------------------------------------
+
+describe('regenerateInvite', () => {
+  it('POSTs to /users/{id}/invite and returns the fresh link', async () => {
+    const response = { userId: 5, inviteUrl: 'http://localhost:3000/invite/fresh' };
+    (core.fetchAdminPostJsonApi as jest.Mock).mockResolvedValue(response);
+
+    const result = await regenerateInvite(5);
+
+    expect(core.fetchAdminPostJsonApi).toHaveBeenCalledWith('/users/5/invite', {});
+    expect(result).toEqual(response);
+  });
+
+  it('propagates ApiError(404) for an unknown user', async () => {
+    (core.fetchAdminPostJsonApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
+
+    await expect(regenerateInvite(999)).rejects.toMatchObject({ name: 'ApiError', status: 404 });
   });
 });

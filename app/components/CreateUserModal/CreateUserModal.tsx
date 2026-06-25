@@ -2,6 +2,7 @@
 
 import { type FormEvent, useState } from 'react';
 
+import { InviteLinkResult } from '@/app/components/InviteLinkResult/InviteLinkResult';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
@@ -33,7 +34,6 @@ export default function CreateUserModal({ open, onClose }: CreateUserModalProps)
   const [error, setError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const handleClose = () => {
     // Reset state when the modal is closed so it's clean on next open.
@@ -42,7 +42,6 @@ export default function CreateUserModal({ open, onClose }: CreateUserModalProps)
     setError(null);
     setSubmitState('idle');
     setInviteUrl(null);
-    setCopied(false);
     onClose();
   };
 
@@ -76,12 +75,6 @@ export default function CreateUserModal({ open, onClose }: CreateUserModalProps)
     }
   };
 
-  const handleCopy = async () => {
-    if (!inviteUrl) return;
-    await navigator.clipboard.writeText(inviteUrl);
-    setCopied(true);
-  };
-
   return (
     <Modal open={open} onClose={handleClose} variant="overlay" labelledBy="create-user-title">
       <div className={styles.card}>
@@ -91,11 +84,10 @@ export default function CreateUserModal({ open, onClose }: CreateUserModalProps)
 
         {submitState === 'done' && inviteUrl ? (
           <div className={styles.successSection}>
-            <p className={styles.successLabel}>Share this invite link with the new client:</p>
-            <p className={styles.inviteUrl}>{inviteUrl}</p>
-            <Button onClick={handleCopy} variant="secondary" className={styles.copyButton}>
-              {copied ? 'Copied!' : 'Copy'}
-            </Button>
+            <InviteLinkResult
+              inviteUrl={inviteUrl}
+              label="Share this invite link with the new client:"
+            />
             <div className={styles.doneActions}>
               <Button onClick={handleClose} variant="ghost">
                 Close
