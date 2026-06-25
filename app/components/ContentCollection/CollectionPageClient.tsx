@@ -3,10 +3,12 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
+import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
+import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
 import {
@@ -61,6 +63,8 @@ interface CollectionPageClientProps {
    * loaded.
    */
   editMode?: boolean;
+  /** Server-resolved principal, surfaced to deep client consumers via {@link MeProvider}. */
+  me?: MeResponse | null;
 }
 
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
@@ -73,6 +77,7 @@ export default function CollectionPageClient({
   serverViewportHeight,
   serverIsMobile,
   editMode = false,
+  me = null,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -310,8 +315,10 @@ export default function CollectionPageClient({
   // gives an empty collection its first filterable content — and conditionally mounting the
   // provider on it would reparent the subtree, remounting EditModeLayer and resetting its state.
   return (
-    <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
-      {maybeWrappedContent}
-    </CollectionFilterProvider>
+    <MeProvider me={me}>
+      <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
+        {maybeWrappedContent}
+      </CollectionFilterProvider>
+    </MeProvider>
   );
 }
