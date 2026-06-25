@@ -45,6 +45,7 @@ import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 import ReorderOverlay from './ReorderOverlay';
+import { SelectStar } from './SelectStar';
 
 /**
  * Renders a single content item: IMAGE, GIF, COLLECTION, or TEXT metadata block.
@@ -573,6 +574,11 @@ export default function CollectionContentRenderer({
   const shouldShowOverlay =
     contentType === 'IMAGE' && ((isSelectingCoverImage && isCurrentCover) || isJustClicked);
 
+  // Selects (favorites) star. SelectStar self-gates on canSelect + an active SelectsProvider; on
+  // public client-gallery views it resolves to the star, elsewhere (manage/taxonomy/location,
+  // where no SelectsProvider is mounted) it resolves to null.
+  const selectStar = contentType === 'IMAGE' ? <SelectStar contentId={contentId} /> : null;
+
   const isNotVisible =
     contentType === 'IMAGE' &&
     checkImageVisibility(
@@ -682,6 +688,7 @@ export default function CollectionContentRenderer({
             isNotVisible={isNotVisible}
             shouldShowOverlay={shouldShowOverlay}
             isSelected={isSelected}
+            star={selectStar}
           />
         )}
       </Tile>
@@ -712,6 +719,7 @@ export default function CollectionContentRenderer({
           isNotVisible={isNotVisible}
           shouldShowOverlay={shouldShowOverlay}
           isSelected={isSelected}
+          star={selectStar}
         />
       )}
       {isReorderMode &&

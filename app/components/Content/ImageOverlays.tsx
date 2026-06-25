@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react';
+import { type ReactElement, type ReactNode } from 'react';
 
 import cbStyles from './ContentComponent.module.scss';
 
@@ -7,6 +7,12 @@ interface ImageOverlaysProps {
   isNotVisible: boolean;
   shouldShowOverlay: boolean;
   isSelected: boolean;
+  /**
+   * Optional Selects (favorites) star, pre-built by the renderer so this presentational component
+   * stays prop-light. Renders in the image corner alongside the other overlays. The star itself
+   * self-gates on `canSelect` + SelectsProvider, so passing it here is always safe.
+   */
+  star?: ReactNode;
 }
 
 /**
@@ -15,7 +21,8 @@ interface ImageOverlaysProps {
  * Renders overlay indicators for image content:
  * - Visibility overlay (gray) for non-visible images
  * - Cover image overlay (checkmark) when selecting cover image
- * - Selected indicator (red circle with X) for selected images
+ * - Selected indicator (red circle with X) for selected images (download "select mode")
+ * - Selects (favorites) star, when provided
  *
  * Only renders for IMAGE content type.
  */
@@ -24,6 +31,7 @@ export function ImageOverlays({
   isNotVisible,
   shouldShowOverlay,
   isSelected,
+  star,
 }: ImageOverlaysProps): ReactElement | null {
   if (contentType !== 'IMAGE') return null;
 
@@ -45,6 +53,7 @@ export function ImageOverlays({
           </svg>
         </div>
       )}
+      {star}
     </>
   );
 }

@@ -24,6 +24,16 @@ jest.mock('@/app/lib/api/collections', () => ({
   getCollectionBySlug: jest.fn(),
 }));
 
+// The wrapper resolves the principal (meServer) and server-seeds Selects (listSelectIdsServer)
+// in its Promise.all; isolate both so these routing tests don't hit the network (either would
+// otherwise throw `fetch is not defined` under jsdom). Anonymous principal is the routing default.
+jest.mock('@/app/lib/api/auth', () => ({
+  meServer: jest.fn(async () => null),
+}));
+jest.mock('@/app/lib/api/selects', () => ({
+  listSelectIdsServer: jest.fn(async () => []),
+}));
+
 const notFoundMock = jest.fn(() => {
   throw new Error('NEXT_NOT_FOUND');
 });
