@@ -12,6 +12,7 @@
 import {
   ApiError,
   fetchAdminGetApi,
+  fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
   getApiBaseUrl,
 } from '@/app/lib/api/core';
@@ -21,6 +22,7 @@ import {
   type CreateUserResponse,
   type InvitePreview,
   type UserCreateRequest,
+  type UserUpdateRequest,
 } from '@/app/types/User';
 
 /**
@@ -58,6 +60,28 @@ export async function regenerateInvite(userId: number): Promise<CreateUserRespon
   const result = await fetchAdminPostJsonApi<CreateUserResponse>(`/users/${userId}/invite`, {});
   if (!result) {
     throw new ApiError('Unexpected empty response from regenerate-invite', 500);
+  }
+  return result;
+}
+
+/**
+ * Fetch a single user summary by id for the admin detail view. Returns `null` on 404 (mapped from
+ * an empty body) so callers can `notFound()` cleanly.
+ */
+export async function getAdminUser(id: number): Promise<AdminUserSummary | null> {
+  return await fetchAdminGetApi<AdminUserSummary>(`/users/${id}`);
+}
+
+/**
+ * Update an existing user's display name and status via the admin endpoint.
+ *
+ * @returns the refreshed `AdminUserSummary`.
+ * @throws `ApiError(404)` when the user no longer exists.
+ */
+export async function updateUser(id: number, body: UserUpdateRequest): Promise<AdminUserSummary> {
+  const result = await fetchAdminPatchJsonApi<AdminUserSummary>(`/users/${id}`, body);
+  if (!result) {
+    throw new ApiError('Unexpected empty response from update-user', 500);
   }
   return result;
 }

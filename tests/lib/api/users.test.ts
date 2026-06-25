@@ -10,11 +10,17 @@ import { ApiError, getApiBaseUrl } from '@/app/lib/api/core';
 import {
   acceptInvite,
   createUser,
+  getAdminUser,
   getInvitePreview,
   listUsers,
   regenerateInvite,
+  updateUser,
 } from '@/app/lib/api/users';
-import { type AcceptInviteRequest, type UserCreateRequest } from '@/app/types/User';
+import {
+  type AcceptInviteRequest,
+  type UserCreateRequest,
+  type UserUpdateRequest,
+} from '@/app/types/User';
 
 jest.mock('next/headers', () => ({ cookies: jest.fn() }));
 jest.mock('@/app/utils/environment', () => ({ isLocalEnvironment: jest.fn() }));
@@ -24,6 +30,7 @@ jest.mock('@/app/lib/api/core', () => ({
   getServerCookieHeader: jest.fn(),
   fetchAdminPostJsonApi: jest.fn(),
   fetchAdminGetApi: jest.fn(),
+  fetchAdminPatchJsonApi: jest.fn(),
 }));
 
 global.fetch = jest.fn();
@@ -223,5 +230,57 @@ describe('regenerateInvite', () => {
     (core.fetchAdminPostJsonApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
 
     await expect(regenerateInvite(999)).rejects.toMatchObject({ name: 'ApiError', status: 404 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getAdminUser
+// ---------------------------------------------------------------------------
+
+describe('getAdminUser', () => {
+  it('delegates to fetchAdminGetApi(/users/{id}) and returns the summary', async () => {
+    const summary = { id: 5, email: 'e@x.com', displayName: 'Eve', status: 'ACTIVE' };
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(summary);
+
+    const result = await getAdminUser(5);
+
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users/5');
+    expect(result).toEqual(summary);
+  });
+
+  it('returns null when the user is not found (empty body)', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
+
+    expect(await getAdminUser(404)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// updateUser
+// ---------------------------------------------------------------------------
+
+describe('updateUser', () => {
+  const body: UserUpdateRequest = { displayName: 'Kenneth', status: 'ACTIVE' };
+
+  it('PATCHes via fetchAdminPatchJsonApi(/users/{id}) and returns the refreshed summary', async () => {
+    const summary = { id: 8, email: 'ken@x.com', displayName: 'Kenneth', status: 'ACTIVE' };
+    (core.fetchAdminPatchJsonApi as jest.Mock).mockResolvedValue(summary);
+
+    const result = await updateUser(8, body);
+
+    expect(core.fetchAdminPatchJsonApi).toHaveBeenCalledWith('/users/8', body);
+    expect(result).toEqual(summary);
+  });
+
+  it('throws ApiError(500) when PATCH yields an empty body', async () => {
+    (core.fetchAdminPatchJsonApi as jest.Mock).mockResolvedValue(null);
+
+    await expect(updateUser(8, body)).rejects.toMatchObject({ name: 'ApiError', status: 500 });
+  });
+
+  it('propagates ApiError(404) for an unknown user', async () => {
+    (core.fetchAdminPatchJsonApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
+
+    await expect(updateUser(999, body)).rejects.toMatchObject({ name: 'ApiError', status: 404 });
   });
 });
