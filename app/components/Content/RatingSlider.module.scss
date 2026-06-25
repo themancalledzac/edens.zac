@@ -1,0 +1,29 @@
+.sliderOverlay {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill, 999px);
+  background: rgb(0 0 0 / 55%);
+  backdrop-filter: blur(2px);
+}
+
+.slider {
+  width: 96px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: #fff;
+  touch-action: none;
+}
+
+.value {
+  min-width: 1ch;
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
