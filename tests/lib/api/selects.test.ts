@@ -4,14 +4,30 @@
  * and verify ApiError propagation on non-OK responses.
  */
 
-import { ApiError } from '@/app/lib/api/core';
-import { addSelect, listAllSelects, listSelectIds, removeSelect } from '@/app/lib/api/selects';
+import { ApiError, fetchReadApi } from '@/app/lib/api/core';
+import {
+  addSelect,
+  listAllSelects,
+  listSelectIds,
+  listSelectIdsServer,
+  removeSelect,
+} from '@/app/lib/api/selects';
 import { type SelectGroup } from '@/app/types/Selects';
+
+// Keep ApiError (and the rest) real — the client-fetch specs assert on the real error class —
+// while making the server reader `fetchReadApi` a controllable mock for the server-seed specs.
+jest.mock('@/app/lib/api/core', () => ({
+  ...jest.requireActual('@/app/lib/api/core'),
+  fetchReadApi: jest.fn(),
+}));
+
+const fetchReadApiMock = fetchReadApi as jest.Mock;
 
 global.fetch = jest.fn();
 
 afterEach(() => {
   jest.restoreAllMocks();
+  jest.clearAllMocks();
   (global.fetch as jest.Mock).mockReset();
 });
 
@@ -111,5 +127,22 @@ describe('listAllSelects', () => {
 describe('module exports', () => {
   it('exposes ApiError for callers', () => {
     expect(ApiError).toBeDefined();
+  });
+});
+
+describe('listSelectIdsServer', () => {
+  it('returns the ids from fetchReadApi', async () => {
+    fetchReadApiMock.mockResolvedValueOnce([42, 43]);
+    await expect(listSelectIdsServer(3)).resolves.toEqual([42, 43]);
+  });
+
+  it('returns [] when fetchReadApi returns null (204)', async () => {
+    fetchReadApiMock.mockResolvedValueOnce(null);
+    await expect(listSelectIdsServer(3)).resolves.toEqual([]);
+  });
+
+  it('returns [] when fetchReadApi throws (e.g. anonymous 401)', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
+    await expect(listSelectIdsServer(3)).resolves.toEqual([]);
   });
 });
