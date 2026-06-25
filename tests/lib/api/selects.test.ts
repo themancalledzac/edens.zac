@@ -8,6 +8,7 @@ import { ApiError, fetchReadApi } from '@/app/lib/api/core';
 import {
   addSelect,
   listAllSelects,
+  listAllSelectsServer,
   listSelectIds,
   listSelectIdsServer,
   removeSelect,
@@ -144,5 +145,21 @@ describe('listSelectIdsServer', () => {
   it('returns [] when fetchReadApi throws (e.g. anonymous 401)', async () => {
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
     await expect(listSelectIdsServer(3)).resolves.toEqual([]);
+  });
+});
+
+describe('listAllSelectsServer', () => {
+  it('returns the groups from fetchReadApi', async () => {
+    const groups: SelectGroup[] = [
+      { collectionId: 3, contentIds: [42, 43] },
+      { collectionId: 5, contentIds: [99] },
+    ];
+    fetchReadApiMock.mockResolvedValueOnce(groups);
+    await expect(listAllSelectsServer()).resolves.toEqual(groups);
+  });
+
+  it('returns [] when fetchReadApi returns null', async () => {
+    fetchReadApiMock.mockResolvedValueOnce(null);
+    await expect(listAllSelectsServer()).resolves.toEqual([]);
   });
 });

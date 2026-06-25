@@ -95,3 +95,18 @@ export async function listSelectIdsServer(collectionId: number): Promise<number[
     return [];
   }
 }
+
+/**
+ * Server-side read of every select the viewer holds, grouped by collection. Mirrors
+ * `listSelectIdsServer` (cookie-forwarding via `fetchReadApi`). Returns `[]` for anonymous viewers
+ * or on any read failure — the `/user/selects` page handles the anonymous case via `meServer()`
+ * first.
+ */
+export async function listAllSelectsServer(): Promise<SelectGroup[]> {
+  try {
+    const groups = await fetchReadApi<SelectGroup[]>('/user/selects');
+    return groups ?? [];
+  } catch {
+    return [];
+  }
+}
