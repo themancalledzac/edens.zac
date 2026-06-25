@@ -17,6 +17,13 @@ jest.mock('@/app/lib/api/selects', () => ({
 const addMock = addSelect as jest.Mock;
 const removeMock = removeSelect as jest.Mock;
 
+beforeEach(() => {
+  // Default both persists to resolve; reject-path specs override per test. Use mockImplementation
+  // (not mockResolvedValue(undefined)) to satisfy both tsc and eslint's unicorn/no-useless-undefined.
+  addMock.mockImplementation(() => Promise.resolve());
+  removeMock.mockImplementation(() => Promise.resolve());
+});
+
 afterEach(() => {
   jest.clearAllMocks();
 });
@@ -54,7 +61,6 @@ describe('SelectsContext', () => {
   });
 
   it('optimistically adds then persists', async () => {
-    addMock.mockResolvedValue();
     renderWithProvider([]);
 
     fireEvent.click(screen.getByText('toggle'));
@@ -74,7 +80,6 @@ describe('SelectsContext', () => {
   });
 
   it('optimistically removes then persists', async () => {
-    removeMock.mockResolvedValue();
     renderWithProvider([42]);
 
     fireEvent.click(screen.getByText('toggle'));

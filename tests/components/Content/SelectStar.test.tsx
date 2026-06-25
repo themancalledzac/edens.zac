@@ -11,12 +11,21 @@ import { type ReactNode } from 'react';
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import { SelectStar } from '@/app/components/Content/SelectStar';
 import { SelectsProvider, useSelects } from '@/app/components/ContentCollection/SelectsContext';
+import { addSelect, removeSelect } from '@/app/lib/api/selects';
 import { type MeResponse } from '@/app/types/Auth';
 
 jest.mock('@/app/lib/api/selects', () => ({
-  addSelect: jest.fn().mockResolvedValue(),
-  removeSelect: jest.fn().mockResolvedValue(),
+  addSelect: jest.fn(),
+  removeSelect: jest.fn(),
 }));
+
+beforeEach(() => {
+  // The toggle test calls `.catch()` on the persist result, so both must return a promise.
+  // Use mockImplementation (not mockResolvedValue(undefined)) to satisfy both tsc — which
+  // requires the resolved value — and eslint's unicorn/no-useless-undefined.
+  (addSelect as jest.Mock).mockImplementation(() => Promise.resolve());
+  (removeSelect as jest.Mock).mockImplementation(() => Promise.resolve());
+});
 
 const client: MeResponse = {
   email: 'client@example.com',
