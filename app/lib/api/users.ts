@@ -18,6 +18,7 @@ import {
   fetchAdminPutJsonApi,
   getApiBaseUrl,
 } from '@/app/lib/api/core';
+import { type CollectionRole } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AcceptInviteRequest,
@@ -31,7 +32,7 @@ import {
 export interface AdminUserCollection {
   collectionId: number;
   title: string;
-  role: 'GENERAL' | 'CLIENT' | null;
+  role: CollectionRole | null;
 }
 
 /**
@@ -126,7 +127,7 @@ export async function listUserCollections(userId: number): Promise<AdminUserColl
 export async function setUserCollectionRole(
   userId: number,
   collectionId: number,
-  role: 'GENERAL' | 'CLIENT'
+  role: CollectionRole
 ): Promise<void> {
   await fetchAdminPutJsonApi<void>(`/users/${userId}/collections/${collectionId}`, { role });
 }

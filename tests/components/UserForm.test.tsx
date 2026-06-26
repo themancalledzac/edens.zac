@@ -24,6 +24,12 @@ jest.mock('@/app/lib/api/users', () => ({
 
 const mockCreateUser = usersApi.createUser as jest.MockedFunction<typeof usersApi.createUser>;
 const mockUpdateUser = usersApi.updateUser as jest.MockedFunction<typeof usersApi.updateUser>;
+const mockListUserCollections = usersApi.listUserCollections as jest.MockedFunction<
+  typeof usersApi.listUserCollections
+>;
+const mockSetUserCollectionRole = usersApi.setUserCollectionRole as jest.MockedFunction<
+  typeof usersApi.setUserCollectionRole
+>;
 
 // jsdom does not implement navigator.clipboard — stub it (InviteLinkResult uses it).
 Object.defineProperty(global.navigator, 'clipboard', {
@@ -134,6 +140,32 @@ describe('UserForm', () => {
       render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
       fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
       expect(onCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('collection role select calls setUserCollectionRole and refreshes the list', async () => {
+      mockListUserCollections.mockResolvedValue([
+        { collectionId: 20, title: 'Portraits', role: null },
+      ]);
+      mockSetUserCollectionRole.mockResolvedValue();
+
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      // Wait for the collection row to appear (also silences the act() warning).
+      await waitFor(() => {
+        expect(screen.getByText('Portraits')).toBeInTheDocument();
+      });
+
+      // After the row renders, listUserCollections returns the updated state on refresh.
+      mockListUserCollections.mockResolvedValue([
+        { collectionId: 20, title: 'Portraits', role: 'CLIENT' },
+      ]);
+
+      const collectionSelect = screen.getByDisplayValue('No access');
+      fireEvent.change(collectionSelect, { target: { value: 'CLIENT' } });
+
+      await waitFor(() => {
+        expect(mockSetUserCollectionRole).toHaveBeenCalledWith(8, 20, 'CLIENT');
+      });
     });
   });
 });

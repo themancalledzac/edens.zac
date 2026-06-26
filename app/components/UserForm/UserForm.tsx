@@ -16,6 +16,7 @@ import {
   setUserCollectionRole,
   updateUser,
 } from '@/app/lib/api/users';
+import { type CollectionRole } from '@/app/types/Auth';
 import { type AdminUserSummary, type UserStatus } from '@/app/types/User';
 
 import styles from './UserForm.module.scss';
@@ -53,10 +54,16 @@ export function UserForm(props: UserFormProps) {
     }
   }, [editUserId]);
 
-  async function changeRole(collectionId: number, value: 'none' | 'GENERAL' | 'CLIENT') {
+  async function changeRole(collectionId: number, value: 'none' | CollectionRole) {
     if (editUserId === null) return;
-    await (value === 'none' ? removeUserCollection(editUserId, collectionId) : setUserCollectionRole(editUserId, collectionId, value));
-    setCollections(await listUserCollections(editUserId));
+    try {
+      await (value === 'none'
+        ? removeUserCollection(editUserId, collectionId)
+        : setUserCollectionRole(editUserId, collectionId, value));
+      setCollections(await listUserCollections(editUserId));
+    } catch {
+      setError('Failed to update gallery access. Please try again.');
+    }
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -175,10 +182,9 @@ export function UserForm(props: UserFormProps) {
             <label key={c.collectionId} className={styles.collectionRow}>
               <span>{c.title}</span>
               <select
-                className={styles.select}
                 value={c.role ?? 'none'}
                 onChange={e =>
-                  changeRole(c.collectionId, e.target.value as 'none' | 'GENERAL' | 'CLIENT')
+                  changeRole(c.collectionId, e.target.value as 'none' | CollectionRole)
                 }
               >
                 <option value="none">No access</option>
