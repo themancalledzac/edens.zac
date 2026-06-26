@@ -4,35 +4,35 @@
  * The layout engine reads each image's size from `item.rating` (via `getEffectiveRating` in
  * contentRatingUtils). So to change the EFFECTIVE rating without touching the layout engine we
  * substitute `item.rating` on a shallow clone of the content array right before
- * `processContentBlocks`. Admin edits write the canonical rating (everyone sees it); a `canTag`
- * client writes a per-user override (their view only). Precedence: live drag value > per-user
+ * `processContentBlocks`. Admin edits write the canonical rating (everyone sees it); a CLIENT
+ * member writes a per-user override (their view only). Precedence: live drag value > per-user
  * override > canonical.
  */
-import { type GalleryAccessSummary, type MeResponse } from '@/app/types/Auth';
+import { type MeResponse } from '@/app/types/Auth';
 import { type AnyContentModel } from '@/app/types/Content';
 import { isContentImage } from '@/app/utils/contentTypeGuards';
-import { isAdmin } from '@/app/utils/galleryAccess';
-
-/** True when the viewer edits the canonical rating (admins only). */
-export function canEditCanonical(me: MeResponse | null): boolean {
-  return isAdmin(me);
-}
+import { findMembership } from '@/app/utils/galleryAccess';
 
 /**
  * True when the viewer may write a per-user override for this collection: a non-admin holding a
- * `gallery_access` grant whose `canTag` is true.
+ * CLIENT membership. (Admins edit the canonical rating directly via `editMode` — no wrapper.)
  */
-export function canOverride(me: MeResponse | null, collectionId: number): boolean {
-  if (isAdmin(me)) return false;
-  const grant: GalleryAccessSummary | undefined = me?.galleries.find(
-    g => g.collectionId === collectionId
-  );
-  return grant?.canTag === true;
+export function canOverride(
+  me: MeResponse | null,
+  collectionId: number,
+  editMode: boolean
+): boolean {
+  if (editMode) return false;
+  return findMembership(me, collectionId)?.role === 'CLIENT';
 }
 
-/** True when the viewer may interact with the slider at all (canonical OR override). */
-export function canEditRating(me: MeResponse | null, collectionId: number): boolean {
-  return canEditCanonical(me) || canOverride(me, collectionId);
+/** True when the viewer may interact with the slider at all: canonical (editMode) OR a CLIENT override. */
+export function canEditRating(
+  me: MeResponse | null,
+  collectionId: number,
+  editMode: boolean
+): boolean {
+  return editMode || canOverride(me, collectionId, editMode);
 }
 
 /** The in-progress drag, or null when no drag is active. */

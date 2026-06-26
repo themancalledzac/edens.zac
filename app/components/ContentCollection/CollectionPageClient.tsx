@@ -19,7 +19,6 @@ import {
   initialDateSortDirection,
   type LensType,
 } from '@/app/types/GalleryFilter';
-import { canSelect } from '@/app/utils/canSelect';
 import {
   applyCollectionFilters,
   buildCollectionCriteria,
@@ -33,14 +32,10 @@ import {
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { useThrottle } from '@/app/utils/debounce';
+import { isClientOfCollection } from '@/app/utils/galleryAccess';
 import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { buildPinnedSelects } from '@/app/utils/pinnedSelects';
-import {
-  canEditCanonical,
-  canEditRating,
-  type RatingDrag,
-  resolveRatings,
-} from '@/app/utils/ratingControl';
+import { canEditRating, type RatingDrag, resolveRatings } from '@/app/utils/ratingControl';
 import { sortByDate } from '@/app/utils/sortByDate';
 
 import {
@@ -142,9 +137,10 @@ export default function CollectionPageClient({
 
   const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
 
-  // Selects (favorites) are a client-gallery feature, available only to a viewer who canSelect
-  // this collection (admin or a grant holder). Distinct from the download "select mode" below.
-  const selectsEnabled = isClientGallery && !editMode && canSelect(me, collection.id);
+  // Selects (favorites) are a client-gallery feature, available only to a viewer who is a CLIENT
+  // of this collection (or admin via editMode). Distinct from the download "select mode" below.
+  const selectsEnabled =
+    isClientGallery && !editMode && isClientOfCollection(me, collection.id, editMode);
 
   // Mirror of the viewer's selected ids, owned here so the pinned "Your Selects" prepend can react
   // to toggles. SelectsProvider is seeded from the same initial list and notifies us via onChange.
@@ -182,12 +178,12 @@ export default function CollectionPageClient({
 
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
-  // Rating control (admin edits the canonical rating; a canTag client writes a per-user override).
+  // Rating control (editMode edits the canonical rating; a CLIENT member writes a per-user override).
   // The override map + the in-progress drag both live in state so the contentBlocks useMemo
   // recomputes and the grid re-flows live while dragging. canEdit is false for anonymous/public
   // viewers, so the provider never mounts and the slider never renders there.
-  const canEdit = canEditRating(me, collection.id);
-  const editsCanonical = canEditCanonical(me);
+  const canEdit = canEditRating(me, collection.id, editMode);
+  const editsCanonical = editMode;
 
   const [overrides, setOverrides] = useState<Map<number, number>>(
     () => new Map(seededOverrides ?? [])

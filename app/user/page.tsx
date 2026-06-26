@@ -18,5 +18,5 @@ export default async function UserPage() {
   const collection = await getUserPage();
   if (!collection) notFound();
 
-  return <CollectionPage collection={collection} />;
+  return <CollectionPage collection={collection} me={principal} />;
 }

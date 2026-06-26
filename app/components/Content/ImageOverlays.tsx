@@ -10,7 +10,7 @@ interface ImageOverlaysProps {
   /**
    * Optional Selects (favorites) star, pre-built by the renderer so this presentational component
    * stays prop-light. Renders in the image corner alongside the other overlays. The star itself
-   * self-gates on `canSelect` + SelectsProvider, so passing it here is always safe.
+   * self-gates on CLIENT membership + SelectsProvider, so passing it here is always safe.
    */
   star?: ReactNode;
   /**

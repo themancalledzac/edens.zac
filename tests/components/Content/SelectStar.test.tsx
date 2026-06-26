@@ -1,8 +1,8 @@
 /**
- * Tests for SelectStar — the corner favorites toggle. The star self-gates on `canSelect`
- * (admin or a gallery grant for the provider's collection) AND an active SelectsProvider,
- * reading both `useMe()` and `useSelects()` directly. `wrap` mounts MeProvider over a
- * SelectsProvider; the client principal holds a grant on collection 3.
+ * Tests for SelectStar — the corner favorites toggle. The star self-gates on CLIENT membership
+ * for the provider's collection AND an active SelectsProvider, reading both `useMe()` and
+ * `useSelects()` directly. `wrap` mounts MeProvider over a SelectsProvider; the client principal
+ * holds a CLIENT membership on collection 3.
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
@@ -29,9 +29,8 @@ beforeEach(() => {
 
 const client: MeResponse = {
   email: 'client@example.com',
-  role: 'CLIENT',
   mfaSatisfied: false,
-  galleries: [{ collectionId: 3, canDownload: true, canTag: false }],
+  galleries: [{ collectionId: 3, role: 'CLIENT' }],
 };
 
 function wrap(ui: ReactNode, me: MeResponse | null, collectionId = 3) {
@@ -54,8 +53,8 @@ describe('SelectStar', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders nothing for a client without a grant on this collection', () => {
-    // Provider scoped to collection 999, which the client has no grant for.
+  it('renders nothing for a client without a CLIENT membership on this collection', () => {
+    // Provider scoped to collection 999, which the client has no membership for.
     const { container } = wrap(<SelectStar contentId={42} />, client, 999);
     expect(container.querySelector('button')).toBeNull();
   });

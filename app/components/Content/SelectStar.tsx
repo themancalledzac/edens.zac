@@ -4,7 +4,7 @@ import { type ReactElement } from 'react';
 
 import { useMe } from '@/app/components/auth/MeProvider';
 import { useSelects } from '@/app/components/ContentCollection/SelectsContext';
-import { canSelect } from '@/app/utils/canSelect';
+import { isClientOfCollection } from '@/app/utils/galleryAccess';
 
 import cbStyles from './ContentComponent.module.scss';
 
@@ -17,14 +17,14 @@ interface SelectStarProps {
  * `useSelects()` directly (the same context-not-props pattern `CollectionContentRenderer` already
  * uses for `useCollectionFilter`/`useInlineEdit`), so no props thread through the generic renderer
  * chain. The collection id comes from the SelectsProvider on the context. Renders nothing unless a
- * SelectsProvider is mounted AND the viewer `canSelect` that collection. Distinct from the download
+ * SelectsProvider is mounted AND the viewer holds a CLIENT membership on that collection. Distinct from the download
  * "select mode".
  */
 export function SelectStar({ contentId }: SelectStarProps): ReactElement | null {
   const me = useMe();
   const selects = useSelects();
 
-  if (!selects || !canSelect(me, selects.collectionId)) {
+  if (!selects || !isClientOfCollection(me, selects.collectionId, false)) {
     return null;
   }
 

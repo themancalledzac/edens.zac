@@ -123,7 +123,6 @@ describe('logout', () => {
 describe('me', () => {
   const meBody: MeResponse = {
     email: 'admin@example.com',
-    role: 'ADMIN',
     mfaSatisfied: true,
     galleries: [],
   };
@@ -393,12 +392,12 @@ describe('meServer', () => {
       status: 200,
       json: jest
         .fn()
-        .mockResolvedValue({ email: 'c@x.com', role: 'CLIENT', mfaSatisfied: true, galleries: [] }),
+        .mockResolvedValue({ email: 'c@x.com', mfaSatisfied: true, galleries: [] }),
     });
 
     const result = await meServer();
 
-    expect(result?.role).toBe('CLIENT');
+    expect(result?.email).toBe('c@x.com');
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toBe('http://localhost:8080/api/auth/me');
     expect(init.headers.Cookie).toBe('ezac_session=abc');

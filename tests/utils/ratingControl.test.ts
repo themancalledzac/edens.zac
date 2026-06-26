@@ -1,76 +1,52 @@
 /**
- * Tests for ratingControl — the capability helpers (canEditCanonical / canOverride /
- * canEditRating) and the `resolveRatings` transform that substitutes each image's rating with
+ * Tests for ratingControl — the capability helpers (canOverride / canEditRating)
+ * and the `resolveRatings` transform that substitutes each image's rating with
  * `drag ?? override ?? canonical` on a shallow clone BEFORE the layout engine runs.
  */
 
 import { type MeResponse } from '@/app/types/Auth';
 import { getEffectiveRating, getProminence } from '@/app/utils/contentRatingUtils';
-import {
-  canEditCanonical,
-  canEditRating,
-  canOverride,
-  resolveRatings,
-} from '@/app/utils/ratingControl';
+import { canEditRating, canOverride, resolveRatings } from '@/app/utils/ratingControl';
 import { createHorizontalImage, createTextContent } from '@/tests/fixtures/contentFixtures';
 
-const admin: MeResponse = {
-  email: 'admin@example.com',
-  role: 'ADMIN',
-  mfaSatisfied: true,
-  galleries: [],
-};
-
-const tagger: MeResponse = {
-  email: 'tagger@example.com',
-  role: 'CLIENT',
+const clientMe: MeResponse = {
+  email: 'client@example.com',
   mfaSatisfied: false,
-  galleries: [{ collectionId: 7, canDownload: true, canTag: true }],
+  galleries: [{ collectionId: 7, role: 'CLIENT' }],
 };
 
-const viewer: MeResponse = {
-  email: 'viewer@example.com',
-  role: 'CLIENT',
+const generalMe: MeResponse = {
+  email: 'general@example.com',
   mfaSatisfied: false,
-  galleries: [{ collectionId: 7, canDownload: true, canTag: false }],
+  galleries: [{ collectionId: 7, role: 'GENERAL' }],
 };
 
-describe('canEditCanonical (admin-only)', () => {
-  it.each([
-    ['admin', admin, true],
-    ['tagger', tagger, false],
-    ['anon', null, false],
-  ])('%s -> %s', (_label, me, expected) => {
-    expect(canEditCanonical(me)).toBe(expected);
+describe('canOverride (non-admin CLIENT membership for THIS collection)', () => {
+  it('is true for a CLIENT member of the collection', () => {
+    expect(canOverride(clientMe, 7, false)).toBe(true);
   });
-});
-
-describe('canOverride (non-admin canTag grant for THIS collection)', () => {
-  it('is true for a canTag client of the collection', () => {
-    expect(canOverride(tagger, 7)).toBe(true);
+  it('is false for a CLIENT member of a DIFFERENT collection', () => {
+    expect(canOverride(clientMe, 99, false)).toBe(false);
   });
-  it('is false for a canTag client of a DIFFERENT collection', () => {
-    expect(canOverride(tagger, 99)).toBe(false);
+  it('is false for a GENERAL member', () => {
+    expect(canOverride(generalMe, 7, false)).toBe(false);
   });
-  it('is false for a non-canTag client', () => {
-    expect(canOverride(viewer, 7)).toBe(false);
-  });
-  it('is false for an admin (admins edit canonical, not overrides)', () => {
-    expect(canOverride(admin, 7)).toBe(false);
+  it('is false in editMode (admins edit canonical, not overrides)', () => {
+    expect(canOverride(clientMe, 7, true)).toBe(false);
   });
   it('is false for an anonymous viewer', () => {
-    expect(canOverride(null, 7)).toBe(false);
+    expect(canOverride(null, 7, false)).toBe(false);
   });
 });
 
-describe('canEditRating (admin OR a canTag client)', () => {
+describe('canEditRating (editMode OR a CLIENT override)', () => {
   it.each([
-    ['admin', admin, true],
-    ['tagger', tagger, true],
-    ['viewer', viewer, false],
-    ['anon', null, false],
-  ])('%s -> %s', (_label, me, expected) => {
-    expect(canEditRating(me, 7)).toBe(expected);
+    ['editMode (admin perimeter)', null, 7, true, true],
+    ['CLIENT member', clientMe, 7, false, true],
+    ['GENERAL member', generalMe, 7, false, false],
+    ['anon', null, 7, false, false],
+  ])('%s -> %s', (_label, me, collectionId, em, expected) => {
+    expect(canEditRating(me, collectionId, em)).toBe(expected);
   });
 });
 

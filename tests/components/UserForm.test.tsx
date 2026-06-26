@@ -53,7 +53,6 @@ describe('UserForm', () => {
       });
       expect(mockCreateUser).toHaveBeenCalledWith({
         email: 'client@example.com',
-        role: 'CLIENT',
       });
 
       fireEvent.click(screen.getByRole('button', { name: /done/i }));

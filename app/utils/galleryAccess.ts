@@ -1,29 +1,28 @@
 /**
- * Pure capability helpers over the resolved principal. The single source of
- * "what can this viewer do here" for the Selects and Rating features. Admin is
- * all-access; a CLIENT's per-collection capabilities come from `me.galleries`
- * (the `gallery_access` rows surfaced by `/api/auth/me`).
+ * Pure capability helpers over the resolved principal + the admin (editMode) signal.
+ * Admin is the perimeter, surfaced to the client tree as `editMode` (localhost ?manage=1) — a
+ * logged-in user is never admin. A CLIENT's per-collection powers come from `me.galleries`
+ * (the user_collection memberships surfaced by /api/auth/me).
  */
-import { type GalleryAccessSummary, type MeResponse } from '@/app/types/Auth';
+import { type GalleryMembership, type MeResponse } from '@/app/types/Auth';
 
-/** True when the principal exists and has the ADMIN role. */
-export function isAdmin(me: MeResponse | null): boolean {
-  return me?.role === 'ADMIN';
-}
-
-/** The gallery_access grant for a specific collection, or undefined. */
-export function findGrant(
+/** The membership for a specific collection, or undefined. */
+export function findMembership(
   me: MeResponse | null,
   collectionId: number
-): GalleryAccessSummary | undefined {
+): GalleryMembership | undefined {
   return me?.galleries.find(g => g.collectionId === collectionId);
 }
 
 /**
- * True when the viewer may act as a client of this collection: admin anywhere,
- * or a non-admin with any gallery_access grant for the collection.
+ * True when the viewer may act as a client of this collection: admin (editMode) anywhere, or a
+ * non-admin holding a CLIENT membership for the collection.
  */
-export function isClientOfCollection(me: MeResponse | null, collectionId: number): boolean {
-  if (isAdmin(me)) return true;
-  return findGrant(me, collectionId) !== undefined;
+export function isClientOfCollection(
+  me: MeResponse | null,
+  collectionId: number,
+  editMode: boolean
+): boolean {
+  if (editMode) return true;
+  return findMembership(me, collectionId)?.role === 'CLIENT';
 }

@@ -50,7 +50,6 @@ describe('createUser', () => {
   const req: UserCreateRequest = {
     email: 'client@example.com',
     displayName: 'Jane Client',
-    role: 'CLIENT',
   };
 
   it('delegates to fetchAdminPostJsonApi with /users and the request body', async () => {

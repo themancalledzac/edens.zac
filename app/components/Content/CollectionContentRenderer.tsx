@@ -575,8 +575,8 @@ export default function CollectionContentRenderer({
   const shouldShowOverlay =
     contentType === 'IMAGE' && ((isSelectingCoverImage && isCurrentCover) || isJustClicked);
 
-  // Selects (favorites) star. SelectStar self-gates on canSelect + an active SelectsProvider; on
-  // public client-gallery views it resolves to the star, elsewhere (manage/taxonomy/location,
+  // Selects (favorites) star. SelectStar self-gates on CLIENT membership + an active SelectsProvider;
+  // on public client-gallery views it resolves to the star, elsewhere (manage/taxonomy/location,
   // where no SelectsProvider is mounted) it resolves to null.
   const selectStar = contentType === 'IMAGE' ? <SelectStar contentId={contentId} /> : null;
 

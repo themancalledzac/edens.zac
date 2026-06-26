@@ -48,7 +48,6 @@ export function UserForm(props: UserFormProps) {
         setSubmitting(true);
         const result = await createUser({
           email: emailInput.trim(),
-          role: 'CLIENT',
           ...(displayName.trim() ? { displayName: displayName.trim() } : {}),
         });
         setInviteUrl(result.inviteUrl);
