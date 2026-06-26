@@ -8,6 +8,8 @@ import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWit
 import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
+import { updateImages } from '@/app/lib/api/content';
+import { upsertRatingOverride } from '@/app/lib/api/ratingOverrides';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
@@ -30,8 +32,15 @@ import {
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
+import { useThrottle } from '@/app/utils/debounce';
 import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { buildPinnedSelects } from '@/app/utils/pinnedSelects';
+import {
+  canEditCanonical,
+  canEditRating,
+  type RatingDrag,
+  resolveRatings,
+} from '@/app/utils/ratingControl';
 import { sortByDate } from '@/app/utils/sortByDate';
 
 import {
@@ -40,6 +49,7 @@ import {
 } from './ClientGalleryDownloadContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
+import { type RatingControlContextValue, RatingControlProvider } from './RatingControlContext';
 import { SelectsProvider } from './SelectsContext';
 
 /**
@@ -70,6 +80,8 @@ interface CollectionPageClientProps {
   me?: MeResponse | null;
   /** The viewer's persisted selected image ids for THIS collection, seeded server-side. */
   initialSelectedIds?: number[];
+  /** Server-seeded per-user rating overrides (contentId -> rating) for client viewers. */
+  seededOverrides?: Array<[number, number]>;
 }
 
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
@@ -84,6 +96,7 @@ export default function CollectionPageClient({
   editMode = false,
   me = null,
   initialSelectedIds = [],
+  seededOverrides,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -169,6 +182,79 @@ export default function CollectionPageClient({
 
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
+  // Rating control (admin edits the canonical rating; a canTag client writes a per-user override).
+  // The override map + the in-progress drag both live in state so the contentBlocks useMemo
+  // recomputes and the grid re-flows live while dragging. canEdit is false for anonymous/public
+  // viewers, so the provider never mounts and the slider never renders there.
+  const canEdit = canEditRating(me, collection.id);
+  const editsCanonical = canEditCanonical(me);
+
+  const [overrides, setOverrides] = useState<Map<number, number>>(
+    () => new Map(seededOverrides ?? [])
+  );
+  const [drag, setDrag] = useState<RatingDrag | null>(null);
+
+  // Throttle live drag so a continuous slide does not recompute the layout on every pixel.
+  const applyDrag = useThrottle((contentId: number, value: number) => {
+    setDrag({ contentId, value });
+  }, 60);
+
+  const handleRatingDrag = useCallback(
+    (contentId: number, value: number) => {
+      applyDrag(contentId, value);
+    },
+    [applyDrag]
+  );
+
+  const handleRatingCommit = useCallback(
+    (contentId: number, value: number) => {
+      setDrag(null);
+      if (editsCanonical) {
+        // The layout already reflects `value` optimistically via the drag path; persist it. A hard
+        // failure self-heals on the next server render, so swallow the error.
+        void updateImages([{ id: contentId, rating: value }]).catch(() => {});
+        return;
+      }
+      // Client override: optimistic set, rollback the single entry on failure.
+      const prev = overrides.get(contentId);
+      setOverrides(m => {
+        const next = new Map(m);
+        next.set(contentId, value);
+        return next;
+      });
+      void upsertRatingOverride(collection.id, contentId, value).catch(() => {
+        setOverrides(m => {
+          const next = new Map(m);
+          if (prev === undefined) next.delete(contentId);
+          else next.set(contentId, prev);
+          return next;
+        });
+      });
+    },
+    [editsCanonical, overrides, collection.id]
+  );
+
+  const resolveRatingForImage = useCallback(
+    (contentId: number): number => {
+      if (drag?.contentId === contentId) return drag.value;
+      const ov = overrides.get(contentId);
+      if (ov !== undefined) return ov;
+      const item = allImages.find(i => i.id === contentId) as { rating?: number } | undefined;
+      return item?.rating ?? 0;
+    },
+    [drag, overrides, allImages]
+  );
+
+  const ratingControlValue = useMemo<RatingControlContextValue>(
+    () => ({
+      canEdit,
+      resolveRatingForImage,
+      onDrag: handleRatingDrag,
+      onCommit: handleRatingCommit,
+    }),
+    [canEdit, resolveRatingForImage, handleRatingDrag, handleRatingCommit]
+  );
+
   const isCollectionDominant = allCollections.length > allImages.length;
 
   const visibility = useMemo(() => computeFilterVisibility(allImages), [allImages]);
@@ -225,12 +311,13 @@ export default function CollectionPageClient({
   );
 
   const contentBlocks = useMemo(() => {
-    const processed = processContentBlocks(
-      filteredContent,
-      true,
-      collection.id,
-      collection.displayMode
-    );
+    // Rating (Phase 2): substitute each image's rating with override ?? drag ?? canonical on a
+    // shallow clone BEFORE layout, so the grid re-flows live while dragging. No-op (returns the
+    // input unchanged by reference) when overrides is empty and drag is null — public render is
+    // byte-identical.
+    const resolved = resolveRatings(filteredContent, overrides, drag);
+
+    const processed = processContentBlocks(resolved, true, collection.id, collection.displayMode);
 
     const ordered =
       filterState.dateSortDirection === 'off'
@@ -246,11 +333,14 @@ export default function CollectionPageClient({
 
     // Pinned "Your Selects" region: duplicated, marked clones of the selected images, prepended so
     // they sit at the top while the originals still render in place. The marker only affects the
-    // React key (see Component.tsx) — layout treats them as normal image blocks.
+    // React key (see Component.tsx) — layout treats them as normal image blocks. Pins inherit the
+    // resolved ratings because they clone the already-processed output.
     const pinned = buildPinnedSelects(ordered, new Set(pinnedSelectedIds));
     return [...pinned, ...ordered];
   }, [
     filteredContent,
+    overrides,
+    drag,
     collection.id,
     collection.displayMode,
     filterState.dateSortDirection,
@@ -338,16 +428,25 @@ export default function CollectionPageClient({
     </>
   );
 
+  // Provider nesting (outer→inner): Download → Selects → Rating → content. The rating provider
+  // mounts only when the viewer may edit; otherwise the subtree is unchanged so the public render
+  // is byte-identical.
+  const withRating = canEdit ? (
+    <RatingControlProvider value={ratingControlValue}>{content}</RatingControlProvider>
+  ) : (
+    content
+  );
+
   const withSelects = selectsEnabled ? (
     <SelectsProvider
       collectionId={collection.id}
       initialSelectedIds={initialSelectedIds}
       onChange={setPinnedSelectedIds}
     >
-      {content}
+      {withRating}
     </SelectsProvider>
   ) : (
-    content
+    withRating
   );
 
   const maybeWrappedContent =
