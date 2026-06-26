@@ -31,7 +31,6 @@ describe('UserPage', () => {
   it('renders CollectionPage with the synthetic collection when authed', async () => {
     (meServer as jest.Mock).mockResolvedValue({
       email: 'c@x.com',
-      role: 'CLIENT',
       mfaSatisfied: true,
       galleries: [],
     });

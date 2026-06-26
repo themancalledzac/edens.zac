@@ -1,8 +1,9 @@
 /**
  * Per-user rating override client API. Mirrors the raw-fetch idiom of `app/lib/api/auth.ts`:
  * same-origin proxy, `credentials: 'same-origin'`, `cache: 'no-store'`, `ApiError` on non-OK.
- * These are authed-user (`read`) endpoints — a `canTag` client writes/reads their own overrides;
- * the backend enforces the grant. Admins do NOT use these (they edit the canonical rating).
+ * These are authed-user (`read`) endpoints — a CLIENT-membership user writes/reads their own
+ * overrides; the backend enforces membership. Admins do NOT use these (they edit the canonical
+ * rating directly via editMode).
  */
 import { ApiError } from '@/app/lib/api/core';
 
