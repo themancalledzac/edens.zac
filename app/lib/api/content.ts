@@ -25,7 +25,7 @@ import {
   type ContentImageModel,
   type ContentImageUpdateRequest,
 } from '@/app/types/Content';
-import { type ContentPersonModel, type ContentTagModel } from '@/app/types/Metadata';
+import { type ContentTagModel } from '@/app/types/Metadata';
 import { logger } from '@/app/utils/logger';
 
 // ============================================================================
@@ -42,18 +42,6 @@ export async function getAllTags(): Promise<ContentTagModel[] | null> {
     { next: { revalidate: TIMING.revalidateCache, tags: ['content-tags'] } }
   );
   return raw?.map(t => ({ id: t.id, name: t.tagName, slug: t.slug })) ?? null;
-}
-
-/**
- * GET /api/read/content/people
- * Get all people (ordered alphabetically)
- */
-export async function getAllPeople(): Promise<ContentPersonModel[] | null> {
-  const raw = await fetchReadApi<Array<{ id: number; personName: string; slug: string }>>(
-    '/content/people',
-    { next: { revalidate: TIMING.revalidateCache, tags: ['content-people'] } }
-  );
-  return raw?.map(p => ({ id: p.id, name: p.personName, slug: p.slug })) ?? null;
 }
 
 /**
@@ -140,7 +128,10 @@ export async function searchImages(params: SearchImagesParams): Promise<ContentI
   // Handle both array response and paginated wrapper
   if (Array.isArray(result)) return result;
   if ('content' in result && Array.isArray(result.content)) return result.content;
-  logger.error('searchImages', 'Unexpected response shape', undefined, { type: typeof result, keys: result !== null && typeof result === 'object' ? Object.keys(result) : [] });
+  logger.error('searchImages', 'Unexpected response shape', undefined, {
+    type: typeof result,
+    keys: result !== null && typeof result === 'object' ? Object.keys(result) : [],
+  });
   throw new Error(
     `[searchImages] Unexpected response shape: expected array or { content: [] }, got ${typeof result}`
   );

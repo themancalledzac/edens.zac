@@ -272,7 +272,7 @@ export function InfoTab({ edit }: InfoTabProps) {
           }}
           allowAddNew
           onAddNew={data => {
-            const newPerson: ContentPersonModel = { id: 0, name: data.name as string, slug: '' };
+            const newPerson: ContentPersonModel = { id: 0, name: data.name as string };
             setCollectionPeople([...collectionPeople, newPerson]);
           }}
           addNewFields={PERSON_ADD_NEW_FIELDS}

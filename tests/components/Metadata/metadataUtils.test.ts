@@ -460,8 +460,8 @@ describe('buildImageUpdateDiff', () => {
       const updateState = {
         id: 1,
         people: [
-          { id: 1, name: 'Person 1', slug: 'person-1' },
-          { id: 2, name: 'Person 2', slug: 'person-2' },
+          { id: 1, name: 'Person 1' },
+          { id: 2, name: 'Person 2' },
         ],
       };
 
@@ -477,8 +477,8 @@ describe('buildImageUpdateDiff', () => {
       const updateState = {
         id: 1,
         people: [
-          { id: 0, name: 'New Person 1', slug: '' },
-          { id: 0, name: 'New Person 2', slug: '' },
+          { id: 0, name: 'New Person 1' },
+          { id: 0, name: 'New Person 2' },
         ],
       };
 
@@ -492,8 +492,8 @@ describe('buildImageUpdateDiff', () => {
     it('should include remove when people are removed', () => {
       const currentState = createImageContent(1, {
         people: [
-          { id: 1, name: 'Person 1', slug: 'person-1' },
-          { id: 2, name: 'Person 2', slug: 'person-2' },
+          { id: 1, name: 'Person 1' },
+          { id: 2, name: 'Person 2' },
         ],
       });
       const updateState = { id: 1, people: [] };
@@ -507,13 +507,13 @@ describe('buildImageUpdateDiff', () => {
 
     it('should handle mixed existing and new people', () => {
       const currentState = createImageContent(1, {
-        people: [{ id: 1, name: 'Existing Person', slug: 'existing-person' }],
+        people: [{ id: 1, name: 'Existing Person' }],
       });
       const updateState = {
         id: 1,
         people: [
-          { id: 1, name: 'Existing Person', slug: 'existing-person' },
-          { id: 0, name: 'New Person', slug: '' },
+          { id: 1, name: 'Existing Person' },
+          { id: 0, name: 'New Person' },
         ],
       };
 
@@ -527,11 +527,11 @@ describe('buildImageUpdateDiff', () => {
 
     it('should not include people when unchanged', () => {
       const currentState = createImageContent(1, {
-        people: [{ id: 1, name: 'Person 1', slug: 'person-1' }],
+        people: [{ id: 1, name: 'Person 1' }],
       });
       const updateState = {
         id: 1,
-        people: [{ id: 1, name: 'Person 1', slug: 'person-1' }],
+        people: [{ id: 1, name: 'Person 1' }],
       };
 
       const result = buildImageUpdateDiff(updateState, currentState);
@@ -968,19 +968,19 @@ describe('getCommonValues', () => {
       const images = [
         createImageContent(1, {
           people: [
-            { id: 1, name: 'Person 1', slug: 'person-1' },
-            { id: 2, name: 'Person 2', slug: 'person-2' },
+            { id: 1, name: 'Person 1' },
+            { id: 2, name: 'Person 2' },
           ],
         }),
         createImageContent(2, {
           people: [
-            { id: 2, name: 'Person 2', slug: 'person-2' },
-            { id: 3, name: 'Person 3', slug: 'person-3' },
+            { id: 2, name: 'Person 2' },
+            { id: 3, name: 'Person 3' },
           ],
         }),
       ];
       const result = getCommonValues(images);
-      expect(result.people).toEqual([{ id: 2, name: 'Person 2', slug: 'person-2' }]);
+      expect(result.people).toEqual([{ id: 2, name: 'Person 2' }]);
     });
 
     it('should return intersection of collections by collectionId', () => {
@@ -1413,7 +1413,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
     // User adds Person B to all images
     // Expected: Image 1 should have both Person A and Person B, Images 2-3 should have Person B
     const imageWithPerson = createImageContent(1, {
-      people: [{ id: 1, name: 'Person A', slug: 'person-a' }],
+      people: [{ id: 1, name: 'Person A' }],
     });
     const imageWithoutPeople = createImageContent(2, {
       people: [],
@@ -1424,7 +1424,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
 
     const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
-      people: [{ id: 0, name: 'Person B', slug: '' }], // New person added
+      people: [{ id: 0, name: 'Person B' }], // New person added
     };
 
     const selectedImages = [imageWithPerson, imageWithoutPeople, imageWithoutPeople2];
@@ -1463,7 +1463,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
     // User adds existing Person B (id: 2) to all images
     // Expected: Only prev array should be updated, no remove array
     const imageWithPerson = createImageContent(1, {
-      people: [{ id: 1, name: 'Person A', slug: 'person-a' }],
+      people: [{ id: 1, name: 'Person A' }],
     });
     const imageWithoutPeople = createImageContent(2, {
       people: [],
@@ -1474,7 +1474,7 @@ describe('buildImageUpdatesForBulkEdit', () => {
 
     const updateState: Partial<ContentImageModel> & { id: number } = {
       id: 0,
-      people: [{ id: 2, name: 'Person B', slug: 'person-b' }], // Existing person (id: 2) added
+      people: [{ id: 2, name: 'Person B' }], // Existing person (id: 2) added
     };
 
     const selectedImages = [imageWithPerson, imageWithoutPeople, imageWithoutPeople2];
@@ -1515,13 +1515,13 @@ describe('buildImageUpdatesForBulkEdit', () => {
     // User deselects Person B (removes from updateState)
     // Expected: Person B should be in remove array for all images
     const image1 = createImageContent(1, {
-      people: [{ id: 2, name: 'Person B', slug: 'person-b' }],
+      people: [{ id: 2, name: 'Person B' }],
     });
     const image2 = createImageContent(2, {
-      people: [{ id: 2, name: 'Person B', slug: 'person-b' }],
+      people: [{ id: 2, name: 'Person B' }],
     });
     const image3 = createImageContent(3, {
-      people: [{ id: 2, name: 'Person B', slug: 'person-b' }],
+      people: [{ id: 2, name: 'Person B' }],
     });
 
     const updateState: Partial<ContentImageModel> & { id: number } = {
@@ -1994,7 +1994,7 @@ describe('mapUpdateResponseToFrontend', () => {
       updatedImages: [updatedImage1, updatedImage2],
       newMetadata: {
         tags: [{ id: 1, tagName: 'Nature', slug: 'nature' }],
-        people: [{ id: 1, personName: 'John Doe', slug: 'john-doe' }],
+        people: [{ id: 1, personName: 'John Doe' }],
         cameras: [{ id: 1, cameraName: 'Canon EOS R5' }],
         lenses: [{ id: 1, lensName: '24-70mm f/2.8' }],
         filmTypes: [{ id: 1, filmTypeName: 'KODAK_PORTRA_400', defaultIso: 400 }],
@@ -2005,7 +2005,7 @@ describe('mapUpdateResponseToFrontend', () => {
 
     expect(result.updatedImages).toEqual([updatedImage1, updatedImage2]);
     expect(result.newMetadata?.tags).toEqual([{ id: 1, name: 'Nature', slug: 'nature' }]);
-    expect(result.newMetadata?.people).toEqual([{ id: 1, name: 'John Doe', slug: 'john-doe' }]);
+    expect(result.newMetadata?.people).toEqual([{ id: 1, name: 'John Doe' }]);
     expect(result.newMetadata?.cameras).toEqual([{ id: 1, name: 'Canon EOS R5' }]);
     expect(result.newMetadata?.lenses).toEqual([{ id: 1, name: '24-70mm f/2.8' }]);
     expect(result.newMetadata?.filmTypes).toEqual([
@@ -2197,11 +2197,11 @@ describe('computeCameraSelectionUpdate', () => {
 describe('buildContentPeopleLocationsDiff (shared people/locations builder for GIF/MP4)', () => {
   it('returns an empty object when nothing changed', () => {
     const original = {
-      people: [{ id: 1, name: 'Person 1', slug: 'person-1' }],
+      people: [{ id: 1, name: 'Person 1' }],
       locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
     };
     const updateState = {
-      people: [{ id: 1, name: 'Person 1', slug: 'person-1' }],
+      people: [{ id: 1, name: 'Person 1' }],
       locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
     };
 
@@ -2214,8 +2214,8 @@ describe('buildContentPeopleLocationsDiff (shared people/locations builder for G
     const original = { people: [], locations: [] };
     const updateState = {
       people: [
-        { id: 1, name: 'Person 1', slug: 'person-1' },
-        { id: 2, name: 'Person 2', slug: 'person-2' },
+        { id: 1, name: 'Person 1' },
+        { id: 2, name: 'Person 2' },
       ],
       locations: [],
     };
@@ -2228,11 +2228,11 @@ describe('buildContentPeopleLocationsDiff (shared people/locations builder for G
 
   it('builds newValue for brand-new people and remove for dropped people', () => {
     const original = {
-      people: [{ id: 9, name: 'Old Person', slug: 'old-person' }],
+      people: [{ id: 9, name: 'Old Person' }],
       locations: [],
     };
     const updateState = {
-      people: [{ id: 0, name: 'New Person', slug: '' }],
+      people: [{ id: 0, name: 'New Person' }],
       locations: [],
     };
 
@@ -2270,7 +2270,7 @@ describe('buildContentPeopleLocationsDiff (shared people/locations builder for G
   it('builds both people and locations diffs together', () => {
     const original = { people: [], locations: [] };
     const updateState = {
-      people: [{ id: 3, name: 'Person 3', slug: 'person-3' }],
+      people: [{ id: 3, name: 'Person 3' }],
       locations: [{ id: 7, name: 'Olympia', slug: 'olympia' }],
     };
 
@@ -2385,7 +2385,7 @@ describe('buildGifUpdatePayload (single-GIF save payload builder)', () => {
 
     const result = buildGifUpdatePayload(
       {
-        people: [{ id: 7, name: 'Alex', slug: 'alex' }],
+        people: [{ id: 7, name: 'Alex' }],
         locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
       },
       original,
@@ -2411,7 +2411,7 @@ describe('buildGifUpdatePayload (single-GIF save payload builder)', () => {
         title: 'New',
         rating: 5,
         collections: [added],
-        people: [{ id: 7, name: 'Alex', slug: 'alex' }],
+        people: [{ id: 7, name: 'Alex' }],
         locations: [{ id: 5, name: 'Seattle', slug: 'seattle' }],
       },
       original,

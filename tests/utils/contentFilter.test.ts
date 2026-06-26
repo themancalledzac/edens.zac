@@ -62,7 +62,7 @@ const sampleImages: ContentImageModel[] = [
       { id: 1, name: 'landscape', slug: 'landscape' },
       { id: 2, name: 'sunset', slug: 'sunset' },
     ],
-    people: [{ id: 1, name: 'Alice', slug: 'alice' }],
+    people: [{ id: 1, name: 'Alice' }],
     captureDate: '2024-06-15T18:30:00Z',
   }),
   makeImage({
@@ -85,7 +85,7 @@ const sampleImages: ContentImageModel[] = [
       { id: 4, name: 'street', slug: 'street' },
       { id: 1, name: 'landscape', slug: 'landscape' },
     ],
-    people: [{ id: 2, name: 'Bob', slug: 'bob' }],
+    people: [{ id: 2, name: 'Bob' }],
     captureDate: '2024-09-01T08:00:00Z',
   }),
 ];
@@ -668,7 +668,7 @@ describe('computeFilterCounts', () => {
         { id: 1, name: 'landscape', slug: 'landscape' },
         { id: 2, name: 'sunset', slug: 'sunset' },
       ],
-      people: [{ id: 1, name: 'Alice', slug: 'alice' }],
+      people: [{ id: 1, name: 'Alice' }],
       collections: [{ collectionId: 10, name: 'Trip A', visible: true, orderIndex: 0 }],
     }),
     makeImage({
@@ -677,7 +677,7 @@ describe('computeFilterCounts', () => {
       isFilm: false,
       blackAndWhite: true,
       tags: [{ id: 3, name: 'architecture', slug: 'architecture' }],
-      people: [{ id: 2, name: 'Bob', slug: 'bob' }],
+      people: [{ id: 2, name: 'Bob' }],
       collections: [{ collectionId: 20, name: 'Trip B', visible: true, orderIndex: 0 }],
     }),
     makeImage({
@@ -853,8 +853,8 @@ describe('filterContent with AND match mode', () => {
         { id: 3, name: 'mountain', slug: 'mountain' },
       ],
       people: [
-        { id: 1, name: 'Nate', slug: 'nate' },
-        { id: 2, name: 'Saxon', slug: 'saxon' },
+        { id: 1, name: 'Nate' },
+        { id: 2, name: 'Saxon' },
       ],
       camera: { id: 1, name: 'NIKON Z 6' },
       lens: { id: 1, name: 'NIKKOR Z 24-70mm f/4 S' },
@@ -865,7 +865,7 @@ describe('filterContent with AND match mode', () => {
         { id: 1, name: 'alpine', slug: 'alpine' },
         { id: 4, name: 'forest', slug: 'forest' },
       ],
-      people: [{ id: 1, name: 'Nate', slug: 'nate' }],
+      people: [{ id: 1, name: 'Nate' }],
       camera: { id: 2, name: 'SONY A7III' },
       lens: { id: 2, name: 'FE 24-70mm f/2.8 GM' },
     }),
@@ -875,7 +875,7 @@ describe('filterContent with AND match mode', () => {
         { id: 2, name: 'lake', slug: 'lake' },
         { id: 3, name: 'mountain', slug: 'mountain' },
       ],
-      people: [{ id: 2, name: 'Saxon', slug: 'saxon' }],
+      people: [{ id: 2, name: 'Saxon' }],
       camera: { id: 1, name: 'NIKON Z 6' },
       lens: { id: 1, name: 'NIKKOR Z 24-70mm f/4 S' },
     }),
@@ -1163,7 +1163,7 @@ describe('extractCollectionFilterOptions', () => {
         makeCollectionRef({
           id: 2000,
           tags: [{ id: 1, name: 'travel', slug: 'travel' }],
-          people: [{ id: 1, name: 'Alice', slug: 'alice' }],
+          people: [{ id: 1, name: 'Alice' }],
           locations: [{ id: 1, name: 'Rome', slug: 'rome' }],
         }),
       ]

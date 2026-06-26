@@ -21,8 +21,8 @@ const availableTags: ContentTagModel[] = [
 ];
 
 const availablePeople: ContentPersonModel[] = [
-  { id: 10, name: 'Alice', slug: 'alice' },
-  { id: 11, name: 'Bob', slug: 'bob' },
+  { id: 10, name: 'Alice' },
+  { id: 11, name: 'Bob' },
 ];
 
 function makeProps(
@@ -120,7 +120,7 @@ describe('TagsPeopleSection', () => {
 
   it('onAddNew for People appends to the current people list', () => {
     const updateStateField = jest.fn();
-    const existingPerson: ContentPersonModel = { id: 20, name: 'Charlie', slug: 'charlie' };
+    const existingPerson: ContentPersonModel = { id: 20, name: 'Charlie' };
     render(
       <TagsPeopleSection
         {...makeProps({
@@ -146,7 +146,7 @@ describe('TagsPeopleSection', () => {
     fireEvent.click(submitButton);
 
     expect(updateStateField).toHaveBeenCalledWith({
-      people: [existingPerson, { id: 0, name: 'Diana', slug: '' }],
+      people: [existingPerson, { id: 0, name: 'Diana' }],
     });
   });
 });

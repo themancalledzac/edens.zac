@@ -12,7 +12,6 @@ import {
   getAllImages,
   getAllLenses,
   getAllLocations,
-  getAllPeople,
   getAllTags,
   getFilmMetadata,
   searchImages,
@@ -57,16 +56,6 @@ describe('Read Endpoints', () => {
         expect.stringContaining('/content/tags'),
         expect.any(Object)
       );
-    });
-  });
-
-  describe('getAllPeople', () => {
-    it('should fetch and return people normalized to ContentPersonModel', async () => {
-      const rawPeople = [{ id: 1, personName: 'John Doe', slug: 'john-doe' }];
-      (global.fetch as jest.Mock).mockResolvedValue(mockSuccessResponse(rawPeople));
-
-      const result = await getAllPeople();
-      expect(result).toEqual([{ id: 1, name: 'John Doe', slug: 'john-doe' }]);
     });
   });
 

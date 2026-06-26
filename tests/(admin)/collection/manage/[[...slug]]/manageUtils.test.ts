@@ -1199,7 +1199,7 @@ describe('mergeNewMetadata', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
         tags: [{ id: 1, name: 'New Tag', slug: 'new-tag' }],
-        people: [{ id: 1, name: 'New Person', slug: 'new-person' }],
+        people: [{ id: 1, name: 'New Person' }],
         cameras: [{ id: 1, name: 'New Camera' }],
       },
     });
@@ -1234,11 +1234,11 @@ describe('mergeNewMetadata', () => {
   it('should merge people correctly (appends to existing)', () => {
     const response = createContentImageUpdateResponse({
       newMetadata: {
-        people: [{ id: 2, name: 'New Person', slug: 'new-person' }],
+        people: [{ id: 2, name: 'New Person' }],
       },
     });
     const prev = createCollectionUpdateResponse({
-      people: [{ id: 1, name: 'Existing Person', slug: 'existing-person' }],
+      people: [{ id: 1, name: 'Existing Person' }],
     });
     const updater = mergeNewMetadata(response, null);
 
@@ -1246,8 +1246,8 @@ describe('mergeNewMetadata', () => {
     if (updater) {
       const result = updater(prev);
       expect(result.people).toEqual([
-        { id: 1, name: 'Existing Person', slug: 'existing-person' },
-        { id: 2, name: 'New Person', slug: 'new-person' },
+        { id: 1, name: 'Existing Person' },
+        { id: 2, name: 'New Person' },
       ]);
     }
   });

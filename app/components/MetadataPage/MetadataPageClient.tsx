@@ -25,7 +25,6 @@ export function MetadataPageClient({ tags, people, locations }: MetadataPageClie
           emptyLabel="No people"
           items={people}
           basePath="/metadata/people"
-          getHref={item => (item.slug ? `/people/${item.slug}` : null)}
         />
         <MetadataList
           title="Locations"

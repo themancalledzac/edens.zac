@@ -53,7 +53,9 @@ describe('MetadataList', () => {
 
   it('DELETEs after confirm and removes the row', async () => {
     jest.spyOn(window, 'confirm').mockReturnValue(true);
-    mockDelete.mockResolvedValue(undefined);
+    // mockImplementation (not mockResolvedValue(undefined)) to satisfy both tsc — which requires
+    // the resolved value — and eslint's unicorn/no-useless-undefined.
+    mockDelete.mockImplementation(() => Promise.resolve());
     render(
       <MetadataList title="Tags" emptyLabel="No tags" items={items} basePath="/metadata/tags" />
     );
@@ -65,14 +67,14 @@ describe('MetadataList', () => {
   it('renders a go-to link when getHref is provided', () => {
     render(
       <MetadataList
-        title="People"
-        emptyLabel="No people"
+        title="Locations"
+        emptyLabel="No locations"
         items={items}
-        basePath="/metadata/people"
-        getHref={item => `/people/${item.slug}`}
+        basePath="/metadata/locations"
+        getHref={item => `/location/${item.slug}`}
       />
     );
     const link = screen.getAllByRole('link')[0];
-    expect(link).toHaveAttribute('href', '/people/forest');
+    expect(link).toHaveAttribute('href', '/location/forest');
   });
 });
