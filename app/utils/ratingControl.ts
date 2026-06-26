@@ -11,7 +11,7 @@
 import { type MeResponse } from '@/app/types/Auth';
 import { type AnyContentModel } from '@/app/types/Content';
 import { isContentImage } from '@/app/utils/contentTypeGuards';
-import { findMembership } from '@/app/utils/galleryAccess';
+import { isClientOfCollection } from '@/app/utils/galleryAccess';
 
 /**
  * True when the viewer may write a per-user override for this collection: a non-admin holding a
@@ -23,7 +23,7 @@ export function canOverride(
   editMode: boolean
 ): boolean {
   if (editMode) return false;
-  return findMembership(me, collectionId)?.role === 'CLIENT';
+  return isClientOfCollection(me, collectionId, false);
 }
 
 /** True when the viewer may interact with the slider at all: canonical (editMode) OR a CLIENT override. */

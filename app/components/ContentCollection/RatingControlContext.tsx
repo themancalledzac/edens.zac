@@ -9,7 +9,7 @@ import { createContext, type ReactNode, useContext } from 'react';
  * the two without prop-drilling — mirroring ClientGalleryDownloadContext for the download control.
  */
 export interface RatingControlContextValue {
-  /** Whether the slider should render at all (admin OR a canTag client of this collection). */
+  /** Whether the slider should render at all (editMode for canonical OR a CLIENT member for override). */
   canEdit: boolean;
   /** Current resolved rating to display for an image (drag > override > canonical). */
   resolveRatingForImage: (contentId: number) => number;

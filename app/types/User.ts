@@ -1,5 +1,5 @@
 /**
- * User API types — mirrors the backend Phase F invite/onboarding contract.
+ * User API types — mirrors the backend invite/onboarding contract.
  */
 
 /** Request body for `POST /api/admin/users`. */

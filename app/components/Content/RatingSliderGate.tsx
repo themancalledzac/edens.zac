@@ -13,7 +13,7 @@ interface RatingSliderGateProps {
  * Self-gating rating slider for one image. Reads `useRatingControl()` directly — the
  * context-not-props pattern `CollectionContentRenderer` already uses for {@link SelectStar} — so no
  * props thread through the generic renderer chain. Renders nothing unless a RatingControlProvider
- * is mounted AND the viewer may edit (admin canonical OR a `canTag` client). The resolved value
+ * is mounted AND the viewer may edit (editMode for canonical OR a CLIENT member for override). The resolved value
  * (drag > override > canonical) and the drag/commit callbacks all come from the context.
  */
 export function RatingSliderGate({ contentId }: RatingSliderGateProps): ReactElement | null {

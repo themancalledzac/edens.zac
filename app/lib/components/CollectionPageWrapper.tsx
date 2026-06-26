@@ -65,9 +65,9 @@ export default async function CollectionPageWrapper({
         ? await listSelectIdsServer(collection.id)
         : [];
 
-    // Seed the viewer's per-user rating overrides so a canTag client's adjusted ratings are present
-    // on first paint. The endpoint returns [] (empty Map) for anonymous/admin; only client viewers
-    // of a client gallery have overrides, so skip the call for other collection types.
+    // Seed the viewer's per-user rating overrides so a CLIENT member's adjusted ratings are present
+    // on first paint. The endpoint returns [] (empty Map) for anonymous/editMode viewers; only CLIENT
+    // members of a client gallery have overrides, so skip the call for other collection types.
     const seededOverrides =
       collection.type === CollectionType.CLIENT_GALLERY
         ? Array.from((await listRatingOverridesServer(collection.id)).entries())

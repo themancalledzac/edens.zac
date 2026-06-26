@@ -581,8 +581,8 @@ export default function CollectionContentRenderer({
   const selectStar = contentType === 'IMAGE' ? <SelectStar contentId={contentId} /> : null;
 
   // Rating slider (client gallery only). RatingSliderGate self-gates on a RatingControlProvider +
-  // canEdit (admin canonical or a canTag client); elsewhere it resolves to null, exactly like the
-  // star above.
+  // canEdit (editMode for canonical, or CLIENT membership for override); elsewhere it resolves to
+  // null, exactly like the star above.
   const ratingSlider = contentType === 'IMAGE' ? <RatingSliderGate contentId={contentId} /> : null;
 
   const isNotVisible =
