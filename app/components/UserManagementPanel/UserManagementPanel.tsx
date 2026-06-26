@@ -84,8 +84,10 @@ export function UserManagementPanel() {
                     className={styles.rowMain}
                     onClick={() => router.push(`/admin/users/${user.id}`)}
                   >
-                    <span className={styles.name}>{user.displayName ?? '—'}</span>
-                    <span className={styles.email}>{user.email}</span>
+                    <span className={styles.identity}>
+                      <span className={styles.name}>{user.displayName ?? '—'}</span>
+                      <span className={styles.email}>{user.email}</span>
+                    </span>
                     <span className={styles.status} data-status={user.status}>
                       {user.status}
                     </span>

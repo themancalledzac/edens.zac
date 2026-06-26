@@ -50,6 +50,7 @@
 
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) 0;
@@ -61,11 +62,11 @@
 }
 
 .rowMain {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  display: flex;
   align-items: center;
   gap: var(--space-3);
-  flex: 1;
+  /* Keep a sane minimum so the identity never collapses; the actions wrap below instead. */
+  flex: 1 1 220px;
   min-width: 0;
   padding: var(--space-1) var(--space-2);
   border: none;
@@ -86,6 +87,14 @@
   }
 }
 
+/* Name over email, so the row stays readable in the narrow admin-hub column. */
+.identity {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .name {
   font-weight: 600;
   color: var(--color-on-surface);
@@ -104,6 +113,7 @@
 
 .status {
   display: inline-block;
+  flex: none;
   font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -120,7 +130,9 @@
 
 .rowActions {
   display: flex;
+  flex: none;
   align-items: center;
   gap: var(--space-2);
+  margin-left: auto;
   white-space: nowrap;
 }
