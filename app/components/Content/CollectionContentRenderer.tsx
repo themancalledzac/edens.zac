@@ -44,6 +44,7 @@ import { getClickEligibility, toCollectionDimensions } from './collectionContent
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
+import { RatingSliderGate } from './RatingSliderGate';
 import ReorderOverlay from './ReorderOverlay';
 import { SelectStar } from './SelectStar';
 
@@ -579,6 +580,11 @@ export default function CollectionContentRenderer({
   // where no SelectsProvider is mounted) it resolves to null.
   const selectStar = contentType === 'IMAGE' ? <SelectStar contentId={contentId} /> : null;
 
+  // Rating slider (client gallery only). RatingSliderGate self-gates on a RatingControlProvider +
+  // canEdit (admin canonical or a canTag client); elsewhere it resolves to null, exactly like the
+  // star above.
+  const ratingSlider = contentType === 'IMAGE' ? <RatingSliderGate contentId={contentId} /> : null;
+
   const isNotVisible =
     contentType === 'IMAGE' &&
     checkImageVisibility(
@@ -689,6 +695,7 @@ export default function CollectionContentRenderer({
             shouldShowOverlay={shouldShowOverlay}
             isSelected={isSelected}
             star={selectStar}
+            ratingSlider={ratingSlider}
           />
         )}
       </Tile>
@@ -720,6 +727,7 @@ export default function CollectionContentRenderer({
           shouldShowOverlay={shouldShowOverlay}
           isSelected={isSelected}
           star={selectStar}
+          ratingSlider={ratingSlider}
         />
       )}
       {isReorderMode &&
