@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 
 import { InviteLinkResult } from '@/app/components/InviteLinkResult/InviteLinkResult';
 import { Button } from '@/app/components/ui/Button/Button';
@@ -8,7 +8,14 @@ import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { ApiError } from '@/app/lib/api/core';
-import { createUser, updateUser } from '@/app/lib/api/users';
+import {
+  type AdminUserCollection,
+  createUser,
+  listUserCollections,
+  removeUserCollection,
+  setUserCollectionRole,
+  updateUser,
+} from '@/app/lib/api/users';
 import { type AdminUserSummary, type UserStatus } from '@/app/types/User';
 
 import styles from './UserForm.module.scss';
@@ -27,6 +34,7 @@ export type UserFormProps =
  */
 export function UserForm(props: UserFormProps) {
   const isEdit = props.mode === 'edit';
+  const editUser = isEdit ? props.user : null;
   const [email] = useState(isEdit ? props.user.email : '');
   const [emailInput, setEmailInput] = useState('');
   const [displayName, setDisplayName] = useState(isEdit ? (props.user.displayName ?? '') : '');
@@ -34,6 +42,22 @@ export function UserForm(props: UserFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [collections, setCollections] = useState<AdminUserCollection[]>([]);
+  const editUserId = editUser?.id ?? null;
+
+  useEffect(() => {
+    if (editUserId !== null) {
+      listUserCollections(editUserId)
+        .then(setCollections)
+        .catch(() => setCollections([]));
+    }
+  }, [editUserId]);
+
+  async function changeRole(collectionId: number, value: 'none' | 'GENERAL' | 'CLIENT') {
+    if (editUserId === null) return;
+    await (value === 'none' ? removeUserCollection(editUserId, collectionId) : setUserCollectionRole(editUserId, collectionId, value));
+    setCollections(await listUserCollections(editUserId));
+  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -139,6 +163,31 @@ export function UserForm(props: UserFormProps) {
             ))}
           </select>
         </Field>
+      )}
+
+      {isEdit && (
+        <section className={styles.collections}>
+          <h3 className={styles.collectionsHeading}>Gallery access</h3>
+          {collections.length === 0 && (
+            <p className={styles.collectionsEmpty}>No associated collections.</p>
+          )}
+          {collections.map(c => (
+            <label key={c.collectionId} className={styles.collectionRow}>
+              <span>{c.title}</span>
+              <select
+                className={styles.select}
+                value={c.role ?? 'none'}
+                onChange={e =>
+                  changeRole(c.collectionId, e.target.value as 'none' | 'GENERAL' | 'CLIENT')
+                }
+              >
+                <option value="none">No access</option>
+                <option value="GENERAL">General (view)</option>
+                <option value="CLIENT">Client (download/tag)</option>
+              </select>
+            </label>
+          ))}
+        </section>
       )}
 
       {error && <FormError>{error}</FormError>}

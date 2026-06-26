@@ -12,8 +12,12 @@ import {
   createUser,
   getAdminUser,
   getInvitePreview,
+  getUserPageById,
+  listUserCollections,
   listUsers,
   regenerateInvite,
+  removeUserCollection,
+  setUserCollectionRole,
   updateUser,
 } from '@/app/lib/api/users';
 import {
@@ -31,6 +35,8 @@ jest.mock('@/app/lib/api/core', () => ({
   fetchAdminPostJsonApi: jest.fn(),
   fetchAdminGetApi: jest.fn(),
   fetchAdminPatchJsonApi: jest.fn(),
+  fetchAdminPutJsonApi: jest.fn(),
+  fetchAdminDeleteApi: jest.fn(),
 }));
 
 global.fetch = jest.fn();
@@ -281,5 +287,92 @@ describe('updateUser', () => {
     (core.fetchAdminPatchJsonApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
 
     await expect(updateUser(999, body)).rejects.toMatchObject({ name: 'ApiError', status: 404 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listUserCollections
+// ---------------------------------------------------------------------------
+
+describe('listUserCollections', () => {
+  it('delegates to fetchAdminGetApi(/users/{id}/collections) and returns the array', async () => {
+    const rows = [
+      { collectionId: 10, title: 'Wedding 2024', role: 'CLIENT' },
+      { collectionId: 11, title: 'Portraits', role: null },
+    ];
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(rows);
+
+    const result = await listUserCollections(5);
+
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users/5/collections');
+    expect(result).toEqual(rows);
+  });
+
+  it('returns [] when the endpoint yields no body', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
+
+    expect(await listUserCollections(5)).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// setUserCollectionRole
+// ---------------------------------------------------------------------------
+
+describe('setUserCollectionRole', () => {
+  it('PUTs to /users/{id}/collections/{cid} with the role body', async () => {
+    (core.fetchAdminPutJsonApi as jest.Mock).mockResolvedValue(null);
+
+    await setUserCollectionRole(5, 10, 'CLIENT');
+
+    expect(core.fetchAdminPutJsonApi).toHaveBeenCalledWith('/users/5/collections/10', {
+      role: 'CLIENT',
+    });
+  });
+
+  it('works for GENERAL role', async () => {
+    (core.fetchAdminPutJsonApi as jest.Mock).mockResolvedValue(null);
+
+    await setUserCollectionRole(5, 10, 'GENERAL');
+
+    expect(core.fetchAdminPutJsonApi).toHaveBeenCalledWith('/users/5/collections/10', {
+      role: 'GENERAL',
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// removeUserCollection
+// ---------------------------------------------------------------------------
+
+describe('removeUserCollection', () => {
+  it('DELETEs /users/{id}/collections/{cid}', async () => {
+    (core.fetchAdminDeleteApi as jest.Mock).mockResolvedValue(null);
+
+    await removeUserCollection(5, 10);
+
+    expect(core.fetchAdminDeleteApi).toHaveBeenCalledWith('/users/5/collections/10');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getUserPageById
+// ---------------------------------------------------------------------------
+
+describe('getUserPageById', () => {
+  it('delegates to fetchAdminGetApi(/users/{id}/page) and returns the collection model', async () => {
+    const page = { id: 99, title: "Jane's Gallery", slug: 'jane' };
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(page);
+
+    const result = await getUserPageById(5);
+
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users/5/page');
+    expect(result).toEqual(page);
+  });
+
+  it('returns null when the user has no galleries (empty body)', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
+
+    expect(await getUserPageById(5)).toBeNull();
   });
 });

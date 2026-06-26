@@ -22,6 +22,9 @@ jest.mock('@/app/lib/api/users', () => ({
   createUser: jest.fn(),
   updateUser: jest.fn(),
   regenerateInvite: jest.fn(),
+  listUserCollections: jest.fn().mockResolvedValue([]),
+  setUserCollectionRole: jest.fn().mockResolvedValue(null),
+  removeUserCollection: jest.fn().mockResolvedValue(null),
 }));
 
 const mockListUsers = usersApi.listUsers as jest.MockedFunction<typeof usersApi.listUsers>;

@@ -11,11 +11,14 @@
 
 import {
   ApiError,
+  fetchAdminDeleteApi,
   fetchAdminGetApi,
   fetchAdminPatchJsonApi,
   fetchAdminPostJsonApi,
+  fetchAdminPutJsonApi,
   getApiBaseUrl,
 } from '@/app/lib/api/core';
+import { type CollectionModel } from '@/app/types/Collection';
 import {
   type AcceptInviteRequest,
   type AdminUserSummary,
@@ -24,6 +27,12 @@ import {
   type UserCreateRequest,
   type UserUpdateRequest,
 } from '@/app/types/User';
+
+export interface AdminUserCollection {
+  collectionId: number;
+  title: string;
+  role: 'GENERAL' | 'CLIENT' | null;
+}
 
 /**
  * Create a new invited user via the admin endpoint.
@@ -99,6 +108,42 @@ export async function getInvitePreview(token: string): Promise<InvitePreview | n
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) return null;
   return (await res.json()) as InvitePreview;
+}
+
+/**
+ * List all collections associated with a user (tagged or member), with current role.
+ * Role is null when the user is tagged only (no membership / no access).
+ */
+export async function listUserCollections(userId: number): Promise<AdminUserCollection[]> {
+  const result = await fetchAdminGetApi<AdminUserCollection[]>(`/users/${userId}/collections`);
+  return result ?? [];
+}
+
+/**
+ * Set the user's membership role on a collection (GENERAL or CLIENT).
+ * Upserts — creates or updates the existing row.
+ */
+export async function setUserCollectionRole(
+  userId: number,
+  collectionId: number,
+  role: 'GENERAL' | 'CLIENT'
+): Promise<void> {
+  await fetchAdminPutJsonApi<void>(`/users/${userId}/collections/${collectionId}`, { role });
+}
+
+/**
+ * Remove the user's membership on a collection entirely (no access).
+ */
+export async function removeUserCollection(userId: number, collectionId: number): Promise<void> {
+  await fetchAdminDeleteApi<void>(`/users/${userId}/collections/${collectionId}`);
+}
+
+/**
+ * Fetch the full page (CollectionModel) for a user as seen by the admin.
+ * Returns null when the user has no galleries.
+ */
+export async function getUserPageById(userId: number): Promise<CollectionModel | null> {
+  return fetchAdminGetApi<CollectionModel>(`/users/${userId}/page`);
 }
 
 /**

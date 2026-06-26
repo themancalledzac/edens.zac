@@ -17,6 +17,9 @@ import { type AdminUserSummary } from '@/app/types/User';
 jest.mock('@/app/lib/api/users', () => ({
   createUser: jest.fn(),
   updateUser: jest.fn(),
+  listUserCollections: jest.fn().mockResolvedValue([]),
+  setUserCollectionRole: jest.fn().mockResolvedValue(null),
+  removeUserCollection: jest.fn().mockResolvedValue(null),
 }));
 
 const mockCreateUser = usersApi.createUser as jest.MockedFunction<typeof usersApi.createUser>;
