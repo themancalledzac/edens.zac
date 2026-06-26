@@ -29,6 +29,8 @@ interface ContentCollectionPageProps {
   me?: MeResponse | null;
   /** The viewer's persisted selected image ids for this collection (client galleries only). */
   initialSelectedIds?: number[];
+  /** Server-seeded per-user rating overrides (contentId -> rating) for client viewers. */
+  seededOverrides?: Array<[number, number]>;
 }
 
 /**
@@ -101,6 +103,7 @@ export default function CollectionPage({
   editMode = false,
   me = null,
   initialSelectedIds = [],
+  seededOverrides,
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
@@ -121,6 +124,7 @@ export default function CollectionPage({
             editMode={editMode}
             me={me}
             initialSelectedIds={initialSelectedIds}
+            seededOverrides={seededOverrides}
           />
         </main>
       </div>
