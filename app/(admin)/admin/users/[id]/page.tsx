@@ -3,15 +3,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
-import { getAdminUser } from '@/app/lib/api/users';
+import { getAdminUser, getUserPageById } from '@/app/lib/api/users';
 
 import { GenerateInviteButton } from '../GenerateInviteButton';
 import styles from './page.module.scss';
 
 export const dynamic = 'force-dynamic';
 
-/** Read-only admin detail for a single user. Reached by clicking a row in the hub user panel. */
+/** Admin detail for a single user — header + full page view. Reached by clicking a row in the hub user panel. */
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const userId = Number(id);
@@ -19,6 +20,8 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
 
   const user = await getAdminUser(userId).catch(() => null);
   if (!user) notFound();
+
+  const page = await getUserPageById(userId).catch(() => null);
 
   return (
     <PageShell pageType="collectionsCollection">
@@ -51,6 +54,12 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       <div className={styles.actions}>
         <GenerateInviteButton userId={user.id} email={user.email} status={user.status} />
       </div>
+
+      {page ? (
+        <CollectionPage collection={page} editMode />
+      ) : (
+        <p>This user has no galleries yet.</p>
+      )}
     </PageShell>
   );
 }
