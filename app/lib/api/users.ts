@@ -25,6 +25,8 @@ import {
   type AdminUserSummary,
   type CreateUserResponse,
   type InvitePreview,
+  type MergePreview,
+  type MergeResult,
   type UserCreateRequest,
   type UserUpdateRequest,
 } from '@/app/types/User';
@@ -51,11 +53,31 @@ export async function createUser(req: UserCreateRequest): Promise<CreateUserResp
 
 /**
  * List all user accounts via the admin endpoint (newest first). Returns `[]` when the endpoint
- * yields no body.
+ * yields no body. Pass `includePeople: true` to also surface tag-only `PERSON` rows.
  */
-export async function listUsers(): Promise<AdminUserSummary[]> {
-  const result = await fetchAdminGetApi<AdminUserSummary[]>('/users');
+export async function listUsers(opts?: { includePeople?: boolean }): Promise<AdminUserSummary[]> {
+  const endpoint = opts?.includePeople ? '/users?includePeople=true' : '/users';
+  const result = await fetchAdminGetApi<AdminUserSummary[]>(endpoint);
   return result ?? [];
+}
+
+/** Preview what a merge of `sourceId` into `targetId` would move. `null` if either id is gone. */
+export async function getMergePreview(
+  sourceId: number,
+  targetId: number
+): Promise<MergePreview | null> {
+  return await fetchAdminGetApi<MergePreview>(
+    `/users/${sourceId}/merge-preview?targetId=${targetId}`
+  );
+}
+
+/** Absorb tag-only `sourceId` into surviving `targetId`. Throws ApiError(409) on an illegal merge. */
+export async function mergeUser(targetId: number, sourceId: number): Promise<MergeResult> {
+  const result = await fetchAdminPostJsonApi<MergeResult>(`/users/${targetId}/merge`, { sourceId });
+  if (!result) {
+    throw new ApiError('Unexpected empty response from merge', 500);
+  }
+  return result;
 }
 
 /**
