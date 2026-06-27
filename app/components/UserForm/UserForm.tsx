@@ -7,6 +7,7 @@ import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
+import { Textarea } from '@/app/components/ui/Field/Textarea';
 import { ApiError } from '@/app/lib/api/core';
 import {
   type AdminUserCollection,
@@ -40,6 +41,7 @@ export function UserForm(props: UserFormProps) {
   const [emailInput, setEmailInput] = useState('');
   const [displayName, setDisplayName] = useState(isEdit ? (props.user.displayName ?? '') : '');
   const [status, setStatus] = useState<UserStatus>(isEdit ? props.user.status : 'INVITED');
+  const [description, setDescription] = useState(isEdit ? (props.user.description ?? '') : '');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
@@ -99,6 +101,7 @@ export function UserForm(props: UserFormProps) {
       await updateUser(props.user.id, {
         displayName: displayName.trim() ? displayName.trim() : null,
         status,
+        description: description.trim() ? description.trim() : null,
       });
       props.onSuccess();
     } catch (error_) {
@@ -153,6 +156,20 @@ export function UserForm(props: UserFormProps) {
           disabled={submitting}
         />
       </Field>
+
+      {isEdit && (
+        <Field label="Description" htmlFor="user-form-description">
+          <Textarea
+            id="user-form-description"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Short profile description shown on the user's page"
+            maxLength={500}
+            rows={4}
+            disabled={submitting}
+          />
+        </Field>
+      )}
 
       {isEdit && (
         <Field label="Status" htmlFor="user-form-status">

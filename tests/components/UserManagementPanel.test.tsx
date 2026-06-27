@@ -36,8 +36,8 @@ Object.defineProperty(global.navigator, 'clipboard', {
 });
 
 const USERS: AdminUserSummary[] = [
-  { id: 1, email: 'alice@x.com', displayName: 'Alice', status: 'ACTIVE' },
-  { id: 2, email: 'bob@x.com', displayName: null, status: 'INVITED' },
+  { id: 1, email: 'alice@x.com', displayName: 'Alice', status: 'ACTIVE', description: null },
+  { id: 2, email: 'bob@x.com', displayName: null, status: 'INVITED', description: null },
 ];
 
 describe('UserManagementPanel', () => {
