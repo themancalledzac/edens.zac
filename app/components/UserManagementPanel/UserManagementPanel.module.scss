@@ -1,38 +1,4 @@
-/* UserManagementPanel — tall in-place admin panel (list ⇄ create ⇄ edit) */
-
-.panel {
-  display: flex;
-  flex-direction: column;
-  height: 520px;
-  max-height: 70vh;
-  overflow: hidden;
-  background: var(--color-surface-alt, var(--color-surface));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-1);
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.title {
-  margin: 0;
-  font-size: var(--text-md);
-  font-weight: 700;
-  color: var(--color-on-surface);
-}
-
-.body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--space-4);
-}
+/* UserManagementPanel — list, row, and form styles for the user management admin panel */
 
 .muted {
   margin: 0;
@@ -65,7 +31,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  /* Keep a sane minimum so the identity never collapses; the actions wrap below instead. */
   flex: 1 1 220px;
   min-width: 0;
   padding: var(--space-1) var(--space-2);
@@ -87,7 +52,6 @@
   }
 }
 
-/* Non-navigable identity for tag-only PERSON rows (no account detail page to reach). */
 .rowStatic {
   display: flex;
   align-items: center;
@@ -98,7 +62,6 @@
   color: inherit;
 }
 
-/* Name over email, so the row stays readable in the narrow admin-hub column. */
 .identity {
   display: flex;
   flex: 1;
@@ -106,7 +69,6 @@
   min-width: 0;
 }
 
-/* Dot + name share a line; the email sits below. */
 .nameLine {
   display: flex;
   align-items: center;
@@ -114,7 +76,6 @@
   min-width: 0;
 }
 
-/* Status at a glance: green active, amber invited, red disabled. */
 .dot {
   flex: none;
   width: 8px;
@@ -163,7 +124,6 @@
   white-space: nowrap;
 }
 
-/* Update over Reset pw, mirroring the name-over-email stack on the left. */
 .rowActions {
   display: flex;
   flex: none;
