@@ -136,3 +136,23 @@
   margin-left: auto;
   white-space: nowrap;
 }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+}
+
+.badge {
+  flex: none;
+  margin-left: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-1);
+  font-size: var(--text-xs);
+  background: var(--color-surface, var(--color-bg));
+  border: 1px solid var(--color-border);
+  color: var(--color-on-surface-muted);
+}
