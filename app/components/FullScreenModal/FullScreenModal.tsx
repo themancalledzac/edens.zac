@@ -120,7 +120,10 @@ export function FullScreenModal({
   };
 
   const modalContent = (
-    <div ref={modalRef} className={styles.imageFullScreenWrapper}>
+    <div
+      ref={modalRef}
+      className={`${styles.imageFullScreenWrapper} ${immersive ? styles.immersive : ''}`}
+    >
       <div className={styles.overlayContainer} onClick={handleOverlayClick}>
         <div
           className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}
@@ -163,7 +166,7 @@ export function FullScreenModal({
             )}
           </div>
 
-          {currentImageLoaded && !immersive && (
+          {currentImageLoaded && (!immersive || showMetadata) && (
             <div
               className={`${styles.metadataOverlay} ${styles.metadataOverlayLoaded}`}
               onClick={e => e.stopPropagation()}
@@ -267,15 +270,17 @@ export function FullScreenModal({
                   )}
                 </div>
               )}
-              <button
-                className={styles.metadataToggle}
-                onClick={toggleMetadata}
-                aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
-                aria-expanded={showMetadata}
-                type="button"
-              >
-                <span aria-hidden="true">{showMetadata ? '✕' : '↖'}</span>
-              </button>
+              {!immersive && (
+                <button
+                  className={styles.metadataToggle}
+                  onClick={toggleMetadata}
+                  aria-label={showMetadata ? 'Hide metadata' : 'Show metadata'}
+                  aria-expanded={showMetadata}
+                  type="button"
+                >
+                  <span aria-hidden="true">{showMetadata ? '✕' : '↖'}</span>
+                </button>
+              )}
             </div>
           )}
         </div>

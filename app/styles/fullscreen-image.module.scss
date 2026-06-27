@@ -31,6 +31,13 @@
   }
 }
 
+// Immersive mode (tap-to-hide-chrome). On iOS WebKit native fullscreen is unavailable, so the
+// Modal's 0.9 backdrop would otherwise let the page bleed through at 10%. Paint the whole viewer
+// solid black so the framed photo (and its white matte) is the only thing visible.
+.immersive {
+  background: #000;
+}
+
 .overlayContainer {
   flex: 1;
   display: flex;

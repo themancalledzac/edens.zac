@@ -75,4 +75,16 @@ describe('FullScreenModal — immersive mode', () => {
     render(<FullScreenModal {...baseProps} />);
     expect(screen.getByLabelText('Close fullscreen image')).toBeInTheDocument();
   });
+
+  it('reveals the metadata panel in immersive mode when showMetadata is on, sans toggle button', () => {
+    render(<FullScreenModal {...baseProps} immersive showMetadata />);
+
+    // Swipe-up reveals the metadata content even while immersive (the title renders in the panel).
+    expect(screen.getByText('Image 2')).toBeInTheDocument();
+    // The chrome toggle button stays hidden in immersive — swipe-down controls the panel there.
+    expect(screen.queryByLabelText('Hide metadata')).not.toBeInTheDocument();
+    // Every other control remains hidden.
+    expect(screen.queryByLabelText('Close fullscreen image')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Next image')).not.toBeInTheDocument();
+  });
 });
