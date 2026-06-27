@@ -30,6 +30,7 @@ export function GenerateInviteButton({ userId, email, status }: GenerateInviteBu
   const [error, setError] = useState<string | null>(null);
 
   const actionLabel = status === 'ACTIVE' ? 'Reset password link' : 'Resend invite';
+  const buttonLabel = status === 'ACTIVE' ? 'Reset pw' : 'Resend';
 
   const handleGenerate = async () => {
     setOpen(true);
@@ -59,7 +60,7 @@ export function GenerateInviteButton({ userId, email, status }: GenerateInviteBu
   return (
     <>
       <Button variant="secondary" size="sm" onClick={handleGenerate}>
-        {actionLabel}
+        {buttonLabel}
       </Button>
       <Modal open={open} onClose={handleClose} variant="overlay" labelledBy="generate-invite-title">
         <div className={styles.card}>

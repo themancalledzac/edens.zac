@@ -12,9 +12,11 @@ import {
   createUser,
   getAdminUser,
   getInvitePreview,
+  getMergePreview,
   getUserPageById,
   listUserCollections,
   listUsers,
+  mergeUser,
   regenerateInvite,
   removeUserCollection,
   setUserCollectionRole,
@@ -374,5 +376,54 @@ describe('getUserPageById', () => {
     (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
 
     expect(await getUserPageById(5)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listUsers includePeople
+// ---------------------------------------------------------------------------
+
+describe('listUsers includePeople', () => {
+  it('requests ?includePeople=true when asked', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue([]);
+    await listUsers({ includePeople: true });
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users?includePeople=true');
+  });
+  it('requests plain /users by default', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue([]);
+    await listUsers();
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getMergePreview
+// ---------------------------------------------------------------------------
+
+describe('getMergePreview', () => {
+  it('GETs the preview with the targetId query', async () => {
+    const preview = { sourceId: 2, targetId: 1, imageTagCount: 3 };
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(preview);
+    const result = await getMergePreview(2, 1);
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/users/2/merge-preview?targetId=1');
+    expect(result).toEqual(preview);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mergeUser
+// ---------------------------------------------------------------------------
+
+describe('mergeUser', () => {
+  it('POSTs sourceId to the target merge endpoint', async () => {
+    const res = { movedImageTags: 2, movedCollections: 1, duplicatesCollapsed: 0 };
+    (core.fetchAdminPostJsonApi as jest.Mock).mockResolvedValue(res);
+    const result = await mergeUser(1, 2);
+    expect(core.fetchAdminPostJsonApi).toHaveBeenCalledWith('/users/1/merge', { sourceId: 2 });
+    expect(result).toEqual(res);
+  });
+  it('propagates ApiError(409) for an illegal merge', async () => {
+    (core.fetchAdminPostJsonApi as jest.Mock).mockRejectedValue(new ApiError('Conflict', 409));
+    await expect(mergeUser(1, 2)).rejects.toMatchObject({ name: 'ApiError', status: 409 });
   });
 });

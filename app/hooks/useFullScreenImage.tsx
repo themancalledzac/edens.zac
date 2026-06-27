@@ -88,6 +88,9 @@ export function useFullScreenImage(): {
   const router = useRouter();
   const [fullScreenState, setFullScreenState] = useState<FullScreenState>(null);
   const [showMetadata, setShowMetadata] = useState(false);
+  // Mirror showMetadata into a ref so the touch handlers (which don't re-bind on metadata changes)
+  // can read the current value synchronously inside a gesture.
+  const showMetadataRef = useRef<boolean>(false);
   const [loadedImageIds, setLoadedImageIds] = useState<Set<number>>(new Set());
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
@@ -333,6 +336,10 @@ export function useFullScreenImage(): {
     });
   }, [isOpen]);
 
+  useEffect(() => {
+    showMetadataRef.current = showMetadata;
+  }, [showMetadata]);
+
   const isMetadataControl = useCallback((target: HTMLElement | null): boolean => {
     if (!target) return false;
     return !!(
@@ -368,13 +375,13 @@ export function useFullScreenImage(): {
       isSwiping.current = true;
     };
 
-    // A tap that lands on an interactive control (nav arrows, close, download, or the metadata UI)
-    // must run that control, not toggle immersive. The bare photo toggles; everything chrome-like
-    // is excluded by matching the nearest button/anchor or the metadata overlay container.
-    const isImmersiveTapBlocked = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) return false;
-      return !!target.closest(`button, a, .${styles.metadataOverlay}`);
-    };
+    // Where a stationary tap lands decides its action. A tap on a control (nav arrows, close,
+    // download, or the metadata UI) runs that control. A tap on the framed photo toggles immersive.
+    // A tap on the black letterbox outside the photo dismisses the viewer.
+    const isControlTap = (target: EventTarget | null): boolean =>
+      target instanceof HTMLElement && !!target.closest(`button, a, .${styles.metadataOverlay}`);
+    const isImageTap = (target: EventTarget | null): boolean =>
+      target instanceof HTMLElement && !!target.closest(`.${styles.imageWrapper}`);
 
     const handleTouchStart = (e: TouchEvent) => {
       isSwiping.current = false;
@@ -430,11 +437,17 @@ export function useFullScreenImage(): {
         return;
       }
 
-      // Swipe-to-navigate: only at 1× (zoomed gestures pan, not navigate).
-      if (scaleRef.current === 1 && e.touches[0] && !isMetadataControl(e.target as HTMLElement)) {
+      // Swipe gestures: only at 1× (zoomed gestures pan, not navigate). Horizontal → navigate;
+      // vertical → metadata reveal / dismiss. Either way mark isSwiping so the ending touch isn't
+      // also treated as a tap, and take over the gesture from any native scroll.
+      if (scaleRef.current === 1 && e.touches[0]) {
         const deltaX = e.touches[0].clientX - touchStartX.current;
         const deltaY = e.touches[0].clientY - touchStartY.current;
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+        const horizontal = Math.abs(deltaX) > Math.abs(deltaY);
+        if (horizontal && Math.abs(deltaX) > 10 && !isMetadataControl(e.target as HTMLElement)) {
+          isSwiping.current = true;
+          e.preventDefault();
+        } else if (!horizontal && Math.abs(deltaY) > 10) {
           isSwiping.current = true;
           e.preventDefault();
         }
@@ -490,42 +503,66 @@ export function useFullScreenImage(): {
         lastTapRef.current = { time: e.timeStamp, x: changed.clientX, y: changed.clientY };
       }
 
-      // At 1×, a touch-end is either a horizontal swipe-to-navigate or a stationary tap.
+      // At 1×, a touch-end is a horizontal swipe (navigate), a vertical swipe (metadata / dismiss),
+      // or a stationary tap (toggle immersive / dismiss, depending where it lands).
       if (scaleRef.current === 1) {
         const deltaX = changed.clientX - touchStartX.current;
         const deltaY = changed.clientY - touchStartY.current;
-        const isSwipe =
-          isSwiping.current &&
-          Math.abs(deltaX) > Math.abs(deltaY) &&
-          Math.abs(deltaX) > INTERACTION.swipeThreshold;
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
+        const horizontalSwipe =
+          isSwiping.current && absX > absY && absX > INTERACTION.swipeThreshold;
+        const verticalSwipe = isSwiping.current && absY > absX && absY > INTERACTION.swipeThreshold;
 
-        if (isSwipe) {
+        if (horizontalSwipe) {
           if (deltaX > 0) {
             navigateToPrevious();
           } else {
             navigateToNext();
           }
+        } else if (verticalSwipe) {
+          if (deltaY > 0) {
+            // Swipe DOWN — metadata first, then dismiss: close the metadata panel if it's open,
+            // otherwise close the whole viewer (which also leaves immersive + native fullscreen).
+            if (showMetadataRef.current) {
+              setShowMetadata(false);
+            } else {
+              hideImage();
+            }
+          } else if (!showMetadataRef.current) {
+            // Swipe UP — reveal the metadata panel (works in both chromed and immersive views).
+            setShowMetadata(true);
+          }
         } else if (
-          // Stationary tap on the photo → toggle immersive. This lives in the touch handler, so it
-          // is inherently touch-only: desktop mouse clicks keep their close-on-click behavior.
+          // Stationary tap. This lives in the touch handler, so it is inherently touch-only:
+          // desktop mouse clicks keep their close-on-click behavior.
           !didMoveRef.current &&
           !isSwiping.current &&
-          Math.abs(deltaX) < TAP_SLOP &&
-          Math.abs(deltaY) < TAP_SLOP &&
-          !isImmersiveTapBlocked(e.target)
+          absX < TAP_SLOP &&
+          absY < TAP_SLOP
         ) {
-          const next = !immersiveRef.current;
-          immersiveRef.current = next;
-          setImmersive(next);
-          // Sync native fullscreen where supported; both calls are best-effort and never throw, and
-          // run straight from the touch handler so the request keeps its user activation.
-          if (next) {
-            void requestFullscreen(modalElement);
+          if (isControlTap(e.target)) {
+            // The control's own onClick handles it; nothing to do here.
+          } else if (isImageTap(e.target)) {
+            // Tap on the framed photo → toggle immersive (hide/show all chrome). Native fullscreen
+            // is requested where supported (Android); on iOS WebKit it no-ops and we rely on the
+            // chrome-hide + solid-black backdrop alone. Best-effort, never throws, and runs from the
+            // touch handler so the request keeps its user activation.
+            const next = !immersiveRef.current;
+            immersiveRef.current = next;
+            setImmersive(next);
+            if (next) {
+              void requestFullscreen(modalElement);
+            } else {
+              void exitFullscreen();
+            }
+            // Swallow the synthetic click this tap produces so it doesn't also close the viewer.
+            suppressTapClose();
           } else {
-            void exitFullscreen();
+            // Tap on the black letterbox outside the photo → dismiss the viewer.
+            hideImage();
+            suppressTapClose();
           }
-          // Swallow the synthetic click this tap produces so it doesn't also close the viewer.
-          suppressTapClose();
         }
 
         setTimeout(() => {
@@ -543,7 +580,7 @@ export function useFullScreenImage(): {
       modalElement.removeEventListener('touchmove', handleTouchMove);
       modalElement.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isOpen, navigateToNext, navigateToPrevious, isMetadataControl]);
+  }, [isOpen, navigateToNext, navigateToPrevious, isMetadataControl, hideImage]);
 
   const toggleMetadata = useCallback((e: MouseEvent) => {
     e.stopPropagation();

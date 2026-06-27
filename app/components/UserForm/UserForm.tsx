@@ -37,7 +37,7 @@ export type UserFormProps =
 export function UserForm(props: UserFormProps) {
   const isEdit = props.mode === 'edit';
   const editUser = isEdit ? props.user : null;
-  const [email] = useState(isEdit ? props.user.email : '');
+  const [email] = useState(isEdit ? (props.user.email ?? '') : '');
   const [emailInput, setEmailInput] = useState('');
   const [displayName, setDisplayName] = useState(isEdit ? (props.user.displayName ?? '') : '');
   const [status, setStatus] = useState<UserStatus>(isEdit ? props.user.status : 'INVITED');
