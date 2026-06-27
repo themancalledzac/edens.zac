@@ -4,6 +4,7 @@ import type {
   ContentCollectionModel,
   ContentGifModel,
   ContentImageModel,
+  ContentPanelModel,
   ContentParallaxImageModel,
   ContentTextModel,
 } from '@/app/types/Content';
@@ -170,6 +171,22 @@ export const createCollectionModel = (
   },
   collectionDate: '2024-01-01',
   description: 'A beautiful collection description',
+  ...overrides,
+});
+
+// Panel content factory
+export const createPanelContent = (
+  id: number,
+  overrides?: Partial<ContentPanelModel>
+): ContentPanelModel => ({
+  id,
+  contentType: 'PANEL',
+  orderIndex: id,
+  visible: true,
+  panelType: 'users',
+  rating: 5,
+  width: 600,
+  height: 1000,
   ...overrides,
 });
 

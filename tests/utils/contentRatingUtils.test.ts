@@ -14,6 +14,7 @@ import {
 } from '@/app/utils/contentRatingUtils';
 import {
   createHorizontalImage,
+  createPanelContent,
   createPanorama,
   createSquareImage,
   createVerticalImage,
@@ -161,6 +162,19 @@ describe('getEffectiveRating', () => {
         collectionType: 'TRAVEL',
       };
       expect(getEffectiveRating(collectionCard as never)).toBe(4);
+    });
+  });
+
+  describe('panel content', () => {
+    it('should return the panel rating for PANEL content', () => {
+      expect(getEffectiveRating(createPanelContent(1, { rating: 5 }))).toBe(5);
+      expect(getEffectiveRating(createPanelContent(1, { rating: 3 }))).toBe(3);
+      expect(getEffectiveRating(createPanelContent(1, { rating: 0 }))).toBe(0);
+    });
+
+    it('clamps panel rating to [0, 5]', () => {
+      expect(getEffectiveRating(createPanelContent(1, { rating: 6 }))).toBe(5);
+      expect(getEffectiveRating(createPanelContent(1, { rating: -1 }))).toBe(0);
     });
   });
 

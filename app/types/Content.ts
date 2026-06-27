@@ -26,7 +26,7 @@ import type {
 } from './Metadata';
 
 /** Content type discriminator - maps to backend Content contentType field */
-export type ContentType = 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION';
+export type ContentType = 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION' | 'PANEL';
 
 /**
  * Base Content interface - all content models extend this
@@ -243,6 +243,15 @@ export interface ContentCollectionModel extends Content {
 }
 
 /**
+ * Panel content model - displays a UI panel (e.g. users or messages) as a rated content block
+ */
+export interface ContentPanelModel extends Content {
+  contentType: 'PANEL';
+  panelType: 'users' | 'messages';
+  rating: number;
+}
+
+/**
  * Union type of all supported content models
  * Use this for type-safe rendering and processing
  */
@@ -251,7 +260,8 @@ export type AnyContentModel =
   | ContentParallaxImageModel
   | ContentTextModel
   | ContentGifModel
-  | ContentCollectionModel;
+  | ContentCollectionModel
+  | ContentPanelModel;
 
 /**
  * Content blocks that participate in the click-to-fullscreen viewer: still images, parallax

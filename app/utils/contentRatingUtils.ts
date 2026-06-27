@@ -12,7 +12,12 @@ import {
   EXTREMENESS_RAMP_START,
 } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
-import { getAspectRatio, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
+import {
+  getAspectRatio,
+  isContentImage,
+  isGifContent,
+  isPanelContent,
+} from '@/app/utils/contentTypeGuards';
 
 /**
  * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel)
@@ -36,6 +41,11 @@ export function isCollectionCard(item: AnyContentModel): boolean {
 export function getRating(item: AnyContentModel, asStarValue: boolean = false): number {
   if (isCollectionCard(item)) {
     return 4;
+  }
+
+  if (isPanelContent(item)) {
+    const r = Math.min(Math.max(item.rating ?? 0, 0), 5);
+    return asStarValue ? (r === 0 || r === 1 ? 1 : r) : r;
   }
 
   // Animated GIF/MP4 blocks carry a backend-persisted rating with the same 0-5 semantics as
@@ -69,6 +79,8 @@ export function getEffectiveRating(item: AnyContentModel): number {
   if (isCollectionCard(item)) {
     return 4;
   }
+
+  if (isPanelContent(item)) return Math.min(Math.max(item.rating ?? 0, 0), 5);
 
   // Animated GIF/MP4 blocks share the image rating semantics (0-5). The earlier `return 1`
   // short-circuit here is what made GIFs always pack as low-priority filler in the row algorithm
