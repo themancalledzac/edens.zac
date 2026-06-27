@@ -1,5 +1,6 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
@@ -24,6 +25,10 @@ interface ContentCollectionPageProps {
   ssrViewport?: SsrViewport;
   /** Mounts the admin edit surface in CollectionPageClient (single-collection branch only). */
   editMode?: boolean;
+  /** Server-resolved principal (from `meServer()`), forwarded to the gallery client. */
+  me?: MeResponse | null;
+  /** The viewer's persisted selected image ids for this collection (client galleries only). */
+  initialSelectedIds?: number[];
 }
 
 /**
@@ -94,6 +99,8 @@ export default function CollectionPage({
   showProtectedCovers = false,
   ssrViewport,
   editMode = false,
+  me = null,
+  initialSelectedIds = [],
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
@@ -112,6 +119,8 @@ export default function CollectionPage({
             serverViewportHeight={ssrViewport?.viewportHeight}
             serverIsMobile={ssrViewport?.isMobile}
             editMode={editMode}
+            me={me}
+            initialSelectedIds={initialSelectedIds}
           />
         </main>
       </div>

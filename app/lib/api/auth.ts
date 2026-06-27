@@ -9,7 +9,7 @@
  * `null` on 401 so "logged out" is data, not an error.
  */
 
-import { ApiError } from '@/app/lib/api/core';
+import { ApiError, getApiBaseUrl, getServerCookieHeader } from '@/app/lib/api/core';
 import { type MeResponse } from '@/app/types/Auth';
 
 /**
@@ -80,6 +80,25 @@ export async function me(): Promise<MeResponse | null> {
     method: 'GET',
     credentials: 'same-origin',
     cache: 'no-store',
+  });
+  if (res.status === 401) return null;
+  if (!res.ok) {
+    await throwFromResponse(res);
+  }
+  return (await res.json()) as MeResponse;
+}
+
+/**
+ * Server-side counterpart to {@link me}. Server Components cannot call `me()` (relative URL +
+ * `credentials:'same-origin'` only work in the browser), so this resolves the absolute backend URL
+ * via `getApiBaseUrl` and forwards `ezac_session` via `getServerCookieHeader`. Returns null on 401.
+ */
+export async function meServer(): Promise<MeResponse | null> {
+  const cookieHeader = await getServerCookieHeader();
+  const res = await fetch(`${getApiBaseUrl('auth')}/me`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: cookieHeader ? { Cookie: cookieHeader } : {},
   });
   if (res.status === 401) return null;
   if (!res.ok) {

@@ -3,10 +3,12 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useMemo, useState } from 'react';
 
+import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
+import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
 import {
@@ -27,7 +29,9 @@ import {
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
+import { isClientOfCollection } from '@/app/utils/galleryAccess';
 import { toggleImageSelection } from '@/app/utils/imageSelection';
+import { buildPinnedSelects } from '@/app/utils/pinnedSelects';
 import { sortByDate } from '@/app/utils/sortByDate';
 
 import {
@@ -36,6 +40,7 @@ import {
 } from './ClientGalleryDownloadContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
+import { SelectsProvider } from './SelectsContext';
 
 /**
  * The entire edit experience (useCollectionEdit, EditBar, edit sheet, modals, inline-edit
@@ -61,6 +66,10 @@ interface CollectionPageClientProps {
    * loaded.
    */
   editMode?: boolean;
+  /** Server-resolved principal, surfaced to deep client consumers via {@link MeProvider}. */
+  me?: MeResponse | null;
+  /** The viewer's persisted selected image ids for THIS collection, seeded server-side. */
+  initialSelectedIds?: number[];
 }
 
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
@@ -73,6 +82,8 @@ export default function CollectionPageClient({
   serverViewportHeight,
   serverIsMobile,
   editMode = false,
+  me = null,
+  initialSelectedIds = [],
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -117,6 +128,16 @@ export default function CollectionPageClient({
   );
 
   const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
+
+  // Selects (favorites) are a client-gallery feature, available only to a viewer who is a CLIENT
+  // of this collection (or admin via editMode). Distinct from the download "select mode" below.
+  const selectsEnabled =
+    isClientGallery && !editMode && isClientOfCollection(me, collection.id, editMode);
+
+  // Mirror of the viewer's selected ids, owned here so the pinned "Your Selects" prepend can react
+  // to toggles. SelectsProvider is seeded from the same initial list and notifies us via onChange.
+  const [pinnedSelectedIds, setPinnedSelectedIds] = useState<number[]>(initialSelectedIds);
+
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
@@ -211,10 +232,32 @@ export default function CollectionPageClient({
       collection.id,
       collection.displayMode
     );
-    if (filterState.dateSortDirection === 'off') return processed;
-    const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
-    return mergeDateSortedImages(processed, sorted);
-  }, [filteredContent, collection.id, collection.displayMode, filterState.dateSortDirection]);
+
+    const ordered =
+      filterState.dateSortDirection === 'off'
+        ? processed
+        : mergeDateSortedImages(
+            processed,
+            sortByDate(processed.filter(isImageContent), filterState.dateSortDirection)
+          );
+
+    if (!selectsEnabled || pinnedSelectedIds.length === 0) {
+      return ordered;
+    }
+
+    // Pinned "Your Selects" region: duplicated, marked clones of the selected images, prepended so
+    // they sit at the top while the originals still render in place. The marker only affects the
+    // React key (see Component.tsx) — layout treats them as normal image blocks.
+    const pinned = buildPinnedSelects(ordered, new Set(pinnedSelectedIds));
+    return [...pinned, ...ordered];
+  }, [
+    filteredContent,
+    collection.id,
+    collection.displayMode,
+    filterState.dateSortDirection,
+    selectsEnabled,
+    pinnedSelectedIds,
+  ]);
 
   const handleFilterChange = useCallback(
     (update: Partial<FilterState>) => {
@@ -280,6 +323,8 @@ export default function CollectionPageClient({
       {!editLayerMounted && grid}
       <EditModeLayer
         collection={collection}
+        chunkSize={density}
+        mobileChunkSize={mobileDensity}
         filterState={filterState}
         setFilterState={setFilterState}
         syncToUrl={syncToUrl}
@@ -296,13 +341,25 @@ export default function CollectionPageClient({
     </>
   );
 
+  const withSelects = selectsEnabled ? (
+    <SelectsProvider
+      collectionId={collection.id}
+      initialSelectedIds={initialSelectedIds}
+      onChange={setPinnedSelectedIds}
+    >
+      {content}
+    </SelectsProvider>
+  ) : (
+    content
+  );
+
   const maybeWrappedContent =
     isClientGallery && !editMode ? (
       <ClientGalleryDownloadProvider value={downloadContextValue}>
-        {content}
+        {withSelects}
       </ClientGalleryDownloadProvider>
     ) : (
-      content
+      withSelects
     );
 
   // Always mount the provider and gate the filter UI via a null VALUE (observationally the same
@@ -310,8 +367,10 @@ export default function CollectionPageClient({
   // gives an empty collection its first filterable content — and conditionally mounting the
   // provider on it would reparent the subtree, remounting EditModeLayer and resetting its state.
   return (
-    <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
-      {maybeWrappedContent}
-    </CollectionFilterProvider>
+    <MeProvider me={me}>
+      <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
+        {maybeWrappedContent}
+      </CollectionFilterProvider>
+    </MeProvider>
   );
 }

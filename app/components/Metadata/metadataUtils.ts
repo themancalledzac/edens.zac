@@ -1059,7 +1059,7 @@ export function mapUpdateResponseToFrontend(response: {
   updatedImages: ContentImageModel[];
   newMetadata?: {
     tags?: Array<{ id: number; tagName: string; slug: string }>;
-    people?: Array<{ id: number; personName: string; slug: string }>;
+    people?: Array<{ id: number; personName: string }>;
     cameras?: Array<{
       id: number;
       cameraName: string;
@@ -1078,7 +1078,6 @@ export function mapUpdateResponseToFrontend(response: {
           people: response.newMetadata.people?.map(p => ({
             id: p.id,
             name: p.personName,
-            slug: p.slug,
           })),
           cameras: response.newMetadata.cameras?.map(c => ({
             id: c.id,

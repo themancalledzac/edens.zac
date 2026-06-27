@@ -697,9 +697,9 @@ describe('useCollectionEdit — handler tests', () => {
 
       act(() =>
         result.current.setCollectionPeople([
-          { id: 1, name: 'Alice', slug: 'alice' },
-          { id: 0, name: 'New Person', slug: '' },
-          { id: 3, name: 'Bob', slug: 'bob' },
+          { id: 1, name: 'Alice' },
+          { id: 0, name: 'New Person' },
+          { id: 3, name: 'Bob' },
         ])
       );
 

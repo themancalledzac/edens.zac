@@ -41,6 +41,13 @@ import { useCollectionEdit } from './useCollectionEdit';
 export interface EditModeLayerProps {
   /** The server-fetched seed collection (shown until the richer admin DTO loads). */
   collection: CollectionModel;
+  /**
+   * Row-density budget (desktop scale), mirrored from CollectionPageClient so the edit grid lays
+   * out at the same density as the public page (which derives it from `collection.rowsWide`).
+   */
+  chunkSize?: number;
+  /** Row-density budget on the mobile scale, mirrored from CollectionPageClient. */
+  mobileChunkSize?: number;
   /** Page-level filter state owned by CollectionPageClient (shared with the public filter UI). */
   filterState: FilterState;
   setFilterState: Dispatch<SetStateAction<FilterState>>;
@@ -65,6 +72,8 @@ export interface EditModeLayerProps {
  */
 export default function EditModeLayer({
   collection,
+  chunkSize,
+  mobileChunkSize,
   filterState,
   setFilterState,
   syncToUrl,
@@ -212,6 +221,8 @@ export default function EditModeLayer({
       content={reorderActive ? edit.displayContent : contentBlocks}
       priorityBlockIndex={0}
       enableFullScreenView={false}
+      chunkSize={chunkSize}
+      mobileChunkSize={mobileChunkSize}
       isSelectingCoverImage={edit.isSelectingCoverImage}
       currentCoverImageId={edit.currentCoverImageId}
       onImageClick={reorderActive || !editReady ? undefined : edit.handleImageClick}

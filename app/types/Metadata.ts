@@ -21,11 +21,12 @@ export interface ContentTagModel extends IdNameModel {
 }
 
 /**
- * Content Person - Represents people tagged in images
+ * Content Person - Represents people tagged in images.
+ *
+ * A person tag now carries only identity + name; the `slug` field was dropped
+ * when the public per-person photo page was retired (person → user identity merge).
  */
-export interface ContentPersonModel extends IdNameModel {
-  slug: string;
-}
+export type ContentPersonModel = IdNameModel;
 
 /**
  * Content Camera - Camera equipment used for photos.

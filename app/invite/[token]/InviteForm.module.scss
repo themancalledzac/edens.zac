@@ -1,0 +1,41 @@
+/* InviteForm — account setup form on the public invite page */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 420px;
+}
+
+.forEmail {
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+  margin: 0;
+}
+
+.passkeyLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+  cursor: pointer;
+
+  &:has(input:disabled) {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.passkeyCheckbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-black);
+}
+
+.submitButton {
+  width: 100%;
+  margin-top: var(--space-2);
+}

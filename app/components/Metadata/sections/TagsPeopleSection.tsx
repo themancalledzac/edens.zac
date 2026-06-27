@@ -46,7 +46,6 @@ export default function TagsPeopleSection({
             const newPerson: ContentPersonModel = {
               id: 0,
               name: data.name as string,
-              slug: '',
             };
             const currentPeople = updateState.people || [];
             updateStateField({ people: [...currentPeople, newPerson] });

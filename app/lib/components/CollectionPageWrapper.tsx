@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation';
 import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryGate';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
+import { meServer } from '@/app/lib/api/auth';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
+import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { CollectionType } from '@/app/types/Collection';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
@@ -37,9 +39,10 @@ export default async function CollectionPageWrapper({
   }
 
   try {
-    const [fetched, ssrViewport] = await Promise.all([
+    const [fetched, ssrViewport, me] = await Promise.all([
       getCollectionBySlug(slug, 0, 500),
       resolveSsrViewport(),
+      meServer(),
     ]);
 
     const collection =
@@ -53,6 +56,13 @@ export default async function CollectionPageWrapper({
         : fetched;
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
+
+    // Seed the viewer's persisted selects for this collection so the SelectsProvider primes
+    // without a client round-trip. Only client galleries have selects; skip the call otherwise.
+    const initialSelectedIds =
+      collection.type === CollectionType.CLIENT_GALLERY
+        ? await listSelectIdsServer(collection.id)
+        : [];
 
     // Gate password-protected galleries. `Array.isArray(content)` is the auth signal —
     // the backend sets content to null when the password cookie fails to validate.
@@ -71,6 +81,8 @@ export default async function CollectionPageWrapper({
             chunkSize={chunkSize}
             ssrViewport={ssrViewport}
             editMode={editMode}
+            me={me}
+            initialSelectedIds={initialSelectedIds}
           />
         );
       }
@@ -83,6 +95,8 @@ export default async function CollectionPageWrapper({
         chunkSize={chunkSize}
         ssrViewport={ssrViewport}
         editMode={editMode}
+        me={me}
+        initialSelectedIds={initialSelectedIds}
       />
     );
   } catch (error) {

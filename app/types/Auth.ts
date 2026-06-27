@@ -1,23 +1,18 @@
 /**
- * Auth API types — mirror the backend Phase F contract exactly.
- *
- * Source of truth: edens.zac.backend Auth Foundation build contract
- * (`MeResponse`, `GalleryAccessSummary`, `Role`). The `galleries` array is
- * always empty in Phase F (admin is all-access; client scope is Phase C) but
- * ships now so the frontend contract is stable.
+ * Auth API types — mirror the backend Auth contract exactly.
+ * Source of truth: edens.zac.backend MeResponse / GalleryMembership.
  */
 
-export type Role = 'ADMIN' | 'CLIENT';
+/** Per-collection membership role. GENERAL = view-only; CLIENT = download + tag + star. */
+export type CollectionRole = 'GENERAL' | 'CLIENT';
 
-export interface GalleryAccessSummary {
+export interface GalleryMembership {
   collectionId: number;
-  canDownload: boolean;
-  canTag: boolean;
+  role: CollectionRole;
 }
 
 export interface MeResponse {
   email: string;
-  role: Role;
   mfaSatisfied: boolean;
-  galleries: GalleryAccessSummary[];
+  galleries: GalleryMembership[];
 }

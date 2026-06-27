@@ -3,9 +3,17 @@
  * Mirrors the fetch-mock idiom of tests/lib/api/collections.test.ts.
  */
 
-import { login, loginWithPasskey, logout, me, registerPasskey } from '@/app/lib/api/auth';
-import { ApiError } from '@/app/lib/api/core';
+import { login, loginWithPasskey, logout, me, meServer, registerPasskey } from '@/app/lib/api/auth';
+import { ApiError, getApiBaseUrl, getServerCookieHeader } from '@/app/lib/api/core';
 import { type MeResponse } from '@/app/types/Auth';
+
+jest.mock('next/headers', () => ({ cookies: jest.fn() }));
+jest.mock('@/app/utils/environment', () => ({ isLocalEnvironment: jest.fn() }));
+jest.mock('@/app/lib/api/core', () => ({
+  ...jest.requireActual('@/app/lib/api/core'),
+  getApiBaseUrl: jest.fn(),
+  getServerCookieHeader: jest.fn(),
+}));
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -115,7 +123,6 @@ describe('logout', () => {
 describe('me', () => {
   const meBody: MeResponse = {
     email: 'admin@example.com',
-    role: 'ADMIN',
     mfaSatisfied: true,
     galleries: [],
   };
@@ -368,5 +375,38 @@ describe('loginWithPasskey', () => {
 
     const finishBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body as string);
     expect(finishBody.response.userHandle).toBeNull();
+  });
+});
+
+describe('meServer', () => {
+  beforeEach(() => {
+    (global.fetch as jest.Mock) = jest.fn();
+    jest.clearAllMocks();
+    (getApiBaseUrl as jest.Mock).mockReturnValue('http://localhost:8080/api/auth');
+  });
+
+  it('forwards the server cookie header and returns MeResponse on 200', async () => {
+    (getServerCookieHeader as jest.Mock).mockResolvedValue('ezac_session=abc');
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest
+        .fn()
+        .mockResolvedValue({ email: 'c@x.com', mfaSatisfied: true, galleries: [] }),
+    });
+
+    const result = await meServer();
+
+    expect(result?.email).toBe('c@x.com');
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe('http://localhost:8080/api/auth/me');
+    expect(init.headers.Cookie).toBe('ezac_session=abc');
+  });
+
+  it('returns null on 401', async () => {
+    (getServerCookieHeader as jest.Mock).mockResolvedValue(null);
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 401 });
+
+    expect(await meServer()).toBeNull();
   });
 });

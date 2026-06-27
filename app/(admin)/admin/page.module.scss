@@ -31,3 +31,15 @@
   color: var(--color-on-surface-muted);
   font-size: var(--text-md);
 }
+
+.hubLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: var(--space-5);
+
+  @media (width >= 768px) {
+    grid-template-columns: minmax(300px, 360px) 1fr;
+    gap: var(--space-6);
+  }
+}

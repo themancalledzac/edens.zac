@@ -67,7 +67,7 @@ export async function getServerCookieHeader(): Promise<string | null> {
  * Base API URL for an endpoint type. Browser uses the relative same-origin proxy (LAN-reachable
  * in dev, BFF in prod); server-side hits the backend directly on localhost in dev, else the proxy.
  */
-function getApiBaseUrl(endpointType: string): string {
+export function getApiBaseUrl(endpointType: string): string {
   if (typeof window !== 'undefined') {
     return `/api/proxy/api/${endpointType}`;
   }

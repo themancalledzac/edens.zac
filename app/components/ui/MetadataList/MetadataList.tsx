@@ -20,7 +20,7 @@ export interface MetadataListProps<T extends MetadataListItem> {
   items: T[];
   /** REST base for PUT/DELETE, e.g. "/metadata/tags". Item id is appended. */
   basePath: string;
-  /** Optional "go to" target for an item (e.g. /people/[slug]). */
+  /** Optional "go to" target for an item (e.g. /location/[slug]). */
   getHref?: (item: T) => string | null;
 }
 

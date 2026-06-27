@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { type ComponentType, useEffect, useState } from 'react';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { toMobileDensity } from '@/app/constants';
 import { getCollectionUpdateMetadata, getMetadata } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
@@ -208,6 +209,18 @@ describe('CollectionPageClient — editMode true', () => {
     const lastCall = gridProbe.mock.calls.at(-1)?.[0];
     expect(lastCall.enableFullScreenView).toBe(false);
     expect(typeof lastCall.onImageClick).toBe('function');
+  });
+
+  it('forwards the page density to the edit-mode grid so it matches the public layout', async () => {
+    // Density is owned by CollectionPageClient (chunkSize ?? default, where chunkSize derives from
+    // collection.rowsWide). It must be threaded into EditModeLayer's grid; otherwise edit mode falls
+    // back to the component default and renders at a different density than the public page.
+    mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse());
+    render(<CollectionPageClient collection={makeCollection()} chunkSize={6} editMode />);
+    await flush();
+    const lastCall = gridProbe.mock.calls.at(-1)?.[0];
+    expect(lastCall.chunkSize).toBe(6);
+    expect(lastCall.mobileChunkSize).toBe(toMobileDensity(6));
   });
 
   it('keeps fullscreen DISABLED on the fallback grid while the edit chunk is still loading', async () => {

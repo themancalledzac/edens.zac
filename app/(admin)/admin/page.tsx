@@ -1,5 +1,6 @@
 // Admin = perimeter today (BFF INTERNAL_API_SECRET) → authenticated admin principal later (see docs 009). Gating centralized in app/(admin)/layout.tsx.
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { UserManagementPanel } from '@/app/components/UserManagementPanel/UserManagementPanel';
 import { getAdminHomeTiles } from '@/app/lib/api/adminHome';
 
 import AdminHubGrid from './AdminHubGrid';
@@ -23,7 +24,10 @@ export default async function AdminHubPage() {
         <h1 className={styles.pageTitle}>Admin</h1>
         <span className={styles.subtitle}>local dev console</span>
       </div>
-      <AdminHubGrid tiles={tiles} />
+      <div className={styles.hubLayout}>
+        <UserManagementPanel />
+        <AdminHubGrid tiles={tiles} />
+      </div>
     </PageShell>
   );
 }

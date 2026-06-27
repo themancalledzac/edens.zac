@@ -7,6 +7,7 @@ import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
+import { type MaybePinned, PINNED_SELECT } from '@/app/types/Selects';
 import { type RowWithPatternAndSizes } from '@/app/utils/contentLayout';
 
 import { BoxRenderer } from './BoxRenderer';
@@ -59,6 +60,16 @@ export interface ContentComponentProps {
   serverContentWidth?: number;
   serverViewportHeight?: number;
   serverIsMobile?: boolean;
+}
+
+/**
+ * Per-item fragment of a row's React key. Pinned "Your Selects" clones share their original's
+ * `id`, so the marker is folded into the key to keep prepended clones distinct from the in-place
+ * originals — otherwise the duplicated id would collide. Layout is unaffected; only the key differs.
+ */
+function itemKeyFragment(content: AnyContentModel): string {
+  const pinnedPrefix = (content as MaybePinned<AnyContentModel>)[PINNED_SELECT] ? 'pinned-' : '';
+  return `${pinnedPrefix}${content.contentType}-${content.id ?? content.orderIndex}`;
 }
 
 /**
@@ -159,7 +170,7 @@ export default function Component({
   /** Renders a row using BoxRenderer (recursive). */
   const renderRow = (row: RowWithPatternAndSizes, rowIndex: number) => {
     const { rowType, items, boxTree } = row;
-    const rowKey = `row-${rowIndex}-${items.map(i => `${i.content.contentType}-${i.content.id ?? i.content.orderIndex}`).join('-')}`;
+    const rowKey = `row-${rowIndex}-${items.map(i => itemKeyFragment(i.content)).join('-')}`;
 
     // If boxTree is missing (shouldn't happen), create a fallback
     const tree = boxTree || createSimpleBoxTree(items);
@@ -209,7 +220,7 @@ export default function Component({
         {rows.map((row, rowIndex) => {
           const shouldShowSeparator =
             firstNonVisibleRowIndex !== -1 && rowIndex === firstNonVisibleRowIndex;
-          const rowKey = `row-${rowIndex}-${row.items.map(i => `${i.content.contentType}-${i.content.id ?? i.content.orderIndex}`).join('-')}`;
+          const rowKey = `row-${rowIndex}-${row.items.map(i => itemKeyFragment(i.content)).join('-')}`;
 
           return (
             <Fragment key={rowKey}>
