@@ -23,16 +23,20 @@ export interface AdminUserSummary {
   email: string;
   displayName: string | null;
   status: UserStatus;
+  /** Admin-authored profile blurb shown on the user's page; `null` when unset. */
+  description: string | null;
 }
 
 /**
- * Request body for `PATCH /api/admin/users/{id}` — the two admin-editable fields. Email is
- * immutable (it is the login identity and invite target). `displayName` may be `null` to clear it;
- * `status` is required.
+ * Request body for `PATCH /api/admin/users/{id}` — the admin-editable fields. Email is immutable
+ * (it is the login identity and invite target). `displayName` and `description` may be `null` to
+ * clear them; `status` is required. `description` is the profile blurb shown on the user's page
+ * (max 500 chars).
  */
 export interface UserUpdateRequest {
   displayName?: string | null;
   status: UserStatus;
+  description?: string | null;
 }
 
 /** Response body for `GET /api/auth/invite/{token}` (HTTP 200). */

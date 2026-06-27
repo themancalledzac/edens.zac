@@ -858,10 +858,29 @@ describe('convertCollectionContentToImage', () => {
 });
 
 describe('createHeaderRow', () => {
-  it('should return null when collection has no coverImage', () => {
-    const collection = createCollectionModel(1, { coverImage: undefined });
+  it('should return null when collection has no coverImage and no metadata', () => {
+    const collection = createCollectionModel(1, {
+      coverImage: undefined,
+      collectionDate: undefined,
+      description: undefined,
+      locations: [],
+    });
     const result = createHeaderRow(collection, 1200, 2);
     expect(result).toBeNull();
+  });
+
+  it('should return a text-only header row when there is no coverImage but metadata exists', () => {
+    const collection = createCollectionModel(1, {
+      coverImage: undefined,
+      collectionDate: undefined,
+      locations: [],
+      description: 'A short bio',
+    });
+    const row = asSingleRow(createHeaderRow(collection, 1200, 2, false));
+    expect(row).not.toBeNull();
+    expect(row?.rowType).toBe('header');
+    expect(row?.items).toHaveLength(1);
+    expect(row?.items[0]?.content.contentType).toBe('TEXT');
   });
 
   it('should return null when coverImage has no dimensions', () => {
@@ -1326,22 +1345,27 @@ describe('createHeaderRow', () => {
   });
 
   describe('Missing cover image cases', () => {
-    it('should return null when coverImage is null', () => {
+    it('should return null when coverImage is null and there is no metadata', () => {
       const collection = createCollectionModel(1, {
         coverImage: null,
+        collectionDate: undefined,
+        locations: [],
+        description: undefined,
       });
       const result = createHeaderRow(collection, componentWidth, chunkSize);
 
       expect(result).toBeNull();
     });
 
-    it('should return null when coverImage is undefined', () => {
+    it('should render a text-only header when coverImage is undefined but metadata exists', () => {
       const collection = createCollectionModel(1, {
         coverImage: undefined,
       });
-      const result = createHeaderRow(collection, componentWidth, chunkSize);
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
 
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.items).toHaveLength(1);
+      expect(result?.items[0]?.content.contentType).toBe('TEXT');
     });
 
     it('should return null when cover image has no dimensions', () => {

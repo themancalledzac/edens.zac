@@ -9,6 +9,7 @@ import { getAdminUser, getUserPageById } from '@/app/lib/api/users';
 
 import { GenerateInviteButton } from '../GenerateInviteButton';
 import styles from './page.module.scss';
+import { UserDetailEditor } from './UserDetailEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,24 +33,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         <h1 className={styles.title}>{user.displayName ?? user.email}</h1>
       </div>
 
-      <dl className={styles.details}>
-        <div className={styles.field}>
-          <dt className={styles.dt}>Email</dt>
-          <dd className={styles.dd}>{user.email}</dd>
-        </div>
-        <div className={styles.field}>
-          <dt className={styles.dt}>Name</dt>
-          <dd className={styles.dd}>{user.displayName ?? '—'}</dd>
-        </div>
-        <div className={styles.field}>
-          <dt className={styles.dt}>Status</dt>
-          <dd className={styles.dd}>
-            <span className={styles.status} data-status={user.status}>
-              {user.status}
-            </span>
-          </dd>
-        </div>
-      </dl>
+      <UserDetailEditor user={user} />
 
       <div className={styles.actions}>
         <GenerateInviteButton userId={user.id} email={user.email} status={user.status} />
