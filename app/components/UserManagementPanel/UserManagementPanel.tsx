@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
+import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
+import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import { UserForm } from '@/app/components/UserForm/UserForm';
 import { listUsers } from '@/app/lib/api/users';
@@ -24,15 +26,17 @@ export function UserManagementPanel() {
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>({ mode: 'list' });
+  const [showPeople, setShowPeople] = useState(false);
+  const [mergeFor, setMergeFor] = useState<AdminUserSummary | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setUsers(await listUsers());
+      setUsers(await listUsers({ includePeople: showPeople }));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showPeople]);
 
   useEffect(() => {
     void refresh();
@@ -50,6 +54,16 @@ export function UserManagementPanel() {
     <section className={styles.panel} aria-label="User management">
       <div className={styles.header}>
         <h2 className={styles.title}>{headerTitle}</h2>
+        {view.mode === 'list' && (
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={showPeople}
+              onChange={e => setShowPeople(e.target.checked)}
+            />
+            Show tag-only people
+          </label>
+        )}
         {view.mode === 'list' ? (
           <Button variant="secondary" size="sm" onClick={() => setView({ mode: 'create' })}>
             + New User
@@ -79,38 +93,84 @@ export function UserManagementPanel() {
             <ul className={styles.list}>
               {users.map(user => (
                 <li key={user.id} className={styles.row}>
-                  <button
-                    type="button"
-                    className={styles.rowMain}
-                    onClick={() => router.push(`/admin/users/${user.id}`)}
-                  >
-                    <span className={styles.identity}>
-                      <span className={styles.nameLine}>
-                        <span className={styles.dot} data-status={user.status} aria-hidden="true" />
-                        <span className={styles.name}>{user.displayName ?? '—'}</span>
-                        <span className={styles.srOnly}>{user.status}</span>
+                  {user.status === 'PERSON' ? (
+                    // Tag-only people have no account detail page — render a static, non-navigable
+                    // identity so a click can't reach the account-only `/admin/users/[id]` view.
+                    <div className={styles.rowStatic}>
+                      <span className={styles.identity}>
+                        <span className={styles.nameLine}>
+                          <span
+                            className={styles.dot}
+                            data-status={user.status}
+                            aria-hidden="true"
+                          />
+                          <span className={styles.name}>{user.displayName ?? '—'}</span>
+                          <span className={styles.srOnly}>{user.status}</span>
+                        </span>
+                        <span className={styles.email}>{user.email ?? ''}</span>
                       </span>
-                      <span className={styles.email}>{user.email}</span>
-                    </span>
-                  </button>
-                  <div className={styles.rowActions}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setView({ mode: 'edit', user })}
+                      <span className={styles.badge}>tag-only · no account</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.rowMain}
+                      onClick={() => router.push(`/admin/users/${user.id}`)}
                     >
-                      Update
-                    </Button>
-                    <GenerateInviteButton
-                      userId={user.id}
-                      email={user.email}
-                      status={user.status}
-                    />
+                      <span className={styles.identity}>
+                        <span className={styles.nameLine}>
+                          <span
+                            className={styles.dot}
+                            data-status={user.status}
+                            aria-hidden="true"
+                          />
+                          <span className={styles.name}>{user.displayName ?? '—'}</span>
+                          <span className={styles.srOnly}>{user.status}</span>
+                        </span>
+                        <span className={styles.email}>{user.email ?? ''}</span>
+                      </span>
+                    </button>
+                  )}
+                  <div className={styles.rowActions}>
+                    {user.status === 'PERSON' ? (
+                      <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>
+                        Merge…
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setView({ mode: 'edit', user })}
+                        >
+                          Update
+                        </Button>
+                        <GenerateInviteButton
+                          userId={user.id}
+                          email={user.email ?? ''}
+                          status={user.status}
+                        />
+                      </>
+                    )}
                   </div>
                 </li>
               ))}
             </ul>
           )))}
+
+        {view.mode === 'list' && mergeFor && (
+          <MergeIdentityModal
+            source={mergeFor}
+            candidates={users.filter(u => u.id !== mergeFor.id)}
+            open
+            onClose={() => setMergeFor(null)}
+            onMerged={async () => {
+              setMergeFor(null);
+              await revalidateMetadataCache();
+              void refresh();
+            }}
+          />
+        )}
       </div>
     </section>
   );
