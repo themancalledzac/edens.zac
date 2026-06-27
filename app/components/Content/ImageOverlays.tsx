@@ -13,11 +13,6 @@ interface ImageOverlaysProps {
    * self-gates on CLIENT membership + SelectsProvider, so passing it here is always safe.
    */
   star?: ReactNode;
-  /**
-   * Optional rating slider, pre-built by the renderer (same prop-light pattern as `star`). The
-   * slider self-gates on the RatingControlProvider + `canEdit`, so passing it here is always safe.
-   */
-  ratingSlider?: ReactNode;
 }
 
 /**
@@ -37,7 +32,6 @@ export function ImageOverlays({
   shouldShowOverlay,
   isSelected,
   star,
-  ratingSlider,
 }: ImageOverlaysProps): ReactElement | null {
   if (contentType !== 'IMAGE') return null;
 
@@ -60,7 +54,6 @@ export function ImageOverlays({
         </div>
       )}
       {star}
-      {ratingSlider}
     </>
   );
 }

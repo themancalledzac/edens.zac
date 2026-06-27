@@ -5,7 +5,6 @@ import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
-import { listRatingOverridesServer } from '@/app/lib/api/ratingOverridesServer';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { CollectionType } from '@/app/types/Collection';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
@@ -65,14 +64,6 @@ export default async function CollectionPageWrapper({
         ? await listSelectIdsServer(collection.id)
         : [];
 
-    // Seed the viewer's per-user rating overrides so a CLIENT member's adjusted ratings are present
-    // on first paint. The endpoint returns [] (empty Map) for anonymous/editMode viewers; only CLIENT
-    // members of a client gallery have overrides, so skip the call for other collection types.
-    const seededOverrides =
-      collection.type === CollectionType.CLIENT_GALLERY
-        ? Array.from((await listRatingOverridesServer(collection.id)).entries())
-        : undefined;
-
     // Gate password-protected galleries. `Array.isArray(content)` is the auth signal —
     // the backend sets content to null when the password cookie fails to validate.
     // Routing here (not wrapping children) prevents RSC payload serialization for locked viewers.
@@ -92,7 +83,6 @@ export default async function CollectionPageWrapper({
             editMode={editMode}
             me={me}
             initialSelectedIds={initialSelectedIds}
-            seededOverrides={seededOverrides}
           />
         );
       }
@@ -107,7 +97,6 @@ export default async function CollectionPageWrapper({
         editMode={editMode}
         me={me}
         initialSelectedIds={initialSelectedIds}
-        seededOverrides={seededOverrides}
       />
     );
   } catch (error) {
