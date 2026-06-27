@@ -98,11 +98,16 @@ export function UserManagementPanel() {
                     // identity so a click can't reach the account-only `/admin/users/[id]` view.
                     <div className={styles.rowStatic}>
                       <span className={styles.identity}>
-                        <span className={styles.name}>{user.displayName ?? '—'}</span>
+                        <span className={styles.nameLine}>
+                          <span
+                            className={styles.dot}
+                            data-status={user.status}
+                            aria-hidden="true"
+                          />
+                          <span className={styles.name}>{user.displayName ?? '—'}</span>
+                          <span className={styles.srOnly}>{user.status}</span>
+                        </span>
                         <span className={styles.email}>{user.email ?? ''}</span>
-                      </span>
-                      <span className={styles.status} data-status={user.status}>
-                        {user.status}
                       </span>
                       <span className={styles.badge}>tag-only · no account</span>
                     </div>
@@ -113,11 +118,16 @@ export function UserManagementPanel() {
                       onClick={() => router.push(`/admin/users/${user.id}`)}
                     >
                       <span className={styles.identity}>
-                        <span className={styles.name}>{user.displayName ?? '—'}</span>
+                        <span className={styles.nameLine}>
+                          <span
+                            className={styles.dot}
+                            data-status={user.status}
+                            aria-hidden="true"
+                          />
+                          <span className={styles.name}>{user.displayName ?? '—'}</span>
+                          <span className={styles.srOnly}>{user.status}</span>
+                        </span>
                         <span className={styles.email}>{user.email ?? ''}</span>
-                      </span>
-                      <span className={styles.status} data-status={user.status}>
-                        {user.status}
                       </span>
                     </button>
                   )}
