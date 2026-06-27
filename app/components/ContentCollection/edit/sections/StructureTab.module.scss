@@ -96,3 +96,18 @@
   justify-content: space-between;
   gap: var(--space-3);
 }
+
+.dangerZone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-danger-subtle);
+}
+
+.dangerHint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+}
