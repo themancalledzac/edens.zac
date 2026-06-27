@@ -14,17 +14,36 @@ export interface CreateUserResponse {
   inviteUrl: string;
 }
 
-/** Account lifecycle status — mirrors the backend `UserStatus` enum. */
-export type UserStatus = 'INVITED' | 'ACTIVE' | 'DISABLED';
+/** Account lifecycle status — mirrors the backend `UserStatus` enum. `PERSON` = tag-only identity. */
+export type UserStatus = 'INVITED' | 'ACTIVE' | 'DISABLED' | 'PERSON';
 
 /** Row in the admin user list (`GET /api/admin/users`). Excludes any secret fields. */
 export interface AdminUserSummary {
   id: number;
-  email: string;
+  /** `null` for tag-only PERSON rows (no account). */
+  email: string | null;
   displayName: string | null;
   status: UserStatus;
   /** Admin-authored profile blurb shown on the user's page; `null` when unset. */
   description: string | null;
+}
+
+/** Preview of a pending identity merge (`GET /api/admin/users/{sourceId}/merge-preview`). */
+export interface MergePreview {
+  sourceId: number;
+  sourceName: string | null;
+  targetId: number;
+  targetName: string | null;
+  imageTagCount: number;
+  collectionCount: number;
+  duplicatesCollapsed: number;
+}
+
+/** Result of a completed merge (`POST /api/admin/users/{targetId}/merge`). */
+export interface MergeResult {
+  movedImageTags: number;
+  movedCollections: number;
+  duplicatesCollapsed: number;
 }
 
 /**

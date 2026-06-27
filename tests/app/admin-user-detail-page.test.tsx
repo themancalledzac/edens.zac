@@ -24,6 +24,12 @@ jest.mock('@/app/(admin)/admin/users/GenerateInviteButton', () => ({
   GenerateInviteButton: () => null,
 }));
 
+// UserDetailEditor is a client component (uses useRouter); this suite only verifies the page's
+// read-only CollectionPage orchestration, so stub it like the other children above.
+jest.mock('@/app/(admin)/admin/users/[id]/UserDetailEditor', () => ({
+  UserDetailEditor: () => null,
+}));
+
 jest.mock('@/app/components/ContentCollection/CollectionPage', () => ({
   __esModule: true,
   default: jest.fn(() => null),
