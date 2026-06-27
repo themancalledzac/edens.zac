@@ -55,11 +55,13 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
         <GenerateInviteButton userId={user.id} email={user.email} status={user.status} />
       </div>
 
-      {page ? (
-        <CollectionPage collection={page} editMode />
-      ) : (
-        <p>This user has no galleries yet.</p>
-      )}
+      {/*
+        Read-only. The user page is a synthetic aggregation (slug "user", no backing
+        collection row), so it is not editable: editMode mounts the edit layer, which
+        loads /api/admin/collections/user/update and 404s ("Collection not found with
+        slug: user"). The admin edits the user's real collections by drilling into a tile.
+      */}
+      {page ? <CollectionPage collection={page} /> : <p>This user has no galleries yet.</p>}
     </PageShell>
   );
 }
