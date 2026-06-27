@@ -81,6 +81,19 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     expect(content[1].slug).toBe('user');
   });
 
+  it('injects a placeholder Me tile when getUserPage() returns null for a logged-in viewer', async () => {
+    mockMeServer.mockResolvedValue({ email: 'a@b.com', mfaSatisfied: true, galleries: [] });
+    mockGetUserPage.mockResolvedValue(null);
+    mockGetCollectionBySlug.mockResolvedValue(homeCollection());
+
+    const element = await CollectionPageWrapper({ slug: 'home' });
+
+    const content = element.props.collection.content;
+    expect(content).toHaveLength(3);
+    expect(content[1].id).toBe(ME_TILE_ID);
+    expect(content[1].imageUrl).toBe('');
+  });
+
   it('does NOT inject the Me tile for an anonymous home viewer', async () => {
     mockMeServer.mockResolvedValue(null);
     mockGetCollectionBySlug.mockResolvedValue(homeCollection());

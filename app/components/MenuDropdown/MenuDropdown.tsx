@@ -10,7 +10,7 @@ import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
 import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
-import { useMe } from '@/app/hooks/useMe';
+import { useFetchMe } from '@/app/hooks/useFetchMe';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
 import { logout } from '@/app/lib/api/auth';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
@@ -49,7 +49,7 @@ export function MenuDropdown({
   const [showAbout, setShowAbout] = useState(false);
   const [isClearing, startClearing] = useTransition();
 
-  const { me, loading: meLoading } = useMe();
+  const { me, loading: meLoading } = useFetchMe();
 
   const handleLogin = () => {
     router.push('/login');
