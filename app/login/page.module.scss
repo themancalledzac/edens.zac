@@ -1,0 +1,29 @@
+/* Login page — returning-user sign-in landing (mirrors the invite page shell) */
+
+.page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-6) var(--space-4);
+}
+
+.card {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.heading {
+  font-family: var(--font-serif), serif;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--color-on-surface);
+  margin: 0;
+
+  @media (width >= 768px) {
+    font-size: var(--text-3xl);
+  }
+}

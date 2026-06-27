@@ -1,8 +1,8 @@
 /**
  * Tests for GenerateInviteButton — the per-user admin "resend / reset" action.
  *
- * Mocks regenerateInvite; verifies the label adapts to status, the click calls the API
- * with the user id and surfaces the copyable link, and a 404 shows a clear error.
+ * Mocks regenerateInvite; verifies the compact trigger label adapts to status, the click calls
+ * the API with the user id and surfaces the copyable link, and a 404 shows a clear error.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -28,14 +28,14 @@ Object.defineProperty(global.navigator, 'clipboard', {
 describe('GenerateInviteButton', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('labels the trigger "Resend invite" for an INVITED user', () => {
+  it('labels the compact trigger "Resend" for an INVITED user', () => {
     render(<GenerateInviteButton userId={5} email="bob@example.com" status="INVITED" />);
-    expect(screen.getByRole('button', { name: /resend invite/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^resend$/i })).toBeInTheDocument();
   });
 
-  it('labels the trigger "Reset password link" for an ACTIVE user', () => {
+  it('labels the compact trigger "Reset pw" for an ACTIVE user', () => {
     render(<GenerateInviteButton userId={9} email="amy@example.com" status="ACTIVE" />);
-    expect(screen.getByRole('button', { name: /reset password link/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^reset pw$/i })).toBeInTheDocument();
   });
 
   it('calls regenerateInvite with the user id and shows the fresh link', async () => {
@@ -45,7 +45,7 @@ describe('GenerateInviteButton', () => {
     });
 
     render(<GenerateInviteButton userId={5} email="bob@example.com" status="INVITED" />);
-    fireEvent.click(screen.getByRole('button', { name: /resend invite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^resend$/i }));
 
     await waitFor(() => expect(mockRegenerateInvite).toHaveBeenCalledWith(5));
     await waitFor(() => {
@@ -58,7 +58,7 @@ describe('GenerateInviteButton', () => {
     mockRegenerateInvite.mockRejectedValue(new ApiError('Not Found', 404));
 
     render(<GenerateInviteButton userId={5} email="bob@example.com" status="INVITED" />);
-    fireEvent.click(screen.getByRole('button', { name: /resend invite/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^resend$/i }));
 
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/no longer exists/i);

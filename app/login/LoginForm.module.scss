@@ -1,0 +1,18 @@
+/* LoginForm — sign-in form on the /login page */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 420px;
+}
+
+.submitButton {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.passkeyButton {
+  width: 100%;
+}

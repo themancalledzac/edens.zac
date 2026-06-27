@@ -6,7 +6,9 @@ import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
+import { getUserPage } from '@/app/lib/api/user';
 import { CollectionType } from '@/app/types/Collection';
+import { buildMeContentBlock } from '@/app/utils/meContentBlock';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 interface CollectionPageWrapperProps {
@@ -45,7 +47,7 @@ export default async function CollectionPageWrapper({
       meServer(),
     ]);
 
-    const collection =
+    const baseCollection =
       excludeContentSlugs && excludeContentSlugs.length > 0 && Array.isArray(fetched.content)
         ? {
             ...fetched,
@@ -54,6 +56,21 @@ export default async function CollectionPageWrapper({
             ),
           }
         : fetched;
+
+    // "Me" tile: home page only, logged-in viewer only. Inject the personal parallax
+    // card (links to /user) as the SECOND tile. One extra no-store fetch for logged-in
+    // home views; anonymous home is byte-identical (no fetch, no injection).
+    const collection =
+      slug === 'home' && me && Array.isArray(baseCollection.content)
+        ? {
+            ...baseCollection,
+            content: [
+              ...baseCollection.content.slice(0, 1),
+              buildMeContentBlock(await getUserPage()),
+              ...baseCollection.content.slice(1),
+            ],
+          }
+        : baseCollection;
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
