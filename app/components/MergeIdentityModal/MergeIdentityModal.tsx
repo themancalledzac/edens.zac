@@ -48,7 +48,12 @@ export function MergeIdentityModal({
     if (!id) return;
     setLoading(true);
     try {
-      setPreview(await getMergePreview(source.id, id));
+      const result = await getMergePreview(source.id, id);
+      if (result == null) {
+        setError('That identity no longer exists — refresh the page.');
+        return;
+      }
+      setPreview(result);
     } catch {
       setError('Could not load a preview for that identity.');
     } finally {
@@ -115,7 +120,11 @@ export function MergeIdentityModal({
           <Button variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={confirm} disabled={targetId == null || loading} loading={loading}>
+          <Button
+            onClick={confirm}
+            disabled={targetId == null || preview == null || loading}
+            loading={loading}
+          >
             Merge
           </Button>
         </div>

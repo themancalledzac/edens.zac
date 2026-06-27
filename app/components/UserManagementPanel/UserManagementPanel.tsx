@@ -93,22 +93,34 @@ export function UserManagementPanel() {
             <ul className={styles.list}>
               {users.map(user => (
                 <li key={user.id} className={styles.row}>
-                  <button
-                    type="button"
-                    className={styles.rowMain}
-                    onClick={() => router.push(`/admin/users/${user.id}`)}
-                  >
-                    <span className={styles.identity}>
-                      <span className={styles.name}>{user.displayName ?? '—'}</span>
-                      <span className={styles.email}>{user.email ?? ''}</span>
-                    </span>
-                    <span className={styles.status} data-status={user.status}>
-                      {user.status}
-                    </span>
-                    {user.status === 'PERSON' && (
+                  {user.status === 'PERSON' ? (
+                    // Tag-only people have no account detail page — render a static, non-navigable
+                    // identity so a click can't reach the account-only `/admin/users/[id]` view.
+                    <div className={styles.rowStatic}>
+                      <span className={styles.identity}>
+                        <span className={styles.name}>{user.displayName ?? '—'}</span>
+                        <span className={styles.email}>{user.email ?? ''}</span>
+                      </span>
+                      <span className={styles.status} data-status={user.status}>
+                        {user.status}
+                      </span>
                       <span className={styles.badge}>tag-only · no account</span>
-                    )}
-                  </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.rowMain}
+                      onClick={() => router.push(`/admin/users/${user.id}`)}
+                    >
+                      <span className={styles.identity}>
+                        <span className={styles.name}>{user.displayName ?? '—'}</span>
+                        <span className={styles.email}>{user.email ?? ''}</span>
+                      </span>
+                      <span className={styles.status} data-status={user.status}>
+                        {user.status}
+                      </span>
+                    </button>
+                  )}
                   <div className={styles.rowActions}>
                     {user.status === 'PERSON' ? (
                       <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>

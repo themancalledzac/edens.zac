@@ -21,6 +21,42 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const user = await getAdminUser(userId).catch(() => null);
   if (!user) notFound();
 
+  // Tag-only PERSON identities have no account: no email, no invite/reset, no gallery page.
+  // Render a minimal safe view (also guards direct-URL access) — merging is done from the panel.
+  if (user.status === 'PERSON') {
+    return (
+      <PageShell pageType="collectionsCollection">
+        <div className={styles.header}>
+          <Link href="/admin" className={styles.back}>
+            ← Admin
+          </Link>
+          <h1 className={styles.title}>{user.displayName ?? '—'}</h1>
+        </div>
+
+        <dl className={styles.details}>
+          <div className={styles.field}>
+            <dt className={styles.dt}>Email</dt>
+            <dd className={styles.dd}>—</dd>
+          </div>
+          <div className={styles.field}>
+            <dt className={styles.dt}>Name</dt>
+            <dd className={styles.dd}>{user.displayName ?? '—'}</dd>
+          </div>
+          <div className={styles.field}>
+            <dt className={styles.dt}>Status</dt>
+            <dd className={styles.dd}>
+              <span className={styles.badge}>tag-only · no account</span>
+            </dd>
+          </div>
+        </dl>
+
+        <p className={styles.hint}>
+          Tag-only identity — merge it into an account from the Users panel.
+        </p>
+      </PageShell>
+    );
+  }
+
   const page = await getUserPageById(userId).catch(() => null);
 
   return (
