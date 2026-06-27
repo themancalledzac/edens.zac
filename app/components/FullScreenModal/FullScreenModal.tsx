@@ -35,6 +35,8 @@ interface FullScreenModalProps {
   zoomTargetRef: RefObject<HTMLDivElement | null>;
   /** True while pinch-zoomed past 1× — suppresses tap-to-close so panning doesn't dismiss. */
   isZoomed: boolean;
+  /** Immersive mode: when true, hide all chrome (controls + metadata) for an image-only view. */
+  immersive?: boolean;
   hideImage: (e?: MouseEvent) => void;
   isSwiping: RefObject<boolean>;
   showMetadata: boolean;
@@ -53,6 +55,7 @@ export function FullScreenModal({
   modalRef,
   zoomTargetRef,
   isZoomed,
+  immersive = false,
   hideImage,
   isSwiping,
   showMetadata,
@@ -160,7 +163,7 @@ export function FullScreenModal({
             )}
           </div>
 
-          {currentImageLoaded && (
+          {currentImageLoaded && !immersive && (
             <div
               className={`${styles.metadataOverlay} ${styles.metadataOverlayLoaded}`}
               onClick={e => e.stopPropagation()}
@@ -278,7 +281,7 @@ export function FullScreenModal({
         </div>
       </div>
 
-      {hasPrevious && (
+      {!immersive && hasPrevious && (
         <button
           type="button"
           className={styles.navButtonPrev}
@@ -292,7 +295,7 @@ export function FullScreenModal({
         </button>
       )}
 
-      {hasNext && (
+      {!immersive && hasNext && (
         <button
           type="button"
           className={styles.navButtonNext}
@@ -306,22 +309,24 @@ export function FullScreenModal({
         </button>
       )}
 
-      {fullScreenState.images.length > 1 && (
+      {!immersive && fullScreenState.images.length > 1 && (
         <div className={styles.positionCounter} aria-live="polite">
           {fullScreenState.currentIndex + 1} / {fullScreenState.images.length}
         </div>
       )}
 
-      <button
-        type="button"
-        className={styles.closeButton}
-        onClick={hideImage}
-        aria-label="Close fullscreen image"
-      >
-        <span aria-hidden="true">&#10005;</span>
-      </button>
+      {!immersive && (
+        <button
+          type="button"
+          className={styles.closeButton}
+          onClick={hideImage}
+          aria-label="Close fullscreen image"
+        >
+          <span aria-hidden="true">&#10005;</span>
+        </button>
+      )}
 
-      {collectionData?.type === CollectionType.CLIENT_GALLERY && !isGif && (
+      {!immersive && collectionData?.type === CollectionType.CLIENT_GALLERY && !isGif && (
         <FullScreenDownloadButton imageId={currentImage.id} />
       )}
     </div>
