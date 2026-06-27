@@ -4,9 +4,11 @@ import { type ReorderMove } from '@/app/components/ContentCollection/edit/collec
 import type { ViewableContent } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
+import { isPanelContent } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
+import { AdminPanelRenderer } from './AdminPanelRenderer';
 import styles from './BoxRenderer.module.scss';
 import { computeReorderFlags } from './boxRendererUtils';
 import CollectionContentRenderer from './CollectionContentRenderer';
@@ -74,6 +76,10 @@ export function BoxRenderer({
         `no size entry for content ID ${tree.content.id} — image will not render`
       );
       return <div className={styles.missingImage}>Image unavailable</div>;
+    }
+
+    if (isPanelContent(tree.content)) {
+      return <AdminPanelRenderer content={tree.content} width={size.width} height={size.height} />;
     }
 
     const rendererProps = determineContentRendererProps(
