@@ -85,6 +85,19 @@
   background-color: white;
 }
 
+// Wraps ONLY the media. The pinch-zoom transform is written here imperatively (see
+// useFullScreenImage) so the sibling .metadataOverlay never scales with the photo.
+.zoomLayer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+  transform-origin: center center;
+  will-change: transform;
+  touch-action: none;
+}
+
 .fullScreenImage {
   // max-height tracks the real visible height (--fs-height from visualViewport; dvh fallback pre-JS).
   // The loaded state below subtracts the matte so the framed photo fits the glass exactly.
@@ -100,7 +113,9 @@
   background: transparent;
   // No transition here - disappear instantly when switching images
 
-  touch-action: pan-x;
+  // Custom JS owns pinch / pan / swipe (see useFullScreenImage); keep the browser from
+  // claiming any native touch gesture on the photo itself.
+  touch-action: none;
 
   /* Disable long-press save/copy menu on mobile */
   -webkit-touch-callout: none; /* iOS Safari - disables callout (save image, copy, etc.) */
@@ -362,18 +377,25 @@
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 48px;
-  height: 64px;
+
+  // Mobile: a light chevron hint, not a heavy pill — swipe is the primary nav here, so
+  // these stay deliberately subtle. The box keeps a comfortable tap area while the visual
+  // is just a translucent glyph (no background), kept legible over bright photos by a shadow.
+  width: 40px;
+  height: 56px;
   border: none;
-  background: rgb(0, 0, 0, 0.4);
-  color: white;
-  font-size: 36px;
+  background: transparent;
+  color: rgb(255, 255, 255, 0.55);
+  font-size: 26px;
+  text-shadow: 0 1px 3px rgb(0, 0, 0, 0.55);
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color var(--duration-base);
+  transition:
+    background-color var(--duration-base),
+    color var(--duration-base);
   z-index: var(--z-modal-controls);
   border-radius: 0;
 
@@ -381,10 +403,6 @@
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-
-  &:hover {
-    background-color: rgb(0, 0, 0, 0.65);
-  }
 
   &:focus-visible {
     outline: 2px solid var(--scrim-light-50);
@@ -395,10 +413,18 @@
     outline: none;
   }
 
+  // Desktop: pointer users rely on these (no swipe), so restore the original solid pill.
   @media (width >= 768px) and (height >= 600px) {
     width: 56px;
     height: 80px;
     font-size: 44px;
+    background: rgb(0, 0, 0, 0.4);
+    color: white;
+    text-shadow: none;
+
+    &:hover {
+      background-color: rgb(0, 0, 0, 0.65);
+    }
   }
 }
 

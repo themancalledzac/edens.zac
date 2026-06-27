@@ -31,6 +31,10 @@ interface FullScreenModalProps {
   loadedImageIds: Set<number>;
   setLoadedImageIds: Dispatch<SetStateAction<Set<number>>>;
   modalRef: RefObject<HTMLDivElement | null>;
+  /** Wraps only the media; receives the pinch-zoom transform (imperatively, via the hook). */
+  zoomTargetRef: RefObject<HTMLDivElement | null>;
+  /** True while pinch-zoomed past 1× — suppresses tap-to-close so panning doesn't dismiss. */
+  isZoomed: boolean;
   hideImage: (e?: MouseEvent) => void;
   isSwiping: RefObject<boolean>;
   showMetadata: boolean;
@@ -47,6 +51,8 @@ export function FullScreenModal({
   loadedImageIds,
   setLoadedImageIds,
   modalRef,
+  zoomTargetRef,
+  isZoomed,
   hideImage,
   isSwiping,
   showMetadata,
@@ -103,7 +109,9 @@ export function FullScreenModal({
   const hasNext = fullScreenState.currentIndex < fullScreenState.images.length - 1;
 
   const handleOverlayClick = () => {
-    if (!isSwiping.current) {
+    // Don't dismiss on the tap that ends a swipe/pinch/pan, nor while zoomed in
+    // (a tap there is the user interacting with the zoomed photo, not closing it).
+    if (!isSwiping.current && !isZoomed) {
       hideImage();
     }
   };
@@ -114,41 +122,43 @@ export function FullScreenModal({
         <div
           className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}
         >
-          {isGif ? (
-            <video
-              key={currentImage.id}
-              autoPlay
-              loop
-              muted
-              playsInline
-              controls={false}
-              preload="auto"
-              poster={currentImage.thumbnailUrl ?? undefined}
-              width={currentImage.width || IMAGE.defaultWidth}
-              height={currentImage.height || IMAGE.defaultHeight}
-              className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
-            >
-              <source src={currentImage.gifUrl} type="video/mp4" />
-            </video>
-          ) : (
-            <Image
-              key={currentImage.id}
-              src={currentImage.imageUrl}
-              alt={currentImage.title || currentImage.caption || 'Full screen image'}
-              width={currentImage.imageWidth || IMAGE.defaultWidth}
-              height={currentImage.imageHeight || IMAGE.defaultHeight}
-              className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
-              priority
-              onLoad={() => {
-                setLoadedImageIds(prev => {
-                  if (prev.has(currentImage.id)) return prev;
-                  const newSet = new Set(prev);
-                  newSet.add(currentImage.id);
-                  return newSet;
-                });
-              }}
-            />
-          )}
+          <div ref={zoomTargetRef} className={styles.zoomLayer}>
+            {isGif ? (
+              <video
+                key={currentImage.id}
+                autoPlay
+                loop
+                muted
+                playsInline
+                controls={false}
+                preload="auto"
+                poster={currentImage.thumbnailUrl ?? undefined}
+                width={currentImage.width || IMAGE.defaultWidth}
+                height={currentImage.height || IMAGE.defaultHeight}
+                className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
+              >
+                <source src={currentImage.gifUrl} type="video/mp4" />
+              </video>
+            ) : (
+              <Image
+                key={currentImage.id}
+                src={currentImage.imageUrl}
+                alt={currentImage.title || currentImage.caption || 'Full screen image'}
+                width={currentImage.imageWidth || IMAGE.defaultWidth}
+                height={currentImage.imageHeight || IMAGE.defaultHeight}
+                className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
+                priority
+                onLoad={() => {
+                  setLoadedImageIds(prev => {
+                    if (prev.has(currentImage.id)) return prev;
+                    const newSet = new Set(prev);
+                    newSet.add(currentImage.id);
+                    return newSet;
+                  });
+                }}
+              />
+            )}
+          </div>
 
           {currentImageLoaded && (
             <div

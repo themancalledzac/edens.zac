@@ -1117,6 +1117,72 @@ describe('createHeaderRow', () => {
     });
   });
 
+  describe('Parent collection items (related = siblings + parents)', () => {
+    it('appends a collection item per parent', () => {
+      const collection = createCollectionModel(1, {
+        parents: [
+          { id: 80, name: 'Italy', slug: 'italy' },
+          { id: 81, name: 'Europe 2025', slug: 'europe-2025' },
+        ],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems).toEqual([
+        { type: 'collection', value: 'Italy', slug: '/italy' },
+        { type: 'collection', value: 'Europe 2025', slug: '/europe-2025' },
+      ]);
+    });
+
+    it('lists siblings first, then parents', () => {
+      const collection = createCollectionModel(1, {
+        siblings: [{ id: 50, name: 'Dolomites Film', slug: 'dolomites-film' }],
+        parents: [{ id: 80, name: 'Italy', slug: 'italy' }],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems.map(item => item.value)).toEqual(['Dolomites Film', 'Italy']);
+    });
+
+    it('dedups a collection that is both a sibling and a parent (sibling wins the slot)', () => {
+      const collection = createCollectionModel(1, {
+        siblings: [{ id: 50, name: 'Shared', slug: 'shared' }],
+        parents: [{ id: 50, name: 'Shared', slug: 'shared' }],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems).toHaveLength(1);
+      expect(collectionItems[0]?.slug).toBe('/shared');
+    });
+
+    it('skips parents without a slug and threads coverImageUrl when present', () => {
+      const collection = createCollectionModel(1, {
+        parents: [
+          {
+            id: 82,
+            name: 'With Cover',
+            slug: 'parent-cover',
+            coverImageUrl: 'https://cdn.example.com/parent-cover.jpg',
+          },
+          { id: 83, name: 'No Slug Parent' },
+        ],
+      });
+      const result = asSingleRow(createHeaderRow(collection, componentWidth, chunkSize));
+      const metadataBlock = result?.items[1]?.content as ContentTextModel;
+      const collectionItems = metadataBlock.items.filter(item => item.type === 'collection');
+      expect(collectionItems).toEqual([
+        {
+          type: 'collection',
+          value: 'With Cover',
+          slug: '/parent-cover',
+          coverImageUrl: 'https://cdn.example.com/parent-cover.jpg',
+        },
+      ]);
+    });
+  });
+
   describe('Height-constrained sizing', () => {
     it('should give horizontal cover ~50% width (clamped to max)', () => {
       // Horizontal: 1920x1080 = 1.78 aspect ratio

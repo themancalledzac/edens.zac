@@ -49,6 +49,24 @@ describe('TagsSelector', () => {
     expect(onChange).toHaveBeenCalledWith([]);
   });
 
+  it('renders the option list alphabetically (case-insensitive) regardless of input order', () => {
+    const unsorted: ContentTagModel[] = [
+      { id: 1, name: 'Zebra', slug: 'zebra' },
+      { id: 2, name: 'apple', slug: 'apple' },
+      { id: 3, name: 'Mango', slug: 'mango' },
+    ];
+    render(<TagsSelector selectedTags={[]} availableTags={unsorted} onChange={jest.fn()} />);
+    openDropdown();
+
+    const names = unsorted.map(t => t.name);
+    const optionOrder = screen
+      .getAllByRole('button')
+      .map(b => b.textContent?.trim() ?? '')
+      .filter(text => names.includes(text));
+
+    expect(optionOrder).toEqual(['apple', 'Mango', 'Zebra']);
+  });
+
   it('onAddNew appends an id: 0 tag and calls onChange with the new list', () => {
     const onChange = jest.fn();
     const existingTag: ContentTagModel = { id: 5, name: 'existing', slug: 'existing' };

@@ -64,6 +64,8 @@ function renderModal(image: ContentImageModel | ContentGifModel, collectionData?
       loadedImageIds={new Set<number>([image.id])}
       setLoadedImageIds={noop}
       modalRef={{ current: null }}
+      zoomTargetRef={{ current: null }}
+      isZoomed={false}
       hideImage={noop}
       isSwiping={{ current: false }}
       showMetadata
