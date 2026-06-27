@@ -52,7 +52,7 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
       </dl>
 
       <div className={styles.actions}>
-        <GenerateInviteButton userId={user.id} email={user.email} status={user.status} />
+        <GenerateInviteButton userId={user.id} email={user.email ?? ''} status={user.status} />
       </div>
 
       {page ? (
