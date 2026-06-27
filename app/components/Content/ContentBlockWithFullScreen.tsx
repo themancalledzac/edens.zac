@@ -88,6 +88,7 @@ export default function ContentBlockWithFullScreen({
     modalRef,
     zoomTargetRef,
     isZoomed,
+    immersive,
     hideImage,
     isSwiping,
     showMetadata,
@@ -234,6 +235,7 @@ export default function ContentBlockWithFullScreen({
           modalRef={modalRef}
           zoomTargetRef={zoomTargetRef}
           isZoomed={isZoomed}
+          immersive={immersive}
           hideImage={hideImage}
           isSwiping={isSwiping}
           showMetadata={showMetadata}

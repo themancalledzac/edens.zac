@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import RatingStars from '@/app/components/RatingStars/RatingStars';
+import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { Select } from '@/app/components/ui/Field/Select';
 import { type DisplayMode } from '@/app/types/Collection';
@@ -37,6 +38,8 @@ export function StructureTab({ edit }: StructureTabProps) {
     parentIds,
     handleParentToggle,
     updateCollectionRating,
+    deleting,
+    handleDeleteCollection,
   } = edit;
 
   const collection = currentState?.collection;
@@ -155,6 +158,25 @@ export function StructureTab({ edit }: StructureTabProps) {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {!isHomeCollection && (
+        <section aria-labelledby="edit-sheet-danger-heading" className={styles.dangerZone}>
+          <h3 id="edit-sheet-danger-heading" className={styles.sectionTitle}>
+            Danger zone
+          </h3>
+          <p className={styles.dangerHint}>
+            Permanently delete this collection. Its images remain in the system.
+          </p>
+          <Button
+            variant="danger"
+            loading={deleting}
+            disabled={deleting}
+            onClick={() => void handleDeleteCollection()}
+          >
+            Delete collection
+          </Button>
         </section>
       )}
     </div>

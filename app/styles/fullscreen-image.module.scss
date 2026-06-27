@@ -23,6 +23,12 @@
   @media (width > 768px) and (height >= 600px) {
     flex-direction: row;
   }
+
+  // When the immersive toggle requests native fullscreen, THIS wrapper becomes the fullscreen root,
+  // so the dark <body>/backdrop behind it no longer paints. Give the letterbox its own black.
+  &:fullscreen {
+    background: #000;
+  }
 }
 
 .overlayContainer {

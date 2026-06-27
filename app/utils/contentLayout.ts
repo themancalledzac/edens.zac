@@ -564,6 +564,41 @@ function createCoverImageBlock(collection: CollectionModel): ContentParallaxImag
 }
 
 /**
+ * Build a single full-width, text-only header row (no cover image).
+ *
+ * Backs the cover-less `/user` intro: a user with a description but no tagged image still gets a
+ * header. The metadata text block renders at full width with auto height (height 0), mirroring the
+ * mobile metadata row. Returns null when there are no metadata items to show.
+ */
+function createTextOnlyHeaderRow(
+  metadataItems: TextBlockItem[],
+  componentWidth: number
+): RowWithPatternAndSizes | null {
+  if (metadataItems.length === 0) {
+    return null;
+  }
+
+  const textBlock: ContentTextModel = {
+    contentType: 'TEXT',
+    id: -2,
+    items: metadataItems,
+    format: 'plain',
+    formatType: 'plain',
+    align: 'left',
+    orderIndex: -1,
+    visible: true,
+    width: componentWidth,
+    height: 0,
+  };
+
+  return {
+    rowType: 'header',
+    items: [{ content: textBlock, width: componentWidth, height: 0 }],
+    boxTree: { type: 'leaf', content: textBlock },
+  };
+}
+
+/**
  * Create header row with cover image and metadata as a RowWithPatternAndSizes
  *
  * Creates a header row that will be prepended to regular content rows.
@@ -589,8 +624,14 @@ export function createHeaderRow(
   _chunkSize: number = LAYOUT.defaultChunkSize,
   isMobile: boolean = false
 ): RowWithPatternAndSizes | RowWithPatternAndSizes[] | null {
+  // Metadata is independent of the cover; compute it up front so a cover-less collection
+  // (e.g. the /user page for a user who isn't tagged in any image yet) can still render a
+  // description-only intro instead of no header at all.
+  const metadataItems = buildMetadataItems(collection);
+
+  // No cover image: render a text-only intro from the metadata, or nothing if there's none.
   if (!collection.coverImage) {
-    return null;
+    return createTextOnlyHeaderRow(metadataItems, componentWidth);
   }
 
   const coverBlock = createCoverImageBlock(collection);
@@ -602,7 +643,6 @@ export function createHeaderRow(
   const coverAspectRatio = coverBlock.imageWidth / coverBlock.imageHeight;
 
   // Add metadata block if it has content
-  const metadataItems = buildMetadataItems(collection);
   const metadataBlock = createMetadataTextBlock(
     metadataItems,
     coverBlock.imageWidth,

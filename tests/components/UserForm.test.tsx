@@ -107,10 +107,16 @@ describe('UserForm', () => {
       email: 'ken@x.com',
       displayName: 'Ken',
       status: 'INVITED',
+      description: null,
     };
 
-    it('prefills fields, locks the email, saves displayName + status, fires onSuccess', async () => {
-      mockUpdateUser.mockResolvedValue({ ...user, displayName: 'Kenneth', status: 'ACTIVE' });
+    it('prefills fields, locks the email, saves displayName + status + description, fires onSuccess', async () => {
+      mockUpdateUser.mockResolvedValue({
+        ...user,
+        displayName: 'Kenneth',
+        status: 'ACTIVE',
+        description: 'A short bio',
+      });
 
       render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
 
@@ -125,12 +131,16 @@ describe('UserForm', () => {
       fireEvent.change(screen.getByLabelText(/status/i), {
         target: { value: 'ACTIVE' },
       });
+      fireEvent.change(screen.getByLabelText(/description/i), {
+        target: { value: 'A short bio' },
+      });
       fireEvent.click(screen.getByRole('button', { name: /save/i }));
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalledWith(8, {
           displayName: 'Kenneth',
           status: 'ACTIVE',
+          description: 'A short bio',
         });
       });
       expect(onSuccess).toHaveBeenCalledTimes(1);

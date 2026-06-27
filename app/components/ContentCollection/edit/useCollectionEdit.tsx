@@ -8,6 +8,7 @@ import { type EditableContent, useMetadataEditor } from '@/app/hooks/useMetadata
 import { useToggleTriple } from '@/app/hooks/useToggleTriple';
 import {
   createChildCollection,
+  deleteCollection,
   getCollectionUpdateMetadata,
   getMetadata,
   regenerateCollectionPeople,
@@ -131,6 +132,8 @@ export interface UseCollectionEditResult {
   isUpdateDirty: boolean;
   saving: boolean;
   handleUpdate: (patch?: Partial<CollectionUpdateRequest>) => Promise<void>;
+  deleting: boolean;
+  handleDeleteCollection: () => Promise<void>;
 
   collectionPeople: ContentPersonModel[];
   setCollectionPeople: (people: ContentPersonModel[]) => void;
@@ -210,6 +213,7 @@ export function useCollectionEdit({
 }: UseCollectionEditParams): UseCollectionEditResult {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [currentState, setCurrentState] = useState<CollectionUpdateResponseDTO | null>(null);
 
@@ -680,7 +684,8 @@ export function useCollectionEdit({
         const response = await refreshCollectionAfterOperation(
           collection.slug,
           async () => {
-            for (const file of imageFiles) { // one POST per file to stay under the proxy's multipart cap
+            for (const file of imageFiles) {
+              // one POST per file to stay under the proxy's multipart cap
               try {
                 const formData = new FormData();
                 formData.append('files', file);
@@ -922,6 +927,43 @@ export function useCollectionEdit({
       setOperationLoading(false);
     }
   }, [selectedIds, collection, currentState?.filmTypes, handleDeleteSuccess]);
+
+  const handleDeleteCollection = useCallback(async () => {
+    if (!collection) return;
+    // Safety: the home system collection must never be deletable.
+    if (collection.slug === 'home') {
+      setError('The home collection cannot be deleted.');
+      return;
+    }
+    const confirmed = window.confirm(
+      `Delete "${collection.title || collection.slug}"? This permanently removes the collection. ` +
+        'Its images and their metadata remain in the system.'
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+      setError(null);
+      await deleteCollection(collection.id); // throws on failure
+
+      collectionStorage.clear(collection.slug);
+      collectionStorage.clearFull(collection.slug);
+
+      const parentSlugs = (collection.parents ?? [])
+        .map(parent => parent.slug)
+        .filter((parentSlug): parentSlug is string => Boolean(parentSlug));
+      await Promise.all([
+        revalidateCollectionCache(collection.slug),
+        ...parentSlugs.map(parentSlug => revalidateCollectionCache(parentSlug)),
+      ]);
+      void revalidateMetadataCache();
+
+      router.push('/');
+    } catch (error_) {
+      setError(handleApiError(error_, 'Failed to delete collection'));
+      setDeleting(false); // stay on the page to retry; success navigates away (unmounts)
+    }
+  }, [collection, router]);
 
   const originalChildIds = useMemo(
     () =>
@@ -1359,6 +1401,8 @@ export function useCollectionEdit({
     isUpdateDirty,
     saving,
     handleUpdate,
+    deleting,
+    handleDeleteCollection,
 
     collectionPeople,
     setCollectionPeople: setCollectionPeopleState,

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { CollectionEditSheet } from '@/app/components/ContentCollection/edit/CollectionEditSheet';
 import { type UseCollectionEditResult } from '@/app/components/ContentCollection/edit/useCollectionEdit';
@@ -96,6 +96,8 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
     isUpdateDirty: false,
     saving: false,
     handleUpdate: jest.fn(),
+    deleting: false,
+    handleDeleteCollection: jest.fn(),
 
     isParent: false,
 
@@ -366,5 +368,30 @@ describe('CollectionEditSheet — desktop two-column layout', () => {
     expect(screen.getByRole('region', { name: 'Info' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Structure' })).toBeInTheDocument();
     expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument();
+  });
+});
+
+describe('CollectionEditSheet — StructureTab danger zone', () => {
+  it('renders a Delete collection button on the Structure tab for a normal collection', () => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure' })} />);
+    expect(screen.getByRole('button', { name: 'Delete collection' })).toBeInTheDocument();
+  });
+
+  it('hides the Delete collection button for the home collection', () => {
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({ editTab: 'structure', currentState: makeState({ slug: 'home' }) })}
+      />
+    );
+    expect(screen.queryByRole('button', { name: 'Delete collection' })).not.toBeInTheDocument();
+  });
+
+  it('invokes handleDeleteCollection when the Delete collection button is clicked', () => {
+    const handleDeleteCollection = jest.fn();
+    render(
+      <CollectionEditSheet edit={makeEdit({ editTab: 'structure', handleDeleteCollection })} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Delete collection' }));
+    expect(handleDeleteCollection).toHaveBeenCalledTimes(1);
   });
 });

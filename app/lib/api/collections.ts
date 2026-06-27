@@ -261,10 +261,12 @@ export async function saveGalleryAccess(
 
 /**
  * DELETE /api/admin/collections/{id}
- * Delete a collection
+ * Hard-delete a collection. The backend cleans up association rows
+ * (parents/siblings/people/tags/locations) and orphans the content.
+ * Resolves to `{ success: true }` (HTTP 200) on success; throws ApiError on failure.
  */
-export async function deleteCollection(id: number): Promise<void | null> {
-  return fetchAdminDeleteApi<void>(`/collections/${id}`);
+export async function deleteCollection(id: number): Promise<{ success: boolean } | null> {
+  return fetchAdminDeleteApi<{ success: boolean }>(`/collections/${id}`);
 }
 
 /**
