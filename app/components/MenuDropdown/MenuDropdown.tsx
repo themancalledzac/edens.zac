@@ -10,7 +10,9 @@ import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
 import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
+import { useMe } from '@/app/hooks/useMe';
 import { clearCacheAction } from '@/app/lib/actions/clearCache';
+import { logout } from '@/app/lib/api/auth';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { isLocalEnvironment } from '@/app/utils/environment';
 import { manageHref } from '@/app/utils/manageUrl';
@@ -46,6 +48,28 @@ export function MenuDropdown({
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [isClearing, startClearing] = useTransition();
+
+  const { me, loading: meLoading } = useMe();
+
+  const handleLogin = () => {
+    router.push('/login');
+    onClose();
+  };
+
+  const handleLogout = () => {
+    // Best-effort: even if logout() rejects, the cookie may already be cleared —
+    // refresh so server components re-render in the logged-out state.
+    void (async () => {
+      try {
+        await logout();
+      } catch {
+        // swallow — proceed to refresh regardless
+      }
+      router.push('/');
+      router.refresh();
+      onClose();
+    })();
+  };
 
   const handleClearCache = () => {
     startClearing(async () => {
@@ -172,6 +196,22 @@ export function MenuDropdown({
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
+        {!meLoading && me && (
+          <div className={styles.dropdownMenuItem}>
+            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
+              <span className={styles.dropdownMenuOptions}>Log out</span>
+            </button>
+          </div>
+        )}
+
+        {!meLoading && !me && (
+          <div className={styles.dropdownMenuItem}>
+            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogin}>
+              <span className={styles.dropdownMenuOptions}>Log in</span>
+            </button>
+          </div>
+        )}
+
         <div className={styles.dropdownMenuItem}>
           <button type="button" className={styles.dropdownMenuButton} onClick={handleToggle.about}>
             <span className={styles.dropdownMenuOptions}>About</span>
