@@ -3,6 +3,8 @@ import { fetchAdminGetApi } from './core';
 export interface AdminHomeTileApi {
   tileKey: string;
   coverImageUrl: string | null;
+  coverImageWidth?: number | null;
+  coverImageHeight?: number | null;
   displayOrder: number;
 }
 

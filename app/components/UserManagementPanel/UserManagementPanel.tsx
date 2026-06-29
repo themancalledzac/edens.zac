@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
+import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
@@ -50,129 +51,118 @@ export function UserManagementPanel() {
   const headerTitle =
     view.mode === 'create' ? 'New User' : (view.mode === 'edit' ? 'Edit User' : 'Users');
 
-  return (
-    <section className={styles.panel} aria-label="User management">
-      <div className={styles.header}>
-        <h2 className={styles.title}>{headerTitle}</h2>
-        {view.mode === 'list' && (
-          <label className={styles.toggle}>
-            <input
-              type="checkbox"
-              checked={showPeople}
-              onChange={e => setShowPeople(e.target.checked)}
-            />
-            Show tag-only people
-          </label>
-        )}
-        {view.mode === 'list' ? (
-          <Button variant="secondary" size="sm" onClick={() => setView({ mode: 'create' })}>
-            + New User
-          </Button>
-        ) : (
-          <Button variant="ghost" size="sm" onClick={backToList}>
-            ← Back
-          </Button>
-        )}
-      </div>
-
-      <div className={styles.body}>
-        {view.mode === 'create' && (
-          <UserForm mode="create" onSuccess={backToList} onCancel={backToList} />
-        )}
-
-        {view.mode === 'edit' && (
-          <UserForm mode="edit" user={view.user} onSuccess={backToList} onCancel={backToList} />
-        )}
-
-        {view.mode === 'list' &&
-          (loading ? (
-            <p className={styles.muted}>Loading users…</p>
-          ) : (users.length === 0 ? (
-            <p className={styles.muted}>No users yet. Use “+ New User” to create one.</p>
-          ) : (
-            <ul className={styles.list}>
-              {users.map(user => (
-                <li key={user.id} className={styles.row}>
-                  {user.status === 'PERSON' ? (
-                    // Tag-only people have no account detail page — render a static, non-navigable
-                    // identity so a click can't reach the account-only `/admin/users/[id]` view.
-                    <div className={styles.rowStatic}>
-                      <span className={styles.identity}>
-                        <span className={styles.nameLine}>
-                          <span
-                            className={styles.dot}
-                            data-status={user.status}
-                            aria-hidden="true"
-                          />
-                          <span className={styles.name}>{user.displayName ?? '—'}</span>
-                          <span className={styles.srOnly}>{user.status}</span>
-                        </span>
-                        <span className={styles.email}>{user.email ?? ''}</span>
-                      </span>
-                      <span className={styles.badge}>tag-only · no account</span>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.rowMain}
-                      onClick={() => router.push(`/admin/users/${user.id}`)}
-                    >
-                      <span className={styles.identity}>
-                        <span className={styles.nameLine}>
-                          <span
-                            className={styles.dot}
-                            data-status={user.status}
-                            aria-hidden="true"
-                          />
-                          <span className={styles.name}>{user.displayName ?? '—'}</span>
-                          <span className={styles.srOnly}>{user.status}</span>
-                        </span>
-                        <span className={styles.email}>{user.email ?? ''}</span>
-                      </span>
-                    </button>
-                  )}
-                  <div className={styles.rowActions}>
-                    {user.status === 'PERSON' ? (
-                      <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>
-                        Merge…
-                      </Button>
-                    ) : (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setView({ mode: 'edit', user })}
-                        >
-                          Update
-                        </Button>
-                        <GenerateInviteButton
-                          userId={user.id}
-                          email={user.email ?? ''}
-                          status={user.status}
-                        />
-                      </>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )))}
-
-        {view.mode === 'list' && mergeFor && (
-          <MergeIdentityModal
-            source={mergeFor}
-            candidates={users.filter(u => u.id !== mergeFor.id)}
-            open
-            onClose={() => setMergeFor(null)}
-            onMerged={async () => {
-              setMergeFor(null);
-              await revalidateMetadataCache();
-              void refresh();
-            }}
+  const headerAction = (
+    <>
+      {view.mode === 'list' && (
+        <label className={styles.toggle}>
+          <input
+            type="checkbox"
+            checked={showPeople}
+            onChange={e => setShowPeople(e.target.checked)}
           />
-        )}
-      </div>
-    </section>
+          Show tag-only people
+        </label>
+      )}
+      {view.mode === 'list' ? (
+        <Button variant="secondary" size="sm" onClick={() => setView({ mode: 'create' })}>
+          + New User
+        </Button>
+      ) : (
+        <Button variant="ghost" size="sm" onClick={backToList}>
+          ← Back
+        </Button>
+      )}
+    </>
+  );
+
+  return (
+    <AdminPanel title={headerTitle} ariaLabel="User management" action={headerAction}>
+      {view.mode === 'create' && (
+        <UserForm mode="create" onSuccess={backToList} onCancel={backToList} />
+      )}
+
+      {view.mode === 'edit' && (
+        <UserForm mode="edit" user={view.user} onSuccess={backToList} onCancel={backToList} />
+      )}
+
+      {view.mode === 'list' &&
+        (loading ? (
+          <p className={styles.muted}>Loading users…</p>
+        ) : (users.length === 0 ? (
+          <p className={styles.muted}>No users yet. Use "+ New User" to create one.</p>
+        ) : (
+          <ul className={styles.list}>
+            {users.map(user => (
+              <li key={user.id} className={styles.row}>
+                {user.status === 'PERSON' ? (
+                  <div className={styles.rowStatic}>
+                    <span className={styles.identity}>
+                      <span className={styles.nameLine}>
+                        <span className={styles.dot} data-status={user.status} aria-hidden="true" />
+                        <span className={styles.name}>{user.displayName ?? '—'}</span>
+                        <span className={styles.srOnly}>{user.status}</span>
+                      </span>
+                      <span className={styles.email}>{user.email ?? ''}</span>
+                    </span>
+                    <span className={styles.badge}>tag-only · no account</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.rowMain}
+                    onClick={() => router.push(`/admin/users/${user.id}`)}
+                  >
+                    <span className={styles.identity}>
+                      <span className={styles.nameLine}>
+                        <span className={styles.dot} data-status={user.status} aria-hidden="true" />
+                        <span className={styles.name}>{user.displayName ?? '—'}</span>
+                        <span className={styles.srOnly}>{user.status}</span>
+                      </span>
+                      <span className={styles.email}>{user.email ?? ''}</span>
+                    </span>
+                  </button>
+                )}
+                <div className={styles.rowActions}>
+                  {user.status === 'PERSON' ? (
+                    <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>
+                      Merge…
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setView({ mode: 'edit', user })}
+                      >
+                        Update
+                      </Button>
+                      <GenerateInviteButton
+                        userId={user.id}
+                        email={user.email ?? ''}
+                        status={user.status}
+                      />
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )))}
+
+      {view.mode === 'list' && mergeFor && (
+        <MergeIdentityModal
+          source={mergeFor}
+          candidates={users.filter(u => u.id !== mergeFor.id)}
+          open
+          onClose={() => setMergeFor(null)}
+          onMerged={async () => {
+            setMergeFor(null);
+            await revalidateMetadataCache();
+            void refresh();
+          }}
+        />
+      )}
+    </AdminPanel>
   );
 }
 

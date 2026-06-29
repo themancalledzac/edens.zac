@@ -11,6 +11,7 @@ import {
   isContentCollection,
   isContentImage,
   isGifContent,
+  isPanelContent,
   isTextContent,
   pickImageDimensions,
   validateContentBlock,
@@ -19,6 +20,7 @@ import {
   createCollectionContent,
   createGifContent,
   createImageContent,
+  createPanelContent,
   createTextContent,
 } from '@/tests/fixtures/contentFixtures';
 
@@ -142,6 +144,35 @@ describe('isContentCollection', () => {
   it('returns false for GIF content', () => {
     const gif = createGifContent(1);
     expect(isContentCollection(gif)).toBe(false);
+  });
+});
+
+// ===================== isPanelContent =====================
+
+describe('isPanelContent', () => {
+  it('returns true for PANEL content', () => {
+    const panel = createPanelContent(1);
+    expect(isPanelContent(panel)).toBe(true);
+  });
+
+  it('returns false for IMAGE content', () => {
+    const img = createImageContent(1);
+    expect(isPanelContent(img)).toBe(false);
+  });
+
+  it('returns false for TEXT content', () => {
+    const text = createTextContent(1);
+    expect(isPanelContent(text)).toBe(false);
+  });
+
+  it('returns false for GIF content', () => {
+    const gif = createGifContent(1);
+    expect(isPanelContent(gif)).toBe(false);
+  });
+
+  it('returns false for COLLECTION content', () => {
+    const col = createCollectionContent(1);
+    expect(isPanelContent(col)).toBe(false);
   });
 });
 
@@ -338,6 +369,11 @@ describe('validateContentBlock', () => {
     expect(validateContentBlock(col)).toBe(true);
   });
 
+  it('returns true for a valid PANEL block', () => {
+    const panel = createPanelContent(1);
+    expect(validateContentBlock(panel)).toBe(true);
+  });
+
   it('returns false for null', () => {
     expect(validateContentBlock(null)).toBe(false);
   });
@@ -398,17 +434,16 @@ describe('getAspectRatio', () => {
     expect(getAspectRatio(createCollectionContent(1))).toBe(1.0);
   });
 
-  it('returns 1.0 when dimensions resolve to zero (default fallback)', () => {
-    // Force getContentDimensions to return non-positive by providing explicit zeros via width/height
-    // Since imageWidth 0 is falsy, falls back to width/height, also 0 => uses defaults (> 0), so
-    // instead test the guard directly: create an image where both imageW/H and w/h are 0
-    // The getContentDimensions default path always returns positive dims, so we verify the
-    // condition is unreachable via fixtures — the function never produces zero from valid content.
-    // We test the real zero-guard with a parallax whose underlying dims are > 0 but force ratio
-    // via dimensions — confirmed guard is covered via positive dims returning correct ratio.
-    const img = createImageContent(1, { imageWidth: 1920, imageHeight: 1080 });
-    expect(getAspectRatio(img)).toBeGreaterThan(0);
+  it('returns vertical AR for PANEL content with width < height', () => {
+    const panel = createPanelContent(1, { width: 600, height: 1000 });
+    expect(getAspectRatio(panel)).toBeCloseTo(600 / 1000);
   });
+
+  it('returns 1.0 for PANEL content with zero height', () => {
+    const panel = createPanelContent(1, { width: 600, height: 0 });
+    expect(getAspectRatio(panel)).toBe(1.0);
+  });
+
 });
 
 // ===================== getSlotWidth =====================

@@ -10,6 +10,7 @@ import {
   type ContentCollectionModel,
   type ContentGifModel,
   type ContentImageModel,
+  type ContentPanelModel,
   type ContentParallaxImageModel,
   type ContentTextModel,
 } from '@/app/types/Content';
@@ -43,6 +44,13 @@ export function isGifContent(block: Content): block is ContentGifModel {
  */
 export function isContentCollection(block: Content): block is ContentCollectionModel {
   return block.contentType === 'COLLECTION';
+}
+
+/**
+ * Type guard to check if a Content is a ContentPanelModel
+ */
+export function isPanelContent(block: Content): block is ContentPanelModel {
+  return block.contentType === 'PANEL';
 }
 
 /**
@@ -134,7 +142,7 @@ export function validateContentBlock(block: unknown): block is Content {
   return (
     typeof candidate.id === 'number' &&
     typeof candidate.contentType === 'string' &&
-    ['IMAGE', 'TEXT', 'GIF', 'COLLECTION'].includes(candidate.contentType) &&
+    ['IMAGE', 'TEXT', 'GIF', 'COLLECTION', 'PANEL'].includes(candidate.contentType) &&
     typeof candidate.orderIndex === 'number'
   );
 }
@@ -143,6 +151,12 @@ export function validateContentBlock(block: unknown): block is Content {
  * Get aspect ratio for content item
  */
 export function getAspectRatio(item: Content): number {
+  if (isPanelContent(item)) {
+    const width = item.width ?? 0;
+    const height = item.height ?? 0;
+    return width <= 0 || height <= 0 ? 1.0 : width / height;
+  }
+
   if (!hasImage(item)) return 1.0;
 
   const { width, height } = getContentDimensions(item);
