@@ -4,13 +4,9 @@ import Link from 'next/link';
 import { type ReactNode, useEffect, useState } from 'react';
 
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
-import { Button } from '@/app/components/ui/Button/Button';
-import {
-  type AdminMessageView,
-  deleteAdminMessage,
-  getAdminMessages,
-} from '@/app/lib/api/messages';
-import { gmailReplyUrl, relative, truncateWords } from '@/app/utils/messageFormat';
+import { MessageRow } from '@/app/components/messages/MessageRow';
+import { useMessageDelete } from '@/app/hooks/useMessageDelete';
+import { type AdminMessageView, getAdminMessages } from '@/app/lib/api/messages';
 
 import styles from './MessagesPanel.module.scss';
 
@@ -19,8 +15,7 @@ export function MessagesPanel() {
   const [messages, setMessages] = useState<AdminMessageView[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { deletingId, error, handleDelete } = useMessageDelete(messages, setMessages, setTotal);
 
   useEffect(() => {
     void (async () => {
@@ -35,24 +30,6 @@ export function MessagesPanel() {
       setLoading(false);
     })();
   }, []);
-
-  const handleDelete = async (m: AdminMessageView) => {
-    if (!window.confirm(`Delete message from ${m.email}?`)) return;
-    setError(null);
-    setDeletingId(m.id);
-    const previous = messages;
-    setMessages(prev => prev.filter(x => x.id !== m.id));
-    setTotal(t => Math.max(0, t - 1));
-    try {
-      await deleteAdminMessage(m.id);
-    } catch {
-      setMessages(previous);
-      setTotal(t => t + 1);
-      setError(`Failed to delete message from ${m.email}`);
-    } finally {
-      setDeletingId(null);
-    }
-  };
 
   const action = (
     <Link href="/comments" className={styles.viewAll}>
@@ -71,35 +48,13 @@ export function MessagesPanel() {
         <ul className={styles.list}>
           {messages.map(m => (
             <li key={m.id} className={styles.row}>
-              <div className={styles.meta}>
-                <a href={`mailto:${m.email}`} className={styles.email}>
-                  {m.email}
-                </a>
-                <time className={styles.time} dateTime={m.createdAt} title={m.createdAt}>
-                  {relative(m.createdAt)}
-                </time>
-              </div>
-              <p className={styles.excerpt} title={m.message}>
-                {truncateWords(m.message, 10)}
-              </p>
-              <div className={styles.actions}>
-                <a
-                  href={gmailReplyUrl(m.email)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.replyLink}
-                >
-                  Reply in Gmail
-                </a>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => handleDelete(m)}
-                  disabled={deletingId === m.id}
-                >
-                  {deletingId === m.id ? 'Deleting...' : 'Delete'}
-                </Button>
-              </div>
+              <MessageRow
+                message={m}
+                onDelete={handleDelete}
+                deleting={deletingId === m.id}
+                styles={styles}
+                excerptWords={10}
+              />
             </li>
           ))}
         </ul>

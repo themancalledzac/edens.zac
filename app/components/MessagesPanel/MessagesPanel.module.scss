@@ -65,7 +65,7 @@
   color: var(--color-on-surface-muted);
 }
 
-.excerpt {
+.body {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-on-surface-muted);
@@ -80,7 +80,7 @@
   gap: var(--space-2);
 }
 
-.replyLink {
+.replyButton {
   padding: 2px var(--space-2);
   font-size: var(--text-xs);
   border: 1px solid var(--color-border);

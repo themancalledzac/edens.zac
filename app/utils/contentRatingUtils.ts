@@ -12,6 +12,7 @@ import {
   EXTREMENESS_RAMP_START,
 } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
+import { clamp } from '@/app/utils/clamp';
 import {
   getAspectRatio,
   isContentImage,
@@ -25,39 +26,6 @@ import {
  */
 export function isCollectionCard(item: AnyContentModel): boolean {
   return 'collectionType' in item && !!item.collectionType;
-}
-
-/**
- * Get rating or star value for an item
- *
- * @param item - Content item to get rating for
- * @param asStarValue - If true, returns star value (0 or 1 → 1, 2+ stays as rating).
- *                      If false (default), returns raw rating (0-5).
- *
- * Special handling for collection cards:
- * - Collection cards are treated as 4-star items to ensure 2-per-row layout
- * - Two 4-star items = 8 stars (within 7-9 range) → natural 2-per-row grouping
- */
-export function getRating(item: AnyContentModel, asStarValue: boolean = false): number {
-  if (isCollectionCard(item)) {
-    return 4;
-  }
-
-  if (isPanelContent(item)) {
-    const r = Math.min(Math.max(item.rating ?? 0, 0), 5);
-    return asStarValue ? (r === 0 || r === 1 ? 1 : r) : r;
-  }
-
-  // Animated GIF/MP4 blocks carry a backend-persisted rating with the same 0-5 semantics as
-  // images. Treat them identically here so the row layout doesn't squash them.
-  if (!isContentImage(item) && !isGifContent(item)) {
-    return asStarValue ? 1 : 0;
-  }
-  const rating = (item as { rating?: number | null }).rating ?? 0;
-  if (asStarValue) {
-    return rating === 0 || rating === 1 ? 1 : rating;
-  }
-  return rating;
 }
 
 /**
@@ -80,7 +48,7 @@ export function getEffectiveRating(item: AnyContentModel): number {
     return 4;
   }
 
-  if (isPanelContent(item)) return Math.min(Math.max(item.rating ?? 0, 0), 5);
+  if (isPanelContent(item)) return clamp(item.rating ?? 0, 0, 5);
 
   // Animated GIF/MP4 blocks share the image rating semantics (0-5). The earlier `return 1`
   // short-circuit here is what made GIFs always pack as low-priority filler in the row algorithm
@@ -90,7 +58,7 @@ export function getEffectiveRating(item: AnyContentModel): number {
   }
 
   const baseRating = (item as { rating?: number | null }).rating ?? 0;
-  return Math.min(Math.max(baseRating, 0), 5);
+  return clamp(baseRating, 0, 5);
 }
 
 // =============================================================================
