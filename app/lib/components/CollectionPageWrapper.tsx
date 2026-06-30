@@ -25,10 +25,7 @@ interface CollectionPageWrapperProps {
    * When false/absent the fetch, gate, and render are byte-identical to the public view.
    */
   editMode?: boolean;
-  /**
-   * `?via=<slug>`: the collection the visitor arrived from (e.g. a Related card click),
-   * used to build the breadcrumb's intermediate crumb. Forwarded to {@link CollectionPage}.
-   */
+  /** `?via=<slug>` arrived-from collection; forwarded to the breadcrumb. */
   via?: string;
 }
 

@@ -13,7 +13,7 @@ interface CollectionPageProps {
   }>;
   searchParams: Promise<{
     manage?: string;
-    /** `?via=<slug>`: the collection the visitor arrived from, used to build the breadcrumb. */
+    /** `?via=<slug>` arrived-from collection, for the breadcrumb. */
     via?: string;
   }>;
 }

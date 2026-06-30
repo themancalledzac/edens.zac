@@ -66,15 +66,10 @@ describe('CollectionPage (single collection)', () => {
     expect(heading.textContent?.trim()).not.toBe('');
   });
 
-  it('renders a Home › {current} breadcrumb with no via param (current crumb is not a link)', () => {
+  it('renders no breadcrumb when there is no via param', () => {
     render(<CollectionPage collection={makeCollection()} />);
 
-    const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
-    expect(nav).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
-    // The current collection is plain text, not a link.
-    expect(screen.queryByRole('link', { name: 'Paris 2025' })).not.toBeInTheDocument();
-    // Breadcrumb crumbs are spans/links — they must not add a second <h1>.
+    expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 

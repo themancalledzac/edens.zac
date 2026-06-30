@@ -6,12 +6,7 @@ export function humanizeConstantCase(value: string): string {
     .join(' ');
 }
 
-/**
- * Converts a URL slug to a human-readable Title Case label:
- * `street-photography` → `Street Photography`. Decodes percent-encoding first
- * so encoded slugs round-trip cleanly. Used as a display fallback when a real
- * display name isn't available (e.g. a `?via=` slug with no fetched title).
- */
+/** Slug → Title Case label, e.g. `street-photography` → `Street Photography`. */
 export function humanizeSlug(slug: string): string {
   return decodeURIComponent(slug)
     .replace(/-+/g, ' ')

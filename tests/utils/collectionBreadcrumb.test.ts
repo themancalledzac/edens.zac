@@ -1,24 +1,17 @@
 /**
- * Unit tests for collectionBreadcrumb.ts
- *
- * The breadcrumb helper builds the "up to parent" trail for a collection page.
- * MVP logic (Track B, design decision #3):
- *   - no `via` param → `Home › {current}`
- *   - valid `via` param → `Home › {via-collection} › {current}`
- *   - the current (last) item is always plain text (no href).
+ * Unit tests for buildCollectionBreadcrumb: a gated up-trail for a collection page.
  */
 
 import type { BreadcrumbItem } from '@/app/components/Breadcrumb/Breadcrumb';
 import { buildCollectionBreadcrumb } from '@/app/utils/collectionBreadcrumb';
 
 describe('buildCollectionBreadcrumb', () => {
-  it('returns Home › {current} when no via param is present', () => {
-    const items = buildCollectionBreadcrumb({ currentTitle: 'Dolomites 2025' });
+  it('returns [] when no via param is present', () => {
+    expect(buildCollectionBreadcrumb({ currentTitle: 'Dolomites 2025' })).toEqual([]);
+  });
 
-    expect(items).toEqual<BreadcrumbItem[]>([
-      { label: 'Home', href: '/' },
-      { label: 'Dolomites 2025' },
-    ]);
+  it('returns [] for a blank/whitespace via param', () => {
+    expect(buildCollectionBreadcrumb({ currentTitle: 'Current', via: '   ' })).toEqual([]);
   });
 
   it('returns Home › {via} › {current} when a valid via param is present', () => {
@@ -44,21 +37,16 @@ describe('buildCollectionBreadcrumb', () => {
   });
 
   it('never gives the current (last) item an href', () => {
-    const withVia = buildCollectionBreadcrumb({ currentTitle: 'Current', via: 'parent' });
-    const withoutVia = buildCollectionBreadcrumb({ currentTitle: 'Current' });
-
-    expect(withVia.at(-1)?.href).toBeUndefined();
-    expect(withoutVia.at(-1)?.href).toBeUndefined();
-  });
-
-  it('ignores a blank/whitespace via param and falls back to Home › {current}', () => {
-    const items = buildCollectionBreadcrumb({ currentTitle: 'Current', via: '   ' });
-
-    expect(items).toEqual<BreadcrumbItem[]>([{ label: 'Home', href: '/' }, { label: 'Current' }]);
+    const items = buildCollectionBreadcrumb({ currentTitle: 'Current', via: 'parent' });
+    expect(items.at(-1)?.href).toBeUndefined();
   });
 
   it('falls back to the slug as the current label when the title is blank', () => {
-    const items = buildCollectionBreadcrumb({ currentTitle: '   ', currentSlug: 'untitled-2025' });
+    const items = buildCollectionBreadcrumb({
+      currentTitle: '   ',
+      currentSlug: 'untitled-2025',
+      via: 'parent',
+    });
 
     expect(items.at(-1)).toEqual({ label: 'Untitled 2025' });
   });
