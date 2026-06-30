@@ -50,10 +50,7 @@ describe('ExplorePage', () => {
     expect(screen.getByRole('heading', { name: 'Tags' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'People' })).not.toBeInTheDocument();
 
-    expect(screen.getByRole('link', { name: 'Mountains' })).toHaveAttribute(
-      'href',
-      '/tag/mountains'
-    );
+    expect(screen.getByRole('link', { name: 'Mountains' })).toHaveAttribute('href', '/mountains');
     expect(screen.getByRole('link', { name: 'Patagonia' })).toHaveAttribute(
       'href',
       '/location/patagonia'
