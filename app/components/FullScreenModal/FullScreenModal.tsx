@@ -256,7 +256,11 @@ export function FullScreenModal({
                               onClick={e => {
                                 e.stopPropagation();
                                 if (c.slug) {
-                                  hideImage();
+                                  // Don't call hideImage() here: it pops history via an async
+                                  // history.back(), which fires *after* router.push and reverts
+                                  // it — leaving you stuck on the current collection. The route
+                                  // change to a new [slug] tears the modal down on its own, the
+                                  // same way the location link above navigates.
                                   router.push(`/${c.slug}`);
                                 }
                               }}
