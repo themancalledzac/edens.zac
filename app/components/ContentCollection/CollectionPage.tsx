@@ -115,8 +115,6 @@ export default function CollectionPage({
     // The collection title is shown visually as an overlay inside the content
     // tree, so emit the page's real <h1> visually-hidden for SEO + screen readers.
     const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
-    // "Up" affordance: a collection is never a dead end. Rendered as a <nav> (not a
-    // heading) so it doesn't collide with the single visually-hidden <h1> above.
     const breadcrumbItems = buildCollectionBreadcrumb({
       currentTitle: collection.title ?? '',
       currentSlug: collection.slug,

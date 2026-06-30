@@ -17,18 +17,13 @@ export interface CollectionBreadcrumbInput {
 }
 
 /**
- * Builds the "up to parent" breadcrumb trail for a collection page (Track B,
- * design decision #3).
+ * Builds the "up to parent" breadcrumb trail for a collection page.
  *
  * - No `via` param → `Home › {current}`.
  * - Valid `via` param → `Home › {via-collection} › {current}`.
  *
- * The current (last) crumb always renders as plain text (no `href`), per
- * WAI-ARIA breadcrumb practice. The `via` slug links to `/{slug}` and uses a
- * humanized slug as its label, since we only have the slug (no fetched title)
- * at this point and don't want a second backend round-trip.
- *
- * The "highest featured tag" breadcrumb variant is deferred (depends on A2).
+ * The current (last) crumb renders as plain text (no `href`); the `via` slug
+ * links to `/{slug}` with a humanized-slug label.
  */
 export function buildCollectionBreadcrumb({
   currentTitle,
