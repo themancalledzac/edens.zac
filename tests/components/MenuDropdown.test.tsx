@@ -6,9 +6,11 @@ import * as authApi from '@/app/lib/api/auth';
 
 const mockPush = jest.fn();
 const mockRefresh = jest.fn();
+let mockPathname = '/some-collection';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
+  usePathname: () => mockPathname,
 }));
 jest.mock('@/app/hooks/useFetchMe', () => ({ useFetchMe: jest.fn() }));
 jest.mock('@/app/lib/api/auth', () => ({ logout: jest.fn() }));
@@ -30,6 +32,7 @@ function setMe(
 describe('MenuDropdown — auth actions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPathname = '/some-collection';
   });
 
   it('shows "Log out" when logged in and calls logout + redirects home', async () => {
@@ -68,5 +71,23 @@ describe('MenuDropdown — auth actions', () => {
 
     expect(screen.queryByRole('button', { name: /log in/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
+  });
+
+  it('shows "Home" off the home page and navigates to /', () => {
+    setMe(null);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
+    expect(mockPush).toHaveBeenCalledWith('/');
+  });
+
+  it('hides "Home" when already on the home page', () => {
+    setMe(null);
+    mockPathname = '/';
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+
+    expect(screen.queryByRole('button', { name: /^home$/i })).not.toBeInTheDocument();
   });
 });

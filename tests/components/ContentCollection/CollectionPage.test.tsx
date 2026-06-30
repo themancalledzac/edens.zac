@@ -65,27 +65,4 @@ describe('CollectionPage (single collection)', () => {
     expect(heading).toHaveTextContent('Untitled');
     expect(heading.textContent?.trim()).not.toBe('');
   });
-
-  it('renders no breadcrumb when there is no via param', () => {
-    render(<CollectionPage collection={makeCollection()} />);
-
-    expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-  });
-
-  it('renders Home › {via} › {current} when a via param is present', () => {
-    render(
-      <CollectionPage
-        collection={makeCollection({ title: 'Dolomites Film' })}
-        via="dolomites-2025"
-      />
-    );
-
-    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('link', { name: 'Dolomites 2025' })).toHaveAttribute(
-      'href',
-      '/dolomites-2025'
-    );
-    expect(screen.queryByRole('link', { name: 'Dolomites Film' })).not.toBeInTheDocument();
-  });
 });

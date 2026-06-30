@@ -13,8 +13,6 @@ interface CollectionPageProps {
   }>;
   searchParams: Promise<{
     manage?: string;
-    /** `?via=<slug>` arrived-from collection, for the breadcrumb. */
-    via?: string;
   }>;
 }
 
@@ -95,5 +93,5 @@ export default async function CollectionPage({ params, searchParams }: Collectio
     await requireAdmin();
   }
 
-  return <CollectionPageWrapper slug={slug} editMode={editMode} via={resolvedSearchParams?.via} />;
+  return <CollectionPageWrapper slug={slug} editMode={editMode} />;
 }

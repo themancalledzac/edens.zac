@@ -5,14 +5,3 @@ export function humanizeConstantCase(value: string): string {
     .map(w => w.charAt(0) + w.slice(1).toLowerCase())
     .join(' ');
 }
-
-/** Slug → Title Case label, e.g. `street-photography` → `Street Photography`. */
-export function humanizeSlug(slug: string): string {
-  return decodeURIComponent(slug)
-    .replace(/-+/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
-}

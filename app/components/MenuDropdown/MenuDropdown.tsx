@@ -1,7 +1,7 @@
 'use client';
 
 import { CircleX } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
@@ -44,6 +44,7 @@ export function MenuDropdown({
 }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -82,6 +83,10 @@ export function MenuDropdown({
   };
 
   const handleNavigation = {
+    home: () => {
+      router.push('/');
+      onClose();
+    },
     user: () => {
       router.push('/user');
       onClose();
@@ -200,6 +205,18 @@ export function MenuDropdown({
       </div>
 
       <div className={styles.dropdownMenuOptionsWrapper}>
+        {pathname !== '/' && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.home}
+            >
+              <span className={styles.dropdownMenuOptions}>Home</span>
+            </button>
+          </div>
+        )}
+
         {!meLoading && me && (
           <>
             <div className={styles.dropdownMenuItem}>
