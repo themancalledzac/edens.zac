@@ -82,6 +82,10 @@ export function MenuDropdown({
   };
 
   const handleNavigation = {
+    user: () => {
+      router.push('/user');
+      onClose();
+    },
     explore: () => {
       router.push('/explore');
       onClose();
@@ -197,11 +201,22 @@ export function MenuDropdown({
 
       <div className={styles.dropdownMenuOptionsWrapper}>
         {!meLoading && me && (
-          <div className={styles.dropdownMenuItem}>
-            <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
-              <span className={styles.dropdownMenuOptions}>Log out</span>
-            </button>
-          </div>
+          <>
+            <div className={styles.dropdownMenuItem}>
+              <button
+                type="button"
+                className={styles.dropdownMenuButton}
+                onClick={handleNavigation.user}
+              >
+                <span className={styles.dropdownMenuOptions}>Me</span>
+              </button>
+            </div>
+            <div className={styles.dropdownMenuItem}>
+              <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
+                <span className={styles.dropdownMenuOptions}>Log out</span>
+              </button>
+            </div>
+          </>
         )}
 
         {!meLoading && !me && (
