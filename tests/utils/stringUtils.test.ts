@@ -1,4 +1,4 @@
-import { humanizeConstantCase } from '@/app/utils/stringUtils';
+import { humanizeConstantCase, humanizeSlug } from '@/app/utils/stringUtils';
 
 describe('humanizeConstantCase', () => {
   it('converts a two-word constant to Title Case', () => {
@@ -23,5 +23,28 @@ describe('humanizeConstantCase', () => {
 
   it('returns an empty string for empty input', () => {
     expect(humanizeConstantCase('')).toBe('');
+  });
+});
+
+describe('humanizeSlug', () => {
+  it('converts a hyphenated slug to Title Case', () => {
+    expect(humanizeSlug('street-photography')).toBe('Street Photography');
+  });
+
+  it('handles a single-word slug', () => {
+    expect(humanizeSlug('portfolio')).toBe('Portfolio');
+  });
+
+  it('collapses repeated hyphens and trims', () => {
+    expect(humanizeSlug('dolomites--2025-')).toBe('Dolomites 2025');
+  });
+
+  it('decodes percent-encoding before humanizing', () => {
+    expect(humanizeSlug('caf%C3%A9-trips')).toBe('Café Trips');
+  });
+
+  it('returns an empty string for empty/blank input', () => {
+    expect(humanizeSlug('')).toBe('');
+    expect(humanizeSlug('   ')).toBe('');
   });
 });

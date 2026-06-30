@@ -13,6 +13,8 @@ interface CollectionPageProps {
   }>;
   searchParams: Promise<{
     manage?: string;
+    /** `?via=<slug>`: the collection the visitor arrived from, used to build the breadcrumb. */
+    via?: string;
   }>;
 }
 
@@ -86,11 +88,12 @@ export default async function CollectionPage({ params, searchParams }: Collectio
     notFound();
   }
 
-  const editMode = (await searchParams)?.manage === '1' && isLocalEnvironment();
+  const resolvedSearchParams = await searchParams;
+  const editMode = resolvedSearchParams?.manage === '1' && isLocalEnvironment();
 
   if (editMode) {
     await requireAdmin();
   }
 
-  return <CollectionPageWrapper slug={slug} editMode={editMode} />;
+  return <CollectionPageWrapper slug={slug} editMode={editMode} via={resolvedSearchParams?.via} />;
 }

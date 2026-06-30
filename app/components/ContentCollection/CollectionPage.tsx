@@ -1,9 +1,11 @@
+import { Breadcrumb } from '@/app/components/Breadcrumb/Breadcrumb';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
+import { buildCollectionBreadcrumb } from '@/app/utils/collectionBreadcrumb';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
 
@@ -29,6 +31,11 @@ interface ContentCollectionPageProps {
   me?: MeResponse | null;
   /** The viewer's persisted selected image ids for this collection (client galleries only). */
   initialSelectedIds?: number[];
+  /**
+   * `?via=<slug>`: the collection the visitor arrived from (e.g. a Related card click).
+   * Drives the breadcrumb's intermediate "up" crumb on the single-collection view.
+   */
+  via?: string;
 }
 
 /**
@@ -101,17 +108,26 @@ export default function CollectionPage({
   editMode = false,
   me = null,
   initialSelectedIds = [],
+  via,
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
     // The collection title is shown visually as an overlay inside the content
     // tree, so emit the page's real <h1> visually-hidden for SEO + screen readers.
     const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
+    // "Up" affordance: a collection is never a dead end. Rendered as a <nav> (not a
+    // heading) so it doesn't collide with the single visually-hidden <h1> above.
+    const breadcrumbItems = buildCollectionBreadcrumb({
+      currentTitle: collection.title ?? '',
+      currentSlug: collection.slug,
+      via,
+    });
     return (
       <div className={styles.container}>
         <main className={styles.main}>
           <SiteHeader pageType="collection" collectionSlug={collection.slug} />
           <h1 className={styles.srOnly}>{headingText}</h1>
+          <Breadcrumb items={breadcrumbItems} />
           <CollectionPageClient
             collection={collection}
             chunkSize={chunkSize}

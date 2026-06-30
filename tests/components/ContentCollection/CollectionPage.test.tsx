@@ -65,4 +65,32 @@ describe('CollectionPage (single collection)', () => {
     expect(heading).toHaveTextContent('Untitled');
     expect(heading.textContent?.trim()).not.toBe('');
   });
+
+  it('renders a Home › {current} breadcrumb with no via param (current crumb is not a link)', () => {
+    render(<CollectionPage collection={makeCollection()} />);
+
+    const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(nav).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+    // The current collection is plain text, not a link.
+    expect(screen.queryByRole('link', { name: 'Paris 2025' })).not.toBeInTheDocument();
+    // Breadcrumb crumbs are spans/links — they must not add a second <h1>.
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+  });
+
+  it('renders Home › {via} › {current} when a via param is present', () => {
+    render(
+      <CollectionPage
+        collection={makeCollection({ title: 'Dolomites Film' })}
+        via="dolomites-2025"
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Dolomites 2025' })).toHaveAttribute(
+      'href',
+      '/dolomites-2025'
+    );
+    expect(screen.queryByRole('link', { name: 'Dolomites Film' })).not.toBeInTheDocument();
+  });
 });
