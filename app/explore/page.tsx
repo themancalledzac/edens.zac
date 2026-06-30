@@ -82,7 +82,7 @@ export default async function ExplorePage() {
               <ul className={styles.linkList}>
                 {tags.map(tag => (
                   <li key={tag.id}>
-                    <NavLink href={`/tag/${tag.slug}`} className={styles.directoryLink}>
+                    <NavLink href={`/${tag.slug}`} className={styles.directoryLink}>
                       {tag.name}
                     </NavLink>
                   </li>

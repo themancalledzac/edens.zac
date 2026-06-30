@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
@@ -48,6 +48,17 @@ export function UserManagementPanel() {
     void refresh();
   }, [refresh]);
 
+  // Alphabetical by display name (falling back to email), case-insensitive.
+  const sortedUsers = useMemo(
+    () =>
+      [...users].sort((a, b) =>
+        (a.displayName ?? a.email ?? '').localeCompare(b.displayName ?? b.email ?? '', undefined, {
+          sensitivity: 'base',
+        })
+      ),
+    [users]
+  );
+
   const headerTitle =
     view.mode === 'create' ? 'New User' : (view.mode === 'edit' ? 'Edit User' : 'Users');
 
@@ -88,11 +99,11 @@ export function UserManagementPanel() {
       {view.mode === 'list' &&
         (loading ? (
           <p className={styles.muted}>Loading users…</p>
-        ) : (users.length === 0 ? (
+        ) : (sortedUsers.length === 0 ? (
           <p className={styles.muted}>No users yet. Use "+ New User" to create one.</p>
         ) : (
           <ul className={styles.list}>
-            {users.map(user => (
+            {sortedUsers.map(user => (
               <li key={user.id} className={styles.row}>
                 {user.status === 'PERSON' ? (
                   <div className={styles.rowStatic}>
@@ -104,7 +115,6 @@ export function UserManagementPanel() {
                       </span>
                       <span className={styles.email}>{user.email ?? ''}</span>
                     </span>
-                    <span className={styles.badge}>tag-only · no account</span>
                   </div>
                 ) : (
                   <button

@@ -210,7 +210,7 @@ export default function CollectionContentRenderer({
           tagName
         );
       } else {
-        router.push(`/tag/${tagSlug ?? slugify(tagName)}`);
+        router.push(`/${tagSlug ?? slugify(tagName)}`);
       }
     };
 

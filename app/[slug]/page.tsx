@@ -86,7 +86,8 @@ export default async function CollectionPage({ params, searchParams }: Collectio
     notFound();
   }
 
-  const editMode = (await searchParams)?.manage === '1' && isLocalEnvironment();
+  const resolvedSearchParams = await searchParams;
+  const editMode = resolvedSearchParams?.manage === '1' && isLocalEnvironment();
 
   if (editMode) {
     await requireAdmin();

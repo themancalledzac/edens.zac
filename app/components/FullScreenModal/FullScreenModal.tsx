@@ -256,7 +256,6 @@ export function FullScreenModal({
                               onClick={e => {
                                 e.stopPropagation();
                                 if (c.slug) {
-                                  hideImage();
                                   router.push(`/${c.slug}`);
                                 }
                               }}
