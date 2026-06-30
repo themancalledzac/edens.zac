@@ -179,11 +179,14 @@ export default function CollectionContentRenderer({
 
   // Localhost-only shortcut into manage mode, pinned to the header cover image. Shown only on the
   // public view (manage path sets currentCollectionId) for the cover block (contentId === -1).
+  // Hidden on the signed-in user's own /user page for now — the send-message context is enabled
+  // only there, so it doubles as the user-page signal.
   const showCoverUpdateShortcut =
     contentType === 'IMAGE' &&
     contentId === COVER_IMAGE_CONTENT_ID &&
     currentCollectionId == null &&
     !!collectionSlug &&
+    !sendMessageEnabled &&
     isLocalEnvironment();
 
   const handleCoverUpdateClick = useCallback(
