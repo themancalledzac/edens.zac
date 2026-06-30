@@ -9,6 +9,8 @@ import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/Client
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
+import { useSendMessageEnabled } from '@/app/components/ContentCollection/SendMessageContext';
+import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
 import { Badge } from '@/app/components/ui/Badge/Badge';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { Tile } from '@/app/components/ui/Tile/Tile';
@@ -39,6 +41,14 @@ import { manageHref } from '@/app/utils/manageUrl';
  * header cover image. Lets the renderer single out the cover without a new prop.
  */
 const COVER_IMAGE_CONTENT_ID = -1;
+
+/**
+ * Sentinel content id used by createMetadataTextBlock / createTextOnlyHeaderRow
+ * (app/utils/contentLayout.ts) for the header metadata text block — the block that hosts
+ * the filter bar. Lets the renderer scope header-only affordances (the send-message
+ * button) to it rather than to every TEXT block.
+ */
+const METADATA_CONTENT_ID = -2;
 
 import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
@@ -164,6 +174,7 @@ export default function CollectionContentRenderer({
   }, [contentId, onImageLoadError]);
 
   const collectionFilter = useCollectionFilter();
+  const sendMessageEnabled = useSendMessageEnabled();
   const inlineEdit = useInlineEdit();
 
   // Localhost-only shortcut into manage mode, pinned to the header cover image. Shown only on the
@@ -374,31 +385,34 @@ export default function CollectionContentRenderer({
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
           </div>
-          {collectionFilter && (
+          {(collectionFilter || (sendMessageEnabled && contentId === METADATA_CONTENT_ID)) && (
             <div className={cbStyles.filterBarWrapper}>
-              <FilterToolbar
-                filterState={collectionFilter.filterState}
-                onFilterChange={collectionFilter.onFilterChange}
-                dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
-                filteredAvailable={
-                  collectionFilter.filteredAvailable
-                    ? {
-                        selectedTags: collectionFilter.filteredAvailable.tags,
-                        selectedPeople: collectionFilter.filteredAvailable.people,
-                        selectedCameras: collectionFilter.filteredAvailable.cameras,
-                        selectedLenses: collectionFilter.filteredAvailable.lenses,
-                        selectedLensTypes: collectionFilter.filteredAvailable.lensTypes,
-                        selectedLocations: collectionFilter.filteredAvailable.locations,
-                      }
-                    : null
-                }
-                showDateSort={collectionFilter.filterOptions.showDateSort}
-                dateTwoState={collectionFilter.dateTwoState}
-                showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
-                density={collectionFilter.density}
-                densityMax={collectionFilter.densityMax}
-                onDensityChange={collectionFilter.onDensityChange}
-              />
+              {collectionFilter && (
+                <FilterToolbar
+                  filterState={collectionFilter.filterState}
+                  onFilterChange={collectionFilter.onFilterChange}
+                  dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
+                  filteredAvailable={
+                    collectionFilter.filteredAvailable
+                      ? {
+                          selectedTags: collectionFilter.filteredAvailable.tags,
+                          selectedPeople: collectionFilter.filteredAvailable.people,
+                          selectedCameras: collectionFilter.filteredAvailable.cameras,
+                          selectedLenses: collectionFilter.filteredAvailable.lenses,
+                          selectedLensTypes: collectionFilter.filteredAvailable.lensTypes,
+                          selectedLocations: collectionFilter.filteredAvailable.locations,
+                        }
+                      : null
+                  }
+                  showDateSort={collectionFilter.filterOptions.showDateSort}
+                  dateTwoState={collectionFilter.dateTwoState}
+                  showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
+                  density={collectionFilter.density}
+                  densityMax={collectionFilter.densityMax}
+                  onDensityChange={collectionFilter.onDensityChange}
+                />
+              )}
+              {sendMessageEnabled && contentId === METADATA_CONTENT_ID && <SendMessageButton />}
             </div>
           )}
         </div>

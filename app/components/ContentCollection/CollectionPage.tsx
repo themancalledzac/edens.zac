@@ -29,6 +29,11 @@ interface ContentCollectionPageProps {
   me?: MeResponse | null;
   /** The viewer's persisted selected image ids for this collection (client galleries only). */
   initialSelectedIds?: number[];
+  /**
+   * Surfaces a "Send a message" button in the collection header's filter-bar area
+   * (single-collection branch only). Set by the /user page.
+   */
+  showSendMessage?: boolean;
 }
 
 /**
@@ -101,6 +106,7 @@ export default function CollectionPage({
   editMode = false,
   me = null,
   initialSelectedIds = [],
+  showSendMessage = false,
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
@@ -121,6 +127,7 @@ export default function CollectionPage({
             editMode={editMode}
             me={me}
             initialSelectedIds={initialSelectedIds}
+            showSendMessage={showSendMessage}
           />
         </main>
       </div>

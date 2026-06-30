@@ -41,6 +41,7 @@ import {
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
 import { SelectsProvider } from './SelectsContext';
+import { SendMessageProvider } from './SendMessageContext';
 
 /**
  * The entire edit experience (useCollectionEdit, EditBar, edit sheet, modals, inline-edit
@@ -70,6 +71,8 @@ interface CollectionPageClientProps {
   me?: MeResponse | null;
   /** The viewer's persisted selected image ids for THIS collection, seeded server-side. */
   initialSelectedIds?: number[];
+  /** Surfaces the "Send a message" button in the header filter-bar area (user page). */
+  showSendMessage?: boolean;
 }
 
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
@@ -84,6 +87,7 @@ export default function CollectionPageClient({
   editMode = false,
   me = null,
   initialSelectedIds = [],
+  showSendMessage = false,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -368,9 +372,11 @@ export default function CollectionPageClient({
   // provider on it would reparent the subtree, remounting EditModeLayer and resetting its state.
   return (
     <MeProvider me={me}>
-      <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
-        {maybeWrappedContent}
-      </CollectionFilterProvider>
+      <SendMessageProvider enabled={showSendMessage}>
+        <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
+          {maybeWrappedContent}
+        </CollectionFilterProvider>
+      </SendMessageProvider>
     </MeProvider>
   );
 }

@@ -18,5 +18,7 @@ export default async function UserPage() {
   const collection = await getUserPage();
   if (!collection) notFound();
 
-  return <CollectionPage collection={collection} me={principal} />;
+  // showSendMessage surfaces a "Send a message" button in the filter-bar area of the
+  // user's own page, which opens the contact form in a modal.
+  return <CollectionPage collection={collection} me={principal} showSendMessage />;
 }
