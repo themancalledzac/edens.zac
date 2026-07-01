@@ -1,0 +1,283 @@
+<svg viewBox="0 0 1560 1310" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Roboto,sans-serif">
+<title>edens.zac collection content map</title><desc>Map of the real published collections and how a visitor navigates between them.</desc>
+<rect width="1560" height="1310" fill="#ffffff"/><defs>
+<marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L6,3 L0,6 Z" fill="#64748B"/></marker>
+</defs>
+<text x="40" y="42" font-size="22" font-weight="700" fill="#0F172A">edens.zac — Collection Map &amp; User Flow</text>
+<text x="40" y="63" font-size="12.5" fill="#64748B">Live collections as published today (2026-06-29) · how visitors move collection → collection</text>
+<rect x="1140" y="20" width="390" height="120" rx="10" fill="#F8FAFC" stroke="#E2E8F0"/>
+<text x="1155" y="40" font-size="11.5" font-weight="700" fill="#334155">MEMBERSHIP DOTS — one collection, several parents</text>
+<circle cx="1165" cy="58" r="5" fill="#2563EB"/><text x="1175" y="62" font-size="11" fill="#334155">Film</text>
+<circle cx="1257" cy="58" r="5" fill="#059669"/><text x="1267" y="62" font-size="11" fill="#334155">Adventure</text>
+<circle cx="1349" cy="58" r="5" fill="#7C3AED"/><text x="1359" y="62" font-size="11" fill="#334155">Travel</text>
+<circle cx="1441" cy="58" r="5" fill="#0F172A"/><text x="1451" y="62" font-size="11" fill="#334155">Home</text>
+<text x="1155" y="84" font-size="10.5" fill="#475569">Pill = a collection (slug shown) · right tag = type</text>
+<text x="1155" y="103" font-size="10.5" fill="#B45309">↔ = mutual “Related” link (only 2 pairs exist today)</text>
+<text x="1155" y="122" font-size="10.5" fill="#DC2626">Red cluster = client galleries (password / membership)</text>
+<g><rect x="225" y="84" width="150" height="52" rx="10" fill="#0F172A" stroke="#0F172A" stroke-width="1.5"/>
+<text x="300" y="108" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">Home  /</text>
+<text x="300" y="123" font-size="9.5" fill="#fff" opacity="0.85" text-anchor="middle">6 featured tiles</text>
+</g>
+<g><rect x="575" y="87" width="130" height="46" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.5"/>
+<text x="640" y="108" font-size="12" font-weight="700" fill="#0F172A" text-anchor="middle">Event</text>
+<text x="640" y="123" font-size="9.5" fill="#0F172A" opacity="0.85" text-anchor="middle">PORTFOLIO · home only</text>
+</g>
+<g><rect x="725" y="87" width="150" height="46" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.5"/>
+<text x="800" y="108" font-size="12" font-weight="700" fill="#0F172A" text-anchor="middle">Hidden Lake</text>
+<text x="800" y="123" font-size="9.5" fill="#0F172A" opacity="0.85" text-anchor="middle">BLOG · home + Adventure</text>
+</g>
+<g><rect x="895" y="87" width="160" height="46" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.5"/>
+<text x="975" y="108" font-size="12" font-weight="700" fill="#0F172A" text-anchor="middle">Gorge Climbing</text>
+<text x="975" y="123" font-size="9.5" fill="#0F172A" opacity="0.85" text-anchor="middle">BLOG · home + Adventure</text>
+</g>
+<g><rect x="185" y="193" width="210" height="54" rx="10" fill="#2563EB" stroke="#2563EB" stroke-width="1.5"/>
+<text x="290" y="218" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">Film</text>
+<text x="290" y="233" font-size="9.5" fill="#fff" opacity="0.85" text-anchor="middle">PARENT · 8 collections</text>
+</g>
+<g><rect x="655" y="193" width="210" height="54" rx="10" fill="#7C3AED" stroke="#7C3AED" stroke-width="1.5"/>
+<text x="760" y="218" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">Travel</text>
+<text x="760" y="233" font-size="9.5" fill="#fff" opacity="0.85" text-anchor="middle">PARENT · 12 collections</text>
+</g>
+<g><rect x="1125" y="193" width="210" height="54" rx="10" fill="#059669" stroke="#059669" stroke-width="1.5"/>
+<text x="1230" y="218" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">Adventure</text>
+<text x="1230" y="233" font-size="9.5" fill="#fff" opacity="0.85" text-anchor="middle">PARENT · 7 collections</text>
+</g>
+<path d="M300,136 L290,193" stroke="#0F172A" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+<path d="M335,130 L755,193" stroke="#0F172A" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+<path d="M345,124 L1175,200" stroke="#059669" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#ah)"/>
+<path d="M360,100 L575,110" stroke="#64748B" stroke-width="1.4" fill="none" marker-end="url(#ah)"/>
+<path d="M370,118 L725,110" stroke="#64748B" stroke-width="1.4" fill="none" marker-end="url(#ah)"/>
+<path d="M372,122 L895,118" stroke="#64748B" stroke-width="1.4" fill="none" marker-end="url(#ah)"/>
+<path d="M290,247 L290,262 L140,262 L140,692" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7"/>
+<path d="M140,300 L165,300" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="165" y="278" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="165" y="278" width="5" height="44" rx="2.5" fill="#2563EB"/>
+<text x="179" y="298" font-size="12.5" font-weight="600" fill="#0F172A">California 2026</text>
+<text x="179" y="312" font-size="9" fill="#64748B">california-2026</text>
+<circle cx="403" cy="291" r="4.5" fill="#7C3AED"/>
+<circle cx="390" cy="291" r="4.5" fill="#2563EB"/>
+<text x="403" y="316" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<path d="M140,356 L165,356" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="165" y="334" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="165" y="334" width="5" height="44" rx="2.5" fill="#2563EB"/>
+<text x="179" y="354" font-size="12.5" font-weight="600" fill="#0F172A">Dolomites (film)</text>
+<text x="179" y="368" font-size="9" fill="#64748B">dolomites-film</text>
+<circle cx="403" cy="347" r="4.5" fill="#7C3AED"/>
+<circle cx="390" cy="347" r="4.5" fill="#059669"/>
+<circle cx="377" cy="347" r="4.5" fill="#2563EB"/>
+<text x="403" y="372" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+<text x="179" y="373" font-size="8" fill="#B45309">↔ dolomites</text>
+</g>
+<path d="M140,412 L165,412" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="165" y="390" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="165" y="390" width="5" height="44" rx="2.5" fill="#2563EB"/>
+<text x="179" y="410" font-size="12.5" font-weight="600" fill="#0F172A">Gorge 50km (film)</text>
+<text x="179" y="424" font-size="9" fill="#64748B">gorge-50km-film</text>
+<circle cx="403" cy="403" r="4.5" fill="#2563EB"/>
+<text x="403" y="428" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<path d="M140,468 L165,468" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="165" y="446" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="165" y="446" width="5" height="44" rx="2.5" fill="#2563EB"/>
+<text x="179" y="466" font-size="12.5" font-weight="600" fill="#0F172A">Lisbon (film)</text>
+<text x="179" y="480" font-size="9" fill="#64748B">lisbon-film</text>
+<circle cx="403" cy="459" r="4.5" fill="#7C3AED"/>
+<circle cx="390" cy="459" r="4.5" fill="#2563EB"/>
+<text x="403" y="484" font-size="8" fill="#64748B" text-anchor="end">ART</text>
+</g>
+<path d="M140,524 L165,524" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="165" y="502" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="165" y="502" width="5" height="44" rx="2.5" fill="#2563EB"/>
+<text x="179" y="522" font-size="12.5" font-weight="600" fill="#0F172A">NYC (film)</text>
+<text x="179" y="536" font-size="9" fill="#64748B">nyc-film</text>
+<circle cx="403" cy="515" r="4.5" fill="#7C3AED"/>
+<circle cx="390" cy="515" r="4.5" fill="#2563EB"/>
+<text x="403" y="540" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<path d="M140,580 L165,580" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="165" y="558" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="165" y="558" width="5" height="44" rx="2.5" fill="#2563EB"/>
+<text x="179" y="578" font-size="12.5" font-weight="600" fill="#0F172A">Porto (film)</text>
+<text x="179" y="592" font-size="9" fill="#64748B">porto-film</text>
+<circle cx="403" cy="571" r="4.5" fill="#7C3AED"/>
+<circle cx="390" cy="571" r="4.5" fill="#2563EB"/>
+<text x="403" y="596" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+<text x="179" y="597" font-size="8" fill="#B45309">↔ porto</text>
+</g>
+<path d="M140,636 L165,636" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="165" y="614" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="165" y="614" width="5" height="44" rx="2.5" fill="#2563EB"/>
+<text x="179" y="634" font-size="12.5" font-weight="600" fill="#0F172A">San Francisco (film)</text>
+<text x="179" y="648" font-size="9" fill="#64748B">san-francisco-film</text>
+<circle cx="403" cy="627" r="4.5" fill="#7C3AED"/>
+<circle cx="390" cy="627" r="4.5" fill="#2563EB"/>
+<text x="403" y="652" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<path d="M140,692 L165,692" stroke="#2563EB" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="165" y="670" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="165" y="670" width="5" height="44" rx="2.5" fill="#2563EB"/>
+<text x="179" y="690" font-size="12.5" font-weight="600" fill="#0F172A">Seattle on Film</text>
+<text x="179" y="704" font-size="9" fill="#64748B">seattle-on-film</text>
+<circle cx="403" cy="683" r="4.5" fill="#2563EB"/>
+<text x="403" y="708" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<path d="M760,247 L760,262 L610,262 L610,524" stroke="#7C3AED" stroke-width="1.3" fill="none" opacity="0.7"/>
+<path d="M610,300 L635,300" stroke="#7C3AED" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="635" y="278" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="635" y="278" width="5" height="44" rx="2.5" fill="#7C3AED"/>
+<text x="649" y="298" font-size="12.5" font-weight="600" fill="#0F172A">Chamonix</text>
+<text x="649" y="312" font-size="9" fill="#64748B">chamonix</text>
+<circle cx="873" cy="291" r="4.5" fill="#7C3AED"/>
+<text x="873" y="316" font-size="8" fill="#64748B" text-anchor="end">BLOG</text>
+</g>
+<path d="M610,356 L635,356" stroke="#7C3AED" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="635" y="334" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="635" y="334" width="5" height="44" rx="2.5" fill="#7C3AED"/>
+<text x="649" y="354" font-size="12.5" font-weight="600" fill="#0F172A">Geneva</text>
+<text x="649" y="368" font-size="9" fill="#64748B">geneva</text>
+<circle cx="873" cy="347" r="4.5" fill="#7C3AED"/>
+<text x="873" y="372" font-size="8" fill="#64748B" text-anchor="end">BLOG</text>
+</g>
+<path d="M610,412 L635,412" stroke="#7C3AED" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="635" y="390" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="635" y="390" width="5" height="44" rx="2.5" fill="#7C3AED"/>
+<text x="649" y="410" font-size="12.5" font-weight="600" fill="#0F172A">New York New York</text>
+<text x="649" y="424" font-size="9" fill="#64748B">new-york-new-york</text>
+<circle cx="873" cy="403" r="4.5" fill="#7C3AED"/>
+<text x="873" y="428" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<path d="M610,468 L635,468" stroke="#7C3AED" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="635" y="446" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="635" y="446" width="5" height="44" rx="2.5" fill="#7C3AED"/>
+<text x="649" y="466" font-size="12.5" font-weight="600" fill="#0F172A">Porto</text>
+<text x="649" y="480" font-size="9" fill="#64748B">porto</text>
+<circle cx="873" cy="459" r="4.5" fill="#7C3AED"/>
+<text x="873" y="484" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+<text x="649" y="485" font-size="8" fill="#B45309">↔ porto-film</text>
+</g>
+<path d="M610,524 L635,524" stroke="#7C3AED" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="635" y="502" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="635" y="502" width="5" height="44" rx="2.5" fill="#7C3AED"/>
+<text x="649" y="522" font-size="12.5" font-weight="600" fill="#0F172A">Vienna (film)</text>
+<text x="649" y="536" font-size="9" fill="#64748B">vienna-film</text>
+<circle cx="873" cy="515" r="4.5" fill="#7C3AED"/>
+<text x="873" y="540" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<path d="M1230,247 L1230,262 L1080,262 L1080,468" stroke="#059669" stroke-width="1.3" fill="none" opacity="0.7"/>
+<path d="M1080,300 L1105,300" stroke="#059669" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="1105" y="278" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="1105" y="278" width="5" height="44" rx="2.5" fill="#059669"/>
+<text x="1119" y="298" font-size="12.5" font-weight="600" fill="#0F172A">Dolomites</text>
+<text x="1119" y="312" font-size="9" fill="#64748B">dolomites</text>
+<circle cx="1343" cy="291" r="4.5" fill="#7C3AED"/>
+<circle cx="1330" cy="291" r="4.5" fill="#059669"/>
+<text x="1343" y="316" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+<text x="1119" y="317" font-size="8" fill="#B45309">↔ dolomites-film</text>
+</g>
+<path d="M1080,356 L1105,356" stroke="#059669" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="1105" y="334" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="1105" y="334" width="5" height="44" rx="2.5" fill="#059669"/>
+<text x="1119" y="354" font-size="12.5" font-weight="600" fill="#0F172A">Enchantments 2020</text>
+<text x="1119" y="368" font-size="9" fill="#64748B">enchantments-2020</text>
+<circle cx="1343" cy="347" r="4.5" fill="#059669"/>
+<text x="1343" y="372" font-size="8" fill="#64748B" text-anchor="end">BLOG</text>
+</g>
+<path d="M1080,412 L1105,412" stroke="#059669" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="1105" y="390" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="1105" y="390" width="5" height="44" rx="2.5" fill="#059669"/>
+<text x="1119" y="410" font-size="12.5" font-weight="600" fill="#0F172A">Nate Runs Chamonix</text>
+<text x="1119" y="424" font-size="9" fill="#64748B">nate-runs-chamonix</text>
+<circle cx="1343" cy="403" r="4.5" fill="#059669"/>
+<text x="1343" y="428" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<path d="M1080,468 L1105,468" stroke="#059669" stroke-width="1.3" fill="none" opacity="0.7" marker-end="url(#ah)"/>
+<g><rect x="1105" y="446" width="250" height="44" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+<rect x="1105" y="446" width="5" height="44" rx="2.5" fill="#059669"/>
+<text x="1119" y="466" font-size="12.5" font-weight="600" fill="#0F172A">Run</text>
+<text x="1119" y="480" font-size="9" fill="#64748B">run</text>
+<circle cx="1343" cy="459" r="4.5" fill="#059669"/>
+<text x="1343" y="484" font-size="8" fill="#64748B" text-anchor="end">PORT</text>
+</g>
+<text x="1230" y="540" font-size="10" fill="#059669" text-anchor="middle">+ Hidden Lake · Gorge Climbing</text>
+<text x="1230" y="554" font-size="9" fill="#64748B" text-anchor="middle">(shown as Home leaves above)</text>
+<rect x="40" y="740" width="1480" height="330" rx="14" fill="#FFF5F5" stroke="#FBD0D0"/>
+<text x="60" y="766" font-size="13" font-weight="700" fill="#DC2626">CLIENT GALLERIES — guests unlock with a per-collection password; logged-in members see their own. Entry: /all-client-galleries (14)</text>
+<g><rect x="70" y="806" width="200" height="48" rx="10" fill="#DC2626" stroke="#DC2626" stroke-width="1.5"/>
+<text x="170" y="828" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">/all-client-galleries</text>
+<text x="170" y="843" font-size="9.5" fill="#fff" opacity="0.85" text-anchor="middle">lists 14 galleries</text>
+</g>
+<g><rect x="420" y="798" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="420" y="798" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="434" y="818" font-size="12" font-weight="600" fill="#0F172A">Edens Randoms (film)</text>
+<text x="434" y="834" font-size="8.5" fill="#64748B">edens-randoms-film · CLIENT_GALLERY</text></g>
+<path d="M370,830 L418,821" stroke="#DC2626" stroke-width="1.0" fill="none" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+<g><rect x="695" y="798" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="695" y="798" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="709" y="818" font-size="12" font-weight="600" fill="#0F172A">Rumi visit (2025)</text>
+<text x="709" y="834" font-size="8.5" fill="#64748B">rumi-visit-2025 · CLIENT_GALLERY</text></g>
+<g><rect x="970" y="798" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="970" y="798" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="984" y="818" font-size="12" font-weight="600" fill="#0F172A">Canon Beach 2025 (film)</text>
+<text x="984" y="834" font-size="8.5" fill="#64748B">canon-beach-2025-film · CLIENT_GALLERY</text></g>
+<g><rect x="1245" y="798" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="1245" y="798" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="1259" y="818" font-size="12" font-weight="600" fill="#0F172A">Christmas 2025 (film)</text>
+<text x="1259" y="834" font-size="8.5" fill="#64748B">christmas-2025-film · CLIENT_GALLERY</text></g>
+<g><rect x="420" y="862" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="420" y="862" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="434" y="882" font-size="12" font-weight="600" fill="#0F172A">TYDIE</text>
+<text x="434" y="898" font-size="8.5" fill="#64748B">tydie · CLIENT_GALLERY</text></g>
+<path d="M370,830 L418,885" stroke="#DC2626" stroke-width="1.0" fill="none" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+<g><rect x="695" y="862" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="695" y="862" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="709" y="882" font-size="12" font-weight="600" fill="#0F172A">Cabin DnD</text>
+<text x="709" y="898" font-size="8.5" fill="#64748B">cabin-dnd · CLIENT_GALLERY</text></g>
+<g><rect x="970" y="862" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="970" y="862" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="984" y="882" font-size="12" font-weight="600" fill="#0F172A">Duke</text>
+<text x="984" y="898" font-size="8.5" fill="#64748B">duke · CLIENT_GALLERY</text></g>
+<g><rect x="1245" y="862" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="1245" y="862" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="1259" y="882" font-size="12" font-weight="600" fill="#0F172A">taraarichii</text>
+<text x="1259" y="898" font-size="8.5" fill="#64748B">taraarichii · CLIENT_GALLERY</text></g>
+<g><rect x="420" y="926" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="420" y="926" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="434" y="946" font-size="12" font-weight="600" fill="#0F172A">Edens Family</text>
+<text x="434" y="962" font-size="8.5" fill="#64748B">edens-family · CLIENT PARENT</text></g>
+<path d="M370,830 L418,949" stroke="#DC2626" stroke-width="1.0" fill="none" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+<g><rect x="695" y="926" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="695" y="926" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="709" y="946" font-size="12" font-weight="600" fill="#0F172A">Tyler_Abby</text>
+<text x="709" y="962" font-size="8.5" fill="#64748B">tylerabby · CLIENT_GALLERY</text></g>
+<g><rect x="970" y="926" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="970" y="926" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="984" y="946" font-size="12" font-weight="600" fill="#0F172A">Juni</text>
+<text x="984" y="962" font-size="8.5" fill="#64748B">juni · CLIENT_GALLERY</text></g>
+<g><rect x="1245" y="926" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="1245" y="926" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="1259" y="946" font-size="12" font-weight="600" fill="#0F172A">bois</text>
+<text x="1259" y="962" font-size="8.5" fill="#64748B">bois · CLIENT_GALLERY</text></g>
+<g><rect x="420" y="990" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="420" y="990" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="434" y="1010" font-size="12" font-weight="600" fill="#0F172A">2025 Christmas</text>
+<text x="434" y="1026" font-size="8.5" fill="#64748B">2025-christmas · CLIENT_GALLERY</text></g>
+<path d="M370,830 L418,1013" stroke="#DC2626" stroke-width="1.0" fill="none" stroke-dasharray="3 3" marker-end="url(#ah)"/>
+<g><rect x="695" y="990" width="255" height="46" rx="8" fill="#fff" stroke="#FBD0D0"/>
+<rect x="695" y="990" width="5" height="46" rx="2.5" fill="#DC2626"/>
+<text x="709" y="1010" font-size="12" font-weight="600" fill="#0F172A">Weigel Family</text>
+<text x="709" y="1026" font-size="8.5" fill="#64748B">weigel-family · CLIENT PARENT</text></g>
+<text x="40" y="1100" font-size="12.5" font-weight="700" fill="#0F172A">WHO SEES WHAT</text>
+<rect x="40" y="1112" width="480" height="58" rx="9" fill="#F8FAFC" stroke="#E2E8F0"/>
+<text x="54" y="1132" font-size="12" font-weight="700" fill="#1F2937">Guest (not logged in)</text>
+<text x="54" y="1148" font-size="10" fill="#475569">Sees every public collection above. Client galleries need the</text>
+<text x="54" y="1161" font-size="10" fill="#475569">per-collection password.</text>
+<rect x="540" y="1112" width="480" height="58" rx="9" fill="#F8FAFC" stroke="#E2E8F0"/>
+<text x="554" y="1132" font-size="12" font-weight="700" fill="#1F2937">User (logged in)</text>
+<text x="554" y="1148" font-size="10" fill="#475569">Public browse PLUS a “Me” tile on Home → /user (your galleries +</text>
+<text x="554" y="1161" font-size="10" fill="#475569">tagged). Membership unlocks client galleries.</text>
+<rect x="1040" y="1112" width="480" height="58" rx="9" fill="#F8FAFC" stroke="#E2E8F0"/>
+<text x="1054" y="1132" font-size="12" font-weight="700" fill="#94A3B8">Admin</text>
+<text x="1054" y="1148" font-size="10" fill="#475569">Local-only editing tools. Not part of the visitor flow.</text>
+<text x="40" y="1195" font-size="10.5" fill="#94A3B8">Data notes: children’s reverse “parents” field is empty (no breadcrumb data) · most “(film)” collections sit under Film + Travel, but vienna-film / seattle-on-film / gorge-50km-film are parented inconsistently · only 2 “Related” links exist across 24 collections.</text>
+</svg>

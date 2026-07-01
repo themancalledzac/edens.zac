@@ -1,0 +1,53 @@
+%% edens.zac — Collection Content Map (live data, 2026-06-29)
+%% How a visitor moves collection -> collection. Source: localhost:8080/api/read/collections/<slug> (prod data).
+%% Import into FigJam via the "Mermaid to Flow" plugin, or render anywhere Mermaid is supported.
+%% A child can belong to several parents (cross-membership) — shown by multiple parent->child edges.
+
+flowchart TD
+    HOME["Home /"]:::home
+
+    %% ---- Parent hubs ----
+    FILM["Film — PARENT"]:::film
+    TRAVEL["Travel — PARENT"]:::travel
+    ADV["Adventure — PARENT"]:::adv
+
+    %% ---- Home-level leaves (non-parent) ----
+    EVENT["Event · PORTFOLIO"]:::leaf
+    HID["Hidden Lake · BLOG"]:::leaf
+    GORGE["Gorge Climbing · BLOG"]:::leaf
+
+    HOME --> FILM
+    HOME --> TRAVEL
+    HOME --> ADV
+    HOME --> EVENT
+    HOME --> HID
+    HOME --> GORGE
+
+    %% ---- Children (cross-membership = multiple incoming edges) ----
+    CAL["California 2026"]; DOLF["Dolomites (film)"]; G50["Gorge 50km (film)"]
+    LIS["Lisbon (film)"]; NYCF["NYC (film)"]; PORF["Porto (film)"]; SFF["San Francisco (film)"]
+    SEA["Seattle on Film"]; CHA["Chamonix"]; GEN["Geneva"]; NYNY["New York New York"]
+    POR["Porto"]; VIE["Vienna (film)"]; DOL["Dolomites"]; ENC["Enchantments 2020"]
+    NATE["Nate Runs Chamonix"]; RUN["Run"]
+
+    %% Film children
+    FILM --> CAL & DOLF & G50 & LIS & NYCF & PORF & SFF & SEA
+    %% Travel children (note the shared *-film collections)
+    TRAVEL --> CAL & DOLF & LIS & NYCF & PORF & SFF & CHA & GEN & NYNY & POR & VIE & DOL
+    %% Adventure children
+    ADV --> DOLF & DOL & ENC & NATE & RUN & HID & GORGE
+
+    %% ---- The only two "Related" sibling links that exist today ----
+    DOL <-. Related .-> DOLF
+    POR <-. Related .-> PORF
+
+    %% ---- Client galleries (separate cluster) ----
+    ACG["/all-client-galleries"]:::client
+    ACG -.password / membership.-> CG["14 client galleries<br/>incl. Edens Family + Weigel Family (client PARENTs)"]:::client
+
+    classDef home fill:#0F172A,stroke:#0F172A,color:#fff;
+    classDef film fill:#EAF2FB,stroke:#2563EB,color:#1E3A5F;
+    classDef travel fill:#F1ECFB,stroke:#7C3AED,color:#3B2A63;
+    classDef adv fill:#E7F6F0,stroke:#059669,color:#0A4A38;
+    classDef leaf fill:#F1F5F9,stroke:#CBD5E1,color:#0F172A;
+    classDef client fill:#FFF5F5,stroke:#DC2626,color:#7F1D1D;

@@ -99,4 +99,4 @@ Keystone **`GET /api/read/content/images/search`** (unblocks [004 search](superp
 - `_archive/handoffs-shipped-2026-06-10.tar.gz` — the 5 finished handoff/spec runbooks (`0148` fullscreen fix, `0167`/`0171`/`0172` refactor-wave handoffs, the `design-review-2026-05-31` genesis review).
 - `_archive/shipped-docs-2026-06-01.tar.gz` + `_archive/todo-archive-2026-06-01.tar.gz` — the first consolidation pass (25 docs + the old `todo/` logs, mined into `previous-work.md`).
 
-> **Note:** `docs/superpowers/` + `docs/spikes/` are gitignored and the root docs are untracked — nothing in `docs/` is in git history, so the tarballs above are the only copies. Don't delete them. A few kept docs still cite predecessor plans now in those tarballs; those pointers dangle by design.
+> **Note:** the four `_archive/*.tar.gz` bundles above are **no longer tracked** — removed from the repo, and `docs/_archive/` is now gitignored. They remain retrievable from git history (`git show 9352046:docs/_archive/<file>`) should a shipped plan ever need excavating.
