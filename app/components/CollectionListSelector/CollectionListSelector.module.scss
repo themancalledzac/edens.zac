@@ -325,6 +325,29 @@ $toggle-col-width: 60px;
   color: var(--sel-current-accent);
 }
 
+.saveDerivedButton {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--sel-accent-child);
+  background: transparent;
+  border: 1px solid var(--sel-accent-child);
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+
+  &:hover {
+    background: var(--sel-elev-hover);
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
+
 .draggable {
   cursor: grab;
 

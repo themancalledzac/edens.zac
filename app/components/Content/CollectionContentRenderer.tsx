@@ -9,6 +9,8 @@ import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/Client
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
+import { useSendMessageEnabled } from '@/app/components/ContentCollection/SendMessageContext';
+import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
 import { Badge } from '@/app/components/ui/Badge/Badge';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { Tile } from '@/app/components/ui/Tile/Tile';
@@ -40,11 +42,20 @@ import { manageHref } from '@/app/utils/manageUrl';
  */
 const COVER_IMAGE_CONTENT_ID = -1;
 
+/**
+ * Sentinel content id used by createMetadataTextBlock / createTextOnlyHeaderRow
+ * (app/utils/contentLayout.ts) for the header metadata text block — the block that hosts
+ * the filter bar. Lets the renderer scope header-only affordances (the send-message
+ * button) to it rather than to every TEXT block.
+ */
+const METADATA_CONTENT_ID = -2;
+
 import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 import ReorderOverlay from './ReorderOverlay';
+import { SaveHeart } from './SaveHeart';
 import { SelectStar } from './SelectStar';
 
 /**
@@ -164,15 +175,19 @@ export default function CollectionContentRenderer({
   }, [contentId, onImageLoadError]);
 
   const collectionFilter = useCollectionFilter();
+  const sendMessageEnabled = useSendMessageEnabled();
   const inlineEdit = useInlineEdit();
 
   // Localhost-only shortcut into manage mode, pinned to the header cover image. Shown only on the
   // public view (manage path sets currentCollectionId) for the cover block (contentId === -1).
+  // Hidden on the signed-in user's own /user page for now — the send-message context is enabled
+  // only there, so it doubles as the user-page signal.
   const showCoverUpdateShortcut =
     contentType === 'IMAGE' &&
     contentId === COVER_IMAGE_CONTENT_ID &&
     currentCollectionId == null &&
     !!collectionSlug &&
+    !sendMessageEnabled &&
     isLocalEnvironment();
 
   const handleCoverUpdateClick = useCallback(
@@ -374,31 +389,34 @@ export default function CollectionContentRenderer({
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
           </div>
-          {collectionFilter && (
+          {(collectionFilter || (sendMessageEnabled && contentId === METADATA_CONTENT_ID)) && (
             <div className={cbStyles.filterBarWrapper}>
-              <FilterToolbar
-                filterState={collectionFilter.filterState}
-                onFilterChange={collectionFilter.onFilterChange}
-                dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
-                filteredAvailable={
-                  collectionFilter.filteredAvailable
-                    ? {
-                        selectedTags: collectionFilter.filteredAvailable.tags,
-                        selectedPeople: collectionFilter.filteredAvailable.people,
-                        selectedCameras: collectionFilter.filteredAvailable.cameras,
-                        selectedLenses: collectionFilter.filteredAvailable.lenses,
-                        selectedLensTypes: collectionFilter.filteredAvailable.lensTypes,
-                        selectedLocations: collectionFilter.filteredAvailable.locations,
-                      }
-                    : null
-                }
-                showDateSort={collectionFilter.filterOptions.showDateSort}
-                dateTwoState={collectionFilter.dateTwoState}
-                showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
-                density={collectionFilter.density}
-                densityMax={collectionFilter.densityMax}
-                onDensityChange={collectionFilter.onDensityChange}
-              />
+              {collectionFilter && (
+                <FilterToolbar
+                  filterState={collectionFilter.filterState}
+                  onFilterChange={collectionFilter.onFilterChange}
+                  dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
+                  filteredAvailable={
+                    collectionFilter.filteredAvailable
+                      ? {
+                          selectedTags: collectionFilter.filteredAvailable.tags,
+                          selectedPeople: collectionFilter.filteredAvailable.people,
+                          selectedCameras: collectionFilter.filteredAvailable.cameras,
+                          selectedLenses: collectionFilter.filteredAvailable.lenses,
+                          selectedLensTypes: collectionFilter.filteredAvailable.lensTypes,
+                          selectedLocations: collectionFilter.filteredAvailable.locations,
+                        }
+                      : null
+                  }
+                  showDateSort={collectionFilter.filterOptions.showDateSort}
+                  dateTwoState={collectionFilter.dateTwoState}
+                  showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
+                  density={collectionFilter.density}
+                  densityMax={collectionFilter.densityMax}
+                  onDensityChange={collectionFilter.onDensityChange}
+                />
+              )}
+              {sendMessageEnabled && contentId === METADATA_CONTENT_ID && <SendMessageButton />}
             </div>
           )}
         </div>
@@ -579,6 +597,10 @@ export default function CollectionContentRenderer({
   // where no SelectsProvider is mounted) it resolves to null.
   const selectStar = contentType === 'IMAGE' ? <SelectStar contentId={contentId} /> : null;
 
+  // Save (bookmark) heart. SaveHeart self-gates on any logged-in viewer + an active SavesProvider;
+  // resolves to null for anonymous viewers or where no SavesProvider is mounted.
+  const saveHeart = contentType === 'IMAGE' ? <SaveHeart contentId={contentId} /> : null;
+
   const isNotVisible =
     contentType === 'IMAGE' &&
     checkImageVisibility(
@@ -689,6 +711,7 @@ export default function CollectionContentRenderer({
             shouldShowOverlay={shouldShowOverlay}
             isSelected={isSelected}
             star={selectStar}
+            save={saveHeart}
           />
         )}
       </Tile>
@@ -720,6 +743,7 @@ export default function CollectionContentRenderer({
           shouldShowOverlay={shouldShowOverlay}
           isSelected={isSelected}
           star={selectStar}
+          save={saveHeart}
         />
       )}
       {isReorderMode &&

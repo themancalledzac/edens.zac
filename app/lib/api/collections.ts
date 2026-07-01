@@ -20,10 +20,12 @@ import {
 import {
   type CollectionCreateRequest,
   type CollectionModel,
+  type CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
+import { type CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { logger } from '@/app/utils/logger';
 
 // ============================================================================
@@ -75,7 +77,7 @@ export function parseCollectionArrayResponse(data: unknown): CollectionModel[] {
  */
 export async function getAllCollections(
   page = 0,
-  size = PAGINATION.homePageSize
+  size: number = PAGINATION.homePageSize
 ): Promise<CollectionModel[]> {
   try {
     const data = await fetchReadApi<unknown>(`/collections?page=${page}&size=${size}`, {
@@ -174,9 +176,9 @@ export async function validateClientGalleryAccess(
     const message =
       typeof detail === 'string' && detail
         ? detail
-        : detail && typeof detail === 'object'
+        : (detail && typeof detail === 'object'
           ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
-          : `API error: ${res.status}`;
+          : `API error: ${res.status}`);
     if (res.status === 404) throw new ApiError('Gallery not found', 404);
     throw new ApiError(message, res.status);
   }
@@ -354,5 +356,20 @@ export async function createChildCollection(
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     `/collections/${parentId}/child`,
     createRequest
+  );
+}
+
+/**
+ * POST /api/admin/tags/{id}/save-as-collection
+ * Promote a tag view into a real collection. Body defaults (PORTFOLIO/UNLISTED)
+ * are applied by the backend when omitted.
+ */
+export async function saveCollectionFromTag(
+  tagId: number,
+  body?: { type?: CollectionType; visibility?: CollectionVisibility }
+): Promise<CollectionUpdateResponseDTO | null> {
+  return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
+    `/tags/${tagId}/save-as-collection`,
+    body ?? {}
   );
 }

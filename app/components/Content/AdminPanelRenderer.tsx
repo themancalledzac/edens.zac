@@ -12,11 +12,7 @@ interface AdminPanelRendererProps {
   height: number;
 }
 
-export function AdminPanelRenderer({
-  content,
-  width,
-  height,
-}: AdminPanelRendererProps) {
+export function AdminPanelRenderer({ content, width, height }: AdminPanelRendererProps) {
   return (
     <div className={styles.box} style={{ width, height }}>
       {content.panelType === 'users' ? <UserManagementPanel /> : <MessagesPanel />}
