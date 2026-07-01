@@ -84,42 +84,58 @@ export async function removeFollow(collectionId: number): Promise<void> {
 }
 
 /**
+ * Treat a failed personal read as "empty" without hiding real breakage: a 401 means the viewer is
+ * anonymous (expected — return `[]` silently), while any other status (e.g. a 404 from a missing /
+ * stale-backend endpoint) is logged as a warning so it is not silently rendered as "no data". The
+ * page never 500s on these reads; it degrades to an empty section.
+ */
+function emptyOnError<T>(label: string, error: unknown): T[] {
+  if (error instanceof ApiError && error.status === 401) {
+    return [];
+  }
+  const status = error instanceof ApiError ? error.status : 'unknown';
+  console.warn(`[personal] ${label} read failed (status ${status}); rendering empty`, error);
+  return [];
+}
+
+/**
  * Server-side seed read of the viewer's saved image ids (newest-first). Uses `fetchReadApi`
- * (forwards request cookies) so a Server Component can prime the SavesProvider. Returns `[]` when
- * the viewer is anonymous (backend 401) or holds no saves — never an error to the page.
+ * (forwards request cookies) so a Server Component can prime the SavesProvider. Anonymous viewers
+ * (401) get `[]` silently; other failures are logged and still degrade to `[]`.
  */
 export async function listSavedImageIdsServer(): Promise<SavedImageIds> {
   try {
     const ids = await fetchReadApi<SavedImageIds>('/user/saves');
     return ids ?? [];
-  } catch {
-    return [];
+  } catch (error) {
+    return emptyOnError('saved image ids', error);
   }
 }
 
 /**
  * Server-side read of the viewer's saved images as full {@link ContentImageModel}s (newest-first),
- * for rendering real tiles rather than bare ids. Cookie-forwarding via `fetchReadApi`. Returns `[]`
- * for anonymous viewers (backend 401) or on any read failure — never an error to the page.
+ * for rendering real tiles rather than bare ids. Cookie-forwarding via `fetchReadApi`. Anonymous
+ * viewers (401) get `[]` silently; other failures are logged and still degrade to `[]`.
  */
 export async function listSavedImagesServer(): Promise<ContentImageModel[]> {
   try {
     const images = await fetchReadApi<ContentImageModel[]>('/user/saves/images');
     return images ?? [];
-  } catch {
-    return [];
+  } catch (error) {
+    return emptyOnError('saved images', error);
   }
 }
 
 /**
  * Server-side read of the viewer's followed collection ids. Mirrors {@link listSavedImageIdsServer}
- * (cookie-forwarding via `fetchReadApi`). Returns `[]` for anonymous viewers or on any read failure.
+ * (cookie-forwarding via `fetchReadApi`). Anonymous viewers (401) get `[]` silently; other failures
+ * are logged and still degrade to `[]`.
  */
 export async function listFollowedCollectionIdsServer(): Promise<FollowedCollectionIds> {
   try {
     const ids = await fetchReadApi<FollowedCollectionIds>('/user/follows');
     return ids ?? [];
-  } catch {
-    return [];
+  } catch (error) {
+    return emptyOnError('followed collection ids', error);
   }
 }

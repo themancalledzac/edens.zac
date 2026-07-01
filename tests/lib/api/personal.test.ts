@@ -175,9 +175,20 @@ describe('listSavedImagesServer', () => {
     await expect(listSavedImagesServer()).resolves.toEqual([]);
   });
 
-  it('returns [] when fetchReadApi throws (e.g. anonymous 401)', async () => {
+  it('returns [] silently on 401 (anonymous) without warning', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
     await expect(listSavedImagesServer()).resolves.toEqual([]);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it('returns [] but logs a warning on a non-401 failure (e.g. stale-backend 404)', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('not found', 404));
+    await expect(listSavedImagesServer()).resolves.toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('status 404'), expect.any(ApiError));
+    warn.mockRestore();
   });
 });
 

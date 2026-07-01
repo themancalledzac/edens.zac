@@ -1,21 +1,19 @@
+.container {
+  min-height: 100vh;
+}
+
+.main {
+  width: 100%;
+}
+
 .sections {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4) var(--space-8);
 }
 
-.section {
-  margin-bottom: var(--space-8);
-}
-
-.sectionHeading {
-  margin-bottom: var(--space-3);
-  font-family: var(--font-serif);
-  font-size: clamp(1.25rem, 3vw, 1.75rem);
-  font-weight: 500;
-}
-
-.empty {
-  color: var(--color-on-surface-muted);
-  font-size: 1rem;
+.topBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
 }
