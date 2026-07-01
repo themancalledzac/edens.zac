@@ -115,6 +115,18 @@ export interface CollectionListModel {
    * links when missing.
    */
   coverImageUrl?: string;
+  /** True for synthetic tag-view rows (not a real collection yet). */
+  derived?: boolean;
+}
+
+/**
+ * Synthetic selector row for a tag "view" — a tag rendered read-only in the
+ * collection selector until promoted to a real collection via Save as Collection.
+ * `id` is synthetic (negated tag id); `sourceTagId` carries the real tag id for the POST.
+ */
+export interface TagViewModel extends CollectionListModel {
+  derived: true;
+  sourceTagId: number;
 }
 
 /**
@@ -272,6 +284,9 @@ export interface CollectionModel extends CollectionBaseModel {
 
   // Content
   content?: AnyContentModel[];
+
+  /** True for synthetic tag-view collection payloads (not a persisted collection). */
+  derived?: boolean;
 }
 
 /**
