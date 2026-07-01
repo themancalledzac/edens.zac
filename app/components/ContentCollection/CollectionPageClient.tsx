@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import { SavesProvider } from '@/app/components/Personal/SavesContext';
 import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
@@ -71,6 +72,8 @@ interface CollectionPageClientProps {
   me?: MeResponse | null;
   /** The viewer's persisted selected image ids for THIS collection, seeded server-side. */
   initialSelectedIds?: number[];
+  /** The viewer's GLOBAL saved (bookmarked) image ids, seeded server-side. Cross-collection. */
+  initialSavedImageIds?: number[];
   /** Surfaces the "Send a message" button in the header filter-bar area (user page). */
   showSendMessage?: boolean;
 }
@@ -87,6 +90,7 @@ export default function CollectionPageClient({
   editMode = false,
   me = null,
   initialSelectedIds = [],
+  initialSavedImageIds = [],
   showSendMessage = false,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
@@ -370,11 +374,19 @@ export default function CollectionPageClient({
   // for consumers, which null-check). hasOptions is live in edit mode — it flips when an upload
   // gives an empty collection its first filterable content — and conditionally mounting the
   // provider on it would reparent the subtree, remounting EditModeLayer and resetting its state.
+  // Saves (bookmarks) are cross-collection and available to ANY logged-in viewer, so mount the
+  // provider whenever a principal is present — independent of the client-gallery-scoped Selects.
+  const withSaves = me ? (
+    <SavesProvider initialSavedIds={initialSavedImageIds}>{maybeWrappedContent}</SavesProvider>
+  ) : (
+    maybeWrappedContent
+  );
+
   return (
     <MeProvider me={me}>
       <SendMessageProvider enabled={showSendMessage}>
         <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
-          {maybeWrappedContent}
+          {withSaves}
         </CollectionFilterProvider>
       </SendMessageProvider>
     </MeProvider>

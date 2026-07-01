@@ -5,6 +5,7 @@ import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
+import { listSavedImageIdsServer } from '@/app/lib/api/personal';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { getUserPage } from '@/app/lib/api/user';
 import { CollectionType } from '@/app/types/Collection';
@@ -74,12 +75,16 @@ export default async function CollectionPageWrapper({
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
-    // Seed the viewer's persisted selects for this collection so the SelectsProvider primes
-    // without a client round-trip. Only client galleries have selects; skip the call otherwise.
-    const initialSelectedIds =
+    // Seed the viewer's persisted selects for this collection (client galleries only) AND their
+    // global saved (bookmarked) image ids so the SelectsProvider/SavesProvider prime without a
+    // client round-trip. Saves are cross-collection and available to any logged-in viewer, so seed
+    // them whenever a principal is present; both reads return [] for anonymous viewers.
+    const [initialSelectedIds, initialSavedImageIds] = await Promise.all([
       collection.type === CollectionType.CLIENT_GALLERY
-        ? await listSelectIdsServer(collection.id)
-        : [];
+        ? listSelectIdsServer(collection.id)
+        : Promise.resolve<number[]>([]),
+      me ? listSavedImageIdsServer() : Promise.resolve<number[]>([]),
+    ]);
 
     // Gate password-protected galleries. `Array.isArray(content)` is the auth signal —
     // the backend sets content to null when the password cookie fails to validate.
@@ -100,6 +105,7 @@ export default async function CollectionPageWrapper({
             editMode={editMode}
             me={me}
             initialSelectedIds={initialSelectedIds}
+            initialSavedImageIds={initialSavedImageIds}
           />
         );
       }

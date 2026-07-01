@@ -77,7 +77,7 @@ export function parseCollectionArrayResponse(data: unknown): CollectionModel[] {
  */
 export async function getAllCollections(
   page = 0,
-  size = PAGINATION.homePageSize
+  size: number = PAGINATION.homePageSize
 ): Promise<CollectionModel[]> {
   try {
     const data = await fetchReadApi<unknown>(`/collections?page=${page}&size=${size}`, {

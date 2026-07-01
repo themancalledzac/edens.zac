@@ -91,6 +91,10 @@ export function MenuDropdown({
       router.push('/user');
       onClose();
     },
+    yourSpace: () => {
+      router.push('/your-space');
+      onClose();
+    },
     explore: () => {
       router.push('/explore');
       onClose();
@@ -226,6 +230,15 @@ export function MenuDropdown({
                 onClick={handleNavigation.user}
               >
                 <span className={styles.dropdownMenuOptions}>Me</span>
+              </button>
+            </div>
+            <div className={styles.dropdownMenuItem}>
+              <button
+                type="button"
+                className={styles.dropdownMenuButton}
+                onClick={handleNavigation.yourSpace}
+              >
+                <span className={styles.dropdownMenuOptions}>Your Space</span>
               </button>
             </div>
             <div className={styles.dropdownMenuItem}>
