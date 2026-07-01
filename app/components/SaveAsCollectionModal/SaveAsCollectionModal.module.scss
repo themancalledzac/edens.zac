@@ -1,0 +1,40 @@
+.modalContent {
+  width: 100%;
+  padding: var(--space-5);
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+  border-radius: var(--radius-2);
+
+  @media (width >= 768px) {
+    max-width: 480px;
+    padding: var(--space-6);
+  }
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-fg);
+}
+
+.formGroup {
+  margin-bottom: var(--space-5);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+}

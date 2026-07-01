@@ -1,0 +1,19 @@
+.container {
+  min-height: 100vh;
+}
+
+.main {
+  width: 100%;
+}
+
+.sections {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-8);
+}
+
+.topBar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-4);
+}

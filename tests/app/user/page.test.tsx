@@ -8,15 +8,101 @@ jest.mock('next/navigation', () => ({
 }));
 jest.mock('@/app/lib/api/auth', () => ({ meServer: jest.fn() }));
 jest.mock('@/app/lib/api/user', () => ({ getUserPage: jest.fn() }));
-jest.mock('@/app/components/ContentCollection/CollectionPage', () => ({
+jest.mock('@/app/lib/api/collections', () => ({ getAllCollections: jest.fn() }));
+jest.mock('@/app/lib/api/personal', () => ({
+  listSavedImagesServer: jest.fn(),
+  listSavedImageIdsServer: jest.fn(),
+  listFollowedCollectionIdsServer: jest.fn(),
+}));
+jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
-  default: ({ collection }: { collection: { slug: string } }) =>
-    `CollectionPage:${collection.slug}`,
+  default: () => 'SiteHeader',
+}));
+jest.mock('@/app/components/SendMessageButton/SendMessageButton', () => ({
+  SendMessageButton: () => 'SendMessageButton',
+}));
+jest.mock('@/app/components/auth/MeProvider', () => ({
+  MeProvider: ({ children }: { children: unknown }) => children,
+}));
+jest.mock('@/app/components/Personal/PersonalContentGrid', () => ({
+  PersonalContentGrid: ({ content }: { content: unknown[] }) =>
+    `PersonalContentGrid:${content.length}`,
+}));
+jest.mock('@/app/components/Personal/FollowsContext', () => ({
+  FollowsProvider: ({ children }: { children: unknown }) => children,
+}));
+jest.mock('@/app/components/LocationPage/LocationCollections', () => ({
+  __esModule: true,
+  default: () => 'LocationCollections',
+}));
+jest.mock('@/app/components/Personal/CollapsibleSection', () => ({
+  CollapsibleSection: ({
+    label,
+    count,
+    children,
+  }: {
+    label: string;
+    count: number;
+    children: unknown;
+  }) => ({
+    label,
+    count,
+    children,
+  }),
 }));
 
 import { meServer } from '@/app/lib/api/auth';
+import { getAllCollections } from '@/app/lib/api/collections';
+import {
+  listFollowedCollectionIdsServer,
+  listSavedImageIdsServer,
+  listSavedImagesServer,
+} from '@/app/lib/api/personal';
 import { getUserPage } from '@/app/lib/api/user';
 import UserPage from '@/app/user/page';
+
+const authedPrincipal = { email: 'c@x.com', mfaSatisfied: true, galleries: [] };
+
+const collectionBlock = (id: number) => ({ id, contentType: 'COLLECTION' });
+// isContentImage requires an `imageUrl` field, so the fixture supplies one.
+const imageBlock = (id: number) => ({
+  id,
+  contentType: 'IMAGE',
+  imageUrl: `https://cdn/${id}.jpg`,
+});
+const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
+
+/**
+ * Walk the rendered element tree and collect each CollapsibleSection element's props by label. The
+ * mocked component is never invoked (the page only builds elements), so label/count live in
+ * `element.props`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function collectSections(node: any, acc: Record<string, any> = {}): Record<string, any> {
+  if (!node || typeof node !== 'object') return acc;
+  if (Array.isArray(node)) {
+    for (const child of node) collectSections(child, acc);
+    return acc;
+  }
+  const props = node.props;
+  if (props && typeof props.label === 'string' && typeof props.count === 'number') {
+    acc[props.label] = props;
+  }
+  if (props?.children) collectSections(props.children, acc);
+  return acc;
+}
+
+function seedApis() {
+  (getUserPage as jest.Mock).mockResolvedValue({
+    slug: 'user',
+    type: 'PARENT',
+    content: [collectionBlock(1), collectionBlock(2), imageBlock(3), gifBlock(4)],
+  });
+  (listSavedImagesServer as jest.Mock).mockResolvedValue([]);
+  (listSavedImageIdsServer as jest.Mock).mockResolvedValue([]);
+  (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([]);
+  (getAllCollections as jest.Mock).mockResolvedValue([]);
+}
 
 describe('UserPage', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -28,14 +114,36 @@ describe('UserPage', () => {
     expect(getUserPage).not.toHaveBeenCalled();
   });
 
-  it('renders CollectionPage with the synthetic collection when authed', async () => {
-    (meServer as jest.Mock).mockResolvedValue({
-      email: 'c@x.com',
-      mfaSatisfied: true,
-      galleries: [],
-    });
-    (getUserPage as jest.Mock).mockResolvedValue({ slug: 'user', type: 'PARENT', content: [] });
+  it('splits getUserPage content into Collections (COLLECTION) vs Images (IMAGE/GIF)', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    seedApis();
+    const result = await UserPage();
+    const sections = collectSections(result);
+    expect(sections.Collections.count).toBe(2);
+    expect(sections.Images.count).toBe(2);
+  });
+
+  it('wires all four sections with the saved + followed counts', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    seedApis();
+    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(9)]);
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([7]);
+    (getAllCollections as jest.Mock).mockResolvedValue([{ id: 7 }, { id: 8 }]);
+    const result = await UserPage();
+    const sections = collectSections(result);
+    expect(Object.keys(sections).sort()).toEqual(['Collections', 'Following', 'Images', 'Saved']);
+    expect(sections.Saved.count).toBe(1);
+    expect(sections.Following.count).toBe(1);
+  });
+
+  it('seeds the providers via the personal reads', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    seedApis();
+    (listSavedImageIdsServer as jest.Mock).mockResolvedValue([7, 8]);
     const result = await UserPage();
     expect(result).toBeTruthy();
+    expect(listSavedImageIdsServer).toHaveBeenCalled();
+    expect(listSavedImagesServer).toHaveBeenCalled();
+    expect(listFollowedCollectionIdsServer).toHaveBeenCalled();
   });
 });

@@ -13,6 +13,11 @@ interface ImageOverlaysProps {
    * self-gates on CLIENT membership + SelectsProvider, so passing it here is always safe.
    */
   star?: ReactNode;
+  /**
+   * Optional Save (bookmark) heart, pre-built by the renderer. Self-gates on any logged-in viewer +
+   * SavesProvider, so passing it here is always safe.
+   */
+  save?: ReactNode;
 }
 
 /**
@@ -32,6 +37,7 @@ export function ImageOverlays({
   shouldShowOverlay,
   isSelected,
   star,
+  save,
 }: ImageOverlaysProps): ReactElement | null {
   if (contentType !== 'IMAGE') return null;
 
@@ -54,6 +60,7 @@ export function ImageOverlays({
         </div>
       )}
       {star}
+      {save}
     </>
   );
 }

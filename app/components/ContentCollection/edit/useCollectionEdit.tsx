@@ -12,6 +12,7 @@ import {
   getCollectionUpdateMetadata,
   getMetadata,
   regenerateCollectionPeople,
+  saveCollectionFromTag,
   saveGalleryAccess,
   setCollectionPeople,
   updateCollection,
@@ -28,6 +29,7 @@ import {
   type ContentPersonModel,
   type ContentTagModel,
   type LocationModel,
+  type TagViewModel,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
@@ -155,6 +157,13 @@ export interface UseCollectionEditResult {
 
   /** Every collection in the system — the option list for the collection selectors. */
   allCollections: CollectionListModel[];
+  /** `allCollections` plus synthetic read-only tag-view rows (derived) for the manage selector. */
+  allCollectionsWithTagViews: CollectionListModel[];
+  /** Promote a tag view into a real collection, then navigate to its manage page. */
+  saveTagAsCollection: (
+    sourceTagId: number,
+    body: { type: CollectionType; visibility: CollectionVisibility }
+  ) => Promise<void>;
   /** Drag-to-retype a collection in the selector accordion. */
   handleChangeType: (collection: CollectionListModel, targetType: CollectionType) => Promise<void>;
   /** Child-collection (containment) triple. `saved` derives from content blocks. */
@@ -297,6 +306,29 @@ export function useCollectionEdit({
   }, [enabled]);
 
   const { handleChangeType } = useCollectionRetype({ setAllCollections, setError });
+
+  /**
+   * Synthetic read-only tag-view rows appended to the selector: one per tag on the current
+   * collection. `id` is negated to avoid colliding with real collection ids; `sourceTagId`
+   * carries the real tag id for the Save-as-Collection POST.
+   */
+  const tagViewRows = useMemo<TagViewModel[]>(
+    () =>
+      (currentState?.tags ?? []).map(tag => ({
+        id: -tag.id,
+        sourceTagId: tag.id,
+        name: tag.name,
+        slug: tag.slug,
+        type: CollectionType.PARENT,
+        derived: true,
+      })),
+    [currentState?.tags]
+  );
+
+  const allCollectionsWithTagViews = useMemo<CollectionListModel[]>(
+    () => (tagViewRows.length === 0 ? allCollections : [...allCollections, ...tagViewRows]),
+    [allCollections, tagViewRows]
+  );
 
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -1162,6 +1194,20 @@ export function useCollectionEdit({
     }
   }, [collection, router]);
 
+  const saveTagAsCollection = useCallback(
+    async (
+      sourceTagId: number,
+      body: { type: CollectionType; visibility: CollectionVisibility }
+    ) => {
+      const response = await saveCollectionFromTag(sourceTagId, body);
+      if (response !== null) {
+        void revalidateCollectionCache(response.collection.slug);
+        router.push(manageHref(response.collection.slug));
+      }
+    },
+    [router]
+  );
+
   const enterSelect = useCallback(() => setIsMultiSelectMode(true), []);
 
   const enterReorder = useCallback(() => {
@@ -1300,6 +1346,7 @@ export function useCollectionEdit({
     }
 
     // Disabled until admin DTO settles and no operation is in flight (including a mid-save state machine race).
+    // TODO(A3): add a "Save as Collection" browse cell when collection.derived — needs admin metadata to resolve tag slugs (tag-view URLs render TaxonomyPage, not useCollectionEdit).
     const browseBusy = isLoading || saving;
     const cells: EditBarCell[] = [
       {
@@ -1423,6 +1470,8 @@ export function useCollectionEdit({
     handleCollectionToggle,
 
     allCollections,
+    allCollectionsWithTagViews,
+    saveTagAsCollection,
     handleChangeType,
     childIds: {
       saved: originalCollectionIds,

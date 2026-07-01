@@ -6,6 +6,7 @@
 import {
   getCollectionsByLocation,
   parseCollectionArrayResponse,
+  saveCollectionFromTag,
   saveGalleryAccess,
   validateClientGalleryAccess,
 } from '@/app/lib/api/collections';
@@ -370,15 +371,13 @@ describe('saveGalleryAccess', () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest
-        .fn()
-        .mockResolvedValue({
-          saved: true,
-          emailsSent: false,
-          reason: null,
-          password: 'gallery-pw',
-          emails: [],
-        }),
+      json: jest.fn().mockResolvedValue({
+        saved: true,
+        emailsSent: false,
+        reason: null,
+        password: 'gallery-pw',
+        emails: [],
+      }),
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 
@@ -439,15 +438,13 @@ describe('saveGalleryAccess', () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest
-        .fn()
-        .mockResolvedValue({
-          saved: true,
-          emailsSent: false,
-          reason: null,
-          password: null,
-          emails: [],
-        }),
+      json: jest.fn().mockResolvedValue({
+        saved: true,
+        emailsSent: false,
+        reason: null,
+        password: null,
+        emails: [],
+      }),
       headers: new Headers({ 'content-type': 'application/json' }),
     });
 
@@ -512,5 +509,58 @@ describe('saveGalleryAccess', () => {
     });
 
     await expect(saveGalleryAccess(9, { password: 'pw' })).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe('saveCollectionFromTag', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('POSTs the type/visibility body to the save-as-collection endpoint', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(3) })
+    );
+
+    const result = await saveCollectionFromTag(5, {
+      type: CollectionType.PORTFOLIO,
+      visibility: CollectionVisibility.UNLISTED,
+    });
+
+    expect(result).toEqual({ collection: createCollection(3) });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/tags/5/save-as-collection'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          type: CollectionType.PORTFOLIO,
+          visibility: CollectionVisibility.UNLISTED,
+        }),
+      })
+    );
+  });
+
+  it('POSTs an empty object when no body is provided (backend applies defaults)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(3) })
+    );
+
+    await saveCollectionFromTag(7);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/tags/7/save-as-collection'),
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({}) })
+    );
+  });
+
+  it('throws ApiError when the response is not ok', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: jest.fn().mockResolvedValue({ message: 'Already exists' }),
+      headers: new Headers({ 'content-type': 'application/json' }),
+    });
+
+    await expect(saveCollectionFromTag(5)).rejects.toBeInstanceOf(ApiError);
   });
 });
