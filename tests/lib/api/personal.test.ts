@@ -10,9 +10,11 @@ import {
   addSave,
   listFollowedCollectionIdsServer,
   listSavedImageIdsServer,
+  listSavedImagesServer,
   removeFollow,
   removeSave,
 } from '@/app/lib/api/personal';
+import { type ContentImageModel } from '@/app/types/Content';
 
 // Keep ApiError real (client-fetch specs assert on the real error class) while making the server
 // reader `fetchReadApi` a controllable mock for the server-seed specs.
@@ -150,6 +152,32 @@ describe('listSavedImageIdsServer', () => {
   it('returns [] when fetchReadApi throws (e.g. anonymous 401)', async () => {
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
     await expect(listSavedImageIdsServer()).resolves.toEqual([]);
+  });
+});
+
+describe('listSavedImagesServer', () => {
+  const image = (id: number): ContentImageModel =>
+    ({
+      id,
+      contentType: 'IMAGE',
+      imageUrl: `https://cdn.example.com/${id}.jpg`,
+    }) as ContentImageModel;
+
+  it('returns the images from fetchReadApi', async () => {
+    const images = [image(42), image(43)];
+    fetchReadApiMock.mockResolvedValueOnce(images);
+    await expect(listSavedImagesServer()).resolves.toEqual(images);
+    expect(fetchReadApiMock).toHaveBeenCalledWith('/user/saves/images');
+  });
+
+  it('returns [] when fetchReadApi returns null (204)', async () => {
+    fetchReadApiMock.mockResolvedValueOnce(null);
+    await expect(listSavedImagesServer()).resolves.toEqual([]);
+  });
+
+  it('returns [] when fetchReadApi throws (e.g. anonymous 401)', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
+    await expect(listSavedImagesServer()).resolves.toEqual([]);
   });
 });
 

@@ -7,6 +7,7 @@
  * ANY logged-in user, and follows track whole collections. Both backend reads return `number[]`.
  */
 import { ApiError, fetchReadApi } from '@/app/lib/api/core';
+import { type ContentImageModel } from '@/app/types/Content';
 import { type FollowedCollectionIds, type SavedImageIds } from '@/app/types/Personal';
 
 const SAVES = '/api/proxy/api/read/user/saves';
@@ -91,6 +92,20 @@ export async function listSavedImageIdsServer(): Promise<SavedImageIds> {
   try {
     const ids = await fetchReadApi<SavedImageIds>('/user/saves');
     return ids ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Server-side read of the viewer's saved images as full {@link ContentImageModel}s (newest-first),
+ * for rendering real tiles rather than bare ids. Cookie-forwarding via `fetchReadApi`. Returns `[]`
+ * for anonymous viewers (backend 401) or on any read failure — never an error to the page.
+ */
+export async function listSavedImagesServer(): Promise<ContentImageModel[]> {
+  try {
+    const images = await fetchReadApi<ContentImageModel[]>('/user/saves/images');
+    return images ?? [];
   } catch {
     return [];
   }
