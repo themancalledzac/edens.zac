@@ -14,21 +14,26 @@ alwaysApply: true
 - **Type Safety**: No `any` types. Use strict TypeScript with proper type definitions from `app/types/`.
 - **Testing Required**: All new API functions and utility functions must have corresponding tests in `tests/`.
 
-## Running Tests
+## Running Tests & Verification (canonical)
 
-`npm` and `npx` are not on PATH. Use the Homebrew node binary directly:
+> **Single source of truth for all run/verify commands.** `ai_test.md` and `ai_lint.md` point here — do not re-list these commands there.
+
+`npm` and `npx` are not on PATH. Use the Homebrew node binary directly.
+
+### Tests (Jest)
 
 ```bash
+# All tests
 /opt/homebrew/bin/node node_modules/.bin/jest
+# Single file
+/opt/homebrew/bin/node node_modules/.bin/jest tests/utils/contentLayout.test.ts
+# Watch mode
+/opt/homebrew/bin/node node_modules/.bin/jest --watch
+# With coverage
+/opt/homebrew/bin/node node_modules/.bin/jest --coverage
 ```
 
-Common flags:
-
-- All tests: `/opt/homebrew/bin/node node_modules/.bin/jest`
-- Single file: `/opt/homebrew/bin/node node_modules/.bin/jest tests/utils/contentLayout.test.ts`
-- Watch mode: `/opt/homebrew/bin/node node_modules/.bin/jest --watch`
-
-## Formatting & Verification
+### Format / Lint / Type-check
 
 After editing files, run the same pipeline Cursor runs on save — Prettier, then ESLint fix, then type check:
 
@@ -37,6 +42,8 @@ After editing files, run the same pipeline Cursor runs on save — Prettier, the
 /opt/homebrew/bin/node node_modules/.bin/prettier --write <files>
 # Lint fix (matches Cursor's source.fixAll.eslint on save)
 /opt/homebrew/bin/node node_modules/.bin/eslint --fix <files>
+# Lint the whole app, no warnings allowed
+/opt/homebrew/bin/node node_modules/.bin/eslint app/ --max-warnings 0
 # Type check
 /opt/homebrew/bin/node node_modules/.bin/tsc --noEmit
 ```
@@ -49,12 +56,7 @@ For SCSS files, also run Stylelint:
 
 ## Common Mistakes to Avoid
 
-- Using `'use client'` unnecessarily - prefer Server Components
-- Using `any` type - always use proper TypeScript types
-- Creating components without corresponding SCSS modules
-- Using React Context when URL state would suffice
-- Not using `next/image` for images (always use CloudFront URLs)
-- Using `import React` namespace - always use named imports from `'react'`
+See the full checklist in [`ai_guidelines/ai_quick_reference.md`](ai_guidelines/ai_quick_reference.md#common-mistakes-to-avoid) (prefer Server Components, no `any`, SCSS modules per component, URL state over Context, `next/image` with CloudFront URLs, named React imports, etc.).
 
 ## Modular Guidelines
 

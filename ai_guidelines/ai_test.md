@@ -154,18 +154,4 @@ Based on current state, prioritize tests for:
 
 ## Running Tests
 
-`npm` and `npx` are not on PATH. Use the Homebrew node binary directly:
-
-```bash
-# Run all tests
-/opt/homebrew/bin/node node_modules/.bin/jest
-
-# Run tests in watch mode
-/opt/homebrew/bin/node node_modules/.bin/jest --watch
-
-# Run tests with coverage
-/opt/homebrew/bin/node node_modules/.bin/jest --coverage
-
-# Run specific test file
-/opt/homebrew/bin/node node_modules/.bin/jest path/to/test/file.test.ts
-```
+See the canonical command reference in [`CLAUDE.md`](../CLAUDE.md#running-tests--verification-canonical) (`npm`/`npx` are not on PATH — use the Homebrew node binary; covers all tests, single file, watch mode, and coverage).

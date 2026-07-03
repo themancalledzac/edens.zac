@@ -3,28 +3,21 @@
 ## Critical Rules
 
 - **Context First**: Always ask for more context when it will help make a better decision. Do this before writing code.
-- **App Router First**: All new features must use Next.js App Router (`app/` directory). Never modify legacy Pages Router files.
+- **App Router Only**: The app is entirely App Router (`app/` directory). There is no `pages/` directory — the Pages Router migration is complete.
 - **Server Components Default**: Minimize `'use client'` usage. Prefer Server Components for data fetching and rendering.
 - **Type Safety**: No `any` types. Use strict TypeScript with proper type definitions from `app/types/`.
-- **Legacy Preservation**: Never modify files in legacy directories. Build new features in parallel.
 - **Testing Required**: All new API functions and utility functions must have corresponding tests in `tests/`.
 
 ## Core Principles
 
-### 1. App Router Migration (Complete)
+### 1. App Router Only
 
-- Legacy `pages-old/` and `Components/` directories have been removed
-- All new features use App Router (`app/` directory)
-- No legacy Pages Router files remain
-
-### 2. App Router First
-
-- **All new features** must use App Router structure (`app/` directory)
+- **All features** live under `app/`; there is no legacy `pages/` directory
 - **Favor Server Components**: Minimize `'use client'` usage
 - **Use RSC patterns**: Async data fetching, streaming, Suspense boundaries
 - **File organization**: Use route groups like `(admin)` for logical organization
 
-### 3. Performance & Best Practices
+### 2. Performance & Best Practices
 
 - **SSR-first approach**: Keep components server-side when possible
 - **Minimize context usage**: Prefer URL state and RSC props over React Context
@@ -36,17 +29,17 @@
 
 ### Current Architecture
 
-- **Frontend**: Next.js 15 with App Router (migrating from Pages Router)
-- **Backend**: Java Spring Boot with Hibernate/JPA and MySQL RDS
+- **Frontend**: Next.js 16 with App Router, React 19, TypeScript 5.8
+- **Backend**: Java Spring Boot with Hibernate/JPA and PostgreSQL (on EC2)
 - **Storage**: S3 for media files with CloudFront CDN distribution
-- **Development**: Localhost development with access to both localhost backend and production RDS
-- **Content System**: Transitioning from legacy Catalog/Image system to new ContentCollection system
+- **Backend access**: The browser always goes through the BFF proxy (`app/api/proxy/[...path]`); the server hits the backend directly on `localhost:8080` in dev
+- **Content System**: Unified Content model — collections composed of `IMAGE`/`TEXT`/`GIF`/`COLLECTION`/`PANEL` blocks (see `app/types/Content.ts`)
 
 ### Development Environment
 
 - **Default assumption**: Localhost development unless specified otherwise
-- **Backend access**: Both localhost Spring Boot server and production RDS available
-- **Port configuration**: Frontend typically runs on 3001, backend on 8080
+- **Backend access**: localhost Spring Boot server on `:8080`
+- **Port configuration**: Frontend `npm run dev` runs on `:3000` (Next.js default), backend on `:8080`
 
 ## Code Quality Rules
 
@@ -54,12 +47,12 @@
 
 ## TODOs
 
-- **MenuDropdown 'About' image**: The about section image is currently hardcoded as `/_DSC0145.jpg` in `app/components/MenuDropdown/MenuDropdown.tsx:135`. This should eventually be fetched from the database instead of being a static asset in the frontend repo.
+- **MenuDropdown 'About' image**: The about section image is currently hardcoded as `/_DSC0145.jpg` in `app/components/MenuDropdown/MenuDropdown.tsx:188`. This should eventually be fetched from the database instead of being a static asset in the frontend repo.
 
 ## Key Reminders
 
 - **Speed and accuracy**: Prioritize both performance and correctness
-- **Don't break existing functionality**: Legacy system must remain operational
+- **Don't break existing functionality**: Preserve current behavior when refactoring
 - **Test everything new**: No new code without corresponding tests
 - **Use App Router patterns**: RSC, streaming, proper caching for new features
 - **Assume localhost development**: Unless specifically told otherwise

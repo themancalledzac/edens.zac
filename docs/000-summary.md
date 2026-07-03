@@ -1,10 +1,12 @@
 # 📚 docs/ — The Book
 
-> **Updated 2026-06-10.** The master index of every planning doc, organized as **chapters → sections**. Reconciled against `origin/main` (HEAD `5d95fb5`).
+> **Updated 2026-07-03.** The master index of every planning doc, organized as **chapters → sections**.
 >
 > **Structure:** this book (`000`) → **chapter files** (`001`–`009`, each an overview + remaining-work list) → **sections** (the MR-level plans/specs under `superpowers/plans/`, `superpowers/specs/`, `spikes/`). **All go-forward plans live in `superpowers/plans/`.**
 >
-> **2026-06-10 consolidation:** the shipped sub-plans and the finished handoff runbooks (`0148`/`0167`/`0171`/`0172`/`design-review-2026-05-31`) were archived to `_archive/*.tar.gz` and removed from the tree (78 → 49 docs). Shipped detail lives in [previous-work.md](previous-work.md); **this index now tracks only forward work.** _Rule going forward: when a section ships, archive its plan in the same cycle and leave a one-line `previous-work.md` pointer — don't let a shipped runbook outlive its merge._
+> **Consolidation history:** an earlier pass (2026-06-10) moved shipped sub-plans and finished handoff runbooks out of the tree and mined their detail into [previous-work.md](previous-work.md); **this index tracks only forward work.** _Rule going forward: when a section ships, record a one-line `previous-work.md` pointer in the same cycle — don't let a shipped runbook outlive its merge._
+>
+> **Since then (2026-06-10 → 07-03) a large wave shipped** — directional prominence (#182), the auth foundation + `/login` + passkeys, identity merge (#191), collection hard-delete (#190/#192), user invites (#189), saves/follows + the `/user` redesign, per-user rating overrides, the PANEL content type + admin panels (#197), and viewer gesture fixes. See [previous-work.md](previous-work.md) for the one-liners; the chapter statuses below reflect this.
 
 **Legend:** 🟢 active · 🟡 partial · ⛔ blocked (backend) · 📘 reference/living spec · 🔭 future vision · 🗒️ idea
 
@@ -12,10 +14,10 @@
 
 ## 🧭 Start here
 
-| File                                   | What it is                                                                          |
-| -------------------------------------- | ----------------------------------------------------------------------------------- |
-| [previous-work.md](previous-work.md)   | Shipped-feature log — "what got built and when."                                    |
-| The 9 chapters below                   | Each is an epic; open the chapter file for its remaining-work list + sections.       |
+| File                                   | What it is                                                                               |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [previous-work.md](previous-work.md)   | Shipped-feature log — "what got built and when."                                         |
+| The 9 chapters below                   | Each is an epic; open the chapter file for its remaining-work list + sections.           |
 | [../ai_guidelines/](../ai_guidelines/) | Canonical project conventions (API, CSS, lint, TS, testing) — referenced by `CLAUDE.md`. |
 
 ---
@@ -36,15 +38,15 @@ One perf epic (~9 ordered tasks). **SSR BoxTree partial ship ([#161](https://git
 Cookie gate + admin password input shipped. Left: fix the **plaintext password** (→ BCrypt, backend), new-recipient-only send, Set-Cookie test, cookie-timing race, Download-All UX.
 **Sections:** [security handoff](superpowers/plans/003-client-gallery-handoff.md) 📘 · [password logic](superpowers/plans/003-client-gallery-password.md) · [recipient send](superpowers/plans/003-gallery-recipient-send.md) · [select/download design](superpowers/specs/2026-06-02-client-gallery-select-download-design.md) 📘
 
-### [004 · Content Discovery & Filtering](004-content-discovery.md) 🟢 / ⛔
+### [004 · Content Discovery & Filtering](004-content-discovery.md) 🟢
 
-One reusable filter-bar/chip across Search/Location/Person/Tag/Collection; the `/search` route; collection tags. **Collection-tags FE Phase 1 merged ([#167](https://github.com/themancalledzac/edens.zac/pull/167)).** Remaining: auto-tag endpoint + public-page tag display; the `/search` route (⛔ backend); and the unified filter-visibility gate.
+One reusable filter-bar/chip across Search/Location/Person/Tag/Collection; the `/search` route; collection tags. **Collection-tags FE Phase 1 merged ([#167](https://github.com/themancalledzac/edens.zac/pull/167)).** Search is **no longer backend-blocked** — `searchImages()` + public locations/lenses reads are live; only the `/search` frontend route is unbuilt. Remaining: the `/search` route + filter UI, the `POST /collections/{id}/auto-tag` endpoint + public-page tag display, and the unified filter-visibility gate.
 **Sections:** [public search page](superpowers/plans/004-public-search-page.md) ⛔ · [location filter bar](superpowers/plans/004-location-filter-bar.md) 🟡 · [collection tags](superpowers/plans/004-collection-tags.md) 🟡 · [unified filter-visibility gate](superpowers/plans/2026-06-10-unified-filter-visibility-gate.md) 🟢 _new_ · [menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md) 🟡 _in-design_ · [liked images](superpowers/plans/004-liked-images.md) 🗒️
 
 ### [005 · Layout](005-layout.md) 📘 / 🟢
 
-The V3 row-composition engine shipped — most sections are durable reference. Two open items: **(1) directional prominence — the unified value-model refactor (in progress on this branch, `0182`)** retiring the vertical penalty + arFactor cap + the two competing wide-pano mechanisms in favor of one orientation-agnostic `P` → `Hv`/`Vv`; and **(2) reconcile the duplicate lone-last-row designs** (gap-box vs redesign §13 FILLER atom).
-**Sections:** [**directional prominence**](superpowers/plans/2026-06-09-directional-prominence.md) 🟢 _next_ · [redesign spec](superpowers/specs/005-row-composition-redesign.md) 📘 · [flowcharts](superpowers/specs/005-row-composition-flowcharts.md) 📘 · [retrospective](spikes/005-row-composition-retrospective.md) 📘 · [reorder audit](spikes/005-image-reorder-audit.md) 📘 · [end-row gap](superpowers/plans/005-end-row-gap.md) 🟢 · [mobile text overlay](superpowers/plans/005-mobile-text-overlay.md) 🗒️ · [pattern-tree](spikes/005-pattern-tree-exploration.md) 🗒️ · [WFC mosaic](spikes/005-wfc-mosaic-exploration.md) 🗒️
+The V3 row-composition engine **and** directional prominence have both shipped — most sections are durable reference. **✅ Directional prominence ([#182](https://github.com/themancalledzac/edens.zac/pull/182), `0182`)** retired the vertical penalty + arFactor cap + the two competing wide-pano mechanisms in favor of one orientation-agnostic `P` → `Hv`/`Vv` (`contentRatingUtils.ts`). Open: **reconcile the duplicate lone-last-row designs** (gap-box vs redesign §13 FILLER atom) and a possible structural hero-isolation follow-up (verify against current code).
+**Sections:** [directional prominence](superpowers/plans/2026-06-09-directional-prominence.md) ✅ _shipped_ · [redesign spec](superpowers/specs/005-row-composition-redesign.md) 📘 · [flowcharts](superpowers/specs/005-row-composition-flowcharts.md) 📘 · [retrospective](spikes/005-row-composition-retrospective.md) 📘 · [reorder audit](spikes/005-image-reorder-audit.md) 📘 · [end-row gap](superpowers/plans/005-end-row-gap.md) 🟢 · [mobile text overlay](superpowers/plans/005-mobile-text-overlay.md) 🗒️ · [pattern-tree](spikes/005-pattern-tree-exploration.md) 🗒️ · [WFC mosaic](spikes/005-wfc-mosaic-exploration.md) 🗒️
 
 ### [006 · Code Health](006-code-health.md) 🟢 / 🟡
 
@@ -53,8 +55,8 @@ Refactor + tests + observability + deps. **Shipped & archived** (→ [previous-w
 
 ### [007 · Security Hardening](007-security-hardening.md) 🟢
 
-Cross-cutting hardening surfaced by the (shipped) contact form: **gate the unguarded admin routes in `proxy.ts`** + the CloudFlare Phase 2 migration.
-**Sections:** [contact messages](superpowers/plans/007-contact-messages.md) 📘 · [admin route gating](superpowers/plans/007-proxy-route-gating.md) 🟢 · [CloudFlare Phase 2](superpowers/plans/007-cloudflare-phase2.md) 🟢
+Cross-cutting hardening surfaced by the (shipped) contact form. ⚠️ **The admin-route-gating plan is stale** — it targets an `app/utils/proxy.ts` that has been deleted (and there is no `middleware.ts`); the real perimeter today is the BFF `INTERNAL_API_SECRET` gate + `app/(admin)/layout.tsx`. Re-scope before acting. Also: the CloudFlare Phase 2 migration.
+**Sections:** [contact messages](superpowers/plans/007-contact-messages.md) 📘 · [admin route gating](superpowers/plans/007-proxy-route-gating.md) 🟡 _needs re-scope_ · [CloudFlare Phase 2](superpowers/plans/007-cloudflare-phase2.md) 🟢
 
 ### [008 · Collection / Admin](008-collection-admin.md) ✅ / 🟢
 
@@ -68,16 +70,18 @@ The API-contract reference (still-missing endpoints that block frontend work) + 
 
 ---
 
-## 🔜 Next steps (as of 2026-06-10, post-`0179`)
+## 🔜 Next steps (as of 2026-07-03)
 
 > **Sequencing decision (2026-06-02):** perf/LCP is **deferred to the END** of the refactoring phases — optimization rides on top of clean structure. `/todoist-done <desc>` marks items complete in Todoist.
 
-1. **Directional prominence** — the unified layout value-model refactor; **in progress on `0182-directional-prominence`** (the prior panorama attempts — arFactor ramp + `isFullWidthHero` — are consolidated onto it as the starting point, to be retired by the rewrite). → [005](005-layout.md). _Convention: branch number = the MR number it becomes._
+1. **Public `/search` route** — the backend reads are live (`searchImages()` + public locations/lenses); build the `SearchPage` + `SearchFilters` frontend + filter UI. → [004](004-content-discovery.md).
 2. **Mobile-first admin Phase 3** — rebuild the remaining editor surfaces on the dark/white-framed token foundation laid in `0179`. → [008](008-collection-admin.md).
 3. **`STAGING` system collection** — backend-heavy auto-parent for invisible collections. → [008](008-collection-admin.md).
 4. **006 tail** — external error tracking (Sentry/CloudWatch), function decomposition, property-based + complex-hook tests, the inherited 001 CSS sweeps (`@custom-media` bridge, gap-rule/`rgb()`). → [006](006-code-health.md).
 5. **Then perf (P4)** — hero-byte cuts, `will-change` scoping, blur placeholder. Still gated on the backend `blocks_per_page` fix for `force-dynamic` removal. → [002](002-performance.md).
-6. **Security tail** — gate the unguarded admin routes in `proxy.ts`; CloudFlare Phase 2. → [007](007-security-hardening.md).
+6. **Security tail** — re-scope admin-route gating to `app/(admin)/layout.tsx` (the `proxy.ts` plan is stale); CloudFlare Phase 2. → [007](007-security-hardening.md).
+
+_Recently shipped (was next, now done): directional prominence (#182), the auth foundation + `/login` + passkeys, identity merge (#191), collection hard-delete, user invites, saves/follows + `/user` redesign, PANEL admin panels (#197)._
 
 **Infra / DevOps:** Cloudflare CDN/edge ([007](superpowers/plans/007-cloudflare-phase2.md) · Todoist `6XQm4Ccw7Ghq2f4G`) · backend startup messages (`6g8xfM6Xv7XRc3gq`) · OAuth/Amplify-Cognito investigation ([009 ABAC](superpowers/specs/009-abac-access-control.md) · `6XjcFJH6W6JhVCgp`).
 **Content / docs:** GitHub main-page README (`6g8xcP35w3Jmj7WH`) · backend README (`6g8xcR63JjC9X62q`). _(frontend README done, PR #111.)_
@@ -88,15 +92,17 @@ The API-contract reference (still-missing endpoints that block frontend work) + 
 
 ## 🧩 Backend blockers (see [009](009-backend-and-vision.md))
 
-Keystone **`GET /api/read/content/images/search`** (unblocks [004 search](superpowers/plans/004-public-search-page.md)) · public `locations` · public `lenses` · collection-download ZIP · secure content-gating for password-protected galleries · `POST /collections/{id}/auto-tag`.
+Most of the former blocker list has **shipped**: `GET /api/read/content/images/search`, public `/content/locations`, public `/content/lenses`, and collection ZIP download (`/api/read/collections/{slug}/download`) are all live and wired in `app/lib/api/`. What genuinely remains:
+
+- **`POST /collections/{id}/auto-tag`** — collection auto-tagging (blocks [004](004-content-discovery.md) Phase 2). The only clearly-absent endpoint.
+- **Server-side content gating for password-protected galleries** — today the gate is client-side only; content should not be returned until access is validated server-side (→ [003](003-client-gallery-security.md) / [009](009-backend-and-vision.md)).
 
 ---
 
 ## 🗄️ Archive & history
 
 - [previous-work.md](previous-work.md) — the shipped-feature log (the durable record; mine git for deeper detail).
-- `_archive/shipped-plans-2026-06-10.tar.gz` — the 24 shipped sub-plans/specs removed in the 2026-06-10 pass (the `001-*` design set, the shipped `006-*` refactor plans, the shipped admin date-plans).
-- `_archive/handoffs-shipped-2026-06-10.tar.gz` — the 5 finished handoff/spec runbooks (`0148` fullscreen fix, `0167`/`0171`/`0172` refactor-wave handoffs, the `design-review-2026-05-31` genesis review).
-- `_archive/shipped-docs-2026-06-01.tar.gz` + `_archive/todo-archive-2026-06-01.tar.gz` — the first consolidation pass (25 docs + the old `todo/` logs, mined into `previous-work.md`).
+- The chapter files (`000`–`009` + `previous-work.md`) are **tracked in git**; the deeper `docs/superpowers/` + `docs/spikes/` plan/spec trees are gitignored.
+- **Prior consolidation passes** (2026-06-01 and 2026-06-10) removed ~50 shipped sub-plans, handoff runbooks (`0148`/`0167`/`0171`/`0172`/`design-review-2026-05-31`), and the old `todo/` logs, mining their detail into `previous-work.md`.
 
-> **Note:** `docs/superpowers/` + `docs/spikes/` are gitignored and the root docs are untracked — nothing in `docs/` is in git history, so the tarballs above are the only copies. Don't delete them. A few kept docs still cite predecessor plans now in those tarballs; those pointers dangle by design.
+> **Note:** the earlier `_archive/*.tar.gz` bundles referenced by prior versions of this index are **no longer in the working tree**. The durable record of that removed work is [previous-work.md](previous-work.md) (plus git history for the tracked files). A few kept docs still cite those predecessor plans by name; those pointers dangle by design.

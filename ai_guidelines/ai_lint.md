@@ -8,18 +8,7 @@
 
 ## Post-Change Commands
 
-`npm` and `npx` are not on PATH. Use the Homebrew node binary directly:
-
-```bash
-# Run ESLint
-/opt/homebrew/bin/node node_modules/.bin/eslint app/ --max-warnings 0
-
-# Fix auto-fixable issues
-/opt/homebrew/bin/node node_modules/.bin/eslint app/ --fix
-
-# Run TypeScript type checking
-/opt/homebrew/bin/node node_modules/.bin/tsc --noEmit
-```
+See the canonical command reference in [`CLAUDE.md`](../CLAUDE.md#running-tests--verification-canonical) (`npm`/`npx` are not on PATH — use the Homebrew node binary; covers Prettier, ESLint `--fix` / `--max-warnings 0`, Stylelint, and `tsc --noEmit`).
 
 ## Common ESLint Issues & Fixes
 

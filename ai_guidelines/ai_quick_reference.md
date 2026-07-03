@@ -5,7 +5,7 @@
 - **Components**: PascalCase (`About.tsx`, `ContentComponent.tsx`)
 - **Utilities**: camelCase (`contentLayout.ts`, `rowStructureAlgorithm.ts`)
 - **SCSS Modules**: Component name + `.module.scss` (`About.module.scss`, `ContentComponent.module.scss`)
-- **Hooks**: camelCase with `use` prefix (`useViewport.ts`, `useCollectionData.tsx`)
+- **Hooks**: camelCase with `use` prefix (`useViewport.ts`, `useFullScreenImage.tsx`)
 - **Types**: PascalCase (`Collection.ts`, `Content.ts`)
 - **API Functions**: camelCase (`collections.ts`, `content.ts`)
 - **Directories**: lowercase with dashes for route groups (`(admin)`, `all-collections`)
@@ -65,22 +65,33 @@ Root:
 app/
 ├── layout.tsx, page.tsx, error.tsx, not-found.tsx # Root App Router files
 ├── (admin)/ # Route group for admin pages
-│   └── collection/manage/[[...slug]]/ # Collection management
-├── [slug]/page.tsx # Dynamic collection route
-├── collectionType/[collectionType]/page.tsx # Collection type filter
-├── api/ # Next.js API routes (proxy, revalidate)
+│   ├── admin/ # Local-only admin hub (+ users/[id])
+│   ├── all-collections/, all-images/ # Collection list + image browser
+│   ├── collection/manage/[[...slug]]/ # Legacy manage route (edit now in-place)
+│   ├── comments/ # Contact-message reader
+│   └── metadata/ # Global metadata management
+├── [slug]/page.tsx # Dynamic collection route (in-place edit via ?manage=1)
+├── all-client-galleries/ # Signed-in client's gallery index
+├── explore/ # Public discovery front door
+├── invite/[token]/ # Invite-link onboarding
+├── location/[slug]/ # Location-filtered image view
+├── login/ # Password + passkey sign-in
+├── tag/[slug]/ # Tag-filtered view
+├── user/, user/selects/ # Personal space (saves + follows)
+├── homePage/ # Home management surface
+├── api/proxy/[...path]/ # BFF proxy to Spring Boot (+ revalidate route)
 ├── components/ # React components (PascalCase directories)
 │   ├── Content/ # Core content rendering components
-│   ├── ContentCollection/ # Collection page components
-│   ├── ImageMetadata/ # Image metadata editing
+│   ├── ContentCollection/ # Collection page components (incl. edit/ layer)
+│   ├── Metadata/ # Image/GIF metadata editing
 │   └── SiteHeader/, FullScreenModal/, etc.
-├── hooks/ # Custom React hooks (useCollectionData, useParallax, etc.)
+├── hooks/ # Custom React hooks (useViewport, useParallax, useFetchMe, useFullScreenImage, etc.)
 ├── lib/
-│   ├── api/ # API client (collections.ts, content.ts, core.ts)
+│   ├── api/ # API client (~11 modules: core, collections, content, auth, ...)
 │   ├── components/ # Shared components
 │   └── storage/ # Local storage utilities
-├── types/ # TypeScript definitions (Collection, Content, ContentRenderer, etc.)
-├── utils/ # Utility functions (contentLayout, rowStructureAlgorithm, etc.)
+├── types/ # TypeScript definitions (Collection, Content, Auth, Metadata, etc.)
+├── utils/ # Utility functions (contentLayout, rowCombination, contentRatingUtils, etc.)
 ├── constants/ # App constants
 └── styles/ # Global styles (globals.css, module SCSS files)
 ```
@@ -120,7 +131,6 @@ If a literal is _mostly_ static but contains one props-derived field (e.g. an `a
 ## Common Mistakes to Avoid
 
 - ❌ Using `'use client'` unnecessarily - prefer Server Components
-- ❌ Importing from `pages/` or legacy directories
 - ❌ Using `any` type - always use proper TypeScript types
 - ❌ Creating components without corresponding SCSS modules
 - ❌ Mixing camelCase and PascalCase for similar file types

@@ -6,13 +6,16 @@ This chapter is the bridge to the `edens.zac.backend` repo. The **contract** hal
 
 ## Remaining work (deduped)
 
-**Still-missing backend endpoints (blockers):**
+**Shipped since this list was written (verified live in `app/lib/api`):**
 
-- `GET /content/images/search` — the keystone. Multi-dimensional image search; unblocks chapter [004 · content discovery](004-content-discovery.md) search + server-side filtering.
-- Public `locations` and public `lenses` read endpoints (filter dropdowns).
-- Collection-download ZIP stream (`GET /collections/{slug}/download`).
-- Secure content-gating for password-protected galleries — server-side session/token so content isn't returned until access is validated (today the gate is client-side only).
-- `POST /collections/{id}/auto-tag`.
+- `GET /content/images/search` — multi-dimensional image search; live and consumed by the tag/location pages. The `/search` _route_ UI is the only remaining frontend piece (chapter [004](004-content-discovery.md)).
+- Public `locations` and `lenses` read endpoints — live (`getAllLocations`/`getAllLenses`).
+- Collection-download ZIP + per-image download — live (`downloads.ts` → `GET /collections/{slug}/download`, `GET /content/images/{id}/download`).
+- Secure content-gating — the backend now withholds `content` (null) until the `ezac_session`/gallery-access cookie validates (pinned by the `CollectionPageWrapper` test); no longer client-side only.
+
+**Genuinely still-missing backend endpoint (the sole remaining blocker):**
+
+- `POST /collections/{id}/auto-tag` — zero frontend callers exist; the only endpoint from the original blocker list that has not shipped.
 
 **ABAC vision — sequenced Foundation → Admin → Client → Tagging:**
 

@@ -4,6 +4,22 @@
 > removed (2026-06-01). 1–2 lines per item. For deeper detail, follow the cited commits/PRs in
 > git history, or the surviving docs catalogued in [000-summary.md](000-summary.md).
 
+## Since the 2026-06-10 index freeze (→ 2026-07-03)
+
+The wave that landed after the last docs consolidation. One line each; mine git (`git log --since=2026-06-10`) for commit-level detail.
+
+- **Directional prominence (unified layout value model)** — retired the vertical penalty, the `arFactor` cap, and the two competing wide-panorama mechanisms (`isFullWidthHero` / `getComponentValue` AR ramp) in favor of one orientation-agnostic prominence `P` (`contentRatingUtils.ts` → `getProminence`), decomposed into width-cost `Hv = √(P·AR)` and height-demand `Vv = √(P/AR)`; equity metric now targets area ∝ prominence. A 5★ portrait and a 5★ panorama command equal visual area. PR #182 (`0182`). → [005](005-layout.md).
+- **Auth foundation + `/login` + passkeys** — cookie-session auth (`ezac_session`) via the BFF proxy, `me()`/`meServer` principal resolution, a `/login` page with password **and** WebAuthn passkey sign-in, and Log in / Log out in the nav menu (`useFetchMe`). PR #194 + surrounding commits.
+- **Identity merge** — `User` types (PERSON status, nullable email, merge shapes), `users.ts` `getMergePreview`/`mergeUser`, a `MergeIdentityModal`, and a Merge action surfacing tag-only people in the admin Users panel. PR #191 (`0191-identity-merge`).
+- **Save as Collection (tag-views → collection IA)** — synthetic tag "view" rows (`TagViewModel`) render read-only in the collection selector until promoted to a real collection via `POST /api/admin/tags/{id}/save-as-collection`. Part of the collection-IA / tag-view work.
+- **Saves & follows + `/user` redesign** — per-user saved images ("selects") and follows (`personal.ts` / `selects.ts`, `/api/read/user/{saves,follows,selects}`), a personal `/user` space (sectioned collapsible: Collections / Images / Saved / Following) with real image tiles, a personal "Me" home tile for signed-in users, and `/user/selects`.
+- **User invites** — invite-link onboarding (`/invite/[token]`, `/api/auth/invite/{token}`), a `GenerateInviteButton`, and admin per-collection client-access toggles; `/admin/users/[id]` renders the user's full page.
+- **PANEL content type + admin panels** — a new `PANEL` `ContentType` (`panelType: 'users' | 'messages'`) rendered as a rated content block via `AdminPanelRenderer`; the admin hub now renders through the content pipeline (`AdminPanel` shell, `MessagesPanel`, `UserManagementPanel`). PR #197 (`0193-admin-comments-panel`).
+- **Collection hard-delete** — a Delete-collection danger zone in the edit Structure tab + `useCollectionEdit` hard-delete action (`deleteCollection` typed `{ success }`). PRs #190/#192.
+- **Per-user rating overrides** — server-seeded per-user rating overrides wired through a `RatingControlContext` + `RatingSliderGate` in image overlays (later the per-user rating slider was removed in favor of the seed). Multiple commits on the rating branch.
+- **Mobile viewer gestures** — tap-to-fullscreen immersive mode, pinch-to-zoom, tap-to-close, solid-black backdrop, lighter nav arrows. PRs #192/#193.
+- **Related = siblings + parents** — the collection "Related" block now includes parent collections, not just siblings. Commit `3460fae`.
+
 ## Design System Unification — Chapter 001 (2026-06-01 → 06-03)
 
 The full "many divergent UI standards → one canonical set" epic. Shipped as 9 sequential PRs; see [001 · Design System Unification](001-design-review.md) for the per-phase detail.
@@ -19,7 +35,7 @@ The full "many divergent UI standards → one canonical set" epic. Shipped as 9 
 
 ## Code Health — Refactor Wave (2026-06-06)
 
-Four stacked MRs off the P1 refactor wave; see [006 · Code Health](006-code-health.md). _(The 0167 handoff runbook is archived in `_archive/handoffs-shipped-2026-06-10.tar.gz`.)_
+Four stacked MRs off the P1 refactor wave; see [006 · Code Health](006-code-health.md). _(The 0167 handoff runbook was consolidated away in the 2026-06-10 pass; its substance is the bullets below.)_
 
 - **`fail()` → `.rejects` in `core.test.ts`** — the 3 non-asserting `fail()` calls (not a Jest 29 global) replaced with `.rejects.toBeInstanceOf`/`.toHaveProperty`. PR #169 (`0167`).
 - **Drop the "Image" prefix** — `app/components/ImageMetadata/`→`Metadata/`, `ImageMetadataModal`→`MetadataModal`, `useImageMetadataEditor/State/Submit`→`useMetadata*`, `imageMetadataUtils`→`metadataUtils`, `app/types/ImageMetadata.ts`→`Metadata.ts`, `selectedImageIds`→`selectedIds`; 44 files, git-tracked renames. Kept `ContentImage*`/`selectedImages`/`buildImage*`/gallery `*ImageIds` (real images). PR #170 (`0168`).
