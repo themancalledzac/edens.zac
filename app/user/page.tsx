@@ -7,7 +7,7 @@ import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { PersonalContentGrid } from '@/app/components/Personal/PersonalContentGrid';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
 import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
-import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
 import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
@@ -64,60 +64,57 @@ export default async function UserPage() {
   const followedCollections = allCollections.filter(c => followedSet.has(c.id));
 
   return (
-    <div className={styles.container}>
-      <main className={styles.main}>
-        <SiteHeader pageType="default" collectionSlug={collection.slug} />
-        <h1 className={styles.srOnly}>Your Space</h1>
+    <PageShell pageType="default" collectionSlug={collection.slug}>
+      <h1 className={styles.srOnly}>Your Space</h1>
 
-        {/* One MeProvider + SavesProvider wraps every section so SaveHeart renders and toggles
+      {/* One MeProvider + SavesProvider wraps every section so SaveHeart renders and toggles
             consistently across the Images and Saved grids (a single source of truth for the saved
             set — no per-section provider desync). The Collections grid renders no hearts (SaveHeart
             gates on contentType === 'IMAGE'), so the shared SavesProvider is a no-op there. */}
-        <MeProvider me={principal}>
-          <SavesProvider initialSavedIds={savedImageIds}>
-            <div className={styles.sections}>
-              <div className={styles.topBar}>
-                <SendMessageButton />
-              </div>
-
-              <CollapsibleSection
-                label="Collections"
-                count={collectionBlocks.length}
-                defaultOpen
-                emptyLabel="No collections yet."
-              >
-                <PersonalContentGrid content={collectionBlocks} />
-              </CollapsibleSection>
-
-              <CollapsibleSection
-                label="Images"
-                count={imageBlocks.length}
-                emptyLabel="You are not tagged in any images yet."
-              >
-                <PersonalContentGrid content={imageBlocks} />
-              </CollapsibleSection>
-
-              <CollapsibleSection
-                label="Saved"
-                count={savedImages.length}
-                emptyLabel="You have not saved any images yet."
-              >
-                <PersonalContentGrid content={savedImages} />
-              </CollapsibleSection>
-
-              <CollapsibleSection
-                label="Following"
-                count={followedCollections.length}
-                emptyLabel="You are not following any collections yet."
-              >
-                <FollowsProvider initialFollowedIds={followedCollectionIds}>
-                  <LocationCollections collections={followedCollections} />
-                </FollowsProvider>
-              </CollapsibleSection>
+      <MeProvider me={principal}>
+        <SavesProvider initialSavedIds={savedImageIds}>
+          <div className={styles.sections}>
+            <div className={styles.topBar}>
+              <SendMessageButton />
             </div>
-          </SavesProvider>
-        </MeProvider>
-      </main>
-    </div>
+
+            <CollapsibleSection
+              label="Collections"
+              count={collectionBlocks.length}
+              defaultOpen
+              emptyLabel="No collections yet."
+            >
+              <PersonalContentGrid content={collectionBlocks} />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              label="Images"
+              count={imageBlocks.length}
+              emptyLabel="You are not tagged in any images yet."
+            >
+              <PersonalContentGrid content={imageBlocks} />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              label="Saved"
+              count={savedImages.length}
+              emptyLabel="You have not saved any images yet."
+            >
+              <PersonalContentGrid content={savedImages} />
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              label="Following"
+              count={followedCollections.length}
+              emptyLabel="You are not following any collections yet."
+            >
+              <FollowsProvider initialFollowedIds={followedCollectionIds}>
+                <LocationCollections collections={followedCollections} />
+              </FollowsProvider>
+            </CollapsibleSection>
+          </div>
+        </SavesProvider>
+      </MeProvider>
+    </PageShell>
   );
 }

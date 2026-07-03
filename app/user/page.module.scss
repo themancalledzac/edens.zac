@@ -1,10 +1,6 @@
-.container {
-  min-height: 100dvh;
-}
-
-.main {
-  width: 100%;
-}
+/* The page scaffold (container/main, max-width, centering, responsive side padding) and the
+   SiteHeader come from the shared <PageShell> — identical to /explore, /tag, /location, etc.
+   This module only owns the /user-specific bits below. */
 
 /* Visually-hidden but screen-reader-accessible <h1> for page orientation + SEO, mirroring
    ContentCollectionPage.module.scss (the visible section titles are <h2>s deeper in the tree). */
@@ -21,18 +17,10 @@
 }
 
 .sections {
-  max-width: var(--page-max-width);
-  margin: 0 auto;
-
-  /* Full-bleed on mobile so BoxTree rows (sized for the 1300px cap / edge-to-edge mobile) line up;
-     side padding is added back only at the desktop breakpoint the sibling ContentCollectionPage
-     uses. Vertical rhythm stays regardless of width. */
+  /* PageShell.main already caps width, centers, and adds the responsive side padding (so BoxTree
+     rows sized for the 1300px cap / edge-to-edge mobile line up). This only owns the vertical
+     rhythm around the personal sections. */
   padding: var(--space-6) 0 var(--space-8);
-
-  @media (width >= 768px) {
-    padding-right: var(--default-padding);
-    padding-left: var(--default-padding);
-  }
 }
 
 .topBar {
