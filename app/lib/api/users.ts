@@ -105,6 +105,16 @@ export async function getAdminUser(id: number): Promise<AdminUserSummary | null>
 }
 
 /**
+ * DEV-ONLY: mint an `ezac_session` for `userId` (via the `@Profile("dev")` admin endpoint) so the
+ * admin can browse the site as that user. The backend endpoint does not exist in prod, and callers
+ * gate the UI on {@link isLocalEnvironment}. Overwrites the current session cookie; the caller
+ * should do a full navigation afterward so the new cookie is used for the next server render.
+ */
+export async function loginAsUser(userId: number): Promise<void> {
+  await fetchAdminPostJsonApi<void>(`/impersonate/${userId}`, {});
+}
+
+/**
  * Update an existing user's display name and status via the admin endpoint.
  *
  * @returns the refreshed `AdminUserSummary`.
