@@ -51,11 +51,12 @@ export function CollapsibleSection({
         onToggle={toggle}
         controlsId={bodyId}
       />
-      {hasOpened && (
-        <div id={bodyId} className={styles.body} hidden={!open}>
-          {count === 0 ? <p className={styles.empty}>{emptyLabel}</p> : children}
-        </div>
-      )}
+      {/* The body container is always rendered so the title card's `aria-controls` target exists
+          even before first expand; its contents still mount lazily (only once opened) and stay
+          mounted thereafter. `hidden` hides it while collapsed. */}
+      <div id={bodyId} className={styles.body} hidden={!open}>
+        {hasOpened && (count === 0 ? <p className={styles.empty}>{emptyLabel}</p> : children)}
+      </div>
     </section>
   );
 }

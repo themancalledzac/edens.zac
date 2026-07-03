@@ -17,8 +17,10 @@ interface SectionTitleCardProps {
 
 /**
  * Presentational "title card" atom for a `/user` section: a full-width, TEXT-content-block-styled
- * header that reads as "first on a new row". Renders as a `<button>` (label + item count + chevron)
- * with `aria-expanded` reflecting the parent-owned open state.
+ * header that reads as "first on a new row". The disclosure `<button>` (label + item count +
+ * chevron, `aria-expanded` reflecting the parent-owned open state) is wrapped in an `<h2>` so each
+ * section contributes to the document heading outline under the page `<h1>`; the `<h2>` carries a
+ * reset class so the visual remains driven entirely by the button.
  */
 export function SectionTitleCard({
   label,
@@ -28,21 +30,23 @@ export function SectionTitleCard({
   controlsId,
 }: SectionTitleCardProps) {
   return (
-    <button
-      type="button"
-      className={styles.card}
-      aria-expanded={open}
-      aria-controls={controlsId}
-      onClick={onToggle}
-    >
-      <span className={styles.label}>
-        {label}
-        <span className={styles.count}>{count}</span>
-      </span>
-      <ChevronDown
-        className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
-        aria-hidden="true"
-      />
-    </button>
+    <h2 className={styles.heading}>
+      <button
+        type="button"
+        className={styles.card}
+        aria-expanded={open}
+        aria-controls={controlsId}
+        onClick={onToggle}
+      >
+        <span className={styles.label}>
+          {label}
+          <span className={styles.count}>{count}</span>
+        </span>
+        <ChevronDown
+          className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+    </h2>
   );
 }

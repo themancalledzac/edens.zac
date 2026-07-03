@@ -1,3 +1,18 @@
+/* Reset the wrapping <h2> so the disclosure button drives all visuals; the heading is structural
+   (document outline) only. */
+.heading {
+  margin: 0;
+  font: inherit;
+
+  /* Keep section labels inset while the content grids below run full-bleed on mobile; reset at the
+     desktop breakpoint where .sections regains its own side padding. */
+  padding-inline: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding-inline: 0;
+  }
+}
+
 .card {
   display: flex;
   align-items: baseline;
@@ -10,6 +25,11 @@
   color: var(--color-on-surface);
   text-align: left;
   cursor: pointer;
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 .label {

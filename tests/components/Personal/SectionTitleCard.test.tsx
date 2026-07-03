@@ -17,6 +17,22 @@ describe('SectionTitleCard', () => {
     expect(screen.getByText('12')).toBeInTheDocument();
   });
 
+  it('wraps the disclosure button in a level-2 heading for the document outline', () => {
+    render(
+      <SectionTitleCard
+        label="Saved"
+        count={12}
+        open={false}
+        onToggle={jest.fn()}
+        controlsId="body-1"
+      />
+    );
+    const heading = screen.getByRole('heading', { level: 2 });
+    expect(heading).toBeInTheDocument();
+    // The button lives inside the heading (the heading itself is a structural reset).
+    expect(heading.querySelector('button')).toBe(screen.getByRole('button'));
+  });
+
   it('reflects the open state via aria-expanded', () => {
     const { rerender } = render(
       <SectionTitleCard

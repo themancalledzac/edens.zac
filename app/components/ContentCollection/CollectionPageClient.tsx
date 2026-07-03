@@ -42,7 +42,6 @@ import {
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
 import { SelectsProvider } from './SelectsContext';
-import { SendMessageProvider } from './SendMessageContext';
 
 /**
  * The entire edit experience (useCollectionEdit, EditBar, edit sheet, modals, inline-edit
@@ -74,8 +73,6 @@ interface CollectionPageClientProps {
   initialSelectedIds?: number[];
   /** The viewer's GLOBAL saved (bookmarked) image ids, seeded server-side. Cross-collection. */
   initialSavedImageIds?: number[];
-  /** Surfaces the "Send a message" button in the header filter-bar area (user page). */
-  showSendMessage?: boolean;
 }
 
 const EMPTY_STRING_DIM = { values: [] as readonly string[], filterable: true };
@@ -91,7 +88,6 @@ export default function CollectionPageClient({
   me = null,
   initialSelectedIds = [],
   initialSavedImageIds = [],
-  showSendMessage = false,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -384,11 +380,9 @@ export default function CollectionPageClient({
 
   return (
     <MeProvider me={me}>
-      <SendMessageProvider enabled={showSendMessage}>
-        <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
-          {withSaves}
-        </CollectionFilterProvider>
-      </SendMessageProvider>
+      <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
+        {withSaves}
+      </CollectionFilterProvider>
     </MeProvider>
   );
 }

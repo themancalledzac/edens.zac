@@ -5,15 +5,12 @@ import LocationCollections from '@/app/components/LocationPage/LocationCollectio
 import { CollapsibleSection } from '@/app/components/Personal/CollapsibleSection';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { PersonalContentGrid } from '@/app/components/Personal/PersonalContentGrid';
+import { SavesProvider } from '@/app/components/Personal/SavesContext';
 import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
-import {
-  listFollowedCollectionIdsServer,
-  listSavedImageIdsServer,
-  listSavedImagesServer,
-} from '@/app/lib/api/personal';
+import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
 import { getUserPage } from '@/app/lib/api/user';
 import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
 import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
@@ -49,15 +46,17 @@ export default async function UserPage() {
   const principal = await meServer();
   if (!principal) notFound();
 
-  const [collection, savedImages, savedImageIds, followedCollectionIds, allCollections] =
-    await Promise.all([
-      getUserPage(),
-      listSavedImagesServer(),
-      listSavedImageIdsServer(),
-      listFollowedCollectionIdsServer(),
-      getAllCollections(0, 500),
-    ]);
+  const [collection, savedImages, followedCollectionIds, allCollections] = await Promise.all([
+    getUserPage(),
+    listSavedImagesServer(),
+    listFollowedCollectionIdsServer(),
+    getAllCollections(0, 500),
+  ]);
   if (!collection) notFound();
+
+  // `/user/saves/images` already returns the full saved set, so derive the ids from it rather than
+  // issuing a second `/user/saves` ids-only read (single-fetch rule).
+  const savedImageIds = savedImages.map(i => i.id);
 
   const { collectionBlocks, imageBlocks } = splitUserContent(collection.content);
 
@@ -67,60 +66,57 @@ export default async function UserPage() {
   return (
     <div className={styles.container}>
       <main className={styles.main}>
-        <SiteHeader pageType="collection" collectionSlug={collection.slug} />
+        <SiteHeader pageType="default" collectionSlug={collection.slug} />
+        <h1 className={styles.srOnly}>Your Space</h1>
 
-        <div className={styles.sections}>
-          <div className={styles.topBar}>
-            <MeProvider me={principal}>
-              <SendMessageButton />
-            </MeProvider>
-          </div>
+        {/* One MeProvider + SavesProvider wraps every section so SaveHeart renders and toggles
+            consistently across the Images and Saved grids (a single source of truth for the saved
+            set — no per-section provider desync). The Collections grid renders no hearts (SaveHeart
+            gates on contentType === 'IMAGE'), so the shared SavesProvider is a no-op there. */}
+        <MeProvider me={principal}>
+          <SavesProvider initialSavedIds={savedImageIds}>
+            <div className={styles.sections}>
+              <div className={styles.topBar}>
+                <SendMessageButton />
+              </div>
 
-          <CollapsibleSection
-            label="Collections"
-            count={collectionBlocks.length}
-            defaultOpen
-            emptyLabel="No collections yet."
-          >
-            <PersonalContentGrid content={collectionBlocks} />
-          </CollapsibleSection>
+              <CollapsibleSection
+                label="Collections"
+                count={collectionBlocks.length}
+                defaultOpen
+                emptyLabel="No collections yet."
+              >
+                <PersonalContentGrid content={collectionBlocks} />
+              </CollapsibleSection>
 
-          <CollapsibleSection
-            label="Images"
-            count={imageBlocks.length}
-            emptyLabel="You are not tagged in any images yet."
-          >
-            <PersonalContentGrid
-              content={imageBlocks}
-              withSaves
-              me={principal}
-              initialSavedImageIds={savedImageIds}
-            />
-          </CollapsibleSection>
+              <CollapsibleSection
+                label="Images"
+                count={imageBlocks.length}
+                emptyLabel="You are not tagged in any images yet."
+              >
+                <PersonalContentGrid content={imageBlocks} />
+              </CollapsibleSection>
 
-          <CollapsibleSection
-            label="Saved"
-            count={savedImages.length}
-            emptyLabel="You have not saved any images yet."
-          >
-            <PersonalContentGrid
-              content={savedImages}
-              withSaves
-              me={principal}
-              initialSavedImageIds={savedImageIds}
-            />
-          </CollapsibleSection>
+              <CollapsibleSection
+                label="Saved"
+                count={savedImages.length}
+                emptyLabel="You have not saved any images yet."
+              >
+                <PersonalContentGrid content={savedImages} />
+              </CollapsibleSection>
 
-          <CollapsibleSection
-            label="Following"
-            count={followedCollections.length}
-            emptyLabel="You are not following any collections yet."
-          >
-            <FollowsProvider initialFollowedIds={followedCollectionIds}>
-              <LocationCollections collections={followedCollections} />
-            </FollowsProvider>
-          </CollapsibleSection>
-        </div>
+              <CollapsibleSection
+                label="Following"
+                count={followedCollections.length}
+                emptyLabel="You are not following any collections yet."
+              >
+                <FollowsProvider initialFollowedIds={followedCollectionIds}>
+                  <LocationCollections collections={followedCollections} />
+                </FollowsProvider>
+              </CollapsibleSection>
+            </div>
+          </SavesProvider>
+        </MeProvider>
       </main>
     </div>
   );

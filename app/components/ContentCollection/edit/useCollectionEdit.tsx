@@ -1200,10 +1200,14 @@ export function useCollectionEdit({
       body: { type: CollectionType; visibility: CollectionVisibility }
     ) => {
       const response = await saveCollectionFromTag(sourceTagId, body);
-      if (response !== null) {
-        void revalidateCollectionCache(response.collection.slug);
-        router.push(manageHref(response.collection.slug));
+      // A null response (204 from fetchBase) means the backend returned no collection to navigate
+      // to. Throw so the caller's catch (SaveAsCollectionModal) surfaces it instead of silently
+      // closing the modal with no navigation.
+      if (response === null) {
+        throw new Error('Save as Collection returned no collection');
       }
+      void revalidateCollectionCache(response.collection.slug);
+      router.push(manageHref(response.collection.slug));
     },
     [router]
   );

@@ -26,6 +26,11 @@ export default async function LocationPage({
   const me = await meServer();
   const followedIds = me ? await listFollowedCollectionIdsServer() : [];
 
+  // FollowButton self-gates to null when no FollowsProvider is present, so mount the provider only
+  // for logged-in viewers. Anonymous viewers render the client WITHOUT it — no Follow button that
+  // would 401 on click.
+  const client = <LocationPageClient images={images} collections={collections} />;
+
   return (
     <PageShell>
       <CollectionHeader
@@ -33,9 +38,7 @@ export default async function LocationPage({
         count={images.length}
         cover={coverImage?.imageUrl ? { src: coverImage.imageUrl } : undefined}
       />
-      <FollowsProvider initialFollowedIds={followedIds}>
-        <LocationPageClient images={images} collections={collections} />
-      </FollowsProvider>
+      {me ? <FollowsProvider initialFollowedIds={followedIds}>{client}</FollowsProvider> : client}
     </PageShell>
   );
 }

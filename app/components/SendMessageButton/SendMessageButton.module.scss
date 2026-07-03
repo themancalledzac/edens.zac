@@ -3,7 +3,8 @@
 .content {
   display: flex;
   flex-direction: column;
-  width: min(92vw, 460px);
+  width: 100%;
+  max-width: 460px;
   padding: var(--space-4);
 }
 

@@ -9,6 +9,7 @@
 import { ApiError, fetchReadApi } from '@/app/lib/api/core';
 import { type ContentImageModel } from '@/app/types/Content';
 import { type FollowedCollectionIds, type SavedImageIds } from '@/app/types/Personal';
+import { logger } from '@/app/utils/logger';
 
 const SAVES = '/api/proxy/api/read/user/saves';
 const FOLLOWS = '/api/proxy/api/read/user/follows';
@@ -94,7 +95,7 @@ function emptyOnError<T>(label: string, error: unknown): T[] {
     return [];
   }
   const status = error instanceof ApiError ? error.status : 'unknown';
-  console.warn(`[personal] ${label} read failed (status ${status}); rendering empty`, error);
+  logger.warn('personal', `${label} read failed (status ${status}); rendering empty`, { error });
   return [];
 }
 

@@ -1,19 +1,51 @@
 .container {
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .main {
   width: 100%;
 }
 
+/* Visually-hidden but screen-reader-accessible <h1> for page orientation + SEO, mirroring
+   ContentCollectionPage.module.scss (the visible section titles are <h2>s deeper in the tree). */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .sections {
-  max-width: 1200px;
+  max-width: var(--page-max-width);
   margin: 0 auto;
-  padding: var(--space-6) var(--space-4) var(--space-8);
+
+  /* Full-bleed on mobile so BoxTree rows (sized for the 1300px cap / edge-to-edge mobile) line up;
+     side padding is added back only at the desktop breakpoint the sibling ContentCollectionPage
+     uses. Vertical rhythm stays regardless of width. */
+  padding: var(--space-6) 0 var(--space-8);
+
+  @media (width >= 768px) {
+    padding-right: var(--default-padding);
+    padding-left: var(--default-padding);
+  }
 }
 
 .topBar {
   display: flex;
   justify-content: flex-end;
   margin-bottom: var(--space-4);
+
+  /* Keep the Send-a-message button inset while the content grids below run full-bleed on mobile;
+     reset at the desktop breakpoint where .sections regains its own side padding. Mirrors
+     SectionTitleCard .heading. */
+  padding-inline: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding-inline: 0;
+  }
 }

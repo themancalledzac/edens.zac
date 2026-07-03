@@ -11,7 +11,6 @@ jest.mock('@/app/lib/api/user', () => ({ getUserPage: jest.fn() }));
 jest.mock('@/app/lib/api/collections', () => ({ getAllCollections: jest.fn() }));
 jest.mock('@/app/lib/api/personal', () => ({
   listSavedImagesServer: jest.fn(),
-  listSavedImageIdsServer: jest.fn(),
   listFollowedCollectionIdsServer: jest.fn(),
 }));
 jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
@@ -23,6 +22,9 @@ jest.mock('@/app/components/SendMessageButton/SendMessageButton', () => ({
 }));
 jest.mock('@/app/components/auth/MeProvider', () => ({
   MeProvider: ({ children }: { children: unknown }) => children,
+}));
+jest.mock('@/app/components/Personal/SavesContext', () => ({
+  SavesProvider: ({ children }: { children: unknown }) => children,
 }));
 jest.mock('@/app/components/Personal/PersonalContentGrid', () => ({
   PersonalContentGrid: ({ content }: { content: unknown[] }) =>
@@ -53,11 +55,7 @@ jest.mock('@/app/components/Personal/CollapsibleSection', () => ({
 
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
-import {
-  listFollowedCollectionIdsServer,
-  listSavedImageIdsServer,
-  listSavedImagesServer,
-} from '@/app/lib/api/personal';
+import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
 import { getUserPage } from '@/app/lib/api/user';
 import UserPage from '@/app/user/page';
 
@@ -99,7 +97,6 @@ function seedApis() {
     content: [collectionBlock(1), collectionBlock(2), imageBlock(3), gifBlock(4)],
   });
   (listSavedImagesServer as jest.Mock).mockResolvedValue([]);
-  (listSavedImageIdsServer as jest.Mock).mockResolvedValue([]);
   (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([]);
   (getAllCollections as jest.Mock).mockResolvedValue([]);
 }
@@ -136,14 +133,17 @@ describe('UserPage', () => {
     expect(sections.Following.count).toBe(1);
   });
 
-  it('seeds the providers via the personal reads', async () => {
+  it('seeds the providers from the saved-images + follows reads (no separate ids fetch)', async () => {
     (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
     seedApis();
-    (listSavedImageIdsServer as jest.Mock).mockResolvedValue([7, 8]);
+    // The full saved images read is the single source for both the Saved section and the seeded
+    // SavesProvider ids — there is no separate `/user/saves` ids-only read to duplicate it.
+    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(7), imageBlock(8)]);
     const result = await UserPage();
     expect(result).toBeTruthy();
-    expect(listSavedImageIdsServer).toHaveBeenCalled();
     expect(listSavedImagesServer).toHaveBeenCalled();
     expect(listFollowedCollectionIdsServer).toHaveBeenCalled();
+    // The ids are derived from the images, so the SavesProvider is seeded without an extra fetch.
+    expect(listSavedImagesServer).toHaveBeenCalledTimes(1);
   });
 });

@@ -15,6 +15,7 @@ import {
   removeSave,
 } from '@/app/lib/api/personal';
 import { type ContentImageModel } from '@/app/types/Content';
+import { logger } from '@/app/utils/logger';
 
 // Keep ApiError real (client-fetch specs assert on the real error class) while making the server
 // reader `fetchReadApi` a controllable mock for the server-seed specs.
@@ -23,7 +24,14 @@ jest.mock('@/app/lib/api/core', () => ({
   fetchReadApi: jest.fn(),
 }));
 
+// The empty-on-error reader logs non-401 failures via the project logger (silenced in the test
+// env), so assert on the mocked logger.warn rather than a bare console.warn.
+jest.mock('@/app/utils/logger', () => ({
+  logger: { error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+}));
+
 const fetchReadApiMock = fetchReadApi as jest.Mock;
+const warnMock = logger.warn as jest.Mock;
 
 global.fetch = jest.fn();
 
@@ -176,19 +184,19 @@ describe('listSavedImagesServer', () => {
   });
 
   it('returns [] silently on 401 (anonymous) without warning', async () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
     await expect(listSavedImagesServer()).resolves.toEqual([]);
-    expect(warn).not.toHaveBeenCalled();
-    warn.mockRestore();
+    expect(warnMock).not.toHaveBeenCalled();
   });
 
   it('returns [] but logs a warning on a non-401 failure (e.g. stale-backend 404)', async () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
     fetchReadApiMock.mockRejectedValueOnce(new ApiError('not found', 404));
     await expect(listSavedImagesServer()).resolves.toEqual([]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('status 404'), expect.any(ApiError));
-    warn.mockRestore();
+    expect(warnMock).toHaveBeenCalledWith(
+      'personal',
+      expect.stringContaining('status 404'),
+      expect.objectContaining({ error: expect.any(ApiError) })
+    );
   });
 });
 

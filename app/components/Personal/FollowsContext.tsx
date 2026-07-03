@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { addFollow, removeFollow } from '@/app/lib/api/personal';
 import { logger } from '@/app/utils/logger';
@@ -30,6 +38,19 @@ export function FollowsProvider({
 }) {
   const [followedIds, setFollowedIds] = useState<Set<number>>(() => new Set(initialFollowedIds));
 
+  // Ref mirror of the followed Set, the synchronous source of truth for `toggle`'s follow/unfollow
+  // decision. React runs functional state updaters lazily at flush time, so reading membership from
+  // a closed-over Set (or from inside setFollowedIds) can't inform the persist/rollback direction
+  // that must be chosen on the same synchronous tick. A ref always holds the latest value, so two
+  // rapid clicks before a re-render each observe the other's result and stay consistent.
+  const followedIdsRef = useRef(followedIds);
+
+  // Write the new Set to the ref and state together so they never drift.
+  const commit = useCallback((next: Set<number>) => {
+    followedIdsRef.current = next;
+    setFollowedIds(next);
+  }, []);
+
   const isFollowing = useCallback(
     (collectionId: number) => followedIds.has(collectionId),
     [followedIds]
@@ -37,37 +58,34 @@ export function FollowsProvider({
 
   const toggle = useCallback(
     (collectionId: number) => {
-      const wasFollowing = followedIds.has(collectionId);
+      const wasFollowing = followedIdsRef.current.has(collectionId);
 
-      // Optimistic update.
-      setFollowedIds(prev => {
-        const next = new Set(prev);
-        if (wasFollowing) {
-          next.delete(collectionId);
-        } else {
-          next.add(collectionId);
-        }
-        return next;
-      });
+      // Optimistic update off the current (ref) membership.
+      const optimistic = new Set(followedIdsRef.current);
+      if (wasFollowing) {
+        optimistic.delete(collectionId);
+      } else {
+        optimistic.add(collectionId);
+      }
+      commit(optimistic);
 
       const persist = wasFollowing ? removeFollow(collectionId) : addFollow(collectionId);
       persist.catch((error: unknown) => {
-        setFollowedIds(prev => {
-          const next = new Set(prev);
-          if (wasFollowing) {
-            next.add(collectionId);
-          } else {
-            next.delete(collectionId);
-          }
-          return next;
-        });
+        // Roll back just this id off the latest membership (other in-flight toggles are preserved).
+        const rolledBack = new Set(followedIdsRef.current);
+        if (wasFollowing) {
+          rolledBack.add(collectionId);
+        } else {
+          rolledBack.delete(collectionId);
+        }
+        commit(rolledBack);
         logger.error('FollowsContext', 'toggle failed; rolled back', error, {
           collectionId,
           wasFollowing,
         });
       });
     },
-    [followedIds]
+    [commit]
   );
 
   const value = useMemo<FollowsContextValue>(
