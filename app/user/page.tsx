@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
+import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import LocationCollections from '@/app/components/LocationPage/LocationCollections';
 import { CollapsibleSection } from '@/app/components/Personal/CollapsibleSection';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
@@ -14,6 +15,7 @@ import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/li
 import { getUserPage } from '@/app/lib/api/user';
 import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
 import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
+import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
 
@@ -46,12 +48,14 @@ export default async function UserPage() {
   const principal = await meServer();
   if (!principal) notFound();
 
-  const [collection, savedImages, followedCollectionIds, allCollections] = await Promise.all([
-    getUserPage(),
-    listSavedImagesServer(),
-    listFollowedCollectionIdsServer(),
-    getAllCollections(0, 500),
-  ]);
+  const [collection, savedImages, followedCollectionIds, allCollections, ssrViewport] =
+    await Promise.all([
+      getUserPage(),
+      listSavedImagesServer(),
+      listFollowedCollectionIdsServer(),
+      getAllCollections(0, 500),
+      resolveSsrViewport(),
+    ]);
   if (!collection) notFound();
 
   // `/user/saves/images` already returns the full saved set, so derive the ids from it rather than
@@ -66,6 +70,22 @@ export default async function UserPage() {
   return (
     <PageShell pageType="default" collectionSlug={collection.slug}>
       <h1 className={styles.srOnly}>Your Space</h1>
+
+      {/* Collection "first row": the cover-image + title/description header every collection page
+          shows at the top. Rendered with empty body content + the user collection as collectionData,
+          so the layout pipeline prepends only the header row (createHeaderRow) and no gallery tiles.
+          The cover is the LCP (priorityBlockIndex 0), sized server-side to avoid layout shift; it is
+          an intro, not a gallery tile, so fullscreen viewing is off and it needs no SaveHeart
+          providers. */}
+      <ContentBlockWithFullScreen
+        content={[]}
+        collectionData={collection}
+        priorityBlockIndex={0}
+        enableFullScreenView={false}
+        serverContentWidth={ssrViewport?.contentWidth}
+        serverViewportHeight={ssrViewport?.viewportHeight}
+        serverIsMobile={ssrViewport?.isMobile}
+      />
 
       {/* One MeProvider + SavesProvider wraps every section so SaveHeart renders and toggles
             consistently across the Images and Saved grids (a single source of truth for the saved
