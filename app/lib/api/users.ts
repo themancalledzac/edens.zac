@@ -115,10 +115,11 @@ export async function loginAsUser(userId: number): Promise<void> {
 }
 
 /**
- * Update an existing user's display name and status via the admin endpoint.
+ * Update an existing user's email, display name, status, and description via the admin endpoint.
  *
  * @returns the refreshed `AdminUserSummary`.
  * @throws `ApiError(404)` when the user no longer exists.
+ * @throws `ApiError(409)` when another user already owns the requested email.
  */
 export async function updateUser(id: number, body: UserUpdateRequest): Promise<AdminUserSummary> {
   const result = await fetchAdminPatchJsonApi<AdminUserSummary>(`/users/${id}`, body);

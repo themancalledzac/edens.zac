@@ -48,10 +48,10 @@ export interface MergeResult {
 
 /**
  * Request body for `PATCH /api/admin/users/{id}` — the admin-editable fields. `email` is optional:
- * omitted or blank leaves the login email unchanged; when present the server lowercases it and
- * responds `409 Conflict` if another user already owns it. `displayName` and `description` may be
- * `null` to clear them; `status` is required. `description` is the profile blurb shown on the
- * user's page (max 500 chars).
+ * omitted or empty leaves the login email unchanged (whitespace-only gets a `400` from the
+ * server); when non-empty the server lowercases it and responds `409 Conflict` if another user
+ * already owns it. `displayName` and `description` may be `null` to clear them; `status` is
+ * required. `description` is the profile blurb shown on the user's page (max 500 chars).
  */
 export interface UserUpdateRequest {
   email?: string;

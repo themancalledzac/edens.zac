@@ -4,8 +4,8 @@
  * Create mode: collects email + display name, calls createUser, shows the copyable invite link,
  * and "Done" fires onSuccess. Validation + 409 surface inline (role="alert").
  * Edit mode: prefills fields (email included — it is editable), saves email + displayName +
- * status + description via updateUser, surfaces 409 email conflicts inline, and Cancel fires
- * onCancel.
+ * status + description via updateUser, requires a non-empty email, surfaces 409 email conflicts
+ * inline, and Cancel fires onCancel.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -167,6 +167,18 @@ describe('UserForm', () => {
         });
       });
       expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+
+    it('validates that email is required (no API call, inline error)', async () => {
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: '' } });
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/email is required/i);
+      });
+      expect(mockUpdateUser).not.toHaveBeenCalled();
     });
 
     it('surfaces a 409 email conflict as an "already exists" error and does not fire onSuccess', async () => {
