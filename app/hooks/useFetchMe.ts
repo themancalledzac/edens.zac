@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { me as fetchMe } from '@/app/lib/api/auth';
+import { AUTH_CHANGED_EVENT, me as fetchMe } from '@/app/lib/api/auth';
 import { type MeResponse } from '@/app/types/Auth';
 
 export interface UseFetchMeResult {
@@ -11,8 +11,12 @@ export interface UseFetchMeResult {
 }
 
 /**
- * Fetch the current principal via `me()` once on mount. `loading` is true until the
- * first resolution; `me` is null when logged out (or still loading).
+ * Fetch the current principal via `me()` on mount, and refetch whenever
+ * `AUTH_CHANGED_EVENT` fires on `window` (dispatched by `login()`/`loginWithPasskey()`/
+ * `logout()` in `app/lib/api/auth`) — so always-mounted consumers update on auth
+ * changes without a remount. `loading` is true only until the FIRST resolution;
+ * refetches never flip it back, so consumers don't flash their loading state during
+ * logout/login. `me` is null when logged out (or before the first resolution).
  *
  * This is the client-FETCH counterpart to `MeProvider`/`useMe`, which exposes the
  * server-resolved principal via context. Use this hook for surfaces rendered OUTSIDE
@@ -24,18 +28,30 @@ export function useFetchMe(): UseFetchMeResult {
 
   useEffect(() => {
     let active = true;
-    fetchMe()
-      .then(result => {
-        if (active) setMe(result);
-      })
-      .catch(() => {
-        if (active) setMe(null);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    // Monotonic token: only the newest in-flight request may apply state, so a
+    // stale response from a rapid logout/login pair can never overwrite a newer one.
+    let latestRequest = 0;
+
+    const run = () => {
+      const requestId = ++latestRequest;
+      const isCurrent = () => active && requestId === latestRequest;
+      fetchMe()
+        .then(result => {
+          if (isCurrent()) setMe(result);
+        })
+        .catch(() => {
+          if (isCurrent()) setMe(null);
+        })
+        .finally(() => {
+          if (isCurrent()) setLoading(false);
+        });
+    };
+
+    run();
+    window.addEventListener(AUTH_CHANGED_EVENT, run);
     return () => {
       active = false;
+      window.removeEventListener(AUTH_CHANGED_EVENT, run);
     };
   }, []);
 

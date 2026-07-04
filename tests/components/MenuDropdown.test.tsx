@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { MenuDropdown } from '@/app/components/MenuDropdown/MenuDropdown';
-import { useFetchMe } from '@/app/hooks/useFetchMe';
 import * as authApi from '@/app/lib/api/auth';
+import { type MeResponse } from '@/app/types/Auth';
 
 const mockPush = jest.fn();
 const mockRefresh = jest.fn();
@@ -12,22 +12,23 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
   usePathname: () => mockPathname,
 }));
-jest.mock('@/app/hooks/useFetchMe', () => ({ useFetchMe: jest.fn() }));
-jest.mock('@/app/lib/api/auth', () => ({ logout: jest.fn() }));
+// The real useFetchMe runs in these tests — only the api layer is mocked, so the
+// menu's auth buttons reflect genuine hook behavior. AUTH_CHANGED_EVENT mirrors
+// the real constant, pinned to 'auth-changed' in tests/lib/api/auth.test.ts.
+jest.mock('@/app/lib/api/auth', () => ({
+  AUTH_CHANGED_EVENT: 'auth-changed',
+  me: jest.fn(),
+  logout: jest.fn(),
+}));
 jest.mock('@/app/lib/actions/clearCache', () => ({ clearCacheAction: jest.fn() }));
 jest.mock('@/app/utils/environment', () => ({
   isLocalEnvironment: () => false,
 }));
 
-const mockUseFetchMe = useFetchMe as jest.MockedFunction<typeof useFetchMe>;
+const mockMe = authApi.me as jest.MockedFunction<typeof authApi.me>;
 const mockLogout = authApi.logout as jest.MockedFunction<typeof authApi.logout>;
 
-function setMe(
-  value: { email: string; mfaSatisfied: boolean; galleries: [] } | null,
-  loading = false
-) {
-  mockUseFetchMe.mockReturnValue({ me: value, loading });
-}
+const principal: MeResponse = { email: 'a@b.com', mfaSatisfied: true, galleries: [] };
 
 describe('MenuDropdown — auth actions', () => {
   beforeEach(() => {
@@ -36,13 +37,12 @@ describe('MenuDropdown — auth actions', () => {
   });
 
   it('shows "Log out" when logged in and calls logout + redirects home', async () => {
-    setMe({ email: 'a@b.com', mfaSatisfied: true, galleries: [] });
+    mockMe.mockResolvedValue(principal);
     mockLogout.mockResolvedValue();
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
 
-    const btn = screen.getByRole('button', { name: /log out/i });
-    expect(btn).toBeInTheDocument();
+    const btn = await screen.findByRole('button', { name: /log out/i });
     expect(screen.queryByRole('button', { name: /log in/i })).not.toBeInTheDocument();
 
     fireEvent.click(btn);
@@ -51,21 +51,40 @@ describe('MenuDropdown — auth actions', () => {
     expect(mockRefresh).toHaveBeenCalled();
   });
 
-  it('shows "Log in" when logged out and navigates to /login', () => {
-    setMe(null);
+  it('swaps "Log out" for "Log in" after logout without a remount', async () => {
+    mockMe.mockResolvedValueOnce(principal).mockResolvedValue(null);
+    // Mirror the real logout() contract: dispatch auth-changed on success.
+    mockLogout.mockImplementation(async () => {
+      window.dispatchEvent(new Event(authApi.AUTH_CHANGED_EVENT));
+    });
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
 
-    const btn = screen.getByRole('button', { name: /log in/i });
-    expect(btn).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /log out/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /log in/i })).toBeInTheDocument()
+    );
+    expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
+    expect(mockMe).toHaveBeenCalledTimes(2); // refetched, not remounted
+    expect(mockPush).toHaveBeenCalledWith('/');
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('shows "Log in" when logged out and navigates to /login', async () => {
+    mockMe.mockResolvedValue(null);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+
+    const btn = await screen.findByRole('button', { name: /log in/i });
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
 
     fireEvent.click(btn);
     expect(mockPush).toHaveBeenCalledWith('/login');
   });
 
-  it('shows neither while loading', () => {
-    setMe(null, true);
+  it('shows neither auth button while me() is still resolving', () => {
+    mockMe.mockReturnValue(new Promise<never>(() => {}));
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
 
@@ -73,20 +92,22 @@ describe('MenuDropdown — auth actions', () => {
     expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
   });
 
-  it('shows "Home" off the home page and navigates to /', () => {
-    setMe(null);
+  it('shows "Home" off the home page and navigates to /', async () => {
+    mockMe.mockResolvedValue(null);
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
 
     fireEvent.click(screen.getByRole('button', { name: /^home$/i }));
     expect(mockPush).toHaveBeenCalledWith('/');
   });
 
-  it('hides "Home" when already on the home page', () => {
-    setMe(null);
+  it('hides "Home" when already on the home page', async () => {
+    mockMe.mockResolvedValue(null);
     mockPathname = '/';
 
     render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
 
     expect(screen.queryByRole('button', { name: /^home$/i })).not.toBeInTheDocument();
   });
