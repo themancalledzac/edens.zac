@@ -3,8 +3,9 @@
  *
  * Create mode: collects email + display name, calls createUser, shows the copyable invite link,
  * and "Done" fires onSuccess. Validation + 409 surface inline (role="alert").
- * Edit mode: prefills fields, locks email (readonly), saves displayName + status via updateUser,
- * and Cancel fires onCancel.
+ * Edit mode: prefills fields (email included — it is editable), saves email + displayName +
+ * status + description via updateUser, surfaces 409 email conflicts inline, and Cancel fires
+ * onCancel.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -110,7 +111,7 @@ describe('UserForm', () => {
       description: null,
     };
 
-    it('prefills fields, locks the email, saves displayName + status + description, fires onSuccess', async () => {
+    it('prefills fields with an editable email, saves email + displayName + status + description, fires onSuccess', async () => {
       mockUpdateUser.mockResolvedValue({
         ...user,
         displayName: 'Kenneth',
@@ -122,7 +123,7 @@ describe('UserForm', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       expect(emailInput).toHaveValue('ken@x.com');
-      expect(emailInput).toHaveAttribute('readonly');
+      expect(emailInput).not.toHaveAttribute('readonly');
       expect(screen.getByLabelText(/display name/i)).toHaveValue('Ken');
 
       fireEvent.change(screen.getByLabelText(/display name/i), {
@@ -138,12 +139,50 @@ describe('UserForm', () => {
 
       await waitFor(() => {
         expect(mockUpdateUser).toHaveBeenCalledWith(8, {
+          email: 'ken@x.com',
           displayName: 'Kenneth',
           status: 'ACTIVE',
           description: 'A short bio',
         });
       });
       expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends a changed email in the update payload and fires onSuccess', async () => {
+      mockUpdateUser.mockResolvedValue({ ...user, email: 'kenneth@y.com' });
+
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      fireEvent.change(screen.getByLabelText(/email/i), {
+        target: { value: 'kenneth@y.com' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        expect(mockUpdateUser).toHaveBeenCalledWith(8, {
+          email: 'kenneth@y.com',
+          displayName: 'Ken',
+          status: 'INVITED',
+          description: null,
+        });
+      });
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+    });
+
+    it('surfaces a 409 email conflict as an "already exists" error and does not fire onSuccess', async () => {
+      mockUpdateUser.mockRejectedValue(new ApiError('Conflict', 409));
+
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      fireEvent.change(screen.getByLabelText(/email/i), {
+        target: { value: 'taken@x.com' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/already exists/i);
+      });
+      expect(onSuccess).not.toHaveBeenCalled();
     });
 
     it('Cancel fires onCancel', () => {
