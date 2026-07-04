@@ -3,7 +3,15 @@
  * Mirrors the fetch-mock idiom of tests/lib/api/collections.test.ts.
  */
 
-import { login, loginWithPasskey, logout, me, meServer, registerPasskey } from '@/app/lib/api/auth';
+import {
+  AUTH_CHANGED_EVENT,
+  login,
+  loginWithPasskey,
+  logout,
+  me,
+  meServer,
+  registerPasskey,
+} from '@/app/lib/api/auth';
 import { ApiError, getApiBaseUrl, getServerCookieHeader } from '@/app/lib/api/core';
 import { type MeResponse } from '@/app/types/Auth';
 
@@ -26,8 +34,19 @@ Object.defineProperty(global.navigator, 'credentials', {
   writable: true,
 });
 
+// Observe AUTH_CHANGED_EVENT dispatches. Registered once — jsdom's window is
+// shared across this file and jest.clearAllMocks() resets call history per test.
+const authChangedListener = jest.fn();
+window.addEventListener(AUTH_CHANGED_EVENT, authChangedListener);
+
 beforeEach(() => {
   jest.clearAllMocks();
+});
+
+describe('AUTH_CHANGED_EVENT', () => {
+  it("is the 'auth-changed' contract string client listeners subscribe to", () => {
+    expect(AUTH_CHANGED_EVENT).toBe('auth-changed');
+  });
 });
 
 describe('login', () => {
@@ -60,6 +79,18 @@ describe('login', () => {
     );
   });
 
+  it('dispatches auth-changed on a successful login', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 204,
+      headers: new Headers(),
+    });
+
+    await login('admin@example.com', 'super-secret');
+
+    expect(authChangedListener).toHaveBeenCalledTimes(1);
+  });
+
   it('throws ApiError with status 401 on bad credentials', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
@@ -71,6 +102,7 @@ describe('login', () => {
     const caught = await login('admin@example.com', 'wrong').catch(error => error);
     expect(caught).toBeInstanceOf(ApiError);
     expect((caught as ApiError).status).toBe(401);
+    expect(authChangedListener).not.toHaveBeenCalled();
   });
 
   it('throws ApiError with status 429 when rate-limited', async () => {
@@ -108,7 +140,19 @@ describe('logout', () => {
     );
   });
 
-  it('throws ApiError on a non-OK status', async () => {
+  it('dispatches auth-changed on a successful logout', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 204,
+      headers: new Headers(),
+    });
+
+    await logout();
+
+    expect(authChangedListener).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws ApiError on a non-OK status and does not dispatch auth-changed', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
       status: 500,
@@ -117,6 +161,7 @@ describe('logout', () => {
     });
 
     await expect(logout()).rejects.toMatchObject({ name: 'ApiError', status: 500 });
+    expect(authChangedListener).not.toHaveBeenCalled();
   });
 });
 
@@ -328,6 +373,9 @@ describe('loginWithPasskey', () => {
     expect(finishBody.response.authenticatorData).toBe('rw'); // 0xAF
     expect(finishBody.response.signature).toBe('vw'); // 0xBF
     expect(finishBody.response.userHandle).toBe('AQ'); // 0x01
+
+    // Session established on finish 204 — the auth-changed contract fires once.
+    expect(authChangedListener).toHaveBeenCalledTimes(1);
   });
 
   it('throws ApiError 429 when login/start is rate-limited', async () => {
@@ -343,6 +391,45 @@ describe('loginWithPasskey', () => {
       status: 429,
     });
     expect(mockCredentialsGet).not.toHaveBeenCalled();
+    expect(authChangedListener).not.toHaveBeenCalled();
+  });
+
+  it('does not dispatch auth-changed when login/finish fails', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: jest.fn().mockResolvedValue({
+          challenge: 'Aa-_',
+          allowCredentials: [],
+          rpId: 'localhost',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        headers: new Headers({ 'content-type': 'application/json' }),
+        json: jest.fn().mockResolvedValue({ message: 'Unauthorized' }),
+      });
+
+    mockCredentialsGet.mockResolvedValue({
+      id: 'cred-id',
+      rawId: new Uint8Array([0x01]).buffer,
+      type: 'public-key',
+      response: {
+        clientDataJSON: new Uint8Array([0x01]).buffer,
+        authenticatorData: new Uint8Array([0xaf]).buffer,
+        signature: new Uint8Array([0xbf]).buffer,
+        userHandle: null,
+      },
+    });
+
+    await expect(loginWithPasskey('admin@example.com')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 401,
+    });
+    expect(authChangedListener).not.toHaveBeenCalled();
   });
 
   it('omits userHandle from the finish body when the authenticator returns none', async () => {
@@ -390,9 +477,7 @@ describe('meServer', () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest
-        .fn()
-        .mockResolvedValue({ email: 'c@x.com', mfaSatisfied: true, galleries: [] }),
+      json: jest.fn().mockResolvedValue({ email: 'c@x.com', mfaSatisfied: true, galleries: [] }),
     });
 
     const result = await meServer();

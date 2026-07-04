@@ -13,6 +13,25 @@ import { ApiError, getApiBaseUrl, getServerCookieHeader } from '@/app/lib/api/co
 import { type MeResponse } from '@/app/types/Auth';
 
 /**
+ * Browser event dispatched on `window` whenever a client-side auth call changes the
+ * session — successful `login()`, `loginWithPasskey()`, or `logout()`. Client hooks
+ * that cache the principal (`useFetchMe`) listen for it and refetch, so always-mounted
+ * surfaces (the nav menu) update without a remount or hard refresh.
+ */
+export const AUTH_CHANGED_EVENT = 'auth-changed';
+
+/**
+ * Dispatch {@link AUTH_CHANGED_EVENT}. Success paths only — a failed call must not
+ * poke listeners into refetching, since the session may still be alive server-side.
+ * Window-guarded because this module is also imported in server contexts (`meServer`).
+ */
+function dispatchAuthChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+  }
+}
+
+/**
  * Throw an `ApiError` carrying the backend message (or a status fallback) for a
  * non-OK response. Mirrors the error extraction in `validateClientGalleryAccess`.
  */
@@ -36,8 +55,9 @@ async function throwFromResponse(res: Response): Promise<never> {
 /**
  * Break-glass / bootstrap password login. POSTs `{email, password}` to
  * `/api/proxy/api/auth/login`. Resolves on `204` (the backend sets the
- * `ezac_session` cookie, forwarded by the proxy). Throws `ApiError(401)` on bad
- * credentials and `ApiError(429)` when rate-limited.
+ * `ezac_session` cookie, forwarded by the proxy) and dispatches
+ * {@link AUTH_CHANGED_EVENT} so client listeners refetch the principal. Throws
+ * `ApiError(401)` on bad credentials and `ApiError(429)` when rate-limited.
  */
 export async function login(email: string, password: string): Promise<void> {
   if (!email) throw new Error('email is required');
@@ -52,12 +72,15 @@ export async function login(email: string, password: string): Promise<void> {
   if (!res.ok) {
     await throwFromResponse(res);
   }
+  dispatchAuthChanged();
 }
 
 /**
  * Revoke the current session. POSTs to `/api/proxy/api/auth/logout`; the backend
  * returns `204` and clears the `ezac_session` cookie (forwarded by the proxy).
- * Throws `ApiError` on any non-OK status.
+ * Dispatches {@link AUTH_CHANGED_EVENT} on success so client listeners refetch the
+ * principal. Throws `ApiError` on any non-OK status (without dispatching — the
+ * session may still be alive server-side).
  */
 export async function logout(): Promise<void> {
   const res = await fetch('/api/proxy/api/auth/logout', {
@@ -68,6 +91,7 @@ export async function logout(): Promise<void> {
   if (!res.ok) {
     await throwFromResponse(res);
   }
+  dispatchAuthChanged();
 }
 
 /**
@@ -220,7 +244,8 @@ interface RequestOptionsJSON {
  * assertion ceremony: fetch request options for `email`, decode the base64url
  * binary fields, call `navigator.credentials.get()`, encode the assertion back
  * to base64url, and POST it to `/webauthn/login/finish` (the backend sets the
- * session cookie on `204`). Throws `ApiError` (e.g. `429`) on a non-OK round-trip.
+ * session cookie on `204`). Dispatches {@link AUTH_CHANGED_EVENT} once the finish
+ * step succeeds. Throws `ApiError` (e.g. `429`) on a non-OK round-trip.
  */
 export async function loginWithPasskey(email: string): Promise<void> {
   if (!email) throw new Error('email is required');
@@ -272,6 +297,7 @@ export async function loginWithPasskey(email: string): Promise<void> {
   if (!finishRes.ok) {
     await throwFromResponse(finishRes);
   }
+  dispatchAuthChanged();
 }
 
 /**

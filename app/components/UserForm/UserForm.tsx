@@ -31,14 +31,14 @@ export type UserFormProps =
 /**
  * Reusable inline form for creating or editing a user. In `create` mode it collects email + display
  * name, calls {@link createUser}, then shows the copyable invite link. In `edit` mode it prefills
- * the user's values, locks the email (immutable identity), and saves display name + status via
- * {@link updateUser}. Designed to live inside `UserManagementPanel`'s body, not a modal.
+ * the user's values and saves email (the login identity — the server rejects with 409 if another
+ * user owns it), display name, status, and description via {@link updateUser}. Designed to live
+ * inside `UserManagementPanel`'s body, not a modal.
  */
 export function UserForm(props: UserFormProps) {
   const isEdit = props.mode === 'edit';
   const editUser = isEdit ? props.user : null;
-  const [email] = useState(isEdit ? (props.user.email ?? '') : '');
-  const [emailInput, setEmailInput] = useState('');
+  const [email, setEmail] = useState(isEdit ? (props.user.email ?? '') : '');
   const [displayName, setDisplayName] = useState(isEdit ? (props.user.displayName ?? '') : '');
   const [status, setStatus] = useState<UserStatus>(isEdit ? props.user.status : 'INVITED');
   const [description, setDescription] = useState(isEdit ? (props.user.description ?? '') : '');
@@ -72,15 +72,16 @@ export function UserForm(props: UserFormProps) {
     e.preventDefault();
     setError(null);
 
+    if (!email.trim()) {
+      setError('Email is required.');
+      return;
+    }
+
     if (props.mode === 'create') {
-      if (!emailInput.trim()) {
-        setError('Email is required.');
-        return;
-      }
       try {
         setSubmitting(true);
         const result = await createUser({
-          email: emailInput.trim(),
+          email: email.trim(),
           ...(displayName.trim() ? { displayName: displayName.trim() } : {}),
         });
         setInviteUrl(result.inviteUrl);
@@ -99,17 +100,20 @@ export function UserForm(props: UserFormProps) {
     try {
       setSubmitting(true);
       await updateUser(props.user.id, {
+        email: email.trim(),
         displayName: displayName.trim() ? displayName.trim() : null,
         status,
         description: description.trim() ? description.trim() : null,
       });
       props.onSuccess();
     } catch (error_) {
-      setError(
-        error_ instanceof ApiError && error_.status === 404
-          ? 'This user no longer exists — refresh the list.'
-          : 'Failed to update user. Please try again.'
-      );
+      if (error_ instanceof ApiError && error_.status === 409) {
+        setError('A user with that email already exists.');
+      } else if (error_ instanceof ApiError && error_.status === 404) {
+        setError('This user no longer exists — refresh the list.');
+      } else {
+        setError('Failed to update user. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -137,12 +141,11 @@ export function UserForm(props: UserFormProps) {
         <Input
           id="user-form-email"
           type="email"
-          value={isEdit ? email : emailInput}
-          onChange={e => setEmailInput(e.target.value)}
+          value={email}
+          onChange={e => setEmail(e.target.value)}
           placeholder="client@example.com"
           autoComplete="off"
           disabled={submitting}
-          readOnly={isEdit}
         />
       </Field>
 
