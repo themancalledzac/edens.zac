@@ -4,10 +4,11 @@ import { useFetchMe } from '@/app/hooks/useFetchMe';
 import * as authApi from '@/app/lib/api/auth';
 import { type MeResponse } from '@/app/types/Auth';
 
-// AUTH_CHANGED_EVENT mirrors the real constant — pinned to 'auth-changed' in
-// tests/lib/api/auth.test.ts, which tests the unmocked module.
+// The real AUTH_CHANGED_EVENT constant is passed through so the hook listens on the
+// exact event name production dispatches (also pinned in tests/lib/api/auth.test.ts).
 jest.mock('@/app/lib/api/auth', () => ({
-  AUTH_CHANGED_EVENT: 'auth-changed',
+  AUTH_CHANGED_EVENT: (jest.requireActual('@/app/lib/api/auth') as { AUTH_CHANGED_EVENT: string })
+    .AUTH_CHANGED_EVENT,
   me: jest.fn(),
 }));
 
@@ -112,6 +113,47 @@ describe('useFetchMe', () => {
       resolveFirstRefetch(null);
     });
     expect(result.current.me).toEqual(principal);
+  });
+
+  it('lets a refetch supersede a still-pending mount fetch', async () => {
+    let resolveMount!: (value: MeResponse | null) => void;
+    let resolveRefetch!: (value: MeResponse | null) => void;
+    mockMe
+      .mockImplementationOnce(
+        () =>
+          new Promise<MeResponse | null>(resolve => {
+            resolveMount = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<MeResponse | null>(resolve => {
+            resolveRefetch = resolve;
+          })
+      );
+
+    const { result } = renderHook(() => useFetchMe());
+    expect(result.current.loading).toBe(true);
+
+    dispatchAuthChanged(); // mount fetch still in flight
+
+    // Nothing has settled as the newest request yet — still the initial load.
+    expect(mockMe).toHaveBeenCalledTimes(2);
+    expect(result.current.loading).toBe(true);
+
+    // The refetch (newest) settles: loading converges exactly here.
+    await act(async () => {
+      resolveRefetch(principal);
+    });
+    expect(result.current.me).toEqual(principal);
+    expect(result.current.loading).toBe(false);
+
+    // The stale mount response lands late and must not apply.
+    await act(async () => {
+      resolveMount(null);
+    });
+    expect(result.current.me).toEqual(principal);
+    expect(result.current.loading).toBe(false);
   });
 
   it('removes the auth-changed listener on unmount', async () => {

@@ -42,6 +42,8 @@ export function UserManagementPanel() {
     try {
       await loginAsUser(userId);
       // Full navigation so the freshly-set ezac_session cookie is used for the /user server render.
+      // Also doubles as the auth-state refresh: loginAsUser does NOT dispatch AUTH_CHANGED_EVENT,
+      // so swapping this for router.push would resurrect the stale-menu bug (useFetchMe never refetches).
       window.location.assign('/user');
     } catch (error) {
       logger.error('UserManagementPanel', 'impersonation failed', error, { userId });

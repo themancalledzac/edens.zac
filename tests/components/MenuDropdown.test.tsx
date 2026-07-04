@@ -13,10 +13,11 @@ jest.mock('next/navigation', () => ({
   usePathname: () => mockPathname,
 }));
 // The real useFetchMe runs in these tests — only the api layer is mocked, so the
-// menu's auth buttons reflect genuine hook behavior. AUTH_CHANGED_EVENT mirrors
-// the real constant, pinned to 'auth-changed' in tests/lib/api/auth.test.ts.
+// menu's auth buttons reflect genuine hook behavior. The real AUTH_CHANGED_EVENT
+// constant is passed through (also pinned in tests/lib/api/auth.test.ts).
 jest.mock('@/app/lib/api/auth', () => ({
-  AUTH_CHANGED_EVENT: 'auth-changed',
+  AUTH_CHANGED_EVENT: (jest.requireActual('@/app/lib/api/auth') as { AUTH_CHANGED_EVENT: string })
+    .AUTH_CHANGED_EVENT,
   me: jest.fn(),
   logout: jest.fn(),
 }));
