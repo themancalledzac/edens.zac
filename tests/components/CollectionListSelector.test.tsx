@@ -865,3 +865,68 @@ describe('drag-and-drop retype', () => {
     expect(p1Row).not.toHaveAttribute('draggable', 'true');
   });
 });
+
+describe('derived tag-view rows', () => {
+  const derivedRow: CollectionListModel = {
+    id: -99,
+    name: 'Sunsets',
+    slug: 'sunsets',
+    type: 'PARENT',
+    derived: true,
+  };
+
+  const baseProps = {
+    allCollections: [derivedRow],
+    savedCollectionIds: new Set<number>(),
+    pendingAddIds: new Set<number>(),
+    pendingRemoveIds: new Set<number>(),
+    onToggle: jest.fn(),
+    // parentMode engages accordion; derived rows land in the PARENT section.
+    parentSavedIds: new Set<number>(),
+    parentPendingAddIds: new Set<number>(),
+    parentPendingRemoveIds: new Set<number>(),
+    onToggleParent: jest.fn(),
+  };
+
+  beforeEach(() => jest.clearAllMocks());
+
+  // The literal "Parent" text collides with the column header span, so expand the
+  // accordion PARENT section via its header button (accessible name includes "(1)").
+  const expandParentSection = () =>
+    fireEvent.click(screen.getByRole('button', { name: /Parent \(1\)/ }));
+
+  it('renders the derived row read-only (toggles disabled) and never fires toggle handlers', () => {
+    const onToggle = jest.fn();
+    const onToggleParent = jest.fn();
+    render(
+      <CollectionListSelector
+        {...baseProps}
+        onToggle={onToggle}
+        onToggleParent={onToggleParent}
+        onSaveDerived={jest.fn()}
+      />
+    );
+    expandParentSection();
+    const childToggle = screen.getByLabelText('Toggle child Sunsets');
+    expect(childToggle.className).toContain('disabled');
+    fireEvent.click(childToggle);
+    fireEvent.click(screen.getByLabelText('Toggle parent Sunsets'));
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(onToggleParent).not.toHaveBeenCalled();
+  });
+
+  it('fires onSaveDerived with the row when the Save as Collection action is clicked', () => {
+    const onSaveDerived = jest.fn();
+    render(<CollectionListSelector {...baseProps} onSaveDerived={onSaveDerived} />);
+    expandParentSection();
+    fireEvent.click(screen.getByText('Save as Collection'));
+    expect(onSaveDerived).toHaveBeenCalledTimes(1);
+    expect(onSaveDerived).toHaveBeenCalledWith(derivedRow);
+  });
+
+  it('omits the Save as Collection action when onSaveDerived is not provided', () => {
+    render(<CollectionListSelector {...baseProps} />);
+    expandParentSection();
+    expect(screen.queryByText('Save as Collection')).not.toBeInTheDocument();
+  });
+});

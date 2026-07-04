@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { FollowButton } from '@/app/components/Personal/FollowButton';
 import { useParallax } from '@/app/hooks/useParallax';
 import { type CollectionModel } from '@/app/types/Collection';
 import { pickImageDimensions } from '@/app/utils/contentTypeGuards';
@@ -38,6 +39,7 @@ function CollectionCard({ collection }: CollectionCardProps) {
           <span className={styles.title}>{collection.title}</span>
         </div>
       </Link>
+      <FollowButton collectionId={collection.id} />
     </div>
   );
 }

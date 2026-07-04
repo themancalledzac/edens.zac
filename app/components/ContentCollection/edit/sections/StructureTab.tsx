@@ -1,19 +1,30 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import CollectionListSelector from '@/app/components/CollectionListSelector/CollectionListSelector';
 import RatingStars from '@/app/components/RatingStars/RatingStars';
+import SaveAsCollectionModal from '@/app/components/SaveAsCollectionModal/SaveAsCollectionModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { Select } from '@/app/components/ui/Field/Select';
-import { type DisplayMode } from '@/app/types/Collection';
+import {
+  type CollectionListModel,
+  type DisplayMode,
+  type TagViewModel,
+} from '@/app/types/Collection';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
 
 import { type UseCollectionEditResult } from '../useCollectionEdit';
 import styles from './StructureTab.module.scss';
+
+/** Type guard for synthetic tag-view selector rows. */
+function isTagViewRow(row: CollectionListModel): row is TagViewModel {
+  return row.derived === true && 'sourceTagId' in row;
+}
 
 interface StructureTabProps {
   edit: UseCollectionEditResult;
@@ -28,7 +39,8 @@ export function StructureTab({ edit }: StructureTabProps) {
     updateData,
     setUpdateField,
     isParent,
-    allCollections,
+    allCollectionsWithTagViews,
+    saveTagAsCollection,
     handleChangeType,
     childIds,
     handleChildToggle,
@@ -45,6 +57,8 @@ export function StructureTab({ edit }: StructureTabProps) {
   const collection = currentState?.collection;
   const collectionSlug = collection?.slug;
   const isHomeCollection = collectionSlug === 'home';
+
+  const [pendingTagView, setPendingTagView] = useState<TagViewModel | null>(null);
 
   return (
     <div className={styles.tabPanel}>
@@ -115,7 +129,7 @@ export function StructureTab({ edit }: StructureTabProps) {
       )}
 
       <CollectionListSelector
-        allCollections={allCollections}
+        allCollections={allCollectionsWithTagViews}
         savedCollectionIds={childIds.saved}
         pendingAddIds={childIds.pendingAdd}
         pendingRemoveIds={childIds.pendingRemove}
@@ -139,7 +153,21 @@ export function StructureTab({ edit }: StructureTabProps) {
         parentPendingRemoveIds={parentIds.pendingRemove}
         onToggleParent={handleParentToggle}
         onChangeType={handleChangeType}
+        onSaveDerived={col => {
+          if (isTagViewRow(col)) setPendingTagView(col);
+        }}
       />
+
+      {pendingTagView && (
+        <SaveAsCollectionModal
+          tagName={pendingTagView.name}
+          onClose={() => setPendingTagView(null)}
+          onConfirm={async body => {
+            await saveTagAsCollection(pendingTagView.sourceTagId, body);
+            setPendingTagView(null);
+          }}
+        />
+      )}
 
       {isHomeCollection && (collection?.content?.some(isContentCollection) ?? false) && (
         <section aria-labelledby="edit-sheet-children-rating-heading" className={styles.formGroup}>

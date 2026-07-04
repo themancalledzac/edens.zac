@@ -23,6 +23,16 @@
   overflow-y: auto;
 }
 
+/* Embedded context (e.g. the send-message modal): size to content with a compact
+   textarea instead of the dropdown's viewport-derived full height. */
+.formWrapperEmbedded {
+  height: auto;
+
+  .messageTextarea {
+    min-height: 200px;
+  }
+}
+
 .statusRegion {
   min-height: 0;
 }

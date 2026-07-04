@@ -124,6 +124,8 @@ function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollecti
     handleTagsChange: jest.fn(),
 
     allCollections: [] as CollectionListModel[],
+    allCollectionsWithTagViews: [] as CollectionListModel[],
+    saveTagAsCollection: jest.fn(),
     handleChangeType: jest.fn(),
     childIds: emptyTriple,
     handleChildToggle: jest.fn(),

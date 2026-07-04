@@ -1,0 +1,218 @@
+/**
+ * Unit tests for the per-user "Your Space" API module (saves + follows). Mirrors the fetch-mock
+ * idiom of tests/lib/api/selects.test.ts: a global fetch mock, assert the proxy URL + RequestInit,
+ * and verify ApiError propagation on non-OK responses. Server readers use a mocked `fetchReadApi`.
+ */
+
+import { ApiError, fetchReadApi } from '@/app/lib/api/core';
+import {
+  addFollow,
+  addSave,
+  listFollowedCollectionIdsServer,
+  listSavedImageIdsServer,
+  listSavedImagesServer,
+  removeFollow,
+  removeSave,
+} from '@/app/lib/api/personal';
+import { type ContentImageModel } from '@/app/types/Content';
+import { logger } from '@/app/utils/logger';
+
+// Keep ApiError real (client-fetch specs assert on the real error class) while making the server
+// reader `fetchReadApi` a controllable mock for the server-seed specs.
+jest.mock('@/app/lib/api/core', () => ({
+  ...jest.requireActual('@/app/lib/api/core'),
+  fetchReadApi: jest.fn(),
+}));
+
+// The empty-on-error reader logs non-401 failures via the project logger (silenced in the test
+// env), so assert on the mocked logger.warn rather than a bare console.warn.
+jest.mock('@/app/utils/logger', () => ({
+  logger: { error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+}));
+
+const fetchReadApiMock = fetchReadApi as jest.Mock;
+const warnMock = logger.warn as jest.Mock;
+
+global.fetch = jest.fn();
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  jest.clearAllMocks();
+  (global.fetch as jest.Mock).mockReset();
+});
+
+describe('addSave', () => {
+  it('POSTs the imageId to the proxy and resolves on 201', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 201,
+      headers: new Headers(),
+    });
+
+    await expect(addSave(42)).resolves.toBeUndefined();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/proxy/api/read/user/saves',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageId: 42 }),
+        cache: 'no-store',
+      })
+    );
+  });
+
+  it('throws ApiError on a non-OK response', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 401,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ message: 'unauthorized' }),
+    });
+
+    await expect(addSave(42)).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+describe('removeSave', () => {
+  it('DELETEs by image id and resolves on 204', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 204,
+      headers: new Headers(),
+    });
+
+    await expect(removeSave(42)).resolves.toBeUndefined();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/proxy/api/read/user/saves/42',
+      expect.objectContaining({
+        method: 'DELETE',
+        credentials: 'same-origin',
+        cache: 'no-store',
+      })
+    );
+  });
+});
+
+describe('addFollow', () => {
+  it('POSTs the collectionId to the proxy and resolves on 201', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 201,
+      headers: new Headers(),
+    });
+
+    await expect(addFollow(7)).resolves.toBeUndefined();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/proxy/api/read/user/follows',
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collectionId: 7 }),
+        cache: 'no-store',
+      })
+    );
+  });
+});
+
+describe('removeFollow', () => {
+  it('DELETEs by collection id and resolves on 204', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 204,
+      headers: new Headers(),
+    });
+
+    await expect(removeFollow(7)).resolves.toBeUndefined();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/proxy/api/read/user/follows/7',
+      expect.objectContaining({
+        method: 'DELETE',
+        credentials: 'same-origin',
+        cache: 'no-store',
+      })
+    );
+  });
+});
+
+describe('module exports', () => {
+  it('exposes ApiError for callers', () => {
+    expect(ApiError).toBeDefined();
+  });
+});
+
+describe('listSavedImageIdsServer', () => {
+  it('returns the ids from fetchReadApi', async () => {
+    fetchReadApiMock.mockResolvedValueOnce([42, 43]);
+    await expect(listSavedImageIdsServer()).resolves.toEqual([42, 43]);
+  });
+
+  it('returns [] when fetchReadApi returns null (204)', async () => {
+    fetchReadApiMock.mockResolvedValueOnce(null);
+    await expect(listSavedImageIdsServer()).resolves.toEqual([]);
+  });
+
+  it('returns [] when fetchReadApi throws (e.g. anonymous 401)', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
+    await expect(listSavedImageIdsServer()).resolves.toEqual([]);
+  });
+});
+
+describe('listSavedImagesServer', () => {
+  const image = (id: number): ContentImageModel =>
+    ({
+      id,
+      contentType: 'IMAGE',
+      imageUrl: `https://cdn.example.com/${id}.jpg`,
+    }) as ContentImageModel;
+
+  it('returns the images from fetchReadApi', async () => {
+    const images = [image(42), image(43)];
+    fetchReadApiMock.mockResolvedValueOnce(images);
+    await expect(listSavedImagesServer()).resolves.toEqual(images);
+    expect(fetchReadApiMock).toHaveBeenCalledWith('/user/saves/images');
+  });
+
+  it('returns [] when fetchReadApi returns null (204)', async () => {
+    fetchReadApiMock.mockResolvedValueOnce(null);
+    await expect(listSavedImagesServer()).resolves.toEqual([]);
+  });
+
+  it('returns [] silently on 401 (anonymous) without warning', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
+    await expect(listSavedImagesServer()).resolves.toEqual([]);
+    expect(warnMock).not.toHaveBeenCalled();
+  });
+
+  it('returns [] but logs a warning on a non-401 failure (e.g. stale-backend 404)', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('not found', 404));
+    await expect(listSavedImagesServer()).resolves.toEqual([]);
+    expect(warnMock).toHaveBeenCalledWith(
+      'personal',
+      expect.stringContaining('status 404'),
+      expect.objectContaining({ error: expect.any(ApiError) })
+    );
+  });
+});
+
+describe('listFollowedCollectionIdsServer', () => {
+  it('returns the ids from fetchReadApi', async () => {
+    fetchReadApiMock.mockResolvedValueOnce([3, 5]);
+    await expect(listFollowedCollectionIdsServer()).resolves.toEqual([3, 5]);
+  });
+
+  it('returns [] when fetchReadApi returns null', async () => {
+    fetchReadApiMock.mockResolvedValueOnce(null);
+    await expect(listFollowedCollectionIdsServer()).resolves.toEqual([]);
+  });
+
+  it('returns [] when fetchReadApi throws (anonymous 401)', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
+    await expect(listFollowedCollectionIdsServer()).resolves.toEqual([]);
+  });
+});

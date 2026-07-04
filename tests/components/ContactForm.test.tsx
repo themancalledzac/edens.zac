@@ -265,4 +265,63 @@ describe('ContactForm', () => {
     render(<ContactForm {...defaultProps} />);
     expect(screen.getByRole('status')).toBeInTheDocument();
   });
+
+  describe('lockedEmail (user-page autofill)', () => {
+    it('hides the email field when lockedEmail is provided', () => {
+      render(<ContactForm lockedEmail="me@example.com" />);
+      expect(screen.queryByPlaceholderText('Your email')).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Email')).not.toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Your message')).toBeInTheDocument();
+    });
+
+    it('submits the locked email with the typed message', async () => {
+      mockSubmit.mockResolvedValue({ ok: true, id: 1, createdAt: '2026-04-19T10:00:00Z' });
+      render(<ContactForm lockedEmail="me@example.com" />);
+
+      fireEvent.change(screen.getByPlaceholderText('Your message'), {
+        target: { value: 'Hi there' },
+      });
+      fireEvent.submit(screen.getByRole('form'));
+
+      await waitFor(() =>
+        expect(mockSubmit).toHaveBeenCalledWith({
+          email: 'me@example.com',
+          message: 'Hi there',
+        })
+      );
+    });
+
+    it('keeps the locked email and clears the message after a successful send', async () => {
+      mockSubmit.mockResolvedValue({ ok: true, id: 1, createdAt: '2026-04-19T10:00:00Z' });
+      render(<ContactForm lockedEmail="me@example.com" />);
+
+      const messageInput = screen.getByPlaceholderText('Your message') as HTMLTextAreaElement;
+      fireEvent.change(messageInput, { target: { value: 'First message' } });
+      fireEvent.submit(screen.getByRole('form'));
+
+      await waitFor(() => expect(messageInput.value).toBe(''));
+
+      fireEvent.change(messageInput, { target: { value: 'Second message' } });
+      fireEvent.submit(screen.getByRole('form'));
+
+      await waitFor(() =>
+        expect(mockSubmit).toHaveBeenLastCalledWith({
+          email: 'me@example.com',
+          message: 'Second message',
+        })
+      );
+    });
+
+    it('works without an onSubmit callback', async () => {
+      mockSubmit.mockResolvedValue({ ok: true, id: 1, createdAt: '2026-04-19T10:00:00Z' });
+      render(<ContactForm lockedEmail="me@example.com" />);
+
+      fireEvent.change(screen.getByPlaceholderText('Your message'), {
+        target: { value: 'No callback' },
+      });
+      fireEvent.submit(screen.getByRole('form'));
+
+      await waitFor(() => expect(screen.getByText('Message sent!')).toBeInTheDocument());
+    });
+  });
 });

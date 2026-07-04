@@ -45,6 +45,7 @@ import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
 import ReorderOverlay from './ReorderOverlay';
+import { SaveHeart } from './SaveHeart';
 import { SelectStar } from './SelectStar';
 
 /**
@@ -579,6 +580,10 @@ export default function CollectionContentRenderer({
   // where no SelectsProvider is mounted) it resolves to null.
   const selectStar = contentType === 'IMAGE' ? <SelectStar contentId={contentId} /> : null;
 
+  // Save (bookmark) heart. SaveHeart self-gates on any logged-in viewer + an active SavesProvider;
+  // resolves to null for anonymous viewers or where no SavesProvider is mounted.
+  const saveHeart = contentType === 'IMAGE' ? <SaveHeart contentId={contentId} /> : null;
+
   const isNotVisible =
     contentType === 'IMAGE' &&
     checkImageVisibility(
@@ -689,6 +694,7 @@ export default function CollectionContentRenderer({
             shouldShowOverlay={shouldShowOverlay}
             isSelected={isSelected}
             star={selectStar}
+            save={saveHeart}
           />
         )}
       </Tile>
@@ -720,6 +726,7 @@ export default function CollectionContentRenderer({
           shouldShowOverlay={shouldShowOverlay}
           isSelected={isSelected}
           star={selectStar}
+          save={saveHeart}
         />
       )}
       {isReorderMode &&

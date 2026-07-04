@@ -29,6 +29,8 @@ interface ContentCollectionPageProps {
   me?: MeResponse | null;
   /** The viewer's persisted selected image ids for this collection (client galleries only). */
   initialSelectedIds?: number[];
+  /** The viewer's GLOBAL saved (bookmarked) image ids, seeded server-side. Cross-collection. */
+  initialSavedImageIds?: number[];
 }
 
 /**
@@ -101,6 +103,7 @@ export default function CollectionPage({
   editMode = false,
   me = null,
   initialSelectedIds = [],
+  initialSavedImageIds = [],
 }: ContentCollectionPageProps) {
   // Single collection: delegate to client component for filter support
   if (!Array.isArray(collection)) {
@@ -121,6 +124,7 @@ export default function CollectionPage({
             editMode={editMode}
             me={me}
             initialSelectedIds={initialSelectedIds}
+            initialSavedImageIds={initialSavedImageIds}
           />
         </main>
       </div>

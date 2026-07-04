@@ -13,11 +13,22 @@ import styles from './ContactForm.module.scss';
 type Status = 'idle' | 'submitting' | 'success' | 'error';
 
 interface ContactFormProps {
-  onSubmit: () => void;
+  /** Called after a successful send (e.g. the dropdown closes itself). Optional. */
+  onSubmit?: () => void;
+  /**
+   * When provided, the email field is hidden and this address is submitted as-is —
+   * used on the /user page where the signed-in user's email autofills the form.
+   */
+  lockedEmail?: string;
+  /**
+   * Render at natural/compact height instead of the dropdown's viewport-derived height.
+   * Set by consumers that embed the form in a bounded container (e.g. the send-message modal).
+   */
+  embedded?: boolean;
 }
 
-export function ContactForm({ onSubmit }: ContactFormProps) {
-  const [email, setEmail] = useState('');
+export function ContactForm({ onSubmit, lockedEmail, embedded = false }: ContactFormProps) {
+  const [email, setEmail] = useState(lockedEmail ?? '');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorResult, setErrorResult] = useState<Extract<ContactResult, { ok: false }> | null>(
@@ -32,10 +43,11 @@ export function ContactForm({ onSubmit }: ContactFormProps) {
     const result = await submitContactMessage({ email, message });
 
     if (result.ok) {
-      setEmail('');
+      // A locked email persists across sends; a typed one clears for the next message.
+      setEmail(lockedEmail ?? '');
       setMessage('');
       setStatus('success');
-      onSubmit();
+      onSubmit?.();
     } else {
       setStatus('error');
       setErrorResult(result);
@@ -44,7 +56,7 @@ export function ContactForm({ onSubmit }: ContactFormProps) {
 
   return (
     <div className={styles.contactFormContainer}>
-      <div className={styles.formWrapper}>
+      <div className={`${styles.formWrapper} ${embedded ? styles.formWrapperEmbedded : ''}`}>
         <div className={styles.statusRegion} role="status" aria-live="polite">
           {status === 'success' && (
             <div className={`${styles.statusBanner} ${styles.statusBannerSuccess}`}>
@@ -58,18 +70,20 @@ export function ContactForm({ onSubmit }: ContactFormProps) {
           )}
         </div>
         <form aria-label="contact form" className={styles.contactForm} onSubmit={handleSubmit}>
-          <Field label="Email" htmlFor="contact-email">
-            <Input
-              id="contact-email"
-              type="email"
-              name="email"
-              placeholder="Your email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              maxLength={320}
-              required
-            />
-          </Field>
+          {!lockedEmail && (
+            <Field label="Email" htmlFor="contact-email">
+              <Input
+                id="contact-email"
+                type="email"
+                name="email"
+                placeholder="Your email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                maxLength={320}
+                required
+              />
+            </Field>
+          )}
           <Field label="Message" htmlFor="contact-message" className={styles.messageField}>
             <Textarea
               id="contact-message"

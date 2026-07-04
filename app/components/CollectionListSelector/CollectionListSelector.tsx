@@ -107,6 +107,11 @@ interface CollectionListSelectorProps {
    * gated solely behind drag-and-drop.
    */
   onChangeType?: (collection: CollectionListModel, targetType: CollectionType) => void;
+  /**
+   * Save a synthetic (`derived`) tag-view row as a real collection. When provided, derived rows
+   * render read-only with a "Save as Collection" action instead of participating in toggles.
+   */
+  onSaveDerived?: (collection: CollectionListModel) => void;
 }
 
 function getCheckboxState(
@@ -140,6 +145,7 @@ export default function CollectionListSelector({
   parentPendingRemoveIds,
   onToggleParent,
   onChangeType,
+  onSaveDerived,
   grouped,
 }: CollectionListSelectorProps) {
   const [hoveredChildId, setHoveredChildId] = useState<number | null>(null);
@@ -311,6 +317,9 @@ export default function CollectionListSelector({
     };
     const isCurrent = currentCollectionId != null && collection.id === currentCollectionId;
     const currentReason = "This is the collection you're editing — it can't be related to itself.";
+    // Synthetic tag-view rows are read-only until promoted; they never participate in toggles.
+    const isDerived = collection.derived === true;
+    const derivedReason = 'Tag view — Save as Collection to make it permanent';
     if (siblingMode || parentMode || grouped) {
       const isActivelyChild =
         (savedCollectionIds.has(collection.id) && !pendingRemoveIds.has(collection.id)) ||
@@ -326,10 +335,12 @@ export default function CollectionListSelector({
         'A collection cannot be both a parent and a child of the same collection.';
 
       let childReason: string | undefined;
-      if (isCurrent) childReason = currentReason;
+      if (isDerived) childReason = derivedReason;
+      else if (isCurrent) childReason = currentReason;
       else if (childDisabled) childReason = disabledReason;
       let parentReason: string | undefined;
-      if (isCurrent) parentReason = currentReason;
+      if (isDerived) parentReason = derivedReason;
+      else if (isCurrent) parentReason = currentReason;
       else if (parentDisabled) parentReason = disabledReason;
 
       const siblingSelection: SelectionState = {
@@ -344,7 +355,14 @@ export default function CollectionListSelector({
       };
 
       let nameElement: ReactNode;
-      if (isCurrent) {
+      if (isDerived) {
+        nameElement = (
+          <span className={styles.name}>
+            {collection.name}
+            <span className={styles.currentTag}>(tag)</span>
+          </span>
+        );
+      } else if (isCurrent) {
         nameElement = (
           <span className={styles.name}>
             {collection.name}
@@ -367,7 +385,7 @@ export default function CollectionListSelector({
       }
 
       const isHome = collection.type === CollectionType.HOME;
-      const rowDraggable = dragEnabled && !isCurrent && !isHome;
+      const rowDraggable = dragEnabled && !isCurrent && !isHome && !isDerived;
 
       return (
         <div
@@ -380,6 +398,16 @@ export default function CollectionListSelector({
           onDragEnd={rowDraggable ? handleRowDragEnd : undefined}
         >
           {nameElement}
+          {isDerived && onSaveDerived && (
+            <button
+              type="button"
+              className={styles.saveDerivedButton}
+              onClick={() => onSaveDerived(collection)}
+              title={derivedReason}
+            >
+              Save as Collection
+            </button>
+          )}
           {siblingMode && (
             <span className={`${styles.toggleCell} ${styles.toggleCellSibling}`}>
               {renderCheckbox(
@@ -389,8 +417,8 @@ export default function CollectionListSelector({
                 hoveredSiblingId,
                 setHoveredSiblingId,
                 `Toggle sibling ${collection.name}`,
-                isCurrent,
-                isCurrent ? currentReason : undefined
+                isCurrent || isDerived,
+                isDerived ? derivedReason : (isCurrent ? currentReason : undefined)
               )}
             </span>
           )}
@@ -402,7 +430,7 @@ export default function CollectionListSelector({
               hoveredChildId,
               setHoveredChildId,
               `Toggle child ${collection.name}`,
-              isCurrent || childDisabled,
+              isCurrent || childDisabled || isDerived,
               childReason
             )}
           </span>
@@ -415,7 +443,7 @@ export default function CollectionListSelector({
                 hoveredParentId,
                 setHoveredParentId,
                 `Toggle parent ${collection.name}`,
-                isCurrent || parentDisabled,
+                isCurrent || parentDisabled || isDerived,
                 parentReason
               )}
             </span>
