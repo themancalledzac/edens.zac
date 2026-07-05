@@ -81,6 +81,10 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   // The backend `hasRole('ADMIN')` on the `ezac_session` cookie stays authoritative;
   // this is a cheap early reject + defense in depth. `api/dev/**` is exempt (dev-only,
   // @Profile-gated on the backend) and dev is unaffected (localhost admin has no login).
+  // The `startsWith('api/admin/')` match below is intentionally exact/case-sensitive
+  // (an odd-cased or bare `api/admin` path is not caught here) — that's acceptable
+  // because this check is NOT the real gate; the backend's `hasRole('ADMIN')`
+  // authorizes every request regardless of what this early check catches.
   const resolvedPath = pathParts.join('/').replace(/^\/+/, '');
   if (
     process.env.NODE_ENV === 'production' &&
