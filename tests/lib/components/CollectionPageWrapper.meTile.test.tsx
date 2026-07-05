@@ -57,7 +57,12 @@ describe('CollectionPageWrapper — Me tile injection', () => {
   });
 
   it('injects the Me tile at index 1 of home content for a logged-in viewer', async () => {
-    mockMeServer.mockResolvedValue({ email: 'a@b.com', mfaSatisfied: true, galleries: [] });
+    mockMeServer.mockResolvedValue({
+      email: 'a@b.com',
+      isAdmin: false,
+      mfaSatisfied: true,
+      galleries: [],
+    });
     mockGetUserPage.mockResolvedValue({
       ...homeCollection(),
       coverImage: {
@@ -82,7 +87,12 @@ describe('CollectionPageWrapper — Me tile injection', () => {
   });
 
   it('injects a placeholder Me tile when getUserPage() returns null for a logged-in viewer', async () => {
-    mockMeServer.mockResolvedValue({ email: 'a@b.com', mfaSatisfied: true, galleries: [] });
+    mockMeServer.mockResolvedValue({
+      email: 'a@b.com',
+      isAdmin: false,
+      mfaSatisfied: true,
+      galleries: [],
+    });
     mockGetUserPage.mockResolvedValue(null);
     mockGetCollectionBySlug.mockResolvedValue(homeCollection());
 
@@ -107,7 +117,12 @@ describe('CollectionPageWrapper — Me tile injection', () => {
   });
 
   it('does NOT inject the Me tile on a non-home slug even when logged in', async () => {
-    mockMeServer.mockResolvedValue({ email: 'a@b.com', mfaSatisfied: true, galleries: [] });
+    mockMeServer.mockResolvedValue({
+      email: 'a@b.com',
+      isAdmin: false,
+      mfaSatisfied: true,
+      galleries: [],
+    });
     mockGetCollectionBySlug.mockResolvedValue(homeCollection({ slug: 'portfolio' }));
 
     const element = await CollectionPageWrapper({ slug: 'portfolio' });

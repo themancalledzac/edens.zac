@@ -1,98 +1,58 @@
-import { hasValidAdminAuth, isAdminRoutesEnabled, requireAdmin } from '@/app/utils/admin';
+import { redirect } from 'next/navigation';
 
-function createMockRequest(options: { headerToken?: string; cookieToken?: string }) {
+import { meServer } from '@/app/lib/api/auth';
+import { type MeResponse } from '@/app/types/Auth';
+import { requireAdmin } from '@/app/utils/admin';
+
+jest.mock('next/navigation', () => ({
+  // `redirect` throws a NEXT_REDIRECT sentinel in real Next so control never
+  // falls through; mimic that so tests can assert the throw AND that no code
+  // after the redirect runs.
+  redirect: jest.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT:${url}`);
+  }),
+}));
+
+jest.mock('@/app/lib/api/auth', () => ({
+  meServer: jest.fn(),
+}));
+
+const mockMeServer = meServer as jest.MockedFunction<typeof meServer>;
+const mockRedirect = redirect as jest.MockedFunction<typeof redirect>;
+
+function principal(overrides: Partial<MeResponse> = {}): MeResponse {
   return {
-    headers: {
-      get: (name: string) => (name === 'x-admin-token' ? (options.headerToken ?? null) : null),
-    },
-    cookies: {
-      get: (name: string) =>
-        name === 'admin_token' && options.cookieToken ? { value: options.cookieToken } : undefined,
-    },
-  } as unknown as Parameters<typeof hasValidAdminAuth>[0];
+    email: 'user@example.com',
+    isAdmin: false,
+    mfaSatisfied: true,
+    galleries: [],
+    ...overrides,
+  };
 }
 
-const originalEnv = process.env;
-
-beforeEach(() => {
-  process.env = { ...originalEnv };
-});
-
-afterAll(() => {
-  process.env = originalEnv;
-});
-
 describe('requireAdmin', () => {
-  it('resolves to undefined (non-enforcing today)', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('resolves without redirecting for an admin principal', async () => {
+    mockMeServer.mockResolvedValue(principal({ isAdmin: true }));
+
     await expect(requireAdmin()).resolves.toBeUndefined();
-  });
-});
-
-describe('isAdminRoutesEnabled', () => {
-  it('returns true when ADMIN_ROUTES_ENABLED is "true"', () => {
-    process.env.ADMIN_ROUTES_ENABLED = 'true';
-    expect(isAdminRoutesEnabled()).toBe(true);
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it('returns false when ADMIN_ROUTES_ENABLED is "false"', () => {
-    process.env.ADMIN_ROUTES_ENABLED = 'false';
-    expect(isAdminRoutesEnabled()).toBe(false);
+  it('redirects to /login for a logged-in non-admin', async () => {
+    mockMeServer.mockResolvedValue(principal({ isAdmin: false }));
+
+    await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT:/login');
+    expect(mockRedirect).toHaveBeenCalledWith('/login');
   });
 
-  it('returns false when ADMIN_ROUTES_ENABLED is undefined', () => {
-    delete process.env.ADMIN_ROUTES_ENABLED;
-    expect(isAdminRoutesEnabled()).toBe(false);
-  });
+  it('redirects to /login when anonymous (meServer returns null)', async () => {
+    mockMeServer.mockResolvedValue(null);
 
-  it('returns false when ADMIN_ROUTES_ENABLED is an empty string', () => {
-    process.env.ADMIN_ROUTES_ENABLED = '';
-    expect(isAdminRoutesEnabled()).toBe(false);
-  });
-});
-
-describe('hasValidAdminAuth', () => {
-  it('returns true when no ADMIN_TOKEN is configured (feature-flag only)', () => {
-    delete process.env.ADMIN_TOKEN;
-    const request = createMockRequest({});
-    expect(hasValidAdminAuth(request)).toBe(true);
-  });
-
-  it('returns true when header token matches ADMIN_TOKEN', () => {
-    process.env.ADMIN_TOKEN = 'secret123';
-    const request = createMockRequest({ headerToken: 'secret123' });
-    expect(hasValidAdminAuth(request)).toBe(true);
-  });
-
-  it('returns false when header token does not match ADMIN_TOKEN', () => {
-    process.env.ADMIN_TOKEN = 'secret123';
-    const request = createMockRequest({ headerToken: 'wrong-token' });
-    expect(hasValidAdminAuth(request)).toBe(false);
-  });
-
-  it('returns true when cookie token matches ADMIN_TOKEN', () => {
-    process.env.ADMIN_TOKEN = 'secret123';
-    const request = createMockRequest({ cookieToken: 'secret123' });
-    expect(hasValidAdminAuth(request)).toBe(true);
-  });
-
-  it('returns false when cookie token does not match ADMIN_TOKEN', () => {
-    process.env.ADMIN_TOKEN = 'secret123';
-    const request = createMockRequest({ cookieToken: 'wrong-cookie' });
-    expect(hasValidAdminAuth(request)).toBe(false);
-  });
-
-  it('returns false when no token is provided but ADMIN_TOKEN is set', () => {
-    process.env.ADMIN_TOKEN = 'secret123';
-    const request = createMockRequest({});
-    expect(hasValidAdminAuth(request)).toBe(false);
-  });
-
-  it('returns true when header is valid even if cookie is wrong (header takes priority)', () => {
-    process.env.ADMIN_TOKEN = 'secret123';
-    const request = createMockRequest({
-      headerToken: 'secret123',
-      cookieToken: 'wrong-cookie',
-    });
-    expect(hasValidAdminAuth(request)).toBe(true);
+    await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT:/login');
+    expect(mockRedirect).toHaveBeenCalledWith('/login');
   });
 });

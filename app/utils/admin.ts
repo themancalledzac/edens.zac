@@ -1,47 +1,33 @@
-import { type NextRequest } from 'next/server';
+import { redirect } from 'next/navigation';
+
+import { meServer } from '@/app/lib/api/auth';
 
 /**
- * Admin middleware helpers
+ * Admin authorization helpers.
  *
- * Feature flags and authorization checks for admin routes.
- *
- * Environment variables:
- * - ADMIN_ROUTES_ENABLED: 'true' to allow admin routes outside local/dev
- * - ADMIN_TOKEN: Optional secret. When provided, requests must include either:
- *   - Header: 'x-admin-token: <ADMIN_TOKEN>'
- *   - Cookie: 'admin_token=<ADMIN_TOKEN>'
+ * Page-group gating now runs in two places: the `proxy.ts` middleware performs an
+ * `ezac_session` presence check on the whole (admin) route group, and
+ * {@link requireAdmin} (below) enforces the actual `isAdmin` flag server-side. The
+ * old `ADMIN_TOKEN` / `ADMIN_ROUTES_ENABLED` static-token mechanism was retired
+ * with the session model and has been removed.
  */
 
 /**
- * Returns true if admin routes are enabled for non-local environments.
- */
-export const isAdminRoutesEnabled = (): boolean => {
-  return process.env.ADMIN_ROUTES_ENABLED === 'true';
-};
-
-/**
- * Validates admin authorization for a request using a static token.
+ * Admin gate (SERVER-SIDE). Resolves the acting principal via {@link meServer}
+ * and redirects logged-in-but-not-admin (and anonymous) users to `/login`.
+ * Called by the (admin) layout and the `?manage`/edit gate in `app/[slug]`.
  *
- * Guard clauses:
- * - If no ADMIN_TOKEN is configured, return true (feature-flag only gating applies)
- * - If ADMIN_TOKEN is set, require header or cookie to match
- */
-export const hasValidAdminAuth = (request: NextRequest): boolean => {
-  const requiredToken = process.env.ADMIN_TOKEN;
-  if (!requiredToken) return true;
-
-  const headerToken = request.headers.get('x-admin-token');
-  if (headerToken && headerToken === requiredToken) return true;
-
-  const cookieToken = request.cookies.get('admin_token')?.value;
-  return !!(cookieToken && cookieToken === requiredToken);
-};
-
-/**
- * Admin gate seam (SERVER-SIDE). No-op today — enforcement is perimeter-only via
- * `INTERNAL_API_SECRET`. This is the single future hook point for identity/session
- * auth; when that lands, add redirect()/notFound() here.
+ * `meServer()` returns null both for anonymous requests AND outside a request
+ * scope (build time / `generateStaticParams`), and both map to `redirect('/login')`.
+ * That is safe here because every (admin) page is `force-dynamic`, so this only
+ * runs per-request — never during static generation.
+ *
+ * Admin-ness comes from the row-level `isAdmin` flag, NOT session identity, so an
+ * admin impersonating another user retains access.
  */
 export async function requireAdmin(): Promise<void> {
-  return;
+  const principal = await meServer();
+  if (!principal || !principal.isAdmin) {
+    redirect('/login');
+  }
 }

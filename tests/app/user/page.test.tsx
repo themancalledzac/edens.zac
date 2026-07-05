@@ -68,7 +68,7 @@ import { getUserPage } from '@/app/lib/api/user';
 import UserPage from '@/app/user/page';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
-const authedPrincipal = { email: 'c@x.com', mfaSatisfied: true, galleries: [] };
+const authedPrincipal = { email: 'c@x.com', isAdmin: false, mfaSatisfied: true, galleries: [] };
 
 const collectionBlock = (id: number) => ({ id, contentType: 'COLLECTION' });
 // isContentImage requires an `imageUrl` field, so the fixture supplies one.

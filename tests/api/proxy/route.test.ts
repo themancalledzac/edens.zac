@@ -11,7 +11,7 @@
 
 import { NextRequest } from 'next/server';
 
-import { POST } from '@/app/api/proxy/[...path]/route';
+import { GET, POST } from '@/app/api/proxy/[...path]/route';
 
 describe('Vercel BFF proxy /api/proxy/[...path] — Set-Cookie forwarding', () => {
   const ORIGINAL_ENV = process.env;
@@ -245,5 +245,178 @@ describe('Vercel BFF proxy /api/proxy/[...path] — write-method origin allowanc
       NODE_ENV: 'production',
     };
     expect(await postFrom('http://192.168.68.60:3000')).toBe(403);
+  });
+});
+
+describe('Vercel BFF proxy /api/proxy/[...path] — anonymous admin API refusal (prod)', () => {
+  const ORIGINAL_ENV = process.env;
+
+  function setProd() {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'https://example.com',
+      NODE_ENV: 'production',
+    };
+  }
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  it('rejects an anonymous admin GET with 401 and does NOT forward', async () => {
+    setProd();
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    const req = new NextRequest('https://example.com/api/proxy/api/admin/users', {
+      method: 'GET',
+    });
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['api', 'admin', 'users'] }),
+    } as never);
+
+    expect(res.status).toBe(401);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('forwards an admin GET when the ezac_session cookie is present', async () => {
+    setProd();
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    const req = new NextRequest('https://example.com/api/proxy/api/admin/users', {
+      method: 'GET',
+      headers: { cookie: 'ezac_session=abc123' },
+    });
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['api', 'admin', 'users'] }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // The forwarded request carries the session cookie through to the backend.
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect((init.headers as Headers).get('cookie')).toBe('ezac_session=abc123');
+  });
+
+  it('does NOT gate a non-admin (read) path — anonymous read forwards', async () => {
+    setProd();
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    const req = new NextRequest('https://example.com/api/proxy/api/read/collections', {
+      method: 'GET',
+    });
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'collections'] }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT gate api/dev/** admin-adjacent paths', async () => {
+    setProd();
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    const req = new NextRequest('https://example.com/api/proxy/api/dev/seed', {
+      method: 'GET',
+    });
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['api', 'dev', 'seed'] }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT gate admin paths in development (localhost admin has no login)', async () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NODE_ENV: 'development',
+    };
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/admin/users', {
+      method: 'GET',
+    });
+    const res = await GET(req, {
+      params: Promise.resolve({ path: ['api', 'admin', 'users'] }),
+    } as never);
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Vercel BFF proxy /api/proxy/[...path] — real-IP header sanitization', () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      INTERNAL_API_SECRET: 'test-secret',
+      API_URL: 'http://backend.test',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NODE_ENV: 'development',
+    };
+  });
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+    jest.restoreAllMocks();
+  });
+
+  async function forwardWith(headers: Record<string, string>): Promise<RequestInit> {
+    const fetchSpy = jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+    const req = new NextRequest('http://localhost:3000/api/proxy/api/read/collections', {
+      method: 'GET',
+      headers,
+    });
+    await GET(req, {
+      params: Promise.resolve({ path: ['api', 'read', 'collections'] }),
+    } as never);
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    return init;
+  }
+
+  it('does NOT forward a spoofed inbound x-real-ip as X-Real-IP', async () => {
+    const init = await forwardWith({ 'x-real-ip': '6.6.6.6' });
+    // x-real-ip is client-controllable and no longer a source; without a trusted
+    // header there is no X-Real-IP to forward.
+    expect((init.headers as Headers).get('x-real-ip')).toBeNull();
+  });
+
+  it('forwards the LAST hop of x-forwarded-for as X-Real-IP (CloudFront-appended client IP)', async () => {
+    const init = await forwardWith({ 'x-forwarded-for': '10.0.0.1, 203.0.113.9' });
+    expect((init.headers as Headers).get('x-real-ip')).toBe('203.0.113.9');
+  });
+
+  it('prefers x-vercel-forwarded-for first hop when present', async () => {
+    const init = await forwardWith({
+      'x-vercel-forwarded-for': '198.51.100.7, 10.0.0.1',
+      'x-forwarded-for': '10.0.0.1, 203.0.113.9',
+    });
+    expect((init.headers as Headers).get('x-real-ip')).toBe('198.51.100.7');
+  });
+
+  it('does not forward a non-IP-shaped last hop', async () => {
+    const init = await forwardWith({ 'x-forwarded-for': 'not-an-ip' });
+    expect((init.headers as Headers).get('x-real-ip')).toBeNull();
   });
 });

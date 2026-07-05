@@ -10,7 +10,7 @@ import styles from './layout.module.scss';
  * opts the subtree into the dark surface via `data-surface="dark"`.
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  await requireAdmin(); // non-enforcing today
+  await requireAdmin(); // redirects non-admins (and anon) to /login
   return (
     <div data-surface="dark" className={styles.surface}>
       <AdminScrollManager />

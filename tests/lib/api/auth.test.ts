@@ -168,6 +168,7 @@ describe('logout', () => {
 describe('me', () => {
   const meBody: MeResponse = {
     email: 'admin@example.com',
+    isAdmin: true,
     mfaSatisfied: true,
     galleries: [],
   };
@@ -477,7 +478,9 @@ describe('meServer', () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       status: 200,
-      json: jest.fn().mockResolvedValue({ email: 'c@x.com', mfaSatisfied: true, galleries: [] }),
+      json: jest
+        .fn()
+        .mockResolvedValue({ email: 'c@x.com', isAdmin: false, mfaSatisfied: true, galleries: [] }),
     });
 
     const result = await meServer();

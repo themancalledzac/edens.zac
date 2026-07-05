@@ -34,6 +34,7 @@ function forwardHeaders(req: NextRequest): Headers {
         'accept-encoding',
         'cf-ray',
         'cf-connecting-ip',
+        'x-real-ip',
         'x-forwarded-for',
         'x-forwarded-proto',
         'x-forwarded-host',
@@ -49,9 +50,18 @@ function forwardHeaders(req: NextRequest): Headers {
   // Ensure JSON by default for non-multipart when client did not set
   if (!headers.has('accept')) headers.set('accept', 'application/json, */*;q=0.1');
   // Re-inject sanitized real IP (stripped above to prevent header smuggling).
+  //
+  // Source order, most-trusted first:
+  //   1. `x-vercel-forwarded-for` first hop — harmless, absent on Amplify.
+  //   2. LAST hop of `x-forwarded-for` — on CloudFront/Amplify the client IP is
+  //      appended by the trusted edge, so the last hop is the real client. We do
+  //      NOT trust `x-real-ip`: it's fully client-controllable and spoofable on
+  //      Amplify (where the Vercel header never populates).
+  // TODO(CloudFlare Phase 2): drop this injection entirely and switch to
+  // `CF-Connecting-IP`, which CloudFlare sets and clients cannot forge.
   const realIpRaw =
     req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ??
-    req.headers.get('x-real-ip') ??
+    req.headers.get('x-forwarded-for')?.split(',').pop()?.trim() ??
     '';
   if (realIpRaw && /^[\d.:A-Fa-f]+$/.test(realIpRaw)) {
     headers.set('X-Real-IP', realIpRaw);
@@ -64,7 +74,21 @@ function forwardHeaders(req: NextRequest): Headers {
 async function handle(req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const params = await context.params;
   const method = req.method;
-  const targetUrl = buildTargetUrl(params.path || [], req.nextUrl.search);
+  const pathParts = params.path || [];
+  const targetUrl = buildTargetUrl(pathParts, req.nextUrl.search);
+
+  // Belt & suspenders: refuse anonymous admin API in production before forwarding.
+  // The backend `hasRole('ADMIN')` on the `ezac_session` cookie stays authoritative;
+  // this is a cheap early reject + defense in depth. `api/dev/**` is exempt (dev-only,
+  // @Profile-gated on the backend) and dev is unaffected (localhost admin has no login).
+  const resolvedPath = pathParts.join('/').replace(/^\/+/, '');
+  if (
+    process.env.NODE_ENV === 'production' &&
+    resolvedPath.startsWith('api/admin/') &&
+    !req.cookies.get('ezac_session')?.value
+  ) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const ALLOWED_ORIGINS = new Set(
     [

@@ -1,22 +1,28 @@
-// NOTE: this file is currently UNWIRED — there is no middleware.ts and next.config.js does not reference it, so none of this runs. Wiring it as middleware is the open 007 task. Real perimeter protection today = the BFF INTERNAL_API_SECRET channel gate (app/api/proxy/[...path]/route.ts).
+// This file IS the Next.js middleware. In Next 16 a root `proxy.ts` (formerly
+// `middleware.ts`) is the framework convention and runs on every matched request
+// in every environment, prod included — it is NOT unwired. It is the page-level
+// perimeter for the (admin) route group; the BFF INTERNAL_API_SECRET channel gate
+// (app/api/proxy/[...path]/route.ts) authenticates the proxy, not the user, and the
+// backend `hasRole('ADMIN')` on the `ezac_session` cookie is authoritative for the API.
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { hasValidAdminAuth, isAdminRoutesEnabled } from '@/app/utils/admin';
 import { isLocalEnvironment } from '@/app/utils/environment';
 
 /**
  * Global Next.js Proxy
  * - Local-only admin hub at /admin (and /homePage escape route)
- * - Protects admin App Router routes (create/edit collections)
+ * - Gates the whole (admin) App Router route group on an `ezac_session` cookie
+ *   in non-local environments (presence check; the backend validates the session)
  * - Maintains legacy local-only protection for /cdn tooling routes
- * - Supports feature flags and simple token-based authorization for gradual rollout
+ * - Feature-flagged legacy /catalog → /collection redirects
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1) Local-only admin hub. /admin* and /homePage are dev-console paths;
-  //    in non-local environments they redirect to / so they are not discoverable.
-  if (pathname === '/admin' || pathname.startsWith('/admin/') || pathname === '/homePage') {
+  // 1) /homePage is a local-only dev escape hatch (the real home page reachable
+  //    from the localhost / → /admin redirect). In non-local it redirects to /
+  //    so it is not discoverable.
+  if (pathname === '/homePage') {
     if (!isLocalEnvironment()) {
       return NextResponse.redirect(new URL('/', request.url));
     }
@@ -49,8 +55,14 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // 5) Admin routes protection (App Router group (admin) does not alter URL)
+  // 5) Admin route group gate. Covers the WHOLE (admin) App Router group (the
+  //    group folder does not alter the URL), including the /admin hub and
+  //    /admin/users/[id]. Local/dev passes through for fast iteration; every
+  //    other environment requires an `ezac_session` cookie (presence check —
+  //    the backend validates the session and enforces `isAdmin`).
   const isAdminRoute =
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
     pathname === '/collection/manage' ||
     pathname.startsWith('/collection/manage/') ||
     /\/collection\/.+\/edit$/.test(pathname) ||
@@ -69,22 +81,16 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow freely in local/dev to speed up iteration
+  // Allow freely in local/dev to speed up iteration.
   if (isLocalEnvironment()) {
     return NextResponse.next();
   }
 
-  // In non-local environments, require feature flag and optional auth
-  if (!isAdminRoutesEnabled()) {
-    return new NextResponse('Admin features are disabled', { status: 403 });
-  }
-
-  if (!hasValidAdminAuth(request)) {
-    // Optional: indicate auth requirement via header for debugging
-    return new NextResponse('Unauthorized', {
-      status: 401,
-      headers: { 'WWW-Authenticate': 'Bearer realm="admin"' },
-    });
+  // Non-local: require an `ezac_session` cookie. Middleware can only check
+  // presence (it can't validate the session); the (admin) layout's
+  // requireAdmin() + the backend enforce the actual ADMIN authorization.
+  if (!request.cookies.get('ezac_session')?.value) {
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   return NextResponse.next();
@@ -92,10 +98,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Admin hub (local-only) and the localhost / → /admin redirect.
-    // Including '/' here means the middleware runs on every public home
-    // page hit; the rule short-circuits in non-local so the prod cost is
-    // a single env check.
+    // The whole (admin) route group + the /homePage escape hatch + the
+    // localhost / → /admin redirect. Including '/' here means the middleware
+    // runs on every public home page hit; the rule short-circuits in non-local
+    // so the prod cost is a single env check.
     '/',
     '/admin',
     '/admin/:path*',

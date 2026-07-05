@@ -3,9 +3,11 @@
  *
  * Tests for the Next.js middleware (proxy.ts).
  *
- * Covers the admin hub redirect rules (local-only `/admin` + `/homePage`
- * passthrough; non-local redirects to `/`; localhost `/` → `/admin`) and the
- * `/cdn`, `/catalog`, and `/comments` rules.
+ * Covers the admin hub / dev-console rules (local-only `/homePage` passthrough;
+ * localhost `/` → `/admin`), the `/cdn` + `/catalog` rules, and the (admin)
+ * route-group session gate: in non-local environments every (admin) route
+ * requires an `ezac_session` cookie or redirects to `/login`; local passes
+ * through.
  */
 
 import { NextRequest } from 'next/server';
@@ -22,15 +24,16 @@ function setProd() {
   process.env = { ...ORIGINAL_ENV, NODE_ENV: 'production', NEXT_PUBLIC_ENV: 'production' };
 }
 
-function makeRequest(pathname: string): NextRequest {
-  return new NextRequest(`http://localhost:3000${pathname}`);
+function makeRequest(pathname: string, opts: { session?: boolean } = {}): NextRequest {
+  const headers = opts.session ? { cookie: 'ezac_session=abc123' } : undefined;
+  return new NextRequest(`http://localhost:3000${pathname}`, headers ? { headers } : undefined);
 }
 
 afterEach(() => {
   process.env = ORIGINAL_ENV;
 });
 
-describe('proxy middleware — admin hub redirects (localhost)', () => {
+describe('proxy middleware — dev-console rules (localhost)', () => {
   beforeEach(() => setLocal());
 
   it('redirects / → /admin on localhost', () => {
@@ -44,8 +47,8 @@ describe('proxy middleware — admin hub redirects (localhost)', () => {
     expect(res.headers.get('x-middleware-next')).toBe('1');
   });
 
-  it('passes /admin/foo through on localhost', () => {
-    const res = proxy(makeRequest('/admin/foo'));
+  it('passes /admin/users/1 through on localhost', () => {
+    const res = proxy(makeRequest('/admin/users/1'));
     expect(res.headers.get('x-middleware-next')).toBe('1');
   });
 
@@ -55,22 +58,10 @@ describe('proxy middleware — admin hub redirects (localhost)', () => {
   });
 });
 
-describe('proxy middleware — admin hub gating (non-local)', () => {
+describe('proxy middleware — /homePage + / (non-local)', () => {
   beforeEach(() => setProd());
 
-  it('redirects /admin → / in prod', () => {
-    const res = proxy(makeRequest('/admin'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('http://localhost:3000/');
-  });
-
-  it('redirects /admin/foo → / in prod', () => {
-    const res = proxy(makeRequest('/admin/foo'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('http://localhost:3000/');
-  });
-
-  it('redirects /homePage → / in prod', () => {
+  it('redirects /homePage → / in prod (local-only escape hatch)', () => {
     const res = proxy(makeRequest('/homePage'));
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toBe('http://localhost:3000/');
@@ -121,95 +112,59 @@ describe('proxy middleware — existing /catalog rule (regression)', () => {
   });
 });
 
-describe('proxy middleware — existing /comments admin gating (regression)', () => {
-  it('passes /comments through on localhost', () => {
-    setLocal();
-    const res = proxy(makeRequest('/comments'));
+describe('proxy middleware — (admin) group session gate (non-local)', () => {
+  beforeEach(() => setProd());
+
+  // The whole (admin) App Router group is gated. Each of these routes, when hit
+  // anonymously in prod, must redirect to /login; with an ezac_session cookie it
+  // passes through (the backend then validates the session + enforces isAdmin).
+  const adminRoutes = [
+    '/admin',
+    '/admin/users/1',
+    '/all-collections',
+    '/all-collections/foo',
+    '/all-images',
+    '/all-images/foo',
+    '/comments',
+    '/comments/foo',
+    '/metadata',
+    '/metadata/foo',
+    '/collection/manage',
+    '/collection/manage/foo',
+    '/collection/some-slug/edit',
+    '/explore',
+    '/explore/foo',
+  ];
+
+  it.each(adminRoutes)('redirects %s → /login when no ezac_session', pathname => {
+    const res = proxy(makeRequest(pathname));
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toBe('http://localhost:3000/login');
+  });
+
+  it.each(adminRoutes)('passes %s through when ezac_session is present', pathname => {
+    const res = proxy(makeRequest(pathname, { session: true }));
     expect(res.headers.get('x-middleware-next')).toBe('1');
-  });
-
-  it('returns 403 on /comments in prod when admin routes disabled', () => {
-    setProd();
-    process.env.ADMIN_ROUTES_ENABLED = 'false';
-    const res = proxy(makeRequest('/comments'));
-    expect(res.status).toBe(403);
-  });
-
-  it('returns 401 on /comments in prod when admin routes enabled but auth missing', () => {
-    setProd();
-    process.env.ADMIN_ROUTES_ENABLED = 'true';
-    process.env.ADMIN_TOKEN = 'secret123';
-    const res = proxy(makeRequest('/comments'));
-    expect(res.status).toBe(401);
   });
 });
 
-describe('proxy middleware — /explore admin gating', () => {
-  it('passes /explore through on localhost', () => {
-    setLocal();
-    const res = proxy(makeRequest('/explore'));
+describe('proxy middleware — (admin) group passthrough (localhost)', () => {
+  beforeEach(() => setLocal());
+
+  const adminRoutes = [
+    '/admin',
+    '/all-collections',
+    '/all-images',
+    '/comments',
+    '/metadata',
+    '/collection/manage',
+    '/collection/some-slug/edit',
+    '/explore',
+  ];
+
+  it.each(adminRoutes)('passes %s through on localhost (no session needed)', pathname => {
+    const res = proxy(makeRequest(pathname));
     expect(res.headers.get('x-middleware-next')).toBe('1');
-  });
-
-  it('returns 403 on /explore in prod when admin routes disabled', () => {
-    setProd();
-    process.env.ADMIN_ROUTES_ENABLED = 'false';
-    const res = proxy(makeRequest('/explore'));
-    expect(res.status).toBe(403);
-  });
-
-  it('returns 401 on /explore in prod when admin routes enabled but auth missing', () => {
-    setProd();
-    process.env.ADMIN_ROUTES_ENABLED = 'true';
-    process.env.ADMIN_TOKEN = 'secret123';
-    const res = proxy(makeRequest('/explore'));
-    expect(res.status).toBe(401);
-  });
-});
-
-describe('proxy middleware — /all-collections admin gating', () => {
-  it('passes /all-collections through on localhost', () => {
-    setLocal();
-    const res = proxy(makeRequest('/all-collections'));
-    expect(res.headers.get('x-middleware-next')).toBe('1');
-  });
-
-  it('returns 403 on /all-collections in prod when admin routes disabled', () => {
-    setProd();
-    process.env.ADMIN_ROUTES_ENABLED = 'false';
-    const res = proxy(makeRequest('/all-collections'));
-    expect(res.status).toBe(403);
-  });
-
-  it('returns 401 on /all-collections in prod when admin routes enabled but auth missing', () => {
-    setProd();
-    process.env.ADMIN_ROUTES_ENABLED = 'true';
-    process.env.ADMIN_TOKEN = 'secret123';
-    const res = proxy(makeRequest('/all-collections'));
-    expect(res.status).toBe(401);
-  });
-});
-
-describe('proxy middleware — /all-images admin gating', () => {
-  it('passes /all-images through on localhost', () => {
-    setLocal();
-    const res = proxy(makeRequest('/all-images'));
-    expect(res.headers.get('x-middleware-next')).toBe('1');
-  });
-
-  it('returns 403 on /all-images in prod when admin routes disabled', () => {
-    setProd();
-    process.env.ADMIN_ROUTES_ENABLED = 'false';
-    const res = proxy(makeRequest('/all-images'));
-    expect(res.status).toBe(403);
-  });
-
-  it('returns 401 on /all-images in prod when admin routes enabled but auth missing', () => {
-    setProd();
-    process.env.ADMIN_ROUTES_ENABLED = 'true';
-    process.env.ADMIN_TOKEN = 'secret123';
-    const res = proxy(makeRequest('/all-images'));
-    expect(res.status).toBe(401);
   });
 });
 
