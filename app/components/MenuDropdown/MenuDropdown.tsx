@@ -325,11 +325,12 @@ export function MenuDropdown({
           </div>
         )}
 
-        {/* Clear Cache stays local-only: it POSTs to the dev-profile-only backend
-            endpoint /api/admin/cache/clear (controller/dev/AdminController.java,
-            @Profile("dev")), which does not exist in prod/preview. Unlike the other
-            admin items above, gating this on isAdmin alone would show a button that
-            404s for real admins in prod. */}
+        {/* Clear Cache stays local-only by choice: evicting the backend's
+            in-process admin caches + nuking the Next route cache is a dev
+            workflow tool, not something to surface on every prod page. Since
+            BE 0207 the endpoint (/api/admin/cache/clear) exists in all
+            profiles behind the /api/admin/** ADMIN gate, so this gating is
+            product preference — no longer 404-avoidance. */}
         {isLocalEnvironment() && (
           <div className={styles.dropdownMenuItem}>
             <button
