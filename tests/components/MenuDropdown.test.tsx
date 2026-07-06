@@ -29,7 +29,12 @@ jest.mock('@/app/utils/environment', () => ({
 const mockMe = authApi.me as jest.MockedFunction<typeof authApi.me>;
 const mockLogout = authApi.logout as jest.MockedFunction<typeof authApi.logout>;
 
-const principal: MeResponse = { email: 'a@b.com', mfaSatisfied: true, galleries: [] };
+const principal: MeResponse = {
+  email: 'a@b.com',
+  isAdmin: false,
+  mfaSatisfied: true,
+  galleries: [],
+};
 
 describe('MenuDropdown — auth actions', () => {
   beforeEach(() => {

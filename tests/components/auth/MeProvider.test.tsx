@@ -10,6 +10,7 @@ import { type MeResponse } from '@/app/types/Auth';
 
 const me: MeResponse = {
   email: 'a@b.com',
+  isAdmin: false,
   mfaSatisfied: false,
   galleries: [],
 };

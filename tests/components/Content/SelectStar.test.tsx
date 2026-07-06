@@ -29,6 +29,7 @@ beforeEach(() => {
 
 const client: MeResponse = {
   email: 'client@example.com',
+  isAdmin: false,
   mfaSatisfied: false,
   galleries: [{ collectionId: 3, role: 'CLIENT' }],
 };

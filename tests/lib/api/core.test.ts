@@ -478,3 +478,72 @@ describe('getServerCookieHeader', () => {
     warnSpy.mockRestore();
   });
 });
+
+describe('admin fetchers forward the server session cookie (SSR)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const nextHeaders = require('next/headers') as { cookies: jest.Mock };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Server runtime (no window) so getServerCookieHeader reads the cookie store.
+    Object.defineProperty(global, 'window', { value: undefined, writable: true });
+    nextHeaders.cookies.mockResolvedValue({
+      getAll: () => [{ name: 'ezac_session', value: 'sess-token' }],
+    });
+  });
+
+  it('attaches the Cookie header on fetchAdminGetApi', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    });
+
+    await fetchAdminGetApi('/users');
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/admin'),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          Cookie: 'ezac_session=sess-token',
+        }),
+      })
+    );
+  });
+
+  it('attaches the Cookie header on an admin write fetcher (fetchAdminPostJsonApi)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    });
+
+    await fetchAdminPostJsonApi('/users', { name: 'x' });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/admin'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          Cookie: 'ezac_session=sess-token',
+        }),
+      })
+    );
+  });
+
+  it('omits the Cookie header when the cookie store is empty', async () => {
+    nextHeaders.cookies.mockResolvedValue({ getAll: () => [] });
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({ data: 'ok' }),
+    });
+
+    await fetchAdminGetApi('/users');
+
+    const [, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(init.headers).not.toHaveProperty('Cookie');
+  });
+});

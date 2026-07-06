@@ -189,7 +189,20 @@ const fetchBase = async <T>(
 ): Promise<T | null> => {
   try {
     const url = buildSimpleApiUrl(endpointType === 'write' ? WRITE : ADMIN, endpoint);
-    const response = await fetch(url, options);
+
+    // On the server, forward the inbound `ezac_session` cookie so the backend's
+    // admin authorization (hasRole('ADMIN')) sees the acting admin's session on
+    // SSR write fetches. Returns null in the browser (fetch already sends
+    // same-origin cookies) and at build time — so this only affects SSR.
+    const cookieHeader = await getServerCookieHeader();
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> | undefined),
+    };
+    if (cookieHeader) {
+      headers.Cookie = cookieHeader;
+    }
+
+    const response = await fetch(url, { ...options, headers });
 
     if (!response.ok) {
       await throwApiError(response);
@@ -308,12 +321,22 @@ export async function fetchAdminGetApi<T>(
   try {
     const url = buildSimpleApiUrl(ADMIN, endpoint);
 
+    // On the server, forward the inbound `ezac_session` cookie so the backend's
+    // admin authorization (hasRole('ADMIN')) sees the acting admin's session on
+    // SSR reads (all-images, comments, metadata, /admin, /admin/users/[id],
+    // /explore). Returns null in the browser and at build time — SSR only.
+    const cookieHeader = await getServerCookieHeader();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> | undefined),
+    };
+    if (cookieHeader) {
+      headers.Cookie = cookieHeader;
+    }
+
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {

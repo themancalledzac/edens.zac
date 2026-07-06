@@ -10,12 +10,14 @@ const clientMembership = { collectionId: 7, role: 'CLIENT' as const };
 
 const clientMe: MeResponse = {
   email: 'client@example.com',
+  isAdmin: false,
   mfaSatisfied: false,
   galleries: [clientMembership],
 };
 
 const generalMe: MeResponse = {
   email: 'general@example.com',
+  isAdmin: false,
   mfaSatisfied: false,
   galleries: [{ collectionId: 7, role: 'GENERAL' }],
 };

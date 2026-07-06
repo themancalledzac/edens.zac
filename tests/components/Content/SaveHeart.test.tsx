@@ -27,6 +27,7 @@ beforeEach(() => {
 // Any logged-in principal — no gallery membership required for saves.
 const viewer: MeResponse = {
   email: 'viewer@example.com',
+  isAdmin: false,
   mfaSatisfied: false,
   galleries: [],
 };

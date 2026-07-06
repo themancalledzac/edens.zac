@@ -14,7 +14,12 @@ jest.mock('@/app/lib/api/auth', () => ({
 
 const mockMe = authApi.me as jest.MockedFunction<typeof authApi.me>;
 
-const principal: MeResponse = { email: 'a@b.com', mfaSatisfied: true, galleries: [] };
+const principal: MeResponse = {
+  email: 'a@b.com',
+  isAdmin: false,
+  mfaSatisfied: true,
+  galleries: [],
+};
 
 function dispatchAuthChanged() {
   act(() => {

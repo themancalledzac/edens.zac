@@ -11,7 +11,12 @@ const mockSubmit = contactApi.submitContactMessage as jest.MockedFunction<
   typeof contactApi.submitContactMessage
 >;
 
-const me: MeResponse = { email: 'user@example.com', mfaSatisfied: true, galleries: [] };
+const me: MeResponse = {
+  email: 'user@example.com',
+  isAdmin: false,
+  mfaSatisfied: true,
+  galleries: [],
+};
 
 function renderWithMe(principal: MeResponse | null) {
   return render(
