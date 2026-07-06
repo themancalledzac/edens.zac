@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type Ref, useCallback, useState } from 'react';
 
+import { useMe } from '@/app/components/auth/MeProvider';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
@@ -29,7 +30,6 @@ import {
   buildWrapperClassName,
   resolveValidDimensions,
 } from '@/app/utils/contentRendererUtils';
-import { isLocalEnvironment } from '@/app/utils/environment';
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
@@ -166,15 +166,20 @@ export default function CollectionContentRenderer({
 
   const collectionFilter = useCollectionFilter();
   const inlineEdit = useInlineEdit();
+  const me = useMe();
 
-  // Localhost-only shortcut into manage mode, pinned to the header cover image. Shown only on the
+  // Admin-only shortcut into manage mode, pinned to the header cover image. Shown only on the
   // public view (manage path sets currentCollectionId) for the cover block (contentId === -1).
+  // Reads `useMe()` (server-resolved principal, mounted via MeProvider in CollectionPageClient —
+  // no extra client fetch) rather than useFetchMe(), since this component renders once per
+  // content tile and a per-tile client fetch would duplicate the /api/auth/me call across the
+  // whole grid.
   const showCoverUpdateShortcut =
     contentType === 'IMAGE' &&
     contentId === COVER_IMAGE_CONTENT_ID &&
     currentCollectionId == null &&
     !!collectionSlug &&
-    isLocalEnvironment();
+    !!me?.isAdmin;
 
   const handleCoverUpdateClick = useCallback(
     (event: { stopPropagation: () => void }) => {

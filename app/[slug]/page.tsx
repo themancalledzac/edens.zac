@@ -5,7 +5,6 @@ import { getCollectionBySlug } from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { CollectionType } from '@/app/types/Collection';
 import { requireAdmin } from '@/app/utils/admin';
-import { isLocalEnvironment } from '@/app/utils/environment';
 
 interface CollectionPageProps {
   params: Promise<{
@@ -71,9 +70,9 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
  * Route handler for individual collections by slug (e.g. /film, /portfolio-work).
  * Renders via the shared CollectionPageWrapper.
  *
- * `?manage=1` enters the in-place edit surface. It is a local-dev-only affordance,
- * parked until a real admin auth gate exists, so it is hard-disabled outside local
- * dev — production/preview never enter edit mode. Revive by wiring real auth here.
+ * `?manage=1` enters the in-place edit surface. Authorization is enforced by
+ * {@link requireAdmin} below (redirects anonymous/non-admin viewers to /login) — a
+ * real `isAdmin` principal, not an environment check, is what gates this in prod.
  */
 export default async function CollectionPage({ params, searchParams }: CollectionPageProps) {
   const { slug } = await params;
@@ -87,7 +86,7 @@ export default async function CollectionPage({ params, searchParams }: Collectio
   }
 
   const resolvedSearchParams = await searchParams;
-  const editMode = resolvedSearchParams?.manage === '1' && isLocalEnvironment();
+  const editMode = resolvedSearchParams?.manage === '1';
 
   if (editMode) {
     await requireAdmin();

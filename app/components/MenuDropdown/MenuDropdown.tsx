@@ -51,6 +51,7 @@ export function MenuDropdown({
   const [isClearing, startClearing] = useTransition();
 
   const { me, loading: meLoading } = useFetchMe();
+  const isAdmin = me?.isAdmin ?? false;
 
   const handleLogin = () => {
     router.push('/login');
@@ -264,7 +265,7 @@ export function MenuDropdown({
 
         {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
 
-        {isLocalEnvironment() && (
+        {isAdmin && (
           <div className={styles.dropdownMenuItem}>
             <button
               type="button"
@@ -276,7 +277,7 @@ export function MenuDropdown({
           </div>
         )}
 
-        {isLocalEnvironment() && (
+        {isAdmin && (
           <div className={styles.dropdownMenuItem}>
             <button
               type="button"
@@ -288,7 +289,7 @@ export function MenuDropdown({
           </div>
         )}
 
-        {isLocalEnvironment() && pageType === 'collection' && (
+        {isAdmin && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
             <button
               type="button"
@@ -300,7 +301,7 @@ export function MenuDropdown({
           </div>
         )}
 
-        {isLocalEnvironment() && (
+        {isAdmin && (
           <div className={styles.dropdownMenuItem}>
             <button
               type="button"
@@ -312,7 +313,7 @@ export function MenuDropdown({
           </div>
         )}
 
-        {isLocalEnvironment() && (
+        {isAdmin && (
           <div className={styles.dropdownMenuItem}>
             <button
               type="button"
@@ -324,6 +325,11 @@ export function MenuDropdown({
           </div>
         )}
 
+        {/* Clear Cache stays local-only: it POSTs to the dev-profile-only backend
+            endpoint /api/admin/cache/clear (controller/dev/AdminController.java,
+            @Profile("dev")), which does not exist in prod/preview. Unlike the other
+            admin items above, gating this on isAdmin alone would show a button that
+            404s for real admins in prod. */}
         {isLocalEnvironment() && (
           <div className={styles.dropdownMenuItem}>
             <button
