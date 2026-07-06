@@ -46,9 +46,10 @@ The **React 18 → 19 runtime upgrade** ([#176](https://github.com/themancalledz
 The old `todo-random.md` held a few hygiene items that belong to neighbouring chapters rather than
 to Code Health — folded out as one-line pointers (their substance is not duplicated here):
 
-- **Layout tuning** (arFactor panorama cap, desktop standalone-skip dead code, moderate-overfill
-  ceiling 1.35 → 1.20, the vertical-penalty-vs-AR question, automatic density by collection size) →
-  [005 · Layout](005-layout.md) _(largely subsumed by the directional-prominence refactor)_.
+- ~~**Layout tuning**~~ — the arFactor panorama cap and the vertical-penalty mechanisms this
+  pointed at were **deleted** by the directional-prominence refactor (`905801f`); nothing left to
+  tune. Automatic density by collection size remains open, tracked directly in
+  [005 · Layout](005-layout.md).
 - **Perf micro** (CloudFront `<link rel="preconnect">` in `app/layout.tsx`; `generateMetadata`
   cover-image `size=500` → `size=1`) → [002 · Performance](002-performance.md).
 - **a11y batch** (modal focus-trap, `<label>` linkage, `aria-live` toasts, skip link,
