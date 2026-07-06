@@ -49,6 +49,7 @@ For SCSS files, also run Stylelint:
 
 ## Common Mistakes to Avoid
 
+- Writing comments inside React component code (JSX `{/* ... */}` or inline `//` in component bodies) - documentation belongs in docblocks (JSDoc above the file/component/function) only
 - Using `'use client'` unnecessarily - prefer Server Components
 - Using `any` type - always use proper TypeScript types
 - Creating components without corresponding SCSS modules
