@@ -65,13 +65,10 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/admin/') ||
     pathname === '/collection/manage' ||
     pathname.startsWith('/collection/manage/') ||
-    /\/collection\/.+\/edit$/.test(pathname) ||
     pathname === '/comments' ||
     pathname.startsWith('/comments/') ||
     pathname === '/metadata' ||
     pathname.startsWith('/metadata/') ||
-    pathname === '/explore' ||
-    pathname.startsWith('/explore/') ||
     pathname === '/all-collections' ||
     pathname.startsWith('/all-collections/') ||
     pathname === '/all-images' ||
@@ -102,6 +99,8 @@ export const config = {
     // localhost / → /admin redirect. Including '/' here means the middleware
     // runs on every public home page hit; the rule short-circuits in non-local
     // so the prod cost is a single env check.
+    // /explore is deliberately PUBLIC (taxonomy directory, chapter 001) — do not
+    // add it here; 0203 F4 did and login-walled it in prod.
     '/',
     '/admin',
     '/admin/:path*',
@@ -110,13 +109,10 @@ export const config = {
     '/cdn/:path*',
     '/collection/manage',
     '/collection/manage/:path*',
-    '/collection/:slug/edit',
     '/comments',
     '/comments/:path*',
     '/metadata',
     '/metadata/:path*',
-    '/explore',
-    '/explore/:path*',
     '/all-collections',
     '/all-collections/:path*',
     '/all-images',

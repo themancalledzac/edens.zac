@@ -12,13 +12,13 @@
 
 ## 🧭 Start here
 
-| File                                   | What it is                                                                          |
-| -------------------------------------- | ----------------------------------------------------------------------------------- |
-| [previous-work.md](previous-work.md)   | Shipped-feature log — "what got built and when."                                    |
-| The 9 chapters below                   | Each is an epic; open the chapter file for its remaining-work list + sections.       |
+| File                                   | What it is                                                                               |
+| -------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [previous-work.md](previous-work.md)   | Shipped-feature log — "what got built and when."                                         |
+| The 9 chapters below                   | Each is an epic; open the chapter file for its remaining-work list + sections.           |
 | [../ai_guidelines/](../ai_guidelines/) | Canonical project conventions (API, CSS, lint, TS, testing) — referenced by `CLAUDE.md`. |
-| [handoffs/](handoffs/)                 | Session handoff runbooks (gitignored, local-only).                                   |
-| [user-flow/](user-flow/)               | Tracked as-built user-flow map (mermaid + SVG) — needs a refresh pass post-0182–0204. |
+| [handoffs/](handoffs/)                 | Session handoff runbooks (gitignored, local-only).                                       |
+| [user-flow/](user-flow/)               | Tracked as-built user-flow map (mermaid + SVG) — needs a refresh pass post-0182–0204.    |
 
 ---
 
@@ -55,7 +55,7 @@ Refactor + tests + observability + deps. **Shipped & archived** (→ [previous-w
 
 ### [007 · Security Hardening](007-security-hardening.md) 🟢
 
-Cross-cutting hardening surfaced by the (shipped) contact form. **✅ Admin route gating shipped** (0203 F4 — all-collections/all-images/collection-manage/metadata are in the proxy matcher) **and the anonymous admin-API hole is closed** (0203, `is_admin` + `hasRole(ADMIN)`). Open: a **regression** — 0203's matcher swept up the deliberately-public `/explore` page — + the CloudFlare Phase 2 migration.
+Cross-cutting hardening surfaced by the (shipped) contact form. **✅ Admin route gating shipped** (0203 F4 — all-collections/all-images/collection-manage/metadata are in the proxy matcher) **and the anonymous admin-API hole is closed** (0203, `is_admin` + `hasRole(ADMIN)`). **✅ The `/explore` over-gate regression is fixed** (2026-07-06 — public again, Explore nav shows logged-out). Open: the CloudFlare Phase 2 migration.
 **Sections:** [contact messages](superpowers/plans/007-contact-messages.md) 📘 · [CloudFlare Phase 2](superpowers/plans/007-cloudflare-phase2.md) 🟢
 
 ### [008 · Collection / Admin](008-collection-admin.md) ✅ / 🟢
@@ -74,14 +74,13 @@ The API-contract reference (still-missing endpoints that block frontend work) + 
 
 > **Sequencing decision (2026-06-02):** perf/LCP is **deferred to the END** of the refactoring phases — optimization rides on top of clean structure. `/todoist-done <desc>` marks items complete in Todoist.
 
-1. **Fix `/explore` public access** — 0203's proxy matcher login-walls the deliberately-public taxonomy page in prod. → [007](007-security-hardening.md).
-2. **Merge the 0204 pair** (impersonation removal, FE+BE PRs pending) → then archive its spec+plan (kept-until-merge in `superpowers/`). → [008](008-collection-admin.md).
-3. **Track B leftovers** — mount-or-drop `Breadcrumb.tsx` decision; verify people/location chip-click-to-filter. → [004](004-content-discovery.md).
-4. **A3 Spot-1** — Save-as-Collection on the tag-view page itself (`TODO(A3)` in `useCollectionEdit.tsx:1353`). → [004](004-content-discovery.md) / [008](008-collection-admin.md).
-5. **`/user` ↔ `/admin/users/[id]` layout unification** — visual follow-up from 0204. → [008](008-collection-admin.md).
-6. **Client-gallery BCrypt** — P1-4 from the security handoff; reconcile BE shipped-state first. → [003](003-client-gallery-security.md).
-7. **Standing queue**: mobile-admin Phase 3 · `STAGING` collection ([008](008-collection-admin.md)) · CloudFlare Phase 2 ([007](007-security-hardening.md)) · 006 tail (Sentry/CloudWatch, decomposition, property tests) · perf ⛔ backend-blocked · SaveHeart 44px tap target.
-8. **Deferred by design**: A2 dynamic Home · Track D automation (auto-related, CLIP auto-tag — BE ML design doc exists, 0% built) · ABAC vision · liked-images.
+1. **Merge the 0204 pair** (impersonation removal, FE+BE PRs pending) → then archive its spec+plan (kept-until-merge in `superpowers/`). → [008](008-collection-admin.md).
+2. **Track B leftovers** — mount-or-drop `Breadcrumb.tsx` decision; verify people/location chip-click-to-filter. → [004](004-content-discovery.md).
+3. **A3 Spot-1** — Save-as-Collection on the tag-view page itself (`TODO(A3)` in `useCollectionEdit.tsx:1353`). → [004](004-content-discovery.md) / [008](008-collection-admin.md).
+4. **`/user` ↔ `/admin/users/[id]` layout unification** — visual follow-up from 0204. → [008](008-collection-admin.md).
+5. **Client-gallery BCrypt** — P1-4 from the security handoff; reconcile BE shipped-state first. → [003](003-client-gallery-security.md).
+6. **Standing queue**: mobile-admin Phase 3 · `STAGING` collection ([008](008-collection-admin.md)) · CloudFlare Phase 2 ([007](007-security-hardening.md)) · 006 tail (Sentry/CloudWatch, decomposition, property tests) · perf ⛔ backend-blocked · SaveHeart 44px tap target.
+7. **Deferred by design**: A2 dynamic Home · Track D automation (auto-related, CLIP auto-tag — BE ML design doc exists, 0% built) · ABAC vision · liked-images.
 
 **Infra / DevOps:** Cloudflare CDN/edge ([007](superpowers/plans/007-cloudflare-phase2.md) · Todoist `6XQm4Ccw7Ghq2f4G`) · backend startup messages (`6g8xfM6Xv7XRc3gq`) · OAuth/Amplify-Cognito investigation ([009 ABAC](superpowers/specs/009-abac-access-control.md) · `6XjcFJH6W6JhVCgp`).
 **Content / docs:** GitHub main-page README (`6g8xcP35w3Jmj7WH`) · backend README (`6g8xcR63JjC9X62q`). _(frontend README done, PR #111.)_

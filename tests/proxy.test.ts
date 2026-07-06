@@ -7,12 +7,13 @@
  * localhost `/` → `/admin`), the `/cdn` + `/catalog` rules, and the (admin)
  * route-group session gate: in non-local environments every (admin) route
  * requires an `ezac_session` cookie or redirects to `/login`; local passes
- * through.
+ * through. Also pins the public perimeter: `/explore` stays anonymous (0203 F4
+ * regression fix) and the never-routed `/collection/:slug/edit` gate stays dead.
  */
 
 import { NextRequest } from 'next/server';
 
-import { proxy } from '@/proxy';
+import { config, proxy } from '@/proxy';
 
 const ORIGINAL_ENV = process.env;
 
@@ -131,9 +132,6 @@ describe('proxy middleware — (admin) group session gate (non-local)', () => {
     '/metadata/foo',
     '/collection/manage',
     '/collection/manage/foo',
-    '/collection/some-slug/edit',
-    '/explore',
-    '/explore/foo',
   ];
 
   it.each(adminRoutes)('redirects %s → /login when no ezac_session', pathname => {
@@ -158,13 +156,55 @@ describe('proxy middleware — (admin) group passthrough (localhost)', () => {
     '/comments',
     '/metadata',
     '/collection/manage',
-    '/collection/some-slug/edit',
-    '/explore',
   ];
 
   it.each(adminRoutes)('passes %s through on localhost (no session needed)', pathname => {
     const res = proxy(makeRequest(pathname));
     expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+});
+
+describe('proxy middleware — public routes stay public (non-local)', () => {
+  beforeEach(() => setProd());
+
+  // /explore is the deliberately public taxonomy directory (f9cd9c1, chapter 001).
+  // 0203 F4 (9df92d8) regression-gated it behind the ezac_session presence check;
+  // these tests pin the fix: anonymous prod traffic must pass through.
+  it.each(['/explore', '/explore/foo'])('passes %s through anonymously in prod', pathname => {
+    const res = proxy(makeRequest(pathname));
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  // /collection/[slug]/edit has never existed as a route — in-place editing is
+  // /[slug]?manage=1 (manageHref). The middleware must not gate a path the app
+  // 404s anyway.
+  it('passes /collection/some-slug/edit through anonymously in prod (dead gate removed)', () => {
+    const res = proxy(makeRequest('/collection/some-slug/edit'));
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+});
+
+describe('proxy middleware — config.matcher', () => {
+  it('does not match public /explore or the dead /collection/:slug/edit entry', () => {
+    expect(config.matcher).not.toContain('/explore');
+    expect(config.matcher).not.toContain('/explore/:path*');
+    expect(config.matcher).not.toContain('/collection/:slug/edit');
+  });
+
+  it('still matches the (admin) group surfaces', () => {
+    const gated = [
+      '/admin',
+      '/admin/:path*',
+      '/collection/manage',
+      '/collection/manage/:path*',
+      '/comments',
+      '/metadata',
+      '/all-collections',
+      '/all-images',
+    ];
+    for (const entry of gated) {
+      expect(config.matcher).toContain(entry);
+    }
   });
 });
 

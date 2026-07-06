@@ -33,6 +33,10 @@ interface MenuDropdownProps {
  * Features body scroll locking, click-outside-to-close on desktop, and
  * social media integration. Manages nested form states and navigation.
  *
+ * Public items (including Explore — the /explore taxonomy directory is
+ * deliberately ungated, see proxy.ts) render for logged-out visitors; admin
+ * items are gated on the `isAdmin` principal.
+ *
  * @param isOpen - Controls dropdown visibility
  * @param onClose - Callback to close the dropdown
  */
@@ -265,17 +269,15 @@ export function MenuDropdown({
 
         {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
 
-        {isAdmin && (
-          <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.explore}
-            >
-              <span className={styles.dropdownMenuOptions}>Explore</span>
-            </button>
-          </div>
-        )}
+        <div className={styles.dropdownMenuItem}>
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
+            onClick={handleNavigation.explore}
+          >
+            <span className={styles.dropdownMenuOptions}>Explore</span>
+          </button>
+        </div>
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
