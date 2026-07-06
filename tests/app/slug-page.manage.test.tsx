@@ -24,7 +24,7 @@ async function renderPage(slug: string, manage?: string) {
   render(element);
 }
 
-describe('app/[slug]/page.tsx — ?manage=1 entry (parked to local dev)', () => {
+describe('app/[slug]/page.tsx — ?manage=1 entry (isAdmin-gated via requireAdmin, no environment gate)', () => {
   const originalEnv = process.env.NEXT_PUBLIC_ENV;
 
   beforeEach(() => {
@@ -54,12 +54,23 @@ describe('app/[slug]/page.tsx — ?manage=1 entry (parked to local dev)', () => 
     expect(mockRequireAdmin).toHaveBeenCalledTimes(1);
   });
 
-  it('parks ?manage=1 in production: editMode=false, requireAdmin NOT called', async () => {
+  it('passes editMode=true and calls requireAdmin when ?manage=1 in production (no longer parked)', async () => {
     process.env.NEXT_PUBLIC_ENV = 'production';
     await renderPage('film', '1');
 
-    expect(mockWrapper.mock.calls[0][0]).toMatchObject({ slug: 'film', editMode: false });
-    expect(mockRequireAdmin).not.toHaveBeenCalled();
+    expect(mockWrapper.mock.calls[0][0]).toMatchObject({ slug: 'film', editMode: true });
+    expect(mockRequireAdmin).toHaveBeenCalledTimes(1);
+  });
+
+  it('redirects a non-admin viewer to /login in production via requireAdmin, even with ?manage=1', async () => {
+    process.env.NEXT_PUBLIC_ENV = 'production';
+    const redirectError = new Error('NEXT_REDIRECT');
+    mockRequireAdmin.mockRejectedValueOnce(redirectError);
+
+    await expect(renderPage('film', '1')).rejects.toThrow('NEXT_REDIRECT');
+    expect(mockRequireAdmin).toHaveBeenCalledTimes(1);
+    // CollectionPageWrapper must not render for a viewer requireAdmin rejects.
+    expect(mockWrapper).not.toHaveBeenCalled();
   });
 
   it('treats any non-"1" manage value as non-edit', async () => {

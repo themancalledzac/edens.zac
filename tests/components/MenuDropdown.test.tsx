@@ -36,6 +36,13 @@ const principal: MeResponse = {
   galleries: [],
 };
 
+const adminPrincipal: MeResponse = {
+  email: 'admin@b.com',
+  isAdmin: true,
+  mfaSatisfied: true,
+  galleries: [],
+};
+
 describe('MenuDropdown — auth actions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -116,5 +123,83 @@ describe('MenuDropdown — auth actions', () => {
     await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
 
     expect(screen.queryByRole('button', { name: /^home$/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPathname = '/some-collection';
+  });
+
+  it('shows Explore/Create/Metadata/Comments for an isAdmin principal (prod-shaped: isLocalEnvironment mocked false)', async () => {
+    mockMe.mockResolvedValue(adminPrincipal);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+
+    expect(await screen.findByRole('button', { name: 'Explore' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Metadata' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Comments' })).toBeInTheDocument();
+  });
+
+  it('shows Update only when pageType is "collection" for an isAdmin principal', async () => {
+    mockMe.mockResolvedValue(adminPrincipal);
+
+    render(
+      <MenuDropdown isOpen onClose={jest.fn()} pageType="collection" collectionSlug="my-gallery" />
+    );
+
+    const updateBtn = await screen.findByRole('button', { name: 'Update' });
+    fireEvent.click(updateBtn);
+    expect(mockPush).toHaveBeenCalledWith('/my-gallery?manage=1');
+  });
+
+  it('hides Update when pageType is not "collection", even for an isAdmin principal', async () => {
+    mockMe.mockResolvedValue(adminPrincipal);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} pageType="default" />);
+    await screen.findByRole('button', { name: 'Explore' }); // settle the me() fetch
+
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+  });
+
+  it('hides Explore/Create/Update/Metadata/Comments for a logged-in non-admin principal', async () => {
+    mockMe.mockResolvedValue(principal); // isAdmin: false
+
+    render(
+      <MenuDropdown isOpen onClose={jest.fn()} pageType="collection" collectionSlug="my-gallery" />
+    );
+    await screen.findByRole('button', { name: /log out/i }); // settle the me() fetch
+
+    expect(screen.queryByRole('button', { name: 'Explore' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Metadata' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Comments' })).not.toBeInTheDocument();
+  });
+
+  it('hides Explore/Create/Update/Metadata/Comments for an anonymous (logged-out) viewer', async () => {
+    mockMe.mockResolvedValue(null);
+
+    render(
+      <MenuDropdown isOpen onClose={jest.fn()} pageType="collection" collectionSlug="my-gallery" />
+    );
+    await screen.findByRole('button', { name: /log in/i }); // settle the me() fetch
+
+    expect(screen.queryByRole('button', { name: 'Explore' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Update' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Metadata' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Comments' })).not.toBeInTheDocument();
+  });
+
+  it('hides Clear Cache for an isAdmin principal in a prod-shaped environment (isLocalEnvironment mocked false) — stays local-only even for real admins', async () => {
+    mockMe.mockResolvedValue(adminPrincipal);
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('button', { name: 'Explore' }); // settle the me() fetch; other admin items ARE visible
+
+    expect(screen.queryByRole('button', { name: /clear cache/i })).not.toBeInTheDocument();
   });
 });
