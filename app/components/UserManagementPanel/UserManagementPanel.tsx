@@ -9,10 +9,8 @@ import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
 import { UserForm } from '@/app/components/UserForm/UserForm';
-import { listUsers, loginAsUser } from '@/app/lib/api/users';
+import { listUsers } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
-import { isLocalEnvironment } from '@/app/utils/environment';
-import { logger } from '@/app/utils/logger';
 
 import styles from './UserManagementPanel.module.scss';
 
@@ -31,25 +29,6 @@ export function UserManagementPanel() {
   const [view, setView] = useState<View>({ mode: 'list' });
   const [showPeople, setShowPeople] = useState(false);
   const [mergeFor, setMergeFor] = useState<AdminUserSummary | null>(null);
-  const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
-
-  // Dev-only "log in as this user". The button is hidden outside local, and the backend endpoint is
-  // @Profile("dev") so it does not exist in prod at all — impersonation is never reachable there.
-  const canImpersonate = isLocalEnvironment();
-
-  const handleLoginAs = useCallback(async (userId: number) => {
-    setImpersonatingId(userId);
-    try {
-      await loginAsUser(userId);
-      // Full navigation so the freshly-set ezac_session cookie is used for the /user server render.
-      // Also doubles as the auth-state refresh: loginAsUser does NOT dispatch AUTH_CHANGED_EVENT,
-      // so swapping this for router.push would resurrect the stale-menu bug (useFetchMe never refetches).
-      window.location.assign('/user');
-    } catch (error) {
-      logger.error('UserManagementPanel', 'impersonation failed', error, { userId });
-      setImpersonatingId(null);
-    }
-  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -172,16 +151,6 @@ export function UserManagementPanel() {
                         email={user.email ?? ''}
                         status={user.status}
                       />
-                      {canImpersonate && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={impersonatingId === user.id}
-                          onClick={() => void handleLoginAs(user.id)}
-                        >
-                          {impersonatingId === user.id ? 'Logging in…' : 'Log in as'}
-                        </Button>
-                      )}
                     </>
                   )}
                 </div>
