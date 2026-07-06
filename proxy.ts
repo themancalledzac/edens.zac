@@ -10,7 +10,7 @@ import { isLocalEnvironment } from '@/app/utils/environment';
 
 /**
  * Global Next.js Proxy
- * - Local-only admin hub at /admin (and /homePage escape route)
+ * - Localhost landing: / redirects to the /admin hub; /homePage is the local-only escape route
  * - Gates the whole (admin) App Router route group on an `ezac_session` cookie
  *   in non-local environments (presence check; the backend validates the session)
  * - Maintains legacy local-only protection for /cdn tooling routes

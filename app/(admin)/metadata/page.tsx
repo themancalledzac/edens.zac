@@ -1,4 +1,5 @@
-// Admin = perimeter today (BFF INTERNAL_API_SECRET) → authenticated admin principal later (see docs 009). Gating centralized in app/(admin)/layout.tsx.
+// Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
+// /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
 import { MetadataPageClient } from '@/app/components/MetadataPage/MetadataPageClient';
 import { getMetadata } from '@/app/lib/api/collections';
 
