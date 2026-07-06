@@ -4,6 +4,20 @@
 > removed (2026-06-01). 1–2 lines per item. For deeper detail, follow the cited commits/PRs in
 > git history, or the surviving docs catalogued in [000-summary.md](000-summary.md).
 
+## 2026-06-10 → 07-06 Wave (0182–0204)
+
+The post-`0179` wave: the layout value-model rewrite, auth Phase F, the Person→User identity merge, Collection IA (A1/A3), the admin panel, and a fixes wave. See chapters [004](004-content-discovery.md), [005](005-layout.md), [007](007-security-hardening.md), [008](008-collection-admin.md), [009](009-backend-and-vision.md) for current status.
+
+- **Layout value model** — #182 directional-prominence (orientation-agnostic prominence `P`; retired `isFullWidthHero`, the vertical penalty, `getComponentValue`/PANORAMA caps, `905801f`) · #183 collection-fixes · #184 area-to-value layout (supersedes the 005-layout Issue #4 reachability item) · #185 related-collections row redesign (`563ee08`).
+- **Auth Phase F** — #186 auth-foundation FE (sessions, `/login`, `/api/auth/me`) · #187 user-invite onboarding.
+- **Identity merge** — #194 Person→User Phase 1 (`43ca1dd`) · #195/#196 Phase 2 + Selects Phase-1 + per-collection client toggle + `/admin/users/[id]` full-page render · the PERSON-merge UI (`d765e8d`..`a8f9420`).
+- **User Concept (009 Phase C first slice)** — Selects/user pages shipped via the 2026-06-22 plan; **Rating control shipped then deliberately REMOVED** (`fa5516b`) — noted here so it doesn't get "restored."
+- **Collection IA** — #198+#200 A1 unified `/{slug}` tag-view routing + MenuDropdown Home/Me (`a23a43b`, `cd4e455`) + tag chips (`c40b9c6`) · #199 A3 Save-as-Collection + Track C saves/follows + `/user` redesign (`33bc524`).
+- **Admin panel** — #197 admin-comments-panel · #202 logout-state fix + admin email-editable · #203 admin-API authz (`is_admin`, `hasRole(ADMIN)` gate on `/api/admin/**`, `AdminBootstrap`; closed the anonymous admin-API hole) · **0204 impersonation removal (FE `8689437` / BE `c39fe70`, pushed, PENDING MERGE)** — admin=root-view model via `/admin/users/[id]`.
+- **Fixes wave** — #188 (0190 bug fixes) · #190 collection-delete (danger zone) · #189/#191/#192/#193 immersive-viewer gestures (pinch-zoom, tap-to-fullscreen) + misc `claude/*` fixes.
+- **Unified filter-visibility gate** (no PR# — commits `d07069b`/`74d4d55`/`cfd3aa1` et al on main) — `canFilter`/`computeFilterVisibility` shipped, 35/35 plan tasks.
+- **BE mirror**: same period, the backend shipped auth F1/F2, the identity-merge migrations, invite-invalidation (`5e7036d`), `is_admin` (V42), and removed the impersonation endpoint (0204-BE, pending merge).
+
 ## Design System Unification — Chapter 001 (2026-06-01 → 06-03)
 
 The full "many divergent UI standards → one canonical set" epic. Shipped as 9 sequential PRs; see [001 · Design System Unification](001-design-review.md) for the per-phase detail.
