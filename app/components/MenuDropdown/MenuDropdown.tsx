@@ -265,17 +265,17 @@ export function MenuDropdown({
 
         {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
 
-        {isAdmin && (
-          <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.explore}
-            >
-              <span className={styles.dropdownMenuOptions}>Explore</span>
-            </button>
-          </div>
-        )}
+        {/* Explore is public nav (the /explore taxonomy directory is deliberately
+            ungated — see proxy.ts), so it renders for logged-out visitors too. */}
+        <div className={styles.dropdownMenuItem}>
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
+            onClick={handleNavigation.explore}
+          >
+            <span className={styles.dropdownMenuOptions}>Explore</span>
+          </button>
+        </div>
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
