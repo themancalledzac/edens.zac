@@ -14,10 +14,9 @@ export interface GalleryMembership {
 export interface MeResponse {
   email: string;
   /**
-   * Admin flag on the user row — deliberately SEPARATE from "being logged in".
-   * An admin impersonating another user ("log in as") still needs admin
-   * capabilities, so admin-ness is a row-level boolean, not inferred from the
-   * session identity. Backend `is_admin` → this field via `/api/auth/me`.
+   * `isAdmin` is a row-level attribute of the account (a root capability),
+   * independent of session/login identity. Backend `is_admin` → this field
+   * via `/api/auth/me`.
    */
   isAdmin: boolean;
   mfaSatisfied: boolean;

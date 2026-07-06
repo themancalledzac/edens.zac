@@ -24,8 +24,7 @@ import { meServer } from '@/app/lib/api/auth';
  * every (admin) page is `force-dynamic`, so this only runs per-request, never during
  * static generation.
  *
- * Admin-ness comes from the row-level `isAdmin` flag, NOT session identity, so an
- * admin impersonating another user retains access.
+ * Admin-ness comes from the row-level `isAdmin` flag, NOT session identity.
  */
 export async function requireAdmin(): Promise<void> {
   const principal = await meServer();
