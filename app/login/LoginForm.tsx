@@ -85,10 +85,6 @@ export default function LoginForm() {
 
   const handlePasskeySignIn = async () => {
     setError(null);
-    if (!email.trim()) {
-      setError('Enter your email to use Face / Touch ID.');
-      return;
-    }
     try {
       setSubmitting(true);
       await loginWithPasskey(email.trim());
