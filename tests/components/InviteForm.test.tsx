@@ -174,7 +174,16 @@ describe('InviteForm', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/add it later from your account page/i);
     expect(mockPush).not.toHaveBeenCalled();
 
+    // The invite is consumed, so the form must not offer a second submission:
+    // the submit button is replaced by Continue and every input stays disabled.
+    expect(screen.queryByRole('button', { name: /create account/i })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Your name')).toBeDisabled();
+    expect(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER)).toBeDisabled();
+    expect(screen.getByPlaceholderText(CONFIRM_PLACEHOLDER)).toBeDisabled();
+    expect(screen.getByLabelText(PASSKEY_LABEL)).toBeDisabled();
+
     fireEvent.click(screen.getByRole('button', { name: /continue to your space/i }));
+    expect(mockAcceptInvite).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('/user');
   });
 

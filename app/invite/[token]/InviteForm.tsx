@@ -31,7 +31,9 @@ export interface InviteFormProps {
  * → optional `registerPasskey` → `/user`. A passkey-enrollment failure never blocks
  * the created account: instead of redirecting (or silently swallowing), the form
  * surfaces a warning and swaps the submit button for an explicit continue-to-`/user`
- * action, since the invite is consumed and re-submitting would 410.
+ * action, since the invite is consumed and re-submitting would 410. After that
+ * failure the form deliberately stays disabled (`submitting` never resets) so the
+ * consumed single-use invite cannot be resubmitted.
  */
 export default function InviteForm({ token, email, displayName }: InviteFormProps) {
   const router = useRouter();
