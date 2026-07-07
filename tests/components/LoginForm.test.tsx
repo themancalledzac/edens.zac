@@ -85,4 +85,62 @@ describe('LoginForm', () => {
     await waitFor(() => expect(mockLoginWithPasskey).toHaveBeenCalledWith('a@b.com'));
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/user'));
   });
+
+  /** Drive the passkey button with a pre-filled email and a rejecting loginWithPasskey. */
+  async function failPasskeySignIn(rejection: unknown): Promise<void> {
+    mockLoginWithPasskey.mockRejectedValue(rejection);
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByPlaceholderText(EMAIL_PLACEHOLDER), {
+      target: { value: 'a@b.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /face \/ touch id/i }));
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(mockPush).not.toHaveBeenCalled();
+  }
+
+  it('maps a passkey NotAllowedError to no-passkey guidance, not a generic failure', async () => {
+    await failPasskeySignIn(new DOMException('ceremony dismissed', 'NotAllowedError'));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/no passkey was used/i);
+    expect(screen.getByRole('alert')).toHaveTextContent(/add face \/ touch id from your account/i);
+  });
+
+  it('maps a passkey SecurityError to an availability message', async () => {
+    await failPasskeySignIn(new DOMException('invalid rp id', 'SecurityError'));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/isn't available right now/i);
+  });
+
+  it('maps a passkey 429 to the 15-minute rate-limit message', async () => {
+    await failPasskeySignIn(new ApiError('Too many attempts', 429));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/wait about 15 minutes/i);
+  });
+
+  it('maps a passkey 401 to ceremony copy that never says "password"', async () => {
+    await failPasskeySignIn(new ApiError('Unauthorized', 401));
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/passkey sign-in didn't complete/i);
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/password/i);
+  });
+
+  it('maps a password 429 to the 15-minute rate-limit message', async () => {
+    mockLogin.mockRejectedValue(new ApiError('Too many attempts', 429));
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByPlaceholderText(EMAIL_PLACEHOLDER), {
+      target: { value: 'a@b.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
+      target: { value: 'pw123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/wait about 15 minutes/i)
+    );
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });

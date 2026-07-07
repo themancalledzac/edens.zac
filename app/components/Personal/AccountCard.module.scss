@@ -1,0 +1,63 @@
+/* AccountCard — email + passkey (Face / Touch ID) enrollment block on /user.
+   Sits below the personal sections; the heading row mirrors SectionTitleCard's
+   typography and border so the card reads as a sibling of the section stack. */
+
+.card {
+  margin-top: var(--space-8);
+
+  /* Keep the card inset while the content grids above run full-bleed on mobile;
+     reset at the desktop breakpoint where .sections regains its own side padding.
+     Mirrors SectionTitleCard .heading. */
+  padding-inline: var(--page-padding-mobile);
+
+  @media (width >= 768px) {
+    padding-inline: 0;
+  }
+}
+
+.heading {
+  margin: 0;
+  padding: var(--space-4) var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-serif);
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.1;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2) 0;
+}
+
+.email {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+}
+
+.passkeyRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+}
+
+.enrollButton {
+  flex-shrink: 0;
+}
+
+.success {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+}

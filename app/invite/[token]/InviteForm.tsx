@@ -28,7 +28,12 @@ export interface InviteFormProps {
  *
  * Fields: display name (pre-filled), password, confirm password, and an optional
  * "Enable Face/Touch ID" checkbox. On submit → `acceptInvite` (auto-login via cookie)
- * → optional `registerPasskey` (best-effort; failure does not block redirect) → `/user`.
+ * → optional `registerPasskey` → `/user`. A passkey-enrollment failure never blocks
+ * the created account: instead of redirecting (or silently swallowing), the form
+ * surfaces a warning and swaps the submit button for an explicit continue-to-`/user`
+ * action, since the invite is consumed and re-submitting would 410. After that
+ * failure the form deliberately stays disabled (`submitting` never resets) so the
+ * consumed single-use invite cannot be resubmitted.
  */
 export default function InviteForm({ token, email, displayName }: InviteFormProps) {
   const router = useRouter();
@@ -38,6 +43,7 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
   const [confirm, setConfirm] = useState('');
   const [enablePasskey, setEnablePasskey] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [passkeyWarning, setPasskeyWarning] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -74,8 +80,10 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
         try {
           await registerPasskey();
         } catch {
-          // Passkey enrollment is optional — a failure here should not block
-          // the redirect. The user can enroll later from their account settings.
+          setPasskeyWarning(
+            "Your account was created, but Face / Touch ID couldn't be saved — you can add it later from your account page."
+          );
+          return;
         }
       }
 
@@ -151,10 +159,17 @@ export default function InviteForm({ token, email, displayName }: InviteFormProp
       </label>
 
       {error && <FormError>{error}</FormError>}
+      {passkeyWarning && <FormError>{passkeyWarning}</FormError>}
 
-      <Button type="submit" loading={submitting} className={styles.submitButton}>
-        {submitting ? 'Setting up…' : 'Create Account'}
-      </Button>
+      {passkeyWarning ? (
+        <Button type="button" onClick={() => router.push('/user')} className={styles.submitButton}>
+          Continue to your space
+        </Button>
+      ) : (
+        <Button type="submit" loading={submitting} className={styles.submitButton}>
+          {submitting ? 'Setting up…' : 'Create Account'}
+        </Button>
+      )}
     </form>
   );
 }
