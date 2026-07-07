@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import LocationCollections from '@/app/components/LocationPage/LocationCollections';
+import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { CollapsibleSection } from '@/app/components/Personal/CollapsibleSection';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { PersonalContentGrid } from '@/app/components/Personal/PersonalContentGrid';
@@ -41,8 +42,9 @@ function splitUserContent(content: AnyContentModel[] | undefined): {
 /**
  * Session-gated self-only "Your Space" page for the signed-in user. Renders four ordered,
  * collapsible sections — Collections (open), Images (tagged), Saved (bookmarks), Following — each
- * headed by a title card. Anonymous visitors get a 404 (no login surface exists yet — invite /
- * onboarding is a later Phase C slice).
+ * headed by a title card, then an Account card (email + passkey enrollment) below the stack.
+ * Anonymous visitors get a 404; sign-in lives at `/login` (which lands here on success) and
+ * onboarding at the invite-link flow.
  */
 export default async function UserPage() {
   const principal = await meServer();
@@ -132,6 +134,8 @@ export default async function UserPage() {
                 <LocationCollections collections={followedCollections} />
               </FollowsProvider>
             </CollapsibleSection>
+
+            <AccountCard email={principal.email} />
           </div>
         </SavesProvider>
       </MeProvider>
