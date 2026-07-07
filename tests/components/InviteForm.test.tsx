@@ -3,8 +3,9 @@
  *
  * Mirrors the ClientGalleryGate test style: mock the API helpers
  * (`acceptInvite`, `registerPasskey`) and `useRouter` from next/navigation,
- * then drive the form through validation, the happy path, the non-blocking
- * passkey-failure path, and the expired-token error path.
+ * then drive the form through validation, the happy path, the surfaced
+ * passkey-failure path (warning + explicit continue, no silent swallow), and
+ * the expired-token error path.
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -129,9 +130,9 @@ describe('InviteForm', () => {
     expect(mockRegisterPasskey).not.toHaveBeenCalled();
   });
 
-  it('still redirects to /user when passkey is opted-in but registerPasskey throws', async () => {
+  it('redirects to /user when passkey is opted-in and registerPasskey succeeds', async () => {
     mockAcceptInvite.mockResolvedValue();
-    mockRegisterPasskey.mockRejectedValue(new Error('user cancelled'));
+    mockRegisterPasskey.mockResolvedValue();
 
     renderForm('Jane');
 
@@ -150,6 +151,31 @@ describe('InviteForm', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/user');
     });
+  });
+
+  it('surfaces a warning with a continue action instead of silently redirecting when registerPasskey throws', async () => {
+    mockAcceptInvite.mockResolvedValue();
+    mockRegisterPasskey.mockRejectedValue(new DOMException('user cancelled', 'NotAllowedError'));
+
+    renderForm('Jane');
+
+    fireEvent.change(screen.getByPlaceholderText(PASSWORD_PLACEHOLDER), {
+      target: { value: 'pw123456' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(CONFIRM_PLACEHOLDER), {
+      target: { value: 'pw123456' },
+    });
+    fireEvent.click(screen.getByLabelText(PASSKEY_LABEL));
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(/your account was created/i);
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent(/add it later from your account page/i);
+    expect(mockPush).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /continue to your space/i }));
+    expect(mockPush).toHaveBeenCalledWith('/user');
   });
 
   it('shows an expired/invalid message and does not redirect on ApiError(410)', async () => {
