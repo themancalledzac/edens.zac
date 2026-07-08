@@ -32,7 +32,20 @@ jest.mock('@/app/components/ui/TagsSelector/TagsSelector', () => ({
 
 jest.mock('@/app/components/RatingStars/RatingStars', () => ({
   __esModule: true,
-  default: () => <div data-testid="rating-stars" />,
+  default: ({
+    ariaLabel,
+    onChange,
+  }: {
+    ariaLabel?: string;
+    onChange: (rating: number | null) => Promise<void> | void;
+  }) => (
+    <button
+      type="button"
+      data-testid="rating-stars"
+      aria-label={ariaLabel}
+      onClick={() => onChange(3)}
+    />
+  ),
 }));
 
 // Self-contained section that fetches on mount — stubbed here; behavior is covered by
@@ -391,6 +404,52 @@ describe('CollectionEditSheet — desktop two-column layout', () => {
     expect(screen.getByRole('region', { name: 'Info' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Structure' })).toBeInTheDocument();
     expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument();
+  });
+});
+
+describe('CollectionEditSheet — StructureTab collection rating', () => {
+  it('renders the Rating section for a normal collection', () => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure' })} />);
+    expect(screen.getByRole('heading', { name: 'Rating' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Rate this collection')).toBeInTheDocument();
+  });
+
+  it('does NOT render the Rating section for the home collection', () => {
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({ editTab: 'structure', currentState: makeState({ slug: 'home' }) })}
+      />
+    );
+    expect(screen.queryByRole('heading', { name: 'Rating' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Rate this collection')).not.toBeInTheDocument();
+  });
+
+  it('renders the Rating section for a parent collection', () => {
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'structure',
+          isParent: true,
+          updateData: makeUpdateData({ type: CollectionType.PARENT }),
+        })}
+      />
+    );
+    expect(screen.getByRole('heading', { name: 'Rating' })).toBeInTheDocument();
+  });
+
+  it('calls updateCollectionRating with the collection’s own id on change', () => {
+    const updateCollectionRating = jest.fn();
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'structure',
+          currentState: makeState({ id: 42 }),
+          updateCollectionRating,
+        })}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Rate this collection'));
+    expect(updateCollectionRating).toHaveBeenCalledWith(42, 3);
   });
 });
 

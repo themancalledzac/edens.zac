@@ -169,6 +169,21 @@ export function StructureTab({ edit }: StructureTabProps) {
         />
       )}
 
+      {!isHomeCollection && (
+        <section aria-labelledby="edit-sheet-rating-heading" className={styles.formGroup}>
+          <h3 id="edit-sheet-rating-heading" className={styles.formLabel}>
+            Rating
+          </h3>
+          <RatingStars
+            initialRating={collection?.rating ?? null}
+            onChange={next =>
+              collection?.id != null ? updateCollectionRating(collection.id, next) : undefined
+            }
+            ariaLabel="Rate this collection"
+          />
+        </section>
+      )}
+
       {isHomeCollection && (collection?.content?.some(isContentCollection) ?? false) && (
         <section aria-labelledby="edit-sheet-children-rating-heading" className={styles.formGroup}>
           <h3 id="edit-sheet-children-rating-heading" className={styles.formLabel}>
