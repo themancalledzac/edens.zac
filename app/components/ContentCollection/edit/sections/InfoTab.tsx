@@ -74,6 +74,12 @@ export function InfoTab({ edit }: InfoTabProps) {
   const collection = currentState?.collection;
   const showGalleryAccess = updateData.type === CollectionType.CLIENT_GALLERY || isParent;
 
+  const isEndBeforeStart = Boolean(
+    updateData.collectionDate &&
+    updateData.collectionEndDate &&
+    updateData.collectionEndDate < updateData.collectionDate
+  );
+
   const coverCandidates: ContentImageModel[] = isParent
     ? (childCollectionImages ?? [])
     : (collection?.content ?? []).filter(isContentImage);
@@ -133,6 +139,38 @@ export function InfoTab({ edit }: InfoTabProps) {
             </button>
           )}
         </div>
+      </div>
+
+      <div className={styles.formGroup}>
+        <label className={styles.formLabel}>End date</label>
+        <div className={styles.dateInputWrapper}>
+          <input
+            type="date"
+            value={updateData.collectionEndDate ?? ''}
+            onChange={e =>
+              setUpdateField(
+                'collectionEndDate',
+                e.target.value as CollectionUpdateRequest['collectionEndDate']
+              )
+            }
+            className={styles.dateInput}
+          />
+          {updateData.collectionEndDate && (
+            <button
+              type="button"
+              onClick={() => setUpdateField('collectionEndDate', null)}
+              className={styles.dateClearButton}
+              aria-label="Clear end date"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {isEndBeforeStart && (
+          <p role="status" className={styles.dateRangeWarning}>
+            End date is before the collection date.
+          </p>
+        )}
       </div>
 
       <div className={styles.formGroup}>

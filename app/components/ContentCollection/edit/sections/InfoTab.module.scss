@@ -88,6 +88,12 @@
   color: var(--color-on-surface-muted);
 }
 
+.dateRangeWarning {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-warning);
+}
+
 .formGridHalf {
   display: grid;
   grid-template-columns: 1fr;

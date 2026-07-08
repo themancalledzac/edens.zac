@@ -370,6 +370,7 @@ export function useCollectionEdit({
       title: source.title || '',
       description: source.description || '',
       collectionDate: source.collectionDate || '',
+      collectionEndDate: source.collectionEndDate || '',
       visibility: source.visibility ?? CollectionVisibility.HIDDEN,
       displayMode: source.displayMode || 'CHRONOLOGICAL',
       rowsWide: source.rowsWide ?? undefined,
