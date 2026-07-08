@@ -178,7 +178,15 @@ export function clampParallaxDimensions(
 }
 
 /**
- * Convert collection to parallax image for unified rendering on public pages
+ * Convert collection to parallax image for unified rendering on public pages.
+ *
+ * No-cover collection cards default to a 1:1 placeholder (1000×1000) so the layout
+ * algorithm packs them uniformly alongside cards with real cover images.
+ *
+ * Synthetic PARENT collections (e.g. /all-collections) carry null content-table IDs
+ * because they aren't backed by content rows; the id falls back to the referenced
+ * collection's ID so downstream Map lookups (sizesMap, row keys) stay unique.
+ *
  * @param col - Collection content model to convert
  * @returns Parallax image model with collection metadata
  */
@@ -186,8 +194,6 @@ export function convertCollectionContentToParallax(
   col: ContentCollectionModel
 ): ContentParallaxImageModel {
   const raw = extractCollectionDimensions(col.coverImage);
-  // No-cover collection cards default to a 1:1 placeholder so the layout
-  // algorithm packs them uniformly alongside cards with real cover images.
   const w = raw.imageWidth ?? 1000;
   const h = raw.imageHeight ?? 1000;
   const { imageWidth, imageHeight } = clampParallaxDimensions(w, h);
@@ -195,9 +201,6 @@ export function convertCollectionContentToParallax(
   return {
     contentType: 'IMAGE',
     enableParallax: true,
-    // Synthetic PARENT collections (e.g. /all-collections) carry null content-table
-    // IDs because they aren't backed by content rows. Fall back to the referenced
-    // collection's ID so downstream Map lookups (sizesMap, row keys) stay unique.
     id: col.id ?? col.referencedCollectionId,
     title: col.title,
     slug: col.slug,
