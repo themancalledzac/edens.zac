@@ -1,6 +1,13 @@
 /* Save (bookmark) heart — an edge-flush square box in the TOP-RIGHT corner of the image, for any
    logged-in viewer. Mirrors the fullscreen `.metadataToggle` corner-box treatment (square, flush to
-   the edge, semi-opaque black, 36px → 40px on desktop) but pinned top-right instead of bottom-right. */
+   the edge, semi-opaque black, 36px → 40px on desktop) but pinned top-right instead of bottom-right.
+
+   Visibility model: on hover-capable devices the heart is hidden at rest and revealed when the
+   surrounding image wrapper is hovered (mirrors the `.coverUpdateShortcut` reveal in
+   ContentComponent.module.scss). The wrapper carries either `data-parallax-container` (parallax path)
+   or `data-image-wrapper` (non-parallax path), so both are targeted. Keyboard users get the heart via
+   `:focus-visible`. On touch devices (no hover) the heart stays visible but dimmer. A SAVED heart is
+   always visible so a bookmarked image reads at a glance. */
 .saveHeart {
   position: absolute;
   top: 0;
@@ -14,9 +21,11 @@
   border: none;
   border-radius: 0;
   background: rgb(0 0 0 / 60%);
-  opacity: 0.5;
+  opacity: 0.35;
   cursor: pointer;
-  transition: background-color var(--duration-base);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard);
   z-index: var(--z-content);
   flex-shrink: 0;
 
@@ -47,4 +56,38 @@
 .saveHeartActive .saveHeartIcon {
   fill: var(--color-heart, #e0245e);
   stroke: var(--color-heart, #e0245e);
+}
+
+/* Hover-capable devices: hide the unsaved heart at rest and reveal it on wrapper hover or keyboard
+   focus. Touch devices fall through to the base opacity above. */
+@media (hover: hover) {
+  .saveHeart {
+    opacity: 0;
+  }
+
+  [data-parallax-container]:hover .saveHeart,
+  [data-image-wrapper]:hover .saveHeart {
+    opacity: 0.4;
+  }
+
+  .saveHeart:hover,
+  .saveHeart:focus-visible {
+    opacity: 0.75;
+  }
+}
+
+/* A saved heart stays visible at a glance regardless of hover — kept subdued but never hidden. This
+   sits after the hover block so it wins the cascade over the `opacity: 0` rest state (equal
+   specificity, later source order). */
+.saveHeartActive {
+  opacity: 0.6;
+}
+
+@media (hover: hover) {
+  [data-parallax-container]:hover .saveHeartActive,
+  [data-image-wrapper]:hover .saveHeartActive,
+  .saveHeartActive:hover,
+  .saveHeartActive:focus-visible {
+    opacity: 0.9;
+  }
 }
