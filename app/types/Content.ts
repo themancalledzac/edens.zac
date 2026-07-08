@@ -110,6 +110,11 @@ export interface ContentImageModel extends Content {
 export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'contentType'> {
   contentType: 'IMAGE';
   collectionDate?: string;
+  /**
+   * ISO end date of the referenced collection (nullable). Carried on collection cards so a
+   * downstream showcase page can group and label cards by date range (see `formatDateRange`).
+   */
+  collectionEndDate?: string;
   type?: string;
   enableParallax: true;
   parallaxSpeed?: number;
@@ -233,6 +238,18 @@ export interface ContentCollectionModel extends Content {
   referencedCollectionId: number; // ID of the actual collection being referenced
   /** Rating 0-5 of the referenced collection (nullable). Used by home manage page. */
   rating?: number | null;
+  /**
+   * ISO date of the referenced collection (nullable). Mirrors backend
+   * `ContentModels.Collection.collectionDate`; threaded onto collection cards so a
+   * downstream showcase page can group cards by date.
+   */
+  collectionDate?: string;
+  /**
+   * ISO end date of the referenced collection (nullable). Mirrors backend
+   * `ContentModels.Collection.collectionEndDate`; renders as a range with
+   * `collectionDate` via `formatDateRange`.
+   */
+  collectionEndDate?: string;
 
   /**
    * Optional aggregated metadata of the referenced collection — surfaced on

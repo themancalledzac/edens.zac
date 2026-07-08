@@ -9,6 +9,7 @@ import {
   type TextBlockItem,
 } from '@/app/types/Content';
 import { isContentCollection, pickImageDimensions } from '@/app/utils/contentTypeGuards';
+import { formatDateRange } from '@/app/utils/formatDateRange';
 import {
   acToBoxTree,
   type BoxTree,
@@ -201,6 +202,8 @@ export function convertCollectionContentToParallax(
     title: col.title,
     slug: col.slug,
     collectionType: col.collectionType,
+    collectionDate: col.collectionDate,
+    collectionEndDate: col.collectionEndDate,
     description: col.description ?? null,
     imageUrl: col.coverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',
@@ -456,7 +459,7 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   if (collection.collectionDate) {
     items.push({
       type: 'date',
-      value: collection.collectionDate,
+      value: formatDateRange(collection.collectionDate, collection.collectionEndDate),
     });
   }
 
