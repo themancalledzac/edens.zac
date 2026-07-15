@@ -4,7 +4,7 @@ import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryG
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
-import { getCollectionBySlug } from '@/app/lib/api/collections';
+import { getCollectionBySlug, getScopedAllCollections } from '@/app/lib/api/collections';
 import { listSavedImageIdsServer } from '@/app/lib/api/personal';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { getUserPage } from '@/app/lib/api/user';
@@ -42,8 +42,10 @@ export default async function CollectionPageWrapper({
   }
 
   try {
+    // all-collections is permission-scoped per viewer (session-dependent response), so it
+    // uses the dedicated no-store fetch; every other slug keeps the shared cacheable fetch.
     const [fetched, ssrViewport, me] = await Promise.all([
-      getCollectionBySlug(slug, 0, 500),
+      slug === 'all-collections' ? getScopedAllCollections() : getCollectionBySlug(slug, 0, 500),
       resolveSsrViewport(),
       meServer(),
     ]);

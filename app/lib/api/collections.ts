@@ -116,6 +116,26 @@ export async function getCollectionBySlug(
 }
 
 /**
+ * GET /api/read/collections/all-collections
+ *
+ * Dedicated fetch for the permission-scoped synthetic list. The backend widens the
+ * result set from the caller's `ezac_session` (admin => all visibilities; signed-in
+ * => LISTED + their granted galleries; anonymous => LISTED), and `fetchReadApi`
+ * forwards inbound cookies server-side, so the response is per-viewer. `no-store`
+ * keeps scoped sets out of the shared Next.js data cache — unlike the ISR-cacheable
+ * `getCollectionBySlug` used by public single-collection pages, which must stay
+ * viewer-independent.
+ */
+export async function getScopedAllCollections(size = 500): Promise<CollectionModel> {
+  const result = await fetchReadApi<CollectionModel>(
+    `/collections/all-collections?page=0&size=${size}`,
+    { cache: 'no-store' }
+  );
+  if (result === null) notFound();
+  return result;
+}
+
+/**
  * GET /api/read/collections/location/{slug}
  * Get visible collections for a location, ordered by collection date (newest first)
  */
