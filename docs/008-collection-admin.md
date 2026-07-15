@@ -26,13 +26,15 @@ Full commit-level detail in [previous-work.md](previous-work.md) ("Collections")
 - Exempt Staging from `enforceVisibility()` for admin reads (like Home); keep it invisible on public reads via its own `visible=false` flag.
 - Manage-page badge / indicator for staged (invisible) collections.
 
+**Admin "user change log" panel** 🔭 _(future, cross-ref)_ — the notify-badge / accept / revert / edit review panel designed in the [logged-in user-flow review §4](superpowers/specs/2026-07-06-logged-in-user-flow-review.md) will live on this admin surface; the doc is owned by [009](009-backend-and-vision.md).
+
 ## Sections (active)
 
-| Section                                                                                  | Role | Status                                        |
-| ---------------------------------------------------------------------------------------- | ---- | --------------------------------------------- |
+| Section                                                                                  | Role | Status                                           |
+| ---------------------------------------------------------------------------------------- | ---- | ------------------------------------------------ |
 | [Mobile-first admin](superpowers/plans/2026-06-08-mobile-first-admin.md)                 | plan | ✅ `0179` (Phases 1–2; Phase 3 surfaces ongoing) |
-| [Mobile-first admin — design](superpowers/specs/2026-06-08-mobile-first-admin-design.md) | spec | 📘 north-star (dark design language)          |
-| [008 · Staging Collection](superpowers/plans/008-staging-collection.md)                  | plan | 🟢 next (backend-heavy)                       |
+| [Mobile-first admin — design](superpowers/specs/2026-06-08-mobile-first-admin-design.md) | spec | 📘 north-star (dark design language)             |
+| [008 · Staging Collection](superpowers/plans/008-staging-collection.md)                  | plan | 🟢 next (backend-heavy)                          |
 
 > **Shipped sections** (consolidated-edit-mode plan + spec, manage-consolidation-and-cleanup, parent-column-and-grouped-rows plan + spec, collection-type-drag-and-drop-retype plan + spec) are archived in `_archive/shipped-plans-2026-06-10.tar.gz` — recorded in [previous-work.md](previous-work.md).
 

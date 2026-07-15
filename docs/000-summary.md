@@ -1,6 +1,6 @@
 # 📚 docs/ — The Book
 
-> **Updated 2026-07-06.** The master index of every planning doc, organized as **chapters → sections**. Reconciled against `origin/main` (HEAD `3cb007e`).
+> **Updated 2026-07-07.** The master index of every planning doc, organized as **chapters → sections**. Reconciled against `origin/main` (HEAD `9db8333`).
 >
 > **Structure:** this book (`000`) → **chapter files** (`001`–`009`, each an overview + remaining-work list) → **sections** (the MR-level plans/specs under `superpowers/plans/`, `superpowers/specs/`, `spikes/`). **All go-forward plans live in `superpowers/plans/`.**
 >
@@ -41,7 +41,7 @@ Cookie gate + admin password input shipped. Left: fix the **plaintext password**
 ### [004 · Content Discovery & Filtering](004-content-discovery.md) 🟢 / ⛔
 
 One reusable filter-bar/chip across Search/Location/Person/Tag/Collection; the `/search` route; collection tags; Collection IA. **Unified filter-visibility gate ✅ shipped** (35/35 plan tasks) · **Collection IA A1/A3 ✅ shipped** ([#198](https://github.com/themancalledzac/edens.zac/pull/198)/[#200](https://github.com/themancalledzac/edens.zac/pull/200)/[#199](https://github.com/themancalledzac/edens.zac/pull/199)) — A2 dynamic Home + Track D automation deferred by design. Remaining: auto-tag endpoint + public-page tag display; the `/search` route (⛔ backend); Breadcrumb mount-or-drop; A3 Spot-1.
-**Sections:** [public search page](superpowers/plans/004-public-search-page.md) ⛔ · [location filter bar](superpowers/plans/004-location-filter-bar.md) 🟡 · [collection tags](superpowers/plans/004-collection-tags.md) 🟡 · [collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) 📘 · [menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md) ✅ _Option A shipped · Option C open_ · [liked images](superpowers/plans/004-liked-images.md) 🗒️
+**Sections:** [public search page](superpowers/plans/004-public-search-page.md) ⛔ · [location filter bar](superpowers/plans/004-location-filter-bar.md) 🟡 · [collection tags](superpowers/plans/004-collection-tags.md) 🟡 · [collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) 📘 · [collections-as-tags design](superpowers/specs/2026-07-06-collections-as-tags-design.md) 📘 _(D1–D12 awaiting review; supersedes IA D7/D8)_ · [menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md) ✅ _Option A shipped · Option C open_ · [liked images](superpowers/plans/004-liked-images.md) 🗒️
 
 ### [005 · Layout](005-layout.md) 📘 / ✅
 
@@ -61,12 +61,12 @@ Cross-cutting hardening surfaced by the (shipped) contact form. **✅ Admin rout
 ### [008 · Collection / Admin](008-collection-admin.md) ✅ / 🟢
 
 **✅ Consolidated Edit Mode & Mobile-First Admin ([#181](https://github.com/themancalledzac/edens.zac/pull/181), `0179`, merged 2026-06-10)** — the dark `/manage` route collapsed into in-place light edit mode on `/[slug]` (`?manage=1`, local-dev); the 2,027-line **`ManageClient` deleted** for one `useCollectionEdit` hook + one `EditBar`; edit layer dynamically imported (public bundle ships zero admin code). **✅ Admin panel shipped**: comments panel (#197), user management (invite #187, merge UI, email-edit #202), 0203 authz + **0204 root-view model** (impersonation removed, pending merge — cross-ref [007](007-security-hardening.md)). Still open: **`/user` ↔ `/admin/users/[id]` layout unification**, the **`STAGING` system collection** (backend-heavy), + the mobile-first **Phase 3** surface rebuilds.
-**Sections:** [mobile-first admin](superpowers/plans/2026-06-08-mobile-first-admin.md) ✅🟢 _(Phase 3 ongoing)_ · [mobile-first admin design](superpowers/specs/2026-06-08-mobile-first-admin-design.md) 📘 · [staging collection](superpowers/plans/008-staging-collection.md) 🟢 _next_
+**Sections:** [mobile-first admin](superpowers/plans/2026-06-08-mobile-first-admin.md) ✅🟢 _(Phase 3 ongoing)_ · [mobile-first admin design](superpowers/specs/2026-06-08-mobile-first-admin-design.md) 📘 · [staging collection](superpowers/plans/008-staging-collection.md) 🟢 _next_ · [logged-in user-flow review](superpowers/specs/2026-07-06-logged-in-user-flow-review.md) 📘 _(user change-log panel — cross-ref, 009-owned)_
 
 ### [009 · Backend Contract & Auth Vision](009-backend-and-vision.md) 📘 / 🔭
 
-The API-contract reference (still-missing endpoints that block frontend work) + the long-horizon ABAC access-control vision. **✅ Phase C (User Concept) shipped** (2026-06-22 plan; Selects live; Rating control shipped-then-removed `fa5516b`) · **✅ Person→User identity merge shipped** (Phases 1+2 — the `users` table + `is_admin` path that fed 0203). Still-missing: search/locations/lenses/auto-tag endpoints.
-**Sections:** [ABAC access control](superpowers/specs/009-abac-access-control.md) 🔭 · [user concept](superpowers/specs/009-user-concept.md) ✅ _shipped_ _(the original backend-handoff contract doc is archived — absorbed into 009's still-missing list)_
+The API-contract reference (still-missing endpoints that block frontend work) + the long-horizon ABAC access-control vision. **✅ Phase C (User Concept) shipped** (2026-06-22 plan; Selects live; Rating control shipped-then-removed `fa5516b`) · **✅ Person→User identity merge shipped** (Phases 1+2 — the `users` table + `is_admin` path that fed 0203). Still-missing: search/locations/lenses/auto-tag endpoints. **2026-07-06:** passkey login proven never-worked e2e (spike; `0211` fix branches pending) · `gallery_access` is gone (V36) — `user_collection` is the whole access model.
+**Sections:** [ABAC access control](superpowers/specs/009-abac-access-control.md) 🔭 · [user concept](superpowers/specs/009-user-concept.md) ✅ _shipped_ _(the original backend-handoff contract doc is archived — absorbed into 009's still-missing list)_ · [logged-in user-flow review](superpowers/specs/2026-07-06-logged-in-user-flow-review.md) 📘 · [email/SES production posture](superpowers/specs/2026-07-06-email-ses-production.md) 📘 · [passkey login diagnosis](spikes/2026-07-06-passkey-login-diagnosis.md) 📘 _(`0211` fix branches, PRs pending)_
 
 ---
 

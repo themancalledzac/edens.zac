@@ -8,6 +8,10 @@ This chapter covers the public-facing ways to find images: a future `/search` ro
 
 **A1 — unified tag-view routing** ([#198](https://github.com/themancalledzac/edens.zac/pull/198)/[#200](https://github.com/themancalledzac/edens.zac/pull/200)) shipped `/{slug}` as the single routing surface for both collections and tag-views, MenuDropdown Home/Me entries, and tag chips. **A3 — Save-as-Collection** ([#199](https://github.com/themancalledzac/edens.zac/pull/199)) shipped from the manage-list row, alongside Track C saves/follows and the `/user` redesign. **Deferred by design:** A2 dynamic Home, Track D automation (auto-related, CLIP auto-tag). The living target-model spec is [2026-06-29-collection-ia-and-user-flow-design](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) — consult it for the full end-state, not just what shipped.
 
+## 📘 Collections-as-tags (design, 2026-07-06)
+
+The proposed next evolution of the Collection IA: the [collections-as-tags design](superpowers/specs/2026-07-06-collections-as-tags-design.md) makes **collections saved tag-combination filters** — a presentation shell (slug / cover / description / `rows_wide`) plus an optional AND-tag query for membership, **materialized into the existing `collection_content` join** (new `source` column; `visible=false` doubles as the curated hide) with event-driven sync + a nightly reconcile. It generalizes — and inverts — the V39 tag→collection promotion: "Save as Collection" gains a live mode. It **supersedes D7/D8 of the [2026-06-29 living spec](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md)**; the rest of that spec stands. Type dispositions: PARENT hubs attach queries in place; CLIENT_GALLERY and HOME stay bespoke. Blog rides the same model: per-day `BLOG` collections keyed by an explicit `collection_date`, ISO-date slugs resolved by the existing `/{slug}` resolver, and a `/blog` stream route. Net-new backend work flagged: the AND-tag query, a BE→FE revalidation client, and a `FIXED` display mode. Decision matrix D1–D12 awaiting Zac's review.
+
 ## Remaining work (deduped)
 
 - Build ONE reusable filter-bar/chip component shared across Search / Location / Person / Tag / Collection — don't rebuild per page.
@@ -22,13 +26,14 @@ This chapter covers the public-facing ways to find images: a future `/search` ro
 
 ## Sections
 
-| Section                                                                  | Role | Status                                             |
-| ------------------------------------------------------------------------ | ---- | -------------------------------------------------- |
-| [Public Search Page](superpowers/plans/004-public-search-page.md)        | plan | ⛔                                                 |
-| [Location Page Filter Bar](superpowers/plans/004-location-filter-bar.md) | plan | 🟡                                                 |
-| [Collection Tags](superpowers/plans/004-collection-tags.md)              | plan | 🟡 (FE Phase 1 shipped; auto-tag + display remain) |
-| [Collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) | spec | 📘 (A1/A3 shipped; A2/Track D deferred)            |
-| [Menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md) | spec | ✅ Option A shipped · Option C open                |
+| Section                                                                                                       | Role | Status                                                                          |
+| ------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------- |
+| [Public Search Page](superpowers/plans/004-public-search-page.md)                                             | plan | ⛔                                                                              |
+| [Location Page Filter Bar](superpowers/plans/004-location-filter-bar.md)                                      | plan | 🟡                                                                              |
+| [Collection Tags](superpowers/plans/004-collection-tags.md)                                                   | plan | 🟡 (FE Phase 1 shipped; auto-tag + display remain)                              |
+| [Collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) | spec | 📘 (A1/A3 shipped; A2/Track D deferred; D7/D8 superseded → collections-as-tags) |
+| [Collections-as-tags (design)](superpowers/specs/2026-07-06-collections-as-tags-design.md)                    | spec | 📘 (D1–D12 awaiting review)                                                     |
+| [Menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md)                     | spec | ✅ Option A shipped · Option C open                                             |
 
 ## Blocked on / open
 
