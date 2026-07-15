@@ -11,6 +11,7 @@ import {
   buildCollectionCriteria,
   buildLocationCriteria,
   canFilter,
+  collectionRefMatchesCriteria,
   computeFilterCounts,
   computeFilterVisibility,
   type ContentFilterCriteria,
@@ -1272,6 +1273,72 @@ describe('applyCollectionFilters', () => {
     const result = applyCollectionFilters(allContent, images, { minRating: 5 }, ['telephoto']);
     // rating 5 → images 1 & 3; telephoto post-filter keeps image 3 (unparseable) only (image 1 is wide)
     expect(result.map(c => c.id)).toEqual([100, 3]);
+  });
+
+  it('filters COLLECTION-ref tiles by their tags (collection-dominant page)', () => {
+    const italy = makeCollectionRef({
+      id: 2001,
+      tags: [{ id: 1, name: 'Italy', slug: 'italy' }],
+    });
+    const iceland = makeCollectionRef({
+      id: 2002,
+      tags: [{ id: 2, name: 'Iceland', slug: 'iceland' }],
+    });
+    const refs: AnyContentModel[] = [italy, iceland];
+
+    const result = applyCollectionFilters(refs, [], { tags: ['Italy'], tagMatchMode: 'AND' }, []);
+
+    expect(result.map(c => c.id)).toEqual([2001]);
+  });
+
+  it('keeps COLLECTION-ref tiles that carry no matching tag out of the result', () => {
+    const tagged = makeCollectionRef({ id: 3001, tags: [{ id: 1, name: 'Italy', slug: 'italy' }] });
+    const untagged = makeCollectionRef({ id: 3002, tags: [] });
+    const refs: AnyContentModel[] = [tagged, untagged];
+
+    const result = applyCollectionFilters(refs, [], { tags: ['Italy'] }, []);
+
+    expect(result.map(c => c.id)).toEqual([3001]);
+  });
+
+  it('does not drop COLLECTION-ref tiles for image-only criteria (e.g. lens)', () => {
+    const ref = makeCollectionRef({ id: 4001, tags: [{ id: 1, name: 'Italy', slug: 'italy' }] });
+    // A lens criterion is image-only; a collection tile must not be hidden by it.
+    const result = applyCollectionFilters([ref], [], { lenses: ['Nikon 50mm'] }, []);
+
+    expect(result.map(c => c.id)).toEqual([4001]);
+  });
+});
+
+describe('collectionRefMatchesCriteria', () => {
+  it('matches on tags with AND mode (all required)', () => {
+    const ref = makeCollectionRef({
+      tags: [
+        { id: 1, name: 'Italy', slug: 'italy' },
+        { id: 2, name: 'Mountains', slug: 'mountains' },
+      ],
+    });
+    expect(
+      collectionRefMatchesCriteria(ref, { tags: ['Italy', 'Mountains'], tagMatchMode: 'AND' })
+    ).toBe(true);
+    expect(
+      collectionRefMatchesCriteria(ref, { tags: ['Italy', 'Iceland'], tagMatchMode: 'AND' })
+    ).toBe(false);
+  });
+
+  it('matches on tags with OR mode (any)', () => {
+    const ref = makeCollectionRef({ tags: [{ id: 1, name: 'Italy', slug: 'italy' }] });
+    expect(collectionRefMatchesCriteria(ref, { tags: ['Italy', 'Iceland'] })).toBe(true);
+  });
+
+  it('respects minRating', () => {
+    const ref = makeCollectionRef({ rating: 3 });
+    expect(collectionRefMatchesCriteria(ref, { minRating: 4 })).toBe(false);
+    expect(collectionRefMatchesCriteria(ref, { minRating: 3 })).toBe(true);
+  });
+
+  it('returns true when no collection-applicable criteria are set', () => {
+    expect(collectionRefMatchesCriteria(makeCollectionRef(), {})).toBe(true);
   });
 });
 
