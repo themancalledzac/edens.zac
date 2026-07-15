@@ -1,17 +1,21 @@
-import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import * as collectionsApi from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import { ALL_COLLECTIONS_TILE_ID } from '@/app/utils/allCollectionsContentBlock';
 import { ME_TILE_ID } from '@/app/utils/meContentBlock';
 
 const mockMeServer = jest.fn();
 const mockGetUserPage = jest.fn();
 
-jest.mock('@/app/lib/api/collections', () => ({ getCollectionBySlug: jest.fn() }));
+jest.mock('@/app/lib/api/collections', () => ({
+  getCollectionBySlug: jest.fn(),
+  getScopedAllCollections: jest.fn(),
+}));
 jest.mock('@/app/lib/api/auth', () => ({ meServer: () => mockMeServer() }));
 jest.mock('@/app/lib/api/user', () => ({ getUserPage: () => mockGetUserPage() }));
 jest.mock('@/app/lib/api/selects', () => ({ listSelectIdsServer: jest.fn(async () => []) }));
+jest.mock('@/app/lib/api/personal', () => ({ listSavedImageIdsServer: jest.fn(async () => []) }));
 jest.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND');
@@ -30,6 +34,10 @@ jest.mock('@/app/utils/ssrViewport', () => ({
 const mockGetCollectionBySlug = collectionsApi.getCollectionBySlug as jest.MockedFunction<
   typeof collectionsApi.getCollectionBySlug
 >;
+const mockGetScopedAllCollections =
+  collectionsApi.getScopedAllCollections as jest.MockedFunction<
+    typeof collectionsApi.getScopedAllCollections
+  >;
 
 function homeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {
@@ -51,43 +59,12 @@ function homeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
   };
 }
 
-describe('CollectionPageWrapper — Me tile injection', () => {
+describe('CollectionPageWrapper — All-Collections tile injection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('injects the Me tile at index 1 of home content for a logged-in viewer', async () => {
-    mockMeServer.mockResolvedValue({
-      email: 'a@b.com',
-      isAdmin: false,
-      mfaSatisfied: true,
-      galleries: [],
-    });
-    mockGetUserPage.mockResolvedValue({
-      ...homeCollection(),
-      coverImage: {
-        id: 7,
-        contentType: 'IMAGE',
-        orderIndex: 0,
-        imageUrl: 'https://cdn/x.jpg',
-        imageWidth: 1600,
-        imageHeight: 1000,
-        locations: [],
-      },
-    });
-    mockGetCollectionBySlug.mockResolvedValue(homeCollection());
-
-    const element = await CollectionPageWrapper({ slug: 'home' });
-
-    expect(element.type).toBe(CollectionPage);
-    const content = element.props.collection.content;
-    // 4 = cover + Me tile + All-Collections tile (0216) + remaining home block.
-    expect(content).toHaveLength(4);
-    expect(content[1].id).toBe(ME_TILE_ID);
-    expect(content[1].slug).toBe('user');
-  });
-
-  it('injects a placeholder Me tile when getUserPage() returns null for a logged-in viewer', async () => {
+  it('injects the All-Collections tile at index 2, after the Me tile, for a logged-in viewer', async () => {
     mockMeServer.mockResolvedValue({
       email: 'a@b.com',
       isAdmin: false,
@@ -102,35 +79,39 @@ describe('CollectionPageWrapper — Me tile injection', () => {
     const content = element.props.collection.content;
     expect(content).toHaveLength(4);
     expect(content[1].id).toBe(ME_TILE_ID);
-    expect(content[1].imageUrl).toBe('');
+    expect(content[2].id).toBe(ALL_COLLECTIONS_TILE_ID);
+    expect(content[2].slug).toBe('all-collections');
   });
 
-  it('does NOT inject the Me tile for an anonymous home viewer', async () => {
+  it('injects the All-Collections tile at index 1 for an anonymous viewer (no Me tile)', async () => {
     mockMeServer.mockResolvedValue(null);
     mockGetCollectionBySlug.mockResolvedValue(homeCollection());
 
     const element = await CollectionPageWrapper({ slug: 'home' });
 
     const content = element.props.collection.content;
-    // 3 = cover + All-Collections tile (shown to everyone, 0216) + remaining block.
     expect(content).toHaveLength(3);
+    expect(content[1].id).toBe(ALL_COLLECTIONS_TILE_ID);
     expect(content.some((b: { id: number }) => b.id === ME_TILE_ID)).toBe(false);
-    expect(mockGetUserPage).not.toHaveBeenCalled();
   });
 
-  it('does NOT inject the Me tile on a non-home slug even when logged in', async () => {
-    mockMeServer.mockResolvedValue({
-      email: 'a@b.com',
-      isAdmin: false,
-      mfaSatisfied: true,
-      galleries: [],
-    });
+  it('does NOT inject the tile on non-home slugs', async () => {
+    mockMeServer.mockResolvedValue(null);
     mockGetCollectionBySlug.mockResolvedValue(homeCollection({ slug: 'portfolio' }));
 
     const element = await CollectionPageWrapper({ slug: 'portfolio' });
 
     const content = element.props.collection.content;
-    expect(content.some((b: { id: number }) => b.id === ME_TILE_ID)).toBe(false);
-    expect(mockGetUserPage).not.toHaveBeenCalled();
+    expect(content.some((b: { id: number }) => b.id === ALL_COLLECTIONS_TILE_ID)).toBe(false);
+  });
+
+  it('uses the scoped no-store fetch for the all-collections slug', async () => {
+    mockMeServer.mockResolvedValue(null);
+    mockGetScopedAllCollections.mockResolvedValue(homeCollection({ slug: 'all-collections' }));
+
+    await CollectionPageWrapper({ slug: 'all-collections' });
+
+    expect(mockGetScopedAllCollections).toHaveBeenCalled();
+    expect(mockGetCollectionBySlug).not.toHaveBeenCalled();
   });
 });

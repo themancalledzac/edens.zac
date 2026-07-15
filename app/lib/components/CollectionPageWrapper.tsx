@@ -9,6 +9,7 @@ import { listSavedImageIdsServer } from '@/app/lib/api/personal';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { getUserPage } from '@/app/lib/api/user';
 import { CollectionType } from '@/app/types/Collection';
+import { buildAllCollectionsContentBlock } from '@/app/utils/allCollectionsContentBlock';
 import { buildMeContentBlock } from '@/app/utils/meContentBlock';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
@@ -60,16 +61,18 @@ export default async function CollectionPageWrapper({
           }
         : fetched;
 
-    // "Me" tile: home page only, logged-in viewer only. Inject the personal parallax
-    // card (links to /user) as the SECOND tile. One extra no-store fetch for logged-in
-    // home views; anonymous home is byte-identical (no fetch, no injection).
+    // Home-only synthetic tiles. Logged-in viewers get the personal "Me" tile as the
+    // SECOND tile (one extra no-store fetch; anonymous home skips that fetch), and
+    // EVERY viewer gets the public "All Collections" tile immediately after it
+    // (index 2 logged-in, index 1 anonymous) linking to the permission-scoped list.
     const collection =
-      slug === 'home' && me && Array.isArray(baseCollection.content)
+      slug === 'home' && Array.isArray(baseCollection.content)
         ? {
             ...baseCollection,
             content: [
               ...baseCollection.content.slice(0, 1),
-              buildMeContentBlock(await getUserPage()),
+              ...(me ? [buildMeContentBlock(await getUserPage())] : []),
+              buildAllCollectionsContentBlock(),
               ...baseCollection.content.slice(1),
             ],
           }
