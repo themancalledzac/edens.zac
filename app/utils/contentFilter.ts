@@ -822,12 +822,54 @@ export function hasAnyActiveFilter(filterState: FilterState): boolean {
 }
 
 /**
+ * Whether a COLLECTION-ref block satisfies the collection-applicable criteria.
+ *
+ * A collection tile carries only the dimensions the backend aggregates onto it
+ * (tags/people/locations) plus its own rating — it has no camera/lens/film/date
+ * of its own. Image-only criteria are therefore NOT applied here (they never
+ * hide a collection tile), so toggling e.g. a film filter on a mixed page leaves
+ * collection tiles in place. On a collection-dominant page (e.g. /all-collections)
+ * the toolbar only surfaces the tag/people/location/rating dimensions anyway.
+ *
+ * @param ref - The collection-ref block
+ * @param criteria - Filter criteria (from {@link buildCollectionCriteria})
+ */
+export function collectionRefMatchesCriteria(
+  ref: ContentCollectionModel,
+  criteria: ContentFilterCriteria
+): boolean {
+  if (criteria.minRating !== undefined && (ref.rating ?? 0) < criteria.minRating) {
+    return false;
+  }
+
+  if (criteria.tags && criteria.tags.length > 0) {
+    const tagNames = ref.tags?.map(t => t.name.toLowerCase()) ?? [];
+    const matcher = criteria.tagMatchMode === 'AND' ? 'every' : 'some';
+    if (!criteria.tags[matcher](tag => tagNames.includes(tag.toLowerCase()))) return false;
+  }
+
+  if (criteria.people && criteria.people.length > 0) {
+    const personNames = ref.people?.map(p => p.name.toLowerCase()) ?? [];
+    const matcher = criteria.peopleMatchMode === 'AND' ? 'every' : 'some';
+    if (!criteria.people[matcher](name => personNames.includes(name.toLowerCase()))) return false;
+  }
+
+  if (criteria.locations && criteria.locations.length > 0) {
+    const locationNames = ref.locations?.map(l => l.name.toLowerCase()) ?? [];
+    if (!criteria.locations.some(loc => locationNames.includes(loc.toLowerCase()))) return false;
+  }
+
+  return true;
+}
+
+/**
  * Apply the collection page's filters to its content.
  *
- * Filters only images by `criteria`, applies the lens-type post-filter (images
- * with an unparseable focalLength are kept so a lens-type chip never silently
- * hides them), then reattaches: non-image content passes through unchanged and
- * images survive only if their id is in the filtered set.
+ * Filters images by `criteria` (plus the lens-type post-filter — images with an
+ * unparseable focalLength are kept so a lens-type chip never silently hides them),
+ * and filters COLLECTION-ref tiles by their own tags/people/locations/rating (see
+ * {@link collectionRefMatchesCriteria}) so tag filtering works on collection-dominant
+ * pages like /all-collections. Any other non-image block passes through unchanged.
  *
  * @param allContent - The full content array (images + non-image blocks)
  * @param allImages - The image subset of `allContent`
@@ -852,8 +894,12 @@ export function applyCollectionFilters(
   }
 
   const filteredImageIds = new Set(filtered.map(img => img.id));
-  // Keep non-image content as-is, only filter images
-  return allContent.filter(item => !isImageContent(item) || filteredImageIds.has(item.id));
+  return allContent.filter(item => {
+    if (isImageContent(item)) return filteredImageIds.has(item.id);
+    if (isCollectionRef(item)) return collectionRefMatchesCriteria(item, criteria);
+    // Other non-image blocks (text, panels) are structural — never filtered out.
+    return true;
+  });
 }
 
 /**

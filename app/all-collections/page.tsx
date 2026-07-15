@@ -1,5 +1,7 @@
-// Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
-// /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
+// Public + permission-scoped: the backend widens the synthetic all-collections list
+// from the caller's ezac_session (admin => all; signed-in => LISTED + granted
+// galleries; anonymous => LISTED), so no route-level gate is needed (0216 — was
+// previously in the (admin) group).
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 
 export const dynamic = 'force-dynamic';

@@ -4,11 +4,12 @@ import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryG
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
-import { getCollectionBySlug } from '@/app/lib/api/collections';
+import { getCollectionBySlug, getScopedAllCollections } from '@/app/lib/api/collections';
 import { listSavedImageIdsServer } from '@/app/lib/api/personal';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { getUserPage } from '@/app/lib/api/user';
 import { CollectionType } from '@/app/types/Collection';
+import { buildAllCollectionsContentBlock } from '@/app/utils/allCollectionsContentBlock';
 import { buildMeContentBlock } from '@/app/utils/meContentBlock';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
@@ -42,8 +43,10 @@ export default async function CollectionPageWrapper({
   }
 
   try {
+    // all-collections is permission-scoped per viewer (session-dependent response), so it
+    // uses the dedicated no-store fetch; every other slug keeps the shared cacheable fetch.
     const [fetched, ssrViewport, me] = await Promise.all([
-      getCollectionBySlug(slug, 0, 500),
+      slug === 'all-collections' ? getScopedAllCollections() : getCollectionBySlug(slug, 0, 500),
       resolveSsrViewport(),
       meServer(),
     ]);
@@ -58,16 +61,18 @@ export default async function CollectionPageWrapper({
           }
         : fetched;
 
-    // "Me" tile: home page only, logged-in viewer only. Inject the personal parallax
-    // card (links to /user) as the SECOND tile. One extra no-store fetch for logged-in
-    // home views; anonymous home is byte-identical (no fetch, no injection).
+    // Home-only synthetic tiles. Logged-in viewers get the personal "Me" tile as the
+    // SECOND tile (one extra no-store fetch; anonymous home skips that fetch), and
+    // EVERY viewer gets the public "All Collections" tile immediately after it
+    // (index 2 logged-in, index 1 anonymous) linking to the permission-scoped list.
     const collection =
-      slug === 'home' && me && Array.isArray(baseCollection.content)
+      slug === 'home' && Array.isArray(baseCollection.content)
         ? {
             ...baseCollection,
             content: [
               ...baseCollection.content.slice(0, 1),
-              buildMeContentBlock(await getUserPage()),
+              ...(me ? [buildMeContentBlock(await getUserPage())] : []),
+              buildAllCollectionsContentBlock(),
               ...baseCollection.content.slice(1),
             ],
           }
