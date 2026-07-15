@@ -69,8 +69,6 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/comments/') ||
     pathname === '/metadata' ||
     pathname.startsWith('/metadata/') ||
-    pathname === '/all-collections' ||
-    pathname.startsWith('/all-collections/') ||
     pathname === '/all-images' ||
     pathname.startsWith('/all-images/');
 
@@ -101,6 +99,8 @@ export const config = {
     // so the prod cost is a single env check.
     // /explore is deliberately PUBLIC (taxonomy directory, chapter 001) — do not
     // add it here; 0203 F4 did and login-walled it in prod.
+    // /all-collections is PUBLIC as of 0216 — the backend permission-scopes the
+    // list from the ezac_session, so no route-level gate belongs here either.
     '/',
     '/admin',
     '/admin/:path*',
@@ -113,8 +113,6 @@ export const config = {
     '/comments/:path*',
     '/metadata',
     '/metadata/:path*',
-    '/all-collections',
-    '/all-collections/:path*',
     '/all-images',
     '/all-images/:path*',
   ],

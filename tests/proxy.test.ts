@@ -122,8 +122,6 @@ describe('proxy middleware — (admin) group session gate (non-local)', () => {
   const adminRoutes = [
     '/admin',
     '/admin/users/1',
-    '/all-collections',
-    '/all-collections/foo',
     '/all-images',
     '/all-images/foo',
     '/comments',
@@ -151,7 +149,6 @@ describe('proxy middleware — (admin) group passthrough (localhost)', () => {
 
   const adminRoutes = [
     '/admin',
-    '/all-collections',
     '/all-images',
     '/comments',
     '/metadata',
@@ -182,6 +179,16 @@ describe('proxy middleware — public routes stay public (non-local)', () => {
     const res = proxy(makeRequest('/collection/some-slug/edit'));
     expect(res.headers.get('x-middleware-next')).toBe('1');
   });
+
+  // 0216: /all-collections is public + permission-scoped — the backend widens the
+  // list from the ezac_session, so anonymous prod traffic must pass through.
+  it.each(['/all-collections', '/all-collections/foo'])(
+    'passes %s through anonymously in prod (permission-scoped page)',
+    pathname => {
+      const res = proxy(makeRequest(pathname));
+      expect(res.headers.get('x-middleware-next')).toBe('1');
+    }
+  );
 });
 
 describe('proxy middleware — config.matcher', () => {
@@ -189,6 +196,8 @@ describe('proxy middleware — config.matcher', () => {
     expect(config.matcher).not.toContain('/explore');
     expect(config.matcher).not.toContain('/explore/:path*');
     expect(config.matcher).not.toContain('/collection/:slug/edit');
+    expect(config.matcher).not.toContain('/all-collections');
+    expect(config.matcher).not.toContain('/all-collections/:path*');
   });
 
   it('still matches the (admin) group surfaces', () => {
@@ -199,7 +208,6 @@ describe('proxy middleware — config.matcher', () => {
       '/collection/manage/:path*',
       '/comments',
       '/metadata',
-      '/all-collections',
       '/all-images',
     ];
     for (const entry of gated) {
