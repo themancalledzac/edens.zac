@@ -449,7 +449,8 @@
   gap: var(--space-3);
 
   @media (width >= 768px) {
-    padding: var(--space-5) 0;
+    /* No top padding so the metadata text top-aligns with the cover image */
+    padding: 0 0 var(--space-5);
     gap: var(--space-4);
   }
 }
