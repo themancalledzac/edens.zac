@@ -93,7 +93,7 @@ export default function CollectionContentRenderer({
   justClickedImageId,
   priority = false,
   onImageLoadError,
-  isClientGallery = false,
+  canDownload = false,
   collectionSlug,
 }: CollectionContentRendererProps) {
   const router = useRouter();
@@ -376,7 +376,7 @@ export default function CollectionContentRenderer({
                   </div>
                 </div>
               ))}
-            {isClientGallery && collectionSlug && (
+            {canDownload && collectionSlug && (
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
           </div>

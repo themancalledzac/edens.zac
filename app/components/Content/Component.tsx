@@ -2,13 +2,15 @@
 
 import { Fragment, useCallback, useMemo, useState } from 'react';
 
+import { useMe } from '@/app/components/auth/MeProvider';
 import { type ReorderMove } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { LAYOUT } from '@/app/constants';
 import { useViewport } from '@/app/hooks/useViewport';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
 import { type MaybePinned, PINNED_SELECT } from '@/app/types/Selects';
 import { type RowWithPatternAndSizes } from '@/app/utils/contentLayout';
+import { canDownloadCollection } from '@/app/utils/galleryAccess';
 
 import { BoxRenderer } from './BoxRenderer';
 import {
@@ -108,6 +110,10 @@ export default function Component({
 }: ContentComponentProps) {
   const measured = useViewport();
 
+  // Download UI is a capability gate (backend authorizes by CLIENT role on any collection), not a
+  // collection-type gate. `useMe()` degrades to null outside a MeProvider → type-only behavior.
+  const canDownload = canDownloadCollection(useMe(), collectionData);
+
   const viewport = useMemo(
     () =>
       resolveEffectiveViewport(
@@ -181,8 +187,6 @@ export default function Component({
 
     const dataPattern = rowType;
 
-    const isClientGallery = collectionData?.type === CollectionType.CLIENT_GALLERY;
-
     return (
       <div key={rowKey} className={cbStyles.row} data-pattern={dataPattern}>
         <BoxRenderer
@@ -207,7 +211,7 @@ export default function Component({
           onCancelImageMove={onCancelImageMove}
           priority={rowIndex === priorityIndex}
           onImageLoadError={handleImageLoadError}
-          isClientGallery={isClientGallery}
+          canDownload={canDownload}
           collectionSlug={collectionData?.slug}
         />
       </div>

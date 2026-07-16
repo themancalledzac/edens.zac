@@ -10,12 +10,14 @@ import {
   useEffect,
 } from 'react';
 
+import { useMe } from '@/app/components/auth/MeProvider';
 import FullScreenDownloadButton from '@/app/components/ClientGalleryDownload/FullScreenDownloadButton';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import type { ViewableContent } from '@/app/types/Content';
+import { canDownloadCollection } from '@/app/utils/galleryAccess';
 
 import { isGifBlock, resolveDisplayDate, resolveDisplayLocations } from './fullScreenModalUtils';
 
@@ -94,6 +96,10 @@ export function FullScreenModal({
       document.documentElement.style.removeProperty('--fs-height');
     };
   }, [isOpen]);
+
+  // Capability gate for the single-image download control (see canDownloadCollection). Called
+  // before the early returns to satisfy the rules of hooks; degrades to null outside a MeProvider.
+  const me = useMe();
 
   if (!fullScreenState) return null;
 
@@ -330,7 +336,7 @@ export function FullScreenModal({
         </button>
       )}
 
-      {!immersive && collectionData?.type === CollectionType.CLIENT_GALLERY && !isGif && (
+      {!immersive && canDownloadCollection(me, collectionData) && !isGif && (
         <FullScreenDownloadButton imageId={currentImage.id} />
       )}
     </div>
