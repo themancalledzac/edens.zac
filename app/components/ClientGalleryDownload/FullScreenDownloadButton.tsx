@@ -12,68 +12,49 @@ interface FullScreenDownloadButtonProps {
 
 /**
  * Download control for the fullscreen viewer on CLIENT_GALLERY images. Tapping the icon expands a
- * Web / Full quality picker and streams the chosen file via a blob download (auth flows through the
+ * Web / Full quality picker; choosing a format navigates to the download URL (auth flows through the
  * `same-origin` gallery cookie). This is the single-image counterpart to the gallery's "Select →
  * Download" flow — the per-grid-image overlay was removed so a tap on the grid always opens
  * fullscreen.
+ *
+ * Navigation (not `fetch`+blob) is deliberate: the backend redirects (302) to a presigned S3 URL to
+ * bypass the Amplify 5.72 MB response cap, and a `fetch` following that cross-origin redirect would
+ * be blocked by S3 CORS. A top-level navigation follows the redirect and downloads with no such
+ * restriction — the `Content-Disposition: attachment` response downloads without leaving the page.
  */
 export default function FullScreenDownloadButton({ imageId }: FullScreenDownloadButtonProps) {
   const [expanded, setExpanded] = useState(false);
   const [downloading, setDownloading] = useState<DownloadFormat | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Collapse the picker whenever the viewer moves to a different image.
   useEffect(() => {
     setExpanded(false);
-    setErrorMsg(null);
   }, [imageId]);
 
   useEffect(() => {
     return () => {
-      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
     };
   }, []);
 
   const handleToggle = useCallback((e: MouseEvent) => {
     e.stopPropagation();
     setExpanded(prev => !prev);
-    setErrorMsg(null);
   }, []);
 
   const handleFormatDownload = useCallback(
-    async (e: MouseEvent, format: DownloadFormat) => {
+    (e: MouseEvent, format: DownloadFormat) => {
       e.stopPropagation();
       setDownloading(format);
-      setErrorMsg(null);
-
-      let blobUrl: string | null = null;
-      try {
-        const res = await fetch(downloadImageUrl(imageId, format), { credentials: 'include' });
-        if (!res.ok) {
-          const msg =
-            format === 'original' ? 'Original not available for this image' : 'Download failed';
-          setErrorMsg(msg);
-          if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-          errorTimerRef.current = setTimeout(() => {
-            setErrorMsg(null);
-            errorTimerRef.current = null;
-          }, 3000);
-          return;
-        }
-        const blob = await res.blob();
-        blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = '';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setExpanded(false);
-      } finally {
-        if (blobUrl) URL.revokeObjectURL(blobUrl);
+      // The response is `Content-Disposition: attachment`, so this downloads without navigating away.
+      window.location.href = downloadImageUrl(imageId, format);
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = setTimeout(() => {
         setDownloading(null);
-      }
+        setExpanded(false);
+        resetTimerRef.current = null;
+      }, 4000);
     },
     [imageId]
   );
@@ -103,11 +84,6 @@ export default function FullScreenDownloadButton({ imageId }: FullScreenDownload
           >
             {downloading === 'original' ? '…' : 'Full'}
           </button>
-          {errorMsg && (
-            <span role="alert" aria-live="assertive" className={styles.errorLabel}>
-              {errorMsg}
-            </span>
-          )}
         </div>
       ) : (
         <button
