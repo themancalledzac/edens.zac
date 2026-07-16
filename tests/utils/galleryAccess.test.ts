@@ -4,7 +4,12 @@
  */
 
 import { type MeResponse } from '@/app/types/Auth';
-import { findMembership, isClientOfCollection } from '@/app/utils/galleryAccess';
+import { CollectionType } from '@/app/types/Collection';
+import {
+  canDownloadCollection,
+  findMembership,
+  isClientOfCollection,
+} from '@/app/utils/galleryAccess';
 
 const clientMembership = { collectionId: 7, role: 'CLIENT' as const };
 
@@ -56,5 +61,33 @@ describe('isClientOfCollection', () => {
 
   it('is false for an anonymous principal without editMode', () => {
     expect(isClientOfCollection(null, 7, false)).toBe(false);
+  });
+});
+
+describe('canDownloadCollection', () => {
+  it('is true on a CLIENT_GALLERY even for an anonymous viewer (password-cookie client path)', () => {
+    expect(canDownloadCollection(null, { id: 7, type: CollectionType.CLIENT_GALLERY })).toBe(true);
+  });
+
+  it('is true for a logged-in CLIENT on a non-CLIENT_GALLERY collection (the prod bug)', () => {
+    // A CLIENT grant on a PORTFOLIO must surface downloads — backend authorizes by role, not type.
+    expect(canDownloadCollection(clientMe, { id: 7, type: CollectionType.PORTFOLIO })).toBe(true);
+  });
+
+  it('is false for an anonymous viewer on a non-CLIENT_GALLERY collection', () => {
+    expect(canDownloadCollection(null, { id: 7, type: CollectionType.PORTFOLIO })).toBe(false);
+  });
+
+  it('is false for a GENERAL member on a non-CLIENT_GALLERY collection', () => {
+    expect(canDownloadCollection(generalMe, { id: 7, type: CollectionType.PORTFOLIO })).toBe(false);
+  });
+
+  it('is false for a CLIENT of a different collection', () => {
+    expect(canDownloadCollection(clientMe, { id: 99, type: CollectionType.PORTFOLIO })).toBe(false);
+  });
+
+  it('is false for null/undefined collection', () => {
+    expect(canDownloadCollection(clientMe, null)).toBe(false);
+    expect(canDownloadCollection(clientMe, undefined)).toBe(false);
   });
 });

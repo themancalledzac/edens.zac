@@ -49,8 +49,9 @@ export interface ContentRendererProps {
   isGif?: boolean; // For unoptimized flag
   thumbnailUrl?: string | null; // Poster frame for video/GIF while loading
 
-  // Client gallery flag - enables download overlays on images
-  isClientGallery?: boolean;
+  // Download capability - true when the viewer may download from this collection (CLIENT_GALLERY
+  // type OR a logged-in CLIENT membership). Gates the "Download" section.
+  canDownload?: boolean;
   // Collection slug - needed for download endpoints
   collectionSlug?: string;
 }

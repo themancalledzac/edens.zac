@@ -30,7 +30,7 @@ import {
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
-import { isClientOfCollection } from '@/app/utils/galleryAccess';
+import { canDownloadCollection, isClientOfCollection } from '@/app/utils/galleryAccess';
 import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { buildPinnedSelects } from '@/app/utils/pinnedSelects';
 import { sortByDate } from '@/app/utils/sortByDate';
@@ -137,6 +137,11 @@ export default function CollectionPageClient({
   // of this collection (or admin via editMode). Distinct from the download "select mode" below.
   const selectsEnabled =
     isClientGallery && !editMode && isClientOfCollection(me, collection.id, editMode);
+
+  // Download UI (and its select-to-download mode) follows the backend's role-based authorization:
+  // a CLIENT_GALLERY (anonymous password-cookie client) OR a logged-in CLIENT of this collection.
+  // Distinct from `isClientGallery` (type only), which still governs Selects/favorites above.
+  const canDownload = canDownloadCollection(me, collection);
 
   // Mirror of the viewer's selected ids, owned here so the pinned "Your Selects" prepend can react
   // to toggles. SelectsProvider is seeded from the same initial list and notifies us via onChange.
@@ -317,8 +322,8 @@ export default function CollectionPageClient({
       serverContentWidth={serverContentWidth}
       serverViewportHeight={serverViewportHeight}
       serverIsMobile={serverIsMobile}
-      selectedIds={isClientGallery ? selectedIds : undefined}
-      onImageClick={isClientGallery && isSelectMode ? handleSelectToggle : undefined}
+      selectedIds={canDownload ? selectedIds : undefined}
+      onImageClick={canDownload && isSelectMode ? handleSelectToggle : undefined}
     />
   );
 
@@ -358,7 +363,7 @@ export default function CollectionPageClient({
   );
 
   const maybeWrappedContent =
-    isClientGallery && !editMode ? (
+    canDownload && !editMode ? (
       <ClientGalleryDownloadProvider value={downloadContextValue}>
         {withSelects}
       </ClientGalleryDownloadProvider>
