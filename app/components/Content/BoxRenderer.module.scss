@@ -18,6 +18,10 @@
   }
 }
 
+.blankSpacer {
+  flex-shrink: 0;
+}
+
 .missingImage {
   display: flex;
   align-items: center;
