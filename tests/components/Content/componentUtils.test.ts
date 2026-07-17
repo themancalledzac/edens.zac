@@ -5,6 +5,7 @@
 import {
   buildContentRows,
   computeFirstNonVisibleRowIndex,
+  computePriorityRowIndex,
   computeTargetAspectRatio,
   createSimpleBoxTree,
   type EffectiveViewport,
@@ -33,6 +34,12 @@ const sizeItem = (id: number, visible = true): CalculatedContentSize => ({
 
 const row = (items: CalculatedContentSize[]): RowWithPatternAndSizes => ({
   rowType: 'content',
+  items,
+  boxTree: createSimpleBoxTree(items),
+});
+
+const headerRow = (items: CalculatedContentSize[]): RowWithPatternAndSizes => ({
+  rowType: 'header',
   items,
   boxTree: createSimpleBoxTree(items),
 });
@@ -175,6 +182,37 @@ describe('computeFirstNonVisibleRowIndex', () => {
   it('returns -1 when everything is visible', () => {
     const rows = [row([sizeItem(1)]), row([sizeItem(2)])];
     expect(computeFirstNonVisibleRowIndex(rows, 7)).toBe(-1);
+  });
+});
+
+describe('computePriorityRowIndex', () => {
+  it('returns 0 for a header-less grid (first content row is row 0)', () => {
+    const rows = [row([sizeItem(1)]), row([sizeItem(2)])];
+    expect(computePriorityRowIndex(rows, 0)).toBe(0);
+  });
+
+  it('returns the first content row index past a single desktop header row', () => {
+    const rows = [headerRow([sizeItem(-1)]), row([sizeItem(1)]), row([sizeItem(2)])];
+    expect(computePriorityRowIndex(rows, 0)).toBe(1);
+  });
+
+  it('skips multiple header rows (mobile cover + metadata) to the first content row', () => {
+    const rows = [
+      headerRow([sizeItem(-1)]),
+      headerRow([sizeItem(-2)]),
+      row([sizeItem(1)]),
+      row([sizeItem(2)]),
+    ];
+    expect(computePriorityRowIndex(rows, 0)).toBe(2);
+  });
+
+  it('falls back to the provided index when every row is a header', () => {
+    const rows = [headerRow([sizeItem(-1)]), headerRow([sizeItem(-2)])];
+    expect(computePriorityRowIndex(rows, 0)).toBe(0);
+  });
+
+  it('falls back to the provided index for an empty layout', () => {
+    expect(computePriorityRowIndex([], 0)).toBe(0);
   });
 });
 
