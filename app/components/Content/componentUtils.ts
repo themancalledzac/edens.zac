@@ -131,6 +131,28 @@ export function computeFirstNonVisibleRowIndex(
 }
 
 /**
+ * Highest row index (inclusive) whose images should load eagerly for the LCP.
+ *
+ * The header cover renders above the fold, but on a collection page the true LCP is usually the
+ * first image of the first *content* row — a full-size grid image sitting below a height-constrained
+ * cover. Next flags it because it lazy-loads. Prioritizing every row from the top through the first
+ * content row makes both the cover and that first content row eager. Pages with no header
+ * (taxonomy/location/user grids) have their first content row at index 0, so this collapses to
+ * "prioritize row 0" — unchanged from before.
+ *
+ * @param rows - Laid-out rows, header rows first (if any), then content rows.
+ * @param fallbackIndex - Row to prioritize when there is no content row at all (header-only layout).
+ * @returns The highest row index (inclusive) to mark as priority.
+ */
+export function computePriorityRowIndex(
+  rows: RowWithPatternAndSizes[],
+  fallbackIndex: number
+): number {
+  const firstContentIndex = rows.findIndex(r => r.rowType !== 'header');
+  return firstContentIndex === -1 ? fallbackIndex : firstContentIndex;
+}
+
+/**
  * Drop IMAGE content whose id is in `failedIds`.
  *
  * A runtime image-load failure (a valid-looking URL that 404s) can only be detected client-side,

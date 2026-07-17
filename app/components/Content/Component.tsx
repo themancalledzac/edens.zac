@@ -16,6 +16,7 @@ import { BoxRenderer } from './BoxRenderer';
 import {
   buildContentRows,
   computeFirstNonVisibleRowIndex,
+  computePriorityRowIndex,
   createSimpleBoxTree,
   excludeFailedImages,
   resolveEffectiveViewport,
@@ -28,7 +29,11 @@ export interface ContentComponentProps {
   currentCoverImageId?: number;
   onImageClick?: (imageId: number) => void;
   justClickedImageId?: number | null;
-  /** Index of content to prioritize for LCP (usually 0 for hero) */
+  /**
+   * Fallback priority row when the layout is header-only. Normally the layout auto-extends eager
+   * loading through the first content row (see {@link computePriorityRowIndex}), so the true LCP
+   * grid image — not just the height-constrained cover — loads eagerly.
+   */
   priorityIndex?: number;
   /** Enable full-screen image viewing on click */
   enableFullScreenView?: boolean;
@@ -157,6 +162,11 @@ export default function Component({
     [rows, currentCollectionId]
   );
 
+  const priorityRowIndex = useMemo(
+    () => computePriorityRowIndex(rows, priorityIndex),
+    [rows, priorityIndex]
+  );
+
   if (layoutError) {
     return (
       <div className={cbStyles.wrapper}>
@@ -209,7 +219,7 @@ export default function Component({
           onPickUp={onPickUp}
           onPlace={onPlace}
           onCancelImageMove={onCancelImageMove}
-          priority={rowIndex === priorityIndex}
+          priority={rowIndex <= priorityRowIndex}
           onImageLoadError={handleImageLoadError}
           canDownload={canDownload}
           collectionSlug={collectionData?.slug}
