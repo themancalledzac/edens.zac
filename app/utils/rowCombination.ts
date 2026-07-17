@@ -19,7 +19,7 @@
  */
 
 import { EXTREMENESS_RAMP_START } from '@/app/constants';
-import type { AnyContentModel } from '@/app/types/Content';
+import type { AnyContentModel, ContentBlankModel } from '@/app/types/Content';
 import {
   getArExtremeness,
   getEffectiveRating,
@@ -264,6 +264,86 @@ export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
   if (rowWidth <= 2) return false;
   if (getArExtremeness(getAspectRatio(item)) < EXTREMENESS_RAMP_START) return false;
   return getWidthCost(item) / rowWidth >= HERO_SOLO_WIDTH_FRACTION;
+}
+
+// =============================================================================
+// BLANK PADDING
+// =============================================================================
+
+/**
+ * Id space for synthetic blank spacers. Blank ids count DOWN from this base
+ * (`BLANK_ID_BASE - rowIndex`), far below any real content id, so they never
+ * collide with backend content in a sizesMap or a React key.
+ */
+export const BLANK_ID_BASE = -1_000_000;
+
+/**
+ * Build a blank spacer leaf with the given aspect ratio.
+ *
+ * The AR is encoded as `width = ar, height = 1` — `getContentDimensions`'
+ * generic width/height fallback reads it straight back, so the blank sizes
+ * through the same path as a real leaf with no special-casing.
+ */
+export function createBlankLeaf(ar: number, id: number): BoxTree {
+  const blank: ContentBlankModel = {
+    id,
+    contentType: 'BLANK',
+    orderIndex: 0,
+    // Must be true: isContentVisibleInCollection treats `visible === false` as
+    // hidden, which would falsely trip the "Non-Visible Content" separator.
+    visible: true,
+    width: ar,
+    height: 1,
+  };
+  return { type: 'leaf', content: blank };
+}
+
+/**
+ * Pad an under-filled row with a single left-aligned blank spacer.
+ *
+ * A row whose real items carry total width-cost `S` inside budget `Wr` is
+ * under-filled when `S / Wr < MIN_FILL_RATIO`. Left as-is, the engine scales
+ * those items up to the full page width — one lonely image becomes a
+ * full-width hero regardless of its rating. Instead we add a blank right
+ * sibling of AR `r · gap / S`, making the combined row AR `r · Wr / S`, so the
+ * real subtree occupies exactly `S / Wr` of the width: its honest share.
+ *
+ * The blank is always a HORIZONTAL sibling, so it renders at the real
+ * subtree's own height and absorbs leftover width only — it never stacks
+ * below an image. The real subtree is nested untouched, so every item keeps
+ * its natural aspect ratio and internal composition.
+ *
+ * Padding is viewport-relative — `rowWidth` is the caller's own budget — so a
+ * higher-rated item, carrying more width-cost, naturally fills more of the row.
+ *
+ * Skipped for a solo hero: an extreme-AR panorama's full-width row is
+ * intentional (see {@link isSoloHero}), not an accident of under-fill.
+ *
+ * @param row - Finalized row (its `components` are real items only)
+ * @param rowWidth - Row width budget for this viewport
+ * @param rowIndex - Row's index, which seeds the blank's deterministic id
+ * @returns The row padded, or unchanged when it is complete or a solo hero
+ */
+export function padRowToWidth(row: RowResult, rowWidth: number, rowIndex: number): RowResult {
+  const S = getTotalCV(row.components);
+  if (S <= 0) return row;
+  if (S / rowWidth >= MIN_FILL_RATIO) return row;
+  if (row.components.length === 1 && isSoloHero(row.components[0]!, rowWidth)) return row;
+
+  const r = calculateBoxTreeAspectRatio(row.boxTree);
+  if (r <= 0) return row;
+
+  const gap = rowWidth - S;
+  const blankAR = (r * gap) / S;
+
+  return {
+    components: row.components,
+    boxTree: {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [row.boxTree, createBlankLeaf(blankAR, BLANK_ID_BASE - rowIndex)],
+    },
+  };
 }
 
 /**
@@ -525,7 +605,7 @@ export function buildRows(
     }
   }
 
-  return rows;
+  return rows.map((row, rowIndex) => padRowToWidth(row, rowWidth, rowIndex));
 }
 
 // =============================================================================

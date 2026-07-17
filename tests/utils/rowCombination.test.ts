@@ -6,7 +6,8 @@
 import { DENSITY_ROW_WIDTH_MULTIPLIER, LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import { getProminence, getWidthCost } from '@/app/utils/contentRatingUtils';
-import type { ImageType, RowResult } from '@/app/utils/rowCombination';
+import { isBlankContent } from '@/app/utils/contentTypeGuards';
+import type { BoxTree, ImageType, RowResult } from '@/app/utils/rowCombination';
 import {
   acToBoxTree,
   buildAtomic,
@@ -41,6 +42,24 @@ import {
 // ===================== Constants =====================
 
 const DESKTOP = LAYOUT.desktopSlotWidth; // 8
+
+/**
+ * Strip buildRows' blank width-padding wrapper, returning the real items' subtree.
+ *
+ * An under-filled row (fill < MIN_FILL_RATIO) is wrapped as
+ * `H(realSubtree, blankLeaf)` so its items render at their honest width share.
+ * These tests assert how the REAL items compose, which padding leaves untouched;
+ * the wrapper itself is covered by rowCombination.blankPadding.test.ts.
+ */
+function realTree(tree: BoxTree): BoxTree {
+  if (tree.type === 'combined') {
+    const right = tree.children[1];
+    if (right.type === 'leaf' && isBlankContent(right.content)) {
+      return tree.children[0];
+    }
+  }
+  return tree;
+}
 
 // getOrientation deleted — toImageType handles orientation inline
 
@@ -675,15 +694,17 @@ describe('buildRows', () => {
   });
 
   describe('boxTree generation', () => {
-    it('should generate a leaf boxTree for hero pattern', () => {
+    it('should generate a single leaf, blank-padded, for a lone H5*', () => {
+      // A normal landscape (AR 1.78) fails isSoloHero's extremeness gate, so it is
+      // NOT a full-width hero: Hv 2.98 fills only 60% of rw=5, and the row is
+      // padded to hold it at that share rather than stretching it to full width.
       const h5 = createHorizontalImage(1, 5);
       const rows = buildRows([h5], 5);
 
       expect(rows).toHaveLength(1);
-      const boxTree = rows[0]?.boxTree;
-      expect(boxTree).toBeDefined();
-      expect(boxTree?.type).toBe('leaf');
-      if (boxTree?.type === 'leaf') {
+      const boxTree = realTree(rows[0]!.boxTree);
+      expect(boxTree.type).toBe('leaf');
+      if (boxTree.type === 'leaf') {
         expect(boxTree.content.id).toBe(h5.id);
       }
     });
@@ -697,9 +718,8 @@ describe('buildRows', () => {
 
       // At rw=8, 3.5+3.5=7.0, fill=87.5% < 90% → best-fit pairs them
       expect(rows).toHaveLength(1);
-      const boxTree = rows[0]?.boxTree;
-      expect(boxTree).toBeDefined();
-      expect(boxTree?.type).toBe('combined');
+      const boxTree = realTree(rows[0]!.boxTree);
+      expect(boxTree.type).toBe('combined');
       if (boxTree?.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
         expect(boxTree.children).toHaveLength(2);
@@ -721,10 +741,9 @@ describe('buildRows', () => {
       const rows = buildRows([h4, v3_1, v3_2], DESKTOP);
 
       expect(rows).toHaveLength(1);
-      const boxTree = rows[0]?.boxTree;
-      expect(boxTree).toBeDefined();
-      expect(boxTree?.type).toBe('combined');
-      if (boxTree?.type === 'combined') {
+      const boxTree = realTree(rows[0]!.boxTree);
+      expect(boxTree.type).toBe('combined');
+      if (boxTree.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
         // Left child: main image (leaf)
         expect(boxTree.children[0]?.type).toBe('leaf');
@@ -778,10 +797,9 @@ describe('buildRows', () => {
       const rows = buildRows([h3_1, h3_2, h3_3], DESKTOP);
 
       expect(rows).toHaveLength(1);
-      const boxTree = rows[0]?.boxTree;
-      expect(boxTree).toBeDefined();
-      expect(boxTree?.type).toBe('combined');
-      if (boxTree?.type === 'combined') {
+      const boxTree = realTree(rows[0]!.boxTree);
+      expect(boxTree.type).toBe('combined');
+      if (boxTree.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
         // Builds: H[ h3_1, V[h3_2, h3_3] ] — leaf on the left, vertical pair right.
         // Left child: leaf (h3_1)

@@ -20,6 +20,7 @@ import {
   processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
+import { isBlankContent } from '@/app/utils/contentTypeGuards';
 import {
   createCollectionContent,
   createCollectionModel,
@@ -1398,8 +1399,13 @@ describe('processContentForDisplay', () => {
         }
       }
 
-      // All input items should appear exactly once across all rows
-      const allIds = result.flatMap(row => row.items.map(item => item.content.id));
+      // All input items should appear exactly once across all rows. Blank
+      // spacers are excluded: buildRows pads under-filled rows with a synthetic
+      // blank leaf, which is layout scaffolding rather than input content.
+      const allIds = result
+        .flatMap(row => row.items)
+        .filter(item => !isBlankContent(item.content))
+        .map(item => item.content.id);
       const inputIds = content.map(c => c.id);
       expect(allIds.sort()).toEqual(inputIds.sort());
     });

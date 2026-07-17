@@ -7,9 +7,14 @@
  * - Number of rows returned
  * - components array per row (which items, in what order)
  * - boxTree structure per row (full tree shape)
+ *
+ * Rows that under-fill their width budget are padded by buildRows with a blank
+ * spacer (see {@link realTree}); these tests characterize the composition of the
+ * real items, so they unwrap it.
  */
 
 import { LAYOUT } from '@/app/constants';
+import { isBlankContent } from '@/app/utils/contentTypeGuards';
 import {
   acToBoxTree,
   type BoxTree,
@@ -27,6 +32,26 @@ import { H, V } from '@/tests/fixtures/contentFixtures';
 // ===================== Helpers =====================
 
 const DESKTOP = LAYOUT.desktopSlotWidth; // 8
+
+/**
+ * Strip buildRows' blank width-padding wrapper, returning the real items' subtree.
+ *
+ * An under-filled row (fill < MIN_FILL_RATIO) is wrapped as
+ * `H(realSubtree, blankLeaf)` so its items render at their honest width share
+ * rather than being scaled up to full page width. The wrapper is characterized
+ * on its own below ("blank width-padding wrapper") and covered in depth by
+ * rowCombination.blankPadding.test.ts; every other test here is about how the
+ * REAL items compose, which padding leaves untouched.
+ */
+function realTree(tree: BoxTree): BoxTree {
+  if (tree.type === 'combined') {
+    const right = tree.children[1];
+    if (right.type === 'leaf' && isBlankContent(right.content)) {
+      return tree.children[0];
+    }
+  }
+  return tree;
+}
 
 /** Extract the item IDs from a row's components, preserving order */
 function rowIds(row: RowResult): number[] {
@@ -62,8 +87,8 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1]);
-    expect(rows[0]!.boxTree.type).toBe('leaf');
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('L(1)');
+    expect(realTree(rows[0]!.boxTree).type).toBe('leaf');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('L(1)');
   });
 
   // ---------------------------------------------------------------
@@ -77,7 +102,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
@@ -91,7 +116,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
@@ -104,7 +129,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
@@ -123,7 +148,7 @@ describe('buildRows characterization', () => {
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
     // main | H(V1, V1) — the two equal V1★ paired side by side (equal area)
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),H(L(2),L(3)))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),H(L(2),L(3)))');
   });
 
   // ---------------------------------------------------------------
@@ -136,7 +161,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
@@ -187,7 +212,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),H(L(3),L(4))))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),V(L(2),H(L(3),L(4))))');
   });
 
   // ---------------------------------------------------------------
@@ -206,7 +231,7 @@ describe('buildRows characterization', () => {
     // All 3 in one row → H(leaf-V1, H(V2, H5)) — the 5★ horizontal is the biggest
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),H(L(2),L(3)))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),H(L(2),L(3)))');
   });
 
   // ---------------------------------------------------------------
@@ -224,7 +249,7 @@ describe('buildRows characterization', () => {
 
     // Builds: H( V3★, H( V1★, V(V1★,V1★) ) ) — the top-rated V3★ takes the left
     // slot as a single leaf; the three V1★ nest on the right.
-    const tree = rows[0]!.boxTree;
+    const tree = realTree(rows[0]!.boxTree);
     expect(tree.type).toBe('combined');
     if (tree.type === 'combined') {
       expect(tree.direction).toBe('horizontal');
@@ -298,7 +323,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1]);
-    expect(rows[0]!.boxTree.type).toBe('leaf');
+    expect(realTree(rows[0]!.boxTree).type).toBe('leaf');
   });
 
   // ---------------------------------------------------------------
@@ -353,7 +378,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3, 4]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),V(L(3),L(4))))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),V(L(2),V(L(3),L(4))))');
   });
 
   // ---------------------------------------------------------------
@@ -365,7 +390,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(2))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),L(2))');
   });
 
   // ---------------------------------------------------------------
@@ -377,7 +402,7 @@ describe('buildRows characterization', () => {
 
     expect(rows).toHaveLength(1);
     expect(rowIds(rows[0]!)).toEqual([1, 2, 3]);
-    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),V(L(2),L(3)))');
+    expect(boxTreeShape(realTree(rows[0]!.boxTree))).toBe('H(L(1),V(L(2),L(3)))');
   });
 
   // ---------------------------------------------------------------
@@ -449,11 +474,34 @@ describe('buildRows characterization', () => {
 
     for (const row of rows) {
       const componentIds = rowIds(row);
-      const leafIds = boxTreeLeafIds(row.boxTree);
+      const leafIds = boxTreeLeafIds(realTree(row.boxTree));
       // BoxTree leaves should contain exactly the same items as components
       // (order may differ for a 2×2 nested shape, but content should match)
       expect(leafIds.sort((a, b) => a - b)).toEqual(componentIds.sort((a, b) => a - b));
     }
+  });
+
+  // ---------------------------------------------------------------
+  // Test 24: blank width-padding wrapper — characterizes the padding that
+  // every test above unwraps via realTree(). A single H5★ carries Hv 2.98,
+  // only 37% of the rw=8 budget, so buildRows wraps it rather than letting
+  // calculateSizesFromBoxTree stretch it to the full page width.
+  // ---------------------------------------------------------------
+  it('24: under-filled row → real subtree wrapped with a blank right sibling', () => {
+    const rows = buildRows([H(1, 5)], DESKTOP);
+
+    const tree = rows[0]!.boxTree;
+    expect(tree.type).toBe('combined');
+    if (tree.type !== 'combined') throw new Error('expected combined');
+    expect(tree.direction).toBe('horizontal');
+    expect(boxTreeShape(tree.children[0])).toBe('L(1)');
+
+    const right = tree.children[1];
+    expect(right.type).toBe('leaf');
+    if (right.type !== 'leaf') throw new Error('expected leaf');
+    expect(isBlankContent(right.content)).toBe(true);
+    // components stay real-only — the blank exists only in the boxTree
+    expect(rowIds(rows[0]!)).toEqual([1]);
   });
 });
 
