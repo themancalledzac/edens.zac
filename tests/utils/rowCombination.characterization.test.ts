@@ -10,11 +10,10 @@
  *
  * Rows that under-fill their width budget are padded by buildRows with a blank
  * spacer (see {@link realTree}); these tests characterize the composition of the
- * real items, so they unwrap it.
+ * real items, so they unwrap it. Test 24 characterizes the wrapper itself.
  */
 
 import { LAYOUT } from '@/app/constants';
-import { isBlankContent } from '@/app/utils/contentTypeGuards';
 import {
   acToBoxTree,
   type BoxTree,
@@ -27,31 +26,12 @@ import {
   toImageType,
   vStack,
 } from '@/app/utils/rowCombination';
+import { realTree } from '@/tests/fixtures/boxTreeHelpers';
 import { H, V } from '@/tests/fixtures/contentFixtures';
 
 // ===================== Helpers =====================
 
 const DESKTOP = LAYOUT.desktopSlotWidth; // 8
-
-/**
- * Strip buildRows' blank width-padding wrapper, returning the real items' subtree.
- *
- * An under-filled row (fill < MIN_FILL_RATIO) is wrapped as
- * `H(realSubtree, blankLeaf)` so its items render at their honest width share
- * rather than being scaled up to full page width. The wrapper is characterized
- * on its own below ("blank width-padding wrapper") and covered in depth by
- * rowCombination.blankPadding.test.ts; every other test here is about how the
- * REAL items compose, which padding leaves untouched.
- */
-function realTree(tree: BoxTree): BoxTree {
-  if (tree.type === 'combined') {
-    const right = tree.children[1];
-    if (right.type === 'leaf' && isBlankContent(right.content)) {
-      return tree.children[0];
-    }
-  }
-  return tree;
-}
 
 /** Extract the item IDs from a row's components, preserving order */
 function rowIds(row: RowResult): number[] {
@@ -482,24 +462,15 @@ describe('buildRows characterization', () => {
   });
 
   // ---------------------------------------------------------------
-  // Test 24: blank width-padding wrapper — characterizes the padding that
-  // every test above unwraps via realTree(). A single H5★ carries Hv 2.98,
-  // only 37% of the rw=8 budget, so buildRows wraps it rather than letting
-  // calculateSizesFromBoxTree stretch it to the full page width.
+  // Test 24: blank width-padding wrapper — the raw shape every test above
+  // hides behind realTree(). A single H5★ carries Hv 2.98, only 37% of the
+  // rw=8 budget, so buildRows wraps it with a trailing blank rather than
+  // letting calculateSizesFromBoxTree stretch it to the full page width.
   // ---------------------------------------------------------------
   it('24: under-filled row → real subtree wrapped with a blank right sibling', () => {
     const rows = buildRows([H(1, 5)], DESKTOP);
 
-    const tree = rows[0]!.boxTree;
-    expect(tree.type).toBe('combined');
-    if (tree.type !== 'combined') throw new Error('expected combined');
-    expect(tree.direction).toBe('horizontal');
-    expect(boxTreeShape(tree.children[0])).toBe('L(1)');
-
-    const right = tree.children[1];
-    expect(right.type).toBe('leaf');
-    if (right.type !== 'leaf') throw new Error('expected leaf');
-    expect(isBlankContent(right.content)).toBe(true);
+    expect(boxTreeShape(rows[0]!.boxTree)).toBe('H(L(1),L(-1000000))');
     // components stay real-only — the blank exists only in the boxTree
     expect(rowIds(rows[0]!)).toEqual([1]);
   });

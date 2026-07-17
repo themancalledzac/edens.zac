@@ -6,8 +6,7 @@
 import { DENSITY_ROW_WIDTH_MULTIPLIER, LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
 import { getProminence, getWidthCost } from '@/app/utils/contentRatingUtils';
-import { isBlankContent } from '@/app/utils/contentTypeGuards';
-import type { BoxTree, ImageType, RowResult } from '@/app/utils/rowCombination';
+import type { ImageType, RowResult } from '@/app/utils/rowCombination';
 import {
   acToBoxTree,
   buildAtomic,
@@ -28,6 +27,7 @@ import {
   calculateBoxTreeAspectRatio,
   calculateSizesFromBoxTree,
 } from '@/app/utils/rowStructureAlgorithm';
+import { realTree } from '@/tests/fixtures/boxTreeHelpers';
 import {
   createCollectionContent,
   createGifContent,
@@ -42,24 +42,6 @@ import {
 // ===================== Constants =====================
 
 const DESKTOP = LAYOUT.desktopSlotWidth; // 8
-
-/**
- * Strip buildRows' blank width-padding wrapper, returning the real items' subtree.
- *
- * An under-filled row (fill < MIN_FILL_RATIO) is wrapped as
- * `H(realSubtree, blankLeaf)` so its items render at their honest width share.
- * These tests assert how the REAL items compose, which padding leaves untouched;
- * the wrapper itself is covered by rowCombination.blankPadding.test.ts.
- */
-function realTree(tree: BoxTree): BoxTree {
-  if (tree.type === 'combined') {
-    const right = tree.children[1];
-    if (right.type === 'leaf' && isBlankContent(right.content)) {
-      return tree.children[0];
-    }
-  }
-  return tree;
-}
 
 // getOrientation deleted — toImageType handles orientation inline
 

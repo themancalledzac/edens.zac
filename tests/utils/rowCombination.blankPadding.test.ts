@@ -8,9 +8,9 @@ import { LAYOUT } from '@/app/constants';
 import type { ContentBlankModel } from '@/app/types/Content';
 import { getWidthCost } from '@/app/utils/contentRatingUtils';
 import { isBlankContent } from '@/app/utils/contentTypeGuards';
-import type { BoxTree } from '@/app/utils/rowCombination';
 import { BLANK_ID_BASE, buildRows, MIN_FILL_RATIO } from '@/app/utils/rowCombination';
 import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
+import { collectBlanks } from '@/tests/fixtures/boxTreeHelpers';
 import {
   createHorizontalImage,
   createPanorama,
@@ -18,14 +18,6 @@ import {
 } from '@/tests/fixtures/contentFixtures';
 
 const DESKTOP = LAYOUT.desktopSlotWidth; // 8
-
-/** Collect every blank leaf in a BoxTree, in traversal order. */
-function collectBlanks(tree: BoxTree): ContentBlankModel[] {
-  if (tree.type === 'leaf') {
-    return isBlankContent(tree.content) ? [tree.content] : [];
-  }
-  return [...collectBlanks(tree.children[0]), ...collectBlanks(tree.children[1])];
-}
 
 describe('isBlankContent', () => {
   it('returns true for a BLANK block', () => {
@@ -80,6 +72,24 @@ describe('buildRows blank padding', () => {
     const expectedShare = getWidthCost(item) / DESKTOP; // 1.3333 / 8 = 0.1667
     expect(realWidth / 1000).toBeCloseTo(expectedShare, 5);
     expect(expectedShare).toBeCloseTo(0.1667, 3);
+  });
+
+  it('renders the real item at its gap-adjusted share at the production gap', () => {
+    // The gap=0 test above pins the pure padding math; this pins what a user
+    // actually sees. The wrapper is a horizontal node, so the renderer inserts
+    // one gridGap between the real subtree and the blank, and the real share
+    // becomes (W - gap) / W * S/Wr rather than the exact S/Wr identity.
+    const item = createHorizontalImage(1, 0);
+    const rows = buildRows([item], DESKTOP);
+
+    const W = 1000;
+    const sizes = calculateSizesFromBoxTree(rows[0]!.boxTree, W, LAYOUT.gridGap, DESKTOP);
+    const realWidth = sizes.find(s => s.content.id === 1)!.width;
+
+    const expectedShare = ((W - LAYOUT.gridGap) / W) * (getWidthCost(item) / DESKTOP);
+    expect(realWidth / W).toBeCloseTo(expectedShare, 5);
+    // Still nowhere near the full-width hero the unpadded engine produced.
+    expect(realWidth / W).toBeLessThan(0.17);
   });
 
   it('keeps the row height equal to the real item height (blank never stacks below)', () => {

@@ -284,7 +284,7 @@ export const BLANK_ID_BASE = -1_000_000;
  * generic width/height fallback reads it straight back, so the blank sizes
  * through the same path as a real leaf with no special-casing.
  */
-export function createBlankLeaf(ar: number, id: number): BoxTree {
+function createBlankLeaf(ar: number, id: number): BoxTree {
   const blank: ContentBlankModel = {
     id,
     contentType: 'BLANK',
@@ -299,14 +299,21 @@ export function createBlankLeaf(ar: number, id: number): BoxTree {
 }
 
 /**
- * Pad an under-filled row with a single left-aligned blank spacer.
+ * Pad an under-filled row with a single trailing blank spacer, left-aligning
+ * the real content.
  *
  * A row whose real items carry total width-cost `S` inside budget `Wr` is
  * under-filled when `S / Wr < MIN_FILL_RATIO`. Left as-is, the engine scales
  * those items up to the full page width — one lonely image becomes a
  * full-width hero regardless of its rating. Instead we add a blank right
  * sibling of AR `r · gap / S`, making the combined row AR `r · Wr / S`, so the
- * real subtree occupies exactly `S / Wr` of the width: its honest share.
+ * real subtree takes its honest share of the width rather than all of it.
+ *
+ * That share is exactly `S / Wr` only in the gap-free case. Production renders
+ * with a real CSS gap (see `contentLayout`'s `effectiveGap`), and because the
+ * wrapper is a horizontal node the renderer inserts one gap between the real
+ * subtree and the blank — so at rendered width `W` the real share is
+ * `(W − gap) / W × S / Wr`, approaching the identity as `W` grows.
  *
  * The blank is always a HORIZONTAL sibling, so it renders at the real
  * subtree's own height and absorbs leftover width only — it never stacks
@@ -324,20 +331,32 @@ export function createBlankLeaf(ar: number, id: number): BoxTree {
  * @param rowIndex - Row's index, which seeds the blank's deterministic id
  * @returns The row padded, or unchanged when it is complete or a solo hero
  */
-export function padRowToWidth(row: RowResult, rowWidth: number, rowIndex: number): RowResult {
+function padRowToWidth(row: RowResult, rowWidth: number, rowIndex: number): RowResult {
   const S = getTotalCV(row.components);
-  if (S <= 0) return row;
+  // Not a reachable input case — Hv = √(P·AR) is strictly positive (BASE_WEIGHT
+  // >= 1.0, and getAspectRatio clamps to 1.0) — but guards the `r * gap / S`
+  // division below. Written as `!(S > 0)` so NaN is caught too: it would slip
+  // through every comparison guard here and yield a NaN blank AR.
+  if (!(S > 0)) return row;
   if (S / rowWidth >= MIN_FILL_RATIO) return row;
+  // Mirrors the solo-hero promotion buildRows already applied when emitting this
+  // row: a hero's full-width row is deliberate, so it must not be padded back
+  // down. The two decisions are consistent only by invariant — if you add a gate
+  // to the hero-emission path in buildRows, mirror it here.
   if (row.components.length === 1 && isSoloHero(row.components[0]!, rowWidth)) return row;
 
   const r = calculateBoxTreeAspectRatio(row.boxTree);
+  // Reachable, despite S > 0 above: calculateBoxTreeAspectRatio reads
+  // getContentDimensions raw, while getWidthCost routes through getAspectRatio's
+  // `width <= 0 → 1.0` clamp. Degenerate content (width: 0) therefore yields
+  // r = 0 with S > 0. Not dead code — leave it in place.
   if (r <= 0) return row;
 
   const gap = rowWidth - S;
   const blankAR = (r * gap) / S;
 
   return {
-    components: row.components,
+    ...row,
     boxTree: {
       type: 'combined',
       direction: 'horizontal',
