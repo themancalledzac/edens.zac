@@ -26,7 +26,7 @@ import type {
 } from './Metadata';
 
 /** Content type discriminator - maps to backend Content contentType field */
-export type ContentType = 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION' | 'PANEL';
+export type ContentType = 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION' | 'PANEL' | 'BLANK';
 
 /**
  * Base Content interface - all content models extend this
@@ -252,6 +252,24 @@ export interface ContentPanelModel extends Content {
 }
 
 /**
+ * Blank spacer — a client-only synthetic block with no backend counterpart.
+ *
+ * Injected by the layout engine into an under-filled row's BoxTree so the real
+ * items render at their honest proportional share of the row instead of being
+ * scaled up to full width. Carries no media and is inert everywhere except
+ * sizing and rendering: every positive type guard returns false for it.
+ *
+ * `width`/`height` encode the required aspect ratio (`width = blankAR`,
+ * `height = 1`), which `getContentDimensions` picks up via its generic
+ * width/height fallback.
+ */
+export interface ContentBlankModel extends Content {
+  contentType: 'BLANK';
+  width: number;
+  height: number;
+}
+
+/**
  * Union type of all supported content models
  * Use this for type-safe rendering and processing
  */
@@ -261,7 +279,8 @@ export type AnyContentModel =
   | ContentTextModel
   | ContentGifModel
   | ContentCollectionModel
-  | ContentPanelModel;
+  | ContentPanelModel
+  | ContentBlankModel;
 
 /**
  * Content blocks that participate in the click-to-fullscreen viewer: still images, parallax

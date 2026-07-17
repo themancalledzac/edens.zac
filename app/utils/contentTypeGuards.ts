@@ -7,6 +7,7 @@
 import { CollectionType } from '@/app/types/Collection';
 import {
   type Content,
+  type ContentBlankModel,
   type ContentCollectionModel,
   type ContentGifModel,
   type ContentImageModel,
@@ -51,6 +52,14 @@ export function isContentCollection(block: Content): block is ContentCollectionM
  */
 export function isPanelContent(block: Content): block is ContentPanelModel {
   return block.contentType === 'PANEL';
+}
+
+/**
+ * Type guard to check if a Content is a ContentBlankModel — the synthetic
+ * spacer injected into under-filled rows. Always false for backend content.
+ */
+export function isBlankContent(block: Content): block is ContentBlankModel {
+  return block.contentType === 'BLANK';
 }
 
 /**
