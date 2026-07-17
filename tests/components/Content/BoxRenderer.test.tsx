@@ -4,6 +4,7 @@ import { render } from '@testing-library/react';
 
 import { BoxRenderer } from '@/app/components/Content/BoxRenderer';
 import type { ContentBlankModel } from '@/app/types/Content';
+import { BLANK_ID_BASE } from '@/app/utils/rowCombination';
 import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 jest.mock('@/app/components/Content/CollectionContentRenderer', () => ({
@@ -14,9 +15,10 @@ jest.mock('@/app/components/Content/CollectionContentRenderer', () => ({
 describe('BoxRenderer leaf branches', () => {
   it('renders a blank leaf as an aria-hidden spacer at the allocated size', () => {
     const blank: ContentBlankModel = {
-      id: -1,
+      id: BLANK_ID_BASE,
       contentType: 'BLANK',
       orderIndex: 0,
+      visible: true,
       width: 320,
       height: 180,
     };
