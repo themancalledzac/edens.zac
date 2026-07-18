@@ -22,9 +22,14 @@ jest.mock('@/app/lib/api/users', () => ({
   createUser: jest.fn(),
   updateUser: jest.fn(),
   regenerateInvite: jest.fn(),
-  listUserCollections: jest.fn().mockResolvedValue([]),
-  setUserCollectionRole: jest.fn().mockResolvedValue(null),
-  removeUserCollection: jest.fn().mockResolvedValue(null),
+}));
+
+// The edit form (UserForm) now reads role membership, not per-user collection grants.
+jest.mock('@/app/lib/api/roles', () => ({
+  listUserRoles: jest.fn().mockResolvedValue([]),
+  listRoles: jest.fn().mockResolvedValue([]),
+  addUserToRole: jest.fn().mockResolvedValue(undefined),
+  removeUserFromRole: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockListUsers = usersApi.listUsers as jest.MockedFunction<typeof usersApi.listUsers>;

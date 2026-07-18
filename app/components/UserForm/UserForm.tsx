@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { type FormEvent, useEffect, useState } from 'react';
 
 import { InviteLinkResult } from '@/app/components/InviteLinkResult/InviteLinkResult';
@@ -10,14 +11,13 @@ import { Input } from '@/app/components/ui/Field/Input';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
 import { ApiError } from '@/app/lib/api/core';
 import {
-  type AdminUserCollection,
-  createUser,
-  listUserCollections,
-  removeUserCollection,
-  setUserCollectionRole,
-  updateUser,
-} from '@/app/lib/api/users';
-import { type CollectionRole } from '@/app/types/Auth';
+  addUserToRole,
+  listRoles,
+  listUserRoles,
+  removeUserFromRole,
+} from '@/app/lib/api/roles';
+import { createUser, updateUser } from '@/app/lib/api/users';
+import { type RoleSummary, type UserRoleRow } from '@/app/types/Role';
 import { type AdminUserSummary, type UserStatus } from '@/app/types/User';
 
 import styles from './UserForm.module.scss';
@@ -45,26 +45,42 @@ export function UserForm(props: UserFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [collections, setCollections] = useState<AdminUserCollection[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
+  const [allRoles, setAllRoles] = useState<RoleSummary[]>([]);
+  const [addRoleId, setAddRoleId] = useState<string>('');
   const editUserId = editUser?.id ?? null;
 
   useEffect(() => {
     if (editUserId !== null) {
-      listUserCollections(editUserId)
-        .then(setCollections)
-        .catch(() => setCollections([]));
+      listUserRoles(editUserId)
+        .then(setUserRoles)
+        .catch(() => setUserRoles([]));
+      listRoles()
+        .then(setAllRoles)
+        .catch(() => setAllRoles([]));
     }
   }, [editUserId]);
 
-  async function changeRole(collectionId: number, value: 'none' | CollectionRole) {
+  const availableRoles = allRoles.filter(r => !userRoles.some(ur => ur.roleId === r.id));
+
+  async function addRole() {
+    if (editUserId === null || !addRoleId) return;
+    try {
+      await addUserToRole(editUserId, Number(addRoleId));
+      setUserRoles(await listUserRoles(editUserId));
+      setAddRoleId('');
+    } catch {
+      setError('Failed to add role. Please try again.');
+    }
+  }
+
+  async function removeRole(roleId: number) {
     if (editUserId === null) return;
     try {
-      await (value === 'none'
-        ? removeUserCollection(editUserId, collectionId)
-        : setUserCollectionRole(editUserId, collectionId, value));
-      setCollections(await listUserCollections(editUserId));
+      await removeUserFromRole(editUserId, roleId);
+      setUserRoles(await listUserRoles(editUserId));
     } catch {
-      setError('Failed to update gallery access. Please try again.');
+      setError('Failed to remove role. Please try again.');
     }
   }
 
@@ -194,25 +210,42 @@ export function UserForm(props: UserFormProps) {
 
       {isEdit && (
         <section className={styles.collections}>
-          <h3 className={styles.collectionsHeading}>Gallery access</h3>
-          {collections.length === 0 && (
-            <p className={styles.collectionsEmpty}>No associated collections.</p>
+          <h3 className={styles.collectionsHeading}>Roles</h3>
+          {userRoles.length === 0 && (
+            <p className={styles.collectionsEmpty}>Not in any roles yet.</p>
           )}
-          {collections.map(c => (
-            <label key={c.collectionId} className={styles.collectionRow}>
-              <span>{c.title}</span>
-              <select
-                value={c.role ?? 'none'}
-                onChange={e =>
-                  changeRole(c.collectionId, e.target.value as 'none' | CollectionRole)
-                }
-              >
-                <option value="none">No access</option>
-                <option value="GENERAL">General (view)</option>
-                <option value="CLIENT">Client (download/tag)</option>
-              </select>
-            </label>
+          {userRoles.map(r => (
+            <div key={r.roleId} className={styles.collectionRow}>
+              <span>{r.name}</span>
+              <Button variant="ghost" size="sm" type="button" onClick={() => removeRole(r.roleId)}>
+                Remove
+              </Button>
+            </div>
           ))}
+          {availableRoles.length > 0 && (
+            <div className={styles.collectionRow}>
+              <select value={addRoleId} onChange={e => setAddRoleId(e.target.value)}>
+                <option value="">Add to role...</option>
+                {availableRoles.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="ghost"
+                size="sm"
+                type="button"
+                onClick={addRole}
+                disabled={!addRoleId}
+              >
+                Add
+              </Button>
+            </div>
+          )}
+          <Link href="/admin/roles" className={styles.manageRolesLink}>
+            Manage roles and grants
+          </Link>
         </section>
       )}
 
