@@ -271,96 +271,62 @@ export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
 // =============================================================================
 
 /**
- * Id space for synthetic blank spacers. Blank ids count DOWN from this base
+ * Base for synthetic blank-spacer ids. Blanks count down from here
  * (`BLANK_ID_BASE - rowIndex`), far below any real content id, so they never
- * collide with backend content in a sizesMap or a React key.
+ * collide in a sizesMap or a React key.
  */
 export const BLANK_ID_BASE = -1_000_000;
 
 /**
- * Build a blank spacer leaf with the given aspect ratio.
- *
- * The AR is encoded as `width = ar, height = 1` — `getContentDimensions`'
- * generic width/height fallback reads it straight back, so the blank sizes
- * through the same path as a real leaf with no special-casing.
+ * Build a blank spacer leaf. The aspect ratio is encoded as width/height so the
+ * blank sizes through the same `getContentDimensions` path as a real leaf.
+ * `visible` must stay true, or `isContentVisibleInCollection` would trip the
+ * "Non-Visible Content" separator.
  */
-function createBlankLeaf(ar: number, id: number): BoxTree {
+function createBlankLeaf(aspectRatio: number, id: number): BoxTree {
   const blank: ContentBlankModel = {
     id,
     contentType: 'BLANK',
     orderIndex: 0,
-    // Must be true: isContentVisibleInCollection treats `visible === false` as
-    // hidden, which would falsely trip the "Non-Visible Content" separator.
     visible: true,
-    width: ar,
+    width: aspectRatio,
     height: 1,
   };
   return { type: 'leaf', content: blank };
 }
 
 /**
- * Pad an under-filled row with a single trailing blank spacer, left-aligning
- * the real content.
+ * Pad an under-filled row with a trailing blank spacer so its real content
+ * keeps its honest share of the width instead of being scaled up to full page
+ * width (one lonely image becoming a full-width hero).
  *
- * A row whose real items carry total width-cost `S` inside budget `Wr` is
- * under-filled when `S / Wr < MIN_FILL_RATIO`. Left as-is, the engine scales
- * those items up to the full page width — one lonely image becomes a
- * full-width hero regardless of its rating. Instead we add a blank right
- * sibling of AR `r · gap / S`, making the combined row AR `r · Wr / S`, so the
- * real subtree takes its honest share of the width rather than all of it.
+ * A row is under-filled when its real width-cost is below MIN_FILL_RATIO of the
+ * budget. We append a horizontal blank sibling sized to absorb the leftover
+ * width; the real subtree is nested untouched, so every item keeps its aspect
+ * ratio. Padding is viewport-relative, so a higher-rated item fills more of the
+ * row. Solo heroes are skipped -- their full-width row is intentional.
  *
- * That share is exactly `S / Wr` only in the gap-free case. Production renders
- * with a real CSS gap (see `contentLayout`'s `effectiveGap`), and because the
- * wrapper is a horizontal node the renderer inserts one gap between the real
- * subtree and the blank — so at rendered width `W` the real share is
- * `(W − gap) / W × S / Wr`, approaching the identity as `W` grows.
- *
- * The blank is always a HORIZONTAL sibling, so it renders at the real
- * subtree's own height and absorbs leftover width only — it never stacks
- * below an image. The real subtree is nested untouched, so every item keeps
- * its natural aspect ratio and internal composition.
- *
- * Padding is viewport-relative — `rowWidth` is the caller's own budget — so a
- * higher-rated item, carrying more width-cost, naturally fills more of the row.
- *
- * Skipped for a solo hero: an extreme-AR panorama's full-width row is
- * intentional (see {@link isSoloHero}), not an accident of under-fill.
- *
- * @param row - Finalized row (its `components` are real items only)
- * @param rowWidth - Row width budget for this viewport
- * @param rowIndex - Row's index, which seeds the blank's deterministic id
- * @returns The row padded, or unchanged when it is complete or a solo hero
+ * Guards return the row unchanged when width-cost is zero/NaN or the row's
+ * aspect ratio is non-positive (degenerate zero-width content).
  */
 function padRowToWidth(row: RowResult, rowWidth: number, rowIndex: number): RowResult {
-  const S = getTotalCV(row.components);
-  // Not a reachable input case — Hv = √(P·AR) is strictly positive (BASE_WEIGHT
-  // >= 1.0, and getAspectRatio clamps to 1.0) — but guards the `r * gap / S`
-  // division below. Written as `!(S > 0)` so NaN is caught too: it would slip
-  // through every comparison guard here and yield a NaN blank AR.
-  if (!(S > 0)) return row;
-  if (S / rowWidth >= MIN_FILL_RATIO) return row;
-  // Mirrors the solo-hero promotion buildRows already applied when emitting this
-  // row: a hero's full-width row is deliberate, so it must not be padded back
-  // down. The two decisions are consistent only by invariant — if you add a gate
-  // to the hero-emission path in buildRows, mirror it here.
+  const realWidthCost = getTotalCV(row.components);
+  if (!(realWidthCost > 0)) return row;
+  if (realWidthCost / rowWidth >= MIN_FILL_RATIO) return row;
   if (row.components.length === 1 && isSoloHero(row.components[0]!, rowWidth)) return row;
 
-  const r = calculateBoxTreeAspectRatio(row.boxTree);
-  // Reachable, despite S > 0 above: calculateBoxTreeAspectRatio reads
-  // getContentDimensions raw, while getWidthCost routes through getAspectRatio's
-  // `width <= 0 → 1.0` clamp. Degenerate content (width: 0) therefore yields
-  // r = 0 with S > 0. Not dead code — leave it in place.
-  if (r <= 0) return row;
+  const realAspectRatio = calculateBoxTreeAspectRatio(row.boxTree);
+  if (realAspectRatio <= 0) return row;
 
-  const gap = rowWidth - S;
-  const blankAR = (r * gap) / S;
+  const leftoverWidth = rowWidth - realWidthCost;
+  const blankAspectRatio = (realAspectRatio * leftoverWidth) / realWidthCost;
 
   return {
     ...row,
     boxTree: {
       type: 'combined',
       direction: 'horizontal',
-      children: [row.boxTree, createBlankLeaf(blankAR, BLANK_ID_BASE - rowIndex)],
+      children: [row.boxTree, createBlankLeaf(blankAspectRatio, BLANK_ID_BASE - rowIndex)],
     },
   };
 }
