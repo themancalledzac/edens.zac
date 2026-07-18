@@ -118,6 +118,10 @@ export function MenuDropdown({
       router.push('/comments');
       onClose();
     },
+    roles: () => {
+      router.push('/admin/roles');
+      onClose();
+    },
     instagram: () => {
       window.open('https://instagram.com/themancalledzac', '_blank', 'noopener,noreferrer');
       onClose();
@@ -323,6 +327,18 @@ export function MenuDropdown({
               onClick={handleNavigation.comments}
             >
               <span className={styles.dropdownMenuOptions}>Comments</span>
+            </button>
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className={styles.dropdownMenuItem}>
+            <button
+              type="button"
+              className={styles.dropdownMenuButton}
+              onClick={handleNavigation.roles}
+            >
+              <span className={styles.dropdownMenuOptions}>Roles</span>
             </button>
           </div>
         )}

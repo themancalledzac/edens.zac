@@ -12,24 +12,30 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { UserForm } from '@/app/components/UserForm/UserForm';
 import { ApiError } from '@/app/lib/api/core';
+import * as rolesApi from '@/app/lib/api/roles';
 import * as usersApi from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
 
 jest.mock('@/app/lib/api/users', () => ({
   createUser: jest.fn(),
   updateUser: jest.fn(),
-  listUserCollections: jest.fn().mockResolvedValue([]),
-  setUserCollectionRole: jest.fn().mockResolvedValue(null),
-  removeUserCollection: jest.fn().mockResolvedValue(null),
+}));
+
+jest.mock('@/app/lib/api/roles', () => ({
+  listUserRoles: jest.fn().mockResolvedValue([]),
+  listRoles: jest.fn().mockResolvedValue([]),
+  addUserToRole: jest.fn().mockResolvedValue(),
+  removeUserFromRole: jest.fn().mockResolvedValue(),
 }));
 
 const mockCreateUser = usersApi.createUser as jest.MockedFunction<typeof usersApi.createUser>;
 const mockUpdateUser = usersApi.updateUser as jest.MockedFunction<typeof usersApi.updateUser>;
-const mockListUserCollections = usersApi.listUserCollections as jest.MockedFunction<
-  typeof usersApi.listUserCollections
+const mockListUserRoles = rolesApi.listUserRoles as jest.MockedFunction<
+  typeof rolesApi.listUserRoles
 >;
-const mockSetUserCollectionRole = usersApi.setUserCollectionRole as jest.MockedFunction<
-  typeof usersApi.setUserCollectionRole
+const mockListRoles = rolesApi.listRoles as jest.MockedFunction<typeof rolesApi.listRoles>;
+const mockAddUserToRole = rolesApi.addUserToRole as jest.MockedFunction<
+  typeof rolesApi.addUserToRole
 >;
 
 // jsdom does not implement navigator.clipboard — stub it (InviteLinkResult uses it).
@@ -203,29 +209,26 @@ describe('UserForm', () => {
       expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
-    it('collection role select calls setUserCollectionRole and refreshes the list', async () => {
-      mockListUserCollections.mockResolvedValue([
-        { collectionId: 20, title: 'Portraits', role: null },
-      ]);
-      mockSetUserCollectionRole.mockResolvedValue();
+    it('adding a role calls addUserToRole and refreshes the membership list', async () => {
+      mockListUserRoles.mockResolvedValue([]);
+      mockListRoles.mockResolvedValue([{ id: 3, name: 'power', kind: 'SHARED' }]);
+      mockAddUserToRole.mockResolvedValue();
 
       render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
 
-      // Wait for the collection row to appear (also silences the act() warning).
+      // Wait for the add-role dropdown to be populated from listRoles (silences act() warning).
       await waitFor(() => {
-        expect(screen.getByText('Portraits')).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: 'power' })).toBeInTheDocument();
       });
 
-      // After the row renders, listUserCollections returns the updated state on refresh.
-      mockListUserCollections.mockResolvedValue([
-        { collectionId: 20, title: 'Portraits', role: 'CLIENT' },
-      ]);
+      // After adding, the refresh reads back the joined role.
+      mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power', kind: 'SHARED' }]);
 
-      const collectionSelect = screen.getByDisplayValue('No access');
-      fireEvent.change(collectionSelect, { target: { value: 'CLIENT' } });
+      fireEvent.change(screen.getByDisplayValue('Add to role...'), { target: { value: '3' } });
+      fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
 
       await waitFor(() => {
-        expect(mockSetUserCollectionRole).toHaveBeenCalledWith(8, 20, 'CLIENT');
+        expect(mockAddUserToRole).toHaveBeenCalledWith(8, 3);
       });
     });
   });
