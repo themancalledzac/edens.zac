@@ -161,4 +161,99 @@ describe('CollectionRolesSection', () => {
     });
     expect(mockSetRoleGrant).not.toHaveBeenCalled();
   });
+
+  describe('inherited grants', () => {
+    const inheritedGrant: CollectionRoleRow = {
+      roleId: 5,
+      name: 'family',
+      kind: 'SHARED',
+      level: 'GENERAL',
+      inheritedFromCollectionId: 77,
+      inheritedFromCollectionTitle: 'Weddings 2026',
+    };
+
+    it('renders the Inherited badge and the origin-collection hint', async () => {
+      mockListCollectionRoles.mockResolvedValue([inheritedGrant]);
+      await renderSection();
+
+      expect(await screen.findByText('Inherited')).toBeInTheDocument();
+      expect(
+        screen.getByText('Inherited from "Weddings 2026" — edit access on that collection.')
+      ).toBeInTheDocument();
+    });
+
+    it('falls back to the generic hint when the origin title is null', async () => {
+      mockListCollectionRoles.mockResolvedValue([
+        { ...inheritedGrant, inheritedFromCollectionTitle: null },
+      ]);
+      await renderSection();
+
+      expect(
+        await screen.findByText('Inherited from a parent collection — edit access there.')
+      ).toBeInTheDocument();
+    });
+
+    it('disables the level select and Remove button on an inherited row', async () => {
+      mockListCollectionRoles.mockResolvedValue([inheritedGrant]);
+      await renderSection();
+
+      const levelSelect = await screen.findByLabelText('Access level for family');
+      expect(levelSelect).toBeDisabled();
+
+      const row = levelSelect.closest('div');
+      if (!row) throw new Error('inherited-role row not found');
+      expect(within(row).getByRole('button', { name: 'Remove' })).toBeDisabled();
+    });
+
+    it('does not call setRoleGrant or removeRoleGrant when interacting with an inherited row', async () => {
+      mockListCollectionRoles.mockResolvedValue([inheritedGrant]);
+      await renderSection();
+
+      const levelSelect = await screen.findByLabelText('Access level for family');
+      const row = levelSelect.closest('div');
+      if (!row) throw new Error('inherited-role row not found');
+
+      fireEvent.change(levelSelect, { target: { value: 'CLIENT' } });
+      fireEvent.click(within(row).getByRole('button', { name: 'Remove' }));
+
+      expect(mockSetRoleGrant).not.toHaveBeenCalled();
+      expect(mockRemoveRoleGrant).not.toHaveBeenCalled();
+    });
+
+    it('treats absent provenance fields (undefined) as a direct, fully editable grant', async () => {
+      // Pre-deploy tolerance: the backend may not send the fields at all.
+      mockListCollectionRoles.mockResolvedValue([
+        { roleId: 1, name: 'pnwer', kind: 'SHARED', level: 'GENERAL' },
+      ]);
+      await renderSection();
+
+      const levelSelect = await screen.findByLabelText('Access level for pnwer');
+      expect(levelSelect).not.toBeDisabled();
+      expect(screen.queryByText('Inherited')).not.toBeInTheDocument();
+
+      fireEvent.change(levelSelect, { target: { value: 'CLIENT' } });
+
+      await waitFor(() => {
+        expect(mockSetRoleGrant).toHaveBeenCalledWith(1, COLLECTION_ID, 'CLIENT');
+      });
+    });
+
+    it('renders a mixed list with direct rows editable and inherited rows locked', async () => {
+      mockListCollectionRoles.mockResolvedValue([
+        { roleId: 1, name: 'pnwer', kind: 'SHARED', level: 'GENERAL' },
+        inheritedGrant,
+      ]);
+      await renderSection();
+
+      const directSelect = await screen.findByLabelText('Access level for pnwer');
+      expect(directSelect).not.toBeDisabled();
+      expect(screen.getByLabelText('Access level for family')).toBeDisabled();
+      // Exactly one Inherited badge — the direct row must not grow one.
+      expect(screen.getAllByText('Inherited')).toHaveLength(1);
+
+      const directRow = directSelect.closest('div');
+      if (!directRow) throw new Error('direct-role row not found');
+      expect(within(directRow).getByRole('button', { name: 'Remove' })).not.toBeDisabled();
+    });
+  });
 });
