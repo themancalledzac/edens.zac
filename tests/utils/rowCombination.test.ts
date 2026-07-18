@@ -27,6 +27,7 @@ import {
   calculateBoxTreeAspectRatio,
   calculateSizesFromBoxTree,
 } from '@/app/utils/rowStructureAlgorithm';
+import { realTree } from '@/tests/fixtures/boxTreeHelpers';
 import {
   createCollectionContent,
   createGifContent,
@@ -675,15 +676,17 @@ describe('buildRows', () => {
   });
 
   describe('boxTree generation', () => {
-    it('should generate a leaf boxTree for hero pattern', () => {
+    it('should generate a single leaf, blank-padded, for a lone H5*', () => {
+      // A normal landscape (AR 1.78) fails isSoloHero's extremeness gate, so it is
+      // NOT a full-width hero: Hv 2.98 fills only 60% of rw=5, and the row is
+      // padded to hold it at that share rather than stretching it to full width.
       const h5 = createHorizontalImage(1, 5);
       const rows = buildRows([h5], 5);
 
       expect(rows).toHaveLength(1);
-      const boxTree = rows[0]?.boxTree;
-      expect(boxTree).toBeDefined();
-      expect(boxTree?.type).toBe('leaf');
-      if (boxTree?.type === 'leaf') {
+      const boxTree = realTree(rows[0]!.boxTree);
+      expect(boxTree.type).toBe('leaf');
+      if (boxTree.type === 'leaf') {
         expect(boxTree.content.id).toBe(h5.id);
       }
     });
@@ -697,9 +700,8 @@ describe('buildRows', () => {
 
       // At rw=8, 3.5+3.5=7.0, fill=87.5% < 90% → best-fit pairs them
       expect(rows).toHaveLength(1);
-      const boxTree = rows[0]?.boxTree;
-      expect(boxTree).toBeDefined();
-      expect(boxTree?.type).toBe('combined');
+      const boxTree = realTree(rows[0]!.boxTree);
+      expect(boxTree.type).toBe('combined');
       if (boxTree?.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
         expect(boxTree.children).toHaveLength(2);
@@ -721,10 +723,9 @@ describe('buildRows', () => {
       const rows = buildRows([h4, v3_1, v3_2], DESKTOP);
 
       expect(rows).toHaveLength(1);
-      const boxTree = rows[0]?.boxTree;
-      expect(boxTree).toBeDefined();
-      expect(boxTree?.type).toBe('combined');
-      if (boxTree?.type === 'combined') {
+      const boxTree = realTree(rows[0]!.boxTree);
+      expect(boxTree.type).toBe('combined');
+      if (boxTree.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
         // Left child: main image (leaf)
         expect(boxTree.children[0]?.type).toBe('leaf');
@@ -778,10 +779,9 @@ describe('buildRows', () => {
       const rows = buildRows([h3_1, h3_2, h3_3], DESKTOP);
 
       expect(rows).toHaveLength(1);
-      const boxTree = rows[0]?.boxTree;
-      expect(boxTree).toBeDefined();
-      expect(boxTree?.type).toBe('combined');
-      if (boxTree?.type === 'combined') {
+      const boxTree = realTree(rows[0]!.boxTree);
+      expect(boxTree.type).toBe('combined');
+      if (boxTree.type === 'combined') {
         expect(boxTree.direction).toBe('horizontal');
         // Builds: H[ h3_1, V[h3_2, h3_3] ] — leaf on the left, vertical pair right.
         // Left child: leaf (h3_1)

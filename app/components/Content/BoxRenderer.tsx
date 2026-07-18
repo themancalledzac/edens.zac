@@ -4,7 +4,7 @@ import { type ReorderMove } from '@/app/components/ContentCollection/edit/collec
 import type { ViewableContent } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
 import { determineContentRendererProps } from '@/app/utils/contentRendererUtils';
-import { isPanelContent } from '@/app/utils/contentTypeGuards';
+import { isBlankContent, isPanelContent } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
@@ -76,6 +76,16 @@ export function BoxRenderer({
         `no size entry for content ID ${tree.content.id} — image will not render`
       );
       return <div className={styles.missingImage}>Image unavailable</div>;
+    }
+
+    if (isBlankContent(tree.content)) {
+      return (
+        <div
+          className={styles.blankSpacer}
+          style={{ width: size.width, height: size.height }}
+          aria-hidden
+        />
+      );
     }
 
     if (isPanelContent(tree.content)) {

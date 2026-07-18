@@ -13,6 +13,7 @@ import {
   processContentForDisplay,
   type RowWithPatternAndSizes,
 } from '@/app/utils/contentLayout';
+import { isBlankContent } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 import { type BoxTree } from '@/app/utils/rowCombination';
 
@@ -103,6 +104,13 @@ export function buildContentRows(
  * Index of the first row containing content hidden in the current collection (drives the
  * "Non-Visible Content" separator). Returns -1 when there's no such row, or when the only hidden
  * content sits in row 0 with no visible content alongside it.
+ *
+ * Both checks below exclude {@link isBlankContent} items: a BLANK is a synthetic spacer the layout
+ * engine pads under-filled rows with (see `padRowToWidth` in `rowCombination.ts`), never real
+ * content, and must never itself count as "visible" or "hidden" content for this decision. It sets
+ * `visible: true` for an unrelated reason (so it doesn't trip `hasNonVisible` on its own), and that
+ * field alone isn't a signal this function should read as "there is visible content here" — hence
+ * the explicit filter rather than relying on the blank's `visible` value by coincidence.
  */
 export function computeFirstNonVisibleRowIndex(
   rows: RowWithPatternAndSizes[],
@@ -115,13 +123,17 @@ export function computeFirstNonVisibleRowIndex(
     if (!row) continue;
 
     const hasNonVisible = row.items.some(
-      item => !isContentVisibleInCollection(item.content, currentCollectionId)
+      item =>
+        !isBlankContent(item.content) &&
+        !isContentVisibleInCollection(item.content, currentCollectionId)
     );
 
     if (hasNonVisible) {
       if (i > 0) return i;
-      const hasVisible = row.items.some(item =>
-        isContentVisibleInCollection(item.content, currentCollectionId)
+      const hasVisible = row.items.some(
+        item =>
+          !isBlankContent(item.content) &&
+          isContentVisibleInCollection(item.content, currentCollectionId)
       );
       return hasVisible ? i : -1;
     }

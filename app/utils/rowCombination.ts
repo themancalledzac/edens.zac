@@ -19,7 +19,7 @@
  */
 
 import { EXTREMENESS_RAMP_START } from '@/app/constants';
-import type { AnyContentModel } from '@/app/types/Content';
+import type { AnyContentModel, ContentBlankModel } from '@/app/types/Content';
 import {
   getArExtremeness,
   getEffectiveRating,
@@ -264,6 +264,71 @@ export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
   if (rowWidth <= 2) return false;
   if (getArExtremeness(getAspectRatio(item)) < EXTREMENESS_RAMP_START) return false;
   return getWidthCost(item) / rowWidth >= HERO_SOLO_WIDTH_FRACTION;
+}
+
+// =============================================================================
+// BLANK PADDING
+// =============================================================================
+
+/**
+ * Base for synthetic blank-spacer ids. Blanks count down from here
+ * (`BLANK_ID_BASE - rowIndex`), far below any real content id, so they never
+ * collide in a sizesMap or a React key.
+ */
+export const BLANK_ID_BASE = -1_000_000;
+
+/**
+ * Build a blank spacer leaf. The aspect ratio is encoded as width/height so the
+ * blank sizes through the same `getContentDimensions` path as a real leaf.
+ * `visible` must stay true, or `isContentVisibleInCollection` would trip the
+ * "Non-Visible Content" separator.
+ */
+function createBlankLeaf(aspectRatio: number, id: number): BoxTree {
+  const blank: ContentBlankModel = {
+    id,
+    contentType: 'BLANK',
+    orderIndex: 0,
+    visible: true,
+    width: aspectRatio,
+    height: 1,
+  };
+  return { type: 'leaf', content: blank };
+}
+
+/**
+ * Pad an under-filled row with a trailing blank spacer so its real content
+ * keeps its honest share of the width instead of being scaled up to full page
+ * width (one lonely image becoming a full-width hero).
+ *
+ * A row is under-filled when its real width-cost is below MIN_FILL_RATIO of the
+ * budget. We append a horizontal blank sibling sized to absorb the leftover
+ * width; the real subtree is nested untouched, so every item keeps its aspect
+ * ratio. Padding is viewport-relative, so a higher-rated item fills more of the
+ * row. Solo heroes are skipped -- their full-width row is intentional.
+ *
+ * Guards return the row unchanged when width-cost is zero/NaN or the row's
+ * aspect ratio is non-positive (degenerate zero-width content).
+ */
+function padRowToWidth(row: RowResult, rowWidth: number, rowIndex: number): RowResult {
+  const realWidthCost = getTotalCV(row.components);
+  if (!(realWidthCost > 0)) return row;
+  if (realWidthCost / rowWidth >= MIN_FILL_RATIO) return row;
+  if (row.components.length === 1 && isSoloHero(row.components[0]!, rowWidth)) return row;
+
+  const realAspectRatio = calculateBoxTreeAspectRatio(row.boxTree);
+  if (realAspectRatio <= 0) return row;
+
+  const leftoverWidth = rowWidth - realWidthCost;
+  const blankAspectRatio = (realAspectRatio * leftoverWidth) / realWidthCost;
+
+  return {
+    ...row,
+    boxTree: {
+      type: 'combined',
+      direction: 'horizontal',
+      children: [row.boxTree, createBlankLeaf(blankAspectRatio, BLANK_ID_BASE - rowIndex)],
+    },
+  };
 }
 
 /**
@@ -525,7 +590,7 @@ export function buildRows(
     }
   }
 
-  return rows;
+  return rows.map((row, rowIndex) => padRowToWidth(row, rowWidth, rowIndex));
 }
 
 // =============================================================================

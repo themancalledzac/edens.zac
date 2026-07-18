@@ -13,7 +13,11 @@ import {
   resolveEffectiveViewport,
 } from '@/app/components/Content/componentUtils';
 import { type ViewportDimensions } from '@/app/hooks/useViewport';
-import { type CalculatedContentSize, type RowWithPatternAndSizes } from '@/app/utils/contentLayout';
+import {
+  type CalculatedContentSize,
+  processContentForDisplay,
+  type RowWithPatternAndSizes,
+} from '@/app/utils/contentLayout';
 import { createImageContent, createTextContent } from '@/tests/fixtures/contentFixtures';
 
 const TOL = 64;
@@ -181,6 +185,16 @@ describe('computeFirstNonVisibleRowIndex', () => {
 
   it('returns -1 when everything is visible', () => {
     const rows = [row([sizeItem(1)]), row([sizeItem(2)])];
+    expect(computeFirstNonVisibleRowIndex(rows, 7)).toBe(-1);
+  });
+
+  it('returns -1 for a row-0 hidden solo image padded with a blank spacer', () => {
+    // A single hidden, under-filled image gets a synthetic BLANK spacer appended by
+    // padRowToWidth (rowCombination.ts) so it renders at its honest width instead of
+    // scaling up to full width. The blank sets `visible: true` and flows into
+    // row.items — it must not count as "visible content" in the row-0 tiebreak, or a
+    // row whose only real content is hidden wrongly reports a Non-Visible row 0.
+    const rows = processContentForDisplay([createImageContent(1, { visible: false })], 1200, 4);
     expect(computeFirstNonVisibleRowIndex(rows, 7)).toBe(-1);
   });
 });
