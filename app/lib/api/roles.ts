@@ -13,6 +13,7 @@ import {
 } from '@/app/lib/api/core';
 import {
   type AccessLevel,
+  type CollectionRoleRow,
   type CreateRoleRequest,
   type RoleDetail,
   type RoleSummary,
@@ -80,4 +81,11 @@ export async function addUserToRole(userId: number, roleId: number): Promise<voi
 /** Remove a user from a role from the user-detail screen. */
 export async function removeUserFromRole(userId: number, roleId: number): Promise<void> {
   await fetchAdminDeleteApi<void>(`/users/${userId}/roles/${roleId}`);
+}
+
+// ---- collection-side grants (collection edit screen) ----
+
+/** The roles granting a collection (`GET /api/admin/collections/{id}/roles`). */
+export async function listCollectionRoles(collectionId: number): Promise<CollectionRoleRow[]> {
+  return (await fetchAdminGetApi<CollectionRoleRow[]>(`/collections/${collectionId}/roles`)) ?? [];
 }

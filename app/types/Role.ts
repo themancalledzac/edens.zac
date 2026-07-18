@@ -50,6 +50,14 @@ export interface UserRoleRow {
   kind: RoleKind;
 }
 
+/** One role granting a collection (`GET /api/admin/collections/{id}/roles`). */
+export interface CollectionRoleRow {
+  roleId: number;
+  name: string;
+  kind: RoleKind;
+  level: AccessLevel;
+}
+
 /** Body for `POST /api/admin/roles`. `kind` defaults to SHARED server-side when omitted. */
 export interface CreateRoleRequest {
   name: string;
