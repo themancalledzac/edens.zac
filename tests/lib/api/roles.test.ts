@@ -11,6 +11,7 @@ import {
   createRole,
   deleteRole,
   getRole,
+  listCollectionRoles,
   listRoles,
   listUserRoles,
   removeRoleGrant,
@@ -124,5 +125,19 @@ describe('membership', () => {
     (core.fetchAdminDeleteApi as jest.Mock).mockResolvedValue(null);
     await removeUserFromRole(3, 1);
     expect(core.fetchAdminDeleteApi).toHaveBeenCalledWith('/users/3/roles/1');
+  });
+});
+
+describe('listCollectionRoles', () => {
+  it('GETs /collections/{id}/roles and returns the array', async () => {
+    const rows = [{ roleId: 1, name: 'power', kind: 'SHARED', level: 'GENERAL' }];
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(rows);
+    expect(await listCollectionRoles(20)).toEqual(rows);
+    expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/collections/20/roles');
+  });
+
+  it('returns [] when the endpoint yields no body', async () => {
+    (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(null);
+    expect(await listCollectionRoles(20)).toEqual([]);
   });
 });
