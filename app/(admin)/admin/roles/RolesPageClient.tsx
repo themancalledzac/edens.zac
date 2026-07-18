@@ -100,5 +100,3 @@ export function RolesPageClient({ initialRoles }: { initialRoles: RoleSummary[] 
     </div>
   );
 }
-
-export default RolesPageClient;

@@ -24,8 +24,8 @@ jest.mock('@/app/lib/api/users', () => ({
 jest.mock('@/app/lib/api/roles', () => ({
   listUserRoles: jest.fn().mockResolvedValue([]),
   listRoles: jest.fn().mockResolvedValue([]),
-  addUserToRole: jest.fn().mockResolvedValue(),
-  removeUserFromRole: jest.fn().mockResolvedValue(),
+  addUserToRole: jest.fn().mockResolvedValue(undefined),
+  removeUserFromRole: jest.fn().mockResolvedValue(undefined),
 }));
 
 const mockCreateUser = usersApi.createUser as jest.MockedFunction<typeof usersApi.createUser>;

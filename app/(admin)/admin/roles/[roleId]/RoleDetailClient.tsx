@@ -204,5 +204,3 @@ export function RoleDetailClient({ initialRole }: { initialRole: RoleDetail }) {
     </div>
   );
 }
-
-export default RoleDetailClient;
