@@ -33,7 +33,7 @@
   margin-top: var(--space-2);
 }
 
-.collections {
+.roles {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -41,19 +41,19 @@
   border-top: 1px solid var(--color-border);
 }
 
-.collectionsHeading {
+.rolesHeading {
   margin: 0;
   font-size: var(--text-md);
   font-weight: 600;
 }
 
-.collectionsEmpty {
+.rolesEmpty {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--color-fg-muted);
 }
 
-.collectionRow {
+.roleRow {
   display: flex;
   align-items: center;
   gap: var(--space-3);

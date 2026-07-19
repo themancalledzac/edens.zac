@@ -211,7 +211,7 @@ describe('UserForm', () => {
 
     it('adding a role calls addUserToRole and refreshes the membership list', async () => {
       mockListUserRoles.mockResolvedValue([]);
-      mockListRoles.mockResolvedValue([{ id: 3, name: 'power', kind: 'SHARED' }]);
+      mockListRoles.mockResolvedValue([{ id: 3, name: 'power' }]);
       mockAddUserToRole.mockResolvedValue();
 
       render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
@@ -222,7 +222,7 @@ describe('UserForm', () => {
       });
 
       // After adding, the refresh reads back the joined role.
-      mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power', kind: 'SHARED' }]);
+      mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
 
       fireEvent.change(screen.getByDisplayValue('Add to role...'), { target: { value: '3' } });
       fireEvent.click(screen.getByRole('button', { name: /^add$/i }));

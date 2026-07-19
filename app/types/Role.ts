@@ -10,14 +10,10 @@ import { type CollectionRole } from '@/app/types/Auth';
 /** Access a role grants on a collection. GENERAL = view-only; CLIENT = download + tag + star. */
 export type AccessLevel = CollectionRole;
 
-/** How a role came to exist. PERSONAL = auto-migrated per-user default; SHARED = admin-curated. */
-export type RoleKind = 'PERSONAL' | 'SHARED';
-
 /** A role in the admin list (`GET /api/admin/roles`). */
 export interface RoleSummary {
   id: number;
   name: string;
-  kind: RoleKind;
 }
 
 /** One member of a role (`RoleDetail.members`). `email`/`name` are null for tag-only identities. */
@@ -38,7 +34,6 @@ export interface RoleCollectionRow {
 export interface RoleDetail {
   id: number;
   name: string;
-  kind: RoleKind;
   members: RoleMemberRow[];
   collections: RoleCollectionRow[];
 }
@@ -47,7 +42,6 @@ export interface RoleDetail {
 export interface UserRoleRow {
   roleId: number;
   name: string;
-  kind: RoleKind;
 }
 
 /**
@@ -62,14 +56,12 @@ export interface UserRoleRow {
 export interface CollectionRoleRow {
   roleId: number;
   name: string;
-  kind: RoleKind;
   level: AccessLevel;
   inheritedFromCollectionId?: number | null;
   inheritedFromCollectionTitle?: string | null;
 }
 
-/** Body for `POST /api/admin/roles`. `kind` defaults to SHARED server-side when omitted. */
+/** Body for `POST /api/admin/roles`. */
 export interface CreateRoleRequest {
   name: string;
-  kind?: RoleKind;
 }
