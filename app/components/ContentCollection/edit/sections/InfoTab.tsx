@@ -29,6 +29,7 @@ import { isContentImage } from '@/app/utils/contentTypeGuards';
 
 import { Button } from '../../../ui/Button/Button';
 import { type UseCollectionEditResult } from '../useCollectionEdit';
+import { CollectionRolesSection } from './CollectionRolesSection';
 import styles from './InfoTab.module.scss';
 
 interface InfoTabProps {
@@ -354,6 +355,13 @@ export function InfoTab({ edit }: InfoTabProps) {
             </p>
           )}
         </section>
+      )}
+
+      {collection?.id != null && (
+        <CollectionRolesSection
+          collectionId={collection.id}
+          collectionTitle={updateData.title ?? ''}
+        />
       )}
     </div>
   );

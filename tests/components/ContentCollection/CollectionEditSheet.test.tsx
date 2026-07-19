@@ -35,6 +35,13 @@ jest.mock('@/app/components/RatingStars/RatingStars', () => ({
   default: () => <div data-testid="rating-stars" />,
 }));
 
+// Self-contained section that fetches on mount — stubbed here; behavior is covered by
+// tests/components/CollectionRolesSection.test.tsx.
+jest.mock('@/app/components/ContentCollection/edit/sections/CollectionRolesSection', () => ({
+  __esModule: true,
+  CollectionRolesSection: () => <div data-testid="collection-roles-section" />,
+}));
+
 function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {
     id: 1,
@@ -259,6 +266,20 @@ describe('CollectionEditSheet — InfoTab', () => {
     });
     render(<CollectionEditSheet edit={edit} />);
     expect(screen.queryByRole('button', { name: 'Clear Password' })).not.toBeInTheDocument();
+  });
+
+  it('renders the roles access section for a saved collection regardless of type', () => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);
+    expect(screen.getByTestId('collection-roles-section')).toBeInTheDocument();
+  });
+
+  it('does not render the roles access section when the collection has no id (create flow)', () => {
+    const edit = makeEdit({
+      editTab: 'info',
+      currentState: makeState({ id: undefined }),
+    });
+    render(<CollectionEditSheet edit={edit} />);
+    expect(screen.queryByTestId('collection-roles-section')).not.toBeInTheDocument();
   });
 
   it('renders galleryStatus into the role="status" element', () => {
