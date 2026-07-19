@@ -143,27 +143,31 @@ describe('buildRows blank padding', () => {
     expect(rows[0]!.boxTree.type).toBe('leaf');
   });
 
-  it('assigns deterministic, unique, stable blank ids across rows', () => {
-    // Greedy fill normally strands only the LAST row, so to get two padded rows
-    // we need MAX_ROW_IMAGES to close rows early: 24 0-star verticals (Hv 0.75)
-    // at a high-density rowWidth 16 pack 12 per row — S 9.0, fill 0.563 — so
-    // both rows close at the item cap while still under-filled.
-    const items = Array.from({ length: 24 }, (_, i) => createVerticalImage(i + 1, 0));
-    const first = buildRows(items, 16).flatMap(r => collectBlanks(r.boxTree));
-    const second = buildRows(items, 16).flatMap(r => collectBlanks(r.boxTree));
+  it('assigns a deterministic, bounded blank id to the stranded last row', () => {
+    // Greedy fill strands only the LAST row, so a page pads at most one row.
+    // Four 3-star horizontals fill row 0 (complete); a trailing 0-star horizontal
+    // strands row 1 as a genuine leftover (had room for more) and gets the blank.
+    const items = [
+      ...[1, 2, 3, 4].map(id => createHorizontalImage(id, 3)),
+      createHorizontalImage(5, 0),
+    ];
+    const first = buildRows(items, DESKTOP);
+    const blanks = first.flatMap(r => collectBlanks(r.boxTree));
 
-    // Guard the assertions below are meaningful — uniqueness is vacuous at n<2
-    expect(first.length).toBeGreaterThanOrEqual(2);
+    // Exactly one blank, on the trailing leftover row — its id is keyed off that
+    // row's index (BLANK_ID_BASE - rowIndex), so distinct rows never collide.
+    expect(blanks).toHaveLength(1);
+    expect(blanks[0]!.id).toBe(BLANK_ID_BASE - (first.length - 1));
+    expect(blanks[0]!.id).toBeLessThanOrEqual(BLANK_ID_BASE);
 
-    const ids = first.map(b => b.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    for (const id of ids) expect(id).toBeLessThanOrEqual(BLANK_ID_BASE);
-    // Same input → same ids → stable React keys across renders
-    expect(second.map(b => b.id)).toEqual(ids);
+    // Same input → same id → stable React keys across renders.
+    const second = buildRows(items, DESKTOP).flatMap(r => collectBlanks(r.boxTree));
+    expect(second.map(b => b.id)).toEqual(blanks.map(b => b.id));
   });
 
-  it('pads a multi-item under-filled row without touching its internal composition', () => {
-    // Two 0-star horizontals: total Hv 2.667, fill 0.333 — under-filled
+  it('pads a multi-item under-filled leftover without touching its internal composition', () => {
+    // Two 0-star horizontals: total Hv 2.667, fill 0.333, room for more — a
+    // genuine leftover (the only row is the last row).
     const items = [createHorizontalImage(1, 0), createHorizontalImage(2, 0)];
     const rows = buildRows(items, DESKTOP);
 
@@ -176,5 +180,41 @@ describe('buildRows blank padding', () => {
       .reduce((sum, s) => sum + s.width, 0);
     const expectedShare = items.reduce((sum, i) => sum + getWidthCost(i), 0) / DESKTOP;
     expect(realTotal / 1000).toBeCloseTo(expectedShare, 5);
+  });
+
+  it('never pads single-image mobile rows — every tile fills the width', () => {
+    // The reported regression: at the narrow mobile budget (rowWidth 2) each
+    // tile is its own row. A second tile would overfill, so every row is
+    // COMPLETE at one image and must fill the phone width — no blank spacer,
+    // not even on the last tile (it is at capacity, not a leftover).
+    const items = [1, 2, 3].map(id => createVerticalImage(id, 4));
+    const rows = buildRows(items, 2);
+
+    expect(rows).toHaveLength(3);
+    for (const row of rows) {
+      expect(row.boxTree.type).toBe('leaf');
+      expect(collectBlanks(row.boxTree)).toHaveLength(0);
+    }
+  });
+
+  it('does not pad an under-filled non-last row — only the trailing leftover reserves space', () => {
+    // At high density (rowWidth 16) the MAX_ROW_IMAGES cap closes row 0 early
+    // while still under-filled. That row is complete-by-cap, not a leftover, so
+    // it fills the width; only the final stranded row may pad.
+    const items = Array.from({ length: 24 }, (_, i) => createVerticalImage(i + 1, 0));
+    const rows = buildRows(items, 16);
+
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    const lastIdx = rows.length - 1;
+    for (const [i, row] of rows.entries()) {
+      if (i !== lastIdx) {
+        expect(collectBlanks(row.boxTree)).toHaveLength(0);
+      }
+    }
+
+    // The accepted trade-off, pinned: the trailing row in this same scenario IS
+    // a leftover (under-filled with room for more), so it alone gets the blank —
+    // an identical-content cap-closed row above it stretches to full width.
+    expect(collectBlanks(rows[lastIdx]!.boxTree)).toHaveLength(1);
   });
 });
