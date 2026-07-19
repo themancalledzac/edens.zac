@@ -1,7 +1,7 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type MeResponse } from '@/app/types/Auth';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
@@ -15,10 +15,9 @@ interface ContentCollectionPageProps {
   chunkSize?: number; // Number of images per row (default: 2)
   /**
    * Opt-in flag to bypass the defense-in-depth strip of cover images on
-   * password-protected CLIENT_GALLERY entries. Admin-only callers (e.g.
-   * /all-collections, /collectionType/* in local dev) set this true so the
-   * admin can see their own covers. Default false preserves the strip for
-   * anonymous public list views.
+   * password-protected client-gallery entries. Admin-only callers set this
+   * true so the admin can see their own covers. Default false preserves the
+   * strip for anonymous public list views.
    */
   showProtectedCovers?: boolean;
   /** UA-derived SSR fallback viewport from {@link resolveSsrViewport}. */
@@ -41,11 +40,10 @@ function collectionToContentModel(
   col: CollectionModel,
   showProtectedCovers: boolean
 ): ContentParallaxImageModel {
-  // Defense-in-depth: never render a coverImage for a password-protected CLIENT_GALLERY in
-  // list views unless the caller explicitly opts in. Backend BE-H5 strips it at the API,
-  // but a stale cache or future regression could re-expose it.
-  const isProtected =
-    col.type === CollectionType.CLIENT_GALLERY && col.isPasswordProtected === true;
+  // Defense-in-depth: never render a coverImage for a password-protected client
+  // gallery in list views unless the caller explicitly opts in. Backend BE-H5
+  // strips it at the API, but a stale cache or future regression could re-expose it.
+  const isProtected = col.isClient === true && col.isPasswordProtected === true;
   const safeCoverImage = isProtected && !showProtectedCovers ? null : col.coverImage;
   const { imageWidth, imageHeight } = clampParallaxDimensions(
     safeCoverImage?.imageWidth,
@@ -59,6 +57,8 @@ function collectionToContentModel(
     title: col.title,
     slug: col.slug,
     collectionType: col.type,
+    isClient: col.isClient,
+    isBlog: col.isBlog,
     description: col.description ?? null,
     imageUrl: safeCoverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',

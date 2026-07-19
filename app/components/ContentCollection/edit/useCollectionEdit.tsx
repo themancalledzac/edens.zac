@@ -42,10 +42,10 @@ import {
 import { handleApiError } from '@/app/utils/apiUtils';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import {
+  hasChildCollectionContent,
   isContentCollection,
   isContentImage,
   isGifContent,
-  isParentType,
 } from '@/app/utils/contentTypeGuards';
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
@@ -594,7 +594,7 @@ export function useCollectionEdit({
     [selectedIds, collection.content]
   );
 
-  const isParent = isParentType(updateData.type);
+  const isParent = hasChildCollectionContent(collection);
 
   const displayedCoverImage = collection.coverImage ?? null;
 

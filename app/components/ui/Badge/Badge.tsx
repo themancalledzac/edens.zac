@@ -1,7 +1,5 @@
 import { type ReactElement } from 'react';
 
-import { CollectionType } from '@/app/types/Collection';
-
 import styles from './Badge.module.scss';
 
 export type BadgeTone = 'card' | 'date';
@@ -17,25 +15,43 @@ export interface BadgeProps {
 }
 
 /**
- * Curated public label for a CollectionType. Internal/organizational types
- * (PARENT, PORTFOLIO, HOME, CLIENT_GALLERY, MISC) return null so they are never
- * surfaced to visitors; only visitor-facing types map to a friendly label.
+ * The collection fields the public badge derives its label from. Structural so
+ * any collection-shaped payload (CollectionModel, ContentCollectionModel,
+ * converted parallax cards) can be passed directly. Tags may arrive as full
+ * models ({ slug }) or as raw strings (legacy CollectionModel.tags).
  */
-export function collectionTypeToPublicLabel(type: CollectionType): string | null {
-  switch (type) {
-    case CollectionType.ART_GALLERY:
-      return 'Gallery';
-    case CollectionType.BLOG:
-      return 'Story';
-    case CollectionType.PARENT:
-    case CollectionType.PORTFOLIO:
-    case CollectionType.HOME:
-    case CollectionType.CLIENT_GALLERY:
-    case CollectionType.MISC:
-      return null;
-    default:
-      return null;
+export interface CollectionBadgeFields {
+  isBlog?: boolean;
+  tags?: ReadonlyArray<string | { slug?: string }>;
+}
+
+/**
+ * Curated public labels keyed by tag slug. The backend backfilled the
+ * `art-gallery` tag onto former ART_GALLERY collections, so the "Gallery"
+ * badge now derives from that tag rather than the retired type enum.
+ */
+const TAG_PUBLIC_LABELS: Readonly<Record<string, string>> = {
+  'art-gallery': 'Gallery',
+};
+
+/**
+ * Curated public label for a collection. Blogs surface as "Story"; collections
+ * carrying a badge-mapped tag (e.g. `art-gallery`) surface that tag's label.
+ * Everything else returns null so internal/organizational collections are
+ * never labeled for visitors.
+ */
+export function collectionPublicLabel(collection: CollectionBadgeFields): string | null {
+  if (collection.isBlog === true) {
+    return 'Story';
   }
+  for (const tag of collection.tags ?? []) {
+    const slug = typeof tag === 'string' ? tag : tag.slug;
+    const label = slug ? TAG_PUBLIC_LABELS[slug] : undefined;
+    if (label) {
+      return label;
+    }
+  }
+  return null;
 }
 
 /** Canonical overlay badge: a positioned label chip (tone + corner). */

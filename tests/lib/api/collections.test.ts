@@ -4,10 +4,12 @@
  */
 
 import {
+  createCollection as createCollectionApi,
   getCollectionsByLocation,
   parseCollectionArrayResponse,
   saveCollectionFromTag,
   saveGalleryAccess,
+  updateCollection as updateCollectionApi,
   validateClientGalleryAccess,
 } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
@@ -521,7 +523,7 @@ describe('saveCollectionFromTag', () => {
     jest.clearAllMocks();
   });
 
-  it('POSTs the type/visibility body to the save-as-collection endpoint', async () => {
+  it('POSTs the visibility body and strips the deprecated type field', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(3) })
     );
@@ -537,7 +539,6 @@ describe('saveCollectionFromTag', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
-          type: CollectionType.PORTFOLIO,
           visibility: CollectionVisibility.UNLISTED,
         }),
       })
@@ -566,5 +567,53 @@ describe('saveCollectionFromTag', () => {
     });
 
     await expect(saveCollectionFromTag(5)).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe('createCollection / updateCollection — boolean-only wire contract', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('createCollection sends title + isClient/isBlog and never the deprecated type', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(1) })
+    );
+
+    await createCollectionApi({
+      type: CollectionType.CLIENT_GALLERY,
+      title: 'Smith Wedding',
+      isClient: true,
+      isBlog: false,
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/createCollection'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ title: 'Smith Wedding', isClient: true, isBlog: false }),
+      })
+    );
+  });
+
+  it('updateCollection strips the deprecated type and passes the booleans through', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(9) })
+    );
+
+    await updateCollectionApi(9, {
+      id: 9,
+      type: CollectionType.BLOG,
+      isBlog: true,
+      title: 'Paris 2026',
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ id: 9, isBlog: true, title: 'Paris 2026' }),
+      })
+    );
   });
 });

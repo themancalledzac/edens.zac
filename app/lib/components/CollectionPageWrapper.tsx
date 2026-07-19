@@ -8,7 +8,6 @@ import { getCollectionBySlug, getScopedAllCollections } from '@/app/lib/api/coll
 import { listSavedImageIdsServer } from '@/app/lib/api/personal';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { getUserPage } from '@/app/lib/api/user';
-import { CollectionType } from '@/app/types/Collection';
 import { buildAllCollectionsContentBlock } from '@/app/utils/allCollectionsContentBlock';
 import { buildMeContentBlock } from '@/app/utils/meContentBlock';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
@@ -85,36 +84,23 @@ export default async function CollectionPageWrapper({
     // client round-trip. Saves are cross-collection and available to any logged-in viewer, so seed
     // them whenever a principal is present; both reads return [] for anonymous viewers.
     const [initialSelectedIds, initialSavedImageIds] = await Promise.all([
-      collection.type === CollectionType.CLIENT_GALLERY
+      collection.isClient === true
         ? listSelectIdsServer(collection.id)
         : Promise.resolve<number[]>([]),
       me ? listSavedImageIdsServer() : Promise.resolve<number[]>([]),
     ]);
 
-    // Gate password-protected galleries. `Array.isArray(content)` is the auth signal —
+    // Gate password-protected collections — the backend withholds content for any
+    // protected collection regardless of kind, so the gate keys on
+    // isPasswordProtected alone. `Array.isArray(content)` is the auth signal:
     // the backend sets content to null when the password cookie fails to validate.
-    // Routing here (not wrapping children) prevents RSC payload serialization for locked viewers.
-    // editMode bypasses the gate entirely — admins are never password-walled.
-    const isGateableType =
-      !editMode &&
-      (collection.type === CollectionType.CLIENT_GALLERY ||
-        collection.type === CollectionType.PARENT);
-    if (isGateableType) {
+    // Routing here (not wrapping children) prevents RSC payload serialization for
+    // locked viewers. editMode bypasses the gate — admins are never password-walled.
+    if (!editMode && collection.isPasswordProtected === true) {
       const isAuthenticated = Array.isArray(collection.content);
-      if (!collection.isPasswordProtected || isAuthenticated) {
-        return (
-          <CollectionPage
-            collection={collection}
-            chunkSize={chunkSize}
-            ssrViewport={ssrViewport}
-            editMode={editMode}
-            me={me}
-            initialSelectedIds={initialSelectedIds}
-            initialSavedImageIds={initialSavedImageIds}
-          />
-        );
+      if (!isAuthenticated) {
+        return <ClientGalleryGate collection={collection} />;
       }
-      return <ClientGalleryGate collection={collection} />;
     }
 
     return (
@@ -125,6 +111,7 @@ export default async function CollectionPageWrapper({
         editMode={editMode}
         me={me}
         initialSelectedIds={initialSelectedIds}
+        initialSavedImageIds={initialSavedImageIds}
       />
     );
   } catch (error) {

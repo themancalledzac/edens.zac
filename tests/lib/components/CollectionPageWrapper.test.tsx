@@ -67,6 +67,8 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     slug: 'smith-wedding',
     title: 'Smith Wedding',
     type: CollectionType.CLIENT_GALLERY,
+    isClient: true,
+    isBlog: false,
     locations: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',
@@ -137,10 +139,11 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     expect(element.type).toBe(CollectionPage);
   });
 
-  it('routes a non-CLIENT_GALLERY collection directly to <CollectionPage>', async () => {
+  it('routes a non-client, non-protected collection directly to <CollectionPage>', async () => {
     mockGetCollectionBySlug.mockResolvedValue(
       makeCollection({
         type: CollectionType.PORTFOLIO,
+        isClient: false,
         isPasswordProtected: false,
       })
     );
@@ -150,10 +153,26 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     expect(element.type).toBe(CollectionPage);
   });
 
+  it('gates a locked protected NON-client collection (new behavior: the gate keys on isPasswordProtected alone)', async () => {
+    mockGetCollectionBySlug.mockResolvedValue(
+      makeCollection({
+        type: CollectionType.PORTFOLIO,
+        isClient: false,
+        isPasswordProtected: true,
+        content: undefined,
+      })
+    );
+
+    const element = await CollectionPageWrapper({ slug: 'private-portfolio' });
+
+    expect(element.type).toBe(ClientGalleryGate);
+  });
+
   it('routes a locked PARENT (password-protected, content === undefined) to <ClientGalleryGate>', async () => {
     mockGetCollectionBySlug.mockResolvedValue(
       makeCollection({
         type: CollectionType.PARENT,
+        isClient: false,
         isPasswordProtected: true,
         content: undefined,
       })
@@ -169,6 +188,7 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     mockGetCollectionBySlug.mockResolvedValue(
       makeCollection({
         type: CollectionType.PARENT,
+        isClient: false,
         isPasswordProtected: true,
         content: [],
       })
@@ -183,6 +203,7 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     mockGetCollectionBySlug.mockResolvedValue(
       makeCollection({
         type: CollectionType.PARENT,
+        isClient: false,
         isPasswordProtected: false,
         content: undefined,
       })
@@ -191,6 +212,23 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     const element = await CollectionPageWrapper({ slug: 'edens-family' });
 
     expect(element.type).toBe(CollectionPage);
+  });
+
+  it('seeds Selects only for client galleries (isClient drives listSelectIdsServer)', async () => {
+    const { listSelectIdsServer } = jest.requireMock('@/app/lib/api/selects') as {
+      listSelectIdsServer: jest.Mock;
+    };
+
+    mockGetCollectionBySlug.mockResolvedValue(makeCollection({ isClient: true, content: [] }));
+    await CollectionPageWrapper({ slug: 'smith-wedding' });
+    expect(listSelectIdsServer).toHaveBeenCalledWith(1);
+
+    listSelectIdsServer.mockClear();
+    mockGetCollectionBySlug.mockResolvedValue(
+      makeCollection({ isClient: false, isPasswordProtected: false, content: [] })
+    );
+    await CollectionPageWrapper({ slug: 'portfolio-2026' });
+    expect(listSelectIdsServer).not.toHaveBeenCalled();
   });
 
   it('calls notFound() when the slug is empty', async () => {

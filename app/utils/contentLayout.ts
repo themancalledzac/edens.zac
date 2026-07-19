@@ -201,6 +201,11 @@ export function convertCollectionContentToParallax(
     title: col.title,
     slug: col.slug,
     collectionType: col.collectionType,
+    isClient: col.isClient,
+    isBlog: col.isBlog,
+    // Carry the referenced collection's tags so the public card badge (e.g.
+    // the `art-gallery` tag -> "Gallery") survives the parallax conversion.
+    tags: col.tags,
     description: col.description ?? null,
     imageUrl: col.coverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',

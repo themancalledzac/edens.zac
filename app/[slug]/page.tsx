@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation';
 
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
-import { CollectionType } from '@/app/types/Collection';
 import { requireAdmin } from '@/app/utils/admin';
 
 interface CollectionPageProps {
@@ -37,8 +36,7 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
     const description = collection.description ?? `${title} — photography by Zac Eden`;
     // Suppress OG/Twitter image for protected client galleries — the cover image is private
     // until the per-gallery password is verified, and meta tags are crawlable without auth.
-    const isProtected =
-      collection.type === CollectionType.CLIENT_GALLERY && collection.isPasswordProtected === true;
+    const isProtected = collection.isClient === true && collection.isPasswordProtected === true;
     const images =
       !isProtected && collection.coverImage?.imageUrl
         ? [{ url: collection.coverImage.imageUrl }]

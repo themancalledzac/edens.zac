@@ -771,23 +771,26 @@ describe('useCollectionEdit', () => {
     });
   });
 
-  describe('isParent gating', () => {
-    it('is true for a PARENT-type collection (and false for a PORTFOLIO)', () => {
-      const portfolio = renderEdit({ enabled: false });
-      expect(portfolio.result.current.isParent).toBe(false);
+  describe('isParent gating (derived from child-collection content)', () => {
+    it('is true for a collection containing child-collection refs (and false without them)', () => {
+      const leaf = renderEdit({ enabled: false });
+      expect(leaf.result.current.isParent).toBe(false);
 
       const parent = renderEdit({
         enabled: false,
-        collection: makeCollection({ type: CollectionType.PARENT }),
+        collection: makeCollection({
+          content: [
+            {
+              id: 900,
+              contentType: 'COLLECTION',
+              orderIndex: 0,
+              slug: 'child-gallery',
+              referencedCollectionId: 901,
+            },
+          ],
+        }),
       });
       expect(parent.result.current.isParent).toBe(true);
-    });
-
-    it('tracks updateData.type live (PORTFOLIO → PARENT flips isParent)', () => {
-      const { result } = renderEdit({ enabled: false });
-      expect(result.current.isParent).toBe(false);
-      act(() => result.current.setUpdateField('type', CollectionType.PARENT));
-      expect(result.current.isParent).toBe(true);
     });
   });
 

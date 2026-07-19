@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 
-import { Badge, collectionTypeToPublicLabel } from '@/app/components/ui/Badge/Badge';
-import { CollectionType } from '@/app/types/Collection';
+import { Badge, collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 
 describe('Badge', () => {
   it('renders its label', () => {
@@ -22,17 +21,29 @@ describe('Badge', () => {
   });
 });
 
-describe('collectionTypeToPublicLabel', () => {
-  it('maps public types to curated labels', () => {
-    expect(collectionTypeToPublicLabel(CollectionType.ART_GALLERY)).toBe('Gallery');
-    expect(collectionTypeToPublicLabel(CollectionType.BLOG)).toBe('Story');
+describe('collectionPublicLabel', () => {
+  it('labels a blog collection "Story"', () => {
+    expect(collectionPublicLabel({ isBlog: true })).toBe('Story');
   });
 
-  it('suppresses internal types (PARENT, PORTFOLIO, HOME, CLIENT_GALLERY, MISC)', () => {
-    expect(collectionTypeToPublicLabel(CollectionType.PARENT)).toBeNull();
-    expect(collectionTypeToPublicLabel(CollectionType.PORTFOLIO)).toBeNull();
-    expect(collectionTypeToPublicLabel(CollectionType.HOME)).toBeNull();
-    expect(collectionTypeToPublicLabel(CollectionType.CLIENT_GALLERY)).toBeNull();
-    expect(collectionTypeToPublicLabel(CollectionType.MISC)).toBeNull();
+  it('labels an art-gallery-tagged collection "Gallery" (tag models with slug)', () => {
+    expect(collectionPublicLabel({ tags: [{ slug: 'landscape' }, { slug: 'art-gallery' }] })).toBe(
+      'Gallery'
+    );
+  });
+
+  it('labels an art-gallery-tagged collection "Gallery" (raw string tags)', () => {
+    expect(collectionPublicLabel({ tags: ['landscape', 'art-gallery'] })).toBe('Gallery');
+  });
+
+  it('prefers "Story" when a blog also carries the art-gallery tag', () => {
+    expect(collectionPublicLabel({ isBlog: true, tags: [{ slug: 'art-gallery' }] })).toBe('Story');
+  });
+
+  it('returns null for collections with no badge-worthy fields', () => {
+    expect(collectionPublicLabel({})).toBeNull();
+    expect(collectionPublicLabel({ isBlog: false })).toBeNull();
+    expect(collectionPublicLabel({ tags: [] })).toBeNull();
+    expect(collectionPublicLabel({ tags: [{ slug: 'weddings' }, 'travel'] })).toBeNull();
   });
 });

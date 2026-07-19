@@ -7,6 +7,7 @@ import {
   getAspectRatio,
   getContentDimensions,
   getSlotWidth,
+  hasChildCollectionContent,
   hasImage,
   isContentCollection,
   isContentImage,
@@ -443,7 +444,6 @@ describe('getAspectRatio', () => {
     const panel = createPanelContent(1, { width: 600, height: 0 });
     expect(getAspectRatio(panel)).toBe(1.0);
   });
-
 });
 
 // ===================== getSlotWidth =====================
@@ -622,5 +622,32 @@ describe('getSlotWidth', () => {
         expect(getSlotWidth(gif, CHUNK)).toBe(CHUNK);
       });
     });
+  });
+});
+
+// ===================== hasChildCollectionContent =====================
+
+describe('hasChildCollectionContent', () => {
+  it('returns true for a collection containing a child-collection ref', () => {
+    const collection = {
+      content: [createImageContent(1), createCollectionContent(2)],
+    };
+    expect(hasChildCollectionContent(collection)).toBe(true);
+  });
+
+  it('returns false for a collection with only image content', () => {
+    const collection = { content: [createImageContent(1), createGifContent(2)] };
+    expect(hasChildCollectionContent(collection)).toBe(false);
+  });
+
+  it('returns false for empty or missing content', () => {
+    expect(hasChildCollectionContent({ content: [] })).toBe(false);
+    expect(hasChildCollectionContent({ content: undefined })).toBe(false);
+  });
+
+  it('returns false for null/undefined collection', () => {
+    expect(hasChildCollectionContent(null)).toBe(false);
+    // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined input
+    expect(hasChildCollectionContent(undefined)).toBe(false);
   });
 });

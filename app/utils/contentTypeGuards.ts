@@ -4,7 +4,7 @@
  * Provides compile-time type safety for Content discrimination.
  * Use these instead of runtime type checking or casting.
  */
-import { CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import {
   type Content,
   type ContentBlankModel,
@@ -242,10 +242,13 @@ function getRatedContentItem(item: Content): { rating?: number | null } | null {
 }
 
 /**
- * Check if a collection type is a "parent-type" collection.
- * Parent-type collections (HOME, PARENT) can only contain child collections,
- * not images, text, or GIFs.
+ * Check if a collection acts as a "parent" — derived from its content rather
+ * than the retired type enum: a collection that contains child-collection
+ * refs. Parent collections source cover-image candidates from their children
+ * and propagate gallery access to them.
  */
-export function isParentType(type: CollectionType | string | undefined): boolean {
-  return type === CollectionType.HOME || type === CollectionType.PARENT;
+export function hasChildCollectionContent(
+  collection: Pick<CollectionModel, 'content'> | null | undefined
+): boolean {
+  return Array.isArray(collection?.content) && collection.content.some(isContentCollection);
 }

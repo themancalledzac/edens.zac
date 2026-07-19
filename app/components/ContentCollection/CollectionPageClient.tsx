@@ -10,7 +10,7 @@ import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type MeResponse } from '@/app/types/Auth';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
 import {
   type FilterState,
@@ -132,7 +132,7 @@ export default function CollectionPageClient({
     [isMobile]
   );
 
-  const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
+  const isClientGallery = collection.isClient === true;
 
   // Selects (favorites) are a client-gallery feature, available only to a viewer who is a CLIENT
   // of this collection (or admin via editMode). Distinct from the download "select mode" below.
@@ -140,8 +140,8 @@ export default function CollectionPageClient({
     isClientGallery && !editMode && isClientOfCollection(me, collection.id, editMode);
 
   // Download UI (and its select-to-download mode) follows the backend's role-based authorization:
-  // a CLIENT_GALLERY (anonymous password-cookie client) OR a logged-in CLIENT of this collection.
-  // Distinct from `isClientGallery` (type only), which still governs Selects/favorites above.
+  // a logged-in CLIENT of this collection (surfaced via /api/auth/me). Distinct from
+  // `isClientGallery` (the collection flag), which still governs Selects/favorites above.
   const canDownload = canDownloadCollection(me, collection);
 
   // Mirror of the viewer's selected ids, owned here so the pinned "Your Selects" prepend can react

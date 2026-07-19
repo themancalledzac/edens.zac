@@ -6,7 +6,7 @@
  * so the renderer component doesn't need to know about content types.
  */
 
-import { collectionTypeToPublicLabel } from '@/app/components/ui/Badge/Badge';
+import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type AnyContentModel } from '@/app/types/Content';
 import { type ContentRendererProps } from '@/app/types/ContentRenderer';
 import {
@@ -213,7 +213,7 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(undefined, content.title, undefined, content.slug, 'Collection'),
       overlayText: content.title,
-      cardTypeBadge: collectionTypeToPublicLabel(content.collectionType) ?? undefined,
+      cardTypeBadge: collectionPublicLabel(content) ?? undefined,
       enableParallax: true,
       hasSlug: content.slug,
       isCollection: true,
@@ -236,9 +236,12 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(content.alt, content.title, content.caption),
       overlayText: content.overlayText,
+      // Only collection cards (parallax blocks converted from a collection, so
+      // they carry a slug) get a badge — a plain parallax IMAGE's own tags must
+      // never surface as a card label.
       cardTypeBadge:
-        'collectionType' in content && content.collectionType
-          ? (collectionTypeToPublicLabel(content.collectionType) ?? undefined)
+        'slug' in content && content.slug
+          ? (collectionPublicLabel(content) ?? undefined)
           : undefined,
       enableParallax: true,
       hasSlug: 'slug' in content ? content.slug : undefined,

@@ -221,6 +221,16 @@ export async function validateClientGalleryAccess(
 // ============================================================================
 
 /**
+ * Strip the deprecated `type` field from an outgoing create/update body. The
+ * backend classifies collections by the `isClient`/`isBlog` booleans now; the
+ * frontend never sends `type`, even while transitional admin UI still sets it.
+ */
+function withoutLegacyType<T extends { type?: unknown }>(body: T): Omit<T, 'type'> {
+  const { type: _legacyType, ...rest } = body;
+  return rest;
+}
+
+/**
  * POST /api/admin/collections/createCollection
  * Create a new collection
  */
@@ -229,7 +239,7 @@ export async function createCollection(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     '/collections/createCollection',
-    createRequest
+    withoutLegacyType(createRequest)
   );
 }
 
@@ -242,7 +252,10 @@ export async function updateCollection(
   id: number,
   updateData: CollectionUpdateRequest
 ): Promise<CollectionUpdateResponseDTO | null> {
-  return fetchAdminPutJsonApi<CollectionUpdateResponseDTO>(`/collections/${id}`, updateData);
+  return fetchAdminPutJsonApi<CollectionUpdateResponseDTO>(
+    `/collections/${id}`,
+    withoutLegacyType(updateData)
+  );
 }
 
 /**
@@ -375,14 +388,14 @@ export async function createChildCollection(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     `/collections/${parentId}/child`,
-    createRequest
+    withoutLegacyType(createRequest)
   );
 }
 
 /**
  * POST /api/admin/tags/{id}/save-as-collection
- * Promote a tag view into a real collection. Body defaults (PORTFOLIO/UNLISTED)
- * are applied by the backend when omitted.
+ * Promote a tag view into a real collection. Backend applies defaults when
+ * fields are omitted. The deprecated `type` field is stripped before sending.
  */
 export async function saveCollectionFromTag(
   tagId: number,
@@ -390,6 +403,6 @@ export async function saveCollectionFromTag(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     `/tags/${tagId}/save-as-collection`,
-    body ?? {}
+    withoutLegacyType(body ?? {})
   );
 }
