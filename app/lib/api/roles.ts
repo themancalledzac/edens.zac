@@ -22,7 +22,7 @@ import {
 
 const BASE = '/roles';
 
-/** List all roles (SHARED before PERSONAL, then by name). `[]` when the endpoint yields no body. */
+/** List all roles, ordered by name. `[]` when the endpoint yields no body. */
 export async function listRoles(): Promise<RoleSummary[]> {
   return (await fetchAdminGetApi<RoleSummary[]>(BASE)) ?? [];
 }

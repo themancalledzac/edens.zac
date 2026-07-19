@@ -2,7 +2,7 @@
  * Pure capability helpers over the resolved principal + the admin (editMode) signal.
  * Admin is the perimeter, surfaced to the client tree as `editMode` (localhost ?manage=1) — a
  * logged-in user is never admin. A CLIENT's per-collection powers come from `me.galleries`
- * (the user_collection memberships surfaced by /api/auth/me).
+ * (the role_collection grants surfaced by /api/auth/me).
  */
 import { type GalleryMembership, type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
@@ -30,8 +30,9 @@ export function isClientOfCollection(
 
 /**
  * True when the viewer may download from this collection. Downloading is a *capability*, not a
- * collection *type*: the backend authorizes downloads by role (a `user_collection` CLIENT
- * membership on ANY collection), so the UI must too. The union below keeps both paths working:
+ * collection *type*: the backend authorizes downloads by role (a role_collection CLIENT grant on
+ * ANY collection, surfaced by /api/auth/me), so the UI must too. The union below keeps both paths
+ * working:
  *   - `CLIENT_GALLERY` type → the existing anonymous password-cookie client (who has no `me`);
  *   - a logged-in CLIENT membership → downloads on any collection type (e.g. a PORTFOLIO shared
  *     with a specific client), matching the admin "Client (download/tag)" grant.

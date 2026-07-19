@@ -209,13 +209,11 @@ export function UserForm(props: UserFormProps) {
       )}
 
       {isEdit && (
-        <section className={styles.collections}>
-          <h3 className={styles.collectionsHeading}>Roles</h3>
-          {userRoles.length === 0 && (
-            <p className={styles.collectionsEmpty}>Not in any roles yet.</p>
-          )}
+        <section className={styles.roles}>
+          <h3 className={styles.rolesHeading}>Roles</h3>
+          {userRoles.length === 0 && <p className={styles.rolesEmpty}>Not in any roles yet.</p>}
           {userRoles.map(r => (
-            <div key={r.roleId} className={styles.collectionRow}>
+            <div key={r.roleId} className={styles.roleRow}>
               <span>{r.name}</span>
               <Button variant="ghost" size="sm" type="button" onClick={() => removeRole(r.roleId)}>
                 Remove
@@ -223,7 +221,7 @@ export function UserForm(props: UserFormProps) {
             </div>
           ))}
           {availableRoles.length > 0 && (
-            <div className={styles.collectionRow}>
+            <div className={styles.roleRow}>
               <select value={addRoleId} onChange={e => setAddRoleId(e.target.value)}>
                 <option value="">Add to role...</option>
                 {availableRoles.map(r => (
