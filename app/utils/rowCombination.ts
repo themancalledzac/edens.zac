@@ -296,12 +296,28 @@ function createBlankLeaf(aspectRatio: number, id: number): BoxTree {
 }
 
 /**
- * Pad an under-filled row with a trailing blank spacer so its real content
- * keeps its honest share of the width instead of being scaled up to full page
- * width (one lonely image becoming a full-width hero).
+ * Pad a genuine end-of-page leftover row with a trailing blank spacer so its
+ * real content keeps its honest share of the width instead of being scaled up
+ * to full page width.
  *
- * A row is under-filled when its real width-cost is below MIN_FILL_RATIO of the
- * budget. We append a horizontal blank sibling sized to absorb the leftover
+ * Reserving space is an END-OF-PAGE concern, not an every-under-filled-row one.
+ * Greedy fill from the front means only the LAST row can be a content-exhaustion
+ * leftover; every earlier under-filled row was closed by a deliberate decision
+ * (overfill-avoidance, or the {@link MAX_ROW_IMAGES} cap) and is a complete,
+ * intentional row that must fill the width. A single-image mobile row is the
+ * canonical example — a second image would overfill, so the row is complete at
+ * one image and should fill the phone width, never sprout a spacer.
+ *
+ * Three gates decide a genuine leftover:
+ * 1. **isLastRow** — only the trailing row can be a leftover.
+ * 2. **Under-filled** — real width-cost below MIN_FILL_RATIO of the budget.
+ * 3. **Had room for more** — the row could still have absorbed another item
+ *    (a second copy of its smallest item stays within MAX_FILL_RATIO). A row
+ *    that is under-filled only because it is already at capacity (any further
+ *    item would overfill — every narrow-budget single-image row) is complete,
+ *    not a leftover, and fills the width.
+ *
+ * When padded we append a horizontal blank sibling sized to absorb the leftover
  * width; the real subtree is nested untouched, so every item keeps its aspect
  * ratio. Padding is viewport-relative, so a higher-rated item fills more of the
  * row. Solo heroes are skipped -- their full-width row is intentional.
@@ -309,11 +325,20 @@ function createBlankLeaf(aspectRatio: number, id: number): BoxTree {
  * Guards return the row unchanged when width-cost is zero/NaN or the row's
  * aspect ratio is non-positive (degenerate zero-width content).
  */
-function padRowToWidth(row: RowResult, rowWidth: number, rowIndex: number): RowResult {
+function padRowToWidth(
+  row: RowResult,
+  rowWidth: number,
+  rowIndex: number,
+  isLastRow: boolean
+): RowResult {
   const realWidthCost = getTotalCV(row.components);
   if (!(realWidthCost > 0)) return row;
+  if (!isLastRow) return row;
   if (realWidthCost / rowWidth >= MIN_FILL_RATIO) return row;
   if (row.components.length === 1 && isSoloHero(row.components[0]!, rowWidth)) return row;
+
+  const minWidthCost = Math.min(...row.components.map(getWidthCost));
+  if ((realWidthCost + minWidthCost) / rowWidth > MAX_FILL_RATIO) return row;
 
   const realAspectRatio = calculateBoxTreeAspectRatio(row.boxTree);
   if (realAspectRatio <= 0) return row;
@@ -590,7 +615,10 @@ export function buildRows(
     }
   }
 
-  return rows.map((row, rowIndex) => padRowToWidth(row, rowWidth, rowIndex));
+  const lastRowIndex = rows.length - 1;
+  return rows.map((row, rowIndex) =>
+    padRowToWidth(row, rowWidth, rowIndex, rowIndex === lastRowIndex)
+  );
 }
 
 // =============================================================================
