@@ -30,7 +30,8 @@ interface CollectionRolesSectionProps {
  * which roles can view this collection, at what level (GENERAL = view; CLIENT =
  * download/tag/star). Changes save immediately via the existing role-grant endpoints, and every
  * mutation re-fetches the grant list so the view stays authoritative. The add/create controls
- * offer SHARED roles only; per-user access is granted by adding the user to a role instead.
+ * offer any role not already granted; per-user access is granted by adding the user to a role
+ * instead.
  *
  * Grants inherited from a parent collection (waterfall provenance on the row) render read-only:
  * removing one here would just re-sync from the parent, so they are edited at the origin
@@ -61,7 +62,7 @@ export function CollectionRolesSection({
   }, [collectionId]);
 
   const grantedIds = new Set(grants.map(g => g.roleId));
-  const grantableRoles = allRoles.filter(r => r.kind === 'SHARED' && !grantedIds.has(r.id));
+  const grantableRoles = allRoles.filter(r => !grantedIds.has(r.id));
 
   async function refresh() {
     setGrants(await listCollectionRoles(collectionId));
@@ -95,7 +96,7 @@ export function CollectionRolesSection({
     if (!name) return;
     setError(null);
     try {
-      const created = await createRole({ name, kind: 'SHARED' });
+      const created = await createRole({ name });
       if (created) {
         await setRoleGrant(created.id, collectionId, createLevel);
       }
@@ -129,7 +130,7 @@ export function CollectionRolesSection({
           <Fragment key={g.roleId}>
             <div className={styles.row}>
               <span className={styles.rowName}>
-                {g.name} <span className={styles.kindBadge}>{g.kind}</span>
+                {g.name}
                 {inherited && (
                   <span className={`${styles.kindBadge} ${styles.inheritedBadge}`}>Inherited</span>
                 )}

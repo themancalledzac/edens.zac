@@ -34,7 +34,7 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('listRoles', () => {
   it('GETs /roles and returns the array', async () => {
-    const roles = [{ id: 1, name: 'power', kind: 'SHARED' }];
+    const roles = [{ id: 1, name: 'power' }];
     (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(roles);
     expect(await listRoles()).toEqual(roles);
     expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/roles');
@@ -48,7 +48,7 @@ describe('listRoles', () => {
 
 describe('getRole', () => {
   it('GETs /roles/{id} and returns the detail', async () => {
-    const detail = { id: 1, name: 'power', kind: 'SHARED', members: [], collections: [] };
+    const detail = { id: 1, name: 'power', members: [], collections: [] };
     (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(detail);
     expect(await getRole(1)).toEqual(detail);
     expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/roles/1');
@@ -57,12 +57,11 @@ describe('getRole', () => {
 
 describe('createRole', () => {
   it('POSTs /roles with the body', async () => {
-    const created = { id: 9, name: 'power', kind: 'SHARED' };
+    const created = { id: 9, name: 'power' };
     (core.fetchAdminPostJsonApi as jest.Mock).mockResolvedValue(created);
-    expect(await createRole({ name: 'power', kind: 'SHARED' })).toEqual(created);
+    expect(await createRole({ name: 'power' })).toEqual(created);
     expect(core.fetchAdminPostJsonApi).toHaveBeenCalledWith('/roles', {
       name: 'power',
-      kind: 'SHARED',
     });
   });
 
@@ -130,7 +129,7 @@ describe('membership', () => {
 
 describe('listCollectionRoles', () => {
   it('GETs /collections/{id}/roles and returns the array', async () => {
-    const rows = [{ roleId: 1, name: 'power', kind: 'SHARED', level: 'GENERAL' }];
+    const rows = [{ roleId: 1, name: 'power', level: 'GENERAL' }];
     (core.fetchAdminGetApi as jest.Mock).mockResolvedValue(rows);
     expect(await listCollectionRoles(20)).toEqual(rows);
     expect(core.fetchAdminGetApi).toHaveBeenCalledWith('/collections/20/roles');

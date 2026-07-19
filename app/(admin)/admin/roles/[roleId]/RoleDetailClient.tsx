@@ -109,9 +109,7 @@ export function RoleDetailClient({ initialRole }: { initialRole: RoleDetail }) {
           &lt;- Roles
         </Link>
         <div className={styles.titleRow}>
-          <h1 className={styles.title}>
-            {role.name} <span className={styles.kindBadge}>{role.kind}</span>
-          </h1>
+          <h1 className={styles.title}>{role.name}</h1>
           <Button variant="danger" size="sm" onClick={onDeleteRole}>
             Delete role
           </Button>

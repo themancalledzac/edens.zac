@@ -33,14 +33,13 @@ const mockRemoveRoleGrant = rolesApi.removeRoleGrant as jest.MockedFunction<
 const COLLECTION_ID = 20;
 
 const grants: CollectionRoleRow[] = [
-  { roleId: 1, name: 'pnwer', kind: 'SHARED', level: 'GENERAL' },
-  { roleId: 2, name: 'ken@x.com', kind: 'PERSONAL', level: 'CLIENT' },
+  { roleId: 1, name: 'pnwer', level: 'GENERAL' },
+  { roleId: 2, name: 'ken@x.com', level: 'CLIENT' },
 ];
 
 const allRoles: RoleSummary[] = [
-  { id: 1, name: 'pnwer', kind: 'SHARED' }, // already granted — excluded from the picker
-  { id: 3, name: 'power', kind: 'SHARED' }, // grantable
-  { id: 4, name: 'ken@x.com', kind: 'PERSONAL' }, // PERSONAL — excluded from the picker
+  { id: 1, name: 'pnwer' }, // already granted — excluded from the picker
+  { id: 3, name: 'power' }, // grantable
 ];
 
 beforeEach(() => {
@@ -61,14 +60,11 @@ async function renderSection(title = 'Fall Wedding') {
 }
 
 describe('CollectionRolesSection', () => {
-  it('renders the granted roles with kind badge and current level', async () => {
+  it('renders the granted roles and current level', async () => {
     await renderSection();
 
     expect(await screen.findByText('pnwer')).toBeInTheDocument();
     expect(screen.getByText('ken@x.com')).toBeInTheDocument();
-    expect(screen.getByText('SHARED')).toBeInTheDocument();
-    // PERSONAL appears once — the granted row badge (the picker excludes PERSONAL roles).
-    expect(screen.getByText('PERSONAL')).toBeInTheDocument();
     expect(screen.getByLabelText('Access level for pnwer')).toHaveValue('GENERAL');
     expect(screen.getByLabelText('Access level for ken@x.com')).toHaveValue('CLIENT');
   });
@@ -99,13 +95,12 @@ describe('CollectionRolesSection', () => {
     });
   });
 
-  it('excludes PERSONAL and already-granted roles from the add picker', async () => {
+  it('excludes already-granted roles from the add picker', async () => {
     await renderSection();
     const picker = await screen.findByLabelText('Add a role');
 
     expect(within(picker).getByRole('option', { name: 'power' })).toBeInTheDocument();
     expect(within(picker).queryByRole('option', { name: 'pnwer' })).not.toBeInTheDocument();
-    expect(within(picker).queryByRole('option', { name: 'ken@x.com' })).not.toBeInTheDocument();
   });
 
   it('changes a granted role level via setRoleGrant', async () => {
@@ -131,8 +126,8 @@ describe('CollectionRolesSection', () => {
     });
   });
 
-  it('creates a SHARED role named after the collection, then grants it', async () => {
-    mockCreateRole.mockResolvedValue({ id: 9, name: 'Fall Wedding', kind: 'SHARED' });
+  it('creates a role named after the collection, then grants it', async () => {
+    mockCreateRole.mockResolvedValue({ id: 9, name: 'Fall Wedding' });
     await renderSection();
 
     const nameInput = await screen.findByLabelText('Create role for this collection');
@@ -144,7 +139,7 @@ describe('CollectionRolesSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     await waitFor(() => {
-      expect(mockCreateRole).toHaveBeenCalledWith({ name: 'Fall Wedding', kind: 'SHARED' });
+      expect(mockCreateRole).toHaveBeenCalledWith({ name: 'Fall Wedding' });
       expect(mockSetRoleGrant).toHaveBeenCalledWith(9, COLLECTION_ID, 'CLIENT');
     });
   });
@@ -166,7 +161,6 @@ describe('CollectionRolesSection', () => {
     const inheritedGrant: CollectionRoleRow = {
       roleId: 5,
       name: 'family',
-      kind: 'SHARED',
       level: 'GENERAL',
       inheritedFromCollectionId: 77,
       inheritedFromCollectionTitle: 'Weddings 2026',
@@ -223,7 +217,7 @@ describe('CollectionRolesSection', () => {
     it('treats absent provenance fields (undefined) as a direct, fully editable grant', async () => {
       // Pre-deploy tolerance: the backend may not send the fields at all.
       mockListCollectionRoles.mockResolvedValue([
-        { roleId: 1, name: 'pnwer', kind: 'SHARED', level: 'GENERAL' },
+        { roleId: 1, name: 'pnwer', level: 'GENERAL' },
       ]);
       await renderSection();
 
@@ -240,7 +234,7 @@ describe('CollectionRolesSection', () => {
 
     it('renders a mixed list with direct rows editable and inherited rows locked', async () => {
       mockListCollectionRoles.mockResolvedValue([
-        { roleId: 1, name: 'pnwer', kind: 'SHARED', level: 'GENERAL' },
+        { roleId: 1, name: 'pnwer', level: 'GENERAL' },
         inheritedGrant,
       ]);
       await renderSection();
