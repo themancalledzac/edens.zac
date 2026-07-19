@@ -1,7 +1,7 @@
 /**
  * Tests for CollectionRolesSection — the collection-edit "Role Access" panel (the inverse of the
  * role-detail page). Renders the roles granting a collection, changes a level, revokes, adds an
- * existing SHARED role, and creates-and-grants a new SHARED role in one action. All mutations
+ * existing role, and creates-and-grants a new role in one action. All mutations
  * save immediately and re-fetch the grant list.
  */
 
