@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
@@ -31,6 +31,10 @@ interface CollectionRolesSectionProps {
  * download/tag/star). Changes save immediately via the existing role-grant endpoints, and every
  * mutation re-fetches the grant list so the view stays authoritative. The add/create controls
  * offer SHARED roles only; per-user access is granted by adding the user to a role instead.
+ *
+ * Grants inherited from a parent collection (waterfall provenance on the row) render read-only:
+ * removing one here would just re-sync from the parent, so they are edited at the origin
+ * collection instead.
  */
 export function CollectionRolesSection({
   collectionId,
@@ -119,25 +123,48 @@ export function CollectionRolesSection({
       {error && <FormError>{error}</FormError>}
 
       {grants.length === 0 && <p className={styles.empty}>No roles have access yet.</p>}
-      {grants.map(g => (
-        <div key={g.roleId} className={styles.row}>
-          <span className={styles.rowName}>
-            {g.name} <span className={styles.kindBadge}>{g.kind}</span>
-          </span>
-          <select
-            className={styles.select}
-            value={g.level}
-            onChange={e => onChangeLevel(g.roleId, e.target.value as AccessLevel)}
-            aria-label={`Access level for ${g.name}`}
-          >
-            <option value="GENERAL">General (view)</option>
-            <option value="CLIENT">Client (download/tag/star)</option>
-          </select>
-          <Button variant="ghost" size="sm" onClick={() => onRemove(g.roleId)}>
-            Remove
-          </Button>
-        </div>
-      ))}
+      {grants.map(g => {
+        const inherited = g.inheritedFromCollectionId != null;
+        return (
+          <Fragment key={g.roleId}>
+            <div className={styles.row}>
+              <span className={styles.rowName}>
+                {g.name} <span className={styles.kindBadge}>{g.kind}</span>
+                {inherited && (
+                  <span className={`${styles.kindBadge} ${styles.inheritedBadge}`}>Inherited</span>
+                )}
+              </span>
+              <select
+                className={styles.select}
+                value={g.level}
+                onChange={
+                  inherited ? undefined : e => onChangeLevel(g.roleId, e.target.value as AccessLevel)
+                }
+                disabled={inherited}
+                aria-label={`Access level for ${g.name}`}
+              >
+                <option value="GENERAL">General (view)</option>
+                <option value="CLIENT">Client (download/tag/star)</option>
+              </select>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={inherited ? undefined : () => onRemove(g.roleId)}
+                disabled={inherited}
+              >
+                Remove
+              </Button>
+            </div>
+            {inherited && (
+              <p className={styles.inheritedHint}>
+                {g.inheritedFromCollectionTitle != null
+                  ? `Inherited from "${g.inheritedFromCollectionTitle}" — edit access on that collection.`
+                  : 'Inherited from a parent collection — edit access there.'}
+              </p>
+            )}
+          </Fragment>
+        );
+      })}
 
       {grantableRoles.length > 0 && (
         <div className={styles.addRow}>

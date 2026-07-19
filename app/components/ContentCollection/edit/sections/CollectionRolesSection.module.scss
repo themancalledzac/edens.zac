@@ -48,6 +48,16 @@
   color: var(--color-fg-muted, var(--color-fg));
 }
 
+.inheritedBadge {
+  margin-left: var(--space-2);
+}
+
+.inheritedHint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-on-surface-muted);
+}
+
 .select {
   font-family: inherit;
   font-size: var(--text-sm);
@@ -58,6 +68,11 @@
   background-color: var(--color-bg);
   color: var(--color-fg);
   cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
 
   &:focus-visible {
     outline: 2px solid var(--color-accent);

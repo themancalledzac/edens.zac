@@ -50,12 +50,22 @@ export interface UserRoleRow {
   kind: RoleKind;
 }
 
-/** One role granting a collection (`GET /api/admin/collections/{id}/roles`). */
+/**
+ * One role granting a collection (`GET /api/admin/collections/{id}/roles`).
+ *
+ * `inheritedFromCollectionId`/`inheritedFromCollectionTitle` carry waterfall provenance: non-null
+ * means the grant was materialized down from a parent collection — the id/title identify the
+ * origin collection holding the direct grant, and the grant is edited there. Both are optional
+ * because the backend may not expose them yet; treat `undefined` exactly like `null` (a direct
+ * grant).
+ */
 export interface CollectionRoleRow {
   roleId: number;
   name: string;
   kind: RoleKind;
   level: AccessLevel;
+  inheritedFromCollectionId?: number | null;
+  inheritedFromCollectionTitle?: string | null;
 }
 
 /** Body for `POST /api/admin/roles`. `kind` defaults to SHARED server-side when omitted. */
