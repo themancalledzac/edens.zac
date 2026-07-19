@@ -30,6 +30,10 @@ const mockSuccessResponse = (data: unknown) => ({
 });
 
 // Test fixtures
+// Fixed timestamps keep the fixture deterministic: tests that build a collection twice (once for
+// the mocked response, once for the expected value) must get byte-identical objects. `new Date()`
+// straddled a millisecond boundary under full-suite CPU load, flaking the toEqual comparisons.
+const FIXTURE_TIMESTAMP = '2026-01-01T00:00:00.000Z';
 const createCollection = (id: number, overrides?: Partial<CollectionModel>): CollectionModel => ({
   id,
   slug: `collection-${id}`,
@@ -38,8 +42,8 @@ const createCollection = (id: number, overrides?: Partial<CollectionModel>): Col
   type: CollectionType.PORTFOLIO,
   visibility: CollectionVisibility.LISTED,
   locations: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
+  createdAt: FIXTURE_TIMESTAMP,
+  updatedAt: FIXTURE_TIMESTAMP,
   ...overrides,
 });
 
