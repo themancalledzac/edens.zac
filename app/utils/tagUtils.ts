@@ -14,6 +14,24 @@ import type { TagUpdate } from '@/app/types/Collection';
 import type { ContentTagModel } from '@/app/types/Metadata';
 
 /**
+ * Convert a tag display name to its canonical slug. Exact mirror of the backend
+ * `SlugUtil.generateSlug` (lowercase, strip non `[a-z0-9\s-]`, whitespace runs
+ * to `-`, collapse `-` runs, trim edge `-`). Backend tag slugs are ALWAYS
+ * derived from names with that algorithm (V8 backfill, MetadataService and
+ * TagRepository tag creation), so slugifying a `CollectionModel.tags` name
+ * recovers the slug the backend would emit for that tag. Idempotent on strings
+ * that are already slugs.
+ */
+export function tagNameToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^\d\sa-z-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
  * Convert tag input (array of models, array of names, single name, or null) to a
  * ContentTagModel array. Resolves each entry against availableTags by ID then name.
  * Unknown entries get id: 0 (new tag).

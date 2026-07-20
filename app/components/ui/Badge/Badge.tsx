@@ -1,5 +1,7 @@
 import { type ReactElement } from 'react';
 
+import { tagNameToSlug } from '@/app/utils/tagUtils';
+
 import styles from './Badge.module.scss';
 
 export type BadgeTone = 'card' | 'date';
@@ -18,7 +20,10 @@ export interface BadgeProps {
  * The collection fields the public badge derives its label from. Structural so
  * any collection-shaped payload (CollectionModel, ContentCollectionModel,
  * converted parallax cards) can be passed directly. Tags may arrive as full
- * models ({ slug }) or as raw strings (legacy CollectionModel.tags).
+ * models ({ slug }) or as raw strings. Raw strings are tag NAMES on
+ * `CollectionModel.tags` (names only, no slugs — see tagUtils), so every string
+ * is normalized through {@link tagNameToSlug} before the slug-keyed lookup;
+ * the normalization is idempotent, so slug-shaped strings also match.
  */
 export interface CollectionBadgeFields {
   isBlog?: boolean;
@@ -45,7 +50,7 @@ export function collectionPublicLabel(collection: CollectionBadgeFields): string
     return 'Story';
   }
   for (const tag of collection.tags ?? []) {
-    const slug = typeof tag === 'string' ? tag : tag.slug;
+    const slug = typeof tag === 'string' ? tagNameToSlug(tag) : tag.slug;
     const label = slug ? TAG_PUBLIC_LABELS[slug] : undefined;
     if (label) {
       return label;

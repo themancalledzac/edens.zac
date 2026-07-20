@@ -5,7 +5,12 @@
  * prev/newValue wire shape.
  */
 import type { ContentTagModel } from '@/app/types/Metadata';
-import { buildTagsDiff, convertTagsToModels, createTagsUpdate } from '@/app/utils/tagUtils';
+import {
+  buildTagsDiff,
+  convertTagsToModels,
+  createTagsUpdate,
+  tagNameToSlug,
+} from '@/app/utils/tagUtils';
 
 const availableTags: ContentTagModel[] = [
   { id: 1, name: 'landscape', slug: 'landscape' },
@@ -185,5 +190,26 @@ describe('buildTagsDiff', () => {
     const current = [tag(0, 'sunset')];
     const updated = [tag(0, 'golden hour')];
     expect(buildTagsDiff(updated, current)).toEqual({ newValue: ['golden hour'] });
+  });
+});
+
+describe('tagNameToSlug', () => {
+  it('slugifies a display name exactly like backend SlugUtil.generateSlug', () => {
+    expect(tagNameToSlug('Art Gallery')).toBe('art-gallery');
+    expect(tagNameToSlug('Dolomites, Italy')).toBe('dolomites-italy');
+    expect(tagNameToSlug('John Doe')).toBe('john-doe');
+  });
+
+  it('is idempotent on strings that are already slugs', () => {
+    expect(tagNameToSlug('art-gallery')).toBe('art-gallery');
+  });
+
+  it('collapses hyphen runs and trims edge hyphens', () => {
+    expect(tagNameToSlug('Weird -- Name!!')).toBe('weird-name');
+    expect(tagNameToSlug('-leading and trailing-')).toBe('leading-and-trailing');
+  });
+
+  it('returns an empty string for an empty name', () => {
+    expect(tagNameToSlug('')).toBe('');
   });
 });

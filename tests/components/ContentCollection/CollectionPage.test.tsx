@@ -10,6 +10,7 @@ import { render, screen } from '@testing-library/react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
+import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type ContentParallaxImageModel } from '@/app/types/Content';
@@ -154,5 +155,44 @@ describe('CollectionPage (collection array) — protected-cover stripping', () =
     );
 
     expect(renderedBlocks()[0]?.imageUrl).toBe('https://example.com/secret-cover.jpg');
+  });
+});
+
+describe('CollectionPage (collection array) — badge tag carry-through', () => {
+  beforeEach(() => {
+    mockContentBlock.mockClear();
+  });
+
+  function renderedBlocks(): ContentParallaxImageModel[] {
+    expect(mockContentBlock).toHaveBeenCalledTimes(1);
+    return mockContentBlock.mock.calls[0][0].content as ContentParallaxImageModel[];
+  }
+
+  it('carries tags (names resolved to slugs) so the Gallery badge survives conversion', () => {
+    render(
+      <CollectionPage
+        collection={[makeCollection({ isBlog: false, tags: ['Landscape', 'Art Gallery'] })]}
+      />
+    );
+
+    const block = renderedBlocks()[0];
+    expect(block?.tags).toEqual([
+      { id: 0, name: 'Landscape', slug: 'landscape' },
+      { id: 0, name: 'Art Gallery', slug: 'art-gallery' },
+    ]);
+    expect(collectionPublicLabel(block ?? {})).toBe('Gallery');
+  });
+
+  it('still labels blogs "Story" and leaves untagged collections unbadged', () => {
+    render(
+      <CollectionPage
+        collection={[makeCollection({ isBlog: true }), makeCollection({ id: 2, isBlog: false })]}
+      />
+    );
+
+    const blocks = renderedBlocks();
+    expect(collectionPublicLabel(blocks[0] ?? {})).toBe('Story');
+    expect(blocks[1]?.tags).toBeUndefined();
+    expect(collectionPublicLabel(blocks[1] ?? {})).toBeNull();
   });
 });

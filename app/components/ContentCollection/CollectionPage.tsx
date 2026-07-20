@@ -6,6 +6,7 @@ import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
+import { tagNameToSlug } from '@/app/utils/tagUtils';
 
 import CollectionPageClient from './CollectionPageClient';
 import styles from './ContentCollectionPage.module.scss';
@@ -59,6 +60,10 @@ function collectionToContentModel(
     collectionType: col.type,
     isClient: col.isClient,
     isBlog: col.isBlog,
+    // Carry the collection's tags so the public card badge (`art-gallery` tag
+    // -> "Gallery") survives the conversion. CollectionModel.tags is names-only
+    // (string[]), so recover each slug via the backend-parity slugifier.
+    tags: col.tags?.map(name => ({ id: 0, name, slug: tagNameToSlug(name) })),
     description: col.description ?? null,
     imageUrl: safeCoverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',

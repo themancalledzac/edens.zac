@@ -36,6 +36,10 @@ describe('collectionPublicLabel', () => {
     expect(collectionPublicLabel({ tags: ['landscape', 'art-gallery'] })).toBe('Gallery');
   });
 
+  it('normalizes raw tag NAMES to slugs before lookup (CollectionModel.tags shape)', () => {
+    expect(collectionPublicLabel({ tags: ['Landscape', 'Art Gallery'] })).toBe('Gallery');
+  });
+
   it('prefers "Story" when a blog also carries the art-gallery tag', () => {
     expect(collectionPublicLabel({ isBlog: true, tags: [{ slug: 'art-gallery' }] })).toBe('Story');
   });
