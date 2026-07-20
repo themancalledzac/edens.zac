@@ -5,6 +5,7 @@
  * prev/newValue wire shape.
  */
 import type { ContentTagModel } from '@/app/types/Metadata';
+import { slugify } from '@/app/utils/locationUtils';
 import {
   buildTagsDiff,
   convertTagsToModels,
@@ -194,6 +195,10 @@ describe('buildTagsDiff', () => {
 });
 
 describe('tagNameToSlug', () => {
+  it('is the shared slugify from locationUtils, not a second implementation', () => {
+    expect(tagNameToSlug).toBe(slugify);
+  });
+
   it('slugifies a display name exactly like backend SlugUtil.generateSlug', () => {
     expect(tagNameToSlug('Art Gallery')).toBe('art-gallery');
     expect(tagNameToSlug('Dolomites, Italy')).toBe('dolomites-italy');
