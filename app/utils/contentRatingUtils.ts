@@ -22,10 +22,13 @@ import {
 
 /**
  * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel)
- * Collection cards have collectionType set during conversion
+ * Collection cards carry the source collection's slug through conversion, and no other top-level
+ * content model has a `slug` field, so slug presence is the discriminant — the same re-key as the
+ * parallax card badge in contentRendererUtils. (Formerly keyed on the deprecated `collectionType`
+ * mirror, which silently dies once the backend stops emitting the legacy `type` field.)
  */
 export function isCollectionCard(item: AnyContentModel): boolean {
-  return 'collectionType' in item && !!item.collectionType;
+  return 'slug' in item && !!item.slug;
 }
 
 /**

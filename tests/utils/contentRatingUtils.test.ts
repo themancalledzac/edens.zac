@@ -24,11 +24,11 @@ import {
 // ===================== isCollectionCard Tests =====================
 
 describe('isCollectionCard', () => {
-  it('should return true for items with collectionType', () => {
+  it('should return true for items carrying a collection slug', () => {
     const collectionCard = {
       id: 1,
       contentType: 'PARALLAX' as const,
-      collectionType: 'TRAVEL',
+      slug: 'travel-2026',
     };
     expect(isCollectionCard(collectionCard as never)).toBe(true);
   });
@@ -38,13 +38,22 @@ describe('isCollectionCard', () => {
     expect(isCollectionCard(image)).toBe(false);
   });
 
-  it('should return false for items with empty collectionType', () => {
+  it('should return false for items with an empty slug', () => {
     const item = {
       id: 1,
       contentType: 'PARALLAX' as const,
-      collectionType: '',
+      slug: '',
     };
     expect(isCollectionCard(item as never)).toBe(false);
+  });
+
+  it('should ignore the deprecated collectionType mirror (survives the backend dropping type)', () => {
+    const legacyOnly = {
+      id: 1,
+      contentType: 'PARALLAX' as const,
+      collectionType: 'TRAVEL',
+    };
+    expect(isCollectionCard(legacyOnly as never)).toBe(false);
   });
 });
 
@@ -97,7 +106,7 @@ describe('getEffectiveRating', () => {
         id: 1,
         contentType: 'IMAGE' as const,
         imageUrl: '/test.jpg',
-        collectionType: 'TRAVEL',
+        slug: 'travel-2026',
       };
       expect(getEffectiveRating(collectionCard as never)).toBe(4);
     });

@@ -83,6 +83,9 @@ export default async function CollectionPageWrapper({
     // global saved (bookmarked) image ids so the SelectsProvider/SavesProvider prime without a
     // client round-trip. Saves are cross-collection and available to any logged-in viewer, so seed
     // them whenever a principal is present; both reads return [] for anonymous viewers.
+    // NOTE: since the gate unification (single render path keyed on isPasswordProtected), the
+    // saved-ids seed reaches EVERY collection render — previously only gateable types
+    // (CLIENT_GALLERY/PARENT) received it, which contradicted the intent above. Deliberate.
     const [initialSelectedIds, initialSavedImageIds] = await Promise.all([
       collection.isClient === true
         ? listSelectIdsServer(collection.id)

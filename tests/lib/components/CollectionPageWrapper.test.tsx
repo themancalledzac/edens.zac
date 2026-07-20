@@ -33,6 +33,9 @@ jest.mock('@/app/lib/api/auth', () => ({
 jest.mock('@/app/lib/api/selects', () => ({
   listSelectIdsServer: jest.fn(async () => []),
 }));
+jest.mock('@/app/lib/api/personal', () => ({
+  listSavedImageIdsServer: jest.fn(async () => []),
+}));
 
 const notFoundMock = jest.fn(() => {
   throw new Error('NEXT_NOT_FOUND');
@@ -229,6 +232,38 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     );
     await CollectionPageWrapper({ slug: 'portfolio-2026' });
     expect(listSelectIdsServer).not.toHaveBeenCalled();
+  });
+
+  it('seeds saved image ids for ANY collection when a principal is present (unified render path)', async () => {
+    const { meServer } = jest.requireMock('@/app/lib/api/auth') as { meServer: jest.Mock };
+    const { listSavedImageIdsServer } = jest.requireMock('@/app/lib/api/personal') as {
+      listSavedImageIdsServer: jest.Mock;
+    };
+
+    meServer.mockResolvedValueOnce({
+      email: 'viewer@example.com',
+      isAdmin: false,
+      mfaSatisfied: true,
+      galleries: [],
+    });
+    listSavedImageIdsServer.mockResolvedValueOnce([7, 9]);
+    mockGetCollectionBySlug.mockResolvedValue(
+      makeCollection({
+        type: CollectionType.PORTFOLIO,
+        isClient: false,
+        isPasswordProtected: false,
+        content: [],
+      })
+    );
+
+    const element = await CollectionPageWrapper({ slug: 'portfolio-2026' });
+
+    expect(element.type).toBe(CollectionPage);
+    expect(element.props.initialSavedImageIds).toEqual([7, 9]);
+
+    listSavedImageIdsServer.mockClear();
+    await CollectionPageWrapper({ slug: 'portfolio-2026' });
+    expect(listSavedImageIdsServer).not.toHaveBeenCalled();
   });
 
   it('calls notFound() when the slug is empty', async () => {
