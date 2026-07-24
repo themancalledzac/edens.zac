@@ -198,6 +198,8 @@ export async function createGif(collectionId: number, file: File): Promise<Conte
 export interface ContentGifUpdateRequest {
   title?: string;
   rating?: number;
+  /** ISO capture date copied from a reference image; persisted to content_gif.capture_date. */
+  captureDate?: string | null;
   tags?: TagUpdate;
   /** Person updates using prev/newValue/remove pattern (many-to-many) */
   people?: PersonUpdate;

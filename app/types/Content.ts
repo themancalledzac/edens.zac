@@ -188,6 +188,12 @@ export interface ContentGifModel extends Content {
   author?: string | null;
   createDate?: string | null;
   /**
+   * Photographic capture time (ISO string), copied from a reference image so the GIF/MP4 sorts
+   * chronologically alongside images. Null for GIFs the admin has not dated (they stay at the end
+   * of a chronological collection). Mirrors backend ContentModels.Gif.captureDate.
+   */
+  captureDate?: string | null;
+  /**
    * Layout rating (0-5 or null). Drives slot-width selection in the row grid:
    * horizontal GIF rating >= 4 takes the full row; rating 3 takes half a row;
    * lower ratings take a single slot. New uploads default to 4. Vertical content
