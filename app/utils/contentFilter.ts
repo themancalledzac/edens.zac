@@ -14,6 +14,7 @@ import {
   type ContentImageModel,
 } from '@/app/types/Content';
 import { type FilmFilter, type FilterState, type LensType } from '@/app/types/GalleryFilter';
+import { isGifContent } from '@/app/utils/contentTypeGuards';
 import { getLensType } from '@/app/utils/focalLength';
 
 /**
@@ -903,23 +904,33 @@ export function applyCollectionFilters(
 }
 
 /**
- * Re-interleave date-sorted images back into a processed content array.
+ * A "dateable" content block participates in the chronological date sort: any image, or a GIF/MP4
+ * that has been given a captureDate. Text, collections, and undated GIFs are NOT dateable and keep
+ * their processed position (undated GIFs therefore stay at the end of a chronological collection).
+ */
+export function isDateable(block: AnyContentModel): boolean {
+  return isImageContent(block) || (isGifContent(block) && Boolean(block.captureDate));
+}
+
+/**
+ * Re-interleave date-sorted dateable content back into a processed content array.
  *
- * Date sort runs after `processContentBlocks` (which sorts by orderIndex), so
- * this walks the processed array and replaces each image slot, in order, with
- * the next date-sorted image — leaving non-image blocks in place.
+ * Date sort runs after `processContentBlocks` (which sorts by orderIndex), so this walks the
+ * processed array and replaces each dateable slot (images, plus GIFs/MP4s with a captureDate), in
+ * order, with the next date-sorted item — leaving non-dateable blocks (text, collections, undated
+ * GIFs) in place.
  *
  * @param processed - Content already processed for layout
- * @param sortedImages - The processed images re-sorted by date
+ * @param sortedDateables - The processed dateable content re-sorted by date
  */
 export function mergeDateSortedImages(
   processed: AnyContentModel[],
-  sortedImages: ContentImageModel[]
+  sortedDateables: AnyContentModel[]
 ): AnyContentModel[] {
-  let imageIdx = 0;
+  let idx = 0;
   return processed.map(item => {
-    if (!isImageContent(item)) return item;
-    return sortedImages[imageIdx++] ?? item;
+    if (!isDateable(item)) return item;
+    return sortedDateables[idx++] ?? item;
   });
 }
 

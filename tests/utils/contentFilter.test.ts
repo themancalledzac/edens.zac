@@ -1,6 +1,7 @@
 import {
   type AnyContentModel,
   type ContentCollectionModel,
+  type ContentGifModel,
   type ContentImageModel,
   type ContentTextModel,
 } from '@/app/types/Content';
@@ -21,10 +22,12 @@ import {
   filterContent,
   hasAnyActiveFilter,
   hasFilterableOptions,
+  isDateable,
   mergeDateSortedImages,
   parseFilterFromParams,
   serializeFilterToParams,
 } from '@/app/utils/contentFilter';
+import { sortByDate } from '@/app/utils/sortByDate';
 
 // ─── Test Fixtures ───
 
@@ -49,6 +52,16 @@ function makeTextBlock(): ContentTextModel {
     items: [{ type: 'text', value: 'Hello' }],
     format: 'plain',
     align: 'left',
+  };
+}
+
+function makeGif(overrides: Partial<ContentGifModel> = {}): ContentGifModel {
+  return {
+    id: 200,
+    contentType: 'GIF',
+    orderIndex: 0,
+    gifUrl: 'https://example.com/test.gif',
+    ...overrides,
   };
 }
 
@@ -1366,6 +1379,42 @@ describe('mergeDateSortedImages', () => {
     const text = makeTextBlock();
     const result = mergeDateSortedImages([text], []);
     expect(result).toEqual([text]);
+  });
+});
+
+describe('isDateable', () => {
+  it('is true for images', () => {
+    expect(isDateable(makeImage())).toBe(true);
+  });
+
+  it('is true for a GIF with a captureDate', () => {
+    expect(isDateable(makeGif({ captureDate: '2024-01-01' }))).toBe(true);
+  });
+
+  it('is false for a GIF without a captureDate', () => {
+    expect(isDateable(makeGif({ captureDate: null }))).toBe(false);
+    expect(isDateable(makeGif())).toBe(false);
+  });
+
+  it('is false for non-image, non-gif content', () => {
+    expect(isDateable(makeTextBlock())).toBe(false);
+  });
+});
+
+describe('isDateable + sortByDate + mergeDateSortedImages integration', () => {
+  it('dated GIF interleaves by captureDate; undated GIF stays put', () => {
+    const img1 = makeImage({ id: 1, captureDate: '2024-01-03', createdAt: '2024-06-01' });
+    const gifDated = makeGif({ id: 2, captureDate: '2024-01-01', createdAt: '2024-06-02' });
+    const img2 = makeImage({ id: 3, captureDate: '2024-01-05', createdAt: '2024-06-03' });
+    const gifUndated = makeGif({ id: 4, createdAt: '2024-06-04' });
+    const processed: AnyContentModel[] = [img1, gifDated, img2, gifUndated];
+
+    const sorted = sortByDate(processed.filter(isDateable), 'asc');
+    const merged = mergeDateSortedImages(processed, sorted);
+
+    // Dateable slots (indices 0,1,2) filled by captureDate order: gifDated(2) < img1(1) < img2(3).
+    expect(merged.map(m => m.id)).toEqual([2, 1, 3, 4]);
+    // Undated GIF (id 4) never moved from its slot.
   });
 });
 

@@ -23,6 +23,7 @@ import {
   buildCollectionCriteria,
   type ContentFilterCriteria,
   hasAnyActiveFilter,
+  isDateable,
   isImageContent,
   mergeDateSortedImages,
 } from '@/app/utils/contentFilter';
@@ -172,7 +173,7 @@ export default function EditModeLayer({
       liveCollection.displayMode
     );
     if (filterState.dateSortDirection === 'off') return processed;
-    const sorted = sortByDate(processed.filter(isImageContent), filterState.dateSortDirection);
+    const sorted = sortByDate(processed.filter(isDateable), filterState.dateSortDirection);
     return mergeDateSortedImages(processed, sorted);
   }, [
     filteredContent,

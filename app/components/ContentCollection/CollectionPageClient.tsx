@@ -25,6 +25,7 @@ import {
   extractCollectionFilterOptions,
   hasAnyActiveFilter,
   hasFilterableOptions,
+  isDateable,
   isImageContent,
   mergeDateSortedImages,
 } from '@/app/utils/contentFilter';
@@ -247,7 +248,7 @@ export default function CollectionPageClient({
         ? processed
         : mergeDateSortedImages(
             processed,
-            sortByDate(processed.filter(isImageContent), filterState.dateSortDirection)
+            sortByDate(processed.filter(isDateable), filterState.dateSortDirection)
           );
 
     if (!selectsEnabled || pinnedSelectedIds.length === 0) {

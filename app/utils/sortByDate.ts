@@ -1,13 +1,12 @@
-import { type ContentImageModel } from '@/app/types/Content';
-
 /**
- * Sorts images by captureDate. Uses createdAt as a tiebreaker for same-day images
- * (upload sequence approximates capture sequence; captureDate has no intra-day precision).
+ * Sorts dateable content (images or GIFs/MP4s with a captureDate) by captureDate. Uses createdAt
+ * as a tiebreaker for same-day items (upload sequence approximates capture sequence; captureDate
+ * has no intra-day precision).
  */
-export function sortByDate(
-  images: ContentImageModel[],
+export function sortByDate<T extends { captureDate?: string | null; createdAt?: string | null }>(
+  images: T[],
   direction: 'asc' | 'desc'
-): ContentImageModel[] {
+): T[] {
   return [...images].sort((a, b) => {
     const dateA = a.captureDate ? new Date(a.captureDate).getTime() : 0;
     const dateB = b.captureDate ? new Date(b.captureDate).getTime() : 0;
