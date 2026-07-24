@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import type { ImageUpdateState } from '@/app/components/Metadata/hooks/useMetadataState';
 import EssentialInfoSection from '@/app/components/Metadata/sections/EssentialInfoSection';
 import type { CollectionListModel, LocationModel } from '@/app/types/Collection';
+import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 const baseUpdateState: ImageUpdateState = {
   id: 101,
@@ -175,6 +176,84 @@ describe('EssentialInfoSection', () => {
           { collectionId: 42, name: 'Pacific Northwest', visible: false, orderIndex: 1 },
         ],
       });
+    });
+  });
+
+  describe('Capture date picker (GIF reference-image copy)', () => {
+    const datedImage = createImageContent(1, { title: 'Beach', captureDate: '2024-06-14T00:00:00Z' });
+    const undatedImage = createImageContent(2, { title: 'No Date', captureDate: null });
+
+    it('renders when isGif=true and isBulkEdit=false', () => {
+      render(
+        <EssentialInfoSection
+          {...makeProps({ isGif: true, isBulkEdit: false, collectionImages: [datedImage] })}
+        />
+      );
+      expect(screen.getByText(/capture date \(copy from image\)/i)).toBeInTheDocument();
+    });
+
+    it('does not render when isGif=true and isBulkEdit=true (bulk selection)', () => {
+      render(
+        <EssentialInfoSection
+          {...makeProps({ isGif: true, isBulkEdit: true, collectionImages: [datedImage] })}
+        />
+      );
+      expect(screen.queryByText(/capture date \(copy from image\)/i)).not.toBeInTheDocument();
+    });
+
+    it('does not render for image content (isGif=false)', () => {
+      render(
+        <EssentialInfoSection
+          {...makeProps({ isGif: false, isBulkEdit: false, collectionImages: [datedImage] })}
+        />
+      );
+      expect(screen.queryByText(/capture date \(copy from image\)/i)).not.toBeInTheDocument();
+    });
+
+    it('only includes dated images as options, filtering out undated ones', () => {
+      render(
+        <EssentialInfoSection
+          {...makeProps({
+            isGif: true,
+            isBulkEdit: false,
+            collectionImages: [datedImage, undatedImage],
+          })}
+        />
+      );
+      expect(screen.getByRole('option', { name: /beach/i })).toBeInTheDocument();
+      expect(screen.queryByRole('option', { name: /no date/i })).not.toBeInTheDocument();
+    });
+
+    it('selecting an option calls updateStateField with that image\'s captureDate', () => {
+      const updateStateField = jest.fn();
+      render(
+        <EssentialInfoSection
+          {...makeProps({
+            isGif: true,
+            isBulkEdit: false,
+            collectionImages: [datedImage],
+            updateStateField,
+          })}
+        />
+      );
+      const group = screen.getByText(/capture date \(copy from image\)/i).closest('div')!;
+      const select = within(group).getByRole('combobox');
+      fireEvent.change(select, { target: { value: String(datedImage.id) } });
+      expect(updateStateField).toHaveBeenCalledWith({ captureDate: datedImage.captureDate });
+    });
+
+    it('renders just the disabled placeholder with zero dated images (no crash)', () => {
+      render(
+        <EssentialInfoSection
+          {...makeProps({ isGif: true, isBulkEdit: false, collectionImages: [undatedImage] })}
+        />
+      );
+      const group = screen.getByText(/capture date \(copy from image\)/i).closest('div')!;
+      const select = within(group).getByRole('combobox');
+      const options = select.querySelectorAll('option');
+      expect(options).toHaveLength(1);
+      expect(options[0]).toBeDisabled();
+      expect(options[0]).toHaveTextContent(/pick a reference image/i);
     });
   });
 });

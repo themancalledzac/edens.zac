@@ -186,9 +186,11 @@ export default function EssentialInfoSection({
         )}
       </div>
 
-      {isGif && (
+      {isGif && !isBulkEdit && (
         <div className={modalStyles.formGroup}>
           <label className={modalStyles.formLabel}>Capture date (copy from image)</label>
+          {/* Action picker, not a bound field: always resets to the placeholder after a pick
+              so the same option can be re-selected to re-copy a date. */}
           <Select
             value=""
             onChange={e => {
@@ -208,7 +210,7 @@ export default function EssentialInfoSection({
               .filter(img => img.captureDate)
               .map(img => (
                 <option key={img.id} value={String(img.id)}>
-                  {img.title ?? `Image ${img.id}`} - {img.captureDate}
+                  {img.title ?? `Image ${img.id}`} - {img.captureDate!.split('T')[0]}
                 </option>
               ))}
           </Select>
