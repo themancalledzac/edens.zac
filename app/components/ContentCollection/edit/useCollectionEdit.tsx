@@ -50,11 +50,13 @@ import {
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
+import { toChronologicalOrder } from '@/app/utils/sortByDate';
 import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import { buildImageUpdateDiff } from '../../Metadata/metadataUtils';
 import {
   buildUpdatePayload,
+  executeReorderOperation,
   handleMultiSelectToggle as handleMultiSelectToggleUtil,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
@@ -1227,6 +1229,20 @@ export function useCollectionEdit({
       try {
         setOperationLoading(true);
         setError(null);
+
+        // The true displayed (captureDate) order — what the viewer currently sees.
+        const chronoIds = toChronologicalOrder(processedContent).map(c => c.id);
+
+        // WRITE A: materialize the full order into orderIndex while still CHRONOLOGICAL. This is
+        // harmless (chronological display ignores orderIndex) and makes cancel safe. Full
+        // re-index (not a diff) so every unmoved item gets its true position persisted.
+        if (chronoIds.length > 0) {
+          const fullChanges = chronoIds.map((id, i) => ({ contentId: id, newOrderIndex: i }));
+          await executeReorderOperation(collection.id, fullChanges, collection.slug);
+        }
+
+        // WRITE B: switch to ORDERED. Done second so a failure above leaves the collection
+        // CHRONOLOGICAL and visually unchanged.
         const payload = buildUpdatePayload({ ...updateData, displayMode: 'ORDERED' }, collection);
         const response = await updateCollection(collection.id, payload);
         if (response !== null) {
@@ -1237,7 +1253,9 @@ export function useCollectionEdit({
           collectionStorage.update(response.collection.slug, response.collection);
           collectionStorage.updateFull(response.collection.slug, response);
           void revalidateCollectionCache(response.collection.slug);
-          handleEnterReorderMode();
+
+          // Seed the reorder base from the order we just persisted (not the stale processedContent).
+          handleEnterReorderMode(chronoIds);
         }
       } catch (error_) {
         setError(handleApiError(error_, 'Failed to switch to ordered mode.'));
@@ -1245,7 +1263,7 @@ export function useCollectionEdit({
         setOperationLoading(false);
       }
     })();
-  }, [collection, currentState, updateData, seedUpdateData, handleEnterReorderMode]);
+  }, [collection, currentState, updateData, processedContent, seedUpdateData, handleEnterReorderMode]);
   const enterAdd = useCallback(() => setIsAddMode(true), []);
   const enterEdit = useCallback(() => setIsEditSheetOpen(true), []);
   const exitToBrowse = resetToBrowse;

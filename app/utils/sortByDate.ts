@@ -1,3 +1,6 @@
+import { type AnyContentModel } from '@/app/types/Content';
+import { isDateable, mergeDateSortedImages } from '@/app/utils/contentFilter';
+
 /**
  * Sorts dateable content (images or GIFs/MP4s with a captureDate) by captureDate. Uses createdAt
  * as a tiebreaker for same-day items (upload sequence approximates capture sequence; captureDate
@@ -16,4 +19,15 @@ export function sortByDate<T extends { captureDate?: string | null; createdAt?: 
     const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return direction === 'asc' ? createdA - createdB : createdB - createdA;
   });
+}
+
+/**
+ * The full ascending chronological order of already-processed content: dateable items (images +
+ * dated GIFs) sorted by captureDate and re-interleaved into their slots; everything else left put.
+ * This is exactly the order the public page shows for a CHRONOLOGICAL collection, so materializing
+ * it into orderIndex makes an ORDERED collection match what the viewer saw.
+ */
+export function toChronologicalOrder<T extends AnyContentModel>(processed: T[]): T[] {
+  const sorted = sortByDate(processed.filter(isDateable) as T[], 'asc');
+  return mergeDateSortedImages(processed, sorted as AnyContentModel[]) as T[];
 }
