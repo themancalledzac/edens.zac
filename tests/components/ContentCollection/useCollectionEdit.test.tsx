@@ -4,6 +4,7 @@ import { useCollectionEdit } from '@/app/components/ContentCollection/edit/useCo
 import {
   getCollectionUpdateMetadata,
   getMetadata,
+  reorderCollectionContent,
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
@@ -17,6 +18,11 @@ import {
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import {
+  type AnyContentModel,
+  type ContentGifModel,
+  type ContentImageModel,
+} from '@/app/types/Content';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
@@ -34,6 +40,9 @@ const mockGetCollectionUpdateMetadata = getCollectionUpdateMetadata as jest.Mock
   typeof getCollectionUpdateMetadata
 >;
 const mockUpdateCollection = updateCollection as jest.MockedFunction<typeof updateCollection>;
+const mockReorderCollectionContent = reorderCollectionContent as jest.MockedFunction<
+  typeof reorderCollectionContent
+>;
 const mockGetMetadata = getMetadata as jest.MockedFunction<typeof getMetadata>;
 const mockUpdateCollectionRating = updateCollectionRating as jest.MockedFunction<
   typeof updateCollectionRating
@@ -107,6 +116,31 @@ function makeResponseWith(
   return {
     ...makeResponse(collectionOverrides),
     ...metadata,
+  };
+}
+
+/** Mirrors tests/utils/contentFilter.test.ts's makeImage fixture. */
+function makeContentImage(overrides: Partial<ContentImageModel> = {}): ContentImageModel {
+  return {
+    id: 1,
+    contentType: 'IMAGE',
+    orderIndex: 0,
+    imageUrl: 'https://example.com/test.jpg',
+    imageWidth: 1600,
+    imageHeight: 1067,
+    locations: [],
+    ...overrides,
+  };
+}
+
+/** Mirrors tests/utils/contentFilter.test.ts's makeGif fixture. */
+function makeContentGif(overrides: Partial<ContentGifModel> = {}): ContentGifModel {
+  return {
+    id: 200,
+    contentType: 'GIF',
+    orderIndex: 0,
+    gifUrl: 'https://example.com/test.gif',
+    ...overrides,
   };
 }
 
@@ -280,6 +314,81 @@ describe('useCollectionEdit', () => {
       );
       await waitFor(() => expect(result.current.manageMode).toBe('reorder'));
       expect(result.current.reorder.active).toBe(true);
+    });
+
+    it('enterReorder on a non-empty CHRONOLOGICAL collection materializes the full captureDate order (WRITE A) before switching to ORDERED (WRITE B), then seeds reorder from it', async () => {
+      // captureDate order (asc) differs from array order: img2 (01-01) < img1 (01-05).
+      // The undated gif is not dateable, so it keeps its own slot (index 2).
+      const content: AnyContentModel[] = [
+        makeContentImage({ id: 1, captureDate: '2024-01-05', createdAt: '2024-06-01' }),
+        makeContentImage({ id: 2, captureDate: '2024-01-01', createdAt: '2024-06-02' }),
+        makeContentGif({ id: 3, createdAt: '2024-06-03' }),
+      ];
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ displayMode: 'CHRONOLOGICAL', content })
+      );
+      mockReorderCollectionContent.mockResolvedValue(makeCollection({ content }));
+      mockUpdateCollection.mockResolvedValue(makeResponse({ displayMode: 'ORDERED', content }));
+
+      const { result } = renderEdit({
+        collection: makeCollection({ displayMode: 'CHRONOLOGICAL', content }),
+      });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      const reorderCell = result.current.bottomBarCells.find(c => c.key === 'reorder');
+      await act(async () => {
+        reorderCell?.onClick?.();
+      });
+
+      // WRITE A: the full chronological order (not a diff) is sent to reorderCollectionContent.
+      expect(mockReorderCollectionContent).toHaveBeenCalledWith(42, [
+        { contentId: 2, newOrderIndex: 0 },
+        { contentId: 1, newOrderIndex: 1 },
+        { contentId: 3, newOrderIndex: 2 },
+      ]);
+      // WRITE B: the displayMode switch.
+      expect(mockUpdateCollection).toHaveBeenCalledWith(
+        42,
+        expect.objectContaining({ displayMode: 'ORDERED' })
+      );
+
+      // WRITE A happens strictly before WRITE B.
+      const reorderCallOrder = mockReorderCollectionContent.mock.invocationCallOrder[0]!;
+      const updateCallOrder = mockUpdateCollection.mock.invocationCallOrder[0]!;
+      expect(reorderCallOrder).toBeLessThan(updateCallOrder);
+
+      // The reorder session is seeded from the materialized chronological order, not the
+      // (now-stale) upload-order processedContent.
+      await waitFor(() => expect(result.current.manageMode).toBe('reorder'));
+      expect(result.current.reorder.active).toBe(true);
+      expect(result.current.reorder.displayOrder).toEqual([2, 1, 3]);
+    });
+
+    it('enterReorder on CHRONOLOGICAL does not switch to ORDERED when WRITE A (the materialization write) fails', async () => {
+      const content: AnyContentModel[] = [
+        makeContentImage({ id: 1, captureDate: '2024-01-01' }),
+        makeContentImage({ id: 2, captureDate: '2024-01-02' }),
+      ];
+      mockGetCollectionUpdateMetadata.mockResolvedValue(
+        makeResponse({ displayMode: 'CHRONOLOGICAL', content })
+      );
+      mockReorderCollectionContent.mockRejectedValue(new Error('reorder failed'));
+
+      const { result } = renderEdit({
+        collection: makeCollection({ displayMode: 'CHRONOLOGICAL', content }),
+      });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      const reorderCell = result.current.bottomBarCells.find(c => c.key === 'reorder');
+      await act(async () => {
+        reorderCell?.onClick?.();
+      });
+
+      expect(mockReorderCollectionContent).toHaveBeenCalled();
+      expect(mockUpdateCollection).not.toHaveBeenCalled();
+      expect(result.current.error).toMatch(/reorder failed/i);
+      expect(result.current.manageMode).toBe('browse');
+      expect(result.current.reorder.active).toBe(false);
     });
 
     it('enterReorder on CHRONOLOGICAL surfaces an error when the admin DTO never loaded', async () => {

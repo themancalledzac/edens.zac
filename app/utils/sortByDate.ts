@@ -26,6 +26,11 @@ export function sortByDate<T extends { captureDate?: string | null; createdAt?: 
  * dated GIFs) sorted by captureDate and re-interleaved into their slots; everything else left put.
  * This is exactly the order the public page shows for a CHRONOLOGICAL collection, so materializing
  * it into orderIndex makes an ORDERED collection match what the viewer saw.
+ *
+ * Note: if `processed` includes items hidden from the public view (e.g. the manage/edit path,
+ * which passes filterVisible=false through processContentBlocks), hidden dateables still
+ * participate in this sort, so the result can differ slightly from the public (visible-only) view
+ * around non-dateable blocks.
  */
 export function toChronologicalOrder<T extends AnyContentModel>(processed: T[]): T[] {
   const sorted = sortByDate(processed.filter(isDateable) as T[], 'asc');
