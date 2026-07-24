@@ -2426,4 +2426,36 @@ describe('buildGifUpdatePayload (single-GIF save payload builder)', () => {
       locations: { prev: [5] },
     });
   });
+
+  it('includes captureDate when changed', () => {
+    const original = createGifContent(1, { captureDate: null });
+
+    const result = buildGifUpdatePayload(
+      { captureDate: '2024-06-14' },
+      original,
+      new Set<number>()
+    );
+
+    expect(result.captureDate).toBe('2024-06-14');
+  });
+
+  it('omits captureDate when unchanged', () => {
+    const original = createGifContent(1, { captureDate: '2024-06-14' });
+
+    const result = buildGifUpdatePayload(
+      { captureDate: '2024-06-14' },
+      original,
+      new Set<number>()
+    );
+
+    expect(result.captureDate).toBeUndefined();
+  });
+
+  it('treats null/undefined captureDate equivalently (no diff when both unset)', () => {
+    const original = createGifContent(1, { captureDate: undefined });
+
+    const result = buildGifUpdatePayload({ captureDate: null }, original, new Set<number>());
+
+    expect(result.captureDate).toBeUndefined();
+  });
 });

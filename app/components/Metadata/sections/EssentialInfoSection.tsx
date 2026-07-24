@@ -7,6 +7,7 @@ import { Input } from '@/app/components/ui/Field/Input';
 import { Select } from '@/app/components/ui/Field/Select';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
 import type { CollectionListModel, LocationModel } from '@/app/types/Collection';
+import type { ContentImageModel } from '@/app/types/Content';
 
 import type { ImageUpdateState } from '../hooks/useMetadataState';
 import modalStyles from '../MetadataModal.module.scss';
@@ -31,6 +32,11 @@ export interface EssentialInfoSectionProps {
   isGif: boolean;
   /** Bulk edit hides per-item fields (Title/Caption/Alt) that should never be shared across images. */
   isBulkEdit?: boolean;
+  /**
+   * Images in the current collection, offered as capture-date sources when editing a GIF/MP4 —
+   * picking one copies its `captureDate` so the GIF sorts chronologically alongside images.
+   */
+  collectionImages?: ContentImageModel[];
 }
 
 export default function EssentialInfoSection({
@@ -41,6 +47,7 @@ export default function EssentialInfoSection({
   currentCollectionId,
   isGif,
   isBulkEdit = false,
+  collectionImages = [],
 }: EssentialInfoSectionProps): React.JSX.Element {
   const currentCollectionVisible = isCurrentCollectionVisible(
     updateState.collections,
@@ -178,6 +185,35 @@ export default function EssentialInfoSection({
           </div>
         )}
       </div>
+
+      {isGif && (
+        <div className={modalStyles.formGroup}>
+          <label className={modalStyles.formLabel}>Capture date (copy from image)</label>
+          <Select
+            value=""
+            onChange={e => {
+              const image = collectionImages.find(img => String(img.id) === e.target.value);
+              if (image?.captureDate) {
+                updateStateField({ captureDate: image.captureDate });
+              }
+            }}
+            className={modalStyles.formSelect}
+          >
+            <option value="" disabled>
+              {updateState.captureDate
+                ? `Current: ${updateState.captureDate}`
+                : 'Pick a reference image'}
+            </option>
+            {collectionImages
+              .filter(img => img.captureDate)
+              .map(img => (
+                <option key={img.id} value={String(img.id)}>
+                  {img.title ?? `Image ${img.id}`} - {img.captureDate}
+                </option>
+              ))}
+          </Select>
+        </div>
+      )}
     </div>
   );
 }

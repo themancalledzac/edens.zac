@@ -300,6 +300,7 @@ export default function EditModeLayer({
           selectedIds={edit.selectedIds}
           selectedImages={edit.contentToEdit}
           currentCollectionId={collection.id}
+          collectionImages={allImages}
         />
       )}
 

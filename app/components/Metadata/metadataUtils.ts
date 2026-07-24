@@ -758,6 +758,7 @@ export function buildGifUpdatePayload(
   updateState: {
     title?: string | null;
     rating?: number | null;
+    captureDate?: string | null;
     collections?: ContentImageModel['collections'];
     people?: ContentImageModel['people'];
     locations?: LocationModel[];
@@ -773,6 +774,10 @@ export function buildGifUpdatePayload(
 
   if (updateState.rating !== undefined && updateState.rating !== (original.rating ?? null)) {
     payload.rating = updateState.rating ?? 0;
+  }
+
+  if ((updateState.captureDate ?? null) !== (original.captureDate ?? null)) {
+    payload.captureDate = updateState.captureDate ?? null;
   }
 
   // Collections: newValue/remove built from originalCollectionIds vs the current selection.
