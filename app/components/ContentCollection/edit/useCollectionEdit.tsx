@@ -50,11 +50,13 @@ import {
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
+import { toChronologicalOrder } from '@/app/utils/sortByDate';
 import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
 import { buildImageUpdateDiff } from '../../Metadata/metadataUtils';
 import {
   buildUpdatePayload,
+  executeReorderOperation,
   handleMultiSelectToggle as handleMultiSelectToggleUtil,
   mergeNewMetadata,
   refreshCollectionAfterOperation,
@@ -62,6 +64,7 @@ import {
   revalidateMetadataCache,
   toggleRelation,
 } from './collectionEditUtils';
+import { useCaptureDateSelection } from './hooks/useCaptureDateSelection';
 import { useCollectionRetype } from './hooks/useCollectionRetype';
 import { useContentReordering } from './hooks/useContentReordering';
 import { useCoverImageSelection } from './hooks/useCoverImageSelection';
@@ -77,7 +80,7 @@ function isAnimatedMediaFile(file: File): boolean {
   return ANIMATED_MEDIA_MIME_TYPES.has(file.type) || ANIMATED_MEDIA_EXTENSION_REGEX.test(file.name);
 }
 
-export type ManageMode = 'browse' | 'select' | 'reorder' | 'add' | 'edit';
+export type ManageMode = 'browse' | 'select' | 'reorder' | 'add' | 'edit' | 'pick-date';
 export type CollectionEditTab = 'info' | 'structure';
 
 export interface UseCollectionEditParams {
@@ -194,6 +197,12 @@ export interface UseCollectionEditResult {
   editingContent: EditableContent | null;
   closeEditor: () => void;
   contentToEdit: EditableContent[];
+  /**
+   * Closes the metadata sheet and puts the grid into `pick-date` mode, where clicking a dated
+   * image copies its capture date onto the GIF that was being edited. No-op unless the editor is
+   * currently open on a GIF/MP4.
+   */
+  startCaptureDatePick: () => void;
 
   handleMetadataSaveSuccess: (response: ContentImageUpdateResponse) => Promise<void>;
   handleGifSaveSuccess: (updated: ContentGifModel) => Promise<void>;
@@ -473,6 +482,28 @@ export function useCollectionEdit({
     setError,
   });
 
+  const { captureDateTargetId, setCaptureDateTargetId, handleCaptureDateSourceClick } =
+    useCaptureDateSelection({
+      collection,
+      setCurrentState,
+      setOperationLoading,
+      setError,
+    });
+
+  /**
+   * Metadata sheet -> grid: close the sheet so the GIF's capture date can be sourced by clicking a
+   * reference image. Multi-select is dropped explicitly (rather than relying on `closeEditor`,
+   * whose clear is conditional on a value this render already invalidated) so the bar lands on
+   * pick-date rather than falling back to select.
+   */
+  const startCaptureDatePick = useCallback(() => {
+    if (!editingContent || !isGifContent(editingContent)) return;
+    setCaptureDateTargetId(editingContent.id);
+    setIsMultiSelectMode(false);
+    setSelectedIds([]);
+    closeEditor();
+  }, [editingContent, closeEditor, setCaptureDateTargetId]);
+
   const {
     reorderState,
     reorderDisplayOrder,
@@ -498,6 +529,8 @@ export function useCollectionEdit({
   });
 
   const deriveManageMode = (): ManageMode => {
+    // Checked first: entering the pick clears every other mode flag, so nothing can outrank it.
+    if (captureDateTargetId !== null) return 'pick-date';
     if (reorderState.active) return 'reorder';
     if (isMultiSelectMode) return 'select';
     if (isEditSheetOpen) return 'edit';
@@ -517,9 +550,16 @@ export function useCollectionEdit({
     setIsAddMode(false);
     setIsEditSheetOpen(false);
     if (isSelectingCoverImage) setIsSelectingCoverImage(false);
+    setCaptureDateTargetId(null);
     handleCancelReorder();
     setUpdateData(seedUpdateData(latestCollectionRef.current));
-  }, [isSelectingCoverImage, setIsSelectingCoverImage, handleCancelReorder, seedUpdateData]);
+  }, [
+    isSelectingCoverImage,
+    setIsSelectingCoverImage,
+    setCaptureDateTargetId,
+    handleCancelReorder,
+    seedUpdateData,
+  ]);
 
   useEffect(() => {
     if (!enabled) resetToBrowse();
@@ -825,6 +865,8 @@ export function useCollectionEdit({
   }, [selectedIds, collection, openEditor]);
 
   const { handleImageClick } = useImageClickHandler({
+    isPickingCaptureDate: captureDateTargetId !== null,
+    handleCaptureDateSourceClick,
     isSelectingCoverImage,
     isMultiSelectMode,
     handleCoverImageClick,
@@ -1227,6 +1269,20 @@ export function useCollectionEdit({
       try {
         setOperationLoading(true);
         setError(null);
+
+        // The true displayed (captureDate) order — what the viewer currently sees.
+        const chronoIds = toChronologicalOrder(processedContent).map(c => c.id);
+
+        // WRITE A: materialize the full order into orderIndex while still CHRONOLOGICAL. This is
+        // harmless (chronological display ignores orderIndex) and makes cancel safe. Full
+        // re-index (not a diff) so every unmoved item gets its true position persisted.
+        if (chronoIds.length > 0) {
+          const fullChanges = chronoIds.map((id, i) => ({ contentId: id, newOrderIndex: i }));
+          await executeReorderOperation(collection.id, fullChanges, collection.slug);
+        }
+
+        // WRITE B: switch to ORDERED. Done second so a failure above leaves the collection
+        // CHRONOLOGICAL and visually unchanged.
         const payload = buildUpdatePayload({ ...updateData, displayMode: 'ORDERED' }, collection);
         const response = await updateCollection(collection.id, payload);
         if (response !== null) {
@@ -1237,7 +1293,9 @@ export function useCollectionEdit({
           collectionStorage.update(response.collection.slug, response.collection);
           collectionStorage.updateFull(response.collection.slug, response);
           void revalidateCollectionCache(response.collection.slug);
-          handleEnterReorderMode();
+
+          // Seed the reorder base from the order we just persisted (not the stale processedContent).
+          handleEnterReorderMode(chronoIds);
         }
       } catch (error_) {
         setError(handleApiError(error_, 'Failed to switch to ordered mode.'));
@@ -1245,7 +1303,14 @@ export function useCollectionEdit({
         setOperationLoading(false);
       }
     })();
-  }, [collection, currentState, updateData, seedUpdateData, handleEnterReorderMode]);
+  }, [
+    collection,
+    currentState,
+    updateData,
+    processedContent,
+    seedUpdateData,
+    handleEnterReorderMode,
+  ]);
   const enterAdd = useCallback(() => setIsAddMode(true), []);
   const enterEdit = useCallback(() => setIsEditSheetOpen(true), []);
   const exitToBrowse = resetToBrowse;
@@ -1254,6 +1319,11 @@ export function useCollectionEdit({
   const isLoading = isLoadingState || operationLoading;
 
   const bottomBarCells = useMemo<EditBarCell[]>(() => {
+    // Pick-date is a one-action mode: the grid click IS the commit, so Cancel is the only cell.
+    if (manageMode === 'pick-date') {
+      return [{ key: 'cancel', label: 'Cancel', onClick: resetToBrowse }];
+    }
+
     if (manageMode === 'reorder') {
       return [
         {
@@ -1510,6 +1580,7 @@ export function useCollectionEdit({
     editingContent,
     closeEditor,
     contentToEdit,
+    startCaptureDatePick,
 
     handleMetadataSaveSuccess,
     handleGifSaveSuccess,

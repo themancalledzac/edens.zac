@@ -73,16 +73,19 @@ export function useContentReordering({
     });
   }, []);
 
-  const handleEnterReorderMode = useCallback(() => {
-    if (!processedContent) return;
-    onExitMultiSelect();
-    setReorderState({
-      active: true,
-      originalOrder: processedContent.map(c => c.id),
-      moves: [],
-      pickedUpImageId: null,
-    });
-  }, [processedContent, onExitMultiSelect]);
+  const handleEnterReorderMode = useCallback(
+    (baseOrder?: number[]) => {
+      if (!processedContent) return;
+      onExitMultiSelect();
+      setReorderState({
+        active: true,
+        originalOrder: baseOrder ?? processedContent.map(c => c.id),
+        moves: [],
+        pickedUpImageId: null,
+      });
+    },
+    [processedContent, onExitMultiSelect]
+  );
 
   const handleSaveReorder = useCallback(async () => {
     if (!collection || !currentState) return;

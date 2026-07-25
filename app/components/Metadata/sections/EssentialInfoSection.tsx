@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/app/components/ui/Button/Button';
 import { LOCATION_ADD_NEW_FIELDS } from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import { Checkbox } from '@/app/components/ui/Field/Checkbox';
@@ -31,6 +32,13 @@ export interface EssentialInfoSectionProps {
   isGif: boolean;
   /** Bulk edit hides per-item fields (Title/Caption/Alt) that should never be shared across images. */
   isBulkEdit?: boolean;
+  /**
+   * Hands a GIF/MP4 off to the manage grid's capture-date pick mode: the sheet closes and the next
+   * image the user clicks supplies its `captureDate`, so the GIF sorts chronologically alongside
+   * images. Omitted when no image in the collection carries a date to copy, which disables the
+   * button.
+   */
+  onPickCaptureDate?: () => void;
 }
 
 export default function EssentialInfoSection({
@@ -41,6 +49,7 @@ export default function EssentialInfoSection({
   currentCollectionId,
   isGif,
   isBulkEdit = false,
+  onPickCaptureDate,
 }: EssentialInfoSectionProps): React.JSX.Element {
   const currentCollectionVisible = isCurrentCollectionVisible(
     updateState.collections,
@@ -178,6 +187,32 @@ export default function EssentialInfoSection({
           </div>
         )}
       </div>
+
+      {isGif && !isBulkEdit && (
+        <div className={modalStyles.formGroup}>
+          <label className={modalStyles.formLabel}>Capture date</label>
+          {/* Not a bound field: the date is sourced by clicking a reference image on the manage
+              grid, so this button closes the sheet and hands off to pick mode. */}
+          <div className={modalStyles.inlineActionRow}>
+            <span className={modalStyles.inlineActionValue}>
+              {updateState.captureDate ? updateState.captureDate.split('T')[0] : 'Not set'}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onPickCaptureDate}
+              disabled={!onPickCaptureDate}
+              title={
+                onPickCaptureDate
+                  ? 'Close this sheet and click an image to copy its capture date'
+                  : 'No image in this collection has a capture date to copy.'
+              }
+            >
+              Update Date
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

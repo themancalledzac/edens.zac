@@ -14,6 +14,9 @@ import { manageHref } from '@/app/utils/manageUrl';
 import { handleCollectionNavigation, handleSingleImageEdit } from '../collectionEditUtils';
 
 interface UseImageClickHandlerParams {
+  /** True while a GIF is awaiting a capture-date source; every grid click routes to the pick. */
+  isPickingCaptureDate: boolean;
+  handleCaptureDateSourceClick: (imageId: number) => void;
   isSelectingCoverImage: boolean;
   isMultiSelectMode: boolean;
   handleCoverImageClick: (imageId: number) => void;
@@ -26,6 +29,8 @@ interface UseImageClickHandlerParams {
 }
 
 export function useImageClickHandler({
+  isPickingCaptureDate,
+  handleCaptureDateSourceClick,
   isSelectingCoverImage,
   isMultiSelectMode,
   handleCoverImageClick,
@@ -40,6 +45,11 @@ export function useImageClickHandler({
 
   const handleImageClick = useCallback(
     (imageId: number) => {
+      if (isPickingCaptureDate) {
+        handleCaptureDateSourceClick(imageId);
+        return;
+      }
+
       if (isSelectingCoverImage) {
         handleCoverImageClick(imageId);
         return;
@@ -63,6 +73,8 @@ export function useImageClickHandler({
       }
     },
     [
+      isPickingCaptureDate,
+      handleCaptureDateSourceClick,
       isSelectingCoverImage,
       isMultiSelectMode,
       handleCoverImageClick,

@@ -61,6 +61,11 @@ interface MetadataModalProps {
    */
   selectedImages: EditableContent[];
   currentCollectionId?: number;
+  /**
+   * Hands a single-GIF edit off to the manage grid's capture-date pick mode. Omitted when no image
+   * in the collection carries a date to copy.
+   */
+  onPickCaptureDate?: () => void;
 }
 
 /**
@@ -88,6 +93,7 @@ export default function MetadataModal({
   selectedIds,
   selectedImages,
   currentCollectionId,
+  onPickCaptureDate,
 }: MetadataModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('info');
   const formRef = useRef<HTMLFormElement>(null);
@@ -168,6 +174,7 @@ export default function MetadataModal({
                   currentCollectionId={currentCollectionId}
                   isGif={isGif}
                   isBulkEdit={isBulkEdit}
+                  onPickCaptureDate={onPickCaptureDate}
                 />
                 <TagsPeopleSection
                   updateState={updateState}
