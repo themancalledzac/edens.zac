@@ -305,7 +305,7 @@ function padRowToWidth(
   rowIndex: number,
   isLastRow: boolean
 ): RowResult {
-  const realWidthCost = getTotalCV(row.components);
+  const realWidthCost = getTotalWidthCost(row.components);
   if (!(realWidthCost > 0)) return row;
   if (!isLastRow) return row;
   if (realWidthCost / rowWidth >= MIN_FILL_RATIO) return row;
