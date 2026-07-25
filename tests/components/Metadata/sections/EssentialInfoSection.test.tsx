@@ -1,9 +1,8 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import type { ImageUpdateState } from '@/app/components/Metadata/hooks/useMetadataState';
 import EssentialInfoSection from '@/app/components/Metadata/sections/EssentialInfoSection';
 import type { CollectionListModel, LocationModel } from '@/app/types/Collection';
-import { createImageContent } from '@/tests/fixtures/contentFixtures';
 
 const baseUpdateState: ImageUpdateState = {
   id: 101,
@@ -179,81 +178,72 @@ describe('EssentialInfoSection', () => {
     });
   });
 
-  describe('Capture date picker (GIF reference-image copy)', () => {
-    const datedImage = createImageContent(1, { title: 'Beach', captureDate: '2024-06-14T00:00:00Z' });
-    const undatedImage = createImageContent(2, { title: 'No Date', captureDate: null });
+  describe('Capture date hand-off (GIF grid pick)', () => {
+    const dateButton = () => screen.queryByRole('button', { name: /update date/i });
 
     it('renders when isGif=true and isBulkEdit=false', () => {
       render(
         <EssentialInfoSection
-          {...makeProps({ isGif: true, isBulkEdit: false, collectionImages: [datedImage] })}
+          {...makeProps({ isGif: true, isBulkEdit: false, onPickCaptureDate: jest.fn() })}
         />
       );
-      expect(screen.getByText(/capture date \(copy from image\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/^capture date$/i)).toBeInTheDocument();
+      expect(dateButton()).toBeInTheDocument();
     });
 
     it('does not render when isGif=true and isBulkEdit=true (bulk selection)', () => {
       render(
         <EssentialInfoSection
-          {...makeProps({ isGif: true, isBulkEdit: true, collectionImages: [datedImage] })}
+          {...makeProps({ isGif: true, isBulkEdit: true, onPickCaptureDate: jest.fn() })}
         />
       );
-      expect(screen.queryByText(/capture date \(copy from image\)/i)).not.toBeInTheDocument();
+      expect(dateButton()).not.toBeInTheDocument();
     });
 
     it('does not render for image content (isGif=false)', () => {
       render(
         <EssentialInfoSection
-          {...makeProps({ isGif: false, isBulkEdit: false, collectionImages: [datedImage] })}
+          {...makeProps({ isGif: false, isBulkEdit: false, onPickCaptureDate: jest.fn() })}
         />
       );
-      expect(screen.queryByText(/capture date \(copy from image\)/i)).not.toBeInTheDocument();
+      expect(dateButton()).not.toBeInTheDocument();
     });
 
-    it('only includes dated images as options, filtering out undated ones', () => {
-      render(
-        <EssentialInfoSection
-          {...makeProps({
-            isGif: true,
-            isBulkEdit: false,
-            collectionImages: [datedImage, undatedImage],
-          })}
-        />
-      );
-      expect(screen.getByRole('option', { name: /beach/i })).toBeInTheDocument();
-      expect(screen.queryByRole('option', { name: /no date/i })).not.toBeInTheDocument();
-    });
-
-    it('selecting an option calls updateStateField with that image\'s captureDate', () => {
+    it('pressing the button hands off to the grid pick without touching edit state', () => {
+      const onPickCaptureDate = jest.fn();
       const updateStateField = jest.fn();
       render(
         <EssentialInfoSection
+          {...makeProps({ isGif: true, isBulkEdit: false, onPickCaptureDate, updateStateField })}
+        />
+      );
+      fireEvent.click(dateButton()!);
+      expect(onPickCaptureDate).toHaveBeenCalledTimes(1);
+      expect(updateStateField).not.toHaveBeenCalled();
+    });
+
+    it('shows the current capture date as a day, and "Not set" when absent', () => {
+      const { unmount } = render(
+        <EssentialInfoSection
           {...makeProps({
             isGif: true,
-            isBulkEdit: false,
-            collectionImages: [datedImage],
-            updateStateField,
+            updateState: { ...baseUpdateState, captureDate: '2024-06-14T09:30:00Z' },
+            onPickCaptureDate: jest.fn(),
           })}
         />
       );
-      const group = screen.getByText(/capture date \(copy from image\)/i).closest('div')!;
-      const select = within(group).getByRole('combobox');
-      fireEvent.change(select, { target: { value: String(datedImage.id) } });
-      expect(updateStateField).toHaveBeenCalledWith({ captureDate: datedImage.captureDate });
+      expect(screen.getByText('2024-06-14')).toBeInTheDocument();
+      unmount();
+
+      render(
+        <EssentialInfoSection {...makeProps({ isGif: true, onPickCaptureDate: jest.fn() })} />
+      );
+      expect(screen.getByText(/not set/i)).toBeInTheDocument();
     });
 
-    it('renders just the disabled placeholder with zero dated images (no crash)', () => {
-      render(
-        <EssentialInfoSection
-          {...makeProps({ isGif: true, isBulkEdit: false, collectionImages: [undatedImage] })}
-        />
-      );
-      const group = screen.getByText(/capture date \(copy from image\)/i).closest('div')!;
-      const select = within(group).getByRole('combobox');
-      const options = select.querySelectorAll('option');
-      expect(options).toHaveLength(1);
-      expect(options[0]).toBeDisabled();
-      expect(options[0]).toHaveTextContent(/pick a reference image/i);
+    it('disables the button when no dated image is available to copy from', () => {
+      render(<EssentialInfoSection {...makeProps({ isGif: true, isBulkEdit: false })} />);
+      expect(dateButton()).toBeDisabled();
     });
   });
 });

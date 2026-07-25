@@ -7,11 +7,7 @@ import { CloseButton } from '@/app/components/ui/CloseButton/CloseButton';
 import { EditBar } from '@/app/components/ui/EditBar/EditBar';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import { type CollectionListModel, type LocationModel } from '@/app/types/Collection';
-import {
-  type ContentGifModel,
-  type ContentImageModel,
-  type ContentImageUpdateResponse,
-} from '@/app/types/Content';
+import { type ContentGifModel, type ContentImageUpdateResponse } from '@/app/types/Content';
 import {
   type ContentCameraModel,
   type ContentFilmTypeModel,
@@ -65,8 +61,11 @@ interface MetadataModalProps {
    */
   selectedImages: EditableContent[];
   currentCollectionId?: number;
-  /** Images in the current collection, offered as capture-date sources when editing a GIF/MP4. */
-  collectionImages?: ContentImageModel[];
+  /**
+   * Hands a single-GIF edit off to the manage grid's capture-date pick mode. Omitted when no image
+   * in the collection carries a date to copy.
+   */
+  onPickCaptureDate?: () => void;
 }
 
 /**
@@ -94,7 +93,7 @@ export default function MetadataModal({
   selectedIds,
   selectedImages,
   currentCollectionId,
-  collectionImages = [],
+  onPickCaptureDate,
 }: MetadataModalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('info');
   const formRef = useRef<HTMLFormElement>(null);
@@ -175,7 +174,7 @@ export default function MetadataModal({
                   currentCollectionId={currentCollectionId}
                   isGif={isGif}
                   isBulkEdit={isBulkEdit}
-                  collectionImages={collectionImages}
+                  onPickCaptureDate={onPickCaptureDate}
                 />
                 <TagsPeopleSection
                   updateState={updateState}

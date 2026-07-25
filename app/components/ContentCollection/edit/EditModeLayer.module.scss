@@ -5,6 +5,21 @@
 }
 
 // Dismissible error banner — fixed just above the EditBar, edit mode only.
+// Neutral sibling of .errorBanner: an instruction line pinned above the EditBar, used by modes
+// whose only affordance is a grid click (capture-date pick).
+.hintBanner {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(var(--edit-bar-height, 5rem) + env(safe-area-inset-bottom));
+  z-index: var(--z-modal-controls, 1002);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-sunken);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+  text-align: center;
+}
+
 .errorBanner {
   position: fixed;
   inset-inline: 0;

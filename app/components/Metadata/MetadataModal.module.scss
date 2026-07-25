@@ -144,6 +144,20 @@
   color: var(--color-on-surface-muted);
 }
 
+// Read-only value paired with a compact action button (e.g. the GIF capture date, which is
+// sourced by clicking an image on the manage grid rather than typed into a field).
+.inlineActionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.inlineActionValue {
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
 .formInput,
 .formTextarea,
 .formSelect {

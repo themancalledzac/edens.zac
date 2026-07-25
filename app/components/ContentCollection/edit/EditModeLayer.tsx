@@ -155,6 +155,9 @@ export default function EditModeLayer({
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
 
+  /** Whether any image can seed a GIF's capture date — drives the metadata sheet's pick button. */
+  const hasDatedImages = useMemo(() => allImages.some(img => img.captureDate), [allImages]);
+
   const criteria = useMemo(() => buildCollectionCriteria(filterState), [filterState]);
 
   const hasActiveFilters = useMemo(() => hasAnyActiveFilter(filterState), [filterState]);
@@ -268,6 +271,13 @@ export default function EditModeLayer({
         </div>
       )}
 
+      {/* Pick mode arrives with the metadata sheet already closed, so the grid needs to say why. */}
+      {edit.manageMode === 'pick-date' && (
+        <div className={styles.hintBanner} role="status">
+          Click an image to copy its capture date.
+        </div>
+      )}
+
       {edit.manageMode === 'edit' && <CollectionEditSheet edit={edit} twoColumn={twoColumn} />}
 
       {!edit.editingContent && !edit.isTextBlockModalOpen && (
@@ -300,7 +310,8 @@ export default function EditModeLayer({
           selectedIds={edit.selectedIds}
           selectedImages={edit.contentToEdit}
           currentCollectionId={collection.id}
-          collectionImages={allImages}
+          // Gated on there being a date to copy at all — an empty pick mode would be a dead end.
+          onPickCaptureDate={hasDatedImages ? edit.startCaptureDatePick : undefined}
         />
       )}
 

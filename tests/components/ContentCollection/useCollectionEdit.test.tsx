@@ -8,7 +8,7 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
-import { createImages } from '@/app/lib/api/content';
+import { createImages, updateGif } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionListModel,
@@ -51,6 +51,7 @@ const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
   typeof collectionStorage.getFull
 >;
 const mockCreateImages = createImages as jest.MockedFunction<typeof createImages>;
+const mockUpdateGif = updateGif as jest.MockedFunction<typeof updateGif>;
 
 function makeMetadata(overrides: Partial<GeneralMetadataDTO> = {}): GeneralMetadataDTO {
   return {
@@ -944,6 +945,98 @@ describe('useCollectionEdit', () => {
       rerender({ collection: { ...collection } });
 
       expect(result.current.updateData.title).toBe('Unsaved Edit');
+    });
+  });
+
+  describe('capture-date pick mode', () => {
+    const GIF_ID = 300;
+    const datedContent: AnyContentModel[] = [
+      makeContentImage({ id: 1, captureDate: '2024-06-14T00:00:00Z' }),
+      makeContentImage({ id: 2, captureDate: null }),
+      makeContentGif({ id: GIF_ID }),
+    ];
+
+    async function armPick() {
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({ content: datedContent }));
+      const { result } = renderEdit({ collection: makeCollection({ content: datedContent }) });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      // Open the metadata sheet on the GIF, then hand off to the grid.
+      act(() => result.current.handleImageClick(GIF_ID));
+      expect(result.current.editingContent?.id).toBe(GIF_ID);
+      act(() => result.current.startCaptureDatePick());
+      return result;
+    }
+
+    it('startCaptureDatePick() closes the sheet and enters pick-date with a Cancel-only bar', async () => {
+      const result = await armPick();
+
+      expect(result.current.manageMode).toBe('pick-date');
+      expect(result.current.editingContent).toBeNull();
+      expect(result.current.bottomBarCells.map(c => c.key)).toEqual(['cancel']);
+    });
+
+    it('startCaptureDatePick() is a no-op while the editor is closed or open on an image', async () => {
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({ content: datedContent }));
+      const { result } = renderEdit({ collection: makeCollection({ content: datedContent }) });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.startCaptureDatePick());
+      expect(result.current.manageMode).toBe('browse');
+
+      act(() => result.current.handleImageClick(1));
+      expect(result.current.editingContent?.id).toBe(1);
+      act(() => result.current.startCaptureDatePick());
+      expect(result.current.manageMode).toBe('browse');
+    });
+
+    it('clicking a dated image patches the GIF with that captureDate and returns to browse', async () => {
+      const result = await armPick();
+
+      await act(async () => {
+        result.current.handleImageClick(1);
+      });
+
+      expect(mockUpdateGif).toHaveBeenCalledWith(GIF_ID, { captureDate: '2024-06-14T00:00:00Z' });
+      await waitFor(() => expect(result.current.manageMode).toBe('browse'));
+      expect(result.current.error).toBeNull();
+    });
+
+    it('clicking an undated block errors and stays in pick-date so another can be chosen', async () => {
+      const result = await armPick();
+
+      await act(async () => {
+        result.current.handleImageClick(2);
+      });
+
+      expect(mockUpdateGif).not.toHaveBeenCalled();
+      expect(result.current.error).toMatch(/no capture date/i);
+      expect(result.current.manageMode).toBe('pick-date');
+
+      // A second click on a valid source still commits.
+      await act(async () => {
+        result.current.handleImageClick(1);
+      });
+      expect(mockUpdateGif).toHaveBeenCalledWith(GIF_ID, { captureDate: '2024-06-14T00:00:00Z' });
+    });
+
+    it('a grid click in pick-date never opens the metadata editor', async () => {
+      const result = await armPick();
+
+      await act(async () => {
+        result.current.handleImageClick(1);
+      });
+
+      expect(result.current.editingContent).toBeNull();
+    });
+
+    it('exitToBrowse() cancels the pick without patching', async () => {
+      const result = await armPick();
+
+      act(() => result.current.exitToBrowse());
+
+      expect(result.current.manageMode).toBe('browse');
+      expect(mockUpdateGif).not.toHaveBeenCalled();
     });
   });
 });
