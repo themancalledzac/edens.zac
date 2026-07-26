@@ -47,9 +47,10 @@ const DownloadIcon = () => (
  * scroll and any transformed ancestor in the content tree.
  *
  * Degrades gracefully when no download context is present: only the "All" action is shown (which
- * still uses the bottom picker). In production this control is only ever mounted inside a client
- * gallery (which always provides the context via ClientGalleryDownloadProvider), so this branch is
- * effectively a standalone/test fallback rather than a runtime mode.
+ * still uses the bottom picker). This is a real runtime mode, not just a test fallback — mounting
+ * is gated on {@link canDownloadCollection} (a CLIENT role grant on ANY collection, or a validated
+ * password cookie on a client gallery) while the context provider is mounted only on collections
+ * with `isClient === true`, so a CLIENT grant on a non-client collection reaches this branch.
  */
 export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryDownloadProps) {
   const download = useClientGalleryDownload();

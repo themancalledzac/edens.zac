@@ -57,6 +57,8 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
     () => ({
       id: 0,
       type: CollectionType.MISC,
+      isClient: false,
+      isBlog: false,
       title: 'All Images',
       slug: 'all-images',
       description: 'All images ordered by capture date ascending (oldest first)',

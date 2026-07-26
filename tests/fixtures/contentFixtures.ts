@@ -133,6 +133,8 @@ export const createCollectionContent = (
   title: `Collection ${id}`,
   slug: `collection-${id}`,
   collectionType: CollectionType.PORTFOLIO,
+  isClient: false,
+  isBlog: false,
   referencedCollectionId: id * 100,
   coverImage: {
     id: id * 10,
@@ -154,6 +156,8 @@ export const createCollectionModel = (
 ): CollectionModel => ({
   id,
   type: CollectionType.PORTFOLIO,
+  isClient: false,
+  isBlog: false,
   title: `Collection ${id}`,
   slug: `collection-${id}`,
   createdAt: '2024-01-01T00:00:00Z',

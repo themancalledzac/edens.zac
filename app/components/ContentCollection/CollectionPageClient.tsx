@@ -10,7 +10,7 @@ import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type MeResponse } from '@/app/types/Auth';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
 import {
   type FilterState,
@@ -31,8 +31,13 @@ import {
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
-import { canDownloadCollection, isClientOfCollection } from '@/app/utils/galleryAccess';
+import {
+  canDownloadCollection,
+  findMembership,
+  isClientOfCollection,
+} from '@/app/utils/galleryAccess';
 import { toggleImageSelection } from '@/app/utils/imageSelection';
+import { logger } from '@/app/utils/logger';
 import { buildPinnedSelects } from '@/app/utils/pinnedSelects';
 import { sortByDate } from '@/app/utils/sortByDate';
 
@@ -132,16 +137,26 @@ export default function CollectionPageClient({
     [isMobile]
   );
 
-  const isClientGallery = collection.type === CollectionType.CLIENT_GALLERY;
+  const isClientGallery = collection.isClient === true;
+
+  // A CLIENT grant on a collection whose payload carries no kind booleans is the signature of a
+  // stale payload in flight (pre-#132 cache entry, or a deploy-order slip): the grant proves the
+  // collection is a client gallery, so Selects are being withheld from someone entitled to them.
+  if (collection.isClient === undefined && findMembership(me, collection.id)) {
+    logger.warn('CollectionPageClient', 'Membership held on a payload missing isClient', {
+      collectionId: collection.id,
+    });
+  }
 
   // Selects (favorites) are a client-gallery feature, available only to a viewer who is a CLIENT
   // of this collection (or admin via editMode). Distinct from the download "select mode" below.
   const selectsEnabled =
     isClientGallery && !editMode && isClientOfCollection(me, collection.id, editMode);
 
-  // Download UI (and its select-to-download mode) follows the backend's role-based authorization:
-  // a CLIENT_GALLERY (anonymous password-cookie client) OR a logged-in CLIENT of this collection.
-  // Distinct from `isClientGallery` (type only), which still governs Selects/favorites above.
+  // Download UI (and its select-to-download mode) follows the backend's authorization: a logged-in
+  // CLIENT of this collection (via /api/auth/me), or an anonymous viewer whose gallery password
+  // cookie validated. Distinct from `isClientGallery` (the collection flag), which still governs
+  // Selects/favorites above.
   const canDownload = canDownloadCollection(me, collection);
 
   // Mirror of the viewer's selected ids, owned here so the pinned "Your Selects" prepend can react

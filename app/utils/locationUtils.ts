@@ -9,9 +9,16 @@
 import type { LocationModel, LocationUpdate } from '@/app/types/Collection';
 
 /**
- * Generate a URL-friendly slug from a display name.
- * Matches backend slug generation rules. Use only as a fallback
- * when the API hasn't provided a slug — the backend is the canonical source.
+ * Generate a URL-friendly slug from a display name. The single frontend mirror of backend
+ * `SlugUtil.generateSlug`: lowercase, strip everything outside `[a-z0-9\s-]`, whitespace
+ * runs to `-`, collapse `-` runs, trim edge `-`. Idempotent on strings that are already
+ * slugs. Backend slugs for locations, tags and people are ALWAYS derived from names with
+ * this algorithm (V8 backfill, MetadataService, TagRepository), so slugifying a name
+ * recovers the slug the backend would emit for it.
+ *
+ * Prefer an API-provided slug when there is one — the backend is the canonical source, and
+ * this is the fallback for payloads that carry names only. Do NOT re-implement locally:
+ * `tagUtils.tagNameToSlug` aliases this so a backend algorithm change is fixed in one place.
  */
 export function slugify(name: string): string {
   return name
