@@ -17,9 +17,11 @@ function CollectionCard({ collection }: CollectionCardProps) {
   return (
     <CoverCard
       className={styles.cardWrapper}
+      variant="compact"
       href={`/${collection.slug}`}
       title={collection.title}
       imageUrl={collection.coverImage?.imageUrl}
+      imageAlt={collection.title}
       width={coverWidth}
       height={coverHeight}
       sizes="(min-width: 768px) 200px, 140px"

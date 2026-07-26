@@ -8,10 +8,17 @@ import { useParallax } from '@/app/hooks/useParallax';
 
 import styles from './CoverCard.module.scss';
 
+/**
+ * Visual treatment. `default` is the token-clean showcase look. `compact` reproduces the
+ * pre-extraction LocationCollections look byte for byte — see the `.compact` block in
+ * CoverCard.module.scss for why those values are what they are.
+ */
+export type CoverCardVariant = 'default' | 'compact';
+
 export interface CoverCardProps {
   /** Destination of the whole-card link. */
   href: string;
-  /** Overlay heading; also the link's accessible name (the cover image is decorative). */
+  /** Overlay heading; also the link's accessible name when the cover is decorative. */
   title: string;
   imageUrl?: string | null;
   /** Intrinsic cover dimensions; both fall back to a 16:9 placeholder pair when unknown. */
@@ -23,6 +30,13 @@ export interface CoverCardProps {
   priority?: boolean;
   /** Secondary overlay line under the title, e.g. a formatted date range. */
   subtitle?: string;
+  /**
+   * Cover `alt`. Defaults to `''` (decorative — the overlay title already names the link).
+   * Pass a string only where the cover is meant to carry its own accessible name.
+   */
+  imageAlt?: string;
+  /** Visual treatment; defaults to the token-clean showcase look. */
+  variant?: CoverCardVariant;
   /** Rendered beside the link inside the positioned wrapper, e.g. a FollowButton. */
   children?: ReactNode;
   /** Extra class on the wrapper. Callers own the card's footprint (width, grid placement). */
@@ -47,11 +61,15 @@ export function CoverCard({
   sizes,
   priority = false,
   subtitle,
+  imageAlt = '',
+  variant = 'default',
   children,
   className,
 }: CoverCardProps) {
   const parallaxRef = useParallax({ enableParallax: true });
-  const wrapperClass = [styles.cardWrapper, className].filter(Boolean).join(' ');
+  const wrapperClass = [styles.cardWrapper, variant === 'compact' && styles.compact, className]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div ref={parallaxRef} className={wrapperClass}>
@@ -60,7 +78,7 @@ export function CoverCard({
           {imageUrl ? (
             <Image
               src={imageUrl}
-              alt=""
+              alt={imageAlt}
               width={width ?? 400}
               height={height ?? 225}
               sizes={sizes}

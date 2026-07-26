@@ -1,7 +1,8 @@
 /*
   LocationCollections styles
   Layout only: a wrapping row of fixed-width footprints. The card itself is the shared
-  CoverCard, which owns the cover image, overlay and title.
+  CoverCard in its `compact` variant, which reproduces this surface's original cover-image,
+  overlay and title treatment.
 */
 
 .collectionsRow {
