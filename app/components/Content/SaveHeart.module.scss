@@ -70,6 +70,13 @@
     opacity: 0.4;
   }
 
+  /* The direct-interaction rules have to restate the wrapper ancestor: bare `.saveHeart:hover`
+     (0,2,0) loses to the wrapper-hover rule above (0,3,0), which matches at the same time. The
+     bare forms stay for focus without hover (touch/keyboard, wrapper rule not matching). */
+  [data-parallax-container]:hover .saveHeart:hover,
+  [data-parallax-container]:hover .saveHeart:focus-visible,
+  [data-image-wrapper]:hover .saveHeart:hover,
+  [data-image-wrapper]:hover .saveHeart:focus-visible,
   .saveHeart:hover,
   .saveHeart:focus-visible {
     opacity: 0.75;

@@ -1,10 +1,13 @@
 import { type Metadata } from 'next';
+import { unstable_rethrow } from 'next/navigation';
 
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel } from '@/app/types/Content';
+import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { groupCollectionsByYear, UNDATED_YEAR } from '@/app/utils/groupCollectionsByYear';
+import { logger } from '@/app/utils/logger';
 
 import styles from './Collections.module.scss';
 import { CollectionShowcaseTile } from './CollectionShowcaseTile';
@@ -14,6 +17,12 @@ import { CollectionShowcaseTile } from './CollectionShowcaseTile';
  * matching the admin /all-collections exclusion.
  */
 const EXCLUDED_SLUGS = new Set(['home']);
+
+/** Page size requested from the backend; reaching it means the list is truncated. */
+const SHOWCASE_PAGE_SIZE = 500;
+
+/** Tiles eagerly loaded for LCP — roughly the first grid row above the fold. */
+const EAGER_TILE_COUNT = 4;
 
 /**
  * Render on every request — `getScopedAllCollections` is `no-store`, and it calls the
@@ -33,11 +42,19 @@ export const metadata: Metadata = {
  */
 function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
   if (!Array.isArray(content)) {
+    logger.warn('CollectionsPage', 'all-collections returned a non-array content field', {
+      received: typeof content,
+    });
     return [];
+  }
+  if (content.length >= SHOWCASE_PAGE_SIZE) {
+    logger.warn('CollectionsPage', 'all-collections filled the requested page — list truncated', {
+      pageSize: SHOWCASE_PAGE_SIZE,
+    });
   }
   return content.filter(
     (block): block is ContentCollectionModel =>
-      block?.contentType === 'COLLECTION' && !EXCLUDED_SLUGS.has(block.slug)
+      isContentCollection(block) && !EXCLUDED_SLUGS.has(block.slug)
   );
 }
 
@@ -53,8 +70,13 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
 export default async function CollectionsPage() {
   let collection: CollectionModel | null;
   try {
-    collection = await getScopedAllCollections(500);
-  } catch {
+    collection = await getScopedAllCollections(SHOWCASE_PAGE_SIZE);
+  } catch (error) {
+    // `getScopedAllCollections` calls `notFound()` on a missing parent, which throws a
+    // control-flow error Next must handle itself — swallowing it would serve a
+    // transient-sounding message with HTTP 200 forever.
+    unstable_rethrow(error);
+    logger.error('CollectionsPage', 'Failed to load the all-collections showcase', error);
     collection = null;
   }
 
@@ -85,7 +107,7 @@ export default async function CollectionsPage() {
         <p className={styles.empty}>No collections yet — check back soon.</p>
       ) : (
         <div className={styles.groups}>
-          {groups.map(group => (
+          {groups.map((group, groupIndex) => (
             <section
               key={group.year}
               className={styles.group}
@@ -95,10 +117,11 @@ export default async function CollectionsPage() {
                 {group.year === UNDATED_YEAR ? 'Undated' : group.year}
               </h2>
               <div className={styles.grid}>
-                {group.collections.map(block => (
+                {group.collections.map((block, index) => (
                   <CollectionShowcaseTile
                     key={block.id ?? block.referencedCollectionId}
                     collection={block}
+                    priority={groupIndex === 0 && index < EAGER_TILE_COUNT}
                   />
                 ))}
               </div>

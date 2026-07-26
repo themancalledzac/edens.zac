@@ -69,6 +69,12 @@ export function useParallax(options: ParallaxOptions = {}) {
       return;
     }
 
+    // Offscreen cards register nothing. A grid can mount hundreds of these (the /collections
+    // showcase requests up to 500), and one window scroll listener per card is the dominant
+    // scroll cost. `isVisible` is an effect dependency, so the listener attaches as the card
+    // enters the viewport and detaches when it leaves.
+    if (!isVisible) return;
+
     const element = elementRef.current;
     const parallaxBg = element.querySelector(selector) as HTMLElement;
 

@@ -16,7 +16,6 @@ import {
   ASSIGNABLE_COLLECTION_TYPES,
   COLLECTION_TYPE_LABELS,
   CollectionType,
-  type CollectionUpdateRequest,
   type ContentPersonModel,
   type LocationModel,
 } from '@/app/types/Collection';
@@ -115,57 +114,51 @@ export function InfoTab({ edit }: InfoTabProps) {
       </div>
 
       <div className={styles.formGroup}>
-        <label className={styles.formLabel}>Collection Date</label>
-        <div className={styles.dateInputWrapper}>
-          <input
-            type="date"
-            value={updateData.collectionDate ?? ''}
-            onChange={e =>
-              setUpdateField(
-                'collectionDate',
-                e.target.value as CollectionUpdateRequest['collectionDate']
-              )
-            }
-            className={styles.dateInput}
-          />
-          {updateData.collectionDate && (
-            <button
-              type="button"
-              onClick={() => setUpdateField('collectionDate', null)}
-              className={styles.dateClearButton}
-              aria-label="Clear date"
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        <Field label="Collection Date" htmlFor="edit-sheet-collection-date">
+          <div className={styles.dateInputWrapper}>
+            <input
+              id="edit-sheet-collection-date"
+              type="date"
+              value={updateData.collectionDate ?? ''}
+              onChange={e => setUpdateField('collectionDate', e.target.value)}
+              className={styles.dateInput}
+            />
+            {updateData.collectionDate && (
+              <button
+                type="button"
+                onClick={() => setUpdateField('collectionDate', null)}
+                className={styles.dateClearButton}
+                aria-label="Clear date"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </Field>
       </div>
 
       <div className={styles.formGroup}>
-        <label className={styles.formLabel}>End date</label>
-        <div className={styles.dateInputWrapper}>
-          <input
-            type="date"
-            value={updateData.collectionEndDate ?? ''}
-            onChange={e =>
-              setUpdateField(
-                'collectionEndDate',
-                e.target.value as CollectionUpdateRequest['collectionEndDate']
-              )
-            }
-            className={styles.dateInput}
-          />
-          {updateData.collectionEndDate && (
-            <button
-              type="button"
-              onClick={() => setUpdateField('collectionEndDate', null)}
-              className={styles.dateClearButton}
-              aria-label="Clear end date"
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        <Field label="End date" htmlFor="edit-sheet-collection-end-date">
+          <div className={styles.dateInputWrapper}>
+            <input
+              id="edit-sheet-collection-end-date"
+              type="date"
+              value={updateData.collectionEndDate ?? ''}
+              onChange={e => setUpdateField('collectionEndDate', e.target.value)}
+              className={styles.dateInput}
+            />
+            {updateData.collectionEndDate && (
+              <button
+                type="button"
+                onClick={() => setUpdateField('collectionEndDate', null)}
+                className={styles.dateClearButton}
+                aria-label="Clear end date"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </Field>
         {isEndBeforeStart && (
           <p role="status" className={styles.dateRangeWarning}>
             End date is before the collection date.

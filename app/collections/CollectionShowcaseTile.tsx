@@ -12,6 +12,8 @@ import styles from './Collections.module.scss';
 
 interface CollectionShowcaseTileProps {
   collection: ContentCollectionModel;
+  /** Eager-load the cover for above-the-fold tiles (LCP candidates). */
+  priority?: boolean;
 }
 
 /**
@@ -19,9 +21,12 @@ interface CollectionShowcaseTileProps {
  *
  * Mirrors the LocationCollections cover-card treatment (parallax-bg cover image,
  * title overlay, whole-card link to `/{slug}`) and adds a date label rendered via
- * {@link formatDateRange} so multi-day collections read as approximate ranges.
+ * {@link formatDateRange} so multi-day collections read as exact ranges.
  */
-export function CollectionShowcaseTile({ collection }: CollectionShowcaseTileProps) {
+export function CollectionShowcaseTile({
+  collection,
+  priority = false,
+}: CollectionShowcaseTileProps) {
   const parallaxRef = useParallax({ enableParallax: true });
   const { width: coverWidth, height: coverHeight } = pickImageDimensions(collection.coverImage);
   const title = collection.title || collection.slug;
@@ -29,15 +34,16 @@ export function CollectionShowcaseTile({ collection }: CollectionShowcaseTilePro
 
   return (
     <div ref={parallaxRef} className={styles.cardWrapper}>
-      <Link href={`/${collection.slug}`} className={styles.card} aria-label={title}>
+      <Link href={`/${collection.slug}`} className={styles.card}>
         <div className={styles.imageWrapper}>
           {collection.coverImage?.imageUrl ? (
             <Image
               src={collection.coverImage.imageUrl}
-              alt={title}
+              alt=""
               width={coverWidth ?? 400}
               height={coverHeight ?? 225}
-              sizes="(min-width: 768px) 320px, 45vw"
+              sizes="(min-width: 768px) 33vw, 45vw"
+              priority={priority}
               className={`${styles.cardImage} parallax-bg`}
             />
           ) : (

@@ -61,8 +61,8 @@ describe('CollectionsPage', () => {
     const headings = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
     expect(headings).toEqual(['2026', '2025']);
 
-    expect(screen.getByRole('link', { name: 'Dolomites' })).toHaveAttribute('href', '/dolomites');
-    expect(screen.getByRole('link', { name: 'Patagonia' })).toHaveAttribute('href', '/patagonia');
+    expect(screen.getByRole('link', { name: /Dolomites/ })).toHaveAttribute('href', '/dolomites');
+    expect(screen.getByRole('link', { name: /Patagonia/ })).toHaveAttribute('href', '/patagonia');
   });
 
   it('renders a formatted date range label on a multi-day collection', async () => {
@@ -102,7 +102,7 @@ describe('CollectionsPage', () => {
 
     const headings = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
     expect(headings).toEqual(['2026', 'Undated']);
-    expect(screen.getByRole('link', { name: 'Mystery' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Mystery/ })).toBeInTheDocument();
   });
 
   it('excludes the home slug from the showcase', async () => {
@@ -119,8 +119,8 @@ describe('CollectionsPage', () => {
 
     render(await CollectionsPage());
 
-    expect(screen.queryByRole('link', { name: 'Home' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Keep' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Home/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Keep/ })).toBeInTheDocument();
   });
 
   it('renders a fallback message when the fetch fails', async () => {
