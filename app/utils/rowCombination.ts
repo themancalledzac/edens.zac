@@ -55,7 +55,10 @@ function getTotalWidthCost(components: AnyContentModel[]): number {
 export const MIN_FILL_RATIO = 0.9;
 /** Maximum fill ratio; rows above this are rejected to avoid squeezing items. */
 export const MAX_FILL_RATIO = 1.15;
-/** Effective rating at or below which an item can be skipped past for a hero. */
+/**
+ * A leading item whose effective rating is at or below this may be passed over so that
+ * a solo-eligible hero just behind it leads the row instead.
+ */
 export const LOW_RATED_THRESHOLD = 2;
 
 /**
@@ -218,7 +221,8 @@ export const MAX_ROW_IMAGES = 12;
 /**
  * Width-cost fraction at or above which an extreme-AR item claims its own full-width
  * row. Paired with an extremeness gate (see isSoloHero): the fraction alone is not
- * enough, since a normal landscape at a small rowWidth can exceed it.
+ * enough, since a normal landscape at a small rowWidth can exceed it, which would
+ * collapse low-density rows into full-width singles.
  */
 export const HERO_SOLO_WIDTH_FRACTION = 0.5;
 
@@ -334,6 +338,9 @@ function padRowToWidth(
  * Estimate a row's combined aspect ratio via the cheap single-structure composer
  * (point-balance tree only), keeping the Stage-1 fill loop fast. The expensive
  * multi-structure equity search runs only at final per-row composition.
+ *
+ * The invariant that buys this: row-membership decisions never run the expensive
+ * search, so density-to-size behavior stays independent of how a row is composed.
  */
 export function estimateRowAR(images: ImageType[], targetAR: number): number {
   if (images.length === 0) throw new Error('estimateRowAR requires at least 1 image');
@@ -372,6 +379,16 @@ function collectRowItems(
  * then builds each row's atomic tree. A wide top-rated panorama claiming its own row
  * is an emergent result of its large Hv exceeding the budget, not a special case. The
  * AR-floor check is disabled on mobile (rowWidth ≤ 2).
+ *
+ * Three fill decisions that are not self-evident from the code:
+ * 1. The fill bar (effectiveMinFill) is the constant MIN_FILL_RATIO, not a scaled one.
+ *    Density already drives packing through rowWidth, so a rowWidth-scaled bar would
+ *    over-inflate past MAX_FILL_RATIO at high density.
+ * 2. A row still under that bar accepts one moderate overfill (newFill up to 1.35)
+ *    rather than closing short - a lone under-filled row reads worse than a slightly
+ *    tight one.
+ * 3. A solo-eligible item met after the row has started is skipped rather than taken,
+ *    so it surfaces as a leading solo hero on the next iteration and gets its own row.
  *
  * @param rowWidth - Row width budget (5 desktop, 4 tablet, etc.).
  * @param targetARBaseline - Baseline (viewport) target AR. Fill and estimate use it
@@ -783,8 +800,10 @@ interface Candidate {
 const ROW_AR_FLOOR = 1.0;
 
 /**
- * Stage-1 AR cost: sub-floor candidates get a large penalty (preferred only as a last
- * resort); at or above the floor, the candidate closest to the target wins.
+ * AR cost, used both by the Stage-1 estimator (pickRootAssignment) and by the Stage-2
+ * fallback ranking (pickBestComposition's arClosest): sub-floor candidates get a large
+ * penalty (preferred only as a last resort); at or above the floor, the candidate
+ * closest to the target wins.
  */
 function rowAR_Cost(rowAR: number, target: number): number {
   if (rowAR < ROW_AR_FLOOR) return 1000 + (ROW_AR_FLOOR - rowAR);
@@ -798,7 +817,7 @@ function rowAR_Cost(rowAR: number, target: number): number {
 /**
  * Weight of the AR-target term in the equity-primary score. Small, so equitySpread
  * (area tracks prominence) dominates and the AR-target only breaks ties among
- * near-equity options.
+ * near-equity options. Replaces the retired AR_EQUITY_BAND gate.
  */
 const LAMBDA = 0.15;
 
@@ -876,6 +895,9 @@ function equitySpread(ac: AtomicComponent): number {
  * Every direction-assigned AtomicComponent for a subtree: one candidate per leaf, an
  * hPair and a vStack at each internal node, multiplied across nesting. Cost is 2^N in
  * the number of internal nodes, bounded by row size.
+ *
+ * The two AR forms: hPair adds (ar = leftAR + rightAR), vStack takes the harmonic form
+ * (1/ar = 1/leftAR + 1/rightAR), written here as the equivalent product-over-sum.
  */
 function enumerateAssignments(node: AbstractNode): Candidate[] {
   if (node.kind === 'leaf') {
