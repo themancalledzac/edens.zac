@@ -186,9 +186,6 @@ export function clampParallaxDimensions(
  * Synthetic PARENT collections (e.g. /all-collections) carry null content-table IDs
  * because they aren't backed by content rows; the id falls back to the referenced
  * collection's ID so downstream Map lookups (sizesMap, row keys) stay unique.
- *
- * @param col - Collection content model to convert
- * @returns Parallax image model with collection metadata
  */
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel

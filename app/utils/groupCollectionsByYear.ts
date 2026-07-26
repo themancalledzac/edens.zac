@@ -1,12 +1,4 @@
-/**
- * Sort and group collection content blocks by year for the public /collections showcase.
- *
- * Collections are ordered chronologically by `collectionDate` DESC (newest first),
- * with undated collections grouped last under a synthetic "Undated" bucket. Grouping
- * is by the calendar year of `collectionDate`; a multi-day collection is grouped by
- * its START year (`collectionDate`), and its `collectionEndDate` only affects the
- * rendered date label, not its bucket.
- */
+/** Year grouping for the public /collections showcase. */
 
 import { type ContentCollectionModel } from '@/app/types/Content';
 import { parseIsoDateParts } from '@/app/utils/formatDateRange';
@@ -31,6 +23,8 @@ export interface CollectionYearGroup {
  * - Undated collections (no parseable `collectionDate`) are collected into a single
  *   trailing {@link UNDATED_YEAR} bucket, preserving their input order.
  * - Within a dated bucket, collections keep their DESC-by-date order.
+ * - A multi-day collection buckets by its START year; `collectionEndDate` affects only
+ *   the rendered label.
  */
 export function groupCollectionsByYear(
   collections: readonly ContentCollectionModel[]

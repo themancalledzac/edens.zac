@@ -170,6 +170,7 @@ export function StructureTab({ edit }: StructureTabProps) {
         />
       )}
 
+      {/* Rating orders multi-collection list views; home is excluded from lists, so no control. */}
       {collection?.id != null && !isHomeCollection && (
         <section aria-labelledby="edit-sheet-rating-heading" className={styles.formGroup}>
           <h3 id="edit-sheet-rating-heading" className={styles.formLabel}>

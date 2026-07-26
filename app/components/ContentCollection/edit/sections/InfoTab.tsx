@@ -73,6 +73,7 @@ export function InfoTab({ edit }: InfoTabProps) {
   const collection = currentState?.collection;
   const showGalleryAccess = updateData.type === CollectionType.CLIENT_GALLERY || isParent;
 
+  // Soft advisory only — never blocks a save. ISO YYYY-MM-DD compares correctly as strings.
   const isEndBeforeStart = Boolean(
     updateData.collectionDate &&
     updateData.collectionEndDate &&

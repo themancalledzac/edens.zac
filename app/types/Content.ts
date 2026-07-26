@@ -241,8 +241,8 @@ export interface ContentCollectionModel extends Content {
   collectionDate?: string;
   /**
    * ISO end date of the referenced collection (nullable). Mirrors backend
-   * `ContentModels.Collection.collectionEndDate`; renders as a range with
-   * `collectionDate` via `formatDateRange`.
+   * `ContentModels.Collection.collectionEndDate`; pairs with `collectionDate` to render a
+   * range (see `formatDateRange` and its display variant).
    */
   collectionEndDate?: string;
 

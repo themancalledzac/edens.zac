@@ -2,12 +2,8 @@
    logged-in viewer. Mirrors the fullscreen `.metadataToggle` corner-box treatment (square, flush to
    the edge, semi-opaque black, 36px → 40px on desktop) but pinned top-right instead of bottom-right.
 
-   Visibility model: on hover-capable devices the heart is hidden at rest and revealed when the
-   surrounding image wrapper is hovered (mirrors the `.coverUpdateShortcut` reveal in
-   ContentComponent.module.scss). The wrapper carries either `data-parallax-container` (parallax path)
-   or `data-image-wrapper` (non-parallax path), so both are targeted. Keyboard users get the heart via
-   `:focus-visible`. On touch devices (no hover) the heart stays visible but dimmer. A SAVED heart is
-   always visible so a bookmarked image reads at a glance. */
+   The surrounding wrapper carries either `data-parallax-container` (parallax path) or
+   `data-image-wrapper` (non-parallax path), so every reveal rule below has to target both. */
 .saveHeart {
   position: absolute;
   top: 0;
