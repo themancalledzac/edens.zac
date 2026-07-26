@@ -169,16 +169,14 @@ export function StructureTab({ edit }: StructureTabProps) {
         />
       )}
 
-      {!isHomeCollection && (
+      {collection?.id != null && !isHomeCollection && (
         <section aria-labelledby="edit-sheet-rating-heading" className={styles.formGroup}>
           <h3 id="edit-sheet-rating-heading" className={styles.formLabel}>
             Rating
           </h3>
           <RatingStars
-            initialRating={collection?.rating ?? null}
-            onChange={next =>
-              collection?.id != null ? updateCollectionRating(collection.id, next) : undefined
-            }
+            initialRating={collection.rating ?? null}
+            onChange={next => updateCollectionRating(collection.id, next)}
             ariaLabel="Rate this collection"
           />
         </section>

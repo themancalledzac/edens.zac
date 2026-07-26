@@ -177,7 +177,10 @@ export interface UseCollectionEditResult {
   handleSiblingToggle: (toggled: CollectionListModel) => void;
   parentIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleParentToggle: (toggled: CollectionListModel) => void;
-  /** Rate a child collection inline (home collection only). Immediate — no save button. */
+  /**
+   * Rate this collection, or a child inline on the home collection. Immediate — no save
+   * button. Surfaces failures via `error` and rethrows so callers skip optimistic commits.
+   */
   updateCollectionRating: (id: number, rating: number | null) => Promise<void>;
 
   currentLocations: LocationModel[];
@@ -1206,6 +1209,22 @@ export function useCollectionEdit({
     [originalParentIds]
   );
 
+  /**
+   * Rating writes are immediate (no save button), so the failure has to surface here —
+   * the caller discards the promise. Rethrows after surfacing so the optimistic star
+   * commit is skipped.
+   */
+  const handleRatingChange = useCallback(async (id: number, rating: number | null) => {
+    try {
+      setError(null);
+      await updateCollectionRating(id, rating);
+    } catch (error_) {
+      logger.error('useCollectionEdit', `Failed to update rating for collection ${id}`, error_);
+      setError(handleApiError(error_, 'Failed to update rating'));
+      throw error_;
+    }
+  }, []);
+
   const handleAddNewChild = useCallback(async () => {
     if (!collection) {
       logger.warn(
@@ -1567,7 +1586,7 @@ export function useCollectionEdit({
       pendingRemove: pendingRemoveParentIds,
     },
     handleParentToggle,
-    updateCollectionRating,
+    updateCollectionRating: handleRatingChange,
 
     currentLocations,
     handleLocationsChange,

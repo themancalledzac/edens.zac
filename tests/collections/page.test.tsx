@@ -7,7 +7,7 @@ import { type CollectionModel } from '@/app/types/Collection';
 import { createCollectionContent } from '@/tests/fixtures/contentFixtures';
 
 jest.mock('@/app/lib/api/collections', () => ({
-  getCollectionBySlug: jest.fn(),
+  getScopedAllCollections: jest.fn(),
 }));
 
 jest.mock('@/app/hooks/useParallax', () => ({
@@ -24,10 +24,10 @@ jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
 }));
 
 import CollectionsPage from '@/app/collections/page';
-import { getCollectionBySlug } from '@/app/lib/api/collections';
+import { getScopedAllCollections } from '@/app/lib/api/collections';
 
-const mockGetCollectionBySlug = getCollectionBySlug as jest.MockedFunction<
-  typeof getCollectionBySlug
+const mockGetScopedAllCollections = getScopedAllCollections as jest.MockedFunction<
+  typeof getScopedAllCollections
 >;
 
 /** Wrap COLLECTION content blocks in a synthetic all-collections parent shell. */
@@ -37,11 +37,11 @@ function makeParent(content: unknown[]): CollectionModel {
 
 describe('CollectionsPage', () => {
   beforeEach(() => {
-    mockGetCollectionBySlug.mockReset();
+    mockGetScopedAllCollections.mockReset();
   });
 
   it('renders a year heading and a tile per collection, grouped newest-first', async () => {
-    mockGetCollectionBySlug.mockResolvedValue(
+    mockGetScopedAllCollections.mockResolvedValue(
       makeParent([
         createCollectionContent(1, {
           title: 'Dolomites',
@@ -66,7 +66,7 @@ describe('CollectionsPage', () => {
   });
 
   it('renders a formatted date range label on a multi-day collection', async () => {
-    mockGetCollectionBySlug.mockResolvedValue(
+    mockGetScopedAllCollections.mockResolvedValue(
       makeParent([
         createCollectionContent(1, {
           title: 'Road Trip',
@@ -83,7 +83,7 @@ describe('CollectionsPage', () => {
   });
 
   it('groups undated collections under an Undated heading, last', async () => {
-    mockGetCollectionBySlug.mockResolvedValue(
+    mockGetScopedAllCollections.mockResolvedValue(
       makeParent([
         createCollectionContent(1, {
           title: 'Dated One',
@@ -106,7 +106,7 @@ describe('CollectionsPage', () => {
   });
 
   it('excludes the home slug from the showcase', async () => {
-    mockGetCollectionBySlug.mockResolvedValue(
+    mockGetScopedAllCollections.mockResolvedValue(
       makeParent([
         createCollectionContent(1, { title: 'Home', slug: 'home', collectionDate: '2026-01-01' }),
         createCollectionContent(2, {
@@ -124,7 +124,7 @@ describe('CollectionsPage', () => {
   });
 
   it('renders a fallback message when the fetch fails', async () => {
-    mockGetCollectionBySlug.mockRejectedValue(new Error('upstream down'));
+    mockGetScopedAllCollections.mockRejectedValue(new Error('upstream down'));
 
     render(await CollectionsPage());
 
@@ -133,7 +133,7 @@ describe('CollectionsPage', () => {
   });
 
   it('renders a friendly empty state when there are no collections', async () => {
-    mockGetCollectionBySlug.mockResolvedValue(makeParent([]));
+    mockGetScopedAllCollections.mockResolvedValue(makeParent([]));
 
     render(await CollectionsPage());
 

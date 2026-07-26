@@ -1,7 +1,8 @@
 import { type Metadata } from 'next';
 
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
-import { getCollectionBySlug } from '@/app/lib/api/collections';
+import { getScopedAllCollections } from '@/app/lib/api/collections';
+import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel } from '@/app/types/Content';
 import { groupCollectionsByYear, UNDATED_YEAR } from '@/app/utils/groupCollectionsByYear';
 
@@ -15,8 +16,8 @@ import { CollectionShowcaseTile } from './CollectionShowcaseTile';
 const EXCLUDED_SLUGS = new Set(['home']);
 
 /**
- * Render on every request — getCollectionBySlug('all-collections') calls the upstream
- * read API, which can fail mid-build before the proxy is live. Same rationale as
+ * Render on every request — `getScopedAllCollections` is `no-store`, and it calls the
+ * upstream read API, which can fail mid-build before the proxy is live. Same rationale as
  * /explore and the admin /all-collections page.
  */
 export const dynamic = 'force-dynamic';
@@ -43,14 +44,16 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
 /**
  * Public Collections showcase.
  *
- * The public counterpart to the admin-only /all-collections. Fetches the env-aware
- * synthetic all-collections parent (prod returns LISTED collections only), then presents
- * each collection as a parallax cover tile, grouped by year and ordered newest-first.
+ * The public counterpart to the admin-only /all-collections. Fetches the synthetic
+ * all-collections parent, whose result set the backend scopes per session (admin => all
+ * visibilities; signed-in => LISTED plus their granted galleries; anonymous => LISTED),
+ * then presents each collection as a parallax cover tile, grouped by year and ordered
+ * newest-first.
  */
 export default async function CollectionsPage() {
-  let collection;
+  let collection: CollectionModel | null;
   try {
-    collection = await getCollectionBySlug('all-collections', 0, 500);
+    collection = await getScopedAllCollections(500);
   } catch {
     collection = null;
   }
