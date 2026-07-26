@@ -3,16 +3,8 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { CollectionEditSheet } from '@/app/components/ContentCollection/edit/CollectionEditSheet';
-import { type UseCollectionEditResult } from '@/app/components/ContentCollection/edit/useCollectionEdit';
-import {
-  type CollectionListModel,
-  type CollectionModel,
-  CollectionType,
-  type CollectionUpdateRequest,
-  type CollectionUpdateResponseDTO,
-} from '@/app/types/Collection';
-import { CollectionVisibility } from '@/app/types/CollectionVisibility';
-import { type ContentImageModel } from '@/app/types/Content';
+import { CollectionType } from '@/app/types/Collection';
+import { makeEdit, makeState, makeUpdateData } from '@/tests/fixtures/collectionEditFixtures';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
@@ -32,7 +24,20 @@ jest.mock('@/app/components/ui/TagsSelector/TagsSelector', () => ({
 
 jest.mock('@/app/components/RatingStars/RatingStars', () => ({
   __esModule: true,
-  default: () => <div data-testid="rating-stars" />,
+  default: ({
+    ariaLabel,
+    onChange,
+  }: {
+    ariaLabel?: string;
+    onChange: (rating: number | null) => Promise<void> | void;
+  }) => (
+    <button
+      type="button"
+      data-testid="rating-stars"
+      aria-label={ariaLabel}
+      onClick={() => onChange(3)}
+    />
+  ),
 }));
 
 // Self-contained section that fetches on mount — stubbed here; behavior is covered by
@@ -42,155 +47,6 @@ jest.mock('@/app/components/ContentCollection/edit/sections/CollectionRolesSecti
   CollectionRolesSection: () => <div data-testid="collection-roles-section" />,
 }));
 
-function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
-  return {
-    id: 1,
-    slug: 'test-collection',
-    title: 'Test Collection',
-    description: '',
-    type: CollectionType.PORTFOLIO,
-    isClient: false,
-    isBlog: false,
-    visibility: CollectionVisibility.LISTED,
-    displayMode: 'ORDERED',
-    collectionDate: '2026-01-01',
-    rowsWide: 4,
-    content: [],
-    locations: [],
-    createdAt: '2026-01-01T00:00:00Z',
-    updatedAt: '2026-01-01T00:00:00Z',
-    ...overrides,
-  };
-}
-
-function makeState(overrides: Partial<CollectionModel> = {}): CollectionUpdateResponseDTO {
-  return {
-    collection: makeCollection(overrides),
-    tags: [],
-    people: [],
-    locations: [],
-    cameras: [],
-    lenses: [],
-    filmTypes: [],
-    filmFormats: [],
-    collections: [],
-  };
-}
-
-function makeUpdateData(overrides: Partial<CollectionUpdateRequest> = {}): CollectionUpdateRequest {
-  return {
-    id: 1,
-    type: CollectionType.PORTFOLIO,
-    title: 'Test Collection',
-    description: '',
-    collectionDate: '2026-01-01',
-    visibility: CollectionVisibility.LISTED,
-    displayMode: 'ORDERED',
-    rowsWide: 4,
-    ...overrides,
-  };
-}
-
-const emptySet = new Set<number>();
-const emptyTriple = { saved: emptySet, pendingAdd: emptySet, pendingRemove: emptySet };
-
-function makeEdit(overrides: Partial<UseCollectionEditResult> = {}): UseCollectionEditResult {
-  return {
-    currentState: makeState(),
-    isLoadingState: false,
-    editTab: 'info',
-    setEditTab: jest.fn(),
-    updateData: makeUpdateData(),
-    setUpdateField: jest.fn(),
-    isUpdateDirty: false,
-    saving: false,
-    handleUpdate: jest.fn(),
-    deleting: false,
-    handleDeleteCollection: jest.fn(),
-
-    isParent: false,
-
-    collectionPeople: [],
-    setCollectionPeople: jest.fn(),
-    peopleSaving: false,
-    peopleStatus: null,
-    handleSavePeople: jest.fn(),
-    handleRegeneratePeople: jest.fn(),
-
-    galleryPassword: '',
-    setGalleryPassword: jest.fn(),
-    galleryEmail: '',
-    setGalleryEmail: jest.fn(),
-    gallerySaving: false,
-    galleryStatus: null,
-    handleSaveAccess: jest.fn(),
-    handleClearPassword: jest.fn(),
-
-    currentLocations: [],
-    handleLocationsChange: jest.fn(),
-
-    currentTags: [],
-    handleTagsChange: jest.fn(),
-
-    allCollections: [] as CollectionListModel[],
-    allCollectionsWithTagViews: [] as CollectionListModel[],
-    saveTagAsCollection: jest.fn(),
-    handleChangeType: jest.fn(),
-    childIds: emptyTriple,
-    handleChildToggle: jest.fn(),
-    handleAddNewChild: jest.fn(),
-    siblingIds: emptyTriple,
-    handleSiblingToggle: jest.fn(),
-    parentIds: emptyTriple,
-    handleParentToggle: jest.fn(),
-    updateCollectionRating: jest.fn(),
-
-    isSelectingCoverImage: false,
-    setIsSelectingCoverImage: jest.fn(),
-    handleCoverImageClick: jest.fn(),
-    justClickedImageId: null,
-    displayedCoverImage: null as ContentImageModel | null,
-    childCollectionImages: undefined,
-
-    manageMode: 'edit',
-    displayContent: [],
-    handleImageClick: jest.fn(),
-    reorder: {
-      active: false,
-      displayOrder: [],
-      moves: [],
-      onArrowMove: jest.fn(),
-      onPickUp: jest.fn(),
-      onPlace: jest.fn(),
-      onCancelImageMove: jest.fn(),
-      pickedUpImageId: null,
-    },
-    selectedIds: [],
-    isMultiSelectMode: false,
-    originalCollectionIds: emptySet,
-    handleCollectionToggle: jest.fn(),
-    isTextBlockModalOpen: false,
-    closeTextBlockModal: jest.fn(),
-    handleTextBlockSubmit: jest.fn(),
-    editingContent: null,
-    closeEditor: jest.fn(),
-    contentToEdit: [],
-    handleMetadataSaveSuccess: jest.fn(),
-    handleGifSaveSuccess: jest.fn(),
-    handleDeleteSuccess: jest.fn(),
-    enterSelect: jest.fn(),
-    enterReorder: jest.fn(),
-    enterAdd: jest.fn(),
-    enterEdit: jest.fn(),
-    exitToBrowse: jest.fn(),
-    bottomBarTabs: undefined,
-    bottomBarCells: [],
-    error: null,
-    currentCoverImageId: undefined,
-
-    ...overrides,
-  } as UseCollectionEditResult;
-}
 
 describe('CollectionEditSheet — InfoTab', () => {
   it('renders Title, Collection Type, and the Visibility dropdown', () => {
@@ -393,6 +249,52 @@ describe('CollectionEditSheet — desktop two-column layout', () => {
     expect(screen.getByRole('region', { name: 'Info' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Structure' })).toBeInTheDocument();
     expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument();
+  });
+});
+
+describe('CollectionEditSheet — StructureTab collection rating', () => {
+  it('renders the Rating section for a normal collection', () => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure' })} />);
+    expect(screen.getByRole('heading', { name: 'Rating' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Rate this collection')).toBeInTheDocument();
+  });
+
+  it('does NOT render the Rating section for the home collection', () => {
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({ editTab: 'structure', currentState: makeState({ slug: 'home' }) })}
+      />
+    );
+    expect(screen.queryByRole('heading', { name: 'Rating' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Rate this collection')).not.toBeInTheDocument();
+  });
+
+  it('renders the Rating section for a parent collection', () => {
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'structure',
+          isParent: true,
+          updateData: makeUpdateData({ type: CollectionType.PARENT }),
+        })}
+      />
+    );
+    expect(screen.getByRole('heading', { name: 'Rating' })).toBeInTheDocument();
+  });
+
+  it('calls updateCollectionRating with the collection’s own id on change', () => {
+    const updateCollectionRating = jest.fn();
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'structure',
+          currentState: makeState({ id: 42 }),
+          updateCollectionRating,
+        })}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Rate this collection'));
+    expect(updateCollectionRating).toHaveBeenCalledWith(42, 3);
   });
 });
 

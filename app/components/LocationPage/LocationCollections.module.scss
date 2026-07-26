@@ -1,6 +1,8 @@
 /*
   LocationCollections styles
-  Small parallax collection link cards in a wrapping row
+  Layout only: a wrapping row of fixed-width footprints. The card itself is the shared
+  CoverCard in its `compact` variant, which reproduces this surface's original cover-image,
+  overlay and title treatment.
 */
 
 .collectionsRow {
@@ -18,79 +20,10 @@
 }
 
 .cardWrapper {
-  position: relative;
   flex-shrink: 0;
   width: 140px;
 
   @media (width >= 768px) {
     width: 200px;
-  }
-}
-
-.card {
-  position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: 3px;
-  overflow: hidden;
-  text-decoration: none;
-  transition: opacity var(--duration-fast);
-
-  &:hover {
-    opacity: 0.85;
-  }
-}
-
-.imageWrapper {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.cardImage {
-  object-fit: cover;
-  width: 100%;
-  height: 130%;
-  position: absolute;
-  top: -15%; /* symmetric: 15% overflow above and 15% below for parallax travel */
-  left: 0;
-  will-change: transform;
-}
-
-.placeholder {
-  width: 100%;
-  height: 130%;
-  position: absolute;
-  top: -15%; /* symmetric: 15% overflow above and 15% below for parallax travel */
-  left: 0;
-  background: var(--color-surface-raised);
-}
-
-.overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgb(0 0 0 / 35%);
-  transition: background var(--duration-fast);
-
-  .card:hover & {
-    background: rgb(0 0 0 / 45%);
-  }
-}
-
-.title {
-  color: #fff;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-align: center;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 50%);
-  padding: 0.25rem 0.5rem;
-  line-height: 1.3;
-
-  @media (width >= 768px) {
-    font-size: 0.85rem;
   }
 }

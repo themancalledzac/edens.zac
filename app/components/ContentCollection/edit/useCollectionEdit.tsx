@@ -40,6 +40,7 @@ import {
   type ContentImageUpdateResponse,
 } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import {
   isContentCollection,
@@ -181,7 +182,10 @@ export interface UseCollectionEditResult {
   handleSiblingToggle: (toggled: CollectionListModel) => void;
   parentIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleParentToggle: (toggled: CollectionListModel) => void;
-  /** Rate a child collection inline (home collection only). Immediate — no save button. */
+  /**
+   * Rate this collection, or a child inline on the home collection. Immediate — no save
+   * button. Surfaces failures via `error` and rethrows so callers skip optimistic commits.
+   */
   updateCollectionRating: (id: number, rating: number | null) => Promise<void>;
 
   currentLocations: LocationModel[];
@@ -374,6 +378,7 @@ export function useCollectionEdit({
       title: source.title || '',
       description: source.description || '',
       collectionDate: source.collectionDate || '',
+      collectionEndDate: source.collectionEndDate || '',
       visibility: source.visibility ?? CollectionVisibility.HIDDEN,
       displayMode: source.displayMode || 'CHRONOLOGICAL',
       rowsWide: source.rowsWide ?? undefined,
@@ -1011,7 +1016,7 @@ export function useCollectionEdit({
   const handleDeleteCollection = useCallback(async () => {
     if (!collection) return;
     // Safety: the home system collection must never be deletable.
-    if (collection.slug === 'home') {
+    if (collection.slug === HOME_SLUG) {
       setError('The home collection cannot be deleted.');
       return;
     }
@@ -1210,6 +1215,22 @@ export function useCollectionEdit({
     },
     [originalParentIds]
   );
+
+  /**
+   * Rating writes are immediate (no save button), so the failure has to surface here —
+   * the caller discards the promise. Rethrows after surfacing so the optimistic star
+   * commit is skipped.
+   */
+  const handleRatingChange = useCallback(async (id: number, rating: number | null) => {
+    try {
+      setError(null);
+      await updateCollectionRating(id, rating);
+    } catch (error_) {
+      logger.error('useCollectionEdit', `Failed to update rating for collection ${id}`, error_);
+      setError(handleApiError(error_, 'Failed to update rating'));
+      throw error_;
+    }
+  }, []);
 
   const handleAddNewChild = useCallback(async () => {
     if (!collection) {
@@ -1571,7 +1592,7 @@ export function useCollectionEdit({
       pendingRemove: pendingRemoveParentIds,
     },
     handleParentToggle,
-    updateCollectionRating,
+    updateCollectionRating: handleRatingChange,
 
     currentLocations,
     handleLocationsChange,

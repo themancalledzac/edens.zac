@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import styles from './RatingStars.module.scss';
 
@@ -14,12 +14,21 @@ export default function RatingStars({ initialRating, onChange, ariaLabel }: Rati
   const [rating, setRating] = useState<number | null>(initialRating);
   const [pending, setPending] = useState(false);
 
+  // `initialRating` often arrives after mount (admin metadata fetch), so the mount-time seed
+  // would otherwise show empty stars for an already-rated collection all session.
+  useEffect(() => {
+    setRating(initialRating);
+  }, [initialRating]);
+
   const handleClick = async (next: number) => {
     const newRating = rating === next ? null : next;
     setPending(true);
     try {
       await onChange(newRating);
       setRating(newRating);
+    } catch {
+      // Swallowed deliberately: `onChange` surfaces the failure to the user before
+      // rethrowing, and the click handler discards this promise. Stars keep the old value.
     } finally {
       setPending(false);
     }

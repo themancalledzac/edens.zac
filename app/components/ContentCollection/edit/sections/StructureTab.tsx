@@ -14,6 +14,7 @@ import {
   type DisplayMode,
   type TagViewModel,
 } from '@/app/types/Collection';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
@@ -56,7 +57,7 @@ export function StructureTab({ edit }: StructureTabProps) {
 
   const collection = currentState?.collection;
   const collectionSlug = collection?.slug;
-  const isHomeCollection = collectionSlug === 'home';
+  const isHomeCollection = collectionSlug === HOME_SLUG;
 
   const [pendingTagView, setPendingTagView] = useState<TagViewModel | null>(null);
 
@@ -167,6 +168,20 @@ export function StructureTab({ edit }: StructureTabProps) {
             setPendingTagView(null);
           }}
         />
+      )}
+
+      {/* Rating orders multi-collection list views; home is excluded from lists, so no control. */}
+      {collection?.id != null && !isHomeCollection && (
+        <section aria-labelledby="edit-sheet-rating-heading" className={styles.formGroup}>
+          <h3 id="edit-sheet-rating-heading" className={styles.formLabel}>
+            Rating
+          </h3>
+          <RatingStars
+            initialRating={collection.rating ?? null}
+            onChange={next => updateCollectionRating(collection.id, next)}
+            ariaLabel="Rate this collection"
+          />
+        </section>
       )}
 
       {isHomeCollection && (collection?.content?.some(isContentCollection) ?? false) && (

@@ -100,6 +100,10 @@ export function MenuDropdown({
       router.push('/explore');
       onClose();
     },
+    collections: () => {
+      router.push('/collections');
+      onClose();
+    },
     create: () => {
       router.push('/collection/manage');
       onClose();
@@ -280,6 +284,16 @@ export function MenuDropdown({
             onClick={handleNavigation.explore}
           >
             <span className={styles.dropdownMenuOptions}>Explore</span>
+          </button>
+        </div>
+
+        <div className={styles.dropdownMenuItem}>
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
+            onClick={handleNavigation.collections}
+          >
+            <span className={styles.dropdownMenuOptions}>Collections</span>
           </button>
         </div>
 

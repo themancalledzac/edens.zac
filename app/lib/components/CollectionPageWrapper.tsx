@@ -9,6 +9,7 @@ import { listSavedImageIdsServer } from '@/app/lib/api/personal';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { getUserPage } from '@/app/lib/api/user';
 import { buildAllCollectionsContentBlock } from '@/app/utils/allCollectionsContentBlock';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { findMembership } from '@/app/utils/galleryAccess';
 import { logger } from '@/app/utils/logger';
 import { buildMeContentBlock } from '@/app/utils/meContentBlock';
@@ -67,7 +68,7 @@ export default async function CollectionPageWrapper({
     // EVERY viewer gets the public "All Collections" tile immediately after it
     // (index 2 logged-in, index 1 anonymous) linking to the permission-scoped list.
     const collection =
-      slug === 'home' && Array.isArray(baseCollection.content)
+      slug === HOME_SLUG && Array.isArray(baseCollection.content)
         ? {
             ...baseCollection,
             content: [
@@ -154,7 +155,7 @@ export default async function CollectionPageWrapper({
 
     if (status >= 500) {
       // For home page, re-throw (page is force-dynamic so this won't break build)
-      if (slug === 'home') {
+      if (slug === HOME_SLUG) {
         throw error;
       }
       notFound();

@@ -255,6 +255,18 @@ export interface ContentCollectionModel extends Content {
   referencedCollectionId: number; // ID of the actual collection being referenced
   /** Rating 0-5 of the referenced collection (nullable). Used by home manage page. */
   rating?: number | null;
+  /**
+   * ISO date of the referenced collection (nullable). Mirrors backend
+   * `ContentModels.Collection.collectionDate`; threaded onto collection cards so a
+   * downstream showcase page can group cards by date.
+   */
+  collectionDate?: string;
+  /**
+   * ISO end date of the referenced collection (nullable). Mirrors backend
+   * `ContentModels.Collection.collectionEndDate`; pairs with `collectionDate` to render a
+   * range (see `formatDateRange` and its display variant).
+   */
+  collectionEndDate?: string;
 
   /**
    * Optional aggregated metadata of the referenced collection — surfaced on

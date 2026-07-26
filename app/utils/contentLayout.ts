@@ -9,6 +9,7 @@ import {
   type TextBlockItem,
 } from '@/app/types/Content';
 import { isContentCollection, pickImageDimensions } from '@/app/utils/contentTypeGuards';
+import { formatDateRange } from '@/app/utils/formatDateRange';
 import {
   acToBoxTree,
   type BoxTree,
@@ -181,17 +182,21 @@ export function clampParallaxDimensions(
  * (`isClient`/`isBlog`) and tags are carried through so the public card badge survives
  * the conversion.
  *
+ * No-cover collection cards default to a 1:1 placeholder (1000×1000) so the layout
+ * algorithm packs them uniformly alongside cards with real cover images.
+ *
+ * Synthetic PARENT collections (e.g. /all-collections) carry null content-table IDs
+ * because they aren't backed by content rows; the id falls back to the referenced
+ * collection's ID so downstream Map lookups (sizesMap, row keys) stay unique.
+ *
  * TODO: this parallax-card shape is built in four places — here, `collectionToContentModel`
  * (CollectionPage.tsx), `meContentBlock.ts` and `allCollectionsContentBlock.ts`. Collapse
- * them into one shared builder once #229 and #230 have both merged (they conflict on this
- * function).
+ * them into one shared builder.
  */
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel
 ): ContentParallaxImageModel {
   const raw = extractCollectionDimensions(col.coverImage);
-  // No-cover collection cards default to a 1:1 placeholder so the layout
-  // algorithm packs them uniformly alongside cards with real cover images.
   const w = raw.imageWidth ?? 1000;
   const h = raw.imageHeight ?? 1000;
   const { imageWidth, imageHeight } = clampParallaxDimensions(w, h);
@@ -199,13 +204,11 @@ export function convertCollectionContentToParallax(
   return {
     contentType: 'IMAGE',
     enableParallax: true,
-    // Synthetic PARENT collections (e.g. /all-collections) carry null content-table
-    // IDs because they aren't backed by content rows. Fall back to the referenced
-    // collection's ID so downstream Map lookups (sizesMap, row keys) stay unique.
     id: col.id ?? col.referencedCollectionId,
     title: col.title,
     slug: col.slug,
     collectionType: col.collectionType,
+    collectionDate: col.collectionDate,
     isClient: col.isClient,
     isBlog: col.isBlog,
     tags: col.tags,
@@ -464,7 +467,7 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
   if (collection.collectionDate) {
     items.push({
       type: 'date',
-      value: collection.collectionDate,
+      value: formatDateRange(collection.collectionDate, collection.collectionEndDate),
     });
   }
 

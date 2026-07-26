@@ -92,6 +92,11 @@ export interface CollectionBaseModel {
    * (`CollectionListModel.collectionDate`) allows an explicit `null` from the backend.
    */
   collectionDate?: string;
+  /**
+   * ISO end date for a date-range collection (nullable). When present alongside
+   * `collectionDate`, the pair renders as a formatted range (see `formatDateRange`).
+   */
+  collectionEndDate?: string;
   visibility?: CollectionVisibility;
   /** Rating 0-5, nullable. Used for ordering multi-collection list views. */
   rating?: number;
@@ -229,6 +234,8 @@ export interface CollectionUpdateRequest {
   locations?: LocationUpdate;
   collectionDate?: string | null;
   clearCollectionDate?: boolean;
+  collectionEndDate?: string | null;
+  clearCollectionEndDate?: boolean;
   visibility?: CollectionVisibility;
   /** Rating 0-5, nullable. `null` clears the rating. */
   rating?: number | null;

@@ -175,7 +175,7 @@ html,
      alias were migrated onto the semantic taxonomy and deleted (TK-3). ── */
   --text-base: var(--text-md); /* font-size, collection-edit stepper */
   --radius-sm: var(--radius-1);
-  --color-warning: #f4b400; /* RatingStars star fill */
+  --color-warning: #f4b400; /* amber: warning affordances + RatingStars star fill */
 }
 
 /* ── Scoped dark surface ──────────────────────────────────────────────────

@@ -30,8 +30,9 @@ export { toggleRelation };
 /**
  * Build an update payload containing only changed scalar fields. Relational fields
  * (`collections`, `siblings`, `parents`, `locations`, `tags`, `coverImageId`) are included
- * as-is when present. `clearCollectionDate: true` is substituted when a previously-set date
- * is removed. `null`/`undefined`/`''` are treated as equivalent for scalar comparison.
+ * as-is when present. `clearCollectionDate` / `clearCollectionEndDate: true` is substituted when
+ * a previously-set date is removed. `null`/`undefined`/`''` are treated as equivalent for scalar
+ * comparison.
  */
 export function buildUpdatePayload(
   formData: CollectionUpdateRequest,
@@ -73,6 +74,18 @@ export function buildUpdatePayload(
         payload.clearCollectionDate = true;
       } else {
         payload.collectionDate = newDate;
+      }
+    }
+  }
+
+  if (formData.collectionEndDate !== undefined) {
+    const originalEndDate = originalCollection.collectionEndDate || null;
+    const newEndDate = formData.collectionEndDate === '' ? null : formData.collectionEndDate;
+    if (newEndDate !== originalEndDate) {
+      if (newEndDate === null && originalEndDate !== null) {
+        payload.clearCollectionEndDate = true;
+      } else {
+        payload.collectionEndDate = newEndDate;
       }
     }
   }
