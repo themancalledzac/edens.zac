@@ -1,10 +1,7 @@
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
-
 import { FollowButton } from '@/app/components/Personal/FollowButton';
-import { useParallax } from '@/app/hooks/useParallax';
+import { CoverCard } from '@/app/components/ui/CoverCard/CoverCard';
 import { type CollectionModel } from '@/app/types/Collection';
 import { pickImageDimensions } from '@/app/utils/contentTypeGuards';
 
@@ -15,32 +12,20 @@ interface CollectionCardProps {
 }
 
 function CollectionCard({ collection }: CollectionCardProps) {
-  const parallaxRef = useParallax({ enableParallax: true });
   const { width: coverWidth, height: coverHeight } = pickImageDimensions(collection.coverImage);
 
   return (
-    <div ref={parallaxRef} className={styles.cardWrapper}>
-      <Link href={`/${collection.slug}`} className={styles.card}>
-        <div className={styles.imageWrapper}>
-          {collection.coverImage?.imageUrl ? (
-            <Image
-              src={collection.coverImage.imageUrl}
-              alt={collection.title}
-              width={coverWidth ?? 400}
-              height={coverHeight ?? 225}
-              sizes="(min-width: 768px) 200px, 140px"
-              className={`${styles.cardImage} parallax-bg`}
-            />
-          ) : (
-            <div className={`${styles.placeholder} parallax-bg`} />
-          )}
-        </div>
-        <div className={styles.overlay}>
-          <span className={styles.title}>{collection.title}</span>
-        </div>
-      </Link>
+    <CoverCard
+      className={styles.cardWrapper}
+      href={`/${collection.slug}`}
+      title={collection.title}
+      imageUrl={collection.coverImage?.imageUrl}
+      width={coverWidth}
+      height={coverHeight}
+      sizes="(min-width: 768px) 200px, 140px"
+    >
       <FollowButton collectionId={collection.id} />
-    </div>
+    </CoverCard>
   );
 }
 

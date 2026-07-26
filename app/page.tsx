@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
 export const metadata: Metadata = {
   title: 'Home',
@@ -21,5 +22,5 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  return <CollectionPageWrapper slug="home" />;
+  return <CollectionPageWrapper slug={HOME_SLUG} />;
 }

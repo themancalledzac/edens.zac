@@ -14,6 +14,8 @@
  * which is UTC-midnight and can shift a day in negative-offset timezones).
  */
 
+import { logger } from '@/app/utils/logger';
+
 const MONTHS_SHORT = [
   'Jan',
   'Feb',
@@ -29,25 +31,44 @@ const MONTHS_SHORT = [
   'Dec',
 ] as const;
 
-interface DateParts {
+export interface DateParts {
   year: number;
   month: number;
   day: number;
 }
 
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
+
+/** Anchored so `2026-03-0399` is rejected; a time suffix is tolerated and ignored. */
+const ISO_DATE_REGEX = /^(\d{4})-(\d{2})-(\d{2})(?:[ T].*)?$/;
+
 /**
- * Parse a `YYYY-MM-DD` ISO date string into its calendar parts without timezone drift.
- * Returns null when the input is empty or not a well-formed ISO date.
+ * Parse a `YYYY-MM-DD` ISO date string into its calendar parts without timezone drift
+ * (never `new Date('2026-03-03')`, which is UTC-midnight and can shift a day in
+ * negative-offset zones).
+ *
+ * Returns null when the input is absent or not a real calendar date — `2026-02-30` and
+ * `2026-13-01` are rejected, not silently rolled over.
  */
-function parseIsoDateParts(iso: string): DateParts | null {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+export function parseIsoDateParts(iso?: string | null): DateParts | null {
+  if (!iso) {
+    return null;
+  }
+  const match = ISO_DATE_REGEX.exec(iso);
   if (!match) {
     return null;
   }
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) {
+
+  // An out-of-range month indexes past the table, which is the month check.
+  const monthLength = DAYS_IN_MONTH[month - 1];
+  if (monthLength === undefined) {
+    return null;
+  }
+  const isLeapFebruary = month === 2 && ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0);
+  if (day < 1 || day > (isLeapFebruary ? 29 : monthLength)) {
     return null;
   }
   return { year, month, day };
@@ -84,6 +105,7 @@ export function formatDateRange(start?: string | null, end?: string | null): str
   const endParts = parseIsoDateParts(end);
 
   if (!endParts) {
+    logger.warn('formatDateRange', 'Unparseable end date dropped from the label', { start, end });
     return start;
   }
 
@@ -109,4 +131,18 @@ export function formatDateRange(start?: string | null, end?: string | null): str
   return `${formatMonthDayYear(startParts)} ${enDash} ${formatMonthDayYear(endParts)}`;
 }
 
-export default formatDateRange;
+/**
+ * Display variant for surfaces with no byte-parity constraint (the /collections showcase).
+ *
+ * Identical to {@link formatDateRange} except that a single (or same-day) date renders as
+ * `Mar 3, 2026` rather than the raw `2026-03-03`, so a grid never mixes ISO strings with
+ * formatted ranges. Unparseable input still falls through verbatim.
+ */
+export function formatDisplayDateRange(start?: string | null, end?: string | null): string {
+  const range = formatDateRange(start, end);
+  if (!range || range !== start) {
+    return range;
+  }
+  const parts = parseIsoDateParts(range);
+  return parts ? formatMonthDayYear(parts) : range;
+}

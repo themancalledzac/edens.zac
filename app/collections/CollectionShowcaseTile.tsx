@@ -1,14 +1,9 @@
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
-
-import { useParallax } from '@/app/hooks/useParallax';
+import { CoverCard } from '@/app/components/ui/CoverCard/CoverCard';
 import { type ContentCollectionModel } from '@/app/types/Content';
 import { pickImageDimensions } from '@/app/utils/contentTypeGuards';
-import { formatDateRange } from '@/app/utils/formatDateRange';
-
-import styles from './Collections.module.scss';
+import { formatDisplayDateRange } from '@/app/utils/formatDateRange';
 
 interface CollectionShowcaseTileProps {
   collection: ContentCollectionModel;
@@ -17,46 +12,26 @@ interface CollectionShowcaseTileProps {
 }
 
 /**
- * A single parallax cover tile for the public /collections showcase.
- *
- * Mirrors the LocationCollections cover-card treatment (parallax-bg cover image,
- * title overlay, whole-card link to `/{slug}`) and adds a date label rendered via
- * {@link formatDateRange} so multi-day collections read as exact ranges.
+ * A single cover tile for the public /collections showcase: the shared {@link CoverCard}
+ * plus a date label from {@link formatDisplayDateRange}, so multi-day collections read as
+ * exact ranges and single dates as `Mar 3, 2026` rather than raw ISO.
  */
 export function CollectionShowcaseTile({
   collection,
   priority = false,
 }: CollectionShowcaseTileProps) {
-  const parallaxRef = useParallax({ enableParallax: true });
   const { width: coverWidth, height: coverHeight } = pickImageDimensions(collection.coverImage);
-  const title = collection.title || collection.slug;
-  const dateLabel = formatDateRange(collection.collectionDate, collection.collectionEndDate);
 
   return (
-    <div ref={parallaxRef} className={styles.cardWrapper}>
-      <Link href={`/${collection.slug}`} className={styles.card}>
-        <div className={styles.imageWrapper}>
-          {collection.coverImage?.imageUrl ? (
-            <Image
-              src={collection.coverImage.imageUrl}
-              alt=""
-              width={coverWidth ?? 400}
-              height={coverHeight ?? 225}
-              sizes="(min-width: 768px) 33vw, 45vw"
-              priority={priority}
-              className={`${styles.cardImage} parallax-bg`}
-            />
-          ) : (
-            <div className={`${styles.placeholder} parallax-bg`} />
-          )}
-        </div>
-        <div className={styles.overlay}>
-          <span className={styles.title}>{title}</span>
-          {dateLabel ? <span className={styles.dateLabel}>{dateLabel}</span> : null}
-        </div>
-      </Link>
-    </div>
+    <CoverCard
+      href={`/${collection.slug}`}
+      title={collection.title || collection.slug}
+      imageUrl={collection.coverImage?.imageUrl}
+      width={coverWidth}
+      height={coverHeight}
+      sizes="(min-width: 768px) 33vw, 45vw"
+      priority={priority}
+      subtitle={formatDisplayDateRange(collection.collectionDate, collection.collectionEndDate)}
+    />
   );
 }
-
-export default CollectionShowcaseTile;

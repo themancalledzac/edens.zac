@@ -5,6 +5,7 @@ import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel } from '@/app/types/Content';
+import { BROWSE_EXCLUDED_SLUGS } from '@/app/utils/collectionSlugs';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { groupCollectionsByYear, UNDATED_YEAR } from '@/app/utils/groupCollectionsByYear';
 import { logger } from '@/app/utils/logger';
@@ -12,11 +13,8 @@ import { logger } from '@/app/utils/logger';
 import styles from './Collections.module.scss';
 import { CollectionShowcaseTile } from './CollectionShowcaseTile';
 
-/**
- * Slugs that exist as standalone pages and should never appear in the showcase list,
- * matching the admin /all-collections exclusion.
- */
-const EXCLUDED_SLUGS = new Set(['home']);
+/** Shared with the admin /all-collections surface — see BROWSE_EXCLUDED_SLUGS' TODO. */
+const EXCLUDED_SLUGS = new Set(BROWSE_EXCLUDED_SLUGS);
 
 /** Page size requested from the backend; reaching it means the list is truncated. */
 const SHOWCASE_PAGE_SIZE = 500;

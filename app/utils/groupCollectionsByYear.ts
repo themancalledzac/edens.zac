@@ -9,6 +9,7 @@
  */
 
 import { type ContentCollectionModel } from '@/app/types/Content';
+import { parseIsoDateParts } from '@/app/utils/formatDateRange';
 
 /** Sentinel year key for collections with no `collectionDate`. */
 export const UNDATED_YEAR = 'Undated';
@@ -23,21 +24,6 @@ export interface CollectionYearGroup {
 }
 
 /**
- * Parse the four-digit calendar year from an ISO `YYYY-MM-DD` date string.
- * Returns null when the input is empty, missing, or not a well-formed ISO date.
- */
-function parseYear(iso?: string | null): number | null {
-  if (!iso) {
-    return null;
-  }
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  if (!match) {
-    return null;
-  }
-  return Number(match[1]);
-}
-
-/**
  * Group collection content blocks into year buckets, newest first.
  *
  * - Dated collections sort by `collectionDate` DESC, then bucket by start year.
@@ -45,27 +31,25 @@ function parseYear(iso?: string | null): number | null {
  * - Undated collections (no parseable `collectionDate`) are collected into a single
  *   trailing {@link UNDATED_YEAR} bucket, preserving their input order.
  * - Within a dated bucket, collections keep their DESC-by-date order.
- *
- * @param collections - COLLECTION content blocks from the synthetic all-collections parent
- * @returns Year groups ordered newest-first, with the Undated group (if any) last
  */
 export function groupCollectionsByYear(
   collections: readonly ContentCollectionModel[]
 ): CollectionYearGroup[] {
-  const dated: ContentCollectionModel[] = [];
+  const dated: { year: number; collection: ContentCollectionModel }[] = [];
   const undated: ContentCollectionModel[] = [];
 
   for (const collection of collections) {
-    if (parseYear(collection.collectionDate) === null) {
+    const year = parseIsoDateParts(collection.collectionDate)?.year ?? null;
+    if (year === null) {
       undated.push(collection);
     } else {
-      dated.push(collection);
+      dated.push({ year, collection });
     }
   }
 
   dated.sort((a, b) => {
-    const dateA = a.collectionDate ?? '';
-    const dateB = b.collectionDate ?? '';
+    const dateA = a.collection.collectionDate ?? '';
+    const dateB = b.collection.collectionDate ?? '';
     if (dateA < dateB) return 1;
     if (dateA > dateB) return -1;
     return 0;
@@ -74,10 +58,10 @@ export function groupCollectionsByYear(
   const groups: CollectionYearGroup[] = [];
   let current: CollectionYearGroup | null = null;
 
-  for (const collection of dated) {
-    const year = String(parseYear(collection.collectionDate));
-    if (!current || current.year !== year) {
-      current = { year, collections: [] };
+  for (const { year, collection } of dated) {
+    const yearKey = String(year);
+    if (!current || current.year !== yearKey) {
+      current = { year: yearKey, collections: [] };
       groups.push(current);
     }
     current.collections.push(collection);
@@ -89,5 +73,3 @@ export function groupCollectionsByYear(
 
   return groups;
 }
-
-export default groupCollectionsByYear;

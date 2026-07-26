@@ -14,6 +14,7 @@ import {
   type DisplayMode,
   type TagViewModel,
 } from '@/app/types/Collection';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
@@ -56,7 +57,7 @@ export function StructureTab({ edit }: StructureTabProps) {
 
   const collection = currentState?.collection;
   const collectionSlug = collection?.slug;
-  const isHomeCollection = collectionSlug === 'home';
+  const isHomeCollection = collectionSlug === HOME_SLUG;
 
   const [pendingTagView, setPendingTagView] = useState<TagViewModel | null>(null);
 

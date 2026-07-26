@@ -40,6 +40,7 @@ import {
   type ContentImageUpdateResponse,
 } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import {
   isContentCollection,
@@ -1009,7 +1010,7 @@ export function useCollectionEdit({
   const handleDeleteCollection = useCallback(async () => {
     if (!collection) return;
     // Safety: the home system collection must never be deletable.
-    if (collection.slug === 'home') {
+    if (collection.slug === HOME_SLUG) {
       setError('The home collection cannot be deleted.');
       return;
     }
