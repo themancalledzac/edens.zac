@@ -14,6 +14,7 @@ import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type ContentParallaxImageModel } from '@/app/types/Content';
+import { logger } from '@/app/utils/logger';
 
 // SiteHeader transitively pulls next/cache (via MenuDropdown -> clearCacheAction)
 // and cannot run under jsdom. Stub it; the page's own <h1> is what we assert.
@@ -120,7 +121,7 @@ describe('CollectionPage (collection array) — protected-cover stripping', () =
     expect(renderedBlocks()[0]?.imageUrl).toBe('');
   });
 
-  it('keeps the cover image for a protected NON-client collection', () => {
+  it('strips the cover image from a protected NON-client collection (kind-agnostic)', () => {
     render(
       <CollectionPage
         collection={[
@@ -129,7 +130,33 @@ describe('CollectionPage (collection array) — protected-cover stripping', () =
       />
     );
 
-    expect(renderedBlocks()[0]?.imageUrl).toBe('https://example.com/secret-cover.jpg');
+    expect(renderedBlocks()[0]?.imageUrl).toBe('');
+  });
+
+  it('strips (and warns) when a protected payload carries no kind booleans', () => {
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    render(
+      <CollectionPage
+        collection={[
+          makeCollection({
+            isBlog: undefined,
+            isClient: undefined,
+            isPasswordProtected: true,
+            coverImage,
+          }),
+        ]}
+      />
+    );
+
+    expect(renderedBlocks()[0]?.imageUrl).toBe('');
+    expect(warn).toHaveBeenCalledWith(
+      'CollectionPage',
+      expect.stringContaining('missing isClient/isBlog'),
+      expect.objectContaining({ slug: 'paris-2025' })
+    );
+
+    warn.mockRestore();
   });
 
   it('keeps the cover image for an unprotected client gallery', () => {
@@ -158,7 +185,7 @@ describe('CollectionPage (collection array) — protected-cover stripping', () =
   });
 });
 
-describe('CollectionPage (collection array) — badge tag carry-through', () => {
+describe('CollectionPage (collection array) — badge carry-through', () => {
   beforeEach(() => {
     mockContentBlock.mockClear();
   });
@@ -168,22 +195,7 @@ describe('CollectionPage (collection array) — badge tag carry-through', () => 
     return mockContentBlock.mock.calls[0][0].content as ContentParallaxImageModel[];
   }
 
-  it('carries tags (names resolved to slugs) so the Gallery badge survives conversion', () => {
-    render(
-      <CollectionPage
-        collection={[makeCollection({ isBlog: false, tags: ['Landscape', 'Art Gallery'] })]}
-      />
-    );
-
-    const block = renderedBlocks()[0];
-    expect(block?.tags).toEqual([
-      { id: 0, name: 'Landscape', slug: 'landscape' },
-      { id: 0, name: 'Art Gallery', slug: 'art-gallery' },
-    ]);
-    expect(collectionPublicLabel(block ?? {})).toBe('Gallery');
-  });
-
-  it('still labels blogs "Story" and leaves untagged collections unbadged', () => {
+  it('labels blogs "Story" and leaves other collections unbadged', () => {
     render(
       <CollectionPage
         collection={[makeCollection({ isBlog: true }), makeCollection({ id: 2, isBlog: false })]}
@@ -192,7 +204,18 @@ describe('CollectionPage (collection array) — badge tag carry-through', () => 
 
     const blocks = renderedBlocks();
     expect(collectionPublicLabel(blocks[0] ?? {})).toBe('Story');
-    expect(blocks[1]?.tags).toBeUndefined();
     expect(collectionPublicLabel(blocks[1] ?? {})).toBeNull();
+  });
+
+  it('does not carry CollectionModel.tags (only synthetic list payloads ever set them)', () => {
+    render(
+      <CollectionPage
+        collection={[makeCollection({ isBlog: false, tags: ['Landscape', 'Art Gallery'] })]}
+      />
+    );
+
+    const block = renderedBlocks()[0];
+    expect(block?.tags).toBeUndefined();
+    expect(collectionPublicLabel(block ?? {})).toBeNull();
   });
 });

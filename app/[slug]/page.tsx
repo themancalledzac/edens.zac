@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { requireAdmin } from '@/app/utils/admin';
+import { logger } from '@/app/utils/logger';
 
 interface CollectionPageProps {
   params: Promise<{
@@ -34,9 +35,16 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
     const collection = await getCollectionBySlug(slug, 0, 500);
     const title = collection.title;
     const description = collection.description ?? `${title} — photography by Zac Eden`;
-    // Suppress OG/Twitter image for protected client galleries — the cover image is private
-    // until the per-gallery password is verified, and meta tags are crawlable without auth.
-    const isProtected = collection.isClient === true && collection.isPasswordProtected === true;
+    // Suppress OG/Twitter image for password-protected collections — the cover image is private
+    // until the password is verified, and meta tags are crawlable without auth. Keyed on
+    // `isPasswordProtected` alone (not the collection kind): protected is private regardless of
+    // kind, and the backend retains `coverImage` on locked responses, so this is the only defense.
+    const isProtected = collection.isPasswordProtected === true;
+    if (isProtected && collection.isClient === undefined) {
+      // Stale cache or a deploy-order slip: a protected payload without the kind booleans.
+      // Suppression still holds (it no longer reads them) — log so the window is observable.
+      logger.warn('slug-page', 'Protected collection payload is missing isClient/isBlog', { slug });
+    }
     const images =
       !isProtected && collection.coverImage?.imageUrl
         ? [{ url: collection.coverImage.imageUrl }]
@@ -59,7 +67,10 @@ export async function generateMetadata({ params }: CollectionPageProps): Promise
         images: images.map(img => img.url),
       },
     };
-  } catch {
+  } catch (error) {
+    // A transient API failure renders as "Not Found" metadata, which is indistinguishable from a
+    // genuinely missing slug — log so an outage is not silently reported as a 404.
+    logger.warn('slug-page', 'generateMetadata failed; falling back to Not Found', { slug, error });
     return { title: 'Not Found' };
   }
 }

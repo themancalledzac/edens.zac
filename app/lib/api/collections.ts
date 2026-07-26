@@ -20,7 +20,7 @@ import {
 import {
   type CollectionCreateRequest,
   type CollectionModel,
-  type CollectionType,
+  CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
@@ -220,14 +220,32 @@ export async function validateClientGalleryAccess(
 // ADMIN Endpoints (Dev only - /api/admin/collections)
 // ============================================================================
 
+/** The fields `withoutLegacyType` reads; every admin create/update body carries them. */
+interface LegacyTypedRequest {
+  type?: CollectionType;
+  isClient?: boolean;
+  isBlog?: boolean;
+}
+
 /**
- * Strip the deprecated `type` field from an outgoing create/update body. The
- * backend classifies collections by the `isClient`/`isBlog` booleans now; the
- * frontend never sends `type`, even while transitional admin UI still sets it.
+ * Strip the deprecated `type` field from an outgoing create/update body, deriving
+ * the `isClient`/`isBlog` booleans the backend now classifies on from the field
+ * being stripped. Transitional: admin UI (create form, edit sheet, Save as
+ * Collection, drag-retype) still speaks `type`, so the kind it selects must
+ * survive the strip. An explicit boolean on the body always wins over the
+ * derivation. Only CLIENT_GALLERY and BLOG are expressible as booleans —
+ * every other type derives to `undefined` (field omitted, backend leaves the
+ * flags alone on update and folds to MISC on create).
  */
-function withoutLegacyType<T extends { type?: unknown }>(body: T): Omit<T, 'type'> {
-  const { type: _legacyType, ...rest } = body;
-  return rest;
+function withoutLegacyType<T extends LegacyTypedRequest>(
+  body: T
+): Omit<T, 'type'> & { isClient?: boolean; isBlog?: boolean } {
+  const { type, ...rest } = body;
+  return {
+    ...rest,
+    isClient: rest.isClient ?? (type === CollectionType.CLIENT_GALLERY || undefined),
+    isBlog: rest.isBlog ?? (type === CollectionType.BLOG || undefined),
+  };
 }
 
 /**

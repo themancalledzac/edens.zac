@@ -68,10 +68,50 @@ describe('canDownloadCollection', () => {
     expect(canDownloadCollection(clientMe, { id: 7 })).toBe(true);
   });
 
-  it('no longer short-circuits for an anonymous viewer without a role grant (type fast-path deleted)', () => {
-    // Previously a CLIENT_GALLERY-typed payload returned true for anyone; the
-    // role/cookie-backed grant surfaced via /api/auth/me is now the sole mechanism.
+  it('is false for an anonymous viewer with no role grant and no cookie proof', () => {
     expect(canDownloadCollection(null, { id: 7 })).toBe(false);
+  });
+
+  it('is true for an anonymous viewer on a protected client gallery that returned content', () => {
+    // Content present on a protected client gallery proves the password cookie validated —
+    // the backend nulls `content` otherwise. /api/auth/me never sees that cookie.
+    expect(
+      canDownloadCollection(null, {
+        id: 7,
+        isClient: true,
+        isPasswordProtected: true,
+        content: [],
+      })
+    ).toBe(true);
+  });
+
+  it('is false for an anonymous viewer on a protected client gallery with content withheld', () => {
+    expect(
+      canDownloadCollection(null, { id: 7, isClient: true, isPasswordProtected: true })
+    ).toBe(false);
+  });
+
+  it('is false for an anonymous viewer on an UNprotected client gallery', () => {
+    // No password means no cookie to prove; downloads there need a real role grant.
+    expect(
+      canDownloadCollection(null, {
+        id: 7,
+        isClient: true,
+        isPasswordProtected: false,
+        content: [],
+      })
+    ).toBe(false);
+  });
+
+  it('is false for an anonymous viewer on a protected NON-client collection with content', () => {
+    expect(
+      canDownloadCollection(null, {
+        id: 7,
+        isClient: false,
+        isPasswordProtected: true,
+        content: [],
+      })
+    ).toBe(false);
   });
 
   it('is false for a GENERAL member of the collection', () => {

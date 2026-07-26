@@ -4,6 +4,7 @@
  */
 
 import {
+  createChildCollection as createChildCollectionApi,
   createCollection as createCollectionApi,
   getCollectionsByLocation,
   parseCollectionArrayResponse,
@@ -613,6 +614,67 @@ describe('createCollection / updateCollection — boolean-only wire contract', (
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ id: 9, isBlog: true, title: 'Paris 2026' }),
+      })
+    );
+  });
+
+  it('createCollection derives isClient from a type-only body (transitional admin form)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(1) })
+    );
+
+    await createCollectionApi({ type: CollectionType.CLIENT_GALLERY, title: 'Smith Wedding' });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/createCollection'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ title: 'Smith Wedding', isClient: true }),
+      })
+    );
+  });
+
+  it('updateCollection derives isBlog from a type-only body (drag-retype, edit sheet)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(9) })
+    );
+
+    await updateCollectionApi(9, { id: 9, type: CollectionType.BLOG });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ id: 9, isBlog: true }) })
+    );
+  });
+
+  it('omits both booleans for a type the wire contract cannot express (PORTFOLIO)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(9) })
+    );
+
+    await updateCollectionApi(9, { id: 9, type: CollectionType.PORTFOLIO });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ id: 9 }) })
+    );
+  });
+
+  it('createChildCollection strips type and derives the booleans (the unwrapped fourth site)', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(4) })
+    );
+
+    await createChildCollectionApi(3, {
+      type: CollectionType.CLIENT_GALLERY,
+      title: 'New Child Collection',
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/3/child'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ title: 'New Child Collection', isClient: true }),
       })
     );
   });

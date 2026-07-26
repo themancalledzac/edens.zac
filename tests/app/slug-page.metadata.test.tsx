@@ -1,15 +1,16 @@
 /**
  * Tests for app/[slug]/page.tsx generateMetadata — SEO suppression for
- * password-protected client galleries. The cover image is private until the
- * per-gallery password is verified, and meta tags are crawlable without auth,
- * so protection is keyed on the collection's `isClient` + `isPasswordProtected`
- * booleans (the retired type enum plays no part).
+ * password-protected collections. The cover image is private until the password
+ * is verified, and meta tags are crawlable without auth, so suppression is keyed
+ * on `isPasswordProtected` alone: protected means private regardless of kind, and
+ * a payload missing the kind booleans must still be suppressed.
  */
 
 import { generateMetadata } from '@/app/[slug]/page';
 import { getCollectionBySlug } from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import { logger } from '@/app/utils/logger';
 
 jest.mock('@/app/lib/api/collections', () => ({
   getCollectionBySlug: jest.fn(),
@@ -55,7 +56,7 @@ async function metadataFor(overrides: Partial<CollectionModel> = {}) {
   });
 }
 
-describe('generateMetadata — protected client-gallery suppression', () => {
+describe('generateMetadata — protected-collection suppression', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -75,10 +76,40 @@ describe('generateMetadata — protected client-gallery suppression', () => {
     expect(metadata.openGraph?.images).toEqual([{ url: 'https://example.com/secret-cover.jpg' }]);
   });
 
-  it('keeps the OG image for a protected NON-client collection (suppression is client-only)', async () => {
+  it('suppresses the OG image for a protected NON-client collection', async () => {
     const metadata = await metadataFor({ isClient: false, isPasswordProtected: true });
 
-    expect(metadata.title).toBe('Smith Wedding');
+    expect(metadata.title).toBe('Smith Wedding — Private Gallery');
+    expect(metadata.openGraph?.images).toEqual([]);
+  });
+
+  it('suppresses (and warns) when a protected payload carries no kind booleans', async () => {
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    const metadata = await metadataFor({
+      isClient: undefined,
+      isBlog: undefined,
+      isPasswordProtected: true,
+    });
+
+    expect(metadata.openGraph?.images).toEqual([]);
+    expect(metadata.title).toBe('Smith Wedding — Private Gallery');
+    expect(warn).toHaveBeenCalledWith(
+      'slug-page',
+      expect.stringContaining('missing isClient/isBlog'),
+      expect.objectContaining({ slug: 'smith-wedding' })
+    );
+
+    warn.mockRestore();
+  });
+
+  it('keeps the OG image when the kind booleans are absent but the collection is unprotected', async () => {
+    const metadata = await metadataFor({
+      isClient: undefined,
+      isBlog: undefined,
+      isPasswordProtected: false,
+    });
+
     expect(metadata.openGraph?.images).toEqual([{ url: 'https://example.com/secret-cover.jpg' }]);
   });
 });

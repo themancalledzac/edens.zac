@@ -31,15 +31,31 @@ export function isClientOfCollection(
 /**
  * True when the viewer may download from this collection. Downloading is a *capability*, not a
  * collection *kind*: the backend authorizes downloads by role (a role_collection CLIENT grant on
- * ANY collection, surfaced by /api/auth/me), so the UI keys on that grant alone. A CLIENT
- * membership surfaces downloads on any collection (e.g. a portfolio shared with a specific
- * client), matching the admin "Client (download/tag)" grant. Deliberately narrower than Selects,
- * which stay gated on the collection's `isClient` flag AND the role.
+ * ANY collection, surfaced by /api/auth/me) OR by a validated per-gallery password cookie, so the
+ * UI mirrors both paths:
+ *   - a logged-in CLIENT membership → downloads on any collection (e.g. a portfolio shared with a
+ *     specific client), matching the admin "Client (download/tag)" grant;
+ *   - an anonymous password-cookie client → has no `me` at all (`/api/auth/me` 401s without a
+ *     session principal; the cookie plays no part), so the cookie is read indirectly: content
+ *     present on a protected client gallery is by construction proof of a validated cookie,
+ *     because the backend nulls `content` when the cookie fails to validate.
+ * Deliberately narrower than Selects, which stay gated on the collection's `isClient` flag AND the
+ * role.
  */
 export function canDownloadCollection(
   me: MeResponse | null,
-  collection: Pick<CollectionModel, 'id'> | null | undefined
+  collection:
+    | Pick<CollectionModel, 'id' | 'isClient' | 'isPasswordProtected' | 'content'>
+    | null
+    | undefined
 ): boolean {
   if (!collection) return false;
+  if (
+    collection.isClient === true &&
+    collection.isPasswordProtected === true &&
+    Array.isArray(collection.content)
+  ) {
+    return true;
+  }
   return collection.id != null && isClientOfCollection(me, collection.id, false);
 }

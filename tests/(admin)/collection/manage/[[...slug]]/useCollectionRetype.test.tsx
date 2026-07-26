@@ -36,7 +36,9 @@ describe('useCollectionRetype', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('optimistically moves the collection then PUTs the new type', async () => {
-    mockUpdateCollection.mockResolvedValue({ collection: { id: 7 } } as never);
+    mockUpdateCollection.mockResolvedValue({
+      collection: { id: 7, type: 'PORTFOLIO' },
+    } as never);
     const { result, getCollections } = setup();
 
     await act(async () => {
@@ -45,6 +47,20 @@ describe('useCollectionRetype', () => {
 
     expect(getCollections()).toEqual([{ ...dragged, type: 'PORTFOLIO' }]);
     expect(mockUpdateCollection).toHaveBeenCalledWith(7, { id: 7, type: 'PORTFOLIO' });
+  });
+
+  it('snaps back to the persisted type and errors when the backend did not retype', async () => {
+    // The wire body carries only isClient/isBlog, which cannot express PORTFOLIO — the
+    // backend leaves the collection alone and the UI must not keep the optimistic move.
+    mockUpdateCollection.mockResolvedValue({ collection: { id: 7, type: 'BLOG' } } as never);
+    const { result, getCollections, setError } = setup();
+
+    await act(async () => {
+      await result.current.handleChangeType(dragged, CollectionType.PORTFOLIO);
+    });
+
+    expect(getCollections()).toEqual([dragged]);
+    expect(setError).toHaveBeenLastCalledWith('Failed to move "Hidden Lake" to Portfolio');
   });
 
   it('reverts and sets an error when the PUT returns null', async () => {
@@ -94,7 +110,7 @@ describe('useCollectionRetype', () => {
       const first = result.current.handleChangeType(dragged, CollectionType.PORTFOLIO);
       // A second drag on the same collection while the first is pending must be dropped.
       await result.current.handleChangeType(dragged, CollectionType.ART_GALLERY);
-      resolveFirst({ collection: { id: 7 } });
+      resolveFirst({ collection: { id: 7, type: 'PORTFOLIO' } });
       await first;
     });
 

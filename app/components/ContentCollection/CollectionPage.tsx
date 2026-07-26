@@ -5,8 +5,8 @@ import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
+import { logger } from '@/app/utils/logger';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
-import { tagNameToSlug } from '@/app/utils/tagUtils';
 
 import CollectionPageClient from './CollectionPageClient';
 import styles from './ContentCollectionPage.module.scss';
@@ -16,9 +16,9 @@ interface ContentCollectionPageProps {
   chunkSize?: number; // Number of images per row (default: 2)
   /**
    * Opt-in flag to bypass the defense-in-depth strip of cover images on
-   * password-protected client-gallery entries. Admin-only callers set this
-   * true so the admin can see their own covers. Default false preserves the
-   * strip for anonymous public list views.
+   * password-protected entries. Admin-only callers set this true so the admin
+   * can see their own covers. Default false preserves the strip for anonymous
+   * public list views.
    */
   showProtectedCovers?: boolean;
   /** UA-derived SSR fallback viewport from {@link resolveSsrViewport}. */
@@ -41,10 +41,17 @@ function collectionToContentModel(
   col: CollectionModel,
   showProtectedCovers: boolean
 ): ContentParallaxImageModel {
-  // Defense-in-depth: never render a coverImage for a password-protected client
-  // gallery in list views unless the caller explicitly opts in. Backend BE-H5
-  // strips it at the API, but a stale cache or future regression could re-expose it.
-  const isProtected = col.isClient === true && col.isPasswordProtected === true;
+  // Defense-in-depth: never render a coverImage for a password-protected collection
+  // in list views unless the caller explicitly opts in. Backend BE-H5 strips it at
+  // the API, but a stale cache or future regression could re-expose it. Keyed on
+  // `isPasswordProtected` alone so a payload missing the kind booleans (the exact
+  // stale-cache case this strip exists for) still strips.
+  const isProtected = col.isPasswordProtected === true;
+  if (isProtected && col.isClient === undefined) {
+    logger.warn('CollectionPage', 'Protected collection payload is missing isClient/isBlog', {
+      slug: col.slug,
+    });
+  }
   const safeCoverImage = isProtected && !showProtectedCovers ? null : col.coverImage;
   const { imageWidth, imageHeight } = clampParallaxDimensions(
     safeCoverImage?.imageWidth,
@@ -60,10 +67,10 @@ function collectionToContentModel(
     collectionType: col.type,
     isClient: col.isClient,
     isBlog: col.isBlog,
-    // Carry the collection's tags so the public card badge (`art-gallery` tag
-    // -> "Gallery") survives the conversion. CollectionModel.tags is names-only
-    // (string[]), so recover each slug via the backend-parity slugifier.
-    tags: col.tags?.map(name => ({ id: 0, name, slug: tagNameToSlug(name) })),
+    // Tags are deliberately not carried: `CollectionModel.tags` is populated only
+    // by the backend's SyntheticCollectionResolver (list views), so real payloads
+    // reaching this converter carry none. The `art-gallery` -> "Gallery" badge
+    // therefore does not render here; the isBlog -> "Story" badge still does.
     description: col.description ?? null,
     imageUrl: safeCoverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',
