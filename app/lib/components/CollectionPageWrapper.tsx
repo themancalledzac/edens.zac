@@ -81,13 +81,6 @@ export default async function CollectionPageWrapper({
 
     const chunkSize = collection.rowsWide ?? LAYOUT.defaultChunkSize;
 
-    // Seed the viewer's persisted selects for this collection (client galleries only) AND their
-    // global saved (bookmarked) image ids so the SelectsProvider/SavesProvider prime without a
-    // client round-trip. Saves are cross-collection and available to any logged-in viewer, so seed
-    // them whenever a principal is present; both reads return [] for anonymous viewers.
-    // NOTE: since the gate unification (single render path keyed on isPasswordProtected), the
-    // saved-ids seed reaches EVERY collection render — previously only gateable types
-    // (CLIENT_GALLERY/PARENT) received it, which contradicted the intent above. Deliberate.
     if (collection.isClient === undefined && findMembership(me, collection.id)) {
       // The grant proves this is a client gallery while the payload does not say so: a stale
       // cache entry or a deploy-order slip. Selects are silently withheld from an entitled
@@ -98,6 +91,10 @@ export default async function CollectionPageWrapper({
       });
     }
 
+    // Seed the viewer's persisted selects for this collection (client galleries only) AND their
+    // global saved (bookmarked) image ids so the SelectsProvider/SavesProvider prime without a
+    // client round-trip. Saves are cross-collection, so they seed on EVERY collection render
+    // whenever a principal is present; both reads return [] for anonymous viewers. Pinned by test.
     const [initialSelectedIds, initialSavedImageIds] = await Promise.all([
       collection.isClient === true
         ? listSelectIdsServer(collection.id)
@@ -105,9 +102,7 @@ export default async function CollectionPageWrapper({
       me ? listSavedImageIdsServer() : Promise.resolve<number[]>([]),
     ]);
 
-    // Gate password-protected collections — the backend withholds content for any
-    // protected collection regardless of kind, so the gate keys on
-    // isPasswordProtected alone. `Array.isArray(content)` is the auth signal:
+    // Gate password-protected collections. `Array.isArray(content)` is the auth signal:
     // the backend sets content to null when the password cookie fails to validate.
     // Routing here (not wrapping children) prevents RSC payload serialization for
     // locked viewers. editMode bypasses the gate — admins are never password-walled.

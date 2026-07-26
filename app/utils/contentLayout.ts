@@ -177,9 +177,14 @@ export function clampParallaxDimensions(
 }
 
 /**
- * Convert collection to parallax image for unified rendering on public pages
- * @param col - Collection content model to convert
- * @returns Parallax image model with collection metadata
+ * Convert collection to parallax image for unified rendering on public pages. Kind
+ * (`isClient`/`isBlog`) and tags are carried through so the public card badge survives
+ * the conversion.
+ *
+ * TODO: this parallax-card shape is built in four places — here, `collectionToContentModel`
+ * (CollectionPage.tsx), `meContentBlock.ts` and `allCollectionsContentBlock.ts`. Collapse
+ * them into one shared builder once #229 and #230 have both merged (they conflict on this
+ * function).
  */
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel
@@ -203,8 +208,6 @@ export function convertCollectionContentToParallax(
     collectionType: col.collectionType,
     isClient: col.isClient,
     isBlog: col.isBlog,
-    // Carry the referenced collection's tags so the public card badge (e.g.
-    // the `art-gallery` tag -> "Gallery") survives the parallax conversion.
     tags: col.tags,
     description: col.description ?? null,
     imageUrl: col.coverImage?.imageUrl ?? '',

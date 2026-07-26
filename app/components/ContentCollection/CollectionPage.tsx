@@ -36,6 +36,11 @@ interface ContentCollectionPageProps {
 /**
  * Converts a CollectionModel to ContentParallaxImageModel for unified parallax rendering.
  * Dimensions are clamped to a minimum 4:5 aspect ratio.
+ *
+ * Tags are deliberately not carried: `CollectionModel.tags` is populated only by the
+ * backend's SyntheticCollectionResolver (list views), so real payloads reaching this
+ * converter carry none. The `art-gallery` -> "Gallery" badge therefore does not render
+ * here; the isBlog -> "Story" badge still does.
  */
 function collectionToContentModel(
   col: CollectionModel,
@@ -67,10 +72,6 @@ function collectionToContentModel(
     collectionType: col.type,
     isClient: col.isClient,
     isBlog: col.isBlog,
-    // Tags are deliberately not carried: `CollectionModel.tags` is populated only
-    // by the backend's SyntheticCollectionResolver (list views), so real payloads
-    // reaching this converter carry none. The `art-gallery` -> "Gallery" badge
-    // therefore does not render here; the isBlog -> "Story" badge still does.
     description: col.description ?? null,
     imageUrl: safeCoverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',

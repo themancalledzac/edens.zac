@@ -14,16 +14,8 @@ import type { TagUpdate } from '@/app/types/Collection';
 import type { ContentTagModel } from '@/app/types/Metadata';
 
 /**
- * Convert a tag display name to its canonical slug. Alias for the shared
- * `slugify` in `locationUtils.ts` — the single FE mirror of backend
- * `SlugUtil.generateSlug` (lowercase, strip non `[a-z0-9\s-]`, whitespace runs
- * to `-`, collapse `-` runs, trim edge `-`). Backend tag slugs are ALWAYS
- * derived from names with that algorithm (V8 backfill, MetadataService and
- * TagRepository tag creation), so slugifying a `CollectionModel.tags` name
- * recovers the slug the backend would emit for that tag. Idempotent on strings
- * that are already slugs. Do NOT re-implement locally: tag routes
- * (`CollectionContentRenderer`) and tag badges must share one implementation
- * so a backend algorithm change is fixed in exactly one place.
+ * Convert a tag display name to its canonical slug. Alias for `slugify` in
+ * `locationUtils.ts` — see that function for the backend-parity contract.
  */
 export { slugify as tagNameToSlug } from '@/app/utils/locationUtils';
 

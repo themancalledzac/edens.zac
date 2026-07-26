@@ -21,11 +21,11 @@ import {
 } from '@/app/utils/contentTypeGuards';
 
 /**
- * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel)
+ * Check if an item is a collection card (converted from ContentCollectionModel or CollectionModel).
  * Collection cards carry the source collection's slug through conversion, and no other top-level
- * content model has a `slug` field, so slug presence is the discriminant — the same re-key as the
- * parallax card badge in contentRendererUtils. (Formerly keyed on the deprecated `collectionType`
- * mirror, which silently dies once the backend stops emitting the legacy `type` field.)
+ * content model has a `slug` field, so slug presence is the discriminant — the same key as the
+ * parallax card badge in contentRendererUtils. Side effect: the synthetic home tiles ("Me",
+ * "All Collections") also carry a slug, so they now rate as collection cards.
  */
 export function isCollectionCard(item: AnyContentModel): boolean {
   return 'slug' in item && !!item.slug;

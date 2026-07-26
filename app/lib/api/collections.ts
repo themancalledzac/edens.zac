@@ -413,7 +413,7 @@ export async function createChildCollection(
 /**
  * POST /api/admin/tags/{id}/save-as-collection
  * Promote a tag view into a real collection. Backend applies defaults when
- * fields are omitted. The deprecated `type` field is stripped before sending.
+ * fields are omitted.
  */
 export async function saveCollectionFromTag(
   tagId: number,

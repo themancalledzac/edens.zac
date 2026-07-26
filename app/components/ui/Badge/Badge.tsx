@@ -17,13 +17,10 @@ export interface BadgeProps {
 }
 
 /**
- * The collection fields the public badge derives its label from. Structural so
- * any collection-shaped payload (CollectionModel, ContentCollectionModel,
- * converted parallax cards) can be passed directly. Tags may arrive as full
- * models ({ slug }) or as raw strings. Raw strings are tag NAMES on
- * `CollectionModel.tags` (names only, no slugs — see tagUtils), so every string
- * is normalized through {@link tagNameToSlug} before the slug-keyed lookup;
- * the normalization is idempotent, so slug-shaped strings also match.
+ * The collection fields the public badge derives its label from. Structural so any
+ * collection-shaped payload can be passed directly. Tags arrive either as models
+ * ({ slug }) or as raw NAMES (`CollectionModel.tags`), so strings are normalized
+ * through {@link tagNameToSlug} — idempotent, so slug-shaped strings match too.
  */
 export interface CollectionBadgeFields {
   isBlog?: boolean;
