@@ -385,7 +385,7 @@ function collectRowItems(
  *    Density already drives packing through rowWidth, so a rowWidth-scaled bar would
  *    over-inflate past MAX_FILL_RATIO at high density.
  * 2. A row still under that bar accepts one moderate overfill (newFill up to 1.35)
- *    rather than closing short - a lone under-filled row reads worse than a slightly
+ *    rather than closing short — a lone under-filled row reads worse than a slightly
  *    tight one.
  * 3. A solo-eligible item met after the row has started is skipped rather than taken,
  *    so it surfaces as a leading solo hero on the next iteration and gets its own row.
@@ -612,7 +612,7 @@ type AbstractNode =
  * Build an unlabeled binary tree by recursively splitting at the adjacent boundary
  * whose two halves have the closest effectiveRating sums. Balances on effectiveRating,
  * not width-cost, so the split reflects prominence rather than packing width. Order is
- * preserved - only adjacent splits, never swaps.
+ * preserved — only adjacent splits, never swaps.
  */
 function splitByPointBalance(items: ImageType[]): AbstractNode {
   if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
@@ -845,7 +845,7 @@ function arPenalty(rowAR: number, target: number): number {
  * within the subtree. `value` is prominence P, so equitySpread rewards high-rated
  * verticals with more area.
  *
- * vStack inverts: leftFactor uses rightAR (and vice versa) - under 1/AR the smaller-AR
+ * vStack inverts: leftFactor uses rightAR (and vice versa) — under 1/AR the smaller-AR
  * child claims the larger share.
  */
 function leafShares(component: AtomicComponent): {
