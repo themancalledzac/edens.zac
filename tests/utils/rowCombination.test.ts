@@ -1426,7 +1426,7 @@ describe('row density packing', () => {
 
   it('does not drop a high-cost 5★ image at rowWidth 3 (best-fit fallback forces its row)', () => {
     // 5★ cv 5.0 at rowWidth 3 = fill 1.67 on the first item → greedy fill exits
-    // with seqCount 0; the best-fit fallback must still give it its own row.
+    // with sequentialCount 0; the best-fit fallback must still give it its own row.
     const items = [createHorizontalImage(1, 5), createHorizontalImage(2, 3)];
     const rows = buildRows(items, 3, 1.0);
     const total = rows.reduce((n, r) => n + r.components.length, 0);
