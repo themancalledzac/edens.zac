@@ -82,6 +82,8 @@ const createCollectionContent = (
 const createCollectionModel = (overrides?: Partial<CollectionModel>): CollectionModel => ({
   id: 1,
   type: CollectionType.PORTFOLIO,
+  isClient: false,
+  isBlog: false,
   title: 'Test Collection',
   slug: 'test-collection',
   createdAt: '2024-01-01T00:00:00Z',
@@ -1404,6 +1406,8 @@ describe('refreshCollectionAfterOperation', () => {
       slug: mockSlug,
       title: 'Test Collection',
       type: CollectionType.PORTFOLIO,
+      isClient: false,
+      isBlog: false,
       visibility: CollectionVisibility.LISTED,
       displayMode: 'CHRONOLOGICAL',
       locations: [],

@@ -1,10 +1,11 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
 import { type MeResponse } from '@/app/types/Auth';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type AnyContentModel, type ContentParallaxImageModel } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
+import { logger } from '@/app/utils/logger';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
 
 import CollectionPageClient from './CollectionPageClient';
@@ -15,10 +16,9 @@ interface ContentCollectionPageProps {
   chunkSize?: number; // Number of images per row (default: 2)
   /**
    * Opt-in flag to bypass the defense-in-depth strip of cover images on
-   * password-protected CLIENT_GALLERY entries. Admin-only callers (e.g.
-   * /all-collections, /collectionType/* in local dev) set this true so the
-   * admin can see their own covers. Default false preserves the strip for
-   * anonymous public list views.
+   * password-protected entries. Admin-only callers set this true so the admin
+   * can see their own covers. Default false preserves the strip for anonymous
+   * public list views.
    */
   showProtectedCovers?: boolean;
   /** UA-derived SSR fallback viewport from {@link resolveSsrViewport}. */
@@ -36,16 +36,27 @@ interface ContentCollectionPageProps {
 /**
  * Converts a CollectionModel to ContentParallaxImageModel for unified parallax rendering.
  * Dimensions are clamped to a minimum 4:5 aspect ratio.
+ *
+ * Tags are deliberately not carried: `CollectionModel.tags` is populated only by the
+ * backend's SyntheticCollectionResolver (list views), so real payloads reaching this
+ * converter carry none. The `art-gallery` -> "Gallery" badge therefore does not render
+ * here; the isBlog -> "Story" badge still does.
  */
 function collectionToContentModel(
   col: CollectionModel,
   showProtectedCovers: boolean
 ): ContentParallaxImageModel {
-  // Defense-in-depth: never render a coverImage for a password-protected CLIENT_GALLERY in
-  // list views unless the caller explicitly opts in. Backend BE-H5 strips it at the API,
-  // but a stale cache or future regression could re-expose it.
-  const isProtected =
-    col.type === CollectionType.CLIENT_GALLERY && col.isPasswordProtected === true;
+  // Defense-in-depth: never render a coverImage for a password-protected collection
+  // in list views unless the caller explicitly opts in. Backend BE-H5 strips it at
+  // the API, but a stale cache or future regression could re-expose it. Keyed on
+  // `isPasswordProtected` alone so a payload missing the kind booleans (the exact
+  // stale-cache case this strip exists for) still strips.
+  const isProtected = col.isPasswordProtected === true;
+  if (isProtected && col.isClient === undefined) {
+    logger.warn('CollectionPage', 'Protected collection payload is missing isClient/isBlog', {
+      slug: col.slug,
+    });
+  }
   const safeCoverImage = isProtected && !showProtectedCovers ? null : col.coverImage;
   const { imageWidth, imageHeight } = clampParallaxDimensions(
     safeCoverImage?.imageWidth,
@@ -59,6 +70,8 @@ function collectionToContentModel(
     title: col.title,
     slug: col.slug,
     collectionType: col.type,
+    isClient: col.isClient,
+    isBlog: col.isBlog,
     description: col.description ?? null,
     imageUrl: safeCoverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',

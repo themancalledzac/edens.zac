@@ -1,6 +1,6 @@
 import { type ReactElement } from 'react';
 
-import { CollectionType } from '@/app/types/Collection';
+import { tagNameToSlug } from '@/app/utils/tagUtils';
 
 import styles from './Badge.module.scss';
 
@@ -17,25 +17,49 @@ export interface BadgeProps {
 }
 
 /**
- * Curated public label for a CollectionType. Internal/organizational types
- * (PARENT, PORTFOLIO, HOME, CLIENT_GALLERY, MISC) return null so they are never
- * surfaced to visitors; only visitor-facing types map to a friendly label.
+ * The collection fields the public badge derives its label from. Structural so any
+ * collection-shaped payload can be passed directly. Tags arrive either as models
+ * ({ slug }) or as raw NAMES (`CollectionModel.tags`), so strings are normalized
+ * through {@link tagNameToSlug} — idempotent, so slug-shaped strings match too.
  */
-export function collectionTypeToPublicLabel(type: CollectionType): string | null {
-  switch (type) {
-    case CollectionType.ART_GALLERY:
-      return 'Gallery';
-    case CollectionType.BLOG:
-      return 'Story';
-    case CollectionType.PARENT:
-    case CollectionType.PORTFOLIO:
-    case CollectionType.HOME:
-    case CollectionType.CLIENT_GALLERY:
-    case CollectionType.MISC:
-      return null;
-    default:
-      return null;
+export interface CollectionBadgeFields {
+  isBlog?: boolean;
+  tags?: ReadonlyArray<string | { slug?: string } | null | undefined>;
+}
+
+/**
+ * Curated public labels keyed by tag slug, in precedence order — the first entry
+ * whose slug the collection carries wins, so multi-tag collections get a declared
+ * label rather than one decided by tag array order. The backend backfilled the
+ * `art-gallery` tag onto former ART_GALLERY collections, so the "Gallery" badge
+ * derives from that tag rather than the legacy type enum.
+ */
+const TAG_PUBLIC_LABELS: ReadonlyArray<readonly [slug: string, label: string]> = [
+  ['art-gallery', 'Gallery'],
+];
+
+/**
+ * Curated public label for a collection. Blogs surface as "Story"; collections
+ * carrying a badge-mapped tag (e.g. `art-gallery`) surface that tag's label.
+ * Everything else returns null so internal/organizational collections are
+ * never labeled for visitors. Null/slugless tag entries degrade to no badge
+ * rather than throwing during SSR.
+ */
+export function collectionPublicLabel(collection: CollectionBadgeFields): string | null {
+  if (collection.isBlog === true) {
+    return 'Story';
   }
+  const slugs = new Set(
+    (collection.tags ?? [])
+      .map(tag => (typeof tag === 'string' ? tagNameToSlug(tag) : tag?.slug))
+      .filter((slug): slug is string => Boolean(slug))
+  );
+  for (const [slug, label] of TAG_PUBLIC_LABELS) {
+    if (slugs.has(slug)) {
+      return label;
+    }
+  }
+  return null;
 }
 
 /** Canonical overlay badge: a positioned label chip (tone + corner). */

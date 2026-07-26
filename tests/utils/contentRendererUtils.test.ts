@@ -3,7 +3,6 @@
  * Tests content normalization and position class determination
  */
 
-import { CollectionType } from '@/app/types/Collection';
 import type { AnyContentModel } from '@/app/types/Content';
 import {
   buildParallaxWrapperClassName,
@@ -105,9 +104,15 @@ describe('contentRendererUtils', () => {
         expect(result.isMobile).toBe(false);
       });
 
-      it('maps a public collection type to its curated badge label', () => {
+      it('labels a blog collection card "Story" from isBlog', () => {
+        const collection = createCollectionContent(1, { isBlog: true });
+        const result = normalizeContentToRendererProps(collection, 500, 300, 'imageSingle', false);
+        expect(result.cardTypeBadge).toBe('Story');
+      });
+
+      it('labels an art-gallery-tagged collection card "Gallery"', () => {
         const collection = createCollectionContent(1, {
-          collectionType: CollectionType.ART_GALLERY,
+          tags: [{ id: 5, name: 'Art Gallery', slug: 'art-gallery' }],
         });
         const result = normalizeContentToRendererProps(collection, 500, 300, 'imageSingle', false);
         expect(result.cardTypeBadge).toBe('Gallery');
@@ -160,18 +165,35 @@ describe('contentRendererUtils', () => {
       });
     });
 
-    describe('PARALLAX IMAGE carrying a collectionType', () => {
-      it('suppresses internal collectionType from cardTypeBadge', () => {
-        const tile = createParallaxContent(1, { collectionType: CollectionType.PORTFOLIO });
+    describe('PARALLAX IMAGE collection cards (slug present)', () => {
+      it('leaves cardTypeBadge undefined for a card with no badge-worthy fields', () => {
+        const tile = createParallaxContent(1, { slug: 'collection-1' });
         const result = normalizeContentToRendererProps(tile, 500, 300, 'imageSingle', false);
         expect(result.enableParallax).toBe(true);
         expect(result.cardTypeBadge).toBeUndefined();
       });
 
-      it('curates a public collectionType to a friendly label', () => {
-        const tile = createParallaxContent(1, { collectionType: CollectionType.ART_GALLERY });
+      it('labels a blog card "Story" from isBlog', () => {
+        const tile = createParallaxContent(1, { slug: 'collection-1', isBlog: true });
+        const result = normalizeContentToRendererProps(tile, 500, 300, 'imageSingle', false);
+        expect(result.cardTypeBadge).toBe('Story');
+      });
+
+      it('labels an art-gallery-tagged card "Gallery"', () => {
+        const tile = createParallaxContent(1, {
+          slug: 'collection-1',
+          tags: [{ id: 5, name: 'Art Gallery', slug: 'art-gallery' }],
+        });
         const result = normalizeContentToRendererProps(tile, 500, 300, 'imageSingle', false);
         expect(result.cardTypeBadge).toBe('Gallery');
+      });
+
+      it("never surfaces a plain parallax image's own tags as a card badge (no slug)", () => {
+        const tile = createParallaxContent(1, {
+          tags: [{ id: 5, name: 'Art Gallery', slug: 'art-gallery' }],
+        });
+        const result = normalizeContentToRendererProps(tile, 500, 300, 'imageSingle', false);
+        expect(result.cardTypeBadge).toBeUndefined();
       });
     });
 

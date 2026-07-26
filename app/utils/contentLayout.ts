@@ -178,7 +178,9 @@ export function clampParallaxDimensions(
 }
 
 /**
- * Convert collection to parallax image for unified rendering on public pages.
+ * Convert collection to parallax image for unified rendering on public pages. Kind
+ * (`isClient`/`isBlog`) and tags are carried through so the public card badge survives
+ * the conversion.
  *
  * No-cover collection cards default to a 1:1 placeholder (1000×1000) so the layout
  * algorithm packs them uniformly alongside cards with real cover images.
@@ -186,6 +188,10 @@ export function clampParallaxDimensions(
  * Synthetic PARENT collections (e.g. /all-collections) carry null content-table IDs
  * because they aren't backed by content rows; the id falls back to the referenced
  * collection's ID so downstream Map lookups (sizesMap, row keys) stay unique.
+ *
+ * TODO: this parallax-card shape is built in four places — here, `collectionToContentModel`
+ * (CollectionPage.tsx), `meContentBlock.ts` and `allCollectionsContentBlock.ts`. Collapse
+ * them into one shared builder.
  */
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel
@@ -203,6 +209,9 @@ export function convertCollectionContentToParallax(
     slug: col.slug,
     collectionType: col.collectionType,
     collectionDate: col.collectionDate,
+    isClient: col.isClient,
+    isBlog: col.isBlog,
+    tags: col.tags,
     description: col.description ?? null,
     imageUrl: col.coverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',

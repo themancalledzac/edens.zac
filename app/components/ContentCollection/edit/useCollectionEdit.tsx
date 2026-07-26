@@ -46,7 +46,7 @@ import {
   isContentCollection,
   isContentImage,
   isGifContent,
-  isParentType,
+  isParentCollection,
 } from '@/app/utils/contentTypeGuards';
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
@@ -122,7 +122,11 @@ export interface UseCollectionEditResult {
   displayedCoverImage: ContentImageModel | null | undefined;
   /** Child-collection images a PARENT picks its cover from. */
   childCollectionImages?: ContentImageModel[] | null;
-  /** True for PARENT-type collections: hides density/display, shows the child cover picker. */
+  /**
+   * True for parent collections (contains child-collection refs, or still carries the
+   * legacy PARENT type): hides density/display, shows the child cover picker, gates the
+   * Gallery Access section and the password-propagate-to-children confirm.
+   */
   isParent: boolean;
 
   selectedIds: number[];
@@ -599,7 +603,10 @@ export function useCollectionEdit({
     [selectedIds, collection.content]
   );
 
-  const isParent = isParentType(updateData.type);
+  // One parent derivation for every consumer below (child cover picker, Gallery Access
+  // section, password-propagate confirm, Add-content cell). Memoized because the content
+  // scan is O(n) over up to 500 loaded blocks per render, where the enum compare was O(1).
+  const isParent = useMemo(() => isParentCollection(collection), [collection]);
 
   const displayedCoverImage = collection.coverImage ?? null;
 
@@ -700,7 +707,6 @@ export function useCollectionEdit({
             .map(e => e.trim())
             .filter(Boolean)
         : undefined;
-      const isParent = collection.type === CollectionType.PARENT;
       const propagateToChildren = isParent
         ? window.confirm(
             'Share this password with all child client galleries? They will use the same password and one unlock will cover all of them.'
@@ -727,7 +733,7 @@ export function useCollectionEdit({
     } finally {
       setGallerySaving(false);
     }
-  }, [collection, galleryPassword, galleryEmail]);
+  }, [collection, isParent, galleryPassword, galleryEmail]);
 
   const handleClearPassword = useCallback(async () => {
     if (!collection) return;
@@ -1336,7 +1342,6 @@ export function useCollectionEdit({
   const enterEdit = useCallback(() => setIsEditSheetOpen(true), []);
   const exitToBrowse = resetToBrowse;
 
-  const isParentCollection = collection.type === CollectionType.PARENT;
   const isLoading = isLoadingState || operationLoading;
 
   const bottomBarCells = useMemo<EditBarCell[]>(() => {
@@ -1457,7 +1462,7 @@ export function useCollectionEdit({
         onClick: enterReorder,
       },
     ];
-    if (!isParentCollection) {
+    if (!isParent) {
       cells.push({
         key: 'add',
         label: operationLoading ? 'Uploading…' : 'Add',
@@ -1494,7 +1499,7 @@ export function useCollectionEdit({
     isUpdateDirty,
     handleUpdate,
     enterReorder,
-    isParentCollection,
+    isParent,
     onExitManage,
   ]);
 

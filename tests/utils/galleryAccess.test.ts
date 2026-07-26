@@ -4,7 +4,6 @@
  */
 
 import { type MeResponse } from '@/app/types/Auth';
-import { CollectionType } from '@/app/types/Collection';
 import {
   canDownloadCollection,
   findMembership,
@@ -65,29 +64,67 @@ describe('isClientOfCollection', () => {
 });
 
 describe('canDownloadCollection', () => {
-  it('is true on a CLIENT_GALLERY even for an anonymous viewer (password-cookie client path)', () => {
-    expect(canDownloadCollection(null, { id: 7, type: CollectionType.CLIENT_GALLERY })).toBe(true);
+  it('is true for a logged-in CLIENT of the collection (role grant, any collection kind)', () => {
+    expect(canDownloadCollection(clientMe, { id: 7 })).toBe(true);
   });
 
-  it('is true for a logged-in CLIENT on a non-CLIENT_GALLERY collection (the prod bug)', () => {
-    // A CLIENT grant on a PORTFOLIO must surface downloads — backend authorizes by role, not type.
-    expect(canDownloadCollection(clientMe, { id: 7, type: CollectionType.PORTFOLIO })).toBe(true);
+  it('is false for an anonymous viewer with no role grant and no cookie proof', () => {
+    expect(canDownloadCollection(null, { id: 7 })).toBe(false);
   });
 
-  it('is false for an anonymous viewer on a non-CLIENT_GALLERY collection', () => {
-    expect(canDownloadCollection(null, { id: 7, type: CollectionType.PORTFOLIO })).toBe(false);
+  it('is true for an anonymous viewer on a protected client gallery that returned content', () => {
+    // Content present on a protected client gallery proves the password cookie validated —
+    // the backend nulls `content` otherwise. /api/auth/me never sees that cookie.
+    expect(
+      canDownloadCollection(null, {
+        id: 7,
+        isClient: true,
+        isPasswordProtected: true,
+        content: [],
+      })
+    ).toBe(true);
   });
 
-  it('is false for a GENERAL member on a non-CLIENT_GALLERY collection', () => {
-    expect(canDownloadCollection(generalMe, { id: 7, type: CollectionType.PORTFOLIO })).toBe(false);
+  it('is false for an anonymous viewer on a protected client gallery with content withheld', () => {
+    expect(
+      canDownloadCollection(null, { id: 7, isClient: true, isPasswordProtected: true })
+    ).toBe(false);
+  });
+
+  it('is false for an anonymous viewer on an UNprotected client gallery', () => {
+    // No password means no cookie to prove; downloads there need a real role grant.
+    expect(
+      canDownloadCollection(null, {
+        id: 7,
+        isClient: true,
+        isPasswordProtected: false,
+        content: [],
+      })
+    ).toBe(false);
+  });
+
+  it('is false for an anonymous viewer on a protected NON-client collection with content', () => {
+    expect(
+      canDownloadCollection(null, {
+        id: 7,
+        isClient: false,
+        isPasswordProtected: true,
+        content: [],
+      })
+    ).toBe(false);
+  });
+
+  it('is false for a GENERAL member of the collection', () => {
+    expect(canDownloadCollection(generalMe, { id: 7 })).toBe(false);
   });
 
   it('is false for a CLIENT of a different collection', () => {
-    expect(canDownloadCollection(clientMe, { id: 99, type: CollectionType.PORTFOLIO })).toBe(false);
+    expect(canDownloadCollection(clientMe, { id: 99 })).toBe(false);
   });
 
   it('is false for null/undefined collection', () => {
     expect(canDownloadCollection(clientMe, null)).toBe(false);
+    // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined input
     expect(canDownloadCollection(clientMe, undefined)).toBe(false);
   });
 });

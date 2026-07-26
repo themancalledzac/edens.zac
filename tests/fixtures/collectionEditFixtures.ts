@@ -24,6 +24,8 @@ export function makeCollection(overrides: Partial<CollectionModel> = {}): Collec
     title: 'Test Collection',
     description: '',
     type: CollectionType.PORTFOLIO,
+    isClient: false,
+    isBlog: false,
     visibility: CollectionVisibility.LISTED,
     displayMode: 'ORDERED',
     collectionDate: '2026-01-01',

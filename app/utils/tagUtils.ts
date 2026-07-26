@@ -14,6 +14,12 @@ import type { TagUpdate } from '@/app/types/Collection';
 import type { ContentTagModel } from '@/app/types/Metadata';
 
 /**
+ * Convert a tag display name to its canonical slug. Alias for `slugify` in
+ * `locationUtils.ts` — see that function for the backend-parity contract.
+ */
+export { slugify as tagNameToSlug } from '@/app/utils/locationUtils';
+
+/**
  * Convert tag input (array of models, array of names, single name, or null) to a
  * ContentTagModel array. Resolves each entry against availableTags by ID then name.
  * Unknown entries get id: 0 (new tag).

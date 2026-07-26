@@ -22,6 +22,8 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     title: 'Test Collection',
     description: '',
     type: CollectionType.PORTFOLIO,
+    isClient: false,
+    isBlog: false,
     visibility: CollectionVisibility.LISTED,
     displayMode: 'ORDERED',
     rowsWide: 4,

@@ -4,7 +4,7 @@
  * Provides compile-time type safety for Content discrimination.
  * Use these instead of runtime type checking or casting.
  */
-import { CollectionType } from '@/app/types/Collection';
+import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import {
   type Content,
   type ContentBlankModel,
@@ -242,10 +242,27 @@ function getRatedContentItem(item: Content): { rating?: number | null } | null {
 }
 
 /**
- * Check if a collection type is a "parent-type" collection.
- * Parent-type collections (HOME, PARENT) can only contain child collections,
- * not images, text, or GIFs.
+ * Whether a collection's loaded content contains child-collection refs. Note the
+ * content is the first page only (callers fetch 500 items and may drop excluded
+ * refs), so this reads false for a parent whose refs all fall past that bound —
+ * use {@link isParentCollection} for the authorization-shaped decisions.
  */
-export function isParentType(type: CollectionType | string | undefined): boolean {
-  return type === CollectionType.HOME || type === CollectionType.PARENT;
+export function hasChildCollectionContent(
+  collection: Pick<CollectionModel, 'content'> | null | undefined
+): boolean {
+  return Array.isArray(collection?.content) && collection.content.some(isContentCollection);
+}
+
+/**
+ * Check if a collection acts as a "parent": it contains child-collection refs, or
+ * still carries the legacy (admin-transitional) PARENT type. Parent collections
+ * source cover-image candidates from their children, expose the Gallery Access
+ * section, and offer to propagate their password to child galleries. The enum arm
+ * covers a freshly created parent that has no children yet, and survives the
+ * `hasChildCollectionContent` truncation bound; it goes away with the enum.
+ */
+export function isParentCollection(
+  collection: Pick<CollectionModel, 'content' | 'type'> | null | undefined
+): boolean {
+  return hasChildCollectionContent(collection) || collection?.type === CollectionType.PARENT;
 }

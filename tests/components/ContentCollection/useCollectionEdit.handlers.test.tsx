@@ -91,6 +91,8 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     title: 'Smith Wedding',
     description: 'A description',
     type: CollectionType.PORTFOLIO,
+    isClient: false,
+    isBlog: false,
     locations: [],
     visibility: CollectionVisibility.LISTED,
     displayMode: 'ORDERED',

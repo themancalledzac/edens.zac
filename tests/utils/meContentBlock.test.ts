@@ -8,6 +8,8 @@ function makeUserPage(overrides: Partial<CollectionModel> = {}): CollectionModel
     slug: 'user',
     title: 'Jane Eden',
     type: CollectionType.PORTFOLIO,
+    isClient: false,
+    isBlog: false,
     locations: [],
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-01T00:00:00Z',

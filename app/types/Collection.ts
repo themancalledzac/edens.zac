@@ -69,7 +69,20 @@ export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
  */
 export interface CollectionBaseModel {
   id?: number;
+  /**
+   * @deprecated Legacy classifier still emitted by the backend for the rollback window. No
+   * public surface reads it off a RESPONSE — rendering keys on `isClient`/`isBlog`. It is still
+   * written on admin REQUESTS (see `CollectionUpdateRequest.type`). Removed in phase 2.
+   */
   type?: CollectionType;
+  /**
+   * True when this collection is a client gallery (replaces `type === CLIENT_GALLERY`).
+   * Always present on real backend payloads; optional to tolerate synthetic
+   * frontend-built collections. Never combined with `isBlog` (backend rejects both).
+   */
+  isClient?: boolean;
+  /** True when this collection is a blog/story (replaces `type === BLOG`). */
+  isBlog?: boolean;
   title?: string;
   slug?: string;
   description?: string;
@@ -98,8 +111,15 @@ export interface CollectionBaseModel {
  * Matches backend CollectionCreateRequest.java
  */
 export interface CollectionCreateRequest {
-  type: CollectionType;
+  /**
+   * @deprecated Legacy (admin-transitional) kind selector. Still SENT to the backend: it is the
+   * only way to express PORTFOLIO/ART_GALLERY/PARENT, which have no boolean encoding. The API
+   * layer adds the derived `isClient`/`isBlog` alongside it — see `withDerivedKindFlags`.
+   */
+  type?: CollectionType;
   title: string;
+  isClient?: boolean;
+  isBlog?: boolean;
 }
 
 /**
@@ -110,7 +130,10 @@ export interface CollectionListModel {
   id: number;
   name: string;
   slug?: string;
+  /** @deprecated Legacy classifier; use `isClient`/`isBlog`. */
   type?: string;
+  isClient?: boolean;
+  isBlog?: boolean;
   /** ISO date — used to sort BLOG group rows on the manage page. */
   collectionDate?: string | null;
   /**
@@ -196,7 +219,15 @@ export interface CollectionUpdate {
  */
 export interface CollectionUpdateRequest {
   id: number; // Required for updates
+  /**
+   * @deprecated Legacy (admin-transitional) kind selector. Still SENT to the backend: it is the
+   * only way to express PORTFOLIO/ART_GALLERY/PARENT, which have no boolean encoding. Sent only
+   * when actually changed (`buildUpdatePayload` dirty-diffs it), so a metadata-only save never
+   * re-derives the flags from it. See `withDerivedKindFlags`.
+   */
   type?: CollectionType;
+  isClient?: boolean;
+  isBlog?: boolean;
   title?: string;
   slug?: string;
   description?: string;
@@ -235,11 +266,18 @@ export interface CollectionUpdateRequest {
  */
 export interface CollectionModel extends CollectionBaseModel {
   id: number;
-  type: CollectionType;
   title: string;
   slug: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Required on detail payloads: V50 makes the backing columns NOT NULL and every
+   * backend construction site emits them. Kept optional on {@link CollectionBaseModel}
+   * for frontend-built synthetic collections. The fail-safe `=== true` predicates
+   * stay regardless — a stale cache entry outlives the type.
+   */
+  isClient: boolean;
+  isBlog: boolean;
 
   // Pagination metadata
   contentPerPage?: number;
@@ -261,12 +299,13 @@ export interface CollectionModel extends CollectionBaseModel {
   people?: ContentPersonModel[];
 
   /**
-   * Client gallery access control.
+   * Password-protection access control.
    * - `true`: password required — show locked UI
    * - `false`: no password needed — skip gate entirely
    * - `undefined`: unknown — probe backend to determine
    *
-   * Only meaningful when `type === CollectionType.CLIENT_GALLERY`.
+   * The backend withholds content for any protected collection regardless of
+   * kind, so the gate keys on this flag alone.
    */
   isPasswordProtected?: boolean;
 
@@ -302,9 +341,11 @@ export interface CollectionModel extends CollectionBaseModel {
  */
 export interface CollectionPageDTO extends CollectionBaseModel {
   id: number;
-  type: CollectionType;
   title: string;
   slug: string;
+  /** Required on detail payloads — see {@link CollectionModel.isClient}. */
+  isClient: boolean;
+  isBlog: boolean;
 
   // Enhanced pagination metadata
   currentPage: number; // Current page number (0-indexed)
