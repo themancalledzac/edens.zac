@@ -593,8 +593,9 @@ type AbstractNode =
 
 /**
  * Build an unlabeled binary tree by recursively splitting at the adjacent boundary
- * whose two halves have the closest effectiveRating sums. Order is preserved (only
- * splits, no swaps), so the split reflects prominence rather than packing width.
+ * whose two halves have the closest effectiveRating sums. Balances on effectiveRating,
+ * not width-cost, so the split reflects prominence rather than packing width. Order is
+ * preserved - only adjacent splits, never swaps.
  */
 function splitByPointBalance(items: ImageType[]): AbstractNode {
   if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
@@ -804,7 +805,8 @@ const LAMBDA = 0.15;
 /**
  * Soft upper bound on row AR, as a multiple of the row's target. A row wider than
  * CEILING_MULT × target is rejected (mirror of the hard lower floor), so equity
- * cannot collapse a horizontal row into a thin strip.
+ * cannot collapse a horizontal row into a thin strip. A ceiling rather than a larger
+ * LAMBDA, which would over-square vertical-hero rows.
  */
 const CEILING_MULT = 2.0;
 
@@ -823,6 +825,9 @@ function arPenalty(rowAR: number, target: number): number {
  * subtree. Area splits geometrically: hPair ∝ AR, vStack ∝ 1/AR; leaf shares sum to 1
  * within the subtree. `value` is prominence P, so equitySpread rewards high-rated
  * verticals with more area.
+ *
+ * vStack inverts: leftFactor uses rightAR (and vice versa) - under 1/AR the smaller-AR
+ * child claims the larger share.
  */
 function leafShares(ac: AtomicComponent): {
   ar: number;
