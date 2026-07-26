@@ -5,7 +5,7 @@ import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel } from '@/app/types/Content';
-import { BROWSE_EXCLUDED_SLUGS } from '@/app/utils/collectionSlugs';
+import { BROWSE_EXCLUDED_SLUGS, isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
 import { groupCollectionsByYear, UNDATED_YEAR } from '@/app/utils/groupCollectionsByYear';
 import { logger } from '@/app/utils/logger';
@@ -37,6 +37,10 @@ export const metadata: Metadata = {
 /**
  * Extract the public collection content blocks from the synthetic all-collections parent,
  * dropping standalone-page slugs (e.g. `home`).
+ *
+ * A collection whose slug is shadowed by a static route is kept — hiding an admin's
+ * collection would be worse than a tile whose link lands on the static page — but logged,
+ * because nothing else in either repo records the collision.
  */
 function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
   if (!Array.isArray(content)) {
@@ -50,10 +54,22 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
       pageSize: SHOWCASE_PAGE_SIZE,
     });
   }
-  return content.filter(
+
+  const blocks = content.filter(
     (block): block is ContentCollectionModel =>
       isContentCollection(block) && !EXCLUDED_SLUGS.has(block.slug)
   );
+
+  const shadowed = blocks.filter(block => isShadowedRouteSlug(block.slug)).map(block => block.slug);
+  if (shadowed.length > 0) {
+    logger.warn(
+      'CollectionsPage',
+      'Collection slugs are shadowed by a static route — their tiles link to the route, not the collection',
+      { slugs: shadowed }
+    );
+  }
+
+  return blocks;
 }
 
 /**
