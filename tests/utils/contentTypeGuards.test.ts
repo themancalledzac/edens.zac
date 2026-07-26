@@ -3,6 +3,7 @@
  * Tests all 9 exported functions: type guards, dimension extraction, aspect ratio, slot width
  */
 
+import { CollectionType } from '@/app/types/Collection';
 import {
   getAspectRatio,
   getContentDimensions,
@@ -13,6 +14,7 @@ import {
   isContentImage,
   isGifContent,
   isPanelContent,
+  isParentCollection,
   isTextContent,
   pickImageDimensions,
   validateContentBlock,
@@ -649,5 +651,33 @@ describe('hasChildCollectionContent', () => {
     expect(hasChildCollectionContent(null)).toBe(false);
     // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined input
     expect(hasChildCollectionContent(undefined)).toBe(false);
+  });
+});
+
+// ===================== isParentCollection =====================
+
+describe('isParentCollection', () => {
+  it('returns true when the content contains a child-collection ref', () => {
+    const collection = { content: [createImageContent(1), createCollectionContent(2)] };
+    expect(isParentCollection(collection)).toBe(true);
+  });
+
+  it('returns true for a childless collection still typed PARENT (transitional fallback)', () => {
+    // A parent created moments ago has no child refs yet, and a parent whose refs fall
+    // past the caller's 500-item fetch reads false on content alone. Both must still
+    // expose Gallery Access and the propagate-to-children confirm.
+    expect(isParentCollection({ content: [], type: CollectionType.PARENT })).toBe(true);
+    expect(isParentCollection({ content: undefined, type: CollectionType.PARENT })).toBe(true);
+  });
+
+  it('returns false for a non-parent collection with only image content', () => {
+    const collection = { content: [createImageContent(1)], type: CollectionType.PORTFOLIO };
+    expect(isParentCollection(collection)).toBe(false);
+  });
+
+  it('returns false for null/undefined collection', () => {
+    expect(isParentCollection(null)).toBe(false);
+    // eslint-disable-next-line unicorn/no-useless-undefined -- explicitly testing undefined input
+    expect(isParentCollection(undefined)).toBe(false);
   });
 });

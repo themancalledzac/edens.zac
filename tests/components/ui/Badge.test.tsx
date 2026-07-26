@@ -50,4 +50,16 @@ describe('collectionPublicLabel', () => {
     expect(collectionPublicLabel({ tags: [] })).toBeNull();
     expect(collectionPublicLabel({ tags: [{ slug: 'weddings' }, 'travel'] })).toBeNull();
   });
+
+  it('tolerates null and slugless tag entries instead of throwing during SSR', () => {
+    expect(collectionPublicLabel({ tags: [null, undefined, {}] })).toBeNull();
+    expect(collectionPublicLabel({ tags: [null, { slug: 'art-gallery' }] })).toBe('Gallery');
+  });
+
+  it('does not resolve prototype members as labels', () => {
+    // A tag literally named "Constructor" must not pull Object.prototype.constructor
+    // (a function) into the badge label.
+    expect(collectionPublicLabel({ tags: ['Constructor'] })).toBeNull();
+    expect(collectionPublicLabel({ tags: [{ slug: 'toString' }] })).toBeNull();
+  });
 });

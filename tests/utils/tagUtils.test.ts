@@ -217,4 +217,10 @@ describe('tagNameToSlug', () => {
   it('returns an empty string for an empty name', () => {
     expect(tagNameToSlug('')).toBe('');
   });
+
+  it('drops accented characters rather than transliterating them', () => {
+    // Matches the backend: the character class keeps only [a-z0-9\s-], so the accent
+    // (and the letter carrying it) is removed instead of folding to a plain ASCII letter.
+    expect(tagNameToSlug('Café Sessions')).toBe('caf-sessions');
+  });
 });

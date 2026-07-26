@@ -3,6 +3,7 @@
  * Tests unified standalone detection logic
  */
 
+import { buildAllCollectionsContentBlock } from '@/app/utils/allCollectionsContentBlock';
 import {
   getArExtremeness,
   getEffectiveRating,
@@ -109,6 +110,14 @@ describe('getEffectiveRating', () => {
         slug: 'travel-2026',
       };
       expect(getEffectiveRating(collectionCard as never)).toBe(4);
+    });
+
+    it('rates the synthetic home tiles 4 as well (slug-keyed side effect of the re-key)', () => {
+      // Both tiles carry a slug, so the slug discriminant classifies them as collection
+      // cards. Under the previous `collectionType` key they rated 1. Deliberate: they are
+      // collection links and should get collection-card prominence.
+      expect(getEffectiveRating(buildAllCollectionsContentBlock())).toBe(4);
+      expect(isCollectionCard(buildAllCollectionsContentBlock())).toBe(true);
     });
   });
 

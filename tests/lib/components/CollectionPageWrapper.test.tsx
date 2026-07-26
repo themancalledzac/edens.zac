@@ -1,15 +1,15 @@
 /**
- * Tests for CollectionPageWrapper's CLIENT_GALLERY routing logic.
+ * Tests for CollectionPageWrapper's password-protection routing logic.
  *
- * Pins the FE-H6 invariant structurally: a locked CLIENT_GALLERY (no
- * authenticated cookie → backend returned `content: null`) routes to
- * `<ClientGalleryGate>`, never wrapping `<CollectionPage>` as children.
- * An authenticated CLIENT_GALLERY (cookie validated → `content` is an array,
- * possibly empty) routes directly to `<CollectionPage>`. This test exists
- * because the prior implementation initialised the gate's state from
- * `isPasswordProtected`, which is a gallery property and stays true even
- * after authentication — that bug forced authenticated viewers to re-enter
- * their password on every reload.
+ * Pins the FE-H6 invariant structurally: a locked collection (no authenticated
+ * cookie → backend returned `content: null`) routes to `<ClientGalleryGate>`,
+ * never wrapping `<CollectionPage>` as children. An authenticated one (cookie
+ * validated → `content` is an array, possibly empty) routes directly to
+ * `<CollectionPage>`. Routing keys on `isPasswordProtected` + `Array.isArray(content)`
+ * alone — the collection's kind plays no part. This test exists because the prior
+ * implementation initialised the gate's state from `isPasswordProtected`, which is a
+ * gallery property and stays true even after authentication — that bug forced
+ * authenticated viewers to re-enter their password on every reload.
  */
 
 import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryGate';
@@ -19,6 +19,7 @@ import { ApiError } from '@/app/lib/api/core';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
+import { logger } from '@/app/utils/logger';
 
 jest.mock('@/app/lib/api/collections', () => ({
   getCollectionBySlug: jest.fn(),
@@ -81,7 +82,7 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
   };
 }
 
-describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
+describe('CollectionPageWrapper — password-protection routing', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -171,26 +172,9 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     expect(element.type).toBe(ClientGalleryGate);
   });
 
-  it('routes a locked PARENT (password-protected, content === undefined) to <ClientGalleryGate>', async () => {
+  it('routes an authenticated protected collection with an empty array to <CollectionPage>', async () => {
     mockGetCollectionBySlug.mockResolvedValue(
       makeCollection({
-        type: CollectionType.PARENT,
-        isClient: false,
-        isPasswordProtected: true,
-        content: undefined,
-      })
-    );
-
-    const element = await CollectionPageWrapper({ slug: 'edens-family' });
-
-    expect(element.type).toBe(ClientGalleryGate);
-    expect(element.props.collection.type).toBe(CollectionType.PARENT);
-  });
-
-  it('routes an authenticated PARENT (content is an array) to <CollectionPage>', async () => {
-    mockGetCollectionBySlug.mockResolvedValue(
-      makeCollection({
-        type: CollectionType.PARENT,
         isClient: false,
         isPasswordProtected: true,
         content: [],
@@ -202,19 +186,16 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     expect(element.type).toBe(CollectionPage);
   });
 
-  it('routes a non-protected PARENT directly to <CollectionPage>', async () => {
+  it('bypasses the gate entirely in editMode (admins are never password-walled)', async () => {
     mockGetCollectionBySlug.mockResolvedValue(
-      makeCollection({
-        type: CollectionType.PARENT,
-        isClient: false,
-        isPasswordProtected: false,
-        content: undefined,
-      })
+      makeCollection({ isPasswordProtected: true, content: undefined })
     );
 
-    const element = await CollectionPageWrapper({ slug: 'edens-family' });
+    const element = await CollectionPageWrapper({ slug: 'smith-wedding', editMode: true });
 
     expect(element.type).toBe(CollectionPage);
+    expect(element.type).not.toBe(ClientGalleryGate);
+    expect(element.props.editMode).toBe(true);
   });
 
   it('seeds Selects only for client galleries (isClient drives listSelectIdsServer)', async () => {
@@ -232,6 +213,40 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     );
     await CollectionPageWrapper({ slug: 'portfolio-2026' });
     expect(listSelectIdsServer).not.toHaveBeenCalled();
+  });
+
+  it('degrades to no Selects seed on a payload missing isClient, and warns when a grant exists', async () => {
+    const { listSelectIdsServer } = jest.requireMock('@/app/lib/api/selects') as {
+      listSelectIdsServer: jest.Mock;
+    };
+    const { meServer } = jest.requireMock('@/app/lib/api/auth') as { meServer: jest.Mock };
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    // Stale payload: no kind booleans, but the viewer holds a CLIENT grant for it.
+    meServer.mockResolvedValueOnce({
+      email: 'client@example.com',
+      isAdmin: false,
+      mfaSatisfied: true,
+      galleries: [{ collectionId: 1, role: 'CLIENT' }],
+    });
+    mockGetCollectionBySlug.mockResolvedValue(
+      makeCollection({
+        isClient: undefined as unknown as boolean,
+        isPasswordProtected: false,
+        content: [],
+      })
+    );
+
+    await CollectionPageWrapper({ slug: 'smith-wedding' });
+
+    expect(listSelectIdsServer).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      'CollectionPageWrapper',
+      expect.stringContaining('missing isClient'),
+      expect.objectContaining({ collectionId: 1 })
+    );
+
+    warn.mockRestore();
   });
 
   it('seeds saved image ids for ANY collection when a principal is present (unified render path)', async () => {
@@ -262,6 +277,8 @@ describe('CollectionPageWrapper — CLIENT_GALLERY routing', () => {
     expect(element.props.initialSavedImageIds).toEqual([7, 9]);
 
     listSavedImageIdsServer.mockClear();
+    // Anonymous phase — pinned explicitly rather than relying on the module-level default.
+    meServer.mockResolvedValueOnce(null);
     await CollectionPageWrapper({ slug: 'portfolio-2026' });
     expect(listSavedImageIdsServer).not.toHaveBeenCalled();
   });

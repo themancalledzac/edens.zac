@@ -3,6 +3,7 @@
  * Tests content processing and layout utilities
  */
 
+import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 import type {
   AnyContentModel,
   ContentImageModel,
@@ -444,6 +445,55 @@ describe('processContentBlocks', () => {
       const result = processContentBlocks(content, true);
       expect(result).toEqual([]);
     });
+  });
+});
+
+describe('convertCollectionContentToParallax — badge/kind carry-through', () => {
+  it('carries isClient, isBlog and tags onto the converted card', () => {
+    const collection = createCollectionContent(1, {
+      isClient: false,
+      isBlog: true,
+      tags: [
+        { id: 3, name: 'Landscape', slug: 'landscape' },
+        { id: 4, name: 'Art Gallery', slug: 'art-gallery' },
+      ],
+    });
+
+    const result = convertCollectionContentToParallax(collection);
+
+    expect(result).toMatchObject({
+      isClient: false,
+      isBlog: true,
+      tags: [
+        { id: 3, name: 'Landscape', slug: 'landscape' },
+        { id: 4, name: 'Art Gallery', slug: 'art-gallery' },
+      ],
+    });
+  });
+
+  it('surfaces the public badge from the carried fields (the whole point of the carry)', () => {
+    expect(
+      collectionPublicLabel(
+        convertCollectionContentToParallax(
+          createCollectionContent(1, {
+            isBlog: true,
+          })
+        )
+      )
+    ).toBe('Story');
+    expect(
+      collectionPublicLabel(
+        convertCollectionContentToParallax(
+          createCollectionContent(2, {
+            isBlog: false,
+            tags: [{ id: 4, name: 'Art Gallery', slug: 'art-gallery' }],
+          })
+        )
+      )
+    ).toBe('Gallery');
+    expect(
+      collectionPublicLabel(convertCollectionContentToParallax(createCollectionContent(3)))
+    ).toBeNull();
   });
 });
 
