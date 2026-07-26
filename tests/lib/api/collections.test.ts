@@ -43,6 +43,8 @@ const createCollection = (id: number, overrides?: Partial<CollectionModel>): Col
   title: `Collection ${id}`,
   description: `Description ${id}`,
   type: CollectionType.PORTFOLIO,
+  isClient: false,
+  isBlog: false,
   visibility: CollectionVisibility.LISTED,
   locations: [],
   createdAt: FIXTURE_TIMESTAMP,

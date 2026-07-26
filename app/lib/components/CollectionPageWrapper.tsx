@@ -9,6 +9,8 @@ import { listSavedImageIdsServer } from '@/app/lib/api/personal';
 import { listSelectIdsServer } from '@/app/lib/api/selects';
 import { getUserPage } from '@/app/lib/api/user';
 import { buildAllCollectionsContentBlock } from '@/app/utils/allCollectionsContentBlock';
+import { findMembership } from '@/app/utils/galleryAccess';
+import { logger } from '@/app/utils/logger';
 import { buildMeContentBlock } from '@/app/utils/meContentBlock';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
@@ -86,6 +88,16 @@ export default async function CollectionPageWrapper({
     // NOTE: since the gate unification (single render path keyed on isPasswordProtected), the
     // saved-ids seed reaches EVERY collection render — previously only gateable types
     // (CLIENT_GALLERY/PARENT) received it, which contradicted the intent above. Deliberate.
+    if (collection.isClient === undefined && findMembership(me, collection.id)) {
+      // The grant proves this is a client gallery while the payload does not say so: a stale
+      // cache entry or a deploy-order slip. Selects are silently withheld from an entitled
+      // viewer, so make the window observable.
+      logger.warn('CollectionPageWrapper', 'Membership held on a payload missing isClient', {
+        slug,
+        collectionId: collection.id,
+      });
+    }
+
     const [initialSelectedIds, initialSavedImageIds] = await Promise.all([
       collection.isClient === true
         ? listSelectIdsServer(collection.id)

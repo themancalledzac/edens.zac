@@ -14,7 +14,7 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { type AnyContentModel, type ContentImageModel } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
-import { hasChildCollectionContent } from '@/app/utils/contentTypeGuards';
+import { isParentCollection } from '@/app/utils/contentTypeGuards';
 
 import { COVER_IMAGE_FLASH_DURATION, handleCoverImageSelection } from '../collectionEditUtils';
 
@@ -49,7 +49,7 @@ export function useCoverImageSelection({
     async (imageId: number) => {
       if (!collection) return;
 
-      const imagePool = hasChildCollectionContent(collection)
+      const imagePool = isParentCollection(collection)
         ? (childCollectionImages as AnyContentModel[] | undefined)
         : collection.content;
       const result = handleCoverImageSelection(imageId, imagePool);

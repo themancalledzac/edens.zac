@@ -61,6 +61,8 @@ describe('useCollectionData', () => {
       slug: 'test-collection',
       title: 'Test Collection',
       type: CollectionType.PORTFOLIO,
+      isClient: false,
+      isBlog: false,
       visibility: CollectionVisibility.LISTED,
       displayMode: 'CHRONOLOGICAL',
       locations: [],

@@ -260,6 +260,14 @@ export interface CollectionModel extends CollectionBaseModel {
   slug: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Required on detail payloads: V50 makes the backing columns NOT NULL and every
+   * backend construction site emits them. Kept optional on {@link CollectionBaseModel}
+   * for frontend-built synthetic collections. The fail-safe `=== true` predicates
+   * stay regardless — a stale cache entry outlives the type.
+   */
+  isClient: boolean;
+  isBlog: boolean;
 
   // Pagination metadata
   contentPerPage?: number;
@@ -325,6 +333,9 @@ export interface CollectionPageDTO extends CollectionBaseModel {
   id: number;
   title: string;
   slug: string;
+  /** Required on detail payloads — see {@link CollectionModel.isClient}. */
+  isClient: boolean;
+  isBlog: boolean;
 
   // Enhanced pagination metadata
   currentPage: number; // Current page number (0-indexed)

@@ -45,7 +45,7 @@ export function isClientOfCollection(
 export function canDownloadCollection(
   me: MeResponse | null,
   collection:
-    | Pick<CollectionModel, 'id' | 'isClient' | 'isPasswordProtected' | 'content'>
+    | Partial<Pick<CollectionModel, 'id' | 'isClient' | 'isPasswordProtected' | 'content'>>
     | null
     | undefined
 ): boolean {

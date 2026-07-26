@@ -7,6 +7,7 @@
  */
 import { ApiError, fetchReadApi } from '@/app/lib/api/core';
 import { type SelectGroup } from '@/app/types/Selects';
+import { logger } from '@/app/utils/logger';
 
 const BASE = '/api/proxy/api/read/user/selects';
 
@@ -90,8 +91,13 @@ export async function listSelectIdsServer(collectionId: number): Promise<number[
   try {
     const ids = await fetchReadApi<number[]>(`/user/selects?collectionId=${collectionId}`);
     return ids ?? [];
-  } catch {
-    // Anonymous (401) or any read failure must not break the gallery render — selects are additive.
+  } catch (error) {
+    // Anonymous (401) or any read failure must not break the gallery render — selects are
+    // additive. Anything other than 401 is real breakage, so log rather than swallow it.
+    if (!(error instanceof ApiError) || error.status !== 401) {
+      const status = error instanceof ApiError ? error.status : 'unknown';
+      logger.warn('selects', `seed read failed (status ${status}); rendering empty`, { error });
+    }
     return [];
   }
 }

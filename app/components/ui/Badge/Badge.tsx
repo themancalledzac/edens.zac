@@ -27,32 +27,38 @@ export interface BadgeProps {
  */
 export interface CollectionBadgeFields {
   isBlog?: boolean;
-  tags?: ReadonlyArray<string | { slug?: string }>;
+  tags?: ReadonlyArray<string | { slug?: string } | null | undefined>;
 }
 
 /**
- * Curated public labels keyed by tag slug. The backend backfilled the
- * `art-gallery` tag onto former ART_GALLERY collections, so the "Gallery"
- * badge now derives from that tag rather than the retired type enum.
+ * Curated public labels keyed by tag slug, in precedence order — the first entry
+ * whose slug the collection carries wins, so multi-tag collections get a declared
+ * label rather than one decided by tag array order. The backend backfilled the
+ * `art-gallery` tag onto former ART_GALLERY collections, so the "Gallery" badge
+ * derives from that tag rather than the legacy type enum.
  */
-const TAG_PUBLIC_LABELS: Readonly<Record<string, string>> = {
-  'art-gallery': 'Gallery',
-};
+const TAG_PUBLIC_LABELS: ReadonlyArray<readonly [slug: string, label: string]> = [
+  ['art-gallery', 'Gallery'],
+];
 
 /**
  * Curated public label for a collection. Blogs surface as "Story"; collections
  * carrying a badge-mapped tag (e.g. `art-gallery`) surface that tag's label.
  * Everything else returns null so internal/organizational collections are
- * never labeled for visitors.
+ * never labeled for visitors. Null/slugless tag entries degrade to no badge
+ * rather than throwing during SSR.
  */
 export function collectionPublicLabel(collection: CollectionBadgeFields): string | null {
   if (collection.isBlog === true) {
     return 'Story';
   }
-  for (const tag of collection.tags ?? []) {
-    const slug = typeof tag === 'string' ? tagNameToSlug(tag) : tag.slug;
-    const label = slug ? TAG_PUBLIC_LABELS[slug] : undefined;
-    if (label) {
+  const slugs = new Set(
+    (collection.tags ?? [])
+      .map(tag => (typeof tag === 'string' ? tagNameToSlug(tag) : tag?.slug))
+      .filter((slug): slug is string => Boolean(slug))
+  );
+  for (const [slug, label] of TAG_PUBLIC_LABELS) {
+    if (slugs.has(slug)) {
       return label;
     }
   }
