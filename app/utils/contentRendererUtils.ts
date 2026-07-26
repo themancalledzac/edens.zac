@@ -9,6 +9,7 @@
 import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
 import { type AnyContentModel } from '@/app/types/Content';
 import { type ContentRendererProps } from '@/app/types/ContentRenderer';
+import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import {
   isContentCollection,
   isContentImage,
@@ -236,13 +237,13 @@ export function normalizeContentToRendererProps(
       imageHeight: dimensions.imageHeight,
       alt: extractAltText(content.alt, content.title, content.caption),
       overlayText: content.overlayText,
-      // Only collection cards (parallax blocks converted from a collection, so
-      // they carry a slug) get a badge — a plain parallax IMAGE's own tags must
-      // never surface as a card label.
-      cardTypeBadge:
-        'slug' in content && content.slug
-          ? (collectionPublicLabel(content) ?? undefined)
-          : undefined,
+      // Only collection cards (parallax blocks converted from a collection, so they carry
+      // a slug) get a badge — a plain parallax IMAGE's own tags must never surface as a
+      // card label. Shares {@link isCollectionCard}'s discriminant rather than restating
+      // it, so the badge and the layout rating can never disagree about what a card is.
+      cardTypeBadge: isCollectionCard(content)
+        ? (collectionPublicLabel(content) ?? undefined)
+        : undefined,
       enableParallax: true,
       hasSlug: 'slug' in content ? content.slug : undefined,
       isCollection: false,
