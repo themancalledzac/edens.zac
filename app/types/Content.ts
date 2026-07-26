@@ -110,11 +110,6 @@ export interface ContentImageModel extends Content {
 export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'contentType'> {
   contentType: 'IMAGE';
   collectionDate?: string;
-  /**
-   * ISO end date of the referenced collection (nullable). Carried on collection cards so a
-   * downstream showcase page can group and label cards by date range (see `formatDateRange`).
-   */
-  collectionEndDate?: string;
   type?: string;
   enableParallax: true;
   parallaxSpeed?: number;

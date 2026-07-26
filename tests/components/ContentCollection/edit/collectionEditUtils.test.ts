@@ -81,6 +81,16 @@ describe('buildUpdatePayload — date clear-flag derivation', () => {
       expect(payload).not.toHaveProperty('collectionDate');
       expect(payload).not.toHaveProperty('clearCollectionDate');
     });
+
+    it('sends the new value (no clear flag) when a set date is moved to a different date', () => {
+      const original = makeCollection({ collectionDate: '2026-01-01' });
+      const form = makeForm({ collectionDate: '2026-04-20' });
+
+      const payload = buildUpdatePayload(form, original);
+
+      expect(payload.collectionDate).toBe('2026-04-20');
+      expect(payload).not.toHaveProperty('clearCollectionDate');
+    });
   });
 
   describe('collectionEndDate', () => {
@@ -131,6 +141,18 @@ describe('buildUpdatePayload — date clear-flag derivation', () => {
       const payload = buildUpdatePayload(form, original);
 
       expect(payload).not.toHaveProperty('collectionEndDate');
+      expect(payload).not.toHaveProperty('clearCollectionEndDate');
+    });
+
+    it('sends the new value (no clear flag) when a set date is moved to a different date', () => {
+      // The set -> different-set edge: only the from-unset branch was covered, so a mutant
+      // that dropped the value on an edit-in-place survived.
+      const original = makeCollection({ collectionEndDate: '2026-01-05' });
+      const form = makeForm({ collectionEndDate: '2026-02-09' });
+
+      const payload = buildUpdatePayload(form, original);
+
+      expect(payload.collectionEndDate).toBe('2026-02-09');
       expect(payload).not.toHaveProperty('clearCollectionEndDate');
     });
   });

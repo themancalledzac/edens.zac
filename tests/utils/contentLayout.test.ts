@@ -3,6 +3,7 @@
  * Tests content processing and layout utilities
  */
 
+import type { CollectionModel } from '@/app/types/Collection';
 import type {
   AnyContentModel,
   ContentImageModel,
@@ -31,6 +32,8 @@ import {
   createTextContent,
   H,
 } from '@/tests/fixtures/contentFixtures';
+
+const EN_DASH = '–';
 
 describe('processContentBlocks', () => {
   describe('Filtering visible blocks', () => {
@@ -936,6 +939,38 @@ describe('createHeaderRow', () => {
     const result = createHeaderRow(collection, 375, 2, true) as RowWithPatternAndSizes[];
     // Should have cover row + metadata row
     expect(result.length).toBeGreaterThanOrEqual(2);
+  });
+
+  describe('date metadata item', () => {
+    /** The metadata text block is the second desktop header item. */
+    function dateItemValue(collection: CollectionModel): string | undefined {
+      const row = asSingleRow(createHeaderRow(collection, 1200, 2, false));
+      const metadataBlock = row?.items[1]?.content as ContentTextModel | undefined;
+      return metadataBlock?.items?.find(item => item.type === 'date')?.value;
+    }
+
+    it('renders a single date as the raw ISO string, byte for byte', () => {
+      // Byte-parity pin: the metadata renderer prints this value as-is, so any
+      // reformatting here is a visible change to every dated collection header.
+      expect(dateItemValue(createCollectionModel(1, { collectionDate: '2026-03-03' }))).toBe(
+        '2026-03-03'
+      );
+    });
+
+    it('renders a start/end pair as a formatted range', () => {
+      expect(
+        dateItemValue(
+          createCollectionModel(1, {
+            collectionDate: '2026-03-03',
+            collectionEndDate: '2026-03-07',
+          })
+        )
+      ).toBe(`Mar 3${EN_DASH}7, 2026`);
+    });
+
+    it('omits the date item entirely when the collection has no date', () => {
+      expect(dateItemValue(createCollectionModel(1, { collectionDate: undefined }))).toBeUndefined();
+    });
   });
 });
 

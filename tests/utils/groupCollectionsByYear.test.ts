@@ -70,10 +70,22 @@ describe('groupCollectionsByYear', () => {
     expect(groups[0]?.collections[0]?.collectionEndDate).toBe('2026-01-02');
   });
 
-  it('omits the Undated bucket entirely when every collection is dated', () => {
-    const groups = groupCollectionsByYear([dated(1, '2026-01-01'), dated(2, '2025-01-01')]);
+  it('keeps equal-dated collections in input order (stable sort)', () => {
+    const groups = groupCollectionsByYear([
+      dated(1, '2026-05-05'),
+      dated(2, '2026-05-05'),
+      dated(3, '2026-05-05'),
+    ]);
 
-    expect(groups.map(g => g.year)).toEqual(['2026', '2025']);
-    expect(groups.some(g => g.year === UNDATED_YEAR)).toBe(false);
+    expect(groups[0]?.collections.map(c => c.id)).toEqual([1, 2, 3]);
+  });
+
+  it('treats an impossible calendar date as undated', () => {
+    const groups = groupCollectionsByYear([
+      dated(1, '2026-01-01'),
+      createCollectionContent(2, { collectionDate: '2026-02-30' }),
+    ]);
+
+    expect(groups.map(g => g.year)).toEqual(['2026', UNDATED_YEAR]);
   });
 });

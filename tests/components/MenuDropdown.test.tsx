@@ -203,6 +203,27 @@ describe('MenuDropdown — admin item gating (isAdmin, not isLocalEnvironment)',
     expect(mockPush).toHaveBeenCalledWith('/explore');
   });
 
+  it('shows Collections for an anonymous viewer and navigates to /collections (public showcase)', async () => {
+    mockMe.mockResolvedValue(null);
+    const onClose = jest.fn();
+
+    render(<MenuDropdown isOpen onClose={onClose} />);
+
+    const collectionsBtn = await screen.findByRole('button', { name: 'Collections' });
+    fireEvent.click(collectionsBtn);
+    expect(mockPush).toHaveBeenCalledWith('/collections');
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('keeps Collections visible for a logged-in non-admin principal', async () => {
+    mockMe.mockResolvedValue(principal); // isAdmin: false
+
+    render(<MenuDropdown isOpen onClose={jest.fn()} />);
+    await screen.findByRole('button', { name: /log out/i }); // settle the me() fetch
+
+    expect(screen.getByRole('button', { name: 'Collections' })).toBeInTheDocument();
+  });
+
   it('hides Clear Cache for an isAdmin principal in a prod-shaped environment (isLocalEnvironment mocked false) — stays local-only even for real admins', async () => {
     mockMe.mockResolvedValue(adminPrincipal);
 

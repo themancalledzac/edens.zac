@@ -30,7 +30,13 @@ const mockGetScopedAllCollections = getScopedAllCollections as jest.MockedFuncti
   typeof getScopedAllCollections
 >;
 
-/** Wrap COLLECTION content blocks in a synthetic all-collections parent shell. */
+/**
+ * Wrap COLLECTION content blocks in a synthetic all-collections parent shell.
+ *
+ * The cast is deliberate: the page reads only `content`, and spelling out the other ~15
+ * required CollectionModel fields would obscure what each case is actually varying. It also
+ * lets a case pass a deliberately off-contract shape (see the `{}` resilience test).
+ */
 function makeParent(content: unknown[]): CollectionModel {
   return { content } as unknown as CollectionModel;
 }
@@ -138,5 +144,60 @@ describe('CollectionsPage', () => {
     render(await CollectionsPage());
 
     expect(screen.getByText(/no collections yet/i)).toBeInTheDocument();
+  });
+
+  it('renders a tile for an undated collection with no cover image', async () => {
+    mockGetScopedAllCollections.mockResolvedValue(
+      makeParent([
+        createCollectionContent(1, {
+          title: 'Bare Tile',
+          slug: 'bare-tile',
+          collectionDate: undefined,
+          collectionEndDate: undefined,
+          coverImage: undefined,
+        }),
+      ])
+    );
+
+    render(await CollectionsPage());
+
+    const link = screen.getByRole('link', { name: /Bare Tile/ });
+    expect(link).toHaveAttribute('href', '/bare-tile');
+    // No cover image and no date label: the tile is the title over a placeholder.
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(link).toHaveAccessibleName('Bare Tile');
+  });
+
+  it('formats a single date instead of echoing the raw ISO string', async () => {
+    mockGetScopedAllCollections.mockResolvedValue(
+      makeParent([
+        createCollectionContent(1, {
+          title: 'One Day',
+          slug: 'one-day',
+          collectionDate: '2026-06-01',
+        }),
+      ])
+    );
+
+    render(await CollectionsPage());
+
+    expect(screen.getByText('Jun 1, 2026')).toBeInTheDocument();
+    expect(screen.queryByText('2026-06-01')).not.toBeInTheDocument();
+  });
+
+  it('degrades to the empty state when the response has no content field at all', async () => {
+    mockGetScopedAllCollections.mockResolvedValue({} as CollectionModel);
+
+    render(await CollectionsPage());
+
+    expect(screen.getByText(/no collections yet/i)).toBeInTheDocument();
+  });
+
+  it('requests the scoped list at the showcase page size', async () => {
+    mockGetScopedAllCollections.mockResolvedValue(makeParent([]));
+
+    await CollectionsPage();
+
+    expect(mockGetScopedAllCollections).toHaveBeenCalledWith(500);
   });
 });

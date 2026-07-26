@@ -206,7 +206,6 @@ export function convertCollectionContentToParallax(
     slug: col.slug,
     collectionType: col.collectionType,
     collectionDate: col.collectionDate,
-    collectionEndDate: col.collectionEndDate,
     description: col.description ?? null,
     imageUrl: col.coverImage?.imageUrl ?? '',
     overlayText: col.title || col.slug || '',

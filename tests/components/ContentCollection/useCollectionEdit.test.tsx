@@ -801,6 +801,41 @@ describe('useCollectionEdit', () => {
 
       expect(mockUpdateCollectionRating).toHaveBeenCalledWith(700, 4);
     });
+
+    it('surfaces a failure via error and rethrows so the caller skips its optimistic commit', async () => {
+      mockUpdateCollectionRating.mockRejectedValueOnce(new Error('boom'));
+      const { result } = renderEdit({ enabled: false });
+
+      await act(async () => {
+        await expect(result.current.updateCollectionRating(700, 4)).rejects.toThrow('boom');
+      });
+
+      expect(result.current.error).not.toBeNull();
+    });
+  });
+
+  describe('updateData seeding', () => {
+    it('seeds collectionEndDate from the collection, not from collectionDate', async () => {
+      const { result } = renderEdit({
+        enabled: false,
+        collection: makeCollection({
+          collectionDate: '2026-03-03',
+          collectionEndDate: '2026-03-07',
+        }),
+      });
+
+      expect(result.current.updateData.collectionDate).toBe('2026-03-03');
+      expect(result.current.updateData.collectionEndDate).toBe('2026-03-07');
+    });
+
+    it("seeds collectionEndDate as '' when the collection has no end date", () => {
+      const { result } = renderEdit({
+        enabled: false,
+        collection: makeCollection({ collectionEndDate: undefined }),
+      });
+
+      expect(result.current.updateData.collectionEndDate).toBe('');
+    });
   });
 
   describe('handleUpdate(patch) — same-tick inline save (C1)', () => {
