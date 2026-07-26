@@ -179,7 +179,7 @@ H (root, forced hPair)
    as its own leaf inherits the full row height and balloons. **Which vertical lands solo
    vs. stacked is not monotonic in rating** — it falls out of adjacency + AR-fitting.
 2. **The AR floor is enforced only at the ROOT**, not at internal nodes
-   ([`rowAR_Cost`](rowCombination.ts) / `pickRootAssignment`), so a sub-tree `vStack` of two
+   ([`rowARCost`](rowCombination.ts) / `pickRootAssignment`), so a sub-tree `vStack` of two
    verticals at AR 0.28 is permitted as long as the root row clears 1.0.
 3. **The equity tiebreak can't rescue it.** `equitySpread` (the only mechanism that tries to
    make area track prominence) is confined to `AR_EQUITY_BAND` (0.3) around the AR-optimal

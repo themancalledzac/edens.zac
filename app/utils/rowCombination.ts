@@ -172,14 +172,14 @@ export function hChain(images: ImageType[]): AtomicComponent {
 }
 
 /** Convert an AtomicComponent tree to a BoxTree for rendering. */
-export function acToBoxTree(ac: AtomicComponent): BoxTree {
-  if (ac.type === 'single') {
-    return { type: 'leaf', content: ac.img.source };
+export function acToBoxTree(component: AtomicComponent): BoxTree {
+  if (component.type === 'single') {
+    return { type: 'leaf', content: component.img.source };
   }
   return {
     type: 'combined',
-    direction: ac.direction === 'H' ? 'horizontal' : 'vertical',
-    children: [acToBoxTree(ac.children[0]), acToBoxTree(ac.children[1])],
+    direction: component.direction === 'H' ? 'horizontal' : 'vertical',
+    children: [acToBoxTree(component.children[0]), acToBoxTree(component.children[1])],
   };
 }
 
@@ -448,26 +448,26 @@ export function buildRows(
 
     const arFloor = rowWidth <= 2 ? 0 : targetARBaseline * AR_FLOOR_MULTIPLIER;
     const expandedWindow = remaining.slice(0, MAX_ROW_IMAGES);
-    let seqTotal = 0;
-    let seqCount = 0;
+    let sequentialTotal = 0;
+    let sequentialCount = 0;
     const skippedStandalones: number[] = [];
     let slotCountComplete = false;
 
     for (let i = 0; i < expandedWindow.length; i++) {
       const widthCost = getWidthCost(expandedWindow[i]!);
 
-      if (seqCount > 0 && isSoloHero(expandedWindow[i]!, rowWidth)) {
+      if (sequentialCount > 0 && isSoloHero(expandedWindow[i]!, rowWidth)) {
         skippedStandalones.push(i);
         continue;
       }
 
-      const newFill = (seqTotal + widthCost) / rowWidth;
+      const newFill = (sequentialTotal + widthCost) / rowWidth;
 
       if (newFill > MAX_FILL_RATIO && !slotCountComplete) {
-        const currentFill = seqTotal / rowWidth;
+        const currentFill = sequentialTotal / rowWidth;
         if (currentFill < effectiveMinFill && newFill <= 1.35) {
-          seqTotal += widthCost;
-          seqCount += 1;
+          sequentialTotal += widthCost;
+          sequentialCount += 1;
         }
         break;
       }
@@ -478,21 +478,21 @@ export function buildRows(
           break;
         }
 
-        seqTotal += widthCost;
-        seqCount += 1;
+        sequentialTotal += widthCost;
+        sequentialCount += 1;
 
-        const expandedItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
+        const expandedItems = collectRowItems(expandedWindow, sequentialCount, skippedStandalones);
         const expandedImgs = expandedItems.map(item => toImageType(item));
         const expandedAR = estimateRowAR(expandedImgs, targetARBaseline);
         if (expandedAR >= arFloor) break;
         continue;
       }
 
-      seqTotal += widthCost;
-      seqCount += 1;
+      sequentialTotal += widthCost;
+      sequentialCount += 1;
 
       if (newFill >= effectiveMinFill) {
-        const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
+        const rowItems = collectRowItems(expandedWindow, sequentialCount, skippedStandalones);
         const rowImgs = rowItems.map(item => toImageType(item));
         const rowAR = estimateRowAR(rowImgs, targetARBaseline);
 
@@ -503,8 +503,8 @@ export function buildRows(
       }
     }
 
-    if (seqCount > 0) {
-      const rowItems = collectRowItems(expandedWindow, seqCount, skippedStandalones);
+    if (sequentialCount > 0) {
+      const rowItems = collectRowItems(expandedWindow, sequentialCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item));
       const composition = buildAtomic(rowImgs, rowTargetAR(rowImgs, targetARBaseline));
       const boxTree = acToBoxTree(composition);
@@ -516,7 +516,7 @@ export function buildRows(
 
       const usedIndices = new Set<number>();
       let taken = 0;
-      for (let i = 0; i < expandedWindow.length && taken < seqCount; i++) {
+      for (let i = 0; i < expandedWindow.length && taken < sequentialCount; i++) {
         if (!skippedStandalones.includes(i)) {
           usedIndices.add(i);
           taken++;
@@ -529,19 +529,19 @@ export function buildRows(
       continue;
     }
 
-    const bfComponents: AnyContentModel[] = [];
-    const bfUsedIndices: number[] = [];
+    const bestFitComponents: AnyContentModel[] = [];
+    const bestFitUsedIndices: number[] = [];
     const available = new Set(window.map((_, i) => i));
 
-    bfComponents.push(window[0]!);
-    bfUsedIndices.push(0);
+    bestFitComponents.push(window[0]!);
+    bestFitUsedIndices.push(0);
     available.delete(0);
 
-    if (!isRowComplete(bfComponents, rowWidth)) {
+    if (!isRowComplete(bestFitComponents, rowWidth)) {
       for (let idx = 1; idx < window.length; idx++) {
         if (!available.has(idx)) continue;
 
-        const currentTotal = getTotalWidthCost(bfComponents);
+        const currentTotal = getTotalWidthCost(bestFitComponents);
         const candidateWidthCost = getWidthCost(window[idx]!);
         const newTotal = currentTotal + candidateWidthCost;
         const newFill = newTotal / rowWidth;
@@ -557,31 +557,31 @@ export function buildRows(
           if (underfillDistance <= overfillDistance) {
             continue;
           }
-          bfComponents.push(window[idx]!);
-          bfUsedIndices.push(idx);
+          bestFitComponents.push(window[idx]!);
+          bestFitUsedIndices.push(idx);
           break;
         }
 
-        bfComponents.push(window[idx]!);
-        bfUsedIndices.push(idx);
+        bestFitComponents.push(window[idx]!);
+        bestFitUsedIndices.push(idx);
         available.delete(idx);
 
-        if (isRowComplete(bfComponents, rowWidth)) {
+        if (isRowComplete(bestFitComponents, rowWidth)) {
           break;
         }
       }
     }
 
-    const bfImgs = bfComponents.map(item => toImageType(item));
-    const composition = buildAtomic(bfImgs, rowTargetAR(bfImgs, targetARBaseline));
+    const bestFitImgs = bestFitComponents.map(item => toImageType(item));
+    const composition = buildAtomic(bestFitImgs, rowTargetAR(bestFitImgs, targetARBaseline));
     const boxTree = acToBoxTree(composition);
 
     rows.push({
-      components: bfComponents,
+      components: bestFitComponents,
       boxTree,
     });
 
-    const sortedIndices = [...bfUsedIndices].sort((a, b) => b - a);
+    const sortedIndices = [...bestFitUsedIndices].sort((a, b) => b - a);
     for (const idx of sortedIndices) {
       remaining.splice(idx, 1);
     }
@@ -805,7 +805,7 @@ const ROW_AR_FLOOR = 1.0;
  * penalty (preferred only as a last resort); at or above the floor, the candidate
  * closest to the target wins.
  */
-function rowAR_Cost(rowAR: number, target: number): number {
+function rowARCost(rowAR: number, target: number): number {
   if (rowAR < ROW_AR_FLOOR) return 1000 + (ROW_AR_FLOOR - rowAR);
   return Math.abs(rowAR - Math.max(target, ROW_AR_FLOOR));
 }
@@ -848,19 +848,19 @@ function arPenalty(rowAR: number, target: number): number {
  * vStack inverts: leftFactor uses rightAR (and vice versa) - under 1/AR the smaller-AR
  * child claims the larger share.
  */
-function leafShares(ac: AtomicComponent): {
+function leafShares(component: AtomicComponent): {
   ar: number;
   leaves: Array<{ value: number; share: number }>;
 } {
-  if (ac.type === 'single') {
-    return { ar: ac.img.numericAR, leaves: [{ value: ac.img.prominence, share: 1 }] };
+  if (component.type === 'single') {
+    return { ar: component.img.numericAR, leaves: [{ value: component.img.prominence, share: 1 }] };
   }
-  const left = leafShares(ac.children[0]);
-  const right = leafShares(ac.children[1]);
+  const left = leafShares(component.children[0]);
+  const right = leafShares(component.children[1]);
   const leftAR = left.ar;
   const rightAR = right.ar;
   const sum = leftAR + rightAR;
-  const isH = ac.direction === 'H';
+  const isH = component.direction === 'H';
   const ar = isH ? sum : (leftAR * rightAR) / sum;
   const leftFactor = isH ? leftAR / sum : rightAR / sum;
   const rightFactor = isH ? rightAR / sum : leftAR / sum;
@@ -878,8 +878,8 @@ function leafShares(ac: AtomicComponent): {
  * max(area/value) / min(area/value) across leaves. 1.0 = perfectly proportional;
  * larger is worse. Uses prominence P so high-rated verticals are not penalized.
  */
-function equitySpread(ac: AtomicComponent): number {
-  const { leaves } = leafShares(ac);
+function equitySpread(component: AtomicComponent): number {
+  const { leaves } = leafShares(component);
   let min = Infinity;
   let max = 0;
   for (const { value, share } of leaves) {
@@ -926,7 +926,7 @@ function enumerateAssignments(node: AbstractNode): Candidate[] {
 /**
  * AR-closest direction assignment for a single point-balance tree — the cheap Stage-1
  * estimator behind estimateRowAR. The root is forced hPair (rows are horizontal);
- * among the children's assignments the lowest rowAR_Cost wins. No equity search here;
+ * among the children's assignments the lowest rowARCost wins. No equity search here;
  * that runs only at final composition.
  */
 function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicComponent {
@@ -939,7 +939,7 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
   let bestArCost = Infinity;
   for (const leftOption of leftOptions) {
     for (const rightOption of rightOptions) {
-      const arCost = rowAR_Cost(leftOption.ar + rightOption.ar, targetAR);
+      const arCost = rowARCost(leftOption.ar + rightOption.ar, targetAR);
       if (arCost < bestArCost) {
         bestArCost = arCost;
         best = hPair(leftOption.component, rightOption.component);
@@ -975,7 +975,7 @@ function pickBestComposition(
 
   const consider = (component: AtomicComponent, rowAR: number): void => {
     if (counters) counters.candidates += 1;
-    const cost = rowAR_Cost(rowAR, target);
+    const cost = rowARCost(rowAR, target);
     if (cost < arClosestCost) {
       arClosestCost = cost;
       arClosest = component;
