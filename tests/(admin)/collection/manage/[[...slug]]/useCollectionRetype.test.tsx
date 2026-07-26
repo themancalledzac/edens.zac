@@ -50,8 +50,9 @@ describe('useCollectionRetype', () => {
   });
 
   it('snaps back to the persisted type and errors when the backend did not retype', async () => {
-    // The wire body carries only isClient/isBlog, which cannot express PORTFOLIO — the
-    // backend leaves the collection alone and the UI must not keep the optimistic move.
+    // The response is authoritative. Every assignable kind persists now that `type` is sent
+    // alongside the derived booleans, so this is the guard for the cases that still cannot:
+    // a backend guard refusing the retype, a contradictory body, or phase 2 dropping `type`.
     mockUpdateCollection.mockResolvedValue({ collection: { id: 7, type: 'BLOG' } } as never);
     const { result, getCollections, setError } = setup();
 

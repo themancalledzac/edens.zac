@@ -526,7 +526,7 @@ describe('saveCollectionFromTag', () => {
     jest.clearAllMocks();
   });
 
-  it('POSTs the visibility body and strips the deprecated type field', async () => {
+  it('POSTs the visibility body and retains the type field (PORTFOLIO has no boolean encoding)', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(3) })
     );
@@ -542,6 +542,7 @@ describe('saveCollectionFromTag', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
+          type: CollectionType.PORTFOLIO,
           visibility: CollectionVisibility.UNLISTED,
         }),
       })
@@ -573,12 +574,68 @@ describe('saveCollectionFromTag', () => {
   });
 });
 
-describe('createCollection / updateCollection — boolean-only wire contract', () => {
+describe('admin kind writes — dual (type + derived booleans) wire contract', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('createCollection sends title + isClient/isBlog and never the deprecated type', async () => {
+  it('createCollection sends type AND the derived isClient', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(1) })
+    );
+
+    await createCollectionApi({ type: CollectionType.CLIENT_GALLERY, title: 'Smith Wedding' });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/createCollection'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          type: CollectionType.CLIENT_GALLERY,
+          title: 'Smith Wedding',
+          isClient: true,
+        }),
+      })
+    );
+  });
+
+  it('updateCollection sends type AND the derived isBlog', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(9) })
+    );
+
+    await updateCollectionApi(9, { id: 9, type: CollectionType.BLOG });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ id: 9, type: CollectionType.BLOG, isBlog: true }),
+      })
+    );
+  });
+
+  it('an explicit boolean on the request beats the derived one', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(9) })
+    );
+
+    await updateCollectionApi(9, {
+      id: 9,
+      type: CollectionType.CLIENT_GALLERY,
+      isClient: false,
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ id: 9, type: CollectionType.CLIENT_GALLERY, isClient: false }),
+      })
+    );
+  });
+
+  it('passes explicit booleans through untouched alongside type', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(1) })
     );
@@ -594,62 +651,17 @@ describe('createCollection / updateCollection — boolean-only wire contract', (
       expect.stringContaining('/collections/createCollection'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ title: 'Smith Wedding', isClient: true, isBlog: false }),
+        body: JSON.stringify({
+          type: CollectionType.CLIENT_GALLERY,
+          title: 'Smith Wedding',
+          isClient: true,
+          isBlog: false,
+        }),
       })
     );
   });
 
-  it('updateCollection strips the deprecated type and passes the booleans through', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(
-      mockSuccessResponse({ collection: createCollection(9) })
-    );
-
-    await updateCollectionApi(9, {
-      id: 9,
-      type: CollectionType.BLOG,
-      isBlog: true,
-      title: 'Paris 2026',
-    });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/collections/9'),
-      expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({ id: 9, isBlog: true, title: 'Paris 2026' }),
-      })
-    );
-  });
-
-  it('createCollection derives isClient from a type-only body (transitional admin form)', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(
-      mockSuccessResponse({ collection: createCollection(1) })
-    );
-
-    await createCollectionApi({ type: CollectionType.CLIENT_GALLERY, title: 'Smith Wedding' });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/collections/createCollection'),
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ title: 'Smith Wedding', isClient: true }),
-      })
-    );
-  });
-
-  it('updateCollection derives isBlog from a type-only body (drag-retype, edit sheet)', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(
-      mockSuccessResponse({ collection: createCollection(9) })
-    );
-
-    await updateCollectionApi(9, { id: 9, type: CollectionType.BLOG });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/collections/9'),
-      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ id: 9, isBlog: true }) })
-    );
-  });
-
-  it('omits both booleans for a type the wire contract cannot express (PORTFOLIO)', async () => {
+  it('sends type with NO booleans for kinds the booleans cannot express (PORTFOLIO)', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(9) })
     );
@@ -658,17 +670,40 @@ describe('createCollection / updateCollection — boolean-only wire contract', (
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/collections/9'),
-      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ id: 9 }) })
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ id: 9, type: CollectionType.PORTFOLIO }),
+      })
     );
   });
 
-  it('createChildCollection strips type and derives the booleans (the unwrapped fourth site)', async () => {
+  it('sends PARENT with no booleans at all, so it cannot trip the backend parent-type guard', async () => {
+    // The backend rejects an explicit true flag against a PARENT/HOME base. The derivation
+    // emits only `true` or `undefined`, never `false`, so a PARENT retype carries neither.
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(9) })
+    );
+
+    await updateCollectionApi(9, { id: 9, type: CollectionType.PARENT });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ id: 9, type: CollectionType.PARENT }),
+      })
+    );
+  });
+
+  it('createChildCollection sends type: PORTFOLIO to the wire (the MISC regression this prevents)', async () => {
+    // Stripping `type` here silently created every child collection as MISC instead of
+    // PORTFOLIO. PORTFOLIO has no boolean encoding, so `type` is the ONLY way to ask for it.
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(4) })
     );
 
     await createChildCollectionApi(3, {
-      type: CollectionType.CLIENT_GALLERY,
+      type: CollectionType.PORTFOLIO,
       title: 'New Child Collection',
     });
 
@@ -676,7 +711,33 @@ describe('createCollection / updateCollection — boolean-only wire contract', (
       expect.stringContaining('/collections/3/child'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ title: 'New Child Collection', isClient: true }),
+        body: JSON.stringify({
+          type: CollectionType.PORTFOLIO,
+          title: 'New Child Collection',
+        }),
+      })
+    );
+  });
+
+  it('createChildCollection derives isClient when a child is created as a client gallery', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(4) })
+    );
+
+    await createChildCollectionApi(3, {
+      type: CollectionType.CLIENT_GALLERY,
+      title: 'Smith Wedding',
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/3/child'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          type: CollectionType.CLIENT_GALLERY,
+          title: 'Smith Wedding',
+          isClient: true,
+        }),
       })
     );
   });

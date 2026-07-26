@@ -220,7 +220,7 @@ export async function validateClientGalleryAccess(
 // ADMIN Endpoints (Dev only - /api/admin/collections)
 // ============================================================================
 
-/** The fields `withoutLegacyType` reads; every admin create/update body carries them. */
+/** The fields `withDerivedKindFlags` reads; every admin create/update body carries them. */
 interface LegacyTypedRequest {
   type?: CollectionType;
   isClient?: boolean;
@@ -228,23 +228,36 @@ interface LegacyTypedRequest {
 }
 
 /**
- * Strip the deprecated `type` field from an outgoing create/update body, deriving
- * the `isClient`/`isBlog` booleans the backend now classifies on from the field
- * being stripped. Transitional: admin UI (create form, edit sheet, Save as
- * Collection, drag-retype) still speaks `type`, so the kind it selects must
- * survive the strip. An explicit boolean on the body always wins over the
- * derivation. Only CLIENT_GALLERY and BLOG are expressible as booleans —
- * every other type derives to `undefined` (field omitted, backend leaves the
- * flags alone on update and folds to MISC on create).
+ * Add the `isClient`/`isBlog` booleans the backend classifies on, derived from the request's
+ * legacy `type`, and KEEP `type` on the body for the duration of the compat window.
+ *
+ * Sending both is required, not belt-and-braces: the booleans can only express CLIENT_GALLERY
+ * (`isClient`) and BLOG (`isBlog`). PORTFOLIO, ART_GALLERY and PARENT have no boolean encoding,
+ * so a body carrying booleans alone cannot ask for them — dropping `type` silently landed every
+ * such request on MISC. `type` is what actually sets those kinds; the derived booleans keep the
+ * request unambiguous for the flag-keyed paths.
+ *
+ * Backend contract (`CollectionTypeCompat.resolve`): `type` sets the base kind and an explicit
+ * boolean overrides it. `{type: PORTFOLIO}` resolves to PORTFOLIO; `{type: CLIENT_GALLERY,
+ * isClient: true}` resolves to CLIENT_GALLERY; `{type: PARENT}` resolves to PARENT. The derivation
+ * emits only `true` or `undefined`, never `false`, so it can never trip the backend's guard that
+ * rejects an explicit true flag against a PARENT/HOME base. An explicit boolean already on the
+ * body always wins over the derived one.
+ *
+ * PHASE 2 — delete this helper entirely (both the `type` retention and the derivation), and the
+ * `type` field on `CollectionCreateRequest`/`CollectionUpdateRequest` with it. Unblocked by BOTH:
+ * (1) a real boolean/discriminator writer in the admin UI that can express PORTFOLIO, ART_GALLERY
+ * and PARENT without the enum, and (2) the backend dropping the `collection.type` column (which
+ * also deletes `CollectionTypeCompat`). Until both land, this is the frontend half of phase 2 and
+ * the only thing keeping admin kind-writes working.
  */
-function withoutLegacyType<T extends LegacyTypedRequest>(
+function withDerivedKindFlags<T extends LegacyTypedRequest>(
   body: T
-): Omit<T, 'type'> & { isClient?: boolean; isBlog?: boolean } {
-  const { type, ...rest } = body;
+): T & { isClient?: boolean; isBlog?: boolean } {
   return {
-    ...rest,
-    isClient: rest.isClient ?? (type === CollectionType.CLIENT_GALLERY || undefined),
-    isBlog: rest.isBlog ?? (type === CollectionType.BLOG || undefined),
+    ...body,
+    isClient: body.isClient ?? (body.type === CollectionType.CLIENT_GALLERY || undefined),
+    isBlog: body.isBlog ?? (body.type === CollectionType.BLOG || undefined),
   };
 }
 
@@ -257,7 +270,7 @@ export async function createCollection(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     '/collections/createCollection',
-    withoutLegacyType(createRequest)
+    withDerivedKindFlags(createRequest)
   );
 }
 
@@ -272,7 +285,7 @@ export async function updateCollection(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPutJsonApi<CollectionUpdateResponseDTO>(
     `/collections/${id}`,
-    withoutLegacyType(updateData)
+    withDerivedKindFlags(updateData)
   );
 }
 
@@ -406,7 +419,7 @@ export async function createChildCollection(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     `/collections/${parentId}/child`,
-    withoutLegacyType(createRequest)
+    withDerivedKindFlags(createRequest)
   );
 }
 
@@ -421,6 +434,6 @@ export async function saveCollectionFromTag(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     `/tags/${tagId}/save-as-collection`,
-    withoutLegacyType(body ?? {})
+    withDerivedKindFlags(body ?? {})
   );
 }

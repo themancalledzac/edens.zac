@@ -70,9 +70,9 @@ export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
 export interface CollectionBaseModel {
   id?: number;
   /**
-   * @deprecated Legacy classifier still emitted by the backend for the rollback
-   * window. Nothing in public surfaces or the API layer reads it — behavior keys
-   * on `isClient`/`isBlog` instead. Removed alongside the enum in the follow-up.
+   * @deprecated Legacy classifier still emitted by the backend for the rollback window. No
+   * public surface reads it off a RESPONSE — rendering keys on `isClient`/`isBlog`. It is still
+   * written on admin REQUESTS (see `CollectionUpdateRequest.type`). Removed in phase 2.
    */
   type?: CollectionType;
   /**
@@ -107,8 +107,9 @@ export interface CollectionBaseModel {
  */
 export interface CollectionCreateRequest {
   /**
-   * @deprecated The admin form may still set this during the transition, but the
-   * API layer strips it before sending — the backend receives only the booleans.
+   * @deprecated Legacy (admin-transitional) kind selector. Still SENT to the backend: it is the
+   * only way to express PORTFOLIO/ART_GALLERY/PARENT, which have no boolean encoding. The API
+   * layer adds the derived `isClient`/`isBlog` alongside it — see `withDerivedKindFlags`.
    */
   type?: CollectionType;
   title: string;
@@ -214,8 +215,10 @@ export interface CollectionUpdate {
 export interface CollectionUpdateRequest {
   id: number; // Required for updates
   /**
-   * @deprecated The admin UI may still set this during the transition, but the
-   * API layer strips it before sending — the backend receives only the booleans.
+   * @deprecated Legacy (admin-transitional) kind selector. Still SENT to the backend: it is the
+   * only way to express PORTFOLIO/ART_GALLERY/PARENT, which have no boolean encoding. Sent only
+   * when actually changed (`buildUpdatePayload` dirty-diffs it), so a metadata-only save never
+   * re-derives the flags from it. See `withDerivedKindFlags`.
    */
   type?: CollectionType;
   isClient?: boolean;
