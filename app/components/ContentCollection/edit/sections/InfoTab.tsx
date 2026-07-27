@@ -7,18 +7,13 @@ import {
   PERSON_ADD_NEW_FIELDS,
 } from '@/app/components/ui/Dropdown/commonAddNewFields';
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
+import { Checkbox } from '@/app/components/ui/Field/Checkbox';
 import { Field } from '@/app/components/ui/Field/Field';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Select } from '@/app/components/ui/Field/Select';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
-import {
-  ASSIGNABLE_COLLECTION_TYPES,
-  COLLECTION_TYPE_LABELS,
-  CollectionType,
-  type ContentPersonModel,
-  type LocationModel,
-} from '@/app/types/Collection';
+import { type ContentPersonModel, type LocationModel } from '@/app/types/Collection';
 import {
   COLLECTION_VISIBILITY_LABELS,
   CollectionVisibility,
@@ -36,7 +31,7 @@ interface InfoTabProps {
 }
 
 /**
- * Info tab: title, type, date, description, locations, visibility, tags, people, and (when
+ * Info tab: title, kind, date, description, locations, visibility, tags, people, and (when
  * applicable) gallery access. Tags + people were consolidated here from a former Tags tab.
  */
 export function InfoTab({ edit }: InfoTabProps) {
@@ -87,6 +82,16 @@ export function InfoTab({ edit }: InfoTabProps) {
     ? (childCollectionImages ?? [])
     : (collection?.content ?? []).filter(isContentImage);
 
+  /**
+   * The two stored discriminators are mutually exclusive (the backend rejects both true), so
+   * turning one on turns the other off. Turning one off touches only that flag — a collection
+   * with neither is just a collection, which is the default under the typeless model.
+   */
+  const setKind = (kind: 'isClient' | 'isBlog', checked: boolean) => {
+    setUpdateField(kind, checked);
+    if (checked) setUpdateField(kind === 'isClient' ? 'isBlog' : 'isClient', false);
+  };
+
   return (
     <div className={styles.tabPanel}>
       <div className={styles.titleRow}>
@@ -102,19 +107,26 @@ export function InfoTab({ edit }: InfoTabProps) {
       </div>
 
       <div className={styles.formGroup}>
-        <Field label="Collection Type" htmlFor="edit-sheet-type">
-          <Select
-            id="edit-sheet-type"
-            value={updateData.type}
-            onChange={e => setUpdateField('type', e.target.value as CollectionType)}
-          >
-            {ASSIGNABLE_COLLECTION_TYPES.map(type => (
-              <option key={type} value={type}>
-                {COLLECTION_TYPE_LABELS[type]}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <span className={styles.formLabel}>Kind</span>
+        <div className={styles.checkboxRow}>
+          <label className={styles.checkboxLabel}>
+            <Checkbox
+              checked={updateData.isClient === true}
+              onChange={e => setKind('isClient', e.target.checked)}
+            />
+            <span>Client gallery</span>
+          </label>
+          <label className={styles.checkboxLabel}>
+            <Checkbox
+              checked={updateData.isBlog === true}
+              onChange={e => setKind('isBlog', e.target.checked)}
+            />
+            <span>Blog</span>
+          </label>
+        </div>
+        <p className={styles.fieldHint}>
+          Leave both unchecked for an ordinary collection. A collection cannot be both.
+        </p>
       </div>
 
       <div className={styles.formGroup}>

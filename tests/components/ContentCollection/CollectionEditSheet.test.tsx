@@ -48,11 +48,69 @@ jest.mock('@/app/components/ContentCollection/edit/sections/CollectionRolesSecti
 
 
 describe('CollectionEditSheet — InfoTab', () => {
-  it('renders Title, Collection Type, and the Visibility dropdown', () => {
+  it('renders Title, the two kind checkboxes, and the Visibility dropdown', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);
     expect(screen.getByLabelText('Title')).toBeInTheDocument();
-    expect(screen.getByLabelText('Collection Type')).toBeInTheDocument();
+    expect(screen.getByLabelText('Client gallery')).toBeInTheDocument();
+    expect(screen.getByLabelText('Blog')).toBeInTheDocument();
     expect(screen.getByLabelText('Visibility')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Collection Type')).not.toBeInTheDocument();
+  });
+
+  it('reflects the collection kind in the checkboxes', () => {
+    render(
+      <CollectionEditSheet edit={makeEdit({ editTab: 'info', updateData: makeUpdateData({ isBlog: true }) })} />
+    );
+    expect(screen.getByLabelText('Client gallery')).not.toBeChecked();
+    expect(screen.getByLabelText('Blog')).toBeChecked();
+  });
+
+  it('checking Client gallery sets isClient true and clears isBlog', () => {
+    const setUpdateField = jest.fn();
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'info',
+          updateData: makeUpdateData({ isBlog: true }),
+          setUpdateField,
+        })}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Client gallery'));
+    expect(setUpdateField).toHaveBeenCalledWith('isClient', true);
+    expect(setUpdateField).toHaveBeenCalledWith('isBlog', false);
+  });
+
+  it('checking Blog sets isBlog true and clears isClient', () => {
+    const setUpdateField = jest.fn();
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'info',
+          updateData: makeUpdateData({ isClient: true }),
+          setUpdateField,
+        })}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Blog'));
+    expect(setUpdateField).toHaveBeenCalledWith('isBlog', true);
+    expect(setUpdateField).toHaveBeenCalledWith('isClient', false);
+  });
+
+  it('unchecking a kind clears only that flag', () => {
+    const setUpdateField = jest.fn();
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'info',
+          updateData: makeUpdateData({ isClient: true }),
+          setUpdateField,
+        })}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Client gallery'));
+    expect(setUpdateField).toHaveBeenCalledWith('isClient', false);
+    expect(setUpdateField).not.toHaveBeenCalledWith('isBlog', false);
   });
 
   it('renders Tags and People (consolidated into Info)', () => {
