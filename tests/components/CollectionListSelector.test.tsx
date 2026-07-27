@@ -1,20 +1,19 @@
 import '@testing-library/jest-dom';
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import CollectionListSelector, {
+  bucketOf,
+  COLLECTION_BUCKET_LABELS,
+  COLLECTION_BUCKET_ORDER,
   sortGroup,
 } from '@/app/components/CollectionListSelector/CollectionListSelector';
-import {
-  ASSIGNABLE_COLLECTION_TYPES,
-  COLLECTION_TYPE_ORDER,
-  type CollectionListModel,
-} from '@/app/types/Collection';
+import { type CollectionListModel } from '@/app/types/Collection';
 
 const mockCollections: CollectionListModel[] = [
-  { id: 1, name: 'Portfolio A', slug: 'portfolio-a', type: 'PORTFOLIO' },
-  { id: 2, name: 'Blog B', slug: 'blog-b', type: 'BLOG' },
-  { id: 3, name: 'Gallery C', slug: 'gallery-c', type: 'ART_GALLERY' },
+  { id: 1, name: 'Portfolio A', slug: 'portfolio-a' },
+  { id: 2, name: 'Blog B', slug: 'blog-b', isBlog: true },
+  { id: 3, name: 'Gallery C', slug: 'gallery-c', isClient: true },
   { id: 4, name: 'No Type D', slug: 'no-type-d' },
 ];
 
@@ -46,8 +45,10 @@ describe('CollectionListSelector', () => {
   });
 
   it('defaults label to "Collections"', () => {
+    // The COLLECTION bucket chip now also reads "Collections", so scope to the list's own
+    // <label> element rather than matching bare text.
     render(<CollectionListSelector {...defaultProps} />);
-    expect(screen.getByText('Collections')).toBeInTheDocument();
+    expect(screen.getByText('Collections', { selector: 'label' })).toBeInTheDocument();
   });
 
   it('excludes collection by excludeCollectionId', () => {
@@ -58,11 +59,12 @@ describe('CollectionListSelector', () => {
     expect(screen.getByText('Gallery C')).toBeInTheDocument();
   });
 
-  it('shows "Portfolio" as default type when collection.type is undefined', () => {
+  it('labels each row with its derived bucket in single-column mode', () => {
     render(<CollectionListSelector {...defaultProps} />);
-    // Collection 4 has no type — should show "Portfolio"
-    const typeElements = screen.getAllByText('Portfolio');
-    expect(typeElements.length).toBeGreaterThanOrEqual(1);
+    // Portfolio A and No Type D are plain collections; Blog B and Gallery C are not.
+    expect(screen.getAllByText('Collections')).toHaveLength(3); // 2 rows + the list label
+    expect(screen.getByText('Blogs')).toBeInTheDocument();
+    expect(screen.getByText('Client Galleries')).toBeInTheDocument();
   });
 
   it('fires onToggle when checkbox is clicked', () => {
@@ -252,7 +254,7 @@ describe('CollectionListSelector', () => {
     it('exposes a Sibling and a Child toggle per collection row', () => {
       render(<CollectionListSelector {...twoColProps} />);
       // Portfolio A lives in the (default-collapsed) PORTFOLIO accordion section — expand it first.
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByLabelText('Toggle sibling Portfolio A')).toBeInTheDocument();
       expect(screen.getByLabelText('Toggle child Portfolio A')).toBeInTheDocument();
     });
@@ -266,7 +268,7 @@ describe('CollectionListSelector', () => {
           onToggleSibling={onToggleSibling}
         />
       );
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       fireEvent.click(screen.getByLabelText('Toggle sibling Portfolio A'));
       expect(onToggleSibling).toHaveBeenCalledTimes(1);
       expect(onToggleSibling).toHaveBeenCalledWith(mockCollections[0]);
@@ -282,7 +284,7 @@ describe('CollectionListSelector', () => {
           onToggleSibling={onToggleSibling}
         />
       );
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       fireEvent.click(screen.getByLabelText('Toggle child Portfolio A'));
       expect(onToggle).toHaveBeenCalledTimes(1);
       expect(onToggle).toHaveBeenCalledWith(mockCollections[0]);
@@ -293,11 +295,11 @@ describe('CollectionListSelector', () => {
       // only opens ONE section at a time — put both rows in a single PORTFOLIO section so one expand
       // reveals both. Ids/saved-sets are unchanged, so the per-column saved/empty assertions hold.
       const sameSection: CollectionListModel[] = [
-        { id: 1, name: 'Portfolio A', slug: 'portfolio-a', type: 'PORTFOLIO' },
-        { id: 2, name: 'Blog B', slug: 'blog-b', type: 'PORTFOLIO' },
+        { id: 1, name: 'Portfolio A', slug: 'portfolio-a' },
+        { id: 2, name: 'Blog B', slug: 'blog-b' },
       ];
       render(<CollectionListSelector {...twoColProps} allCollections={sameSection} />);
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByLabelText('Toggle child Portfolio A').className).toContain('saved');
       expect(screen.getByLabelText('Toggle sibling Blog B').className).toContain('saved');
       expect(screen.getByLabelText('Toggle sibling Portfolio A').className).toContain('empty');
@@ -306,7 +308,7 @@ describe('CollectionListSelector', () => {
     it('still omits the excludeCollectionId row in two-column mode', () => {
       render(<CollectionListSelector {...twoColProps} excludeCollectionId={2} />);
       // Portfolio A lives in the collapsed PORTFOLIO section — expand it to assert it renders.
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByText('Portfolio A')).toBeInTheDocument();
       expect(screen.queryByText('Blog B')).not.toBeInTheDocument();
     });
@@ -324,7 +326,7 @@ describe('CollectionListSelector', () => {
       );
 
       // Blog B lives in the collapsed BLOG section — expand it before clicking its name button.
-      fireEvent.click(screen.getByText('Blog'));
+      fireEvent.click(screen.getByRole('button', { name: /Blogs/ }));
       fireEvent.click(screen.getByLabelText('Open Blog B'));
 
       expect(onNavigate).toHaveBeenCalledTimes(1);
@@ -343,7 +345,7 @@ describe('CollectionListSelector', () => {
       const onToggleParent = jest.fn();
       render(
         <CollectionListSelector
-          allCollections={[{ id: 10, name: 'X', type: 'PORTFOLIO' }]}
+          allCollections={[{ id: 10, name: 'X', slug: 'x' }]}
           savedCollectionIds={new Set([10])}
           pendingAddIds={new Set()}
           pendingRemoveIds={new Set()}
@@ -358,7 +360,7 @@ describe('CollectionListSelector', () => {
           onToggleParent={onToggleParent}
         />
       );
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       const btn = screen.getByLabelText('Toggle parent X');
       expect(btn).toHaveAttribute('aria-disabled', 'true');
       fireEvent.click(btn);
@@ -369,7 +371,7 @@ describe('CollectionListSelector', () => {
       const onToggleChild = jest.fn();
       render(
         <CollectionListSelector
-          allCollections={[{ id: 11, name: 'Y', type: 'PORTFOLIO' }]}
+          allCollections={[{ id: 11, name: 'Y', slug: 'y' }]}
           savedCollectionIds={new Set()}
           pendingAddIds={new Set()}
           pendingRemoveIds={new Set()}
@@ -384,14 +386,14 @@ describe('CollectionListSelector', () => {
           onToggleParent={jest.fn()}
         />
       );
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByLabelText('Toggle child Y')).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('does NOT disable Parent when row is saved-but-pending-removal as Child', () => {
       render(
         <CollectionListSelector
-          allCollections={[{ id: 12, name: 'Z', type: 'PORTFOLIO' }]}
+          allCollections={[{ id: 12, name: 'Z', slug: 'z' }]}
           savedCollectionIds={new Set([12])}
           pendingAddIds={new Set()}
           pendingRemoveIds={new Set([12])}
@@ -406,7 +408,7 @@ describe('CollectionListSelector', () => {
           onToggleParent={jest.fn()}
         />
       );
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByLabelText('Toggle parent Z')).not.toHaveAttribute('aria-disabled', 'true');
     });
   });
@@ -455,29 +457,37 @@ describe('CollectionListSelector', () => {
   });
 });
 
-describe('COLLECTION_TYPE_ORDER', () => {
-  it('lists HOME first then PARENT, CLIENT_GALLERY, ART_GALLERY, PORTFOLIO, BLOG, MISC', () => {
-    expect(COLLECTION_TYPE_ORDER).toEqual([
-      'HOME',
-      'PARENT',
-      'CLIENT_GALLERY',
-      'ART_GALLERY',
-      'PORTFOLIO',
-      'BLOG',
-      'MISC',
-    ]);
+describe('COLLECTION_BUCKET_ORDER', () => {
+  it('lists Home first, then Client Galleries, Blogs, Collections', () => {
+    expect(COLLECTION_BUCKET_ORDER).toEqual(['HOME', 'CLIENT_GALLERY', 'BLOG', 'COLLECTION']);
   });
 });
 
-describe('ASSIGNABLE_COLLECTION_TYPES', () => {
-  it('lists the 5 user-assignable types, excluding HOME and MISC', () => {
-    expect(ASSIGNABLE_COLLECTION_TYPES).toEqual([
-      'PORTFOLIO',
-      'ART_GALLERY',
-      'BLOG',
-      'CLIENT_GALLERY',
-      'PARENT',
-    ]);
+describe('COLLECTION_BUCKET_LABELS', () => {
+  it('has a non-empty label for every bucket', () => {
+    for (const b of COLLECTION_BUCKET_ORDER) expect(COLLECTION_BUCKET_LABELS[b]).toBeTruthy();
+  });
+});
+
+describe('bucketOf', () => {
+  it('puts the home slug in HOME even when it carries other flags', () => {
+    expect(bucketOf({ id: 1, name: 'Home', slug: 'home' })).toBe('HOME');
+    expect(bucketOf({ id: 1, name: 'Home', slug: 'home', isBlog: true })).toBe('HOME');
+  });
+
+  it('puts an isClient row in CLIENT_GALLERY', () => {
+    expect(bucketOf({ id: 2, name: 'G', slug: 'g', isClient: true })).toBe('CLIENT_GALLERY');
+  });
+
+  it('puts an isBlog row in BLOG', () => {
+    expect(bucketOf({ id: 3, name: 'B', slug: 'b', isBlog: true })).toBe('BLOG');
+  });
+
+  it('puts everything else in COLLECTION, including a row with no flags at all', () => {
+    expect(bucketOf({ id: 4, name: 'C', slug: 'c' })).toBe('COLLECTION');
+    expect(bucketOf({ id: 5, name: 'C', slug: 'c', isClient: false, isBlog: false })).toBe(
+      'COLLECTION'
+    );
   });
 });
 
@@ -494,14 +504,14 @@ describe('sortGroup', () => {
     expect(sorted.map(c => c.id)).toEqual([3, 1, 2]);
   });
 
-  it('sorts non-BLOG alphabetically by name', () => {
+  it('sorts a non-blog bucket alphabetically by name', () => {
     const sorted = sortGroup(
       [
         { id: 1, name: 'Charlie' },
         { id: 2, name: 'Alpha' },
         { id: 3, name: 'Bravo' },
       ],
-      'PORTFOLIO'
+      'COLLECTION'
     );
     expect(sorted.map(c => c.id)).toEqual([2, 3, 1]);
   });
@@ -520,12 +530,12 @@ describe('sortGroup', () => {
 
 describe('three-column accordion mode', () => {
   const allTypes: CollectionListModel[] = [
-    { id: 1, name: 'Home', type: 'HOME' },
-    { id: 2, name: 'P1', type: 'PORTFOLIO' },
-    { id: 3, name: 'P2', type: 'PORTFOLIO' },
-    { id: 4, name: 'B1', type: 'BLOG', collectionDate: '2025-01-01' },
-    { id: 5, name: 'B2', type: 'BLOG', collectionDate: '2025-06-01' },
-    { id: 6, name: 'M', type: 'MISC' },
+    { id: 1, name: 'Home', slug: 'home' },
+    { id: 2, name: 'P1', slug: 'p1' },
+    { id: 3, name: 'P2', slug: 'p2' },
+    { id: 4, name: 'B1', slug: 'b1', isBlog: true, collectionDate: '2025-01-01' },
+    { id: 5, name: 'B2', slug: 'b2', isBlog: true, collectionDate: '2025-06-01' },
+    { id: 6, name: 'G1', slug: 'g1', isClient: true },
   ];
 
   function renderInThreeColumnMode(rows = allTypes) {
@@ -556,11 +566,10 @@ describe('three-column accordion mode', () => {
   });
 
   it('renders Parent column header', () => {
+    // There is no PARENT bucket any more, so "Parent" now renders exactly once — as the
+    // column header. The `within(columnHeaderRow)` scoping that disambiguated it is dead.
     renderInThreeColumnMode();
-    // "Parent" renders twice: the column header AND the PARENT accordion section header.
-    // Scope to the column-header row so we assert the COLUMN header specifically.
-    const columnHeaderRow = screen.getByText('Collection Name').parentElement as HTMLElement;
-    expect(within(columnHeaderRow).getByText('Parent')).toBeInTheDocument();
+    expect(screen.getByText('Parent')).toBeInTheDocument();
   });
 
   it('renders HOME row always visible at top, no Home accordion header', () => {
@@ -571,22 +580,22 @@ describe('three-column accordion mode', () => {
     expect(screen.queryAllByRole('button', { name: /^Home$/ })).toHaveLength(0);
   });
 
-  it('renders 6 collapsed non-HOME type headers by default; no rows beneath', () => {
+  it('renders 3 collapsed non-Home bucket headers by default; no rows beneath', () => {
     renderInThreeColumnMode();
-    for (const l of ['Client Gallery', 'Art Gallery', 'Portfolio', 'Blog', 'Misc'])
-      expect(screen.getByText(l)).toBeInTheDocument();
-    // "Parent" is both a column header and an accordion header — assert the header exists via getAllByText.
-    expect(screen.getAllByText('Parent').length).toBeGreaterThanOrEqual(1);
+    for (const l of ['Client Galleries', 'Blogs']) {
+      expect(screen.getByRole('button', { name: new RegExp(l) })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: /Collections/ })).toBeInTheDocument();
     expect(screen.queryByText('P1')).not.toBeInTheDocument();
     expect(screen.queryByText('B1')).not.toBeInTheDocument();
   });
 
-  it('expand-collapse accordion: opening Blog closes Portfolio', () => {
+  it('expand-collapse accordion: opening Blogs closes Collections', () => {
     renderInThreeColumnMode();
-    fireEvent.click(screen.getByText('Portfolio'));
+    fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
     expect(screen.getByText('P1')).toBeInTheDocument();
     expect(screen.getByText('P2')).toBeInTheDocument();
-    fireEvent.click(screen.getByText('Blog'));
+    fireEvent.click(screen.getByRole('button', { name: /Blogs/ }));
     expect(screen.queryByText('P1')).not.toBeInTheDocument();
     expect(screen.getByText('B1')).toBeInTheDocument();
     expect(screen.getByText('B2')).toBeInTheDocument();
@@ -594,18 +603,18 @@ describe('three-column accordion mode', () => {
 
   it('BLOG group renders rows in collectionDate desc order', () => {
     renderInThreeColumnMode();
-    fireEvent.click(screen.getByText('Blog'));
+    fireEvent.click(screen.getByRole('button', { name: /Blogs/ }));
     const rows = screen.getAllByText(/^B\d$/);
     expect(rows.map(r => r.textContent)).toEqual(['B2', 'B1']);
   });
 
-  it('PORTFOLIO group renders rows alphabetically', () => {
+  it('Collections bucket renders rows alphabetically', () => {
     renderInThreeColumnMode([
-      { id: 1, name: 'Charlie', type: 'PORTFOLIO' },
-      { id: 2, name: 'Alpha', type: 'PORTFOLIO' },
-      { id: 3, name: 'Bravo', type: 'PORTFOLIO' },
+      { id: 1, name: 'Charlie', slug: 'charlie' },
+      { id: 2, name: 'Alpha', slug: 'alpha' },
+      { id: 3, name: 'Bravo', slug: 'bravo' },
     ]);
-    fireEvent.click(screen.getByText('Portfolio'));
+    fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
     const names = screen.getAllByText(/Charlie|Alpha|Bravo/);
     expect(names.map(n => n.textContent)).toEqual(['Alpha', 'Bravo', 'Charlie']);
   });
@@ -616,7 +625,7 @@ describe('three-column accordion mode', () => {
     const onToggleSibling = jest.fn();
     render(
       <CollectionListSelector
-        allCollections={[{ id: 20, name: 'Active Child', type: 'PORTFOLIO' }]}
+        allCollections={[{ id: 20, name: 'Active Child', slug: 'active-child' }]}
         savedCollectionIds={new Set([20])}
         pendingAddIds={new Set()}
         pendingRemoveIds={new Set()}
@@ -631,7 +640,7 @@ describe('three-column accordion mode', () => {
         onToggleParent={jest.fn()}
       />
     );
-    fireEvent.click(screen.getByText('Portfolio'));
+    fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
     const siblingBtn = screen.getByLabelText('Toggle sibling Active Child');
     expect(siblingBtn).not.toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(siblingBtn);
@@ -642,7 +651,7 @@ describe('three-column accordion mode', () => {
     const onToggleParent = jest.fn();
     render(
       <CollectionListSelector
-        allCollections={[{ id: 21, name: 'Plain Row', type: 'PORTFOLIO' }]}
+        allCollections={[{ id: 21, name: 'Plain Row', slug: 'plain-row' }]}
         savedCollectionIds={new Set()}
         pendingAddIds={new Set()}
         pendingRemoveIds={new Set()}
@@ -657,7 +666,7 @@ describe('three-column accordion mode', () => {
         onToggleParent={onToggleParent}
       />
     );
-    fireEvent.click(screen.getByText('Portfolio'));
+    fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
     const parentBtn = screen.getByLabelText('Toggle parent Plain Row');
     expect(parentBtn).not.toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(parentBtn);
@@ -672,16 +681,15 @@ describe('three-column accordion mode', () => {
     // `styles.expandedRow === 'expandedRow'` — query by the literal class name.
     const { container } = renderInThreeColumnMode();
     expect(container.querySelector('.expandedRow')).toBeNull();
-    fireEvent.click(screen.getByText('Portfolio'));
+    fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
     expect(container.querySelector('.expandedRow')).not.toBeNull();
   });
 
-  it('buckets an unknown collection type under the Misc section', () => {
-    // FIX 1: a type not in COLLECTION_TYPE_ORDER must fall into MISC rather than
-    // creating a phantom group key the render loop never shows (which would hide it).
-    renderInThreeColumnMode([{ id: 30, name: 'Weird Row', type: 'WEIRD_TYPE' }]);
+  it('buckets a row with no flags at all under Collections', () => {
+    // There is no unknown-type case any more: every row has a bucket by construction.
+    renderInThreeColumnMode([{ id: 30, name: 'Weird Row', slug: 'weird-row' }]);
     expect(screen.queryByText('Weird Row')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Misc'));
+    fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
     expect(screen.getByText('Weird Row')).toBeInTheDocument();
   });
 
@@ -719,7 +727,7 @@ describe('three-column accordion mode', () => {
       expect(screen.getByLabelText('Toggle parent P1')).toHaveAttribute('aria-disabled', 'true');
     });
 
-    it("auto-opens the current collection's type section on load, leaving others collapsed", () => {
+    it("auto-opens the current collection's bucket on load, leaving others collapsed", () => {
       renderWithCurrent(2); // PORTFOLIO
       // PORTFOLIO is open by default → P1/P2 visible without clicking the header.
       expect(screen.getByText('P1')).toBeInTheDocument();
@@ -781,7 +789,7 @@ describe('three-column accordion mode', () => {
           excludeCollectionId={2}
         />
       );
-      fireEvent.click(screen.getByText('Portfolio'));
+      fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.queryByText('P1')).not.toBeInTheDocument();
       expect(screen.getByText('P2')).toBeInTheDocument();
     });
@@ -793,7 +801,6 @@ describe('derived tag-view rows', () => {
     id: -99,
     name: 'Sunsets',
     slug: 'sunsets',
-    type: 'PARENT',
     derived: true,
   };
 
@@ -803,7 +810,7 @@ describe('derived tag-view rows', () => {
     pendingAddIds: new Set<number>(),
     pendingRemoveIds: new Set<number>(),
     onToggle: jest.fn(),
-    // parentMode engages accordion; derived rows land in the PARENT section.
+    // parentMode engages accordion; derived rows land in the Collections bucket.
     parentSavedIds: new Set<number>(),
     parentPendingAddIds: new Set<number>(),
     parentPendingRemoveIds: new Set<number>(),
@@ -812,10 +819,11 @@ describe('derived tag-view rows', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  // The literal "Parent" text collides with the column header span, so expand the
-  // accordion PARENT section via its header button (accessible name includes "(1)").
-  const expandParentSection = () =>
-    fireEvent.click(screen.getByRole('button', { name: /Parent \(1\)/ }));
+  // A tag view is neither a client gallery nor a blog, so it buckets to Collections. The
+  // bucket header collides with the selector's own default `label="Collections"`, so reach
+  // it by role — the count suffix makes the accessible name unambiguous.
+  const expandCollectionsSection = () =>
+    fireEvent.click(screen.getByRole('button', { name: /Collections \(1\)/ }));
 
   it('renders the derived row read-only (toggles disabled) and never fires toggle handlers', () => {
     const onToggle = jest.fn();
@@ -828,7 +836,7 @@ describe('derived tag-view rows', () => {
         onSaveDerived={jest.fn()}
       />
     );
-    expandParentSection();
+    expandCollectionsSection();
     const childToggle = screen.getByLabelText('Toggle child Sunsets');
     expect(childToggle.className).toContain('disabled');
     fireEvent.click(childToggle);
@@ -840,7 +848,7 @@ describe('derived tag-view rows', () => {
   it('fires onSaveDerived with the row when the Save as Collection action is clicked', () => {
     const onSaveDerived = jest.fn();
     render(<CollectionListSelector {...baseProps} onSaveDerived={onSaveDerived} />);
-    expandParentSection();
+    expandCollectionsSection();
     fireEvent.click(screen.getByText('Save as Collection'));
     expect(onSaveDerived).toHaveBeenCalledTimes(1);
     expect(onSaveDerived).toHaveBeenCalledWith(derivedRow);
@@ -848,7 +856,7 @@ describe('derived tag-view rows', () => {
 
   it('omits the Save as Collection action when onSaveDerived is not provided', () => {
     render(<CollectionListSelector {...baseProps} />);
-    expandParentSection();
+    expandCollectionsSection();
     expect(screen.queryByText('Save as Collection')).not.toBeInTheDocument();
   });
 });

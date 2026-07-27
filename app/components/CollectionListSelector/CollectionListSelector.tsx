@@ -3,25 +3,58 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
-import {
-  COLLECTION_TYPE_ORDER,
-  type CollectionListModel,
-  CollectionType,
-} from '@/app/types/Collection';
-import { humanizeConstantCase } from '@/app/utils/stringUtils';
+import { type CollectionListModel } from '@/app/types/Collection';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
 import styles from './CollectionListSelector.module.scss';
 
 /**
- * Sort rows within a single type group. BLOG rows sort by `collectionDate`
- * descending (newest first) with null dates last, falling back to name when both
- * dates are null; every other type sorts alphabetically by name.
+ * The four buckets the manage-page selector groups rows into. Derived from stored state only:
+ * collections have no `type` any more, so "home" is a slug, "client gallery" is `isClient`,
+ * "blog" is `isBlog`, and everything else is just a collection. There is deliberately no
+ * Portfolio or Art Gallery bucket — those concepts have no successor.
+ * See docs/superpowers/specs/2026-07-26-typeless-collection.md §1.
+ */
+export type CollectionBucket = 'HOME' | 'CLIENT_GALLERY' | 'BLOG' | 'COLLECTION';
+
+/** Home is pinned above the accordion; the rest render as collapsible sections, in this order. */
+export const COLLECTION_BUCKET_ORDER: CollectionBucket[] = [
+  'HOME',
+  'CLIENT_GALLERY',
+  'BLOG',
+  'COLLECTION',
+];
+
+/** Human-readable section headings (mirrors COLLECTION_VISIBILITY_LABELS). */
+export const COLLECTION_BUCKET_LABELS: Record<CollectionBucket, string> = {
+  HOME: 'Home',
+  CLIENT_GALLERY: 'Client Galleries',
+  BLOG: 'Blogs',
+  COLLECTION: 'Collections',
+};
+
+/**
+ * Bucket a row from its stored discriminators. Home wins outright (V41's unique slug index
+ * guarantees at most one row can claim it); `isClient` and `isBlog` are mutually exclusive on
+ * the backend, and `isClient` is checked first so a contradictory row still lands somewhere.
+ */
+export function bucketOf(collection: CollectionListModel): CollectionBucket {
+  if (collection.slug === HOME_SLUG) return 'HOME';
+  if (collection.isClient === true) return 'CLIENT_GALLERY';
+  if (collection.isBlog === true) return 'BLOG';
+  return 'COLLECTION';
+}
+
+/**
+ * Sort rows within a single bucket. Blog rows sort by `collectionDate` descending (newest
+ * first) with null dates last, falling back to name when both dates are null; every other
+ * bucket sorts alphabetically by name.
  */
 export function sortGroup(
   rows: CollectionListModel[],
-  type: CollectionType | string | undefined
+  bucket: CollectionBucket
 ): CollectionListModel[] {
-  if (type === CollectionType.BLOG) {
+  if (bucket === 'BLOG') {
     return [...rows].sort((a, b) => {
       const da = a.collectionDate ?? null;
       const db = b.collectionDate ?? null;
@@ -156,39 +189,27 @@ export default function CollectionListSelector({
     [filteredCollections, pinnedCollectionId]
   );
 
-  const currentCollectionType = useMemo(
-    () =>
-      currentCollectionId == null
-        ? null
-        : (allCollections.find(c => c.id === currentCollectionId)?.type ?? null),
-    [allCollections, currentCollectionId]
-  );
+  const currentCollectionBucket = useMemo(() => {
+    if (currentCollectionId == null) return null;
+    const current = allCollections.find(c => c.id === currentCollectionId);
+    return current ? bucketOf(current) : null;
+  }, [allCollections, currentCollectionId]);
 
-  const [expandedType, setExpandedType] = useState<CollectionType | null>(null);
+  const [expandedBucket, setExpandedBucket] = useState<CollectionBucket | null>(null);
 
   useEffect(() => {
-    if (
-      currentCollectionType &&
-      currentCollectionType !== CollectionType.HOME &&
-      COLLECTION_TYPE_ORDER.includes(currentCollectionType as CollectionType)
-    ) {
-      setExpandedType(currentCollectionType as CollectionType);
+    if (currentCollectionBucket && currentCollectionBucket !== 'HOME') {
+      setExpandedBucket(currentCollectionBucket);
     }
-  }, [currentCollectionType]);
+  }, [currentCollectionBucket]);
   const accordionMode = siblingMode || parentMode || Boolean(grouped);
 
-  const groupsByType = useMemo(() => {
+  const groupsByBucket = useMemo(() => {
     if (!accordionMode) return null;
-    const map = new Map<string, CollectionListModel[]>();
-    for (const t of COLLECTION_TYPE_ORDER) map.set(t, []);
-    for (const c of orderedCollections) {
-      const t =
-        c.type && COLLECTION_TYPE_ORDER.includes(c.type as CollectionType)
-          ? (c.type as string)
-          : CollectionType.MISC;
-      map.get(t)!.push(c);
-    }
-    for (const [t, rows] of map) map.set(t, sortGroup(rows, t));
+    const map = new Map<CollectionBucket, CollectionListModel[]>();
+    for (const b of COLLECTION_BUCKET_ORDER) map.set(b, []);
+    for (const c of orderedCollections) map.get(bucketOf(c))!.push(c);
+    for (const [b, rows] of map) map.set(b, sortGroup(rows, b));
     return map;
   }, [accordionMode, orderedCollections]);
 
@@ -394,29 +415,29 @@ export default function CollectionListSelector({
           setHoveredChildId,
           `Toggle ${collection.name}`
         )}
-        <span className={styles.type}>{collection.type || 'Portfolio'}</span>
+        <span className={styles.type}>{COLLECTION_BUCKET_LABELS[bucketOf(collection)]}</span>
         <span className={styles.name}>{collection.name}</span>
       </div>
     );
   };
 
   const listBody =
-    accordionMode && groupsByType ? (
+    accordionMode && groupsByBucket ? (
       <>
-        {(groupsByType.get(CollectionType.HOME) ?? []).map(c => renderRow(c, false))}
-        {COLLECTION_TYPE_ORDER.filter(t => t !== CollectionType.HOME).map(t => {
-          const rows = groupsByType.get(t) ?? [];
-          const isExpanded = expandedType === t;
+        {(groupsByBucket.get('HOME') ?? []).map(c => renderRow(c, false))}
+        {COLLECTION_BUCKET_ORDER.filter(b => b !== 'HOME').map(b => {
+          const rows = groupsByBucket.get(b) ?? [];
+          const isExpanded = expandedBucket === b;
           return (
-            <div key={t}>
+            <div key={b}>
               <button
                 type="button"
                 className={`${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`}
-                onClick={() => setExpandedType(isExpanded ? null : t)}
+                onClick={() => setExpandedBucket(isExpanded ? null : b)}
                 aria-expanded={isExpanded}
               >
                 <span className={styles.typeHeaderChevron}>{isExpanded ? '▾' : '▸'}</span>
-                <span className={styles.typeHeaderLabel}>{humanizeConstantCase(t)}</span>
+                <span className={styles.typeHeaderLabel}>{COLLECTION_BUCKET_LABELS[b]}</span>
                 <span className={styles.typeHeaderCount}>({rows.length})</span>
               </button>
               {isExpanded && rows.map(c => renderRow(c, true))}
