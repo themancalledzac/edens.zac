@@ -9,11 +9,6 @@ import { FormError } from '@/app/components/ui/Field/FormError';
 import { Select } from '@/app/components/ui/Field/Select';
 import { Modal } from '@/app/components/ui/Modal/Modal';
 import {
-  ASSIGNABLE_COLLECTION_TYPES,
-  COLLECTION_TYPE_LABELS,
-  CollectionType,
-} from '@/app/types/Collection';
-import {
   COLLECTION_VISIBILITY_LABELS,
   CollectionVisibility,
 } from '@/app/types/CollectionVisibility';
@@ -24,16 +19,15 @@ interface SaveAsCollectionModalProps {
   /** Tag name shown in the dialog title. */
   tagName: string;
   onClose: () => void;
-  onConfirm: (body: { type: CollectionType; visibility: CollectionVisibility }) => Promise<void>;
+  onConfirm: (body: { visibility: CollectionVisibility }) => Promise<void>;
 }
 
-/** Confirm dialog for promoting a tag view into a real collection (type + visibility). */
+/** Confirm dialog for promoting a tag view into a real collection (visibility only). */
 export default function SaveAsCollectionModal({
   tagName,
   onClose,
   onConfirm,
 }: SaveAsCollectionModalProps) {
-  const [type, setType] = useState<CollectionType>(CollectionType.PORTFOLIO);
   const [visibility, setVisibility] = useState<CollectionVisibility>(CollectionVisibility.UNLISTED);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -43,7 +37,7 @@ export default function SaveAsCollectionModal({
     setError(null);
     try {
       setSaving(true);
-      await onConfirm({ type, visibility });
+      await onConfirm({ visibility });
     } catch (error_) {
       setError(error_ instanceof Error ? error_.message : 'Failed to save as collection');
       setSaving(false);
@@ -63,20 +57,6 @@ export default function SaveAsCollectionModal({
         <FormError>{error}</FormError>
 
         <form onSubmit={handleSubmit}>
-          <Field label="Type" htmlFor="save-as-collection-type" className={styles.formGroup}>
-            <Select
-              id="save-as-collection-type"
-              value={type}
-              onChange={e => setType(e.target.value as CollectionType)}
-            >
-              {ASSIGNABLE_COLLECTION_TYPES.map(t => (
-                <option key={t} value={t}>
-                  {COLLECTION_TYPE_LABELS[t]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-
           <Field
             label="Visibility"
             htmlFor="save-as-collection-visibility"

@@ -170,7 +170,7 @@ export interface UseCollectionEditResult {
   /** Promote a tag view into a real collection, then navigate to its manage page. */
   saveTagAsCollection: (
     sourceTagId: number,
-    body: { type: CollectionType; visibility: CollectionVisibility }
+    body: { visibility: CollectionVisibility }
   ) => Promise<void>;
   /** Drag-to-retype a collection in the selector accordion. */
   handleChangeType: (collection: CollectionListModel, targetType: CollectionType) => Promise<void>;
@@ -1267,10 +1267,7 @@ export function useCollectionEdit({
   }, [collection, router]);
 
   const saveTagAsCollection = useCallback(
-    async (
-      sourceTagId: number,
-      body: { type: CollectionType; visibility: CollectionVisibility }
-    ) => {
+    async (sourceTagId: number, body: { visibility: CollectionVisibility }) => {
       const response = await saveCollectionFromTag(sourceTagId, body);
       // A null response (204 from fetchBase) means the backend returned no collection to navigate
       // to. Throw so the caller's catch (SaveAsCollectionModal) surfaces it instead of silently
