@@ -30,16 +30,24 @@ Common flags:
 
 ## Formatting & Verification
 
-After editing files, run the same pipeline Cursor runs on save — Prettier, then ESLint fix, then type check:
+After editing files, run ESLint fix, then Prettier, then type check. **Order matters**: `eslint --fix`
+rewrites import blocks, so Prettier must run last or it will re-wrap them and leave the tree
+unformatted. **Scope the commands to the files you actually changed** — running them across the whole
+tree rewrites unrelated files and pollutes the diff.
 
 ```bash
-# Format (matches .prettierrc.json)
-/opt/homebrew/bin/node node_modules/.bin/prettier --write <files>
-# Lint fix (matches Cursor's source.fixAll.eslint on save)
+# Lint fix first (matches Cursor's source.fixAll.eslint on save)
 /opt/homebrew/bin/node node_modules/.bin/eslint --fix <files>
-# Type check
+# Format last (matches .prettierrc.json)
+/opt/homebrew/bin/node node_modules/.bin/prettier --write <files>
+# Type check LAST of all — an ESLint autofix can break types (see below)
 /opt/homebrew/bin/node node_modules/.bin/tsc --noEmit
 ```
+
+Always re-run `tsc` **after** `eslint --fix`, never only before. `unicorn/no-useless-undefined`
+strips the argument from `jest.fn().mockResolvedValue(undefined)`, and the resulting
+`mockResolvedValue()` fails to type-check for a `Promise<void>` mock. Write those as
+`jest.fn(() => Promise.resolve())`, which satisfies both tools.
 
 For SCSS files, also run Stylelint:
 

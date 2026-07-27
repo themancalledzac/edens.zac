@@ -22,6 +22,7 @@ import {
   type AdminUserSummary,
   type CreateUserResponse,
   type InvitePreview,
+  type InvitePreviewResult,
   type MergePreview,
   type MergeResult,
   type UserCreateRequest,
@@ -114,15 +115,21 @@ export async function updateUser(id: number, body: UserUpdateRequest): Promise<A
  * Server-side fetch of the invite preview for a given raw token.
  *
  * Hits the backend directly (no BFF proxy needed — public endpoint, no cookie required).
- * Returns `null` for any non-OK response (404 = invalid/expired, 410 = already used).
+ *
+ * The backend's 410 (already redeemed) is kept distinct from 404 (never existed, or expired)
+ * because the invite page routes them differently — a redeemed token means the account exists, so
+ * its owner is sent home instead of to a 404. Every other non-OK status (500, 503, network-level
+ * failure surfaced as a status) is treated as `invalid`: without a preview there is nothing to
+ * render, and a dead end is the honest outcome.
  *
  * @param token - Raw URL token from the invite link (will be percent-encoded).
  */
-export async function getInvitePreview(token: string): Promise<InvitePreview | null> {
+export async function getInvitePreview(token: string): Promise<InvitePreviewResult> {
   const url = `${getApiBaseUrl('auth')}/invite/${encodeURIComponent(token)}`;
   const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) return null;
-  return (await res.json()) as InvitePreview;
+  if (res.status === 410) return { status: 'used' };
+  if (!res.ok) return { status: 'invalid' };
+  return { status: 'ok', preview: (await res.json()) as InvitePreview };
 }
 
 /**
@@ -162,9 +169,9 @@ export async function acceptInvite(token: string, body: AcceptInviteRequest): Pr
     const message =
       typeof detail === 'string' && detail
         ? detail
-        : (detail && typeof detail === 'object'
+        : detail && typeof detail === 'object'
           ? ((detail as { message?: string }).message ?? `API error: ${res.status}`)
-          : `API error: ${res.status}`);
+          : `API error: ${res.status}`;
     throw new ApiError(message, res.status);
   }
 }

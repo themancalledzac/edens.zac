@@ -71,7 +71,8 @@ export function RoleDetailClient({ initialRole }: { initialRole: RoleDetail }) {
   const onAddGrant = () =>
     addCollectionId &&
     run(
-      () => setRoleGrant(role.id, Number(addCollectionId), addLevel).then(() => setAddCollectionId('')),
+      () =>
+        setRoleGrant(role.id, Number(addCollectionId), addLevel).then(() => setAddCollectionId('')),
       'Failed to add the collection grant.'
     );
 

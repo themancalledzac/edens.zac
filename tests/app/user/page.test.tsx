@@ -34,8 +34,8 @@ jest.mock('@/app/components/Personal/SavesContext', () => ({
   SavesProvider: ({ children }: { children: unknown }) => children,
 }));
 jest.mock('@/app/components/Personal/PersonalContentGrid', () => ({
-  PersonalContentGrid: ({ content }: { content: unknown[] }) =>
-    `PersonalContentGrid:${content.length}`,
+  PersonalContentGrid: ({ content, chunkSize }: { content: unknown[]; chunkSize?: number }) =>
+    `PersonalContentGrid:${content.length}:${chunkSize}`,
 }));
 jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: ({ children }: { children: unknown }) => children,
@@ -44,20 +44,8 @@ jest.mock('@/app/components/LocationPage/LocationCollections', () => ({
   __esModule: true,
   default: () => 'LocationCollections',
 }));
-jest.mock('@/app/components/Personal/CollapsibleSection', () => ({
-  CollapsibleSection: ({
-    label,
-    count,
-    children,
-  }: {
-    label: string;
-    count: number;
-    children: unknown;
-  }) => ({
-    label,
-    count,
-    children,
-  }),
+jest.mock('@/app/components/Personal/SectionTabs', () => ({
+  SectionTabs: ({ tabs }: { tabs: unknown[] }) => `SectionTabs:${tabs.length}`,
 }));
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
@@ -80,8 +68,8 @@ const imageBlock = (id: number) => ({
 const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
 
 /**
- * Walk the rendered element tree and collect each CollapsibleSection element's props by label. The
- * mocked component is never invoked (the page only builds elements), so label/count live in
+ * Walk the rendered element tree and index the `SectionTabs` tab descriptors by label. The mocked
+ * component is never invoked (the page only builds elements), so the `tabs` array lives in
  * `element.props`.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,8 +80,8 @@ function collectSections(node: any, acc: Record<string, any> = {}): Record<strin
     return acc;
   }
   const props = node.props;
-  if (props && typeof props.label === 'string' && typeof props.count === 'number') {
-    acc[props.label] = props;
+  if (props && Array.isArray(props.tabs)) {
+    for (const tab of props.tabs) acc[tab.label] = tab;
   }
   if (props?.children) collectSections(props.children, acc);
   return acc;
@@ -168,6 +156,20 @@ describe('UserPage', () => {
     expect(sections.Following.count).toBe(1);
   });
 
+  it('gives Collections a higher row density than the photo tabs', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    seedApis();
+    const result = await UserPage();
+    const sections = collectSections(result);
+
+    // Collection cards are uniform, so a high items-per-row budget composes them several across —
+    // the point of the tab being a scannable index. Photos stay larger.
+    const collectionsChunk = sections.Collections.content.props.chunkSize;
+    const imagesChunk = sections.Images.content.props.chunkSize;
+    expect(collectionsChunk).toBeGreaterThan(imagesChunk);
+    expect(imagesChunk).toBeGreaterThan(4);
+  });
+
   it('seeds the providers from the saved-images + follows reads (no separate ids fetch)', async () => {
     (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
     seedApis();
@@ -208,7 +210,7 @@ describe('UserPage', () => {
     expect(header.serverContentWidth).toBe(1200);
     expect(header.serverIsMobile).toBe(false);
 
-    // The accordion sections are untouched by the header addition.
+    // The tab sections are untouched by the header addition.
     const sections = collectSections(result);
     expect(Object.keys(sections).sort()).toEqual(['Collections', 'Following', 'Images', 'Saved']);
   });

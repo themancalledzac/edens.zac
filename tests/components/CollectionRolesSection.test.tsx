@@ -216,9 +216,7 @@ describe('CollectionRolesSection', () => {
 
     it('treats absent provenance fields (undefined) as a direct, fully editable grant', async () => {
       // Pre-deploy tolerance: the backend may not send the fields at all.
-      mockListCollectionRoles.mockResolvedValue([
-        { roleId: 1, name: 'pnwer', level: 'GENERAL' },
-      ]);
+      mockListCollectionRoles.mockResolvedValue([{ roleId: 1, name: 'pnwer', level: 'GENERAL' }]);
       await renderSection();
 
       const levelSelect = await screen.findByLabelText('Access level for pnwer');

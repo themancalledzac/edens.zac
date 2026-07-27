@@ -34,10 +34,9 @@ jest.mock('@/app/utils/ssrViewport', () => ({
 const mockGetCollectionBySlug = collectionsApi.getCollectionBySlug as jest.MockedFunction<
   typeof collectionsApi.getCollectionBySlug
 >;
-const mockGetScopedAllCollections =
-  collectionsApi.getScopedAllCollections as jest.MockedFunction<
-    typeof collectionsApi.getScopedAllCollections
-  >;
+const mockGetScopedAllCollections = collectionsApi.getScopedAllCollections as jest.MockedFunction<
+  typeof collectionsApi.getScopedAllCollections
+>;
 
 function homeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {

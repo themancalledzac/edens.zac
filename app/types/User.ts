@@ -66,6 +66,20 @@ export interface InvitePreview {
   displayName: string | null;
 }
 
+/**
+ * Outcome of an invite-token preview.
+ *
+ * The backend distinguishes a token that never existed or has expired (404) from one that has
+ * already been redeemed (410), and the two deserve different destinations: an expired or mistyped
+ * link is a genuine dead end, while a redeemed link means the account already exists and its owner
+ * belongs on the site rather than staring at a 404. Collapsing both to `null` would throw that
+ * distinction away, so callers get the reason.
+ */
+export type InvitePreviewResult =
+  | { status: 'ok'; preview: InvitePreview }
+  | { status: 'used' }
+  | { status: 'invalid' };
+
 /** Request body for `POST /api/auth/invite/{token}/accept`. */
 export interface AcceptInviteRequest {
   displayName: string;

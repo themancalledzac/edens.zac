@@ -139,7 +139,9 @@ export function CollectionRolesSection({
                 className={styles.select}
                 value={g.level}
                 onChange={
-                  inherited ? undefined : e => onChangeLevel(g.roleId, e.target.value as AccessLevel)
+                  inherited
+                    ? undefined
+                    : e => onChangeLevel(g.roleId, e.target.value as AccessLevel)
                 }
                 disabled={inherited}
                 aria-label={`Access level for ${g.name}`}

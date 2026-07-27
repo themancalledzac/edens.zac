@@ -24,8 +24,12 @@ jest.mock('@/app/lib/api/users', () => ({
 jest.mock('@/app/lib/api/roles', () => ({
   listUserRoles: jest.fn().mockResolvedValue([]),
   listRoles: jest.fn().mockResolvedValue([]),
-  addUserToRole: jest.fn().mockResolvedValue(undefined),
-  removeUserFromRole: jest.fn().mockResolvedValue(undefined),
+  // `jest.fn(() => Promise.resolve())` rather than `jest.fn().mockResolvedValue(undefined)`: an
+  // untyped jest.fn() infers `unknown`, so tsc demands the argument, while eslint's
+  // unicorn/no-useless-undefined auto-strips it — leaving `mockResolvedValue()`, which then fails
+  // the type check. This form satisfies both. Same reasoning as SelectStar/SelectsContext tests.
+  addUserToRole: jest.fn(() => Promise.resolve()),
+  removeUserFromRole: jest.fn(() => Promise.resolve()),
 }));
 
 const mockCreateUser = usersApi.createUser as jest.MockedFunction<typeof usersApi.createUser>;

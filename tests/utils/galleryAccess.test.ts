@@ -86,9 +86,9 @@ describe('canDownloadCollection', () => {
   });
 
   it('is false for an anonymous viewer on a protected client gallery with content withheld', () => {
-    expect(
-      canDownloadCollection(null, { id: 7, isClient: true, isPasswordProtected: true })
-    ).toBe(false);
+    expect(canDownloadCollection(null, { id: 7, isClient: true, isPasswordProtected: true })).toBe(
+      false
+    );
   });
 
   it('is false for an anonymous viewer on an UNprotected client gallery', () => {

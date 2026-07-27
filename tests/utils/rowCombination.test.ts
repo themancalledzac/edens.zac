@@ -3,10 +3,12 @@
  * Tests isRowComplete, buildRows, and the row composition helpers.
  */
 
+import { computeTargetAspectRatio } from '@/app/components/Content/componentUtils';
 import { DENSITY_ROW_WIDTH_MULTIPLIER, LAYOUT } from '@/app/constants';
 import type { AnyContentModel } from '@/app/types/Content';
+import { convertCollectionContentToParallax } from '@/app/utils/contentLayout';
 import { getProminence, getWidthCost } from '@/app/utils/contentRatingUtils';
-import type { ImageType, RowResult } from '@/app/utils/rowCombination';
+import type { BoxTree, ImageType, RowResult } from '@/app/utils/rowCombination';
 import {
   acToBoxTree,
   buildAtomic,
@@ -1671,5 +1673,62 @@ describe('area-to-value composition (B1)', () => {
     const result = buildAtomic(imgs, 1.0);
     const ar = calculateBoxTreeAspectRatio(acToBoxTree(result));
     expect(ar).toBeLessThan(5); // flat hChain would be ≈ 9
+  });
+});
+
+// ===================== Density drives visible columns =====================
+// Raising the items-per-row budget used to widen only the fill budget: composition then refused
+// to lay the extra items out side by side and folded them into deep vertical stacks, so a row of
+// uniform collection cards rendered ~2 across no matter what `rowsWide` said. The row's target AR
+// now scales with density, which is what lets a dense row actually be wide.
+
+/** Widest visual line in a composed row: leaves reachable horizontally, maxed over stacked bands. */
+function widestLine(node: BoxTree): number {
+  if (node.type === 'leaf') return 1;
+  if (node.direction === 'horizontal') {
+    return widestLine(node.children[0]) + widestLine(node.children[1]);
+  }
+  return Math.max(widestLine(node.children[0]), widestLine(node.children[1]));
+}
+
+describe('density controls how many items sit across a row', () => {
+  const uniformCards = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      toImageType(convertCollectionContentToParallax(createCollectionContent(i + 1)))
+    );
+
+  it('composes a dozen uniform collection cards six across at high density', () => {
+    // 12 cards at AR 1.25 in six columns of two → row AR = 6 × 1.25 / 2 = 3.75, which only lands
+    // in band once the target reflects the requested density.
+    const target = computeTargetAspectRatio(1300, 900, 14);
+    const tree = acToBoxTree(buildAtomic(uniformCards(12), target));
+    expect(widestLine(tree)).toBe(6);
+  });
+
+  it('still composes the same cards two across at the default density', () => {
+    // The editorial default is unchanged: four cards, two across. This is the regression guard for
+    // every existing collection page.
+    const target = computeTargetAspectRatio(1300, 900);
+    const tree = acToBoxTree(buildAtomic(uniformCards(4), target));
+    expect(widestLine(tree)).toBe(2);
+  });
+
+  it('widens monotonically as density rises', () => {
+    const atDensity = (chunkSize: number) =>
+      widestLine(
+        acToBoxTree(buildAtomic(uniformCards(12), computeTargetAspectRatio(1300, 900, chunkSize)))
+      );
+    expect(atDensity(14)).toBeGreaterThan(atDensity(4));
+  });
+
+  it('keeps the candidate search bounded at the row cap', () => {
+    // Density does not widen the search: the same STRUCTURE_CAP / assignment budget applies, so a
+    // full row at high density is no more expensive to compose than before.
+    const { shapes, candidates } = composeRowWithCandidateCount(
+      uniformCards(MAX_ROW_IMAGES),
+      computeTargetAspectRatio(1300, 900, 14)
+    );
+    expect(shapes).toBeLessThanOrEqual(64);
+    expect(candidates).toBeLessThan(20000);
   });
 });

@@ -1,5 +1,5 @@
 import { buildRows } from '@/app/utils/rowCombination';
-import { createPanorama,H } from '@/tests/fixtures/contentFixtures';
+import { createPanorama, H } from '@/tests/fixtures/contentFixtures';
 
 describe('acceptance: wide 5★ panorama prominence (was isFullWidthHero on 0180)', () => {
   it('gives a wide 5★ panorama its own row at medium density', () => {

@@ -1,4 +1,4 @@
-import { CollectionType, COLLECTION_TYPE_LABELS } from '@/app/types/Collection';
+import { COLLECTION_TYPE_LABELS, CollectionType } from '@/app/types/Collection';
 
 describe('COLLECTION_TYPE_LABELS', () => {
   it('has a non-empty label for every CollectionType', () => {
