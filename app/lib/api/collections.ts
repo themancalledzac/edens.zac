@@ -20,7 +20,6 @@ import {
 import {
   type CollectionCreateRequest,
   type CollectionModel,
-  CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
@@ -220,47 +219,6 @@ export async function validateClientGalleryAccess(
 // ADMIN Endpoints (Dev only - /api/admin/collections)
 // ============================================================================
 
-/** The fields `withDerivedKindFlags` reads; every admin create/update body carries them. */
-interface LegacyTypedRequest {
-  type?: CollectionType;
-  isClient?: boolean;
-  isBlog?: boolean;
-}
-
-/**
- * Add the `isClient`/`isBlog` booleans the backend classifies on, derived from the request's
- * legacy `type`, and KEEP `type` on the body for the duration of the compat window.
- *
- * Sending both is required, not belt-and-braces: the booleans can only express CLIENT_GALLERY
- * (`isClient`) and BLOG (`isBlog`). PORTFOLIO, ART_GALLERY and PARENT have no boolean encoding,
- * so a body carrying booleans alone cannot ask for them — dropping `type` silently landed every
- * such request on MISC. `type` is what actually sets those kinds; the derived booleans keep the
- * request unambiguous for the flag-keyed paths.
- *
- * Backend contract (`CollectionTypeCompat.resolve`): `type` sets the base kind and an explicit
- * boolean overrides it. `{type: PORTFOLIO}` resolves to PORTFOLIO; `{type: CLIENT_GALLERY,
- * isClient: true}` resolves to CLIENT_GALLERY; `{type: PARENT}` resolves to PARENT. The derivation
- * emits only `true` or `undefined`, never `false`, so it can never trip the backend's guard that
- * rejects an explicit true flag against a PARENT/HOME base. An explicit boolean already on the
- * body always wins over the derived one.
- *
- * PHASE 2 — delete this helper entirely (both the `type` retention and the derivation), and the
- * `type` field on `CollectionCreateRequest`/`CollectionUpdateRequest` with it. Unblocked by BOTH:
- * (1) a real boolean/discriminator writer in the admin UI that can express PORTFOLIO, ART_GALLERY
- * and PARENT without the enum, and (2) the backend dropping the `collection.type` column (which
- * also deletes `CollectionTypeCompat`). Until both land, this is the frontend half of phase 2 and
- * the only thing keeping admin kind-writes working.
- */
-function withDerivedKindFlags<T extends LegacyTypedRequest>(
-  body: T
-): T & { isClient?: boolean; isBlog?: boolean } {
-  return {
-    ...body,
-    isClient: body.isClient ?? (body.type === CollectionType.CLIENT_GALLERY || undefined),
-    isBlog: body.isBlog ?? (body.type === CollectionType.BLOG || undefined),
-  };
-}
-
 /**
  * POST /api/admin/collections/createCollection
  * Create a new collection
@@ -270,7 +228,7 @@ export async function createCollection(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     '/collections/createCollection',
-    withDerivedKindFlags(createRequest)
+    createRequest
   );
 }
 
@@ -285,7 +243,7 @@ export async function updateCollection(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPutJsonApi<CollectionUpdateResponseDTO>(
     `/collections/${id}`,
-    withDerivedKindFlags(updateData)
+    updateData
   );
 }
 
@@ -297,7 +255,7 @@ export async function updateCollection(
  *   set + email:  { password: "...", emails: ["client@example.com"] }
  *   clear:        { password: null }
  *
- * For PARENT collections, callers may pass `propagateToChildren: true` so the
+ * For a collection that fronts client galleries, callers may pass `propagateToChildren: true` so the
  * backend shares the password with every child client gallery in one shot.
  */
 export interface GalleryAccessResponse {
@@ -419,7 +377,7 @@ export async function createChildCollection(
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     `/collections/${parentId}/child`,
-    withDerivedKindFlags(createRequest)
+    createRequest
   );
 }
 
@@ -430,10 +388,10 @@ export async function createChildCollection(
  */
 export async function saveCollectionFromTag(
   tagId: number,
-  body?: { type?: CollectionType; visibility?: CollectionVisibility }
+  body?: { visibility?: CollectionVisibility }
 ): Promise<CollectionUpdateResponseDTO | null> {
   return fetchAdminPostJsonApi<CollectionUpdateResponseDTO>(
     `/tags/${tagId}/save-as-collection`,
-    withDerivedKindFlags(body ?? {})
+    body ?? {}
   );
 }
