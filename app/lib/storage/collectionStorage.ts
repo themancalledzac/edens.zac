@@ -115,7 +115,9 @@ export const collectionStorage = {
       const key = getStorageKey(slug);
       sessionStorage.removeItem(key);
     } catch (error) {
-      logger.warn('collectionStorage', `clear: failed to remove cache for slug: ${slug}`, { error });
+      logger.warn('collectionStorage', `clear: failed to remove cache for slug: ${slug}`, {
+        error,
+      });
     }
   },
 
@@ -212,7 +214,9 @@ export const collectionStorage = {
       const key = getFullStorageKey(slug);
       sessionStorage.setItem(key, JSON.stringify(cached));
     } catch (error) {
-      logger.warn('collectionStorage', `setFull: failed to write full cache for slug: ${slug}`, { error });
+      logger.warn('collectionStorage', `setFull: failed to write full cache for slug: ${slug}`, {
+        error,
+      });
     }
   },
 
@@ -246,7 +250,9 @@ export const collectionStorage = {
 
       return cached.data;
     } catch (error) {
-      logger.warn('collectionStorage', `getFull: failed to read full cache for slug: ${slug}`, { error });
+      logger.warn('collectionStorage', `getFull: failed to read full cache for slug: ${slug}`, {
+        error,
+      });
       return null;
     }
   },
@@ -272,7 +278,9 @@ export const collectionStorage = {
       const key = getFullStorageKey(slug);
       sessionStorage.removeItem(key);
     } catch (error) {
-      logger.warn('collectionStorage', `clearFull: failed to remove full cache for slug: ${slug}`, { error });
+      logger.warn('collectionStorage', `clearFull: failed to remove full cache for slug: ${slug}`, {
+        error,
+      });
     }
   },
 };

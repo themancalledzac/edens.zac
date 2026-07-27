@@ -60,7 +60,7 @@ export function UserManagementPanel() {
   );
 
   const headerTitle =
-    view.mode === 'create' ? 'New User' : (view.mode === 'edit' ? 'Edit User' : 'Users');
+    view.mode === 'create' ? 'New User' : view.mode === 'edit' ? 'Edit User' : 'Users';
 
   const headerAction = (
     <>
@@ -99,7 +99,7 @@ export function UserManagementPanel() {
       {view.mode === 'list' &&
         (loading ? (
           <p className={styles.muted}>Loading users…</p>
-        ) : (sortedUsers.length === 0 ? (
+        ) : sortedUsers.length === 0 ? (
           <p className={styles.muted}>No users yet. Use "+ New User" to create one.</p>
         ) : (
           <ul className={styles.list}>
@@ -157,7 +157,7 @@ export function UserManagementPanel() {
               </li>
             ))}
           </ul>
-        )))}
+        ))}
 
       {view.mode === 'list' && mergeFor && (
         <MergeIdentityModal

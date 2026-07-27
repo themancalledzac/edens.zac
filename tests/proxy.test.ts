@@ -147,13 +147,7 @@ describe('proxy middleware — (admin) group session gate (non-local)', () => {
 describe('proxy middleware — (admin) group passthrough (localhost)', () => {
   beforeEach(() => setLocal());
 
-  const adminRoutes = [
-    '/admin',
-    '/all-images',
-    '/comments',
-    '/metadata',
-    '/collection/manage',
-  ];
+  const adminRoutes = ['/admin', '/all-images', '/comments', '/metadata', '/collection/manage'];
 
   it.each(adminRoutes)('passes %s through on localhost (no session needed)', pathname => {
     const res = proxy(makeRequest(pathname));

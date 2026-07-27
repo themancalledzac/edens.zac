@@ -98,7 +98,12 @@ export default tseslint.config(
       'unicorn/no-hex-escape': 'error',
       'unicorn/no-instanceof-array': 'error',
       'unicorn/no-lonely-if': 'error',
-      'unicorn/no-nested-ternary': 'error',
+      // OFF: directly contradicts Prettier 3, which strips the parentheses this rule demands
+      // around nested ternaries. With both enabled the two autofixers undo each other on every
+      // run, so `prettier --write` and `eslint --fix` could never both be satisfied and the tree
+      // drifted a little further each time. Prettier owns formatting; this rule is purely
+      // stylistic, so it yields.
+      'unicorn/no-nested-ternary': 'off',
       'unicorn/no-new-array': 'error',
       'unicorn/no-null': 'off',
       'unicorn/no-object-as-default-parameter': 'error',
