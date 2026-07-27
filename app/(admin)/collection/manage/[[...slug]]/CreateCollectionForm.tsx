@@ -5,16 +5,11 @@ import { type FormEvent, useState } from 'react';
 
 import { revalidateCollectionCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { Button } from '@/app/components/ui/Button/Button';
+import { Checkbox } from '@/app/components/ui/Field/Checkbox';
 import { Field } from '@/app/components/ui/Field/Field';
 import { Input } from '@/app/components/ui/Field/Input';
-import { Select } from '@/app/components/ui/Field/Select';
 import { createCollection } from '@/app/lib/api/collections';
-import {
-  ASSIGNABLE_COLLECTION_TYPES,
-  COLLECTION_TYPE_LABELS,
-  type CollectionCreateRequest,
-  CollectionType,
-} from '@/app/types/Collection';
+import { type CollectionCreateRequest } from '@/app/types/Collection';
 import { handleApiError } from '@/app/utils/apiUtils';
 import { manageHref } from '@/app/utils/manageUrl';
 
@@ -26,10 +21,17 @@ import styles from './CreateCollectionForm.module.scss';
  */
 export function CreateCollectionForm() {
   const router = useRouter();
-  const [createData, setCreateData] = useState<CollectionCreateRequest>({
-    type: CollectionType.PORTFOLIO,
-    title: '',
-  });
+  // Both flags default off: an ordinary collection is the default kind. The backend folds a
+  // request with neither flag onto its no-op base, so nothing extra is sent for that case.
+  const [createData, setCreateData] = useState<CollectionCreateRequest>({ title: '' });
+
+  const setKind = (kind: 'isClient' | 'isBlog', checked: boolean) => {
+    setCreateData(prev => {
+      const next = { ...prev, [kind]: checked || undefined };
+      if (checked) next[kind === 'isClient' ? 'isBlog' : 'isClient'] = undefined;
+      return next;
+    });
+  };
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -68,22 +70,23 @@ export function CreateCollectionForm() {
 
       <form onSubmit={handleCreate}>
         <div className={styles.formGroup}>
-          <Field label="Collection Type *" htmlFor="create-type">
-            <Select
-              id="create-type"
-              value={createData.type}
-              onChange={e =>
-                setCreateData(prev => ({ ...prev, type: e.target.value as CollectionType }))
-              }
-              required
-            >
-              {ASSIGNABLE_COLLECTION_TYPES.map(type => (
-                <option key={type} value={type}>
-                  {COLLECTION_TYPE_LABELS[type]}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <span className={styles.formLabel}>Kind</span>
+          <div className={styles.checkboxRow}>
+            <label className={styles.checkboxLabel}>
+              <Checkbox
+                checked={createData.isClient === true}
+                onChange={e => setKind('isClient', e.target.checked)}
+              />
+              <span>Client gallery</span>
+            </label>
+            <label className={styles.checkboxLabel}>
+              <Checkbox
+                checked={createData.isBlog === true}
+                onChange={e => setKind('isBlog', e.target.checked)}
+              />
+              <span>Blog</span>
+            </label>
+          </div>
         </div>
 
         <div className={styles.formGroup}>
