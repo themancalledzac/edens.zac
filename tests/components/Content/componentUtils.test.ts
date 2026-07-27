@@ -12,6 +12,7 @@ import {
   excludeFailedImages,
   resolveEffectiveViewport,
 } from '@/app/components/Content/componentUtils';
+import { LAYOUT } from '@/app/constants';
 import { type ViewportDimensions } from '@/app/hooks/useViewport';
 import {
   type CalculatedContentSize,
@@ -133,6 +134,23 @@ describe('computeTargetAspectRatio', () => {
   it('clamps very wide ratios to 2.5 and very tall ratios to 1.0', () => {
     expect(computeTargetAspectRatio(3000, 800)).toBe(2.5);
     expect(computeTargetAspectRatio(500, 1000)).toBe(1.0);
+  });
+
+  it('is unchanged at or below the default density', () => {
+    // Every page that does not explicitly ask for extra density must lay out exactly as before,
+    // so the density factor is pinned to 1 up to LAYOUT.defaultChunkSize.
+    const base = computeTargetAspectRatio(1000, 800);
+    expect(computeTargetAspectRatio(1000, 800, LAYOUT.defaultChunkSize)).toBe(base);
+    expect(computeTargetAspectRatio(1000, 800, 2)).toBe(base);
+    expect(computeTargetAspectRatio(1000, 800, 1)).toBe(base);
+  });
+
+  it('widens the target in proportion to a higher density', () => {
+    // A row asked to hold N× the default item count is genuinely shorter and wider; without this
+    // the composer rejects every wide arrangement and stacks the extra items instead.
+    const base = computeTargetAspectRatio(1000, 800);
+    expect(computeTargetAspectRatio(1000, 800, LAYOUT.defaultChunkSize * 2)).toBeCloseTo(base * 2);
+    expect(computeTargetAspectRatio(1000, 800, LAYOUT.defaultChunkSize * 3)).toBeCloseTo(base * 3);
   });
 });
 

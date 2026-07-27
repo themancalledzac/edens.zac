@@ -1,12 +1,19 @@
 import { type ReactElement } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import { LAYOUT } from '@/app/constants';
 import { type AnyContentModel } from '@/app/types/Content';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 
 interface PersonalContentGridProps {
   /** Content blocks to render: image/gif tiles (Images, Saved) or collection cards (Collections). */
   content: AnyContentModel[];
+  /**
+   * Items-per-row budget, matching a collection's `rowsWide`. Higher values pack more per row and
+   * widen the row's target aspect ratio, so the composer lays them out several across rather than
+   * stacking them. Defaults to the standard editorial density.
+   */
+  chunkSize?: number;
 }
 
 /**
@@ -17,7 +24,10 @@ interface PersonalContentGridProps {
  * A Server Component: the SaveHeart affordance is wired by a single `MeProvider` + `SavesProvider`
  * hoisted by the `/user` page around all sections, so this grid does not own that context itself.
  */
-export function PersonalContentGrid({ content }: PersonalContentGridProps): ReactElement {
+export function PersonalContentGrid({
+  content,
+  chunkSize = LAYOUT.defaultChunkSize,
+}: PersonalContentGridProps): ReactElement {
   const contentBlocks = processContentBlocks(content, true);
 
   return (
@@ -26,7 +36,7 @@ export function PersonalContentGrid({ content }: PersonalContentGridProps): Reac
       priorityBlockIndex={0}
       enableFullScreenView
       initialPageSize={30}
-      chunkSize={4}
+      chunkSize={chunkSize}
     />
   );
 }

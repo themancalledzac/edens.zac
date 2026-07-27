@@ -1,6 +1,7 @@
 import { type Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
+import { meServer } from '@/app/lib/api/auth';
 import { getInvitePreview } from '@/app/lib/api/users';
 
 import InviteForm from './InviteForm';
@@ -23,21 +24,39 @@ interface InvitePageProps {
 /**
  * Public account-setup page delivered via an invite link.
  *
- * Fetches the invite preview server-side; calls `notFound()` if the token is
- * invalid, expired, or already used. The interactive portion is delegated to
- * `InviteForm` (a Client Component). The token-in-URL referrer mitigation is
- * handled by the exported `metadata` above.
+ * An invite link is a one-shot onboarding step, so a visitor who is past that step is sent home
+ * rather than shown an error. Two ways to be past it, both redirecting to `/`:
+ *
+ * - Already signed in — checked before the token is even looked up, mirroring `/login`, which
+ *   bounces authenticated visitors the same way.
+ * - The token has been redeemed (backend 410) — the account exists, so whoever holds the stale
+ *   link (its owner, or a forwarded copy) belongs on the site, not on a 404.
+ *
+ * A token that never existed or has expired (404) still calls `notFound()`: that is a genuine dead
+ * end, and silently redirecting a mistyped link would tell the visitor nothing.
+ *
+ * The interactive portion is delegated to `InviteForm` (a Client Component). The token-in-URL
+ * referrer mitigation is handled by the exported `metadata` above.
  */
 export default async function InvitePage({ params }: InvitePageProps) {
   const { token } = await params;
-  const preview = await getInvitePreview(token);
-  if (!preview) notFound();
+
+  const principal = await meServer();
+  if (principal) redirect('/');
+
+  const result = await getInvitePreview(token);
+  if (result.status === 'used') redirect('/');
+  if (result.status === 'invalid') notFound();
 
   return (
     <main className={styles.page}>
       <div className={styles.card}>
         <h1 className={styles.heading}>Set up your account</h1>
-        <InviteForm token={token} email={preview.email} displayName={preview.displayName} />
+        <InviteForm
+          token={token}
+          email={result.preview.email}
+          displayName={result.preview.displayName}
+        />
       </div>
     </main>
   );

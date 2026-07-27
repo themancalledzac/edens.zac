@@ -93,7 +93,7 @@ describe('getInvitePreview', () => {
       'http://localhost:8080/api/auth/invite/mytoken',
       expect.objectContaining({ cache: 'no-store' })
     );
-    expect(result).toEqual(preview);
+    expect(result).toEqual({ status: 'ok', preview });
   });
 
   it('encodes special characters in the token', async () => {
@@ -109,22 +109,22 @@ describe('getInvitePreview', () => {
     expect(url).toContain(encodeURIComponent('tok/en?sp#ecial'));
   });
 
-  it('returns null on 404 (invalid or expired token)', async () => {
+  it('reports invalid on 404 (token never existed or expired)', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 404 });
 
-    expect(await getInvitePreview('bad-token')).toBeNull();
+    expect(await getInvitePreview('bad-token')).toEqual({ status: 'invalid' });
   });
 
-  it('returns null on 410 (used token)', async () => {
+  it('distinguishes 410 (already redeemed) from 404 so the page can redirect home', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 410 });
 
-    expect(await getInvitePreview('used-token')).toBeNull();
+    expect(await getInvitePreview('used-token')).toEqual({ status: 'used' });
   });
 
-  it('returns null on any non-OK status', async () => {
+  it('reports invalid on any other non-OK status', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
 
-    expect(await getInvitePreview('token')).toBeNull();
+    expect(await getInvitePreview('token')).toEqual({ status: 'invalid' });
   });
 });
 
