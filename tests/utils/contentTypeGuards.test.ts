@@ -662,12 +662,14 @@ describe('isParentCollection', () => {
     expect(isParentCollection(collection)).toBe(true);
   });
 
-  it('returns true for a childless collection still typed PARENT (transitional fallback)', () => {
-    // A parent created moments ago has no child refs yet, and a parent whose refs fall
-    // past the caller's 500-item fetch reads false on content alone. Both must still
-    // expose Gallery Access and the propagate-to-children confirm.
+  it('U4-GATE: keeps the PARENT enum arm until the backend stops sending type', () => {
+    // Do NOT delete this arm as part of U1. A parent created moments ago has no child-collection
+    // content yet, so the content-graph derivation returns false and only the enum arm is true.
+    // The arm degrades to `undefined` (i.e. to the derivation alone) when U4 stops sending the
+    // field — see docs/superpowers/specs/2026-07-26-typeless-collection.md section 5.
     expect(isParentCollection({ content: [], type: CollectionType.PARENT })).toBe(true);
     expect(isParentCollection({ content: undefined, type: CollectionType.PARENT })).toBe(true);
+    expect(isParentCollection({ content: [] })).toBe(false);
   });
 
   it('returns false for a non-parent collection with only image content', () => {
