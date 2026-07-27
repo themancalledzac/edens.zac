@@ -3,7 +3,6 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { CollectionEditSheet } from '@/app/components/ContentCollection/edit/CollectionEditSheet';
-import { CollectionType } from '@/app/types/Collection';
 import { makeEdit, makeState, makeUpdateData } from '@/tests/fixtures/collectionEditFixtures';
 
 jest.mock('next/navigation', () => ({
@@ -62,11 +61,13 @@ describe('CollectionEditSheet — InfoTab', () => {
     expect(screen.getByText('People')).toBeInTheDocument();
   });
 
-  it('shows gallery access group for CLIENT_GALLERY collection', () => {
+  it('shows gallery access group for a standalone client gallery (isClient, no children)', () => {
+    // R12: this is the case that vanishes if the gate collapses to `isParent` alone —
+    // a delivered gallery with no child collections would lose BOTH set and revoke.
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ type: CollectionType.CLIENT_GALLERY }),
-      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      currentState: makeState({ isClient: true }),
+      updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
     render(<CollectionEditSheet edit={edit} />);
@@ -78,19 +79,19 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('shows gallery access group for isParent=true', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ type: CollectionType.PARENT }),
-      updateData: makeUpdateData({ type: CollectionType.PARENT }),
+      currentState: makeState({ isClient: false }),
+      updateData: makeUpdateData({ isClient: false }),
       isParent: true,
     });
     render(<CollectionEditSheet edit={edit} />);
     expect(screen.getByRole('heading', { name: 'Gallery Access' })).toBeInTheDocument();
   });
 
-  it('does NOT show gallery access group for non-gallery, non-parent collection', () => {
+  it('does NOT show gallery access group for a non-client, non-parent collection', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ type: CollectionType.PORTFOLIO }),
-      updateData: makeUpdateData({ type: CollectionType.PORTFOLIO }),
+      currentState: makeState({ isClient: false }),
+      updateData: makeUpdateData({ isClient: false }),
       isParent: false,
     });
     render(<CollectionEditSheet edit={edit} />);
@@ -101,11 +102,8 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('shows the Clear Password button when the gallery already has a password set', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({
-        type: CollectionType.CLIENT_GALLERY,
-        isPasswordProtected: true,
-      }),
-      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      currentState: makeState({ isClient: true, isPasswordProtected: true }),
+      updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
     render(<CollectionEditSheet edit={edit} />);
@@ -115,11 +113,8 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('hides the Clear Password button when the gallery has no password', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({
-        type: CollectionType.CLIENT_GALLERY,
-        isPasswordProtected: false,
-      }),
-      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      currentState: makeState({ isClient: true, isPasswordProtected: false }),
+      updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
     render(<CollectionEditSheet edit={edit} />);
@@ -144,8 +139,8 @@ describe('CollectionEditSheet — InfoTab', () => {
     const statusText = 'Password saved. No email sent.';
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ type: CollectionType.CLIENT_GALLERY }),
-      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      currentState: makeState({ isClient: true }),
+      updateData: makeUpdateData({ isClient: true }),
       isParent: false,
       galleryStatus: statusText,
     });
@@ -186,7 +181,7 @@ describe('CollectionEditSheet — StructureTab', () => {
         edit={makeEdit({
           editTab: 'structure',
           isParent: true,
-          updateData: makeUpdateData({ type: CollectionType.PARENT }),
+          updateData: makeUpdateData({}),
         })}
       />
     );
@@ -275,7 +270,7 @@ describe('CollectionEditSheet — StructureTab collection rating', () => {
         edit={makeEdit({
           editTab: 'structure',
           isParent: true,
-          updateData: makeUpdateData({ type: CollectionType.PARENT }),
+          updateData: makeUpdateData({}),
         })}
       />
     );

@@ -71,7 +71,10 @@ export function InfoTab({ edit }: InfoTabProps) {
   } = edit;
 
   const collection = currentState?.collection;
-  const showGalleryAccess = updateData.type === CollectionType.CLIENT_GALLERY || isParent;
+  // Keyed on the stored discriminator, not the legacy enum: a standalone client gallery has
+  // no child collections, so `isParent` alone would hide the password SET and REVOKE controls
+  // while the collection stayed gated (blast radius R12).
+  const showGalleryAccess = updateData.isClient === true || isParent;
 
   // Soft advisory only — never blocks a save. ISO YYYY-MM-DD compares correctly as strings.
   const isEndBeforeStart = Boolean(
