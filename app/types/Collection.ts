@@ -8,7 +8,14 @@ import type { AnyContentModel, ContentImageModel } from './Content';
 import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './Metadata';
 
 /**
- * Collection type enum - matches backend CollectionType
+ * Legacy collection type enum.
+ *
+ * @deprecated Retained ONLY for `isParentCollection`'s `type === PARENT` arm
+ * (`app/utils/contentTypeGuards.ts`), which covers a freshly created parent with no children
+ * yet. Nothing else reads or writes it. Delete this enum and {@link CollectionBaseModel.type}
+ * in the frontend follow-up gated on U4's DEPLOY (U4 itself is backend-only), together with
+ * that arm and with the new server-derived `hasChildren` that replaces it — see
+ * `docs/superpowers/specs/2026-07-26-typeless-collection.md` §5.
  */
 export enum CollectionType {
   BLOG = 'BLOG',
@@ -19,41 +26,6 @@ export enum CollectionType {
   PARENT = 'PARENT',
   MISC = 'MISC',
 }
-
-/** Canonical display/accordion order for collection types (HOME first, MISC last). */
-export const COLLECTION_TYPE_ORDER: CollectionType[] = [
-  CollectionType.HOME,
-  CollectionType.PARENT,
-  CollectionType.CLIENT_GALLERY,
-  CollectionType.ART_GALLERY,
-  CollectionType.PORTFOLIO,
-  CollectionType.BLOG,
-  CollectionType.MISC,
-];
-
-/**
- * Collection types an admin can assign to a collection — the set the create/update
- * form selects offer and the valid drag-and-drop retype drop targets. Excludes
- * HOME (pinned singleton) and MISC (catch-all for unknown/missing types).
- */
-export const ASSIGNABLE_COLLECTION_TYPES: CollectionType[] = [
-  CollectionType.PORTFOLIO,
-  CollectionType.ART_GALLERY,
-  CollectionType.BLOG,
-  CollectionType.CLIENT_GALLERY,
-  CollectionType.PARENT,
-];
-
-/** Human-readable labels for every collection type (mirrors COLLECTION_VISIBILITY_LABELS). */
-export const COLLECTION_TYPE_LABELS: Record<CollectionType, string> = {
-  [CollectionType.HOME]: 'Home',
-  [CollectionType.PARENT]: 'Parent',
-  [CollectionType.CLIENT_GALLERY]: 'Client Gallery',
-  [CollectionType.ART_GALLERY]: 'Art Gallery',
-  [CollectionType.PORTFOLIO]: 'Portfolio',
-  [CollectionType.BLOG]: 'Blog',
-  [CollectionType.MISC]: 'Misc',
-};
 
 /**
  * Display mode for content collections
