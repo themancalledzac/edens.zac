@@ -1,6 +1,6 @@
 import { type CollectionModel, CollectionType } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
-import { buildMeContentBlock,ME_TILE_ID } from '@/app/utils/meContentBlock';
+import { buildMeContentBlock, ME_TILE_ID } from '@/app/utils/meContentBlock';
 
 function makeUserPage(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {

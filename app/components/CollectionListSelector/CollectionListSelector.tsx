@@ -360,7 +360,7 @@ export default function CollectionListSelector({
                 setHoveredSiblingId,
                 `Toggle sibling ${collection.name}`,
                 isCurrent || isDerived,
-                isDerived ? derivedReason : (isCurrent ? currentReason : undefined)
+                isDerived ? derivedReason : isCurrent ? currentReason : undefined
               )}
             </span>
           )}

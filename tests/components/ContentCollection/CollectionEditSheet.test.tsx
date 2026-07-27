@@ -46,7 +46,6 @@ jest.mock('@/app/components/ContentCollection/edit/sections/CollectionRolesSecti
   CollectionRolesSection: () => <div data-testid="collection-roles-section" />,
 }));
 
-
 describe('CollectionEditSheet — InfoTab', () => {
   it('renders Title, the two kind checkboxes, and the Visibility dropdown', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);

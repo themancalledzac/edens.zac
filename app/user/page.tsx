@@ -4,10 +4,10 @@ import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import LocationCollections from '@/app/components/LocationPage/LocationCollections';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
-import { CollapsibleSection } from '@/app/components/Personal/CollapsibleSection';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { PersonalContentGrid } from '@/app/components/Personal/PersonalContentGrid';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
+import { SectionTabs } from '@/app/components/Personal/SectionTabs';
 import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
@@ -21,6 +21,22 @@ import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 import styles from './page.module.scss';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Items-per-row budget for the Collections tab. Collection cards are uniform (fixed effective
+ * rating, aspect ratio clamped near 5:4), so at this density the layout engine composes them
+ * roughly six across — the whole point of the tab being a scannable index of everything the
+ * viewer is associated with rather than an editorial spread. Sits above `MAX_ROW_IMAGES`, so the
+ * per-row cap binds and the arrangement stays stable as cover aspect ratios vary.
+ */
+const COLLECTIONS_CHUNK_SIZE = 14;
+
+/**
+ * Items-per-row budget for the Images and Saved tabs. Denser than the editorial default, but well
+ * short of the Collections density — these are photographs, and packing them six across would
+ * shrink them past the point of being worth looking at.
+ */
+const PHOTO_CHUNK_SIZE = 8;
 
 /** Split the synthetic user collection's content into COLLECTION blocks and IMAGE/GIF blocks. */
 function splitUserContent(content: AnyContentModel[] | undefined): {
@@ -40,11 +56,10 @@ function splitUserContent(content: AnyContentModel[] | undefined): {
 }
 
 /**
- * Session-gated self-only "Your Space" page for the signed-in user. Renders four ordered,
- * collapsible sections — Collections (open), Images (tagged), Saved (bookmarks), Following — each
- * headed by a title card, then an Account card (email + passkey enrollment) below the stack.
- * Anonymous visitors get a 404; sign-in lives at `/login` (which lands here on success) and
- * onboarding at the invite-link flow.
+ * Session-gated self-only "Your Space" page for the signed-in user. Four tabs — Collections
+ * (default), Images (tagged), Saved (bookmarks), Following — then an Account card (email + passkey
+ * enrollment) below. Anonymous visitors get a 404; sign-in lives at `/login` (which lands here on
+ * success) and onboarding at the invite-link flow.
  */
 export default async function UserPage() {
   const principal = await meServer();
@@ -89,9 +104,9 @@ export default async function UserPage() {
         serverIsMobile={ssrViewport?.isMobile}
       />
 
-      {/* One MeProvider + SavesProvider wraps every section so SaveHeart renders and toggles
+      {/* One MeProvider + SavesProvider wraps every tab so SaveHeart renders and toggles
             consistently across the Images and Saved grids (a single source of truth for the saved
-            set — no per-section provider desync). The Collections grid renders no hearts (SaveHeart
+            set — no per-tab provider desync). The Collections grid renders no hearts (SaveHeart
             gates on contentType === 'IMAGE'), so the shared SavesProvider is a no-op there. */}
       <MeProvider me={principal}>
         <SavesProvider initialSavedIds={savedImageIds}>
@@ -100,40 +115,52 @@ export default async function UserPage() {
               <SendMessageButton />
             </div>
 
-            <CollapsibleSection
-              label="Collections"
-              count={collectionBlocks.length}
-              defaultOpen
-              emptyLabel="No collections yet."
-            >
-              <PersonalContentGrid content={collectionBlocks} />
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              label="Images"
-              count={imageBlocks.length}
-              emptyLabel="You are not tagged in any images yet."
-            >
-              <PersonalContentGrid content={imageBlocks} />
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              label="Saved"
-              count={savedImages.length}
-              emptyLabel="You have not saved any images yet."
-            >
-              <PersonalContentGrid content={savedImages} />
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              label="Following"
-              count={followedCollections.length}
-              emptyLabel="You are not following any collections yet."
-            >
-              <FollowsProvider initialFollowedIds={followedCollectionIds}>
-                <LocationCollections collections={followedCollections} />
-              </FollowsProvider>
-            </CollapsibleSection>
+            <SectionTabs
+              defaultTabKey="collections"
+              tabs={[
+                {
+                  key: 'collections',
+                  label: 'Collections',
+                  count: collectionBlocks.length,
+                  emptyLabel: 'No collections yet.',
+                  content: (
+                    <PersonalContentGrid
+                      content={collectionBlocks}
+                      chunkSize={COLLECTIONS_CHUNK_SIZE}
+                    />
+                  ),
+                },
+                {
+                  key: 'images',
+                  label: 'Images',
+                  count: imageBlocks.length,
+                  emptyLabel: 'You are not tagged in any images yet.',
+                  content: (
+                    <PersonalContentGrid content={imageBlocks} chunkSize={PHOTO_CHUNK_SIZE} />
+                  ),
+                },
+                {
+                  key: 'saved',
+                  label: 'Saved',
+                  count: savedImages.length,
+                  emptyLabel: 'You have not saved any images yet.',
+                  content: (
+                    <PersonalContentGrid content={savedImages} chunkSize={PHOTO_CHUNK_SIZE} />
+                  ),
+                },
+                {
+                  key: 'following',
+                  label: 'Following',
+                  count: followedCollections.length,
+                  emptyLabel: 'You are not following any collections yet.',
+                  content: (
+                    <FollowsProvider initialFollowedIds={followedCollectionIds}>
+                      <LocationCollections collections={followedCollections} />
+                    </FollowsProvider>
+                  ),
+                },
+              ]}
+            />
 
             <AccountCard email={principal.email} />
           </div>

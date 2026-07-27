@@ -1019,7 +1019,9 @@ describe('createHeaderRow', () => {
     });
 
     it('omits the date item entirely when the collection has no date', () => {
-      expect(dateItemValue(createCollectionModel(1, { collectionDate: undefined }))).toBeUndefined();
+      expect(
+        dateItemValue(createCollectionModel(1, { collectionDate: undefined }))
+      ).toBeUndefined();
     });
   });
 });

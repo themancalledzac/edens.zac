@@ -19,18 +19,19 @@
 .sections {
   /* PageShell.main already caps width, centers, and adds the responsive side padding (so BoxTree
      rows sized for the 1300px cap / edge-to-edge mobile line up). This only owns the vertical
-     rhythm around the personal sections. */
-  padding: var(--space-6) 0 var(--space-8);
+     rhythm around the personal sections — kept tight, since the tab bar (not whitespace) is what
+     separates one section from the next. */
+  padding: var(--space-3) 0 var(--space-5);
 }
 
 .topBar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
 
   /* Keep the Send-a-message button inset while the content grids below run full-bleed on mobile;
      reset at the desktop breakpoint where .sections regains its own side padding. Mirrors
-     SectionTitleCard .heading. */
+     SectionTabs .tabList. */
   padding-inline: var(--page-padding-mobile);
 
   @media (width >= 768px) {

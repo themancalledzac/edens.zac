@@ -10,12 +10,7 @@ import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
 import { ApiError } from '@/app/lib/api/core';
-import {
-  addUserToRole,
-  listRoles,
-  listUserRoles,
-  removeUserFromRole,
-} from '@/app/lib/api/roles';
+import { addUserToRole, listRoles, listUserRoles, removeUserFromRole } from '@/app/lib/api/roles';
 import { createUser, updateUser } from '@/app/lib/api/users';
 import { type RoleSummary, type UserRoleRow } from '@/app/types/Role';
 import { type AdminUserSummary, type UserStatus } from '@/app/types/User';
@@ -255,12 +250,12 @@ export function UserForm(props: UserFormProps) {
         </Button>
         <Button type="submit" loading={submitting}>
           {props.mode === 'create'
-            ? (submitting
+            ? submitting
               ? 'Creating...'
-              : 'Create User')
-            : (submitting
+              : 'Create User'
+            : submitting
               ? 'Saving...'
-              : 'Save')}
+              : 'Save'}
         </Button>
       </div>
     </form>

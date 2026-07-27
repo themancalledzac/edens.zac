@@ -3,7 +3,7 @@
  * BoxTree fallback. Kept out of the component so the JSX stays thin and the logic is unit-testable.
  */
 
-import { shouldUseMeasuredWidth } from '@/app/constants';
+import { LAYOUT, shouldUseMeasuredWidth } from '@/app/constants';
 import { type ViewportDimensions } from '@/app/hooks/useViewport';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
@@ -62,9 +62,31 @@ export function resolveEffectiveViewport(
   };
 }
 
-/** Target row aspect ratio ≈ screen AR (so each row ≈ one screenful), clamped to [1.0, 2.5]. */
-export function computeTargetAspectRatio(contentWidth: number, viewportHeight: number): number {
-  return viewportHeight > 0 ? Math.max(1.0, Math.min(2.5, contentWidth / viewportHeight)) : 1.5;
+/**
+ * Target row aspect ratio ≈ screen AR (so each row ≈ one screenful), clamped to [1.0, 2.5], then
+ * scaled by how dense the caller asked the row to be.
+ *
+ * The screenful premise is right at the default density, where a row is a handful of large
+ * editorial images. It is wrong at high density: packing N times as many items into a row makes
+ * that row genuinely shorter and wider, so pinning the target to the viewport would leave
+ * {@link pickBestComposition} rejecting every wide arrangement and folding the extra items into
+ * deep vertical stacks instead. That is why raising `chunkSize` (a.k.a. a collection's `rowsWide`)
+ * used to widen the fill budget without ever widening the visible row.
+ *
+ * The factor is pinned to 1 at or below {@link LAYOUT.defaultChunkSize}, so every page that does
+ * not explicitly ask for extra density lays out exactly as before.
+ *
+ * @param chunkSize - Items-per-row budget for this render; defaults to the standard density.
+ */
+export function computeTargetAspectRatio(
+  contentWidth: number,
+  viewportHeight: number,
+  chunkSize: number = LAYOUT.defaultChunkSize
+): number {
+  const base =
+    viewportHeight > 0 ? Math.max(1.0, Math.min(2.5, contentWidth / viewportHeight)) : 1.5;
+  const densityFactor = Math.max(1, chunkSize / LAYOUT.defaultChunkSize);
+  return base * densityFactor;
 }
 
 /**
@@ -81,7 +103,11 @@ export function buildContentRows(
   if (!viewport.contentWidth) return { rows: [], layoutError: null };
   if ((!content || content.length === 0) && !collectionData) return { rows: [], layoutError: null };
 
-  const targetAR = computeTargetAspectRatio(viewport.contentWidth, viewport.viewportHeight);
+  const targetAR = computeTargetAspectRatio(
+    viewport.contentWidth,
+    viewport.viewportHeight,
+    chunkSize
+  );
   try {
     const rows = processContentForDisplay(content || [], viewport.contentWidth, chunkSize, {
       isMobile: viewport.isMobile,

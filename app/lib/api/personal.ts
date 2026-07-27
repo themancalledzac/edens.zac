@@ -26,9 +26,9 @@ async function throwFromResponse(res: Response): Promise<never> {
   const message =
     typeof detail === 'string' && detail
       ? detail
-      : (detail && typeof detail === 'object'
+      : detail && typeof detail === 'object'
         ? ((detail as { message?: string }).message ?? JSON.stringify(detail))
-        : `API error: ${res.status}`);
+        : `API error: ${res.status}`;
   throw new ApiError(message, res.status);
 }
 
