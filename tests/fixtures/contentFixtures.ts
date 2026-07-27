@@ -132,7 +132,6 @@ export const createCollectionContent = (
   visible: true,
   title: `Collection ${id}`,
   slug: `collection-${id}`,
-  collectionType: CollectionType.PORTFOLIO,
   isClient: false,
   isBlog: false,
   referencedCollectionId: id * 100,

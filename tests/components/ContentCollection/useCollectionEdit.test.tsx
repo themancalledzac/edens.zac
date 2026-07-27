@@ -732,7 +732,6 @@ describe('useCollectionEdit', () => {
             contentType: 'COLLECTION',
             orderIndex: 0,
             slug: 'child-7',
-            collectionType: CollectionType.PORTFOLIO,
             referencedCollectionId: 7,
           },
         ],

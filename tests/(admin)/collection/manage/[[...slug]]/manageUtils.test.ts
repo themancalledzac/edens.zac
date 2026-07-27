@@ -74,7 +74,6 @@ const createCollectionContent = (
   orderIndex: id,
   slug,
   title: `Collection ${id}`,
-  collectionType: CollectionType.PORTFOLIO,
   referencedCollectionId: id * 100,
   ...overrides,
 });
@@ -1542,7 +1541,6 @@ describe('updateBlockOrderIndex', () => {
       contentType: 'COLLECTION' as const,
       orderIndex: 0,
       slug: 'test-collection',
-      collectionType: 'BLOG' as const,
     } as AnyContentModel;
 
     const result = updateBlockOrderIndex(collectionBlock, 5);

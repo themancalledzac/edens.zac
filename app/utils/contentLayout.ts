@@ -207,7 +207,6 @@ export function convertCollectionContentToParallax(
     id: col.id ?? col.referencedCollectionId,
     title: col.title,
     slug: col.slug,
-    collectionType: col.collectionType,
     collectionDate: col.collectionDate,
     isClient: col.isClient,
     isBlog: col.isBlog,

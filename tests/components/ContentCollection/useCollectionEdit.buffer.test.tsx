@@ -131,7 +131,6 @@ function makeResponseWithChild(): CollectionUpdateResponseDTO {
         contentType: 'COLLECTION',
         orderIndex: 0,
         slug: 'child-collection',
-        collectionType: CollectionType.PORTFOLIO,
         referencedCollectionId: 5,
       },
     ],

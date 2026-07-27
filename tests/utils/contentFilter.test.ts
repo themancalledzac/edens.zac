@@ -1017,7 +1017,6 @@ function makeCollectionRef(
     contentType: 'COLLECTION',
     orderIndex: 0,
     slug: 'child',
-    collectionType: 'COLLECTION' as ContentCollectionModel['collectionType'],
     referencedCollectionId: 1,
     ...overrides,
   };
