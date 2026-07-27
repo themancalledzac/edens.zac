@@ -12,11 +12,19 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
 
-  // Files to ignore
+  // Files to ignore.
+  //
+  // The `.next-*` and worktree entries are not cosmetic: every one of these directories is
+  // gitignored build output or a checkout copy (.gitignore lines 122, 123, 156, 158, 159), and
+  // leaving them in scope made `npm run lint:js` report 68,391 problems instead of the 9 real
+  // ones — which is the same as having no lint at all. NEVER "fix" the survivors with
+  // `eslint --fix`: unicorn/no-useless-undefined strips required arguments and breaks `tsc`
+  // on five files.
   {
     ignores: [
       '**/node_modules/**',
       '.next/**',
+      '.next-*/**',
       'out/**',
       'dist/**',
       'build/**',
@@ -25,6 +33,9 @@ export default tseslint.config(
       '**/*.d.ts',
       'Components/**',
       'old/**',
+      '.worktrees/**',
+      '.claude/worktrees/**',
+      '.claire/**',
     ],
   },
 
