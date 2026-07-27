@@ -374,7 +374,10 @@ export function useCollectionEdit({
   const seedUpdateData = useCallback(
     (source: CollectionModel): CollectionUpdateRequest => ({
       id: source.id,
-      type: source.type || CollectionType.PORTFOLIO,
+      // Seeded (not left undefined) so buildUpdatePayload can tell "unchanged false" from
+      // "not in the form" and the InfoTab checkboxes render the stored kind.
+      isClient: source.isClient ?? false,
+      isBlog: source.isBlog ?? false,
       title: source.title || '',
       description: source.description || '',
       collectionDate: source.collectionDate || '',
