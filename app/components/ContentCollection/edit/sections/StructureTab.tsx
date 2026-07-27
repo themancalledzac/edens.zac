@@ -42,7 +42,6 @@ export function StructureTab({ edit }: StructureTabProps) {
     isParent,
     allCollectionsWithTagViews,
     saveTagAsCollection,
-    handleChangeType,
     childIds,
     handleChildToggle,
     handleAddNewChild,
@@ -153,7 +152,6 @@ export function StructureTab({ edit }: StructureTabProps) {
         parentPendingAddIds={parentIds.pendingAdd}
         parentPendingRemoveIds={parentIds.pendingRemove}
         onToggleParent={handleParentToggle}
-        onChangeType={handleChangeType}
         onSaveDerived={col => {
           if (isTagViewRow(col)) setPendingTagView(col);
         }}

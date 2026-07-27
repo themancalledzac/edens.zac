@@ -8,7 +8,14 @@ import type { AnyContentModel, ContentImageModel } from './Content';
 import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './Metadata';
 
 /**
- * Collection type enum - matches backend CollectionType
+ * Legacy collection type enum.
+ *
+ * @deprecated Retained ONLY for `isParentCollection`'s `type === PARENT` arm
+ * (`app/utils/contentTypeGuards.ts`), which covers a freshly created parent with no children
+ * yet. Nothing else reads or writes it. Delete this enum and {@link CollectionBaseModel.type}
+ * in the frontend follow-up gated on U4's DEPLOY (U4 itself is backend-only), together with
+ * that arm and with the new server-derived `hasChildren` that replaces it — see
+ * `docs/superpowers/specs/2026-07-26-typeless-collection.md` §5.
  */
 export enum CollectionType {
   BLOG = 'BLOG',
@@ -19,41 +26,6 @@ export enum CollectionType {
   PARENT = 'PARENT',
   MISC = 'MISC',
 }
-
-/** Canonical display/accordion order for collection types (HOME first, MISC last). */
-export const COLLECTION_TYPE_ORDER: CollectionType[] = [
-  CollectionType.HOME,
-  CollectionType.PARENT,
-  CollectionType.CLIENT_GALLERY,
-  CollectionType.ART_GALLERY,
-  CollectionType.PORTFOLIO,
-  CollectionType.BLOG,
-  CollectionType.MISC,
-];
-
-/**
- * Collection types an admin can assign to a collection — the set the create/update
- * form selects offer and the valid drag-and-drop retype drop targets. Excludes
- * HOME (pinned singleton) and MISC (catch-all for unknown/missing types).
- */
-export const ASSIGNABLE_COLLECTION_TYPES: CollectionType[] = [
-  CollectionType.PORTFOLIO,
-  CollectionType.ART_GALLERY,
-  CollectionType.BLOG,
-  CollectionType.CLIENT_GALLERY,
-  CollectionType.PARENT,
-];
-
-/** Human-readable labels for every collection type (mirrors COLLECTION_VISIBILITY_LABELS). */
-export const COLLECTION_TYPE_LABELS: Record<CollectionType, string> = {
-  [CollectionType.HOME]: 'Home',
-  [CollectionType.PARENT]: 'Parent',
-  [CollectionType.CLIENT_GALLERY]: 'Client Gallery',
-  [CollectionType.ART_GALLERY]: 'Art Gallery',
-  [CollectionType.PORTFOLIO]: 'Portfolio',
-  [CollectionType.BLOG]: 'Blog',
-  [CollectionType.MISC]: 'Misc',
-};
 
 /**
  * Display mode for content collections
@@ -70,9 +42,10 @@ export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
 export interface CollectionBaseModel {
   id?: number;
   /**
-   * @deprecated Legacy classifier still emitted by the backend for the rollback window. No
-   * public surface reads it off a RESPONSE — rendering keys on `isClient`/`isBlog`. It is still
-   * written on admin REQUESTS (see `CollectionUpdateRequest.type`). Removed in phase 2.
+   * @deprecated Legacy classifier still emitted by the backend. The ONLY remaining reader is
+   * `isParentCollection` (`app/utils/contentTypeGuards.ts`), whose `type === PARENT` arm covers
+   * a freshly created parent with no children yet. Nothing writes it. It degrades to `undefined`
+   * — not to a wrong answer — once U4 stops sending the field, at which point delete both.
    */
   type?: CollectionType;
   /**
@@ -111,12 +84,6 @@ export interface CollectionBaseModel {
  * Matches backend CollectionCreateRequest.java
  */
 export interface CollectionCreateRequest {
-  /**
-   * @deprecated Legacy (admin-transitional) kind selector. Still SENT to the backend: it is the
-   * only way to express PORTFOLIO/ART_GALLERY/PARENT, which have no boolean encoding. The API
-   * layer adds the derived `isClient`/`isBlog` alongside it — see `withDerivedKindFlags`.
-   */
-  type?: CollectionType;
   title: string;
   isClient?: boolean;
   isBlog?: boolean;
@@ -130,8 +97,6 @@ export interface CollectionListModel {
   id: number;
   name: string;
   slug?: string;
-  /** @deprecated Legacy classifier; use `isClient`/`isBlog`. */
-  type?: string;
   isClient?: boolean;
   isBlog?: boolean;
   /** ISO date — used to sort BLOG group rows on the manage page. */
@@ -219,13 +184,6 @@ export interface CollectionUpdate {
  */
 export interface CollectionUpdateRequest {
   id: number; // Required for updates
-  /**
-   * @deprecated Legacy (admin-transitional) kind selector. Still SENT to the backend: it is the
-   * only way to express PORTFOLIO/ART_GALLERY/PARENT, which have no boolean encoding. Sent only
-   * when actually changed (`buildUpdatePayload` dirty-diffs it), so a metadata-only save never
-   * re-derives the flags from it. See `withDerivedKindFlags`.
-   */
-  type?: CollectionType;
   isClient?: boolean;
   isBlog?: boolean;
   title?: string;

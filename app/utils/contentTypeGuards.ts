@@ -264,5 +264,12 @@ export function hasChildCollectionContent(
 export function isParentCollection(
   collection: Pick<CollectionModel, 'content' | 'type'> | null | undefined
 ): boolean {
+  // U4 GATE: the `type === PARENT` arm is deliberately retained through U1. It is the only
+  // thing that reports a freshly created parent (no child content yet) as a parent. Delete it,
+  // `CollectionBaseModel.type` and the `CollectionType` enum together ONCE U4 IS DEPLOYED and
+  // the backend has stopped sending the field — in a frontend follow-up PR, not in U4 itself,
+  // which is backend-only. That PR must also start reading the server-derived `hasChildren` off
+  // CollectionUpdateResponseDTO, which is what replaces this arm.
+  // See docs/superpowers/specs/2026-07-26-typeless-collection.md.
   return hasChildCollectionContent(collection) || collection?.type === CollectionType.PARENT;
 }

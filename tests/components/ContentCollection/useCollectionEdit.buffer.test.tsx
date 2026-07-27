@@ -83,7 +83,6 @@ function makeListModel(overrides: Partial<CollectionListModel> = {}): Collection
     id: 5,
     name: 'Child Collection',
     slug: 'child-collection',
-    type: CollectionType.PORTFOLIO,
     ...overrides,
   };
 }
@@ -132,7 +131,6 @@ function makeResponseWithChild(): CollectionUpdateResponseDTO {
         contentType: 'COLLECTION',
         orderIndex: 0,
         slug: 'child-collection',
-        collectionType: CollectionType.PORTFOLIO,
         referencedCollectionId: 5,
       },
     ],
@@ -285,5 +283,36 @@ describe('useCollectionEdit — edit buffer lifecycle', () => {
       expect(result.current.updateData.title).toBe('Typed but unsaved');
       expect(result.current.isUpdateDirty).toBe(true);
     });
+  });
+});
+
+describe('update buffer — kind flags', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockStorageGetFull.mockReturnValue(null);
+  });
+
+  it('seeds isClient/isBlog from the collection so the kind checkboxes reflect storage', () => {
+    const { result } = renderHook(() =>
+      useCollectionEdit({
+        collection: makeCollection({ isClient: true, isBlog: false }),
+        slug: 'smith-wedding',
+        enabled: false,
+      })
+    );
+    expect(result.current.updateData.isClient).toBe(true);
+    expect(result.current.updateData.isBlog).toBe(false);
+  });
+
+  it('seeds both false for an ordinary collection', () => {
+    const { result } = renderHook(() =>
+      useCollectionEdit({
+        collection: makeCollection({ isClient: false, isBlog: false }),
+        slug: 'smith-wedding',
+        enabled: false,
+      })
+    );
+    expect(result.current.updateData.isClient).toBe(false);
+    expect(result.current.updateData.isBlog).toBe(false);
   });
 });

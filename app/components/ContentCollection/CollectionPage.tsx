@@ -69,7 +69,6 @@ function collectionToContentModel(
     id: col.id,
     title: col.title,
     slug: col.slug,
-    collectionType: col.type,
     isClient: col.isClient,
     isBlog: col.isBlog,
     description: col.description ?? null,
@@ -105,7 +104,6 @@ function collectionToContentModel(
  * - Mixed content support (collections + images + text + etc.)
  *
  * @param collection - Single CollectionModel or array of CollectionModels
- * @param collectionType - Optional collection type for future customization
  * @returns Server component displaying unified collection content
  */
 export default function CollectionPage({

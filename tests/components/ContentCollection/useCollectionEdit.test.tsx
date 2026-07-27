@@ -72,7 +72,6 @@ function makeListModel(overrides: Partial<CollectionListModel> = {}): Collection
     id: 7,
     name: 'Sibling Collection',
     slug: 'sibling-collection',
-    type: CollectionType.PORTFOLIO,
     ...overrides,
   };
 }
@@ -733,7 +732,6 @@ describe('useCollectionEdit', () => {
             contentType: 'COLLECTION',
             orderIndex: 0,
             slug: 'child-7',
-            collectionType: CollectionType.PORTFOLIO,
             referencedCollectionId: 7,
           },
         ],

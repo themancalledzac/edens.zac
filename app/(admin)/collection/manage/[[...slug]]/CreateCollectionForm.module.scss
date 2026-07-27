@@ -27,3 +27,25 @@
   color: var(--color-error-text);
   font-size: var(--text-sm);
 }
+
+.formLabel {
+  display: block;
+  font-weight: bold;
+  color: var(--color-fg);
+}
+
+.checkboxRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-top: var(--space-2);
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface);
+}

@@ -46,7 +46,8 @@ export function buildUpdatePayload(
     key: keyof CollectionUpdateRequest;
     original: unknown;
   }> = [
-    { key: 'type', original: originalCollection.type },
+    { key: 'isClient', original: originalCollection.isClient },
+    { key: 'isBlog', original: originalCollection.isBlog },
     { key: 'title', original: originalCollection.title },
     { key: 'description', original: originalCollection.description },
     { key: 'visibility', original: originalCollection.visibility },

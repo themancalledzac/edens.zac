@@ -70,4 +70,49 @@ describe('CreateCollectionForm', () => {
     expect(mockReplace).not.toHaveBeenCalled();
     expect(screen.queryByText(/failed to create collection/i)).not.toBeInTheDocument();
   });
+
+  it('offers Client gallery and Blog checkboxes, both unchecked, and no type select', () => {
+    render(<CreateCollectionForm />);
+    expect(screen.getByLabelText('Client gallery')).not.toBeChecked();
+    expect(screen.getByLabelText('Blog')).not.toBeChecked();
+    expect(screen.queryByLabelText(/collection type/i)).not.toBeInTheDocument();
+  });
+
+  it('creates an ordinary collection with no kind keys when neither box is checked', async () => {
+    mockCreate.mockResolvedValue({
+      collection: { id: 5, slug: 'film-pack-002' },
+    } as unknown as Awaited<ReturnType<typeof createCollection>>);
+
+    render(<CreateCollectionForm />);
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Film Pack 002' } });
+    fireEvent.click(screen.getByRole('button', { name: /create collection/i }));
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith({ title: 'Film Pack 002' });
+    });
+  });
+
+  it('creates a client gallery when the Client gallery box is checked', async () => {
+    mockCreate.mockResolvedValue({
+      collection: { id: 6, slug: 'smith-wedding' },
+    } as unknown as Awaited<ReturnType<typeof createCollection>>);
+
+    render(<CreateCollectionForm />);
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Smith Wedding' } });
+    fireEvent.click(screen.getByLabelText('Client gallery'));
+    fireEvent.click(screen.getByRole('button', { name: /create collection/i }));
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith({ title: 'Smith Wedding', isClient: true });
+    });
+  });
+
+  it('checking Blog clears Client gallery (mutually exclusive)', () => {
+    render(<CreateCollectionForm />);
+    fireEvent.click(screen.getByLabelText('Client gallery'));
+    expect(screen.getByLabelText('Client gallery')).toBeChecked();
+    fireEvent.click(screen.getByLabelText('Blog'));
+    expect(screen.getByLabelText('Blog')).toBeChecked();
+    expect(screen.getByLabelText('Client gallery')).not.toBeChecked();
+  });
 });

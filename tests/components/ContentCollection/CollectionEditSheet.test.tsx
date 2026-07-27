@@ -3,7 +3,6 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { CollectionEditSheet } from '@/app/components/ContentCollection/edit/CollectionEditSheet';
-import { CollectionType } from '@/app/types/Collection';
 import { makeEdit, makeState, makeUpdateData } from '@/tests/fixtures/collectionEditFixtures';
 
 jest.mock('next/navigation', () => ({
@@ -48,11 +47,69 @@ jest.mock('@/app/components/ContentCollection/edit/sections/CollectionRolesSecti
 }));
 
 describe('CollectionEditSheet — InfoTab', () => {
-  it('renders Title, Collection Type, and the Visibility dropdown', () => {
+  it('renders Title, the two kind checkboxes, and the Visibility dropdown', () => {
     render(<CollectionEditSheet edit={makeEdit({ editTab: 'info' })} />);
     expect(screen.getByLabelText('Title')).toBeInTheDocument();
-    expect(screen.getByLabelText('Collection Type')).toBeInTheDocument();
+    expect(screen.getByLabelText('Client gallery')).toBeInTheDocument();
+    expect(screen.getByLabelText('Blog')).toBeInTheDocument();
     expect(screen.getByLabelText('Visibility')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Collection Type')).not.toBeInTheDocument();
+  });
+
+  it('reflects the collection kind in the checkboxes', () => {
+    render(
+      <CollectionEditSheet edit={makeEdit({ editTab: 'info', updateData: makeUpdateData({ isBlog: true }) })} />
+    );
+    expect(screen.getByLabelText('Client gallery')).not.toBeChecked();
+    expect(screen.getByLabelText('Blog')).toBeChecked();
+  });
+
+  it('checking Client gallery sets isClient true and clears isBlog', () => {
+    const setUpdateField = jest.fn();
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'info',
+          updateData: makeUpdateData({ isBlog: true }),
+          setUpdateField,
+        })}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Client gallery'));
+    expect(setUpdateField).toHaveBeenCalledWith('isClient', true);
+    expect(setUpdateField).toHaveBeenCalledWith('isBlog', false);
+  });
+
+  it('checking Blog sets isBlog true and clears isClient', () => {
+    const setUpdateField = jest.fn();
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'info',
+          updateData: makeUpdateData({ isClient: true }),
+          setUpdateField,
+        })}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Blog'));
+    expect(setUpdateField).toHaveBeenCalledWith('isBlog', true);
+    expect(setUpdateField).toHaveBeenCalledWith('isClient', false);
+  });
+
+  it('unchecking a kind clears only that flag', () => {
+    const setUpdateField = jest.fn();
+    render(
+      <CollectionEditSheet
+        edit={makeEdit({
+          editTab: 'info',
+          updateData: makeUpdateData({ isClient: true }),
+          setUpdateField,
+        })}
+      />
+    );
+    fireEvent.click(screen.getByLabelText('Client gallery'));
+    expect(setUpdateField).toHaveBeenCalledWith('isClient', false);
+    expect(setUpdateField).not.toHaveBeenCalledWith('isBlog', false);
   });
 
   it('renders Tags and People (consolidated into Info)', () => {
@@ -61,11 +118,13 @@ describe('CollectionEditSheet — InfoTab', () => {
     expect(screen.getByText('People')).toBeInTheDocument();
   });
 
-  it('shows gallery access group for CLIENT_GALLERY collection', () => {
+  it('shows gallery access group for a standalone client gallery (isClient, no children)', () => {
+    // R12: this is the case that vanishes if the gate collapses to `isParent` alone —
+    // a delivered gallery with no child collections would lose BOTH set and revoke.
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ type: CollectionType.CLIENT_GALLERY }),
-      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      currentState: makeState({ isClient: true }),
+      updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
     render(<CollectionEditSheet edit={edit} />);
@@ -77,19 +136,19 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('shows gallery access group for isParent=true', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ type: CollectionType.PARENT }),
-      updateData: makeUpdateData({ type: CollectionType.PARENT }),
+      currentState: makeState({ isClient: false }),
+      updateData: makeUpdateData({ isClient: false }),
       isParent: true,
     });
     render(<CollectionEditSheet edit={edit} />);
     expect(screen.getByRole('heading', { name: 'Gallery Access' })).toBeInTheDocument();
   });
 
-  it('does NOT show gallery access group for non-gallery, non-parent collection', () => {
+  it('does NOT show gallery access group for a non-client, non-parent collection', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ type: CollectionType.PORTFOLIO }),
-      updateData: makeUpdateData({ type: CollectionType.PORTFOLIO }),
+      currentState: makeState({ isClient: false }),
+      updateData: makeUpdateData({ isClient: false }),
       isParent: false,
     });
     render(<CollectionEditSheet edit={edit} />);
@@ -100,11 +159,8 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('shows the Clear Password button when the gallery already has a password set', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({
-        type: CollectionType.CLIENT_GALLERY,
-        isPasswordProtected: true,
-      }),
-      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      currentState: makeState({ isClient: true, isPasswordProtected: true }),
+      updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
     render(<CollectionEditSheet edit={edit} />);
@@ -114,11 +170,8 @@ describe('CollectionEditSheet — InfoTab', () => {
   it('hides the Clear Password button when the gallery has no password', () => {
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({
-        type: CollectionType.CLIENT_GALLERY,
-        isPasswordProtected: false,
-      }),
-      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      currentState: makeState({ isClient: true, isPasswordProtected: false }),
+      updateData: makeUpdateData({ isClient: true }),
       isParent: false,
     });
     render(<CollectionEditSheet edit={edit} />);
@@ -143,8 +196,8 @@ describe('CollectionEditSheet — InfoTab', () => {
     const statusText = 'Password saved. No email sent.';
     const edit = makeEdit({
       editTab: 'info',
-      currentState: makeState({ type: CollectionType.CLIENT_GALLERY }),
-      updateData: makeUpdateData({ type: CollectionType.CLIENT_GALLERY }),
+      currentState: makeState({ isClient: true }),
+      updateData: makeUpdateData({ isClient: true }),
       isParent: false,
       galleryStatus: statusText,
     });
@@ -185,7 +238,7 @@ describe('CollectionEditSheet — StructureTab', () => {
         edit={makeEdit({
           editTab: 'structure',
           isParent: true,
-          updateData: makeUpdateData({ type: CollectionType.PARENT }),
+          updateData: makeUpdateData({}),
         })}
       />
     );
@@ -274,7 +327,7 @@ describe('CollectionEditSheet — StructureTab collection rating', () => {
         edit={makeEdit({
           editTab: 'structure',
           isParent: true,
-          updateData: makeUpdateData({ type: CollectionType.PARENT }),
+          updateData: makeUpdateData({}),
         })}
       />
     );

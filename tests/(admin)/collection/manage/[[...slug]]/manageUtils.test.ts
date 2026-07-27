@@ -74,7 +74,6 @@ const createCollectionContent = (
   orderIndex: id,
   slug,
   title: `Collection ${id}`,
-  collectionType: CollectionType.PORTFOLIO,
   referencedCollectionId: id * 100,
   ...overrides,
 });
@@ -592,7 +591,6 @@ describe('buildUpdatePayload', () => {
     it('should return payload with only id when no changes', () => {
       const formData: CollectionUpdateRequest = {
         id: 1,
-        type: CollectionType.PORTFOLIO,
         title: 'Original Title',
         description: 'Original Description',
         collectionDate: '2024-01-01',
@@ -1543,7 +1541,6 @@ describe('updateBlockOrderIndex', () => {
       contentType: 'COLLECTION' as const,
       orderIndex: 0,
       slug: 'test-collection',
-      collectionType: 'BLOG' as const,
     } as AnyContentModel;
 
     const result = updateBlockOrderIndex(collectionBlock, 5);

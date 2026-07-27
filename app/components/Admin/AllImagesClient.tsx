@@ -6,7 +6,7 @@ import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { useInViewport } from '@/app/hooks/inViewport';
 import { useImageBrowser } from '@/app/hooks/useImageBrowser';
 import { type PagedImages } from '@/app/lib/api/content';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type SsrViewport } from '@/app/utils/ssrViewport';
 
@@ -56,7 +56,6 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
   const mockCollection: CollectionModel = useMemo(
     () => ({
       id: 0,
-      type: CollectionType.MISC,
       isClient: false,
       isBlog: false,
       title: 'All Images',

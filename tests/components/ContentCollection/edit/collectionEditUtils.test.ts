@@ -159,3 +159,37 @@ describe('buildUpdatePayload — date clear-flag derivation', () => {
     });
   });
 });
+
+describe('buildUpdatePayload — kind flags', () => {
+  it('sends isClient when the admin turns a collection into a client gallery', () => {
+    const result = buildUpdatePayload(
+      makeForm({ isClient: true, isBlog: false }),
+      makeCollection({ isClient: false, isBlog: false })
+    );
+    expect(result.isClient).toBe(true);
+  });
+
+  it('sends isClient: false when the admin demotes a client gallery', () => {
+    const result = buildUpdatePayload(
+      makeForm({ isClient: false, isBlog: false }),
+      makeCollection({ isClient: true, isBlog: false })
+    );
+    expect(result.isClient).toBe(false);
+  });
+
+  it('omits both flags on a metadata-only save', () => {
+    const result = buildUpdatePayload(
+      makeForm({ isClient: false, isBlog: false, title: 'Renamed' }),
+      makeCollection({ isClient: false, isBlog: false })
+    );
+    expect(result).toEqual({ id: 1, title: 'Renamed' });
+  });
+
+  it('sends isBlog when the admin turns a collection into a blog', () => {
+    const result = buildUpdatePayload(
+      makeForm({ isClient: false, isBlog: true }),
+      makeCollection({ isClient: false, isBlog: false })
+    );
+    expect(result.isBlog).toBe(true);
+  });
+});

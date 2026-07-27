@@ -57,7 +57,6 @@ export function makeUpdateData(
 ): CollectionUpdateRequest {
   return {
     id: 1,
-    type: CollectionType.PORTFOLIO,
     title: 'Test Collection',
     description: '',
     collectionDate: '2026-01-01',
@@ -114,7 +113,6 @@ export function makeEdit(
     allCollections: [] as CollectionListModel[],
     allCollectionsWithTagViews: [] as CollectionListModel[],
     saveTagAsCollection: jest.fn(),
-    handleChangeType: jest.fn(),
     childIds: emptyTriple,
     handleChildToggle: jest.fn(),
     handleAddNewChild: jest.fn(),

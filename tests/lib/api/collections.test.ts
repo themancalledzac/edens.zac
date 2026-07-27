@@ -14,7 +14,7 @@ import {
   validateClientGalleryAccess,
 } from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 // Mock fetch globally
@@ -42,7 +42,6 @@ const createCollection = (id: number, overrides?: Partial<CollectionModel>): Col
   slug: `collection-${id}`,
   title: `Collection ${id}`,
   description: `Description ${id}`,
-  type: CollectionType.PORTFOLIO,
   isClient: false,
   isBlog: false,
   visibility: CollectionVisibility.LISTED,
@@ -176,16 +175,13 @@ describe('parseCollectionArrayResponse', () => {
 
     it('should preserve collection object structure', () => {
       const collection = createCollection(1, {
-        title: 'Test Collection',
-        description: 'Test Description',
-        type: CollectionType.BLOG,
-        visibility: CollectionVisibility.UNLISTED,
+        isBlog: true,
+        slug: 'test-slug',
       });
-      const data = [collection];
-      const result = parseCollectionArrayResponse(data);
+      const result = parseCollectionArrayResponse([collection]);
+      expect(result).toHaveLength(1);
       expect(result[0]).toEqual(collection);
-      expect(result[0]?.title).toBe('Test Collection');
-      expect(result[0]?.type).toBe(CollectionType.BLOG);
+      expect(result[0]?.isBlog).toBe(true);
     });
   });
 });
@@ -526,13 +522,12 @@ describe('saveCollectionFromTag', () => {
     jest.clearAllMocks();
   });
 
-  it('POSTs the visibility body and retains the type field (PORTFOLIO has no boolean encoding)', async () => {
+  it('POSTs the visibility body verbatim (no derived flags, no type)', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(3) })
     );
 
     const result = await saveCollectionFromTag(5, {
-      type: CollectionType.PORTFOLIO,
       visibility: CollectionVisibility.UNLISTED,
     });
 
@@ -541,10 +536,7 @@ describe('saveCollectionFromTag', () => {
       expect.stringContaining('/tags/5/save-as-collection'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({
-          type: CollectionType.PORTFOLIO,
-          visibility: CollectionVisibility.UNLISTED,
-        }),
+        body: JSON.stringify({ visibility: CollectionVisibility.UNLISTED }),
       })
     );
   });
@@ -574,170 +566,125 @@ describe('saveCollectionFromTag', () => {
   });
 });
 
-describe('admin kind writes — dual (type + derived booleans) wire contract', () => {
+describe('admin kind writes — boolean-only wire contract', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('createCollection sends type AND the derived isClient', async () => {
+  it('createCollection sends the body verbatim, with no derived flags added', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(1) })
     );
 
-    await createCollectionApi({ type: CollectionType.CLIENT_GALLERY, title: 'Smith Wedding' });
+    await createCollectionApi({ title: 'Smith Wedding', isClient: true });
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/collections/createCollection'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({
-          type: CollectionType.CLIENT_GALLERY,
-          title: 'Smith Wedding',
-          isClient: true,
-        }),
+        body: JSON.stringify({ title: 'Smith Wedding', isClient: true }),
       })
     );
   });
 
-  it('updateCollection sends type AND the derived isBlog', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(
-      mockSuccessResponse({ collection: createCollection(9) })
-    );
-
-    await updateCollectionApi(9, { id: 9, type: CollectionType.BLOG });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/collections/9'),
-      expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({ id: 9, type: CollectionType.BLOG, isBlog: true }),
-      })
-    );
-  });
-
-  it('an explicit boolean on the request beats the derived one', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue(
-      mockSuccessResponse({ collection: createCollection(9) })
-    );
-
-    await updateCollectionApi(9, {
-      id: 9,
-      type: CollectionType.CLIENT_GALLERY,
-      isClient: false,
-    });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/collections/9'),
-      expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({ id: 9, type: CollectionType.CLIENT_GALLERY, isClient: false }),
-      })
-    );
-  });
-
-  it('passes explicit booleans through untouched alongside type', async () => {
+  it('createCollection sends no kind keys at all for an ordinary collection', async () => {
+    // The backend folds an absent base to MISC (CollectionTypeCompat.resolve). PORTFOLIO has
+    // no successor concept under the typeless model, so there is nothing to send.
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(1) })
     );
 
-    await createCollectionApi({
-      type: CollectionType.CLIENT_GALLERY,
-      title: 'Smith Wedding',
-      isClient: true,
-      isBlog: false,
-    });
+    await createCollectionApi({ title: 'Film Pack 002' });
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/collections/createCollection'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({
-          type: CollectionType.CLIENT_GALLERY,
-          title: 'Smith Wedding',
-          isClient: true,
-          isBlog: false,
-        }),
+        body: JSON.stringify({ title: 'Film Pack 002' }),
       })
     );
   });
 
-  it('sends type with NO booleans for kinds the booleans cannot express (PORTFOLIO)', async () => {
+  it('updateCollection sends isBlog verbatim', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(9) })
     );
 
-    await updateCollectionApi(9, { id: 9, type: CollectionType.PORTFOLIO });
+    await updateCollectionApi(9, { id: 9, isBlog: true });
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/collections/9'),
       expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify({ id: 9, type: CollectionType.PORTFOLIO }),
+        body: JSON.stringify({ id: 9, isBlog: true }),
       })
     );
   });
 
-  it('sends PARENT with no booleans at all, so it cannot trip the backend parent-type guard', async () => {
-    // The backend rejects an explicit true flag against a PARENT/HOME base. The derivation
-    // emits only `true` or `undefined`, never `false`, so a PARENT retype carries neither.
+  it('updateCollection sends an explicit false so a demotion is not swallowed', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(9) })
     );
 
-    await updateCollectionApi(9, { id: 9, type: CollectionType.PARENT });
+    await updateCollectionApi(9, { id: 9, isClient: false });
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/collections/9'),
       expect.objectContaining({
         method: 'PUT',
-        body: JSON.stringify({ id: 9, type: CollectionType.PARENT }),
+        body: JSON.stringify({ id: 9, isClient: false }),
       })
     );
   });
 
-  it('createChildCollection sends type: PORTFOLIO to the wire (the MISC regression this prevents)', async () => {
-    // Stripping `type` here silently created every child collection as MISC instead of
-    // PORTFOLIO. PORTFOLIO has no boolean encoding, so `type` is the ONLY way to ask for it.
+  it('updateCollection adds nothing to a metadata-only body', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(
+      mockSuccessResponse({ collection: createCollection(9) })
+    );
+
+    await updateCollectionApi(9, { id: 9, title: 'Renamed' });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/collections/9'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ id: 9, title: 'Renamed' }),
+      })
+    );
+  });
+
+  it('createChildCollection sends the body verbatim', async () => {
+    // Was: "sends type: PORTFOLIO to the wire (the MISC regression this prevents)". Under the
+    // typeless model MISC and PORTFOLIO are the same thing — an ordinary collection — so the
+    // regression this pinned no longer exists. What still matters is that the child-creation
+    // path does not silently gain or lose kind keys.
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(4) })
     );
 
-    await createChildCollectionApi(3, {
-      type: CollectionType.PORTFOLIO,
-      title: 'New Child Collection',
-    });
+    await createChildCollectionApi(3, { title: 'New Child Collection' });
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/collections/3/child'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({
-          type: CollectionType.PORTFOLIO,
-          title: 'New Child Collection',
-        }),
+        body: JSON.stringify({ title: 'New Child Collection' }),
       })
     );
   });
 
-  it('createChildCollection derives isClient when a child is created as a client gallery', async () => {
+  it('createChildCollection carries isClient through when a child gallery is created', async () => {
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(4) })
     );
 
-    await createChildCollectionApi(3, {
-      type: CollectionType.CLIENT_GALLERY,
-      title: 'Smith Wedding',
-    });
+    await createChildCollectionApi(3, { title: 'Smith Wedding', isClient: true });
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/collections/3/child'),
       expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({
-          type: CollectionType.CLIENT_GALLERY,
-          title: 'Smith Wedding',
-          isClient: true,
-        }),
+        body: JSON.stringify({ title: 'Smith Wedding', isClient: true }),
       })
     );
   });

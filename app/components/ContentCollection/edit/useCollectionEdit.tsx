@@ -23,7 +23,6 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionListModel,
   type CollectionModel,
-  CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type ContentPersonModel,
@@ -66,7 +65,6 @@ import {
   toggleRelation,
 } from './collectionEditUtils';
 import { useCaptureDateSelection } from './hooks/useCaptureDateSelection';
-import { useCollectionRetype } from './hooks/useCollectionRetype';
 import { useContentReordering } from './hooks/useContentReordering';
 import { useCoverImageSelection } from './hooks/useCoverImageSelection';
 import { useImageClickHandler } from './hooks/useImageClickHandler';
@@ -170,10 +168,8 @@ export interface UseCollectionEditResult {
   /** Promote a tag view into a real collection, then navigate to its manage page. */
   saveTagAsCollection: (
     sourceTagId: number,
-    body: { type: CollectionType; visibility: CollectionVisibility }
+    body: { visibility: CollectionVisibility }
   ) => Promise<void>;
-  /** Drag-to-retype a collection in the selector accordion. */
-  handleChangeType: (collection: CollectionListModel, targetType: CollectionType) => Promise<void>;
   /** Child-collection (containment) triple. `saved` derives from content blocks. */
   childIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleChildToggle: (toggled: CollectionListModel) => void;
@@ -322,8 +318,6 @@ export function useCollectionEdit({
     });
   }, [enabled]);
 
-  const { handleChangeType } = useCollectionRetype({ setAllCollections, setError });
-
   /**
    * Synthetic read-only tag-view rows appended to the selector: one per tag on the current
    * collection. `id` is negated to avoid colliding with real collection ids; `sourceTagId`
@@ -336,7 +330,6 @@ export function useCollectionEdit({
         sourceTagId: tag.id,
         name: tag.name,
         slug: tag.slug,
-        type: CollectionType.PARENT,
         derived: true,
       })),
     [currentState?.tags]
@@ -374,7 +367,10 @@ export function useCollectionEdit({
   const seedUpdateData = useCallback(
     (source: CollectionModel): CollectionUpdateRequest => ({
       id: source.id,
-      type: source.type || CollectionType.PORTFOLIO,
+      // Seeded (not left undefined) so buildUpdatePayload can tell "unchanged false" from
+      // "not in the form" and the InfoTab checkboxes render the stored kind.
+      isClient: source.isClient ?? false,
+      isBlog: source.isBlog ?? false,
       title: source.title || '',
       description: source.description || '',
       collectionDate: source.collectionDate || '',
@@ -1247,7 +1243,6 @@ export function useCollectionEdit({
       setError(null);
 
       const response = await createChildCollection(collection.id, {
-        type: CollectionType.PORTFOLIO,
         title: 'New Child Collection',
       });
 
@@ -1264,10 +1259,7 @@ export function useCollectionEdit({
   }, [collection, router]);
 
   const saveTagAsCollection = useCallback(
-    async (
-      sourceTagId: number,
-      body: { type: CollectionType; visibility: CollectionVisibility }
-    ) => {
+    async (sourceTagId: number, body: { visibility: CollectionVisibility }) => {
       const response = await saveCollectionFromTag(sourceTagId, body);
       // A null response (204 from fetchBase) means the backend returned no collection to navigate
       // to. Throw so the caller's catch (SaveAsCollectionModal) surfaces it instead of silently
@@ -1572,7 +1564,6 @@ export function useCollectionEdit({
     allCollections,
     allCollectionsWithTagViews,
     saveTagAsCollection,
-    handleChangeType,
     childIds: {
       saved: originalCollectionIds,
       pendingAdd: pendingAddIds,

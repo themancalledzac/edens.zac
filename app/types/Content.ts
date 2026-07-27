@@ -16,7 +16,6 @@ import type {
   PersonUpdate,
   TagUpdate,
 } from './Collection';
-import { type CollectionType } from './Collection';
 import type {
   ContentCameraModel,
   ContentFilmTypeModel,
@@ -105,7 +104,7 @@ export interface ContentImageModel extends Content {
 /**
  * Parallax-enabled image content model
  * Based on ImageContentModel with parallax functionality
- * Can optionally include slug and collectionType for collection navigation
+ * Can optionally include a slug for collection navigation
  */
 export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'contentType'> {
   contentType: 'IMAGE';
@@ -125,8 +124,6 @@ export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'cont
    * badge derived from its own tags. Do not add a slug here for any other purpose.
    */
   slug?: string;
-  /** @deprecated Legacy classifier carried through conversions; use `isClient`/`isBlog`. */
-  collectionType?: CollectionType;
   /** Mirrors the source collection's booleans when converted from a collection card. */
   isClient?: boolean;
   isBlog?: boolean;
@@ -242,11 +239,6 @@ export interface ContentGifModel extends Content {
 export interface ContentCollectionModel extends Content {
   contentType: 'COLLECTION';
   slug: string;
-  /**
-   * @deprecated Legacy classifier still emitted by the backend for the rollback
-   * window; behavior keys on `isClient`/`isBlog`.
-   */
-  collectionType?: CollectionType;
   /** True when the referenced collection is a client gallery. */
   isClient?: boolean;
   /** True when the referenced collection is a blog/story (drives the Story badge). */
