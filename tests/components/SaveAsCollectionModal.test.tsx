@@ -13,6 +13,7 @@ describe('SaveAsCollectionModal', () => {
   });
 
   it('confirms with the selected visibility and nothing else', async () => {
+    // eslint-disable-next-line unicorn/no-useless-undefined -- the resolved value is the point
     const onConfirm = jest.fn().mockResolvedValue(undefined);
     render(<SaveAsCollectionModal tagName="Iceland" onClose={jest.fn()} onConfirm={onConfirm} />);
 
