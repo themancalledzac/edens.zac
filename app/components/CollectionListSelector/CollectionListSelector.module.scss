@@ -347,21 +347,3 @@ $toggle-col-width: 60px;
     outline-offset: 2px;
   }
 }
-
-.draggable {
-  cursor: grab;
-
-  &:active {
-    cursor: grabbing;
-  }
-}
-
-.dragging {
-  opacity: 0.4;
-}
-
-.typeHeaderRow--dropTarget {
-  background: var(--sel-elev-hover);
-  outline: 2px dashed var(--sel-accent-child);
-  outline-offset: -2px;
-}

@@ -1,18 +1,9 @@
 'use client';
 
-import {
-  type DragEvent,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 import {
-  ASSIGNABLE_COLLECTION_TYPES,
   COLLECTION_TYPE_ORDER,
   type CollectionListModel,
   CollectionType,
@@ -97,17 +88,6 @@ interface CollectionListSelectorProps {
    */
   grouped?: boolean;
   /**
-   * Drag-and-drop retype. When provided AND the selector is in accordion mode,
-   * rows become draggable and the assignable type-headers become drop targets;
-   * dropping a row on a different assignable type fires this with the new type.
-   *
-   * Pointer-only by design: this is a convenience shortcut. The keyboard-accessible
-   * path to change a collection's type is to open it (the row name is a navigate
-   * button) and use the type `<select>` in its edit form — so no admin action is
-   * gated solely behind drag-and-drop.
-   */
-  onChangeType?: (collection: CollectionListModel, targetType: CollectionType) => void;
-  /**
    * Save a synthetic (`derived`) tag-view row as a real collection. When provided, derived rows
    * render read-only with a "Save as Collection" action instead of participating in toggles.
    */
@@ -144,7 +124,6 @@ export default function CollectionListSelector({
   parentPendingAddIds,
   parentPendingRemoveIds,
   onToggleParent,
-  onChangeType,
   onSaveDerived,
   grouped,
 }: CollectionListSelectorProps) {
@@ -197,59 +176,6 @@ export default function CollectionListSelector({
     }
   }, [currentCollectionType]);
   const accordionMode = siblingMode || parentMode || Boolean(grouped);
-
-  const draggedRef = useRef<CollectionListModel | null>(null);
-  const [draggedId, setDraggedId] = useState<number | null>(null);
-  const [dragOverType, setDragOverType] = useState<CollectionType | null>(null);
-  const dragEnabled = accordionMode && !!onChangeType;
-
-  const handleRowDragStart = useCallback(
-    (collection: CollectionListModel) => (e: DragEvent<HTMLDivElement>) => {
-      draggedRef.current = collection;
-      setDraggedId(collection.id);
-      if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', String(collection.id));
-      }
-    },
-    []
-  );
-
-  const handleRowDragEnd = useCallback(() => {
-    draggedRef.current = null;
-    setDraggedId(null);
-    setDragOverType(null);
-  }, []);
-
-  const handleHeaderDragOver = useCallback(
-    (type: CollectionType) => (e: DragEvent<HTMLButtonElement>) => {
-      if (!draggedRef.current) return;
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-      setDragOverType(type);
-    },
-    []
-  );
-
-  const handleHeaderDragLeave = useCallback(
-    (type: CollectionType) => (e: DragEvent<HTMLButtonElement>) => {
-      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
-      setDragOverType(prev => (prev === type ? null : prev));
-    },
-    []
-  );
-
-  const handleHeaderDrop = useCallback(
-    (type: CollectionType) => (e: DragEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      const dragged = draggedRef.current;
-      draggedRef.current = null;
-      setDraggedId(null);
-      setDragOverType(null);
-      if (dragged && dragged.type !== type) onChangeType?.(dragged, type);
-    },
-    [onChangeType]
-  );
 
   const groupsByType = useMemo(() => {
     if (!accordionMode) return null;
@@ -384,18 +310,13 @@ export default function CollectionListSelector({
         nameElement = <span className={styles.name}>{collection.name}</span>;
       }
 
-      const isHome = collection.type === CollectionType.HOME;
-      const rowDraggable = dragEnabled && !isCurrent && !isHome && !isDerived;
 
       return (
         <div
           key={collection.id}
-          className={`${styles.row} ${styles.rowSibling} ${expanded ? styles.expandedRow : ''} ${isCurrent ? styles.currentRow : ''} ${rowDraggable ? styles.draggable : ''} ${draggedId === collection.id ? styles.dragging : ''}`}
+          className={`${styles.row} ${styles.rowSibling} ${expanded ? styles.expandedRow : ''} ${isCurrent ? styles.currentRow : ''}`}
           role="group"
           aria-label={collection.name}
-          draggable={rowDraggable || undefined}
-          onDragStart={rowDraggable ? handleRowDragStart(collection) : undefined}
-          onDragEnd={rowDraggable ? handleRowDragEnd : undefined}
         >
           {nameElement}
           {isDerived && onSaveDerived && (
@@ -486,19 +407,13 @@ export default function CollectionListSelector({
         {COLLECTION_TYPE_ORDER.filter(t => t !== CollectionType.HOME).map(t => {
           const rows = groupsByType.get(t) ?? [];
           const isExpanded = expandedType === t;
-          const isDropTarget = dragEnabled && ASSIGNABLE_COLLECTION_TYPES.includes(t);
-          const isDragOver = isDropTarget && dragOverType === t;
           return (
             <div key={t}>
               <button
                 type="button"
-                className={`${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''} ${isDragOver ? styles['typeHeaderRow--dropTarget'] : ''}`}
+                className={`${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`}
                 onClick={() => setExpandedType(isExpanded ? null : t)}
                 aria-expanded={isExpanded}
-                onDragOver={isDropTarget ? handleHeaderDragOver(t) : undefined}
-                onDragEnter={isDropTarget ? handleHeaderDragOver(t) : undefined}
-                onDragLeave={isDropTarget ? handleHeaderDragLeave(t) : undefined}
-                onDrop={isDropTarget ? handleHeaderDrop(t) : undefined}
               >
                 <span className={styles.typeHeaderChevron}>{isExpanded ? '▾' : '▸'}</span>
                 <span className={styles.typeHeaderLabel}>{humanizeConstantCase(t)}</span>
