@@ -23,7 +23,6 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionListModel,
   type CollectionModel,
-  CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type ContentPersonModel,
@@ -331,7 +330,6 @@ export function useCollectionEdit({
         sourceTagId: tag.id,
         name: tag.name,
         slug: tag.slug,
-        type: CollectionType.PARENT,
         derived: true,
       })),
     [currentState?.tags]
@@ -1245,7 +1243,6 @@ export function useCollectionEdit({
       setError(null);
 
       const response = await createChildCollection(collection.id, {
-        type: CollectionType.PORTFOLIO,
         title: 'New Child Collection',
       });
 

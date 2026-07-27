@@ -592,7 +592,6 @@ describe('buildUpdatePayload', () => {
     it('should return payload with only id when no changes', () => {
       const formData: CollectionUpdateRequest = {
         id: 1,
-        type: CollectionType.PORTFOLIO,
         title: 'Original Title',
         description: 'Original Description',
         collectionDate: '2024-01-01',

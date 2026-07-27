@@ -42,9 +42,10 @@ export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
 export interface CollectionBaseModel {
   id?: number;
   /**
-   * @deprecated Legacy classifier still emitted by the backend for the rollback window. No
-   * public surface reads it off a RESPONSE — rendering keys on `isClient`/`isBlog`. It is still
-   * written on admin REQUESTS (see `CollectionUpdateRequest.type`). Removed in phase 2.
+   * @deprecated Legacy classifier still emitted by the backend. The ONLY remaining reader is
+   * `isParentCollection` (`app/utils/contentTypeGuards.ts`), whose `type === PARENT` arm covers
+   * a freshly created parent with no children yet. Nothing writes it. It degrades to `undefined`
+   * — not to a wrong answer — once U4 stops sending the field, at which point delete both.
    */
   type?: CollectionType;
   /**
@@ -83,12 +84,6 @@ export interface CollectionBaseModel {
  * Matches backend CollectionCreateRequest.java
  */
 export interface CollectionCreateRequest {
-  /**
-   * @deprecated Legacy (admin-transitional) kind selector. Still SENT to the backend: it is the
-   * only way to express PORTFOLIO/ART_GALLERY/PARENT, which have no boolean encoding. The API
-   * layer adds the derived `isClient`/`isBlog` alongside it — see `withDerivedKindFlags`.
-   */
-  type?: CollectionType;
   title: string;
   isClient?: boolean;
   isBlog?: boolean;
@@ -102,8 +97,6 @@ export interface CollectionListModel {
   id: number;
   name: string;
   slug?: string;
-  /** @deprecated Legacy classifier; use `isClient`/`isBlog`. */
-  type?: string;
   isClient?: boolean;
   isBlog?: boolean;
   /** ISO date — used to sort BLOG group rows on the manage page. */
@@ -191,13 +184,6 @@ export interface CollectionUpdate {
  */
 export interface CollectionUpdateRequest {
   id: number; // Required for updates
-  /**
-   * @deprecated Legacy (admin-transitional) kind selector. Still SENT to the backend: it is the
-   * only way to express PORTFOLIO/ART_GALLERY/PARENT, which have no boolean encoding. Sent only
-   * when actually changed (`buildUpdatePayload` dirty-diffs it), so a metadata-only save never
-   * re-derives the flags from it. See `withDerivedKindFlags`.
-   */
-  type?: CollectionType;
   isClient?: boolean;
   isBlog?: boolean;
   title?: string;

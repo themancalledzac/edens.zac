@@ -72,7 +72,6 @@ function makeListModel(overrides: Partial<CollectionListModel> = {}): Collection
     id: 7,
     name: 'Sibling Collection',
     slug: 'sibling-collection',
-    type: CollectionType.PORTFOLIO,
     ...overrides,
   };
 }
