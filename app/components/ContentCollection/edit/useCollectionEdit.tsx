@@ -66,7 +66,6 @@ import {
   toggleRelation,
 } from './collectionEditUtils';
 import { useCaptureDateSelection } from './hooks/useCaptureDateSelection';
-import { useCollectionRetype } from './hooks/useCollectionRetype';
 import { useContentReordering } from './hooks/useContentReordering';
 import { useCoverImageSelection } from './hooks/useCoverImageSelection';
 import { useImageClickHandler } from './hooks/useImageClickHandler';
@@ -172,8 +171,6 @@ export interface UseCollectionEditResult {
     sourceTagId: number,
     body: { visibility: CollectionVisibility }
   ) => Promise<void>;
-  /** Drag-to-retype a collection in the selector accordion. */
-  handleChangeType: (collection: CollectionListModel, targetType: CollectionType) => Promise<void>;
   /** Child-collection (containment) triple. `saved` derives from content blocks. */
   childIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleChildToggle: (toggled: CollectionListModel) => void;
@@ -321,8 +318,6 @@ export function useCollectionEdit({
       if (meta !== null) setAllCollections(meta.collections);
     });
   }, [enabled]);
-
-  const { handleChangeType } = useCollectionRetype({ setAllCollections, setError });
 
   /**
    * Synthetic read-only tag-view rows appended to the selector: one per tag on the current
@@ -1572,7 +1567,6 @@ export function useCollectionEdit({
     allCollections,
     allCollectionsWithTagViews,
     saveTagAsCollection,
-    handleChangeType,
     childIds: {
       saved: originalCollectionIds,
       pendingAdd: pendingAddIds,

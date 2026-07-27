@@ -114,7 +114,6 @@ export function makeEdit(
     allCollections: [] as CollectionListModel[],
     allCollectionsWithTagViews: [] as CollectionListModel[],
     saveTagAsCollection: jest.fn(),
-    handleChangeType: jest.fn(),
     childIds: emptyTriple,
     handleChildToggle: jest.fn(),
     handleAddNewChild: jest.fn(),
