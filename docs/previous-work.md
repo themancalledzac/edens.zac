@@ -4,7 +4,25 @@
 > removed (2026-06-01). 1–2 lines per item. For deeper detail, follow the cited commits/PRs in
 > git history, or the surviving docs catalogued in [000-summary.md](000-summary.md).
 
-## 2026-06-10 → 07-06 Wave (0182–0204)
+## 2026-07 Typeless Collection Migration (#233–#235)
+
+The collection model lost its type. A collection is now a named, slugged, ordered grouping of **any mix** of content — images, GIFs, text, and references to other collections — with exactly **two** stored discriminators, `isClient` and `isBlog` (mutually exclusive; the backend rejects both). Everything else is derived or gone. This is a **breaking model change**, recorded here because the enum still turns up in older docs and in agent memory.
+
+**Where each former enum value went** (canonical source: the header comment on backend `V52__drop_collection_type.sql`):
+
+| Was                                  | Now                                                                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `CLIENT_GALLERY`                     | stored — `collection.is_client`                                                             |
+| `BLOG`                               | stored — `collection.is_blog`                                                               |
+| `PARENT`                             | **derived** — holds ≥1 collection reference; served as `hasChildren` / `childCollectionIds` |
+| `HOME`                               | **derived** — `slug = 'home'` (`HOME_SLUG`, unique per V41)                                 |
+| `PORTFOLIO` · `ART_GALLERY` · `MISC` | **gone. No successor concept** — carrying neither flag _is_ the meaning                     |
+
+- **U1 · FE type removal** ([#233](https://github.com/themancalledzac/edens.zac/pull/233)) — deleted `CollectionType`, the `type` field on the create/update requests and `CollectionListModel`, the label/order/assignable constants, `withDerivedKindFlags`, `humanizeConstantCase`, and **`useCollectionRetype` + drag-to-retype** (retyping is meaningless without types). The manage-page selector was re-keyed onto `bucketOf()` — Home (slug) / Client Galleries (`isClient`) / Blogs (`isBlog`) / Collections — and InfoTab now edits kind as two checkboxes. Gallery Access gates on `isClient`.
+- **U3 · mixed-content ready** ([#234](https://github.com/themancalledzac/edens.zac/pull/234)) — the consequences of "any collection can hold anything": `orderIndex` honoured verbatim for mixed content, collection cards excluded from `isDateable` / chronological ordering and from fullscreen prev/next, the cover picker unioned over own + child images, and the Presentation / Add-content surfaces un-gated for parents.
+- **U6 · derived parent-ness** ([#235](https://github.com/themancalledzac/edens.zac/pull/235)) — `hasChildren` / `childCollectionIds` typed onto `CollectionUpdateResponseDTO` and consumed by `isParentCollection`, replacing a scan of the **page-bounded** `collection.content` (wrong for any collection over the 500-item window). Deleted the last `CollectionType` references and dropped the enum from `ai_guidelines`.
+- **BE mirror** — `V50` added `is_client`/`is_blog` with a mutual-exclusion CHECK and backfilled them from `type`; `V51` made `type` nullable, snapshotted every row into **`collection_type_archive`** (the only faithful rollback artifact — five former values collapse onto one flag pair, so the flags cannot reconstruct `type`), and removed V50's transitional Portfolio / Art Gallery label tags per decision D6; `V52` dropped the column. **`V52` is irreversible.**
+- **Route** — `app/collectionType/[collectionType]/` was already deleted (2026-05-05); nothing replaced it. Discovery is `/explore` + `/tag/[slug]` + `/location/[slug]`.
 
 The post-`0179` wave: the layout value-model rewrite, auth Phase F, the Person→User identity merge, Collection IA (A1/A3), the admin panel, and a fixes wave. See chapters [004](004-content-discovery.md), [005](005-layout.md), [007](007-security-hardening.md), [008](008-collection-admin.md), [009](009-backend-and-vision.md) for current status.
 
@@ -69,7 +87,7 @@ The 0171 Next-Batch refactor wave: the React 18 → 19 runtime jump plus the DRY
 
 - **Collections overhaul** — 3-state visibility (LISTED/UNLISTED/HIDDEN), per-collection rating, synthetic `/all-*` slugs, PARENT password trickle-down, `collection_people`. PR #138 (backend V20–V22).
 - **Related sibling collections** — `collection_sibling` join table (V26), two-column Sibling | Child selector grid, `Related:` links in the metadata block. PR #148 + column-alignment fix PR #150.
-- **Parent column + type-grouped accordion + drag-to-retype** — manage-page selector gained a Parent toggle column, rows grouped under collapsible `CollectionType` accordion sections, and drag-a-row-onto-a-type-header to optimistically reassign type (`useCollectionRetype`, single-flight). Added `parents` on `CollectionListModel`/`CollectionUpdate` + `COLLECTION_TYPE_ORDER`/`ASSIGNABLE_COLLECTION_TYPES` constants. Also: collection-tags FE Phase 1 (shared `TagsSelector` + `tagUtils`), a `SegmentedControl` primitive, mobile density-filter fix, download empty-selection rejection, and a `100dvh` footer-shift fix. PR #167 (`0165-collections-parent-column`).
+- **Parent column + type-grouped accordion + drag-to-retype** — manage-page selector gained a Parent toggle column, rows grouped under collapsible `CollectionType` accordion sections, and drag-a-row-onto-a-type-header to optimistically reassign type (`useCollectionRetype`, single-flight). Added `parents` on `CollectionListModel`/`CollectionUpdate` + `COLLECTION_TYPE_ORDER`/`ASSIGNABLE_COLLECTION_TYPES` constants. Also: collection-tags FE Phase 1 (shared `TagsSelector` + `tagUtils`), a `SegmentedControl` primitive, mobile density-filter fix, download empty-selection rejection, and a `100dvh` footer-shift fix. PR #167 (`0165-collections-parent-column`). _Partly **superseded** by the [typeless migration](#2026-07-typeless-collection-migration-233235): the type constants, `useCollectionRetype` and drag-to-retype are deleted; the accordion survives re-keyed on `bucketOf()`._
 
 ## Navigation / Routing
 
@@ -123,7 +141,7 @@ The foundation that preceded the prominence / V2 / V3 work above. Mined from the
 91 files changed; tests 808 → 885 / 20 suites. Mined from the now-removed `todo/archived/` (2026-06-01).
 
 - **Image optimization** — removed global `unoptimized:true`, `remotePatterns: *.cloudfront.net`, AVIF/WebP `formats`, `sizes` on grid images; About → Server Component.
-- **SEO & social metadata** — `generateMetadata` (title/desc/OG/Twitter/cover) + `generateStaticParams` on `[slug]` + `collectionType/[collectionType]`, static metadata on home. _(JSON-LD still open.)_
+- **SEO & social metadata** — `generateMetadata` (title/desc/OG/Twitter/cover) + `generateStaticParams` on `[slug]` + `collectionType/[collectionType]`, static metadata on home. _(JSON-LD still open. The `collectionType/[collectionType]` route was deleted 2026-05-05 and has no successor; only the `[slug]` half survives.)_
 - **API type safety** — killed `null as unknown as T` (core returns `T | null`), `handleApiError`→`throwApiError`, removed `safeJson` + a duplicate admin getter, null guards across 10+ sites.
 - **Accessibility (P1–P3, P5)** — menu `<h2>`→`<button>`, labeled icon buttons, `window.location.href`→`router.push()`. _(P4 FullScreenModal nav shipped later.)_
 - **Suspense / streaming** — root `app/loading.tsx` + `LoadingSpinner` covering all routes. _(Component-level `<Suspense>` wrappers in pages still deferred.)_

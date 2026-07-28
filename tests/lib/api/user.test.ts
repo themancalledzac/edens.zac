@@ -19,7 +19,7 @@ describe('getUserPage', () => {
   });
 
   it('returns the synthetic collection from user/me/page (no-store)', async () => {
-    const fake = { id: 0, slug: 'user', type: 'PARENT', title: 'Yours', content: [] };
+    const fake = { id: 0, slug: 'user', title: 'Yours', content: [] };
     (core.fetchReadApi as jest.Mock).mockResolvedValue(fake);
 
     const result = await getUserPage();

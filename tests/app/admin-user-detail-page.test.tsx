@@ -61,7 +61,7 @@ describe('app/(admin)/admin/users/[id] — user page is rendered read-only', () 
   // row). editMode would mount the edit layer, which loads /api/admin/collections/user/update
   // and 404s ("Collection not found with slug: user"). It must render read-only.
   it('renders the synthetic user page WITHOUT editMode', async () => {
-    mockGetUserPageById.mockResolvedValue({ slug: 'user', type: 'PARENT', content: [] });
+    mockGetUserPageById.mockResolvedValue({ slug: 'user', content: [] });
 
     await renderPage();
 

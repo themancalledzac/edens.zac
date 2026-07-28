@@ -2,17 +2,19 @@
 %% How a visitor moves collection -> collection. Source: localhost:8080/api/read/collections/<slug> (prod data).
 %% Import into FigJam via the "Mermaid to Flow" plugin, or render anywhere Mermaid is supported.
 %% A child can belong to several parents (cross-membership) — shown by multiple parent->child edges.
+%% NOTE: crawled before the typeless-collection migration. Collections have no type; "parent" is
+%% derived from holding collection references, and "blog" is the isBlog flag. See README.md.
 
 flowchart TD
     HOME["Home /"]:::home
 
     %% ---- Parent hubs ----
-    FILM["Film — PARENT"]:::film
-    TRAVEL["Travel — PARENT"]:::travel
-    ADV["Adventure — PARENT"]:::adv
+    FILM["Film — parent"]:::film
+    TRAVEL["Travel — parent"]:::travel
+    ADV["Adventure — parent"]:::adv
 
     %% ---- Home-level leaves (non-parent) ----
-    EVENT["Event · PORTFOLIO"]:::leaf
+    EVENT["Event · collection"]:::leaf
     HID["Hidden Lake · BLOG"]:::leaf
     GORGE["Gorge Climbing · BLOG"]:::leaf
 
@@ -43,7 +45,7 @@ flowchart TD
 
     %% ---- Client galleries (separate cluster) ----
     ACG["/all-client-galleries"]:::client
-    ACG -.password / membership.-> CG["14 client galleries<br/>incl. Edens Family + Weigel Family (client PARENTs)"]:::client
+    ACG -.password / membership.-> CG["14 client galleries<br/>incl. Edens Family + Weigel Family (client parents)"]:::client
 
     classDef home fill:#0F172A,stroke:#0F172A,color:#fff;
     classDef film fill:#EAF2FB,stroke:#2563EB,color:#1E3A5F;

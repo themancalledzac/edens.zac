@@ -30,9 +30,13 @@ export interface CollectionBadgeFields {
 /**
  * Curated public labels keyed by tag slug, in precedence order — the first entry
  * whose slug the collection carries wins, so multi-tag collections get a declared
- * label rather than one decided by tag array order. The backend backfilled the
- * `art-gallery` tag onto former ART_GALLERY collections, so the "Gallery" badge
- * derives from that tag rather than the legacy type enum.
+ * label rather than one decided by tag array order.
+ *
+ * The "Gallery" badge derives from an ordinary `art-gallery` tag, applied by hand.
+ * Backend V50 briefly backfilled that tag onto the former ART_GALLERY collections,
+ * but V51 deleted it again (decision D6): the grouping was dropped, not converted to
+ * tags. So this entry maps a tag an operator chooses to apply — it is not a survivor
+ * of the deleted type enum, and nothing backfills it.
  */
 const TAG_PUBLIC_LABELS: ReadonlyArray<readonly [slug: string, label: string]> = [
   ['art-gallery', 'Gallery'],

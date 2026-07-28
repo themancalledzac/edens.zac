@@ -1,6 +1,8 @@
 # 📚 docs/ — The Book
 
-> **Updated 2026-07-07.** The master index of every planning doc, organized as **chapters → sections**. Reconciled against `origin/main` (HEAD `9db8333`).
+> **Updated 2026-07-28.** The master index of every planning doc, organized as **chapters → sections**. Reconciled against `origin/main` (HEAD `8cd1129`).
+>
+> **⚠️ Read this before trusting any collection doc.** The **typeless-collection migration** shipped 2026-07 ([#233](https://github.com/themancalledzac/edens.zac/pull/233)/[#234](https://github.com/themancalledzac/edens.zac/pull/234)/[#235](https://github.com/themancalledzac/edens.zac/pull/235), backend `V50`–`V52`). `CollectionType` and `collection.type` **no longer exist**. A collection is a named, slugged, ordered grouping of any mix of content with two stored discriminators, `isClient` and `isBlog`; `PARENT` and `HOME` are derived; `PORTFOLIO` / `ART_GALLERY` / `MISC` are gone with **no successor concept**. Full record → [previous-work.md § Typeless Collection Migration](previous-work.md#2026-07-typeless-collection-migration-233235). Canonical model wording → [`ai_guidelines/ai_api.md` § ContentCollection Kind](../ai_guidelines/ai_api.md).
 >
 > **Structure:** this book (`000`) → **chapter files** (`001`–`009`, each an overview + remaining-work list) → **sections** (the MR-level plans/specs under `superpowers/plans/`, `superpowers/specs/`, `spikes/`). **All go-forward plans live in `superpowers/plans/`.**
 >
@@ -12,13 +14,13 @@
 
 ## 🧭 Start here
 
-| File                                   | What it is                                                                               |
-| -------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [previous-work.md](previous-work.md)   | Shipped-feature log — "what got built and when."                                         |
-| The 9 chapters below                   | Each is an epic; open the chapter file for its remaining-work list + sections.           |
-| [../ai_guidelines/](../ai_guidelines/) | Canonical project conventions (API, CSS, lint, TS, testing) — referenced by `CLAUDE.md`. |
-| [handoffs/](handoffs/)                 | Session handoff runbooks (gitignored, local-only).                                       |
-| [user-flow/](user-flow/)               | Tracked as-built user-flow map (mermaid + SVG) — needs a refresh pass post-0182–0204.    |
+| File                                   | What it is                                                                                                |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| [previous-work.md](previous-work.md)   | Shipped-feature log — "what got built and when."                                                          |
+| The 9 chapters below                   | Each is an epic; open the chapter file for its remaining-work list + sections.                            |
+| [../ai_guidelines/](../ai_guidelines/) | Canonical project conventions (API, CSS, lint, TS, testing) — referenced by `CLAUDE.md`.                  |
+| [handoffs/](handoffs/)                 | Session handoff runbooks (gitignored, local-only).                                                        |
+| [user-flow/](user-flow/)               | Tracked as-built user-flow map (mermaid + SVG) — **crawl is pre-typeless (2026-06-29)**; re-crawl needed. |
 
 ---
 
@@ -60,8 +62,8 @@ Cross-cutting hardening surfaced by the (shipped) contact form. **✅ Admin rout
 
 ### [008 · Collection / Admin](008-collection-admin.md) ✅ / 🟢
 
-**✅ Consolidated Edit Mode & Mobile-First Admin ([#181](https://github.com/themancalledzac/edens.zac/pull/181), `0179`, merged 2026-06-10)** — the dark `/manage` route collapsed into in-place light edit mode on `/[slug]` (`?manage=1`, local-dev); the 2,027-line **`ManageClient` deleted** for one `useCollectionEdit` hook + one `EditBar`; edit layer dynamically imported (public bundle ships zero admin code). **✅ Admin panel shipped**: comments panel (#197), user management (invite #187, merge UI, email-edit #202), 0203 authz + **0204 root-view model** (impersonation removed, pending merge — cross-ref [007](007-security-hardening.md)). Still open: **`/user` ↔ `/admin/users/[id]` layout unification**, the **`STAGING` system collection** (backend-heavy), + the mobile-first **Phase 3** surface rebuilds.
-**Sections:** [mobile-first admin](superpowers/plans/2026-06-08-mobile-first-admin.md) ✅🟢 _(Phase 3 ongoing)_ · [mobile-first admin design](superpowers/specs/2026-06-08-mobile-first-admin-design.md) 📘 · [staging collection](superpowers/plans/008-staging-collection.md) 🟢 _next_ · [logged-in user-flow review](superpowers/specs/2026-07-06-logged-in-user-flow-review.md) 📘 _(user change-log panel — cross-ref, 009-owned)_
+**✅ Consolidated Edit Mode & Mobile-First Admin ([#181](https://github.com/themancalledzac/edens.zac/pull/181), `0179`, merged 2026-06-10)** — the dark `/manage` route collapsed into in-place light edit mode on `/[slug]` (`?manage=1`, local-dev); the 2,027-line **`ManageClient` deleted** for one `useCollectionEdit` hook + one `EditBar`; edit layer dynamically imported (public bundle ships zero admin code). **✅ Admin panel shipped**: comments panel (#197), user management (invite #187, merge UI, email-edit #202), 0203 authz + **0204 root-view model** (impersonation removed, pending merge — cross-ref [007](007-security-hardening.md)). **✅ Typeless collection migration shipped** (#233/#234/#235 — enum deleted, kind is `isClient`/`isBlog`, parent-ness server-derived; see the banner at the top of this file). Still open: **`/user` ↔ `/admin/users/[id]` layout unification**, the **`staging` system collection** (partly shipped; **re-specced** against the typeless model — the old enum-based plan is stale), + the mobile-first **Phase 3** surface rebuilds.
+**Sections:** [mobile-first admin](superpowers/plans/2026-06-08-mobile-first-admin.md) ✅🟢 _(Phase 3 ongoing)_ · [mobile-first admin design](superpowers/specs/2026-06-08-mobile-first-admin-design.md) 📘 · [staging collection](superpowers/plans/008-staging-collection.md) ⚠️ _stale — pre-typeless; superseded by [008](008-collection-admin.md)'s Remaining-work list_ · [logged-in user-flow review](superpowers/specs/2026-07-06-logged-in-user-flow-review.md) 📘 _(user change-log panel — cross-ref, 009-owned)_
 
 ### [009 · Backend Contract & Auth Vision](009-backend-and-vision.md) 📘 / 🔭
 
@@ -79,7 +81,7 @@ The API-contract reference (still-missing endpoints that block frontend work) + 
 3. **A3 Spot-1** — Save-as-Collection on the tag-view page itself (`TODO(A3)` in `useCollectionEdit.tsx:1353`). → [004](004-content-discovery.md) / [008](008-collection-admin.md).
 4. **`/user` ↔ `/admin/users/[id]` layout unification** — visual follow-up from 0204. → [008](008-collection-admin.md).
 5. **Client-gallery BCrypt** — P1-4 from the security handoff; reconcile BE shipped-state first. → [003](003-client-gallery-security.md).
-6. **Standing queue**: mobile-admin Phase 3 · `STAGING` collection ([008](008-collection-admin.md)) · CloudFlare Phase 2 ([007](007-security-hardening.md)) · 006 tail (Sentry/CloudWatch, decomposition, property tests) · perf ⛔ backend-blocked · SaveHeart 44px tap target.
+6. **Standing queue**: mobile-admin Phase 3 · `staging` collection ([008](008-collection-admin.md) — seed migration + non-upload auto-parenting) · CloudFlare Phase 2 ([007](007-security-hardening.md)) · 006 tail (Sentry/CloudWatch, decomposition, property tests) · perf ⛔ backend-blocked · SaveHeart 44px tap target.
 7. **Deferred by design**: A2 dynamic Home · Track D automation (auto-related, CLIP auto-tag — BE ML design doc exists, 0% built) · ABAC vision · liked-images.
 
 **Infra / DevOps:** Cloudflare CDN/edge ([007](superpowers/plans/007-cloudflare-phase2.md) · Todoist `6XQm4Ccw7Ghq2f4G`) · backend startup messages (`6g8xfM6Xv7XRc3gq`) · OAuth/Amplify-Cognito investigation ([009 ABAC](superpowers/specs/009-abac-access-control.md) · `6XjcFJH6W6JhVCgp`).
@@ -98,6 +100,7 @@ Keystone **`GET /api/read/content/images/search`** (unblocks [004 search](superp
 ## 🗄️ Archive & history
 
 - [previous-work.md](previous-work.md) — the shipped-feature log (the durable record; mine git for deeper detail).
+- **Archive-rule miss, corrected 2026-07-28.** The typeless-collection migration (#233/#234/#235) shipped without a `previous-work.md` entry, so the book kept describing a model the code had deleted — the exact failure the 2026-06-10 rule above exists to prevent. Backfilled as [§ Typeless Collection Migration](previous-work.md#2026-07-typeless-collection-migration-233235). Its spec (`superpowers/specs/2026-07-26-typeless-collection.md`, unit ids `U0`–`U6`, cited from backend `V52`) is local-only and was never tracked; the `previous-work.md` entry is the durable record.
 - `_archive/shipped-2026-07-06.tar.gz` — the third consolidation pass (24 files): the `0182`–`0204` wave's shipped sub-plans/specs, all 3 `handoffs/` runbooks, and the original `009-backend-handoff.md` (absorbed into 009).
 - `_archive/shipped-plans-2026-06-10.tar.gz` — the 24 shipped sub-plans/specs removed in the 2026-06-10 pass (the `001-*` design set, the shipped `006-*` refactor plans, the shipped admin date-plans).
 - `_archive/handoffs-shipped-2026-06-10.tar.gz` — the 5 finished handoff/spec runbooks (`0148` fullscreen fix, `0167`/`0171`/`0172` refactor-wave handoffs, the `design-review-2026-05-31` genesis review).

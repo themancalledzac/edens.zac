@@ -253,7 +253,8 @@ describe('CollectionListSelector', () => {
     });
     it('exposes a Sibling and a Child toggle per collection row', () => {
       render(<CollectionListSelector {...twoColProps} />);
-      // Portfolio A lives in the (default-collapsed) PORTFOLIO accordion section — expand it first.
+      // Portfolio A carries neither isClient nor isBlog, so it buckets into the (default-collapsed)
+      // "Collections" accordion section — expand it first.
       fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByLabelText('Toggle sibling Portfolio A')).toBeInTheDocument();
       expect(screen.getByLabelText('Toggle child Portfolio A')).toBeInTheDocument();
@@ -292,7 +293,8 @@ describe('CollectionListSelector', () => {
     });
     it('reflects independent saved state per column (sibling on B, child on A)', () => {
       // Child-saved (id 1) and sibling-saved (id 2) rows must be visible together, but the accordion
-      // only opens ONE section at a time — put both rows in a single PORTFOLIO section so one expand
+      // only opens ONE section at a time — neither row sets isClient/isBlog, so both bucket into the
+      // single "Collections" section and one expand
       // reveals both. Ids/saved-sets are unchanged, so the per-column saved/empty assertions hold.
       const sameSection: CollectionListModel[] = [
         { id: 1, name: 'Portfolio A', slug: 'portfolio-a' },
@@ -307,7 +309,7 @@ describe('CollectionListSelector', () => {
     });
     it('still omits the excludeCollectionId row in two-column mode', () => {
       render(<CollectionListSelector {...twoColProps} excludeCollectionId={2} />);
-      // Portfolio A lives in the collapsed PORTFOLIO section — expand it to assert it renders.
+      // Portfolio A lives in the collapsed "Collections" section — expand it to assert it renders.
       fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
       expect(screen.getByText('Portfolio A')).toBeInTheDocument();
       expect(screen.queryByText('Blog B')).not.toBeInTheDocument();
@@ -529,7 +531,7 @@ describe('sortGroup', () => {
 });
 
 describe('three-column accordion mode', () => {
-  const allTypes: CollectionListModel[] = [
+  const allBuckets: CollectionListModel[] = [
     { id: 1, name: 'Home', slug: 'home' },
     { id: 2, name: 'P1', slug: 'p1' },
     { id: 3, name: 'P2', slug: 'p2' },
@@ -538,7 +540,7 @@ describe('three-column accordion mode', () => {
     { id: 6, name: 'G1', slug: 'g1', isClient: true },
   ];
 
-  function renderInThreeColumnMode(rows = allTypes) {
+  function renderInThreeColumnMode(rows = allBuckets) {
     return render(
       <CollectionListSelector
         allCollections={rows}
@@ -695,8 +697,8 @@ describe('three-column accordion mode', () => {
 
   describe('currentCollectionId (you-are-here marker)', () => {
     // Same render helper as the rest of the suite, plus a currentCollectionId prop. P1 (id 2)
-    // is a PORTFOLIO row used as the "current" collection across these cases.
-    function renderWithCurrent(currentCollectionId: number, rows = allTypes) {
+    // sets neither flag, so it buckets under "Collections"; it is the "current" row in these cases.
+    function renderWithCurrent(currentCollectionId: number, rows = allBuckets) {
       return render(
         <CollectionListSelector
           allCollections={rows}
@@ -718,7 +720,7 @@ describe('three-column accordion mode', () => {
     }
 
     it('keeps the current row visible (not excluded) with all toggles disabled', () => {
-      // P1 (id 2) is the current collection — its PORTFOLIO section auto-opens, so the row
+      // P1 (id 2) is the current collection — its "Collections" section auto-opens, so the row
       // is present without any click. The excludeCollectionId path would have removed it.
       renderWithCurrent(2);
       expect(screen.getByText('P1')).toBeInTheDocument();
@@ -728,11 +730,11 @@ describe('three-column accordion mode', () => {
     });
 
     it("auto-opens the current collection's bucket on load, leaving others collapsed", () => {
-      renderWithCurrent(2); // PORTFOLIO
-      // PORTFOLIO is open by default → P1/P2 visible without clicking the header.
+      renderWithCurrent(2); // buckets under "Collections"
+      // "Collections" is open by default → P1/P2 visible without clicking the header.
       expect(screen.getByText('P1')).toBeInTheDocument();
       expect(screen.getByText('P2')).toBeInTheDocument();
-      // A different section (BLOG) stays collapsed.
+      // A different section (Blogs) stays collapsed.
       expect(screen.queryByText('B1')).not.toBeInTheDocument();
       expect(screen.queryByText('B2')).not.toBeInTheDocument();
     });
@@ -746,7 +748,7 @@ describe('three-column accordion mode', () => {
       // The current collection must not self-navigate — no "Open P1" button.
       render(
         <CollectionListSelector
-          allCollections={allTypes}
+          allCollections={allBuckets}
           savedCollectionIds={new Set()}
           pendingAddIds={new Set()}
           pendingRemoveIds={new Set()}
@@ -764,16 +766,16 @@ describe('three-column accordion mode', () => {
         />
       );
       expect(screen.queryByLabelText('Open P1')).not.toBeInTheDocument();
-      // A non-current PORTFOLIO sibling (P2) still navigates.
+      // A non-current sibling in the same bucket (P2) still navigates.
       expect(screen.getByLabelText('Open P2')).toBeInTheDocument();
     });
 
     it('still excludes (not greys) a row passed via excludeCollectionId', () => {
       // excludeCollectionId behavior is independent of currentCollectionId and still removes
-      // the row entirely. Expand PORTFOLIO to assert P1 is absent while P2 remains.
+      // the row entirely. Expand "Collections" to assert P1 is absent while P2 remains.
       render(
         <CollectionListSelector
-          allCollections={allTypes}
+          allCollections={allBuckets}
           savedCollectionIds={new Set()}
           pendingAddIds={new Set()}
           pendingRemoveIds={new Set()}

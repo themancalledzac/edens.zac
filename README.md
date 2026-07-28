@@ -29,7 +29,7 @@ A full-stack photography portfolio and content management platform. Built for pe
 
 ## Features
 
-- **Photography Collections** -- Galleries, blogs, portfolios, and client deliveries with distinct layouts per collection type
+- **Photography Collections** -- One typeless collection primitive holding any mix of images, text, GIFs, and other collections; blogs and client deliveries get their own presentation
 - **Rating-Aware Image Sizing** -- Higher-rated images occupy more visual space. A 5-star hero fills an entire row; 2-star images share space with others.
 - **Custom Layout Algorithm** -- BoxTree-based recursive layout engine that arranges images into visually balanced rows using aspect ratio scoring and pattern detection
 - **Parallax Scroll Effects** -- Collection cards on the home page use depth-based parallax for a layered visual presentation
@@ -108,12 +108,14 @@ The application defaults to Server Components. Data fetching, layout calculation
 ```
 app/
   layout.tsx, page.tsx            Root layout and home page (Server Components)
-  (admin)/                        Admin routes (collection manager, image browser)
+  (admin)/                        Admin routes (collection manager, image browser, admin panel)
     collection/manage/[[...slug]]/  Collection editor with drag-and-drop
-    all-collections/                Collection list and management
     all-images/                     Image browser and metadata editor
-  [slug]/page.tsx                 Dynamic collection pages
-  collectionType/[type]/page.tsx  Collections filtered by type
+    admin/users/, admin/roles/      User management and role administration
+  [slug]/page.tsx                 Dynamic collection pages (real collections and tag views)
+  all-collections/                Collection list and management
+  explore/                        Taxonomy entry point
+  tag/[slug]/, location/[slug]/   Cross-collection taxonomy pages
   api/                            Next.js API routes (proxy to Spring Boot)
   components/
     Content/                      BoxRenderer, image/text/gif renderers
@@ -138,14 +140,21 @@ ai_guidelines/                    Modular AI development guidelines
 
 ## Content Architecture
 
-The platform supports four collection types:
+A **collection** is a named, slugged, ordered grouping of any mix of content: images (S3-hosted, served via CloudFront), text blocks (database-stored, markdown), GIFs, and references to other collections. There is no collection type -- a collection is defined by what it contains, not by a category assigned up front.
 
-- **BLOG** -- Chronological content with mixed media
-- **ART_GALLERY** -- Curated artistic collections
-- **CLIENT_GALLERY** -- Private client deliveries
-- **PORTFOLIO** -- Professional showcases
+Two stored boolean flags carry the only distinctions the system still makes:
 
-Each collection supports multiple content types: images (S3-hosted with CloudFront), text blocks (database-stored with markdown), GIFs, and hierarchical collections (collections containing other collections).
+- **`isClient`** -- a private client delivery, gated behind a per-collection password.
+- **`isBlog`** -- a dated entry, rendered and sorted chronologically.
+
+Both default to false, which is an ordinary collection. They are mutually exclusive; the backend rejects a collection that sets both.
+
+Everything else is derived rather than stored:
+
+- **Parent** -- a collection is a parent when it holds at least one collection reference. The server computes this over the whole content graph and returns it as `hasChildren` / `childCollectionIds`.
+- **Home** -- the collection whose slug is `home`.
+
+A collection can belong to several parents at once, so the content graph is a DAG rather than a tree.
 
 ---
 
