@@ -827,11 +827,18 @@ export function hasAnyActiveFilter(filterState: FilterState): boolean {
  * Whether a COLLECTION-ref block satisfies the collection-applicable criteria.
  *
  * A collection tile carries only the dimensions the backend aggregates onto it
- * (tags/people/locations) plus its own rating — it has no camera/lens/film/date
- * of its own. Image-only criteria are therefore NOT applied here (they never
- * hide a collection tile), so toggling e.g. a film filter on a mixed page leaves
- * collection tiles in place. On a collection-dominant page (e.g. /all-collections)
- * the toolbar only surfaces the tag/people/location/rating dimensions anyway.
+ * (tags/people/locations) — it has no camera/lens/film/date of its own. Image-only
+ * criteria are therefore NOT applied here (they never hide a collection tile), so
+ * toggling e.g. a film filter on a mixed page leaves collection tiles in place.
+ * Since D7 the toolbar surfaces the camera/lens/lens-type dimensions on any page
+ * with at least one image, including collection-dominant ones, so this pass-through
+ * is what keeps those chips from wiping the page's navigation.
+ *
+ * `rating` is the same story in practice: the backend's collection-ref DTO does not
+ * serialize one, so an UNRATED tile is passed through rather than treated as rating 0.
+ * Otherwise "Highly Rated" (minRating 4) on a mixed page would delete every child card
+ * and strip the page of its only route into the sub-collections. A tile that DOES carry
+ * an explicit rating is still held to `minRating`.
  *
  * @param ref - The collection-ref block
  * @param criteria - Filter criteria (from {@link buildCollectionCriteria})
@@ -840,7 +847,7 @@ export function collectionRefMatchesCriteria(
   ref: ContentCollectionModel,
   criteria: ContentFilterCriteria
 ): boolean {
-  if (criteria.minRating !== undefined && (ref.rating ?? 0) < criteria.minRating) {
+  if (criteria.minRating !== undefined && ref.rating != null && ref.rating < criteria.minRating) {
     return false;
   }
 
