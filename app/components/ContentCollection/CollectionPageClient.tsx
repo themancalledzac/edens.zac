@@ -195,13 +195,17 @@ export default function CollectionPageClient({
 
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
-  const isCollectionDominant = allCollections.length > allImages.length;
+  // D7: image-derived dimensions are shown whenever the page has ANY image. The former
+  // `allCollections.length > allImages.length` comparison was constant per collection under the
+  // typed model; under mixed content it flips with a single content edit, so a sixth photo would
+  // make the Camera/Lens dropdowns reappear.
+  const hasImageFilters = allImages.length > 0;
 
   const visibility = useMemo(() => computeFilterVisibility(allImages), [allImages]);
 
   const baseCollectionOptions = useMemo<CollectionDimensions>(() => {
     const options = extractCollectionFilterOptions(allImages, allCollections);
-    if (isCollectionDominant) {
+    if (!hasImageFilters) {
       return {
         ...options,
         cameras: EMPTY_STRING_DIM,
@@ -210,7 +214,7 @@ export default function CollectionPageClient({
       };
     }
     return options;
-  }, [allImages, allCollections, isCollectionDominant]);
+  }, [allImages, allCollections, hasImageFilters]);
 
   const criteria = useMemo(() => buildCollectionCriteria(filterState), [filterState]);
 
@@ -223,9 +227,9 @@ export default function CollectionPageClient({
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
-  // Collection-dominant (parent) pages suppress rating even when it varies — too
-  // few images for it to be a useful control there.
-  const showHighlyRated = visibility.highlyRated && !isCollectionDominant;
+  // `visibility.highlyRated` is already false below two images (canFilter), so no extra
+  // collection-count suppression is needed — see D7.
+  const showHighlyRated = visibility.highlyRated;
   const showDateSort = visibility.dateSort;
 
   const filteredAvailableOptions = useMemo(() => {
