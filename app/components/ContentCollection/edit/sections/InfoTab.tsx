@@ -78,9 +78,13 @@ export function InfoTab({ edit }: InfoTabProps) {
     updateData.collectionEndDate < updateData.collectionDate
   );
 
-  const coverCandidates: ContentImageModel[] = isParent
-    ? (childCollectionImages ?? [])
-    : (collection?.content ?? []).filter(isContentImage);
+  // UNION, not XOR (D3): a collection may hold its own images AND child-collection refs at once.
+  // Mirrors the pool useCoverImageSelection validates the pick against. Deduped by id so an image
+  // present on both sides does not produce a duplicate React key in the picker grid.
+  const coverCandidates: ContentImageModel[] = [
+    ...(collection?.content ?? []).filter(isContentImage),
+    ...(childCollectionImages ?? []),
+  ].filter((img, index, all) => all.findIndex(candidate => candidate.id === img.id) === index);
 
   /**
    * The two stored discriminators are mutually exclusive (the backend rejects both true), so
@@ -282,9 +286,8 @@ export function InfoTab({ edit }: InfoTabProps) {
           </div>
         ) : (
           <p className={styles.fieldHint}>
-            {isParent
-              ? 'Add child collections with images to choose a cover.'
-              : 'Add images to this collection to choose a cover.'}
+            Add images to this collection — or a child collection that has images — to choose a
+            cover.
           </p>
         ))}
 
