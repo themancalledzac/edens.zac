@@ -57,3 +57,38 @@ describe('toChronologicalOrder', () => {
     expect(toChronologicalOrder(processed).map(c => c.id)).toEqual([1, 2]);
   });
 });
+
+describe('toChronologicalOrder — collection cards (R9)', () => {
+  /** A child-collection card as produced by convertCollectionContentToParallax. */
+  function makeCollectionCard(id: number, slug: string): ContentImageModel {
+    return {
+      id,
+      contentType: 'IMAGE',
+      orderIndex: 0,
+      imageUrl: `https://example.com/cover-${id}.jpg`,
+      locations: [],
+      slug,
+    } as ContentImageModel & { slug: string };
+  }
+
+  it('leaves a trailing collection card in its slot instead of hoisting it to epoch 0', () => {
+    // NB the card must NOT sit first in the input: an undated card sorts to position 0 anyway,
+    // so a leading card cannot distinguish fixed from broken. It sits last here.
+    const img1 = makeImage({ id: 1, captureDate: '2024-01-05', createdAt: '2024-06-01' });
+    const img2 = makeImage({ id: 3, captureDate: '2024-01-01', createdAt: '2024-06-02' });
+    const card = makeCollectionCard(900, 'child-gallery');
+    const processed: AnyContentModel[] = [img1, img2, card];
+
+    // The card holds the last slot; only the two images swap between the two dateable slots.
+    expect(toChronologicalOrder(processed).map(c => c.id)).toEqual([3, 1, 900]);
+  });
+
+  it('does not let a card displace an image when the card sits mid-list', () => {
+    const img1 = makeImage({ id: 1, captureDate: '2024-01-05', createdAt: '2024-06-01' });
+    const card = makeCollectionCard(900, 'child-gallery');
+    const img2 = makeImage({ id: 3, captureDate: '2024-01-01', createdAt: '2024-06-02' });
+    const processed: AnyContentModel[] = [img1, card, img2];
+
+    expect(toChronologicalOrder(processed).map(c => c.id)).toEqual([3, 900, 1]);
+  });
+});

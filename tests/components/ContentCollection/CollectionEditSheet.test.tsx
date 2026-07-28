@@ -232,18 +232,17 @@ describe('CollectionEditSheet — StructureTab', () => {
     expect(screen.getByLabelText(/Row Density/)).toBeInTheDocument();
   });
 
-  it('hides Order and Row Density for parent collection', () => {
+  it('shows Order and Row Density for a parent collection too (D4)', () => {
     render(
       <CollectionEditSheet
         edit={makeEdit({
           editTab: 'structure',
           isParent: true,
-          updateData: makeUpdateData({}),
         })}
       />
     );
-    expect(screen.queryByLabelText('Order')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Row Density/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Order')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Row Density/)).toBeInTheDocument();
   });
 
   it('shows the cover button on the Info tab', () => {

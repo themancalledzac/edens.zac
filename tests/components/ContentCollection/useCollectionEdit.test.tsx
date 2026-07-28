@@ -278,13 +278,23 @@ describe('useCollectionEdit', () => {
       expect(labels).toEqual(['Select', 'Reorder', 'Add', 'Edit']);
     });
 
-    it('browse hides Add for parent-type collections', () => {
+    it('browse keeps Add for a collection that holds child collections (D4)', () => {
       const { result } = renderEdit({
         enabled: false,
-        collection: makeCollection({ type: CollectionType.PARENT }),
+        collection: makeCollection({
+          content: [
+            {
+              id: 900,
+              contentType: 'COLLECTION',
+              orderIndex: 0,
+              slug: 'child-gallery',
+              referencedCollectionId: 901,
+            },
+          ] as AnyContentModel[],
+        }),
       });
       const labels = result.current.bottomBarCells.map(c => c.label);
-      expect(labels).toEqual(['Select', 'Reorder', 'Edit']);
+      expect(labels).toEqual(['Select', 'Reorder', 'Add', 'Edit']);
     });
 
     it('browse keeps Reorder enabled for CHRONOLOGICAL displayMode (auto-converts on click)', () => {

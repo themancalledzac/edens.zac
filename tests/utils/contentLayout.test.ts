@@ -264,8 +264,8 @@ describe('processContentBlocks', () => {
     });
   });
 
-  describe('Reordering images before collections', () => {
-    it('should place images before collections', () => {
+  describe('Honouring orderIndex across content types (D2)', () => {
+    it('places collection cards at their saved orderIndex, interleaved with images', () => {
       const content: AnyContentModel[] = [
         createCollectionContent(1, { orderIndex: 1 }),
         createImageContent(2, { orderIndex: 2 }),
@@ -274,21 +274,16 @@ describe('processContentBlocks', () => {
       ];
       const result = processContentBlocks(content);
 
-      // First two should be images (IDs 2 and 3)
-      expect(result[0]?.id).toBe(2);
-      expect(result[1]?.id).toBe(3);
+      expect(result.map(block => block.id)).toEqual([1, 2, 3, 4]);
 
-      // Last two should be collections (IDs 1 and 4, converted to parallax)
-      expect(result[2]?.id).toBe(1);
-      expect(result[3]?.id).toBe(4);
-      // After transformation, they should be parallax images with slug
-      expect((result[2] as ContentParallaxImageModel).enableParallax).toBe(true);
+      // Collection blocks are still converted to parallax cards — just not relocated.
+      expect((result[0] as ContentParallaxImageModel).enableParallax).toBe(true);
+      expect((result[0] as ContentParallaxImageModel).slug).toBe('collection-1');
       expect((result[3] as ContentParallaxImageModel).enableParallax).toBe(true);
-      expect((result[2] as ContentParallaxImageModel).slug).toBe('collection-1');
       expect((result[3] as ContentParallaxImageModel).slug).toBe('collection-4');
     });
 
-    it('should preserve relative order within images and collections groups', () => {
+    it('interleaves alternating collections and images strictly by orderIndex', () => {
       const content: AnyContentModel[] = [
         createCollectionContent(1, { orderIndex: 1 }),
         createImageContent(2, { orderIndex: 2 }),
@@ -299,15 +294,7 @@ describe('processContentBlocks', () => {
       ];
       const result = processContentBlocks(content);
 
-      // Images should come first in their order: 2, 4, 5
-      expect(result[0]?.id).toBe(2);
-      expect(result[1]?.id).toBe(4);
-      expect(result[2]?.id).toBe(5);
-
-      // Collections should come after in their order: 1, 3, 6
-      expect(result[3]?.id).toBe(1);
-      expect(result[4]?.id).toBe(3);
-      expect(result[5]?.id).toBe(6);
+      expect(result.map(block => block.id)).toEqual([1, 2, 3, 4, 5, 6]);
     });
 
     it('should handle content with only images', () => {
@@ -343,7 +330,7 @@ describe('processContentBlocks', () => {
       }
     });
 
-    it('should work with text and other content types', () => {
+    it('keeps text, image and collection blocks in orderIndex order', () => {
       const content: AnyContentModel[] = [
         createCollectionContent(1, { orderIndex: 1 }),
         createTextContent(2, { orderIndex: 2 }),
@@ -351,17 +338,13 @@ describe('processContentBlocks', () => {
       ];
       const result = processContentBlocks(content);
 
-      // Text and image should come first (non-collections)
-      expect(result[0]?.id).toBe(2);
-      expect(result[1]?.id).toBe(3);
-
-      // Collection should come last (converted to parallax with slug)
-      expect(result[2]?.id).toBe(1);
-      expect((result[2] as ContentParallaxImageModel).enableParallax).toBe(true);
-      expect((result[2] as ContentParallaxImageModel).slug).toBe('collection-1');
+      expect(result.map(block => block.id)).toEqual([1, 2, 3]);
+      expect((result[0] as ContentParallaxImageModel).enableParallax).toBe(true);
+      expect((result[0] as ContentParallaxImageModel).slug).toBe('collection-1');
+      expect(result[1]?.contentType).toBe('TEXT');
     });
 
-    it('should work with chronological display mode', () => {
+    it('honours chronological order across collections and images alike', () => {
       const content: AnyContentModel[] = [
         createCollectionContent(1, {
           orderIndex: 1,
@@ -382,13 +365,8 @@ describe('processContentBlocks', () => {
       ];
       const result = processContentBlocks(content, true, undefined, 'CHRONOLOGICAL');
 
-      // Images should come first, sorted by createdAt: 3 (Jan 2), 2 (Jan 3)
-      expect(result[0]?.id).toBe(3);
-      expect(result[1]?.id).toBe(2);
-
-      // Collections should come after, sorted by createdAt: 1 (Jan 1), 4 (Jan 4)
-      expect(result[2]?.id).toBe(1);
-      expect(result[3]?.id).toBe(4);
+      // Pure createdAt order: collection(Jan 1), image(Jan 2), image(Jan 3), collection(Jan 4).
+      expect(result.map(block => block.id)).toEqual([1, 3, 2, 4]);
     });
   });
 
@@ -411,28 +389,22 @@ describe('processContentBlocks', () => {
       ];
       const result = processContentBlocks(content, true, 1);
 
-      // Should be filtered (visible: false removed) - 3 items remain
+      // Filtered: the visible:false image is dropped, 3 items remain.
       expect(result).toHaveLength(3);
 
-      // Images should come before collections
-      // After sorting by orderIndex: image(1), image(2), collection(0)
-      // After reordering: images first [image(1), image(2)], then collections [collection(0)]
-      const firstTwoItems = result.slice(0, 2);
-      const lastItem = result[2];
+      // orderIndex is honoured verbatim, so the collection card sits FIRST because its
+      // orderIndex is 0 — not last because it is a collection.
+      // NB the fixtures collide on id 1: result[0] is the COLLECTION, result[1] is the IMAGE.
+      const first = result[0] as ContentParallaxImageModel;
+      expect(first.id).toBe(1);
+      expect(first.enableParallax).toBe(true);
+      expect(first.slug).toBe('collection-1');
 
-      // First two items should be regular images (without slug)
-      for (const item of firstTwoItems) {
-        expect((item as ContentParallaxImageModel).slug).toBeUndefined();
-      }
-
-      // Last item should be the converted collection (with slug and enableParallax)
-      expect((lastItem as ContentParallaxImageModel).enableParallax).toBe(true);
-      expect((lastItem as ContentParallaxImageModel).slug).toBe('collection-1');
-      expect(lastItem?.id).toBe(1); // This is the collection
-
-      // Verify the images are in the correct order (1, then 2)
-      expect(firstTwoItems[0]?.id).toBe(1);
-      expect(firstTwoItems[1]?.id).toBe(2);
+      // The two surviving images follow in orderIndex order and are not converted (no slug).
+      expect(result[1]?.id).toBe(1);
+      expect(result[2]?.id).toBe(2);
+      expect((result[1] as ContentParallaxImageModel).slug).toBeUndefined();
+      expect((result[2] as ContentParallaxImageModel).slug).toBeUndefined();
     });
 
     it('should handle empty array', () => {
@@ -1631,6 +1603,66 @@ describe('processContentForDisplay', () => {
         }
       }
     });
+  });
+});
+
+describe('processContentForDisplay — row packing is order-preserving (D2 characterization)', () => {
+  /**
+   * A child-collection card in the exact shape the pipeline hands to processContentForDisplay:
+   * processContentBlocks runs transformCollectionBlocks first, so the layout engine never sees a
+   * raw COLLECTION block in production. Converting here keeps the characterization honest (the
+   * converted card carries clamped cover dimensions and a slug; a raw block carries neither).
+   */
+  function card(id: number): ContentParallaxImageModel {
+    return convertCollectionContentToParallax(createCollectionContent(id));
+  }
+
+  /** Flatten rows to content ids, dropping the synthetic blank spacers buildRows pads with. */
+  function flatIds(rows: RowWithPatternAndSizes[]): (number | undefined)[] {
+    return rows
+      .flatMap(row => row.items)
+      .filter(item => !isBlankContent(item.content))
+      .map(item => item.content.id);
+  }
+
+  it('emits mixed image + collection content in input order across rows (desktop)', () => {
+    const content: AnyContentModel[] = [
+      createHorizontalImage(1, 3),
+      card(2),
+      createHorizontalImage(3, 3),
+      card(4),
+      createHorizontalImage(5, 3),
+    ];
+    const rows = processContentForDisplay(content, 1000);
+    expect(flatIds(rows)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('emits mixed image + collection content in input order across rows (mobile)', () => {
+    const content: AnyContentModel[] = [
+      createHorizontalImage(1, 3),
+      card(2),
+      createHorizontalImage(3, 3),
+      card(4),
+    ];
+    const rows = processContentForDisplay(content, 400, 4, { isMobile: true });
+    expect(flatIds(rows)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('packs a collection card into a row alongside images rather than onto its own row', () => {
+    // A converted card rates 4 (getEffectiveRating keys on slug presence) and its 1920x1080 cover
+    // is clamped by clampParallaxDimensions into the 4:5..5:4 band, so it is a normal-cost row
+    // member. With a generous row-width budget it shares a row with images.
+    const content: AnyContentModel[] = [
+      createHorizontalImage(1, 1),
+      card(2),
+      createHorizontalImage(3, 1),
+    ];
+    const rows = processContentForDisplay(content, 1000, 6);
+    const rowWithCard = rows.find(row => row.items.some(item => item.content.id === 2));
+    expect(rowWithCard).toBeDefined();
+    expect(rowWithCard!.items.filter(item => !isBlankContent(item.content)).length).toBeGreaterThan(
+      1
+    );
   });
 });
 

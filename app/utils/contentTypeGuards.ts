@@ -256,8 +256,9 @@ export function hasChildCollectionContent(
 /**
  * Check if a collection acts as a "parent": it contains child-collection refs, or
  * still carries the legacy (admin-transitional) PARENT type. Parent collections
- * source cover-image candidates from their children, expose the Gallery Access
- * section, and offer to propagate their password to child galleries. The enum arm
+ * expose the Gallery Access section and offer to propagate their password to child
+ * galleries. Cover-image candidates are NOT gated on this: since D3 every collection
+ * picks from the union of its own images and its children's. The enum arm
  * covers a freshly created parent that has no children yet, and survives the
  * `hasChildCollectionContent` truncation bound; it goes away with the enum.
  */

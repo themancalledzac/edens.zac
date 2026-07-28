@@ -87,6 +87,7 @@ describe('getClickEligibility', () => {
     onImageClick: undefined as ((id: number) => void) | undefined,
     enableFullScreenView: false,
     onFullScreenImageClick: undefined,
+    currentCollectionId: undefined as number | undefined,
   };
 
   it('TEXT content is never clickable nor a slug nav', () => {
@@ -108,7 +109,7 @@ describe('getClickEligibility', () => {
     ).toEqual({ hasClickHandler: true, isSlugNav: true });
   });
 
-  it('onImageClick beats slug nav (handler, not href)', () => {
+  it('slug nav beats onImageClick (a collection card navigates, it is not a download target)', () => {
     expect(
       getClickEligibility({
         ...base,
@@ -116,7 +117,44 @@ describe('getClickEligibility', () => {
         hasSlug: 'dolomites',
         onImageClick: jest.fn(),
       })
+    ).toEqual({ hasClickHandler: true, isSlugNav: true });
+  });
+
+  it('slug nav beats onImageClick for a CONVERTED card too (contentType IMAGE + slug)', () => {
+    // Post-conversion cards arrive as contentType 'IMAGE'; the slug is the discriminant.
+    expect(
+      getClickEligibility({
+        ...base,
+        contentType: 'IMAGE',
+        hasSlug: 'dolomites',
+        onImageClick: jest.fn(),
+      })
+    ).toEqual({ hasClickHandler: true, isSlugNav: true });
+  });
+
+  it('on the MANAGE grid onImageClick beats slug nav (the handler is the manage router)', () => {
+    // EditModeLayer sets onImageClick grid-wide AND threads currentCollectionId. There the
+    // handler pushes manageHref(childSlug), so an admin drill-down stays in manage mode.
+    expect(
+      getClickEligibility({
+        ...base,
+        contentType: 'COLLECTION',
+        hasSlug: 'dolomites',
+        onImageClick: jest.fn(),
+        currentCollectionId: 42,
+      })
     ).toEqual({ hasClickHandler: true, isSlugNav: false });
+  });
+
+  it('on the MANAGE grid without onImageClick (reorder pending / not ready) slug nav still applies', () => {
+    expect(
+      getClickEligibility({
+        ...base,
+        contentType: 'COLLECTION',
+        hasSlug: 'dolomites',
+        currentCollectionId: 42,
+      })
+    ).toEqual({ hasClickHandler: true, isSlugNav: true });
   });
 
   it('onImageClick alone makes an item clickable but not slug nav', () => {
