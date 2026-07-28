@@ -125,10 +125,14 @@ export interface UseCollectionEditResult {
    */
   childCollectionImages?: ContentImageModel[] | null;
   /**
-   * True for parent collections (contains child-collection refs, or still carries the
-   * legacy PARENT type). Gates the Gallery Access section and the password-propagate-to-children
-   * confirm. It no longer gates density/display (D4) or the cover picker's source pool (D3) —
-   * both are unconditional now, so do NOT reintroduce a parent gate on them.
+   * True for parent collections (they hold child-collection refs). Server-derived when the
+   * payload carries `hasChildren`, which covers the whole content graph; falls back to a scan
+   * of the loaded content otherwise. The legacy PARENT enum arm is gone with the enum itself.
+   *
+   * Gates exactly two things: the Gallery Access section (in union with `updateData.isClient`)
+   * and the password-propagate-to-children confirm. It does NOT gate density/display (D4) or
+   * the cover picker's source pool (D3) — both are unconditional now, so do NOT reintroduce a
+   * parent gate on them.
    */
   isParent: boolean;
 
@@ -175,7 +179,7 @@ export interface UseCollectionEditResult {
     sourceTagId: number,
     body: { visibility: CollectionVisibility }
   ) => Promise<void>;
-  /** Child-collection (containment) triple. `saved` derives from content blocks. */
+  /** Child-collection (containment) triple. `saved` is the server's child id list when sent. */
   childIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleChildToggle: (toggled: CollectionListModel) => void;
   handleAddNewChild: () => Promise<void>;
@@ -604,10 +608,14 @@ export function useCollectionEdit({
     [selectedIds, collection.content]
   );
 
-  // One parent derivation for every consumer below (Gallery Access section, password-propagate
-  // confirm). Memoized because the content scan is O(n) over up to 500 loaded blocks per render,
-  // where the enum compare was O(1).
-  const isParent = useMemo(() => isParentCollection(collection), [collection]);
+  // One parent derivation for both of its consumers (the Gallery Access section and the
+  // password-propagate confirm). The server boolean covers the whole content graph; the memoized
+  // scan is the fallback and is O(n) over the 500 loaded blocks.
+  const isParent = useMemo(
+    () =>
+      isParentCollection({ content: collection.content, hasChildren: currentState?.hasChildren }),
+    [collection.content, currentState?.hasChildren]
+  );
 
   const displayedCoverImage = collection.coverImage ?? null;
 
@@ -1051,12 +1059,30 @@ export function useCollectionEdit({
     }
   }, [collection, router]);
 
+  /**
+   * The saved child ids every child toggle is classified against. Prefers the server-supplied
+   * list, which is authoritative over the whole content graph rather than over whatever content
+   * this client happens to be holding; the content scan is only a fallback for payloads that
+   * predate the field and is bounded by `CollectionPageWrapper`'s 500-item fetch.
+   *
+   * The consequence of a short list is a misclassified toggle, not data loss: `toggleRelation`
+   * only ever emits a `remove` for an id it already knows is saved, and `collections` is applied
+   * by the backend as an incremental diff — never as a replace-set — so a truncated list can only
+   * under-remove. What it actually breaks is unlinking: a child past the bound is absent from
+   * `saved`, so the Structure tab paints it unchecked and clicking it stages an ADD (a spurious
+   * re-link that also rewrites its `orderIndex`) instead of a REMOVE, making the child impossible
+   * to unlink from the UI.
+   *
+   * `??`, not `||`: an empty server list means "no children", and must not fall through to the
+   * scan.
+   */
   const originalChildIds = useMemo(
     () =>
+      currentState?.childCollectionIds ??
       (collection.content ?? [])
         .filter(isContentCollection)
         .map(block => block.referencedCollectionId),
-    [collection.content]
+    [currentState?.childCollectionIds, collection.content]
   );
   const {
     savedIds: originalCollectionIds,

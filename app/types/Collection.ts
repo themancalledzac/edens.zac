@@ -8,26 +8,6 @@ import type { AnyContentModel, ContentImageModel } from './Content';
 import type { ContentCameraModel, ContentPersonModel, ContentTagModel } from './Metadata';
 
 /**
- * Legacy collection type enum.
- *
- * @deprecated Retained ONLY for `isParentCollection`'s `type === PARENT` arm
- * (`app/utils/contentTypeGuards.ts`), which covers a freshly created parent with no children
- * yet. Nothing else reads or writes it. Delete this enum and {@link CollectionBaseModel.type}
- * in the frontend follow-up gated on U4's DEPLOY (U4 itself is backend-only), together with
- * that arm and with the new server-derived `hasChildren` that replaces it — see
- * `docs/superpowers/specs/2026-07-26-typeless-collection.md` §5.
- */
-export enum CollectionType {
-  BLOG = 'BLOG',
-  PORTFOLIO = 'PORTFOLIO',
-  ART_GALLERY = 'ART_GALLERY',
-  CLIENT_GALLERY = 'CLIENT_GALLERY',
-  HOME = 'HOME',
-  PARENT = 'PARENT',
-  MISC = 'MISC',
-}
-
-/**
  * Display mode for content collections
  * - CHRONOLOGICAL: Order blocks by creation date
  * - ORDERED: Manual ordering via orderIndex
@@ -41,13 +21,6 @@ export type DisplayMode = 'CHRONOLOGICAL' | 'ORDERED' | 'FIXED';
  */
 export interface CollectionBaseModel {
   id?: number;
-  /**
-   * @deprecated Legacy classifier still emitted by the backend. The ONLY remaining reader is
-   * `isParentCollection` (`app/utils/contentTypeGuards.ts`), whose `type === PARENT` arm covers
-   * a freshly created parent with no children yet. Nothing writes it. It degrades to `undefined`
-   * — not to a wrong answer — once U4 stops sending the field, at which point delete both.
-   */
-  type?: CollectionType;
   /**
    * True when this collection is a client gallery (replaces `type === CLIENT_GALLERY`).
    * Always present on real backend payloads; optional to tolerate synthetic
@@ -418,6 +391,14 @@ export interface GeneralMetadataDTO {
  */
 export interface CollectionUpdateResponseDTO {
   collection: CollectionModel;
+  /**
+   * Server-derived parent-ness over the WHOLE content graph. Optional so the page degrades to
+   * the content-derived answer against a pre-U4 backend; from U4's deploy onward it is always
+   * present and is the only correct answer for a collection with more than 500 content rows.
+   */
+  hasChildren?: boolean;
+  /** Complete child id list in order_index order; NOT bounded by the 500-item page window. */
+  childCollectionIds?: number[];
   // Metadata fields are at root level, not nested
   tags?: GeneralMetadataDTO['tags'];
   people?: GeneralMetadataDTO['people'];

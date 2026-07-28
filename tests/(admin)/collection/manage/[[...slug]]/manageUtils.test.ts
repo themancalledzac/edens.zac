@@ -31,7 +31,6 @@ import * as collectionsApi from '@/app/lib/api/collections';
 import {
   type CollectionListModel,
   type CollectionModel,
-  CollectionType,
   type CollectionUpdate,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
@@ -80,7 +79,6 @@ const createCollectionContent = (
 
 const createCollectionModel = (overrides?: Partial<CollectionModel>): CollectionModel => ({
   id: 1,
-  type: CollectionType.PORTFOLIO,
   isClient: false,
   isBlog: false,
   title: 'Test Collection',
@@ -578,7 +576,6 @@ describe('handleSingleImageEdit', () => {
 describe('buildUpdatePayload', () => {
   const originalCollection = createCollectionModel({
     id: 1,
-    type: CollectionType.PORTFOLIO,
     title: 'Original Title',
     description: 'Original Description',
     locations: [{ id: 1, name: 'Original Location', slug: 'original-location' }],
@@ -1403,7 +1400,6 @@ describe('refreshCollectionAfterOperation', () => {
       id: 1,
       slug: mockSlug,
       title: 'Test Collection',
-      type: CollectionType.PORTFOLIO,
       isClient: false,
       isBlog: false,
       visibility: CollectionVisibility.LISTED,

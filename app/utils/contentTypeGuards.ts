@@ -4,7 +4,7 @@
  * Provides compile-time type safety for Content discrimination.
  * Use these instead of runtime type checking or casting.
  */
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import {
   type Content,
   type ContentBlankModel,
@@ -254,23 +254,23 @@ export function hasChildCollectionContent(
 }
 
 /**
- * Check if a collection acts as a "parent": it contains child-collection refs, or
- * still carries the legacy (admin-transitional) PARENT type. Parent collections
- * expose the Gallery Access section and offer to propagate their password to child
- * galleries. Cover-image candidates are NOT gated on this: since D3 every collection
- * picks from the union of its own images and its children's. The enum arm
- * covers a freshly created parent that has no children yet, and survives the
- * `hasChildCollectionContent` truncation bound; it goes away with the enum.
+ * Check if a collection acts as a "parent": it contains child-collection refs. Parent collections
+ * expose the Gallery Access section and offer to propagate their password to child galleries.
+ * Cover-image candidates are NOT gated on this: since D3 every collection picks from the union of
+ * its own images and its children's.
+ *
+ * Prefers the server-derived `hasChildren`, which is computed over the whole content graph. The
+ * content scan is the fallback for payloads that predate it, and is bounded by the page window
+ * (`CollectionPageWrapper` fetches `size=500`), so it under-reports on large collections.
+ *
+ * There is no longer a legacy PARENT enum arm. Under the typeless model a collection has no
+ * declared parent-ness to fall back on — it IS a parent exactly when it holds children — so a
+ * childless collection reads false here by design. The one consumer that still needs to reach a
+ * childless collection, the Gallery Access section, unions this with the stored `isClient`
+ * discriminator rather than widening this guard (blast radius R12).
  */
 export function isParentCollection(
-  collection: Pick<CollectionModel, 'content' | 'type'> | null | undefined
+  collection: (Pick<CollectionModel, 'content'> & { hasChildren?: boolean }) | null | undefined
 ): boolean {
-  // U4 GATE: the `type === PARENT` arm is deliberately retained through U1. It is the only
-  // thing that reports a freshly created parent (no child content yet) as a parent. Delete it,
-  // `CollectionBaseModel.type` and the `CollectionType` enum together ONCE U4 IS DEPLOYED and
-  // the backend has stopped sending the field — in a frontend follow-up PR, not in U4 itself,
-  // which is backend-only. That PR must also start reading the server-derived `hasChildren` off
-  // CollectionUpdateResponseDTO, which is what replaces this arm.
-  // See docs/superpowers/specs/2026-07-26-typeless-collection.md.
-  return hasChildCollectionContent(collection) || collection?.type === CollectionType.PARENT;
+  return collection?.hasChildren ?? hasChildCollectionContent(collection);
 }

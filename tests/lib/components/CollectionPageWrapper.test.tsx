@@ -17,7 +17,7 @@ import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import * as collectionsApi from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { logger } from '@/app/utils/logger';
 
@@ -70,7 +70,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     id: 1,
     slug: 'smith-wedding',
     title: 'Smith Wedding',
-    type: CollectionType.CLIENT_GALLERY,
     isClient: true,
     isBlog: false,
     locations: [],
@@ -146,7 +145,6 @@ describe('CollectionPageWrapper — password-protection routing', () => {
   it('routes a non-client, non-protected collection directly to <CollectionPage>', async () => {
     mockGetCollectionBySlug.mockResolvedValue(
       makeCollection({
-        type: CollectionType.PORTFOLIO,
         isClient: false,
         isPasswordProtected: false,
       })
@@ -160,7 +158,6 @@ describe('CollectionPageWrapper — password-protection routing', () => {
   it('gates a locked protected NON-client collection (new behavior: the gate keys on isPasswordProtected alone)', async () => {
     mockGetCollectionBySlug.mockResolvedValue(
       makeCollection({
-        type: CollectionType.PORTFOLIO,
         isClient: false,
         isPasswordProtected: true,
         content: undefined,
@@ -264,7 +261,6 @@ describe('CollectionPageWrapper — password-protection routing', () => {
     listSavedImageIdsServer.mockResolvedValueOnce([7, 9]);
     mockGetCollectionBySlug.mockResolvedValue(
       makeCollection({
-        type: CollectionType.PORTFOLIO,
         isClient: false,
         isPasswordProtected: false,
         content: [],

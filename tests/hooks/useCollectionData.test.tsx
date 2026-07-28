@@ -29,7 +29,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { useCollectionData } from '@/app/hooks/useCollectionData';
 import { getCollectionUpdateMetadata } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
-import { CollectionType, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
+import { type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 // Mock dependencies
@@ -60,7 +60,6 @@ describe('useCollectionData', () => {
       id: 1,
       slug: 'test-collection',
       title: 'Test Collection',
-      type: CollectionType.PORTFOLIO,
       isClient: false,
       isBlog: false,
       visibility: CollectionVisibility.LISTED,

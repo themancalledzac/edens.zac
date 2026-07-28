@@ -8,7 +8,6 @@ import {
   resolveDisplayLocations,
 } from '@/app/components/FullScreenModal/fullScreenModalUtils';
 import type { CollectionModel, LocationModel } from '@/app/types/Collection';
-import { CollectionType } from '@/app/types/Collection';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 const img = (overrides: Partial<ContentImageModel> = {}): ContentImageModel =>
@@ -39,7 +38,6 @@ const gif = (overrides: Partial<ContentGifModel> = {}): ContentGifModel =>
 const collection = (overrides: Partial<CollectionModel> = {}): CollectionModel =>
   ({
     id: 9,
-    type: CollectionType.PORTFOLIO,
     title: 'Trip',
     slug: 'trip',
     locations: [],

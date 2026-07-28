@@ -10,7 +10,6 @@ import { type UseCollectionEditResult } from '@/app/components/ContentCollection
 import {
   type CollectionListModel,
   type CollectionModel,
-  CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
 } from '@/app/types/Collection';
@@ -23,7 +22,6 @@ export function makeCollection(overrides: Partial<CollectionModel> = {}): Collec
     slug: 'test-collection',
     title: 'Test Collection',
     description: '',
-    type: CollectionType.PORTFOLIO,
     isClient: false,
     isBlog: false,
     visibility: CollectionVisibility.LISTED,

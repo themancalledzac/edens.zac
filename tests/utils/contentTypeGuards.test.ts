@@ -3,7 +3,6 @@
  * Tests all 9 exported functions: type guards, dimension extraction, aspect ratio, slot width
  */
 
-import { CollectionType } from '@/app/types/Collection';
 import {
   getAspectRatio,
   getContentDimensions,
@@ -662,18 +661,27 @@ describe('isParentCollection', () => {
     expect(isParentCollection(collection)).toBe(true);
   });
 
-  it('U4-GATE: keeps the PARENT enum arm until the backend stops sending type', () => {
-    // Do NOT delete this arm as part of U1. A parent created moments ago has no child-collection
-    // content yet, so the content-graph derivation returns false and only the enum arm is true.
-    // The arm degrades to `undefined` (i.e. to the derivation alone) when U4 stops sending the
-    // field — see docs/superpowers/specs/2026-07-26-typeless-collection.md section 5.
-    expect(isParentCollection({ content: [], type: CollectionType.PARENT })).toBe(true);
-    expect(isParentCollection({ content: undefined, type: CollectionType.PARENT })).toBe(true);
+  it('returns false when no content and no server answer', () => {
     expect(isParentCollection({ content: [] })).toBe(false);
+    expect(isParentCollection({ content: undefined })).toBe(false);
+  });
+
+  it('uses the server hasChildren when present', () => {
+    expect(isParentCollection({ content: [], hasChildren: true })).toBe(true);
+  });
+
+  it('trusts hasChildren: false over a content scan that found a child', () => {
+    expect(isParentCollection({ content: [createCollectionContent(9)], hasChildren: false })).toBe(
+      false
+    );
+  });
+
+  it('falls back to the content scan when hasChildren is absent', () => {
+    expect(isParentCollection({ content: [createCollectionContent(9)] })).toBe(true);
   });
 
   it('returns false for a non-parent collection with only image content', () => {
-    const collection = { content: [createImageContent(1)], type: CollectionType.PORTFOLIO };
+    const collection = { content: [createImageContent(1)] };
     expect(isParentCollection(collection)).toBe(false);
   });
 

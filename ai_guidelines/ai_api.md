@@ -115,16 +115,26 @@ async function handleApiError(response: Response): Promise<never> {
 
 ## Content System Architecture
 
-### ContentCollection Types
+### ContentCollection Kind
+
+Collections are **typeless** — there is no `CollectionType` enum and no `type` field. A collection's
+kind is expressed by two mutually exclusive boolean discriminators on `CollectionModel`, and
+parent-ness is server-derived rather than declared:
 
 ```typescript
-enum CollectionType {
-  BLOG = 'BLOG', // Daily moments, mixed content
-  ART_GALLERY = 'ART_GALLERY', // Curated artistic collections
-  CLIENT_GALLERY = 'CLIENT_GALLERY', // Private client deliveries
-  PORTFOLIO = 'PORTFOLIO', // Professional showcases
+interface CollectionModel {
+  isClient: boolean; // private client delivery (password-gated)
+  isBlog: boolean; // dated, chronological entry
 }
 ```
+
+Both flags false is the default and is just a collection. The backend rejects both being true. Use
+the fail-safe `=== true` form when reading them, since a stale cache entry can outlive the type.
+
+Parent-ness is not a kind. It is server-derived over the whole content graph and arrives on the
+admin payload (`CollectionUpdateResponseDTO`) as `hasChildren?: boolean`, alongside the complete
+`childCollectionIds?: number[]`. Both are optional only so the page degrades gracefully against an
+older backend — prefer them over scanning the page-bounded `collection.content` for child refs.
 
 ### ContentBlock Types
 

@@ -1,7 +1,7 @@
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import * as collectionsApi from '@/app/lib/api/collections';
 import CollectionPageWrapper from '@/app/lib/components/CollectionPageWrapper';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { ME_TILE_ID } from '@/app/utils/meContentBlock';
 
@@ -36,7 +36,6 @@ function homeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     id: 1,
     slug: 'home',
     title: 'Home',
-    type: CollectionType.PORTFOLIO,
     isClient: false,
     isBlog: false,
     locations: [],

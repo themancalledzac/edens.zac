@@ -10,7 +10,6 @@ import { render, screen } from '@testing-library/react';
 
 import { FullScreenModal } from '@/app/components/FullScreenModal/FullScreenModal';
 import type { CollectionModel } from '@/app/types/Collection';
-import { CollectionType } from '@/app/types/Collection';
 import type { ContentGifModel, ContentImageModel } from '@/app/types/Content';
 
 // The Modal primitive locks body scroll via useBodyScrollLock, whose cleanup calls
@@ -48,7 +47,6 @@ const gif = (id: number, overrides: Partial<ContentGifModel> = {}): ContentGifMo
 const collection = (overrides: Partial<CollectionModel> = {}): CollectionModel =>
   ({
     id: 1,
-    type: CollectionType.PORTFOLIO,
     title: 'Trip',
     slug: 'trip',
     locations: [],

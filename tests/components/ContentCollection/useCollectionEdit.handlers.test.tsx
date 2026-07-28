@@ -12,13 +12,14 @@ import {
 import { createGif, createImages, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
+  type CollectionListModel,
   type CollectionModel,
-  CollectionType,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
+import { createCollectionContent } from '@/tests/fixtures/contentFixtures';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: mockRouterReplace }),
@@ -90,7 +91,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     slug: 'smith-wedding',
     title: 'Smith Wedding',
     description: 'A description',
-    type: CollectionType.PORTFOLIO,
     isClient: false,
     isBlog: false,
     locations: [],
@@ -105,7 +105,10 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
   };
 }
 
-function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdateResponseDTO {
+function makeResponse(
+  overrides: Partial<CollectionModel> = {},
+  responseOverrides: Partial<CollectionUpdateResponseDTO> = {}
+): CollectionUpdateResponseDTO {
   return {
     collection: makeCollection(overrides),
     tags: [],
@@ -116,6 +119,16 @@ function makeResponse(overrides: Partial<CollectionModel> = {}): CollectionUpdat
     filmTypes: [],
     filmFormats: [],
     collections: [],
+    ...responseOverrides,
+  };
+}
+
+function makeListModel(overrides: Partial<CollectionListModel> = {}): CollectionListModel {
+  return {
+    id: 5,
+    name: 'Child Collection',
+    slug: 'child-collection',
+    ...overrides,
   };
 }
 
@@ -385,8 +398,8 @@ describe('useCollectionEdit — handler tests', () => {
     });
   });
 
-  describe('handleSaveAccess — PARENT propagate-confirm path', () => {
-    it('calls window.confirm for PARENT type and propagates when confirmed', async () => {
+  describe('handleSaveAccess — parent propagate-confirm path', () => {
+    it('calls window.confirm when the server reports children and propagates when confirmed', async () => {
       const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(true);
       mockSaveGalleryAccess.mockResolvedValue({
         saved: true,
@@ -396,10 +409,8 @@ describe('useCollectionEdit — handler tests', () => {
         emails: [],
       });
 
-      const collection = makeCollection({ type: CollectionType.PARENT });
-      mockGetCollectionUpdateMetadata.mockResolvedValue(
-        makeResponse({ type: CollectionType.PARENT })
-      );
+      const collection = makeCollection();
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({}, { hasChildren: true }));
       const { result } = renderEdit({ enabled: true, collection });
       await waitFor(() => expect(result.current.currentState).not.toBeNull());
 
@@ -417,7 +428,7 @@ describe('useCollectionEdit — handler tests', () => {
       confirmSpy.mockRestore();
     });
 
-    it('does NOT propagate when confirm is declined for PARENT type', async () => {
+    it('does NOT propagate when confirm is declined', async () => {
       const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
       mockSaveGalleryAccess.mockResolvedValue({
         saved: true,
@@ -427,10 +438,8 @@ describe('useCollectionEdit — handler tests', () => {
         emails: [],
       });
 
-      const collection = makeCollection({ type: CollectionType.PARENT });
-      mockGetCollectionUpdateMetadata.mockResolvedValue(
-        makeResponse({ type: CollectionType.PARENT })
-      );
+      const collection = makeCollection();
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({}, { hasChildren: true }));
       const { result } = renderEdit({ enabled: true, collection });
       await waitFor(() => expect(result.current.currentState).not.toBeNull());
 
@@ -447,7 +456,7 @@ describe('useCollectionEdit — handler tests', () => {
       confirmSpy.mockRestore();
     });
 
-    it('does NOT call window.confirm for non-PARENT types', async () => {
+    it('does NOT call window.confirm when the server reports no children', async () => {
       const confirmSpy = jest.spyOn(window, 'confirm').mockReturnValue(false);
       mockSaveGalleryAccess.mockResolvedValue({
         saved: true,
@@ -457,9 +466,9 @@ describe('useCollectionEdit — handler tests', () => {
         emails: [],
       });
 
-      const collection = makeCollection({ type: CollectionType.CLIENT_GALLERY });
+      const collection = makeCollection({ isClient: true });
       mockGetCollectionUpdateMetadata.mockResolvedValue(
-        makeResponse({ type: CollectionType.CLIENT_GALLERY })
+        makeResponse({ isClient: true }, { hasChildren: false })
       );
       const { result } = renderEdit({ enabled: true, collection });
       await waitFor(() => expect(result.current.currentState).not.toBeNull());
@@ -478,13 +487,11 @@ describe('useCollectionEdit — handler tests', () => {
   describe('handleSaveAccess — save/clear behavior', () => {
     // The hook derives `collection` from currentState once the metadata fetch
     // resolves, and the seed effect re-runs off that collection. Mirror the
-    // PARENT tests above: drive the password/email through the exposed setters
+    // parent tests above: drive the password/email through the exposed setters
     // after currentState settles, so the seed effect can't wipe them.
     function renderGallery() {
-      const collection = makeCollection({ type: CollectionType.CLIENT_GALLERY });
-      mockGetCollectionUpdateMetadata.mockResolvedValue(
-        makeResponse({ type: CollectionType.CLIENT_GALLERY })
-      );
+      const collection = makeCollection({ isClient: true });
+      mockGetCollectionUpdateMetadata.mockResolvedValue(makeResponse({ isClient: true }));
       return renderEdit({ enabled: true, collection });
     }
 
@@ -791,6 +798,65 @@ describe('useCollectionEdit — handler tests', () => {
       const { result } = renderEdit({ enabled: true });
       await waitFor(() => expect(result.current.isLoadingState).toBe(false));
       expect(result.current.allCollections).toEqual([]);
+    });
+  });
+
+  describe('originalChildIds — server list vs page-window content scan', () => {
+    // `childIds.saved` is the only exposure of the memo; it is `new Set(originalChildIds)`.
+    async function renderWithServerChildIds(childCollectionIds?: number[]) {
+      mockGetCollectionUpdateMetadata.mockResolvedValue({
+        ...makeResponse({
+          slug: 'big-parent',
+          content: [createCollectionContent(1, { referencedCollectionId: 11 })],
+        }),
+        childCollectionIds,
+      });
+      const { result } = renderEdit({
+        enabled: true,
+        collection: makeCollection({ slug: 'big-parent' }),
+      });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+      return result;
+    }
+
+    it('uses the server child id list when present, not the page-window content scan', async () => {
+      const result = await renderWithServerChildIds([11, 12, 13]);
+      expect([...result.current.childIds.saved]).toEqual([11, 12, 13]);
+    });
+
+    it('falls back to the content scan when the server field is absent', async () => {
+      const result = await renderWithServerChildIds();
+      expect([...result.current.childIds.saved]).toEqual([11]);
+    });
+
+    it('treats an empty server list as authoritative, not as absent', async () => {
+      const result = await renderWithServerChildIds([]);
+      expect([...result.current.childIds.saved]).toEqual([]);
+    });
+
+    // The behaviour the server list actually protects: a child past the page window must still
+    // classify as saved, so toggling it stages a REMOVE. Against the content scan alone it is
+    // absent from `saved`, so `toggleRelation` routes it into `newValue` — a spurious re-link
+    // that makes the child impossible to unlink from the UI.
+    it('toggling a beyond-window child stages a remove, not a re-link', async () => {
+      const result = await renderWithServerChildIds([11, 12, 13]);
+
+      act(() => result.current.handleChildToggle(makeListModel({ id: 13 })));
+
+      expect(result.current.updateData.collections?.remove).toEqual([13]);
+      expect(result.current.updateData.collections?.newValue).toBeUndefined();
+      expect(result.current.childIds.pendingRemove.has(13)).toBe(true);
+    });
+
+    it('a beyond-window child that is NOT in the server list still stages an add', async () => {
+      const result = await renderWithServerChildIds([11]);
+
+      act(() => result.current.handleChildToggle(makeListModel({ id: 13 })));
+
+      expect(result.current.updateData.collections?.newValue?.map(c => c.collectionId)).toEqual([
+        13,
+      ]);
+      expect(result.current.updateData.collections?.remove).toBeUndefined();
     });
   });
 });

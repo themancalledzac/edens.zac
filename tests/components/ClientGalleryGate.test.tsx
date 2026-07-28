@@ -14,7 +14,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ClientGalleryGate from '@/app/components/ClientGalleryGate/ClientGalleryGate';
 import * as collectionsApi from '@/app/lib/api/collections';
 import { ApiError } from '@/app/lib/api/core';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 const mockRefresh = jest.fn();
@@ -36,7 +36,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     id: 1,
     slug: 'smith-wedding',
     title: 'Smith Wedding',
-    type: CollectionType.CLIENT_GALLERY,
     isClient: true,
     isBlog: false,
     locations: [],

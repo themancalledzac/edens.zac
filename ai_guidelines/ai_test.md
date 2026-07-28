@@ -137,7 +137,8 @@ Object.defineProperty(window, 'matchMedia', {
 
 When creating test fixtures, match the current type definitions exactly:
 
-- `CollectionModel` uses `type: CollectionType` (enum import), NOT `collectionType: string`
+- `CollectionModel` carries the boolean kind discriminators `isClient` / `isBlog` — there is no
+  `type` field and no `CollectionType` enum (both were deleted under the typeless-collection model)
 - `ContentCollectionModel` requires `referencedCollectionId: number`
 - `ContentImageModel.location` is `{ id: number; name: string } | null`, NOT a string
 - Component tests using `toBeInTheDocument()` need `import '@testing-library/jest-dom'` at the top
