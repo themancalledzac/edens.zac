@@ -1453,21 +1453,21 @@ export function useCollectionEdit({
         disabled: browseBusy,
         onClick: enterReorder,
       },
-    ];
-    if (!isParent) {
-      cells.push({
+      // Add is un-gated (D4): any collection may hold any mix of content, so holding a child
+      // collection no longer removes the ability to add images.
+      {
         key: 'add',
         label: operationLoading ? 'Uploading…' : 'Add',
         disabled: browseBusy,
         onClick: () => setIsAddMode(true),
-      });
-    }
-    cells.push({
-      key: 'edit',
-      label: 'Edit',
-      disabled: browseBusy,
-      onClick: () => setIsEditSheetOpen(true),
-    });
+      },
+      {
+        key: 'edit',
+        label: 'Edit',
+        disabled: browseBusy,
+        onClick: () => setIsEditSheetOpen(true),
+      },
+    ];
     if (onExitManage) {
       cells.push({ key: 'cancel', label: 'Cancel', onClick: onExitManage });
     }
@@ -1491,7 +1491,6 @@ export function useCollectionEdit({
     isUpdateDirty,
     handleUpdate,
     enterReorder,
-    isParent,
     onExitManage,
   ]);
 
