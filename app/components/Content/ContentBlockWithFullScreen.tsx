@@ -8,6 +8,7 @@ import { useFullScreenImage } from '@/app/hooks/useFullScreenImage';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
+import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 
 import Component from './Component';
 import styles from './ContentBlockWithFullScreen.module.scss';
@@ -108,11 +109,17 @@ export default function ContentBlockWithFullScreen({
    * Every content block that can open in the fullscreen viewer — still images, parallax images,
    * and animated GIF/MP4 blocks. The fullscreen prev/next navigation walks this list, so adding
    * GIFs here means they get the same swipe/arrow-key flow as images.
+   *
+   * Child-collection CARDS are excluded: `convertCollectionContentToParallax` stamps them
+   * `contentType: 'IMAGE'`, so a plain contentType check would put a collection cover into
+   * prev/next as a photograph with no EXIF and no route into the collection. Keyed on
+   * {@link isCollectionCard} so this can never disagree with the layout/badge code. The
+   * `?image=<id>` deep-link restore below reads the same list, so it is covered too.
    */
   const viewableBlocks = useMemo(() => {
     return allBlocks.filter(
       (block): block is ViewableContent =>
-        block.contentType === 'IMAGE' || block.contentType === 'GIF'
+        (block.contentType === 'IMAGE' || block.contentType === 'GIF') && !isCollectionCard(block)
     );
   }, [allBlocks]);
 
