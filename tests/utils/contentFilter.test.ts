@@ -31,7 +31,9 @@ import { sortByDate } from '@/app/utils/sortByDate';
 
 // ─── Test Fixtures ───
 
-function makeImage(overrides: Partial<ContentImageModel> = {}): ContentImageModel {
+function makeImage(
+  overrides: Partial<ContentImageModel> & { slug?: string; enableParallax?: true } = {}
+): ContentImageModel {
   return {
     id: 1,
     contentType: 'IMAGE',
@@ -1397,6 +1399,20 @@ describe('isDateable', () => {
 
   it('is false for non-image, non-gif content', () => {
     expect(isDateable(makeTextBlock())).toBe(false);
+  });
+
+  it('is false for a converted collection card (contentType IMAGE, but carries a slug)', () => {
+    // convertCollectionContentToParallax stamps contentType: 'IMAGE' on child-collection
+    // cards. They have no captureDate, so treating them as dateable sorts them at epoch 0 —
+    // and enterReorder PERSISTS that order as a full re-index. Slug presence is the live
+    // discriminant (see isCollectionCard in contentRatingUtils).
+    const card = makeImage({ id: 500, slug: 'child-collection', enableParallax: true });
+    expect(isDateable(card as AnyContentModel)).toBe(false);
+  });
+
+  it('is false for a collection card even when it carries a captureDate', () => {
+    const card = makeImage({ id: 501, slug: 'child-collection', captureDate: '2024-01-01' });
+    expect(isDateable(card as AnyContentModel)).toBe(false);
   });
 });
 

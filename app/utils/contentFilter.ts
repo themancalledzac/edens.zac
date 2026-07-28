@@ -14,6 +14,7 @@ import {
   type ContentImageModel,
 } from '@/app/types/Content';
 import { type FilmFilter, type FilterState, type LensType } from '@/app/types/GalleryFilter';
+import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 import { getLensType } from '@/app/utils/focalLength';
 
@@ -907,8 +908,14 @@ export function applyCollectionFilters(
  * A "dateable" content block participates in the chronological date sort: any image, or a GIF/MP4
  * that has been given a captureDate. Text, collections, and undated GIFs are NOT dateable and keep
  * their processed position (undated GIFs therefore stay at the end of a chronological collection).
+ *
+ * Child-collection CARDS are excluded explicitly: `convertCollectionContentToParallax` stamps them
+ * `contentType: 'IMAGE'`, so the plain image check would admit them, they would sort at epoch 0,
+ * and `enterReorder` would persist that as a full orderIndex re-index. Keyed on
+ * {@link isCollectionCard} (slug presence) so this can never disagree with the layout/badge code.
  */
 export function isDateable(block: AnyContentModel): boolean {
+  if (isCollectionCard(block)) return false;
   return isImageContent(block) || (isGifContent(block) && Boolean(block.captureDate));
 }
 
