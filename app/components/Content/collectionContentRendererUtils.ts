@@ -62,6 +62,12 @@ export interface ClickEligibilityInput {
   onImageClick?: (imageId: number) => void;
   enableFullScreenView?: boolean;
   onFullScreenImageClick?: (image: ViewableContent) => void;
+  /**
+   * Set only on the manage path (EditModeLayer threads the collection id down); the public
+   * grid, TaxonomyPage, and LocationPage leave it undefined. Used here as the manage/public
+   * discriminant — see {@link getClickEligibility}.
+   */
+  currentCollectionId?: number;
 }
 
 /** Whether an item navigates via href (`isSlugNav`) and/or has a meaningful click action. */
@@ -72,9 +78,17 @@ export interface ClickEligibility {
 
 /**
  * Derive click eligibility for a content item. Slug-bearing items (collection cards — the only
- * blocks that carry a slug) navigate via href and that navigation WINS over `onImageClick`:
- * client-gallery select mode sets `onImageClick` grid-wide, and without this a child card would
- * silently become a download target carrying its content-table id instead of a link.
+ * blocks that carry a slug) navigate via href, and on the PUBLIC surface that navigation WINS
+ * over `onImageClick`: client-gallery select mode sets `onImageClick` grid-wide, and without
+ * this a child card would silently become a download target carrying its content-table id
+ * instead of a link.
+ *
+ * The manage grid (EditModeLayer) also sets `onImageClick` grid-wide, but there the handler is
+ * the router: it pushes `manageHref(childSlug)` so an admin drilling into a child collection
+ * STAYS in manage mode, and it is also what makes a card click a no-op while a cover image or a
+ * capture-date source is being picked. `currentCollectionId` is the manage/public discriminant
+ * (only EditModeLayer threads it down), so on that surface the handler keeps winning.
+ *
  * IMAGE/GIF fullscreen stays on `onClick`. TEXT and reorder mode produce no action.
  */
 export function getClickEligibility(input: ClickEligibilityInput): ClickEligibility {
@@ -85,9 +99,13 @@ export function getClickEligibility(input: ClickEligibilityInput): ClickEligibil
     onImageClick,
     enableFullScreenView,
     onFullScreenImageClick,
+    currentCollectionId,
   } = input;
 
-  const isSlugNav = !!hasSlug && !isReorderMode && contentType !== 'TEXT';
+  const isManage = currentCollectionId != null;
+
+  const isSlugNav =
+    !!hasSlug && !isReorderMode && contentType !== 'TEXT' && !(isManage && !!onImageClick);
 
   const hasClickHandler =
     contentType !== 'TEXT' &&
