@@ -1634,4 +1634,64 @@ describe('processContentForDisplay', () => {
   });
 });
 
+describe('processContentForDisplay — row packing is order-preserving (D2 characterization)', () => {
+  /**
+   * A child-collection card in the exact shape the pipeline hands to processContentForDisplay:
+   * processContentBlocks runs transformCollectionBlocks first, so the layout engine never sees a
+   * raw COLLECTION block in production. Converting here keeps the characterization honest (the
+   * converted card carries clamped cover dimensions and a slug; a raw block carries neither).
+   */
+  function card(id: number): ContentParallaxImageModel {
+    return convertCollectionContentToParallax(createCollectionContent(id));
+  }
+
+  /** Flatten rows to content ids, dropping the synthetic blank spacers buildRows pads with. */
+  function flatIds(rows: RowWithPatternAndSizes[]): (number | undefined)[] {
+    return rows
+      .flatMap(row => row.items)
+      .filter(item => !isBlankContent(item.content))
+      .map(item => item.content.id);
+  }
+
+  it('emits mixed image + collection content in input order across rows (desktop)', () => {
+    const content: AnyContentModel[] = [
+      createHorizontalImage(1, 3),
+      card(2),
+      createHorizontalImage(3, 3),
+      card(4),
+      createHorizontalImage(5, 3),
+    ];
+    const rows = processContentForDisplay(content, 1000);
+    expect(flatIds(rows)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it('emits mixed image + collection content in input order across rows (mobile)', () => {
+    const content: AnyContentModel[] = [
+      createHorizontalImage(1, 3),
+      card(2),
+      createHorizontalImage(3, 3),
+      card(4),
+    ];
+    const rows = processContentForDisplay(content, 400, 4, { isMobile: true });
+    expect(flatIds(rows)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('packs a collection card into a row alongside images rather than onto its own row', () => {
+    // A converted card rates 4 (getEffectiveRating keys on slug presence) and its 1920x1080 cover
+    // is clamped by clampParallaxDimensions into the 4:5..5:4 band, so it is a normal-cost row
+    // member. With a generous row-width budget it shares a row with images.
+    const content: AnyContentModel[] = [
+      createHorizontalImage(1, 1),
+      card(2),
+      createHorizontalImage(3, 1),
+    ];
+    const rows = processContentForDisplay(content, 1000, 6);
+    const rowWithCard = rows.find(row => row.items.some(item => item.content.id === 2));
+    expect(rowWithCard).toBeDefined();
+    expect(rowWithCard!.items.filter(item => !isBlankContent(item.content)).length).toBeGreaterThan(
+      1
+    );
+  });
+});
+
 // chunkContent, reorderLonelyVerticals, calculateContentSizes deleted — BoxTree pipeline handles all sizing
