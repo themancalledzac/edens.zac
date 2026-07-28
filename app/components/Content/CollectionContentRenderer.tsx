@@ -117,7 +117,7 @@ export default function CollectionContentRenderer({
   const handleClick = useCallback(() => {
     if (contentType === 'TEXT') return;
     if (isReorderMode) return;
-    if (hasSlug && !onImageClick) return; // navigation handled by <Tile href>
+    if (isSlugNav) return; // navigation handled by <Tile href>
 
     const fullScreenContent: ViewableContent =
       contentType === 'GIF'
@@ -154,7 +154,7 @@ export default function CollectionContentRenderer({
     onImageClick,
     enableFullScreenView,
     onFullScreenImageClick,
-    hasSlug,
+    isSlugNav,
     isReorderMode,
   ]);
 

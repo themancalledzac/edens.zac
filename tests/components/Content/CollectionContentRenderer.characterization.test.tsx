@@ -88,22 +88,24 @@ describe('CollectionContentRenderer — slug navigation branch', () => {
     expect(link).toHaveAttribute('href', '/dolomites-2025');
   });
 
-  it('does NOT navigate via href when onImageClick is supplied (handler wins)', () => {
+  it('navigates via href even when onImageClick is supplied (slug nav wins)', () => {
     const onImageClick = jest.fn();
-    const { container } = render(
+    render(
       <CollectionContentRenderer
         {...imageProps}
         contentType="COLLECTION"
         isCollection
         hasSlug="dolomites-2025"
+        overlayText="Dolomites"
         onImageClick={onImageClick}
       />
     );
-    // With onImageClick present, isSlugNav is false → wrapper div, not a Tile/link.
-    expect(container.querySelector('a[href="/dolomites-2025"]')).toBeNull();
-    const wrapper = container.querySelector('[data-image-wrapper]')!;
-    fireEvent.click(wrapper.querySelector('div')!);
-    expect(onImageClick).toHaveBeenCalledWith(7);
+    // Select mode sets onImageClick grid-wide. A collection card must stay a link rather than
+    // become a download target carrying its content-table id.
+    const link = screen.getByRole('link', { name: 'Dolomites' });
+    expect(link).toHaveAttribute('href', '/dolomites-2025');
+    fireEvent.click(link);
+    expect(onImageClick).not.toHaveBeenCalled();
   });
 });
 

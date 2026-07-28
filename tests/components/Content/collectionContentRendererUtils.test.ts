@@ -108,7 +108,7 @@ describe('getClickEligibility', () => {
     ).toEqual({ hasClickHandler: true, isSlugNav: true });
   });
 
-  it('onImageClick beats slug nav (handler, not href)', () => {
+  it('slug nav beats onImageClick (a collection card navigates, it is not a download target)', () => {
     expect(
       getClickEligibility({
         ...base,
@@ -116,7 +116,19 @@ describe('getClickEligibility', () => {
         hasSlug: 'dolomites',
         onImageClick: jest.fn(),
       })
-    ).toEqual({ hasClickHandler: true, isSlugNav: false });
+    ).toEqual({ hasClickHandler: true, isSlugNav: true });
+  });
+
+  it('slug nav beats onImageClick for a CONVERTED card too (contentType IMAGE + slug)', () => {
+    // Post-conversion cards arrive as contentType 'IMAGE'; the slug is the discriminant.
+    expect(
+      getClickEligibility({
+        ...base,
+        contentType: 'IMAGE',
+        hasSlug: 'dolomites',
+        onImageClick: jest.fn(),
+      })
+    ).toEqual({ hasClickHandler: true, isSlugNav: true });
   });
 
   it('onImageClick alone makes an item clickable but not slug nav', () => {

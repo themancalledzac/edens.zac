@@ -71,10 +71,11 @@ export interface ClickEligibility {
 }
 
 /**
- * Derive click eligibility for a content item. COLLECTION tiles navigate via href; IMAGE/GIF
- * fullscreen stays on `onClick`. TEXT and reorder mode produce no action; slug-only navigation
- * fires when `hasSlug` is set and no `onImageClick` is present; otherwise a handler exists when
- * `onImageClick` or fullscreen is configured.
+ * Derive click eligibility for a content item. Slug-bearing items (collection cards — the only
+ * blocks that carry a slug) navigate via href and that navigation WINS over `onImageClick`:
+ * client-gallery select mode sets `onImageClick` grid-wide, and without this a child card would
+ * silently become a download target carrying its content-table id instead of a link.
+ * IMAGE/GIF fullscreen stays on `onClick`. TEXT and reorder mode produce no action.
  */
 export function getClickEligibility(input: ClickEligibilityInput): ClickEligibility {
   const {
@@ -86,14 +87,12 @@ export function getClickEligibility(input: ClickEligibilityInput): ClickEligibil
     onFullScreenImageClick,
   } = input;
 
-  const isSlugNav = !!hasSlug && !onImageClick && !isReorderMode && contentType !== 'TEXT';
+  const isSlugNav = !!hasSlug && !isReorderMode && contentType !== 'TEXT';
 
   const hasClickHandler =
     contentType !== 'TEXT' &&
     !isReorderMode &&
-    ((hasSlug !== undefined && !onImageClick) ||
-      !!onImageClick ||
-      !!(enableFullScreenView && onFullScreenImageClick));
+    (hasSlug !== undefined || !!onImageClick || !!(enableFullScreenView && onFullScreenImageClick));
 
   return { hasClickHandler, isSlugNav };
 }
