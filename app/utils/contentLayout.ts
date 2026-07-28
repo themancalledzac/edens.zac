@@ -400,28 +400,15 @@ function sortNonVisibleToBottom(
 }
 
 /**
- * Reorder content to show images/text/gifs first, then collections
- */
-function reorderImagesBeforeCollections(content: AnyContentModel[]): AnyContentModel[] {
-  const nonCollections: AnyContentModel[] = [];
-  const collections: AnyContentModel[] = [];
-
-  for (const block of content) {
-    if (block.contentType === 'COLLECTION') {
-      collections.push(block);
-    } else {
-      nonCollections.push(block);
-    }
-  }
-
-  return [...nonCollections, ...collections];
-}
-
-/**
  * Process content blocks through filtering, sorting, and transformation pipeline.
  * Converts collections to parallax images and ensures proper dimensions.
  *
- * Ordering uses `block.orderIndex` directly (not `collections[].orderIndex`).
+ * Ordering uses `block.orderIndex` directly (not `collections[].orderIndex`) and is honoured
+ * VERBATIM across content types: a child-collection card sits wherever the admin put it, mixed
+ * in among images. (The former `reorderImagesBeforeCollections` pass sank every collection block
+ * to the tail; it encoded the "a parent holds only child collections" invariant and was removed
+ * with it. Row packing downstream is order-preserving, so this is the only ordering authority.)
+ *
  * When `filterVisible` is false (manage page), non-visible content is sorted to
  * the bottom after the primary orderIndex/chronological sort to preserve relative
  * order within visible and non-visible groups.
@@ -450,7 +437,6 @@ export function processContentBlocks(
     processed = sortNonVisibleToBottom(processed, collectionId);
   }
 
-  processed = reorderImagesBeforeCollections(processed);
   processed = transformCollectionBlocks(processed);
 
   return processed;
