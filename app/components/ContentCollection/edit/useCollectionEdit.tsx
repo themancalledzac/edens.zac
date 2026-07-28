@@ -600,9 +600,13 @@ export function useCollectionEdit({
   );
 
   // One parent derivation for every consumer below (child cover picker, Gallery Access
-  // section, password-propagate confirm, Add-content cell). Memoized because the content
-  // scan is O(n) over up to 500 loaded blocks per render, where the enum compare was O(1).
-  const isParent = useMemo(() => isParentCollection(collection), [collection]);
+  // section, password-propagate confirm, Add-content cell). The server boolean covers the whole
+  // content graph; the memoized scan is the fallback and is O(n) over the 500 loaded blocks.
+  const isParent = useMemo(
+    () =>
+      isParentCollection({ content: collection.content, hasChildren: currentState?.hasChildren }),
+    [collection.content, currentState?.hasChildren]
+  );
 
   const displayedCoverImage = collection.coverImage ?? null;
 
