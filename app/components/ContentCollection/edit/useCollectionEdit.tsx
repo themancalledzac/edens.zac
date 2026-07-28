@@ -121,9 +121,12 @@ export interface UseCollectionEditResult {
   /** Child-collection images a PARENT picks its cover from. */
   childCollectionImages?: ContentImageModel[] | null;
   /**
-   * True for parent collections (they hold child-collection refs): hides density/display, shows
-   * the child cover picker, gates the Gallery Access section and the password-propagate-to-children
-   * confirm. Server-derived when the payload carries `hasChildren`, content-derived otherwise.
+   * True for parent collections (they hold child-collection refs). Gates exactly two things: the
+   * Gallery Access section (in union with `updateData.isClient`) and the
+   * password-propagate-to-children confirm. It does NOT gate the Presentation controls or the
+   * cover picker — both were deliberately un-gated (D3/D4) when the "a parent holds only child
+   * collections" invariant was removed. Server-derived when the payload carries `hasChildren`,
+   * content-derived otherwise.
    */
   isParent: boolean;
 
@@ -599,9 +602,9 @@ export function useCollectionEdit({
     [selectedIds, collection.content]
   );
 
-  // One parent derivation for every consumer below (child cover picker, Gallery Access
-  // section, password-propagate confirm, Add-content cell). The server boolean covers the whole
-  // content graph; the memoized scan is the fallback and is O(n) over the 500 loaded blocks.
+  // One parent derivation for both of its consumers (the Gallery Access section and the
+  // password-propagate confirm). The server boolean covers the whole content graph; the memoized
+  // scan is the fallback and is O(n) over the 500 loaded blocks.
   const isParent = useMemo(
     () =>
       isParentCollection({ content: collection.content, hasChildren: currentState?.hasChildren }),
@@ -1051,11 +1054,21 @@ export function useCollectionEdit({
   }, [collection, router]);
 
   /**
-   * The saved child ids the save diff is computed against. Prefers the server-supplied list,
-   * which covers the whole content graph; the content scan is only a fallback for payloads that
-   * predate it and is bounded by `CollectionPageWrapper`'s 500-item fetch, so on a larger
-   * collection it would read as an intentional removal of every child past that bound. `??`, not
-   * `||`: an empty server list means "no children", and must not fall through to the scan.
+   * The saved child ids every child toggle is classified against. Prefers the server-supplied
+   * list, which is authoritative over the whole content graph rather than over whatever content
+   * this client happens to be holding; the content scan is only a fallback for payloads that
+   * predate the field and is bounded by `CollectionPageWrapper`'s 500-item fetch.
+   *
+   * The consequence of a short list is a misclassified toggle, not data loss: `toggleRelation`
+   * only ever emits a `remove` for an id it already knows is saved, and `collections` is applied
+   * by the backend as an incremental diff — never as a replace-set — so a truncated list can only
+   * under-remove. What it actually breaks is unlinking: a child past the bound is absent from
+   * `saved`, so the Structure tab paints it unchecked and clicking it stages an ADD (a spurious
+   * re-link that also rewrites its `orderIndex`) instead of a REMOVE, making the child impossible
+   * to unlink from the UI.
+   *
+   * `??`, not `||`: an empty server list means "no children", and must not fall through to the
+   * scan.
    */
   const originalChildIds = useMemo(
     () =>

@@ -12,6 +12,7 @@ import {
 import { createGif, createImages, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
+  type CollectionListModel,
   type CollectionModel,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
@@ -119,6 +120,15 @@ function makeResponse(
     filmFormats: [],
     collections: [],
     ...responseOverrides,
+  };
+}
+
+function makeListModel(overrides: Partial<CollectionListModel> = {}): CollectionListModel {
+  return {
+    id: 5,
+    name: 'Child Collection',
+    slug: 'child-collection',
+    ...overrides,
   };
 }
 
@@ -822,6 +832,31 @@ describe('useCollectionEdit — handler tests', () => {
     it('treats an empty server list as authoritative, not as absent', async () => {
       const result = await renderWithServerChildIds([]);
       expect([...result.current.childIds.saved]).toEqual([]);
+    });
+
+    // The behaviour the server list actually protects: a child past the page window must still
+    // classify as saved, so toggling it stages a REMOVE. Against the content scan alone it is
+    // absent from `saved`, so `toggleRelation` routes it into `newValue` — a spurious re-link
+    // that makes the child impossible to unlink from the UI.
+    it('toggling a beyond-window child stages a remove, not a re-link', async () => {
+      const result = await renderWithServerChildIds([11, 12, 13]);
+
+      act(() => result.current.handleChildToggle(makeListModel({ id: 13 })));
+
+      expect(result.current.updateData.collections?.remove).toEqual([13]);
+      expect(result.current.updateData.collections?.newValue).toBeUndefined();
+      expect(result.current.childIds.pendingRemove.has(13)).toBe(true);
+    });
+
+    it('a beyond-window child that is NOT in the server list still stages an add', async () => {
+      const result = await renderWithServerChildIds([11]);
+
+      act(() => result.current.handleChildToggle(makeListModel({ id: 13 })));
+
+      expect(result.current.updateData.collections?.newValue?.map(c => c.collectionId)).toEqual([
+        13,
+      ]);
+      expect(result.current.updateData.collections?.remove).toBeUndefined();
     });
   });
 });
