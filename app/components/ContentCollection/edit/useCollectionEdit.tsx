@@ -118,12 +118,17 @@ export interface UseCollectionEditResult {
   currentCoverImageId?: number;
   /** The collection's saved cover image, shown in the Edit sheet (cover changes save immediately). */
   displayedCoverImage: ContentImageModel | null | undefined;
-  /** Child-collection images a PARENT picks its cover from. */
+  /**
+   * Images sourced from this collection's child collections. Since D3 this is one ARM of the
+   * cover-candidate union every collection picks from — the other being the collection's own
+   * images — not a parent-only substitute for them.
+   */
   childCollectionImages?: ContentImageModel[] | null;
   /**
    * True for parent collections (contains child-collection refs, or still carries the
-   * legacy PARENT type): hides density/display, shows the child cover picker, gates the
-   * Gallery Access section and the password-propagate-to-children confirm.
+   * legacy PARENT type). Gates the Gallery Access section and the password-propagate-to-children
+   * confirm. It no longer gates density/display (D4) or the cover picker's source pool (D3) —
+   * both are unconditional now, so do NOT reintroduce a parent gate on them.
    */
   isParent: boolean;
 
@@ -599,9 +604,9 @@ export function useCollectionEdit({
     [selectedIds, collection.content]
   );
 
-  // One parent derivation for every consumer below (child cover picker, Gallery Access
-  // section, password-propagate confirm, Add-content cell). Memoized because the content
-  // scan is O(n) over up to 500 loaded blocks per render, where the enum compare was O(1).
+  // One parent derivation for every consumer below (Gallery Access section, password-propagate
+  // confirm). Memoized because the content scan is O(n) over up to 500 loaded blocks per render,
+  // where the enum compare was O(1).
   const isParent = useMemo(() => isParentCollection(collection), [collection]);
 
   const displayedCoverImage = collection.coverImage ?? null;
