@@ -227,54 +227,6 @@ export function convertCollectionContentToParallax(
 }
 
 /**
- * Convert collection to regular image for admin/manage page rendering
- * @param col - Collection content model to convert
- * @returns Image model with collection metadata
- */
-export function convertCollectionContentToImage(col: ContentCollectionModel): ContentImageModel {
-  const coverImage = col.coverImage;
-  const { imageWidth, imageHeight } = extractCollectionDimensions(coverImage);
-
-  return {
-    contentType: 'IMAGE',
-    id: col.id,
-    title: col.title,
-    description: col.description ?? null,
-    imageUrl: coverImage?.imageUrl ?? '',
-    imageUrlRaw: coverImage?.imageUrlRaw ?? null,
-    imageWidth,
-    imageHeight,
-    width: imageWidth,
-    height: imageHeight,
-    orderIndex: col.orderIndex,
-    visible: col.visible ?? true,
-    createdAt: col.createdAt,
-    updatedAt: col.updatedAt,
-    iso: coverImage?.iso,
-    author: coverImage?.author ?? null,
-    rating: coverImage?.rating,
-    lens: coverImage?.lens ?? null,
-    blackAndWhite: coverImage?.blackAndWhite,
-    isFilm: coverImage?.isFilm,
-    shutterSpeed: coverImage?.shutterSpeed ?? null,
-    rawFileName: coverImage?.rawFileName ?? null,
-    camera: coverImage?.camera ?? null,
-    focalLength: coverImage?.focalLength ?? null,
-    locations: coverImage?.locations ?? [],
-    captureDate: coverImage?.captureDate ?? null,
-    fStop: coverImage?.fStop ?? null,
-    alt: col.title || col.slug || '',
-    aspectRatio: imageWidth && imageHeight ? imageWidth / imageHeight : undefined,
-    filmType: coverImage?.filmType ?? null,
-    filmFormat: coverImage?.filmFormat ?? null,
-    tags: coverImage?.tags ?? [],
-    people: coverImage?.people ?? [],
-    collections: [],
-    overlayText: col.title || col.slug || '',
-  };
-}
-
-/**
  * Check if content is visible in a specific collection
  * Checks both global visibility (block.visible) and collection-specific visibility for images
  * @param block - Content block to check

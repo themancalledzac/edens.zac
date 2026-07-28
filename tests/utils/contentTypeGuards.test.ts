@@ -16,7 +16,6 @@ import {
   isParentCollection,
   isTextContent,
   pickImageDimensions,
-  validateContentBlock,
 } from '@/app/utils/contentTypeGuards';
 import {
   createCollectionContent,
@@ -345,72 +344,6 @@ describe('pickImageDimensions', () => {
 
   it('returns undefined dimensions for an undefined source', () => {
     expect(pickImageDimensions()).toEqual({ width: undefined, height: undefined });
-  });
-});
-
-// ===================== validateContentBlock =====================
-
-describe('validateContentBlock', () => {
-  it('returns true for a valid IMAGE block', () => {
-    const img = createImageContent(1);
-    expect(validateContentBlock(img)).toBe(true);
-  });
-
-  it('returns true for a valid TEXT block', () => {
-    const text = createTextContent(1);
-    expect(validateContentBlock(text)).toBe(true);
-  });
-
-  it('returns true for a valid GIF block', () => {
-    const gif = createGifContent(1);
-    expect(validateContentBlock(gif)).toBe(true);
-  });
-
-  it('returns true for a valid COLLECTION block', () => {
-    const col = createCollectionContent(1);
-    expect(validateContentBlock(col)).toBe(true);
-  });
-
-  it('returns true for a valid PANEL block', () => {
-    const panel = createPanelContent(1);
-    expect(validateContentBlock(panel)).toBe(true);
-  });
-
-  it('returns false for null', () => {
-    expect(validateContentBlock(null)).toBe(false);
-  });
-
-  it('returns false for undefined', () => {
-    const undef = undefined;
-    expect(validateContentBlock(undef)).toBe(false);
-  });
-
-  it('returns false for a string', () => {
-    expect(validateContentBlock('IMAGE')).toBe(false);
-  });
-
-  it('returns false for a number', () => {
-    expect(validateContentBlock(123)).toBe(false);
-  });
-
-  it('returns false when id is not a number', () => {
-    expect(validateContentBlock({ id: 'x', contentType: 'IMAGE', orderIndex: 0 })).toBe(false);
-  });
-
-  it('returns false when contentType is missing', () => {
-    expect(validateContentBlock({ id: 1, orderIndex: 0 })).toBe(false);
-  });
-
-  it('returns false when contentType is an unknown value', () => {
-    expect(validateContentBlock({ id: 1, contentType: 'VIDEO', orderIndex: 0 })).toBe(false);
-  });
-
-  it('returns false when orderIndex is missing', () => {
-    expect(validateContentBlock({ id: 1, contentType: 'IMAGE' })).toBe(false);
-  });
-
-  it('returns false when orderIndex is a string', () => {
-    expect(validateContentBlock({ id: 1, contentType: 'IMAGE', orderIndex: '0' })).toBe(false);
   });
 });
 

@@ -109,7 +109,6 @@ export interface ContentImageModel extends Content {
 export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'contentType'> {
   contentType: 'IMAGE';
   collectionDate?: string;
-  type?: string;
   enableParallax: true;
   parallaxSpeed?: number;
   /**
