@@ -3,7 +3,6 @@
  * Tests all 9 exported functions: type guards, dimension extraction, aspect ratio, slot width
  */
 
-import { CollectionType } from '@/app/types/Collection';
 import {
   getAspectRatio,
   getContentDimensions,
@@ -682,7 +681,7 @@ describe('isParentCollection', () => {
   });
 
   it('returns false for a non-parent collection with only image content', () => {
-    const collection = { content: [createImageContent(1)], type: CollectionType.PORTFOLIO };
+    const collection = { content: [createImageContent(1)] };
     expect(isParentCollection(collection)).toBe(false);
   });
 

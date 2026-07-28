@@ -25,7 +25,6 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionListModel,
   type CollectionModel,
-  CollectionType,
   type CollectionUpdateRequest,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
@@ -93,7 +92,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     slug: 'smith-wedding',
     title: 'Smith Wedding',
     description: 'A description',
-    type: CollectionType.PORTFOLIO,
     isClient: false,
     isBlog: false,
     locations: [],

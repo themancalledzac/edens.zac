@@ -6,11 +6,7 @@ import CollectionPageClient from '@/app/components/ContentCollection/CollectionP
 import { toMobileDensity } from '@/app/constants';
 import { getCollectionUpdateMetadata, getMetadata } from '@/app/lib/api/collections';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
-import {
-  type CollectionModel,
-  CollectionType,
-  type CollectionUpdateResponseDTO,
-} from '@/app/types/Collection';
+import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 let mockSearchParams = new URLSearchParams();
@@ -128,7 +124,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     slug: 'smith-wedding',
     title: 'Smith Wedding',
     description: 'A description',
-    type: CollectionType.PORTFOLIO,
     isClient: false,
     isBlog: false,
     locations: [],

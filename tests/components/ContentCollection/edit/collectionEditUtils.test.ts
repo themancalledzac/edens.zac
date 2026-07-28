@@ -8,11 +8,7 @@
  */
 
 import { buildUpdatePayload } from '@/app/components/ContentCollection/edit/collectionEditUtils';
-import {
-  type CollectionModel,
-  CollectionType,
-  type CollectionUpdateRequest,
-} from '@/app/types/Collection';
+import { type CollectionModel, type CollectionUpdateRequest } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 
 function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
@@ -21,7 +17,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     slug: 'test-collection',
     title: 'Test Collection',
     description: '',
-    type: CollectionType.PORTFOLIO,
     isClient: false,
     isBlog: false,
     visibility: CollectionVisibility.LISTED,

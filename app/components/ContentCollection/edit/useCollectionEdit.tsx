@@ -121,9 +121,9 @@ export interface UseCollectionEditResult {
   /** Child-collection images a PARENT picks its cover from. */
   childCollectionImages?: ContentImageModel[] | null;
   /**
-   * True for parent collections (contains child-collection refs, or still carries the
-   * legacy PARENT type): hides density/display, shows the child cover picker, gates the
-   * Gallery Access section and the password-propagate-to-children confirm.
+   * True for parent collections (they hold child-collection refs): hides density/display, shows
+   * the child cover picker, gates the Gallery Access section and the password-propagate-to-children
+   * confirm. Server-derived when the payload carries `hasChildren`, content-derived otherwise.
    */
   isParent: boolean;
 
@@ -170,7 +170,7 @@ export interface UseCollectionEditResult {
     sourceTagId: number,
     body: { visibility: CollectionVisibility }
   ) => Promise<void>;
-  /** Child-collection (containment) triple. `saved` derives from content blocks. */
+  /** Child-collection (containment) triple. `saved` is the server's child id list when sent. */
   childIds: { saved: Set<number>; pendingAdd: Set<number>; pendingRemove: Set<number> };
   handleChildToggle: (toggled: CollectionListModel) => void;
   handleAddNewChild: () => Promise<void>;

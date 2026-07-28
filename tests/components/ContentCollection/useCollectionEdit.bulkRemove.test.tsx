@@ -24,7 +24,6 @@ import { deleteImages, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionModel,
-  CollectionType,
   type CollectionUpdateResponseDTO,
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
@@ -105,7 +104,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     slug: 'smith-wedding',
     title: 'Smith Wedding',
     description: 'A description',
-    type: CollectionType.PORTFOLIO,
     isClient: false,
     isBlog: false,
     locations: [],

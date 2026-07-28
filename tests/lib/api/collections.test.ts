@@ -588,8 +588,8 @@ describe('admin kind writes — boolean-only wire contract', () => {
   });
 
   it('createCollection sends no kind keys at all for an ordinary collection', async () => {
-    // The backend folds an absent base to MISC (CollectionTypeCompat.resolve). PORTFOLIO has
-    // no successor concept under the typeless model, so there is nothing to send.
+    // PORTFOLIO has no successor concept under the typeless model, so there is nothing to send:
+    // an ordinary collection is simply one that is neither a client gallery nor a blog.
     (global.fetch as jest.Mock).mockResolvedValue(
       mockSuccessResponse({ collection: createCollection(1) })
     );

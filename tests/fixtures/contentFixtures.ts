@@ -1,4 +1,4 @@
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import type {
   AnyContentModel,
   ContentCollectionModel,
@@ -154,7 +154,6 @@ export const createCollectionModel = (
   overrides?: Partial<CollectionModel>
 ): CollectionModel => ({
   id,
-  type: CollectionType.PORTFOLIO,
   isClient: false,
   isBlog: false,
   title: `Collection ${id}`,

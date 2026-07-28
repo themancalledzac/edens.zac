@@ -11,7 +11,7 @@ import { render, screen } from '@testing-library/react';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
 import { collectionPublicLabel } from '@/app/components/ui/Badge/Badge';
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type ContentParallaxImageModel } from '@/app/types/Content';
 import { logger } from '@/app/utils/logger';
@@ -46,7 +46,6 @@ function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionMod
     id: 1,
     slug: 'paris-2025',
     title: 'Paris 2025',
-    type: CollectionType.BLOG,
     isClient: false,
     isBlog: true,
     locations: [],

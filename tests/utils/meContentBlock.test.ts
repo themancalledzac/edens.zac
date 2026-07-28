@@ -1,4 +1,4 @@
-import { type CollectionModel, CollectionType } from '@/app/types/Collection';
+import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { buildMeContentBlock, ME_TILE_ID } from '@/app/utils/meContentBlock';
 
@@ -7,7 +7,6 @@ function makeUserPage(overrides: Partial<CollectionModel> = {}): CollectionModel
     id: 99,
     slug: 'user',
     title: 'Jane Eden',
-    type: CollectionType.PORTFOLIO,
     isClient: false,
     isBlog: false,
     locations: [],
