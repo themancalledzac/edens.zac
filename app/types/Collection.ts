@@ -418,6 +418,14 @@ export interface GeneralMetadataDTO {
  */
 export interface CollectionUpdateResponseDTO {
   collection: CollectionModel;
+  /**
+   * Server-derived parent-ness over the WHOLE content graph. Optional so the page degrades to
+   * the content-derived answer against a pre-U4 backend; from U4's deploy onward it is always
+   * present and is the only correct answer for a collection with more than 500 content rows.
+   */
+  hasChildren?: boolean;
+  /** Complete child id list in order_index order; NOT bounded by the 500-item page window. */
+  childCollectionIds?: number[];
   // Metadata fields are at root level, not nested
   tags?: GeneralMetadataDTO['tags'];
   people?: GeneralMetadataDTO['people'];
