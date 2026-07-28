@@ -115,10 +115,13 @@ describe('CollectionPageClient — image-derived filters (D7)', () => {
     expect(screen.getByTestId('grid')).toHaveAttribute('data-highly-rated', 'true');
   });
 
-  it('still suppresses image-derived dimensions when the page has no images', () => {
+  it('mounts no filter provider at all when the page has no images', () => {
     render(<CollectionPageClient collection={makeImagelessParent()} />);
     const grid = screen.getByTestId('grid');
-    // No images -> no filterable image dimensions -> the provider value is null.
+    // Not a suppression branch: cameras/lenses/lensTypes are sourced from `allImages` alone, so
+    // with no images every dimension already has zero values and `hasFilterableOptions` is false,
+    // which leaves the provider unmounted.
     expect(grid).toHaveAttribute('data-cameras', 'NO_CONTEXT');
+    expect(grid).toHaveAttribute('data-highly-rated', 'NO_CONTEXT');
   });
 });
