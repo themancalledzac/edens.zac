@@ -19,6 +19,7 @@ import {
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
+import { createCollectionContent } from '@/tests/fixtures/contentFixtures';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: mockRouterReplace }),
@@ -791,6 +792,40 @@ describe('useCollectionEdit — handler tests', () => {
       const { result } = renderEdit({ enabled: true });
       await waitFor(() => expect(result.current.isLoadingState).toBe(false));
       expect(result.current.allCollections).toEqual([]);
+    });
+  });
+
+  describe('originalChildIds — server list vs page-window content scan', () => {
+    // `childIds.saved` is the only exposure of the memo; it is `new Set(originalChildIds)`.
+    async function renderWithServerChildIds(childCollectionIds?: number[]) {
+      mockGetCollectionUpdateMetadata.mockResolvedValue({
+        ...makeResponse({
+          slug: 'big-parent',
+          content: [createCollectionContent(1, { referencedCollectionId: 11 })],
+        }),
+        childCollectionIds,
+      });
+      const { result } = renderEdit({
+        enabled: true,
+        collection: makeCollection({ slug: 'big-parent' }),
+      });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+      return result;
+    }
+
+    it('uses the server child id list when present, not the page-window content scan', async () => {
+      const result = await renderWithServerChildIds([11, 12, 13]);
+      expect([...result.current.childIds.saved]).toEqual([11, 12, 13]);
+    });
+
+    it('falls back to the content scan when the server field is absent', async () => {
+      const result = await renderWithServerChildIds();
+      expect([...result.current.childIds.saved]).toEqual([11]);
+    });
+
+    it('treats an empty server list as authoritative, not as absent', async () => {
+      const result = await renderWithServerChildIds([]);
+      expect([...result.current.childIds.saved]).toEqual([]);
     });
   });
 });

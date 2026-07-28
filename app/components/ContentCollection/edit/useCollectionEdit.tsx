@@ -1046,12 +1046,20 @@ export function useCollectionEdit({
     }
   }, [collection, router]);
 
+  /**
+   * The saved child ids the save diff is computed against. Prefers the server-supplied list,
+   * which covers the whole content graph; the content scan is only a fallback for payloads that
+   * predate it and is bounded by `CollectionPageWrapper`'s 500-item fetch, so on a larger
+   * collection it would read as an intentional removal of every child past that bound. `??`, not
+   * `||`: an empty server list means "no children", and must not fall through to the scan.
+   */
   const originalChildIds = useMemo(
     () =>
+      currentState?.childCollectionIds ??
       (collection.content ?? [])
         .filter(isContentCollection)
         .map(block => block.referencedCollectionId),
-    [collection.content]
+    [currentState?.childCollectionIds, collection.content]
   );
   const {
     savedIds: originalCollectionIds,
