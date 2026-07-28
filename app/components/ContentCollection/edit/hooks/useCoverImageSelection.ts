@@ -14,7 +14,6 @@ import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import { type CollectionModel, type CollectionUpdateResponseDTO } from '@/app/types/Collection';
 import { type AnyContentModel, type ContentImageModel } from '@/app/types/Content';
 import { handleApiError } from '@/app/utils/apiUtils';
-import { isParentCollection } from '@/app/utils/contentTypeGuards';
 
 import { COVER_IMAGE_FLASH_DURATION, handleCoverImageSelection } from '../collectionEditUtils';
 
@@ -49,9 +48,13 @@ export function useCoverImageSelection({
     async (imageId: number) => {
       if (!collection) return;
 
-      const imagePool = isParentCollection(collection)
-        ? (childCollectionImages as AnyContentModel[] | undefined)
-        : collection.content;
+      // UNION, not XOR (D3): a collection may hold its own images AND child-collection refs at
+      // the same time, so both are legitimate cover sources. This pool VALIDATES the pick, so
+      // narrowing it to one side would reject a legitimate cover, not just hide it in the picker.
+      const imagePool: AnyContentModel[] = [
+        ...(collection.content ?? []),
+        ...((childCollectionImages ?? []) as AnyContentModel[]),
+      ];
       const result = handleCoverImageSelection(imageId, imagePool);
 
       if (!result.success) {
