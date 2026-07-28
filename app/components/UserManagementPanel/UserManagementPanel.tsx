@@ -8,6 +8,7 @@ import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
+import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserModal';
 import { UserForm } from '@/app/components/UserForm/UserForm';
 import { listUsers } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
@@ -20,7 +21,8 @@ type View = { mode: 'list' } | { mode: 'create' } | { mode: 'edit'; user: AdminU
  * Tall, self-contained admin panel that owns the user list and swaps its body between a scrollable
  * list, a create form, and an edit form — all in the same fixed-size space. Lives on the `/admin`
  * hub. Per-row "Update" opens edit-in-place; "Reset" reuses {@link GenerateInviteButton}; clicking
- * the rest of a row navigates to `/admin/users/[id]`.
+ * the rest of a row navigates to `/admin/users/[id]`. Tag-only PERSON rows are not navigable and
+ * instead offer "Merge…" (fold into an existing account) and "Upgrade" (promote in place).
  */
 export function UserManagementPanel() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export function UserManagementPanel() {
   const [view, setView] = useState<View>({ mode: 'list' });
   const [showPeople, setShowPeople] = useState(false);
   const [mergeFor, setMergeFor] = useState<AdminUserSummary | null>(null);
+  const [upgradeFor, setUpgradeFor] = useState<AdminUserSummary | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -134,9 +137,14 @@ export function UserManagementPanel() {
                 )}
                 <div className={styles.rowActions}>
                   {user.status === 'PERSON' ? (
-                    <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>
-                      Merge…
-                    </Button>
+                    <>
+                      <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>
+                        Merge…
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setUpgradeFor(user)}>
+                        Upgrade
+                      </Button>
+                    </>
                   ) : (
                     <>
                       <Button
@@ -167,6 +175,17 @@ export function UserManagementPanel() {
           onClose={() => setMergeFor(null)}
           onMerged={async () => {
             setMergeFor(null);
+            await revalidateMetadataCache();
+            void refresh();
+          }}
+        />
+      )}
+
+      {view.mode === 'list' && upgradeFor && (
+        <UpgradeUserModal
+          source={upgradeFor}
+          onClose={() => setUpgradeFor(null)}
+          onUpgraded={async () => {
             await revalidateMetadataCache();
             void refresh();
           }}
