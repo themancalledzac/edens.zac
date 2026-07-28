@@ -1322,6 +1322,21 @@ describe('applyCollectionFilters', () => {
 
     expect(result.map(c => c.id)).toEqual([4001]);
   });
+
+  it('Highly Rated on a mixed page filters images but keeps every unrated child card', () => {
+    // The backend does not serialize a rating onto collection refs, so minRating must not
+    // wipe the page's only navigation into its sub-collections.
+    const child1 = makeCollectionRef({ id: 5001 });
+    const child2 = makeCollectionRef({ id: 5002 });
+    const child3 = makeCollectionRef({ id: 5003 });
+    const rated = makeImage({ id: 5, rating: 5 });
+    const unrated = makeImage({ id: 6, rating: 1 });
+    const mixed: AnyContentModel[] = [child1, rated, child2, unrated, child3];
+
+    const result = applyCollectionFilters(mixed, [rated, unrated], { minRating: 4 }, []);
+
+    expect(result.map(c => c.id)).toEqual([5001, 5, 5002, 5003]);
+  });
 });
 
 describe('collectionRefMatchesCriteria', () => {
@@ -1345,10 +1360,19 @@ describe('collectionRefMatchesCriteria', () => {
     expect(collectionRefMatchesCriteria(ref, { tags: ['Italy', 'Iceland'] })).toBe(true);
   });
 
-  it('respects minRating', () => {
+  it('respects minRating when the ref carries an explicit rating', () => {
     const ref = makeCollectionRef({ rating: 3 });
     expect(collectionRefMatchesCriteria(ref, { minRating: 4 })).toBe(false);
     expect(collectionRefMatchesCriteria(ref, { minRating: 3 })).toBe(true);
+  });
+
+  it('passes an UNRATED ref through minRating rather than treating it as rating 0', () => {
+    // The backend's collection-ref DTO does not serialize a rating; treating the absent
+    // field as 0 would make "Highly Rated" delete every child card on a mixed page.
+    expect(collectionRefMatchesCriteria(makeCollectionRef(), { minRating: 4 })).toBe(true);
+    expect(
+      collectionRefMatchesCriteria(makeCollectionRef({ rating: null }), { minRating: 4 })
+    ).toBe(true);
   });
 
   it('returns true when no collection-applicable criteria are set', () => {

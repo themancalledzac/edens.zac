@@ -104,7 +104,8 @@ export default function CollectionContentRenderer({
   const parallaxRef = useParallax({ enableParallax });
 
   // COLLECTION tiles navigate via href; IMAGE/GIF fullscreen stays on onClick. `hasClickHandler`
-  // mirrors the guard logic in handleClick (TEXT/reorder produce no action).
+  // mirrors the guard logic in handleClick (TEXT/reorder produce no action). currentCollectionId
+  // is the manage/public discriminant — on the manage grid onImageClick is the router.
   const { hasClickHandler, isSlugNav } = getClickEligibility({
     contentType,
     isReorderMode,
@@ -112,6 +113,7 @@ export default function CollectionContentRenderer({
     onImageClick,
     enableFullScreenView,
     onFullScreenImageClick,
+    currentCollectionId,
   });
 
   const handleClick = useCallback(() => {

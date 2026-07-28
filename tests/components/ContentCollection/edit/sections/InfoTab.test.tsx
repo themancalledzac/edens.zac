@@ -159,6 +159,11 @@ describe('InfoTab — cover picker offers the union of own and child images (D3)
 
   it('never offers a non-image block as a cover candidate', () => {
     renderPicker();
-    expect(screen.queryByRole('button', { name: /child-90/ })).not.toBeInTheDocument();
+    // childRef(90) carries no `title`, so if it slipped past the isContentImage filter it would
+    // render with the picker's fallback accessible name. Asserting on the slug would be vacuous:
+    // the slug never reaches the aria-label.
+    expect(screen.queryByRole('button', { name: 'Set image as cover' })).not.toBeInTheDocument();
+    // Own 1, Own 2 (deduped), Child 500 — the COLLECTION ref excluded.
+    expect(screen.getAllByRole('button', { name: /as cover$/ })).toHaveLength(3);
   });
 });

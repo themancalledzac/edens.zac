@@ -255,12 +255,19 @@ export function hasChildCollectionContent(
 
 /**
  * Check if a collection acts as a "parent": it contains child-collection refs. Parent collections
- * source cover-image candidates from their children, expose the Gallery Access section, and offer
- * to propagate their password to child galleries.
+ * expose the Gallery Access section and offer to propagate their password to child galleries.
+ * Cover-image candidates are NOT gated on this: since D3 every collection picks from the union of
+ * its own images and its children's.
  *
  * Prefers the server-derived `hasChildren`, which is computed over the whole content graph. The
  * content scan is the fallback for payloads that predate it, and is bounded by the page window
  * (`CollectionPageWrapper` fetches `size=500`), so it under-reports on large collections.
+ *
+ * There is no longer a legacy PARENT enum arm. Under the typeless model a collection has no
+ * declared parent-ness to fall back on — it IS a parent exactly when it holds children — so a
+ * childless collection reads false here by design. The one consumer that still needs to reach a
+ * childless collection, the Gallery Access section, unions this with the stored `isClient`
+ * discriminator rather than widening this guard (blast radius R12).
  */
 export function isParentCollection(
   collection: (Pick<CollectionModel, 'content'> & { hasChildren?: boolean }) | null | undefined

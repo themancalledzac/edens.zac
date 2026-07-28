@@ -107,6 +107,60 @@ describe('CollectionContentRenderer — slug navigation branch', () => {
     fireEvent.click(link);
     expect(onImageClick).not.toHaveBeenCalled();
   });
+
+  it('on the MANAGE grid the card is NOT a public link and routes through onImageClick', () => {
+    // EditModeLayer sets onImageClick grid-wide AND threads currentCollectionId. Its handler
+    // pushes manageHref(childSlug), so an admin drilling into a child stays in manage mode.
+    const onImageClick = jest.fn();
+    const { container } = render(
+      <CollectionContentRenderer
+        {...imageProps}
+        contentType="COLLECTION"
+        isCollection
+        hasSlug="dolomites-2025"
+        overlayText="Dolomites"
+        onImageClick={onImageClick}
+        currentCollectionId={42}
+      />
+    );
+    expect(container.querySelector('a[href="/dolomites-2025"]')).toBeNull();
+    const wrapper = container.querySelector('[data-image-wrapper]')!;
+    fireEvent.click(wrapper.querySelector('div')!);
+    expect(onImageClick).toHaveBeenCalledWith(7);
+  });
+
+  it('on the MANAGE grid a converted card (contentType IMAGE + slug) also routes to the handler', () => {
+    const onImageClick = jest.fn();
+    const { container } = render(
+      <CollectionContentRenderer
+        {...imageProps}
+        hasSlug="dolomites-2025"
+        overlayText="Dolomites"
+        onImageClick={onImageClick}
+        currentCollectionId={42}
+      />
+    );
+    expect(container.querySelector('a[href="/dolomites-2025"]')).toBeNull();
+    fireEvent.click(container.querySelector('[data-image-wrapper]')!.querySelector('div')!);
+    expect(onImageClick).toHaveBeenCalledWith(7);
+  });
+
+  it('on the MANAGE grid without onImageClick the card falls back to a slug link', () => {
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        contentType="COLLECTION"
+        isCollection
+        hasSlug="dolomites-2025"
+        overlayText="Dolomites"
+        currentCollectionId={42}
+      />
+    );
+    expect(screen.getByRole('link', { name: 'Dolomites' })).toHaveAttribute(
+      'href',
+      '/dolomites-2025'
+    );
+  });
 });
 
 describe('CollectionContentRenderer — GIF branch', () => {

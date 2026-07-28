@@ -118,15 +118,21 @@ export interface UseCollectionEditResult {
   currentCoverImageId?: number;
   /** The collection's saved cover image, shown in the Edit sheet (cover changes save immediately). */
   displayedCoverImage: ContentImageModel | null | undefined;
-  /** Child-collection images a PARENT picks its cover from. */
+  /**
+   * Images sourced from this collection's child collections. Since D3 this is one ARM of the
+   * cover-candidate union every collection picks from — the other being the collection's own
+   * images — not a parent-only substitute for them.
+   */
   childCollectionImages?: ContentImageModel[] | null;
   /**
-   * True for parent collections (they hold child-collection refs). Gates exactly two things: the
-   * Gallery Access section (in union with `updateData.isClient`) and the
-   * password-propagate-to-children confirm. It does NOT gate the Presentation controls or the
-   * cover picker — both were deliberately un-gated (D3/D4) when the "a parent holds only child
-   * collections" invariant was removed. Server-derived when the payload carries `hasChildren`,
-   * content-derived otherwise.
+   * True for parent collections (they hold child-collection refs). Server-derived when the
+   * payload carries `hasChildren`, which covers the whole content graph; falls back to a scan
+   * of the loaded content otherwise. The legacy PARENT enum arm is gone with the enum itself.
+   *
+   * Gates exactly two things: the Gallery Access section (in union with `updateData.isClient`)
+   * and the password-propagate-to-children confirm. It does NOT gate density/display (D4) or
+   * the cover picker's source pool (D3) — both are unconditional now, so do NOT reintroduce a
+   * parent gate on them.
    */
   isParent: boolean;
 
