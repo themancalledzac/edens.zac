@@ -27,6 +27,7 @@ import {
   type MergeResult,
   type UserCreateRequest,
   type UserUpdateRequest,
+  type UserUpgradeRequest,
 } from '@/app/types/User';
 
 /**
@@ -84,6 +85,29 @@ export async function regenerateInvite(userId: number): Promise<CreateUserRespon
   const result = await fetchAdminPostJsonApi<CreateUserResponse>(`/users/${userId}/invite`, {});
   if (!result) {
     throw new ApiError('Unexpected empty response from regenerate-invite', 500);
+  }
+  return result;
+}
+
+/**
+ * Promote a tag-only `PERSON` identity in place into an `INVITED` account, keeping its existing
+ * image tags and collections. Requires an `email` (a PERSON has none) so the invite can be issued;
+ * the PERSON's existing display name is retained by the backend. Distinct from {@link mergeUser},
+ * which folds a PERSON into an existing account and deletes it.
+ *
+ * The address is trimmed and lowercased here rather than at the call site: the server lowercases
+ * before persisting, so normalizing at this single boundary guarantees the address callers send is
+ * byte-for-byte the one that gets stored and that the returned invite link is bound to.
+ *
+ * @returns `CreateUserResponse` with the fresh `inviteUrl` and the upgraded `userId`.
+ * @throws `ApiError(404)` when the user no longer exists.
+ * @throws `ApiError(409)` when the email is already taken, or the target is not a PERSON.
+ */
+export async function upgradeUser(userId: number, email: string): Promise<CreateUserResponse> {
+  const body: UserUpgradeRequest = { email: email.trim().toLowerCase() };
+  const result = await fetchAdminPostJsonApi<CreateUserResponse>(`/users/${userId}/upgrade`, body);
+  if (!result) {
+    throw new ApiError('Unexpected empty response from upgrade-user', 500);
   }
   return result;
 }

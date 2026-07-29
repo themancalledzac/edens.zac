@@ -141,22 +141,6 @@ export function pickImageDimensions(
 }
 
 /**
- * Validation function to ensure a Content has required fields
- */
-export function validateContentBlock(block: unknown): block is Content {
-  if (!block || typeof block !== 'object') return false;
-
-  const candidate = block as Record<string, unknown>;
-
-  return (
-    typeof candidate.id === 'number' &&
-    typeof candidate.contentType === 'string' &&
-    ['IMAGE', 'TEXT', 'GIF', 'COLLECTION', 'PANEL'].includes(candidate.contentType) &&
-    typeof candidate.orderIndex === 'number'
-  );
-}
-
-/**
  * Get aspect ratio for content item
  */
 export function getAspectRatio(item: Content): number {

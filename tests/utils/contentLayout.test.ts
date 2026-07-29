@@ -13,7 +13,6 @@ import type {
 } from '@/app/types/Content';
 import {
   clampParallaxDimensions,
-  convertCollectionContentToImage,
   convertCollectionContentToParallax,
   createHeaderRow,
   hasRenderableContent,
@@ -472,7 +471,7 @@ describe('convertCollectionContentToParallax — badge/kind carry-through', () =
   });
 });
 
-describe('extractCollectionDimensions (tested via convertCollectionContentToParallax and convertCollectionContentToImage)', () => {
+describe('extractCollectionDimensions (tested via convertCollectionContentToParallax)', () => {
   describe('dimension extraction', () => {
     it('should prioritize imageWidth/imageHeight over width/height in convertCollectionContentToParallax', () => {
       // Use dimensions within the parallax AR clamp range [4:5, 5:4] to isolate priority behavior
@@ -516,46 +515,6 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
       expect(result.height).toBe(900);
     });
 
-    it('should prioritize imageWidth/imageHeight over width/height in convertCollectionContentToImage', () => {
-      const collection = createCollectionContent(1, {
-        coverImage: {
-          id: 10,
-          contentType: 'IMAGE',
-          orderIndex: 0,
-          imageUrl: 'https://example.com/cover.jpg',
-          imageWidth: 1920,
-          imageHeight: 1080,
-          width: 800, // Should be ignored
-          height: 600, // Should be ignored
-          locations: [],
-        },
-      });
-      const result = convertCollectionContentToImage(collection);
-      expect(result.imageWidth).toBe(1920);
-      expect(result.imageHeight).toBe(1080);
-      expect(result.width).toBe(1920);
-      expect(result.height).toBe(1080);
-    });
-
-    it('should fall back to width/height when imageWidth/imageHeight are missing in convertCollectionContentToImage', () => {
-      const collection = createCollectionContent(1, {
-        coverImage: {
-          id: 10,
-          contentType: 'IMAGE',
-          orderIndex: 0,
-          imageUrl: 'https://example.com/cover.jpg',
-          width: 800,
-          height: 600,
-          locations: [],
-        },
-      });
-      const result = convertCollectionContentToImage(collection);
-      expect(result.imageWidth).toBe(800);
-      expect(result.imageHeight).toBe(600);
-      expect(result.width).toBe(800);
-      expect(result.height).toBe(600);
-    });
-
     it('should default to 1:1 placeholder dimensions when cover has none in convertCollectionContentToParallax', () => {
       const collection = createCollectionContent(1, {
         coverImage: {
@@ -575,23 +534,6 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
       expect(result.height).toBe(1000);
     });
 
-    it('should handle undefined dimensions in convertCollectionContentToImage', () => {
-      const collection = createCollectionContent(1, {
-        coverImage: {
-          id: 10,
-          contentType: 'IMAGE',
-          orderIndex: 0,
-          imageUrl: 'https://example.com/cover.jpg',
-          locations: [],
-        },
-      });
-      const result = convertCollectionContentToImage(collection);
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
-      expect(result.width).toBeUndefined();
-      expect(result.height).toBeUndefined();
-    });
-
     it('should default to 1:1 placeholder dimensions when coverImage is null in convertCollectionContentToParallax', () => {
       const collection = createCollectionContent(1, {
         coverImage: null,
@@ -601,15 +543,6 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
       expect(result.imageHeight).toBe(1000);
     });
 
-    it('should handle null coverImage in convertCollectionContentToImage', () => {
-      const collection = createCollectionContent(1, {
-        coverImage: null,
-      });
-      const result = convertCollectionContentToImage(collection);
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
-    });
-
     it('should default to 1:1 placeholder dimensions when coverImage is undefined in convertCollectionContentToParallax', () => {
       const collection = createCollectionContent(1, {
         coverImage: undefined,
@@ -617,15 +550,6 @@ describe('extractCollectionDimensions (tested via convertCollectionContentToPara
       const result = convertCollectionContentToParallax(collection);
       expect(result.imageWidth).toBe(1000);
       expect(result.imageHeight).toBe(1000);
-    });
-
-    it('should handle undefined coverImage in convertCollectionContentToImage', () => {
-      const collection = createCollectionContent(1, {
-        coverImage: undefined,
-      });
-      const result = convertCollectionContentToImage(collection);
-      expect(result.imageWidth).toBeUndefined();
-      expect(result.imageHeight).toBeUndefined();
     });
   });
 });
@@ -708,23 +632,6 @@ describe('clampParallaxDimensions', () => {
     const result = convertCollectionContentToParallax(collection);
     expect(result.imageWidth).toBe(2000);
     expect(result.imageHeight).toBe(1600); // clamped from 1000
-  });
-
-  it('should NOT clamp dimensions in convertCollectionContentToImage (admin path)', () => {
-    const collection = createCollectionContent(1, {
-      coverImage: {
-        id: 10,
-        contentType: 'IMAGE',
-        orderIndex: 0,
-        imageUrl: 'https://example.com/tall.jpg',
-        imageWidth: 1000,
-        imageHeight: 2000,
-        locations: [],
-      },
-    });
-    const result = convertCollectionContentToImage(collection);
-    expect(result.imageWidth).toBe(1000);
-    expect(result.imageHeight).toBe(2000); // NOT clamped
   });
 });
 
@@ -832,54 +739,6 @@ describe('hasRenderableContent', () => {
   it('returns true for non-IMAGE content (TEXT/GIF carry no imageUrl requirement)', () => {
     expect(hasRenderableContent(createTextContent(1, { visible: true }))).toBe(true);
     expect(hasRenderableContent(createGifContent(1, { visible: true }))).toBe(true);
-  });
-});
-
-describe('convertCollectionContentToImage', () => {
-  it('should convert collection to IMAGE type using coverImage dimensions', () => {
-    const col = createCollectionContent(1);
-    const result = convertCollectionContentToImage(col);
-    expect(result.contentType).toBe('IMAGE');
-    expect(result.imageWidth).toBe(1920);
-    expect(result.imageHeight).toBe(1080);
-    expect(result.width).toBe(1920);
-    expect(result.height).toBe(1080);
-  });
-
-  it('should set overlayText from collection title', () => {
-    const col = createCollectionContent(1, { title: 'My Gallery' });
-    const result = convertCollectionContentToImage(col);
-    expect(result.overlayText).toBe('My Gallery');
-  });
-
-  it('should fall back to slug for overlayText when title is absent', () => {
-    const col = createCollectionContent(1, { title: undefined, slug: 'my-gallery' });
-    const result = convertCollectionContentToImage(col);
-    expect(result.overlayText).toBe('my-gallery');
-  });
-
-  it('should preserve orderIndex from collection', () => {
-    const col = createCollectionContent(1, { orderIndex: 7 });
-    const result = convertCollectionContentToImage(col);
-    expect(result.orderIndex).toBe(7);
-  });
-
-  it('should preserve visible from collection', () => {
-    const col = createCollectionContent(1, { visible: false });
-    const result = convertCollectionContentToImage(col);
-    expect(result.visible).toBe(false);
-  });
-
-  it('should default visible to true when collection visible is undefined', () => {
-    const col = createCollectionContent(1, { visible: undefined });
-    const result = convertCollectionContentToImage(col);
-    expect(result.visible).toBe(true);
-  });
-
-  it('should produce an empty collections array', () => {
-    const col = createCollectionContent(1);
-    const result = convertCollectionContentToImage(col);
-    expect(result.collections).toEqual([]);
   });
 });
 

@@ -8,6 +8,16 @@ export interface UserCreateRequest {
   displayName?: string;
 }
 
+/**
+ * Request body for `POST /api/admin/users/{id}/upgrade` — promotes a tag-only `PERSON` identity in
+ * place into an `INVITED` account. `email` is required (a PERSON has `email: null`, and the invite
+ * needs a login address) and must already be normalized to trimmed lowercase, matching what the
+ * server persists; the PERSON's existing display name is kept, so it is not sent.
+ */
+export interface UserUpgradeRequest {
+  email: string;
+}
+
 /** Response body for `POST /api/admin/users` (HTTP 201) and `POST /api/admin/users/{id}/invite`. */
 export interface CreateUserResponse {
   userId: number;

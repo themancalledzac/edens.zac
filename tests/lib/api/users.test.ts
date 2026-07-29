@@ -18,6 +18,7 @@ import {
   mergeUser,
   regenerateInvite,
   updateUser,
+  upgradeUser,
 } from '@/app/lib/api/users';
 import {
   type AcceptInviteRequest,
@@ -234,6 +235,61 @@ describe('regenerateInvite', () => {
     (core.fetchAdminPostJsonApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
 
     await expect(regenerateInvite(999)).rejects.toMatchObject({ name: 'ApiError', status: 404 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// upgradeUser
+// ---------------------------------------------------------------------------
+
+describe('upgradeUser', () => {
+  it('POSTs the email to /users/{id}/upgrade and returns the invite link', async () => {
+    const response = { userId: 7, inviteUrl: 'http://localhost:3000/invite/upgraded' };
+    (core.fetchAdminPostJsonApi as jest.Mock).mockResolvedValue(response);
+
+    const result = await upgradeUser(7, 'person@example.com');
+
+    expect(core.fetchAdminPostJsonApi).toHaveBeenCalledWith('/users/7/upgrade', {
+      email: 'person@example.com',
+    });
+    expect(result).toEqual(response);
+  });
+
+  it('trims and lowercases the email so it matches what the backend persists', async () => {
+    (core.fetchAdminPostJsonApi as jest.Mock).mockResolvedValue({ userId: 7, inviteUrl: 'u' });
+
+    await upgradeUser(7, '  Person@Example.COM  ');
+
+    expect(core.fetchAdminPostJsonApi).toHaveBeenCalledWith('/users/7/upgrade', {
+      email: 'person@example.com',
+    });
+  });
+
+  it('throws ApiError(500) when the POST yields an empty body', async () => {
+    (core.fetchAdminPostJsonApi as jest.Mock).mockResolvedValue(null);
+
+    await expect(upgradeUser(7, 'person@example.com')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 500,
+    });
+  });
+
+  it('propagates ApiError(404) for an unknown id', async () => {
+    (core.fetchAdminPostJsonApi as jest.Mock).mockRejectedValue(new ApiError('Not Found', 404));
+
+    await expect(upgradeUser(999, 'x@y.com')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 404,
+    });
+  });
+
+  it('propagates ApiError(409) for a taken email or non-PERSON target', async () => {
+    (core.fetchAdminPostJsonApi as jest.Mock).mockRejectedValue(new ApiError('Conflict', 409));
+
+    await expect(upgradeUser(2, 'taken@y.com')).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 409,
+    });
   });
 });
 

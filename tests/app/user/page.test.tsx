@@ -111,7 +111,6 @@ function findHeaderBlock(node: any): any {
 function seedApis() {
   (getUserPage as jest.Mock).mockResolvedValue({
     slug: 'user',
-    type: 'PARENT',
     content: [collectionBlock(1), collectionBlock(2), imageBlock(3), gifBlock(4)],
   });
   (listSavedImagesServer as jest.Mock).mockResolvedValue([]);
@@ -189,7 +188,6 @@ describe('UserPage', () => {
     seedApis();
     (getUserPage as jest.Mock).mockResolvedValue({
       slug: 'user',
-      type: 'PARENT',
       title: 'Your Space',
       description: 'Photos I have been tagged in.',
       coverImage: { id: 42, contentType: 'IMAGE', imageUrl: 'https://cdn/cover.jpg' },
@@ -220,7 +218,6 @@ describe('UserPage', () => {
     seedApis();
     (getUserPage as jest.Mock).mockResolvedValue({
       slug: 'user',
-      type: 'PARENT',
       description: 'A user with a bio but no tagged image yet.',
       content: [],
     });

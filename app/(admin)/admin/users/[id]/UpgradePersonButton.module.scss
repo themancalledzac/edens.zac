@@ -1,0 +1,11 @@
+/* UpgradePersonButton — action row for promoting a tag-only PERSON from its detail page */
+
+.actions {
+  display: flex;
+  justify-content: flex-start;
+  padding: var(--space-5) var(--page-padding-mobile) 0;
+
+  @media (width >= 768px) {
+    padding: var(--space-6) 0 0;
+  }
+}

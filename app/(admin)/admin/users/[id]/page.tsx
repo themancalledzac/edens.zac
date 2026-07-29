@@ -9,11 +9,20 @@ import { getAdminUser, getUserPageById } from '@/app/lib/api/users';
 
 import { GenerateInviteButton } from '../GenerateInviteButton';
 import styles from './page.module.scss';
+import { UpgradePersonButton } from './UpgradePersonButton';
 import { UserDetailEditor } from './UserDetailEditor';
 
 export const dynamic = 'force-dynamic';
 
-/** Admin detail for a single user — header + full page view. Reached by clicking a row in the hub user panel. */
+/**
+ * Admin detail for a single user — header + full page view. Reached by clicking a row in the hub
+ * user panel.
+ *
+ * Tag-only PERSON identities have no account: no email, no invite/reset, no gallery page. They get
+ * a minimal view instead (which also guards direct-URL access), with {@link UpgradePersonButton} to
+ * promote the identity in place. Merging a PERSON into an existing account stays in the Users panel,
+ * where the survivor can be picked from the full list.
+ */
 export default async function AdminUserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const userId = Number(id);
@@ -22,8 +31,6 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
   const user = await getAdminUser(userId).catch(() => null);
   if (!user) notFound();
 
-  // Tag-only PERSON identities have no account: no email, no invite/reset, no gallery page.
-  // Render a minimal safe view (also guards direct-URL access) — merging is done from the panel.
   if (user.status === 'PERSON') {
     return (
       <PageShell pageType="collectionsCollection">
@@ -51,8 +58,11 @@ export default async function AdminUserDetailPage({ params }: { params: Promise<
           </div>
         </dl>
 
+        <UpgradePersonButton person={user} />
+
         <p className={styles.hint}>
-          Tag-only identity — merge it into an account from the Users panel.
+          Tag-only identity — upgrade it to an account here, or merge it into an existing one from
+          the Users panel.
         </p>
       </PageShell>
     );

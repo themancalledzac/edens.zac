@@ -8,7 +8,7 @@ This epic is **done.** Per-phase detail lives in [previous-work.md](previous-wor
 
 Live in `app/components/ui/`, all token-driven on one painted surface:
 
-`<Modal variant=overlay|sheet|fullscreen>` (portal, scrim, Esc, focus-trap + return, scroll-lock) · `<Button>`/`<IconButton>`/`<CloseButton>` · `<FilterToolbar>`/`<FilterChip>` · `<Dropdown<T>>` (promoted from `UnifiedMetadataSelector`) · `<Tile>`/`<NavLink>` (always a real `<a>`) · `<PageShell>`/`<CollectionHeader>` · `<Badge>` (curated public labels, no raw `CollectionType`) · the `<Field>` form set · `<StatusPage>` · `MetadataList<T>`.
+`<Modal variant=overlay|sheet|fullscreen>` (portal, scrim, Esc, focus-trap + return, scroll-lock) · `<Button>`/`<IconButton>`/`<CloseButton>` · `<FilterToolbar>`/`<FilterChip>` · `<Dropdown<T>>` (promoted from `UnifiedMetadataSelector`) · `<Tile>`/`<NavLink>` (always a real `<a>`) · `<PageShell>`/`<CollectionHeader>` · `<Badge>` (curated public labels, never a raw kind — the `CollectionType` enum it was guarding against has since been deleted outright) · the `<Field>` form set · `<StatusPage>` · `MetadataList<T>`.
 
 Plus the foundation work that rode along: canvas painted from tokens (kills the OS-dark-mode invisible-text bug), one semantic color taxonomy + `--scrim-*` / `--duration-*` / `--focus-ring`, deep-linkable fullscreen (`?image=` + history + position counter, Back-closes-modal), a public taxonomy front door, footer + breadcrumb, and admin-route gating (`/all-collections`, `/all-images`). The final consumer migration decomposed the 1099-LoC ImageMetadataModal god-component → 203-LoC orchestrator + 2 hooks + 5 subcomponents (later renamed `MetadataModal`, #170).
 

@@ -93,7 +93,7 @@ describe('contentRendererUtils', () => {
         expect(result.imageHeight).toBe(1080);
         expect(result.alt).toBe('Collection 1');
         expect(result.overlayText).toBe('Collection 1');
-        // PORTFOLIO is an internal type — suppressed from public badges.
+        // A plain collection: not isBlog and carrying no badge-mapped tag, so no public badge.
         expect(result.cardTypeBadge).toBeUndefined();
         expect(result.enableParallax).toBe(true);
         expect(result.hasSlug).toBe('collection-1');

@@ -66,8 +66,8 @@ app/
 ├── layout.tsx, page.tsx, error.tsx, not-found.tsx # Root App Router files
 ├── (admin)/ # Route group for admin pages
 │   └── collection/manage/[[...slug]]/ # Collection management
-├── [slug]/page.tsx # Dynamic collection route
-├── collectionType/[collectionType]/page.tsx # Collection type filter
+├── [slug]/page.tsx # Dynamic collection route (real collections + tag views)
+├── explore/, tag/[slug]/, location/[slug]/ # Taxonomy pages
 ├── api/ # Next.js API routes (proxy, revalidate)
 ├── components/ # React components (PascalCase directories)
 │   ├── Content/ # Core content rendering components
