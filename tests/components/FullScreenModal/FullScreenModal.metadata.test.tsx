@@ -82,17 +82,22 @@ describe('FullScreenModal — date resolution (characterization)', () => {
       img(1, { captureDate: '2024-03-01' }),
       collection({ collectionDate: '2020-01-01' })
     );
-    expect(screen.getByText('2024-03-01')).toBeInTheDocument();
+    expect(screen.getByText('March 1st, 2024')).toBeInTheDocument();
   });
 
   it('falls back to the collection collectionDate when the image has no captureDate', () => {
     renderModal(img(1, { captureDate: null }), collection({ collectionDate: '2020-01-01' }));
-    expect(screen.getByText('2020-01-01')).toBeInTheDocument();
+    expect(screen.getByText('January 1st, 2020')).toBeInTheDocument();
   });
 
   it('GIF blocks ignore any image fields and fall back to the collection collectionDate', () => {
     renderModal(gif(1), collection({ collectionDate: '2019-06-15' }));
-    expect(screen.getByText('2019-06-15')).toBeInTheDocument();
+    expect(screen.getByText('June 15th, 2019')).toBeInTheDocument();
+  });
+
+  it('drops the time component from a captureDate carrying one', () => {
+    renderModal(img(1, { captureDate: '2023-10-13T02:32:00' }), collection({}));
+    expect(screen.getByText('October 13th, 2023')).toBeInTheDocument();
   });
 });
 

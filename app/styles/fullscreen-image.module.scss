@@ -278,6 +278,19 @@
   }
 }
 
+// Sits directly under the title. Italic and slightly dimmed so a sentence of prose reads as
+// the photographer's note rather than another metadata field.
+.metadataCaption {
+  margin-bottom: 8px;
+  color: var(--scrim-light-70);
+  font-style: italic;
+  line-height: 1.4;
+
+  @media (width > 768px) and (height >= 600px) {
+    margin-bottom: 10px;
+  }
+}
+
 .metadataSeparator {
   color: var(--scrim-light-50);
   margin: 0 4px;

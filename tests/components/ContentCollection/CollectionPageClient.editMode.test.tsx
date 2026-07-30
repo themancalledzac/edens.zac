@@ -506,7 +506,7 @@ describe('CollectionPageClient — editMode true', () => {
       expect(lastCall.onImageClick).toBeUndefined();
     });
 
-    it('disables the browse cells while pending, but keeps Cancel (exit manage) enabled', async () => {
+    it('disables the browse cells while pending, but keeps Close (exit manage) enabled', async () => {
       mockGetCollectionUpdateMetadata.mockReturnValue(pendingForever());
       render(<CollectionPageClient collection={makeCollection()} editMode />);
       await flush();
@@ -515,7 +515,7 @@ describe('CollectionPageClient — editMode true', () => {
       expect(screen.getByRole('button', { name: 'Reorder' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Close' })).toBeEnabled();
     });
 
     it('mounts inline editors, enables the cells, and routes taps once the DTO resolves', async () => {

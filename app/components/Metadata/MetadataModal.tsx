@@ -24,6 +24,7 @@ import styles from './MetadataModal.module.scss';
 import CameraSettingsSection from './sections/CameraSettingsSection';
 import EssentialInfoSection from './sections/EssentialInfoSection';
 import MediaPreview from './sections/MediaPreview';
+import ReadOnlyInfoSection from './sections/ReadOnlyInfoSection';
 import TagsPeopleSection from './sections/TagsPeopleSection';
 import type { EditableContent } from './types';
 
@@ -182,6 +183,7 @@ export default function MetadataModal({
                   availableTags={availableTags}
                   availablePeople={availablePeople}
                 />
+                {!isBulkEdit && <ReadOnlyInfoSection content={previewImage} />}
               </div>
 
               <div

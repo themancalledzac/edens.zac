@@ -1,6 +1,7 @@
 import {
   formatDateRange,
   formatDisplayDateRange,
+  formatLongDate,
   parseIsoDateParts,
 } from '@/app/utils/formatDateRange';
 
@@ -146,5 +147,42 @@ describe('parseIsoDateParts', () => {
   it('returns null for absent input', () => {
     expect(parseIsoDateParts(null)).toBeNull();
     expect(parseIsoDateParts('')).toBeNull();
+  });
+});
+
+describe('formatLongDate', () => {
+  it('renders a plain ISO date in long form', () => {
+    expect(formatLongDate('2023-09-13')).toBe('September 13th, 2023');
+  });
+
+  it('drops a time component (the shape captureDate arrives in)', () => {
+    expect(formatLongDate('2023-10-13T02:32:00')).toBe('October 13th, 2023');
+  });
+
+  it('applies st/nd/rd suffixes to the days that take them', () => {
+    expect(formatLongDate('2024-01-01')).toBe('January 1st, 2024');
+    expect(formatLongDate('2024-01-02')).toBe('January 2nd, 2024');
+    expect(formatLongDate('2024-01-03')).toBe('January 3rd, 2024');
+    expect(formatLongDate('2024-01-21')).toBe('January 21st, 2024');
+    expect(formatLongDate('2024-01-22')).toBe('January 22nd, 2024');
+    expect(formatLongDate('2024-01-23')).toBe('January 23rd, 2024');
+    expect(formatLongDate('2024-01-31')).toBe('January 31st, 2024');
+  });
+
+  it('uses "th" for the 11-13 teens rather than the trailing-digit rule', () => {
+    expect(formatLongDate('2024-01-11')).toBe('January 11th, 2024');
+    expect(formatLongDate('2024-01-12')).toBe('January 12th, 2024');
+    expect(formatLongDate('2024-01-13')).toBe('January 13th, 2024');
+  });
+
+  it('returns an unparseable value verbatim rather than blanking it', () => {
+    expect(formatLongDate('not-a-date')).toBe('not-a-date');
+    expect(formatLongDate('2026-02-30')).toBe('2026-02-30');
+  });
+
+  it('returns an empty string for absent input', () => {
+    expect(formatLongDate(null)).toBe('');
+    expect(formatLongDate()).toBe('');
+    expect(formatLongDate('')).toBe('');
   });
 });
