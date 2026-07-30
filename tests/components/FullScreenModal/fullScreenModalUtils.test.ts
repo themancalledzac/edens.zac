@@ -5,6 +5,7 @@
 import {
   isGifBlock,
   resolveDisplayDate,
+  resolveDisplayFilmStock,
   resolveDisplayLocations,
 } from '@/app/components/FullScreenModal/fullScreenModalUtils';
 import type { CollectionModel, LocationModel } from '@/app/types/Collection';
@@ -136,5 +137,38 @@ describe('resolveDisplayDate', () => {
 
   it('GIF blocks return null when the collection has no collectionDate', () => {
     expect(resolveDisplayDate(gif(), collection(), true)).toBeNull();
+  });
+});
+
+describe('resolveDisplayFilmStock', () => {
+  it('joins the film stock and the labelled format', () => {
+    expect(
+      resolveDisplayFilmStock(
+        img({ isFilm: true, filmType: 'Kodak Portra 400', filmFormat: 'MM_35' }),
+        false
+      )
+    ).toBe('Kodak Portra 400 · 35mm');
+  });
+
+  it('renders whichever half is present on its own', () => {
+    expect(resolveDisplayFilmStock(img({ isFilm: true, filmType: 'Ilford HP5' }), false)).toBe(
+      'Ilford HP5'
+    );
+    expect(resolveDisplayFilmStock(img({ isFilm: true, filmFormat: 'MM_120' }), false)).toBe('120');
+  });
+
+  it('returns nothing for a digital frame, even one carrying stale film fields', () => {
+    expect(resolveDisplayFilmStock(img({ isFilm: false, filmType: 'Kodak Gold 200' }), false)).toBe(
+      ''
+    );
+    expect(resolveDisplayFilmStock(img({ filmFormat: 'MM_35' }), false)).toBe('');
+  });
+
+  it('returns nothing for GIF/MP4 blocks, which carry no film metadata', () => {
+    expect(resolveDisplayFilmStock(gif(), true)).toBe('');
+  });
+
+  it('returns nothing when the image is film but has neither field set', () => {
+    expect(resolveDisplayFilmStock(img({ isFilm: true }), false)).toBe('');
   });
 });

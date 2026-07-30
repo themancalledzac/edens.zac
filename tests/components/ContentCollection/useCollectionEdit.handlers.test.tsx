@@ -9,7 +9,7 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
-import { createGif, createImages, updateImages } from '@/app/lib/api/content';
+import { createGif, createImages, updateGif, updateImages } from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionListModel,
@@ -18,7 +18,11 @@ import {
   type GeneralMetadataDTO,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
-import { type ContentImageModel, type ContentImageUpdateResponse } from '@/app/types/Content';
+import {
+  type ContentGifModel,
+  type ContentImageModel,
+  type ContentImageUpdateResponse,
+} from '@/app/types/Content';
 import { createCollectionContent } from '@/tests/fixtures/contentFixtures';
 
 jest.mock('next/navigation', () => ({
@@ -45,6 +49,7 @@ const mockSetCollectionPeople = setCollectionPeople as jest.MockedFunction<
   typeof setCollectionPeople
 >;
 const mockUpdateImages = updateImages as jest.MockedFunction<typeof updateImages>;
+const mockUpdateGif = updateGif as jest.MockedFunction<typeof updateGif>;
 const mockCreateImages = createImages as jest.MockedFunction<typeof createImages>;
 const mockCreateGif = createGif as jest.MockedFunction<typeof createGif>;
 const mockStorageGetFull = collectionStorage.getFull as jest.MockedFunction<
@@ -268,6 +273,47 @@ describe('useCollectionEdit — handler tests', () => {
       const updateCall = mockUpdateImages.mock.calls[0]?.[0] ?? [];
       expect(updateCall).toHaveLength(1);
       expect(updateCall[0]?.id).toBe(11);
+    });
+
+    it('inherits locations to GIF/MP4 blocks lacking them, and skips content already located', async () => {
+      const locationId = 5;
+      const undatedGif = {
+        id: 21,
+        contentType: 'GIF' as const,
+        orderIndex: 1,
+        gifUrl: 'https://cdn.example.com/21.mp4',
+        locations: [],
+      } as unknown as ContentGifModel;
+      const gifAlreadyPlaced = {
+        id: 22,
+        contentType: 'GIF' as const,
+        orderIndex: 2,
+        gifUrl: 'https://cdn.example.com/22.mp4',
+        locations: [{ id: 99, name: 'Oslo', slug: 'oslo' }],
+      } as unknown as ContentGifModel;
+
+      const content = [undatedGif, gifAlreadyPlaced];
+      const responseWithLocations = makeResponse({
+        locations: [{ id: locationId, name: 'Paris', slug: 'paris' }],
+        content,
+      });
+      mockUpdateCollection.mockResolvedValue(responseWithLocations);
+      mockUpdateGif.mockResolvedValue(undatedGif);
+      mockGetCollectionUpdateMetadata.mockResolvedValue(responseWithLocations);
+
+      const collection = makeCollection({ content });
+      const { result } = renderEdit({ enabled: true, collection });
+      await waitFor(() => expect(result.current.currentState).not.toBeNull());
+
+      act(() => result.current.setUpdateField('locations', { prev: [locationId] }));
+
+      await act(async () => {
+        await result.current.handleUpdate();
+      });
+
+      await waitFor(() => expect(mockUpdateGif).toHaveBeenCalledTimes(1));
+      expect(mockUpdateGif).toHaveBeenCalledWith(21, { locations: { prev: [locationId] } });
+      expect(mockUpdateImages).not.toHaveBeenCalled();
     });
 
     it('does NOT call updateImages when the response has no locations', async () => {

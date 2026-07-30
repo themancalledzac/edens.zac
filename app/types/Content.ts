@@ -83,8 +83,8 @@ export interface ContentImageModel extends Content {
   /**
    * Film-specific metadata - only used when isFilm is true
    */
-  filmType?: string | null; // Enum name (e.g., "KODAK_PORTRA_400")
-  filmFormat?: string | null; // Enum name (e.g., "MM_35")
+  filmType?: string | null; // Display name (e.g., "Kodak Portra 400") — backend sends getDisplayName()
+  filmFormat?: string | null; // Enum name (e.g., "MM_35") — label via formatFilmFormat()
 
   /**
    * Relationships to tags, people, camera, and lens

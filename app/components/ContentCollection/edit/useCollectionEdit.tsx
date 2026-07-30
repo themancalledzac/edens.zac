@@ -18,7 +18,13 @@ import {
   updateCollection,
   updateCollectionRating,
 } from '@/app/lib/api/collections';
-import { createGif, createImages, createTextContent, updateImages } from '@/app/lib/api/content';
+import {
+  createGif,
+  createImages,
+  createTextContent,
+  updateGif,
+  updateImages,
+} from '@/app/lib/api/content';
 import { collectionStorage } from '@/app/lib/storage/collectionStorage';
 import {
   type CollectionListModel,
@@ -50,6 +56,7 @@ import {
 import { buildLocationsDiff, convertLocationsToModels } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
+import { hasObjectChanges } from '@/app/utils/objectComparison';
 import { toChronologicalOrder } from '@/app/utils/sortByDate';
 import { buildTagsDiff, convertTagsToModels } from '@/app/utils/tagUtils';
 
@@ -77,6 +84,55 @@ const EMPTY_CONTENT: AnyContentModel[] = [];
 
 function isAnimatedMediaFile(file: File): boolean {
   return ANIMATED_MEDIA_MIME_TYPES.has(file.type) || ANIMATED_MEDIA_EXTENSION_REGEX.test(file.name);
+}
+
+/**
+ * Push a collection's locations down onto every piece of content that has none of its own.
+ *
+ * Giving a collection a location is a statement about where its content was shot, so anything in
+ * it that is not already placed inherits that location. Content the admin has already located is
+ * never touched — a per-image override outranks the collection-wide default.
+ *
+ * Images go out as one batched PATCH; GIF/MP4 blocks have no batch endpoint and are patched
+ * individually. All requests are issued together, and a single rejection fails the whole call so
+ * the caller can surface one error rather than a partial-success state.
+ *
+ * @param content - The collection's current content blocks.
+ * @param locationIds - IDs of the collection's saved locations.
+ * @returns True when at least one block was updated (the caller then refetches), false when
+ *   everything already had a location and no request was made.
+ */
+async function inheritLocationsToContent(
+  content: readonly AnyContentModel[],
+  locationIds: number[]
+): Promise<boolean> {
+  const hasNoLocation = (item: { locations?: LocationModel[] | null }) => !item.locations?.length;
+
+  const imagesWithoutLocation = content.filter(
+    (item): item is ContentImageModel => isContentImage(item) && hasNoLocation(item)
+  );
+  const gifsWithoutLocation = content.filter(
+    (item): item is ContentGifModel => isGifContent(item) && hasNoLocation(item)
+  );
+
+  if (imagesWithoutLocation.length === 0 && gifsWithoutLocation.length === 0) {
+    return false;
+  }
+
+  const requests: Promise<unknown>[] = gifsWithoutLocation.map(gif =>
+    updateGif(gif.id, { locations: { prev: locationIds } })
+  );
+
+  if (imagesWithoutLocation.length > 0) {
+    const imageUpdates: ContentImageUpdateRequest[] = imagesWithoutLocation.map(img => ({
+      id: img.id,
+      locations: { prev: locationIds },
+    }));
+    requests.push(updateImages(imageUpdates));
+  }
+
+  await Promise.all(requests);
+  return true;
 }
 
 export type ManageMode = 'browse' | 'select' | 'reorder' | 'add' | 'edit' | 'pick-date';
@@ -553,10 +609,27 @@ export function useCollectionEdit({
   };
   const manageMode = deriveManageMode();
 
-  const isUpdateDirty = useMemo(
-    () => (collection ? Object.keys(buildUpdatePayload(updateData, collection)).length > 1 : false),
-    [updateData, collection]
-  );
+  /**
+   * Dirty = the payload we would send differs from the payload an *untouched* buffer would send.
+   *
+   * Deliberately not "the payload has any field beyond id". `seedUpdateData` fabricates defaults
+   * for fields the API may not send — `displayMode` is nullable on the backend entity (no
+   * @NotNull, no @Builder.Default) and the seed forces 'CHRONOLOGICAL' for it. `buildUpdatePayload`
+   * then diffs that fabricated default against the null original, emits a `displayMode` key on
+   * every render, and the collection reads dirty forever: Save sits enabled and primary on load,
+   * and the exit button never relaxes to "Close".
+   *
+   * Re-baselining against the pristine seed cancels fabricated defaults out on both sides. It is
+   * field-agnostic, so it also covers `visibility` (currently @NotNull, so safe today) and any
+   * field dropped from the API later — this same trap previously fired through `type`, before the
+   * typeless refactor removed that field.
+   */
+  const isUpdateDirty = useMemo(() => {
+    if (!collection) return false;
+    const pristine = buildUpdatePayload(seedUpdateData(collection), collection);
+    const current = buildUpdatePayload(updateData, collection);
+    return hasObjectChanges(current, pristine);
+  }, [updateData, collection, seedUpdateData]);
 
   const resetToBrowse = useCallback(() => {
     setIsMultiSelectMode(false);
@@ -657,38 +730,26 @@ export function useCollectionEdit({
             !locationsUpdate.remove?.length &&
             (locationsUpdate.prev?.length || locationsUpdate.newValue?.length)
           ) {
-            const resolvedLocations = response.collection.locations ?? [];
-            if (resolvedLocations.length > 0) {
-              const imagesWithoutLocation = (collection.content ?? []).filter(
-                (item): item is ContentImageModel =>
-                  item.contentType === 'IMAGE' && (!item.locations || item.locations.length === 0)
-              );
-
-              if (imagesWithoutLocation.length > 0) {
-                const imageUpdates: ContentImageUpdateRequest[] = imagesWithoutLocation.map(
-                  img => ({
-                    id: img.id,
-                    locations: { prev: resolvedLocations.map(l => l.id) },
-                  })
-                );
-                updateImages(imageUpdates)
-                  .then(async () => {
-                    const refreshed = await getCollectionUpdateMetadata(response.collection.slug);
-                    if (refreshed) {
-                      setCurrentState(refreshed);
-                      collectionStorage.update(refreshed.collection.slug, refreshed.collection);
-                      collectionStorage.updateFull(refreshed.collection.slug, refreshed);
-                    }
-                  })
-                  .catch((error_: unknown) => {
-                    logger.error(
-                      'useCollectionEdit',
-                      'Failed to inherit locations to images',
-                      error_
-                    );
-                    setError('Collection saved, but failed to inherit locations to images.');
-                  });
-              }
+            const resolvedLocationIds = (response.collection.locations ?? []).map(l => l.id);
+            if (resolvedLocationIds.length > 0) {
+              inheritLocationsToContent(collection.content ?? [], resolvedLocationIds)
+                .then(async inherited => {
+                  if (!inherited) return;
+                  const refreshed = await getCollectionUpdateMetadata(response.collection.slug);
+                  if (refreshed) {
+                    setCurrentState(refreshed);
+                    collectionStorage.update(refreshed.collection.slug, refreshed.collection);
+                    collectionStorage.updateFull(refreshed.collection.slug, refreshed);
+                  }
+                })
+                .catch((error_: unknown) => {
+                  logger.error(
+                    'useCollectionEdit',
+                    'Failed to inherit locations to content',
+                    error_
+                  );
+                  setError('Collection saved, but failed to inherit locations to its content.');
+                });
             }
           }
         }
@@ -1464,7 +1525,11 @@ export function useCollectionEdit({
           disabled: !isUpdateDirty || saving || isLoading,
           onClick: () => void handleUpdate(),
         },
-        { key: 'cancel', label: 'Cancel', onClick: resetToBrowse },
+        {
+          key: 'cancel',
+          label: isUpdateDirty ? 'Cancel' : 'Close',
+          onClick: resetToBrowse,
+        },
       ];
     }
 
@@ -1500,7 +1565,13 @@ export function useCollectionEdit({
       },
     ];
     if (onExitManage) {
-      cells.push({ key: 'cancel', label: 'Cancel', onClick: onExitManage });
+      // "Close" when nothing has been edited (nothing to discard); "Cancel" once there are
+      // unsaved changes, signalling that leaving abandons them. Matches the metadata sheet.
+      cells.push({
+        key: 'cancel',
+        label: isUpdateDirty ? 'Cancel' : 'Close',
+        onClick: onExitManage,
+      });
     }
     return cells;
   }, [

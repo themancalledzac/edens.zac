@@ -6,6 +6,7 @@
 
 import type { CollectionModel, LocationModel } from '@/app/types/Collection';
 import type { ContentGifModel, ViewableContent } from '@/app/types/Content';
+import { formatFilmFormat } from '@/app/utils/filmFormat';
 
 /**
  * Type guard for GIF content blocks. GIFs lack `captureDate` and may lack `locations`, so the
@@ -46,4 +47,19 @@ export function resolveDisplayDate(
   return !isGif && !isGifBlock(currentImage)
     ? (currentImage.captureDate ?? collectionData?.collectionDate ?? null)
     : (collectionData?.collectionDate ?? null);
+}
+
+/**
+ * Compose the film line for the equipment row — `Kodak Portra 400 · 35mm` — from the two fields
+ * the backend keeps separate. Returns an empty string unless the image is actually flagged as
+ * film, so a digital frame never shows a stray format left over from an earlier edit.
+ *
+ * `filmType` already arrives as a display name; `filmFormat` is a raw enum and is labelled here.
+ */
+export function resolveDisplayFilmStock(currentImage: ViewableContent, isGif: boolean): string {
+  if (isGif || isGifBlock(currentImage) || !currentImage.isFilm) {
+    return '';
+  }
+  const parts = [currentImage.filmType, formatFilmFormat(currentImage.filmFormat)].filter(Boolean);
+  return parts.join(' · ');
 }

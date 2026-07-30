@@ -31,6 +31,21 @@ const MONTHS_SHORT = [
   'Dec',
 ] as const;
 
+const MONTHS_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+] as const;
+
 export interface DateParts {
   year: number;
   month: number;
@@ -82,6 +97,53 @@ function formatMonthDay(parts: DateParts): string {
 /** `Mar 3, 2026` — month abbreviation, day, and year. */
 function formatMonthDayYear(parts: DateParts): string {
   return `${formatMonthDay(parts)}, ${parts.year}`;
+}
+
+/**
+ * English ordinal suffix for a day-of-month: `1st`, `2nd`, `3rd`, `4th`, `11th`, `21st`, `31st`.
+ * The 11–13 teens are the exception to the trailing-digit rule and are checked first.
+ */
+function ordinalSuffix(day: number): string {
+  if (day >= 11 && day <= 13) {
+    return 'th';
+  }
+  switch (day % 10) {
+    case 1: {
+      return 'st';
+    }
+    case 2: {
+      return 'nd';
+    }
+    case 3: {
+      return 'rd';
+    }
+    default: {
+      return 'th';
+    }
+  }
+}
+
+/**
+ * Format a single date for human display: `September 13th, 2023`.
+ *
+ * Used wherever a raw capture date would otherwise leak to the screen — the fullscreen metadata
+ * overlay and the metadata editor's read-only rows both previously rendered the backend string
+ * verbatim (`2023-10-13T02:32:00`). A time component is accepted and dropped; anything that isn't
+ * a real calendar date falls through verbatim so a malformed value stays visible rather than
+ * silently disappearing.
+ *
+ * @param iso - ISO `YYYY-MM-DD` date, optionally with a `T`/space time suffix.
+ * @returns The long-form date, the verbatim input when unparseable, or an empty string.
+ */
+export function formatLongDate(iso?: string | null): string {
+  if (!iso) {
+    return '';
+  }
+  const parts = parseIsoDateParts(iso);
+  if (!parts) {
+    return iso;
+  }
+  return `${MONTHS_LONG[parts.month - 1]} ${parts.day}${ordinalSuffix(parts.day)}, ${parts.year}`;
 }
 
 /**

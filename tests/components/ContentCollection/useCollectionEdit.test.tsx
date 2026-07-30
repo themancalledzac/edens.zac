@@ -463,17 +463,46 @@ describe('useCollectionEdit', () => {
       expect(cancel).toBeUndefined();
     });
 
-    it('browse appends a rightmost Cancel cell that calls onExitManage when provided', () => {
+    it('browse appends a rightmost exit cell that calls onExitManage when provided', () => {
       const onExitManage = jest.fn();
       const { result } = renderEdit({ enabled: false, onExitManage });
 
       const labels = result.current.bottomBarCells.map(c => c.label);
-      expect(labels).toEqual(['Select', 'Reorder', 'Add', 'Edit', 'Cancel']);
+      expect(labels).toEqual(['Select', 'Reorder', 'Add', 'Edit', 'Close']);
 
       const cancel = result.current.bottomBarCells.find(c => c.key === 'cancel');
       expect(cancel).toBeDefined();
       cancel?.onClick?.();
       expect(onExitManage).toHaveBeenCalledTimes(1);
+    });
+
+    it('is not dirty on load when the API omits `displayMode` (nullable on the backend entity)', () => {
+      // seedUpdateData fabricates 'CHRONOLOGICAL' for a collection with no displayMode, which made
+      // buildUpdatePayload emit a displayMode key forever — the collection read as dirty on load, so
+      // Save stayed enabled and the exit cell never relaxed to "Close". The shared fixture always
+      // sets displayMode, so only an explicitly-omitted one reproduces it.
+      const collection = makeCollection({ displayMode: undefined });
+      const { result } = renderEdit({ enabled: false, collection, onExitManage: jest.fn() });
+
+      expect(result.current.isUpdateDirty).toBe(false);
+      expect(result.current.bottomBarCells.find(c => c.key === 'cancel')?.label).toBe('Close');
+
+      act(() => result.current.setUpdateField('title', 'Renamed'));
+
+      expect(result.current.isUpdateDirty).toBe(true);
+    });
+
+    it('labels the browse exit cell "Close" until there are unsaved edits, then "Cancel"', () => {
+      const { result } = renderEdit({ onExitManage: jest.fn() });
+
+      const labelOf = () => result.current.bottomBarCells.find(c => c.key === 'cancel')?.label;
+      expect(labelOf()).toBe('Close');
+
+      act(() => {
+        result.current.setUpdateField('title', 'A new title');
+      });
+
+      expect(labelOf()).toBe('Cancel');
     });
 
     it('select Cancel returns to browse and does NOT exit manage', () => {
@@ -507,7 +536,7 @@ describe('useCollectionEdit', () => {
       expect(cells[cells.length - 3]?.key).toBe('remove');
     });
 
-    it('edit contains a primary Save (disabled when not dirty) + a rightmost Cancel', () => {
+    it('edit contains a primary Save (disabled when not dirty) + a rightmost exit cell', () => {
       const { result } = renderEdit({ enabled: false });
       act(() => result.current.enterEdit());
 
@@ -519,8 +548,20 @@ describe('useCollectionEdit', () => {
       expect(save?.label).toBe('Save');
       expect(save?.disabled).toBe(true); // not dirty yet
       expect(cancel).toBeDefined();
-      expect(cancel?.label).toBe('Cancel');
+      expect(cancel?.label).toBe('Close'); // nothing to discard yet
       expect(cells[cells.length - 1]).toBe(cancel); // always the rightmost cell
+    });
+
+    it('labels the edit-sheet exit cell "Close" until there are unsaved edits, then "Cancel"', () => {
+      const { result } = renderEdit({ enabled: false });
+      act(() => result.current.enterEdit());
+
+      const labelOf = () => result.current.bottomBarCells.find(c => c.key === 'cancel')?.label;
+      expect(labelOf()).toBe('Close');
+
+      act(() => result.current.setUpdateField('title', 'Changed'));
+
+      expect(labelOf()).toBe('Cancel');
     });
 
     it('edit Save becomes primary + enabled once a field changes', () => {

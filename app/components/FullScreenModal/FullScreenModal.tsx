@@ -17,9 +17,15 @@ import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import { type CollectionModel } from '@/app/types/Collection';
 import type { ViewableContent } from '@/app/types/Content';
+import { formatLongDate } from '@/app/utils/formatDateRange';
 import { canDownloadCollection } from '@/app/utils/galleryAccess';
 
-import { isGifBlock, resolveDisplayDate, resolveDisplayLocations } from './fullScreenModalUtils';
+import {
+  isGifBlock,
+  resolveDisplayDate,
+  resolveDisplayFilmStock,
+  resolveDisplayLocations,
+} from './fullScreenModalUtils';
 
 type ImageBlock = ViewableContent;
 
@@ -111,7 +117,8 @@ export function FullScreenModal({
   // Resolve locations/date: image fields take priority, falling back to the collection. GIF blocks
   // carry neither, so they fall straight through to the collection.
   const displayLocations = resolveDisplayLocations(currentImage, collectionData, isGif);
-  const displayDate = resolveDisplayDate(currentImage, collectionData, isGif);
+  const displayDate = formatLongDate(resolveDisplayDate(currentImage, collectionData, isGif));
+  const displayFilmStock = resolveDisplayFilmStock(currentImage, isGif);
 
   const currentImageLoaded = loadedImageIds.has(currentImage.id);
   const hasPrevious = fullScreenState.currentIndex > 0;
@@ -184,6 +191,9 @@ export function FullScreenModal({
                       {currentImage.title}
                     </div>
                   )}
+                  {currentImage.caption && (
+                    <div className={styles.metadataCaption}>{currentImage.caption}</div>
+                  )}
                   {currentImage.author && (
                     <div className={styles.metadataItem}>{currentImage.author}</div>
                   )}
@@ -224,18 +234,35 @@ export function FullScreenModal({
                       {currentImage.lens && <span>{currentImage.lens.name}</span>}
                     </div>
                   )}
+                  {displayFilmStock && (
+                    <div className={styles.metadataItem}>{displayFilmStock}</div>
+                  )}
                   {!isGif &&
                     (currentImage.iso ||
                       currentImage.fStop ||
                       currentImage.shutterSpeed ||
                       currentImage.focalLength) && (
                       <div className={styles.metadataSettingsRow}>
-                        {currentImage.iso && <span>{currentImage.iso}</span>}
+                        {currentImage.iso && <span>{currentImage.iso} ISO</span>}
                         {currentImage.shutterSpeed && <span>{currentImage.shutterSpeed}</span>}
                         {currentImage.fStop && <span>{currentImage.fStop}</span>}
                         {currentImage.focalLength && <span>{currentImage.focalLength}</span>}
                       </div>
                     )}
+                  {currentImage.tags && currentImage.tags.length > 0 && (
+                    <div className={styles.metadataSection}>
+                      <div className={styles.metadataSectionRow}>
+                        <div className={styles.metadataSectionHeader}>Tags</div>
+                        <div className={styles.metadataSectionItems}>
+                          {currentImage.tags.map((t, index) => (
+                            <div key={t.id || index} className={styles.metadataSectionItem}>
+                              {t.name}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {!isGif && currentImage.people && currentImage.people.length > 0 && (
                     <div className={styles.metadataSection}>
                       <div className={styles.metadataSectionRow}>

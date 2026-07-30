@@ -8,6 +8,7 @@ import { Input } from '@/app/components/ui/Field/Input';
 import { Select } from '@/app/components/ui/Field/Select';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
 import type { CollectionListModel, LocationModel } from '@/app/types/Collection';
+import { formatLongDate } from '@/app/utils/formatDateRange';
 
 import type { ImageUpdateState } from '../hooks/useMetadataState';
 import modalStyles from '../MetadataModal.module.scss';
@@ -195,7 +196,7 @@ export default function EssentialInfoSection({
               grid, so this button closes the sheet and hands off to pick mode. */}
           <div className={modalStyles.inlineActionRow}>
             <span className={modalStyles.inlineActionValue}>
-              {updateState.captureDate ? updateState.captureDate.split('T')[0] : 'Not set'}
+              {updateState.captureDate ? formatLongDate(updateState.captureDate) : 'Not set'}
             </span>
             <Button
               size="sm"

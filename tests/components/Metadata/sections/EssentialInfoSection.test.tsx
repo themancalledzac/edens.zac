@@ -222,7 +222,7 @@ describe('EssentialInfoSection', () => {
       expect(updateStateField).not.toHaveBeenCalled();
     });
 
-    it('shows the current capture date as a day, and "Not set" when absent', () => {
+    it('shows the current capture date as a long-form day, and "Not set" when absent', () => {
       const { unmount } = render(
         <EssentialInfoSection
           {...makeProps({
@@ -232,7 +232,7 @@ describe('EssentialInfoSection', () => {
           })}
         />
       );
-      expect(screen.getByText('2024-06-14')).toBeInTheDocument();
+      expect(screen.getByText('June 14th, 2024')).toBeInTheDocument();
       unmount();
 
       render(
