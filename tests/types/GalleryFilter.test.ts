@@ -18,8 +18,12 @@ describe('FilterState helpers', () => {
     expect(INITIAL_FILTER_STATE.selectedPeople).toEqual([]);
     expect(INITIAL_FILTER_STATE.selectedCameras).toEqual([]);
     expect(INITIAL_FILTER_STATE.selectedLenses).toEqual([]);
-    expect(INITIAL_FILTER_STATE.selectedLensTypes).toEqual([]);
     expect(INITIAL_FILTER_STATE.selectedLocations).toEqual([]);
+  });
+
+  it('does not carry a lens-type dimension', () => {
+    expect(ARRAY_FILTER_KEYS).not.toContain('selectedLensTypes');
+    expect(INITIAL_FILTER_STATE).not.toHaveProperty('selectedLensTypes');
   });
 
   it('has no selectedCollectionIds field (dead field removed)', () => {

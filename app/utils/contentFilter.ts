@@ -13,10 +13,9 @@ import {
   type ContentCollectionModel,
   type ContentImageModel,
 } from '@/app/types/Content';
-import { type FilmFilter, type FilterState, type LensType } from '@/app/types/GalleryFilter';
+import { type FilmFilter, type FilterState } from '@/app/types/GalleryFilter';
 import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
-import { getLensType } from '@/app/utils/focalLength';
 
 /**
  * Filter criteria for content arrays.
@@ -400,7 +399,6 @@ export interface FilterVisibility {
   cameras: boolean;
   lenses: boolean;
   locations: boolean;
-  lensTypes: boolean;
 }
 
 /**
@@ -419,10 +417,6 @@ export function computeFilterVisibility(images: ContentImageModel[]): FilterVisi
     cameras: canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])),
     lenses: canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])),
     locations: canFilter(images, img => (img.locations ?? []).map(l => l.name)),
-    lensTypes: canFilter(images, img => {
-      const lensType = getLensType(img.focalLength);
-      return lensType ? [lensType] : [];
-    }),
   };
 }
 
@@ -448,7 +442,6 @@ export function applyActiveOverride(
     cameras: visibility.cameras || filterState.selectedCameras.length > 0,
     lenses: visibility.lenses || filterState.selectedLenses.length > 0,
     locations: visibility.locations || filterState.selectedLocations.length > 0,
-    lensTypes: visibility.lensTypes || filterState.selectedLensTypes.length > 0,
   };
 }
 
@@ -707,7 +700,6 @@ export interface CollectionFilterDimensions {
   cameras: FilterDimension;
   lenses: FilterDimension;
   locations: FilterDimension;
-  lensTypes: FilterDimension<LensType>;
 }
 
 /**
@@ -716,8 +708,7 @@ export interface CollectionFilterDimensions {
  * Returns per-dimension data with a `filterable` flag. When a dimension has a
  * single value and the dimension's policy allows info-mode (cameras / lenses /
  * locations need 2+ values), `filterable` is false so the bar renders it as an
- * inline info chip instead of a dropdown. Lens types only surface when 2+
- * distinct categories AND 2+ distinct lenses are present (an image-only signal).
+ * inline info chip instead of a dropdown.
  *
  * @param images - Image content to aggregate dimensions from
  * @param collectionRefs - Collection refs (synthetic PARENT pages aggregate from these too)
@@ -732,18 +723,6 @@ export function extractCollectionFilterOptions(
   // images (e.g. /all-collections, /all-blog).
   const combined = [...images, ...collectionRefs];
   const baseOptions = extractFilterOptions(combined, 0.9);
-
-  // Lens types: only show if 2+ distinct categories present (image-only signal)
-  const lensTypeSet = new Set<LensType>();
-  for (const img of images) {
-    const lt = getLensType(img.focalLength);
-    if (lt !== null) lensTypeSet.add(lt);
-  }
-  const typeOrder: LensType[] = ['wide', 'normal', 'telephoto'];
-  const lensTypes =
-    lensTypeSet.size >= 2 && baseOptions.lenses.length >= 2
-      ? typeOrder.filter(t => lensTypeSet.has(t))
-      : [];
 
   // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
   // would wrongly mark a dimension filterable when all values blanket every item).
@@ -774,7 +753,6 @@ export function extractCollectionFilterOptions(
         canFilter(combined, item => (item.locations ?? []).map(l => l.name)) &&
         baseOptions.locations.length >= 2,
     },
-    lensTypes: { values: lensTypes, filterable: true },
   };
 }
 
@@ -782,9 +760,7 @@ export function extractCollectionFilterOptions(
  * Build filter criteria from a collection page's filter state — all-AND match
  * mode. Single source of truth for both the live filter and the URL sync (the
  * `lenses` key has no URL param, so it is silently dropped by
- * {@link serializeFilterToParams}). `selectedLensTypes` is applied separately as
- * a post-filter (see {@link applyCollectionFilters}) since it derives from focal
- * length rather than a stored field.
+ * {@link serializeFilterToParams}).
  */
 export function buildCollectionCriteria(filterState: FilterState): ContentFilterCriteria {
   return {
@@ -808,8 +784,7 @@ export function buildCollectionCriteria(filterState: FilterState): ContentFilter
 }
 
 /**
- * Whether any collection-page filter is active. Includes `selectedLensTypes`
- * (a post-filter not represented in {@link ContentFilterCriteria}).
+ * Whether any collection-page filter is active.
  */
 export function hasAnyActiveFilter(filterState: FilterState): boolean {
   return (
@@ -818,7 +793,6 @@ export function hasAnyActiveFilter(filterState: FilterState): boolean {
     filterState.selectedPeople.length > 0 ||
     filterState.selectedCameras.length > 0 ||
     filterState.selectedLenses.length > 0 ||
-    filterState.selectedLensTypes.length > 0 ||
     filterState.selectedLocations.length > 0
   );
 }
@@ -874,33 +848,21 @@ export function collectionRefMatchesCriteria(
 /**
  * Apply the collection page's filters to its content.
  *
- * Filters images by `criteria` (plus the lens-type post-filter — images with an
- * unparseable focalLength are kept so a lens-type chip never silently hides them),
- * and filters COLLECTION-ref tiles by their own tags/people/locations/rating (see
- * {@link collectionRefMatchesCriteria}) so tag filtering works on collection-dominant
- * pages like /all-collections. Any other non-image block passes through unchanged.
+ * Filters only images by `criteria`, and filters COLLECTION-ref tiles by their own
+ * tags/people/locations/rating (see {@link collectionRefMatchesCriteria}) so tag
+ * filtering works on collection-dominant pages like /all-collections. Any other
+ * non-image block passes through unchanged.
  *
  * @param allContent - The full content array (images + non-image blocks)
  * @param allImages - The image subset of `allContent`
  * @param criteria - Filter criteria (from {@link buildCollectionCriteria})
- * @param selectedLensTypes - Active lens-type chips (post-filter)
  */
 export function applyCollectionFilters(
   allContent: AnyContentModel[],
   allImages: ContentImageModel[],
-  criteria: ContentFilterCriteria,
-  selectedLensTypes: readonly LensType[]
+  criteria: ContentFilterCriteria
 ): AnyContentModel[] {
-  let filtered = filterContent(allImages, criteria).filter(isImageContent);
-
-  // Apply lens type filter — images without parseable focalLength are
-  // included intentionally so they aren't silently hidden by a lens-type chip.
-  if (selectedLensTypes.length > 0) {
-    filtered = filtered.filter(img => {
-      const lt = getLensType(img.focalLength);
-      return lt === null || selectedLensTypes.includes(lt);
-    });
-  }
+  const filtered = filterContent(allImages, criteria).filter(isImageContent);
 
   const filteredImageIds = new Set(filtered.map(img => img.id));
   return allContent.filter(item => {
@@ -969,7 +931,6 @@ export function hasFilterableOptions(
     baseOptions.people.values.length > 0 ||
     baseOptions.cameras.values.length > 0 ||
     baseOptions.lenses.values.length > 0 ||
-    baseOptions.lensTypes.values.length > 0 ||
     baseOptions.locations.filterable
   );
 }

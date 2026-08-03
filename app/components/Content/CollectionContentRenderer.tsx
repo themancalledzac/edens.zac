@@ -363,7 +363,6 @@ export default function CollectionContentRenderer({
                         selectedPeople: collectionFilter.filteredAvailable.people,
                         selectedCameras: collectionFilter.filteredAvailable.cameras,
                         selectedLenses: collectionFilter.filteredAvailable.lenses,
-                        selectedLensTypes: collectionFilter.filteredAvailable.lensTypes,
                         selectedLocations: collectionFilter.filteredAvailable.locations,
                       }
                     : null

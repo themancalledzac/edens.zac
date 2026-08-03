@@ -5,7 +5,7 @@ import {
   type ContentImageModel,
   type ContentTextModel,
 } from '@/app/types/Content';
-import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
+import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import {
   applyActiveOverride,
   applyCollectionFilters,
@@ -1036,7 +1036,6 @@ describe('extractCollectionFilterOptions', () => {
     expect(dims.cameras.values).toEqual([]);
     expect(dims.lenses.values).toEqual([]);
     expect(dims.locations.values).toEqual([]);
-    expect(dims.lensTypes.values).toEqual([]);
   });
 
   it('marks a dimension filterable only when a value splits the set', () => {
@@ -1144,33 +1143,6 @@ describe('extractCollectionFilterOptions', () => {
     expect(dims.locations.filterable).toBe(false);
   });
 
-  it('surfaces lens types only with 2+ distinct categories AND 2+ distinct lenses', () => {
-    // wide (24mm) + telephoto (200mm), two distinct lenses → lens types surface, ordered.
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
-      makeImage({ id: 2, focalLength: '200mm', lens: { id: 2, name: 'FE 200mm' } }),
-    ]);
-    expect(dims.lensTypes.values).toEqual(['wide', 'telephoto']);
-  });
-
-  it('suppresses lens types when only one category present', () => {
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
-      makeImage({ id: 2, focalLength: '28mm', lens: { id: 2, name: 'FE 28mm' } }),
-    ]);
-    // both 'wide' → only one distinct category
-    expect(dims.lensTypes.values).toEqual([]);
-  });
-
-  it('suppresses lens types when fewer than 2 distinct lenses', () => {
-    // two categories but a single lens object → lenses < 2
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
-      makeImage({ id: 2, focalLength: '200mm', lens: { id: 1, name: 'FE 24mm' } }),
-    ]);
-    expect(dims.lensTypes.values).toEqual([]);
-  });
-
   it('aggregates tags/people/locations from collection refs', () => {
     const dims = extractCollectionFilterOptions(
       [],
@@ -1231,13 +1203,6 @@ describe('buildCollectionCriteria', () => {
     const criteria = buildCollectionCriteria(makeFilterState({ selectedTags: [] }));
     expect(criteria).toEqual({});
   });
-
-  it('does not include lens types (applied as a post-filter, not criteria)', () => {
-    const criteria = buildCollectionCriteria(
-      makeFilterState({ selectedLensTypes: ['wide' as LensType] })
-    );
-    expect(criteria).toEqual({});
-  });
 });
 
 describe('hasAnyActiveFilter', () => {
@@ -1251,7 +1216,6 @@ describe('hasAnyActiveFilter', () => {
     ['selectedPeople', { selectedPeople: ['Alice'] }],
     ['selectedCameras', { selectedCameras: ['Sony'] }],
     ['selectedLenses', { selectedLenses: ['FE 35mm'] }],
-    ['selectedLensTypes', { selectedLensTypes: ['wide' as LensType] }],
     ['selectedLocations', { selectedLocations: ['Rome'] }],
   ])('is true when %s is active', (_label, overrides) => {
     expect(hasAnyActiveFilter(makeFilterState(overrides))).toBe(true);
@@ -1263,30 +1227,14 @@ describe('hasAnyActiveFilter', () => {
 });
 
 describe('applyCollectionFilters', () => {
-  const images = [
-    makeImage({ id: 1, rating: 5, focalLength: '24mm' }), // wide
-    makeImage({ id: 2, rating: 3, focalLength: '200mm' }), // telephoto
-    makeImage({ id: 3, rating: 5, focalLength: undefined }), // unparseable focal length
-  ];
+  const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 3 })];
   const text = makeTextBlock();
-  const allContent: AnyContentModel[] = [images[0]!, images[1]!, text, images[2]!];
+  const allContent: AnyContentModel[] = [images[0]!, images[1]!, text];
 
   it('filters images by criteria and keeps non-image content in place', () => {
-    const result = applyCollectionFilters(allContent, images, { minRating: 5 }, []);
-    // images 1 & 3 (rating 5) survive; text block passes through; image 2 dropped
-    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100', 'IMAGE:3']);
-  });
-
-  it('applies lens-type post-filter, retaining images with unparseable focal length', () => {
-    const result = applyCollectionFilters(allContent, images, {}, ['wide']);
-    // image 1 is wide; image 3 has no parseable focalLength → kept; image 2 (telephoto) dropped
-    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100', 'IMAGE:3']);
-  });
-
-  it('combines criteria and lens-type post-filter', () => {
-    const result = applyCollectionFilters(allContent, images, { minRating: 5 }, ['telephoto']);
-    // rating 5 → images 1 & 3; telephoto post-filter keeps image 3 (unparseable) only (image 1 is wide)
-    expect(result.map(c => c.id)).toEqual([100, 3]);
+    const result = applyCollectionFilters(allContent, images, { minRating: 5 });
+    // image 1 (rating 5) survives; text block passes through; image 2 dropped
+    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100']);
   });
 
   it('filters COLLECTION-ref tiles by their tags (collection-dominant page)', () => {
@@ -1300,7 +1248,7 @@ describe('applyCollectionFilters', () => {
     });
     const refs: AnyContentModel[] = [italy, iceland];
 
-    const result = applyCollectionFilters(refs, [], { tags: ['Italy'], tagMatchMode: 'AND' }, []);
+    const result = applyCollectionFilters(refs, [], { tags: ['Italy'], tagMatchMode: 'AND' });
 
     expect(result.map(c => c.id)).toEqual([2001]);
   });
@@ -1310,7 +1258,7 @@ describe('applyCollectionFilters', () => {
     const untagged = makeCollectionRef({ id: 3002, tags: [] });
     const refs: AnyContentModel[] = [tagged, untagged];
 
-    const result = applyCollectionFilters(refs, [], { tags: ['Italy'] }, []);
+    const result = applyCollectionFilters(refs, [], { tags: ['Italy'] });
 
     expect(result.map(c => c.id)).toEqual([3001]);
   });
@@ -1318,7 +1266,7 @@ describe('applyCollectionFilters', () => {
   it('does not drop COLLECTION-ref tiles for image-only criteria (e.g. lens)', () => {
     const ref = makeCollectionRef({ id: 4001, tags: [{ id: 1, name: 'Italy', slug: 'italy' }] });
     // A lens criterion is image-only; a collection tile must not be hidden by it.
-    const result = applyCollectionFilters([ref], [], { lenses: ['Nikon 50mm'] }, []);
+    const result = applyCollectionFilters([ref], [], { lenses: ['Nikon 50mm'] });
 
     expect(result.map(c => c.id)).toEqual([4001]);
   });
@@ -1333,7 +1281,7 @@ describe('applyCollectionFilters', () => {
     const unrated = makeImage({ id: 6, rating: 1 });
     const mixed: AnyContentModel[] = [child1, rated, child2, unrated, child3];
 
-    const result = applyCollectionFilters(mixed, [rated, unrated], { minRating: 4 }, []);
+    const result = applyCollectionFilters(mixed, [rated, unrated], { minRating: 4 });
 
     expect(result.map(c => c.id)).toEqual([5001, 5, 5002, 5003]);
   });
@@ -1506,7 +1454,6 @@ describe('hasFilterableOptions', () => {
       cameras: { values: [], filterable: true },
       lenses: { values: [], filterable: true },
       locations: { values: [], filterable: false },
-      lensTypes: { values: [], filterable: true },
     };
     expect(hasFilterableOptions(options, false, false)).toBe(false);
   });
@@ -1593,7 +1540,6 @@ describe('computeFilterVisibility', () => {
       cameras: false,
       lenses: false,
       locations: false,
-      lensTypes: false,
     });
     expect(computeFilterVisibility([makeImage({ id: 1, isFilm: true, rating: 5 })]).film).toBe(
       false
@@ -1689,7 +1635,6 @@ describe('applyActiveOverride', () => {
     cameras: false,
     lenses: false,
     locations: false,
-    lensTypes: false,
   };
 
   it('keeps a control visible when its filter is active even if the gate hid it', () => {

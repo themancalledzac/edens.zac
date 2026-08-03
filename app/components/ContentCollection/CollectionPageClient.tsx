@@ -194,7 +194,7 @@ export default function CollectionPageClient({
 
   // D7: image-derived dimensions are shown whenever the page has ANY image, and no explicit
   // suppression is needed to hide them otherwise — `extractCollectionFilterOptions` sources
-  // cameras/lenses/lensTypes from `allImages` alone, so a page with no images already yields
+  // cameras/lenses from `allImages` alone, so a page with no images already yields
   // empty values, and every consumer gates on `values.length`. The former
   // `allCollections.length > allImages.length` comparison was constant per collection under the
   // typed model; under mixed content it flips with a single content edit, so a sixth photo would
@@ -210,8 +210,8 @@ export default function CollectionPageClient({
 
   const filteredContent = useMemo(() => {
     if (!hasActiveFilters) return allContent;
-    return applyCollectionFilters(allContent, allImages, criteria, filterState.selectedLensTypes);
-  }, [allContent, allImages, criteria, hasActiveFilters, filterState.selectedLensTypes]);
+    return applyCollectionFilters(allContent, allImages, criteria);
+  }, [allContent, allImages, criteria, hasActiveFilters]);
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
@@ -228,7 +228,6 @@ export default function CollectionPageClient({
       people: dims.people.values,
       cameras: dims.cameras.values,
       lenses: dims.lenses.values,
-      lensTypes: dims.lensTypes.values,
       locations: dims.locations.values,
     };
   }, [hasActiveFilters, filteredImages, allCollections]);

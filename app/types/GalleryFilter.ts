@@ -21,7 +21,6 @@ export interface FilterState {
   readonly selectedCameras: readonly string[];
   readonly selectedLenses: readonly string[];
   readonly selectedLocations: readonly string[];
-  readonly selectedLensTypes: readonly LensType[];
 }
 
 export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
@@ -33,17 +32,15 @@ export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
   selectedCameras: Object.freeze([] as readonly string[]),
   selectedLenses: Object.freeze([] as readonly string[]),
   selectedLocations: Object.freeze([] as readonly string[]),
-  selectedLensTypes: Object.freeze([] as readonly LensType[]),
 });
 
-/** Keys of FilterState whose value is a readonly string-or-LensType array. */
+/** Keys of FilterState whose value is a readonly string array. */
 export type ArrayFilterKey =
   | 'selectedTags'
   | 'selectedPeople'
   | 'selectedCameras'
   | 'selectedLenses'
-  | 'selectedLocations'
-  | 'selectedLensTypes';
+  | 'selectedLocations';
 
 /**
  * The canonical list of array dimensions in {@link FilterState} — the single source of truth for
@@ -56,7 +53,6 @@ export const ARRAY_FILTER_KEYS: readonly ArrayFilterKey[] = [
   'selectedCameras',
   'selectedLenses',
   'selectedLocations',
-  'selectedLensTypes',
 ];
 
 /**

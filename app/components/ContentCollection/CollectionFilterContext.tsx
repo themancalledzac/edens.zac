@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 
-import { type FilterState, type LensType } from '@/app/types/GalleryFilter';
+import { type FilterState } from '@/app/types/GalleryFilter';
 
 /**
  * Per-dimension data used by the collection filter bar.
@@ -19,7 +19,6 @@ export interface CollectionInfoOptions {
   cameras: DimensionData;
   lenses: DimensionData;
   locations: DimensionData;
-  lensTypes: DimensionData<LensType>;
   showHighlyRated: boolean;
   showDateSort: boolean;
 }
@@ -30,7 +29,6 @@ export type FilteredAvailableOptions = {
   people: readonly string[];
   cameras: readonly string[];
   lenses: readonly string[];
-  lensTypes: readonly LensType[];
   locations: readonly string[];
 } | null;
 

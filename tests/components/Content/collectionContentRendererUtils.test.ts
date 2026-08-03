@@ -16,7 +16,6 @@ const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfo
   cameras: dim([], false),
   lenses: dim([], false),
   locations: dim([], false),
-  lensTypes: { values: [], filterable: false },
   showHighlyRated: false,
   showDateSort: false,
   ...overrides,
@@ -50,30 +49,6 @@ describe('toCollectionDimensions', () => {
   it('surfaces a lens-names dropdown when lenses are filterable', () => {
     const result = toCollectionDimensions(options({ lenses: dim(['35mm'], true) }));
     expect(result.selectedLenses).toEqual({ label: 'Lens', options: ['35mm'] });
-    expect(result.selectedLensTypes).toBeUndefined();
-  });
-
-  it('adds a lens-types dropdown (with display labels) when lens types are present', () => {
-    const result = toCollectionDimensions(
-      options({
-        lenses: dim(['35mm'], true),
-        lensTypes: { values: ['wide', 'telephoto'], filterable: true },
-      })
-    );
-    expect(result.selectedLenses).toEqual({ label: 'Lens', options: ['35mm'] });
-    expect(result.selectedLensTypes).toEqual({
-      label: 'Lens type',
-      options: ['wide', 'telephoto'],
-      optionLabels: { wide: 'Wide', normal: 'Normal', telephoto: 'Telephoto' },
-    });
-  });
-
-  it('still surfaces the lens dropdowns when only lens types are filterable', () => {
-    const result = toCollectionDimensions(
-      options({ lensTypes: { values: ['normal'], filterable: true } })
-    );
-    expect(result.selectedLenses).toEqual({ label: 'Lens', options: [] });
-    expect(result.selectedLensTypes).toMatchObject({ label: 'Lens type', options: ['normal'] });
   });
 
   it('never surfaces a Tags dropdown on collections', () => {
@@ -83,7 +58,6 @@ describe('toCollectionDimensions', () => {
       cameras: { values: [], filterable: true },
       lenses: { values: [], filterable: true },
       locations: { values: [], filterable: true },
-      lensTypes: { values: [], filterable: true },
       showHighlyRated: false,
       showDateSort: false,
     });

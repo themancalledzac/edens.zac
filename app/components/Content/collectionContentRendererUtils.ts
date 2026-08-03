@@ -32,22 +32,8 @@ export function toCollectionDimensions(
   if (options.locations.filterable && options.locations.values.length > 0) {
     dims.selectedLocations = { label: 'Location', options: options.locations.values };
   }
-  if (
-    (options.lenses.filterable && options.lenses.values.length > 0) ||
-    (options.lensTypes.filterable && options.lensTypes.values.length > 0)
-  ) {
-    // Lens is surfaced as two dropdowns: NAMES and TYPES.
-    dims.selectedLenses = {
-      label: 'Lens',
-      options: options.lenses.values,
-    };
-    if (options.lensTypes.values.length > 0) {
-      dims.selectedLensTypes = {
-        label: 'Lens type',
-        options: options.lensTypes.values,
-        optionLabels: { wide: 'Wide', normal: 'Normal', telephoto: 'Telephoto' },
-      };
-    }
+  if (options.lenses.filterable && options.lenses.values.length > 0) {
+    dims.selectedLenses = { label: 'Lens', options: options.lenses.values };
   }
   return dims;
 }
