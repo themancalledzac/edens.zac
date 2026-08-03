@@ -42,7 +42,7 @@ export interface ContentFilterCriteria {
   dateFrom?: string;
   /** Date range end (ISO string, inclusive) */
   dateTo?: string;
-  /** Calendar days ('YYYY-MM-DD') to include (OR logic — matches if captured on ANY of these) */
+  /** Calendar days ('YYYY-MM-DD') to include (OR logic - matches if captured on ANY of these) */
   dates?: readonly string[];
   /** Filter to film images only */
   isFilm?: boolean;
@@ -937,9 +937,13 @@ export function mergeDateSortedImages(
 
 /**
  * Whether the collection filter bar has anything to show (controls the
- * decision to wrap the page in the filter provider at all). Locations
- * contribute only when multi-value (`filterable`) — single-value locations are
- * intentionally surfaced elsewhere and must not trigger the bar alone.
+ * decision to wrap the page in the filter provider at all). Locations and
+ * dates contribute only when multi-value (`filterable`) — a single-value
+ * location, or a collection whose images share one capture day, is
+ * intentionally surfaced elsewhere and must not trigger the bar alone. (Nearly
+ * every real photo carries a captureDate, so gating dates on raw value count
+ * instead of `filterable` would open the bar for collections with no other
+ * filterable dimension at all.)
  *
  * @param baseOptions - The page's base dimensions
  * @param showHighlyRated - Whether the Highly Rated control is shown
@@ -957,7 +961,7 @@ export function hasFilterableOptions(
     baseOptions.cameras.values.length > 0 ||
     baseOptions.lenses.values.length > 0 ||
     baseOptions.locations.filterable ||
-    baseOptions.dates.values.length > 0
+    baseOptions.dates.filterable
   );
 }
 

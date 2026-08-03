@@ -1447,6 +1447,18 @@ describe('hasFilterableOptions', () => {
     expect(hasFilterableOptions(dims, false, false)).toBe(true);
   });
 
+  it('does not trigger on a single-day collection alone (dates.values non-empty but not filterable)', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' }),
+      makeImage({ id: 2, captureDate: '2026-07-20T18:00:00' }),
+    ]);
+    // one distinct day -> dates.values is non-empty but dates.filterable is false, and no other
+    // dimension qualifies; hasFilterableOptions must gate on `filterable`, not `values.length`.
+    expect(dims.dates.values).toEqual(['2026-07-20']);
+    expect(dims.dates.filterable).toBe(false);
+    expect(hasFilterableOptions(dims, false, false)).toBe(false);
+  });
+
   it('does not open the filter bar for tags alone', () => {
     const options = {
       tags: { values: ['sunset', 'ridge'], filterable: true },

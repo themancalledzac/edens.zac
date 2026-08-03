@@ -35,6 +35,10 @@ describe('FilterState helpers', () => {
     expect(INITIAL_FILTER_STATE.selectedDates).toEqual([]);
   });
 
+  it('leads ARRAY_FILTER_KEYS with selectedDates (task 6 dropdown-fallback ordering depends on this)', () => {
+    expect(ARRAY_FILTER_KEYS[0]).toBe('selectedDates');
+  });
+
   it('cycleDateSort uses one canonical order: off -> asc -> desc -> off', () => {
     expect(cycleDateSort('off')).toBe('asc');
     expect(cycleDateSort('asc')).toBe('desc');
