@@ -938,7 +938,7 @@ export function mergeDateSortedImages(
 /**
  * Whether the collection filter bar has anything to show (controls the
  * decision to wrap the page in the filter provider at all). Locations and
- * dates contribute only when multi-value (`filterable`) — a single-value
+ * dates contribute only when multi-value (`filterable`) - a single-value
  * location, or a collection whose images share one capture day, is
  * intentionally surfaced elsewhere and must not trigger the bar alone. (Nearly
  * every real photo carries a captureDate, so gating dates on raw value count
