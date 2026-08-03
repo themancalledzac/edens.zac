@@ -23,10 +23,34 @@ function renderToolbar(overrides: Partial<Props> = {}) {
 }
 
 describe('FilterToolbar', () => {
-  it('renders a date-sort toggle that cycles off -> asc on click', () => {
+  it('labels the sort chip Order and cycles off -> asc on click', () => {
     const { onFilterChange } = renderToolbar({ showDateSort: true });
-    fireEvent.click(screen.getByRole('button', { name: /date/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^order$/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
+  });
+
+  it('renders directional Order labels', () => {
+    const { unmount } = render(
+      <FilterToolbar
+        filterState={{ ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' }}
+        onFilterChange={jest.fn()}
+        dimensions={{}}
+        showDateSort
+      />
+    );
+    // Exact-string names, not regex: '^' and 'v' are regex-significant.
+    expect(screen.getByRole('button', { name: 'Order ^' })).toBeInTheDocument();
+    unmount();
+
+    render(
+      <FilterToolbar
+        filterState={{ ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' }}
+        onFilterChange={jest.fn()}
+        dimensions={{}}
+        showDateSort
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Order v' })).toBeInTheDocument();
   });
 
   it('two-state date toggle cycles asc <-> desc and never shows the off label', () => {
@@ -35,9 +59,9 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' },
     });
-    // Shows the directional label, not the neutral "Date".
-    const chip = screen.getByRole('button', { name: /date ↑/i });
-    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+    // Shows the directional label, not the neutral "Order".
+    const chip = screen.getByRole('button', { name: /order \^/i });
+    expect(screen.queryByRole('button', { name: /^order$/i })).toBeNull();
     fireEvent.click(chip);
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'desc' });
   });
@@ -48,7 +72,7 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /date ↓/i }));
+    fireEvent.click(screen.getByRole('button', { name: /order v/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
   });
 

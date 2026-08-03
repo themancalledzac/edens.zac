@@ -46,7 +46,7 @@ export interface FilterToolbarProps {
   counts?: ToolbarCounts;
   showDateSort?: boolean;
   /**
-   * When true, the Date chip is always active and toggles only between directions
+   * When true, the Order chip is always active and toggles only between directions
    * (asc <-> desc, never `off`) — for views that are inherently date-ordered (CHRONOLOGICAL
    * collections). Defaults to false (the neutral off/asc/desc tri-state).
    */
@@ -60,10 +60,15 @@ export interface FilterToolbarProps {
   onDensityChange?: (value: number) => void;
 }
 
-const DATE_LABELS: Record<FilterState['dateSortDirection'], string> = {
-  asc: 'Date ↑',
-  desc: 'Date ↓',
-  off: 'Date',
+/**
+ * The sort chip's labels. Named "Order" rather than "Date" because it controls SEQUENCE, not
+ * membership: `off` shows a collection's curated orderIndex, asc/desc re-sort chronologically.
+ * The `Date` name now belongs to the per-day membership filter.
+ */
+const ORDER_LABELS: Record<FilterState['dateSortDirection'], string> = {
+  asc: 'Order ^',
+  desc: 'Order v',
+  off: 'Order',
 };
 
 /**
@@ -111,7 +116,7 @@ export function FilterToolbar({
     <div ref={barRef} className={styles.toolbar}>
       {showDateSort && (
         <FilterChip
-          label={DATE_LABELS[filterState.dateSortDirection]}
+          label={ORDER_LABELS[filterState.dateSortDirection]}
           // In two-state mode the date sort is always engaged, so the chip stays active.
           active={dateTwoState || filterState.dateSortDirection !== 'off'}
           onToggle={() =>
