@@ -43,7 +43,7 @@ export function distinctDays(captureDates: readonly (string | null | undefined)[
 
 /**
  * Chip label for a day key: 'Jul 20' when every day in `allDays` shares a year, 'Jul 20, 2026'
- * when the set spans more than one — so the year appears only where it disambiguates.
+ * when the set spans more than one. The year appears only where it disambiguates.
  */
 export function formatDayLabel(dayKey: string, allDays: readonly string[]): string {
   const [year, month, day] = dayKey.split('-');
@@ -53,7 +53,7 @@ export function formatDayLabel(dayKey: string, allDays: readonly string[]): stri
   return years.size > 1 ? `${label}, ${year}` : label;
 }
 
-/** Labels for a set of day keys, keyed by day key — the shape `ToolbarDimension.optionLabels` wants. */
+/** Labels for a set of day keys, keyed by day key. The shape `ToolbarDimension.optionLabels` wants. */
 export function dayLabels(days: readonly string[]): Record<string, string> {
   return Object.fromEntries(days.map(day => [day, formatDayLabel(day, days)]));
 }
