@@ -10,6 +10,7 @@ import { type CollectionInfoOptions } from '@/app/components/ContentCollection/C
 import { type ToolbarDimension } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { type ContentType, type ViewableContent } from '@/app/types/Content';
 import { type ArrayFilterKey } from '@/app/types/GalleryFilter';
+import { dayLabels } from '@/app/utils/collectionDates';
 
 /**
  * Maps the collection page's CollectionInfoOptions (per-dimension `filterable`
@@ -23,6 +24,13 @@ export function toCollectionDimensions(
   options: CollectionInfoOptions
 ): Partial<Record<ArrayFilterKey, ToolbarDimension>> {
   const dims: Partial<Record<ArrayFilterKey, ToolbarDimension>> = {};
+  if (options.dates.filterable && options.dates.values.length > 0) {
+    dims.selectedDates = {
+      label: 'Date',
+      options: options.dates.values,
+      optionLabels: dayLabels(options.dates.values),
+    };
+  }
   if (options.people.filterable && options.people.values.length > 0) {
     dims.selectedPeople = { label: 'People', options: options.people.values };
   }

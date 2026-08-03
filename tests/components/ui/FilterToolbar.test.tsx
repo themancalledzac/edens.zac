@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { type ComponentProps } from 'react';
 
-import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { FilterToolbar, MAX_FLAT_DATE_CHIPS } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
+import { dayLabels } from '@/app/utils/collectionDates';
 
 type Props = ComponentProps<typeof FilterToolbar>;
 
@@ -172,5 +173,51 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ dateSortDirection: 'desc', highlyRatedOnly: false })
     );
+  });
+
+  const threeDays = {
+    selectedDates: {
+      label: 'Date',
+      options: ['2026-07-20', '2026-07-21', '2026-07-22'],
+      optionLabels: {
+        '2026-07-20': 'Jul 20',
+        '2026-07-21': 'Jul 21',
+        '2026-07-22': 'Jul 22',
+      },
+    },
+  };
+
+  it('renders each date as a flat chip at or below the threshold', () => {
+    renderToolbar({ dimensions: threeDays });
+    expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
+    // Flat mode means no dropdown trigger for the dimension.
+    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+  });
+
+  it('toggles a date on click', () => {
+    const { onFilterChange } = renderToolbar({ dimensions: threeDays });
+    fireEvent.click(screen.getByRole('button', { name: /jul 21/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-21'] });
+  });
+
+  it('collapses to a dropdown above the threshold', () => {
+    const options = Array.from({ length: MAX_FLAT_DATE_CHIPS + 1 }, (_, i) =>
+      `2026-07-${String(20 + i).padStart(2, '0')}`
+    );
+    renderToolbar({
+      dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
+    });
+    expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /jul 20/i })).toBeNull();
+  });
+
+  it('greys out a date that is unreachable under other filters', () => {
+    renderToolbar({
+      dimensions: threeDays,
+      filteredAvailable: { selectedDates: ['2026-07-20'] },
+    });
+    expect(screen.getByRole('button', { name: /jul 21/i })).toBeDisabled();
   });
 });

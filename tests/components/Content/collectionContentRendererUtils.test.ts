@@ -65,6 +65,38 @@ describe('toCollectionDimensions', () => {
     });
     expect(dims.selectedTags).toBeUndefined();
   });
+
+  it('surfaces dates with human labels when filterable', () => {
+    const dims = toCollectionDimensions({
+      tags: { values: [], filterable: true },
+      people: { values: [], filterable: true },
+      cameras: { values: [], filterable: true },
+      lenses: { values: [], filterable: true },
+      locations: { values: [], filterable: true },
+      dates: { values: ['2026-07-20', '2026-07-21'], filterable: true },
+      showHighlyRated: false,
+      showDateSort: false,
+    });
+    expect(dims.selectedDates).toEqual({
+      label: 'Date',
+      options: ['2026-07-20', '2026-07-21'],
+      optionLabels: { '2026-07-20': 'Jul 20', '2026-07-21': 'Jul 21' },
+    });
+  });
+
+  it('omits dates when not filterable', () => {
+    const dims = toCollectionDimensions({
+      tags: { values: [], filterable: true },
+      people: { values: [], filterable: true },
+      cameras: { values: [], filterable: true },
+      lenses: { values: [], filterable: true },
+      locations: { values: [], filterable: true },
+      dates: { values: ['2026-07-20'], filterable: false },
+      showHighlyRated: false,
+      showDateSort: false,
+    });
+    expect(dims.selectedDates).toBeUndefined();
+  });
 });
 
 describe('getClickEligibility', () => {

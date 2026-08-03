@@ -22,7 +22,7 @@ import { computeHasActiveFilters, isOptionAvailable } from './filterToolbarUtils
 export interface ToolbarDimension {
   label: string;
   options: readonly string[];
-  /** Optional display labels for option values (e.g. lens-type 'wide' -> 'Wide'). */
+  /** Optional display labels for option values (e.g. date '2026-07-20' -> 'Jul 20'). */
   optionLabels?: Record<string, string>;
   /** Optional per-option contextual counts. */
   counts?: Record<string, number>;
@@ -72,6 +72,13 @@ const ORDER_LABELS: Record<FilterState['dateSortDirection'], string> = {
 };
 
 /**
+ * Above this many distinct days, the Date dimension collapses from flat chips into the standard
+ * dropdown so the bar cannot overflow. A fixed count rather than a measured width: available width
+ * is unknown at SSR, and measuring would make the chips visibly reflow after hydration.
+ */
+export const MAX_FLAT_DATE_CHIPS = 5;
+
+/**
  * Canonical, config-driven filter toolbar: dropdowns with a 3-state availability model, count
  * badges, highly-rated / film (neutral tri-state) / digital toggles, and an optional density slider.
  */
@@ -112,6 +119,14 @@ export function FilterToolbar({
     closeAll();
   };
 
+  const dateDim = dimensions.selectedDates;
+  const flatDates =
+    dateDim !== undefined &&
+    dateDim.options.length > 0 &&
+    dateDim.options.length <= MAX_FLAT_DATE_CHIPS
+      ? dateDim
+      : null;
+
   return (
     <div ref={barRef} className={styles.toolbar}>
       {showDateSort && (
@@ -148,7 +163,22 @@ export function FilterToolbar({
         />
       )}
 
+      {flatDates?.options.map(day => {
+        const isSelected = filterState.selectedDates.includes(day);
+        const available = isSelected || isOptionAvailable(filteredAvailable, 'selectedDates', day);
+        return (
+          <FilterChip
+            key={`date-${day}`}
+            label={flatDates.optionLabels?.[day] ?? day}
+            active={isSelected}
+            state={available ? 'available' : 'unavailable'}
+            onToggle={() => toggleArrayFilter(filterState, onFilterChange, 'selectedDates', day)}
+          />
+        );
+      })}
+
       {ARRAY_FILTER_KEYS.map(key => {
+        if (key === 'selectedDates' && flatDates) return null;
         const dim = dimensions[key];
         if (!dim || dim.options.length === 0) return null;
         const selected = filterState[key] as readonly string[];
