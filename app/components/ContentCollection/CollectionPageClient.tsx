@@ -20,6 +20,7 @@ import {
 import {
   applyCollectionFilters,
   buildCollectionCriteria,
+  type CollectionFilterDimensions,
   computeFilterVisibility,
   extractCollectionFilterOptions,
   hasAnyActiveFilter,
@@ -55,8 +56,6 @@ import { SelectsProvider } from './SelectsContext';
  * dynamic factory is never invoked and the chunk is never requested.
  */
 const EditModeLayer = dynamic(() => import('./edit/EditModeLayer'), { ssr: false });
-
-type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated' | 'showDateSort'>;
 
 interface CollectionPageClientProps {
   collection: CollectionModel;
@@ -200,7 +199,7 @@ export default function CollectionPageClient({
   // `allCollections.length > allImages.length` comparison was constant per collection under the
   // typed model; under mixed content it flips with a single content edit, so a sixth photo would
   // make the Camera/Lens dropdowns reappear.
-  const baseCollectionOptions = useMemo<CollectionDimensions>(
+  const baseCollectionOptions = useMemo<CollectionFilterDimensions>(
     () => extractCollectionFilterOptions(allImages, allCollections),
     [allImages, allCollections]
   );
@@ -224,15 +223,29 @@ export default function CollectionPageClient({
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
+
+    // `dates` is OR-combined and single-valued per image, unlike every other dimension here
+    // (AND-combined). Deriving its availability from `filteredImages` -- which already reflects
+    // the active `dates` selection -- collapses every other day to "unavailable" the instant one
+    // day is selected. Re-derive it from a pass with `dates` omitted from criteria so days never
+    // grey each other out, while a day with no photos under another active filter (e.g. camera)
+    // still greys out correctly.
+    const { dates: _omitted, ...criteriaWithoutDates } = criteria;
+    const imagesForDateAvailability = applyCollectionFilters(
+      allContent,
+      allImages,
+      criteriaWithoutDates
+    ).filter(isImageContent);
+    const dateAvailability = extractCollectionFilterOptions(imagesForDateAvailability, allCollections);
+
     return {
-      tags: dims.tags.values,
       people: dims.people.values,
       cameras: dims.cameras.values,
       lenses: dims.lenses.values,
       locations: dims.locations.values,
-      dates: dims.dates.values,
+      dates: dateAvailability.dates.values,
     };
-  }, [hasActiveFilters, filteredImages, allCollections]);
+  }, [hasActiveFilters, filteredImages, allCollections, criteria, allContent, allImages]);
 
   const availableOptions = useMemo<CollectionInfoOptions>(
     () => ({

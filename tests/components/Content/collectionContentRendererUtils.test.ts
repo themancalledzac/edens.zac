@@ -11,7 +11,6 @@ import { type CollectionInfoOptions } from '@/app/components/ContentCollection/C
 const dim = (values: readonly string[], filterable: boolean) => ({ values, filterable });
 
 const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfoOptions => ({
-  tags: dim([], false),
   people: dim([], false),
   cameras: dim([], false),
   lenses: dim([], false),
@@ -28,7 +27,7 @@ describe('toCollectionDimensions', () => {
   });
 
   it('skips a dimension that is filterable but has no values', () => {
-    expect(toCollectionDimensions(options({ tags: dim([], true) }))).toEqual({});
+    expect(toCollectionDimensions(options({ locations: dim([], true) }))).toEqual({});
   });
 
   it('maps a filterable dimension with values to a labelled dropdown', () => {
@@ -52,23 +51,8 @@ describe('toCollectionDimensions', () => {
     expect(result.selectedLenses).toEqual({ label: 'Lens', options: ['35mm'] });
   });
 
-  it('never surfaces a Tags dropdown on collections', () => {
-    const dims = toCollectionDimensions({
-      tags: { values: ['sunset', 'ridge'], filterable: true },
-      people: { values: [], filterable: true },
-      cameras: { values: [], filterable: true },
-      lenses: { values: [], filterable: true },
-      locations: { values: [], filterable: true },
-      dates: { values: [], filterable: true },
-      showHighlyRated: false,
-      showDateSort: false,
-    });
-    expect(dims.selectedTags).toBeUndefined();
-  });
-
   it('surfaces dates with human labels when filterable', () => {
     const dims = toCollectionDimensions({
-      tags: { values: [], filterable: true },
       people: { values: [], filterable: true },
       cameras: { values: [], filterable: true },
       lenses: { values: [], filterable: true },
@@ -86,7 +70,6 @@ describe('toCollectionDimensions', () => {
 
   it('omits dates when not filterable', () => {
     const dims = toCollectionDimensions({
-      tags: { values: [], filterable: true },
       people: { values: [], filterable: true },
       cameras: { values: [], filterable: true },
       lenses: { values: [], filterable: true },

@@ -1239,14 +1239,23 @@ describe('hasAnyActiveFilter', () => {
 });
 
 describe('applyCollectionFilters', () => {
-  const images = [makeImage({ id: 1, rating: 5 }), makeImage({ id: 2, rating: 3 })];
+  const images = [
+    makeImage({ id: 1, rating: 5 }),
+    makeImage({ id: 2, rating: 3 }),
+    makeImage({ id: 3, rating: 5 }),
+  ];
   const text = makeTextBlock();
-  const allContent: AnyContentModel[] = [images[0]!, images[1]!, text];
+  // Image 3 sits AFTER the text block: an implementation that appended surviving images past
+  // the non-image content (instead of preserving each item's original slot) would produce a
+  // DIFFERENT order here ('IMAGE:1','IMAGE:3','TEXT:100'), so this fixture actually discriminates
+  // "kept in place" from "appended" -- the prior single-trailing-text-block fixture did not.
+  const allContent: AnyContentModel[] = [images[0]!, images[1]!, text, images[2]!];
 
   it('filters images by criteria and keeps non-image content in place', () => {
     const result = applyCollectionFilters(allContent, images, { minRating: 5 });
-    // image 1 (rating 5) survives; text block passes through; image 2 dropped
-    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100']);
+    // image 1 and image 3 (rating 5) survive in their original slots; text block passes
+    // through in place; image 2 (rating 3) dropped.
+    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100', 'IMAGE:3']);
   });
 
   it('filters COLLECTION-ref tiles by their tags (collection-dominant page)', () => {

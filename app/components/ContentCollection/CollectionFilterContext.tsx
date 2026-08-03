@@ -14,7 +14,6 @@ export interface DimensionData<T = string> {
 }
 
 export interface CollectionInfoOptions {
-  tags: DimensionData;
   people: DimensionData;
   cameras: DimensionData;
   lenses: DimensionData;
@@ -26,7 +25,6 @@ export interface CollectionInfoOptions {
 
 /** Subset of options available after current filters are applied (for grey-out logic). null = no active filters. */
 export type FilteredAvailableOptions = {
-  tags: readonly string[];
   people: readonly string[];
   cameras: readonly string[];
   lenses: readonly string[];
