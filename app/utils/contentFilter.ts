@@ -629,6 +629,9 @@ export function parseFilterFromParams(
   const cameras = getAll('camera');
   if (cameras.length > 0) criteria.cameras = cameras;
 
+  const dates = getAll('date');
+  if (dates.length > 0) criteria.dates = dates;
+
   const query = get('q');
   if (query) criteria.query = query;
 
@@ -672,6 +675,7 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   for (const l of criteria.locations ?? []) params.append('location', l);
   for (const t of criteria.tags ?? []) params.append('tag', t);
   for (const c of criteria.cameras ?? []) params.append('camera', c);
+  for (const d of criteria.dates ?? []) params.append('date', d);
 
   if (criteria.query) params.set('q', criteria.query);
   if (criteria.dateFrom) params.set('from', criteria.dateFrom);

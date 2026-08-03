@@ -669,6 +669,18 @@ describe('serializeFilterToParams', () => {
     const parsed = parseFilterFromParams(serialized);
     expect(parsed).toEqual(original);
   });
+
+  it('round-trips selected days through the URL', () => {
+    const criteria = { dates: ['2026-07-20', '2026-07-22'] };
+    const params = serializeFilterToParams(criteria);
+    expect(params.getAll('date')).toEqual(['2026-07-20', '2026-07-22']);
+    expect(parseFilterFromParams(params).dates).toEqual(['2026-07-20', '2026-07-22']);
+  });
+
+  it('omits the date param when no day is selected', () => {
+    expect(serializeFilterToParams({}).has('date')).toBe(false);
+    expect(parseFilterFromParams(new URLSearchParams()).dates).toBeUndefined();
+  });
 });
 
 // ─── computeFilterCounts ───
