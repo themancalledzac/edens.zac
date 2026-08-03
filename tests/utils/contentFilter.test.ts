@@ -1490,6 +1490,15 @@ describe('hasFilterableOptions', () => {
     expect(hasFilterableOptions(dims, false, false)).toBe(true);
   });
 
+  it('is true when a people dimension has values', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, people: [{ id: 1, name: 'Ann' }] }),
+      makeImage({ id: 2, people: [] }),
+    ]);
+    expect(dims.people.values).toEqual(['Ann']);
+    expect(hasFilterableOptions(dims, false, false)).toBe(true);
+  });
+
   it('does not open the filter bar for tags alone', () => {
     const options = {
       tags: { values: ['sunset', 'ridge'], filterable: true },
