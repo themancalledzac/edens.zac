@@ -110,6 +110,7 @@ export default function CollectionPageClient({
     selectedPeople: initialCriteria.people ?? [],
     selectedCameras: initialCriteria.cameras ?? [],
     selectedLocations: initialCriteria.locations ?? [],
+    selectedDates: initialCriteria.dates ?? [],
   }));
 
   const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
@@ -229,6 +230,7 @@ export default function CollectionPageClient({
       cameras: dims.cameras.values,
       lenses: dims.lenses.values,
       locations: dims.locations.values,
+      dates: dims.dates.values,
     };
   }, [hasActiveFilters, filteredImages, allCollections]);
 

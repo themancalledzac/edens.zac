@@ -30,6 +30,11 @@ describe('FilterState helpers', () => {
     expect('selectedCollectionIds' in INITIAL_FILTER_STATE).toBe(false);
   });
 
+  it('carries a dates dimension', () => {
+    expect(ARRAY_FILTER_KEYS).toContain('selectedDates');
+    expect(INITIAL_FILTER_STATE.selectedDates).toEqual([]);
+  });
+
   it('cycleDateSort uses one canonical order: off -> asc -> desc -> off', () => {
     expect(cycleDateSort('off')).toBe('asc');
     expect(cycleDateSort('asc')).toBe('desc');

@@ -19,6 +19,7 @@ export interface CollectionInfoOptions {
   cameras: DimensionData;
   lenses: DimensionData;
   locations: DimensionData;
+  dates: DimensionData;
   showHighlyRated: boolean;
   showDateSort: boolean;
 }
@@ -30,6 +31,7 @@ export type FilteredAvailableOptions = {
   cameras: readonly string[];
   lenses: readonly string[];
   locations: readonly string[];
+  dates: readonly string[];
 } | null;
 
 interface CollectionFilterContextValue {

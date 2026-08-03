@@ -21,6 +21,8 @@ export interface FilterState {
   readonly selectedCameras: readonly string[];
   readonly selectedLenses: readonly string[];
   readonly selectedLocations: readonly string[];
+  /** ISO calendar days ('YYYY-MM-DD') to include. OR logic: an image matches any selected day. */
+  readonly selectedDates: readonly string[];
 }
 
 export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
@@ -32,10 +34,12 @@ export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
   selectedCameras: Object.freeze([] as readonly string[]),
   selectedLenses: Object.freeze([] as readonly string[]),
   selectedLocations: Object.freeze([] as readonly string[]),
+  selectedDates: Object.freeze([] as readonly string[]),
 });
 
 /** Keys of FilterState whose value is a readonly string array. */
 export type ArrayFilterKey =
+  | 'selectedDates'
   | 'selectedTags'
   | 'selectedPeople'
   | 'selectedCameras'
@@ -45,9 +49,11 @@ export type ArrayFilterKey =
 /**
  * The canonical list of array dimensions in {@link FilterState} — the single source of truth for
  * "which keys are arrays" (mirrors the array fields in {@link INITIAL_FILTER_STATE}). Consumers
- * iterate this to surface dropdowns and detect active array filters.
+ * iterate this to surface dropdowns and detect active array filters. `selectedDates` is listed
+ * first so Date leads the dropdown fallback rendering.
  */
 export const ARRAY_FILTER_KEYS: readonly ArrayFilterKey[] = [
+  'selectedDates',
   'selectedTags',
   'selectedPeople',
   'selectedCameras',

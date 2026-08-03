@@ -16,6 +16,7 @@ const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfo
   cameras: dim([], false),
   lenses: dim([], false),
   locations: dim([], false),
+  dates: dim([], false),
   showHighlyRated: false,
   showDateSort: false,
   ...overrides,
@@ -58,6 +59,7 @@ describe('toCollectionDimensions', () => {
       cameras: { values: [], filterable: true },
       lenses: { values: [], filterable: true },
       locations: { values: [], filterable: true },
+      dates: { values: [], filterable: true },
       showHighlyRated: false,
       showDateSort: false,
     });

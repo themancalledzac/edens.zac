@@ -14,6 +14,7 @@ import {
   type ContentImageModel,
 } from '@/app/types/Content';
 import { type FilmFilter, type FilterState } from '@/app/types/GalleryFilter';
+import { captureDayKey, distinctDays } from '@/app/utils/collectionDates';
 import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
 
@@ -41,6 +42,8 @@ export interface ContentFilterCriteria {
   dateFrom?: string;
   /** Date range end (ISO string, inclusive) */
   dateTo?: string;
+  /** Calendar days ('YYYY-MM-DD') to include (OR logic — matches if captured on ANY of these) */
+  dates?: readonly string[];
   /** Filter to film images only */
   isFilm?: boolean;
   /** Filter to black & white images only */
@@ -153,6 +156,7 @@ export function filterContent(
     (criteria.query !== undefined && criteria.query.trim().length > 0) ||
     criteria.dateFrom !== undefined ||
     criteria.dateTo !== undefined ||
+    (criteria.dates && criteria.dates.length > 0) ||
     criteria.isFilm !== undefined ||
     criteria.blackAndWhite !== undefined ||
     (criteria.collectionIds && criteria.collectionIds.length > 0);
@@ -218,6 +222,11 @@ export function filterContent(
       !isWithinDateRange(item.captureDate, criteria.dateFrom, criteria.dateTo)
     ) {
       return false;
+    }
+
+    if (criteria.dates && criteria.dates.length > 0) {
+      const day = captureDayKey(item.captureDate);
+      if (!day || !criteria.dates.includes(day)) return false;
     }
 
     if (criteria.isFilm !== undefined && (item.isFilm ?? false) !== criteria.isFilm) {
@@ -700,6 +709,7 @@ export interface CollectionFilterDimensions {
   cameras: FilterDimension;
   lenses: FilterDimension;
   locations: FilterDimension;
+  dates: FilterDimension;
 }
 
 /**
@@ -723,6 +733,11 @@ export function extractCollectionFilterOptions(
   // images (e.g. /all-collections, /all-blog).
   const combined = [...images, ...collectionRefs];
   const baseOptions = extractFilterOptions(combined, 0.9);
+
+  // Distinct capture days, ascending. Guarded by `>= 2` the same way cameras/lenses are:
+  // canFilter alone reports true for a single real day padded by undated images, which would
+  // put a one-option Date control on the bar.
+  const dates = distinctDays(images.map(img => img.captureDate));
 
   // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
   // would wrongly mark a dimension filterable when all values blanket every item).
@@ -753,6 +768,14 @@ export function extractCollectionFilterOptions(
         canFilter(combined, item => (item.locations ?? []).map(l => l.name)) &&
         baseOptions.locations.length >= 2,
     },
+    dates: {
+      values: dates,
+      filterable:
+        canFilter(images, img => {
+          const day = captureDayKey(img.captureDate);
+          return day ? [day] : [];
+        }) && dates.length >= 2,
+    },
   };
 }
 
@@ -780,6 +803,7 @@ export function buildCollectionCriteria(filterState: FilterState): ContentFilter
     ...(filterState.selectedLocations.length > 0
       ? { locations: filterState.selectedLocations }
       : {}),
+    ...(filterState.selectedDates.length > 0 ? { dates: filterState.selectedDates } : {}),
   };
 }
 
@@ -793,7 +817,8 @@ export function hasAnyActiveFilter(filterState: FilterState): boolean {
     filterState.selectedPeople.length > 0 ||
     filterState.selectedCameras.length > 0 ||
     filterState.selectedLenses.length > 0 ||
-    filterState.selectedLocations.length > 0
+    filterState.selectedLocations.length > 0 ||
+    filterState.selectedDates.length > 0
   );
 }
 
@@ -931,7 +956,8 @@ export function hasFilterableOptions(
     baseOptions.people.values.length > 0 ||
     baseOptions.cameras.values.length > 0 ||
     baseOptions.lenses.values.length > 0 ||
-    baseOptions.locations.filterable
+    baseOptions.locations.filterable ||
+    baseOptions.dates.values.length > 0
   );
 }
 

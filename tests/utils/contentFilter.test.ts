@@ -1454,6 +1454,7 @@ describe('hasFilterableOptions', () => {
       cameras: { values: [], filterable: true },
       lenses: { values: [], filterable: true },
       locations: { values: [], filterable: false },
+      dates: { values: [], filterable: false },
     };
     expect(hasFilterableOptions(options, false, false)).toBe(false);
   });
@@ -1659,5 +1660,84 @@ describe('applyActiveOverride', () => {
 
   it('leaves an all-false verdict untouched when no filter is active', () => {
     expect(applyActiveOverride(hiddenAll, makeFilterState())).toEqual(hiddenAll);
+  });
+});
+
+describe('date filtering', () => {
+  const day1 = makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' });
+  const day1Late = makeImage({ id: 2, captureDate: '2026-07-20T23:30:00' });
+  const day2 = makeImage({ id: 3, captureDate: '2026-07-21T09:00:00' });
+  const day3 = makeImage({ id: 4, captureDate: '2026-07-22T09:00:00' });
+  const undated = makeImage({ id: 5, captureDate: null });
+  const images = [day1, day1Late, day2, day3, undated];
+
+  it('keeps only images captured on a selected day', () => {
+    const result = filterContent(images, { dates: ['2026-07-20'] });
+    expect(result.map(i => i.id)).toEqual([1, 2]);
+  });
+
+  it('ORs multiple selected days, including non-adjacent ones', () => {
+    const result = filterContent(images, { dates: ['2026-07-20', '2026-07-22'] });
+    expect(result.map(i => i.id)).toEqual([1, 2, 4]);
+  });
+
+  it('drops images with no captureDate when any day is selected', () => {
+    const result = filterContent(images, { dates: ['2026-07-20'] });
+    expect(result.map(i => i.id)).not.toContain(5);
+  });
+
+  it('is inactive when no day is selected', () => {
+    expect(filterContent(images, { dates: [] })).toHaveLength(images.length);
+  });
+});
+
+describe('extractCollectionFilterOptions dates', () => {
+  it('is filterable with ascending values across two or more days', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, captureDate: '2026-07-22T09:00:00' }),
+      makeImage({ id: 2, captureDate: '2026-07-20T09:00:00' }),
+    ]);
+    expect(dims.dates.values).toEqual(['2026-07-20', '2026-07-22']);
+    expect(dims.dates.filterable).toBe(true);
+  });
+
+  it('is not filterable for a single-day collection', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' }),
+      makeImage({ id: 2, captureDate: '2026-07-20T18:00:00' }),
+    ]);
+    expect(dims.dates.filterable).toBe(false);
+  });
+
+  it('is not filterable when one real day is padded by undated images', () => {
+    // canFilter alone would say true here (the day covers a proper subset), so the
+    // >= 2 distinct days guard is what keeps a one-option control off the bar.
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' }),
+      makeImage({ id: 2, captureDate: null }),
+    ]);
+    expect(dims.dates.filterable).toBe(false);
+  });
+});
+
+describe('buildCollectionCriteria dates', () => {
+  it('passes selected days through', () => {
+    const criteria = buildCollectionCriteria({
+      ...INITIAL_FILTER_STATE,
+      selectedDates: ['2026-07-20'],
+    });
+    expect(criteria.dates).toEqual(['2026-07-20']);
+  });
+
+  it('omits the key when nothing is selected', () => {
+    expect(buildCollectionCriteria(INITIAL_FILTER_STATE).dates).toBeUndefined();
+  });
+});
+
+describe('hasAnyActiveFilter dates', () => {
+  it('counts a selected day as active', () => {
+    expect(
+      hasAnyActiveFilter({ ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] })
+    ).toBe(true);
   });
 });
