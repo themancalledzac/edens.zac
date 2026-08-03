@@ -202,6 +202,17 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-21'] });
   });
 
+  it('still renders flat chips at exactly the threshold', () => {
+    const options = Array.from({ length: MAX_FLAT_DATE_CHIPS }, (_, i) =>
+      `2026-07-${String(20 + i).padStart(2, '0')}`
+    );
+    renderToolbar({
+      dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
+    });
+    expect(screen.getByRole('button', { name: 'Jul 20' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+  });
+
   it('collapses to a dropdown above the threshold', () => {
     const options = Array.from({ length: MAX_FLAT_DATE_CHIPS + 1 }, (_, i) =>
       `2026-07-${String(20 + i).padStart(2, '0')}`
@@ -219,5 +230,14 @@ describe('FilterToolbar', () => {
       filteredAvailable: { selectedDates: ['2026-07-20'] },
     });
     expect(screen.getByRole('button', { name: /jul 21/i })).toBeDisabled();
+  });
+
+  it('reset clears a selected date', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions: threeDays,
+      filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-21'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /reset all filters/i }));
+    expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ selectedDates: [] }));
   });
 });
