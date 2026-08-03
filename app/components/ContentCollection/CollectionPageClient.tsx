@@ -107,7 +107,6 @@ export default function CollectionPageClient({
     ...INITIAL_FILTER_STATE,
     dateSortDirection: editMode ? 'off' : initialDateSortDirection(collection.displayMode),
     highlyRatedOnly: initialCriteria.minRating !== undefined && initialCriteria.minRating >= 4,
-    selectedTags: initialCriteria.tags ?? [],
     selectedPeople: initialCriteria.people ?? [],
     selectedCameras: initialCriteria.cameras ?? [],
     selectedLocations: initialCriteria.locations ?? [],

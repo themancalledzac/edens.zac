@@ -36,15 +36,13 @@ describe('toCollectionDimensions', () => {
     expect(result).toEqual({ selectedPeople: { label: 'People', options: ['Ann', 'Bo'] } });
   });
 
-  it('maps tags, cameras, and locations with their labels', () => {
+  it('maps cameras and locations with their labels', () => {
     const result = toCollectionDimensions(
       options({
-        tags: dim(['x'], true),
         cameras: dim(['Leica'], true),
         locations: dim(['Rome'], true),
       })
     );
-    expect(result.selectedTags).toEqual({ label: 'Tags', options: ['x'] });
     expect(result.selectedCameras).toEqual({ label: 'Camera', options: ['Leica'] });
     expect(result.selectedLocations).toEqual({ label: 'Location', options: ['Rome'] });
   });
@@ -76,6 +74,20 @@ describe('toCollectionDimensions', () => {
     );
     expect(result.selectedLenses).toEqual({ label: 'Lens', options: [] });
     expect(result.selectedLensTypes).toMatchObject({ label: 'Lens type', options: ['normal'] });
+  });
+
+  it('never surfaces a Tags dropdown on collections', () => {
+    const dims = toCollectionDimensions({
+      tags: { values: ['sunset', 'ridge'], filterable: true },
+      people: { values: [], filterable: true },
+      cameras: { values: [], filterable: true },
+      lenses: { values: [], filterable: true },
+      locations: { values: [], filterable: true },
+      lensTypes: { values: [], filterable: true },
+      showHighlyRated: false,
+      showDateSort: false,
+    });
+    expect(dims.selectedTags).toBeUndefined();
   });
 });
 

@@ -13,16 +13,11 @@ const pushMock = jest.fn();
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock }) }));
 jest.mock('@/app/hooks/useParallax', () => ({ useParallax: () => ({ current: null }) }));
 
-// Controllable filter-context value: null = public/non-filter context (tag chips
-// navigate); a value = filter context (tag chips toggle the collection filter).
-let mockCollectionFilter: unknown = null;
+// Collection filter context is not exercised by these tests (no test switches it on), so it
+// always resolves to null (public, non-filter-bar rendering).
 jest.mock('@/app/components/ContentCollection/CollectionFilterContext', () => ({
-  useCollectionFilter: () => mockCollectionFilter,
+  useCollectionFilter: () => null,
 }));
-jest.mock('@/app/types/GalleryFilter', () => ({
-  toggleArrayFilter: (...args: unknown[]) => mockToggleArrayFilter(...args),
-}));
-const mockToggleArrayFilter = jest.fn();
 // The FilterToolbar pulls in a deep dependency tree irrelevant to these tests; stub it.
 jest.mock('@/app/components/ui/FilterToolbar/FilterToolbar', () => ({
   FilterToolbar: () => null,
@@ -306,49 +301,3 @@ describe('CollectionContentRenderer — cover "Update" shortcut (isAdmin-gated)'
   });
 });
 
-describe('CollectionContentRenderer — tag chip navigation', () => {
-  beforeEach(() => {
-    pushMock.mockReset();
-    mockToggleArrayFilter.mockReset();
-    mockCollectionFilter = null;
-  });
-
-  it('navigates a tag chip to the unified tag-view at /{slug} (not /tag/{slug})', () => {
-    const textItems: TextBlockItem[] = [{ type: 'tag', value: 'Mountains', slug: 'mountains' }];
-    render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Mountains' }));
-    expect(pushMock).toHaveBeenCalledWith('/mountains');
-    expect(pushMock).not.toHaveBeenCalledWith('/tag/mountains');
-  });
-
-  it('falls back to a slugified display name when the chip has no slug', () => {
-    const textItems: TextBlockItem[] = [{ type: 'tag', value: 'Big Sur' }];
-    render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Big Sur' }));
-    expect(pushMock).toHaveBeenCalledWith('/big-sur');
-  });
-
-  it('does not navigate to the tag-view when in a filter context', () => {
-    const emptyDim = { filterable: false, values: [] };
-    mockCollectionFilter = {
-      filterState: { selectedTags: [] },
-      onFilterChange: jest.fn(),
-      filteredAvailable: null,
-      filterOptions: {
-        people: emptyDim,
-        tags: emptyDim,
-        cameras: emptyDim,
-        lenses: emptyDim,
-        lensTypes: emptyDim,
-        locations: emptyDim,
-      },
-    };
-    const textItems: TextBlockItem[] = [{ type: 'tag', value: 'Mountains', slug: 'mountains' }];
-    render(<CollectionContentRenderer {...baseProps} textItems={textItems} />);
-    // In a filter context the metadata tag chip row is hidden (chips live in the
-    // FilterToolbar instead), so there is no standalone "Mountains" chip to click
-    // and the /{slug} navigation branch is never taken.
-    expect(screen.queryByRole('button', { name: 'Mountains' })).not.toBeInTheDocument();
-    expect(pushMock).not.toHaveBeenCalled();
-  });
-});

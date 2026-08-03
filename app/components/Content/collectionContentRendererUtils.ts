@@ -14,8 +14,10 @@ import { type ArrayFilterKey } from '@/app/types/GalleryFilter';
 /**
  * Maps the collection page's CollectionInfoOptions (per-dimension `filterable`
  * + values) into the toolbar's `dimensions` config. Only filterable dimensions
- * with at least one value become dropdowns; lens names and lens-type chips are
- * surfaced as separate dropdowns (types carry display labels).
+ * with at least one value become dropdowns.
+ *
+ * Tags are deliberately absent: they are private background metadata on collections and are not
+ * a public filter dimension here. Location and taxonomy pages still surface their own tag filter.
  */
 export function toCollectionDimensions(
   options: CollectionInfoOptions
@@ -23,9 +25,6 @@ export function toCollectionDimensions(
   const dims: Partial<Record<ArrayFilterKey, ToolbarDimension>> = {};
   if (options.people.filterable && options.people.values.length > 0) {
     dims.selectedPeople = { label: 'People', options: options.people.values };
-  }
-  if (options.tags.filterable && options.tags.values.length > 0) {
-    dims.selectedTags = { label: 'Tags', options: options.tags.values };
   }
   if (options.cameras.filterable && options.cameras.values.length > 0) {
     dims.selectedCameras = { label: 'Camera', options: options.cameras.values };

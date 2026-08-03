@@ -1472,17 +1472,6 @@ describe('hasFilterableOptions', () => {
     expect(hasFilterableOptions(emptyDims, false, true)).toBe(true);
   });
 
-  it('is true when a tag dimension has values', () => {
-    // The 0.9 exclusion ratio drops tags on >=90% of images, so the tag must
-    // appear on under that share — give the second image no tags.
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
-      makeImage({ id: 2, tags: [] }),
-    ]);
-    expect(dims.tags.values).toEqual(['alpine']);
-    expect(hasFilterableOptions(dims, false, false)).toBe(true);
-  });
-
   it('does not trigger on a single-value (non-filterable) location alone', () => {
     const dims = extractCollectionFilterOptions([
       makeImage({ id: 1, locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }] }),
@@ -1499,6 +1488,18 @@ describe('hasFilterableOptions', () => {
     ]);
     expect(dims.locations.filterable).toBe(true);
     expect(hasFilterableOptions(dims, false, false)).toBe(true);
+  });
+
+  it('does not open the filter bar for tags alone', () => {
+    const options = {
+      tags: { values: ['sunset', 'ridge'], filterable: true },
+      people: { values: [], filterable: true },
+      cameras: { values: [], filterable: true },
+      lenses: { values: [], filterable: true },
+      locations: { values: [], filterable: false },
+      lensTypes: { values: [], filterable: true },
+    };
+    expect(hasFilterableOptions(options, false, false)).toBe(false);
   });
 });
 

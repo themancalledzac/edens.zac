@@ -966,7 +966,6 @@ export function hasFilterableOptions(
   return (
     showHighlyRated ||
     showDateSort ||
-    baseOptions.tags.values.length > 0 ||
     baseOptions.people.values.length > 0 ||
     baseOptions.cameras.values.length > 0 ||
     baseOptions.lenses.values.length > 0 ||

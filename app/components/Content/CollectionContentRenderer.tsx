@@ -20,7 +20,6 @@ import {
   type ViewableContent,
 } from '@/app/types/Content';
 import { type CollectionContentRendererProps } from '@/app/types/ContentRenderer';
-import { toggleArrayFilter } from '@/app/types/GalleryFilter';
 import {
   checkImageVisibility,
   createContentClickHandler,
@@ -202,25 +201,11 @@ export default function CollectionContentRenderer({
     const dateItem = textItems.find(item => item.type === 'date');
     const locationItem = textItems.find(item => item.type === 'location');
     const descriptionItem = textItems.find(item => item.type === 'description');
-    const tagItems = textItems.filter(item => item.type === 'tag');
     const filterItems = textItems.filter(item => item.type === 'text');
     const collectionItems = textItems.filter(
       (item): item is (typeof textItems)[number] & { slug: string } =>
         item.type === 'collection' && item.slug != null
     );
-
-    const handleTagClick = (tagName: string, tagSlug?: string) => {
-      if (collectionFilter) {
-        toggleArrayFilter(
-          collectionFilter.filterState,
-          collectionFilter.onFilterChange,
-          'selectedTags',
-          tagName
-        );
-      } else {
-        router.push(`/${tagSlug ?? slugify(tagName)}`);
-      }
-    };
 
     return (
       <div
@@ -305,22 +290,6 @@ export default function CollectionContentRenderer({
                 ))}
               </div>
             )}
-            {!collectionFilter && tagItems.length > 0 && (
-              <div className={cbStyles.metadataTagsContainer}>
-                <div className={cbStyles.metadataTagsRow}>
-                  {tagItems.map(item => (
-                    <button
-                      key={`tag-${contentId}-${item.value}`}
-                      type="button"
-                      className={cbStyles.metadataTag}
-                      onClick={() => handleTagClick(item.value, item.slug)}
-                    >
-                      {item.value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
             {collectionItems.length > 0 &&
               (collectionItems.some(item => item.coverImageUrl) ? (
                 // Card path: at least one sibling has a cover image. Render a wrapping
@@ -391,7 +360,6 @@ export default function CollectionContentRenderer({
                 filteredAvailable={
                   collectionFilter.filteredAvailable
                     ? {
-                        selectedTags: collectionFilter.filteredAvailable.tags,
                         selectedPeople: collectionFilter.filteredAvailable.people,
                         selectedCameras: collectionFilter.filteredAvailable.cameras,
                         selectedLenses: collectionFilter.filteredAvailable.lenses,
