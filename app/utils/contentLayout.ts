@@ -191,7 +191,9 @@ export function clampParallaxDimensions(
  *
  * TODO: this parallax-card shape is built in four places — here, `collectionToContentModel`
  * (CollectionPage.tsx), `meContentBlock.ts` and `allCollectionsContentBlock.ts`. Collapse
- * them into one shared builder.
+ * them into one shared builder. Tracked in `docs/006-code-health.md` under "Parallax-card
+ * builder consolidation"; the divergence table and task breakdown are in
+ * `docs/superpowers/plans/2026-08-04-parallax-card-builder-consolidation.md` (local only).
  */
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel

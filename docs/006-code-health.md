@@ -36,6 +36,21 @@ The **React 18 → 19 runtime upgrade** ([#176](https://github.com/themancalledz
   (`getAllCollectionsAdmin`, the `_chunkSize`/`_currentState`/`_deletedIds` unused params, the
   `getContentDimensions` DEBUG `console.error`). _`ManageClient` is no longer a target — deleted in
   `0179`._
+- **Parallax-card builder consolidation** 🟢 — the collection-card `ContentParallaxImageModel`
+  shape is hand-built in **four** places that have already drifted apart:
+  `convertCollectionContentToParallax` (`app/utils/contentLayout.ts`), `collectionToContentModel`
+  (`app/components/ContentCollection/CollectionPage.tsx`), `buildMeContentBlock`
+  (`app/utils/meContentBlock.ts`), and `app/utils/allCollectionsContentBlock.ts`. They diverge in
+  ways that are partly deliberate and partly incidental: only `collectionToContentModel` applies
+  the password-protected cover strip and maps `CollectionVisibility` → the `visible` boolean (the
+  others use `col.visible ?? true`), only `convertCollectionContentToParallax` carries `tags` and
+  applies the 1000×1000 no-cover fallback, and only the two synthetic tiles set `alt`. The two
+  real-collection builders set `collectionId`; the two sentinel tiles deliberately omit it so they
+  stay unfollowable. Collapse into one builder whose options make each of those a stated choice
+  rather than an accident of which copy you landed in. Surfaced while reusing the standard
+  collection stack on `/user` (branch `0239-user-page-collection-reuse`); a `TODO` marker sits on
+  `convertCollectionContentToParallax`. Detailed plan (local, `docs/superpowers/` is gitignored):
+  `docs/superpowers/plans/2026-08-04-parallax-card-builder-consolidation.md`.
 - **Tests** 🟡 — layout property tests (fold in the image-reorder scenario fixtures from
   [005 · reorder audit](spikes/005-image-reorder-audit.md)); hooks and component render tests
   (`useFullScreenImage`, `useMetadataEditor`, `BoxRenderer`, `CollectionContentRenderer`,
@@ -61,15 +76,15 @@ to Code Health — folded out as one-line pointers (their substance is not dupli
 
 ## Sections (active)
 
-| Section                                                                                 | What it covers                                                                          | Status     |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ---------- |
-| [Error Boundaries & Logging](superpowers/plans/006-error-boundaries-and-logging.md)     | Logger migration ✅ (#171); external error tracking remains                             | 🟡         |
-| [Cleanup & Refactor](superpowers/plans/006-cleanup-and-refactor.md)                     | Wave A frontend handoff + Wave B follow-ups                                             | 🟢         |
-| [Function Decomposition](superpowers/plans/006-function-decomposition.md)               | Split god-functions; `fetchBase`; dead-code removals                                    | 🟢         |
-| [Property-Based Tests](superpowers/plans/006-property-based-tests.md)                    | Layout-pipeline invariants for `buildRows`/`compose`                                    | 🟢         |
-| [Test Coverage Gaps](superpowers/plans/006-test-coverage-gaps.md)                       | Complex-hook + component render tests (`fail()` fix ✅ #169)                             | 🟡         |
-| [React 19 Follow-ups](superpowers/plans/006-react19-followups.md)                       | Critical review of React Compiler / Form Actions / `useOptimistic` (all deferred)       | 🗒️ future  |
-| [Frontend Critical-Review Audit](superpowers/specs/006-frontend-audit.md)               | Slim index of the ~315-finding staff audit → owning chapters                            | 📘         |
+| Section                                                                             | What it covers                                                                    | Status    |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------- |
+| [Error Boundaries & Logging](superpowers/plans/006-error-boundaries-and-logging.md) | Logger migration ✅ (#171); external error tracking remains                       | 🟡        |
+| [Cleanup & Refactor](superpowers/plans/006-cleanup-and-refactor.md)                 | Wave A frontend handoff + Wave B follow-ups                                       | 🟢        |
+| [Function Decomposition](superpowers/plans/006-function-decomposition.md)           | Split god-functions; `fetchBase`; dead-code removals                              | 🟢        |
+| [Property-Based Tests](superpowers/plans/006-property-based-tests.md)               | Layout-pipeline invariants for `buildRows`/`compose`                              | 🟢        |
+| [Test Coverage Gaps](superpowers/plans/006-test-coverage-gaps.md)                   | Complex-hook + component render tests (`fail()` fix ✅ #169)                      | 🟡        |
+| [React 19 Follow-ups](superpowers/plans/006-react19-followups.md)                   | Critical review of React Compiler / Form Actions / `useOptimistic` (all deferred) | 🗒️ future |
+| [Frontend Critical-Review Audit](superpowers/specs/006-frontend-audit.md)           | Slim index of the ~315-finding staff audit → owning chapters                      | 📘        |
 
 > **Shipped sections** (dependency-upgrade, dry-consolidation, thin-component-extraction/audit/review, entity-edit-dry-wins, inline-jsx-config, camera-optimistic-create-race) are archived in `_archive/shipped-plans-2026-06-10.tar.gz` — recorded in [previous-work.md](previous-work.md).
 
