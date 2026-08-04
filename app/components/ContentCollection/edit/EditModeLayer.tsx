@@ -164,8 +164,8 @@ export default function EditModeLayer({
 
   const filteredContent = useMemo(() => {
     if (!hasActiveFilters) return allContent;
-    return applyCollectionFilters(allContent, allImages, criteria, filterState.selectedLensTypes);
-  }, [allContent, allImages, criteria, hasActiveFilters, filterState.selectedLensTypes]);
+    return applyCollectionFilters(allContent, allImages, criteria);
+  }, [allContent, allImages, criteria, hasActiveFilters]);
 
   const contentBlocks = useMemo(() => {
     // filterVisible=false: admins must see hidden blocks to manage them.

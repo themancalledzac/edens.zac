@@ -11,7 +11,7 @@ import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
-import { type AnyContentModel } from '@/app/types/Content';
+import { type AnyContentModel, type ContentGifModel } from '@/app/types/Content';
 import {
   type FilterState,
   INITIAL_FILTER_STATE,
@@ -20,6 +20,7 @@ import {
 import {
   applyCollectionFilters,
   buildCollectionCriteria,
+  type CollectionFilterDimensions,
   computeFilterVisibility,
   extractCollectionFilterOptions,
   hasAnyActiveFilter,
@@ -29,7 +30,7 @@ import {
   mergeDateSortedImages,
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
-import { isContentCollection } from '@/app/utils/contentTypeGuards';
+import { isContentCollection, isGifContent } from '@/app/utils/contentTypeGuards';
 import {
   canDownloadCollection,
   findMembership,
@@ -55,8 +56,6 @@ import { SelectsProvider } from './SelectsContext';
  * dynamic factory is never invoked and the chunk is never requested.
  */
 const EditModeLayer = dynamic(() => import('./edit/EditModeLayer'), { ssr: false });
-
-type CollectionDimensions = Omit<CollectionInfoOptions, 'showHighlyRated' | 'showDateSort'>;
 
 interface CollectionPageClientProps {
   collection: CollectionModel;
@@ -107,10 +106,10 @@ export default function CollectionPageClient({
     ...INITIAL_FILTER_STATE,
     dateSortDirection: editMode ? 'off' : initialDateSortDirection(collection.displayMode),
     highlyRatedOnly: initialCriteria.minRating !== undefined && initialCriteria.minRating >= 4,
-    selectedTags: initialCriteria.tags ?? [],
     selectedPeople: initialCriteria.people ?? [],
     selectedCameras: initialCriteria.cameras ?? [],
     selectedLocations: initialCriteria.locations ?? [],
+    selectedDates: initialCriteria.dates ?? [],
   }));
 
   const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
@@ -191,18 +190,30 @@ export default function CollectionPageClient({
 
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
+  // GIFs/MP4s with a captureDate contribute their day to the `dates` dimension only -- see
+  // extractCollectionFilterOptions. A GIF carries no camera or lens, and the tag/people/location/
+  // rating dimensions have always been sourced from images alone, so it must never feed any
+  // dimension other than `dates`.
+  const datedGifs = useMemo(
+    () =>
+      allContent.filter(
+        (item): item is ContentGifModel => isGifContent(item) && Boolean(item.captureDate)
+      ),
+    [allContent]
+  );
+
   const visibility = useMemo(() => computeFilterVisibility(allImages), [allImages]);
 
   // D7: image-derived dimensions are shown whenever the page has ANY image, and no explicit
   // suppression is needed to hide them otherwise — `extractCollectionFilterOptions` sources
-  // cameras/lenses/lensTypes from `allImages` alone, so a page with no images already yields
+  // cameras/lenses from `allImages` alone, so a page with no images already yields
   // empty values, and every consumer gates on `values.length`. The former
   // `allCollections.length > allImages.length` comparison was constant per collection under the
   // typed model; under mixed content it flips with a single content edit, so a sixth photo would
   // make the Camera/Lens dropdowns reappear.
-  const baseCollectionOptions = useMemo<CollectionDimensions>(
-    () => extractCollectionFilterOptions(allImages, allCollections),
-    [allImages, allCollections]
+  const baseCollectionOptions = useMemo<CollectionFilterDimensions>(
+    () => extractCollectionFilterOptions(allImages, allCollections, datedGifs),
+    [allImages, allCollections, datedGifs]
   );
 
   const criteria = useMemo(() => buildCollectionCriteria(filterState), [filterState]);
@@ -211,8 +222,8 @@ export default function CollectionPageClient({
 
   const filteredContent = useMemo(() => {
     if (!hasActiveFilters) return allContent;
-    return applyCollectionFilters(allContent, allImages, criteria, filterState.selectedLensTypes);
-  }, [allContent, allImages, criteria, hasActiveFilters, filterState.selectedLensTypes]);
+    return applyCollectionFilters(allContent, allImages, criteria);
+  }, [allContent, allImages, criteria, hasActiveFilters]);
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
@@ -224,15 +235,37 @@ export default function CollectionPageClient({
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
+
+    // `dates` is OR-combined and single-valued per image, unlike every other dimension here
+    // (AND-combined). Deriving its availability from `filteredImages` -- which already reflects
+    // the active `dates` selection -- collapses every other day to "unavailable" the instant one
+    // day is selected. Re-derive it from a pass with `dates` omitted from criteria so days never
+    // grey each other out, while a day with no photos under another active filter (e.g. camera)
+    // still greys out correctly.
+    const { dates: _omitted, ...criteriaWithoutDates } = criteria;
+    const contentForDateAvailability = applyCollectionFilters(
+      allContent,
+      allImages,
+      criteriaWithoutDates
+    );
+    const imagesForDateAvailability = contentForDateAvailability.filter(isImageContent);
+    const gifsForDateAvailability = contentForDateAvailability.filter(
+      (item): item is ContentGifModel => isGifContent(item) && Boolean(item.captureDate)
+    );
+    const dateAvailability = extractCollectionFilterOptions(
+      imagesForDateAvailability,
+      allCollections,
+      gifsForDateAvailability
+    );
+
     return {
-      tags: dims.tags.values,
       people: dims.people.values,
       cameras: dims.cameras.values,
       lenses: dims.lenses.values,
-      lensTypes: dims.lensTypes.values,
       locations: dims.locations.values,
+      dates: dateAvailability.dates.values,
     };
-  }, [hasActiveFilters, filteredImages, allCollections]);
+  }, [hasActiveFilters, filteredImages, allCollections, criteria, allContent, allImages]);
 
   const availableOptions = useMemo<CollectionInfoOptions>(
     () => ({

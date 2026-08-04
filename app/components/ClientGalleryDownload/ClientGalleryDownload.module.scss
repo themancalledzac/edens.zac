@@ -21,7 +21,9 @@
 .buttonRow {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  /* Same token as FilterToolbar's .toolbar gap, so this row and the filter row directly
+     below it space their controls identically. */
+  gap: var(--space-1);
   flex-wrap: wrap;
 }
 
@@ -35,6 +37,23 @@
 .ctaButton {
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+
+/* Matches FilterChip's line-height (1.4) so the Download row's buttons (All, Select) render at
+   the same height as the adjacent Order/filter chips -- padding, font-size, and border-width
+   already match between <Button size="sm"> and .chip; line-height was the only remaining
+   box-height contributor (the 18px download icon is smaller than the resulting line box, so it
+   no longer drives the button's height). Applied to both row buttons -- not just .ctaButton --
+   because "Select" is a bare outline Button with no .ctaButton class. */
+.rowButton {
+  line-height: 1.4;
+
+  /* Trimmed from Button.sm's var(--space-3) to var(--space-2). "ALL" carries an 18px icon, an
+     8px icon gap, and uppercase text at 0.1em letter-spacing, so at equal padding it renders
+     roughly 8px wider than the "Order" chip below it despite identical padding/font-size/border.
+     Pulling 4px off each side closes that gap. Applies to Select too, keeping the row uniform. */
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
 }
 
 .downloadIcon {

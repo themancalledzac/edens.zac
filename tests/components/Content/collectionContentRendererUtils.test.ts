@@ -11,12 +11,11 @@ import { type CollectionInfoOptions } from '@/app/components/ContentCollection/C
 const dim = (values: readonly string[], filterable: boolean) => ({ values, filterable });
 
 const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfoOptions => ({
-  tags: dim([], false),
   people: dim([], false),
   cameras: dim([], false),
   lenses: dim([], false),
   locations: dim([], false),
-  lensTypes: { values: [], filterable: false },
+  dates: dim([], false),
   showHighlyRated: false,
   showDateSort: false,
   ...overrides,
@@ -28,7 +27,7 @@ describe('toCollectionDimensions', () => {
   });
 
   it('skips a dimension that is filterable but has no values', () => {
-    expect(toCollectionDimensions(options({ tags: dim([], true) }))).toEqual({});
+    expect(toCollectionDimensions(options({ locations: dim([], true) }))).toEqual({});
   });
 
   it('maps a filterable dimension with values to a labelled dropdown', () => {
@@ -36,15 +35,13 @@ describe('toCollectionDimensions', () => {
     expect(result).toEqual({ selectedPeople: { label: 'People', options: ['Ann', 'Bo'] } });
   });
 
-  it('maps tags, cameras, and locations with their labels', () => {
+  it('maps cameras and locations with their labels', () => {
     const result = toCollectionDimensions(
       options({
-        tags: dim(['x'], true),
         cameras: dim(['Leica'], true),
         locations: dim(['Rome'], true),
       })
     );
-    expect(result.selectedTags).toEqual({ label: 'Tags', options: ['x'] });
     expect(result.selectedCameras).toEqual({ label: 'Camera', options: ['Leica'] });
     expect(result.selectedLocations).toEqual({ label: 'Location', options: ['Rome'] });
   });
@@ -52,30 +49,36 @@ describe('toCollectionDimensions', () => {
   it('surfaces a lens-names dropdown when lenses are filterable', () => {
     const result = toCollectionDimensions(options({ lenses: dim(['35mm'], true) }));
     expect(result.selectedLenses).toEqual({ label: 'Lens', options: ['35mm'] });
-    expect(result.selectedLensTypes).toBeUndefined();
   });
 
-  it('adds a lens-types dropdown (with display labels) when lens types are present', () => {
-    const result = toCollectionDimensions(
-      options({
-        lenses: dim(['35mm'], true),
-        lensTypes: { values: ['wide', 'telephoto'], filterable: true },
-      })
-    );
-    expect(result.selectedLenses).toEqual({ label: 'Lens', options: ['35mm'] });
-    expect(result.selectedLensTypes).toEqual({
-      label: 'Lens type',
-      options: ['wide', 'telephoto'],
-      optionLabels: { wide: 'Wide', normal: 'Normal', telephoto: 'Telephoto' },
+  it('surfaces dates with human labels when filterable', () => {
+    const dims = toCollectionDimensions({
+      people: { values: [], filterable: true },
+      cameras: { values: [], filterable: true },
+      lenses: { values: [], filterable: true },
+      locations: { values: [], filterable: true },
+      dates: { values: ['2026-07-20', '2026-07-21'], filterable: true },
+      showHighlyRated: false,
+      showDateSort: false,
+    });
+    expect(dims.selectedDates).toEqual({
+      label: 'Date',
+      options: ['2026-07-20', '2026-07-21'],
+      optionLabels: { '2026-07-20': 'Jul 20', '2026-07-21': 'Jul 21' },
     });
   });
 
-  it('still surfaces the lens dropdowns when only lens types are filterable', () => {
-    const result = toCollectionDimensions(
-      options({ lensTypes: { values: ['normal'], filterable: true } })
-    );
-    expect(result.selectedLenses).toEqual({ label: 'Lens', options: [] });
-    expect(result.selectedLensTypes).toMatchObject({ label: 'Lens type', options: ['normal'] });
+  it('omits dates when not filterable', () => {
+    const dims = toCollectionDimensions({
+      people: { values: [], filterable: true },
+      cameras: { values: [], filterable: true },
+      lenses: { values: [], filterable: true },
+      locations: { values: [], filterable: true },
+      dates: { values: ['2026-07-20'], filterable: false },
+      showHighlyRated: false,
+      showDateSort: false,
+    });
+    expect(dims.selectedDates).toBeUndefined();
   });
 });
 

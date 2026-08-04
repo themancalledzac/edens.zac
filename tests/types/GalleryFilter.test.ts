@@ -18,12 +18,25 @@ describe('FilterState helpers', () => {
     expect(INITIAL_FILTER_STATE.selectedPeople).toEqual([]);
     expect(INITIAL_FILTER_STATE.selectedCameras).toEqual([]);
     expect(INITIAL_FILTER_STATE.selectedLenses).toEqual([]);
-    expect(INITIAL_FILTER_STATE.selectedLensTypes).toEqual([]);
     expect(INITIAL_FILTER_STATE.selectedLocations).toEqual([]);
+  });
+
+  it('does not carry a lens-type dimension', () => {
+    expect(ARRAY_FILTER_KEYS).not.toContain('selectedLensTypes');
+    expect(INITIAL_FILTER_STATE).not.toHaveProperty('selectedLensTypes');
   });
 
   it('has no selectedCollectionIds field (dead field removed)', () => {
     expect('selectedCollectionIds' in INITIAL_FILTER_STATE).toBe(false);
+  });
+
+  it('carries a dates dimension', () => {
+    expect(ARRAY_FILTER_KEYS).toContain('selectedDates');
+    expect(INITIAL_FILTER_STATE.selectedDates).toEqual([]);
+  });
+
+  it('leads ARRAY_FILTER_KEYS with selectedDates (task 6 dropdown-fallback ordering depends on this)', () => {
+    expect(ARRAY_FILTER_KEYS[0]).toBe('selectedDates');
   });
 
   it('cycleDateSort uses one canonical order: off -> asc -> desc -> off', () => {

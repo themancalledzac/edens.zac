@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { type ComponentProps } from 'react';
 
-import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
-import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
+import { FilterToolbar, MAX_FLAT_DATE_CHIPS } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
+import { dayLabels } from '@/app/utils/collectionDates';
 
 type Props = ComponentProps<typeof FilterToolbar>;
 
@@ -23,10 +24,34 @@ function renderToolbar(overrides: Partial<Props> = {}) {
 }
 
 describe('FilterToolbar', () => {
-  it('renders a date-sort toggle that cycles off -> asc on click', () => {
+  it('labels the sort chip Order and cycles off -> asc on click', () => {
     const { onFilterChange } = renderToolbar({ showDateSort: true });
-    fireEvent.click(screen.getByRole('button', { name: /date/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^order$/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
+  });
+
+  it('renders directional Order labels', () => {
+    const { unmount } = render(
+      <FilterToolbar
+        filterState={{ ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' }}
+        onFilterChange={jest.fn()}
+        dimensions={{}}
+        showDateSort
+      />
+    );
+    // Exact-string names, not regex: '^' and 'v' are regex-significant.
+    expect(screen.getByRole('button', { name: 'Order ^' })).toBeInTheDocument();
+    unmount();
+
+    render(
+      <FilterToolbar
+        filterState={{ ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' }}
+        onFilterChange={jest.fn()}
+        dimensions={{}}
+        showDateSort
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Order v' })).toBeInTheDocument();
   });
 
   it('two-state date toggle cycles asc <-> desc and never shows the off label', () => {
@@ -35,9 +60,9 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' },
     });
-    // Shows the directional label, not the neutral "Date".
-    const chip = screen.getByRole('button', { name: /date ↑/i });
-    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+    // Shows the directional label, not the neutral "Order".
+    const chip = screen.getByRole('button', { name: /order \^/i });
+    expect(screen.queryByRole('button', { name: /^order$/i })).toBeNull();
     fireEvent.click(chip);
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'desc' });
   });
@@ -48,7 +73,7 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /date ↓/i }));
+    fireEvent.click(screen.getByRole('button', { name: /order v/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
   });
 
@@ -102,7 +127,9 @@ describe('FilterToolbar', () => {
     expect(screen.queryByLabelText('Row density')).toBeNull();
   });
 
-  it('renders a reset button only when a filter is active', () => {
+  it('renders the reset button always, disabled until a filter is active', () => {
+    // Always present in the DOM (so it never pops in/out and reflows the bar); only its
+    // disabled state -- and CSS visibility, which jsdom cannot assert -- change.
     const { rerender } = render(
       <FilterToolbar
         filterState={INITIAL_FILTER_STATE}
@@ -111,7 +138,7 @@ describe('FilterToolbar', () => {
         showDateSort
       />
     );
-    expect(screen.queryByRole('button', { name: /reset all filters/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /reset all filters/i })).toBeDisabled();
     rerender(
       <FilterToolbar
         filterState={{ ...INITIAL_FILTER_STATE, highlyRatedOnly: true }}
@@ -120,17 +147,17 @@ describe('FilterToolbar', () => {
         showHighlyRated
       />
     );
-    expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reset all filters/i })).not.toBeDisabled();
   });
 
-  it('hides the reset button for a two-state date sort with no other filters', () => {
-    // The always-on chronological Date sort must not surface the reset (×) on load.
+  it('disables the reset button for a two-state date sort with no other filters', () => {
+    // The always-on chronological Date sort must not surface an active reset button on load.
     renderToolbar({
       showDateSort: true,
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' },
     });
-    expect(screen.queryByRole('button', { name: /reset all filters/i })).toBeNull();
+    expect(screen.getByRole('button', { name: /reset all filters/i })).toBeDisabled();
   });
 
   it('preserves the date direction when resetting in two-state mode', () => {
@@ -148,5 +175,151 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ dateSortDirection: 'desc', highlyRatedOnly: false })
     );
+  });
+
+  const threeDays = {
+    selectedDates: {
+      label: 'Date',
+      options: ['2026-07-20', '2026-07-21', '2026-07-22'],
+      optionLabels: {
+        '2026-07-20': 'Jul 20',
+        '2026-07-21': 'Jul 21',
+        '2026-07-22': 'Jul 22',
+      },
+    },
+  };
+
+  it('renders each date as a flat chip at or below the threshold', () => {
+    renderToolbar({ dimensions: threeDays });
+    expect(screen.getByRole('button', { name: /jul 20/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /jul 21/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /jul 22/i })).toBeInTheDocument();
+    // Flat mode means no dropdown trigger for the dimension.
+    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+  });
+
+  it('toggles a date on click', () => {
+    const { onFilterChange } = renderToolbar({ dimensions: threeDays });
+    fireEvent.click(screen.getByRole('button', { name: /jul 21/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-21'] });
+  });
+
+  it('still renders flat chips at exactly the threshold', () => {
+    const options = Array.from({ length: MAX_FLAT_DATE_CHIPS }, (_, i) =>
+      `2026-07-${String(20 + i).padStart(2, '0')}`
+    );
+    renderToolbar({
+      dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
+    });
+    expect(screen.getByRole('button', { name: 'Jul 20' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^date$/i })).toBeNull();
+  });
+
+  it('collapses to a dropdown above the threshold', () => {
+    const options = Array.from({ length: MAX_FLAT_DATE_CHIPS + 1 }, (_, i) =>
+      `2026-07-${String(20 + i).padStart(2, '0')}`
+    );
+    renderToolbar({
+      dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
+    });
+    expect(screen.getByRole('button', { name: /^date/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /jul 20/i })).toBeNull();
+  });
+
+  it('greys out a date that is unreachable under other filters', () => {
+    renderToolbar({
+      dimensions: threeDays,
+      filteredAvailable: { selectedDates: ['2026-07-20'] },
+    });
+    expect(screen.getByRole('button', { name: /jul 21/i })).toBeDisabled();
+  });
+
+  it('reset clears a selected date', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions: threeDays,
+      filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-21'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /reset all filters/i }));
+    expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ selectedDates: [] }));
+  });
+
+  describe('layout stability (selection must never change which nodes are present)', () => {
+    // These assertions pin STRUCTURAL invariants only -- jsdom has no layout engine, so none of
+    // this measures real pixel widths. They exist to catch a regression of any of the three
+    // known reflow causes: a weight class swapping in on .active, the Order chip's trailing
+    // slot disappearing, or the reset button being conditionally unmounted.
+
+    it('keeps the reset button mounted in the DOM across every active-filter state', () => {
+      // No filters at all.
+      const { unmount: unmount1 } = render(
+        <FilterToolbar filterState={INITIAL_FILTER_STATE} onFilterChange={jest.fn()} dimensions={{}} showDateSort />
+      );
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
+      unmount1();
+
+      // One filter active.
+      const { unmount: unmount2 } = render(
+        <FilterToolbar
+          filterState={{ ...INITIAL_FILTER_STATE, highlyRatedOnly: true }}
+          onFilterChange={jest.fn()}
+          dimensions={{}}
+          showHighlyRated
+        />
+      );
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
+      unmount2();
+
+      // Several filters active at once.
+      render(
+        <FilterToolbar
+          filterState={{
+            ...INITIAL_FILTER_STATE,
+            highlyRatedOnly: true,
+            filmFilter: 'film',
+            dateSortDirection: 'desc',
+          }}
+          onFilterChange={jest.fn()}
+          dimensions={{}}
+          showDateSort
+          showHighlyRated
+          showFilm
+        />
+      );
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
+    });
+
+    it('renders the same Order chip DOM shape (label + trailing slot) in every direction', () => {
+      const directions: Array<FilterState['dateSortDirection']> = ['off', 'asc', 'desc'];
+      for (const dateSortDirection of directions) {
+        const { unmount } = render(
+          <FilterToolbar
+            filterState={{ ...INITIAL_FILTER_STATE, dateSortDirection }}
+            onFilterChange={jest.fn()}
+            dimensions={{}}
+            showDateSort
+          />
+        );
+        const chip = screen.getByRole('button', { name: /^order/i });
+        // The label text is always the fixed string "Order" ...
+        expect(chip.firstChild?.textContent).toBe('Order');
+        // ... and the trailing glyph slot is always present as its own element, even when empty.
+        const trailingSlot = chip.querySelector('span');
+        expect(trailingSlot).not.toBeNull();
+        unmount();
+      }
+    });
+
+    it('never applies a font-weight-only active class to the Order chip or a dropdown trigger', () => {
+      // Regression guard for cause 1: .active and .dropdownTriggerActive must not carry a
+      // bold-weight-only signal back in -- distinguishing an active chip must rely on the
+      // foreground/background inversion (or opacity/background), not on width-changing weight.
+      renderToolbar({
+        showDateSort: true,
+        dimensions: { selectedTags: { label: 'Tags', options: ['sunset'] } },
+        filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc', selectedTags: ['sunset'] },
+      });
+      const orderChip = screen.getByRole('button', { name: /^order/i });
+      expect(orderChip.className).toMatch(/active/);
+    });
   });
 });

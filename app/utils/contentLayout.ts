@@ -425,15 +425,6 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
     });
   }
 
-  if (collection.tags && collection.tags.length > 0) {
-    for (const tag of collection.tags) {
-      items.push({
-        type: 'tag',
-        value: tag,
-      });
-    }
-  }
-
   // "Related" collections: curated siblings (peers) followed by the parent collections this
   // one belongs to. Both share the CollectionListModel shape and render identically — a cover
   // card when coverImageUrl is present (shipped by the backend), a plain text link otherwise.

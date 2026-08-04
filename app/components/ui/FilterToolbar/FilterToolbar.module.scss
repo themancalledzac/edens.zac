@@ -2,7 +2,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  /* Same token as the Download row's .buttonRow, so the two stacked rows space their
+     controls identically. Was a hardcoded 4px, which is what --space-1 resolves to. */
+  gap: var(--space-1);
   padding: var(--space-2) var(--space-3) var(--space-1);
   border-top: 1px solid var(--color-border);
 
@@ -49,7 +51,6 @@
 
 .dropdownTriggerActive {
   opacity: 1;
-  font-weight: 600;
   background-color: var(--color-overlay-soft);
 }
 
@@ -104,6 +105,12 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
+}
+
+/* Always rendered so it occupies its slot in the flex row; hidden (not removed) when there is
+   nothing to reset, so selecting/clearing filters never changes the toolbar's layout. */
+.resetInactive {
+  visibility: hidden;
 }
 
 .slider {

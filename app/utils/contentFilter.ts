@@ -11,12 +11,13 @@
 import {
   type AnyContentModel,
   type ContentCollectionModel,
+  type ContentGifModel,
   type ContentImageModel,
 } from '@/app/types/Content';
-import { type FilmFilter, type FilterState, type LensType } from '@/app/types/GalleryFilter';
+import { type FilmFilter, type FilterState } from '@/app/types/GalleryFilter';
+import { captureDayKey, distinctDays } from '@/app/utils/collectionDates';
 import { isCollectionCard } from '@/app/utils/contentRatingUtils';
 import { isGifContent } from '@/app/utils/contentTypeGuards';
-import { getLensType } from '@/app/utils/focalLength';
 
 /**
  * Filter criteria for content arrays.
@@ -42,6 +43,8 @@ export interface ContentFilterCriteria {
   dateFrom?: string;
   /** Date range end (ISO string, inclusive) */
   dateTo?: string;
+  /** Calendar days ('YYYY-MM-DD') to include (OR logic - matches if captured on ANY of these) */
+  dates?: readonly string[];
   /** Filter to film images only */
   isFilm?: boolean;
   /** Filter to black & white images only */
@@ -154,6 +157,7 @@ export function filterContent(
     (criteria.query !== undefined && criteria.query.trim().length > 0) ||
     criteria.dateFrom !== undefined ||
     criteria.dateTo !== undefined ||
+    (criteria.dates && criteria.dates.length > 0) ||
     criteria.isFilm !== undefined ||
     criteria.blackAndWhite !== undefined ||
     (criteria.collectionIds && criteria.collectionIds.length > 0);
@@ -219,6 +223,11 @@ export function filterContent(
       !isWithinDateRange(item.captureDate, criteria.dateFrom, criteria.dateTo)
     ) {
       return false;
+    }
+
+    if (criteria.dates && criteria.dates.length > 0) {
+      const day = captureDayKey(item.captureDate);
+      if (!day || !criteria.dates.includes(day)) return false;
     }
 
     if (criteria.isFilm !== undefined && (item.isFilm ?? false) !== criteria.isFilm) {
@@ -400,7 +409,6 @@ export interface FilterVisibility {
   cameras: boolean;
   lenses: boolean;
   locations: boolean;
-  lensTypes: boolean;
 }
 
 /**
@@ -419,10 +427,6 @@ export function computeFilterVisibility(images: ContentImageModel[]): FilterVisi
     cameras: canFilter(images, img => (img.camera?.name ? [img.camera.name] : [])),
     lenses: canFilter(images, img => (img.lens?.name ? [img.lens.name] : [])),
     locations: canFilter(images, img => (img.locations ?? []).map(l => l.name)),
-    lensTypes: canFilter(images, img => {
-      const lensType = getLensType(img.focalLength);
-      return lensType ? [lensType] : [];
-    }),
   };
 }
 
@@ -448,7 +452,6 @@ export function applyActiveOverride(
     cameras: visibility.cameras || filterState.selectedCameras.length > 0,
     lenses: visibility.lenses || filterState.selectedLenses.length > 0,
     locations: visibility.locations || filterState.selectedLocations.length > 0,
-    lensTypes: visibility.lensTypes || filterState.selectedLensTypes.length > 0,
   };
 }
 
@@ -627,6 +630,9 @@ export function parseFilterFromParams(
   const cameras = getAll('camera');
   if (cameras.length > 0) criteria.cameras = cameras;
 
+  const dates = getAll('date');
+  if (dates.length > 0) criteria.dates = dates;
+
   const query = get('q');
   if (query) criteria.query = query;
 
@@ -670,6 +676,7 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
   for (const l of criteria.locations ?? []) params.append('location', l);
   for (const t of criteria.tags ?? []) params.append('tag', t);
   for (const c of criteria.cameras ?? []) params.append('camera', c);
+  for (const d of criteria.dates ?? []) params.append('date', d);
 
   if (criteria.query) params.set('q', criteria.query);
   if (criteria.dateFrom) params.set('from', criteria.dateFrom);
@@ -691,6 +698,13 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
 // location/taxonomy pages) so those components read as hooks → helpers → JSX.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * A collection needs at least this many images before the per-day date filter is worth showing.
+ * Paired with a 2-distinct-day minimum: below this size, splitting by day slices the grid into
+ * fragments smaller than a single screen.
+ */
+export const MIN_IMAGES_FOR_DATE_FILTER = 30;
+
 /** Per-dimension data for the collection filter bar: values + whether it renders as a dropdown. */
 export interface FilterDimension<T = string> {
   values: readonly T[];
@@ -707,7 +721,7 @@ export interface CollectionFilterDimensions {
   cameras: FilterDimension;
   lenses: FilterDimension;
   locations: FilterDimension;
-  lensTypes: FilterDimension<LensType>;
+  dates: FilterDimension;
 }
 
 /**
@@ -716,15 +730,21 @@ export interface CollectionFilterDimensions {
  * Returns per-dimension data with a `filterable` flag. When a dimension has a
  * single value and the dimension's policy allows info-mode (cameras / lenses /
  * locations need 2+ values), `filterable` is false so the bar renders it as an
- * inline info chip instead of a dropdown. Lens types only surface when 2+
- * distinct categories AND 2+ distinct lenses are present (an image-only signal).
+ * inline info chip instead of a dropdown.
  *
  * @param images - Image content to aggregate dimensions from
  * @param collectionRefs - Collection refs (synthetic PARENT pages aggregate from these too)
+ * @param datedGifs - GIF/MP4 blocks that carry a captureDate. Contribute ONLY to the `dates`
+ *   dimension: a GIF carries no camera or lens, and although ContentGifModel does declare
+ *   rating/tags/people/locations, those dimensions have always been sourced from images alone
+ *   and this parameter does not change that. See {@link isDateable}, which
+ *   already treats dated GIFs as chronologically participating. Without this, a day whose
+ *   content is entirely GIFs would have no chip and become unreachable.
  */
 export function extractCollectionFilterOptions(
   images: ContentImageModel[],
-  collectionRefs: ContentCollectionModel[] = []
+  collectionRefs: ContentCollectionModel[] = [],
+  datedGifs: ContentGifModel[] = []
 ): CollectionFilterDimensions {
   // Pass images + refs together so extractFilterOptions can aggregate filter
   // dimensions from collection refs too. This is what populates the filter bar
@@ -733,17 +753,13 @@ export function extractCollectionFilterOptions(
   const combined = [...images, ...collectionRefs];
   const baseOptions = extractFilterOptions(combined, 0.9);
 
-  // Lens types: only show if 2+ distinct categories present (image-only signal)
-  const lensTypeSet = new Set<LensType>();
-  for (const img of images) {
-    const lt = getLensType(img.focalLength);
-    if (lt !== null) lensTypeSet.add(lt);
-  }
-  const typeOrder: LensType[] = ['wide', 'normal', 'telephoto'];
-  const lensTypes =
-    lensTypeSet.size >= 2 && baseOptions.lenses.length >= 2
-      ? typeOrder.filter(t => lensTypeSet.has(t))
-      : [];
+  // Distinct capture days, ascending. See the `dates` gate below for the visibility rule.
+  // Dated GIFs contribute their day here only -- MIN_IMAGES_FOR_DATE_FILTER below still counts
+  // `images.length` alone, never `images.length + datedGifs.length`.
+  const dates = distinctDays([
+    ...images.map(img => img.captureDate),
+    ...datedGifs.map(gif => gif.captureDate),
+  ]);
 
   // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
   // would wrongly mark a dimension filterable when all values blanket every item).
@@ -774,7 +790,15 @@ export function extractCollectionFilterOptions(
         canFilter(combined, item => (item.locations ?? []).map(l => l.name)) &&
         baseOptions.locations.length >= 2,
     },
-    lensTypes: { values: lensTypes, filterable: true },
+    dates: {
+      values: dates,
+      // Exactly two conditions: 2+ distinct capture days, and enough images that splitting
+      // by day is worthwhile. `canFilter` is intentionally NOT part of this gate: a capture
+      // day is single-valued per image, so whenever `dates.length >= 2` at least two distinct
+      // days are present and no single day's count can equal the total -- canFilter would
+      // already be guaranteed true here, making it redundant.
+      filterable: dates.length >= 2 && images.length >= MIN_IMAGES_FOR_DATE_FILTER,
+    },
   };
 }
 
@@ -782,9 +806,7 @@ export function extractCollectionFilterOptions(
  * Build filter criteria from a collection page's filter state — all-AND match
  * mode. Single source of truth for both the live filter and the URL sync (the
  * `lenses` key has no URL param, so it is silently dropped by
- * {@link serializeFilterToParams}). `selectedLensTypes` is applied separately as
- * a post-filter (see {@link applyCollectionFilters}) since it derives from focal
- * length rather than a stored field.
+ * {@link serializeFilterToParams}).
  */
 export function buildCollectionCriteria(filterState: FilterState): ContentFilterCriteria {
   return {
@@ -804,12 +826,12 @@ export function buildCollectionCriteria(filterState: FilterState): ContentFilter
     ...(filterState.selectedLocations.length > 0
       ? { locations: filterState.selectedLocations }
       : {}),
+    ...(filterState.selectedDates.length > 0 ? { dates: filterState.selectedDates } : {}),
   };
 }
 
 /**
- * Whether any collection-page filter is active. Includes `selectedLensTypes`
- * (a post-filter not represented in {@link ContentFilterCriteria}).
+ * Whether any collection-page filter is active.
  */
 export function hasAnyActiveFilter(filterState: FilterState): boolean {
   return (
@@ -818,8 +840,8 @@ export function hasAnyActiveFilter(filterState: FilterState): boolean {
     filterState.selectedPeople.length > 0 ||
     filterState.selectedCameras.length > 0 ||
     filterState.selectedLenses.length > 0 ||
-    filterState.selectedLensTypes.length > 0 ||
-    filterState.selectedLocations.length > 0
+    filterState.selectedLocations.length > 0 ||
+    filterState.selectedDates.length > 0
   );
 }
 
@@ -874,39 +896,35 @@ export function collectionRefMatchesCriteria(
 /**
  * Apply the collection page's filters to its content.
  *
- * Filters images by `criteria` (plus the lens-type post-filter — images with an
- * unparseable focalLength are kept so a lens-type chip never silently hides them),
- * and filters COLLECTION-ref tiles by their own tags/people/locations/rating (see
- * {@link collectionRefMatchesCriteria}) so tag filtering works on collection-dominant
- * pages like /all-collections. Any other non-image block passes through unchanged.
+ * Filters only images by `criteria`, and filters COLLECTION-ref tiles by their own
+ * tags/people/locations/rating (see {@link collectionRefMatchesCriteria}) so tag
+ * filtering works on collection-dominant pages like /all-collections. Any other
+ * non-image block passes through unchanged.
  *
  * @param allContent - The full content array (images + non-image blocks)
  * @param allImages - The image subset of `allContent`
  * @param criteria - Filter criteria (from {@link buildCollectionCriteria})
- * @param selectedLensTypes - Active lens-type chips (post-filter)
  */
 export function applyCollectionFilters(
   allContent: AnyContentModel[],
   allImages: ContentImageModel[],
-  criteria: ContentFilterCriteria,
-  selectedLensTypes: readonly LensType[]
+  criteria: ContentFilterCriteria
 ): AnyContentModel[] {
-  let filtered = filterContent(allImages, criteria).filter(isImageContent);
-
-  // Apply lens type filter — images without parseable focalLength are
-  // included intentionally so they aren't silently hidden by a lens-type chip.
-  if (selectedLensTypes.length > 0) {
-    filtered = filtered.filter(img => {
-      const lt = getLensType(img.focalLength);
-      return lt === null || selectedLensTypes.includes(lt);
-    });
-  }
+  const filtered = filterContent(allImages, criteria).filter(isImageContent);
 
   const filteredImageIds = new Set(filtered.map(img => img.id));
   return allContent.filter(item => {
     if (isImageContent(item)) return filteredImageIds.has(item.id);
     if (isCollectionRef(item)) return collectionRefMatchesCriteria(item, criteria);
-    // Other non-image blocks (text, panels) are structural — never filtered out.
+    // A dated GIF/MP4 participates in the `dates` criterion the same way {@link isDateable}
+    // already lets it participate in chronological sort. An undated GIF keeps passing through
+    // unconditionally -- there is no day to match against. This is an intentional asymmetry
+    // with undated IMAGES, which DO drop out once a day is selected (see filterContent above).
+    if (isGifContent(item) && item.captureDate && criteria.dates && criteria.dates.length > 0) {
+      const day = captureDayKey(item.captureDate);
+      return day !== null && criteria.dates.includes(day);
+    }
+    // Other non-image blocks (text, panels, undated GIFs) are structural -- never filtered out.
     return true;
   });
 }
@@ -950,9 +968,13 @@ export function mergeDateSortedImages(
 
 /**
  * Whether the collection filter bar has anything to show (controls the
- * decision to wrap the page in the filter provider at all). Locations
- * contribute only when multi-value (`filterable`) — single-value locations are
- * intentionally surfaced elsewhere and must not trigger the bar alone.
+ * decision to wrap the page in the filter provider at all). Locations and
+ * dates contribute only when multi-value (`filterable`) - a single-value
+ * location, or a collection whose images share one capture day, is
+ * intentionally surfaced elsewhere and must not trigger the bar alone. (Nearly
+ * every real photo carries a captureDate, so gating dates on raw value count
+ * instead of `filterable` would open the bar for collections with no other
+ * filterable dimension at all.)
  *
  * @param baseOptions - The page's base dimensions
  * @param showHighlyRated - Whether the Highly Rated control is shown
@@ -966,12 +988,11 @@ export function hasFilterableOptions(
   return (
     showHighlyRated ||
     showDateSort ||
-    baseOptions.tags.values.length > 0 ||
     baseOptions.people.values.length > 0 ||
     baseOptions.cameras.values.length > 0 ||
     baseOptions.lenses.values.length > 0 ||
-    baseOptions.lensTypes.values.length > 0 ||
-    baseOptions.locations.filterable
+    baseOptions.locations.filterable ||
+    baseOptions.dates.filterable
   );
 }
 

@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'react';
 
-import { type FilterState, type LensType } from '@/app/types/GalleryFilter';
+import { type FilterState } from '@/app/types/GalleryFilter';
 
 /**
  * Per-dimension data used by the collection filter bar.
@@ -14,24 +14,22 @@ export interface DimensionData<T = string> {
 }
 
 export interface CollectionInfoOptions {
-  tags: DimensionData;
   people: DimensionData;
   cameras: DimensionData;
   lenses: DimensionData;
   locations: DimensionData;
-  lensTypes: DimensionData<LensType>;
+  dates: DimensionData;
   showHighlyRated: boolean;
   showDateSort: boolean;
 }
 
 /** Subset of options available after current filters are applied (for grey-out logic). null = no active filters. */
 export type FilteredAvailableOptions = {
-  tags: readonly string[];
   people: readonly string[];
   cameras: readonly string[];
   lenses: readonly string[];
-  lensTypes: readonly LensType[];
   locations: readonly string[];
+  dates: readonly string[];
 } | null;
 
 interface CollectionFilterContextValue {

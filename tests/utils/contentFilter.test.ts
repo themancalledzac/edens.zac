@@ -5,7 +5,7 @@ import {
   type ContentImageModel,
   type ContentTextModel,
 } from '@/app/types/Content';
-import { type FilterState, INITIAL_FILTER_STATE, type LensType } from '@/app/types/GalleryFilter';
+import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import {
   applyActiveOverride,
   applyCollectionFilters,
@@ -24,6 +24,7 @@ import {
   hasFilterableOptions,
   isDateable,
   mergeDateSortedImages,
+  MIN_IMAGES_FOR_DATE_FILTER,
   parseFilterFromParams,
   serializeFilterToParams,
 } from '@/app/utils/contentFilter';
@@ -669,6 +670,18 @@ describe('serializeFilterToParams', () => {
     const parsed = parseFilterFromParams(serialized);
     expect(parsed).toEqual(original);
   });
+
+  it('round-trips selected days through the URL', () => {
+    const criteria = { dates: ['2026-07-20', '2026-07-22'] };
+    const params = serializeFilterToParams(criteria);
+    expect(params.getAll('date')).toEqual(['2026-07-20', '2026-07-22']);
+    expect(parseFilterFromParams(params).dates).toEqual(['2026-07-20', '2026-07-22']);
+  });
+
+  it('omits the date param when no day is selected', () => {
+    expect(serializeFilterToParams({}).has('date')).toBe(false);
+    expect(parseFilterFromParams(new URLSearchParams()).dates).toBeUndefined();
+  });
 });
 
 // ─── computeFilterCounts ───
@@ -1036,7 +1049,6 @@ describe('extractCollectionFilterOptions', () => {
     expect(dims.cameras.values).toEqual([]);
     expect(dims.lenses.values).toEqual([]);
     expect(dims.locations.values).toEqual([]);
-    expect(dims.lensTypes.values).toEqual([]);
   });
 
   it('marks a dimension filterable only when a value splits the set', () => {
@@ -1144,33 +1156,6 @@ describe('extractCollectionFilterOptions', () => {
     expect(dims.locations.filterable).toBe(false);
   });
 
-  it('surfaces lens types only with 2+ distinct categories AND 2+ distinct lenses', () => {
-    // wide (24mm) + telephoto (200mm), two distinct lenses → lens types surface, ordered.
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
-      makeImage({ id: 2, focalLength: '200mm', lens: { id: 2, name: 'FE 200mm' } }),
-    ]);
-    expect(dims.lensTypes.values).toEqual(['wide', 'telephoto']);
-  });
-
-  it('suppresses lens types when only one category present', () => {
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
-      makeImage({ id: 2, focalLength: '28mm', lens: { id: 2, name: 'FE 28mm' } }),
-    ]);
-    // both 'wide' → only one distinct category
-    expect(dims.lensTypes.values).toEqual([]);
-  });
-
-  it('suppresses lens types when fewer than 2 distinct lenses', () => {
-    // two categories but a single lens object → lenses < 2
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, focalLength: '24mm', lens: { id: 1, name: 'FE 24mm' } }),
-      makeImage({ id: 2, focalLength: '200mm', lens: { id: 1, name: 'FE 24mm' } }),
-    ]);
-    expect(dims.lensTypes.values).toEqual([]);
-  });
-
   it('aggregates tags/people/locations from collection refs', () => {
     const dims = extractCollectionFilterOptions(
       [],
@@ -1231,13 +1216,6 @@ describe('buildCollectionCriteria', () => {
     const criteria = buildCollectionCriteria(makeFilterState({ selectedTags: [] }));
     expect(criteria).toEqual({});
   });
-
-  it('does not include lens types (applied as a post-filter, not criteria)', () => {
-    const criteria = buildCollectionCriteria(
-      makeFilterState({ selectedLensTypes: ['wide' as LensType] })
-    );
-    expect(criteria).toEqual({});
-  });
 });
 
 describe('hasAnyActiveFilter', () => {
@@ -1251,7 +1229,6 @@ describe('hasAnyActiveFilter', () => {
     ['selectedPeople', { selectedPeople: ['Alice'] }],
     ['selectedCameras', { selectedCameras: ['Sony'] }],
     ['selectedLenses', { selectedLenses: ['FE 35mm'] }],
-    ['selectedLensTypes', { selectedLensTypes: ['wide' as LensType] }],
     ['selectedLocations', { selectedLocations: ['Rome'] }],
   ])('is true when %s is active', (_label, overrides) => {
     expect(hasAnyActiveFilter(makeFilterState(overrides))).toBe(true);
@@ -1264,29 +1241,22 @@ describe('hasAnyActiveFilter', () => {
 
 describe('applyCollectionFilters', () => {
   const images = [
-    makeImage({ id: 1, rating: 5, focalLength: '24mm' }), // wide
-    makeImage({ id: 2, rating: 3, focalLength: '200mm' }), // telephoto
-    makeImage({ id: 3, rating: 5, focalLength: undefined }), // unparseable focal length
+    makeImage({ id: 1, rating: 5 }),
+    makeImage({ id: 2, rating: 3 }),
+    makeImage({ id: 3, rating: 5 }),
   ];
   const text = makeTextBlock();
+  // Image 3 sits AFTER the text block: an implementation that appended surviving images past
+  // the non-image content (instead of preserving each item's original slot) would produce a
+  // DIFFERENT order here ('IMAGE:1','IMAGE:3','TEXT:100'), so this fixture actually discriminates
+  // "kept in place" from "appended" -- the prior single-trailing-text-block fixture did not.
   const allContent: AnyContentModel[] = [images[0]!, images[1]!, text, images[2]!];
 
   it('filters images by criteria and keeps non-image content in place', () => {
-    const result = applyCollectionFilters(allContent, images, { minRating: 5 }, []);
-    // images 1 & 3 (rating 5) survive; text block passes through; image 2 dropped
+    const result = applyCollectionFilters(allContent, images, { minRating: 5 });
+    // image 1 and image 3 (rating 5) survive in their original slots; text block passes
+    // through in place; image 2 (rating 3) dropped.
     expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100', 'IMAGE:3']);
-  });
-
-  it('applies lens-type post-filter, retaining images with unparseable focal length', () => {
-    const result = applyCollectionFilters(allContent, images, {}, ['wide']);
-    // image 1 is wide; image 3 has no parseable focalLength → kept; image 2 (telephoto) dropped
-    expect(result.map(c => `${c.contentType}:${c.id}`)).toEqual(['IMAGE:1', 'TEXT:100', 'IMAGE:3']);
-  });
-
-  it('combines criteria and lens-type post-filter', () => {
-    const result = applyCollectionFilters(allContent, images, { minRating: 5 }, ['telephoto']);
-    // rating 5 → images 1 & 3; telephoto post-filter keeps image 3 (unparseable) only (image 1 is wide)
-    expect(result.map(c => c.id)).toEqual([100, 3]);
   });
 
   it('filters COLLECTION-ref tiles by their tags (collection-dominant page)', () => {
@@ -1300,7 +1270,7 @@ describe('applyCollectionFilters', () => {
     });
     const refs: AnyContentModel[] = [italy, iceland];
 
-    const result = applyCollectionFilters(refs, [], { tags: ['Italy'], tagMatchMode: 'AND' }, []);
+    const result = applyCollectionFilters(refs, [], { tags: ['Italy'], tagMatchMode: 'AND' });
 
     expect(result.map(c => c.id)).toEqual([2001]);
   });
@@ -1310,7 +1280,7 @@ describe('applyCollectionFilters', () => {
     const untagged = makeCollectionRef({ id: 3002, tags: [] });
     const refs: AnyContentModel[] = [tagged, untagged];
 
-    const result = applyCollectionFilters(refs, [], { tags: ['Italy'] }, []);
+    const result = applyCollectionFilters(refs, [], { tags: ['Italy'] });
 
     expect(result.map(c => c.id)).toEqual([3001]);
   });
@@ -1318,7 +1288,7 @@ describe('applyCollectionFilters', () => {
   it('does not drop COLLECTION-ref tiles for image-only criteria (e.g. lens)', () => {
     const ref = makeCollectionRef({ id: 4001, tags: [{ id: 1, name: 'Italy', slug: 'italy' }] });
     // A lens criterion is image-only; a collection tile must not be hidden by it.
-    const result = applyCollectionFilters([ref], [], { lenses: ['Nikon 50mm'] }, []);
+    const result = applyCollectionFilters([ref], [], { lenses: ['Nikon 50mm'] });
 
     expect(result.map(c => c.id)).toEqual([4001]);
   });
@@ -1333,9 +1303,58 @@ describe('applyCollectionFilters', () => {
     const unrated = makeImage({ id: 6, rating: 1 });
     const mixed: AnyContentModel[] = [child1, rated, child2, unrated, child3];
 
-    const result = applyCollectionFilters(mixed, [rated, unrated], { minRating: 4 }, []);
+    const result = applyCollectionFilters(mixed, [rated, unrated], { minRating: 4 });
 
     expect(result.map(c => c.id)).toEqual([5001, 5, 5002, 5003]);
+  });
+
+  describe('dated GIFs and the `dates` criterion', () => {
+    const day1Image = makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' });
+    const day2Image = makeImage({ id: 2, captureDate: '2026-07-21T09:00:00' });
+    const gifOnDay1 = makeGif({ id: 200, captureDate: '2026-07-20T12:00:00' });
+    const undatedGif = makeGif({ id: 201, captureDate: null });
+    const text = makeTextBlock();
+    const allImages = [day1Image, day2Image];
+
+    it('excludes a dated GIF when a different day is selected (the reported bug)', () => {
+      const allContent: AnyContentModel[] = [day1Image, gifOnDay1, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, { dates: ['2026-07-21'] });
+
+      expect(result.map(c => c.id)).not.toContain(200);
+    });
+
+    it('includes a dated GIF when its own day is selected', () => {
+      const allContent: AnyContentModel[] = [day1Image, gifOnDay1, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, { dates: ['2026-07-20'] });
+
+      expect(result.map(c => c.id)).toContain(200);
+    });
+
+    it('passes an undated GIF through regardless of the selected day', () => {
+      const allContent: AnyContentModel[] = [day1Image, undatedGif, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, { dates: ['2026-07-21'] });
+
+      expect(result.map(c => c.id)).toContain(201);
+    });
+
+    it('keeps TEXT blocks passing through unfiltered when a date filter is active', () => {
+      const allContent: AnyContentModel[] = [day1Image, text, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, { dates: ['2026-07-21'] });
+
+      expect(result.map(c => c.id)).toContain(100);
+    });
+
+    it('leaves a dated GIF untouched when no date filter is active', () => {
+      const allContent: AnyContentModel[] = [day1Image, gifOnDay1, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, {});
+
+      expect(result.map(c => c.id)).toContain(200);
+    });
   });
 });
 
@@ -1472,17 +1491,6 @@ describe('hasFilterableOptions', () => {
     expect(hasFilterableOptions(emptyDims, false, true)).toBe(true);
   });
 
-  it('is true when a tag dimension has values', () => {
-    // The 0.9 exclusion ratio drops tags on >=90% of images, so the tag must
-    // appear on under that share — give the second image no tags.
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, tags: [{ id: 1, name: 'alpine', slug: 'alpine' }] }),
-      makeImage({ id: 2, tags: [] }),
-    ]);
-    expect(dims.tags.values).toEqual(['alpine']);
-    expect(hasFilterableOptions(dims, false, false)).toBe(true);
-  });
-
   it('does not trigger on a single-value (non-filterable) location alone', () => {
     const dims = extractCollectionFilterOptions([
       makeImage({ id: 1, locations: [{ id: 1, name: 'Seattle', slug: 'seattle' }] }),
@@ -1499,6 +1507,39 @@ describe('hasFilterableOptions', () => {
     ]);
     expect(dims.locations.filterable).toBe(true);
     expect(hasFilterableOptions(dims, false, false)).toBe(true);
+  });
+
+  it('is true when a people dimension has values', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, people: [{ id: 1, name: 'Ann' }] }),
+      makeImage({ id: 2, people: [] }),
+    ]);
+    expect(dims.people.values).toEqual(['Ann']);
+    expect(hasFilterableOptions(dims, false, false)).toBe(true);
+  });
+
+  it('does not trigger on a single-day collection alone (dates.values non-empty but not filterable)', () => {
+    const dims = extractCollectionFilterOptions([
+      makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' }),
+      makeImage({ id: 2, captureDate: '2026-07-20T18:00:00' }),
+    ]);
+    // one distinct day -> dates.values is non-empty but dates.filterable is false, and no other
+    // dimension qualifies; hasFilterableOptions must gate on `filterable`, not `values.length`.
+    expect(dims.dates.values).toEqual(['2026-07-20']);
+    expect(dims.dates.filterable).toBe(false);
+    expect(hasFilterableOptions(dims, false, false)).toBe(false);
+  });
+
+  it('does not open the filter bar for tags alone', () => {
+    const options = {
+      tags: { values: ['sunset', 'ridge'], filterable: true },
+      people: { values: [], filterable: true },
+      cameras: { values: [], filterable: true },
+      lenses: { values: [], filterable: true },
+      locations: { values: [], filterable: false },
+      dates: { values: [], filterable: false },
+    };
+    expect(hasFilterableOptions(options, false, false)).toBe(false);
   });
 });
 
@@ -1583,7 +1624,6 @@ describe('computeFilterVisibility', () => {
       cameras: false,
       lenses: false,
       locations: false,
-      lensTypes: false,
     });
     expect(computeFilterVisibility([makeImage({ id: 1, isFilm: true, rating: 5 })]).film).toBe(
       false
@@ -1679,7 +1719,6 @@ describe('applyActiveOverride', () => {
     cameras: false,
     lenses: false,
     locations: false,
-    lensTypes: false,
   };
 
   it('keeps a control visible when its filter is active even if the gate hid it', () => {
@@ -1704,5 +1743,149 @@ describe('applyActiveOverride', () => {
 
   it('leaves an all-false verdict untouched when no filter is active', () => {
     expect(applyActiveOverride(hiddenAll, makeFilterState())).toEqual(hiddenAll);
+  });
+});
+
+describe('date filtering', () => {
+  const day1 = makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' });
+  const day1Late = makeImage({ id: 2, captureDate: '2026-07-20T23:30:00' });
+  const day2 = makeImage({ id: 3, captureDate: '2026-07-21T09:00:00' });
+  const day3 = makeImage({ id: 4, captureDate: '2026-07-22T09:00:00' });
+  const undated = makeImage({ id: 5, captureDate: null });
+  const images = [day1, day1Late, day2, day3, undated];
+
+  it('keeps only images captured on a selected day', () => {
+    const result = filterContent(images, { dates: ['2026-07-20'] });
+    expect(result.map(i => i.id)).toEqual([1, 2]);
+  });
+
+  it('ORs multiple selected days, including non-adjacent ones', () => {
+    const result = filterContent(images, { dates: ['2026-07-20', '2026-07-22'] });
+    expect(result.map(i => i.id)).toEqual([1, 2, 4]);
+  });
+
+  it('drops images with no captureDate when any day is selected', () => {
+    const result = filterContent(images, { dates: ['2026-07-20'] });
+    expect(result.map(i => i.id)).not.toContain(5);
+  });
+
+  it('is inactive when no day is selected', () => {
+    expect(filterContent(images, { dates: [] })).toHaveLength(images.length);
+  });
+});
+
+describe('extractCollectionFilterOptions dates', () => {
+  // Splits `count` images across two days (day 1 gets the ceil-half) so every fixture here
+  // stays pinned at exactly 2 distinct days -- isolating the image-count half of the gate
+  // from the distinct-day half.
+  function makeTwoDayImages(count: number): ContentImageModel[] {
+    const day1Count = Math.ceil(count / 2);
+    return Array.from({ length: count }, (_, i) =>
+      makeImage({
+        id: i + 1,
+        captureDate: i < day1Count ? '2026-07-20T09:00:00' : '2026-07-21T09:00:00',
+      })
+    );
+  }
+
+  it('is filterable with ascending values across two or more days once past the image-count minimum', () => {
+    const dims = extractCollectionFilterOptions(makeTwoDayImages(MIN_IMAGES_FOR_DATE_FILTER + 5));
+    expect(dims.dates.values).toEqual(['2026-07-20', '2026-07-21']);
+    expect(dims.dates.filterable).toBe(true);
+  });
+
+  it('is not filterable for a single-day collection, even with enough images', () => {
+    // Proves the day rule specifically: the image count alone clears MIN_IMAGES_FOR_DATE_FILTER,
+    // so filterable stays false only because there is 1 distinct day, not because of the count.
+    const images = Array.from({ length: MIN_IMAGES_FOR_DATE_FILTER }, (_, i) =>
+      makeImage({ id: i + 1, captureDate: '2026-07-20T09:00:00' })
+    );
+    const dims = extractCollectionFilterOptions(images);
+    expect(dims.dates.values).toEqual(['2026-07-20']);
+    expect(dims.dates.filterable).toBe(false);
+  });
+
+  it('is filterable at exactly the image-count minimum', () => {
+    const dims = extractCollectionFilterOptions(makeTwoDayImages(MIN_IMAGES_FOR_DATE_FILTER));
+    expect(dims.dates.filterable).toBe(true);
+  });
+
+  it('is not filterable one image below the image-count minimum', () => {
+    const dims = extractCollectionFilterOptions(makeTwoDayImages(MIN_IMAGES_FOR_DATE_FILTER - 1));
+    expect(dims.dates.filterable).toBe(false);
+  });
+});
+
+describe('extractCollectionFilterOptions dated-GIF contribution', () => {
+  const day1 = '2026-07-20';
+  const day2 = '2026-07-21';
+
+  function makeDay1Images(count: number): ContentImageModel[] {
+    return Array.from({ length: count }, (_, i) =>
+      makeImage({ id: i + 1, captureDate: `${day1}T09:00:00` })
+    );
+  }
+
+  it("includes a dated GIF's capture day in the dates dimension", () => {
+    const images = makeDay1Images(MIN_IMAGES_FOR_DATE_FILTER);
+    const gif = makeGif({ id: 900, captureDate: `${day2}T12:00:00` });
+
+    const dims = extractCollectionFilterOptions(images, [], [gif]);
+
+    expect(dims.dates.values).toEqual([day1, day2]);
+    expect(dims.dates.filterable).toBe(true);
+  });
+
+  it('a day whose content is entirely GIFs is reachable via its own chip', () => {
+    const images = makeDay1Images(MIN_IMAGES_FOR_DATE_FILTER);
+    const gif = makeGif({ id: 900, captureDate: `${day2}T12:00:00` });
+    const allContent: AnyContentModel[] = [...images, gif];
+
+    const dims = extractCollectionFilterOptions(images, [], [gif]);
+    expect(dims.dates.values).toContain(day2);
+
+    const result = applyCollectionFilters(allContent, images, { dates: [day2] });
+    expect(result.map(c => c.id)).toEqual([900]);
+  });
+
+  it('does not count dated GIFs toward the image-count threshold', () => {
+    const images = makeDay1Images(MIN_IMAGES_FOR_DATE_FILTER - 1);
+    const gif = makeGif({ id: 900, captureDate: `${day2}T12:00:00` });
+
+    const dims = extractCollectionFilterOptions(images, [], [gif]);
+
+    expect(dims.dates.values).toEqual([day1, day2]);
+    expect(dims.dates.filterable).toBe(false);
+  });
+
+  it('an undated GIF does not contribute a day', () => {
+    const images = makeDay1Images(MIN_IMAGES_FOR_DATE_FILTER);
+    const undatedGif = makeGif({ id: 901, captureDate: null });
+
+    const dims = extractCollectionFilterOptions(images, [], [undatedGif]);
+
+    expect(dims.dates.values).toEqual([day1]);
+  });
+});
+
+describe('buildCollectionCriteria dates', () => {
+  it('passes selected days through', () => {
+    const criteria = buildCollectionCriteria({
+      ...INITIAL_FILTER_STATE,
+      selectedDates: ['2026-07-20'],
+    });
+    expect(criteria.dates).toEqual(['2026-07-20']);
+  });
+
+  it('omits the key when nothing is selected', () => {
+    expect(buildCollectionCriteria(INITIAL_FILTER_STATE).dates).toBeUndefined();
+  });
+});
+
+describe('hasAnyActiveFilter dates', () => {
+  it('counts a selected day as active', () => {
+    expect(
+      hasAnyActiveFilter({ ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] })
+    ).toBe(true);
   });
 });

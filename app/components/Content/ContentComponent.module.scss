@@ -64,6 +64,12 @@
       height: auto;
       flex: 0 0 auto;
 
+      /* Match the toolbar's own padding-top (var(--space-2)) below the separator line,
+         so the gap above the line equals the gap below it. Only applies here (filter
+         bar present) -- a metadata block with no filter bar keeps the base rule's
+         padding-bottom above. */
+      padding-bottom: var(--space-2);
+
       /* Desktop: the inner block grows to fill the column so its
          flex-grow description (.metadataDescriptionContainer) can expand,
          pushing the download bar + filter toolbar to the bottom — no
@@ -71,6 +77,7 @@
       @media (width >= 768px) {
         flex: 1 1 auto;
         min-height: 0;
+        padding-bottom: var(--space-2);
       }
     }
   }
@@ -540,65 +547,6 @@
   display: inline-block;
   min-width: 100px;
   text-align: right;
-}
-
-/* Tags container — anchored to bottom of metadata block */
-.metadataTagsContainer {
-  margin-top: auto;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
-}
-
-.metadataTagsRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-/* Tag chip/badge — clickable.
-   Local vars default to light-surface (black-alpha); dark scope flips to white-alpha. */
-.metadataTag {
-  --tag-bg: rgb(0 0 0 / 6%);
-  --tag-border: rgb(0 0 0 / 12%);
-  --tag-bg-hover: rgb(0 0 0 / 12%);
-  --tag-border-hover: rgb(0 0 0 / 25%);
-  --tag-bg-active: rgb(0 0 0 / 18%);
-
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--text-xs);
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--color-fg);
-  background-color: var(--tag-bg);
-  border: 1px solid var(--tag-border);
-  border-radius: var(--radius-round);
-  cursor: pointer;
-  transition:
-    background-color var(--duration-fast) var(--ease-standard),
-    border-color var(--duration-fast) var(--ease-standard);
-  text-transform: lowercase;
-  letter-spacing: 0.02em;
-  font-family: inherit;
-  white-space: nowrap;
-
-  &:hover {
-    background-color: var(--tag-bg-hover);
-    border-color: var(--tag-border-hover);
-  }
-
-  &:active {
-    background-color: var(--tag-bg-active);
-  }
-}
-
-[data-surface='dark'] .metadataTag {
-  --tag-bg: rgb(255 255 255 / 6%);
-  --tag-border: rgb(255 255 255 / 12%);
-  --tag-bg-hover: rgb(255 255 255 / 12%);
-  --tag-border-hover: rgb(255 255 255 / 25%);
-  --tag-bg-active: rgb(255 255 255 / 18%);
 }
 
 /* Related sibling collections — small heading stacked above the card row,

@@ -36,7 +36,6 @@
   background-color: var(--color-fg);
   border-color: var(--color-fg);
   opacity: 1;
-  font-weight: 600;
 
   &:hover:not(:disabled) {
     opacity: 0.85;
@@ -66,4 +65,12 @@
   font-size: var(--text-xs);
   font-weight: 400;
   opacity: 0.6;
+}
+
+/* Fixed-width trailing glyph slot (e.g. a sort arrow) so a chip's width never depends on which
+   direction is selected -- only whether the slot is rendered at all. */
+.trailing {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
 }

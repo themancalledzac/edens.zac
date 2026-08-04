@@ -118,7 +118,7 @@ describe('CollectionPageClient — image-derived filters (D7)', () => {
   it('mounts no filter provider at all when the page has no images', () => {
     render(<CollectionPageClient collection={makeImagelessParent()} />);
     const grid = screen.getByTestId('grid');
-    // Not a suppression branch: cameras/lenses/lensTypes are sourced from `allImages` alone, so
+    // Not a suppression branch: cameras/lenses are sourced from `allImages` alone, so
     // with no images every dimension already has zero values and `hasFilterableOptions` is false,
     // which leaves the provider unmounted.
     expect(grid).toHaveAttribute('data-cameras', 'NO_CONTEXT');

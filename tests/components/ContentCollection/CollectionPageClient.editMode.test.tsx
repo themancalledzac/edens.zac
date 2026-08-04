@@ -463,7 +463,7 @@ describe('CollectionPageClient — editMode true', () => {
       // NEW collection: the server seed has no content yet, so first paint has no filter options.
       const seed = makeCollection({ content: [] });
 
-      // The admin DTO carries freshly uploaded images with tag variance — exactly the state
+      // The admin DTO carries freshly uploaded images with people variance -- exactly the state
       // after an in-session upload. The filter UI must appear without a hard reload.
       const dtoContent = [
         {
@@ -471,7 +471,7 @@ describe('CollectionPageClient — editMode true', () => {
           contentType: 'IMAGE' as const,
           orderIndex: 0,
           imageUrl: 'a.jpg',
-          tags: [{ id: 10, name: 'sunset', slug: 'sunset' }],
+          people: [{ id: 10, name: 'Ann' }],
           locations: [],
         },
         {

@@ -20,6 +20,7 @@ const FILTER_PARAM_KEYS = [
   'location',
   'tag',
   'camera',
+  'date',
   'q',
   'from',
   'to',

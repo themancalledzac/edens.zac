@@ -22,7 +22,7 @@ import { computeHasActiveFilters, isOptionAvailable } from './filterToolbarUtils
 export interface ToolbarDimension {
   label: string;
   options: readonly string[];
-  /** Optional display labels for option values (e.g. lens-type 'wide' -> 'Wide'). */
+  /** Optional display labels for option values (e.g. date '2026-07-20' -> 'Jul 20'). */
   optionLabels?: Record<string, string>;
   /** Optional per-option contextual counts. */
   counts?: Record<string, number>;
@@ -46,7 +46,7 @@ export interface FilterToolbarProps {
   counts?: ToolbarCounts;
   showDateSort?: boolean;
   /**
-   * When true, the Date chip is always active and toggles only between directions
+   * When true, the Order chip is always active and toggles only between directions
    * (asc <-> desc, never `off`) — for views that are inherently date-ordered (CHRONOLOGICAL
    * collections). Defaults to false (the neutral off/asc/desc tri-state).
    */
@@ -60,11 +60,27 @@ export interface FilterToolbarProps {
   onDensityChange?: (value: number) => void;
 }
 
-const DATE_LABELS: Record<FilterState['dateSortDirection'], string> = {
-  asc: 'Date ↑',
-  desc: 'Date ↓',
-  off: 'Date',
+/**
+ * The sort chip's trailing direction glyph. Named "Order" rather than "Date" because it controls
+ * SEQUENCE, not membership: `off` shows a collection's curated orderIndex, asc/desc re-sort
+ * chronologically. The `Date` name now belongs to the per-day membership filter.
+ *
+ * The label itself stays the fixed string "Order" -- only this trailing glyph changes -- so the
+ * chip's rendered width is a function of the fixed-width trailing slot, never of which direction
+ * is selected.
+ */
+const ORDER_GLYPHS: Record<FilterState['dateSortDirection'], string> = {
+  asc: '^',
+  desc: 'v',
+  off: '',
 };
+
+/**
+ * Above this many distinct days, the Date dimension collapses from flat chips into the standard
+ * dropdown so the bar cannot overflow. A fixed count rather than a measured width: available width
+ * is unknown at SSR, and measuring would make the chips visibly reflow after hydration.
+ */
+export const MAX_FLAT_DATE_CHIPS = 5;
 
 /**
  * Canonical, config-driven filter toolbar: dropdowns with a 3-state availability model, count
@@ -107,11 +123,20 @@ export function FilterToolbar({
     closeAll();
   };
 
+  const dateDim = dimensions.selectedDates;
+  const flatDates =
+    dateDim !== undefined &&
+    dateDim.options.length > 0 &&
+    dateDim.options.length <= MAX_FLAT_DATE_CHIPS
+      ? dateDim
+      : null;
+
   return (
     <div ref={barRef} className={styles.toolbar}>
       {showDateSort && (
         <FilterChip
-          label={DATE_LABELS[filterState.dateSortDirection]}
+          label="Order"
+          trailing={ORDER_GLYPHS[filterState.dateSortDirection]}
           // In two-state mode the date sort is always engaged, so the chip stays active.
           active={dateTwoState || filterState.dateSortDirection !== 'off'}
           onToggle={() =>
@@ -143,7 +168,22 @@ export function FilterToolbar({
         />
       )}
 
+      {flatDates?.options.map(day => {
+        const isSelected = filterState.selectedDates.includes(day);
+        const available = isSelected || isOptionAvailable(filteredAvailable, 'selectedDates', day);
+        return (
+          <FilterChip
+            key={`date-${day}`}
+            label={flatDates.optionLabels?.[day] ?? day}
+            active={isSelected}
+            state={available ? 'available' : 'unavailable'}
+            onToggle={() => toggleArrayFilter(filterState, onFilterChange, 'selectedDates', day)}
+          />
+        );
+      })}
+
       {ARRAY_FILTER_KEYS.map(key => {
+        if (key === 'selectedDates' && flatDates) return null;
         const dim = dimensions[key];
         if (!dim || dim.options.length === 0) return null;
         const selected = filterState[key] as readonly string[];
@@ -187,16 +227,15 @@ export function FilterToolbar({
         );
       })}
 
-      {hasActiveFilters && (
-        <button
-          type="button"
-          className={styles.reset}
-          onClick={resetAll}
-          aria-label="Reset all filters"
-        >
-          ×
-        </button>
-      )}
+      <button
+        type="button"
+        className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
+        onClick={resetAll}
+        disabled={!hasActiveFilters}
+        aria-label="Reset all filters"
+      >
+        ×
+      </button>
 
       {onDensityChange && density !== undefined && (
         <label className={styles.slider}>
