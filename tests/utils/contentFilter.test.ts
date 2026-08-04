@@ -1307,6 +1307,55 @@ describe('applyCollectionFilters', () => {
 
     expect(result.map(c => c.id)).toEqual([5001, 5, 5002, 5003]);
   });
+
+  describe('dated GIFs and the `dates` criterion', () => {
+    const day1Image = makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' });
+    const day2Image = makeImage({ id: 2, captureDate: '2026-07-21T09:00:00' });
+    const gifOnDay1 = makeGif({ id: 200, captureDate: '2026-07-20T12:00:00' });
+    const undatedGif = makeGif({ id: 201, captureDate: null });
+    const text = makeTextBlock();
+    const allImages = [day1Image, day2Image];
+
+    it('excludes a dated GIF when a different day is selected (the reported bug)', () => {
+      const allContent: AnyContentModel[] = [day1Image, gifOnDay1, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, { dates: ['2026-07-21'] });
+
+      expect(result.map(c => c.id)).not.toContain(200);
+    });
+
+    it('includes a dated GIF when its own day is selected', () => {
+      const allContent: AnyContentModel[] = [day1Image, gifOnDay1, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, { dates: ['2026-07-20'] });
+
+      expect(result.map(c => c.id)).toContain(200);
+    });
+
+    it('passes an undated GIF through regardless of the selected day', () => {
+      const allContent: AnyContentModel[] = [day1Image, undatedGif, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, { dates: ['2026-07-21'] });
+
+      expect(result.map(c => c.id)).toContain(201);
+    });
+
+    it('keeps TEXT blocks passing through unfiltered when a date filter is active', () => {
+      const allContent: AnyContentModel[] = [day1Image, text, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, { dates: ['2026-07-21'] });
+
+      expect(result.map(c => c.id)).toContain(100);
+    });
+
+    it('leaves a dated GIF untouched when no date filter is active', () => {
+      const allContent: AnyContentModel[] = [day1Image, gifOnDay1, day2Image];
+
+      const result = applyCollectionFilters(allContent, allImages, {});
+
+      expect(result.map(c => c.id)).toContain(200);
+    });
+  });
 });
 
 describe('collectionRefMatchesCriteria', () => {
@@ -1764,6 +1813,58 @@ describe('extractCollectionFilterOptions dates', () => {
   it('is not filterable one image below the image-count minimum', () => {
     const dims = extractCollectionFilterOptions(makeTwoDayImages(MIN_IMAGES_FOR_DATE_FILTER - 1));
     expect(dims.dates.filterable).toBe(false);
+  });
+});
+
+describe('extractCollectionFilterOptions dated-GIF contribution', () => {
+  const day1 = '2026-07-20';
+  const day2 = '2026-07-21';
+
+  function makeDay1Images(count: number): ContentImageModel[] {
+    return Array.from({ length: count }, (_, i) =>
+      makeImage({ id: i + 1, captureDate: `${day1}T09:00:00` })
+    );
+  }
+
+  it("includes a dated GIF's capture day in the dates dimension", () => {
+    const images = makeDay1Images(MIN_IMAGES_FOR_DATE_FILTER);
+    const gif = makeGif({ id: 900, captureDate: `${day2}T12:00:00` });
+
+    const dims = extractCollectionFilterOptions(images, [], [gif]);
+
+    expect(dims.dates.values).toEqual([day1, day2]);
+    expect(dims.dates.filterable).toBe(true);
+  });
+
+  it('a day whose content is entirely GIFs is reachable via its own chip', () => {
+    const images = makeDay1Images(MIN_IMAGES_FOR_DATE_FILTER);
+    const gif = makeGif({ id: 900, captureDate: `${day2}T12:00:00` });
+    const allContent: AnyContentModel[] = [...images, gif];
+
+    const dims = extractCollectionFilterOptions(images, [], [gif]);
+    expect(dims.dates.values).toContain(day2);
+
+    const result = applyCollectionFilters(allContent, images, { dates: [day2] });
+    expect(result.map(c => c.id)).toEqual([900]);
+  });
+
+  it('does not count dated GIFs toward the image-count threshold', () => {
+    const images = makeDay1Images(MIN_IMAGES_FOR_DATE_FILTER - 1);
+    const gif = makeGif({ id: 900, captureDate: `${day2}T12:00:00` });
+
+    const dims = extractCollectionFilterOptions(images, [], [gif]);
+
+    expect(dims.dates.values).toEqual([day1, day2]);
+    expect(dims.dates.filterable).toBe(false);
+  });
+
+  it('an undated GIF does not contribute a day', () => {
+    const images = makeDay1Images(MIN_IMAGES_FOR_DATE_FILTER);
+    const undatedGif = makeGif({ id: 901, captureDate: null });
+
+    const dims = extractCollectionFilterOptions(images, [], [undatedGif]);
+
+    expect(dims.dates.values).toEqual([day1]);
   });
 });
 

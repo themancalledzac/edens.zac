@@ -11,7 +11,7 @@ import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
-import { type AnyContentModel } from '@/app/types/Content';
+import { type AnyContentModel, type ContentGifModel } from '@/app/types/Content';
 import {
   type FilterState,
   INITIAL_FILTER_STATE,
@@ -30,7 +30,7 @@ import {
   mergeDateSortedImages,
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
-import { isContentCollection } from '@/app/utils/contentTypeGuards';
+import { isContentCollection, isGifContent } from '@/app/utils/contentTypeGuards';
 import {
   canDownloadCollection,
   findMembership,
@@ -190,6 +190,17 @@ export default function CollectionPageClient({
 
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
+  // GIFs/MP4s with a captureDate contribute their day to the `dates` dimension only -- see
+  // extractCollectionFilterOptions. A GIF has no camera, lens, people, or rating, so it must
+  // never feed any other dimension.
+  const datedGifs = useMemo(
+    () =>
+      allContent.filter(
+        (item): item is ContentGifModel => isGifContent(item) && Boolean(item.captureDate)
+      ),
+    [allContent]
+  );
+
   const visibility = useMemo(() => computeFilterVisibility(allImages), [allImages]);
 
   // D7: image-derived dimensions are shown whenever the page has ANY image, and no explicit
@@ -200,8 +211,8 @@ export default function CollectionPageClient({
   // typed model; under mixed content it flips with a single content edit, so a sixth photo would
   // make the Camera/Lens dropdowns reappear.
   const baseCollectionOptions = useMemo<CollectionFilterDimensions>(
-    () => extractCollectionFilterOptions(allImages, allCollections),
-    [allImages, allCollections]
+    () => extractCollectionFilterOptions(allImages, allCollections, datedGifs),
+    [allImages, allCollections, datedGifs]
   );
 
   const criteria = useMemo(() => buildCollectionCriteria(filterState), [filterState]);
@@ -231,12 +242,20 @@ export default function CollectionPageClient({
     // grey each other out, while a day with no photos under another active filter (e.g. camera)
     // still greys out correctly.
     const { dates: _omitted, ...criteriaWithoutDates } = criteria;
-    const imagesForDateAvailability = applyCollectionFilters(
+    const contentForDateAvailability = applyCollectionFilters(
       allContent,
       allImages,
       criteriaWithoutDates
-    ).filter(isImageContent);
-    const dateAvailability = extractCollectionFilterOptions(imagesForDateAvailability, allCollections);
+    );
+    const imagesForDateAvailability = contentForDateAvailability.filter(isImageContent);
+    const gifsForDateAvailability = contentForDateAvailability.filter(
+      (item): item is ContentGifModel => isGifContent(item) && Boolean(item.captureDate)
+    );
+    const dateAvailability = extractCollectionFilterOptions(
+      imagesForDateAvailability,
+      allCollections,
+      gifsForDateAvailability
+    );
 
     return {
       people: dims.people.values,

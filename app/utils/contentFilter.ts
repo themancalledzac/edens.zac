@@ -11,6 +11,7 @@
 import {
   type AnyContentModel,
   type ContentCollectionModel,
+  type ContentGifModel,
   type ContentImageModel,
 } from '@/app/types/Content';
 import { type FilmFilter, type FilterState } from '@/app/types/GalleryFilter';
@@ -733,10 +734,15 @@ export interface CollectionFilterDimensions {
  *
  * @param images - Image content to aggregate dimensions from
  * @param collectionRefs - Collection refs (synthetic PARENT pages aggregate from these too)
+ * @param datedGifs - GIF/MP4 blocks that carry a captureDate. Contribute ONLY to the `dates`
+ *   dimension (a GIF has no camera, lens, people, or rating) -- see {@link isDateable}, which
+ *   already treats dated GIFs as chronologically participating. Without this, a day whose
+ *   content is entirely GIFs would have no chip and become unreachable.
  */
 export function extractCollectionFilterOptions(
   images: ContentImageModel[],
-  collectionRefs: ContentCollectionModel[] = []
+  collectionRefs: ContentCollectionModel[] = [],
+  datedGifs: ContentGifModel[] = []
 ): CollectionFilterDimensions {
   // Pass images + refs together so extractFilterOptions can aggregate filter
   // dimensions from collection refs too. This is what populates the filter bar
@@ -746,7 +752,12 @@ export function extractCollectionFilterOptions(
   const baseOptions = extractFilterOptions(combined, 0.9);
 
   // Distinct capture days, ascending. See the `dates` gate below for the visibility rule.
-  const dates = distinctDays(images.map(img => img.captureDate));
+  // Dated GIFs contribute their day here only -- MIN_IMAGES_FOR_DATE_FILTER below still counts
+  // `images.length` alone, never `images.length + datedGifs.length`.
+  const dates = distinctDays([
+    ...images.map(img => img.captureDate),
+    ...datedGifs.map(gif => gif.captureDate),
+  ]);
 
   // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
   // would wrongly mark a dimension filterable when all values blanket every item).
@@ -903,7 +914,15 @@ export function applyCollectionFilters(
   return allContent.filter(item => {
     if (isImageContent(item)) return filteredImageIds.has(item.id);
     if (isCollectionRef(item)) return collectionRefMatchesCriteria(item, criteria);
-    // Other non-image blocks (text, panels) are structural — never filtered out.
+    // A dated GIF/MP4 participates in the `dates` criterion the same way {@link isDateable}
+    // already lets it participate in chronological sort. An undated GIF keeps passing through
+    // unconditionally -- there is no day to match against. This is an intentional asymmetry
+    // with undated IMAGES, which DO drop out once a day is selected (see filterContent above).
+    if (isGifContent(item) && item.captureDate && criteria.dates && criteria.dates.length > 0) {
+      const day = captureDayKey(item.captureDate);
+      return day !== null && criteria.dates.includes(day);
+    }
+    // Other non-image blocks (text, panels, undated GIFs) are structural -- never filtered out.
     return true;
   });
 }
