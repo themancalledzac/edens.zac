@@ -21,7 +21,9 @@
 .buttonRow {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  /* Same token as FilterToolbar's .toolbar gap, so this row and the filter row directly
+     below it space their controls identically. */
+  gap: var(--space-1);
   flex-wrap: wrap;
 }
 
@@ -45,6 +47,13 @@
    because "Select" is a bare outline Button with no .ctaButton class. */
 .rowButton {
   line-height: 1.4;
+
+  /* Trimmed from Button.sm's var(--space-3) to var(--space-2). "ALL" carries an 18px icon, an
+     8px icon gap, and uppercase text at 0.1em letter-spacing, so at equal padding it renders
+     roughly 8px wider than the "Order" chip below it despite identical padding/font-size/border.
+     Pulling 4px off each side closes that gap. Applies to Select too, keeping the row uniform. */
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
 }
 
 .downloadIcon {
