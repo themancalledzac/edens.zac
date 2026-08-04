@@ -735,7 +735,9 @@ export interface CollectionFilterDimensions {
  * @param images - Image content to aggregate dimensions from
  * @param collectionRefs - Collection refs (synthetic PARENT pages aggregate from these too)
  * @param datedGifs - GIF/MP4 blocks that carry a captureDate. Contribute ONLY to the `dates`
- *   dimension (a GIF has no camera, lens, people, or rating) -- see {@link isDateable}, which
+ *   dimension: a GIF carries no camera or lens, and although ContentGifModel does declare
+ *   rating/tags/people/locations, those dimensions have always been sourced from images alone
+ *   and this parameter does not change that. See {@link isDateable}, which
  *   already treats dated GIFs as chronologically participating. Without this, a day whose
  *   content is entirely GIFs would have no chip and become unreachable.
  */

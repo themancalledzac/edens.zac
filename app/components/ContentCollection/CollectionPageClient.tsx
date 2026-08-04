@@ -191,8 +191,9 @@ export default function CollectionPageClient({
   const allCollections = useMemo(() => allContent.filter(isContentCollection), [allContent]);
 
   // GIFs/MP4s with a captureDate contribute their day to the `dates` dimension only -- see
-  // extractCollectionFilterOptions. A GIF has no camera, lens, people, or rating, so it must
-  // never feed any other dimension.
+  // extractCollectionFilterOptions. A GIF carries no camera or lens, and the tag/people/location/
+  // rating dimensions have always been sourced from images alone, so it must never feed any
+  // dimension other than `dates`.
   const datedGifs = useMemo(
     () =>
       allContent.filter(
