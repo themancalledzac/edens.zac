@@ -697,6 +697,13 @@ export function serializeFilterToParams(criteria: ContentFilterCriteria): URLSea
 // location/taxonomy pages) so those components read as hooks → helpers → JSX.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * A collection needs at least this many images before the per-day date filter is worth showing.
+ * Paired with a 2-distinct-day minimum: below this size, splitting by day slices the grid into
+ * fragments smaller than a single screen.
+ */
+export const MIN_IMAGES_FOR_DATE_FILTER = 30;
+
 /** Per-dimension data for the collection filter bar: values + whether it renders as a dropdown. */
 export interface FilterDimension<T = string> {
   values: readonly T[];
@@ -738,9 +745,7 @@ export function extractCollectionFilterOptions(
   const combined = [...images, ...collectionRefs];
   const baseOptions = extractFilterOptions(combined, 0.9);
 
-  // Distinct capture days, ascending. Guarded by `>= 2` the same way cameras/lenses are:
-  // canFilter alone reports true for a single real day padded by undated images, which would
-  // put a one-option Date control on the bar.
+  // Distinct capture days, ascending. See the `dates` gate below for the visibility rule.
   const dates = distinctDays(images.map(img => img.captureDate));
 
   // cameras/lenses/locations: need 2+ distinct values AND canFilter (length>=2 alone
@@ -774,11 +779,12 @@ export function extractCollectionFilterOptions(
     },
     dates: {
       values: dates,
-      filterable:
-        canFilter(images, img => {
-          const day = captureDayKey(img.captureDate);
-          return day ? [day] : [];
-        }) && dates.length >= 2,
+      // Exactly two conditions: 2+ distinct capture days, and enough images that splitting
+      // by day is worthwhile. `canFilter` is intentionally NOT part of this gate: a capture
+      // day is single-valued per image, so whenever `dates.length >= 2` at least two distinct
+      // days are present and no single day's count can equal the total -- canFilter would
+      // already be guaranteed true here, making it redundant.
+      filterable: dates.length >= 2 && images.length >= MIN_IMAGES_FOR_DATE_FILTER,
     },
   };
 }

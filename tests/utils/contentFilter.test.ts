@@ -24,6 +24,7 @@ import {
   hasFilterableOptions,
   isDateable,
   mergeDateSortedImages,
+  MIN_IMAGES_FOR_DATE_FILTER,
   parseFilterFromParams,
   serializeFilterToParams,
 } from '@/app/utils/contentFilter';
@@ -1725,30 +1726,43 @@ describe('date filtering', () => {
 });
 
 describe('extractCollectionFilterOptions dates', () => {
-  it('is filterable with ascending values across two or more days', () => {
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, captureDate: '2026-07-22T09:00:00' }),
-      makeImage({ id: 2, captureDate: '2026-07-20T09:00:00' }),
-    ]);
-    expect(dims.dates.values).toEqual(['2026-07-20', '2026-07-22']);
+  // Splits `count` images across two days (day 1 gets the ceil-half) so every fixture here
+  // stays pinned at exactly 2 distinct days -- isolating the image-count half of the gate
+  // from the distinct-day half.
+  function makeTwoDayImages(count: number): ContentImageModel[] {
+    const day1Count = Math.ceil(count / 2);
+    return Array.from({ length: count }, (_, i) =>
+      makeImage({
+        id: i + 1,
+        captureDate: i < day1Count ? '2026-07-20T09:00:00' : '2026-07-21T09:00:00',
+      })
+    );
+  }
+
+  it('is filterable with ascending values across two or more days once past the image-count minimum', () => {
+    const dims = extractCollectionFilterOptions(makeTwoDayImages(MIN_IMAGES_FOR_DATE_FILTER + 5));
+    expect(dims.dates.values).toEqual(['2026-07-20', '2026-07-21']);
     expect(dims.dates.filterable).toBe(true);
   });
 
-  it('is not filterable for a single-day collection', () => {
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' }),
-      makeImage({ id: 2, captureDate: '2026-07-20T18:00:00' }),
-    ]);
+  it('is not filterable for a single-day collection, even with enough images', () => {
+    // Proves the day rule specifically: the image count alone clears MIN_IMAGES_FOR_DATE_FILTER,
+    // so filterable stays false only because there is 1 distinct day, not because of the count.
+    const images = Array.from({ length: MIN_IMAGES_FOR_DATE_FILTER }, (_, i) =>
+      makeImage({ id: i + 1, captureDate: '2026-07-20T09:00:00' })
+    );
+    const dims = extractCollectionFilterOptions(images);
+    expect(dims.dates.values).toEqual(['2026-07-20']);
     expect(dims.dates.filterable).toBe(false);
   });
 
-  it('is not filterable when one real day is padded by undated images', () => {
-    // canFilter alone would say true here (the day covers a proper subset), so the
-    // >= 2 distinct days guard is what keeps a one-option control off the bar.
-    const dims = extractCollectionFilterOptions([
-      makeImage({ id: 1, captureDate: '2026-07-20T09:00:00' }),
-      makeImage({ id: 2, captureDate: null }),
-    ]);
+  it('is filterable at exactly the image-count minimum', () => {
+    const dims = extractCollectionFilterOptions(makeTwoDayImages(MIN_IMAGES_FOR_DATE_FILTER));
+    expect(dims.dates.filterable).toBe(true);
+  });
+
+  it('is not filterable one image below the image-count minimum', () => {
+    const dims = extractCollectionFilterOptions(makeTwoDayImages(MIN_IMAGES_FOR_DATE_FILTER - 1));
     expect(dims.dates.filterable).toBe(false);
   });
 });
