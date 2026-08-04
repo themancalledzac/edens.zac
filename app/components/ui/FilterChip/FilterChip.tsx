@@ -8,6 +8,12 @@ export interface FilterChipProps {
   label: string;
   /** Optional contextual result count rendered as a muted badge. */
   count?: number;
+  /**
+   * Optional fixed-width trailing glyph (e.g. a sort direction arrow). Rendered whenever this
+   * prop is provided, including as an empty string, so the chip's width never changes when the
+   * value changes -- only the label switching in and out would do that.
+   */
+  trailing?: string;
   /** Whether this facet is currently selected. Drives aria-pressed + the active style. */
   active?: boolean;
   /** Visual tone. 'film'/'digital' are neutral tri-state tints. */
@@ -24,6 +30,7 @@ export interface FilterChipProps {
 export function FilterChip({
   label,
   count,
+  trailing,
   active = false,
   tone = 'neutral',
   state = 'available',
@@ -48,6 +55,7 @@ export function FilterChip({
       onClick={onToggle}
     >
       {label}
+      {trailing !== undefined && <span className={styles.trailing}>{trailing}</span>}
       {count !== undefined && (
         <span className={styles.count} aria-hidden="true">
           {count}

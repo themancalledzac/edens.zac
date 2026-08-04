@@ -61,14 +61,18 @@ export interface FilterToolbarProps {
 }
 
 /**
- * The sort chip's labels. Named "Order" rather than "Date" because it controls SEQUENCE, not
- * membership: `off` shows a collection's curated orderIndex, asc/desc re-sort chronologically.
- * The `Date` name now belongs to the per-day membership filter.
+ * The sort chip's trailing direction glyph. Named "Order" rather than "Date" because it controls
+ * SEQUENCE, not membership: `off` shows a collection's curated orderIndex, asc/desc re-sort
+ * chronologically. The `Date` name now belongs to the per-day membership filter.
+ *
+ * The label itself stays the fixed string "Order" -- only this trailing glyph changes -- so the
+ * chip's rendered width is a function of the fixed-width trailing slot, never of which direction
+ * is selected.
  */
-const ORDER_LABELS: Record<FilterState['dateSortDirection'], string> = {
-  asc: 'Order ^',
-  desc: 'Order v',
-  off: 'Order',
+const ORDER_GLYPHS: Record<FilterState['dateSortDirection'], string> = {
+  asc: '^',
+  desc: 'v',
+  off: '',
 };
 
 /**
@@ -131,7 +135,8 @@ export function FilterToolbar({
     <div ref={barRef} className={styles.toolbar}>
       {showDateSort && (
         <FilterChip
-          label={ORDER_LABELS[filterState.dateSortDirection]}
+          label="Order"
+          trailing={ORDER_GLYPHS[filterState.dateSortDirection]}
           // In two-state mode the date sort is always engaged, so the chip stays active.
           active={dateTwoState || filterState.dateSortDirection !== 'off'}
           onToggle={() =>
@@ -222,16 +227,15 @@ export function FilterToolbar({
         );
       })}
 
-      {hasActiveFilters && (
-        <button
-          type="button"
-          className={styles.reset}
-          onClick={resetAll}
-          aria-label="Reset all filters"
-        >
-          ×
-        </button>
-      )}
+      <button
+        type="button"
+        className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
+        onClick={resetAll}
+        disabled={!hasActiveFilters}
+        aria-label="Reset all filters"
+      >
+        ×
+      </button>
 
       {onDensityChange && density !== undefined && (
         <label className={styles.slider}>
