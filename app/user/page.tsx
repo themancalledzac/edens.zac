@@ -1,31 +1,28 @@
 import { notFound } from 'next/navigation';
 
-import { MeProvider } from '@/app/components/auth/MeProvider';
-import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
-import LocationCollections from '@/app/components/LocationPage/LocationCollections';
+import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
-import { PersonalContentGrid } from '@/app/components/Personal/PersonalContentGrid';
-import { SavesProvider } from '@/app/components/Personal/SavesContext';
-import { SectionTabs } from '@/app/components/Personal/SectionTabs';
 import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
 import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
 import { getUserPage } from '@/app/lib/api/user';
-import { type AnyContentModel, type ViewableContent } from '@/app/types/Content';
+import { type CollectionModel } from '@/app/types/Collection';
+import { type AnyContentModel, type ContentCollectionModel } from '@/app/types/Content';
 import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
+import { UserTabs } from './UserTabs';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Items-per-row budget for the Collections tab. Collection cards are uniform (fixed effective
- * rating, aspect ratio clamped near 5:4), so at this density the layout engine composes them
- * roughly six across — the whole point of the tab being a scannable index of everything the
+ * Items-per-row budget for the Collections and Following tabs. Collection cards are uniform (fixed
+ * effective rating, aspect ratio clamped near 5:4), so at this density the layout engine composes
+ * them roughly six across — the whole point of those tabs being a scannable index of everything the
  * viewer is associated with rather than an editorial spread. Sits above `MAX_ROW_IMAGES`, so the
  * per-row cap binds and the arrangement stays stable as cover aspect ratios vary.
  */
@@ -38,13 +35,25 @@ const COLLECTIONS_CHUNK_SIZE = 14;
  */
 const PHOTO_CHUNK_SIZE = 8;
 
+const TAB_KEYS = ['collections', 'images', 'saved', 'following'] as const;
+
+type TabKey = (typeof TAB_KEYS)[number];
+
+const DEFAULT_TAB: TabKey = 'collections';
+
+/** Narrow an untrusted `?tab=` value to a known key, falling back to the default section. */
+function resolveTabKey(raw: string | string[] | undefined): TabKey {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return TAB_KEYS.includes(value as TabKey) ? (value as TabKey) : DEFAULT_TAB;
+}
+
 /** Split the synthetic user collection's content into COLLECTION blocks and IMAGE/GIF blocks. */
 function splitUserContent(content: AnyContentModel[] | undefined): {
   collectionBlocks: AnyContentModel[];
-  imageBlocks: ViewableContent[];
+  imageBlocks: AnyContentModel[];
 } {
   const collectionBlocks: AnyContentModel[] = [];
-  const imageBlocks: ViewableContent[] = [];
+  const imageBlocks: AnyContentModel[] = [];
   for (const block of content ?? []) {
     if (isContentCollection(block)) {
       collectionBlocks.push(block);
@@ -56,17 +65,57 @@ function splitUserContent(content: AnyContentModel[] | undefined): {
 }
 
 /**
- * Session-gated self-only "Your Space" page for the signed-in user. Four tabs — Collections
- * (default), Images (tagged), Saved (bookmarks), Following — then an Account card (email + passkey
- * enrollment) below. Anonymous visitors get a 404; sign-in lives at `/login` (which lands here on
- * success) and onboarding at the invite-link flow.
+ * Wrap followed collections as COLLECTION content blocks so the Following tab flows through the
+ * same pipeline as every other collection grid: `processContentBlocks` converts these to parallax
+ * cards via `convertCollectionContentToParallax`, which carries `referencedCollectionId` through as
+ * the card's `collectionId` — the id the follow toggle persists against.
  */
-export default async function UserPage() {
+function toCollectionBlocks(collections: CollectionModel[]): ContentCollectionModel[] {
+  return collections.map((collection, index) => ({
+    contentType: 'COLLECTION',
+    id: collection.id,
+    referencedCollectionId: collection.id,
+    slug: collection.slug,
+    title: collection.title,
+    description: collection.description ?? null,
+    coverImage: collection.coverImage ?? null,
+    isClient: collection.isClient,
+    isBlog: collection.isBlog,
+    collectionDate: collection.collectionDate,
+    orderIndex: index,
+    visible: true,
+  }));
+}
+
+interface UserPageProps {
+  searchParams: Promise<{ tab?: string | string[] }>;
+}
+
+/**
+ * Session-gated self-only "Your Space" page for the signed-in user. Four sections — Collections
+ * (default), Images (tagged), Saved (bookmarks), Following — selected via `?tab=`, then an Account
+ * card (email + passkey enrollment) below. Anonymous visitors get a 404; sign-in lives at `/login`
+ * (which lands here on success) and onboarding at the invite-link flow.
+ *
+ * Each section renders through `CollectionPageClient` — the same component every collection page
+ * uses — by handing it the user's synthetic collection with the selected section's blocks as its
+ * content. The collection header, filter toolbar, density control, save hearts and grid therefore
+ * come from the shared stack rather than a `/user`-only variant of it.
+ *
+ * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
+ * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
+ * what keeps the client-gallery affordances inside `CollectionPageClient` switched off here —
+ * `canDownloadCollection` short-circuits on the missing id and `selectsEnabled` on the missing
+ * `isClient`. Do not synthesize an id onto this collection to satisfy the `CollectionModel` type;
+ * doing so would arm the download and Selects UI on a page that has no gallery to grant.
+ */
+export default async function UserPage({ searchParams }: UserPageProps) {
   const principal = await meServer();
   if (!principal) notFound();
 
-  const [collection, savedImages, followedCollectionIds, allCollections, ssrViewport] =
+  const [{ tab }, collection, savedImages, followedCollectionIds, allCollections, ssrViewport] =
     await Promise.all([
+      searchParams,
       getUserPage(),
       listSavedImagesServer(),
       listFollowedCollectionIdsServer(),
@@ -82,90 +131,80 @@ export default async function UserPage() {
   const { collectionBlocks, imageBlocks } = splitUserContent(collection.content);
 
   const followedSet = new Set(followedCollectionIds);
-  const followedCollections = allCollections.filter(c => followedSet.has(c.id));
+  const followedBlocks = toCollectionBlocks(allCollections.filter(c => followedSet.has(c.id)));
+
+  const sections: Record<
+    TabKey,
+    { label: string; content: AnyContentModel[]; chunkSize: number; emptyLabel: string }
+  > = {
+    collections: {
+      label: 'Collections',
+      content: collectionBlocks,
+      chunkSize: COLLECTIONS_CHUNK_SIZE,
+      emptyLabel: 'No collections yet.',
+    },
+    images: {
+      label: 'Images',
+      content: imageBlocks,
+      chunkSize: PHOTO_CHUNK_SIZE,
+      emptyLabel: 'You are not tagged in any images yet.',
+    },
+    saved: {
+      label: 'Saved',
+      content: savedImages,
+      chunkSize: PHOTO_CHUNK_SIZE,
+      emptyLabel: 'You have not saved any images yet.',
+    },
+    following: {
+      label: 'Following',
+      content: followedBlocks,
+      chunkSize: COLLECTIONS_CHUNK_SIZE,
+      emptyLabel: 'You are not following any collections yet.',
+    },
+  };
+
+  const activeKey = resolveTabKey(tab);
+  const active = sections[activeKey];
+
+  // Same collection (so the header row, slug and display mode are unchanged section to section),
+  // swapping only which blocks the grid renders.
+  const sectionCollection: CollectionModel = { ...collection, content: active.content };
 
   return (
     <PageShell pageType="default" collectionSlug={collection.slug}>
       <h1 className={styles.srOnly}>Your Space</h1>
 
-      {/* Collection "first row": the cover-image + title/description header every collection page
-          shows at the top. Rendered with empty body content + the user collection as collectionData,
-          so the layout pipeline prepends only the header row (createHeaderRow) and no gallery tiles.
-          The cover is the LCP (priorityBlockIndex 0), sized server-side to avoid layout shift; it is
-          an intro, not a gallery tile, so fullscreen viewing is off and it needs no SaveHeart
-          providers. */}
-      <ContentBlockWithFullScreen
-        content={[]}
-        collectionData={collection}
-        priorityBlockIndex={0}
-        enableFullScreenView={false}
-        serverContentWidth={ssrViewport?.contentWidth}
-        serverViewportHeight={ssrViewport?.viewportHeight}
-        serverIsMobile={ssrViewport?.isMobile}
-      />
+      <div className={styles.sections}>
+        <div className={styles.topBar}>
+          <SendMessageButton />
+        </div>
 
-      {/* One MeProvider + SavesProvider wraps every tab so SaveHeart renders and toggles
-            consistently across the Images and Saved grids (a single source of truth for the saved
-            set — no per-tab provider desync). The Collections grid renders no hearts (SaveHeart
-            gates on contentType === 'IMAGE'), so the shared SavesProvider is a no-op there. */}
-      <MeProvider me={principal}>
-        <SavesProvider initialSavedIds={savedImageIds}>
-          <div className={styles.sections}>
-            <div className={styles.topBar}>
-              <SendMessageButton />
-            </div>
+        <UserTabs
+          activeKey={activeKey}
+          tabs={TAB_KEYS.map(key => ({
+            key,
+            label: sections[key].label,
+            count: sections[key].content.length,
+          }))}
+        />
 
-            <SectionTabs
-              defaultTabKey="collections"
-              tabs={[
-                {
-                  key: 'collections',
-                  label: 'Collections',
-                  count: collectionBlocks.length,
-                  emptyLabel: 'No collections yet.',
-                  content: (
-                    <PersonalContentGrid
-                      content={collectionBlocks}
-                      chunkSize={COLLECTIONS_CHUNK_SIZE}
-                    />
-                  ),
-                },
-                {
-                  key: 'images',
-                  label: 'Images',
-                  count: imageBlocks.length,
-                  emptyLabel: 'You are not tagged in any images yet.',
-                  content: (
-                    <PersonalContentGrid content={imageBlocks} chunkSize={PHOTO_CHUNK_SIZE} />
-                  ),
-                },
-                {
-                  key: 'saved',
-                  label: 'Saved',
-                  count: savedImages.length,
-                  emptyLabel: 'You have not saved any images yet.',
-                  content: (
-                    <PersonalContentGrid content={savedImages} chunkSize={PHOTO_CHUNK_SIZE} />
-                  ),
-                },
-                {
-                  key: 'following',
-                  label: 'Following',
-                  count: followedCollections.length,
-                  emptyLabel: 'You are not following any collections yet.',
-                  content: (
-                    <FollowsProvider initialFollowedIds={followedCollectionIds}>
-                      <LocationCollections collections={followedCollections} />
-                    </FollowsProvider>
-                  ),
-                },
-              ]}
-            />
+        <FollowsProvider initialFollowedIds={followedCollectionIds}>
+          <CollectionPageClient
+            key={activeKey}
+            collection={sectionCollection}
+            chunkSize={active.chunkSize}
+            serverContentWidth={ssrViewport?.contentWidth}
+            serverViewportHeight={ssrViewport?.viewportHeight}
+            serverIsMobile={ssrViewport?.isMobile}
+            me={principal}
+            initialSavedImageIds={savedImageIds}
+          />
+        </FollowsProvider>
 
-            <AccountCard email={principal.email} />
-          </div>
-        </SavesProvider>
-      </MeProvider>
+        {active.content.length === 0 && <p className={styles.empty}>{active.emptyLabel}</p>}
+
+        <AccountCard email={principal.email} />
+      </div>
     </PageShell>
   );
 }

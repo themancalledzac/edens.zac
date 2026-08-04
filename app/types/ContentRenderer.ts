@@ -39,6 +39,14 @@ export interface ContentRendererProps {
   hasSlug?: string; // If present, click navigates to collection
   isCollection?: boolean; // For badge contentType
 
+  /**
+   * The COLLECTION id behind a collection card, when known. Drives the follow toggle. Distinct
+   * from `contentId`, which is the content-table row id for child-collection blocks — see
+   * `ContentParallaxImageModel.collectionId`. Absent for photo/GIF/text blocks and for the
+   * synthetic home tiles, so its presence is what gates the follow affordance.
+   */
+  followCollectionId?: number;
+
   // Content type for special handling (NO PARALLAX - it's just a boolean flag)
   contentType: 'IMAGE' | 'TEXT' | 'GIF' | 'COLLECTION';
 

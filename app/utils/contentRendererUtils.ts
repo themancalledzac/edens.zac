@@ -218,6 +218,7 @@ export function normalizeContentToRendererProps(
       enableParallax: true,
       hasSlug: content.slug,
       isCollection: true,
+      followCollectionId: content.referencedCollectionId,
       contentType: 'COLLECTION',
     };
   }
@@ -247,6 +248,7 @@ export function normalizeContentToRendererProps(
       enableParallax: true,
       hasSlug: 'slug' in content ? content.slug : undefined,
       isCollection: false,
+      followCollectionId: 'collectionId' in content ? content.collectionId : undefined,
       contentType: 'IMAGE',
     };
   }

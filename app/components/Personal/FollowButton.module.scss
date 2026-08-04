@@ -35,6 +35,14 @@
   }
 }
 
+/* `placement="bottom"` — same right edge, pinned to the bottom instead. Used on the content
+   grid's collection cards, whose top-right corner is already taken by the public Badge. Declared
+   after .followButton so the equal-specificity `top` reset wins on source order. */
+.followButtonBottom {
+  top: auto;
+  bottom: 8px;
+}
+
 .followButtonActive {
   border-color: var(--color-heart, #e0245e);
   background-color: var(--color-heart, #e0245e);

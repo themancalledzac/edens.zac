@@ -205,6 +205,7 @@ export function convertCollectionContentToParallax(
     contentType: 'IMAGE',
     enableParallax: true,
     id: col.id ?? col.referencedCollectionId,
+    collectionId: col.referencedCollectionId,
     title: col.title,
     slug: col.slug,
     collectionDate: col.collectionDate,
