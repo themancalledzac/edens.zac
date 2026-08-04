@@ -162,7 +162,7 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
       ) : (
         <div className={styles.buttonRow}>
           <Button
-            className={styles.ctaButton}
+            className={`${styles.ctaButton} ${styles.rowButton}`}
             size="sm"
             leftIcon={<DownloadIcon />}
             onClick={() => setPickerTarget('all')}
@@ -170,7 +170,12 @@ export default function ClientGalleryDownload({ collectionSlug }: ClientGalleryD
             All
           </Button>
           {download && (
-            <Button variant="outline" size="sm" onClick={download.enterSelectMode}>
+            <Button
+              variant="outline"
+              size="sm"
+              className={styles.rowButton}
+              onClick={download.enterSelectMode}
+            >
               Select
             </Button>
           )}

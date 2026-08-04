@@ -64,6 +64,12 @@
       height: auto;
       flex: 0 0 auto;
 
+      /* Match the toolbar's own padding-top (var(--space-2)) below the separator line,
+         so the gap above the line equals the gap below it. Only applies here (filter
+         bar present) -- a metadata block with no filter bar keeps the base rule's
+         padding-bottom above. */
+      padding-bottom: var(--space-2);
+
       /* Desktop: the inner block grows to fill the column so its
          flex-grow description (.metadataDescriptionContainer) can expand,
          pushing the download bar + filter toolbar to the bottom — no
@@ -71,6 +77,7 @@
       @media (width >= 768px) {
         flex: 1 1 auto;
         min-height: 0;
+        padding-bottom: var(--space-2);
       }
     }
   }
