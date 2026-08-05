@@ -24,8 +24,16 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
   default: () => 'SiteHeader',
 }));
-jest.mock('@/app/components/SendMessageButton/SendMessageButton', () => ({
-  SendMessageButton: () => 'SendMessageButton',
+// SendMessageButton is deliberately NOT mocked: it is the component the MeProvider wrapper exists
+// for, so the real one has to run for the lockedEmail assertion below to mean anything. Its modal
+// is stubbed open and its form reduced to a probe that echoes the lockedEmail it was handed.
+jest.mock('@/app/components/ui/Modal/Modal', () => ({
+  Modal: ({ children }: { children: unknown }) => children,
+}));
+jest.mock('@/app/components/ContactForm/ContactForm', () => ({
+  ContactForm: ({ lockedEmail }: { lockedEmail?: string }) => (
+    <span data-locked-email={lockedEmail} />
+  ),
 }));
 jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: ({ children }: { children: unknown }) => children,
@@ -34,6 +42,9 @@ jest.mock('@/app/components/Personal/AccountCard', () => ({
   AccountCard: () => 'AccountCard',
 }));
 
+import { renderToStaticMarkup } from 'react-dom/server';
+
+import { MeProvider } from '@/app/components/auth/MeProvider';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
@@ -125,6 +136,20 @@ describe('UserPage', () => {
     const grid = gridProps(await renderTab());
     expect(grid).not.toBeNull();
     expect(grid.me).toBe(authedPrincipal);
+  });
+
+  it('mounts SendMessageButton inside a MeProvider so its form gets a lockedEmail', async () => {
+    // SendMessageButton is a SIBLING of CollectionPageClient, so the MeProvider that the collection
+    // stack mounts internally never reaches it. Without the page-level provider, useMe() is null and
+    // the signed-in user gets a blank, editable email field instead of their locked-in address.
+    const provider = findProps(await renderTab(), MeProvider);
+    expect(provider).not.toBeNull();
+    expect(provider.me).toBe(authedPrincipal);
+
+    const markup = renderToStaticMarkup(
+      <MeProvider me={provider.me}>{provider.children}</MeProvider>
+    );
+    expect(markup).toContain('data-locked-email="c@x.com"');
   });
 
   it('defaults to Collections and passes only the COLLECTION blocks', async () => {

@@ -105,9 +105,22 @@ export function cycleFilmFilter(current: FilmFilter): FilmFilter {
 }
 
 /**
+ * Array dimensions whose values are mutually exclusive on a single item, making a multi-select
+ * meaningless in both combine modes: an image has exactly one capture day and exactly one lens.
+ * Two dates OR two disjoint sets (a selection that only ever widens the result); two lenses AND
+ * two disjoint sets (a selection that always yields nothing — see `lensMatchMode: 'AND'` in
+ * `buildCollectionCriteria`). Both are therefore single-choice, not accumulating.
+ */
+const EXCLUSIVE_FILTER_KEYS: readonly ArrayFilterKey[] = ['selectedDates', 'selectedLenses'];
+
+/**
  * Toggle a value in one of the array dimensions and emit a Partial update.
  * Shared by the filter toolbar and the tag-click handlers in
  * CollectionContentRenderer.
+ *
+ * Dimensions in {@link EXCLUSIVE_FILTER_KEYS} hold at most one value: picking a different option
+ * switches the selection to it, and picking the current sole selection clears the dimension. Every
+ * other dimension accumulates — picking a second tag narrows by both.
  */
 export function toggleArrayFilter(
   state: FilterState,
@@ -116,6 +129,11 @@ export function toggleArrayFilter(
   value: string
 ): void {
   const current = state[key] as readonly string[];
+  if (EXCLUSIVE_FILTER_KEYS.includes(key)) {
+    const isSoleSelection = current.length === 1 && current[0] === value;
+    onChange({ [key]: isSoleSelection ? [] : [value] });
+    return;
+  }
   const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
   onChange({ [key]: next });
 }

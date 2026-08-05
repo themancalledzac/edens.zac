@@ -59,6 +59,18 @@ interface CollectionFilterContextValue {
   densityMax: number;
   /** Receives a value in the active viewport's scale; see {@link density}. */
   onDensityChange: (value: number) => void;
+  /** `slider` gives edit mode the fine 1-`densityMax` control; visitors get the three tiers. */
+  densityVariant: 'tiers' | 'slider';
+  /** Photo-size presets on the CANONICAL desktop scale — NOT the viewport scale {@link density} uses. */
+  densityTiers: readonly { key: string; label: string; value: number }[];
+  /** Key of the tier nearest {@link density}. Highlight only — never written back to density. */
+  activeDensityTier: string;
+  /**
+   * Receives a canonical desktop-scale value from {@link densityTiers}, bypassing the viewport
+   * mapping {@link onDensityChange} applies. Halving/doubling is lossy at the Small tier, so a
+   * tier must not round-trip through the mobile scale.
+   */
+  onDensityTierSelect: (value: number) => void;
 }
 
 const CollectionFilterContext = createContext<CollectionFilterContextValue | null>(null);

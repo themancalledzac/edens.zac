@@ -87,4 +87,56 @@ describe('FilterState helpers', () => {
     toggleArrayFilter(state, u => updates.push(u), 'selectedPeople', 'Ana');
     expect(updates).toEqual([{ selectedPeople: ['Bo'] }]);
   });
+
+  it('toggleArrayFilter selects the first date into an empty dimension', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE };
+    const updates: Partial<FilterState>[] = [];
+    toggleArrayFilter(state, u => updates.push(u), 'selectedDates', '2026-07-20');
+    expect(updates).toEqual([{ selectedDates: ['2026-07-20'] }]);
+  });
+
+  it('toggleArrayFilter switches the date instead of accumulating a second one', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] };
+    const updates: Partial<FilterState>[] = [];
+    toggleArrayFilter(state, u => updates.push(u), 'selectedDates', '2026-07-22');
+    expect(updates).toEqual([{ selectedDates: ['2026-07-22'] }]);
+  });
+
+  it('toggleArrayFilter clears the date when the chosen one is clicked again', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] };
+    const updates: Partial<FilterState>[] = [];
+    toggleArrayFilter(state, u => updates.push(u), 'selectedDates', '2026-07-20');
+    expect(updates).toEqual([{ selectedDates: [] }]);
+  });
+
+  it('toggleArrayFilter switches the lens instead of accumulating a second one', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, selectedLenses: ['35mm f/1.4'] };
+    const updates: Partial<FilterState>[] = [];
+    toggleArrayFilter(state, u => updates.push(u), 'selectedLenses', '85mm f/1.8');
+    expect(updates).toEqual([{ selectedLenses: ['85mm f/1.8'] }]);
+  });
+
+  it('toggleArrayFilter clears the lens when the chosen one is clicked again', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, selectedLenses: ['35mm f/1.4'] };
+    const updates: Partial<FilterState>[] = [];
+    toggleArrayFilter(state, u => updates.push(u), 'selectedLenses', '35mm f/1.4');
+    expect(updates).toEqual([{ selectedLenses: [] }]);
+  });
+
+  it('toggleArrayFilter still accumulates the non-exclusive dimensions', () => {
+    const state: FilterState = { ...INITIAL_FILTER_STATE, selectedCameras: ['Leica M6'] };
+    const updates: Partial<FilterState>[] = [];
+    toggleArrayFilter(state, u => updates.push(u), 'selectedCameras', 'Nikon F3');
+    expect(updates).toEqual([{ selectedCameras: ['Leica M6', 'Nikon F3'] }]);
+  });
+
+  it('toggleArrayFilter narrows a multi-date URL seed down to the clicked day', () => {
+    const state: FilterState = {
+      ...INITIAL_FILTER_STATE,
+      selectedDates: ['2026-07-20', '2026-07-22'],
+    };
+    const updates: Partial<FilterState>[] = [];
+    toggleArrayFilter(state, u => updates.push(u), 'selectedDates', '2026-07-20');
+    expect(updates).toEqual([{ selectedDates: ['2026-07-20'] }]);
+  });
 });

@@ -392,6 +392,10 @@ export default function CollectionContentRenderer({
                 density={collectionFilter.density}
                 densityMax={collectionFilter.densityMax}
                 onDensityChange={collectionFilter.onDensityChange}
+                densityVariant={collectionFilter.densityVariant}
+                densityTiers={collectionFilter.densityTiers}
+                activeDensityTier={collectionFilter.activeDensityTier}
+                onDensityTierSelect={collectionFilter.onDensityTierSelect}
               />
             </div>
           )}

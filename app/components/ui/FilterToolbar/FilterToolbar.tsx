@@ -3,6 +3,10 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { FilterChip } from '@/app/components/ui/FilterChip/FilterChip';
+import {
+  type DensityTier,
+  DensityTierControl,
+} from '@/app/components/ui/FilterToolbar/DensityTierControl';
 import { useClickOutside } from '@/app/hooks/useClickOutside';
 import {
   ARRAY_FILTER_KEYS,
@@ -80,11 +84,26 @@ export interface FilterToolbarProps {
   dateTwoState?: boolean;
   showHighlyRated?: boolean;
   showFilm?: boolean;
-  /** When provided, renders the row-density slider (min 1, max {@link densityMax}). */
+  /** When provided, renders the photo-size control (density min 1, max {@link densityMax}). */
   density?: number;
-  /** Upper bound of the density slider. Defaults to 10 (desktop scale). */
+  /** Upper bound of the fine slider. Defaults to 10 (desktop scale). */
   densityMax?: number;
   onDensityChange?: (value: number) => void;
+  /**
+   * Which density affordance to render. Visitors get `tiers` (three photo-size presets); edit mode
+   * gets `slider`, the fine 1-{@link densityMax} control, so a curator can still land on an
+   * off-tier value. Defaults to `tiers`.
+   */
+  densityVariant?: 'tiers' | 'slider';
+  /** Tier presets, already resolved to the same scale as {@link density}. Required for `tiers`. */
+  densityTiers?: readonly DensityTier[];
+  /** Key of the tier nearest {@link density}; drives which segment renders active. */
+  activeDensityTier?: string;
+  /**
+   * Receives a tier's value verbatim. Separate from {@link onDensityChange} because tier values are
+   * canonical desktop-scale and must not go through that handler's viewport mapping.
+   */
+  onDensityTierSelect?: (value: number) => void;
 }
 
 /**
@@ -128,10 +147,24 @@ export function FilterToolbar({
   density,
   densityMax = 10,
   onDensityChange,
+  densityVariant = 'tiers',
+  densityTiers,
+  activeDensityTier,
+  onDensityTierSelect,
 }: FilterToolbarProps) {
   const [openDropdown, setOpenDropdown] = useState<ArrayFilterKey | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
-  const closeAll = useCallback(() => setOpenDropdown(null), []);
+  /**
+   * The trigger that opened the current panel. Selecting an option unmounts the focused chip, which
+   * would otherwise drop focus to `document.body` on every single selection; restoring it here
+   * keeps a keyboard user in the bar. Same on close-by-Escape and click-outside.
+   */
+  const triggerRefs = useRef<Partial<Record<ArrayFilterKey, HTMLButtonElement | null>>>({});
+
+  const closeAll = useCallback(() => {
+    if (openDropdown !== null) triggerRefs.current[openDropdown]?.focus();
+    setOpenDropdown(null);
+  }, [openDropdown]);
   useClickOutside(barRef, openDropdown !== null, closeAll);
 
   const toggleOpen = (key: ArrayFilterKey) => setOpenDropdown(prev => (prev === key ? null : key));
@@ -162,141 +195,158 @@ export function FilterToolbar({
 
   return (
     <div ref={barRef} className={styles.toolbar}>
-      {sections && sections.length > 0 && (
-        <>
-          {sections.map(section => (
-            <FilterChip
-              key={`section-${section.key}`}
-              label={section.label}
-              count={section.count}
-              active={section.key === activeSectionKey}
-              href={section.href}
-            />
-          ))}
-          <span className={styles.separator} aria-hidden="true" />
-        </>
-      )}
+      <div className={styles.controls}>
+        {sections && sections.length > 0 && (
+          <>
+            {sections.map(section => (
+              <FilterChip
+                key={`section-${section.key}`}
+                label={section.label}
+                count={section.count}
+                active={section.key === activeSectionKey}
+                href={section.href}
+              />
+            ))}
+            <span className={styles.separator} aria-hidden="true" />
+          </>
+        )}
 
-      {showDateSort && (
-        <FilterChip
-          label="Order"
-          trailing={ORDER_GLYPHS[filterState.dateSortDirection]}
-          // In two-state mode the date sort is always engaged, so the chip stays active.
-          active={dateTwoState || filterState.dateSortDirection !== 'off'}
-          onToggle={() =>
-            onFilterChange({
-              dateSortDirection: dateTwoState
-                ? cycleDateSortTwoState(filterState.dateSortDirection)
-                : cycleDateSort(filterState.dateSortDirection),
-            })
-          }
-        />
-      )}
-
-      {showHighlyRated && (
-        <FilterChip
-          label="Highly Rated"
-          count={counts?.highlyRated}
-          active={filterState.highlyRatedOnly}
-          onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
-        />
-      )}
-
-      {showFilm && (
-        <FilterChip
-          label={filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}
-          count={filmCount}
-          tone={filterState.filmFilter === 'digital' ? 'digital' : 'film'}
-          active={filterState.filmFilter !== 'off'}
-          onToggle={cycleFilm}
-        />
-      )}
-
-      {flatDates?.options.map(day => {
-        const isSelected = filterState.selectedDates.includes(day);
-        const available = isSelected || isOptionAvailable(filteredAvailable, 'selectedDates', day);
-        return (
+        {showDateSort && (
           <FilterChip
-            key={`date-${day}`}
-            label={flatDates.optionLabels?.[day] ?? day}
-            active={isSelected}
-            state={available ? 'available' : 'unavailable'}
-            onToggle={() => toggleArrayFilter(filterState, onFilterChange, 'selectedDates', day)}
+            label="Order"
+            trailing={ORDER_GLYPHS[filterState.dateSortDirection]}
+            // In two-state mode the date sort is always engaged, so the chip stays active.
+            active={dateTwoState || filterState.dateSortDirection !== 'off'}
+            onToggle={() =>
+              onFilterChange({
+                dateSortDirection: dateTwoState
+                  ? cycleDateSortTwoState(filterState.dateSortDirection)
+                  : cycleDateSort(filterState.dateSortDirection),
+              })
+            }
           />
-        );
-      })}
+        )}
 
-      {ARRAY_FILTER_KEYS.map(key => {
-        if (key === 'selectedDates' && flatDates) return null;
-        const dim = dimensions[key];
-        if (!dim || dim.options.length === 0) return null;
-        const selected = filterState[key] as readonly string[];
-        const isOpen = openDropdown === key;
-        return (
-          <div key={key} className={styles.dropdown}>
-            <button
-              type="button"
-              aria-haspopup="true"
-              aria-expanded={isOpen}
-              className={`${styles.dropdownTrigger} ${selected.length > 0 ? styles.dropdownTriggerActive : ''}`}
-              onClick={() => toggleOpen(key)}
-            >
-              {dim.label}
-              <span className={styles.chevron} aria-hidden="true">
-                {isOpen ? '▴' : '▾'}
-              </span>
-            </button>
-            {isOpen && (
-              <div className={styles.panel}>
-                {dim.options.map(option => {
-                  const isSelected = selected.includes(option);
-                  const available = isSelected || isOptionAvailable(filteredAvailable, key, option);
-                  return (
-                    <FilterChip
-                      key={`${key}-${option}`}
-                      label={dim.optionLabels?.[option] ?? option}
-                      count={dim.counts?.[option]}
-                      active={isSelected}
-                      state={available ? 'available' : 'unavailable'}
-                      onToggle={() => {
-                        toggleArrayFilter(filterState, onFilterChange, key, option);
-                        closeAll();
-                      }}
-                    />
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+        {showHighlyRated && (
+          <FilterChip
+            label="Highly Rated"
+            count={counts?.highlyRated}
+            active={filterState.highlyRatedOnly}
+            onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
+          />
+        )}
 
-      <button
-        type="button"
-        className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
-        onClick={resetAll}
-        disabled={!hasActiveFilters}
-        aria-label="Reset all filters"
-      >
-        ×
-      </button>
+        {showFilm && (
+          <FilterChip
+            label={filterState.filmFilter === 'digital' ? 'Digital' : 'Film'}
+            count={filmCount}
+            tone={filterState.filmFilter === 'digital' ? 'digital' : 'film'}
+            active={filterState.filmFilter !== 'off'}
+            onToggle={cycleFilm}
+          />
+        )}
+
+        {flatDates?.options.map(day => {
+          const isSelected = filterState.selectedDates.includes(day);
+          const available =
+            isSelected || isOptionAvailable(filteredAvailable, 'selectedDates', day);
+          return (
+            <FilterChip
+              key={`date-${day}`}
+              label={flatDates.optionLabels?.[day] ?? day}
+              active={isSelected}
+              state={available ? 'available' : 'unavailable'}
+              onToggle={() => toggleArrayFilter(filterState, onFilterChange, 'selectedDates', day)}
+            />
+          );
+        })}
+
+        {ARRAY_FILTER_KEYS.map(key => {
+          if (key === 'selectedDates' && flatDates) return null;
+          const dim = dimensions[key];
+          if (!dim || dim.options.length === 0) return null;
+          const selected = filterState[key] as readonly string[];
+          const isOpen = openDropdown === key;
+          return (
+            <div key={key} className={styles.dropdown}>
+              <button
+                ref={node => {
+                  triggerRefs.current[key] = node;
+                }}
+                type="button"
+                aria-haspopup="true"
+                aria-expanded={isOpen}
+                className={`${styles.dropdownTrigger} ${selected.length > 0 ? styles.dropdownTriggerActive : ''}`}
+                onClick={() => toggleOpen(key)}
+              >
+                {dim.label}
+                <span className={styles.chevron} aria-hidden="true">
+                  {isOpen ? '▴' : '▾'}
+                </span>
+              </button>
+              {isOpen && (
+                <div className={styles.panel}>
+                  {dim.options.map(option => {
+                    const isSelected = selected.includes(option);
+                    const available =
+                      isSelected || isOptionAvailable(filteredAvailable, key, option);
+                    return (
+                      <FilterChip
+                        key={`${key}-${option}`}
+                        label={dim.optionLabels?.[option] ?? option}
+                        count={dim.counts?.[option]}
+                        active={isSelected}
+                        state={available ? 'available' : 'unavailable'}
+                        onToggle={() => {
+                          toggleArrayFilter(filterState, onFilterChange, key, option);
+                          closeAll();
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        <button
+          type="button"
+          className={`${styles.reset} ${hasActiveFilters ? '' : styles.resetInactive}`}
+          onClick={resetAll}
+          disabled={!hasActiveFilters}
+          aria-label="Reset all filters"
+        >
+          ×
+        </button>
+      </div>
 
       {onDensityChange && density !== undefined && (
-        <label className={styles.slider}>
-          {/* aria-hidden: the range input already announces its value natively. */}
-          <span className={styles.sliderLabel} aria-hidden="true">
-            Density {density}
-          </span>
-          <input
-            type="range"
-            min={1}
-            max={densityMax}
-            step={1}
-            value={density}
-            onChange={e => onDensityChange(Number(e.target.value))}
-            aria-label="Row density"
-          />
-        </label>
+        <div className={styles.densitySlot}>
+          {densityVariant === 'tiers' && densityTiers ? (
+            <DensityTierControl
+              tiers={densityTiers}
+              activeKey={activeDensityTier ?? ''}
+              onSelect={onDensityTierSelect ?? onDensityChange}
+            />
+          ) : (
+            <label className={styles.slider}>
+              {/* aria-hidden: the range input already announces its value natively. */}
+              <span className={styles.sliderLabel} aria-hidden="true">
+                Density {density}
+              </span>
+              <input
+                type="range"
+                min={1}
+                max={densityMax}
+                step={1}
+                value={density}
+                onChange={e => onDensityChange(Number(e.target.value))}
+                aria-label="Row density"
+              />
+            </label>
+          )}
+        </div>
       )}
     </div>
   );

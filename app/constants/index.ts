@@ -73,6 +73,41 @@ export const LAYOUT = {
 // by the calibration test so code and test never drift.
 export const DENSITY_ROW_WIDTH_MULTIPLIER = 2.1;
 
+/**
+ * Visitor-facing density presets, labelled by PHOTO SIZE.
+ *
+ * Size runs INVERSE to density: `rowWidth = round(density × DENSITY_ROW_WIDTH_MULTIPLIER)`, and the
+ * viewport-derived target aspect ratio holds row AREA roughly constant ("one row per screen"), so
+ * photo size ≈ constant ÷ density. Density 2 yields large photos, density 7 small ones — which is
+ * why this control must never be labelled with the raw number or the word "Density".
+ *
+ * The values land at roughly 2 / 4 / 7 photos across (rowWidth ÷ ~2.108, the width-cost of a normal
+ * 3★ landscape). Medium reproduces the historical default exactly. `desktop` and `mobile` are
+ * values on their respective density scales — see {@link toMobileDensity}.
+ */
+export const DENSITY_TIERS = [
+  { key: 'large', label: 'Large photos', desktop: 2, mobile: 1 },
+  { key: 'medium', label: 'Medium photos', desktop: 4, mobile: 2 },
+  { key: 'small', label: 'Small photos', desktop: 7, mobile: 4 },
+] as const;
+
+export type DensityTierKey = (typeof DENSITY_TIERS)[number]['key'];
+
+/**
+ * The tier whose value sits closest to `density` on the given viewport's scale.
+ *
+ * Purely a display decision: it picks which segment renders active and NEVER rewrites the density.
+ * Collections carry off-tier stored `rowsWide` values (5, 6) that must keep driving their layout
+ * untouched, so an off-tier collection highlights its nearest segment and only snaps when a visitor
+ * actually clicks one. Ties resolve to the lower (larger-photo) tier, since {@link DENSITY_TIERS}
+ * is ordered ascending and a strict `<` comparison keeps the first of an equal pair.
+ */
+export const nearestDensityTier = (density: number, isMobile: boolean): DensityTierKey =>
+  DENSITY_TIERS.reduce((closest, tier) => {
+    const scale = (t: (typeof DENSITY_TIERS)[number]) => (isMobile ? t.mobile : t.desktop);
+    return Math.abs(scale(tier) - density) < Math.abs(scale(closest) - density) ? tier : closest;
+  }).key;
+
 // Per-rating base weight feeding the prominence value P = BASE_WEIGHT[rating] ×
 // prominenceFactor(extremeness). Higher-rated images get more visual weight.
 export const BASE_WEIGHT: Record<number, number> = {

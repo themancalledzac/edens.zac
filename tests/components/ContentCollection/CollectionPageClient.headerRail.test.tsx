@@ -141,8 +141,9 @@ describe('CollectionPageClient — header rail', () => {
   });
 
   it('brings the shared density control along with the bar', () => {
-    // The density slider is the visible proof that the page picked up the shared bar chrome
-    // rather than a /user-only approximation of it.
+    // The photo-size control is the visible proof that the page picked up the shared bar chrome
+    // rather than a /user-only approximation of it. Visitors get the tier radiogroup, not the
+    // raw slider -- that is edit-mode only.
     render(
       <CollectionPageClient
         collection={bareCollection([collectionCard(1)])}
@@ -151,14 +152,15 @@ describe('CollectionPageClient — header rail', () => {
         activeSectionKey="collections"
       />
     );
-    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Row density')).not.toBeInTheDocument();
   });
 
   it('renders no bar on a metadata-less collection that has nothing to put in it', () => {
     // The rail is forced only when controls will mount. An ordinary metadata-less collection
     // with no filterable dimensions keeps its full-width cover and gains no empty rail.
     render(<CollectionPageClient collection={bareCollection([collectionCard(1)])} {...ssr} />);
-    expect(screen.queryByLabelText('Row density')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
     expect(screen.queryAllByRole('link', { name: /collections/i })).toHaveLength(0);
   });
 });

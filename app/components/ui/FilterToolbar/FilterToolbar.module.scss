@@ -1,7 +1,11 @@
+/* Two slots on one non-wrapping row: the filter controls, which wrap internally, and the photo-size
+   control, which is pinned top-right. A single flat wrapping container let the size control land on
+   an arbitrary line, so it read as belonging to whichever filters happened to wrap beside it. */
 .toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-wrap: nowrap;
+  /* Pins the size control to the FIRST row rather than centring it against a tall wrapped stack. */
+  align-items: flex-start;
   /* Same token as the Download row's .buttonRow, so the two stacked rows space their
      controls identically. Was a hardcoded 4px, which is what --space-1 resolves to. */
   gap: var(--space-1);
@@ -13,12 +17,35 @@
   }
 }
 
+/* The wrapping half: every filter control. `min-width: 0` lets it shrink and wrap internally
+   instead of forcing the non-wrapping outer row to overflow. */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The pinned half. Never shrinks and never wraps, so overflowing filters wrap BELOW it. Carries no
+   height of its own: the control inside is built from the same tokens as a chip, so the row height
+   stays governed by the chips rather than by whatever sits in this slot. */
+.densitySlot {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  margin-left: auto;
+}
+
 /* Divides the mutually-exclusive section chips from the facet controls that filter WITHIN the
    selected section. Margin rather than gap so it reads as a rule between two groups, not as a
-   third item in the row. */
+   third item in the row. Fixed height rather than `align-self: stretch`: in a wrapping container
+   stretch resolves against the TALLEST line, so the rule grew to span every wrapped row. */
 .separator {
-  align-self: stretch;
+  align-self: center;
   width: 1px;
+  height: 1.25em;
   margin: 4px var(--space-1);
   background-color: var(--color-border);
 }
@@ -87,11 +114,13 @@
   box-shadow: 0 4px 12px var(--color-overlay-soft);
 }
 
+/* Deliberately NO `margin-left: auto`: that resolves per flex LINE, so once the controls wrapped
+   the × was flung to the right edge of an arbitrary row, landing beside the photo-size control and
+   reading as though it reset that. It flows inline after the last chip instead. */
 .reset {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: auto;
   padding: 2px 8px;
   font: inherit;
   font-size: var(--text-sm);
