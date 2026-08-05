@@ -126,6 +126,15 @@ export interface ContentParallaxImageModel extends Omit<ContentImageModel, 'cont
   /** Mirrors the source collection's booleans when converted from a collection card. */
   isClient?: boolean;
   isBlog?: boolean;
+  /**
+   * The COLLECTION this card stands for. Deliberately separate from `id`: for a child-collection
+   * block `id` is the content-table row id (see `convertCollectionContentToParallax`), and for the
+   * synthetic home tiles it is a negative sentinel. Only list-built cards happen to have the two
+   * coincide. Anything keyed on the collection ENTITY — follows, and any future per-collection
+   * viewer state — must read this and never `id`. Absent on synthetic tiles, which are not
+   * followable collections.
+   */
+  collectionId?: number;
 }
 
 /**

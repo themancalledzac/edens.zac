@@ -1,26 +1,23 @@
 import { type Metadata } from 'next';
 import { unstable_rethrow } from 'next/navigation';
 
+import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel } from '@/app/types/Content';
 import { BROWSE_EXCLUDED_SLUGS, isShadowedRouteSlug } from '@/app/utils/collectionSlugs';
 import { isContentCollection } from '@/app/utils/contentTypeGuards';
-import { groupCollectionsByYear, UNDATED_YEAR } from '@/app/utils/groupCollectionsByYear';
 import { logger } from '@/app/utils/logger';
+import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './Collections.module.scss';
-import { CollectionShowcaseTile } from './CollectionShowcaseTile';
 
 /** Shared with the admin /all-collections surface — see BROWSE_EXCLUDED_SLUGS' TODO. */
 const EXCLUDED_SLUGS = new Set(BROWSE_EXCLUDED_SLUGS);
 
 /** Page size requested from the backend; reaching it means the list is truncated. */
 const SHOWCASE_PAGE_SIZE = 500;
-
-/** Tiles eagerly loaded for LCP — roughly the first grid row above the fold. */
-const EAGER_TILE_COUNT = 4;
 
 /**
  * Render on every request — `getScopedAllCollections` is `no-store`, and it calls the
@@ -77,9 +74,18 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
  *
  * The public counterpart to the admin-only /all-collections. Fetches the synthetic
  * all-collections parent, whose result set the backend scopes per session (admin => all
- * visibilities; signed-in => LISTED plus their granted galleries; anonymous => LISTED),
- * then presents each collection as a parallax cover tile, grouped by year and ordered
- * newest-first.
+ * visibilities; signed-in => LISTED plus their granted galleries; anonymous => LISTED).
+ *
+ * Renders through `CollectionPageClient` — the same stack every collection page and `/user` use —
+ * by handing it that parent with the filtered blocks as its content. The header row, filter
+ * toolbar, density slider and the parallax cover cards therefore all come from the shared
+ * components rather than a `/collections`-only grid. `alwaysShowFilterBar` keeps the bar present
+ * regardless of which aggregates the backend ships on the child blocks: on an index surface the
+ * bar is part of the page, not an accident of the payload.
+ *
+ * The tiles are no longer grouped under year headings. Ordering and date narrowing now come from
+ * the shared bar's Order and Date controls, which work the same way here as on every other
+ * collection page — the reason the bespoke `CollectionShowcaseTile` and year-grouped grid are gone.
  */
 export default async function CollectionsPage() {
   let collection: CollectionModel | null;
@@ -108,41 +114,21 @@ export default async function CollectionsPage() {
   }
 
   const blocks = extractCollectionBlocks(collection.content);
-  const groups = groupCollectionsByYear(blocks);
+  const ssrViewport = await resolveSsrViewport();
 
   return (
     <PageShell pageType="collectionsCollection">
-      <header className={styles.pageHeader}>
-        <h1 className={styles.pageTitle}>Collections</h1>
-        <p className={styles.intro}>Every public collection, organized by date.</p>
-      </header>
+      <h1 className={styles.srOnly}>Collections</h1>
 
-      {groups.length === 0 ? (
-        <p className={styles.empty}>No collections yet — check back soon.</p>
-      ) : (
-        <div className={styles.groups}>
-          {groups.map((group, groupIndex) => (
-            <section
-              key={group.year}
-              className={styles.group}
-              aria-labelledby={`collections-year-${group.year}`}
-            >
-              <h2 id={`collections-year-${group.year}`} className={styles.yearHeading}>
-                {group.year === UNDATED_YEAR ? 'Undated' : group.year}
-              </h2>
-              <div className={styles.grid}>
-                {group.collections.map((block, index) => (
-                  <CollectionShowcaseTile
-                    key={block.id ?? block.referencedCollectionId}
-                    collection={block}
-                    priority={groupIndex === 0 && index < EAGER_TILE_COUNT}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      <CollectionPageClient
+        collection={{ ...collection, content: blocks }}
+        serverContentWidth={ssrViewport?.contentWidth}
+        serverViewportHeight={ssrViewport?.viewportHeight}
+        serverIsMobile={ssrViewport?.isMobile}
+        alwaysShowFilterBar
+      />
+
+      {blocks.length === 0 && <p className={styles.empty}>No collections yet — check back soon.</p>}
     </PageShell>
   );
 }

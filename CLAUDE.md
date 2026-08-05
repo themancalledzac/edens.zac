@@ -9,6 +9,8 @@ alwaysApply: true
 ## Critical Rules
 
 - **Context First**: Always ask for more context when it will help make a better decision. Do this before writing code.
+- **Work In The Primary Checkout**: Unless the user says another agent session is running, make all changes in `/Users/themancalledzac/Code/edens.zac` on the branch that is currently checked out. No git worktrees, no side branches, no isolated copies — the user's `npm run dev` serves that directory, and anything outside it is invisible to them.
+- **Never Take Port 3000**: The user's own dev server owns port 3000. Agent-started preview servers use 3001, and must be stopped at end of session. A leaked preview server binds the other IP stack on the same port and silently shadows the user's server for days.
 - **App Router First**: All new features must use Next.js App Router (`app/` directory). Never modify legacy Pages Router files.
 - **Server Components Default**: Minimize `'use client'` usage. Prefer Server Components for data fetching and rendering.
 - **Type Safety**: No `any` types. Use strict TypeScript with proper type definitions from `app/types/`.

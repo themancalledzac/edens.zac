@@ -16,9 +16,9 @@ jest.mock('@/app/lib/api/personal', () => ({
 jest.mock('@/app/utils/ssrViewport', () => ({
   resolveSsrViewport: jest.fn(),
 }));
-jest.mock('@/app/components/Content/ContentBlockWithFullScreen', () => ({
+jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => ({
   __esModule: true,
-  default: () => 'ContentBlockWithFullScreen',
+  default: () => 'CollectionPageClient',
 }));
 jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
   __esModule: true,
@@ -27,28 +27,15 @@ jest.mock('@/app/components/SiteHeader/SiteHeader', () => ({
 jest.mock('@/app/components/SendMessageButton/SendMessageButton', () => ({
   SendMessageButton: () => 'SendMessageButton',
 }));
-jest.mock('@/app/components/auth/MeProvider', () => ({
-  MeProvider: ({ children }: { children: unknown }) => children,
-}));
-jest.mock('@/app/components/Personal/SavesContext', () => ({
-  SavesProvider: ({ children }: { children: unknown }) => children,
-}));
-jest.mock('@/app/components/Personal/PersonalContentGrid', () => ({
-  PersonalContentGrid: ({ content, chunkSize }: { content: unknown[]; chunkSize?: number }) =>
-    `PersonalContentGrid:${content.length}:${chunkSize}`,
-}));
 jest.mock('@/app/components/Personal/FollowsContext', () => ({
   FollowsProvider: ({ children }: { children: unknown }) => children,
 }));
-jest.mock('@/app/components/LocationPage/LocationCollections', () => ({
-  __esModule: true,
-  default: () => 'LocationCollections',
-}));
-jest.mock('@/app/components/Personal/SectionTabs', () => ({
-  SectionTabs: ({ tabs }: { tabs: unknown[] }) => `SectionTabs:${tabs.length}`,
+jest.mock('@/app/components/Personal/AccountCard', () => ({
+  AccountCard: () => 'AccountCard',
 }));
 
-import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
+import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
 import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
@@ -67,50 +54,43 @@ const imageBlock = (id: number) => ({
 });
 const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
 
-/**
- * Walk the rendered element tree and index the `SectionTabs` tab descriptors by label. The mocked
- * component is never invoked (the page only builds elements), so the `tabs` array lives in
- * `element.props`.
- */
+/** Walk the rendered element tree and return the first element of the given type's props. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function collectSections(node: any, acc: Record<string, any> = {}): Record<string, any> {
-  if (!node || typeof node !== 'object') return acc;
-  if (Array.isArray(node)) {
-    for (const child of node) collectSections(child, acc);
-    return acc;
-  }
-  const props = node.props;
-  if (props && Array.isArray(props.tabs)) {
-    for (const tab of props.tabs) acc[tab.label] = tab;
-  }
-  if (props?.children) collectSections(props.children, acc);
-  return acc;
-}
-
-/**
- * Find the collection-header render — the `ContentBlockWithFullScreen` element the page puts above
- * the accordion with empty body content + the user collection as `collectionData`. Returns its
- * props (or null if absent).
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function findHeaderBlock(node: any): any {
+function findProps(node: any, type: unknown): any {
   if (!node || typeof node !== 'object') return null;
   if (Array.isArray(node)) {
     for (const child of node) {
-      const found = findHeaderBlock(child);
+      const found = findProps(child, type);
       if (found) return found;
     }
     return null;
   }
-  if (node.type === ContentBlockWithFullScreen && node.props?.collectionData) {
-    return node.props;
-  }
-  return node.props?.children ? findHeaderBlock(node.props.children) : null;
+  if (node.type === type) return node.props;
+  return node.props?.children ? findProps(node.props.children, type) : null;
 }
 
+/** Props the page handed to the shared collection renderer for the active section. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const gridProps = (result: unknown): any => findProps(result, CollectionPageClient);
+
+/**
+ * The section chips the page handed to the shared bar. There is no `/user`-only switcher component
+ * any more — the sections ride on the same CollectionPageClient props as everything else.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sectionProps = (result: unknown): any => {
+  const props = gridProps(result);
+  return { sections: props?.sections, activeKey: props?.activeSectionKey };
+};
+
 function seedApis() {
+  // Mirrors the real payload: `UserPageAssembler` builds this collection with no `id`, `isClient`
+  // or `isPasswordProtected` — it is assembled, not a `collection` row. See the no-id test below.
   (getUserPage as jest.Mock).mockResolvedValue({
     slug: 'user',
+    title: 'Your Space',
+    description: 'Photos I have been tagged in.',
+    coverImage: { id: 42, contentType: 'IMAGE', imageUrl: 'https://cdn/cover.jpg' },
     content: [collectionBlock(1), collectionBlock(2), imageBlock(3), gifBlock(4)],
   });
   (listSavedImagesServer as jest.Mock).mockResolvedValue([]);
@@ -123,109 +103,173 @@ function seedApis() {
   });
 }
 
+/** Render the page for a given `?tab=` value. */
+const renderTab = (tab?: string | string[]) =>
+  UserPage({ searchParams: Promise.resolve(tab === undefined ? {} : { tab }) });
+
 describe('UserPage', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    seedApis();
+  });
 
   it('calls notFound() when anonymous', async () => {
     (meServer as jest.Mock).mockResolvedValue(null);
-    await expect(UserPage()).rejects.toThrow('NEXT_NOT_FOUND');
+    await expect(renderTab()).rejects.toThrow('NEXT_NOT_FOUND');
     expect(notFound).toHaveBeenCalled();
     expect(getUserPage).not.toHaveBeenCalled();
   });
 
-  it('splits getUserPage content into Collections (COLLECTION) vs Images (IMAGE/GIF)', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    seedApis();
-    const result = await UserPage();
-    const sections = collectSections(result);
-    expect(sections.Collections.count).toBe(2);
-    expect(sections.Images.count).toBe(2);
+  it('renders every section through the shared CollectionPageClient', async () => {
+    const grid = gridProps(await renderTab());
+    expect(grid).not.toBeNull();
+    expect(grid.me).toBe(authedPrincipal);
   });
 
-  it('wires all four sections with the saved + followed counts', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    seedApis();
+  it('defaults to Collections and passes only the COLLECTION blocks', async () => {
+    const grid = gridProps(await renderTab());
+    expect(grid.collection.content).toHaveLength(2);
+    expect(
+      grid.collection.content.every((b: { contentType: string }) => b.contentType === 'COLLECTION')
+    ).toBe(true);
+  });
+
+  it('passes the IMAGE and GIF blocks for ?tab=images', async () => {
+    const grid = gridProps(await renderTab('images'));
+    expect(grid.collection.content.map((b: { id: number }) => b.id)).toEqual([3, 4]);
+  });
+
+  it('passes the saved images for ?tab=saved', async () => {
+    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(9)]);
+    const grid = gridProps(await renderTab('saved'));
+    expect(grid.collection.content.map((b: { id: number }) => b.id)).toEqual([9]);
+  });
+
+  it('wraps followed collections as COLLECTION blocks keyed by referencedCollectionId', async () => {
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([7]);
+    (getAllCollections as jest.Mock).mockResolvedValue([
+      { id: 7, slug: 'seven', title: 'Seven' },
+      { id: 8, slug: 'eight', title: 'Eight' },
+    ]);
+    const grid = gridProps(await renderTab('following'));
+    expect(grid.collection.content).toHaveLength(1);
+    // `referencedCollectionId` is what convertCollectionContentToParallax carries through as the
+    // card's `collectionId` — the id the follow toggle persists against.
+    expect(grid.collection.content[0]).toMatchObject({
+      contentType: 'COLLECTION',
+      referencedCollectionId: 7,
+      slug: 'seven',
+    });
+  });
+
+  it('falls back to Collections for an unknown ?tab=', async () => {
+    expect(gridProps(await renderTab('nope')).collection.content).toHaveLength(2);
+    expect(sectionProps(await renderTab('nope')).activeKey).toBe('collections');
+    expect(sectionProps(await renderTab('')).activeKey).toBe('collections');
+  });
+
+  it('takes the first value when ?tab= is repeated', async () => {
+    expect(sectionProps(await renderTab(['images', 'saved'])).activeKey).toBe('images');
+    expect(gridProps(await renderTab(['images', 'saved'])).collection.content).toHaveLength(2);
+  });
+
+  it('keeps the collection header (cover + description) across sections', async () => {
+    // The header row is rendered by CollectionPageClient from `collectionData`, so every section
+    // hands it the same collection and swaps only `content` — no /user-only header render.
+    for (const tab of [undefined, 'images', 'saved', 'following']) {
+      const grid = gridProps(await renderTab(tab));
+      expect(grid.collection.description).toBe('Photos I have been tagged in.');
+      expect(grid.collection.coverImage.imageUrl).toBe('https://cdn/cover.jpg');
+      expect(grid.collection.slug).toBe('user');
+    }
+  });
+
+  it('opens every section at the shared default density', async () => {
+    // No /user-only density constants: each section inherits LAYOUT.defaultChunkSize, the density
+    // an ordinary collection page opens at, and the shared slider re-tunes it from there. The old
+    // bespoke value (14) could not even be represented on a slider whose maximum is 10.
+    for (const tab of [undefined, 'images', 'saved', 'following']) {
+      const { chunkSize } = gridProps(await renderTab(tab));
+      expect(chunkSize).toBeUndefined();
+    }
+    expect(LAYOUT.defaultChunkSize).toBeGreaterThanOrEqual(LAYOUT.minDensity);
+    expect(LAYOUT.defaultChunkSize).toBeLessThanOrEqual(LAYOUT.maxDensityDesktop);
+  });
+
+  it('labels all four sections with their counts regardless of the active section', async () => {
     (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(9)]);
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([7]);
-    (getAllCollections as jest.Mock).mockResolvedValue([{ id: 7 }, { id: 8 }]);
-    const result = await UserPage();
-    const sections = collectSections(result);
-    expect(Object.keys(sections).sort()).toEqual(['Collections', 'Following', 'Images', 'Saved']);
-    expect(sections.Saved.count).toBe(1);
-    expect(sections.Following.count).toBe(1);
+    (getAllCollections as jest.Mock).mockResolvedValue([{ id: 7, slug: 'seven' }, { id: 8 }]);
+    const { sections, activeKey } = sectionProps(await renderTab('saved'));
+    expect(sections.map((s: { label: string; count: number }) => [s.label, s.count])).toEqual([
+      ['Collections', 2],
+      ['Images', 2],
+      ['Saved', 1],
+      ['Following', 1],
+    ]);
+    expect(activeKey).toBe('saved');
   });
 
-  it('gives Collections a higher row density than the photo tabs', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    seedApis();
-    const result = await UserPage();
-    const sections = collectSections(result);
-
-    // Collection cards are uniform, so a high items-per-row budget composes them several across —
-    // the point of the tab being a scannable index. Photos stay larger.
-    const collectionsChunk = sections.Collections.content.props.chunkSize;
-    const imagesChunk = sections.Images.content.props.chunkSize;
-    expect(collectionsChunk).toBeGreaterThan(imagesChunk);
-    expect(imagesChunk).toBeGreaterThan(4);
+  it('gives every section a ?tab= link so the choice stays shareable', async () => {
+    // Sections are links rather than a FilterState dimension: each one's blocks come from a
+    // different server read, and the choice has to survive a copied URL and the back button.
+    const { sections } = sectionProps(await renderTab('images'));
+    expect(sections.map((s: { key: string; href: string }) => [s.key, s.href])).toEqual([
+      ['collections', '/user?tab=collections'],
+      ['images', '/user?tab=images'],
+      ['saved', '/user?tab=saved'],
+      ['following', '/user?tab=following'],
+    ]);
   });
 
-  it('seeds the providers from the saved-images + follows reads (no separate ids fetch)', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    seedApis();
+  it('always marks exactly one section active', async () => {
+    for (const [tab, expected] of [
+      [undefined, 'collections'],
+      ['images', 'images'],
+      ['saved', 'saved'],
+      ['following', 'following'],
+      ['nope', 'collections'],
+    ] as const) {
+      const { sections, activeKey } = sectionProps(await renderTab(tab));
+      expect(activeKey).toBe(expected);
+      expect(sections.filter((s: { key: string }) => s.key === activeKey)).toHaveLength(1);
+    }
+  });
+
+  it('seeds the saves provider from the saved-images read (no separate ids fetch)', async () => {
     // The full saved images read is the single source for both the Saved section and the seeded
     // SavesProvider ids — there is no separate `/user/saves` ids-only read to duplicate it.
     (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(7), imageBlock(8)]);
-    const result = await UserPage();
-    expect(result).toBeTruthy();
-    expect(listSavedImagesServer).toHaveBeenCalled();
-    expect(listFollowedCollectionIdsServer).toHaveBeenCalled();
-    // The ids are derived from the images, so the SavesProvider is seeded without an extra fetch.
+    const grid = gridProps(await renderTab());
+    expect(grid.initialSavedImageIds).toEqual([7, 8]);
     expect(listSavedImagesServer).toHaveBeenCalledTimes(1);
+    expect(listFollowedCollectionIdsServer).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the collection header (cover + description) above the four sections', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    seedApis();
-    (getUserPage as jest.Mock).mockResolvedValue({
-      slug: 'user',
-      title: 'Your Space',
-      description: 'Photos I have been tagged in.',
-      coverImage: { id: 42, contentType: 'IMAGE', imageUrl: 'https://cdn/cover.jpg' },
-      content: [collectionBlock(1), imageBlock(3)],
-    });
-    const result = await UserPage();
-
-    // Header renders with the user collection as collectionData + empty body content, so the layout
-    // pipeline prepends only the header row. It is the LCP (priority 0) and an intro (no fullscreen).
-    const header = findHeaderBlock(result);
-    expect(header).not.toBeNull();
-    expect(header.content).toEqual([]);
-    expect(header.collectionData.description).toBe('Photos I have been tagged in.');
-    expect(header.collectionData.coverImage.imageUrl).toBe('https://cdn/cover.jpg');
-    expect(header.priorityBlockIndex).toBe(0);
-    expect(header.enableFullScreenView).toBe(false);
-    // SSR-sized on first paint (cover is the LCP) to avoid layout shift.
-    expect(header.serverContentWidth).toBe(1200);
-    expect(header.serverIsMobile).toBe(false);
-
-    // The tab sections are untouched by the header addition.
-    const sections = collectSections(result);
-    expect(Object.keys(sections).sort()).toEqual(['Collections', 'Following', 'Images', 'Saved']);
+  it('SSR-sizes the grid so the cover LCP does not shift', async () => {
+    const grid = gridProps(await renderTab());
+    expect(grid.serverContentWidth).toBe(1200);
+    expect(grid.serverViewportHeight).toBe(900);
+    expect(grid.serverIsMobile).toBe(false);
   });
 
-  it('still renders a description-only header when the user collection has no cover', async () => {
-    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    seedApis();
-    (getUserPage as jest.Mock).mockResolvedValue({
-      slug: 'user',
-      description: 'A user with a bio but no tagged image yet.',
-      content: [],
-    });
-    const result = await UserPage();
+  it('never synthesizes an id or client-gallery flags onto the user collection', async () => {
+    // Load-bearing: `canDownloadCollection` short-circuits on the missing id and `selectsEnabled`
+    // on the missing `isClient`, which is what keeps the download and Selects affordances inside
+    // CollectionPageClient switched off on /user. Adding an id to satisfy the CollectionModel type
+    // would arm both on a page that has no gallery to grant.
+    for (const tab of [undefined, 'images', 'saved', 'following']) {
+      const { collection } = gridProps(await renderTab(tab));
+      expect(collection.id).toBeUndefined();
+      expect(collection.isClient).toBeUndefined();
+      expect(collection.isPasswordProtected).toBeUndefined();
+    }
+  });
 
-    const header = findHeaderBlock(result);
-    expect(header).not.toBeNull();
-    expect(header.collectionData.description).toBe('A user with a bio but no tagged image yet.');
-    expect(header.collectionData.coverImage).toBeUndefined();
+  it('still renders a section whose content is empty', async () => {
+    const grid = gridProps(await renderTab('following'));
+    expect(grid.collection.content).toEqual([]);
+    expect(grid.collection.description).toBe('Photos I have been tagged in.');
   });
 });

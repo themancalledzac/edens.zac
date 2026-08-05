@@ -59,6 +59,17 @@ export interface ProcessContentOptions {
    * before, so other callers keep their existing single-column-ish layout.
    */
   mobileChunkSize?: number;
+  /**
+   * Build the header's metadata block even when the collection has no metadata text.
+   *
+   * That block is not merely "the date and description" — it is the header's secondary column,
+   * and it is where {@link FilterToolbar} and the client-gallery download row mount. Gating it on
+   * metadata items alone silently drops the filter bar from any collection that happens to carry
+   * none, which is what left `/user` (no date, no locations, no siblings) with a bare cover and no
+   * bar at all. Callers that will mount controls into the rail set this; callers that only ever
+   * show text leave it off, so a plain metadata-less collection still renders a full-width cover.
+   */
+  forceHeaderRail?: boolean;
 }
 
 /**
@@ -107,7 +118,8 @@ export function processContentForDisplay(
       options.collectionData,
       componentWidth,
       chunkSize,
-      options?.isMobile
+      options?.isMobile,
+      options?.forceHeaderRail
     );
     if (headerRows) {
       if (Array.isArray(headerRows)) {
@@ -191,7 +203,9 @@ export function clampParallaxDimensions(
  *
  * TODO: this parallax-card shape is built in four places — here, `collectionToContentModel`
  * (CollectionPage.tsx), `meContentBlock.ts` and `allCollectionsContentBlock.ts`. Collapse
- * them into one shared builder.
+ * them into one shared builder. Tracked in `docs/006-code-health.md` under "Parallax-card
+ * builder consolidation"; the divergence table and task breakdown are in
+ * `docs/superpowers/plans/2026-08-04-parallax-card-builder-consolidation.md` (local only).
  */
 export function convertCollectionContentToParallax(
   col: ContentCollectionModel
@@ -205,6 +219,7 @@ export function convertCollectionContentToParallax(
     contentType: 'IMAGE',
     enableParallax: true,
     id: col.id ?? col.referencedCollectionId,
+    collectionId: col.referencedCollectionId,
     title: col.title,
     slug: col.slug,
     collectionDate: col.collectionDate,
@@ -450,14 +465,19 @@ function buildMetadataItems(collection: CollectionModel): TextBlockItem[] {
 }
 
 /**
- * Create metadata text block with same dimensions as cover image for equal row sizing
+ * Create metadata text block with same dimensions as cover image for equal row sizing.
+ *
+ * `forceRail` builds the block with zero items — see {@link ProcessContentOptions.forceHeaderRail}.
+ * The block is the header's secondary column and the mount point for the filter toolbar and the
+ * download row, so a page that shows those needs it whether or not it has metadata text.
  */
 function createMetadataTextBlock(
   items: TextBlockItem[],
   width?: number,
-  height?: number
+  height?: number,
+  forceRail: boolean = false
 ): ContentTextModel | null {
-  if (items.length === 0 || !width || !height) {
+  if ((items.length === 0 && !forceRail) || !width || !height) {
     return null;
   }
 
@@ -511,9 +531,10 @@ function createCoverImageBlock(collection: CollectionModel): ContentParallaxImag
  */
 function createTextOnlyHeaderRow(
   metadataItems: TextBlockItem[],
-  componentWidth: number
+  componentWidth: number,
+  forceRail: boolean = false
 ): RowWithPatternAndSizes | null {
-  if (metadataItems.length === 0) {
+  if (metadataItems.length === 0 && !forceRail) {
     return null;
   }
 
@@ -561,7 +582,8 @@ export function createHeaderRow(
   collection: CollectionModel,
   componentWidth: number,
   _chunkSize: number = LAYOUT.defaultChunkSize,
-  isMobile: boolean = false
+  isMobile: boolean = false,
+  forceRail: boolean = false
 ): RowWithPatternAndSizes | RowWithPatternAndSizes[] | null {
   // Metadata is independent of the cover; compute it up front so a cover-less collection
   // (e.g. the /user page for a user who isn't tagged in any image yet) can still render a
@@ -570,7 +592,7 @@ export function createHeaderRow(
 
   // No cover image: render a text-only intro from the metadata, or nothing if there's none.
   if (!collection.coverImage) {
-    return createTextOnlyHeaderRow(metadataItems, componentWidth);
+    return createTextOnlyHeaderRow(metadataItems, componentWidth, forceRail);
   }
 
   const coverBlock = createCoverImageBlock(collection);
@@ -581,11 +603,12 @@ export function createHeaderRow(
 
   const coverAspectRatio = coverBlock.imageWidth / coverBlock.imageHeight;
 
-  // Add metadata block if it has content
+  // Add metadata block if it has content, or if the caller mounts controls into the rail.
   const metadataBlock = createMetadataTextBlock(
     metadataItems,
     coverBlock.imageWidth,
-    coverBlock.imageHeight
+    coverBlock.imageHeight,
+    forceRail
   );
 
   // Mobile: each header item is its own full-width row

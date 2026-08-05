@@ -13,6 +13,16 @@
   }
 }
 
+/* Divides the mutually-exclusive section chips from the facet controls that filter WITHIN the
+   selected section. Margin rather than gap so it reads as a rule between two groups, not as a
+   third item in the row. */
+.separator {
+  align-self: stretch;
+  width: 1px;
+  margin: 4px var(--space-1);
+  background-color: var(--color-border);
+}
+
 .dropdown {
   position: relative;
 }

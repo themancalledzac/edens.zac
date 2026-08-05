@@ -1,13 +1,14 @@
 /* AccountCard — email + passkey (Face / Touch ID) enrollment block on /user.
-   Sits below the tabbed sections; the heading row mirrors SectionTabs' tab
-   typography and border so the card reads as a sibling of the tab bar. */
+   Sits below the sectioned content grid; the heading row mirrors the shared
+   filter bar's chip typography and top border so the card reads as a sibling
+   of that bar rather than as a /user-only slab. */
 
 .card {
   margin-top: var(--space-5);
 
   /* Keep the card inset while the content grids above run full-bleed on mobile;
      reset at the desktop breakpoint where .sections regains its own side padding.
-     Mirrors SectionTabs .tabList. */
+     Mirrors the shared filter bar (FilterToolbar .toolbar). */
   padding-inline: var(--page-padding-mobile);
 
   @media (width >= 768px) {

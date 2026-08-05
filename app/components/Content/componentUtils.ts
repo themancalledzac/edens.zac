@@ -98,7 +98,8 @@ export function buildContentRows(
   collectionData: CollectionModel | undefined,
   viewport: EffectiveViewport,
   chunkSize: number,
-  mobileChunkSize?: number
+  mobileChunkSize?: number,
+  forceHeaderRail?: boolean
 ): { rows: RowWithPatternAndSizes[]; layoutError: string | null } {
   if (!viewport.contentWidth) return { rows: [], layoutError: null };
   if ((!content || content.length === 0) && !collectionData) return { rows: [], layoutError: null };
@@ -115,6 +116,7 @@ export function buildContentRows(
       displayMode: collectionData?.displayMode,
       targetAR,
       mobileChunkSize,
+      forceHeaderRail,
     });
     return { rows, layoutError: null };
   } catch (error) {

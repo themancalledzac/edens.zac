@@ -1,9 +1,11 @@
+import Link from 'next/link';
+
 import styles from './FilterChip.module.scss';
 
 export type FilterChipTone = 'neutral' | 'film' | 'digital';
 export type FilterChipState = 'available' | 'unavailable';
 
-export interface FilterChipProps {
+interface FilterChipBaseProps {
   /** Visible chip text (e.g. a tag, person, camera, or "Film"). */
   label: string;
   /** Optional contextual result count rendered as a muted badge. */
@@ -14,18 +16,40 @@ export interface FilterChipProps {
    * value changes -- only the label switching in and out would do that.
    */
   trailing?: string;
-  /** Whether this facet is currently selected. Drives aria-pressed + the active style. */
+  /** Whether this facet is currently selected. Drives the active style. */
   active?: boolean;
   /** Visual tone. 'film'/'digital' are neutral tri-state tints. */
   tone?: FilterChipTone;
   /** 'unavailable' greys out and disables the chip (3-state availability model). */
   state?: FilterChipState;
+}
+
+interface FilterChipButtonProps extends FilterChipBaseProps {
   /** Called when the chip is activated (click). Not called while unavailable. */
   onToggle: () => void;
+  href?: never;
+}
+
+interface FilterChipLinkProps extends FilterChipBaseProps {
+  /** Destination for a navigating chip. Mutually exclusive with {@link FilterChipButtonProps.onToggle}. */
+  href: string;
+  onToggle?: never;
 }
 
 /**
- * Canonical filter chip — a real <button> with aria-pressed; 'unavailable' state renders it disabled.
+ * Discriminated on `href`: a chip either toggles a facet in place (`onToggle`) or navigates
+ * (`href`), never both. The union is what stops a caller half-wiring one as the other.
+ */
+export type FilterChipProps = FilterChipButtonProps | FilterChipLinkProps;
+
+/**
+ * Canonical filter chip. Renders a real <button> with aria-pressed for in-place facet toggles, or
+ * a <Link> with aria-current for chips that navigate — mutually-exclusive page sections addressed
+ * by a search param, which are semantically links, not pressed toggles. Both variants share one
+ * set of styles so a sectioned page's bar is visually indistinguishable from any other.
+ *
+ * 'unavailable' disables the button variant; the link variant degrades to an inert span, since a
+ * disabled anchor is not a thing the platform provides.
  */
 export function FilterChip({
   label,
@@ -34,6 +58,7 @@ export function FilterChip({
   active = false,
   tone = 'neutral',
   state = 'available',
+  href,
   onToggle,
 }: FilterChipProps) {
   const unavailable = state === 'unavailable';
@@ -46,6 +71,34 @@ export function FilterChip({
     .filter(Boolean)
     .join(' ');
 
+  const body = (
+    <>
+      {label}
+      {trailing !== undefined && <span className={styles.trailing}>{trailing}</span>}
+      {count !== undefined && (
+        <span className={styles.count} aria-hidden="true">
+          {count}
+        </span>
+      )}
+    </>
+  );
+
+  if (href !== undefined) {
+    if (unavailable) {
+      return <span className={classes}>{body}</span>;
+    }
+    return (
+      <Link
+        href={href}
+        scroll={false}
+        className={classes}
+        aria-current={active ? 'page' : undefined}
+      >
+        {body}
+      </Link>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -54,13 +107,7 @@ export function FilterChip({
       disabled={unavailable}
       onClick={onToggle}
     >
-      {label}
-      {trailing !== undefined && <span className={styles.trailing}>{trailing}</span>}
-      {count !== undefined && (
-        <span className={styles.count} aria-hidden="true">
-          {count}
-        </span>
-      )}
+      {body}
     </button>
   );
 }

@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
+import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
@@ -17,6 +18,7 @@ import {
   INITIAL_FILTER_STATE,
   initialDateSortDirection,
 } from '@/app/types/GalleryFilter';
+import { clamp } from '@/app/utils/clamp';
 import {
   applyCollectionFilters,
   buildCollectionCriteria,
@@ -77,6 +79,24 @@ interface CollectionPageClientProps {
   initialSelectedIds?: number[];
   /** The viewer's GLOBAL saved (bookmarked) image ids, seeded server-side. Cross-collection. */
   initialSavedImageIds?: number[];
+  /**
+   * Mutually-exclusive page sections for a sectioned surface (`/user`). Passing these renders the
+   * shared filter bar even on a page with no facet dimensions of its own, with the sections as
+   * navigating chips at its head. Absent on ordinary collection pages.
+   */
+  sections?: readonly ToolbarSection[];
+  /** Key of the section currently rendered. Required alongside {@link sections}. */
+  activeSectionKey?: string;
+  /**
+   * Render the shared filter bar even when this collection surfaces no facet dimensions.
+   *
+   * For index surfaces (`/collections`) the bar is part of the page's identity, not a bonus that
+   * appears when the payload happens to carry tags or cameras. Without this, whether the page has
+   * a bar depends on backend-supplied aggregates on the child blocks, which is not something a
+   * page's layout should hinge on. Ordinary collection pages leave it off and keep the existing
+   * "bar only when there is something to filter" behaviour.
+   */
+  alwaysShowFilterBar?: boolean;
 }
 
 export default function CollectionPageClient({
@@ -89,6 +109,9 @@ export default function CollectionPageClient({
   me = null,
   initialSelectedIds = [],
   initialSavedImageIds = [],
+  sections,
+  activeSectionKey,
+  alwaysShowFilterBar = false,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -112,7 +135,13 @@ export default function CollectionPageClient({
     selectedDates: initialCriteria.dates ?? [],
   }));
 
-  const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
+  // Clamped to the slider's own range: `density` is both the layout budget AND the slider's value,
+  // so a seed outside 1..maxDensityDesktop leaves the control pinned at an end stop reporting a
+  // number the page is not using. `/user` seeded 14 against a max of 10 while its bar was
+  // suppressed, and the mismatch only became visible once the bar rendered.
+  const [density, setDensity] = useState(
+    clamp(chunkSize ?? LAYOUT.defaultChunkSize, LAYOUT.minDensity, LAYOUT.maxDensityDesktop)
+  );
 
   const measured = useViewport();
   const isMobile = measured.width > 0 ? measured.isMobile : (serverIsMobile ?? false);
@@ -327,6 +356,8 @@ export default function CollectionPageClient({
       filterOptions: availableOptions,
       filteredAvailable: filteredAvailableOptions,
       onFilterChange: handleFilterChange,
+      sections: sections ?? null,
+      activeSectionKey: activeSectionKey ?? null,
       dateTwoState: isChronological,
       density: displayDensity,
       densityMax,
@@ -337,6 +368,8 @@ export default function CollectionPageClient({
       availableOptions,
       filteredAvailableOptions,
       handleFilterChange,
+      sections,
+      activeSectionKey,
       isChronological,
       displayDensity,
       densityMax,
@@ -346,7 +379,13 @@ export default function CollectionPageClient({
 
   const pageSize = collection.contentPerPage ?? 30;
 
-  const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort);
+  // Sections alone justify the bar: a sectioned page needs its section chips even with no facet
+  // dimensions of its own, and rendering the bar is also what gives it the shared chrome (the
+  // density slider) that makes it match an ordinary collection page.
+  const hasOptions =
+    alwaysShowFilterBar ||
+    (sections !== undefined && sections.length > 0) ||
+    hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort);
 
   const grid = (
     <ContentBlockWithFullScreen
@@ -361,6 +400,11 @@ export default function CollectionPageClient({
       mobileChunkSize={mobileDensity}
       collectionSlug={collection.slug}
       collectionData={collection}
+      // The filter bar and the download row both mount into the header's metadata rail, so the
+      // rail has to exist whenever either will render — even on a collection with no metadata
+      // text of its own. Without this, `/user` (no date, no locations, no siblings) built a
+      // cover-only header and silently dropped the bar.
+      forceHeaderRail={hasOptions || canDownload}
       serverContentWidth={serverContentWidth}
       serverViewportHeight={serverViewportHeight}
       serverIsMobile={serverIsMobile}

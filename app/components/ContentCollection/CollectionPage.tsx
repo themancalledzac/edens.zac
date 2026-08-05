@@ -67,6 +67,7 @@ function collectionToContentModel(
     contentType: 'IMAGE',
     enableParallax: true,
     id: col.id,
+    collectionId: col.id,
     title: col.title,
     slug: col.slug,
     isClient: col.isClient,

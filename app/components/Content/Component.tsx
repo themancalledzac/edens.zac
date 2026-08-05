@@ -53,6 +53,11 @@ export interface ContentComponentProps {
   mobileChunkSize?: number;
   /** Collection model for creating header row (cover image + metadata) */
   collectionData?: CollectionModel;
+  /**
+   * Build the header's metadata rail even with no metadata text, because this page mounts the
+   * filter toolbar and/or the download row into it. See `ProcessContentOptions.forceHeaderRail`.
+   */
+  forceHeaderRail?: boolean;
   /** Reorder mode props */
   isReorderMode?: boolean;
   reorderMoves?: ReorderMove[];
@@ -100,6 +105,7 @@ export default function Component({
   chunkSize = LAYOUT.defaultChunkSize,
   mobileChunkSize,
   collectionData,
+  forceHeaderRail = false,
   isReorderMode = false,
   reorderMoves,
   pickedUpImageId,
@@ -152,8 +158,16 @@ export default function Component({
   );
 
   const { rows, layoutError } = useMemo(
-    () => buildContentRows(displayContent, collectionData, viewport, chunkSize, mobileChunkSize),
-    [displayContent, collectionData, viewport, chunkSize, mobileChunkSize]
+    () =>
+      buildContentRows(
+        displayContent,
+        collectionData,
+        viewport,
+        chunkSize,
+        mobileChunkSize,
+        forceHeaderRail
+      ),
+    [displayContent, collectionData, viewport, chunkSize, mobileChunkSize, forceHeaderRail]
   );
 
   // Must be computed before the early returns to satisfy the Rules of Hooks.

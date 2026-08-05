@@ -3,13 +3,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type Ref, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { useMe } from '@/app/components/auth/MeProvider';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
+import { FollowButton } from '@/app/components/Personal/FollowButton';
 import { Badge } from '@/app/components/ui/Badge/Badge';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { Tile } from '@/app/components/ui/Tile/Tile';
@@ -50,6 +51,14 @@ import { SelectStar } from './SelectStar';
 /**
  * Renders a single content item: IMAGE, GIF, COLLECTION, or TEXT metadata block.
  * Handles parallax, reorder mode, client gallery download, and image error fallback.
+ *
+ * Collection cards (the slug-navigating `Tile` branch) also carry a follow toggle. It is gated on
+ * `followCollectionId`, NOT on `contentId`: for a child-collection block `contentId` is the
+ * content-table row id and for the synthetic home tiles it is a negative sentinel, so keying a
+ * persisted follow on it would follow the wrong entity — see
+ * {@link ContentParallaxImageModel.collectionId}. The button lives beside the `Tile` rather than
+ * inside it, mirroring `CoverCard`: a `<button>` nested in an `<a>` is invalid content. It
+ * self-gates on an active `FollowsProvider`, so it resolves to null wherever none is mounted.
  */
 export default function CollectionContentRenderer({
   contentId,
@@ -94,6 +103,7 @@ export default function CollectionContentRenderer({
   onImageLoadError,
   canDownload = false,
   collectionSlug,
+  followCollectionId,
 }: CollectionContentRendererProps) {
   const router = useRouter();
 
@@ -194,16 +204,22 @@ export default function CollectionContentRenderer({
   );
 
   if (contentType === 'TEXT') {
-    if (!textItems || textItems.length === 0) {
+    // The header rail carries more than text: the filter toolbar and the client-gallery download
+    // row mount into it. A collection with no metadata (no date, locations, description or
+    // siblings — that is `/user`) produces an item-less rail, so bailing on empty `textItems`
+    // alone would throw away the bar. Mirrors the layout-side gate, `forceHeaderRail`.
+    const railHasControls = collectionFilter !== null || (canDownload && Boolean(collectionSlug));
+    const items = textItems ?? [];
+    if (items.length === 0 && !railHasControls) {
       return null;
     }
 
-    const dateItem = textItems.find(item => item.type === 'date');
-    const locationItem = textItems.find(item => item.type === 'location');
-    const descriptionItem = textItems.find(item => item.type === 'description');
-    const filterItems = textItems.filter(item => item.type === 'text');
-    const collectionItems = textItems.filter(
-      (item): item is (typeof textItems)[number] & { slug: string } =>
+    const dateItem = items.find(item => item.type === 'date');
+    const locationItem = items.find(item => item.type === 'location');
+    const descriptionItem = items.find(item => item.type === 'description');
+    const filterItems = items.filter(item => item.type === 'text');
+    const collectionItems = items.filter(
+      (item): item is (typeof items)[number] & { slug: string } =>
         item.type === 'collection' && item.slug != null
     );
 
@@ -356,6 +372,8 @@ export default function CollectionContentRenderer({
               <FilterToolbar
                 filterState={collectionFilter.filterState}
                 onFilterChange={collectionFilter.onFilterChange}
+                sections={collectionFilter.sections ?? undefined}
+                activeSectionKey={collectionFilter.activeSectionKey ?? undefined}
                 dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
                 filteredAvailable={
                   collectionFilter.filteredAvailable
@@ -559,6 +577,11 @@ export default function CollectionContentRenderer({
   // resolves to null for anonymous viewers or where no SavesProvider is mounted.
   const saveHeart = contentType === 'IMAGE' ? <SaveHeart contentId={contentId} /> : null;
 
+  const followButton =
+    isSlugNav && followCollectionId !== undefined ? (
+      <FollowButton collectionId={followCollectionId} placement="bottom" />
+    ) : null;
+
   const isNotVisible =
     contentType === 'IMAGE' &&
     checkImageVisibility(
@@ -651,17 +674,15 @@ export default function CollectionContentRenderer({
 
   if (isSlugNav) {
     return (
-      <Tile
+      <div
         key={contentId}
-        href={`/${hasSlug}`}
-        aria-label={overlayText ?? alt}
-        className={wrapperProps.className}
-        style={wrapperProps.style}
-        {...(enableParallax
-          ? { ref: parallaxRef as Ref<HTMLAnchorElement>, 'data-parallax-container': '' }
-          : { 'data-image-wrapper': '' })}
+        {...wrapperProps}
+        {...(enableParallax ? { 'data-parallax-container': '' } : { 'data-image-wrapper': '' })}
       >
-        <span className={cbStyles.imageWrapper}>{imageWrapperContent}</span>
+        <Tile href={`/${hasSlug}`} aria-label={overlayText ?? alt}>
+          <span className={cbStyles.imageWrapper}>{imageWrapperContent}</span>
+        </Tile>
+        {followButton}
         {!enableParallax && (
           <ImageOverlays
             contentType={contentType}
@@ -672,7 +693,7 @@ export default function CollectionContentRenderer({
             save={saveHeart}
           />
         )}
-      </Tile>
+      </div>
     );
   }
 

@@ -6,8 +6,17 @@ import { useFollows } from '@/app/components/Personal/FollowsContext';
 
 import styles from './FollowButton.module.scss';
 
+/**
+ * Which corner of the card the pill pins to. Both are right-aligned; `bottom` exists for cards
+ * that already carry a top-right overlay (the content grid's collection cards put the public
+ * `Badge` there).
+ */
+export type FollowButtonPlacement = 'top' | 'bottom';
+
 interface FollowButtonProps {
   collectionId: number;
+  /** Corner to pin to. Defaults to `top`. */
+  placement?: FollowButtonPlacement;
 }
 
 /**
@@ -15,7 +24,10 @@ interface FollowButtonProps {
  * for logged-in viewers), so it renders nothing for anonymous viewers. Mirrors the SaveHeart
  * context-not-props pattern.
  */
-export function FollowButton({ collectionId }: FollowButtonProps): ReactElement | null {
+export function FollowButton({
+  collectionId,
+  placement = 'top',
+}: FollowButtonProps): ReactElement | null {
   const follows = useFollows();
 
   if (!follows) {
@@ -23,11 +35,18 @@ export function FollowButton({ collectionId }: FollowButtonProps): ReactElement 
   }
 
   const following = follows.isFollowing(collectionId);
+  const classes = [
+    styles.followButton,
+    placement === 'bottom' ? styles.followButtonBottom : '',
+    following ? styles.followButtonActive : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <button
       type="button"
-      className={`${styles.followButton} ${following ? styles.followButtonActive : ''}`}
+      className={classes}
       aria-pressed={following}
       aria-label={following ? 'Unfollow collection' : 'Follow collection'}
       onClick={event => {
