@@ -1,7 +1,7 @@
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
   applyHiddenVisibility,
-  countHiddenCollections,
+  countNonListedCollections,
   hasVisibilityData,
 } from '@/app/utils/contentFilter';
 import { createCollectionContent, createImageContent } from '@/tests/fixtures/contentFixtures';
@@ -22,17 +22,20 @@ describe('applyHiddenVisibility', () => {
     expect(applyHiddenVisibility(content, false)).toBe(content);
   });
 
-  it('drops HIDDEN collections once the preview is engaged', () => {
-    expect(idsOf(applyHiddenVisibility([listed, unlisted, hidden], true))).toEqual([1, 2]);
+  // The general-audience scope is LISTED alone — mirrors the backend's anonymous branch. Neither
+  // UNLISTED (slug-only) nor HIDDEN (dev-only) appears in a public list, so both must drop.
+  it('narrows to LISTED only once the preview is engaged', () => {
+    expect(idsOf(applyHiddenVisibility([listed, unlisted, hidden], true))).toEqual([1]);
   });
 
-  // UNLISTED collections are reachable by direct slug and are not part of what this previews away.
-  it('never touches UNLISTED in either position', () => {
+  it('drops UNLISTED, not just HIDDEN', () => {
+    expect(idsOf(applyHiddenVisibility([unlisted], true))).toEqual([]);
     expect(idsOf(applyHiddenVisibility([unlisted], false))).toEqual([2]);
-    expect(idsOf(applyHiddenVisibility([unlisted], true))).toEqual([2]);
   });
 
-  it('passes through a collection whose visibility is unknown', () => {
+  // An unknown label means the payload predates the backend enrichment; guessing "not listed"
+  // would blank the page.
+  it('keeps a collection whose visibility is unknown', () => {
     expect(idsOf(applyHiddenVisibility([unknown], true))).toEqual([4]);
   });
 
@@ -57,9 +60,20 @@ describe('hasVisibilityData', () => {
   });
 });
 
-describe('countHiddenCollections', () => {
-  it('counts only HIDDEN collections', () => {
-    expect(countHiddenCollections([listed, unlisted, hidden, unknown])).toBe(1);
-    expect(countHiddenCollections([listed, unlisted])).toBe(0);
+describe('countNonListedCollections', () => {
+  // The badge must match what engaging the chip actually removes, so it counts UNLISTED too.
+  it('counts every known non-LISTED collection', () => {
+    expect(countNonListedCollections([listed, unlisted, hidden, unknown])).toBe(2);
+    expect(countNonListedCollections([listed, listed])).toBe(0);
+  });
+
+  it('does not count a collection whose visibility is unknown', () => {
+    expect(countNonListedCollections([unknown])).toBe(0);
+  });
+
+  it('agrees with what applyHiddenVisibility removes', () => {
+    const page = [listed, unlisted, hidden, unknown];
+    const kept = applyHiddenVisibility(page, true);
+    expect(page.length - kept.length).toBe(countNonListedCollections(page));
   });
 });

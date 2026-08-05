@@ -31,7 +31,7 @@ import {
   buildCollectionCriteria,
   type CollectionFilterDimensions,
   computeFilterVisibility,
-  countHiddenCollections,
+  countNonListedCollections,
   extractCollectionFilterOptions,
   hasAnyActiveFilter,
   hasFilterableOptions,
@@ -318,7 +318,7 @@ export default function CollectionPageClient({
   // default view is unchanged from today.
   const showHideHidden = (me?.isAdmin ?? false) && hasVisibilityData(rawContent);
 
-  const hiddenCount = useMemo(() => countHiddenCollections(rawContent), [rawContent]);
+  const hiddenCount = useMemo(() => countNonListedCollections(rawContent), [rawContent]);
 
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;

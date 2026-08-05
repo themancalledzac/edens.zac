@@ -37,7 +37,10 @@ export interface ToolbarCounts {
   highlyRated?: number;
   film?: number;
   digital?: number;
-  /** How many collections on the page are `HIDDEN`. Badges the admin-only "Hide hidden" chip. */
+  /**
+   * How many collections the general-audience preview would remove (every known non-`LISTED`
+   * tile). Badges the admin-only "Hide hidden" chip.
+   */
   hidden?: number;
 }
 

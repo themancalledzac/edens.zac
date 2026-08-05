@@ -14,14 +14,18 @@ The proposed next evolution of the Collection IA: the [collections-as-tags desig
 
 ## ✅ Collections page filter bar (0243)
 
-The [collections page filter bar design](superpowers/specs/2026-08-05-collections-page-filter-bar-design.md) brings `/collections` onto the same shared `FilterToolbar`/`FilterState` system as the rest of this chapter. **Shipped in 0243:** ordering that actually reaches collection tiles (`applySort` in `app/utils/sortContent.ts` — `isDateable` excludes collection cards by design, and `showDateSort` is image-derived, so `/collections` previously rendered **no Order chip at all** and could not be sequenced); an admin-only **"Hide hidden"** preview that subtracts `HIDDEN` collections so an admin can see the public view (default off, so the admin default view is unchanged); and route consolidation — `/collections` gained `meServer()` and the redundant `/all-collections` route was deleted outright (the backend `all-collections` _slug_ remains). Tag/location filtering on tiles already worked via `collectionRefMatchesCriteria`.
+The [collections page filter bar design](superpowers/specs/2026-08-05-collections-page-filter-bar-design.md) brings `/collections` onto the same shared `FilterToolbar`/`FilterState` system as the rest of this chapter. **Shipped in 0243:** ordering that actually reaches collection tiles (`applySort` in `app/utils/sortContent.ts` — `isDateable` excludes collection cards by design, and `showDateSort` is image-derived, so `/collections` previously rendered **no Order chip at all** and could not be sequenced); an admin-only **"Hide hidden"** preview that narrows the list to `LISTED` only, so an admin can see exactly what the general audience sees (default off, so the admin default view is unchanged); and route consolidation — `/collections` gained `meServer()` and the redundant `/all-collections` route was deleted outright (the backend `all-collections` _slug_ remains). Tag/location filtering on tiles already worked via `collectionRefMatchesCriteria`.
 
-**Rating-based ordering was cut** on review — the Order control stays date-only. Type grouping and view-count popularity remain deferred. The Hide-hidden chip is gated on the payload carrying `visibility`, so it stays absent until the **backend** threads `CollectionVisibility` onto synthetic collection blocks, then appears on its own.
+The preview drops **both `UNLISTED` and `HIDDEN`**, mirroring the backend's anonymous scope (`LISTED` alone) in `SyntheticCollectionResolver#findAllCollectionsForCurrentViewer` — neither appears in a public list. It is a **view** control, never an access control: the row scoping is the boundary, and it already runs server-side before anything is serialized.
+
+**Rating-based ordering was cut** on review — the Order control stays date-only. Type grouping and view-count popularity remain deferred.
+
+**Backend counterpart** (`edens.zac.backend`, branch `0243-collection-block-visibility`): `ContentModels.Collection` now carries `visibility`, populated on both the synthetic-list path (`fromCollectionModel`) and the real content-row path (`buildCollectionRecord`), and preserved through the `withTags`/`withOrderIndex` record copies. It is serialized **unconditionally for every viewer** — deliberately not role-gated, since the row scoping already decided what the viewer receives, a role-varying payload shape is a caching hazard, and a conditionally-omitted field would imply it is the access boundary and invite someone to relax the row query behind it.
 
 ## Remaining work (deduped)
 
 - Build ONE reusable filter-bar/chip component shared across Search / Location / Person / Tag / Collection — don't rebuild per page.
-- **Backend**: thread `CollectionVisibility` onto synthetic collection blocks (mirrors the existing tags enrichment) to activate the admin Hide-hidden chip. Also verify `locations` enrichment on collection-ref blocks.
+- ✅ **Backend visibility on collection blocks — done** (`0243-collection-block-visibility`), which activates the admin Hide-hidden chip. Still open: verify `locations` enrichment on collection-ref blocks — `convertCollectionContentToParallax` hard-codes `locations: []` on the card, though filtering runs pre-conversion so it works today.
 - `/search` public route: `SearchPage` server component + `SearchFilters` client component + `searchImages()` API fn + `SearchParams` type + nav link + error/loading/empty states. ⛔ Blocked on backend `GET /content/images/search` (and `GET /content/locations` for the location dropdown).
 - Location filter bar Phase 2/3: tag/people/camera chip rows, dynamic option counts (`Canon R5 (47)`), removable active-filter badges + Clear-all, focal-length range.
 - Collection tags: ✅ **frontend Phase 1 merged ([PR #167](https://github.com/themancalledzac/edens.zac/pull/167), `0165`)** — a shared `TagsSelector` (extracted from the image editor's `TagsPeopleSection`, reused on the manage page) + `tagUtils` (`convertTagsToModels`/`createTagsUpdate`) + `buildUpdatePayload` wiring; backend `TagUpdate` persistence confirmed. Remaining: the auto-tag endpoint + "Auto-populate from images" button (Phase 2, backend), and optional tag-chip display on the public collection page.
@@ -33,15 +37,15 @@ The [collections page filter bar design](superpowers/specs/2026-08-05-collection
 
 ## Sections
 
-| Section                                                                                                       | Role | Status                                                                          |
-| ------------------------------------------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------- |
-| [Public Search Page](superpowers/plans/004-public-search-page.md)                                             | plan | ⛔                                                                              |
-| [Location Page Filter Bar](superpowers/plans/004-location-filter-bar.md)                                      | plan | 🟡                                                                              |
-| [Collection Tags](superpowers/plans/004-collection-tags.md)                                                   | plan | 🟡 (FE Phase 1 shipped; auto-tag + display remain)                              |
-| [Collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) | spec | 📘 (A1/A3 shipped; A2/Track D deferred; D7/D8 superseded → collections-as-tags) |
-| [Collections-as-tags (design)](superpowers/specs/2026-07-06-collections-as-tags-design.md)                    | spec | 📘 (D1–D12 awaiting review)                                                     |
-| [Menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md)                     | spec | ✅ Option A shipped · Option C open                                             |
-| [Collections page filter bar](superpowers/specs/2026-08-05-collections-page-filter-bar-design.md)             | spec | ✅ Shipped 0243 (rating sort cut) · Hide-hidden ⛔ backend                      |
+| Section                                                                                                       | Role | Status                                                                                    |
+| ------------------------------------------------------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------- |
+| [Public Search Page](superpowers/plans/004-public-search-page.md)                                             | plan | ⛔                                                                                        |
+| [Location Page Filter Bar](superpowers/plans/004-location-filter-bar.md)                                      | plan | 🟡                                                                                        |
+| [Collection Tags](superpowers/plans/004-collection-tags.md)                                                   | plan | 🟡 (FE Phase 1 shipped; auto-tag + display remain)                                        |
+| [Collection IA & user-flow (living spec)](superpowers/specs/2026-06-29-collection-ia-and-user-flow-design.md) | spec | 📘 (A1/A3 shipped; A2/Track D deferred; D7/D8 superseded → collections-as-tags)           |
+| [Collections-as-tags (design)](superpowers/specs/2026-07-06-collections-as-tags-design.md)                    | spec | 📘 (D1–D12 awaiting review)                                                               |
+| [Menu-dropdown nav & discovery](superpowers/specs/2026-06-10-menu-dropdown-nav-design.md)                     | spec | ✅ Option A shipped · Option C open                                                       |
+| [Collections page filter bar](superpowers/specs/2026-08-05-collections-page-filter-bar-design.md)             | spec | ✅ Shipped 0243 (rating sort cut) · Hide-hidden needs BE 0243-collection-block-visibility |
 
 ## Blocked on / open
 

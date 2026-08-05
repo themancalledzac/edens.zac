@@ -19,12 +19,12 @@ export interface FilterState {
    */
   dateSortDirection: DateSortDirection;
   /**
-   * Admin-only: drop collections whose visibility is `HIDDEN`, previewing the list as a
-   * non-admin sees it. Off by default, so an admin's default view stays the full picture they
+   * Admin-only: narrow the list to `LISTED` collections only, previewing it as the general
+   * audience sees it. Off by default, so an admin's default view stays the full picture they
    * already get today — this only ever SUBTRACTS from what the backend already sent.
    *
-   * `UNLISTED` collections are unaffected either way: they are reachable by direct slug and are
-   * not part of what this control previews away.
+   * Drops both `UNLISTED` and `HIDDEN`, because neither appears in a public list: the backend's
+   * anonymous scope is `LISTED` alone.
    */
   hideHidden: boolean;
   highlyRatedOnly: boolean;

@@ -942,16 +942,32 @@ export function hasVisibilityData(content: readonly AnyContentModel[]): boolean 
   return content.some(item => isCollectionRef(item) && item.visibility !== undefined);
 }
 
-/** How many collection tiles on the page are `HIDDEN`. Badges the Hidden chip. */
-export function countHiddenCollections(content: readonly AnyContentModel[]): number {
+/**
+ * How many collection tiles the general-audience preview would remove — every tile with a known
+ * visibility that is not `LISTED`. Badges the chip, so the number must match what engaging it
+ * actually drops (see {@link applyHiddenVisibility}), not just the `HIDDEN` subset.
+ */
+export function countNonListedCollections(content: readonly AnyContentModel[]): number {
   return content.filter(
-    item => isCollectionRef(item) && item.visibility === CollectionVisibility.HIDDEN
+    item =>
+      isCollectionRef(item) &&
+      item.visibility !== undefined &&
+      item.visibility !== CollectionVisibility.LISTED
   ).length;
 }
 
 /**
- * Preview a list the way a non-admin sees it: with `hideHidden` on, `HIDDEN` collection tiles
- * drop out.
+ * Preview a list the way the general audience sees it: with `hideHidden` on, only `LISTED`
+ * collection tiles survive.
+ *
+ * `LISTED` is the whole of the general-audience scope — it mirrors the backend's anonymous branch
+ * in `SyntheticCollectionResolver#findAllCollectionsForCurrentViewer`. Both `UNLISTED` (reachable
+ * by direct slug, never in a public list) and `HIDDEN` (dev-only) are absent from a public list,
+ * so previewing that view has to drop both.
+ *
+ * Tiles whose `visibility` is undefined are KEPT: an unknown label means the payload predates the
+ * backend enrichment, and guessing "not listed" would blank the page. The chip is gated on
+ * {@link hasVisibilityData} for the same reason.
  *
  * Purely SUBTRACTIVE, and off by default — an admin's default view stays the full set the backend
  * already scoped to them. It is a visibility scope rather than a filter, so it runs upstream of
@@ -959,17 +975,18 @@ export function countHiddenCollections(content: readonly AnyContentModel[]): num
  * when {@link hasAnyActiveFilter} is true, and this must govern the layout baseline and the filter
  * dimensions too.
  *
- * `UNLISTED` is deliberately untouched — those are reachable by direct slug and are not part of
- * what this control previews away; only the literal hidden state is.
+ * This is a VIEW control, never an access control — the backend already refuses to send a
+ * non-admin anything outside their scope, and nothing here can widen what arrived.
  */
 export function applyHiddenVisibility<T extends AnyContentModel>(
   content: T[],
   hideHidden: boolean
 ): T[] {
   if (!hideHidden) return content;
-  return content.filter(
-    item => !(isCollectionRef(item) && item.visibility === CollectionVisibility.HIDDEN)
-  );
+  return content.filter(item => {
+    if (!isCollectionRef(item) || item.visibility === undefined) return true;
+    return item.visibility === CollectionVisibility.LISTED;
+  });
 }
 
 /**
