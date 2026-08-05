@@ -115,9 +115,9 @@ describe('FilterToolbar', () => {
     expect(screen.getByRole('button', { name: 'sunset' })).not.toBeDisabled();
   });
 
-  it('renders the density slider when onDensityChange is provided', () => {
+  it('renders the density slider in the slider variant', () => {
     const onDensityChange = jest.fn();
-    renderToolbar({ density: 4, onDensityChange });
+    renderToolbar({ density: 4, onDensityChange, densityVariant: 'slider' });
     const slider = screen.getByLabelText('Row density') as HTMLInputElement;
     expect(slider.getAttribute('type')).toBe('range');
     expect(slider.value).toBe('4');
@@ -125,9 +125,66 @@ describe('FilterToolbar', () => {
     expect(onDensityChange).toHaveBeenCalledWith(8);
   });
 
-  it('omits the density slider when onDensityChange is not provided', () => {
+  it('omits the density control entirely when onDensityChange is not provided', () => {
     renderToolbar({});
     expect(screen.queryByLabelText('Row density')).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).toBeNull();
+  });
+
+  describe('photo-size tiers (default visitor variant)', () => {
+    const TIERS = [
+      { key: 'large', label: 'Large photos', value: 2 },
+      { key: 'medium', label: 'Medium photos', value: 4 },
+      { key: 'small', label: 'Small photos', value: 7 },
+    ];
+
+    function renderTiers(overrides: Partial<Props> = {}) {
+      const onDensityTierSelect = jest.fn();
+      renderToolbar({
+        density: 4,
+        onDensityChange: jest.fn(),
+        densityTiers: TIERS,
+        activeDensityTier: 'medium',
+        onDensityTierSelect,
+        ...overrides,
+      });
+      return { onDensityTierSelect };
+    }
+
+    it('renders a radiogroup of tiers instead of the raw slider by default', () => {
+      renderTiers();
+      expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
+      // The raw density number is meaningless to a visitor and runs backwards from photo size.
+      expect(screen.queryByLabelText('Row density')).toBeNull();
+    });
+
+    it('names each tier by photo size, never by the density number', () => {
+      renderTiers();
+      for (const tier of TIERS) {
+        expect(screen.getByRole('radio', { name: tier.label })).toBeInTheDocument();
+      }
+      expect(screen.queryByText(/density/i)).toBeNull();
+    });
+
+    it('marks exactly the active tier as checked', () => {
+      renderTiers();
+      expect(screen.getByRole('radio', { name: 'Medium photos' })).toBeChecked();
+      expect(screen.getByRole('radio', { name: 'Large photos' })).not.toBeChecked();
+      expect(screen.getByRole('radio', { name: 'Small photos' })).not.toBeChecked();
+    });
+
+    it('emits the tier value verbatim, bypassing the viewport-scaling handler', () => {
+      const { onDensityTierSelect } = renderTiers();
+      fireEvent.click(screen.getByRole('radio', { name: 'Small photos' }));
+      expect(onDensityTierSelect).toHaveBeenCalledWith(7);
+    });
+
+    it('highlights the nearest tier for an off-tier stored density without snapping it', () => {
+      // A collection stored at 6 keeps laying out at 6; the bar only highlights Small.
+      const { onDensityTierSelect } = renderTiers({ density: 6, activeDensityTier: 'small' });
+      expect(screen.getByRole('radio', { name: 'Small photos' })).toBeChecked();
+      expect(onDensityTierSelect).not.toHaveBeenCalled();
+    });
   });
 
   it('renders the reset button always, disabled until a filter is active', () => {
@@ -205,6 +262,48 @@ describe('FilterToolbar', () => {
     const { onFilterChange } = renderToolbar({ dimensions: threeDays });
     fireEvent.click(screen.getByRole('button', { name: /jul 21/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-21'] });
+  });
+
+  it('switches to the newly clicked date rather than selecting both', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions: threeDays,
+      filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /jul 22/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-22'] });
+  });
+
+  it('clears the date when the chosen chip is clicked again', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions: threeDays,
+      filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /jul 20/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: [] });
+  });
+
+  it('switches the date from the dropdown fallback too', () => {
+    const options = Array.from(
+      { length: MAX_FLAT_DATE_CHIPS + 1 },
+      (_, i) => `2026-07-${String(20 + i).padStart(2, '0')}`
+    );
+    const { onFilterChange } = renderToolbar({
+      dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
+      filterState: { ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^date/i }));
+    fireEvent.click(screen.getByRole('button', { name: /jul 25/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedDates: ['2026-07-25'] });
+  });
+
+  it('keeps multi-select for the accumulating dimensions', () => {
+    const { onFilterChange } = renderToolbar({
+      dimensions: { selectedTags: { label: 'Tags', options: ['sunset', 'forest'] } },
+      filterState: { ...INITIAL_FILTER_STATE, selectedTags: ['sunset'] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^tags/i }));
+    fireEvent.click(screen.getByRole('button', { name: /forest/i }));
+    expect(onFilterChange).toHaveBeenCalledWith({ selectedTags: ['sunset', 'forest'] });
   });
 
   it('still renders flat chips at exactly the threshold', () => {
@@ -369,16 +468,18 @@ describe('FilterToolbar', () => {
 
     it('renders the bar with sections alone, no facet dimensions needed', () => {
       // This is what lets /user — which has no tags/people/cameras of its own — still show the
-      // shared bar, and with it the density slider.
+      // shared bar, and with it the photo-size control.
       renderToolbar({
         sections: SECTIONS,
         activeSectionKey: 'collections',
         density: 4,
         densityMax: 10,
         onDensityChange: jest.fn(),
+        densityTiers: [{ key: 'medium', label: 'Medium photos', value: 4 }],
+        activeDensityTier: 'medium',
       });
       expect(screen.getAllByRole('link')).toHaveLength(3);
-      expect(screen.getByRole('slider', { name: /row density/i })).toBeInTheDocument();
+      expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
     });
 
     it('keeps sections independent of the reset button', () => {

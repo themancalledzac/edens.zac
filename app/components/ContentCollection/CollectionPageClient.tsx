@@ -7,7 +7,13 @@ import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
-import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
+import {
+  DENSITY_TIERS,
+  fromMobileDensity,
+  LAYOUT,
+  nearestDensityTier,
+  toMobileDensity,
+} from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type MeResponse } from '@/app/types/Auth';
@@ -32,6 +38,7 @@ import {
   mergeDateSortedImages,
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
+import { getMeanWidthCost } from '@/app/utils/contentRatingUtils';
 import { isContentCollection, isGifContent } from '@/app/utils/contentTypeGuards';
 import {
   canDownloadCollection,
@@ -161,6 +168,25 @@ export default function CollectionPageClient({
     [isMobile]
   );
 
+  /**
+   * Photo-size presets on the CANONICAL desktop scale, which is the scale `density` is stored in.
+   *
+   * Deliberately not viewport-scaled like the slider: halving and doubling is lossy at the Small
+   * tier (desktop 7 -> mobile 4 -> back to 8), so routing a tier through
+   * {@link fromMobileDensity} would land a mobile visitor on a value no tier defines. Tier
+   * selections therefore bypass {@link handleDensityChange} and write their canonical value.
+   */
+  const densityTiers = useMemo(
+    () => DENSITY_TIERS.map(tier => ({ key: tier.key, label: tier.label, value: tier.desktop })),
+    []
+  );
+
+  const handleDensityTierSelect = useCallback((value: number) => {
+    setDensity(clamp(value, LAYOUT.minDensity, LAYOUT.maxDensityDesktop));
+  }, []);
+
+  const activeDensityTier = nearestDensityTier(density, false);
+
   const isClientGallery = collection.isClient === true;
 
   // A CLIENT grant on a collection whose payload carries no kind booleans is the signature of a
@@ -256,6 +282,16 @@ export default function CollectionPageClient({
 
   const filteredImages = useMemo(() => filteredContent.filter(isImageContent), [filteredContent]);
 
+  /**
+   * Photos-per-row anchor, measured on the UNFILTERED content.
+   *
+   * Width-cost scales with rating, so without this a filter that shifts the rating mix silently
+   * resized every photo: "Highly Rated" alone took a collection from ~5 per row to ~3, while the
+   * photo-size control still read Medium. The layout divides the filtered mean by this to cancel
+   * that shift; with no filter active the two are equal, so the layout is unchanged.
+   */
+  const widthCostBaseline = useMemo(() => getMeanWidthCost(allContent), [allContent]);
+
   // `visibility.highlyRated` is already false below two images (canFilter), so no extra
   // collection-count suppression is needed — see D7.
   const showHighlyRated = visibility.highlyRated;
@@ -265,34 +301,28 @@ export default function CollectionPageClient({
     if (!hasActiveFilters) return null;
     const dims = extractCollectionFilterOptions(filteredImages, allCollections);
 
-    // `dates` is OR-combined and single-valued per image, unlike every other dimension here
-    // (AND-combined). Deriving its availability from `filteredImages` -- which already reflects
-    // the active `dates` selection -- collapses every other day to "unavailable" the instant one
-    // day is selected. Re-derive it from a pass with `dates` omitted from criteria so days never
-    // grey each other out, while a day with no photos under another active filter (e.g. camera)
-    // still greys out correctly.
-    const { dates: _omitted, ...criteriaWithoutDates } = criteria;
-    const contentForDateAvailability = applyCollectionFilters(
-      allContent,
-      allImages,
-      criteriaWithoutDates
-    );
-    const imagesForDateAvailability = contentForDateAvailability.filter(isImageContent);
-    const gifsForDateAvailability = contentForDateAvailability.filter(
-      (item): item is ContentGifModel => isGifContent(item) && Boolean(item.captureDate)
-    );
-    const dateAvailability = extractCollectionFilterOptions(
-      imagesForDateAvailability,
-      allCollections,
-      gifsForDateAvailability
-    );
+    // `dates` and `lenses` are single-valued per image, so each is SELF-EXCLUSIVE: deriving its
+    // availability from `filteredImages` -- which already reflects that dimension's own active
+    // selection -- collapses every other option to "unavailable" the instant one is picked, and a
+    // disabled chip cannot be switched to. Re-derive each from a pass with its OWN key omitted, so
+    // its options never grey each other out while an option ruled out by a DIFFERENT active filter
+    // (e.g. camera) still greys out correctly. Both are single-choice in the toolbar
+    // (`EXCLUSIVE_FILTER_KEYS`), which is what makes switching the only reachable move.
+    const availabilityWithout = (key: 'dates' | 'lenses'): CollectionFilterDimensions => {
+      const { [key]: _omitted, ...selfExcluded } = criteria;
+      const content = applyCollectionFilters(allContent, allImages, selfExcluded);
+      const gifs = content.filter(
+        (item): item is ContentGifModel => isGifContent(item) && Boolean(item.captureDate)
+      );
+      return extractCollectionFilterOptions(content.filter(isImageContent), allCollections, gifs);
+    };
 
     return {
       people: dims.people.values,
       cameras: dims.cameras.values,
-      lenses: dims.lenses.values,
+      lenses: availabilityWithout('lenses').lenses.values,
       locations: dims.locations.values,
-      dates: dateAvailability.dates.values,
+      dates: availabilityWithout('dates').dates.values,
     };
   }, [hasActiveFilters, filteredImages, allCollections, criteria, allContent, allImages]);
 
@@ -362,6 +392,12 @@ export default function CollectionPageClient({
       density: displayDensity,
       densityMax,
       onDensityChange: handleDensityChange,
+      // Curators keep the fine 1-10 control so they can still land on an off-tier value; visitors
+      // get the three photo-size presets.
+      densityVariant: editMode ? ('slider' as const) : ('tiers' as const),
+      densityTiers,
+      activeDensityTier,
+      onDensityTierSelect: handleDensityTierSelect,
     }),
     [
       filterState,
@@ -374,6 +410,10 @@ export default function CollectionPageClient({
       displayDensity,
       densityMax,
       handleDensityChange,
+      editMode,
+      densityTiers,
+      activeDensityTier,
+      handleDensityTierSelect,
     ]
   );
 
@@ -405,6 +445,7 @@ export default function CollectionPageClient({
       // text of its own. Without this, `/user` (no date, no locations, no siblings) built a
       // cover-only header and silently dropped the bar.
       forceHeaderRail={hasOptions || canDownload}
+      widthCostBaseline={widthCostBaseline}
       serverContentWidth={serverContentWidth}
       serverViewportHeight={serverViewportHeight}
       serverIsMobile={serverIsMobile}

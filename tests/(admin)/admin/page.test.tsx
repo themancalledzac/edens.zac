@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { isValidElement } from 'react';
 
 import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
 import AdminHubPage from '@/app/(admin)/admin/page';
@@ -57,6 +58,27 @@ describe('AdminHubPage', () => {
 
     const images = container.querySelectorAll('img');
     expect(images.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('pins the content block to a single column on mobile', async () => {
+    mockGetTiles.mockResolvedValue([]);
+    const ui = await AdminHubPage();
+
+    const findMobileChunkSize = (node: unknown): number | undefined => {
+      if (Array.isArray(node)) {
+        for (const child of node) {
+          const found = findMobileChunkSize(child);
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      }
+      if (!isValidElement(node)) return undefined;
+      const props = node.props as { mobileChunkSize?: number; children?: unknown };
+      if (props.mobileChunkSize !== undefined) return props.mobileChunkSize;
+      return findMobileChunkSize(props.children);
+    };
+
+    expect(findMobileChunkSize(ui)).toBe(1);
   });
 
   it('falls back gracefully when the API throws', async () => {

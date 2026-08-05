@@ -2,14 +2,13 @@
  * Regression test for whole-branch review Finding 1 (CRITICAL): selecting one date must not
  * grey out every other date chip.
  *
- * `dates` is OR-combined and single-valued per image (a photo was captured on exactly one
- * calendar day), unlike camera/lens/people/location, which are AND-combined. Deriving the
- * bar's `filteredAvailable.dates` from `filteredImages` -- the images surviving the CURRENT
- * criteria, which already includes an active `dates` selection -- collapses every surviving
- * image onto the selected day(s), so `extractCollectionFilterOptions` reports every OTHER day
- * as absent and the toolbar renders it disabled. That defeats the multi-day conference case
- * (pick day 1 and day 3): after picking day 1, day 3's chip goes disabled and is unreachable
- * except via the bulk reset.
+ * `dates` is single-valued per image (a photo was captured on exactly one calendar day), which is
+ * why the Date dimension is single-choice in the toolbar: clicking a second day SWITCHES to it.
+ * Deriving the bar's `filteredAvailable.dates` from `filteredImages` -- the images surviving the
+ * CURRENT criteria, which already includes an active `dates` selection -- collapses every
+ * surviving image onto the selected day, so `extractCollectionFilterOptions` reports every OTHER
+ * day as absent and the toolbar renders it disabled. That makes switching impossible: after
+ * picking day 1, day 3's chip goes disabled and is unreachable except via the bulk reset.
  */
 import '@testing-library/jest-dom';
 

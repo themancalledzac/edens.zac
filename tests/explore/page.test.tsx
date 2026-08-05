@@ -50,7 +50,12 @@ describe('ExplorePage', () => {
     expect(screen.getByRole('heading', { name: 'Tags' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'People' })).not.toBeInTheDocument();
 
-    expect(screen.getByRole('link', { name: 'Mountains' })).toHaveAttribute('href', '/mountains');
+    // Tags target the /tag/[slug] taxonomy route, not a bare /[slug] — the latter resolves to the
+    // collection route, so it 404s or opens an unrelated collection that happens to share the slug.
+    expect(screen.getByRole('link', { name: 'Mountains' })).toHaveAttribute(
+      'href',
+      '/tag/mountains'
+    );
     expect(screen.getByRole('link', { name: 'Patagonia' })).toHaveAttribute(
       'href',
       '/location/patagonia'

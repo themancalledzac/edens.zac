@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 
+import { MeProvider } from '@/app/components/auth/MeProvider';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
@@ -91,11 +92,18 @@ interface UserPageProps {
  * stay `?tab=` links rather than joining `FilterState` because each section's blocks come from a
  * different server read, and because the choice should stay shareable and back-button-walkable.
  * Their presence is also what makes the bar render here at all — `/user` has no facet dimensions
- * of its own — which is how the page picks up the density slider and the rest of the bar chrome.
+ * of its own — which is how the page picks up the photo-size control and the rest of the bar chrome.
+ *
+ * The whole sections region is wrapped in `MeProvider` because `SendMessageButton` is a sibling of
+ * `CollectionPageClient`, not a descendant: the provider the collection stack mounts internally does
+ * not reach it, so without this wrapper `useMe()` returns null there and the send-message form opens
+ * with a blank, editable email instead of the signed-in address. `CollectionPageClient` still mounts
+ * its own provider from the same `me={principal}`, so the nested provider carries an identical value.
  *
  * No section passes a `chunkSize`, so each starts at `LAYOUT.defaultChunkSize` — the density an
- * ordinary collection page opens at. The bespoke per-section densities this page used to carry are
- * gone; the slider in the shared bar is how a section gets re-tuned now.
+ * ordinary collection page opens at, and the value the bar's Medium photo-size tier selects. The
+ * bespoke per-section densities this page used to carry are gone; the photo-size control in the
+ * shared bar is how a section gets re-tuned now.
  *
  * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
  * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
@@ -172,29 +180,31 @@ export default async function UserPage({ searchParams }: UserPageProps) {
     <PageShell pageType="default" collectionSlug={collection.slug}>
       <h1 className={styles.srOnly}>Your Space</h1>
 
-      <div className={styles.sections}>
-        <div className={styles.topBar}>
-          <SendMessageButton />
+      <MeProvider me={principal}>
+        <div className={styles.sections}>
+          <div className={styles.topBar}>
+            <SendMessageButton />
+          </div>
+
+          <FollowsProvider initialFollowedIds={followedCollectionIds}>
+            <CollectionPageClient
+              key={activeKey}
+              collection={sectionCollection}
+              serverContentWidth={ssrViewport?.contentWidth}
+              serverViewportHeight={ssrViewport?.viewportHeight}
+              serverIsMobile={ssrViewport?.isMobile}
+              me={principal}
+              initialSavedImageIds={savedImageIds}
+              sections={toolbarSections}
+              activeSectionKey={activeKey}
+            />
+          </FollowsProvider>
+
+          {active.content.length === 0 && <p className={styles.empty}>{active.emptyLabel}</p>}
+
+          <AccountCard email={principal.email} />
         </div>
-
-        <FollowsProvider initialFollowedIds={followedCollectionIds}>
-          <CollectionPageClient
-            key={activeKey}
-            collection={sectionCollection}
-            serverContentWidth={ssrViewport?.contentWidth}
-            serverViewportHeight={ssrViewport?.viewportHeight}
-            serverIsMobile={ssrViewport?.isMobile}
-            me={principal}
-            initialSavedImageIds={savedImageIds}
-            sections={toolbarSections}
-            activeSectionKey={activeKey}
-          />
-        </FollowsProvider>
-
-        {active.content.length === 0 && <p className={styles.empty}>{active.emptyLabel}</p>}
-
-        <AccountCard email={principal.email} />
-      </div>
+      </MeProvider>
     </PageShell>
   );
 }

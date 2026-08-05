@@ -63,6 +63,13 @@ html,
   --color-selected-indicator: rgb(220, 38, 38, 0.9);
   --color-shadow: rgb(0, 0, 0, 0.3);
 
+  /* Content affordance accents — icon fills layered over content thumbnails.
+     Like the other brand/status literals (--color-danger, --color-warning) these
+     are deliberately NOT re-declared under [data-surface='dark']: the affordance
+     must read as the same color on both surfaces. */
+  --color-heart: #e0245e; /* SaveHeart fill + FollowButton active state */
+  --color-star: #f5c518; /* ContentComponent select-star fill */
+
   /* Spacing scale */
   --space-0: 0;
   --space-1: 0.25rem;

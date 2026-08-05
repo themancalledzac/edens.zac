@@ -37,6 +37,19 @@ const TAP_SLOP = 10;
 
 const SCROLL_BLOCKING_KEYS = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' ', 'Home', 'End'];
 
+/** Controls that own their own key handling — Space activates a button, keys type into a field. */
+const INTERACTIVE_SELECTOR = 'button, a, input, select, textarea';
+
+/**
+ * True when a key event originated on an interactive control. Scroll-blocking must skip those:
+ * `preventDefault()` on Space would otherwise silently kill button activation for keyboard users
+ * (Enter still fires, so the breakage looks like nothing at all). Guarded for non-Element targets
+ * (document/window), which have no `closest`.
+ */
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(INTERACTIVE_SELECTOR) !== null;
+}
+
 /**
  * Backwards-compatible alias for the union of content types that can open in the fullscreen
  * viewer. Now includes GIF/MP4 — see {@link ViewableContent}.
@@ -73,8 +86,10 @@ export function useFullScreenImage(): {
   zoomTargetRef: RefObject<HTMLDivElement | null>;
   /** True while the image is pinch-zoomed past 1×; gates swipe-nav and tap-to-close. */
   isZoomed: boolean;
-  /** True while immersive mode is on (all chrome hidden); touch-toggled, persists across nav. */
+  /** True while immersive mode is on (all chrome hidden); toggled by tap/click, persists across nav. */
   immersive: boolean;
+  /** Flip immersive mode. Call from a user gesture so the native fullscreen request survives. */
+  toggleImmersive: () => void;
   isSwiping: RefObject<boolean>;
   showImage: (image: ImageBlock, allImages?: ImageBlock[]) => void;
   hideImage: (e?: MouseEvent) => void;
@@ -131,6 +146,23 @@ export function useFullScreenImage(): {
     const el = zoomTargetRef.current;
     if (el) el.style.transform = '';
     setIsZoomed(false);
+  }, []);
+
+  /**
+   * Flip immersive mode (all chrome hidden, image only). Native fullscreen is requested on the way
+   * in and left on the way out — best-effort, and unsupported on iPhone WebKit, where the
+   * chrome-hide alone carries the feature. Must run inside the user gesture (touch tap or click)
+   * so the fullscreen request keeps its user activation.
+   */
+  const toggleImmersive = useCallback(() => {
+    const next = !immersiveRef.current;
+    immersiveRef.current = next;
+    setImmersive(next);
+    if (next) {
+      void requestFullscreen(modalRef.current);
+    } else {
+      void exitFullscreen();
+    }
   }, []);
 
   // Tracks whether *we* pushed a history entry for the open modal, so hideImage
@@ -285,7 +317,7 @@ export function useFullScreenImage(): {
       } else if (event.key === 'ArrowRight') {
         event.preventDefault();
         navigateToNext();
-      } else if (SCROLL_BLOCKING_KEYS.includes(event.key)) {
+      } else if (SCROLL_BLOCKING_KEYS.includes(event.key) && !isInteractiveTarget(event.target)) {
         event.preventDefault();
       }
     };
@@ -544,19 +576,10 @@ export function useFullScreenImage(): {
           if (isControlTap(e.target)) {
             // The control's own onClick handles it; nothing to do here.
           } else if (isImageTap(e.target)) {
-            // Tap on the framed photo → toggle immersive (hide/show all chrome). Native fullscreen
-            // is requested where supported (Android); on iOS WebKit it no-ops and we rely on the
-            // chrome-hide + solid-black backdrop alone. Best-effort, never throws, and runs from the
-            // touch handler so the request keeps its user activation.
-            const next = !immersiveRef.current;
-            immersiveRef.current = next;
-            setImmersive(next);
-            if (next) {
-              void requestFullscreen(modalElement);
-            } else {
-              void exitFullscreen();
-            }
-            // Swallow the synthetic click this tap produces so it doesn't also close the viewer.
+            // Tap on the framed photo → toggle immersive (hide/show all chrome). Shared with the
+            // desktop click path in FullScreenModal, so both pointer types behave identically.
+            toggleImmersive();
+            // Swallow the synthetic click this tap produces so it doesn't also toggle a second time.
             suppressTapClose();
           } else {
             // Tap on the black letterbox outside the photo → dismiss the viewer.
@@ -580,7 +603,7 @@ export function useFullScreenImage(): {
       modalElement.removeEventListener('touchmove', handleTouchMove);
       modalElement.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [isOpen, navigateToNext, navigateToPrevious, isMetadataControl, hideImage]);
+  }, [isOpen, navigateToNext, navigateToPrevious, isMetadataControl, hideImage, toggleImmersive]);
 
   const toggleMetadata = useCallback((e: MouseEvent) => {
     e.stopPropagation();
@@ -596,6 +619,7 @@ export function useFullScreenImage(): {
     zoomTargetRef,
     isZoomed,
     immersive,
+    toggleImmersive,
     isSwiping,
     showImage,
     hideImage,

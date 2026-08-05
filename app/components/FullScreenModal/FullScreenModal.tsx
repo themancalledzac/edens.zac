@@ -17,6 +17,7 @@ import { IMAGE } from '@/app/constants';
 import styles from '@/app/styles/fullscreen-image.module.scss';
 import { type CollectionModel } from '@/app/types/Collection';
 import type { ViewableContent } from '@/app/types/Content';
+import { extractAltText } from '@/app/utils/contentRendererUtils';
 import { formatLongDate } from '@/app/utils/formatDateRange';
 import { canDownloadCollection } from '@/app/utils/galleryAccess';
 
@@ -45,6 +46,8 @@ interface FullScreenModalProps {
   isZoomed: boolean;
   /** Immersive mode: when true, hide all chrome (controls + metadata) for an image-only view. */
   immersive?: boolean;
+  /** Flips immersive mode — wired to a click on the framed photo (the touch tap does the same). */
+  toggleImmersive?: () => void;
   hideImage: (e?: MouseEvent) => void;
   isSwiping: RefObject<boolean>;
   showMetadata: boolean;
@@ -64,6 +67,7 @@ export function FullScreenModal({
   zoomTargetRef,
   isZoomed,
   immersive = false,
+  toggleImmersive,
   hideImage,
   isSwiping,
   showMetadata,
@@ -124,19 +128,40 @@ export function FullScreenModal({
   const hasPrevious = fullScreenState.currentIndex > 0;
   const hasNext = fullScreenState.currentIndex < fullScreenState.images.length - 1;
 
-  const handleOverlayClick = () => {
-    // Don't dismiss on the tap that ends a swipe/pinch/pan, nor while zoomed in
-    // (a tap there is the user interacting with the zoomed photo, not closing it).
-    if (!isSwiping.current && !isZoomed) {
-      hideImage();
+  /**
+   * Where a pointer lands decides the action, mirroring the touch tap split in useFullScreenImage:
+   * the framed photo toggles immersive mode, the black letterbox around it dismisses the viewer.
+   * Without the photo branch, a plain desktop click on the image closed the viewer — the touch
+   * guards below are gesture state and never fire for a mouse.
+   *
+   * Skipped on the click that ends a swipe/pinch/pan (which also swallows the synthetic click a
+   * touch tap produces, so a tap toggles once) and while zoomed, where a click belongs to the photo.
+   */
+  const handleOverlayClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (isSwiping.current || isZoomed) return;
+
+    const target = event.target;
+    if (target instanceof Element && target.closest(`.${styles.imageWrapper}`)) {
+      toggleImmersive?.();
+      return;
     }
+
+    hideImage();
   };
+
+  const accessibleName = currentImage.title
+    ? `Fullscreen image: ${currentImage.title}`
+    : 'Fullscreen image';
 
   const modalContent = (
     <div
       ref={modalRef}
       className={`${styles.imageFullScreenWrapper} ${immersive ? styles.immersive : ''}`}
     >
+      <h2 id="fullscreen-title" className={styles.srOnly}>
+        {accessibleName}
+      </h2>
+
       <div className={styles.overlayContainer} onClick={handleOverlayClick}>
         <div
           className={`${styles.imageWrapper} ${currentImageLoaded ? styles.imageWrapperLoaded : ''}`}
@@ -162,7 +187,13 @@ export function FullScreenModal({
               <Image
                 key={currentImage.id}
                 src={currentImage.imageUrl}
-                alt={currentImage.title || currentImage.caption || 'Full screen image'}
+                alt={extractAltText(
+                  currentImage.alt,
+                  currentImage.title,
+                  currentImage.caption,
+                  undefined,
+                  'Full screen image'
+                )}
                 width={currentImage.imageWidth || IMAGE.defaultWidth}
                 height={currentImage.imageHeight || IMAGE.defaultHeight}
                 className={`${styles.fullScreenImage} ${currentImageLoaded ? styles.fullScreenImageLoaded : ''}`}
@@ -187,9 +218,7 @@ export function FullScreenModal({
               {showMetadata && (
                 <div className={styles.metadataContent}>
                   {currentImage.title && (
-                    <div id="fullscreen-title" className={styles.metadataTitle}>
-                      {currentImage.title}
-                    </div>
+                    <div className={styles.metadataTitle}>{currentImage.title}</div>
                   )}
                   {currentImage.caption && (
                     <div className={styles.metadataCaption}>{currentImage.caption}</div>
@@ -370,12 +399,7 @@ export function FullScreenModal({
   );
 
   return (
-    <Modal
-      open
-      onClose={hideImage}
-      variant="fullscreen"
-      labelledBy={currentImage.title ? 'fullscreen-title' : undefined}
-    >
+    <Modal open onClose={hideImage} variant="fullscreen" labelledBy="fullscreen-title">
       {modalContent}
     </Modal>
   );

@@ -50,8 +50,8 @@
 }
 
 .saveHeartActive .saveHeartIcon {
-  fill: var(--color-heart, #e0245e);
-  stroke: var(--color-heart, #e0245e);
+  fill: var(--color-heart);
+  stroke: var(--color-heart);
 }
 
 /* Hover-capable devices: hide the unsaved heart at rest and reveal it on wrapper hover or keyboard
