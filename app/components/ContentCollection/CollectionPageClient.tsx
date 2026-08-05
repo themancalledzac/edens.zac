@@ -18,6 +18,7 @@ import {
   INITIAL_FILTER_STATE,
   initialDateSortDirection,
 } from '@/app/types/GalleryFilter';
+import { clamp } from '@/app/utils/clamp';
 import {
   applyCollectionFilters,
   buildCollectionCriteria,
@@ -123,7 +124,13 @@ export default function CollectionPageClient({
     selectedDates: initialCriteria.dates ?? [],
   }));
 
-  const [density, setDensity] = useState(chunkSize ?? LAYOUT.defaultChunkSize);
+  // Clamped to the slider's own range: `density` is both the layout budget AND the slider's value,
+  // so a seed outside 1..maxDensityDesktop leaves the control pinned at an end stop reporting a
+  // number the page is not using. `/user` seeded 14 against a max of 10 while its bar was
+  // suppressed, and the mismatch only became visible once the bar rendered.
+  const [density, setDensity] = useState(
+    clamp(chunkSize ?? LAYOUT.defaultChunkSize, LAYOUT.minDensity, LAYOUT.maxDensityDesktop)
+  );
 
   const measured = useViewport();
   const isMobile = measured.width > 0 ? measured.isMobile : (serverIsMobile ?? false);

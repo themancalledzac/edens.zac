@@ -35,6 +35,7 @@ jest.mock('@/app/components/Personal/AccountCard', () => ({
 }));
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
 import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
@@ -181,6 +182,18 @@ describe('UserPage', () => {
       expect(grid.collection.description).toBe('Photos I have been tagged in.');
       expect(grid.collection.coverImage.imageUrl).toBe('https://cdn/cover.jpg');
       expect(grid.collection.slug).toBe('user');
+    }
+  });
+
+  it('seeds every section inside the density slider range', async () => {
+    // `chunkSize` is both the layout budget and the slider's initial value, so a seed outside
+    // 1..maxDensityDesktop leaves the control pinned at an end stop reporting a number the page is
+    // not using. Collections seeded 14 against a max of 10, which only became visible once the
+    // shared bar started rendering here.
+    for (const tab of [undefined, 'images', 'saved', 'following']) {
+      const { chunkSize } = gridProps(await renderTab(tab));
+      expect(chunkSize).toBeGreaterThanOrEqual(LAYOUT.minDensity);
+      expect(chunkSize).toBeLessThanOrEqual(LAYOUT.maxDensityDesktop);
     }
   });
 

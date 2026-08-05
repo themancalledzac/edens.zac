@@ -20,20 +20,22 @@ import styles from './page.module.scss';
 export const dynamic = 'force-dynamic';
 
 /**
- * Items-per-row budget for the Collections and Following tabs. Collection cards are uniform (fixed
- * effective rating, aspect ratio clamped near 5:4), so at this density the layout engine composes
- * them roughly six across — the whole point of those tabs being a scannable index of everything the
- * viewer is associated with rather than an editorial spread. Sits above `MAX_ROW_IMAGES`, so the
- * per-row cap binds and the arrangement stays stable as cover aspect ratios vary.
+ * Starting density for the Collections and Following sections. Collection cards are uniform (fixed
+ * effective rating, aspect ratio clamped near 5:4), so a high budget composes them several across —
+ * the point of those sections being a scannable index rather than an editorial spread.
+ *
+ * Must stay inside the density slider's range (`LAYOUT.minDensity`..`LAYOUT.maxDensityDesktop`).
+ * This was 14 while `/user` had no visible slider, which the shared bar cannot represent — the
+ * control would sit pinned at its maximum and report a value the page was not using.
  */
-const COLLECTIONS_CHUNK_SIZE = 14;
+const COLLECTIONS_CHUNK_SIZE = 7;
 
 /**
- * Items-per-row budget for the Images and Saved tabs. Denser than the editorial default, but well
- * short of the Collections density — these are photographs, and packing them six across would
- * shrink them past the point of being worth looking at.
+ * Starting density for the Images and Saved sections. Deliberately below the Collections density:
+ * these are photographs, and packing them as tightly as uniform cover cards shrinks them past the
+ * point of being worth looking at.
  */
-const PHOTO_CHUNK_SIZE = 8;
+const PHOTO_CHUNK_SIZE = 5;
 
 const TAB_KEYS = ['collections', 'images', 'saved', 'following'] as const;
 
