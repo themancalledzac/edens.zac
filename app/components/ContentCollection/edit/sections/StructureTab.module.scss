@@ -54,7 +54,7 @@
   flex-shrink: 0;
 
   &:hover:not(:disabled) {
-    background: var(--color-surface-overlay);
+    background: var(--color-surface-sunken);
   }
 
   &:disabled {
