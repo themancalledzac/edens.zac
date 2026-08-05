@@ -14,7 +14,6 @@ import {
   type CollectionUpdateResponseDTO,
 } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
-import { type ContentImageModel } from '@/app/types/Content';
 
 export function makeCollection(overrides: Partial<CollectionModel> = {}): CollectionModel {
   return {
@@ -124,7 +123,6 @@ export function makeEdit(
     setIsSelectingCoverImage: jest.fn(),
     handleCoverImageClick: jest.fn(),
     justClickedImageId: null,
-    displayedCoverImage: null as ContentImageModel | null,
     childCollectionImages: undefined,
 
     manageMode: 'edit',

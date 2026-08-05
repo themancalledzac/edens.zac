@@ -135,7 +135,14 @@ async function inheritLocationsToContent(
   return true;
 }
 
-export type ManageMode = 'browse' | 'select' | 'reorder' | 'add' | 'edit' | 'pick-date';
+export type ManageMode =
+  | 'browse'
+  | 'select'
+  | 'reorder'
+  | 'add'
+  | 'edit'
+  | 'pick-date'
+  | 'pick-cover';
 export type CollectionEditTab = 'info' | 'structure';
 
 export interface UseCollectionEditParams {
@@ -167,17 +174,19 @@ export interface UseCollectionEditResult {
     onCancelImageMove: (contentId: number) => void;
     pickedUpImageId: number | null;
   };
+  /** True while the grid is in cover-pick mode; surfaces as `manageMode === 'pick-cover'`. */
   isSelectingCoverImage: boolean;
   setIsSelectingCoverImage: (value: boolean) => void;
+  /** Commits a cover pick immediately (no Save step) and leaves cover-pick mode. */
   handleCoverImageClick: (imageId: number) => void;
   justClickedImageId: number | null;
   currentCoverImageId?: number;
-  /** The collection's saved cover image, shown in the Edit sheet (cover changes save immediately). */
-  displayedCoverImage: ContentImageModel | null | undefined;
   /**
    * Images sourced from this collection's child collections. Since D3 this is one ARM of the
    * cover-candidate union every collection picks from — the other being the collection's own
-   * images — not a parent-only substitute for them.
+   * images — not a parent-only substitute for them. Only this arm needs a picker of its own:
+   * the collection's own images are already on the grid, where cover-pick mode makes them
+   * clickable, while child-collection images are represented there only by their parent card.
    */
   childCollectionImages?: ContentImageModel[] | null;
   /**
@@ -603,6 +612,10 @@ export function useCollectionEdit({
     if (captureDateTargetId !== null) return 'pick-date';
     if (reorderState.active) return 'reorder';
     if (isMultiSelectMode) return 'select';
+    // Outranks 'edit' so the sheet steps aside for the grid while a cover is being picked. The
+    // sheet's own open flag is untouched, so cancelling the pick lands back on the sheet with the
+    // edit buffer intact — entering the pick must never discard unsaved field edits.
+    if (isSelectingCoverImage) return 'pick-cover';
     if (isEditSheetOpen) return 'edit';
     if (isAddMode) return 'add';
     return 'browse';
@@ -689,8 +702,6 @@ export function useCollectionEdit({
       isParentCollection({ content: collection.content, hasChildren: currentState?.hasChildren }),
     [collection.content, currentState?.hasChildren]
   );
-
-  const displayedCoverImage = collection.coverImage ?? null;
 
   const handleCreateNewTextBlock = useCallback(() => {
     if (!collection) return;
@@ -1434,6 +1445,12 @@ export function useCollectionEdit({
       return [{ key: 'cancel', label: 'Cancel', onClick: resetToBrowse }];
     }
 
+    // Same shape as pick-date, but cancelling only drops the pick — resetToBrowse would also
+    // close a sheet the pick was launched from and reseed its buffer.
+    if (manageMode === 'pick-cover') {
+      return [{ key: 'cancel', label: 'Cancel', onClick: () => setIsSelectingCoverImage(false) }];
+    }
+
     if (manageMode === 'reorder') {
       return [
         {
@@ -1585,6 +1602,7 @@ export function useCollectionEdit({
     selectedIds,
     handleBulkEdit,
     handleCoverImageClick,
+    setIsSelectingCoverImage,
     resetToBrowse,
     handleBulkRemove,
     handleCreateNewTextBlock,
@@ -1627,7 +1645,6 @@ export function useCollectionEdit({
     handleCoverImageClick,
     justClickedImageId,
     currentCoverImageId: collection.coverImage?.id,
-    displayedCoverImage,
     childCollectionImages: currentState?.childCollectionImages,
     isParent,
 

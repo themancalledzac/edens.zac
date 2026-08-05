@@ -25,6 +25,14 @@ import { calculateSizesFromBoxTree } from '@/app/utils/rowStructureAlgorithm';
  * Direct processing without complex normalization - works with proper Content types
  */
 
+/**
+ * Sentinel content id carried by the synthetic header cover block (see `createCoverImageBlock`).
+ * It is not a content-table row, so consumers must single it out before treating it as real
+ * content — the renderer pins the cover affordances to it, and the manage grid's click handler
+ * excludes it from being its own cover candidate.
+ */
+export const COVER_IMAGE_CONTENT_ID = -1;
+
 export interface CalculatedContentSize {
   content: AnyContentModel;
   width: number;
@@ -530,7 +538,7 @@ function createCoverImageBlock(collection: CollectionModel): ContentParallaxImag
   return {
     contentType: 'IMAGE',
     enableParallax: true,
-    id: -1,
+    id: COVER_IMAGE_CONTENT_ID,
     title: collection.title,
     imageUrl: coverImage.imageUrl,
     overlayText: collection.title,

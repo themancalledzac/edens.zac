@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   type Dispatch,
@@ -210,15 +211,44 @@ export default function EditModeLayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edit.enterEdit, edit.setEditTab]);
 
+  const isPickingCover = edit.manageMode === 'pick-cover';
+
+  const handleTogglePickCover = useCallback(() => {
+    edit.setIsSelectingCoverImage(!edit.isSelectingCoverImage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edit.isSelectingCoverImage, edit.setIsSelectingCoverImage]);
+
+  // Withheld from the modes that already claim grid clicks for themselves, and until the admin
+  // DTO lands — the pick writes straight through to the API, so it needs the loaded collection.
+  const canPickCover =
+    editReady && (isPickingCover || edit.manageMode === 'browse' || edit.manageMode === 'edit');
+
   const inlineEditValue = useMemo<InlineEditContextValue>(
     () => ({
       title: edit.updateData.title ?? '',
       description: edit.updateData.description ?? '',
       onCommitField: handleCommitField,
       onEditLocation: handleEditLocation,
+      onTogglePickCover: canPickCover ? handleTogglePickCover : null,
+      isPickingCover,
+      hasCover: liveCollection.coverImage != null,
     }),
-    [edit.updateData.title, edit.updateData.description, handleCommitField, handleEditLocation]
+    [
+      edit.updateData.title,
+      edit.updateData.description,
+      handleCommitField,
+      handleEditLocation,
+      canPickCover,
+      handleTogglePickCover,
+      isPickingCover,
+      liveCollection.coverImage,
+    ]
   );
+
+  // Only the child-collection arm of the cover-candidate union (D3) needs a picker of its own:
+  // the collection's own images are on the grid, where pick mode already makes them clickable,
+  // but a child's images are represented there only by the child's card.
+  const childCoverCandidates = edit.childCollectionImages ?? [];
 
   const grid = (
     <ContentBlockWithFullScreen
@@ -275,6 +305,27 @@ export default function EditModeLayer({
       {edit.manageMode === 'pick-date' && (
         <div className={styles.hintBanner} role="status">
           Click an image to copy its capture date.
+        </div>
+      )}
+
+      {isPickingCover && (
+        <div className={styles.hintBanner} role="status">
+          <span>Click any image to make it the cover.</span>
+          {childCoverCandidates.length > 0 && (
+            <div className={styles.coverCandidateStrip}>
+              {childCoverCandidates.map(img => (
+                <button
+                  type="button"
+                  key={img.id}
+                  className={styles.coverCandidate}
+                  onClick={() => edit.handleCoverImageClick(img.id)}
+                  aria-label={`Set ${img.title || 'image'} as cover`}
+                >
+                  <Image src={img.imageUrl} alt={img.title || ''} width={96} height={64} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

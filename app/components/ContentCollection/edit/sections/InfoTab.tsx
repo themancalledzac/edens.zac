@@ -1,7 +1,5 @@
 'use client';
 
-import Image from 'next/image';
-
 import {
   LOCATION_ADD_NEW_FIELDS,
   PERSON_ADD_NEW_FIELDS,
@@ -18,8 +16,6 @@ import {
   COLLECTION_VISIBILITY_LABELS,
   CollectionVisibility,
 } from '@/app/types/CollectionVisibility';
-import { type ContentImageModel } from '@/app/types/Content';
-import { isContentImage } from '@/app/utils/contentTypeGuards';
 
 import { Button } from '../../../ui/Button/Button';
 import { type UseCollectionEditResult } from '../useCollectionEdit';
@@ -58,11 +54,6 @@ export function InfoTab({ edit }: InfoTabProps) {
     handleSaveAccess,
     handleClearPassword,
     isParent,
-    isSelectingCoverImage,
-    setIsSelectingCoverImage,
-    handleCoverImageClick,
-    displayedCoverImage,
-    childCollectionImages,
   } = edit;
 
   const collection = currentState?.collection;
@@ -77,14 +68,6 @@ export function InfoTab({ edit }: InfoTabProps) {
     updateData.collectionEndDate &&
     updateData.collectionEndDate < updateData.collectionDate
   );
-
-  // UNION, not XOR (D3): a collection may hold its own images AND child-collection refs at once.
-  // Mirrors the pool useCoverImageSelection validates the pick against. Deduped by id so an image
-  // present on both sides does not produce a duplicate React key in the picker grid.
-  const coverCandidates: ContentImageModel[] = [
-    ...(collection?.content ?? []).filter(isContentImage),
-    ...(childCollectionImages ?? []),
-  ].filter((img, index, all) => all.findIndex(candidate => candidate.id === img.id) === index);
 
   /**
    * The two stored discriminators are mutually exclusive (the backend rejects both true), so
@@ -217,79 +200,21 @@ export function InfoTab({ edit }: InfoTabProps) {
         emptyText="No locations set"
       />
 
-      <div className={styles.inlineHalfRow}>
-        <div>
-          <Field label="Visibility" htmlFor="edit-sheet-visibility">
-            <Select
-              id="edit-sheet-visibility"
-              value={updateData.visibility ?? CollectionVisibility.HIDDEN}
-              onChange={e => setUpdateField('visibility', e.target.value as CollectionVisibility)}
-            >
-              {Object.values(CollectionVisibility).map(v => (
-                <option key={v} value={v}>
-                  {COLLECTION_VISIBILITY_LABELS[v]}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
-
-        <div>
-          <Field label="Cover image" htmlFor="edit-sheet-cover">
-            <button
-              type="button"
-              id="edit-sheet-cover"
-              className={`${styles.coverButton} ${
-                isSelectingCoverImage ? styles.coverButtonActive : ''
-              }`}
-              onClick={() => setIsSelectingCoverImage(!isSelectingCoverImage)}
-              aria-pressed={isSelectingCoverImage}
-              aria-label={displayedCoverImage ? 'Change cover image' : 'Set cover image'}
-            >
-              {displayedCoverImage ? (
-                <Image
-                  src={displayedCoverImage.imageUrl}
-                  alt=""
-                  fill
-                  sizes="200px"
-                  style={{ objectFit: 'cover' }}
-                  unoptimized
-                />
-              ) : (
-                <span className={styles.coverButtonPlaceholder}>Select</span>
-              )}
-            </button>
-          </Field>
-        </div>
-      </div>
-
-      {isSelectingCoverImage &&
-        (coverCandidates.length > 0 ? (
-          <div className={styles.coverPickerGrid}>
-            {coverCandidates.map(img => (
-              <button
-                type="button"
-                key={img.id}
-                className={styles.coverPickerItem}
-                onClick={() => handleCoverImageClick(img.id)}
-                aria-label={`Set ${img.title || 'image'} as cover`}
-              >
-                <Image
-                  src={img.imageUrl}
-                  alt={img.title || ''}
-                  width={120}
-                  height={90}
-                  unoptimized
-                />
-              </button>
+      <div className={styles.formGroup}>
+        <Field label="Visibility" htmlFor="edit-sheet-visibility">
+          <Select
+            id="edit-sheet-visibility"
+            value={updateData.visibility ?? CollectionVisibility.HIDDEN}
+            onChange={e => setUpdateField('visibility', e.target.value as CollectionVisibility)}
+          >
+            {Object.values(CollectionVisibility).map(v => (
+              <option key={v} value={v}>
+                {COLLECTION_VISIBILITY_LABELS[v]}
+              </option>
             ))}
-          </div>
-        ) : (
-          <p className={styles.fieldHint}>
-            Add images to this collection — or a child collection that has images — to choose a
-            cover.
-          </p>
-        ))}
+          </Select>
+        </Field>
+      </div>
 
       <div className={styles.formGroup}>
         <label className={styles.formLabel}>Tags</label>
