@@ -1,6 +1,6 @@
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
-  applyHiddenVisibility,
+  applyVisibilityScope,
   countNonListedCollections,
   hasVisibilityData,
 } from '@/app/utils/contentFilter';
@@ -14,34 +14,34 @@ const unknown = createCollectionContent(4);
 
 const idsOf = (items: { id?: number }[]) => items.map(item => item.id);
 
-describe('applyHiddenVisibility', () => {
-  // Off is the default, and it must be a pure pass-through: an admin's default view stays the
-  // full set the backend already scoped to them.
-  it('keeps everything while the preview is off', () => {
+describe('applyVisibilityScope', () => {
+  // `true` is the default and must be a pure pass-through — an admin's default view stays the
+  // full set the backend already scoped to them. Identity, not just equality: no wasted re-render.
+  it('passes content straight through while showHidden is on', () => {
     const content = [listed, unlisted, hidden];
-    expect(applyHiddenVisibility(content, false)).toBe(content);
+    expect(applyVisibilityScope(content, true)).toBe(content);
   });
 
   // The general-audience scope is LISTED alone — mirrors the backend's anonymous branch. Neither
   // UNLISTED (slug-only) nor HIDDEN (dev-only) appears in a public list, so both must drop.
-  it('narrows to LISTED only once the preview is engaged', () => {
-    expect(idsOf(applyHiddenVisibility([listed, unlisted, hidden], true))).toEqual([1]);
+  it('narrows to LISTED only when showHidden is switched off', () => {
+    expect(idsOf(applyVisibilityScope([listed, unlisted, hidden], false))).toEqual([1]);
   });
 
   it('drops UNLISTED, not just HIDDEN', () => {
-    expect(idsOf(applyHiddenVisibility([unlisted], true))).toEqual([]);
-    expect(idsOf(applyHiddenVisibility([unlisted], false))).toEqual([2]);
+    expect(idsOf(applyVisibilityScope([unlisted], false))).toEqual([]);
+    expect(idsOf(applyVisibilityScope([unlisted], true))).toEqual([2]);
   });
 
   // An unknown label means the payload predates the backend enrichment; guessing "not listed"
   // would blank the page.
   it('keeps a collection whose visibility is unknown', () => {
-    expect(idsOf(applyHiddenVisibility([unknown], true))).toEqual([4]);
+    expect(idsOf(applyVisibilityScope([unknown], false))).toEqual([4]);
   });
 
   it('never drops non-collection blocks', () => {
     const image = createImageContent(10);
-    expect(idsOf(applyHiddenVisibility([image, hidden], true))).toEqual([10]);
+    expect(idsOf(applyVisibilityScope([image, hidden], false))).toEqual([10]);
   });
 });
 
@@ -71,9 +71,9 @@ describe('countNonListedCollections', () => {
     expect(countNonListedCollections([unknown])).toBe(0);
   });
 
-  it('agrees with what applyHiddenVisibility removes', () => {
+  it('agrees with what applyVisibilityScope removes', () => {
     const page = [listed, unlisted, hidden, unknown];
-    const kept = applyHiddenVisibility(page, true);
+    const kept = applyVisibilityScope(page, false);
     expect(page.length - kept.length).toBe(countNonListedCollections(page));
   });
 });

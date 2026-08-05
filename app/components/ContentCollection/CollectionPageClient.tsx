@@ -27,7 +27,7 @@ import {
 import { clamp } from '@/app/utils/clamp';
 import {
   applyCollectionFilters,
-  applyHiddenVisibility,
+  applyVisibilityScope,
   buildCollectionCriteria,
   type CollectionFilterDimensions,
   computeFilterVisibility,
@@ -245,10 +245,10 @@ export default function CollectionPageClient({
   // The hide-hidden preview is applied here, upstream of every derived set, so it governs the
   // layout baseline and the filter dimensions too — not just which tiles survive the filter pass.
   // The raw set stays available for the chip's own gate and count, which must keep reporting how
-  // many hidden collections exist even while they are being previewed away.
+  // many non-public collections exist even while they are being previewed away.
   const allContent = useMemo(
-    () => applyHiddenVisibility(rawContent, filterState.hideHidden),
-    [rawContent, filterState.hideHidden]
+    () => applyVisibilityScope(rawContent, filterState.showHidden),
+    [rawContent, filterState.showHidden]
   );
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
@@ -314,9 +314,9 @@ export default function CollectionPageClient({
 
   // Admin-only, and only once the payload actually carries visibility: a chip that cannot change
   // what is on screen is worse than no chip. Appears on its own when the backend enrichment lands.
-  // The control is purely subtractive — it previews the list as a non-admin sees it, so an admin's
-  // default view is unchanged from today.
-  const showHideHidden = (me?.isAdmin ?? false) && hasVisibilityData(rawContent);
+  // It renders SELECTED by default, reading as "non-public collections are showing" — switching it
+  // off is what previews the general-audience view, so an admin's default is unchanged from today.
+  const showHiddenToggle = (me?.isAdmin ?? false) && hasVisibilityData(rawContent);
 
   const hiddenCount = useMemo(() => countNonListedCollections(rawContent), [rawContent]);
 
@@ -354,10 +354,10 @@ export default function CollectionPageClient({
       ...baseCollectionOptions,
       showHighlyRated,
       showDateSort,
-      showHideHidden,
+      showHiddenToggle,
       hiddenCount,
     }),
-    [baseCollectionOptions, showHighlyRated, showDateSort, showHideHidden, hiddenCount]
+    [baseCollectionOptions, showHighlyRated, showDateSort, showHiddenToggle, hiddenCount]
   );
 
   const contentBlocks = useMemo(() => {

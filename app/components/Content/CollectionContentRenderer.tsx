@@ -414,7 +414,7 @@ export default function CollectionContentRenderer({
                 showDateSort={collectionFilter.filterOptions.showDateSort}
                 dateTwoState={collectionFilter.dateTwoState}
                 showHighlyRated={collectionFilter.filterOptions.showHighlyRated}
-                showHideHidden={collectionFilter.filterOptions.showHideHidden}
+                showHiddenToggle={collectionFilter.filterOptions.showHiddenToggle}
                 counts={{ hidden: collectionFilter.filterOptions.hiddenCount }}
                 density={collectionFilter.density}
                 densityMax={collectionFilter.densityMax}

@@ -97,42 +97,65 @@ describe('FilterToolbar', () => {
     expect(onFilterChange).toHaveBeenCalledWith({ highlyRatedOnly: true });
   });
 
-  describe('admin "Hide hidden" preview toggle', () => {
+  describe('admin Hidden toggle', () => {
+    const hiddenChip = () => screen.getByRole('button', { name: /hidden/i });
+
     it('is absent by default, so a non-admin never sees it', () => {
       renderToolbar({ showHighlyRated: true });
-      expect(screen.queryByRole('button', { name: /hide hidden/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /hidden/i })).toBeNull();
     });
 
-    // Off by default: an admin's default view stays the full set they already get today, and the
-    // toggle only ever subtracts to preview the public view.
-    it('starts disengaged and engages on click', () => {
-      const { onFilterChange } = renderToolbar({ showHideHidden: true, counts: { hidden: 3 } });
-      const chip = screen.getByRole('button', { name: /hide hidden/i });
+    // Lit means the non-public collections ARE on screen — an admin's default. The chip reads as
+    // a statement about what is showing, not as an action.
+    it('starts selected, because an admin sees everything by default', () => {
+      renderToolbar({ showHiddenToggle: true, counts: { hidden: 3 } });
       expect(screen.getByText('3')).toBeInTheDocument();
-      fireEvent.click(chip);
-      expect(onFilterChange).toHaveBeenCalledWith({ hideHidden: true });
+      expect(hiddenChip().className).toMatch(/active/);
     });
 
-    it('turns back off from the engaged state', () => {
+    it('deselects on click, previewing the general-audience view', () => {
+      const { onFilterChange } = renderToolbar({ showHiddenToggle: true });
+      fireEvent.click(hiddenChip());
+      expect(onFilterChange).toHaveBeenCalledWith({ showHidden: false });
+    });
+
+    it('reselects from the deselected state', () => {
       const { onFilterChange } = renderToolbar({
-        showHideHidden: true,
-        filterState: { ...INITIAL_FILTER_STATE, hideHidden: true },
+        showHiddenToggle: true,
+        filterState: { ...INITIAL_FILTER_STATE, showHidden: false },
       });
-      fireEvent.click(screen.getByRole('button', { name: /hide hidden/i }));
-      expect(onFilterChange).toHaveBeenCalledWith({ hideHidden: false });
+      const chip = hiddenChip();
+      expect(chip.className).not.toMatch(/active/);
+      fireEvent.click(chip);
+      expect(onFilterChange).toHaveBeenCalledWith({ showHidden: true });
     });
 
-    it('counts as an active filter so the reset button is reachable', () => {
+    it('counts as an active filter only once deselected', () => {
+      const { unmount } = render(
+        <FilterToolbar
+          filterState={INITIAL_FILTER_STATE}
+          onFilterChange={jest.fn()}
+          dimensions={{}}
+          showHiddenToggle
+        />
+      );
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeDisabled();
+      unmount();
+
       renderToolbar({
-        showHideHidden: true,
-        filterState: { ...INITIAL_FILTER_STATE, hideHidden: true },
+        showHiddenToggle: true,
+        filterState: { ...INITIAL_FILTER_STATE, showHidden: false },
       });
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeEnabled();
     });
 
-    it('leaves the reset button inert while the preview is off', () => {
-      renderToolbar({ showHideHidden: true });
-      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeDisabled();
+    it('resets back to showing everything', () => {
+      const { onFilterChange } = renderToolbar({
+        showHiddenToggle: true,
+        filterState: { ...INITIAL_FILTER_STATE, showHidden: false },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /reset all filters/i }));
+      expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ showHidden: true }));
     });
   });
 

@@ -40,7 +40,7 @@ export function computeHasActiveFilters(
   return (
     dateActive ||
     filterState.highlyRatedOnly ||
-    filterState.hideHidden ||
+    !filterState.showHidden ||
     filterState.filmFilter !== 'off' ||
     arrayKeys.some(k => (filterState[k] as readonly string[]).length > 0)
   );

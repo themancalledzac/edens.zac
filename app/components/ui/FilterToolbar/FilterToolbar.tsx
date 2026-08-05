@@ -38,8 +38,8 @@ export interface ToolbarCounts {
   film?: number;
   digital?: number;
   /**
-   * How many collections the general-audience preview would remove (every known non-`LISTED`
-   * tile). Badges the admin-only "Hide hidden" chip.
+   * How many collections are non-public (every known non-`LISTED` tile). Badges the admin-only
+   * Hidden chip, whose count is what switching it OFF would remove.
    */
   hidden?: number;
 }
@@ -89,10 +89,10 @@ export interface FilterToolbarProps {
   dateTwoState?: boolean;
   showHighlyRated?: boolean;
   /**
-   * Renders the admin-only "Hide hidden" preview toggle. Callers gate this on the viewer being an
-   * admin AND the payload actually carrying visibility data, so the chip is never a no-op.
+   * Renders the admin-only Hidden toggle. Callers gate this on the viewer being an admin AND the
+   * payload actually carrying visibility data, so the chip is never a no-op.
    */
-  showHideHidden?: boolean;
+  showHiddenToggle?: boolean;
   showFilm?: boolean;
   /** When provided, renders the photo-size control (density min 1, max {@link densityMax}). */
   density?: number;
@@ -153,7 +153,7 @@ export function FilterToolbar({
   showDateSort = false,
   dateTwoState = false,
   showHighlyRated = false,
-  showHideHidden = false,
+  showHiddenToggle = false,
   showFilm = false,
   density,
   densityMax = 10,
@@ -247,12 +247,14 @@ export function FilterToolbar({
           />
         )}
 
-        {showHideHidden && (
+        {showHiddenToggle && (
           <FilterChip
-            label="Hide hidden"
+            label="Hidden"
             count={counts?.hidden}
-            active={filterState.hideHidden}
-            onToggle={() => onFilterChange({ hideHidden: !filterState.hideHidden })}
+            // Lit means the non-public collections ARE on screen, which is an admin's default.
+            // Switching it off previews the list as the general audience sees it.
+            active={filterState.showHidden}
+            onToggle={() => onFilterChange({ showHidden: !filterState.showHidden })}
           />
         )}
 

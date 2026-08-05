@@ -22,9 +22,9 @@ export interface CollectionInfoOptions {
   dates: DimensionData;
   showHighlyRated: boolean;
   showDateSort: boolean;
-  /** Whether to render the admin-only "Hide hidden" preview toggle. */
-  showHideHidden: boolean;
-  /** How many collections the general-audience preview would remove; badges the chip. */
+  /** Whether to render the admin-only Hidden toggle. */
+  showHiddenToggle: boolean;
+  /** How many collections are non-public; badges the Hidden chip. */
   hiddenCount: number;
 }
 

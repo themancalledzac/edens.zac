@@ -19,14 +19,17 @@ export interface FilterState {
    */
   dateSortDirection: DateSortDirection;
   /**
-   * Admin-only: narrow the list to `LISTED` collections only, previewing it as the general
-   * audience sees it. Off by default, so an admin's default view stays the full picture they
-   * already get today — this only ever SUBTRACTS from what the backend already sent.
+   * Admin-only: whether non-public collections are shown. `true` by default, so an admin's
+   * default view stays the full picture the backend already sent them — turning it OFF narrows
+   * the list to `LISTED` only, previewing it as the general audience sees it.
    *
-   * Drops both `UNLISTED` and `HIDDEN`, because neither appears in a public list: the backend's
-   * anonymous scope is `LISTED` alone.
+   * Defaulting to `true` also makes this a no-op everywhere else: on a page with no admin chip
+   * the value never changes, and the scope function passes content straight through.
+   *
+   * Off drops both `UNLISTED` and `HIDDEN`, because neither appears in a public list — the
+   * backend's anonymous scope is `LISTED` alone.
    */
-  hideHidden: boolean;
+  showHidden: boolean;
   highlyRatedOnly: boolean;
   filmFilter: FilmFilter;
   readonly selectedTags: readonly string[];
@@ -40,7 +43,7 @@ export interface FilterState {
 
 export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
   dateSortDirection: 'off' as const,
-  hideHidden: false,
+  showHidden: true,
   highlyRatedOnly: false,
   filmFilter: 'off' as const,
   selectedTags: Object.freeze([] as readonly string[]),
