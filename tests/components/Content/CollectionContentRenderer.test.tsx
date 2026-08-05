@@ -38,6 +38,17 @@ const adminPrincipal: MeResponse = {
   galleries: [],
 };
 
+/** Inert inline-edit surface; each test overrides only the fields it exercises. */
+const inlineEditBase: InlineEditContextValue = {
+  title: '',
+  description: '',
+  onCommitField: jest.fn(),
+  onEditLocation: jest.fn(),
+  onTogglePickCover: null,
+  isPickingCover: false,
+  hasCover: true,
+};
+
 const baseProps = {
   contentId: 42,
   className: 'imageSingle',
@@ -176,6 +187,7 @@ describe('CollectionContentRenderer — TEXT branch inline edit context', () => 
     const onCommitField = jest.fn();
     const onEditLocation = jest.fn();
     const ctx: InlineEditContextValue = {
+      ...inlineEditBase,
       title: 'My Trip',
       description: 'A trip writeup',
       onCommitField,
@@ -301,3 +313,109 @@ describe('CollectionContentRenderer — cover "Update" shortcut (isAdmin-gated)'
   });
 });
 
+describe('CollectionContentRenderer — cover-pick toggle on the manage grid', () => {
+  // Same sentinel-id cover block as above, but on the manage path (currentCollectionId set), so
+  // the public "Update" shortcut stands down and the inline-edit surface takes over.
+  const coverProps = {
+    contentId: -1,
+    className: 'imageSingle',
+    width: 600,
+    height: 400,
+    isMobile: false,
+    imageUrl: 'https://cdn.example.com/cover.jpg',
+    imageWidth: 600,
+    imageHeight: 400,
+    alt: 'Cover',
+    enableParallax: true,
+    contentType: 'IMAGE' as const,
+    overlayText: 'My Gallery',
+    collectionSlug: 'my-gallery',
+    currentCollectionId: 7,
+  };
+
+  function renderCover(ctx: Partial<InlineEditContextValue>, contentId = -1) {
+    render(
+      <InlineEditProvider value={{ ...inlineEditBase, ...ctx }}>
+        <CollectionContentRenderer {...coverProps} contentId={contentId} />
+      </InlineEditProvider>
+    );
+  }
+
+  beforeEach(() => {
+    mockUseMe.mockReturnValue(adminPrincipal);
+  });
+
+  it('renders the toggle on the cover block and fires it on click', () => {
+    const onTogglePickCover = jest.fn();
+    renderCover({ onTogglePickCover });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change cover image' }));
+    expect(onTogglePickCover).toHaveBeenCalledTimes(1);
+  });
+
+  it('flips to a cancel affordance while a pick is in progress', () => {
+    renderCover({ onTogglePickCover: jest.fn(), isPickingCover: true });
+
+    const button = screen.getByRole('button', { name: 'Cancel cover selection' });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Change cover image' })).not.toBeInTheDocument();
+  });
+
+  it('stands down when the active manage mode owns grid clicks (null toggle)', () => {
+    renderCover({ onTogglePickCover: null });
+    expect(screen.queryByRole('button', { name: 'Change cover image' })).not.toBeInTheDocument();
+  });
+
+  it('renders nothing on an ordinary content image — only the cover block carries it', () => {
+    renderCover({ onTogglePickCover: jest.fn() }, 123);
+    expect(screen.queryByRole('button', { name: 'Change cover image' })).not.toBeInTheDocument();
+  });
+
+  it('is absent on the public view, where no inline-edit surface is mounted', () => {
+    render(<CollectionContentRenderer {...coverProps} />);
+    expect(screen.queryByRole('button', { name: 'Change cover image' })).not.toBeInTheDocument();
+  });
+});
+
+describe('CollectionContentRenderer — cover-pick entry point for a coverless collection', () => {
+  const railProps = {
+    contentId: 42,
+    className: 'imageSingle',
+    width: 300,
+    height: 200,
+    isMobile: false,
+    imageUrl: '',
+    imageWidth: 300,
+    imageHeight: 200,
+    alt: 'metadata block',
+    enableParallax: false,
+    contentType: 'TEXT' as const,
+    textItems: [{ type: 'description' as const, value: 'A trip writeup' }],
+  };
+
+  function renderRail(ctx: Partial<InlineEditContextValue>) {
+    render(
+      <InlineEditProvider value={{ ...inlineEditBase, ...ctx }}>
+        <CollectionContentRenderer {...railProps} />
+      </InlineEditProvider>
+    );
+  }
+
+  it('offers "Set cover image" in the metadata rail when the collection has no cover', () => {
+    const onTogglePickCover = jest.fn();
+    renderRail({ hasCover: false, onTogglePickCover });
+
+    fireEvent.click(screen.getByRole('button', { name: /Set cover image/ }));
+    expect(onTogglePickCover).toHaveBeenCalledTimes(1);
+  });
+
+  it('withholds it once a cover exists — the cover block carries the toggle instead', () => {
+    renderRail({ hasCover: true, onTogglePickCover: jest.fn() });
+    expect(screen.queryByRole('button', { name: /Set cover image/ })).not.toBeInTheDocument();
+  });
+
+  it('withholds it when the active manage mode owns grid clicks (null toggle)', () => {
+    renderRail({ hasCover: false, onTogglePickCover: null });
+    expect(screen.queryByRole('button', { name: /Set cover image/ })).not.toBeInTheDocument();
+  });
+});

@@ -13,7 +13,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { InfoTab } from '@/app/components/ContentCollection/edit/sections/InfoTab';
 import { type CollectionUpdateRequest } from '@/app/types/Collection';
-import { makeEdit, makeState, makeUpdateData } from '@/tests/fixtures/collectionEditFixtures';
+import { makeEdit, makeUpdateData } from '@/tests/fixtures/collectionEditFixtures';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
@@ -100,70 +100,10 @@ describe('InfoTab — end-date input wiring', () => {
   });
 });
 
-describe('InfoTab — cover picker offers the union of own and child images (D3)', () => {
-  const ownImage = (id: number) => ({
-    id,
-    contentType: 'IMAGE' as const,
-    orderIndex: id,
-    imageUrl: `https://cdn.example/own-${id}.jpg`,
-    title: `Own ${id}`,
-    locations: [],
-  });
-
-  const childRef = (id: number) => ({
-    id,
-    contentType: 'COLLECTION' as const,
-    orderIndex: id,
-    slug: `child-${id}`,
-    referencedCollectionId: id * 10,
-  });
-
-  const childImage = (id: number) => ({
-    id,
-    contentType: 'IMAGE' as const,
-    orderIndex: id,
-    imageUrl: `https://cdn.example/child-${id}.jpg`,
-    title: `Child ${id}`,
-    locations: [],
-  });
-
-  function renderPicker() {
-    render(
-      <InfoTab
-        edit={makeEdit({
-          isParent: true,
-          isSelectingCoverImage: true,
-          currentState: makeState({
-            content: [ownImage(1), ownImage(2), childRef(90)],
-          }),
-          childCollectionImages: [childImage(500), ownImage(2)],
-        })}
-      />
-    );
-  }
-
-  it("offers the collection's own images even when it also holds a child reference", () => {
-    renderPicker();
-    expect(screen.getByRole('button', { name: 'Set Own 1 as cover' })).toBeInTheDocument();
-  });
-
-  it("offers the child collection's images too", () => {
-    renderPicker();
-    expect(screen.getByRole('button', { name: 'Set Child 500 as cover' })).toBeInTheDocument();
-  });
-
-  it('lists an image that is in both pools exactly once', () => {
-    renderPicker();
-    expect(screen.getAllByRole('button', { name: 'Set Own 2 as cover' })).toHaveLength(1);
-  });
-
-  it('never offers a non-image block as a cover candidate', () => {
-    renderPicker();
-    // childRef(90) carries no `title`, so if it slipped past the isContentImage filter it would
-    // render with the picker's fallback accessible name. Asserting on the slug would be vacuous:
-    // the slug never reaches the aria-label.
-    expect(screen.queryByRole('button', { name: 'Set image as cover' })).not.toBeInTheDocument();
-    // Own 1, Own 2 (deduped), Child 500 — the COLLECTION ref excluded.
-    expect(screen.getAllByRole('button', { name: /as cover$/ })).toHaveLength(3);
+describe('InfoTab — the cover picker has moved to the grid', () => {
+  it('no longer carries any cover control', () => {
+    renderInfoTab({});
+    expect(screen.queryByText('Cover image')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /cover/i })).not.toBeInTheDocument();
   });
 });
