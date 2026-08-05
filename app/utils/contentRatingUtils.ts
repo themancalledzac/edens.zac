@@ -129,6 +129,24 @@ export function getWidthCost(item: AnyContentModel): number {
 }
 
 /**
+ * Mean width-cost across items — the average horizontal budget one item consumes.
+ *
+ * Used as a layout BASELINE so that filtering does not silently resize the grid. Because
+ * {@link getWidthCost} scales with rating, a filtered view containing only 4-5★ images has a much
+ * higher mean cost than the same collection unfiltered, so a fixed row-width budget fits fewer of
+ * them and every photo jumps in size. Comparing the filtered mean against the unfiltered one gives
+ * the factor that cancels exactly that shift. Returns 0 for an empty set, which callers treat as
+ * "no baseline" rather than dividing by it.
+ *
+ * @param items - Items to average over
+ * @returns Mean width cost, or 0 when there is nothing to average
+ */
+export function getMeanWidthCost(items: AnyContentModel[]): number {
+  if (items.length === 0) return 0;
+  return items.reduce((sum, item) => sum + getWidthCost(item), 0) / items.length;
+}
+
+/**
  * Vertical demand (Vv): the "height" dimension of prominence.
  *
  * Vv = sqrt(P / AR)

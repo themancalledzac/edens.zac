@@ -58,6 +58,11 @@ export interface ContentComponentProps {
    * filter toolbar and/or the download row into it. See `ProcessContentOptions.forceHeaderRail`.
    */
   forceHeaderRail?: boolean;
+  /**
+   * Mean width-cost of the collection's UNFILTERED content, so an active filter does not resize
+   * every photo. See `ProcessContentOptions.widthCostBaseline`.
+   */
+  widthCostBaseline?: number;
   /** Reorder mode props */
   isReorderMode?: boolean;
   reorderMoves?: ReorderMove[];
@@ -106,6 +111,7 @@ export default function Component({
   mobileChunkSize,
   collectionData,
   forceHeaderRail = false,
+  widthCostBaseline,
   isReorderMode = false,
   reorderMoves,
   pickedUpImageId,
@@ -165,9 +171,18 @@ export default function Component({
         viewport,
         chunkSize,
         mobileChunkSize,
-        forceHeaderRail
+        forceHeaderRail,
+        widthCostBaseline
       ),
-    [displayContent, collectionData, viewport, chunkSize, mobileChunkSize, forceHeaderRail]
+    [
+      displayContent,
+      collectionData,
+      viewport,
+      chunkSize,
+      mobileChunkSize,
+      forceHeaderRail,
+      widthCostBaseline,
+    ]
   );
 
   // Must be computed before the early returns to satisfy the Rules of Hooks.

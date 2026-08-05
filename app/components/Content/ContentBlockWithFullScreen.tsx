@@ -34,6 +34,8 @@ interface ContentBlockWithFullScreenProps {
   collectionData?: CollectionModel;
   /** Build the header metadata rail even with no metadata text; see {@link Component}. */
   forceHeaderRail?: boolean;
+  /** Mean width-cost of the UNFILTERED content, so filtering does not resize every photo. */
+  widthCostBaseline?: number;
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
   onImageClick?: (imageId: number) => void;
@@ -65,6 +67,7 @@ export default function ContentBlockWithFullScreen({
   collectionSlug,
   collectionData,
   forceHeaderRail,
+  widthCostBaseline,
   isSelectingCoverImage,
   currentCoverImageId,
   onImageClick,
@@ -93,6 +96,7 @@ export default function ContentBlockWithFullScreen({
     zoomTargetRef,
     isZoomed,
     immersive,
+    toggleImmersive,
     hideImage,
     isSwiping,
     showMetadata,
@@ -208,6 +212,7 @@ export default function ContentBlockWithFullScreen({
         mobileChunkSize={mobileChunkSize}
         collectionData={collectionData}
         forceHeaderRail={forceHeaderRail}
+        widthCostBaseline={widthCostBaseline}
         isReorderMode={isReorderMode}
         reorderMoves={reorderMoves}
         pickedUpImageId={pickedUpImageId}
@@ -247,6 +252,7 @@ export default function ContentBlockWithFullScreen({
           zoomTargetRef={zoomTargetRef}
           isZoomed={isZoomed}
           immersive={immersive}
+          toggleImmersive={toggleImmersive}
           hideImage={hideImage}
           isSwiping={isSwiping}
           showMetadata={showMetadata}

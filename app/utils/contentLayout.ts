@@ -8,6 +8,7 @@ import {
   type ContentTextModel,
   type TextBlockItem,
 } from '@/app/types/Content';
+import { getMeanWidthCost } from '@/app/utils/contentRatingUtils';
 import { isContentCollection, pickImageDimensions } from '@/app/utils/contentTypeGuards';
 import { formatDateRange } from '@/app/utils/formatDateRange';
 import {
@@ -70,6 +71,20 @@ export interface ProcessContentOptions {
    * show text leave it off, so a plain metadata-less collection still renders a full-width cover.
    */
   forceHeaderRail?: boolean;
+  /**
+   * Mean width-cost of this collection's UNFILTERED content, used to hold photos-per-row steady
+   * while a filter is active.
+   *
+   * Width-cost scales with rating, so a filter that changes the rating mix — "Highly Rated" most
+   * sharply — changes how many items fit the fixed row budget, and every photo visibly resizes even
+   * though the density control never moved. Scaling the budget by
+   * `mean(filtered) / widthCostBaseline` cancels exactly that shift while leaving RELATIVE sizing
+   * inside a row untouched: a 5★ still outweighs a 3★ beside it.
+   *
+   * Omit it (or pass the unfiltered mean itself) and the factor is 1, so an unfiltered layout is
+   * bit-for-bit what it was before this option existed.
+   */
+  widthCostBaseline?: number;
 }
 
 /**
@@ -130,11 +145,20 @@ export function processContentForDisplay(
     }
   }
 
-  const rowWidth = options?.isMobile
+  const baseRowWidth = options?.isMobile
     ? options?.mobileChunkSize !== undefined
       ? Math.round(options.mobileChunkSize * DENSITY_ROW_WIDTH_MULTIPLIER)
       : LAYOUT.mobileSlotWidth
     : Math.round(chunkSize * DENSITY_ROW_WIDTH_MULTIPLIER);
+
+  // See ProcessContentOptions.widthCostBaseline: keeps a filtered view at the same photos-per-row
+  // as the unfiltered collection. Both means must be > 0 for the ratio to mean anything.
+  const baseline = options?.widthCostBaseline ?? 0;
+  const currentMeanCost = baseline > 0 ? getMeanWidthCost(content) : 0;
+  const rowWidth =
+    baseline > 0 && currentMeanCost > 0
+      ? Math.round(baseRowWidth * (currentMeanCost / baseline))
+      : baseRowWidth;
   const effectiveGap = options?.isMobile ? LAYOUT.mobileGridGap : LAYOUT.gridGap;
   const targetAR = options?.targetAR ?? 1.5;
 
