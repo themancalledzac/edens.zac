@@ -1,6 +1,4 @@
-import '@testing-library/jest-dom';
-
-import { render, screen } from '@testing-library/react';
+/** @jest-environment node */
 import { type ReactNode } from 'react';
 
 import { type CollectionModel } from '@/app/types/Collection';
@@ -9,26 +7,55 @@ import { createCollectionContent } from '@/tests/fixtures/contentFixtures';
 jest.mock('@/app/lib/api/collections', () => ({
   getScopedAllCollections: jest.fn(),
 }));
-
-jest.mock('@/app/hooks/useParallax', () => ({
-  useParallax: () => ({ current: null }),
+jest.mock('@/app/utils/ssrViewport', () => ({
+  resolveSsrViewport: jest.fn(),
 }));
-
-// PageShell pulls in SiteHeader -> MenuDropdown (a 'use client' tree with
-// next/navigation hooks). The page's own contract is the headings + tiles, so
-// render PageShell as a transparent passthrough.
+jest.mock('@/app/components/ContentCollection/CollectionPageClient', () => ({
+  __esModule: true,
+  default: () => 'CollectionPageClient',
+}));
 jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
   __esModule: true,
-  PageShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  default: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PageShell: ({ children }: { children: ReactNode }) => children,
+  default: ({ children }: { children: ReactNode }) => children,
 }));
 
 import CollectionsPage from '@/app/collections/page';
+import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
+import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 const mockGetScopedAllCollections = getScopedAllCollections as jest.MockedFunction<
   typeof getScopedAllCollections
 >;
+
+/** Walk the rendered element tree and return the first element of the given type's props. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function findProps(node: any, type: unknown): any {
+  if (!node || typeof node !== 'object') return null;
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findProps(child, type);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (node.type === type) return node.props;
+  return node.props?.children ? findProps(node.props.children, type) : null;
+}
+
+/** Props the page handed to the shared collection stack. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const stackProps = (result: unknown): any => findProps(result, CollectionPageClient);
+
+/** Collect every string rendered anywhere in the tree (for the fallback / empty copy). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function allText(node: any): string {
+  if (node === null || node === undefined || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(allText).join(' ');
+  return typeof node === 'object' ? allText(node.props?.children) : '';
+}
 
 /**
  * Wrap COLLECTION content blocks in a synthetic all-collections parent shell.
@@ -38,166 +65,105 @@ const mockGetScopedAllCollections = getScopedAllCollections as jest.MockedFuncti
  * lets a case pass a deliberately off-contract shape (see the `{}` resilience test).
  */
 function makeParent(content: unknown[]): CollectionModel {
-  return { content } as unknown as CollectionModel;
+  return { slug: 'all-collections', title: 'Collections', content } as unknown as CollectionModel;
 }
 
 describe('CollectionsPage', () => {
   beforeEach(() => {
     mockGetScopedAllCollections.mockReset();
+    (resolveSsrViewport as jest.Mock).mockResolvedValue({
+      contentWidth: 1200,
+      viewportHeight: 900,
+      isMobile: false,
+    });
   });
 
-  it('renders a year heading and a tile per collection, grouped newest-first', async () => {
+  it('renders through the shared collection stack rather than a bespoke grid', async () => {
     mockGetScopedAllCollections.mockResolvedValue(
       makeParent([
-        createCollectionContent(1, {
-          title: 'Dolomites',
-          slug: 'dolomites',
-          collectionDate: '2026-06-01',
-        }),
-        createCollectionContent(2, {
-          title: 'Patagonia',
-          slug: 'patagonia',
-          collectionDate: '2025-02-01',
-        }),
+        createCollectionContent(1, { title: 'Dolomites', slug: 'dolomites' }),
+        createCollectionContent(2, { title: 'Patagonia', slug: 'patagonia' }),
       ])
     );
 
-    render(await CollectionsPage());
-
-    const headings = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
-    expect(headings).toEqual(['2026', '2025']);
-
-    expect(screen.getByRole('link', { name: /Dolomites/ })).toHaveAttribute('href', '/dolomites');
-    expect(screen.getByRole('link', { name: /Patagonia/ })).toHaveAttribute('href', '/patagonia');
+    const stack = stackProps(await CollectionsPage());
+    expect(stack).not.toBeNull();
+    expect(stack.collection.content.map((b: { slug: string }) => b.slug)).toEqual([
+      'dolomites',
+      'patagonia',
+    ]);
   });
 
-  it('renders a formatted date range label on a multi-day collection', async () => {
+  it('always shows the filter bar, whatever aggregates the payload carries', async () => {
+    // On an index surface the bar is part of the page, not something that appears only when the
+    // backend happens to ship tags or cameras on the child blocks.
     mockGetScopedAllCollections.mockResolvedValue(
-      makeParent([
-        createCollectionContent(1, {
-          title: 'Road Trip',
-          slug: 'road-trip',
-          collectionDate: '2026-03-03',
-          collectionEndDate: '2026-03-07',
-        }),
-      ])
+      makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
     );
-
-    render(await CollectionsPage());
-
-    expect(screen.getByText('Mar 3–7, 2026')).toBeInTheDocument();
+    expect(stackProps(await CollectionsPage()).alwaysShowFilterBar).toBe(true);
   });
 
-  it('groups undated collections under an Undated heading, last', async () => {
+  it('opens at the shared default density', async () => {
+    // No /collections-only density: the page inherits LAYOUT.defaultChunkSize like every other
+    // collection surface, and the shared slider re-tunes it.
     mockGetScopedAllCollections.mockResolvedValue(
-      makeParent([
-        createCollectionContent(1, {
-          title: 'Dated One',
-          slug: 'dated-one',
-          collectionDate: '2026-01-01',
-        }),
-        createCollectionContent(2, {
-          title: 'Mystery',
-          slug: 'mystery',
-          collectionDate: undefined,
-        }),
-      ])
+      makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
     );
+    expect(stackProps(await CollectionsPage()).chunkSize).toBeUndefined();
+  });
 
-    render(await CollectionsPage());
+  it('SSR-sizes the grid so the cover LCP does not shift', async () => {
+    mockGetScopedAllCollections.mockResolvedValue(
+      makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
+    );
+    const stack = stackProps(await CollectionsPage());
+    expect(stack.serverContentWidth).toBe(1200);
+    expect(stack.serverViewportHeight).toBe(900);
+    expect(stack.serverIsMobile).toBe(false);
+  });
 
-    const headings = screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent);
-    expect(headings).toEqual(['2026', 'Undated']);
-    expect(screen.getByRole('link', { name: /Mystery/ })).toBeInTheDocument();
+  it('keeps the parent shell and swaps only its content', async () => {
+    mockGetScopedAllCollections.mockResolvedValue(
+      makeParent([createCollectionContent(1, { title: 'Solo', slug: 'solo' })])
+    );
+    const stack = stackProps(await CollectionsPage());
+    expect(stack.collection.slug).toBe('all-collections');
+    expect(stack.collection.title).toBe('Collections');
   });
 
   it('excludes the home slug from the showcase', async () => {
     mockGetScopedAllCollections.mockResolvedValue(
       makeParent([
-        createCollectionContent(1, { title: 'Home', slug: 'home', collectionDate: '2026-01-01' }),
-        createCollectionContent(2, {
-          title: 'Keep',
-          slug: 'keep',
-          collectionDate: '2026-02-01',
-        }),
+        createCollectionContent(1, { title: 'Home', slug: 'home' }),
+        createCollectionContent(2, { title: 'Keep', slug: 'keep' }),
       ])
     );
 
-    render(await CollectionsPage());
-
-    expect(screen.queryByRole('link', { name: /Home/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Keep/ })).toBeInTheDocument();
+    const stack = stackProps(await CollectionsPage());
+    expect(stack.collection.content.map((b: { slug: string }) => b.slug)).toEqual(['keep']);
   });
 
   it('renders a fallback message when the fetch fails', async () => {
     mockGetScopedAllCollections.mockRejectedValue(new Error('upstream down'));
 
-    render(await CollectionsPage());
-
-    expect(screen.getByText(/unable to load collections/i)).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    const result = await CollectionsPage();
+    expect(allText(result)).toMatch(/unable to load collections/i);
+    expect(stackProps(result)).toBeNull();
   });
 
   it('renders a friendly empty state when there are no collections', async () => {
     mockGetScopedAllCollections.mockResolvedValue(makeParent([]));
-
-    render(await CollectionsPage());
-
-    expect(screen.getByText(/no collections yet/i)).toBeInTheDocument();
-  });
-
-  it('renders a tile for an undated collection with no cover image', async () => {
-    mockGetScopedAllCollections.mockResolvedValue(
-      makeParent([
-        createCollectionContent(1, {
-          title: 'Bare Tile',
-          slug: 'bare-tile',
-          collectionDate: undefined,
-          collectionEndDate: undefined,
-          coverImage: undefined,
-        }),
-      ])
-    );
-
-    render(await CollectionsPage());
-
-    const link = screen.getByRole('link', { name: /Bare Tile/ });
-    expect(link).toHaveAttribute('href', '/bare-tile');
-    // No cover image and no date label: the tile is the title over a placeholder.
-    expect(screen.queryByRole('img')).not.toBeInTheDocument();
-    expect(link).toHaveAccessibleName('Bare Tile');
-  });
-
-  it('formats a single date instead of echoing the raw ISO string', async () => {
-    mockGetScopedAllCollections.mockResolvedValue(
-      makeParent([
-        createCollectionContent(1, {
-          title: 'One Day',
-          slug: 'one-day',
-          collectionDate: '2026-06-01',
-        }),
-      ])
-    );
-
-    render(await CollectionsPage());
-
-    expect(screen.getByText('Jun 1, 2026')).toBeInTheDocument();
-    expect(screen.queryByText('2026-06-01')).not.toBeInTheDocument();
+    expect(allText(await CollectionsPage())).toMatch(/no collections yet/i);
   });
 
   it('degrades to the empty state when the response has no content field at all', async () => {
     mockGetScopedAllCollections.mockResolvedValue({} as CollectionModel);
-
-    render(await CollectionsPage());
-
-    expect(screen.getByText(/no collections yet/i)).toBeInTheDocument();
+    expect(allText(await CollectionsPage())).toMatch(/no collections yet/i);
   });
 
   it('requests the scoped list at the showcase page size', async () => {
     mockGetScopedAllCollections.mockResolvedValue(makeParent([]));
-
     await CollectionsPage();
-
     expect(mockGetScopedAllCollections).toHaveBeenCalledWith(500);
   });
 });

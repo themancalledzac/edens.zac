@@ -87,6 +87,16 @@ interface CollectionPageClientProps {
   sections?: readonly ToolbarSection[];
   /** Key of the section currently rendered. Required alongside {@link sections}. */
   activeSectionKey?: string;
+  /**
+   * Render the shared filter bar even when this collection surfaces no facet dimensions.
+   *
+   * For index surfaces (`/collections`) the bar is part of the page's identity, not a bonus that
+   * appears when the payload happens to carry tags or cameras. Without this, whether the page has
+   * a bar depends on backend-supplied aggregates on the child blocks, which is not something a
+   * page's layout should hinge on. Ordinary collection pages leave it off and keep the existing
+   * "bar only when there is something to filter" behaviour.
+   */
+  alwaysShowFilterBar?: boolean;
 }
 
 export default function CollectionPageClient({
@@ -101,6 +111,7 @@ export default function CollectionPageClient({
   initialSavedImageIds = [],
   sections,
   activeSectionKey,
+  alwaysShowFilterBar = false,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -372,6 +383,7 @@ export default function CollectionPageClient({
   // dimensions of its own, and rendering the bar is also what gives it the shared chrome (the
   // density slider) that makes it match an ordinary collection page.
   const hasOptions =
+    alwaysShowFilterBar ||
     (sections !== undefined && sections.length > 0) ||
     hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort);
 
