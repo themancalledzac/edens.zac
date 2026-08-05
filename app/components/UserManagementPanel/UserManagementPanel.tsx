@@ -17,14 +17,25 @@ import styles from './UserManagementPanel.module.scss';
 
 type View = { mode: 'list' } | { mode: 'create' } | { mode: 'edit'; user: AdminUserSummary };
 
+interface UserManagementPanelProps {
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}
+
 /**
  * Tall, self-contained admin panel that owns the user list and swaps its body between a scrollable
  * list, a create form, and an edit form — all in the same fixed-size space. Lives on the `/admin`
  * hub. Per-row "Update" opens edit-in-place; "Reset" reuses {@link GenerateInviteButton}; clicking
- * the rest of a row navigates to `/admin/users/[id]`. Tag-only PERSON rows are not navigable and
- * instead offer "Merge…" (fold into an existing account) and "Upgrade" (promote in place).
+ * the rest of a row navigates to `/admin/users/[id]`, which renders that user's space as they see
+ * it. Tag-only PERSON rows are not navigable and instead offer "Merge…" (fold into an existing
+ * account) and "Upgrade" (promote in place).
+ *
+ * Collapsed state is owned by `AdminPanelRenderer` (it sizes the box) and passed straight through
+ * to {@link AdminPanel}. This panel only intervenes to force itself open when the body gains
+ * something the user must see: the create and edit forms both live in the body, so opening one
+ * while collapsed would otherwise look like the "+ New User" button did nothing.
  */
-export function UserManagementPanel() {
+export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManagementPanelProps) {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +61,16 @@ export function UserManagementPanel() {
     setView({ mode: 'list' });
     void refresh();
   }, [refresh]);
+
+  // Both forms render in the panel body, so entering one has to open the panel — otherwise the
+  // header swaps to "New User" / "Edit User" with nothing beneath it.
+  const openView = useCallback(
+    (next: View) => {
+      setView(next);
+      onCollapsedChange?.(false);
+    },
+    [onCollapsedChange]
+  );
 
   // Alphabetical by display name (falling back to email), case-insensitive.
   const sortedUsers = useMemo(
@@ -78,7 +99,7 @@ export function UserManagementPanel() {
         </label>
       )}
       {view.mode === 'list' ? (
-        <Button variant="secondary" size="sm" onClick={() => setView({ mode: 'create' })}>
+        <Button variant="secondary" size="sm" onClick={() => openView({ mode: 'create' })}>
           + New User
         </Button>
       ) : (
@@ -90,7 +111,13 @@ export function UserManagementPanel() {
   );
 
   return (
-    <AdminPanel title={headerTitle} ariaLabel="User management" action={headerAction}>
+    <AdminPanel
+      title={headerTitle}
+      ariaLabel="User management"
+      action={headerAction}
+      collapsed={collapsed}
+      onCollapsedChange={onCollapsedChange}
+    >
       {view.mode === 'create' && (
         <UserForm mode="create" onSuccess={backToList} onCancel={backToList} />
       )}
@@ -150,7 +177,7 @@ export function UserManagementPanel() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setView({ mode: 'edit', user })}
+                        onClick={() => openView({ mode: 'edit', user })}
                       >
                         Update
                       </Button>

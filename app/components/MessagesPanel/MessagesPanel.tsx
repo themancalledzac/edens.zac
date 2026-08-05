@@ -10,8 +10,19 @@ import { type AdminMessageView, getAdminMessages } from '@/app/lib/api/messages'
 
 import styles from './MessagesPanel.module.scss';
 
-/** Self-fetching admin panel that lists messages newest-first in a compact column. */
-export function MessagesPanel() {
+interface MessagesPanelProps {
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
+}
+
+/**
+ * Self-fetching admin panel that lists messages newest-first in a compact column.
+ *
+ * Collapsed state is owned by `AdminPanelRenderer` (it sizes the box) and passed through to
+ * {@link AdminPanel}. Unlike the users panel this one has no body-only modes to guard, so it
+ * simply forwards both props.
+ */
+export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelProps) {
   const [messages, setMessages] = useState<AdminMessageView[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -64,7 +75,13 @@ export function MessagesPanel() {
   }
 
   return (
-    <AdminPanel title="Messages" ariaLabel="Comments" action={action}>
+    <AdminPanel
+      title="Messages"
+      ariaLabel="Comments"
+      action={action}
+      collapsed={collapsed}
+      onCollapsedChange={onCollapsedChange}
+    >
       {body}
     </AdminPanel>
   );
