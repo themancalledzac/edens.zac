@@ -1,3 +1,8 @@
+/* Declared once because the reduced-motion guard below has to restate it. Holds only the duration,
+   not the whole shorthand: stylelint's value-keyword-case lowercases keywords inside a $variable,
+   and a mangled keyframe name fails silently. */
+$spin-duration: 1s;
+
 .spinner {
   display: inline-flex;
   align-items: center;
@@ -8,7 +13,16 @@
   border-radius: 50%;
   border: 2px solid transparent;
   border-top: 2px solid currentcolor;
-  animation: spin 1s linear infinite;
+  animation: spin $spin-duration linear infinite;
+
+  /* Deliberate exception to the global `prefers-reduced-motion` guard in app/styles/globals.css,
+     which flattens every animation to ~0ms. This spinner's motion is not decoration — it is the
+     only signal that work is still in flight, so freezing it reads as a hung UI. Restated with the
+     same !important the global rule uses; a class beats that rule's universal selector. */
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: $spin-duration !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 /* Size variants */

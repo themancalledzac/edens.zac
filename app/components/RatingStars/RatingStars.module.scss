@@ -19,6 +19,24 @@
     opacity: 0.5;
     cursor: progress;
   }
+
+  /* Stripping the background and border leaves the UA ring hugging the glyph rather than a button
+     box, which reads as an artefact instead of focus. Declare the house ring explicitly. */
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Touch-target sizing on coarse pointers only. This grows the box rather than overlaying a
+     ::after the way the toolbar's segmented controls do: the glyphs sit only ~21px apart, so a
+     44px overlay would extend across its neighbours and — painting later in DOM order — swallow
+     their taps, leaving four of the five stars unreachable. Growing the box is safe here precisely
+     because the button has no background, border or fill; the only visible change is that the
+     glyphs spread out. */
+  @media (pointer: coarse) {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 .srOnly {

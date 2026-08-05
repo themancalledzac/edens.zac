@@ -3,12 +3,6 @@
   - Base rules target mobile.
   - Larger breakpoints use @media (min-width: ...).
   - No dark mode. All colors assume white/light backgrounds.
-
-  TODO(reduced-motion): Current skeleton uses keyframe animation and some transitions.
-  Consider adding prefers-reduced-motion guards to disable animations/transitions
-  for users who prefer less motion, and rename generic keyframes to a more specific
-  name. Example fix:
-    @media (prefers-reduced-motion: reduce) { .loadingSkeleton { animation: none; } }
 */
 
 /* SCSS breakpoints and mixin */

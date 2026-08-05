@@ -91,13 +91,27 @@
   margin: var(--space-4) 0 0 0;
 }
 
+/* Declared once because the reduced-motion guard below has to restate it. Holds only the duration,
+   not the whole shorthand: stylelint's value-keyword-case lowercases keywords inside a $variable,
+   and a mangled keyframe name fails silently. */
+$gate-spinner-duration: 0.8s;
+
 .gateSpinner {
   width: 14px;
   height: 14px;
   border: 2px solid var(--color-border);
   border-top-color: var(--color-black);
   border-radius: 50%;
-  animation: gateSpinnerRotate 0.8s linear infinite;
+  animation: gateSpinnerRotate $gate-spinner-duration linear infinite;
+
+  /* Deliberate exception to the global `prefers-reduced-motion` guard in app/styles/globals.css,
+     which flattens every animation to ~0ms. This spinner is the whole content of the "Loading
+     gallery…" state, so freezing it would leave a permanently stalled-looking gate. Restated with
+     the same !important the global rule uses; a class beats its universal selector. */
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: $gate-spinner-duration !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 @keyframes gateSpinnerRotate {
