@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { fetchAdminDeleteApi, fetchAdminPutJsonApi } from '@/app/lib/api/core';
 
 import styles from './MetadataList.module.scss';
@@ -99,7 +100,7 @@ export function MetadataList<T extends MetadataListItem>({
       </div>
 
       {items.length === 0 ? (
-        <p className={styles.emptyState}>{emptyLabel}</p>
+        <EmptyState align="page">{emptyLabel}</EmptyState>
       ) : (
         <div className={styles.list}>
           {items.map(item => {

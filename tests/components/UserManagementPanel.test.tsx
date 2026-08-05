@@ -102,6 +102,27 @@ describe('UserManagementPanel', () => {
     await waitFor(() => expect(screen.getByText(/no users yet/i)).toBeInTheDocument());
   });
 
+  // The in-flight message is a live region, so a screen-reader user hears the wait instead of
+  // silence. It used to be a bare <p>; the shared <LoadingText> is what carries the semantics.
+  it('announces the in-flight read as a polite live region', async () => {
+    let resolveUsers!: (users: AdminUserSummary[]) => void;
+    mockListUsers.mockImplementation(
+      () =>
+        new Promise<AdminUserSummary[]>(resolve => {
+          resolveUsers = resolve;
+        })
+    );
+
+    render(<UserManagementPanel />);
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('Loading users…');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+
+    resolveUsers(USERS);
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
+  });
+
   // The load-bearing one. `listUsers` throws on any non-OK response, so a catch-less refresh left
   // `users` at [] and told an admin whose backend was down that there were no users at all —
   // inviting them to create a duplicate of an account that already exists.

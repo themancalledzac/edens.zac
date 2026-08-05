@@ -3,6 +3,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { type CollectionListModel } from '@/app/types/Collection';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
@@ -331,7 +332,6 @@ export default function CollectionListSelector({
         nameElement = <span className={styles.name}>{collection.name}</span>;
       }
 
-
       return (
         <div
           key={collection.id}
@@ -482,7 +482,7 @@ export default function CollectionListSelector({
       )}
       <div className={styles.list}>
         {orderedCollections.length === 0 ? (
-          <div className={styles.emptyState}>No collections available</div>
+          <EmptyState align="page">No collections available</EmptyState>
         ) : (
           listBody
         )}

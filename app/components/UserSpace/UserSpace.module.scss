@@ -1,14 +1,12 @@
-/* Empty-section message for the user space view. Shared by /user and /admin/users/[id];
-   the surrounding page scaffold (max-width, centering, side padding) comes from <PageShell>. */
+/* Placement-only override for the shared <EmptyState> in the user space view (colour, size and
+   vertical rhythm come from StatusText.module.scss). Shared by /user and /admin/users/[id]. */
 
 .empty {
-  padding: var(--space-2) var(--page-padding-mobile);
-  color: var(--color-on-surface-muted);
-  font-size: 0.9375rem;
-
   /* Inset while the content grids above run full-bleed on mobile; reset at the desktop
      breakpoint where the page's own sections wrapper regains its side padding. Mirrors the
      shared filter bar (FilterToolbar .toolbar), which brackets the same grids. */
+  padding-inline: var(--page-padding-mobile);
+
   @media (width >= 768px) {
     padding-inline: 0;
   }

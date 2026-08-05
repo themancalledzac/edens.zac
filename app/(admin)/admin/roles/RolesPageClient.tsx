@@ -7,6 +7,7 @@ import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { ApiError } from '@/app/lib/api/core';
 import { createRole, listRoles } from '@/app/lib/api/roles';
 import { type RoleSummary } from '@/app/types/Role';
@@ -68,21 +69,24 @@ export function RolesPageClient({ initialRoles }: { initialRoles: RoleSummary[] 
           />
         </Field>
         <Button type="submit" loading={submitting}>
-          {submitting ? 'Creating...' : 'Create role'}
+          {submitting ? 'Creating…' : 'Create role'}
         </Button>
         {error && <FormError>{error}</FormError>}
       </form>
 
-      <ul className={styles.roleList}>
-        {roles.length === 0 && <li className={styles.empty}>No roles yet.</li>}
-        {roles.map(r => (
-          <li key={r.id} className={styles.roleRow}>
-            <Link href={`/admin/roles/${r.id}`} className={styles.roleLink}>
-              <span className={styles.roleName}>{r.name}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {roles.length === 0 ? (
+        <EmptyState>No roles yet.</EmptyState>
+      ) : (
+        <ul className={styles.roleList}>
+          {roles.map(r => (
+            <li key={r.id} className={styles.roleRow}>
+              <Link href={`/admin/roles/${r.id}`} className={styles.roleLink}>
+                <span className={styles.roleName}>{r.name}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 import { FormError } from '@/app/components/ui/Field/FormError';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { getAllCollectionsAdmin } from '@/app/lib/api/collections';
 import {
   addRoleMember,
@@ -121,9 +122,7 @@ export function RoleDetailClient({ initialRole }: { initialRole: RoleDetail }) {
 
       <section className={styles.section}>
         <h2 className={styles.sectionHeading}>Collections</h2>
-        {role.collections.length === 0 && (
-          <p className={styles.empty}>No collections granted yet.</p>
-        )}
+        {role.collections.length === 0 && <EmptyState>No collections granted yet.</EmptyState>}
         {role.collections.map(c => (
           <div key={c.collectionId} className={styles.row}>
             <span className={styles.rowName}>{c.title}</span>
@@ -171,7 +170,7 @@ export function RoleDetailClient({ initialRole }: { initialRole: RoleDetail }) {
 
       <section className={styles.section}>
         <h2 className={styles.sectionHeading}>Members</h2>
-        {role.members.length === 0 && <p className={styles.empty}>No members yet.</p>}
+        {role.members.length === 0 && <EmptyState>No members yet.</EmptyState>}
         {role.members.map(m => (
           <div key={m.userId} className={styles.row}>
             <span className={styles.rowName}>{m.email ?? m.name ?? `User #${m.userId}`}</span>

@@ -3,6 +3,7 @@ import { type ReactNode } from 'react';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import {
   TAB_KEYS,
   type TabKey,
@@ -126,7 +127,9 @@ export function UserSpace({
         grid
       )}
 
-      {active.content.length === 0 && <p className={styles.empty}>{active.emptyLabel}</p>}
+      {active.content.length === 0 && (
+        <EmptyState className={styles.empty}>{active.emptyLabel}</EmptyState>
+      )}
     </>
   );
 }

@@ -40,6 +40,8 @@
   color: var(--color-fg);
 }
 
+/* Failed-read message only — a genuinely empty list renders through the shared EmptyState.
+   Kept apart on purpose: an unreachable backend must not read as "no collections yet". */
 .empty {
   padding: var(--space-8) var(--page-padding-mobile);
   color: var(--color-on-surface-muted);

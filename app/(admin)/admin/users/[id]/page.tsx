@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace, resolveTabKey } from '@/app/components/UserSpace/userSpaceData';
 import { ApiError } from '@/app/lib/api/core';
@@ -150,7 +151,7 @@ export default async function AdminUserDetailPage({
           />
         </div>
       ) : (
-        <p>This user has no galleries yet.</p>
+        <EmptyState>This user has no galleries yet.</EmptyState>
       )}
     </PageShell>
   );

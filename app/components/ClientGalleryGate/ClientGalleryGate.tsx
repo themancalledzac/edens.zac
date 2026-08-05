@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
 import { Modal } from '@/app/components/ui/Modal/Modal';
+import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { ApiError } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 
@@ -109,10 +110,10 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
             {collection.title}
           </h1>
           <p className={styles.gateSubtitle}>Client Gallery</p>
-          <p className={styles.gateLoading} role="status" aria-live="polite">
+          <LoadingText className={styles.gateLoading}>
             <span className={styles.gateSpinner} aria-hidden="true" />
             Loading gallery…
-          </p>
+          </LoadingText>
         </div>
       </Modal>
     );
@@ -145,7 +146,7 @@ export default function ClientGalleryGate({ collection }: ClientGalleryGateProps
           />
           {error && <p className={styles.gateError}>{error}</p>}
           <Button type="submit" className={styles.gateButton} disabled={isVerifying}>
-            {isVerifying ? 'Verifying...' : 'Enter Gallery'}
+            {isVerifying ? 'Verifying…' : 'Enter Gallery'}
           </Button>
         </form>
       </div>

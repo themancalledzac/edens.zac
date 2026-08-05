@@ -7,6 +7,7 @@ import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import {
   DENSITY_TIERS,
   fromMobileDensity,
@@ -56,7 +57,6 @@ import {
   ClientGalleryDownloadProvider,
 } from './ClientGalleryDownloadContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
-import styles from './CollectionPageClient.module.scss';
 import { CollectionRailProvider } from './CollectionRailContext';
 import { SelectsProvider } from './SelectsContext';
 
@@ -500,7 +500,7 @@ export default function CollectionPageClient({
     <>
       {grid}
       {hasActiveFilters && filteredImages.length === 0 && (
-        <p className={styles.emptyState}>No images match your filters.</p>
+        <EmptyState align="page">No images match your filters.</EmptyState>
       )}
     </>
   );

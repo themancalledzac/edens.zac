@@ -1,36 +1,7 @@
-/* AccountCard — email + passkey (Face / Touch ID) enrollment block on /user.
-   Lives in the collection header rail (the TEXT block leading the first row), beside the
-   cover image, alongside the date/location/description the rail already carries.
+/* AccountCard — email + passkey (Face / Touch ID) enrollment, on /user.
 
-   It therefore owns NO outer margin or side padding: the rail's .metadataBlockInner supplies
-   both, via its own padding and the flex `gap` that spaces its children. Adding them back here
-   would double the inset and break the rail's alignment with the cover. The heading rule mirrors
-   the rail's own typography so the card reads as another rail section, not a transplanted slab. */
-
-.card {
-  /* The rail is a flex column whose .metadataDescriptionContainer is the flex-grow spacer.
-     Staying `flex: 0 0 auto` keeps that contract — the card sizes to content and lets the
-     description absorb the slack, so the filter bar stays pinned to the bottom. */
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.heading {
-  margin: 0;
-  padding: 0 0 var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  font-weight: 500;
-  line-height: 1.1;
-}
-
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2) 0 0;
-}
+   The section shell (heading, rule, body, and the `flex: 0 0 auto` the header rail depends on)
+   comes from <Card>. Only the content inside it is styled here. */
 
 .email {
   margin: 0;

@@ -5,6 +5,8 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
 import { MessageRow } from '@/app/components/messages/MessageRow';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { useMessageDelete } from '@/app/hooks/useMessageDelete';
 import { type AdminMessageView, getAdminMessages } from '@/app/lib/api/messages';
 import { logger } from '@/app/utils/logger';
@@ -63,7 +65,7 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
 
   let body: ReactNode;
   if (loading) {
-    body = <p className={styles.muted}>Loading…</p>;
+    body = <LoadingText>Loading…</LoadingText>;
   } else if (loadError) {
     body = (
       <p className={styles.error} role="alert">
@@ -71,7 +73,7 @@ export function MessagesPanel({ collapsed, onCollapsedChange }: MessagesPanelPro
       </p>
     );
   } else if (messages.length === 0) {
-    body = <p className={styles.muted}>No comments yet.</p>;
+    body = <EmptyState>No comments yet.</EmptyState>;
   } else {
     body = (
       <>

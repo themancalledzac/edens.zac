@@ -254,7 +254,7 @@ describe('UserForm', () => {
       // After adding, the refresh reads back the joined role.
       mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
 
-      fireEvent.change(screen.getByDisplayValue('Add to role...'), { target: { value: '3' } });
+      fireEvent.change(screen.getByDisplayValue('Add to role…'), { target: { value: '3' } });
       fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
 
       await waitFor(() => {

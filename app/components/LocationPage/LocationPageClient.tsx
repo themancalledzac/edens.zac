@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { FilterToolbar } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
@@ -23,7 +24,6 @@ import { logger } from '@/app/utils/logger';
 import { sortByDate } from '@/app/utils/sortByDate';
 
 import LocationCollections from './LocationCollections';
-import styles from './LocationPageClient.module.scss';
 
 interface LocationPageClientProps {
   images: ContentImageModel[];
@@ -140,7 +140,7 @@ export default function LocationPageClient({ images, collections }: LocationPage
           chunkSize={4}
         />
       ) : (
-        <p className={styles.emptyState}>No images match the current filters.</p>
+        <EmptyState align="page">No images match the current filters.</EmptyState>
       )}
     </>
   );

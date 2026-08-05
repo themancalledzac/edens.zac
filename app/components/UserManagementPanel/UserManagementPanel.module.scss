@@ -1,12 +1,7 @@
 /* UserManagementPanel — list, row, and form styles for the user management admin panel */
 
-.muted {
-  margin: 0;
-  color: var(--color-on-surface-muted);
-  font-size: var(--text-sm);
-}
-
-/* Load failure — deliberately unlike `.muted` so a dead backend never reads as an empty list. */
+/* Load failure — deliberately unlike the shared <EmptyState> the empty branch renders, so a dead
+   backend never reads as an empty list. */
 .loadError {
   display: flex;
   flex-direction: column;

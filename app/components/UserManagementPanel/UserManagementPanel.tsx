@@ -8,6 +8,8 @@ import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
 import { revalidateMetadataCache } from '@/app/components/ContentCollection/edit/collectionEditUtils';
 import { MergeIdentityModal } from '@/app/components/MergeIdentityModal/MergeIdentityModal';
 import { Button } from '@/app/components/ui/Button/Button';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserModal';
 import { UserForm } from '@/app/components/UserForm/UserForm';
 import { listUsers } from '@/app/lib/api/users';
@@ -100,7 +102,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
 
   let listBody: ReactNode;
   if (loading) {
-    listBody = <p className={styles.muted}>Loading users…</p>;
+    listBody = <LoadingText>Loading users…</LoadingText>;
   } else if (loadError) {
     listBody = (
       <div className={styles.loadError} role="alert">
@@ -111,7 +113,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
       </div>
     );
   } else if (sortedUsers.length === 0) {
-    listBody = <p className={styles.muted}>No users yet. Use "+ New User" to create one.</p>;
+    listBody = <EmptyState>No users yet. Use “+ New User” to create one.</EmptyState>;
   } else {
     listBody = (
       <ul className={styles.list}>

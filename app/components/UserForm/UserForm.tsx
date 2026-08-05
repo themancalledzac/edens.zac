@@ -9,6 +9,7 @@ import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { ApiError } from '@/app/lib/api/core';
 import { addUserToRole, listRoles, listUserRoles, removeUserFromRole } from '@/app/lib/api/roles';
 import { createUser, updateUser } from '@/app/lib/api/users';
@@ -223,9 +224,7 @@ export function UserForm(props: UserFormProps) {
         <section className={styles.roles}>
           <h3 className={styles.rolesHeading}>Roles</h3>
           {rolesError && <FormError>{rolesError}</FormError>}
-          {!rolesError && userRoles.length === 0 && (
-            <p className={styles.rolesEmpty}>Not in any roles yet.</p>
-          )}
+          {!rolesError && userRoles.length === 0 && <EmptyState>Not in any roles yet.</EmptyState>}
           {userRoles.map(r => (
             <div key={r.roleId} className={styles.roleRow}>
               <span>{r.name}</span>
@@ -237,7 +236,7 @@ export function UserForm(props: UserFormProps) {
           {availableRoles.length > 0 && (
             <div className={styles.roleRow}>
               <select value={addRoleId} onChange={e => setAddRoleId(e.target.value)}>
-                <option value="">Add to role...</option>
+                <option value="">Add to role…</option>
                 {availableRoles.map(r => (
                   <option key={r.id} value={r.id}>
                     {r.name}
@@ -270,10 +269,10 @@ export function UserForm(props: UserFormProps) {
         <Button type="submit" loading={submitting}>
           {props.mode === 'create'
             ? submitting
-              ? 'Creating...'
+              ? 'Creating…'
               : 'Create User'
             : submitting
-              ? 'Saving...'
+              ? 'Saving…'
               : 'Save'}
         </Button>
       </div>

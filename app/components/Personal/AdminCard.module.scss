@@ -1,29 +1,8 @@
-/* AdminCard — admin entry point on /user, rendered only for an admin principal.
-   Deliberately mirrors AccountCard rule for rule, so the two read as siblings in the same
-   rail column rather than as two unrelated blocks. See AccountCard.module.scss for why
-   neither carries an outer margin or side padding of its own. */
+/* AdminCard — admin entry point on /user.
 
-.card {
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.heading {
-  margin: 0;
-  padding: 0 0 var(--space-2);
-  border-bottom: 1px solid var(--color-border);
-  font-family: var(--font-serif);
-  font-size: 1rem;
-  font-weight: 500;
-  line-height: 1.1;
-}
-
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-2) 0 0;
-}
+   The section shell comes from <Card>, which is what keeps this and AccountCard identical
+   without either restating the other. Before that, these two modules were byte-for-byte the
+   same for their first 26 lines. */
 
 .hint {
   margin: 0;

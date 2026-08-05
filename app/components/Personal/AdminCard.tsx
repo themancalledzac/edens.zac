@@ -1,5 +1,4 @@
-import { useId } from 'react';
-
+import { Card } from '@/app/components/ui/Card/Card';
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 
 import styles from './AdminCard.module.scss';
@@ -34,24 +33,17 @@ const DESTINATIONS: readonly AdminDestination[] = [
  * check. This card renders on production too; that is the point.
  */
 export function AdminCard() {
-  const headingId = useId();
-
   return (
-    <section className={styles.card} aria-labelledby={headingId}>
-      <h2 id={headingId} className={styles.heading}>
-        Admin
-      </h2>
-      <div className={styles.body}>
-        <p className={styles.hint}>Manage collections, metadata, messages and access.</p>
-        <ul className={styles.links}>
-          {DESTINATIONS.map(({ href, label }) => (
-            <li key={href}>
-              <NavLink href={href}>{label}</NavLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
+    <Card title="Admin">
+      <p className={styles.hint}>Manage collections, metadata, messages and access.</p>
+      <ul className={styles.links}>
+        {DESTINATIONS.map(({ href, label }) => (
+          <li key={href}>
+            <NavLink href={href}>{label}</NavLink>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 
