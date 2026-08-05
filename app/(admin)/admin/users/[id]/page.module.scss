@@ -109,14 +109,12 @@
 }
 
 /* Says whose space this is and why the save/follow controls are absent, so their absence reads
-   as deliberate rather than broken. Matches .hint's muted treatment and mobile inset. */
+   as deliberate rather than broken. Renders inside the collection header rail, which supplies
+   its own padding and inter-child gap — hence no margin or side padding here (see
+   AccountCard.module.scss for the same contract). */
 .spaceNote {
-  margin: 0 0 var(--space-3);
-  padding: 0 var(--page-padding-mobile);
+  flex: 0 0 auto;
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--color-on-surface-muted);
-
-  @media (width >= 768px) {
-    padding: 0;
-  }
 }

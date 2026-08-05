@@ -3,6 +3,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import CollectionContentRenderer from '@/app/components/Content/CollectionContentRenderer';
+import { CollectionRailProvider } from '@/app/components/ContentCollection/CollectionRailContext';
 import {
   type InlineEditContextValue,
   InlineEditProvider,
@@ -417,5 +418,44 @@ describe('CollectionContentRenderer — cover-pick entry point for a coverless c
   it('withholds it when the active manage mode owns grid clicks (null toggle)', () => {
     renderRail({ hasCover: false, onTogglePickCover: null });
     expect(screen.queryByRole('button', { name: /Set cover image/ })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The rail is where page-level content that is *about* the collection goes, beside the date,
+ * location, description and filter bar — `/user`'s Account and Admin cards, and the admin
+ * view-as note. It arrives by context because the rail is rendered from a content MODEL several
+ * layers down the layout pipeline.
+ */
+describe('CollectionContentRenderer — TEXT branch rail extras', () => {
+  const renderWithExtras = (extras: React.ReactNode, textItems: TextBlockItem[] = []) =>
+    render(
+      <CollectionRailProvider value={extras}>
+        <CollectionContentRenderer {...baseProps} textItems={textItems} />
+      </CollectionRailProvider>
+    );
+
+  it('renders the extras inside the rail', () => {
+    renderWithExtras(<p>Account details</p>, [{ type: 'description', value: 'A description' }]);
+    expect(screen.getByText('Account details')).toBeInTheDocument();
+  });
+
+  // The gate used to bail on empty textItems alone, which would have thrown away the extras on
+  // exactly the page that needs them: /user's synthetic collection has no date, location or
+  // siblings, so its rail is item-less by construction.
+  it('keeps an otherwise-empty rail alive when only extras are present', () => {
+    renderWithExtras(<p>Account details</p>, []);
+    expect(screen.getByText('Account details')).toBeInTheDocument();
+  });
+
+  it('still collapses the rail when there are no items, no controls and no extras', () => {
+    const { container } = render(<CollectionContentRenderer {...baseProps} textItems={[]} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('renders extras alongside the description rather than replacing it', () => {
+    renderWithExtras(<p>Account details</p>, [{ type: 'description', value: 'A description' }]);
+    expect(screen.getByText('A description')).toBeInTheDocument();
+    expect(screen.getByText('Account details')).toBeInTheDocument();
   });
 });

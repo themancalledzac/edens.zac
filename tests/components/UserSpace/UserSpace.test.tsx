@@ -148,3 +148,24 @@ describe('UserSpace — section chips', () => {
     expect(props.collection.content).toHaveLength(1);
   });
 });
+
+// Page-level rail content (/user's Account + Admin cards, the admin view-as note) belongs in the
+// collection header rail beside the cover, not in a slab below the grid. UserSpace only forwards.
+describe('UserSpace — rail extras', () => {
+  it('forwards railExtras to the collection stack', () => {
+    const extras = <p>rail content</p>;
+    const result = UserSpace({
+      data: makeData(),
+      activeKey: 'collections',
+      basePath: '/user',
+      me: principal,
+      ssrViewport: null,
+      railExtras: extras,
+    });
+    expect(findProps(result, CollectionPageClient).railExtras).toBe(extras);
+  });
+
+  it('defaults to no extras when the page supplies none', () => {
+    expect(findProps(render(principal), CollectionPageClient).railExtras).toBeNull();
+  });
+});

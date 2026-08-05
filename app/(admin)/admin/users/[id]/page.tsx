@@ -122,16 +122,18 @@ export default async function AdminUserDetailPage({
 
       {data ? (
         <div className={styles.space}>
-          <p className={styles.spaceNote}>
-            Viewing {displayName}&rsquo;s space as they see it. Saving and following are disabled
-            here — they would act on your own account, not theirs.
-          </p>
           <UserSpace
             data={data}
             activeKey={resolveTabKey(tab)}
             basePath={`/admin/users/${userId}`}
             me={null}
             ssrViewport={ssrViewport}
+            railExtras={
+              <p className={styles.spaceNote}>
+                Viewing {displayName}&rsquo;s space as they see it. Saving and following are
+                disabled here — they would act on your own account, not theirs.
+              </p>
+            }
           />
         </div>
       ) : (

@@ -28,6 +28,11 @@ interface UserPageProps {
  * sees a user's space exactly as that user sees it. Everything specific to viewing one's OWN
  * space stays here: the send-message button, the account card, and the admin card.
  *
+ * The Account and Admin cards ride in the header rail rather than below the grid. That rail — the
+ * TEXT block leading the first row, beside the cover — is where this app already puts what is
+ * *about* a collection (date, location, description, siblings, the filter bar), so page-level
+ * cards belong with them instead of in a slab at the bottom of the page.
+ *
  * The whole sections region is wrapped in `MeProvider` because `SendMessageButton` is a sibling of
  * the collection stack, not a descendant: the provider that stack mounts internally does not reach
  * it, so without this wrapper `useMe()` returns null there and the send-message form opens with a
@@ -61,11 +66,13 @@ export default async function UserPage({ searchParams }: UserPageProps) {
             basePath="/user"
             me={principal}
             ssrViewport={ssrViewport}
+            railExtras={
+              <>
+                <AccountCard email={principal.email} />
+                {principal.isAdmin && <AdminCard />}
+              </>
+            }
           />
-
-          <AccountCard email={principal.email} />
-
-          {principal.isAdmin && <AdminCard />}
         </div>
       </MeProvider>
     </PageShell>

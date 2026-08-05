@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
@@ -56,6 +56,7 @@ import {
 } from './ClientGalleryDownloadContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
 import styles from './CollectionPageClient.module.scss';
+import { CollectionRailProvider } from './CollectionRailContext';
 import { SelectsProvider } from './SelectsContext';
 
 /**
@@ -95,6 +96,13 @@ interface CollectionPageClientProps {
   /** Key of the section currently rendered. Required alongside {@link sections}. */
   activeSectionKey?: string;
   /**
+   * Extra content for the header rail — the TEXT block leading the first row, beside the cover.
+   * Use it for what is *about* this page rather than *in* it, alongside the date, location,
+   * description and filter bar that already live there. `/user` puts its Account and Admin cards
+   * here. See {@link CollectionRailProvider}.
+   */
+  railExtras?: ReactNode;
+  /**
    * Render the shared filter bar even when this collection surfaces no facet dimensions.
    *
    * For index surfaces (`/collections`) the bar is part of the page's identity, not a bonus that
@@ -118,6 +126,7 @@ export default function CollectionPageClient({
   initialSavedImageIds = [],
   sections,
   activeSectionKey,
+  railExtras = null,
   alwaysShowFilterBar = false,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
@@ -513,7 +522,7 @@ export default function CollectionPageClient({
   return (
     <MeProvider me={me}>
       <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
-        {withSaves}
+        <CollectionRailProvider value={railExtras}>{withSaves}</CollectionRailProvider>
       </CollectionFilterProvider>
     </MeProvider>
   );

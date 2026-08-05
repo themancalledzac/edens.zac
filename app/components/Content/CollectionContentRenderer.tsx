@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import { useMe } from '@/app/components/auth/MeProvider';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
+import { useCollectionRailExtras } from '@/app/components/ContentCollection/CollectionRailContext';
 import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import { FollowButton } from '@/app/components/Personal/FollowButton';
@@ -171,6 +172,7 @@ export default function CollectionContentRenderer({
   }, [contentId, onImageLoadError]);
 
   const collectionFilter = useCollectionFilter();
+  const railExtras = useCollectionRailExtras();
   const inlineEdit = useInlineEdit();
   const me = useMe();
 
@@ -216,11 +218,13 @@ export default function CollectionContentRenderer({
   );
 
   if (contentType === 'TEXT') {
-    // The header rail carries more than text: the filter toolbar and the client-gallery download
-    // row mount into it. A collection with no metadata (no date, locations, description or
-    // siblings — that is `/user`) produces an item-less rail, so bailing on empty `textItems`
-    // alone would throw away the bar. Mirrors the layout-side gate, `forceHeaderRail`.
-    const railHasControls = collectionFilter !== null || (canDownload && Boolean(collectionSlug));
+    // The header rail carries more than text: the filter toolbar, the client-gallery download row
+    // and any page-level rail extras mount into it. A collection with no metadata (no date,
+    // locations, description or siblings — that is `/user`) produces an item-less rail, so bailing
+    // on empty `textItems` alone would throw away all three. Mirrors `forceHeaderRail` on the
+    // layout side.
+    const railHasControls =
+      collectionFilter !== null || Boolean(railExtras) || (canDownload && Boolean(collectionSlug));
     const items = textItems ?? [];
     if (items.length === 0 && !railHasControls) {
       return null;
@@ -391,6 +395,7 @@ export default function CollectionContentRenderer({
             {canDownload && collectionSlug && (
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
+            {railExtras}
           </div>
           {collectionFilter && (
             <div className={cbStyles.filterBarWrapper}>

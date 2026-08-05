@@ -46,6 +46,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { AdminCard } from '@/app/components/Personal/AdminCard';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { LAYOUT } from '@/app/constants';
@@ -310,29 +311,47 @@ describe('UserPage', () => {
 });
 
 /**
- * This card is the site's only navigation into /admin: the hub used to be reachable because
- * localhost redirected `/` to it, and MenuDropdown links to /admin/roles but never to the hub.
- * It must gate on the real `isAdmin` principal — never on an environment check — because it is
- * meant to render in production too.
+ * The Account and Admin cards ride in the collection header rail — the TEXT block leading the
+ * first row, beside the cover — not in a slab below the grid. That rail is where this app already
+ * puts what is *about* a collection (date, location, description, filter bar), so these assert on
+ * the `railExtras` node handed to UserSpace rather than on the page's own children.
  */
-describe('UserPage — Admin card', () => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const railExtras = (result: unknown): any => findProps(result, UserSpace)?.railExtras ?? null;
+
+describe('UserPage — header rail cards', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     seedApis();
   });
 
-  it('is absent for an ordinary signed-in user', async () => {
+  it('puts the Account card in the rail, not below the grid', async () => {
     (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
-    expect(findProps(await renderTab(), AdminCard)).toBeNull();
+    const result = await renderTab();
+
+    expect(findProps(railExtras(result), AccountCard)).not.toBeNull();
+    // Nothing account-shaped is left loose in the page body.
+    expect(findProps(result.props?.children, AccountCard)).toBeNull();
   });
 
-  it('renders for an admin principal', async () => {
+  /**
+   * This card is the site's only navigation into /admin: the hub used to be reachable because
+   * localhost redirected `/` to it, and MenuDropdown links to /admin/roles but never the hub.
+   * It must gate on the real `isAdmin` principal — never an environment check — because it is
+   * meant to render in production too.
+   */
+  it('omits the Admin card for an ordinary signed-in user', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    expect(findProps(railExtras(await renderTab()), AdminCard)).toBeNull();
+  });
+
+  it('puts the Admin card in the rail for an admin principal', async () => {
     (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
-    expect(findProps(await renderTab(), AdminCard)).not.toBeNull();
+    expect(findProps(railExtras(await renderTab()), AdminCard)).not.toBeNull();
   });
 
   it('links to the admin hub, which nothing else in the nav does', async () => {
     (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
-    expect(renderToStaticMarkup(await renderTab())).toContain('href="/admin"');
+    expect(renderToStaticMarkup(railExtras(await renderTab()))).toContain('href="/admin"');
   });
 });

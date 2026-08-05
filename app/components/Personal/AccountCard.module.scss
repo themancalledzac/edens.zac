@@ -1,24 +1,23 @@
 /* AccountCard — email + passkey (Face / Touch ID) enrollment block on /user.
-   Sits below the sectioned content grid; the heading row mirrors the shared
-   filter bar's chip typography and top border so the card reads as a sibling
-   of that bar rather than as a /user-only slab. */
+   Lives in the collection header rail (the TEXT block leading the first row), beside the
+   cover image, alongside the date/location/description the rail already carries.
+
+   It therefore owns NO outer margin or side padding: the rail's .metadataBlockInner supplies
+   both, via its own padding and the flex `gap` that spaces its children. Adding them back here
+   would double the inset and break the rail's alignment with the cover. The heading rule mirrors
+   the rail's own typography so the card reads as another rail section, not a transplanted slab. */
 
 .card {
-  margin-top: var(--space-5);
-
-  /* Keep the card inset while the content grids above run full-bleed on mobile;
-     reset at the desktop breakpoint where .sections regains its own side padding.
-     Mirrors the shared filter bar (FilterToolbar .toolbar). */
-  padding-inline: var(--page-padding-mobile);
-
-  @media (width >= 768px) {
-    padding-inline: 0;
-  }
+  /* The rail is a flex column whose .metadataDescriptionContainer is the flex-grow spacer.
+     Staying `flex: 0 0 auto` keeps that contract — the card sizes to content and lets the
+     description absorb the slack, so the filter bar stays pinned to the bottom. */
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .heading {
   margin: 0;
-  padding: var(--space-2) 0 var(--space-3);
+  padding: 0 0 var(--space-2);
   border-bottom: 1px solid var(--color-border);
   font-family: var(--font-serif);
   font-size: 1rem;
@@ -29,8 +28,8 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-2) 0;
+  gap: var(--space-2);
+  padding: var(--space-2) 0 0;
 }
 
 .email {

@@ -1,3 +1,5 @@
+import { type ReactNode } from 'react';
+
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
@@ -25,6 +27,12 @@ export interface UserSpaceProps {
    */
   me: MeResponse | null;
   ssrViewport: SsrViewport | null;
+  /**
+   * Page-level content for the header rail, beside the cover image. This is where the things that
+   * are *about* the space go — `/user`'s Account and Admin cards, the admin view's "whose space
+   * is this" note — rather than in a slab below the grid.
+   */
+  railExtras?: ReactNode;
 }
 
 /**
@@ -73,7 +81,14 @@ export interface UserSpaceProps {
  * `isClient`. Do not synthesize an id onto this collection to satisfy the `CollectionModel` type;
  * doing so would arm the download and Selects UI on a page that has no gallery to grant.
  */
-export function UserSpace({ data, activeKey, basePath, me, ssrViewport }: UserSpaceProps) {
+export function UserSpace({
+  data,
+  activeKey,
+  basePath,
+  me,
+  ssrViewport,
+  railExtras = null,
+}: UserSpaceProps) {
   const { collection, sections, followedCollectionIds, savedImageIds } = data;
   const active = sections[activeKey];
 
@@ -99,6 +114,7 @@ export function UserSpace({ data, activeKey, basePath, me, ssrViewport }: UserSp
       initialSavedImageIds={savedImageIds}
       sections={toolbarSections}
       activeSectionKey={activeKey}
+      railExtras={railExtras}
     />
   );
 
