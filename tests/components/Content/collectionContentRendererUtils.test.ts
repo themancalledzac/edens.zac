@@ -18,6 +18,8 @@ const options = (overrides: Partial<CollectionInfoOptions> = {}): CollectionInfo
   dates: dim([], false),
   showHighlyRated: false,
   showDateSort: false,
+  showHiddenToggle: false,
+  hiddenCount: 0,
   ...overrides,
 });
 
@@ -60,6 +62,8 @@ describe('toCollectionDimensions', () => {
       dates: { values: ['2026-07-20', '2026-07-21'], filterable: true },
       showHighlyRated: false,
       showDateSort: false,
+      showHiddenToggle: false,
+      hiddenCount: 0,
     });
     expect(dims.selectedDates).toEqual({
       label: 'Date',
@@ -77,6 +81,8 @@ describe('toCollectionDimensions', () => {
       dates: { values: ['2026-07-20'], filterable: false },
       showHighlyRated: false,
       showDateSort: false,
+      showHiddenToggle: false,
+      hiddenCount: 0,
     });
     expect(dims.selectedDates).toBeUndefined();
   });

@@ -255,6 +255,9 @@ export function convertCollectionContentToParallax(
     title: col.title,
     slug: col.slug,
     collectionDate: col.collectionDate,
+    // Carried so the Order control can sequence collection tiles by rating; the card is otherwise
+    // rating-agnostic (layout prominence comes from the cover image's own dimensions).
+    rating: col.rating ?? undefined,
     isClient: col.isClient,
     isBlog: col.isBlog,
     tags: col.tags,

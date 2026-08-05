@@ -37,6 +37,11 @@ export interface ToolbarCounts {
   highlyRated?: number;
   film?: number;
   digital?: number;
+  /**
+   * How many collections are non-public (every known non-`LISTED` tile). Badges the admin-only
+   * Hidden chip, whose count is what switching it OFF would remove.
+   */
+  hidden?: number;
 }
 
 /**
@@ -83,6 +88,11 @@ export interface FilterToolbarProps {
    */
   dateTwoState?: boolean;
   showHighlyRated?: boolean;
+  /**
+   * Renders the admin-only Hidden toggle. Callers gate this on the viewer being an admin AND the
+   * payload actually carrying visibility data, so the chip is never a no-op.
+   */
+  showHiddenToggle?: boolean;
   showFilm?: boolean;
   /** When provided, renders the photo-size control (density min 1, max {@link densityMax}). */
   density?: number;
@@ -143,6 +153,7 @@ export function FilterToolbar({
   showDateSort = false,
   dateTwoState = false,
   showHighlyRated = false,
+  showHiddenToggle = false,
   showFilm = false,
   density,
   densityMax = 10,
@@ -233,6 +244,17 @@ export function FilterToolbar({
             count={counts?.highlyRated}
             active={filterState.highlyRatedOnly}
             onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
+          />
+        )}
+
+        {showHiddenToggle && (
+          <FilterChip
+            label="Hidden"
+            count={counts?.hidden}
+            // Lit means the non-public collections ARE on screen, which is an admin's default.
+            // Switching it off previews the list as the general audience sees it.
+            active={filterState.showHidden}
+            onToggle={() => onFilterChange({ showHidden: !filterState.showHidden })}
           />
         )}
 

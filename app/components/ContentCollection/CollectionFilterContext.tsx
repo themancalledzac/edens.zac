@@ -22,6 +22,10 @@ export interface CollectionInfoOptions {
   dates: DimensionData;
   showHighlyRated: boolean;
   showDateSort: boolean;
+  /** Whether to render the admin-only Hidden toggle. */
+  showHiddenToggle: boolean;
+  /** How many collections are non-public; badges the Hidden chip. */
+  hiddenCount: number;
 }
 
 /** Subset of options available after current filters are applied (for grey-out logic). null = no active filters. */

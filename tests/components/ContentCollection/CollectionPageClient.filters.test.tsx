@@ -115,12 +115,27 @@ describe('CollectionPageClient — image-derived filters (D7)', () => {
     expect(screen.getByTestId('grid')).toHaveAttribute('data-highly-rated', 'true');
   });
 
-  it('mounts no filter provider at all when the page has no images', () => {
+  // An image-less page still mounts the bar, because its collection TILES are sortable by their
+  // own date and rating. Before the Order control reached collection cards this page had no
+  // sortable dimension at all and the provider stayed unmounted — which is why /collections, whose
+  // content is 100% collection tiles, rendered no Order chip.
+  it('mounts the provider for the Order control when the page has only collections', () => {
     render(<CollectionPageClient collection={makeImagelessParent()} />);
     const grid = screen.getByTestId('grid');
-    // Not a suppression branch: cameras/lenses are sourced from `allImages` alone, so
-    // with no images every dimension already has zero values and `hasFilterableOptions` is false,
-    // which leaves the provider unmounted.
+    expect(grid).not.toHaveAttribute('data-cameras', 'NO_CONTEXT');
+    // Image-derived dimensions stay empty — cameras/lenses are sourced from `allImages` alone.
+    expect(grid).toHaveAttribute('data-cameras', '');
+    expect(grid).toHaveAttribute('data-highly-rated', 'false');
+  });
+
+  it('mounts no filter provider when a lone collection leaves nothing to sort or filter', () => {
+    const singleChild = {
+      ...makeCollectionDominant(),
+      content: [childRef(90)],
+    } as unknown as CollectionModel;
+
+    render(<CollectionPageClient collection={singleChild} />);
+    const grid = screen.getByTestId('grid');
     expect(grid).toHaveAttribute('data-cameras', 'NO_CONTEXT');
     expect(grid).toHaveAttribute('data-highly-rated', 'NO_CONTEXT');
   });

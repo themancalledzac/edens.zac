@@ -41,12 +41,11 @@ export function isShadowedRouteSlug(slug: string | undefined): boolean {
 }
 
 /**
- * Slugs excluded from every all-collections browse surface. `home` is rendered at `/`, so a
+ * Slugs excluded from the collections browse surface. `home` is rendered at `/`, so a
  * tile for it would be a duplicate entry point.
  *
- * TODO: `/collections` (public) and `/all-collections` (admin) render the same synthetic
- * parent with the same exclusions and no cross-link between them. Picking a canonical
- * surface and redirecting the other is a product decision; until it is made, they at least
- * share this list.
+ * `/collections` is the single canonical surface as of 0243 — the duplicate `/all-collections`
+ * route was deleted once `/collections` became admin-aware, so the two-surface split this list
+ * used to bridge no longer exists. The `all-collections` SLUG remains the backend resource.
  */
 export const BROWSE_EXCLUDED_SLUGS: readonly string[] = [HOME_SLUG];

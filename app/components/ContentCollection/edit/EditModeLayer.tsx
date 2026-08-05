@@ -24,12 +24,10 @@ import {
   buildCollectionCriteria,
   type ContentFilterCriteria,
   hasAnyActiveFilter,
-  isDateable,
   isImageContent,
-  mergeDateSortedImages,
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
-import { sortByDate } from '@/app/utils/sortByDate';
+import { applySort } from '@/app/utils/sortContent';
 
 import CollectionEditSheet from './CollectionEditSheet';
 import styles from './EditModeLayer.module.scss';
@@ -176,9 +174,7 @@ export default function EditModeLayer({
       liveCollection.id,
       liveCollection.displayMode
     );
-    if (filterState.dateSortDirection === 'off') return processed;
-    const sorted = sortByDate(processed.filter(isDateable), filterState.dateSortDirection);
-    return mergeDateSortedImages(processed, sorted);
+    return applySort(processed, filterState.dateSortDirection);
   }, [
     filteredContent,
     liveCollection.id,

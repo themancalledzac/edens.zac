@@ -55,10 +55,8 @@ export default function LocationPageClient({ images, collections }: LocationPage
     const filtered = filterContent(images, criteria).filter(
       (item): item is ContentImageModel => item.contentType === 'IMAGE'
     );
-    if (filterState.dateSortDirection !== 'off') {
-      return sortByDate(filtered, filterState.dateSortDirection);
-    }
-    return filtered;
+    if (filterState.dateSortDirection === 'off') return filtered;
+    return sortByDate(filtered, filterState.dateSortDirection);
   }, [images, criteria, filterState.dateSortDirection]);
 
   const filterCounts: FilterCounts = useMemo(() => {

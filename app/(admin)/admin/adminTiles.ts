@@ -19,7 +19,7 @@ export interface AdminTileConfig {
 // and getClickEligibility gates isSlugNav on `!!hasSlug` - the tile would render
 // but navigate nowhere.
 export const ADMIN_TILES: AdminTileConfig[] = [
-  { tileKey: 'all-collections', label: 'All Collections', href: '/all-collections', rating: 3 },
+  { tileKey: 'all-collections', label: 'All Collections', href: '/collections', rating: 3 },
   { tileKey: 'all-images', label: 'All Images', href: '/all-images', rating: 3 },
   {
     tileKey: 'client-galleries',
