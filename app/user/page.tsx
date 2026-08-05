@@ -19,24 +19,6 @@ import styles from './page.module.scss';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Starting density for the Collections and Following sections. Collection cards are uniform (fixed
- * effective rating, aspect ratio clamped near 5:4), so a high budget composes them several across —
- * the point of those sections being a scannable index rather than an editorial spread.
- *
- * Must stay inside the density slider's range (`LAYOUT.minDensity`..`LAYOUT.maxDensityDesktop`).
- * This was 14 while `/user` had no visible slider, which the shared bar cannot represent — the
- * control would sit pinned at its maximum and report a value the page was not using.
- */
-const COLLECTIONS_CHUNK_SIZE = 7;
-
-/**
- * Starting density for the Images and Saved sections. Deliberately below the Collections density:
- * these are photographs, and packing them as tightly as uniform cover cards shrinks them past the
- * point of being worth looking at.
- */
-const PHOTO_CHUNK_SIZE = 5;
-
 const TAB_KEYS = ['collections', 'images', 'saved', 'following'] as const;
 
 type TabKey = (typeof TAB_KEYS)[number];
@@ -111,6 +93,10 @@ interface UserPageProps {
  * Their presence is also what makes the bar render here at all — `/user` has no facet dimensions
  * of its own — which is how the page picks up the density slider and the rest of the bar chrome.
  *
+ * No section passes a `chunkSize`, so each starts at `LAYOUT.defaultChunkSize` — the density an
+ * ordinary collection page opens at. The bespoke per-section densities this page used to carry are
+ * gone; the slider in the shared bar is how a section gets re-tuned now.
+ *
  * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
  * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
  * what keeps the client-gallery affordances inside `CollectionPageClient` switched off here —
@@ -144,30 +130,26 @@ export default async function UserPage({ searchParams }: UserPageProps) {
 
   const sections: Record<
     TabKey,
-    { label: string; content: AnyContentModel[]; chunkSize: number; emptyLabel: string }
+    { label: string; content: AnyContentModel[]; emptyLabel: string }
   > = {
     collections: {
       label: 'Collections',
       content: collectionBlocks,
-      chunkSize: COLLECTIONS_CHUNK_SIZE,
       emptyLabel: 'No collections yet.',
     },
     images: {
       label: 'Images',
       content: imageBlocks,
-      chunkSize: PHOTO_CHUNK_SIZE,
       emptyLabel: 'You are not tagged in any images yet.',
     },
     saved: {
       label: 'Saved',
       content: savedImages,
-      chunkSize: PHOTO_CHUNK_SIZE,
       emptyLabel: 'You have not saved any images yet.',
     },
     following: {
       label: 'Following',
       content: followedBlocks,
-      chunkSize: COLLECTIONS_CHUNK_SIZE,
       emptyLabel: 'You are not following any collections yet.',
     },
   };
@@ -199,7 +181,6 @@ export default async function UserPage({ searchParams }: UserPageProps) {
           <CollectionPageClient
             key={activeKey}
             collection={sectionCollection}
-            chunkSize={active.chunkSize}
             serverContentWidth={ssrViewport?.contentWidth}
             serverViewportHeight={ssrViewport?.viewportHeight}
             serverIsMobile={ssrViewport?.isMobile}

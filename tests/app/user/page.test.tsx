@@ -185,26 +185,16 @@ describe('UserPage', () => {
     }
   });
 
-  it('seeds every section inside the density slider range', async () => {
-    // `chunkSize` is both the layout budget and the slider's initial value, so a seed outside
-    // 1..maxDensityDesktop leaves the control pinned at an end stop reporting a number the page is
-    // not using. Collections seeded 14 against a max of 10, which only became visible once the
-    // shared bar started rendering here.
+  it('opens every section at the shared default density', async () => {
+    // No /user-only density constants: each section inherits LAYOUT.defaultChunkSize, the density
+    // an ordinary collection page opens at, and the shared slider re-tunes it from there. The old
+    // bespoke value (14) could not even be represented on a slider whose maximum is 10.
     for (const tab of [undefined, 'images', 'saved', 'following']) {
       const { chunkSize } = gridProps(await renderTab(tab));
-      expect(chunkSize).toBeGreaterThanOrEqual(LAYOUT.minDensity);
-      expect(chunkSize).toBeLessThanOrEqual(LAYOUT.maxDensityDesktop);
+      expect(chunkSize).toBeUndefined();
     }
-  });
-
-  it('gives the collection sections a higher row density than the photo sections', async () => {
-    // Collection cards are uniform, so a high items-per-row budget composes them several across —
-    // the point of those sections being a scannable index. Photos stay larger.
-    const collectionsChunk = gridProps(await renderTab()).chunkSize;
-    const imagesChunk = gridProps(await renderTab('images')).chunkSize;
-    expect(collectionsChunk).toBeGreaterThan(imagesChunk);
-    expect(imagesChunk).toBeGreaterThan(4);
-    expect(gridProps(await renderTab('following')).chunkSize).toBe(collectionsChunk);
+    expect(LAYOUT.defaultChunkSize).toBeGreaterThanOrEqual(LAYOUT.minDensity);
+    expect(LAYOUT.defaultChunkSize).toBeLessThanOrEqual(LAYOUT.maxDensityDesktop);
   });
 
   it('labels all four sections with their counts regardless of the active section', async () => {
