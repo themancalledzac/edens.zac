@@ -768,6 +768,65 @@ describe('createHeaderRow', () => {
     expect(row?.items[0]?.content.contentType).toBe('TEXT');
   });
 
+  describe('header rail (forceRail)', () => {
+    /** A cover, but nothing buildMetadataItems would pick up. */
+    const bare = () =>
+      createCollectionModel(1, {
+        collectionDate: undefined,
+        collectionEndDate: undefined,
+        description: undefined,
+        locations: [],
+        siblings: [],
+        parents: [],
+      });
+
+    it('builds a cover-only header when there is no metadata and no rail is forced', () => {
+      const row = asSingleRow(createHeaderRow(bare(), 1200, 2, false));
+      expect(row?.items).toHaveLength(1);
+      expect(row?.items[0]?.content.contentType).toBe('IMAGE');
+    });
+
+    it('builds the metadata rail with zero metadata items when forced', () => {
+      // The rail is where the filter toolbar and the download row mount, so a page that shows
+      // either needs it even with no metadata text. Gating it on items alone is what dropped the
+      // filter bar from /user, which has no date, locations or siblings.
+      const row = asSingleRow(createHeaderRow(bare(), 1200, 2, false, true));
+      expect(row?.items).toHaveLength(2);
+      expect(row?.items[1]?.content.contentType).toBe('TEXT');
+      expect((row?.items[1]?.content as ContentTextModel).items).toEqual([]);
+    });
+
+    it('gives the forced rail real width so the toolbar has somewhere to render', () => {
+      const row = asSingleRow(createHeaderRow(bare(), 1200, 2, false, true));
+      expect(row?.items[1]?.width).toBeGreaterThan(0);
+      expect(row?.items[1]?.height).toBeGreaterThan(0);
+    });
+
+    it('still emits a header row when forced on a cover-less collection with no metadata', () => {
+      const row = asSingleRow(
+        createHeaderRow({ ...bare(), coverImage: undefined }, 1200, 2, false, true)
+      );
+      expect(row).not.toBeNull();
+      expect(row?.items).toHaveLength(1);
+      expect(row?.items[0]?.content.contentType).toBe('TEXT');
+    });
+
+    it('leaves the mobile header stacked, with the forced rail as its own row', () => {
+      const rows = createHeaderRow(bare(), 375, 2, true, true) as RowWithPatternAndSizes[];
+      expect(Array.isArray(rows)).toBe(true);
+      expect(rows).toHaveLength(2);
+      expect(rows[1]?.items[0]?.content.contentType).toBe('TEXT');
+    });
+
+    it('does not change a collection that already has metadata', () => {
+      const withMeta = createCollectionModel(1);
+      const unforced = asSingleRow(createHeaderRow(withMeta, 1200, 2, false));
+      const forced = asSingleRow(createHeaderRow(withMeta, 1200, 2, false, true));
+      expect(forced?.items).toHaveLength(unforced?.items.length ?? 0);
+      expect(forced?.items[1]?.width).toBe(unforced?.items[1]?.width);
+    });
+  });
+
   it('should return null when coverImage has no dimensions', () => {
     const collection = createCollectionModel(1, {
       coverImage: {

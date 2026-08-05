@@ -32,6 +32,8 @@ interface ContentBlockWithFullScreenProps {
   mobileChunkSize?: number;
   collectionSlug?: string;
   collectionData?: CollectionModel;
+  /** Build the header metadata rail even with no metadata text; see {@link Component}. */
+  forceHeaderRail?: boolean;
   isSelectingCoverImage?: boolean;
   currentCoverImageId?: number;
   onImageClick?: (imageId: number) => void;
@@ -62,6 +64,7 @@ export default function ContentBlockWithFullScreen({
   mobileChunkSize,
   collectionSlug,
   collectionData,
+  forceHeaderRail,
   isSelectingCoverImage,
   currentCoverImageId,
   onImageClick,
@@ -204,6 +207,7 @@ export default function ContentBlockWithFullScreen({
         chunkSize={chunkSize}
         mobileChunkSize={mobileChunkSize}
         collectionData={collectionData}
+        forceHeaderRail={forceHeaderRail}
         isReorderMode={isReorderMode}
         reorderMoves={reorderMoves}
         pickedUpImageId={pickedUpImageId}

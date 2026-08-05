@@ -204,16 +204,22 @@ export default function CollectionContentRenderer({
   );
 
   if (contentType === 'TEXT') {
-    if (!textItems || textItems.length === 0) {
+    // The header rail carries more than text: the filter toolbar and the client-gallery download
+    // row mount into it. A collection with no metadata (no date, locations, description or
+    // siblings — that is `/user`) produces an item-less rail, so bailing on empty `textItems`
+    // alone would throw away the bar. Mirrors the layout-side gate, `forceHeaderRail`.
+    const railHasControls = collectionFilter !== null || (canDownload && Boolean(collectionSlug));
+    const items = textItems ?? [];
+    if (items.length === 0 && !railHasControls) {
       return null;
     }
 
-    const dateItem = textItems.find(item => item.type === 'date');
-    const locationItem = textItems.find(item => item.type === 'location');
-    const descriptionItem = textItems.find(item => item.type === 'description');
-    const filterItems = textItems.filter(item => item.type === 'text');
-    const collectionItems = textItems.filter(
-      (item): item is (typeof textItems)[number] & { slug: string } =>
+    const dateItem = items.find(item => item.type === 'date');
+    const locationItem = items.find(item => item.type === 'location');
+    const descriptionItem = items.find(item => item.type === 'description');
+    const filterItems = items.filter(item => item.type === 'text');
+    const collectionItems = items.filter(
+      (item): item is (typeof items)[number] & { slug: string } =>
         item.type === 'collection' && item.slug != null
     );
 

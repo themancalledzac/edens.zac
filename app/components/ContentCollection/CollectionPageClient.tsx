@@ -381,6 +381,11 @@ export default function CollectionPageClient({
       mobileChunkSize={mobileDensity}
       collectionSlug={collection.slug}
       collectionData={collection}
+      // The filter bar and the download row both mount into the header's metadata rail, so the
+      // rail has to exist whenever either will render — even on a collection with no metadata
+      // text of its own. Without this, `/user` (no date, no locations, no siblings) built a
+      // cover-only header and silently dropped the bar.
+      forceHeaderRail={hasOptions || canDownload}
       serverContentWidth={serverContentWidth}
       serverViewportHeight={serverViewportHeight}
       serverIsMobile={serverIsMobile}
