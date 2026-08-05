@@ -26,7 +26,6 @@ export const SHADOWED_ROUTE_SLUGS = [
   'all-collections',
   'collections',
   'explore',
-  'homePage',
   'invite',
   'location',
   'login',
