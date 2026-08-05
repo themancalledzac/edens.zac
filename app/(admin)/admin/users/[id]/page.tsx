@@ -6,7 +6,9 @@ import { notFound } from 'next/navigation';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace, resolveTabKey } from '@/app/components/UserSpace/userSpaceData';
+import { ApiError } from '@/app/lib/api/core';
 import { getAdminUser } from '@/app/lib/api/users';
+import { type AdminUserSummary } from '@/app/types/User';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import { GenerateInviteButton } from '../GenerateInviteButton';
@@ -48,6 +50,11 @@ interface AdminUserDetailPageProps {
  * minimal view instead (which also guards direct-URL access), with {@link UpgradePersonButton} to
  * promote the identity in place. Merging a PERSON into an existing account stays in the Users
  * panel, where the survivor can be picked from the full list.
+ *
+ * Only a genuine 404 (or an empty body) becomes `notFound()`. `getAdminUser` throws `ApiError`
+ * out of `fetchAdminGetApi` for every non-OK status, so catching all of them would render "user
+ * not found" at an admin whose backend is merely unreachable — or whose session has lapsed to a
+ * 401. Those rethrow and land on `app/(admin)/error.tsx`, which offers a retry.
  */
 export default async function AdminUserDetailPage({
   params,
@@ -57,7 +64,13 @@ export default async function AdminUserDetailPage({
   const userId = Number(id);
   if (!Number.isInteger(userId)) notFound();
 
-  const user = await getAdminUser(userId).catch(() => null);
+  let user: AdminUserSummary | null;
+  try {
+    user = await getAdminUser(userId);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
   if (!user) notFound();
 
   const displayName = user.displayName ?? user.email ?? '—';

@@ -14,6 +14,7 @@ import {
   removeSelect,
 } from '@/app/lib/api/selects';
 import { type SelectGroup } from '@/app/types/Selects';
+import { logger } from '@/app/utils/logger';
 
 // Keep ApiError (and the rest) real — the client-fetch specs assert on the real error class —
 // while making the server reader `fetchReadApi` a controllable mock for the server-seed specs.
@@ -22,7 +23,13 @@ jest.mock('@/app/lib/api/core', () => ({
   fetchReadApi: jest.fn(),
 }));
 
+// The real logger no-ops under NODE_ENV=test, so mock it to assert that failures are reported.
+jest.mock('@/app/utils/logger', () => ({
+  logger: { debug: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}));
+
 const fetchReadApiMock = fetchReadApi as jest.Mock;
+const loggerErrorMock = logger.error as jest.Mock;
 
 global.fetch = jest.fn();
 
@@ -161,5 +168,25 @@ describe('listAllSelectsServer', () => {
   it('returns [] when fetchReadApi returns null', async () => {
     fetchReadApiMock.mockResolvedValueOnce(null);
     await expect(listAllSelectsServer()).resolves.toEqual([]);
+  });
+
+  // A bare `catch { return []; }` made a dead backend indistinguishable from "no selects".
+  it('logs the failure before degrading to []', async () => {
+    const boom = new ApiError('backend down', 503);
+    fetchReadApiMock.mockRejectedValueOnce(boom);
+
+    await expect(listAllSelectsServer()).resolves.toEqual([]);
+    expect(loggerErrorMock).toHaveBeenCalledWith(
+      'selects',
+      expect.stringContaining('Failed to fetch all selects'),
+      boom
+    );
+  });
+
+  it('stays quiet for the expected anonymous 401', async () => {
+    fetchReadApiMock.mockRejectedValueOnce(new ApiError('unauth', 401));
+
+    await expect(listAllSelectsServer()).resolves.toEqual([]);
+    expect(loggerErrorMock).not.toHaveBeenCalled();
   });
 });

@@ -14,6 +14,7 @@ import { addUserToRole, listRoles, listUserRoles, removeUserFromRole } from '@/a
 import { createUser, updateUser } from '@/app/lib/api/users';
 import { type RoleSummary, type UserRoleRow } from '@/app/types/Role';
 import { type AdminUserSummary, type UserStatus } from '@/app/types/User';
+import { logger } from '@/app/utils/logger';
 
 import styles from './UserForm.module.scss';
 
@@ -29,6 +30,12 @@ export type UserFormProps =
  * the user's values and saves email (the login identity — the server rejects with 409 if another
  * user owns it), display name, status, and description via {@link updateUser}. Designed to live
  * inside `UserManagementPanel`'s body, not a modal.
+ *
+ * A failed roles read surfaces as `rolesError` rather than an empty list. Both role calls throw
+ * `ApiError` out of `fetchAdminGetApi` on any non-OK response, and substituting `[]` there would
+ * tell an admin auditing permissions that the user is "Not in any roles yet." while also hiding
+ * the add-role control (it gates on `availableRoles.length`) — a confident, wrong answer about
+ * who can see what. Unknown membership is reported as unknown.
  */
 export function UserForm(props: UserFormProps) {
   const isEdit = props.mode === 'edit';
@@ -43,17 +50,26 @@ export function UserForm(props: UserFormProps) {
   const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
   const [allRoles, setAllRoles] = useState<RoleSummary[]>([]);
   const [addRoleId, setAddRoleId] = useState<string>('');
+  const [rolesError, setRolesError] = useState<string | null>(null);
   const editUserId = editUser?.id ?? null;
 
   useEffect(() => {
-    if (editUserId !== null) {
-      listUserRoles(editUserId)
-        .then(setUserRoles)
-        .catch(() => setUserRoles([]));
-      listRoles()
-        .then(setAllRoles)
-        .catch(() => setAllRoles([]));
-    }
+    if (editUserId === null) return;
+    setRolesError(null);
+    void (async () => {
+      try {
+        const [membership, all] = await Promise.all([listUserRoles(editUserId), listRoles()]);
+        setUserRoles(membership);
+        setAllRoles(all);
+      } catch (error_) {
+        logger.error('UserForm', 'Failed to load role membership', error_, { userId: editUserId });
+        setUserRoles([]);
+        setAllRoles([]);
+        setRolesError(
+          'Could not load roles for this user — their membership is unknown. Reload to try again.'
+        );
+      }
+    })();
   }, [editUserId]);
 
   const availableRoles = allRoles.filter(r => !userRoles.some(ur => ur.roleId === r.id));
@@ -206,7 +222,10 @@ export function UserForm(props: UserFormProps) {
       {isEdit && (
         <section className={styles.roles}>
           <h3 className={styles.rolesHeading}>Roles</h3>
-          {userRoles.length === 0 && <p className={styles.rolesEmpty}>Not in any roles yet.</p>}
+          {rolesError && <FormError>{rolesError}</FormError>}
+          {!rolesError && userRoles.length === 0 && (
+            <p className={styles.rolesEmpty}>Not in any roles yet.</p>
+          )}
           {userRoles.map(r => (
             <div key={r.roleId} className={styles.roleRow}>
               <span>{r.name}</span>

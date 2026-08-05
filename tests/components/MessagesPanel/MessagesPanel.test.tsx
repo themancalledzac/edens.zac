@@ -78,6 +78,28 @@ describe('MessagesPanel', () => {
     expect(mockDelete).toHaveBeenCalledWith(1);
   });
 
+  // `getAdminMessages` throws (via fetchAdminGetApi) on any non-OK response. Without a catch the
+  // `finally` never runs and the panel sits on "Loading…" forever.
+  it('surfaces a load failure instead of spinning on "Loading…" forever', async () => {
+    mockGet.mockRejectedValue(new Error('Backend unreachable'));
+
+    render(<MessagesPanel />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/could not load messages/i)
+    );
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+  });
+
+  it('does not show the empty state when the load failed', async () => {
+    mockGet.mockRejectedValue(new Error('Backend unreachable'));
+
+    render(<MessagesPanel />);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(screen.queryByText(/no comments yet/i)).not.toBeInTheDocument();
+  });
+
   it('rolls back optimistic delete on failure', async () => {
     const msg = makeMessage(1, 'alice@example.com', 'Hello world', new Date().toISOString());
     mockGet.mockResolvedValue({ messages: [msg], total: 1, limit: 100, offset: 0 });

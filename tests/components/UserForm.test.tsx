@@ -213,6 +213,32 @@ describe('UserForm', () => {
       expect(onCancel).toHaveBeenCalledTimes(1);
     });
 
+    // An admin auditing permissions must never be shown "Not in any roles yet." for a read that
+    // failed — both role calls throw on any non-OK response, and `[]` is a different claim.
+    it('reports unknown role membership instead of claiming the user has no roles', async () => {
+      mockListUserRoles.mockRejectedValue(new ApiError('Backend unreachable', 500));
+      mockListRoles.mockResolvedValue([]);
+
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/could not load roles for this user/i);
+      });
+      expect(screen.queryByText(/not in any roles yet/i)).not.toBeInTheDocument();
+    });
+
+    it('reports the roles failure when the all-roles read is the one that throws', async () => {
+      mockListUserRoles.mockResolvedValue([]);
+      mockListRoles.mockRejectedValue(new ApiError('Backend unreachable', 500));
+
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(/membership is unknown/i);
+      });
+      expect(screen.queryByText(/not in any roles yet/i)).not.toBeInTheDocument();
+    });
+
     it('adding a role calls addUserToRole and refreshes the membership list', async () => {
       mockListUserRoles.mockResolvedValue([]);
       mockListRoles.mockResolvedValue([{ id: 3, name: 'power' }]);

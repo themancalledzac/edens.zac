@@ -1,9 +1,11 @@
 import { render, screen } from '@testing-library/react';
+import { notFound } from 'next/navigation';
 import { type ReactNode } from 'react';
 
 import AdminUserDetailPage from '@/app/(admin)/admin/users/[id]/page';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { ApiError } from '@/app/lib/api/core';
 import { getAdminUser } from '@/app/lib/api/users';
 
 jest.mock('next/navigation', () => ({
@@ -56,6 +58,7 @@ jest.mock('@/app/lib/api/users', () => ({
 const mockUserSpace = UserSpace as unknown as jest.Mock;
 const mockLoadUserSpace = loadUserSpace as jest.Mock;
 const mockGetAdminUser = getAdminUser as jest.Mock;
+const mockNotFound = notFound as unknown as jest.Mock;
 
 const adminUser = { id: 5, email: 'c@x.com', displayName: 'Cara', status: 'ACTIVE' };
 
@@ -141,6 +144,37 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
 
     expect(mockUserSpace).not.toHaveBeenCalled();
     expect(screen.getByText('This user has no galleries yet.')).toBeTruthy();
+  });
+
+  // `getAdminUser` throws ApiError for EVERY non-OK status. Catching them all conflated "no such
+  // user" with "backend unreachable" / "session lapsed", so an outage rendered a confident 404.
+  it('404s when the read genuinely reports the user does not exist', async () => {
+    mockGetAdminUser.mockRejectedValue(new ApiError('Not Found', 404));
+
+    await expect(renderPage()).rejects.toThrow('NEXT_NOT_FOUND');
+    expect(mockLoadUserSpace).not.toHaveBeenCalled();
+  });
+
+  it('404s on an empty body (null user)', async () => {
+    mockGetAdminUser.mockResolvedValue(null);
+
+    await expect(renderPage()).rejects.toThrow('NEXT_NOT_FOUND');
+    expect(mockLoadUserSpace).not.toHaveBeenCalled();
+  });
+
+  it('rethrows a backend outage to the error boundary rather than 404ing', async () => {
+    mockGetAdminUser.mockRejectedValue(new ApiError('Service Unavailable', 503));
+
+    await expect(renderPage()).rejects.toThrow('Service Unavailable');
+    expect(mockNotFound).not.toHaveBeenCalled();
+    expect(mockLoadUserSpace).not.toHaveBeenCalled();
+  });
+
+  it('rethrows an expired admin session (401) rather than 404ing', async () => {
+    mockGetAdminUser.mockRejectedValue(new ApiError('Unauthorized', 401));
+
+    await expect(renderPage()).rejects.toThrow('Unauthorized');
+    expect(mockNotFound).not.toHaveBeenCalled();
   });
 
   it('404s on a non-integer id before any read runs', async () => {

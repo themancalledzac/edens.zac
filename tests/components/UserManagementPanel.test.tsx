@@ -101,4 +101,33 @@ describe('UserManagementPanel', () => {
 
     await waitFor(() => expect(screen.getByText(/no users yet/i)).toBeInTheDocument());
   });
+
+  // The load-bearing one. `listUsers` throws on any non-OK response, so a catch-less refresh left
+  // `users` at [] and told an admin whose backend was down that there were no users at all —
+  // inviting them to create a duplicate of an account that already exists.
+  it('shows a load failure, NOT the empty state, when the users read throws', async () => {
+    mockListUsers.mockRejectedValue(new Error('Backend unreachable'));
+
+    render(<UserManagementPanel />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(/could not load users/i)
+    );
+    expect(screen.queryByText(/no users yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Loading users…')).not.toBeInTheDocument();
+  });
+
+  it('retries the read from the failure branch and renders the list on success', async () => {
+    mockListUsers.mockRejectedValueOnce(new Error('Backend unreachable'));
+
+    render(<UserManagementPanel />);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+
+    mockListUsers.mockResolvedValue(USERS);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

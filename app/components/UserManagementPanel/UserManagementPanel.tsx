@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { GenerateInviteButton } from '@/app/(admin)/admin/users/GenerateInviteButton';
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
@@ -12,6 +12,7 @@ import { UpgradeUserModal } from '@/app/components/UpgradeUserModal/UpgradeUserM
 import { UserForm } from '@/app/components/UserForm/UserForm';
 import { listUsers } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
+import { logger } from '@/app/utils/logger';
 
 import styles from './UserManagementPanel.module.scss';
 
@@ -34,11 +35,17 @@ interface UserManagementPanelProps {
  * to {@link AdminPanel}. This panel only intervenes to force itself open when the body gains
  * something the user must see: the create and edit forms both live in the body, so opening one
  * while collapsed would otherwise look like the "+ New User" button did nothing.
+ *
+ * A failed load gets its own body branch, checked ahead of the empty state. `listUsers` throws
+ * `ApiError` out of `fetchAdminGetApi` on any non-OK response, so a `catch`-less `refresh` would
+ * leave `users` at `[]` and tell an admin whose backend is down that there are no users — an
+ * invitation to create a duplicate account. Failed and empty must never look alike here.
  */
 export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManagementPanelProps) {
   const router = useRouter();
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ mode: 'list' });
   const [showPeople, setShowPeople] = useState(false);
   const [mergeFor, setMergeFor] = useState<AdminUserSummary | null>(null);
@@ -46,8 +53,13 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
 
   const refresh = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       setUsers(await listUsers({ includePeople: showPeople }));
+    } catch (error) {
+      logger.error('UserManagementPanel', 'Failed to load users', error);
+      setUsers([]);
+      setLoadError('Could not load users. Retry, or check that the backend is running.');
     } finally {
       setLoading(false);
     }
@@ -85,6 +97,85 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
 
   const headerTitle =
     view.mode === 'create' ? 'New User' : view.mode === 'edit' ? 'Edit User' : 'Users';
+
+  let listBody: ReactNode;
+  if (loading) {
+    listBody = <p className={styles.muted}>Loading users…</p>;
+  } else if (loadError) {
+    listBody = (
+      <div className={styles.loadError} role="alert">
+        <p className={styles.error}>{loadError}</p>
+        <Button variant="secondary" size="sm" onClick={() => void refresh()}>
+          Retry
+        </Button>
+      </div>
+    );
+  } else if (sortedUsers.length === 0) {
+    listBody = <p className={styles.muted}>No users yet. Use "+ New User" to create one.</p>;
+  } else {
+    listBody = (
+      <ul className={styles.list}>
+        {sortedUsers.map(user => (
+          <li key={user.id} className={styles.row}>
+            {user.status === 'PERSON' ? (
+              <div className={styles.rowStatic}>
+                <span className={styles.identity}>
+                  <span className={styles.nameLine}>
+                    <span className={styles.dot} data-status={user.status} aria-hidden="true" />
+                    <span className={styles.name}>{user.displayName ?? '—'}</span>
+                    <span className={styles.srOnly}>{user.status}</span>
+                  </span>
+                  <span className={styles.email}>{user.email ?? ''}</span>
+                </span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className={styles.rowMain}
+                onClick={() => router.push(`/admin/users/${user.id}`)}
+              >
+                <span className={styles.identity}>
+                  <span className={styles.nameLine}>
+                    <span className={styles.dot} data-status={user.status} aria-hidden="true" />
+                    <span className={styles.name}>{user.displayName ?? '—'}</span>
+                    <span className={styles.srOnly}>{user.status}</span>
+                  </span>
+                  <span className={styles.email}>{user.email ?? ''}</span>
+                </span>
+              </button>
+            )}
+            <div className={styles.rowActions}>
+              {user.status === 'PERSON' ? (
+                <>
+                  <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>
+                    Merge…
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setUpgradeFor(user)}>
+                    Upgrade
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openView({ mode: 'edit', user })}
+                  >
+                    Update
+                  </Button>
+                  <GenerateInviteButton
+                    userId={user.id}
+                    email={user.email ?? ''}
+                    status={user.status}
+                  />
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
   const headerAction = (
     <>
@@ -126,73 +217,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
         <UserForm mode="edit" user={view.user} onSuccess={backToList} onCancel={backToList} />
       )}
 
-      {view.mode === 'list' &&
-        (loading ? (
-          <p className={styles.muted}>Loading users…</p>
-        ) : sortedUsers.length === 0 ? (
-          <p className={styles.muted}>No users yet. Use "+ New User" to create one.</p>
-        ) : (
-          <ul className={styles.list}>
-            {sortedUsers.map(user => (
-              <li key={user.id} className={styles.row}>
-                {user.status === 'PERSON' ? (
-                  <div className={styles.rowStatic}>
-                    <span className={styles.identity}>
-                      <span className={styles.nameLine}>
-                        <span className={styles.dot} data-status={user.status} aria-hidden="true" />
-                        <span className={styles.name}>{user.displayName ?? '—'}</span>
-                        <span className={styles.srOnly}>{user.status}</span>
-                      </span>
-                      <span className={styles.email}>{user.email ?? ''}</span>
-                    </span>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.rowMain}
-                    onClick={() => router.push(`/admin/users/${user.id}`)}
-                  >
-                    <span className={styles.identity}>
-                      <span className={styles.nameLine}>
-                        <span className={styles.dot} data-status={user.status} aria-hidden="true" />
-                        <span className={styles.name}>{user.displayName ?? '—'}</span>
-                        <span className={styles.srOnly}>{user.status}</span>
-                      </span>
-                      <span className={styles.email}>{user.email ?? ''}</span>
-                    </span>
-                  </button>
-                )}
-                <div className={styles.rowActions}>
-                  {user.status === 'PERSON' ? (
-                    <>
-                      <Button variant="secondary" size="sm" onClick={() => setMergeFor(user)}>
-                        Merge…
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => setUpgradeFor(user)}>
-                        Upgrade
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openView({ mode: 'edit', user })}
-                      >
-                        Update
-                      </Button>
-                      <GenerateInviteButton
-                        userId={user.id}
-                        email={user.email ?? ''}
-                        status={user.status}
-                      />
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ))}
+      {view.mode === 'list' && listBody}
 
       {view.mode === 'list' && mergeFor && (
         <MergeIdentityModal

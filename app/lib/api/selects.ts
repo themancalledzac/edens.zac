@@ -112,7 +112,12 @@ export async function listAllSelectsServer(): Promise<SelectGroup[]> {
   try {
     const groups = await fetchReadApi<SelectGroup[]>('/user/selects');
     return groups ?? [];
-  } catch {
+  } catch (error) {
+    // Same contract as `listSelectIdsServer`: 401 is the expected anonymous case, so it stays
+    // quiet. Anything else is real breakage and must not vanish into an indistinguishable `[]`.
+    if (!(error instanceof ApiError) || error.status !== 401) {
+      logger.error('selects', 'Failed to fetch all selects; rendering empty', error);
+    }
     return [];
   }
 }
