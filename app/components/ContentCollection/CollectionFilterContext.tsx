@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'react';
 
+import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { type FilterState } from '@/app/types/GalleryFilter';
 
 /**
@@ -37,6 +38,15 @@ interface CollectionFilterContextValue {
   filterOptions: CollectionInfoOptions;
   filteredAvailable: FilteredAvailableOptions;
   onFilterChange: (update: Partial<FilterState>) => void;
+  /**
+   * Mutually-exclusive page sections leading the filter bar, or null on an unsectioned page.
+   * Their presence alone is enough to render the bar — see the `hasOptions` gate in
+   * CollectionPageClient — which is what gives a sectioned page the shared bar chrome (density
+   * slider included) even when it has no facet dimensions of its own.
+   */
+  sections: readonly ToolbarSection[] | null;
+  /** Key of the section currently rendered; null when {@link sections} is null. */
+  activeSectionKey: string | null;
   /**
    * When true, the Date filter is always engaged and toggles only between directions
    * (asc <-> desc, never `off`) — used for CHRONOLOGICAL collections, which are inherently

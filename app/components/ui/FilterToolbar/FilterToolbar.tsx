@@ -35,9 +35,36 @@ export interface ToolbarCounts {
   digital?: number;
 }
 
+/**
+ * One mutually-exclusive page section (e.g. `/user`'s Collections / Images / Saved / Following),
+ * rendered as a navigating chip at the head of the bar.
+ *
+ * Sections are a SINGLE-select dimension addressed by a search param, which is why they are not
+ * part of {@link FilterState} like every other dimension here: exactly one is always chosen, and
+ * the choice must stay shareable, bookmarkable and walkable with the back button. Keeping them as
+ * links also keeps a sectioned page a Server Component — each section's blocks come from a
+ * different server read.
+ */
+export interface ToolbarSection {
+  /** Stable key, also the search-param value. */
+  key: string;
+  label: string;
+  /** Item count in this section, shown as the chip's badge. */
+  count: number;
+  /** Destination selecting this section. */
+  href: string;
+}
+
 export interface FilterToolbarProps {
   filterState: FilterState;
   onFilterChange: (update: Partial<FilterState>) => void;
+  /**
+   * Mutually-exclusive page sections, leading the bar. Absent on unsectioned pages, which is
+   * every collection page — only `/user` is sectioned today.
+   */
+  sections?: readonly ToolbarSection[];
+  /** Key of the section currently rendered. Ignored when {@link sections} is absent. */
+  activeSectionKey?: string;
   /** Which array dimensions to surface as dropdowns, keyed by the FilterState array key. */
   dimensions: Partial<Record<ArrayFilterKey, ToolbarDimension>>;
   /** Subset of options still reachable under current filters; absent options render unavailable. null/undefined = all available. */
@@ -89,6 +116,8 @@ export const MAX_FLAT_DATE_CHIPS = 5;
 export function FilterToolbar({
   filterState,
   onFilterChange,
+  sections,
+  activeSectionKey,
   dimensions,
   filteredAvailable,
   counts,
@@ -133,6 +162,21 @@ export function FilterToolbar({
 
   return (
     <div ref={barRef} className={styles.toolbar}>
+      {sections && sections.length > 0 && (
+        <>
+          {sections.map(section => (
+            <FilterChip
+              key={`section-${section.key}`}
+              label={section.label}
+              count={section.count}
+              active={section.key === activeSectionKey}
+              href={section.href}
+            />
+          ))}
+          <span className={styles.separator} aria-hidden="true" />
+        </>
+      )}
+
       {showDateSort && (
         <FilterChip
           label="Order"

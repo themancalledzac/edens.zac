@@ -4,6 +4,7 @@ import CollectionPageClient from '@/app/components/ContentCollection/CollectionP
 import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
 import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
+import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
@@ -15,7 +16,6 @@ import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/c
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
-import { UserTabs } from './UserTabs';
 
 export const dynamic = 'force-dynamic';
 
@@ -102,6 +102,13 @@ interface UserPageProps {
  * content. The collection header, filter toolbar, density control, save hearts and grid therefore
  * come from the shared stack rather than a `/user`-only variant of it.
  *
+ * The section switcher is not a component of its own: the four sections are passed to that same
+ * stack as `sections`, and render as navigating chips at the head of the shared filter bar. They
+ * stay `?tab=` links rather than joining `FilterState` because each section's blocks come from a
+ * different server read, and because the choice should stay shareable and back-button-walkable.
+ * Their presence is also what makes the bar render here at all — `/user` has no facet dimensions
+ * of its own — which is how the page picks up the density slider and the rest of the bar chrome.
+ *
  * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
  * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
  * what keeps the client-gallery affordances inside `CollectionPageClient` switched off here —
@@ -166,6 +173,13 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   const activeKey = resolveTabKey(tab);
   const active = sections[activeKey];
 
+  const toolbarSections: ToolbarSection[] = TAB_KEYS.map(key => ({
+    key,
+    label: sections[key].label,
+    count: sections[key].content.length,
+    href: `/user?tab=${key}`,
+  }));
+
   // Same collection (so the header row, slug and display mode are unchanged section to section),
   // swapping only which blocks the grid renders.
   const sectionCollection: CollectionModel = { ...collection, content: active.content };
@@ -179,15 +193,6 @@ export default async function UserPage({ searchParams }: UserPageProps) {
           <SendMessageButton />
         </div>
 
-        <UserTabs
-          activeKey={activeKey}
-          tabs={TAB_KEYS.map(key => ({
-            key,
-            label: sections[key].label,
-            count: sections[key].content.length,
-          }))}
-        />
-
         <FollowsProvider initialFollowedIds={followedCollectionIds}>
           <CollectionPageClient
             key={activeKey}
@@ -198,6 +203,8 @@ export default async function UserPage({ searchParams }: UserPageProps) {
             serverIsMobile={ssrViewport?.isMobile}
             me={principal}
             initialSavedImageIds={savedImageIds}
+            sections={toolbarSections}
+            activeSectionKey={activeKey}
           />
         </FollowsProvider>
 

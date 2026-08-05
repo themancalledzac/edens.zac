@@ -366,6 +366,8 @@ export default function CollectionContentRenderer({
               <FilterToolbar
                 filterState={collectionFilter.filterState}
                 onFilterChange={collectionFilter.onFilterChange}
+                sections={collectionFilter.sections ?? undefined}
+                activeSectionKey={collectionFilter.activeSectionKey ?? undefined}
                 dimensions={toCollectionDimensions(collectionFilter.filterOptions)}
                 filteredAvailable={
                   collectionFilter.filteredAvailable

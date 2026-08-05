@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
+import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { fromMobileDensity, LAYOUT, toMobileDensity } from '@/app/constants';
 import { useFilterUrlState } from '@/app/hooks/useFilterUrlState';
 import { useViewport } from '@/app/hooks/useViewport';
@@ -77,6 +78,14 @@ interface CollectionPageClientProps {
   initialSelectedIds?: number[];
   /** The viewer's GLOBAL saved (bookmarked) image ids, seeded server-side. Cross-collection. */
   initialSavedImageIds?: number[];
+  /**
+   * Mutually-exclusive page sections for a sectioned surface (`/user`). Passing these renders the
+   * shared filter bar even on a page with no facet dimensions of its own, with the sections as
+   * navigating chips at its head. Absent on ordinary collection pages.
+   */
+  sections?: readonly ToolbarSection[];
+  /** Key of the section currently rendered. Required alongside {@link sections}. */
+  activeSectionKey?: string;
 }
 
 export default function CollectionPageClient({
@@ -89,6 +98,8 @@ export default function CollectionPageClient({
   me = null,
   initialSelectedIds = [],
   initialSavedImageIds = [],
+  sections,
+  activeSectionKey,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
   const [editLayerMounted, setEditLayerMounted] = useState(false);
@@ -327,6 +338,8 @@ export default function CollectionPageClient({
       filterOptions: availableOptions,
       filteredAvailable: filteredAvailableOptions,
       onFilterChange: handleFilterChange,
+      sections: sections ?? null,
+      activeSectionKey: activeSectionKey ?? null,
       dateTwoState: isChronological,
       density: displayDensity,
       densityMax,
@@ -337,6 +350,8 @@ export default function CollectionPageClient({
       availableOptions,
       filteredAvailableOptions,
       handleFilterChange,
+      sections,
+      activeSectionKey,
       isChronological,
       displayDensity,
       densityMax,
@@ -346,7 +361,12 @@ export default function CollectionPageClient({
 
   const pageSize = collection.contentPerPage ?? 30;
 
-  const hasOptions = hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort);
+  // Sections alone justify the bar: a sectioned page needs its section chips even with no facet
+  // dimensions of its own, and rendering the bar is also what gives it the shared chrome (the
+  // density slider) that makes it match an ordinary collection page.
+  const hasOptions =
+    (sections !== undefined && sections.length > 0) ||
+    hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort);
 
   const grid = (
     <ContentBlockWithFullScreen

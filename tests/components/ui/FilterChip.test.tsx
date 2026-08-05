@@ -59,4 +59,47 @@ describe('FilterChip', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tags' }));
     expect(onToggle).not.toHaveBeenCalled();
   });
+
+  describe('link variant', () => {
+    it('renders an anchor when given an href', () => {
+      render(<FilterChip label="Saved" href="/user?tab=saved" />);
+      const chip = screen.getByRole('link', { name: /saved/i });
+      expect(chip).toHaveAttribute('href', '/user?tab=saved');
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('marks the active link with aria-current, not aria-pressed', () => {
+      // Sections navigate rather than toggle a facet in place, so the accurate ARIA is
+      // current-page. aria-pressed on a link would announce it as a toggle button.
+      render(<FilterChip label="Saved" href="/user?tab=saved" active />);
+      const chip = screen.getByRole('link', { name: /saved/i });
+      expect(chip).toHaveAttribute('aria-current', 'page');
+      expect(chip).not.toHaveAttribute('aria-pressed');
+      expect(chip.className).toMatch(/active/);
+    });
+
+    it('omits aria-current when inactive', () => {
+      render(<FilterChip label="Saved" href="/user?tab=saved" />);
+      expect(screen.getByRole('link', { name: /saved/i })).not.toHaveAttribute('aria-current');
+    });
+
+    it('shares the chip styles with the button variant', () => {
+      const { unmount } = render(<FilterChip label="Saved" href="/user?tab=saved" />);
+      const linkClass = screen.getByRole('link', { name: /saved/i }).className;
+      unmount();
+      render(<FilterChip label="Saved" onToggle={jest.fn()} />);
+      expect(screen.getByRole('button', { name: /saved/i }).className).toBe(linkClass);
+    });
+
+    it('renders the count badge like the button variant', () => {
+      render(<FilterChip label="Following" count={3} href="/user?tab=following" />);
+      expect(screen.getByText('3')).toBeInTheDocument();
+    });
+
+    it('degrades to an inert span when unavailable (a disabled anchor does not exist)', () => {
+      render(<FilterChip label="Saved" href="/user?tab=saved" state="unavailable" />);
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+      expect(screen.getByText('Saved').className).toMatch(/unavailable/);
+    });
+  });
 });

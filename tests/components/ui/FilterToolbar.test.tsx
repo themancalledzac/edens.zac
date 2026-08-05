@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { type ComponentProps } from 'react';
 
-import { FilterToolbar, MAX_FLAT_DATE_CHIPS } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import {
+  FilterToolbar,
+  MAX_FLAT_DATE_CHIPS,
+} from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
 
@@ -205,8 +208,9 @@ describe('FilterToolbar', () => {
   });
 
   it('still renders flat chips at exactly the threshold', () => {
-    const options = Array.from({ length: MAX_FLAT_DATE_CHIPS }, (_, i) =>
-      `2026-07-${String(20 + i).padStart(2, '0')}`
+    const options = Array.from(
+      { length: MAX_FLAT_DATE_CHIPS },
+      (_, i) => `2026-07-${String(20 + i).padStart(2, '0')}`
     );
     renderToolbar({
       dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
@@ -216,8 +220,9 @@ describe('FilterToolbar', () => {
   });
 
   it('collapses to a dropdown above the threshold', () => {
-    const options = Array.from({ length: MAX_FLAT_DATE_CHIPS + 1 }, (_, i) =>
-      `2026-07-${String(20 + i).padStart(2, '0')}`
+    const options = Array.from(
+      { length: MAX_FLAT_DATE_CHIPS + 1 },
+      (_, i) => `2026-07-${String(20 + i).padStart(2, '0')}`
     );
     renderToolbar({
       dimensions: { selectedDates: { label: 'Date', options, optionLabels: dayLabels(options) } },
@@ -252,7 +257,12 @@ describe('FilterToolbar', () => {
     it('keeps the reset button mounted in the DOM across every active-filter state', () => {
       // No filters at all.
       const { unmount: unmount1 } = render(
-        <FilterToolbar filterState={INITIAL_FILTER_STATE} onFilterChange={jest.fn()} dimensions={{}} showDateSort />
+        <FilterToolbar
+          filterState={INITIAL_FILTER_STATE}
+          onFilterChange={jest.fn()}
+          dimensions={{}}
+          showDateSort
+        />
       );
       expect(screen.getByRole('button', { name: /reset all filters/i })).toBeInTheDocument();
       unmount1();
@@ -316,10 +326,79 @@ describe('FilterToolbar', () => {
       renderToolbar({
         showDateSort: true,
         dimensions: { selectedTags: { label: 'Tags', options: ['sunset'] } },
-        filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc', selectedTags: ['sunset'] },
+        filterState: {
+          ...INITIAL_FILTER_STATE,
+          dateSortDirection: 'asc',
+          selectedTags: ['sunset'],
+        },
       });
       const orderChip = screen.getByRole('button', { name: /^order/i });
       expect(orderChip.className).toMatch(/active/);
+    });
+  });
+
+  describe('sections', () => {
+    const SECTIONS = [
+      { key: 'collections', label: 'Collections', count: 12, href: '/user?tab=collections' },
+      { key: 'images', label: 'Images', count: 1, href: '/user?tab=images' },
+      { key: 'saved', label: 'Saved', count: 3, href: '/user?tab=saved' },
+    ] as const;
+
+    it('renders each section as a navigating chip with its count', () => {
+      renderToolbar({ sections: SECTIONS, activeSectionKey: 'collections' });
+      for (const section of SECTIONS) {
+        const chip = screen.getByRole('link', { name: new RegExp(section.label, 'i') });
+        expect(chip).toHaveAttribute('href', section.href);
+      }
+      expect(screen.getByText('12')).toBeInTheDocument();
+    });
+
+    it('marks exactly one section current', () => {
+      renderToolbar({ sections: SECTIONS, activeSectionKey: 'saved' });
+      const current = screen
+        .getAllByRole('link')
+        .filter(link => link.getAttribute('aria-current') === 'page');
+      expect(current).toHaveLength(1);
+      expect(current[0]).toHaveTextContent('Saved');
+    });
+
+    it('renders no section chips when the page is unsectioned', () => {
+      renderToolbar({ showDateSort: true });
+      expect(screen.queryAllByRole('link')).toHaveLength(0);
+    });
+
+    it('renders the bar with sections alone, no facet dimensions needed', () => {
+      // This is what lets /user — which has no tags/people/cameras of its own — still show the
+      // shared bar, and with it the density slider.
+      renderToolbar({
+        sections: SECTIONS,
+        activeSectionKey: 'collections',
+        density: 4,
+        densityMax: 10,
+        onDensityChange: jest.fn(),
+      });
+      expect(screen.getAllByRole('link')).toHaveLength(3);
+      expect(screen.getByRole('slider', { name: /row density/i })).toBeInTheDocument();
+    });
+
+    it('keeps sections independent of the reset button', () => {
+      // Reset clears FilterState. Sections are not in FilterState, so a reset must never
+      // deselect the current section or navigate away from it.
+      const { onFilterChange } = renderToolbar({
+        sections: SECTIONS,
+        activeSectionKey: 'saved',
+        showHighlyRated: true,
+        filterState: { ...INITIAL_FILTER_STATE, highlyRatedOnly: true },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /reset all filters/i }));
+      expect(onFilterChange).toHaveBeenCalledWith(
+        expect.not.objectContaining({ section: expect.anything() })
+      );
+      const current = screen
+        .getAllByRole('link')
+        .filter(link => link.getAttribute('aria-current') === 'page');
+      expect(current).toHaveLength(1);
+      expect(current[0]).toHaveTextContent('Saved');
     });
   });
 });

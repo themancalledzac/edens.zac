@@ -33,9 +33,6 @@ jest.mock('@/app/components/Personal/FollowsContext', () => ({
 jest.mock('@/app/components/Personal/AccountCard', () => ({
   AccountCard: () => 'AccountCard',
 }));
-jest.mock('@/app/user/UserTabs', () => ({
-  UserTabs: () => 'UserTabs',
-}));
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { meServer } from '@/app/lib/api/auth';
@@ -43,7 +40,6 @@ import { getAllCollections } from '@/app/lib/api/collections';
 import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
 import { getUserPage } from '@/app/lib/api/user';
 import UserPage from '@/app/user/page';
-import { UserTabs } from '@/app/user/UserTabs';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 const authedPrincipal = { email: 'c@x.com', isAdmin: false, mfaSatisfied: true, galleries: [] };
@@ -76,9 +72,15 @@ function findProps(node: any, type: unknown): any {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const gridProps = (result: unknown): any => findProps(result, CollectionPageClient);
 
-/** Props the page handed to the section switcher. */
+/**
+ * The section chips the page handed to the shared bar. There is no `/user`-only switcher component
+ * any more — the sections ride on the same CollectionPageClient props as everything else.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const tabProps = (result: unknown): any => findProps(result, UserTabs);
+const sectionProps = (result: unknown): any => {
+  const props = gridProps(result);
+  return { sections: props?.sections, activeKey: props?.activeSectionKey };
+};
 
 function seedApis() {
   // Mirrors the real payload: `UserPageAssembler` builds this collection with no `id`, `isClient`
@@ -162,12 +164,12 @@ describe('UserPage', () => {
 
   it('falls back to Collections for an unknown ?tab=', async () => {
     expect(gridProps(await renderTab('nope')).collection.content).toHaveLength(2);
-    expect(tabProps(await renderTab('nope')).activeKey).toBe('collections');
-    expect(tabProps(await renderTab('')).activeKey).toBe('collections');
+    expect(sectionProps(await renderTab('nope')).activeKey).toBe('collections');
+    expect(sectionProps(await renderTab('')).activeKey).toBe('collections');
   });
 
   it('takes the first value when ?tab= is repeated', async () => {
-    expect(tabProps(await renderTab(['images', 'saved'])).activeKey).toBe('images');
+    expect(sectionProps(await renderTab(['images', 'saved'])).activeKey).toBe('images');
     expect(gridProps(await renderTab(['images', 'saved'])).collection.content).toHaveLength(2);
   });
 
@@ -192,18 +194,44 @@ describe('UserPage', () => {
     expect(gridProps(await renderTab('following')).chunkSize).toBe(collectionsChunk);
   });
 
-  it('labels all four tabs with their counts regardless of the active section', async () => {
+  it('labels all four sections with their counts regardless of the active section', async () => {
     (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(9)]);
     (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([7]);
     (getAllCollections as jest.Mock).mockResolvedValue([{ id: 7, slug: 'seven' }, { id: 8 }]);
-    const tabs = tabProps(await renderTab('saved')).tabs;
-    expect(tabs.map((t: { label: string; count: number }) => [t.label, t.count])).toEqual([
+    const { sections, activeKey } = sectionProps(await renderTab('saved'));
+    expect(sections.map((s: { label: string; count: number }) => [s.label, s.count])).toEqual([
       ['Collections', 2],
       ['Images', 2],
       ['Saved', 1],
       ['Following', 1],
     ]);
-    expect(tabProps(await renderTab('saved')).activeKey).toBe('saved');
+    expect(activeKey).toBe('saved');
+  });
+
+  it('gives every section a ?tab= link so the choice stays shareable', async () => {
+    // Sections are links rather than a FilterState dimension: each one's blocks come from a
+    // different server read, and the choice has to survive a copied URL and the back button.
+    const { sections } = sectionProps(await renderTab('images'));
+    expect(sections.map((s: { key: string; href: string }) => [s.key, s.href])).toEqual([
+      ['collections', '/user?tab=collections'],
+      ['images', '/user?tab=images'],
+      ['saved', '/user?tab=saved'],
+      ['following', '/user?tab=following'],
+    ]);
+  });
+
+  it('always marks exactly one section active', async () => {
+    for (const [tab, expected] of [
+      [undefined, 'collections'],
+      ['images', 'images'],
+      ['saved', 'saved'],
+      ['following', 'following'],
+      ['nope', 'collections'],
+    ] as const) {
+      const { sections, activeKey } = sectionProps(await renderTab(tab));
+      expect(activeKey).toBe(expected);
+      expect(sections.filter((s: { key: string }) => s.key === activeKey)).toHaveLength(1);
+    }
   });
 
   it('seeds the saves provider from the saved-images read (no separate ids fetch)', async () => {
