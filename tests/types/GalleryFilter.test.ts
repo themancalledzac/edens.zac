@@ -12,6 +12,8 @@ import {
 describe('FilterState helpers', () => {
   it('INITIAL_FILTER_STATE has every dimension empty and sorts/toggles off', () => {
     expect(INITIAL_FILTER_STATE.dateSortDirection).toBe('off');
+    // Off by default so an admin's default view is the full set, not a pre-filtered one.
+    expect(INITIAL_FILTER_STATE.hideHidden).toBe(false);
     expect(INITIAL_FILTER_STATE.highlyRatedOnly).toBe(false);
     expect(INITIAL_FILTER_STATE.filmFilter).toBe('off');
     expect(INITIAL_FILTER_STATE.selectedTags).toEqual([]);

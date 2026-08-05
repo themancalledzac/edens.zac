@@ -37,6 +37,8 @@ export interface ToolbarCounts {
   highlyRated?: number;
   film?: number;
   digital?: number;
+  /** How many collections on the page are `HIDDEN`. Badges the admin-only "Hide hidden" chip. */
+  hidden?: number;
 }
 
 /**
@@ -83,6 +85,11 @@ export interface FilterToolbarProps {
    */
   dateTwoState?: boolean;
   showHighlyRated?: boolean;
+  /**
+   * Renders the admin-only "Hide hidden" preview toggle. Callers gate this on the viewer being an
+   * admin AND the payload actually carrying visibility data, so the chip is never a no-op.
+   */
+  showHideHidden?: boolean;
   showFilm?: boolean;
   /** When provided, renders the photo-size control (density min 1, max {@link densityMax}). */
   density?: number;
@@ -143,6 +150,7 @@ export function FilterToolbar({
   showDateSort = false,
   dateTwoState = false,
   showHighlyRated = false,
+  showHideHidden = false,
   showFilm = false,
   density,
   densityMax = 10,
@@ -233,6 +241,15 @@ export function FilterToolbar({
             count={counts?.highlyRated}
             active={filterState.highlyRatedOnly}
             onToggle={() => onFilterChange({ highlyRatedOnly: !filterState.highlyRatedOnly })}
+          />
+        )}
+
+        {showHideHidden && (
+          <FilterChip
+            label="Hide hidden"
+            count={counts?.hidden}
+            active={filterState.hideHidden}
+            onToggle={() => onFilterChange({ hideHidden: !filterState.hideHidden })}
           />
         )}
 

@@ -13,7 +13,20 @@ export type FilmFilter = 'film' | 'digital' | 'off';
 export type LensType = 'wide' | 'normal' | 'telephoto';
 
 export interface FilterState {
+  /**
+   * Chronological sequence: capture date for images/GIFs, collection date for collection tiles.
+   * `off` keeps the collection's curated orderIndex.
+   */
   dateSortDirection: DateSortDirection;
+  /**
+   * Admin-only: drop collections whose visibility is `HIDDEN`, previewing the list as a
+   * non-admin sees it. Off by default, so an admin's default view stays the full picture they
+   * already get today — this only ever SUBTRACTS from what the backend already sent.
+   *
+   * `UNLISTED` collections are unaffected either way: they are reachable by direct slug and are
+   * not part of what this control previews away.
+   */
+  hideHidden: boolean;
   highlyRatedOnly: boolean;
   filmFilter: FilmFilter;
   readonly selectedTags: readonly string[];
@@ -27,6 +40,7 @@ export interface FilterState {
 
 export const INITIAL_FILTER_STATE: FilterState = Object.freeze({
   dateSortDirection: 'off' as const,
+  hideHidden: false,
   highlyRatedOnly: false,
   filmFilter: 'off' as const,
   selectedTags: Object.freeze([] as readonly string[]),
@@ -85,7 +99,7 @@ export function cycleDateSortTwoState(current: DateSortDirection): DateSortDirec
 
 /**
  * Initial date-sort direction for a collection. CHRONOLOGICAL collections are already
- * stored oldest-first (see contentLayout `sortContentByCreatedAt`), so their Date filter
+ * stored oldest-first (see contentLayout `sortContentByCreatedAt`), so their Order control
  * defaults ON at `asc` to match that order; every other view starts neutral (`off`).
  */
 export function initialDateSortDirection(displayMode?: string): DateSortDirection {

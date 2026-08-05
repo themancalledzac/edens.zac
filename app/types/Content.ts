@@ -6,6 +6,7 @@
  * Maps to backend Content with contentType discriminator for polymorphism.
  */
 
+import type { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import type { SingleEntityUpdate } from '@/app/types/createTypes';
 
 import type {
@@ -280,6 +281,17 @@ export interface ContentCollectionModel extends Content {
   tags?: ContentTagModel[];
   people?: ContentPersonModel[];
   locations?: LocationModel[];
+
+  /**
+   * Visibility of the referenced collection. Optional because the backend only serializes it on
+   * synthetic collection blocks as of the visibility-enrichment work; consumers must treat an
+   * absent value as "unknown", never as `LISTED`.
+   *
+   * Only ever populated for a viewer the backend already scopes to — a non-admin session never
+   * receives a `HIDDEN` collection in the first place, so the admin Hidden toggle is a view
+   * control over data the viewer is already entitled to, not an access gate.
+   */
+  visibility?: CollectionVisibility;
 }
 
 /**

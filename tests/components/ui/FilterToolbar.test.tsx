@@ -5,7 +5,7 @@ import {
   FilterToolbar,
   MAX_FLAT_DATE_CHIPS,
 } from '@/app/components/ui/FilterToolbar/FilterToolbar';
-import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
+import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
 
 type Props = ComponentProps<typeof FilterToolbar>;
@@ -31,6 +31,15 @@ describe('FilterToolbar', () => {
     const { onFilterChange } = renderToolbar({ showDateSort: true });
     fireEvent.click(screen.getByRole('button', { name: /^order$/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
+  });
+
+  it('closes the cycle from desc back to off', () => {
+    const { onFilterChange } = renderToolbar({
+      showDateSort: true,
+      filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Order v' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'off' });
   });
 
   it('renders directional Order labels', () => {
@@ -63,9 +72,7 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' },
     });
-    // Shows the directional label, not the neutral "Order".
-    const chip = screen.getByRole('button', { name: /order \^/i });
-    expect(screen.queryByRole('button', { name: /^order$/i })).toBeNull();
+    const chip = screen.getByRole('button', { name: 'Order ^' });
     fireEvent.click(chip);
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'desc' });
   });
@@ -76,7 +83,7 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /order v/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Order v' }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
   });
 
@@ -88,6 +95,45 @@ describe('FilterToolbar', () => {
     expect(screen.getByText('7')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /highly rated/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ highlyRatedOnly: true });
+  });
+
+  describe('admin "Hide hidden" preview toggle', () => {
+    it('is absent by default, so a non-admin never sees it', () => {
+      renderToolbar({ showHighlyRated: true });
+      expect(screen.queryByRole('button', { name: /hide hidden/i })).toBeNull();
+    });
+
+    // Off by default: an admin's default view stays the full set they already get today, and the
+    // toggle only ever subtracts to preview the public view.
+    it('starts disengaged and engages on click', () => {
+      const { onFilterChange } = renderToolbar({ showHideHidden: true, counts: { hidden: 3 } });
+      const chip = screen.getByRole('button', { name: /hide hidden/i });
+      expect(screen.getByText('3')).toBeInTheDocument();
+      fireEvent.click(chip);
+      expect(onFilterChange).toHaveBeenCalledWith({ hideHidden: true });
+    });
+
+    it('turns back off from the engaged state', () => {
+      const { onFilterChange } = renderToolbar({
+        showHideHidden: true,
+        filterState: { ...INITIAL_FILTER_STATE, hideHidden: true },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /hide hidden/i }));
+      expect(onFilterChange).toHaveBeenCalledWith({ hideHidden: false });
+    });
+
+    it('counts as an active filter so the reset button is reachable', () => {
+      renderToolbar({
+        showHideHidden: true,
+        filterState: { ...INITIAL_FILTER_STATE, hideHidden: true },
+      });
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeEnabled();
+    });
+
+    it('leaves the reset button inert while the preview is off', () => {
+      renderToolbar({ showHideHidden: true });
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeDisabled();
+    });
   });
 
   it('renders a film tri-state toggle that cycles off -> film', () => {
@@ -398,7 +444,7 @@ describe('FilterToolbar', () => {
     });
 
     it('renders the same Order chip DOM shape (label + trailing slot) in every direction', () => {
-      const directions: Array<FilterState['dateSortDirection']> = ['off', 'asc', 'desc'];
+      const directions = ['off', 'asc', 'desc'] as const;
       for (const dateSortDirection of directions) {
         const { unmount } = render(
           <FilterToolbar
@@ -412,8 +458,7 @@ describe('FilterToolbar', () => {
         // The label text is always the fixed string "Order" ...
         expect(chip.firstChild?.textContent).toBe('Order');
         // ... and the trailing glyph slot is always present as its own element, even when empty.
-        const trailingSlot = chip.querySelector('span');
-        expect(trailingSlot).not.toBeNull();
+        expect(chip.querySelector('span')).not.toBeNull();
         unmount();
       }
     });

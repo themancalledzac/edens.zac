@@ -8,6 +8,7 @@
  * All filter state is designed to be stored in URL search params for shareability.
  */
 
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
   type AnyContentModel,
   type ContentCollectionModel,
@@ -927,6 +928,48 @@ export function applyCollectionFilters(
     // Other non-image blocks (text, panels, undated GIFs) are structural -- never filtered out.
     return true;
   });
+}
+
+/**
+ * Whether the payload carries collection visibility at all.
+ *
+ * The backend only recently started serializing `visibility` onto synthetic collection blocks, so
+ * this gates the admin Hidden toggle on real data rather than on the deploy order of the two
+ * repos: until the field arrives the chip stays hidden instead of rendering as a dead control,
+ * and it appears on its own the moment the backend ships.
+ */
+export function hasVisibilityData(content: readonly AnyContentModel[]): boolean {
+  return content.some(item => isCollectionRef(item) && item.visibility !== undefined);
+}
+
+/** How many collection tiles on the page are `HIDDEN`. Badges the Hidden chip. */
+export function countHiddenCollections(content: readonly AnyContentModel[]): number {
+  return content.filter(
+    item => isCollectionRef(item) && item.visibility === CollectionVisibility.HIDDEN
+  ).length;
+}
+
+/**
+ * Preview a list the way a non-admin sees it: with `hideHidden` on, `HIDDEN` collection tiles
+ * drop out.
+ *
+ * Purely SUBTRACTIVE, and off by default — an admin's default view stays the full set the backend
+ * already scoped to them. It is a visibility scope rather than a filter, so it runs upstream of
+ * the filter pipeline rather than riding in {@link ContentFilterCriteria}: criteria only apply
+ * when {@link hasAnyActiveFilter} is true, and this must govern the layout baseline and the filter
+ * dimensions too.
+ *
+ * `UNLISTED` is deliberately untouched — those are reachable by direct slug and are not part of
+ * what this control previews away; only the literal hidden state is.
+ */
+export function applyHiddenVisibility<T extends AnyContentModel>(
+  content: T[],
+  hideHidden: boolean
+): T[] {
+  if (!hideHidden) return content;
+  return content.filter(
+    item => !(isCollectionRef(item) && item.visibility === CollectionVisibility.HIDDEN)
+  );
 }
 
 /**

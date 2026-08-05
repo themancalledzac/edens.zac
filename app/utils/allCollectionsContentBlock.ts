@@ -11,8 +11,10 @@ export const ALL_COLLECTIONS_TILE_ID = -1001;
 /**
  * Build the synthetic "All Collections" tile injected into the home grid right
  * after the Me tile (or as the second tile for anonymous viewers). Links to
- * /all-collections, which the backend permission-scopes per viewer. Empty
- * imageUrl -> the renderer's placeholder card. Mirrors buildMeContentBlock.
+ * /collections, which the backend permission-scopes per viewer — the tile's slug
+ * IS its href (`/${slug}`), so this is the canonical browse route, not the
+ * backend's `all-collections` resource slug. Empty imageUrl -> the renderer's
+ * placeholder card. Mirrors buildMeContentBlock.
  */
 export function buildAllCollectionsContentBlock(): ContentParallaxImageModel {
   const { imageWidth, imageHeight } = clampParallaxDimensions();
@@ -21,7 +23,7 @@ export function buildAllCollectionsContentBlock(): ContentParallaxImageModel {
     enableParallax: true,
     id: ALL_COLLECTIONS_TILE_ID,
     title: 'All Collections',
-    slug: 'all-collections',
+    slug: 'collections',
     description: null,
     imageUrl: '',
     overlayText: 'All Collections',

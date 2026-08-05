@@ -27,15 +27,16 @@ import {
 import { clamp } from '@/app/utils/clamp';
 import {
   applyCollectionFilters,
+  applyHiddenVisibility,
   buildCollectionCriteria,
   type CollectionFilterDimensions,
   computeFilterVisibility,
+  countHiddenCollections,
   extractCollectionFilterOptions,
   hasAnyActiveFilter,
   hasFilterableOptions,
-  isDateable,
+  hasVisibilityData,
   isImageContent,
-  mergeDateSortedImages,
 } from '@/app/utils/contentFilter';
 import { processContentBlocks } from '@/app/utils/contentLayout';
 import { getMeanWidthCost } from '@/app/utils/contentRatingUtils';
@@ -48,7 +49,7 @@ import {
 import { toggleImageSelection } from '@/app/utils/imageSelection';
 import { logger } from '@/app/utils/logger';
 import { buildPinnedSelects } from '@/app/utils/pinnedSelects';
-import { sortByDate } from '@/app/utils/sortByDate';
+import { applySort } from '@/app/utils/sortContent';
 
 import {
   type ClientGalleryDownloadContextValue,
@@ -236,9 +237,18 @@ export default function CollectionPageClient({
   const [liveEditContent, setLiveEditContent] = useState<AnyContentModel[] | null>(null);
 
   // Public render works off the server seed; edit mode tracks the layer's live content.
-  const allContent = useMemo(
+  const rawContent = useMemo(
     () => (editMode && liveEditContent ? liveEditContent : (collection.content ?? [])),
     [editMode, liveEditContent, collection.content]
+  );
+
+  // The hide-hidden preview is applied here, upstream of every derived set, so it governs the
+  // layout baseline and the filter dimensions too — not just which tiles survive the filter pass.
+  // The raw set stays available for the chip's own gate and count, which must keep reporting how
+  // many hidden collections exist even while they are being previewed away.
+  const allContent = useMemo(
+    () => applyHiddenVisibility(rawContent, filterState.hideHidden),
+    [rawContent, filterState.hideHidden]
   );
 
   const allImages = useMemo(() => allContent.filter(isImageContent), [allContent]);
@@ -295,7 +305,20 @@ export default function CollectionPageClient({
   // `visibility.highlyRated` is already false below two images (canFilter), so no extra
   // collection-count suppression is needed — see D7.
   const showHighlyRated = visibility.highlyRated;
-  const showDateSort = visibility.dateSort;
+
+  // The Order control is image-derived via `computeFilterVisibility`, which reports false on a
+  // collection-dominant page (no images => `canFilter` short-circuits below two items). Collection
+  // tiles are independently sortable by their own date and rating, so OR that in — otherwise
+  // /collections, whose content is 100% collection tiles, renders no Order chip at all.
+  const showDateSort = visibility.dateSort || allCollections.length >= 2;
+
+  // Admin-only, and only once the payload actually carries visibility: a chip that cannot change
+  // what is on screen is worse than no chip. Appears on its own when the backend enrichment lands.
+  // The control is purely subtractive — it previews the list as a non-admin sees it, so an admin's
+  // default view is unchanged from today.
+  const showHideHidden = (me?.isAdmin ?? false) && hasVisibilityData(rawContent);
+
+  const hiddenCount = useMemo(() => countHiddenCollections(rawContent), [rawContent]);
 
   const filteredAvailableOptions = useMemo(() => {
     if (!hasActiveFilters) return null;
@@ -331,8 +354,10 @@ export default function CollectionPageClient({
       ...baseCollectionOptions,
       showHighlyRated,
       showDateSort,
+      showHideHidden,
+      hiddenCount,
     }),
-    [baseCollectionOptions, showHighlyRated, showDateSort]
+    [baseCollectionOptions, showHighlyRated, showDateSort, showHideHidden, hiddenCount]
   );
 
   const contentBlocks = useMemo(() => {
@@ -343,13 +368,7 @@ export default function CollectionPageClient({
       collection.displayMode
     );
 
-    const ordered =
-      filterState.dateSortDirection === 'off'
-        ? processed
-        : mergeDateSortedImages(
-            processed,
-            sortByDate(processed.filter(isDateable), filterState.dateSortDirection)
-          );
+    const ordered = applySort(processed, filterState.dateSortDirection);
 
     if (!selectsEnabled || pinnedSelectedIds.length === 0) {
       return ordered;

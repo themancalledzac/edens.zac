@@ -23,8 +23,9 @@ export function isOptionAvailable(
 }
 
 /**
- * Whether any filter is active: a date sort, the highly-rated toggle, the film/digital filter, or
- * any non-empty array dimension. Drives the reset (×) button's visibility.
+ * Whether any filter is active: a date sort, the highly-rated toggle, the admin hide-hidden
+ * preview, the film/digital filter, or any non-empty array dimension. Drives the reset (×)
+ * button's visibility.
  *
  * In two-state mode ({@link FilterToolbarProps.dateTwoState}) the date sort is structurally
  * always engaged (CHRONOLOGICAL collections, asc <-> desc, never `off`), so it is NOT counted as
@@ -39,6 +40,7 @@ export function computeHasActiveFilters(
   return (
     dateActive ||
     filterState.highlyRatedOnly ||
+    filterState.hideHidden ||
     filterState.filmFilter !== 'off' ||
     arrayKeys.some(k => (filterState[k] as readonly string[]).length > 0)
   );
