@@ -5,7 +5,7 @@ import {
   FilterToolbar,
   MAX_FLAT_DATE_CHIPS,
 } from '@/app/components/ui/FilterToolbar/FilterToolbar';
-import { type FilterState, INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
+import { INITIAL_FILTER_STATE } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
 
 type Props = ComponentProps<typeof FilterToolbar>;
@@ -31,6 +31,15 @@ describe('FilterToolbar', () => {
     const { onFilterChange } = renderToolbar({ showDateSort: true });
     fireEvent.click(screen.getByRole('button', { name: /^order$/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
+  });
+
+  it('closes the cycle from desc back to off', () => {
+    const { onFilterChange } = renderToolbar({
+      showDateSort: true,
+      filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Order v' }));
+    expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'off' });
   });
 
   it('renders directional Order labels', () => {
@@ -63,9 +72,7 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'asc' },
     });
-    // Shows the directional label, not the neutral "Order".
-    const chip = screen.getByRole('button', { name: /order \^/i });
-    expect(screen.queryByRole('button', { name: /^order$/i })).toBeNull();
+    const chip = screen.getByRole('button', { name: 'Order ^' });
     fireEvent.click(chip);
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'desc' });
   });
@@ -76,7 +83,7 @@ describe('FilterToolbar', () => {
       dateTwoState: true,
       filterState: { ...INITIAL_FILTER_STATE, dateSortDirection: 'desc' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /order v/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Order v' }));
     expect(onFilterChange).toHaveBeenCalledWith({ dateSortDirection: 'asc' });
   });
 
@@ -88,6 +95,68 @@ describe('FilterToolbar', () => {
     expect(screen.getByText('7')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /highly rated/i }));
     expect(onFilterChange).toHaveBeenCalledWith({ highlyRatedOnly: true });
+  });
+
+  describe('admin Hidden toggle', () => {
+    const hiddenChip = () => screen.getByRole('button', { name: /hidden/i });
+
+    it('is absent by default, so a non-admin never sees it', () => {
+      renderToolbar({ showHighlyRated: true });
+      expect(screen.queryByRole('button', { name: /hidden/i })).toBeNull();
+    });
+
+    // Lit means the non-public collections ARE on screen — an admin's default. The chip reads as
+    // a statement about what is showing, not as an action.
+    it('starts selected, because an admin sees everything by default', () => {
+      renderToolbar({ showHiddenToggle: true, counts: { hidden: 3 } });
+      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(hiddenChip().className).toMatch(/active/);
+    });
+
+    it('deselects on click, previewing the general-audience view', () => {
+      const { onFilterChange } = renderToolbar({ showHiddenToggle: true });
+      fireEvent.click(hiddenChip());
+      expect(onFilterChange).toHaveBeenCalledWith({ showHidden: false });
+    });
+
+    it('reselects from the deselected state', () => {
+      const { onFilterChange } = renderToolbar({
+        showHiddenToggle: true,
+        filterState: { ...INITIAL_FILTER_STATE, showHidden: false },
+      });
+      const chip = hiddenChip();
+      expect(chip.className).not.toMatch(/active/);
+      fireEvent.click(chip);
+      expect(onFilterChange).toHaveBeenCalledWith({ showHidden: true });
+    });
+
+    it('counts as an active filter only once deselected', () => {
+      const { unmount } = render(
+        <FilterToolbar
+          filterState={INITIAL_FILTER_STATE}
+          onFilterChange={jest.fn()}
+          dimensions={{}}
+          showHiddenToggle
+        />
+      );
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeDisabled();
+      unmount();
+
+      renderToolbar({
+        showHiddenToggle: true,
+        filterState: { ...INITIAL_FILTER_STATE, showHidden: false },
+      });
+      expect(screen.getByRole('button', { name: /reset all filters/i })).toBeEnabled();
+    });
+
+    it('resets back to showing everything', () => {
+      const { onFilterChange } = renderToolbar({
+        showHiddenToggle: true,
+        filterState: { ...INITIAL_FILTER_STATE, showHidden: false },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /reset all filters/i }));
+      expect(onFilterChange).toHaveBeenCalledWith(expect.objectContaining({ showHidden: true }));
+    });
   });
 
   it('renders a film tri-state toggle that cycles off -> film', () => {
@@ -398,7 +467,7 @@ describe('FilterToolbar', () => {
     });
 
     it('renders the same Order chip DOM shape (label + trailing slot) in every direction', () => {
-      const directions: Array<FilterState['dateSortDirection']> = ['off', 'asc', 'desc'];
+      const directions = ['off', 'asc', 'desc'] as const;
       for (const dateSortDirection of directions) {
         const { unmount } = render(
           <FilterToolbar
@@ -412,8 +481,7 @@ describe('FilterToolbar', () => {
         // The label text is always the fixed string "Order" ...
         expect(chip.firstChild?.textContent).toBe('Order');
         // ... and the trailing glyph slot is always present as its own element, even when empty.
-        const trailingSlot = chip.querySelector('span');
-        expect(trailingSlot).not.toBeNull();
+        expect(chip.querySelector('span')).not.toBeNull();
         unmount();
       }
     });

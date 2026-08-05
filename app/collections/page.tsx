@@ -3,6 +3,7 @@ import { unstable_rethrow } from 'next/navigation';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { meServer } from '@/app/lib/api/auth';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentCollectionModel } from '@/app/types/Content';
@@ -13,7 +14,7 @@ import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './Collections.module.scss';
 
-/** Shared with the admin /all-collections surface — see BROWSE_EXCLUDED_SLUGS' TODO. */
+/** Standalone-page slugs that must not appear as tiles in the browse list. */
 const EXCLUDED_SLUGS = new Set(BROWSE_EXCLUDED_SLUGS);
 
 /** Page size requested from the backend; reaching it means the list is truncated. */
@@ -70,11 +71,13 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
 }
 
 /**
- * Public Collections showcase.
+ * The canonical Collections browse route.
  *
- * The public counterpart to the admin-only /all-collections. Fetches the synthetic
- * all-collections parent, whose result set the backend scopes per session (admin => all
- * visibilities; signed-in => LISTED plus their granted galleries; anonymous => LISTED).
+ * Fetches the synthetic `all-collections` parent (the backend resource slug — distinct from this
+ * route), whose result set the backend scopes per session: admin => all visibilities; signed-in =>
+ * LISTED plus their granted galleries; anonymous => LISTED. `meServer()` is threaded through so
+ * the client can surface the admin-only Hidden toggle; the toggle is a view control over data the
+ * viewer already received, never an access gate — scoping stays entirely server-side.
  *
  * Renders through `CollectionPageClient` — the same stack every collection page and `/user` use —
  * by handing it that parent with the filtered blocks as its content. The header row, filter
@@ -83,9 +86,11 @@ function extractCollectionBlocks(content: unknown): ContentCollectionModel[] {
  * regardless of which aggregates the backend ships on the child blocks: on an index surface the
  * bar is part of the page, not an accident of the payload.
  *
- * The tiles are no longer grouped under year headings. Ordering and date narrowing now come from
- * the shared bar's Order and Date controls, which work the same way here as on every other
- * collection page — the reason the bespoke `CollectionShowcaseTile` and year-grouped grid are gone.
+ * The tiles are no longer grouped under year headings. Ordering and date narrowing come from the
+ * shared bar's Order and Date controls — the reason the bespoke `CollectionShowcaseTile` and
+ * year-grouped grid are gone. Ordering reaches these tiles through `applySort`'s collection-card
+ * path; the image-only `isDateable` sort never did, which is why the bar had no working Order
+ * control here before.
  */
 export default async function CollectionsPage() {
   let collection: CollectionModel | null;
@@ -114,7 +119,7 @@ export default async function CollectionsPage() {
   }
 
   const blocks = extractCollectionBlocks(collection.content);
-  const ssrViewport = await resolveSsrViewport();
+  const [ssrViewport, me] = await Promise.all([resolveSsrViewport(), meServer()]);
 
   return (
     <PageShell pageType="collectionsCollection">
@@ -122,6 +127,7 @@ export default async function CollectionsPage() {
 
       <CollectionPageClient
         collection={{ ...collection, content: blocks }}
+        me={me}
         serverContentWidth={ssrViewport?.contentWidth}
         serverViewportHeight={ssrViewport?.viewportHeight}
         serverIsMobile={ssrViewport?.isMobile}

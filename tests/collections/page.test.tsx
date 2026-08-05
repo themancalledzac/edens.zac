@@ -7,6 +7,9 @@ import { createCollectionContent } from '@/tests/fixtures/contentFixtures';
 jest.mock('@/app/lib/api/collections', () => ({
   getScopedAllCollections: jest.fn(),
 }));
+jest.mock('@/app/lib/api/auth', () => ({
+  meServer: jest.fn(() => Promise.resolve(null)),
+}));
 jest.mock('@/app/utils/ssrViewport', () => ({
   resolveSsrViewport: jest.fn(),
 }));
@@ -22,12 +25,14 @@ jest.mock('@/app/components/ui/PageShell/PageShell', () => ({
 
 import CollectionsPage from '@/app/collections/page';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { meServer } from '@/app/lib/api/auth';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 const mockGetScopedAllCollections = getScopedAllCollections as jest.MockedFunction<
   typeof getScopedAllCollections
 >;
+const mockMeServer = meServer as jest.MockedFunction<typeof meServer>;
 
 /** Walk the rendered element tree and return the first element of the given type's props. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -165,5 +170,27 @@ describe('CollectionsPage', () => {
     mockGetScopedAllCollections.mockResolvedValue(makeParent([]));
     await CollectionsPage();
     expect(mockGetScopedAllCollections).toHaveBeenCalledWith(500);
+  });
+
+  // The route absorbed /all-collections, whose only distinguishing behaviour was threading the
+  // principal through. Without this the admin Hidden toggle can never appear on the canonical
+  // browse surface.
+  it('threads the resolved principal through so admin-only controls can render', async () => {
+    const me = { isAdmin: true } as Awaited<ReturnType<typeof meServer>>;
+    mockMeServer.mockResolvedValue(me);
+    mockGetScopedAllCollections.mockResolvedValue(makeParent([createCollectionContent(1)]));
+
+    const result = await CollectionsPage();
+
+    expect(stackProps(result).me).toBe(me);
+  });
+
+  it('still renders for an anonymous viewer with no principal', async () => {
+    mockMeServer.mockResolvedValue(null);
+    mockGetScopedAllCollections.mockResolvedValue(makeParent([createCollectionContent(1)]));
+
+    const result = await CollectionsPage();
+
+    expect(stackProps(result).me).toBeNull();
   });
 });

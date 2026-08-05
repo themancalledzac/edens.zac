@@ -1234,7 +1234,7 @@ describe('hasAnyActiveFilter', () => {
     expect(hasAnyActiveFilter(makeFilterState(overrides))).toBe(true);
   });
 
-  it('ignores dateSortDirection (a sort, not a filter)', () => {
+  it('ignores sortDirection (a sort, not a filter)', () => {
     expect(hasAnyActiveFilter(makeFilterState({ dateSortDirection: 'desc' }))).toBe(false);
   });
 });
@@ -1884,8 +1884,8 @@ describe('buildCollectionCriteria dates', () => {
 
 describe('hasAnyActiveFilter dates', () => {
   it('counts a selected day as active', () => {
-    expect(
-      hasAnyActiveFilter({ ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] })
-    ).toBe(true);
+    expect(hasAnyActiveFilter({ ...INITIAL_FILTER_STATE, selectedDates: ['2026-07-20'] })).toBe(
+      true
+    );
   });
 });

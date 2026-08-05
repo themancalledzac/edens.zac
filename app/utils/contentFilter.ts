@@ -8,6 +8,7 @@
  * All filter state is designed to be stored in URL search params for shareability.
  */
 
+import { CollectionVisibility } from '@/app/types/CollectionVisibility';
 import {
   type AnyContentModel,
   type ContentCollectionModel,
@@ -926,6 +927,65 @@ export function applyCollectionFilters(
     }
     // Other non-image blocks (text, panels, undated GIFs) are structural -- never filtered out.
     return true;
+  });
+}
+
+/**
+ * Whether the payload carries collection visibility at all.
+ *
+ * The backend only recently started serializing `visibility` onto synthetic collection blocks, so
+ * this gates the admin Hidden toggle on real data rather than on the deploy order of the two
+ * repos: until the field arrives the chip stays hidden instead of rendering as a dead control,
+ * and it appears on its own the moment the backend ships.
+ */
+export function hasVisibilityData(content: readonly AnyContentModel[]): boolean {
+  return content.some(item => isCollectionRef(item) && item.visibility !== undefined);
+}
+
+/**
+ * How many collection tiles are non-public — every tile with a known visibility that is not
+ * `LISTED`. Badges the Hidden chip, so the number must match exactly what switching the chip off
+ * removes (see {@link applyVisibilityScope}), not just the `HIDDEN` subset.
+ */
+export function countNonListedCollections(content: readonly AnyContentModel[]): number {
+  return content.filter(
+    item =>
+      isCollectionRef(item) &&
+      item.visibility !== undefined &&
+      item.visibility !== CollectionVisibility.LISTED
+  ).length;
+}
+
+/**
+ * Narrow content to the viewer's chosen visibility scope. With `showHidden` on (the default) the
+ * content passes through untouched; turning it off keeps only `LISTED` collection tiles,
+ * previewing the list the way the general audience sees it.
+ *
+ * `LISTED` is the whole of the general-audience scope — it mirrors the backend's anonymous branch
+ * in `SyntheticCollectionResolver#findAllCollectionsForCurrentViewer`. Both `UNLISTED` (reachable
+ * by direct slug, never in a public list) and `HIDDEN` (dev-only) are absent from a public list,
+ * so previewing that view has to drop both.
+ *
+ * Tiles whose `visibility` is undefined are KEPT: an unknown label means the payload predates the
+ * backend enrichment, and guessing "not listed" would blank the page. The chip is gated on
+ * {@link hasVisibilityData} for the same reason.
+ *
+ * Purely SUBTRACTIVE. It is a visibility scope rather than a filter, so it runs upstream of the
+ * filter pipeline rather than riding in {@link ContentFilterCriteria}: criteria only apply when
+ * {@link hasAnyActiveFilter} is true, and this must govern the layout baseline and the filter
+ * dimensions too.
+ *
+ * This is a VIEW control, never an access control — the backend already refuses to send a
+ * non-admin anything outside their scope, and nothing here can widen what arrived.
+ */
+export function applyVisibilityScope<T extends AnyContentModel>(
+  content: T[],
+  showHidden: boolean
+): T[] {
+  if (showHidden) return content;
+  return content.filter(item => {
+    if (!isCollectionRef(item) || item.visibility === undefined) return true;
+    return item.visibility === CollectionVisibility.LISTED;
   });
 }
 

@@ -12,7 +12,7 @@ export interface AdminTileConfig {
 // /all-blogs listing route exists (tracked in the 001 IA+UX sub-plan).
 export const ADMIN_TILES: AdminTileConfig[] = [
   { tileKey: 'home', label: 'Home (Preview)', href: '/homePage', rating: 4 },
-  { tileKey: 'all-collections', label: 'All Collections', href: '/all-collections', rating: 3 },
+  { tileKey: 'all-collections', label: 'All Collections', href: '/collections', rating: 3 },
   { tileKey: 'all-images', label: 'All Images', href: '/all-images', rating: 3 },
   {
     tileKey: 'client-galleries',

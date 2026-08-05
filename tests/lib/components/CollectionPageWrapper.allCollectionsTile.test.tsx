@@ -80,7 +80,7 @@ describe('CollectionPageWrapper — All-Collections tile injection', () => {
     expect(content).toHaveLength(4);
     expect(content[1].id).toBe(ME_TILE_ID);
     expect(content[2].id).toBe(ALL_COLLECTIONS_TILE_ID);
-    expect(content[2].slug).toBe('all-collections');
+    expect(content[2].slug).toBe('collections');
   });
 
   it('injects the All-Collections tile at index 1 for an anonymous viewer (no Me tile)', async () => {
