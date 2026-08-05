@@ -31,6 +31,21 @@
   }
 }
 
+// Visually-hidden but screen-reader-accessible. Carries the dialog's accessible name (the <h2>
+// wired to aria-labelledby): the metadata panel that shows the title is collapsed by default, so
+// the name cannot live there or the dialog would usually have none.
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 // Immersive mode (tap-to-hide-chrome). On iOS WebKit native fullscreen is unavailable, so the
 // Modal's 0.9 backdrop would otherwise let the page bleed through at 10%. Paint the whole viewer
 // solid black so the framed photo (and its white matte) is the only thing visible.
@@ -275,6 +290,28 @@
 
   @media (width > 768px) and (height >= 600px) {
     margin-bottom: 8px;
+  }
+}
+
+// Location links inside a .metadataItem row. Without this they fell back to the browser default
+// #0000EE on the 80%-black panel — ~2.3:1, below WCAG AA — so they take the sibling item's colour
+// and stay distinguishable by the underline rather than by hue alone.
+.metadataLink {
+  color: var(--scrim-light-90);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: white;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--scrim-light-50);
+    outline-offset: 2px;
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
   }
 }
 

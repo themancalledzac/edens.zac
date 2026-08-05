@@ -38,9 +38,13 @@ function extractImageDimensions(
 }
 
 /**
- * Extracts alt text with fallback options
+ * Extracts alt text with fallback options.
+ *
+ * Exported so every surface that renders a photo resolves alt the same way — the grid via
+ * {@link normalizeContentToRendererProps} and the fullscreen viewer directly. The authored `alt`
+ * field always wins; `title`/`caption` are only fallbacks for content that never got one.
  */
-function extractAltText(
+export function extractAltText(
   alt?: string | null,
   title?: string | null,
   caption?: string | null,
