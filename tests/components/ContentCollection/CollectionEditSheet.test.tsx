@@ -58,7 +58,9 @@ describe('CollectionEditSheet — InfoTab', () => {
 
   it('reflects the collection kind in the checkboxes', () => {
     render(
-      <CollectionEditSheet edit={makeEdit({ editTab: 'info', updateData: makeUpdateData({ isBlog: true }) })} />
+      <CollectionEditSheet
+        edit={makeEdit({ editTab: 'info', updateData: makeUpdateData({ isBlog: true }) })}
+      />
     );
     expect(screen.getByLabelText('Client gallery')).not.toBeChecked();
     expect(screen.getByLabelText('Blog')).toBeChecked();
@@ -245,13 +247,10 @@ describe('CollectionEditSheet — StructureTab', () => {
     expect(screen.getByLabelText(/Row Density/)).toBeInTheDocument();
   });
 
-  it('shows the cover button on the Info tab', () => {
-    render(<CollectionEditSheet edit={makeEdit({ editTab: 'info', isParent: false })} />);
-    expect(screen.getByRole('button', { name: /set cover image/i })).toBeInTheDocument();
-  });
-
-  it('does not show the cover button on the Structure tab', () => {
-    render(<CollectionEditSheet edit={makeEdit({ editTab: 'structure', isParent: false })} />);
+  // The cover picker moved out of the sheet and onto the grid, where the cover block itself is
+  // the affordance — see CollectionContentRenderer's cover-pick tests.
+  it.each(['info', 'structure'] as const)('carries no cover control on the %s tab', tab => {
+    render(<CollectionEditSheet edit={makeEdit({ editTab: tab, isParent: false })} />);
     expect(screen.queryByRole('button', { name: /cover image/i })).not.toBeInTheDocument();
   });
 });

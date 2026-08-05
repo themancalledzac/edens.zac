@@ -25,6 +25,7 @@ import {
   checkImageVisibility,
   createContentClickHandler,
 } from '@/app/utils/contentComponentHandlers';
+import { COVER_IMAGE_CONTENT_ID } from '@/app/utils/contentLayout';
 import {
   buildParallaxWrapperClassName,
   buildWrapperClassName,
@@ -33,12 +34,6 @@ import {
 import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
-
-/**
- * Sentinel content id used by createCoverImageBlock (app/utils/contentLayout.ts) for the
- * header cover image. Lets the renderer single out the cover without a new prop.
- */
-const COVER_IMAGE_CONTENT_ID = -1;
 
 import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
@@ -203,6 +198,23 @@ export default function CollectionContentRenderer({
     [collectionSlug, router]
   );
 
+  // Manage-side twin of the shortcut above, pinned to the same corner of the same cover block.
+  // The two never coexist: the shortcut needs the public view, this needs the inline-edit surface,
+  // which only EditModeLayer mounts. A null `onTogglePickCover` means the active manage mode
+  // already owns grid clicks (reorder, select, pick-date), so the affordance stands down.
+  const togglePickCover = inlineEdit?.onTogglePickCover ?? null;
+  const isPickingCover = inlineEdit?.isPickingCover ?? false;
+  const showCoverPickToggle =
+    contentType === 'IMAGE' && contentId === COVER_IMAGE_CONTENT_ID && togglePickCover !== null;
+
+  const handleCoverPickClick = useCallback(
+    (event: { stopPropagation: () => void }) => {
+      event.stopPropagation();
+      togglePickCover?.();
+    },
+    [togglePickCover]
+  );
+
   if (contentType === 'TEXT') {
     // The header rail carries more than text: the filter toolbar and the client-gallery download
     // row mount into it. A collection with no metadata (no date, locations, description or
@@ -251,6 +263,19 @@ export default function CollectionContentRenderer({
                   ariaLabel="Collection title"
                 />
               </div>
+            )}
+            {/* A cover-less collection lays out a text-only header, so there is no cover to hover
+                — the rail is the only place left to start the pick from. */}
+            {inlineEdit && !inlineEdit.hasCover && togglePickCover && (
+              <button
+                type="button"
+                className={cbStyles.metadataCoverPick}
+                onClick={togglePickCover}
+                aria-pressed={isPickingCover}
+              >
+                <span aria-hidden="true">{isPickingCover ? '✕' : '🖼️'}</span>
+                {isPickingCover ? 'Cancel cover selection' : 'Set cover image'}
+              </button>
             )}
             {(dateItem || locationItem || inlineEdit) && (
               <div className={cbStyles.metadataHeaderRow}>
@@ -711,12 +736,20 @@ export default function CollectionContentRenderer({
         {imageWrapperContent}
       </div>
       {showCoverUpdateShortcut && (
+        <button type="button" className={cbStyles.coverAction} onClick={handleCoverUpdateClick}>
+          Update
+        </button>
+      )}
+      {showCoverPickToggle && (
         <button
           type="button"
-          className={cbStyles.coverUpdateShortcut}
-          onClick={handleCoverUpdateClick}
+          className={cbStyles.coverAction}
+          onClick={handleCoverPickClick}
+          aria-pressed={isPickingCover}
+          aria-label={isPickingCover ? 'Cancel cover selection' : 'Change cover image'}
         >
-          Update
+          <span aria-hidden="true">{isPickingCover ? '✕' : '🖼️'}</span>
+          {isPickingCover ? 'Cancel' : 'Cover'}
         </button>
       )}
       {!enableParallax && (

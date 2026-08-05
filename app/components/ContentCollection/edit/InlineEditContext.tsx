@@ -14,6 +14,19 @@ export interface InlineEditContextValue {
   onCommitField: (field: InlineEditField, value: string) => void;
   /** Open the location picker so locations can be edited. */
   onEditLocation: () => void;
+  /**
+   * Enter or leave cover-pick mode, where a click on any grid image commits it as the cover.
+   * Null when the active manage mode already owns grid clicks (reorder, select, pick-date), which
+   * is what gates the affordance — the renderer has no other view of the manage state machine.
+   */
+  onTogglePickCover: (() => void) | null;
+  /** True while cover-pick mode is active; flips the affordance to its cancel label. */
+  isPickingCover: boolean;
+  /**
+   * Whether the collection has a cover image. False means no cover block is laid out at all, so
+   * the metadata rail — not the (absent) cover — has to carry the entry point into cover-pick.
+   */
+  hasCover: boolean;
 }
 
 const InlineEditContext = createContext<InlineEditContextValue | null>(null);

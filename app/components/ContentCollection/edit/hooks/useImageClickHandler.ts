@@ -9,6 +9,7 @@ import {
   type ContentGifModel,
   type ContentImageModel,
 } from '@/app/types/Content';
+import { COVER_IMAGE_CONTENT_ID } from '@/app/utils/contentLayout';
 import { manageHref } from '@/app/utils/manageUrl';
 
 import { handleCollectionNavigation, handleSingleImageEdit } from '../collectionEditUtils';
@@ -51,6 +52,10 @@ export function useImageClickHandler({
       }
 
       if (isSelectingCoverImage) {
+        // The header cover block is a synthetic id, not a content row, so it is never a valid
+        // pick — swallow the click rather than let it fail validation and raise an error banner.
+        // Its own hover affordance is what cancels the pick.
+        if (imageId === COVER_IMAGE_CONTENT_ID) return;
         handleCoverImageClick(imageId);
         return;
       }
