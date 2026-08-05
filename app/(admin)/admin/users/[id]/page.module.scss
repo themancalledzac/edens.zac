@@ -96,3 +96,27 @@
     padding: var(--space-6) 0 0;
   }
 }
+
+/* The target user's space, rendered by the same component /user uses. Only vertical rhythm
+   belongs here — the grids inside run full-bleed on mobile and manage their own side padding,
+   so this must NOT add padding-inline or the BoxTree row widths stop matching /user's. */
+.space {
+  margin-top: var(--space-5);
+
+  @media (width >= 768px) {
+    margin-top: var(--space-6);
+  }
+}
+
+/* Says whose space this is and why the save/follow controls are absent, so their absence reads
+   as deliberate rather than broken. Matches .hint's muted treatment and mobile inset. */
+.spaceNote {
+  margin: 0 0 var(--space-3);
+  padding: 0 var(--page-padding-mobile);
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+
+  @media (width >= 768px) {
+    padding: 0;
+  }
+}

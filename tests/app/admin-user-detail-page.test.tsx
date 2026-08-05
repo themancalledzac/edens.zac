@@ -2,8 +2,9 @@ import { render, screen } from '@testing-library/react';
 import { type ReactNode } from 'react';
 
 import AdminUserDetailPage from '@/app/(admin)/admin/users/[id]/page';
-import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
-import { getAdminUser, getUserPageById } from '@/app/lib/api/users';
+import { UserSpace } from '@/app/components/UserSpace/UserSpace';
+import { loadUserSpace } from '@/app/components/UserSpace/userSpaceData';
+import { getAdminUser } from '@/app/lib/api/users';
 
 jest.mock('next/navigation', () => ({
   notFound: jest.fn(() => {
@@ -24,59 +25,149 @@ jest.mock('@/app/(admin)/admin/users/GenerateInviteButton', () => ({
   GenerateInviteButton: () => null,
 }));
 
-// UserDetailEditor is a client component (uses useRouter); this suite only verifies the page's
-// read-only CollectionPage orchestration, so stub it like the other children above.
+// UserDetailEditor and UpgradePersonButton are client components (useRouter); this suite verifies
+// the page's orchestration of the shared space, so stub them like the other children above.
 jest.mock('@/app/(admin)/admin/users/[id]/UserDetailEditor', () => ({
   UserDetailEditor: () => null,
 }));
 
-jest.mock('@/app/components/ContentCollection/CollectionPage', () => ({
-  __esModule: true,
-  default: jest.fn(() => null),
+jest.mock('@/app/(admin)/admin/users/[id]/UpgradePersonButton', () => ({
+  UpgradePersonButton: () => null,
+}));
+
+jest.mock('@/app/components/UserSpace/UserSpace', () => ({
+  UserSpace: jest.fn(() => null),
+}));
+
+// resolveTabKey is pure — keep the real one so the ?tab= narrowing is exercised end to end.
+jest.mock('@/app/components/UserSpace/userSpaceData', () => ({
+  ...jest.requireActual('@/app/components/UserSpace/userSpaceData'),
+  loadUserSpace: jest.fn(),
+}));
+
+jest.mock('@/app/utils/ssrViewport', () => ({
+  resolveSsrViewport: jest.fn(() => Promise.resolve(null)),
 }));
 
 jest.mock('@/app/lib/api/users', () => ({
   getAdminUser: jest.fn(),
-  getUserPageById: jest.fn(),
 }));
 
-const mockCollectionPage = CollectionPage as unknown as jest.Mock;
+const mockUserSpace = UserSpace as unknown as jest.Mock;
+const mockLoadUserSpace = loadUserSpace as jest.Mock;
 const mockGetAdminUser = getAdminUser as jest.Mock;
-const mockGetUserPageById = getUserPageById as jest.Mock;
 
 const adminUser = { id: 5, email: 'c@x.com', displayName: 'Cara', status: 'ACTIVE' };
 
-async function renderPage() {
-  const element = await AdminUserDetailPage({ params: Promise.resolve({ id: '5' }) });
+const spaceData = {
+  collection: { slug: 'user', content: [] },
+  sections: {
+    collections: { label: 'Collections', content: [], emptyLabel: '' },
+    images: { label: 'Images', content: [], emptyLabel: '' },
+    saved: { label: 'Saved', content: [], emptyLabel: '' },
+    following: { label: 'Following', content: [], emptyLabel: '' },
+  },
+  followedCollectionIds: [],
+  savedImageIds: [],
+};
+
+async function renderPage(tab?: string) {
+  const element = await AdminUserDetailPage({
+    params: Promise.resolve({ id: '5' }),
+    searchParams: Promise.resolve(tab === undefined ? {} : { tab }),
+  });
   render(element);
 }
 
-describe('app/(admin)/admin/users/[id] — user page is rendered read-only', () => {
+describe("app/(admin)/admin/users/[id] — renders the target user's space", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetAdminUser.mockResolvedValue(adminUser);
+    mockLoadUserSpace.mockResolvedValue(spaceData);
   });
 
-  // Regression: the user page is a synthetic aggregation (slug "user", no backing collection
-  // row). editMode would mount the edit layer, which loads /api/admin/collections/user/update
-  // and 404s ("Collection not found with slug: user"). It must render read-only.
-  it('renders the synthetic user page WITHOUT editMode', async () => {
-    mockGetUserPageById.mockResolvedValue({ slug: 'user', content: [] });
+  it('loads the space for the routed user id, not the acting session', async () => {
+    await renderPage();
+
+    expect(mockLoadUserSpace).toHaveBeenCalledWith({ mode: 'admin', userId: 5 });
+  });
+
+  // Regression, and the load-bearing one. Every personal-action control in the collection stack
+  // gates on the PRESENCE of a principal, not on ownership: SaveHeart returns null unless useMe()
+  // is truthy, and its write goes to the session-bound POST /api/read/user/saves. Passing the
+  // admin's principal here would let a click bookmark an image onto the ADMIN's own space.
+  it('renders the space with me=null so personal-action controls stay disarmed', async () => {
+    await renderPage();
+
+    expect(mockUserSpace).toHaveBeenCalledTimes(1);
+    expect(mockUserSpace.mock.calls[0][0].me).toBeNull();
+  });
+
+  it('points the section chips at this admin route, not at /user', async () => {
+    await renderPage();
+
+    expect(mockUserSpace.mock.calls[0][0].basePath).toBe('/admin/users/5');
+  });
+
+  it('passes the ?tab= section through', async () => {
+    await renderPage('saved');
+
+    expect(mockUserSpace.mock.calls[0][0].activeKey).toBe('saved');
+  });
+
+  it('falls back to Collections for an unknown ?tab=', async () => {
+    await renderPage('nope');
+
+    expect(mockUserSpace.mock.calls[0][0].activeKey).toBe('collections');
+  });
+
+  it('says whose space this is and why saving/following is off', async () => {
+    await renderPage();
+
+    expect(screen.getByText(/Viewing Cara’s space as they see it/)).toBeTruthy();
+    expect(screen.getByText(/would act on your own account, not theirs/)).toBeTruthy();
+  });
+
+  it('shows an empty state and renders no space when the user has no galleries', async () => {
+    mockLoadUserSpace.mockResolvedValue(null);
 
     await renderPage();
 
-    expect(mockCollectionPage).toHaveBeenCalledTimes(1);
-    const props = mockCollectionPage.mock.calls[0][0];
-    expect(props.collection).toMatchObject({ slug: 'user' });
-    expect(props.editMode).toBeFalsy();
-  });
-
-  it('shows an empty state and renders no CollectionPage when the user has no galleries', async () => {
-    mockGetUserPageById.mockResolvedValue(null);
-
-    await renderPage();
-
-    expect(mockCollectionPage).not.toHaveBeenCalled();
+    expect(mockUserSpace).not.toHaveBeenCalled();
     expect(screen.getByText('This user has no galleries yet.')).toBeTruthy();
+  });
+
+  it('404s on a non-integer id before any read runs', async () => {
+    await expect(
+      AdminUserDetailPage({
+        params: Promise.resolve({ id: 'abc' }),
+        searchParams: Promise.resolve({}),
+      })
+    ).rejects.toThrow('NEXT_NOT_FOUND');
+
+    expect(mockGetAdminUser).not.toHaveBeenCalled();
+    expect(mockLoadUserSpace).not.toHaveBeenCalled();
+  });
+});
+
+// Tag-only PERSON rows have no account and no space. This branch also guards direct-URL access.
+describe('app/(admin)/admin/users/[id] — tag-only PERSON identities', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetAdminUser.mockResolvedValue({
+      id: 7,
+      email: null,
+      displayName: 'Dana',
+      status: 'PERSON',
+    });
+    mockLoadUserSpace.mockResolvedValue(spaceData);
+  });
+
+  it('renders the minimal view and never loads a space', async () => {
+    await renderPage();
+
+    expect(mockUserSpace).not.toHaveBeenCalled();
+    expect(mockLoadUserSpace).not.toHaveBeenCalled();
+    expect(screen.getByText('tag-only · no account')).toBeTruthy();
   });
 });

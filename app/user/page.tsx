@@ -1,76 +1,18 @@
 import { notFound } from 'next/navigation';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
-import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
-import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
+import { AdminCard } from '@/app/components/Personal/AdminCard';
 import { SendMessageButton } from '@/app/components/SendMessageButton/SendMessageButton';
-import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { UserSpace } from '@/app/components/UserSpace/UserSpace';
+import { loadUserSpace, resolveTabKey } from '@/app/components/UserSpace/userSpaceData';
 import { meServer } from '@/app/lib/api/auth';
-import { getAllCollections } from '@/app/lib/api/collections';
-import { listFollowedCollectionIdsServer, listSavedImagesServer } from '@/app/lib/api/personal';
-import { getUserPage } from '@/app/lib/api/user';
-import { type CollectionModel } from '@/app/types/Collection';
-import { type AnyContentModel, type ContentCollectionModel } from '@/app/types/Content';
-import { isContentCollection, isContentImage, isGifContent } from '@/app/utils/contentTypeGuards';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
 import styles from './page.module.scss';
 
 export const dynamic = 'force-dynamic';
-
-const TAB_KEYS = ['collections', 'images', 'saved', 'following'] as const;
-
-type TabKey = (typeof TAB_KEYS)[number];
-
-const DEFAULT_TAB: TabKey = 'collections';
-
-/** Narrow an untrusted `?tab=` value to a known key, falling back to the default section. */
-function resolveTabKey(raw: string | string[] | undefined): TabKey {
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  return TAB_KEYS.includes(value as TabKey) ? (value as TabKey) : DEFAULT_TAB;
-}
-
-/** Split the synthetic user collection's content into COLLECTION blocks and IMAGE/GIF blocks. */
-function splitUserContent(content: AnyContentModel[] | undefined): {
-  collectionBlocks: AnyContentModel[];
-  imageBlocks: AnyContentModel[];
-} {
-  const collectionBlocks: AnyContentModel[] = [];
-  const imageBlocks: AnyContentModel[] = [];
-  for (const block of content ?? []) {
-    if (isContentCollection(block)) {
-      collectionBlocks.push(block);
-    } else if (isContentImage(block) || isGifContent(block)) {
-      imageBlocks.push(block);
-    }
-  }
-  return { collectionBlocks, imageBlocks };
-}
-
-/**
- * Wrap followed collections as COLLECTION content blocks so the Following tab flows through the
- * same pipeline as every other collection grid: `processContentBlocks` converts these to parallax
- * cards via `convertCollectionContentToParallax`, which carries `referencedCollectionId` through as
- * the card's `collectionId` — the id the follow toggle persists against.
- */
-function toCollectionBlocks(collections: CollectionModel[]): ContentCollectionModel[] {
-  return collections.map((collection, index) => ({
-    contentType: 'COLLECTION',
-    id: collection.id,
-    referencedCollectionId: collection.id,
-    slug: collection.slug,
-    title: collection.title,
-    description: collection.description ?? null,
-    coverImage: collection.coverImage ?? null,
-    isClient: collection.isClient,
-    isBlog: collection.isBlog,
-    collectionDate: collection.collectionDate,
-    orderIndex: index,
-    visible: true,
-  }));
-}
 
 interface UserPageProps {
   searchParams: Promise<{ tab?: string | string[] }>;
@@ -82,102 +24,29 @@ interface UserPageProps {
  * card (email + passkey enrollment) below. Anonymous visitors get a 404; sign-in lives at `/login`
  * (which lands here on success) and onboarding at the invite-link flow.
  *
- * Each section renders through `CollectionPageClient` — the same component every collection page
- * uses — by handing it the user's synthetic collection with the selected section's blocks as its
- * content. The collection header, filter toolbar, density control, save hearts and grid therefore
- * come from the shared stack rather than a `/user`-only variant of it.
- *
- * The section switcher is not a component of its own: the four sections are passed to that same
- * stack as `sections`, and render as navigating chips at the head of the shared filter bar. They
- * stay `?tab=` links rather than joining `FilterState` because each section's blocks come from a
- * different server read, and because the choice should stay shareable and back-button-walkable.
- * Their presence is also what makes the bar render here at all — `/user` has no facet dimensions
- * of its own — which is how the page picks up the photo-size control and the rest of the bar chrome.
+ * The sections themselves live in {@link UserSpace}, shared with `/admin/users/[id]` so an admin
+ * sees a user's space exactly as that user sees it. Everything specific to viewing one's OWN
+ * space stays here: the send-message button, the account card, and the admin card.
  *
  * The whole sections region is wrapped in `MeProvider` because `SendMessageButton` is a sibling of
- * `CollectionPageClient`, not a descendant: the provider the collection stack mounts internally does
- * not reach it, so without this wrapper `useMe()` returns null there and the send-message form opens
- * with a blank, editable email instead of the signed-in address. `CollectionPageClient` still mounts
- * its own provider from the same `me={principal}`, so the nested provider carries an identical value.
- *
- * No section passes a `chunkSize`, so each starts at `LAYOUT.defaultChunkSize` — the density an
- * ordinary collection page opens at, and the value the bar's Medium photo-size tier selects. The
- * bespoke per-section densities this page used to carry are gone; the photo-size control in the
- * shared bar is how a section gets re-tuned now.
- *
- * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
- * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
- * what keeps the client-gallery affordances inside `CollectionPageClient` switched off here —
- * `canDownloadCollection` short-circuits on the missing id and `selectsEnabled` on the missing
- * `isClient`. Do not synthesize an id onto this collection to satisfy the `CollectionModel` type;
- * doing so would arm the download and Selects UI on a page that has no gallery to grant.
+ * the collection stack, not a descendant: the provider that stack mounts internally does not reach
+ * it, so without this wrapper `useMe()` returns null there and the send-message form opens with a
+ * blank, editable email instead of the signed-in address. `CollectionPageClient` still mounts its
+ * own provider from the same principal, so the nested provider carries an identical value.
  */
 export default async function UserPage({ searchParams }: UserPageProps) {
   const principal = await meServer();
   if (!principal) notFound();
 
-  const [{ tab }, collection, savedImages, followedCollectionIds, allCollections, ssrViewport] =
-    await Promise.all([
-      searchParams,
-      getUserPage(),
-      listSavedImagesServer(),
-      listFollowedCollectionIdsServer(),
-      getAllCollections(0, 500),
-      resolveSsrViewport(),
-    ]);
-  if (!collection) notFound();
-
-  // `/user/saves/images` already returns the full saved set, so derive the ids from it rather than
-  // issuing a second `/user/saves` ids-only read (single-fetch rule).
-  const savedImageIds = savedImages.map(i => i.id);
-
-  const { collectionBlocks, imageBlocks } = splitUserContent(collection.content);
-
-  const followedSet = new Set(followedCollectionIds);
-  const followedBlocks = toCollectionBlocks(allCollections.filter(c => followedSet.has(c.id)));
-
-  const sections: Record<
-    TabKey,
-    { label: string; content: AnyContentModel[]; emptyLabel: string }
-  > = {
-    collections: {
-      label: 'Collections',
-      content: collectionBlocks,
-      emptyLabel: 'No collections yet.',
-    },
-    images: {
-      label: 'Images',
-      content: imageBlocks,
-      emptyLabel: 'You are not tagged in any images yet.',
-    },
-    saved: {
-      label: 'Saved',
-      content: savedImages,
-      emptyLabel: 'You have not saved any images yet.',
-    },
-    following: {
-      label: 'Following',
-      content: followedBlocks,
-      emptyLabel: 'You are not following any collections yet.',
-    },
-  };
-
-  const activeKey = resolveTabKey(tab);
-  const active = sections[activeKey];
-
-  const toolbarSections: ToolbarSection[] = TAB_KEYS.map(key => ({
-    key,
-    label: sections[key].label,
-    count: sections[key].content.length,
-    href: `/user?tab=${key}`,
-  }));
-
-  // Same collection (so the header row, slug and display mode are unchanged section to section),
-  // swapping only which blocks the grid renders.
-  const sectionCollection: CollectionModel = { ...collection, content: active.content };
+  const [{ tab }, data, ssrViewport] = await Promise.all([
+    searchParams,
+    loadUserSpace('self'),
+    resolveSsrViewport(),
+  ]);
+  if (!data) notFound();
 
   return (
-    <PageShell pageType="default" collectionSlug={collection.slug}>
+    <PageShell pageType="default" collectionSlug={data.collection.slug}>
       <h1 className={styles.srOnly}>Your Space</h1>
 
       <MeProvider me={principal}>
@@ -186,23 +55,17 @@ export default async function UserPage({ searchParams }: UserPageProps) {
             <SendMessageButton />
           </div>
 
-          <FollowsProvider initialFollowedIds={followedCollectionIds}>
-            <CollectionPageClient
-              key={activeKey}
-              collection={sectionCollection}
-              serverContentWidth={ssrViewport?.contentWidth}
-              serverViewportHeight={ssrViewport?.viewportHeight}
-              serverIsMobile={ssrViewport?.isMobile}
-              me={principal}
-              initialSavedImageIds={savedImageIds}
-              sections={toolbarSections}
-              activeSectionKey={activeKey}
-            />
-          </FollowsProvider>
-
-          {active.content.length === 0 && <p className={styles.empty}>{active.emptyLabel}</p>}
+          <UserSpace
+            data={data}
+            activeKey={resolveTabKey(tab)}
+            basePath="/user"
+            me={principal}
+            ssrViewport={ssrViewport}
+          />
 
           <AccountCard email={principal.email} />
+
+          {principal.isAdmin && <AdminCard />}
         </div>
       </MeProvider>
     </PageShell>

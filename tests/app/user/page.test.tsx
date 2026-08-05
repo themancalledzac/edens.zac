@@ -46,6 +46,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { AdminCard } from '@/app/components/Personal/AdminCard';
+import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
@@ -65,7 +67,14 @@ const imageBlock = (id: number) => ({
 });
 const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
 
-/** Walk the rendered element tree and return the first element of the given type's props. */
+/**
+ * Walk the rendered element tree and return the first element of the given type's props.
+ *
+ * `UserSpace` is invoked rather than descended, because the sections live inside it and it renders
+ * the collection stack itself — it has no `children` to walk. It is a plain synchronous server
+ * component with no hooks, so calling it here is safe, and it keeps these assertions end-to-end:
+ * they still check the props the shared stack actually receives, not just what the page forwards.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findProps(node: any, type: unknown): any {
   if (!node || typeof node !== 'object') return null;
@@ -77,6 +86,7 @@ function findProps(node: any, type: unknown): any {
     return null;
   }
   if (node.type === type) return node.props;
+  if (node.type === UserSpace) return findProps(node.type(node.props), type);
   return node.props?.children ? findProps(node.props.children, type) : null;
 }
 
@@ -296,5 +306,33 @@ describe('UserPage', () => {
     const grid = gridProps(await renderTab('following'));
     expect(grid.collection.content).toEqual([]);
     expect(grid.collection.description).toBe('Photos I have been tagged in.');
+  });
+});
+
+/**
+ * This card is the site's only navigation into /admin: the hub used to be reachable because
+ * localhost redirected `/` to it, and MenuDropdown links to /admin/roles but never to the hub.
+ * It must gate on the real `isAdmin` principal — never on an environment check — because it is
+ * meant to render in production too.
+ */
+describe('UserPage — Admin card', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    seedApis();
+  });
+
+  it('is absent for an ordinary signed-in user', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    expect(findProps(await renderTab(), AdminCard)).toBeNull();
+  });
+
+  it('renders for an admin principal', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    expect(findProps(await renderTab(), AdminCard)).not.toBeNull();
+  });
+
+  it('links to the admin hub, which nothing else in the nav does', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    expect(renderToStaticMarkup(await renderTab())).toContain('href="/admin"');
   });
 });
