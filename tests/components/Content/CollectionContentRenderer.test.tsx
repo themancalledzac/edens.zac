@@ -422,6 +422,76 @@ describe('CollectionContentRenderer — cover-pick entry point for a coverless c
 });
 
 /**
+ * The photo tile that opens the fullscreen viewer cannot be a real <button> — it wraps a
+ * next/image and carries the overlay chrome — and unlike the slug-navigating variant it has no
+ * href to fall back on. It was a bare <div onClick>, so the entire photo grid (every collection
+ * page, /collections, /user, every taxonomy page) was mouse-only.
+ */
+describe('CollectionContentRenderer — the image tile is keyboard operable', () => {
+  const imageProps = {
+    ...baseProps,
+    contentType: 'IMAGE' as const,
+    imageUrl: 'https://cdn.example/photo.jpg',
+    alt: 'A photo',
+  };
+
+  it('exposes the tile as a button and opens the viewer on click', () => {
+    const onFullScreenImageClick = jest.fn();
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        enableFullScreenView
+        onFullScreenImageClick={onFullScreenImageClick}
+      />
+    );
+
+    const tile = screen.getByRole('button', { name: 'A photo' });
+    fireEvent.click(tile);
+    expect(onFullScreenImageClick).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['Enter', '{Enter}'],
+    ['Space', ' '],
+  ])('opens the viewer on %s', (key, _label) => {
+    const onFullScreenImageClick = jest.fn();
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        enableFullScreenView
+        onFullScreenImageClick={onFullScreenImageClick}
+      />
+    );
+
+    const tile = screen.getByRole('button', { name: 'A photo' });
+    expect(tile).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(tile, { key: key === 'Space' ? ' ' : key });
+    expect(onFullScreenImageClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores keys that are not Enter or Space', () => {
+    const onFullScreenImageClick = jest.fn();
+    render(
+      <CollectionContentRenderer
+        {...imageProps}
+        enableFullScreenView
+        onFullScreenImageClick={onFullScreenImageClick}
+      />
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'A photo' }), { key: 'a' });
+    expect(onFullScreenImageClick).not.toHaveBeenCalled();
+  });
+
+  // A tile with nothing to activate must stay inert rather than advertising a button role it
+  // cannot honour — otherwise every decorative tile becomes a dead tab stop.
+  it('stays inert when the tile has no action', () => {
+    render(<CollectionContentRenderer {...imageProps} />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+});
+
+/**
  * The rail is where page-level content that is *about* the collection goes, beside the date,
  * location, description and filter bar — `/user`'s Account and Admin cards, and the admin
  * view-as note. It arrives by context because the rail is rendered from a content MODEL several
