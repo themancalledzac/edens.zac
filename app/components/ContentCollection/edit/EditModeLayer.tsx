@@ -15,6 +15,7 @@ import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWit
 import MetadataModal from '@/app/components/Metadata/MetadataModal';
 import TextBlockCreateModal from '@/app/components/TextBlockCreateModal/TextBlockCreateModal';
 import { EditBar } from '@/app/components/ui/EditBar/EditBar';
+import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import { useViewport } from '@/app/hooks/useViewport';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type AnyContentModel } from '@/app/types/Content';
@@ -286,14 +287,14 @@ export default function EditModeLayer({
       {edit.error && (
         <div className={styles.errorBanner} role="alert">
           <span className={styles.errorBannerText}>{edit.error}</span>
-          <button
-            type="button"
+          <IconButton
+            size="sm"
             className={styles.errorBannerDismiss}
             aria-label="Dismiss error"
             onClick={edit.clearError}
           >
-            ×
-          </button>
+            <span aria-hidden="true">×</span>
+          </IconButton>
         </div>
       )}
 

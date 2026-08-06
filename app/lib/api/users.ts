@@ -17,6 +17,7 @@ import {
   getApiBaseUrl,
 } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
+import { type ContentImageModel } from '@/app/types/Content';
 import {
   type AcceptInviteRequest,
   type AdminUserSummary,
@@ -162,6 +163,28 @@ export async function getInvitePreview(token: string): Promise<InvitePreviewResu
  */
 export async function getUserPageById(userId: number): Promise<CollectionModel | null> {
   return fetchAdminGetApi<CollectionModel>(`/users/${userId}/page`);
+}
+
+/**
+ * Admin-side twins of `listSavedImagesServer` / `listFollowedCollectionIdsServer` in
+ * `app/lib/api/personal.ts`. Those read `/api/read/user/{saves,follows}`, which the backend binds
+ * to the session principal — self-only by construction — so an admin rendering ANOTHER user's
+ * space cannot use them. These take the target id instead.
+ *
+ * Both resolve to `[]` rather than throwing when the read fails, matching the personal.ts reads:
+ * a Saved or Following section that cannot load should render empty, not 500 the whole page.
+ */
+export async function listSavedImagesByUserServer(userId: number): Promise<ContentImageModel[]> {
+  const images = await fetchAdminGetApi<ContentImageModel[]>(`/users/${userId}/saves/images`).catch(
+    () => null
+  );
+  return images ?? [];
+}
+
+/** See {@link listSavedImagesByUserServer}. */
+export async function listFollowedCollectionIdsByUserServer(userId: number): Promise<number[]> {
+  const ids = await fetchAdminGetApi<number[]>(`/users/${userId}/follows`).catch(() => null);
+  return ids ?? [];
 }
 
 /**

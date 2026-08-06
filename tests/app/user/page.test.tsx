@@ -46,6 +46,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { AccountCard } from '@/app/components/Personal/AccountCard';
+import { AdminCard } from '@/app/components/Personal/AdminCard';
+import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
 import { getAllCollections } from '@/app/lib/api/collections';
@@ -65,7 +68,14 @@ const imageBlock = (id: number) => ({
 });
 const gifBlock = (id: number) => ({ id, contentType: 'GIF' });
 
-/** Walk the rendered element tree and return the first element of the given type's props. */
+/**
+ * Walk the rendered element tree and return the first element of the given type's props.
+ *
+ * `UserSpace` is invoked rather than descended, because the sections live inside it and it renders
+ * the collection stack itself — it has no `children` to walk. It is a plain synchronous server
+ * component with no hooks, so calling it here is safe, and it keeps these assertions end-to-end:
+ * they still check the props the shared stack actually receives, not just what the page forwards.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findProps(node: any, type: unknown): any {
   if (!node || typeof node !== 'object') return null;
@@ -77,6 +87,7 @@ function findProps(node: any, type: unknown): any {
     return null;
   }
   if (node.type === type) return node.props;
+  if (node.type === UserSpace) return findProps(node.type(node.props), type);
   return node.props?.children ? findProps(node.props.children, type) : null;
 }
 
@@ -296,5 +307,51 @@ describe('UserPage', () => {
     const grid = gridProps(await renderTab('following'));
     expect(grid.collection.content).toEqual([]);
     expect(grid.collection.description).toBe('Photos I have been tagged in.');
+  });
+});
+
+/**
+ * The Account and Admin cards ride in the collection header rail — the TEXT block leading the
+ * first row, beside the cover — not in a slab below the grid. That rail is where this app already
+ * puts what is *about* a collection (date, location, description, filter bar), so these assert on
+ * the `railExtras` node handed to UserSpace rather than on the page's own children.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const railExtras = (result: unknown): any => findProps(result, UserSpace)?.railExtras ?? null;
+
+describe('UserPage — header rail cards', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    seedApis();
+  });
+
+  it('puts the Account card in the rail, not below the grid', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    const result = await renderTab();
+
+    expect(findProps(railExtras(result), AccountCard)).not.toBeNull();
+    // Nothing account-shaped is left loose in the page body.
+    expect(findProps(result.props?.children, AccountCard)).toBeNull();
+  });
+
+  /**
+   * This card is the site's only navigation into /admin: the hub used to be reachable because
+   * localhost redirected `/` to it, and MenuDropdown links to /admin/roles but never the hub.
+   * It must gate on the real `isAdmin` principal — never an environment check — because it is
+   * meant to render in production too.
+   */
+  it('omits the Admin card for an ordinary signed-in user', async () => {
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    expect(findProps(railExtras(await renderTab()), AdminCard)).toBeNull();
+  });
+
+  it('puts the Admin card in the rail for an admin principal', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    expect(findProps(railExtras(await renderTab()), AdminCard)).not.toBeNull();
+  });
+
+  it('links to the admin hub, which nothing else in the nav does', async () => {
+    (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
+    expect(renderToStaticMarkup(railExtras(await renderTab()))).toContain('href="/admin"');
   });
 });

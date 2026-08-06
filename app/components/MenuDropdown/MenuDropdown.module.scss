@@ -19,6 +19,18 @@
   flex-direction: column;
   overflow: hidden;
 
+  /* Focus lands here programmatically on open (the overlay is tabIndex=-1), so suppress the
+     UA ring; the keyboard-only ring is inset because an outward offset on a viewport-edge
+     fixed element is clipped off-screen. */
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: -2px;
+  }
+
   /* Desktop: Narrower width, anchored to the right edge of the page container
      (max-width: --page-max-width), not the viewport edge */
   @media (width >= 768px) {
@@ -30,6 +42,13 @@
     background-color: white;
     box-shadow: -8px 0 16px -8px rgb(0, 0, 0, 0.2);
   }
+}
+
+/* Carries the aria-controls target id for the About/Contact disclosures without becoming a box —
+   the panels stay direct flex children of .dropdownMenuOptionsWrapper, so shrink/scroll behaviour
+   is identical to rendering them unwrapped. */
+.disclosurePanel {
+  display: contents;
 }
 
 .dropdownCloseButtonWrapper {
@@ -113,9 +132,17 @@
   color: inherit;
   display: flex;
   align-items: center;
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
 }
 
-.dropdownMenuButton {
+/* Menu rows: `.dropdownMenuButton` for genuine actions, `.dropdownMenuLink` for the NavLink
+   destinations. Identical box so the two read as one list. */
+.dropdownMenuButton,
+.dropdownMenuLink {
   background: none;
   border: none;
   padding: 0;
@@ -126,6 +153,21 @@
   align-items: center;
   justify-content: flex-end;
   width: 100%;
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* NavLink underlines on hover; this menu signals hover with the grey colour shift on the label
+   instead. Element-qualified so it outranks `.navLink:hover` regardless of stylesheet order. */
+a.dropdownMenuLink {
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: none;
+  }
 }
 
 .socialIconButton {
@@ -135,8 +177,14 @@
   cursor: pointer;
   font: inherit;
   color: inherit;
+  text-decoration: none;
   display: flex;
   align-items: center;
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 .dropdownMenuOptions {
@@ -193,13 +241,4 @@
     color: var(--color-hover-grey);
     transform: scale(1.05);
   }
-}
-
-.socialButton {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
 }

@@ -72,12 +72,8 @@
   }
 }
 
-.sectionEmpty {
-  margin: 0;
-  color: var(--color-on-surface-muted);
-  font-size: var(--text-sm);
-}
-
+/* Failed-read message only — the genuinely-empty states render through the shared EmptyState.
+   Kept apart on purpose: an unreachable directory must not read as an empty one. */
 .empty {
   padding: var(--space-8) var(--page-padding-mobile);
   color: var(--color-on-surface-muted);

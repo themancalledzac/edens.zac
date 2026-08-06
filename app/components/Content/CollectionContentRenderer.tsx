@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react';
 import { useMe } from '@/app/components/auth/MeProvider';
 import ClientGalleryDownload from '@/app/components/ClientGalleryDownload/ClientGalleryDownload';
 import { useCollectionFilter } from '@/app/components/ContentCollection/CollectionFilterContext';
+import { useCollectionRailExtras } from '@/app/components/ContentCollection/CollectionRailContext';
 import { InlineEditableText } from '@/app/components/ContentCollection/edit/InlineEditableText';
 import { useInlineEdit } from '@/app/components/ContentCollection/edit/InlineEditContext';
 import { FollowButton } from '@/app/components/Personal/FollowButton';
@@ -35,7 +36,11 @@ import { slugify } from '@/app/utils/locationUtils';
 import { logger } from '@/app/utils/logger';
 import { manageHref } from '@/app/utils/manageUrl';
 
-import { getClickEligibility, toCollectionDimensions } from './collectionContentRendererUtils';
+import {
+  activatableProps,
+  getClickEligibility,
+  toCollectionDimensions,
+} from './collectionContentRendererUtils';
 import cbStyles from './ContentComponent.module.scss';
 import { ImageOverlays } from './ImageOverlays';
 import variantStyles from './ParallaxImageRenderer.module.scss';
@@ -171,6 +176,7 @@ export default function CollectionContentRenderer({
   }, [contentId, onImageLoadError]);
 
   const collectionFilter = useCollectionFilter();
+  const railExtras = useCollectionRailExtras();
   const inlineEdit = useInlineEdit();
   const me = useMe();
 
@@ -216,11 +222,13 @@ export default function CollectionContentRenderer({
   );
 
   if (contentType === 'TEXT') {
-    // The header rail carries more than text: the filter toolbar and the client-gallery download
-    // row mount into it. A collection with no metadata (no date, locations, description or
-    // siblings — that is `/user`) produces an item-less rail, so bailing on empty `textItems`
-    // alone would throw away the bar. Mirrors the layout-side gate, `forceHeaderRail`.
-    const railHasControls = collectionFilter !== null || (canDownload && Boolean(collectionSlug));
+    // The header rail carries more than text: the filter toolbar, the client-gallery download row
+    // and any page-level rail extras mount into it. A collection with no metadata (no date,
+    // locations, description or siblings — that is `/user`) produces an item-less rail, so bailing
+    // on empty `textItems` alone would throw away all three. Mirrors `forceHeaderRail` on the
+    // layout side.
+    const railHasControls =
+      collectionFilter !== null || Boolean(railExtras) || (canDownload && Boolean(collectionSlug));
     const items = textItems ?? [];
     if (items.length === 0 && !railHasControls) {
       return null;
@@ -391,6 +399,7 @@ export default function CollectionContentRenderer({
             {canDownload && collectionSlug && (
               <ClientGalleryDownload collectionSlug={collectionSlug} />
             )}
+            {railExtras}
           </div>
           {collectionFilter && (
             <div className={cbStyles.filterBarWrapper}>
@@ -449,7 +458,11 @@ export default function CollectionContentRenderer({
           cursor: hasClickHandler ? 'pointer' : 'default',
         }}
       >
-        <div className={cbStyles.imageWrapper} onClick={handleClick}>
+        <div
+          className={cbStyles.imageWrapper}
+          {...activatableProps(hasClickHandler, handleClick)}
+          aria-label={hasClickHandler ? (overlayText ?? alt) : undefined}
+        >
           <video
             autoPlay
             loop
@@ -514,19 +527,7 @@ export default function CollectionContentRenderer({
       <div
         key={contentId}
         className={placeholderClassName}
-        onClick={hasClickHandler ? handleClick : undefined}
-        role={hasClickHandler ? 'button' : undefined}
-        tabIndex={hasClickHandler ? 0 : undefined}
-        onKeyDown={
-          hasClickHandler
-            ? e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleClick();
-                }
-              }
-            : undefined
-        }
+        {...activatableProps(hasClickHandler, handleClick)}
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
@@ -564,19 +565,7 @@ export default function CollectionContentRenderer({
       <div
         key={contentId}
         className={placeholderClassName}
-        onClick={hasClickHandler ? handleClick : undefined}
-        role={hasClickHandler ? 'button' : undefined}
-        tabIndex={hasClickHandler ? 0 : undefined}
-        onKeyDown={
-          hasClickHandler
-            ? e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleClick();
-                }
-              }
-            : undefined
-        }
+        {...activatableProps(hasClickHandler, handleClick)}
         style={{
           width: placeholderWidth,
           height: placeholderHeight,
@@ -734,7 +723,11 @@ export default function CollectionContentRenderer({
       {...wrapperProps}
       {...(enableParallax ? { 'data-parallax-container': '' } : { 'data-image-wrapper': '' })}
     >
-      <div className={cbStyles.imageWrapper} onClick={handleClick}>
+      <div
+        className={cbStyles.imageWrapper}
+        {...activatableProps(hasClickHandler, handleClick)}
+        aria-label={hasClickHandler ? (overlayText ?? alt) : undefined}
+      >
         {imageWrapperContent}
       </div>
       {showCoverUpdateShortcut && (

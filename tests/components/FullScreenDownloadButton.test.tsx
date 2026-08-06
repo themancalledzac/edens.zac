@@ -30,7 +30,11 @@ describe('FullScreenDownloadButton', () => {
 
   it('renders a download icon with an accessible label in the idle state', () => {
     render(<FullScreenDownloadButton imageId={42} />);
-    expect(screen.getByRole('button', { name: /download image/i })).toBeInTheDocument();
+
+    // Now a shared IconButton — still a non-submitting button named by its aria-label.
+    const toggle = screen.getByRole('button', { name: /download image/i });
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('type', 'button');
   });
 
   it('expands to show Web and Full Size buttons when the icon is clicked', () => {

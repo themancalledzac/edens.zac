@@ -1,8 +1,9 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
+import { Card } from '@/app/components/ui/Card/Card';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { registerPasskey } from '@/app/lib/api/auth';
 import { ApiError } from '@/app/lib/api/core';
@@ -46,7 +47,6 @@ function mapEnrollError(err: unknown): string {
  * same authenticator twice is stopped by the ceremony's `excludeCredentials`.
  */
 export function AccountCard({ email }: AccountCardProps) {
-  const headingId = useId();
   const [phase, setPhase] = useState<EnrollPhase>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -63,31 +63,26 @@ export function AccountCard({ email }: AccountCardProps) {
   };
 
   return (
-    <section className={styles.card} aria-labelledby={headingId}>
-      <h2 id={headingId} className={styles.heading}>
-        Account
-      </h2>
-      <div className={styles.body}>
-        <p className={styles.email}>{email}</p>
-        <div className={styles.passkeyRow}>
-          <p className={styles.hint}>Sign in faster with Face / Touch ID on this device.</p>
-          <Button
-            type="button"
-            variant="outline"
-            loading={phase === 'pending'}
-            onClick={handleEnroll}
-            className={styles.enrollButton}
-          >
-            Add Face / Touch ID
-          </Button>
-        </div>
-        {phase === 'success' && (
-          <p className={styles.success} role="status">
-            Face / Touch ID added. You can use it the next time you sign in.
-          </p>
-        )}
-        {error && <FormError>{error}</FormError>}
+    <Card title="Account">
+      <p className={styles.email}>{email}</p>
+      <div className={styles.passkeyRow}>
+        <p className={styles.hint}>Sign in faster with Face / Touch ID on this device.</p>
+        <Button
+          type="button"
+          variant="outline"
+          loading={phase === 'pending'}
+          onClick={handleEnroll}
+          className={styles.enrollButton}
+        >
+          Add Face / Touch ID
+        </Button>
       </div>
-    </section>
+      {phase === 'success' && (
+        <p className={styles.success} role="status">
+          Face / Touch ID added. You can use it the next time you sign in.
+        </p>
+      )}
+      {error && <FormError>{error}</FormError>}
+    </Card>
   );
 }

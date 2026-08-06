@@ -3,12 +3,13 @@
  *
  * Tests for the Next.js middleware (proxy.ts).
  *
- * Covers the admin hub / dev-console rules (local-only `/homePage` passthrough;
- * localhost `/` → `/admin`), the `/cdn` + `/catalog` rules, and the (admin)
- * route-group session gate: in non-local environments every (admin) route
- * requires an `ezac_session` cookie or redirects to `/login`; local passes
- * through. Also pins the public perimeter: `/explore` stays anonymous (0203 F4
- * regression fix) and the never-routed `/collection/:slug/edit` gate stays dead.
+ * Covers the `/cdn` + `/catalog` rules and the (admin) route-group session gate:
+ * in non-local environments every (admin) route requires an `ezac_session` cookie
+ * or redirects to `/login`; local passes through. Also pins the public perimeter:
+ * `/` is never redirected and is not even matched (the localhost `/` → `/admin`
+ * redirect and its `/homePage` escape hatch are both gone), `/explore` stays
+ * anonymous (0203 F4 regression fix), and the never-routed `/collection/:slug/edit`
+ * gate stays dead.
  */
 
 import { NextRequest } from 'next/server';
@@ -37,12 +38,6 @@ afterEach(() => {
 describe('proxy middleware — dev-console rules (localhost)', () => {
   beforeEach(() => setLocal());
 
-  it('redirects / → /admin on localhost', () => {
-    const res = proxy(makeRequest('/'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('http://localhost:3000/admin');
-  });
-
   it('passes /admin through on localhost', () => {
     const res = proxy(makeRequest('/admin'));
     expect(res.headers.get('x-middleware-next')).toBe('1');
@@ -52,25 +47,32 @@ describe('proxy middleware — dev-console rules (localhost)', () => {
     const res = proxy(makeRequest('/admin/users/1'));
     expect(res.headers.get('x-middleware-next')).toBe('1');
   });
-
-  it('passes /homePage through on localhost', () => {
-    const res = proxy(makeRequest('/homePage'));
-    expect(res.headers.get('x-middleware-next')).toBe('1');
-  });
 });
 
-describe('proxy middleware — /homePage + / (non-local)', () => {
-  beforeEach(() => setProd());
-
-  it('redirects /homePage → / in prod (local-only escape hatch)', () => {
-    const res = proxy(makeRequest('/homePage'));
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('http://localhost:3000/');
-  });
-
-  it('does NOT redirect / on prod (passthrough)', () => {
+// Localhost used to land on /admin and keep /homePage as the escape hatch back to the
+// real landing page. Both are gone: / is the home page in every environment, and /admin
+// is reached from the Admin card on /user. These pin that it stays that way.
+describe('proxy middleware — / is never redirected', () => {
+  it('does NOT redirect / on localhost', () => {
+    setLocal();
     const res = proxy(makeRequest('/'));
     expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('does NOT redirect / in prod', () => {
+    setProd();
+    const res = proxy(makeRequest('/'));
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('does not match / at all, so the home page pays no middleware cost', () => {
+    expect(config.matcher).not.toContain('/');
+  });
+
+  it('no longer matches or special-cases the removed /homePage route', () => {
+    expect(config.matcher).not.toContain('/homePage');
+    setProd();
+    expect(proxy(makeRequest('/homePage')).headers.get('x-middleware-next')).toBe('1');
   });
 });
 

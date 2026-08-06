@@ -3,6 +3,7 @@ import { unstable_rethrow } from 'next/navigation';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { meServer } from '@/app/lib/api/auth';
 import { getScopedAllCollections } from '@/app/lib/api/collections';
 import { type CollectionModel } from '@/app/types/Collection';
@@ -134,7 +135,9 @@ export default async function CollectionsPage() {
         alwaysShowFilterBar
       />
 
-      {blocks.length === 0 && <p className={styles.empty}>No collections yet — check back soon.</p>}
+      {blocks.length === 0 && (
+        <EmptyState align="page">No collections yet — check back soon.</EmptyState>
+      )}
     </PageShell>
   );
 }

@@ -96,3 +96,25 @@
     padding: var(--space-6) 0 0;
   }
 }
+
+/* The target user's space, rendered by the same component /user uses. Only vertical rhythm
+   belongs here — the grids inside run full-bleed on mobile and manage their own side padding,
+   so this must NOT add padding-inline or the BoxTree row widths stop matching /user's. */
+.space {
+  margin-top: var(--space-5);
+
+  @media (width >= 768px) {
+    margin-top: var(--space-6);
+  }
+}
+
+/* Says whose space this is and why the save/follow controls are absent, so their absence reads
+   as deliberate rather than broken. Renders inside the collection header rail, which supplies
+   its own padding and inter-child gap — hence no margin or side padding here (see
+   AccountCard.module.scss for the same contract). */
+.spaceNote {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+}

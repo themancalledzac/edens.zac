@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { meServer } from '@/app/lib/api/auth';
 import { listAllSelectsServer } from '@/app/lib/api/selects';
 
@@ -34,7 +35,7 @@ export default async function UserSelectsPage() {
       <h1 className={styles.heading}>Your Selects</h1>
 
       {groups.length === 0 ? (
-        <p className={styles.empty}>You have not selected any images yet.</p>
+        <EmptyState>You have not selected any images yet.</EmptyState>
       ) : (
         groups.map(group => (
           <section key={group.collectionId} className={styles.group}>

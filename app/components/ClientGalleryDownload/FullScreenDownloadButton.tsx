@@ -2,6 +2,7 @@
 
 import { type MouseEvent, useCallback, useEffect, useRef, useState } from 'react';
 
+import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import { type DownloadFormat, downloadImageUrl } from '@/app/lib/api/downloads';
 
 import styles from './FullScreenDownloadButton.module.scss';
@@ -60,10 +61,7 @@ export default function FullScreenDownloadButton({ imageId }: FullScreenDownload
   );
 
   return (
-    <div
-      className={`${styles.container}${expanded ? ` ${styles.expanded}` : ''}`}
-      onClick={e => e.stopPropagation()}
-    >
+    <div className={styles.container} onClick={e => e.stopPropagation()}>
       {expanded ? (
         <div className={styles.pickerRow}>
           <button
@@ -86,10 +84,12 @@ export default function FullScreenDownloadButton({ imageId }: FullScreenDownload
           </button>
         </div>
       ) : (
-        <button
-          type="button"
+        <IconButton
+          shape="round"
+          variant="overlay"
+          size="md"
           onClick={handleToggle}
-          className={styles.iconButton}
+          className={styles.downloadToggle}
           aria-label="Download image"
         >
           <svg
@@ -106,7 +106,7 @@ export default function FullScreenDownloadButton({ imageId }: FullScreenDownload
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-        </button>
+        </IconButton>
       )}
     </div>
   );

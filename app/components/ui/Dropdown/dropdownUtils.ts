@@ -4,7 +4,7 @@
  * stays thin and each derivation is individually unit-testable.
  *
  * All item helpers are generic over `T extends MetadataItem`; callers thread their optional
- * `getDisplayName` / `getItemKey` getters in as arguments rather than closing over component props.
+ * `getDisplayName` getter in as an argument rather than closing over component props.
  */
 
 import { type AddNewField, type AddNewFieldFormData, type MetadataItem } from './Dropdown';
@@ -27,12 +27,8 @@ export function getItemDisplayName<T extends MetadataItem>(
   return item.displayName || item.name || '';
 }
 
-/** Resolve an item's list key. Uses the custom `getItemKey` getter if provided, otherwise id or name. */
-export function getKey<T extends MetadataItem>(
-  item: T,
-  getItemKey?: (item: T) => string | number
-): string | number {
-  if (getItemKey) return getItemKey(item);
+/** Resolve an item's list key: its id, else its name, else the empty string. */
+export function getKey<T extends MetadataItem>(item: T): string | number {
   return item.id ?? item.name ?? '';
 }
 

@@ -19,6 +19,7 @@ import CollectionPageClient from '@/app/components/ContentCollection/CollectionP
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import type { CollectionModel } from '@/app/types/Collection';
 import type { AnyContentModel } from '@/app/types/Content';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 
 // jsdom ships no IntersectionObserver, and the real grid's lazy-render hook builds one on mount.
 // Rendering the unmocked grid is the whole point of this suite, so stub the API rather than mock
@@ -162,5 +163,57 @@ describe('CollectionPageClient — header rail', () => {
     render(<CollectionPageClient collection={bareCollection([collectionCard(1)])} {...ssr} />);
     expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
     expect(screen.queryAllByRole('link', { name: /collections/i })).toHaveLength(0);
+  });
+});
+
+/**
+ * The landing page is a curated showcase, not a browsable index — the running order is the point,
+ * so it never gets the filter bar however many facets its payload happens to carry.
+ *
+ * These pair each assertion with the same collection under a different slug, because otherwise a
+ * regression that removed the bar everywhere would still pass.
+ */
+describe('CollectionPageClient — the landing page never gets the filter bar', () => {
+  const withSlug = (slug: string): CollectionModel =>
+    ({ ...bareCollection([collectionCard(1)]), slug }) as CollectionModel;
+
+  it('suppresses the bar on the home collection even when sections are supplied', () => {
+    render(
+      <CollectionPageClient
+        collection={withSlug(HOME_SLUG)}
+        {...ssr}
+        sections={SECTIONS}
+        activeSectionKey="collections"
+      />
+    );
+    expect(screen.queryByRole('link', { name: /saved/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
+  });
+
+  it('still renders the bar for the same payload under any other slug', () => {
+    render(
+      <CollectionPageClient
+        collection={withSlug('dolomites')}
+        {...ssr}
+        sections={SECTIONS}
+        activeSectionKey="collections"
+      />
+    );
+    expect(screen.getByRole('link', { name: /saved/i })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
+  });
+
+  // The rule is a property of the home collection, not a caller preference, so the one prop that
+  // exists to force the bar on (`/collections` uses it) must not be able to override it.
+  it('outranks alwaysShowFilterBar', () => {
+    render(<CollectionPageClient collection={withSlug(HOME_SLUG)} {...ssr} alwaysShowFilterBar />);
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
+  });
+
+  it('honours alwaysShowFilterBar under any other slug', () => {
+    render(
+      <CollectionPageClient collection={withSlug('dolomites')} {...ssr} alwaysShowFilterBar />
+    );
+    expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
   });
 });

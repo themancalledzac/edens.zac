@@ -1,0 +1,23 @@
+/* AdminCard — admin entry point on /user.
+
+   The section shell comes from <Card>, which is what keeps this and AccountCard identical
+   without either restating the other. Before that, these two modules were byte-for-byte the
+   same for their first 26 lines. */
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-on-surface-muted);
+}
+
+/* Wraps rather than scrolls: the rail is a narrow column (roughly a third of the row on
+   desktop, full width on mobile), so a single row of five links would overflow it. */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}

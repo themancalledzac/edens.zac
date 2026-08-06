@@ -6,11 +6,49 @@
  * generic content renderer.
  */
 
+import { type KeyboardEvent } from 'react';
+
 import { type CollectionInfoOptions } from '@/app/components/ContentCollection/CollectionFilterContext';
 import { type ToolbarDimension } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { type ContentType, type ViewableContent } from '@/app/types/Content';
 import { type ArrayFilterKey } from '@/app/types/GalleryFilter';
 import { dayLabels } from '@/app/utils/collectionDates';
+
+export interface ActivatableProps {
+  onClick?: () => void;
+  role?: 'button';
+  tabIndex?: 0;
+  onKeyDown?: (event: KeyboardEvent<HTMLElement>) => void;
+}
+
+/**
+ * Make a plain element behave like a button for pointer AND keyboard users.
+ *
+ * A content tile cannot be a real `<button>` — it wraps a `next/image` and carries the overlay
+ * chrome — and the slug-navigating variant is already a real `<a>` via `Tile`. What is left is
+ * the tile that opens the fullscreen viewer, which has no href to navigate to.
+ *
+ * Returns nothing when `active` is false, so a tile with no action stays inert rather than
+ * advertising a button role it cannot honour.
+ *
+ * This existed inline in three places in the renderer, and the one that mattered most — the real
+ * image tile, as opposed to its two placeholder fallbacks — was the one that had been missed, so
+ * the entire photo grid was mouse-only.
+ */
+export function activatableProps(active: boolean, onActivate: () => void): ActivatableProps {
+  if (!active) return {};
+  return {
+    onClick: onActivate,
+    role: 'button',
+    tabIndex: 0,
+    onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        onActivate();
+      }
+    },
+  };
+}
 
 /**
  * Maps the collection page's CollectionInfoOptions (per-dimension `filterable`

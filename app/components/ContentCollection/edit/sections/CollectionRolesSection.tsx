@@ -6,6 +6,7 @@ import { Button } from '@/app/components/ui/Button/Button';
 import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { ApiError } from '@/app/lib/api/core';
 import {
   createRole,
@@ -123,7 +124,7 @@ export function CollectionRolesSection({
 
       {error && <FormError>{error}</FormError>}
 
-      {grants.length === 0 && <p className={styles.empty}>No roles have access yet.</p>}
+      {grants.length === 0 && <EmptyState>No roles have access yet.</EmptyState>}
       {grants.map(g => {
         const inherited = g.inheritedFromCollectionId != null;
         return (

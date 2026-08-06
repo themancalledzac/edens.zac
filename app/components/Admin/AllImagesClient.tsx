@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import CollectionPage from '@/app/components/ContentCollection/CollectionPage';
+import { LoadingText } from '@/app/components/ui/StatusText/LoadingText';
 import { useInViewport } from '@/app/hooks/inViewport';
 import { useImageBrowser } from '@/app/hooks/useImageBrowser';
 import { type PagedImages } from '@/app/lib/api/content';
@@ -79,11 +80,7 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
 
       <div ref={sentinelRef} className={styles.sentinel} aria-hidden />
 
-      {isLoading && (
-        <div className={styles.status} role="status">
-          Loading more…
-        </div>
-      )}
+      {isLoading && <LoadingText align="page">Loading more…</LoadingText>}
 
       {error && (
         <div className={styles.status} role="alert">

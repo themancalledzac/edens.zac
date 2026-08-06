@@ -102,7 +102,7 @@ export function CreateCollectionForm() {
         </div>
 
         <Button type="submit" disabled={isCreating}>
-          {isCreating ? 'Creating...' : 'Create Collection'}
+          {isCreating ? 'Creating…' : 'Create Collection'}
         </Button>
       </form>
     </div>

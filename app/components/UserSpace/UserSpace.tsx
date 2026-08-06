@@ -1,0 +1,137 @@
+import { type ReactNode } from 'react';
+
+import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
+import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
+import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
+import {
+  TAB_KEYS,
+  type TabKey,
+  type UserSpaceData,
+} from '@/app/components/UserSpace/userSpaceData';
+import { type MeResponse } from '@/app/types/Auth';
+import { type CollectionModel } from '@/app/types/Collection';
+import { type SsrViewport } from '@/app/utils/ssrViewport';
+
+import styles from './UserSpace.module.scss';
+
+export interface UserSpaceProps {
+  data: UserSpaceData;
+  activeKey: TabKey;
+  /** Path the section chips link to; `?tab=` is appended. `/user` or `/admin/users/{id}`. */
+  basePath: string;
+  /**
+   * The principal to render the collection stack for, or `null` to render it as an observer.
+   *
+   * `/user` passes the signed-in principal. `/admin/users/[id]` passes `null` — see the component
+   * docblock; this is the single switch that disarms every personal-action control.
+   */
+  me: MeResponse | null;
+  ssrViewport: SsrViewport | null;
+  /**
+   * Page-level content for the header rail, beside the cover image. This is where the things that
+   * are *about* the space go — `/user`'s Account and Admin cards, the admin view's "whose space
+   * is this" note — rather than in a slab below the grid.
+   */
+  railExtras?: ReactNode;
+}
+
+/**
+ * The four-section "user space" view, shared by `/user` (own space) and `/admin/users/[id]`
+ * (an admin looking at someone else's).
+ *
+ * Each section renders through `CollectionPageClient` — the same component every collection page
+ * uses — by handing it the user's synthetic collection with the selected section's blocks as its
+ * content. The collection header, filter toolbar, density control, save hearts and grid therefore
+ * come from the shared stack rather than a bespoke variant of it.
+ *
+ * The section switcher is not a component of its own: the four sections are passed to that same
+ * stack as `sections`, and render as navigating chips at the head of the shared filter bar. They
+ * stay `?tab=` links rather than joining `FilterState` because each section's blocks come from a
+ * different server read, and because the choice should stay shareable and back-button-walkable.
+ * Their presence is also what makes the bar render here at all — a user space has no facet
+ * dimensions of its own — which is how it picks up the photo-size control and the rest of the bar.
+ *
+ * No section passes a `chunkSize`, so each starts at `LAYOUT.defaultChunkSize` — the density an
+ * ordinary collection page opens at, and the value the bar's Medium photo-size tier selects.
+ *
+ * ## Why admin mode passes `me={null}`
+ *
+ * The personal-action controls in the collection stack gate on the presence of a principal, NOT on
+ * whether that principal owns what is being rendered:
+ *
+ * - `SaveHeart` returns null unless `useMe()` is truthy, and `CollectionPageClient` mounts
+ *   `SavesProvider` on the same condition. Its writes go to `POST /api/read/user/saves`, which the
+ *   backend binds to the SESSION — so an admin clicking a heart on someone else's page would
+ *   silently bookmark that image onto their OWN space.
+ * - `FollowButton` has the same shape via `FollowsProvider`, writing the admin's follows.
+ * - `showCoverUpdateShortcut` in `CollectionContentRenderer` gates on `me?.isAdmin`, so it is
+ *   hidden for an ordinary owner but would appear here — routing to `manageHref('user')`, which
+ *   404s, because the synthetic collection has no backing row.
+ *
+ * Passing `me={null}` (and not mounting `FollowsProvider`) turns all three off at once, and is
+ * accurate rather than a workaround: in admin mode the viewer genuinely is an observer of this
+ * space, and none of the personal state on screen is theirs to mutate. Admin editing of a user
+ * happens through the surfaces around this view — `UserForm` for the profile, and drilling into a
+ * collection tile for its contents — not through in-place controls here.
+ *
+ * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
+ * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
+ * what keeps the client-gallery affordances inside `CollectionPageClient` switched off —
+ * `canDownloadCollection` short-circuits on the missing id and `selectsEnabled` on the missing
+ * `isClient`. Do not synthesize an id onto this collection to satisfy the `CollectionModel` type;
+ * doing so would arm the download and Selects UI on a page that has no gallery to grant.
+ */
+export function UserSpace({
+  data,
+  activeKey,
+  basePath,
+  me,
+  ssrViewport,
+  railExtras = null,
+}: UserSpaceProps) {
+  const { collection, sections, followedCollectionIds, savedImageIds } = data;
+  const active = sections[activeKey];
+
+  const toolbarSections: ToolbarSection[] = TAB_KEYS.map(key => ({
+    key,
+    label: sections[key].label,
+    count: sections[key].content.length,
+    href: `${basePath}?tab=${key}`,
+  }));
+
+  // Same collection (so the header row, slug and display mode are unchanged section to section),
+  // swapping only which blocks the grid renders.
+  const sectionCollection: CollectionModel = { ...collection, content: active.content };
+
+  const grid = (
+    <CollectionPageClient
+      key={activeKey}
+      collection={sectionCollection}
+      serverContentWidth={ssrViewport?.contentWidth}
+      serverViewportHeight={ssrViewport?.viewportHeight}
+      serverIsMobile={ssrViewport?.isMobile}
+      me={me}
+      initialSavedImageIds={savedImageIds}
+      sections={toolbarSections}
+      activeSectionKey={activeKey}
+      railExtras={railExtras}
+    />
+  );
+
+  return (
+    <>
+      {me ? (
+        <FollowsProvider initialFollowedIds={followedCollectionIds}>{grid}</FollowsProvider>
+      ) : (
+        grid
+      )}
+
+      {active.content.length === 0 && (
+        <EmptyState className={styles.empty}>{active.emptyLabel}</EmptyState>
+      )}
+    </>
+  );
+}
+
+export default UserSpace;

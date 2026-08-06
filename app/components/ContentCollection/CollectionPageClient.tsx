@@ -1,12 +1,13 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { MeProvider } from '@/app/components/auth/MeProvider';
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { SavesProvider } from '@/app/components/Personal/SavesContext';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import {
   DENSITY_TIERS,
   fromMobileDensity,
@@ -25,6 +26,7 @@ import {
   initialDateSortDirection,
 } from '@/app/types/GalleryFilter';
 import { clamp } from '@/app/utils/clamp';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import {
   applyCollectionFilters,
   applyVisibilityScope,
@@ -56,7 +58,7 @@ import {
   ClientGalleryDownloadProvider,
 } from './ClientGalleryDownloadContext';
 import { CollectionFilterProvider, type CollectionInfoOptions } from './CollectionFilterContext';
-import styles from './CollectionPageClient.module.scss';
+import { CollectionRailProvider } from './CollectionRailContext';
 import { SelectsProvider } from './SelectsContext';
 
 /**
@@ -96,6 +98,13 @@ interface CollectionPageClientProps {
   /** Key of the section currently rendered. Required alongside {@link sections}. */
   activeSectionKey?: string;
   /**
+   * Extra content for the header rail — the TEXT block leading the first row, beside the cover.
+   * Use it for what is *about* this page rather than *in* it, alongside the date, location,
+   * description and filter bar that already live there. `/user` puts its Account and Admin cards
+   * here. See {@link CollectionRailProvider}.
+   */
+  railExtras?: ReactNode;
+  /**
    * Render the shared filter bar even when this collection surfaces no facet dimensions.
    *
    * For index surfaces (`/collections`) the bar is part of the page's identity, not a bonus that
@@ -119,6 +128,7 @@ export default function CollectionPageClient({
   initialSavedImageIds = [],
   sections,
   activeSectionKey,
+  railExtras = null,
   alwaysShowFilterBar = false,
 }: CollectionPageClientProps) {
   // Public grid is the loading fallback until EditModeLayer mounts and takes over.
@@ -438,13 +448,21 @@ export default function CollectionPageClient({
 
   const pageSize = collection.contentPerPage ?? 30;
 
+  // The landing page never gets the filter bar. It is a curated showcase, not a browsable index:
+  // the running order is the point, so offering to re-sort or facet it works against the page.
+  // This is a property of the home collection itself rather than a caller's preference, so it is
+  // decided here instead of via a prop — and it outranks `alwaysShowFilterBar` for the same
+  // reason. BROWSE_EXCLUDED_SLUGS keys off HOME_SLUG for the same kind of reason.
+  const isHomeCollection = collection.slug === HOME_SLUG;
+
   // Sections alone justify the bar: a sectioned page needs its section chips even with no facet
   // dimensions of its own, and rendering the bar is also what gives it the shared chrome (the
   // density slider) that makes it match an ordinary collection page.
   const hasOptions =
-    alwaysShowFilterBar ||
-    (sections !== undefined && sections.length > 0) ||
-    hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort);
+    !isHomeCollection &&
+    (alwaysShowFilterBar ||
+      (sections !== undefined && sections.length > 0) ||
+      hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort));
 
   const grid = (
     <ContentBlockWithFullScreen
@@ -491,7 +509,7 @@ export default function CollectionPageClient({
     <>
       {grid}
       {hasActiveFilters && filteredImages.length === 0 && (
-        <p className={styles.emptyState}>No images match your filters.</p>
+        <EmptyState align="page">No images match your filters.</EmptyState>
       )}
     </>
   );
@@ -532,7 +550,7 @@ export default function CollectionPageClient({
   return (
     <MeProvider me={me}>
       <CollectionFilterProvider value={hasOptions ? filterContextValue : null}>
-        {withSaves}
+        <CollectionRailProvider value={railExtras}>{withSaves}</CollectionRailProvider>
       </CollectionFilterProvider>
     </MeProvider>
   );

@@ -9,11 +9,13 @@ import { Field } from '@/app/components/ui/Field/Field';
 import { FormError } from '@/app/components/ui/Field/FormError';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { ApiError } from '@/app/lib/api/core';
 import { addUserToRole, listRoles, listUserRoles, removeUserFromRole } from '@/app/lib/api/roles';
 import { createUser, updateUser } from '@/app/lib/api/users';
 import { type RoleSummary, type UserRoleRow } from '@/app/types/Role';
 import { type AdminUserSummary, type UserStatus } from '@/app/types/User';
+import { logger } from '@/app/utils/logger';
 
 import styles from './UserForm.module.scss';
 
@@ -29,6 +31,29 @@ export type UserFormProps =
  * the user's values and saves email (the login identity — the server rejects with 409 if another
  * user owns it), display name, status, and description via {@link updateUser}. Designed to live
  * inside `UserManagementPanel`'s body, not a modal.
+ *
+ * A failed roles read surfaces as `rolesError` rather than an empty list. Both role calls throw
+ * `ApiError` out of `fetchAdminGetApi` on any non-OK response, and substituting `[]` there would
+ * tell an admin auditing permissions that the user is "Not in any roles yet." while also hiding
+ * the add-role control (it gates on `availableRoles.length`) — a confident, wrong answer about
+ * who can see what. Unknown membership is reported as unknown.
+ *
+ * The roles block is labelled by a `role="group"` + `aria-labelledby` pair rather than a heading.
+ * This form renders in two places with different heading contexts: inside `UserManagementPanel`,
+ * where `AdminPanel` supplies an `<h2>` and an `<h3>` here nests correctly, and on
+ * `/admin/users/[id]`, where the nearest ancestor is the page `<h1>` and the same `<h3>` skips a
+ * level. No fixed number is right in both, and the component cannot know which one it is in — so
+ * it stops contributing to the document outline entirely. `role="group"` is the ARIA equivalent
+ * of `<fieldset>`/`<legend>` (kept as a div so the existing `.roles` styling is untouched): the
+ * block keeps an announced name for the controls it wraps without claiming an outline position
+ * it cannot get right. A `<section aria-labelledby>` was rejected — a named section becomes a
+ * `region` landmark, which promotes a form subsection to page-level navigation.
+ *
+ * The email input is `required` so the "Email *" asterisk is a real, announced constraint rather
+ * than a visual-only promise, but the form is `noValidate`: native validation bubbles would
+ * pre-empt {@link handleSubmit} and route this one field around the inline `FormError`
+ * (`role="alert"`) channel every other failure here uses — including the whitespace-only email
+ * that `required` does not catch. The constraint is advertised; this form still reports it.
  */
 export function UserForm(props: UserFormProps) {
   const isEdit = props.mode === 'edit';
@@ -43,17 +68,26 @@ export function UserForm(props: UserFormProps) {
   const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
   const [allRoles, setAllRoles] = useState<RoleSummary[]>([]);
   const [addRoleId, setAddRoleId] = useState<string>('');
+  const [rolesError, setRolesError] = useState<string | null>(null);
   const editUserId = editUser?.id ?? null;
 
   useEffect(() => {
-    if (editUserId !== null) {
-      listUserRoles(editUserId)
-        .then(setUserRoles)
-        .catch(() => setUserRoles([]));
-      listRoles()
-        .then(setAllRoles)
-        .catch(() => setAllRoles([]));
-    }
+    if (editUserId === null) return;
+    setRolesError(null);
+    void (async () => {
+      try {
+        const [membership, all] = await Promise.all([listUserRoles(editUserId), listRoles()]);
+        setUserRoles(membership);
+        setAllRoles(all);
+      } catch (error_) {
+        logger.error('UserForm', 'Failed to load role membership', error_, { userId: editUserId });
+        setUserRoles([]);
+        setAllRoles([]);
+        setRolesError(
+          'Could not load roles for this user — their membership is unknown. Reload to try again.'
+        );
+      }
+    })();
   }, [editUserId]);
 
   const availableRoles = allRoles.filter(r => !userRoles.some(ur => ur.roleId === r.id));
@@ -147,7 +181,7 @@ export function UserForm(props: UserFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className={styles.form}>
+    <form onSubmit={handleSubmit} className={styles.form} noValidate>
       <Field label="Email *" htmlFor="user-form-email">
         <Input
           id="user-form-email"
@@ -156,6 +190,7 @@ export function UserForm(props: UserFormProps) {
           onChange={e => setEmail(e.target.value)}
           placeholder="client@example.com"
           autoComplete="off"
+          required
           disabled={submitting}
         />
       </Field>
@@ -204,9 +239,12 @@ export function UserForm(props: UserFormProps) {
       )}
 
       {isEdit && (
-        <section className={styles.roles}>
-          <h3 className={styles.rolesHeading}>Roles</h3>
-          {userRoles.length === 0 && <p className={styles.rolesEmpty}>Not in any roles yet.</p>}
+        <div className={styles.roles} role="group" aria-labelledby="user-form-roles-heading">
+          <p id="user-form-roles-heading" className={styles.rolesHeading}>
+            Roles
+          </p>
+          {rolesError && <FormError>{rolesError}</FormError>}
+          {!rolesError && userRoles.length === 0 && <EmptyState>Not in any roles yet.</EmptyState>}
           {userRoles.map(r => (
             <div key={r.roleId} className={styles.roleRow}>
               <span>{r.name}</span>
@@ -217,8 +255,12 @@ export function UserForm(props: UserFormProps) {
           ))}
           {availableRoles.length > 0 && (
             <div className={styles.roleRow}>
-              <select value={addRoleId} onChange={e => setAddRoleId(e.target.value)}>
-                <option value="">Add to role...</option>
+              <select
+                aria-label="Add to role"
+                value={addRoleId}
+                onChange={e => setAddRoleId(e.target.value)}
+              >
+                <option value="">Add to role…</option>
                 {availableRoles.map(r => (
                   <option key={r.id} value={r.id}>
                     {r.name}
@@ -239,7 +281,7 @@ export function UserForm(props: UserFormProps) {
           <Link href="/admin/roles" className={styles.manageRolesLink}>
             Manage roles and grants
           </Link>
-        </section>
+        </div>
       )}
 
       {error && <FormError>{error}</FormError>}
@@ -251,10 +293,10 @@ export function UserForm(props: UserFormProps) {
         <Button type="submit" loading={submitting}>
           {props.mode === 'create'
             ? submitting
-              ? 'Creating...'
+              ? 'Creating…'
               : 'Create User'
             : submitting
-              ? 'Saving...'
+              ? 'Saving…'
               : 'Save'}
         </Button>
       </div>

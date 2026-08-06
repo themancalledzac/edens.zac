@@ -1,4 +1,5 @@
 import { buildAdminHubContent } from '@/app/(admin)/admin/adminHubContent';
+import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
 import { buildContentRows } from '@/app/components/Content/componentUtils';
 import { LAYOUT } from '@/app/constants';
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
@@ -12,8 +13,11 @@ import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
  */
 const MOBILE_VIEWPORT = { contentWidth: 430, viewportHeight: 932, isMobile: true };
 
+// Keyed off ADMIN_TILES rather than a hardcoded list: a fixture key that matches no
+// configured tile silently exercises the no-cover path instead of the cover path it
+// is named for, which is what the stale 'homePage' key here was doing.
 const tilesWithCovers = (width: number, height: number): AdminHomeTileApi[] =>
-  ['homePage', 'all-collections', 'all-images', 'all-client-galleries'].map((tileKey, i) => ({
+  ADMIN_TILES.map(({ tileKey }, i) => ({
     tileKey,
     coverImageUrl: `https://cdn.example/${tileKey}.webp`,
     coverImageWidth: width,

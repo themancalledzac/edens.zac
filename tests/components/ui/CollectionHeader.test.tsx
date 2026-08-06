@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 
 import { CollectionHeader } from '@/app/components/ui/CollectionHeader/CollectionHeader';
-import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 
 describe('CollectionHeader', () => {
   it('renders the title as an h1', () => {
@@ -27,12 +26,5 @@ describe('CollectionHeader', () => {
   it('renders a cover image with the title as alt when cover is given', () => {
     render(<CollectionHeader title="Iceland" cover={{ src: 'https://cdn/x.jpg' }} />);
     expect(screen.getByRole('img', { name: 'Iceland' })).toBeInTheDocument();
-  });
-
-  it('renders the breadcrumb slot before the heading', () => {
-    // NavLink rather than a bare <a>: it is what the real Breadcrumb passes into this slot, so the
-    // fixture matches production and avoids @next/next/no-html-link-for-pages firing on `href="/"`.
-    render(<CollectionHeader title="Iceland" breadcrumb={<NavLink href="/">Home</NavLink>} />);
-    expect(screen.getByRole('link', { name: 'Home' })).toBeInTheDocument();
   });
 });

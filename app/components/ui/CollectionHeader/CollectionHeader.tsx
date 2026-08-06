@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import { type ReactNode } from 'react';
 
 import styles from './CollectionHeader.module.scss';
 
@@ -15,19 +14,15 @@ export interface CollectionHeaderProps {
   count?: number;
   /** Optional cover thumbnail (location pages). Alt text is the title. */
   cover?: CollectionHeaderCover;
-  /** Optional breadcrumb / "up to parent" affordance, rendered above the title. */
-  breadcrumb?: ReactNode;
 }
 
 /**
  * Canonical page header: title (real <h1>) + optional count + optional cover
- * thumbnail + optional breadcrumb slot. Gives every page a real, orienting
- * heading.
+ * thumbnail. Gives every page a real, orienting heading.
  */
-export function CollectionHeader({ title, count, cover, breadcrumb }: CollectionHeaderProps) {
+export function CollectionHeader({ title, count, cover }: CollectionHeaderProps) {
   const info = (
     <div className={styles.info}>
-      {breadcrumb && <div className={styles.breadcrumb}>{breadcrumb}</div>}
       <h1 className={styles.title}>{title}</h1>
       {count !== undefined && (
         <span className={styles.count}>

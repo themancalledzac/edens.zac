@@ -2,12 +2,13 @@
 
 import { CircleX } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { type KeyboardEvent, useEffect, useId, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
 import { useFetchMe } from '@/app/hooks/useFetchMe';
@@ -24,14 +25,36 @@ interface MenuDropdownProps {
   onClose: () => void;
   pageType?: 'default' | 'manage' | 'collection' | 'collectionsCollection';
   collectionSlug?: string;
+  /** Applied to the overlay root so the trigger can point `aria-controls` at it. */
+  id?: string;
 }
+
+/** Elements the focus trap treats as tabbable (mirrors the shared `Modal`). */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Menu Dropdown
  *
- * Full-screen navigation menu with expandable sections for About and Contact.
- * Features body scroll locking, click-outside-to-close on desktop, and
- * social media integration. Manages nested form states and navigation.
+ * Full-screen navigation overlay with expandable sections for About and Contact.
+ *
+ * Destinations are real `NavLink` anchors, so cmd-click / middle-click / open-in-new-tab and
+ * Next's route prefetch all work; `onClick={onClose}` only dismisses the overlay. Only genuine
+ * actions (log in/out, clear cache, the two disclosures) stay `<button>`s.
+ *
+ * Modal semantics are hand-rolled rather than delegated to the shared `Modal`: `Modal` paints a
+ * scrim behind its dialog and sizes the dialog to the backdrop, which would darken the page behind
+ * this menu and break the desktop-only click-outside-to-close. So this owns Escape, body scroll
+ * lock, click-outside, focus trap, and focus restore directly.
+ *
+ * `aria-controls` on the disclosures is emitted only while the panel is mounted — a reference to a
+ * non-existent id is an invalid ARIA value, and the panels are conditionally rendered. The panel
+ * wrappers that carry those ids are `display: contents`, so About/ContactForm stay direct flex
+ * children of the scroll container and the overlay's layout is unchanged.
+ *
+ * "Update" links to `/[slug]?manage=1`, the same route the page is already on, so the soft
+ * navigation hands `CollectionPageClient` `editMode=true` without remounting it. No slug falls
+ * back to the create surface.
  *
  * Public items (including Explore — the /explore taxonomy directory is
  * deliberately ungated, see proxy.ts) render for logged-out visitors; admin
@@ -45,10 +68,15 @@ export function MenuDropdown({
   onClose,
   pageType = 'default',
   collectionSlug,
+  id,
 }: MenuDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+
+  const aboutPanelId = useId();
+  const contactPanelId = useId();
 
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -87,55 +115,6 @@ export function MenuDropdown({
     });
   };
 
-  const handleNavigation = {
-    home: () => {
-      router.push('/');
-      onClose();
-    },
-    user: () => {
-      router.push('/user');
-      onClose();
-    },
-    explore: () => {
-      router.push('/explore');
-      onClose();
-    },
-    collections: () => {
-      router.push('/collections');
-      onClose();
-    },
-    create: () => {
-      router.push('/collection/manage');
-      onClose();
-    },
-    update: () => {
-      // Soft-navigate to the same /[slug] route with ?manage=1 so CollectionPageClient is NOT
-      // remounted (no full refresh) — it just receives editMode=true. No-slug falls back to create.
-      router.push(collectionSlug ? manageHref(collectionSlug) : '/collection/manage');
-      onClose();
-    },
-    metadata: () => {
-      router.push('/metadata');
-      onClose();
-    },
-    comments: () => {
-      router.push('/comments');
-      onClose();
-    },
-    roles: () => {
-      router.push('/admin/roles');
-      onClose();
-    },
-    instagram: () => {
-      window.open('https://instagram.com/themancalledzac', '_blank', 'noopener,noreferrer');
-      onClose();
-    },
-    github: () => {
-      window.open('https://github.com/themancalledzac', '_blank', 'noopener,noreferrer');
-      onClose();
-    },
-  };
-
   const handleToggle = {
     about: () => {
       setShowAbout(prev => !prev);
@@ -149,6 +128,33 @@ export function MenuDropdown({
 
   const handleContactSubmit = () => {
     onClose();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Tab') return;
+
+    const node = dropdownRef.current;
+    if (!node) return;
+
+    const focusable = [...node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)];
+    if (focusable.length === 0) {
+      event.preventDefault();
+      return;
+    }
+
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    const active = document.activeElement;
+
+    if (event.shiftKey) {
+      if (active === first || active === node || !node.contains(active)) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last || !node.contains(active)) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   // Click outside to close on desktop only
@@ -171,20 +177,33 @@ export function MenuDropdown({
 
   // Escape key to close dropdown
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('keydown', handleEscape);
     }
 
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
   useBodyScrollLock(isOpen);
+
+  // Move focus into the overlay on open; hand it back to the trigger on close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const active = document.activeElement;
+    previouslyFocusedRef.current = active instanceof HTMLElement ? active : null;
+    dropdownRef.current?.focus();
+
+    return () => {
+      previouslyFocusedRef.current?.focus();
+    };
+  }, [isOpen]);
 
   // Reset forms when dropdown closes
   useEffect(() => {
@@ -205,7 +224,16 @@ export function MenuDropdown({
   if (!isOpen) return null;
 
   return (
-    <div className={styles.dropdown} ref={dropdownRef}>
+    <div
+      className={styles.dropdown}
+      ref={dropdownRef}
+      id={id}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Site navigation"
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
       <div className={styles.dropdownCloseButtonWrapper}>
         <button
           type="button"
@@ -220,26 +248,18 @@ export function MenuDropdown({
       <div className={styles.dropdownMenuOptionsWrapper}>
         {pathname !== '/' && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.home}
-            >
+            <NavLink href="/" className={styles.dropdownMenuLink} onClick={onClose}>
               <span className={styles.dropdownMenuOptions}>Home</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {!meLoading && me && (
           <>
             <div className={styles.dropdownMenuItem}>
-              <button
-                type="button"
-                className={styles.dropdownMenuButton}
-                onClick={handleNavigation.user}
-              >
+              <NavLink href="/user" className={styles.dropdownMenuLink} onClick={onClose}>
                 <span className={styles.dropdownMenuOptions}>Me</span>
-              </button>
+              </NavLink>
             </div>
             <div className={styles.dropdownMenuItem}>
               <button type="button" className={styles.dropdownMenuButton} onClick={handleLogout}>
@@ -258,102 +278,98 @@ export function MenuDropdown({
         )}
 
         <div className={styles.dropdownMenuItem}>
-          <button type="button" className={styles.dropdownMenuButton} onClick={handleToggle.about}>
+          <button
+            type="button"
+            className={styles.dropdownMenuButton}
+            onClick={handleToggle.about}
+            aria-expanded={showAbout}
+            aria-controls={showAbout ? aboutPanelId : undefined}
+          >
             <span className={styles.dropdownMenuOptions}>About</span>
           </button>
         </div>
 
-        {showAbout && <About />}
+        {showAbout && (
+          <div id={aboutPanelId} className={styles.disclosurePanel}>
+            <About />
+          </div>
+        )}
 
         <div className={styles.dropdownMenuItem}>
           <button
             type="button"
             className={styles.dropdownMenuButton}
             onClick={handleToggle.contact}
+            aria-expanded={showContactForm}
+            aria-controls={showContactForm ? contactPanelId : undefined}
           >
             <span className={styles.dropdownMenuOptions}>Contact</span>
           </button>
         </div>
 
-        {showContactForm && <ContactForm onSubmit={handleContactSubmit} />}
+        {showContactForm && (
+          <div id={contactPanelId} className={styles.disclosurePanel}>
+            <ContactForm onSubmit={handleContactSubmit} />
+          </div>
+        )}
 
         <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleNavigation.explore}
-          >
+          <NavLink href="/explore" className={styles.dropdownMenuLink} onClick={onClose}>
             <span className={styles.dropdownMenuOptions}>Explore</span>
-          </button>
+          </NavLink>
         </div>
 
         <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleNavigation.collections}
-          >
+          <NavLink href="/collections" className={styles.dropdownMenuLink} onClick={onClose}>
             <span className={styles.dropdownMenuOptions}>Collections</span>
-          </button>
+          </NavLink>
         </div>
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.create}
+            <NavLink
+              href="/collection/manage"
+              className={styles.dropdownMenuLink}
+              onClick={onClose}
             >
               <span className={styles.dropdownMenuOptions}>Create</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {isAdmin && pageType === 'collection' && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.update}
+            <NavLink
+              href={collectionSlug ? manageHref(collectionSlug) : '/collection/manage'}
+              className={styles.dropdownMenuLink}
+              onClick={onClose}
             >
               <span className={styles.dropdownMenuOptions}>Update</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.metadata}
-            >
+            <NavLink href="/metadata" className={styles.dropdownMenuLink} onClick={onClose}>
               <span className={styles.dropdownMenuOptions}>Metadata</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.comments}
-            >
+            <NavLink href="/comments" className={styles.dropdownMenuLink} onClick={onClose}>
               <span className={styles.dropdownMenuOptions}>Comments</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <button
-              type="button"
-              className={styles.dropdownMenuButton}
-              onClick={handleNavigation.roles}
-            >
+            <NavLink href="/admin/roles" className={styles.dropdownMenuLink} onClick={onClose}>
               <span className={styles.dropdownMenuOptions}>Roles</span>
-            </button>
+            </NavLink>
           </div>
         )}
 
@@ -382,22 +398,26 @@ export function MenuDropdown({
       <div
         className={`${styles.dropdownMenuItem} ${styles.dropdownMenuOptions} ${styles.socialIcons} ${styles.dropdownSocialIconsWrapper}`}
       >
-        <button
-          type="button"
+        <a
+          href="https://instagram.com/themancalledzac"
+          target="_blank"
+          rel="noopener noreferrer"
           className={styles.socialIconButton}
-          onClick={handleNavigation.instagram}
+          onClick={onClose}
           aria-label="Visit Instagram"
         >
           <InstagramIcon size={32} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
+        </a>
+        <a
+          href="https://github.com/themancalledzac"
+          target="_blank"
+          rel="noopener noreferrer"
           className={styles.socialIconButton}
-          onClick={handleNavigation.github}
+          onClick={onClose}
           aria-label="Visit GitHub"
         >
           <GitHubIcon size={32} className={styles.githubIcon} aria-hidden="true" />
-        </button>
+        </a>
       </div>
     </div>
   );

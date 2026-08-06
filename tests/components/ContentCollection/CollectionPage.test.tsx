@@ -218,3 +218,49 @@ describe('CollectionPage (collection array) — badge carry-through', () => {
     expect(collectionPublicLabel(block ?? {})).toBeNull();
   });
 });
+
+/**
+ * CollectionPage builds its own container/main/header instead of using PageShell, so a skip link
+ * that lived only in PageShell missed the home page and every collection page — most of the site.
+ * Both of this component's branches must carry it.
+ */
+describe('CollectionPage — skip link', () => {
+  const target = () => document.getElementById('main-content');
+
+  it('renders the skip link and its target on the single-collection branch', () => {
+    render(<CollectionPage collection={makeCollection({ id: 1, slug: 'dolomites' })} />);
+
+    const link = screen.getByRole('link', { name: /skip to main content/i });
+    expect(link).toHaveAttribute('href', '#main-content');
+    expect(target()).toBeInTheDocument();
+    expect(target()).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('renders them on the collection-array branch too', () => {
+    render(<CollectionPage collection={[makeCollection({ id: 1, slug: 'dolomites' })]} />);
+
+    expect(screen.getByRole('link', { name: /skip to main content/i })).toBeInTheDocument();
+    expect(target()).toHaveAttribute('tabindex', '-1');
+  });
+
+  /**
+   * The link must precede <main>, and the target must sit INSIDE it wrapping only the content.
+   * Sequential focus navigation resumes from the focused element's own subtree, so a target that
+   * wrapped <main> would put the header straight back in the tab order and skip nothing.
+   */
+  it('places the link before main and the target inside it', () => {
+    const { container } = render(
+      <CollectionPage collection={makeCollection({ id: 1, slug: 'dolomites' })} />
+    );
+
+    const link = screen.getByRole('link', { name: /skip to main content/i });
+    const main = container.querySelector('main');
+
+    expect(main).not.toBeNull();
+    expect(
+      link.compareDocumentPosition(main as Node) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(main).toContainElement(target());
+    expect(target()).not.toContainElement(main as HTMLElement);
+  });
+});
