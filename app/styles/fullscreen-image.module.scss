@@ -192,7 +192,15 @@
   opacity: 1;
 }
 
-.metadataToggle {
+// Applied to an <IconButton shape="square" variant="overlay">, which already supplies the flex
+// centring, the pointer cursor, the background transition and the coarse-pointer 44px hit area.
+// What stays here is everything the design system cannot express for this control: a 36px mobile
+// footprint (IconButton's scale is 32/40 only), square corners rather than --radius-1, and the
+// panel's own 60%→80% black scrim rather than the overlay token's 70%→90%.
+// The class is DOUBLED on purpose. These declarations have to outrank IconButton's `.iconButton`,
+// `.md`, `.square` and `.overlay` rules, which are all single-class and would otherwise be decided
+// by whichever module's stylesheet webpack happens to emit first.
+.metadataToggle.metadataToggle {
   position: absolute;
   bottom: 0;
   right: 0;
@@ -203,11 +211,6 @@
   color: white;
   font-size: 18px;
   border-radius: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color var(--duration-base);
   pointer-events: auto !important;
   z-index: 11;
   flex-shrink: 0;
@@ -224,7 +227,7 @@
     font-size: 20px;
   }
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: rgb(0, 0, 0, 0.8);
   }
 
@@ -414,6 +417,9 @@
   }
 }
 
+// Carried by the related-collection chips, which are real <Link> anchors — the global `a` reset
+// (color: inherit; text-decoration: none) keeps them looking like the sibling non-clickable chips,
+// so only the focus ring has to be added here now that they are keyboard-reachable.
 .metadataSectionItemClickable {
   cursor: pointer;
   transition:
@@ -432,6 +438,15 @@
   &:active {
     transform: scale(0.98);
     background-color: rgb(255, 255, 255, 0.25);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--scrim-light-50);
+    outline-offset: 2px;
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
   }
 }
 
@@ -516,25 +531,29 @@
   pointer-events: none;
 }
 
-.closeButton {
+// Applied to a <CloseButton variant="overlay">, i.e. an IconButton at shape=round size=md — which
+// is already the 40px circle, the white glyph colour, the background transition, the focus ring and
+// the coarse-pointer hit area this control used to hand-roll. What stays here is the placement plus
+// the viewer's own scrim: 50% black that BRIGHTENS on hover, where the overlay token is 70% black
+// that darkens. On a black letterbox the lighter disc is what reads as a control.
+// Doubled class, same reason as .metadataToggle: `position`, `background-color` and the hover state
+// all collide with single-class rules in IconButton.module.scss, and a plain `.closeButton` would
+// leave the winner up to stylesheet emission order.
+.closeButton.closeButton {
   position: absolute;
   top: 20px;
   right: 20px;
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: rgb(0, 0, 0, 0.5);
-  color: white;
-  font-size: 20px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color var(--duration-base);
+  background-color: rgb(0, 0, 0, 0.5);
   z-index: var(--z-modal-controls);
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: var(--scrim-light-30);
+  }
+
+  // The old glyph was the ✕ character at font-size 20px; lucide's <X> defaults to 24px, which reads
+  // noticeably heavier in the same 40px disc. Pin it back to the previous optical size.
+  svg {
+    width: 20px;
+    height: 20px;
   }
 }
