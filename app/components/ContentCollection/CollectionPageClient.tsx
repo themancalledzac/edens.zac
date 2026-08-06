@@ -26,6 +26,7 @@ import {
   initialDateSortDirection,
 } from '@/app/types/GalleryFilter';
 import { clamp } from '@/app/utils/clamp';
+import { HOME_SLUG } from '@/app/utils/collectionSlugs';
 import {
   applyCollectionFilters,
   applyVisibilityScope,
@@ -447,13 +448,21 @@ export default function CollectionPageClient({
 
   const pageSize = collection.contentPerPage ?? 30;
 
+  // The landing page never gets the filter bar. It is a curated showcase, not a browsable index:
+  // the running order is the point, so offering to re-sort or facet it works against the page.
+  // This is a property of the home collection itself rather than a caller's preference, so it is
+  // decided here instead of via a prop — and it outranks `alwaysShowFilterBar` for the same
+  // reason. BROWSE_EXCLUDED_SLUGS keys off HOME_SLUG for the same kind of reason.
+  const isHomeCollection = collection.slug === HOME_SLUG;
+
   // Sections alone justify the bar: a sectioned page needs its section chips even with no facet
   // dimensions of its own, and rendering the bar is also what gives it the shared chrome (the
   // density slider) that makes it match an ordinary collection page.
   const hasOptions =
-    alwaysShowFilterBar ||
-    (sections !== undefined && sections.length > 0) ||
-    hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort);
+    !isHomeCollection &&
+    (alwaysShowFilterBar ||
+      (sections !== undefined && sections.length > 0) ||
+      hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort));
 
   const grid = (
     <ContentBlockWithFullScreen
