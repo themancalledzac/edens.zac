@@ -2,7 +2,7 @@
 
 import { AlignJustify } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { MenuDropdown } from '@/app/components/MenuDropdown/MenuDropdown';
 
@@ -17,9 +17,15 @@ interface SiteHeaderProps {
  * Site Header
  *
  * Shared navigation header with site title and hamburger menu toggle.
+ *
+ * The toggle's accessible name tracks what the next activation will do, so it never announces
+ * "Open navigation menu" while the menu is already open. `aria-controls` is emitted only while
+ * the overlay is mounted — pointing it at an id that is not in the document would be an invalid
+ * ARIA reference.
  */
 export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuId = useId();
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const closeMenu = () => setIsMenuOpen(false);
@@ -38,8 +44,9 @@ export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderP
               type="button"
               className={styles.menuButton}
               onClick={toggleMenu}
-              aria-label="Open navigation menu"
+              aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
               aria-expanded={isMenuOpen}
+              aria-controls={isMenuOpen ? menuId : undefined}
             >
               <AlignJustify className={styles.menu} aria-hidden="true" />
             </button>
@@ -48,6 +55,7 @@ export function SiteHeader({ pageType = 'default', collectionSlug }: SiteHeaderP
       </header>
 
       <MenuDropdown
+        id={menuId}
         isOpen={isMenuOpen}
         onClose={closeMenu}
         pageType={pageType}
