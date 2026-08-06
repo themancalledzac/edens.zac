@@ -76,8 +76,6 @@ interface DropdownProps<T extends MetadataItem> {
   addNewFields?: AddNewField[];
   /** Custom display text for items */
   getDisplayName?: (item: T) => string;
-  /** Custom key for list items */
-  getItemKey?: (item: T) => string | number;
   emptyText?: string;
   /** Show "🔴 Will be added" for items not in database */
   showNewIndicator?: boolean;
@@ -107,7 +105,6 @@ export default function Dropdown<T extends MetadataItem>({
   onAddNew,
   addNewFields = [],
   getDisplayName,
-  getItemKey,
   emptyText = `No ${label.toLowerCase()} set`,
   showNewIndicator = false,
   placeholder,
@@ -129,7 +126,7 @@ export default function Dropdown<T extends MetadataItem>({
   const getItemDisplayName = (item: T | null | undefined): string =>
     resolveItemDisplayName(item, getDisplayName);
 
-  const getKey = (item: T): string | number => resolveKey(item, getItemKey);
+  const getKey = (item: T): string | number => resolveKey(item);
 
   const itemExistsInDatabase = (item: T | null | undefined): boolean =>
     checkItemExistsInDatabase(item);

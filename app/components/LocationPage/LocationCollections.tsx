@@ -17,7 +17,6 @@ function CollectionCard({ collection }: CollectionCardProps) {
   return (
     <CoverCard
       className={styles.cardWrapper}
-      variant="compact"
       href={`/${collection.slug}`}
       title={collection.title}
       imageUrl={collection.coverImage?.imageUrl}

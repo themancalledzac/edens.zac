@@ -37,6 +37,12 @@ export type UserFormProps =
  * tell an admin auditing permissions that the user is "Not in any roles yet." while also hiding
  * the add-role control (it gates on `availableRoles.length`) — a confident, wrong answer about
  * who can see what. Unknown membership is reported as unknown.
+ *
+ * The email input is `required` so the "Email *" asterisk is a real, announced constraint rather
+ * than a visual-only promise, but the form is `noValidate`: native validation bubbles would
+ * pre-empt {@link handleSubmit} and route this one field around the inline `FormError`
+ * (`role="alert"`) channel every other failure here uses — including the whitespace-only email
+ * that `required` does not catch. The constraint is advertised; this form still reports it.
  */
 export function UserForm(props: UserFormProps) {
   const isEdit = props.mode === 'edit';
@@ -164,7 +170,7 @@ export function UserForm(props: UserFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className={styles.form}>
+    <form onSubmit={handleSubmit} className={styles.form} noValidate>
       <Field label="Email *" htmlFor="user-form-email">
         <Input
           id="user-form-email"
@@ -173,6 +179,7 @@ export function UserForm(props: UserFormProps) {
           onChange={e => setEmail(e.target.value)}
           placeholder="client@example.com"
           autoComplete="off"
+          required
           disabled={submitting}
         />
       </Field>
@@ -235,7 +242,11 @@ export function UserForm(props: UserFormProps) {
           ))}
           {availableRoles.length > 0 && (
             <div className={styles.roleRow}>
-              <select value={addRoleId} onChange={e => setAddRoleId(e.target.value)}>
+              <select
+                aria-label="Add to role"
+                value={addRoleId}
+                onChange={e => setAddRoleId(e.target.value)}
+              >
                 <option value="">Add to role…</option>
                 {availableRoles.map(r => (
                   <option key={r.id} value={r.id}>
