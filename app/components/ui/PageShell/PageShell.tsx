@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
+import { SkipLink, SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 
 import styles from './PageShell.module.scss';
 
@@ -19,17 +20,10 @@ export interface PageShellProps {
  * the SiteHeader. The page-specific header (title/count/cover/breadcrumbs) is
  * composed via <CollectionHeader>, passed as the first child.
  *
- * First in the DOM is the skip link — visually hidden until it takes focus, so the first Tab on
- * any page offers "Skip to main content" and a keyboard user is not walked through the header's
- * home link and menu toggle on every route. It is rendered only alongside the header: with
- * `withHeader={false}` (status pages) there is no navigation to skip, and the link would just be
- * one more tab stop.
- *
- * The skip target is the wrapper around `children`, not the `<main>` element: SiteHeader renders
- * INSIDE `<main>` here, and sequential focus navigation resumes from the focused element's own
- * subtree — landing on `<main>` would put the header right back in the tab order and skip
- * nothing. `tabIndex={-1}` makes the wrapper programmatically focusable so the jump moves real
- * focus rather than only the scroll position.
+ * First in the DOM is {@link SkipLink}, rendered only alongside the header — with
+ * `withHeader={false}` (status pages) there is nothing to skip and it would be one more tab stop.
+ * `CollectionPage` builds its own shell rather than using this one, so it renders the same pair
+ * itself; see {@link SkipLink} for why the pieces live outside this file.
  */
 export function PageShell({
   children,
@@ -41,16 +35,10 @@ export function PageShell({
   const mainClasses = [styles.main, className].filter(Boolean).join(' ');
   return (
     <div className={styles.container}>
-      {withHeader && (
-        <a href="#main-content" className={styles.skipLink}>
-          Skip to main content
-        </a>
-      )}
+      {withHeader && <SkipLink />}
       <main className={mainClasses}>
         {withHeader && <SiteHeader pageType={pageType} collectionSlug={collectionSlug} />}
-        <div id="main-content" tabIndex={-1}>
-          {children}
-        </div>
+        <SkipTarget>{children}</SkipTarget>
       </main>
     </div>
   );
