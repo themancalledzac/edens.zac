@@ -38,6 +38,17 @@ export type UserFormProps =
  * the add-role control (it gates on `availableRoles.length`) — a confident, wrong answer about
  * who can see what. Unknown membership is reported as unknown.
  *
+ * The roles block is labelled by a `role="group"` + `aria-labelledby` pair rather than a heading.
+ * This form renders in two places with different heading contexts: inside `UserManagementPanel`,
+ * where `AdminPanel` supplies an `<h2>` and an `<h3>` here nests correctly, and on
+ * `/admin/users/[id]`, where the nearest ancestor is the page `<h1>` and the same `<h3>` skips a
+ * level. No fixed number is right in both, and the component cannot know which one it is in — so
+ * it stops contributing to the document outline entirely. `role="group"` is the ARIA equivalent
+ * of `<fieldset>`/`<legend>` (kept as a div so the existing `.roles` styling is untouched): the
+ * block keeps an announced name for the controls it wraps without claiming an outline position
+ * it cannot get right. A `<section aria-labelledby>` was rejected — a named section becomes a
+ * `region` landmark, which promotes a form subsection to page-level navigation.
+ *
  * The email input is `required` so the "Email *" asterisk is a real, announced constraint rather
  * than a visual-only promise, but the form is `noValidate`: native validation bubbles would
  * pre-empt {@link handleSubmit} and route this one field around the inline `FormError`
@@ -228,8 +239,10 @@ export function UserForm(props: UserFormProps) {
       )}
 
       {isEdit && (
-        <section className={styles.roles}>
-          <h3 className={styles.rolesHeading}>Roles</h3>
+        <div className={styles.roles} role="group" aria-labelledby="user-form-roles-heading">
+          <p id="user-form-roles-heading" className={styles.rolesHeading}>
+            Roles
+          </p>
           {rolesError && <FormError>{rolesError}</FormError>}
           {!rolesError && userRoles.length === 0 && <EmptyState>Not in any roles yet.</EmptyState>}
           {userRoles.map(r => (
@@ -268,7 +281,7 @@ export function UserForm(props: UserFormProps) {
           <Link href="/admin/roles" className={styles.manageRolesLink}>
             Manage roles and grants
           </Link>
-        </section>
+        </div>
       )}
 
       {error && <FormError>{error}</FormError>}

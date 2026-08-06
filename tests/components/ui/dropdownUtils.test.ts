@@ -48,14 +48,17 @@ describe('getItemDisplayName', () => {
 });
 
 describe('getKey', () => {
-  it('uses the custom getItemKey getter when provided', () => {
-    expect(getKey(tag(5, 'Ocean'), item => `key-${item.id}`)).toBe('key-5');
+  it('prefers id over name', () => {
+    expect(getKey(tag(5, 'Ocean'))).toBe(5);
   });
 
-  it('falls back to id, then name, then empty string', () => {
-    expect(getKey(tag(5, 'Ocean'))).toBe(5);
+  it('falls back to name, then empty string', () => {
     expect(getKey({ name: 'Ocean' })).toBe('Ocean');
     expect(getKey({})).toBe('');
+  });
+
+  it('keeps a zero id rather than falling through to name', () => {
+    expect(getKey({ id: 0, name: 'Ocean' })).toBe(0);
   });
 });
 

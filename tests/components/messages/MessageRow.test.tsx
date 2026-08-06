@@ -60,7 +60,7 @@ describe('MessageRow', () => {
     expect(onDelete).toHaveBeenCalledWith(message);
   });
 
-  it('shows "Deleting..." and disables the button while deleting', () => {
+  it('shows "Deleting…" and disables the button while deleting', () => {
     render(<MessageRow message={message} onDelete={jest.fn()} deleting styles={styles} />);
     expect(screen.getByRole('button', { name: /deleting/i })).toBeDisabled();
   });

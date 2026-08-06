@@ -10,6 +10,7 @@ import { Field } from '@/app/components/ui/Field/Field';
 import { Input } from '@/app/components/ui/Field/Input';
 import { Select } from '@/app/components/ui/Field/Select';
 import { Textarea } from '@/app/components/ui/Field/Textarea';
+import { IconButton } from '@/app/components/ui/IconButton/IconButton';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import { type ContentPersonModel, type LocationModel } from '@/app/types/Collection';
 import {
@@ -127,14 +128,14 @@ export function InfoTab({ edit }: InfoTabProps) {
               className={styles.dateInput}
             />
             {updateData.collectionDate && (
-              <button
-                type="button"
+              <IconButton
+                size="sm"
                 onClick={() => setUpdateField('collectionDate', null)}
                 className={styles.dateClearButton}
                 aria-label="Clear date"
               >
-                ✕
-              </button>
+                <span aria-hidden="true">✕</span>
+              </IconButton>
             )}
           </div>
         </Field>
@@ -151,14 +152,14 @@ export function InfoTab({ edit }: InfoTabProps) {
               className={styles.dateInput}
             />
             {updateData.collectionEndDate && (
-              <button
-                type="button"
+              <IconButton
+                size="sm"
                 onClick={() => setUpdateField('collectionEndDate', null)}
                 className={styles.dateClearButton}
                 aria-label="Clear end date"
               >
-                ✕
-              </button>
+                <span aria-hidden="true">✕</span>
+              </IconButton>
             )}
           </div>
         </Field>

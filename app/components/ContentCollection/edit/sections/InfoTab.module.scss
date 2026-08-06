@@ -38,7 +38,11 @@
   max-width: 100%;
   box-sizing: border-box;
   padding: var(--space-2);
-  padding-right: 2rem;
+
+  /* Reserve the clear button's 32px box plus its inset. Chrome lays the native calendar-picker
+     indicator out at the content-box edge, so this padding is what keeps the indicator clear of
+     the button — and of the 44px coarse-pointer hit overlay IconButton paints over it. */
+  padding-right: calc(var(--space-6) + var(--space-3));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
   background: var(--color-bg);
@@ -59,16 +63,18 @@
   }
 }
 
-.dateClearButton {
+/* Applied to an <IconButton size="sm">, which supplies the 32px round box, the ghost hover wash,
+   the focus ring this control previously lacked, and the coarse-pointer 44px hit area. Only the
+   placement inside the input's reserved right strip and the muted glyph colour remain.
+
+   Class doubled so the colour outranks IconButton's single-class `.iconButton` rule without
+   depending on which module's stylesheet webpack emits first. */
+.dateClearButton.dateClearButton {
   position: absolute;
-  right: var(--space-2);
-  background: none;
-  border: none;
-  cursor: pointer;
+  right: var(--space-1);
   color: var(--color-on-surface-muted);
   font-size: var(--text-sm);
   line-height: 1;
-  padding: 0;
 
   &:hover {
     color: var(--color-fg);

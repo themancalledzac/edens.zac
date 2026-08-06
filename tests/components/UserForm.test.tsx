@@ -158,6 +158,15 @@ describe('UserForm', () => {
       expect(onSuccess).toHaveBeenCalledTimes(1);
     });
 
+    it('labels the roles block as a named group, not a heading', async () => {
+      render(<UserForm mode="edit" user={user} onSuccess={onSuccess} onCancel={onCancel} />);
+
+      await waitFor(() => expect(screen.getByRole('group', { name: 'Roles' })).toBeInTheDocument());
+      // The form renders under an <h2> in UserManagementPanel and under an <h1> on
+      // /admin/users/[id]; no fixed heading level is correct in both, so it emits none.
+      expect(screen.queryByRole('heading', { name: /roles/i })).not.toBeInTheDocument();
+    });
+
     it('sends a changed email in the update payload and fires onSuccess', async () => {
       mockUpdateUser.mockResolvedValue({ ...user, email: 'kenneth@y.com' });
 

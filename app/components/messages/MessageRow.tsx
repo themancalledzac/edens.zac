@@ -46,7 +46,7 @@ export function MessageRow({ message, onDelete, deleting, styles, excerptWords }
           Reply in Gmail
         </a>
         <Button variant="danger" size="sm" onClick={() => onDelete(message)} disabled={deleting}>
-          {deleting ? 'Deleting...' : 'Delete'}
+          {deleting ? 'Deleting…' : 'Delete'}
         </Button>
       </div>
     </>

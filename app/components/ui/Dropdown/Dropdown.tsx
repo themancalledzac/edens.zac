@@ -9,7 +9,7 @@ import styles from './Dropdown.module.scss';
 import {
   findMissingRequiredFields,
   getItemDisplayName as resolveItemDisplayName,
-  getKey as resolveKey,
+  getKey,
   isAddNewFormValid as checkAddNewFormValid,
   isFieldVisible as checkFieldVisible,
   isItemSelected as checkItemSelected,
@@ -125,8 +125,6 @@ export default function Dropdown<T extends MetadataItem>({
 
   const getItemDisplayName = (item: T | null | undefined): string =>
     resolveItemDisplayName(item, getDisplayName);
-
-  const getKey = (item: T): string | number => resolveKey(item);
 
   const itemExistsInDatabase = (item: T | null | undefined): boolean =>
     checkItemExistsInDatabase(item);

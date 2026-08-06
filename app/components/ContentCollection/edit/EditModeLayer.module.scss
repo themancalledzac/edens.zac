@@ -79,23 +79,20 @@
   color: var(--color-danger-text);
 }
 
-.errorBannerDismiss {
+/* Applied to an <IconButton size="sm">, which supplies the 32px round box, the ghost hover wash,
+   the focus ring and the coarse-pointer 44px hit area. Only the banner-local glyph treatment
+   remains: the danger text colour (IconButton is `color: inherit`) and the resting fade.
+
+   Class doubled so the colour outranks IconButton's single-class `.iconButton` rule without
+   depending on which module's stylesheet webpack emits first. */
+.errorBannerDismiss.errorBannerDismiss {
   flex-shrink: 0;
-  padding: 0 var(--space-1);
-  background: none;
-  border: none;
   color: var(--color-danger-text);
   font-size: var(--text-md);
   line-height: 1;
-  cursor: pointer;
   opacity: 0.8;
 
   &:hover {
     opacity: 1;
-  }
-
-  &:focus-visible {
-    outline: var(--focus-ring);
-    outline-offset: 2px;
   }
 }
