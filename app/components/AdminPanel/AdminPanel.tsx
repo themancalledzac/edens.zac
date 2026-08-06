@@ -1,6 +1,8 @@
 'use client';
 
-import { type ReactNode, useId } from 'react';
+import { type ReactNode } from 'react';
+
+import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 
 import styles from './AdminPanel.module.scss';
 
@@ -23,12 +25,13 @@ interface AdminPanelProps {
 /**
  * Shared shell for admin hub panels: a header row, and a scrollable body beneath it.
  *
- * When collapsible, the title becomes a toggle button and the body unmounts — the header row,
- * including whatever `action` controls the panel supplies, stays visible and usable. Only the
- * title is the hit target, not the whole header: the header also holds real controls (the
- * tag-only-people checkbox, "+ New User"), and nesting those inside a toggle button would be both
- * invalid HTML and a trap where every click collapsed the panel out from under you. The title
- * stretches to fill the space its neighbours do not, so the tap target is most of the bar.
+ * When collapsible, the header becomes a {@link Disclosure} — the title turns into the toggle and
+ * the body unmounts, while the `action` controls stay outside the button and remain usable. This
+ * panel keeps only what is its own: the boxed chrome, and the `.isCollapsed` hook that lets the
+ * shell size to its header instead of filling the box the packer gave it.
+ *
+ * `collapsed` is inverted into the disclosure's `open` rather than renamed, because the panel's
+ * callers and the renderer that owns the state both speak in terms of collapsing.
  */
 export function AdminPanel({
   title,
@@ -38,40 +41,38 @@ export function AdminPanel({
   collapsed = false,
   onCollapsedChange,
 }: AdminPanelProps) {
-  const bodyId = useId();
-  const collapsible = onCollapsedChange !== undefined;
-  const isCollapsed = collapsible && collapsed;
+  const isCollapsed = onCollapsedChange !== undefined && collapsed;
 
   return (
     <section
       className={`${styles.panel} ${isCollapsed ? styles.isCollapsed : ''}`}
       aria-label={ariaLabel}
     >
-      <div className={styles.header}>
-        <h2 className={styles.title}>
-          {collapsible ? (
-            <button
-              type="button"
-              className={styles.toggle}
-              onClick={() => onCollapsedChange(!collapsed)}
-              aria-expanded={!isCollapsed}
-              aria-controls={bodyId}
-            >
-              <span className={styles.chevron} aria-hidden="true">
-                {isCollapsed ? '▸' : '▾'}
-              </span>
-              {title}
-            </button>
-          ) : (
-            title
-          )}
-        </h2>
-        {action}
-      </div>
-      {!isCollapsed && (
-        <div className={styles.body} id={bodyId}>
+      {onCollapsedChange ? (
+        <Disclosure
+          title={title}
+          open={!collapsed}
+          onOpenChange={open => onCollapsedChange(!open)}
+          action={action}
+          headingLevel={2}
+          classNames={{
+            header: styles.header,
+            heading: styles.title,
+            toggle: styles.toggle,
+            chevron: styles.chevron,
+            panel: styles.body,
+          }}
+        >
           {children}
-        </div>
+        </Disclosure>
+      ) : (
+        <>
+          <div className={styles.header}>
+            <h2 className={styles.title}>{title}</h2>
+            {action}
+          </div>
+          <div className={styles.body}>{children}</div>
+        </>
       )}
     </section>
   );

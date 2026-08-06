@@ -3,6 +3,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/app/components/ui/Button/Button';
+import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { type CollectionListModel } from '@/app/types/Collection';
 import { HOME_SLUG } from '@/app/utils/collectionSlugs';
@@ -430,17 +431,22 @@ export default function CollectionListSelector({
           const isExpanded = expandedBucket === b;
           return (
             <div key={b}>
-              <button
-                type="button"
-                className={`${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`}
-                onClick={() => setExpandedBucket(isExpanded ? null : b)}
-                aria-expanded={isExpanded}
+              <Disclosure
+                open={isExpanded}
+                onOpenChange={open => setExpandedBucket(open ? b : null)}
+                title={
+                  <>
+                    <span className={styles.typeHeaderLabel}>{COLLECTION_BUCKET_LABELS[b]}</span>
+                    <span className={styles.typeHeaderCount}>({rows.length})</span>
+                  </>
+                }
+                classNames={{
+                  toggle: `${styles.typeHeaderRow} ${isExpanded ? styles['typeHeaderRow--expanded'] : ''}`,
+                  chevron: styles.typeHeaderChevron,
+                }}
               >
-                <span className={styles.typeHeaderChevron}>{isExpanded ? '▾' : '▸'}</span>
-                <span className={styles.typeHeaderLabel}>{COLLECTION_BUCKET_LABELS[b]}</span>
-                <span className={styles.typeHeaderCount}>({rows.length})</span>
-              </button>
-              {isExpanded && rows.map(c => renderRow(c, true))}
+                {rows.map(c => renderRow(c, true))}
+              </Disclosure>
             </div>
           );
         })}

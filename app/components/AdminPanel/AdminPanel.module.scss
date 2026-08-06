@@ -42,18 +42,11 @@
   min-width: 0;
 }
 
+/* Layout and the button reset live in Disclosure; this is the panel's own skin on top of it. */
 .toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
   padding: 0;
   background: none;
   border: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
 
   &:hover .chevron {
     color: var(--color-on-surface);
@@ -67,8 +60,6 @@
 }
 
 .chevron {
-  flex: none;
-  width: 1rem;
   color: var(--color-on-surface-muted);
   transition: color var(--duration-base) var(--ease-standard);
 }
