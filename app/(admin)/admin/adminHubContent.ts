@@ -100,13 +100,16 @@ export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel
  * and a width-cost above half the row budget — so it claims its own full-width row and everything
  * else on the hub re-packs into the space it gave up. The layout engine is untouched.
  *
- * The absolute numbers matter far less than the ratio, but they are not arbitrary either: this
- * resolves to ~55px at a 1174px content width, ~34.6px at 768px, and ~18.2px on a phone — always
- * UNDER a panel header's natural height (~51-56px). A `max-height` cap below the content's own
- * height DOES bind, clipping the header down to a sliver: the opposite of "not binding". That is
- * exactly why `AdminPanelRenderer` must not apply the packer's height as a `max-height` while
- * collapsed, and instead lets the bar size to its own header content. A ratio that resolved TALLER
- * than the header would be safe to cap, but this one deliberately does not.
+ * The absolute numbers matter far less than the ratio, but they are not arbitrary either, and they
+ * scale linearly with content width (`getContentWidth`, `app/constants/index.ts`): ~59.5px at the
+ * 1274.4px max desktop content width, ~35.8px at a 768px content width, and ~18.2px on a 390px
+ * phone. That crosses a panel header's own natural height (~51-56px) partway down the range — ABOVE
+ * it at max desktop, BELOW it everywhere narrower. A `max-height` cap below the content's own height
+ * DOES bind, clipping the header down to a sliver: the opposite of "not binding". That is exactly
+ * why `AdminPanelRenderer` must not apply the packer's height as a `max-height` while collapsed, and
+ * instead lets the bar size to its own header content. It is also why the clipping this fixed was
+ * invisible on a maximized wide desktop and severe on a phone: the same cap sits on opposite sides
+ * of the header's height depending on viewport.
  */
 export const COLLAPSED_PANEL_SIZE = { width: 1200, height: 56 } as const;
 
