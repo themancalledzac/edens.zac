@@ -128,4 +128,14 @@ describe('AdminPanelRenderer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'collapse RolesPanel' }));
     expect(setCollapsed).toHaveBeenCalledWith('roles', true);
   });
+
+  it('drops the max-height cap while collapsed, since the packer footprint resolves below the header', () => {
+    const { container } = render(
+      <AdminPanelCollapseProvider value={collapseValue({ isCollapsed: () => true })}>
+        <AdminPanelRenderer content={baseContent} width={400} height={300} />
+      </AdminPanelCollapseProvider>
+    );
+    const box = container.firstChild as HTMLElement;
+    expect(box.style.maxHeight).toBe('');
+  });
 });

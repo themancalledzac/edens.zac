@@ -111,12 +111,11 @@ describe('AdminHubClient', () => {
 
     const usersBoxAfter = panelBox('UserManagementPanel');
     const usersWidthAfter = Number.parseFloat(usersBoxAfter.style.width);
-    const usersHeightAfter = Number.parseFloat(usersBoxAfter.style.maxHeight);
     const rolesWidthAfter = Number.parseFloat(panelBox('RolesPanel').style.width);
 
     expect(usersWidthAfter).toBeGreaterThan(1000);
     expect(Math.round(usersWidthAfter)).toBe(Math.round(DESKTOP_VIEWPORT.contentWidth));
-    expect(usersHeightAfter).toBeLessThan(60);
+    expect(usersBoxAfter.style.maxHeight).toBe('');
     expect(rolesWidthAfter).toBeGreaterThan(rolesWidthBefore);
 
     expect(screen.getByTestId('UserManagementPanel-collapsed')).toHaveTextContent('true');

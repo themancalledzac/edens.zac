@@ -45,6 +45,11 @@ const PANEL_COMPONENTS: Record<
  * `.box` must stay a flex column for that to work. A capped block box would clip its panel at the
  * cap instead of handing the overflow to the scrollable body, and the scroll would never appear.
  *
+ * That cap is dropped entirely while collapsed. `COLLAPSED_PANEL_SIZE` is a deliberately bar-shaped
+ * footprint that the packer resolves to a height BELOW the header's own natural height at every
+ * viewport, down to a sliver on a phone. Applying it as `max-height` would bind — a cap under the
+ * content's height clips it — so collapsed reports no `max-height` and the bar sizes to its header.
+ *
  * Collapsed state is READ here but OWNED upstream by `AdminHubClient`, because collapsing has to
  * change the panel's content model before layout runs: the packer sizes every row from those
  * models, so a flag held at this depth can shrink one panel's own box and nothing else. The row
@@ -70,7 +75,7 @@ export function AdminPanelRenderer({ content, width, height }: AdminPanelRendere
   return (
     <div
       className={`${styles.box} ${collapsed ? styles.collapsed : ''}`}
-      style={{ width, maxHeight: height }}
+      style={{ width, maxHeight: collapsed ? undefined : height }}
     >
       <Panel {...collapseProps} />
     </div>

@@ -9,7 +9,10 @@
  * (2.0), so 600×1200 would jump a panel's prominence from 5.0 to 7.0 and re-solve width allocation
  * for the whole hub. 600×1100 is extremeness 1.83 and sits safely under it.
  *
- * Panel rating is the lever for how much width the packer gives a panel relative to the nav tiles.
+ * Row composition, not rating, is the lever for a panel's width: the packer splits a row's budget
+ * among whatever shares it, so a panel's width moves only when the number or shape of its
+ * row-mates changes. Verified by measuring identical 298px panel widths at a 1274px content width
+ * across rating 1, 2, and 3 alike, with row composition held fixed.
  */
 
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
@@ -98,10 +101,12 @@ export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel
  * else on the hub re-packs into the space it gave up. The layout engine is untouched.
  *
  * The absolute numbers matter far less than the ratio, but they are not arbitrary either: this
- * resolves to ~55px at a 1174px content width and 18px on a phone, i.e. always UNDER a panel
- * header's natural height. `AdminPanelRenderer` applies the packer's height as a `max-height`, so
- * a cap below the header is simply not binding and the bar sizes to its own content. A ratio that
- * resolved TALLER than the header would cap the header itself and clip it.
+ * resolves to ~55px at a 1174px content width, ~34.6px at 768px, and ~18.2px on a phone — always
+ * UNDER a panel header's natural height (~51-56px). A `max-height` cap below the content's own
+ * height DOES bind, clipping the header down to a sliver: the opposite of "not binding". That is
+ * exactly why `AdminPanelRenderer` must not apply the packer's height as a `max-height` while
+ * collapsed, and instead lets the bar size to its own header content. A ratio that resolved TALLER
+ * than the header would be safe to cap, but this one deliberately does not.
  */
 export const COLLAPSED_PANEL_SIZE = { width: 1200, height: 56 } as const;
 
