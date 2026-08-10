@@ -1,10 +1,10 @@
 // Admin = authenticated admin principal: the backend enforces hasRole('ADMIN') on
 // /api/admin/** (see docs 009). Gating centralized in app/(admin)/layout.tsx via requireAdmin().
-import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import { PageShell } from '@/app/components/ui/PageShell/PageShell';
 import { getAdminHomeTiles } from '@/app/lib/api/adminHome';
 import { resolveSsrViewport } from '@/app/utils/ssrViewport';
 
+import { AdminHubClient } from './AdminHubClient';
 import { buildAdminHubContent } from './adminHubContent';
 import styles from './page.module.scss';
 
@@ -19,6 +19,10 @@ export const dynamic = 'force-dynamic';
  * a user list (the header controls collapse and every row ellipsizes), and portrait-covered tiles
  * pair up as well. The pre-pipeline `AdminHubGrid` was explicitly `grid-template-columns: 1fr` on
  * mobile; this restores that. Desktop is unaffected — the option is read only on the mobile branch.
+ *
+ * Panels render through `AdminHubClient`, which owns their collapsed state: collapsing one swaps
+ * its content model for a bar-shaped footprint, so the packer re-runs and the panels and tiles
+ * still standing widen into the reclaimed space.
  */
 export default async function AdminHubPage() {
   const [tiles, ssrViewport] = await Promise.all([
@@ -34,10 +38,8 @@ export default async function AdminHubPage() {
         <h1 className={styles.pageTitle}>Admin</h1>
         <span className={styles.subtitle}>local dev console</span>
       </div>
-      <ContentBlockWithFullScreen
+      <AdminHubClient
         content={content}
-        priorityBlockIndex={0}
-        enableFullScreenView={false}
         mobileChunkSize={1}
         serverContentWidth={ssrViewport?.contentWidth}
         serverViewportHeight={ssrViewport?.viewportHeight}
