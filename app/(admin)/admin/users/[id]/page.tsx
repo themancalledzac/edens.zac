@@ -56,6 +56,12 @@ interface AdminUserDetailPageProps {
  * out of `fetchAdminGetApi` for every non-OK status, so catching all of them would render "user
  * not found" at an admin whose backend is merely unreachable — or whose session has lapsed to a
  * 401. Those rethrow and land on `app/(admin)/error.tsx`, which offers a retry.
+ *
+ * The "no galleries yet" empty state below obeys the same rule, and depends on `loadUserSpace`
+ * applying that same 404 narrowing to the page read: a `null` here means the backend answered and
+ * said this user has no assembled page. A failed read is NOT caught into `null` — it rejects and
+ * reaches the error boundary — because an empty state after an error asserts something false. See
+ * `EmptyState`'s docblock, and `loadAdminUserPage` for the narrowing itself.
  */
 export default async function AdminUserDetailPage({
   params,
@@ -113,9 +119,14 @@ export default async function AdminUserDetailPage({
     );
   }
 
-  const [{ tab }, data, ssrViewport] = await Promise.all([
-    searchParams,
-    loadUserSpace({ mode: 'admin', userId }),
+  // `tab` is resolved BEFORE the space load rather than alongside it: `loadUserSpace` hydrates only
+  // the active section, so it needs the key as an input. `searchParams` is already in memory by
+  // this point in the request, so awaiting it first costs nothing.
+  const { tab } = await searchParams;
+  const activeKey = resolveTabKey(tab);
+
+  const [data, ssrViewport] = await Promise.all([
+    loadUserSpace({ mode: 'admin', userId }, activeKey),
     resolveSsrViewport(),
   ]);
 
@@ -138,7 +149,7 @@ export default async function AdminUserDetailPage({
         <div className={styles.space}>
           <UserSpace
             data={data}
-            activeKey={resolveTabKey(tab)}
+            activeKey={activeKey}
             basePath={`/admin/users/${userId}`}
             me={null}
             ssrViewport={ssrViewport}

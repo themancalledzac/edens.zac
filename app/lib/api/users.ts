@@ -18,6 +18,7 @@ import {
 } from '@/app/lib/api/core';
 import { type CollectionModel } from '@/app/types/Collection';
 import { type ContentImageModel } from '@/app/types/Content';
+import { type FailSoftRead } from '@/app/types/FailSoftRead';
 import {
   type AcceptInviteRequest,
   type AdminUserSummary,
@@ -30,6 +31,7 @@ import {
   type UserUpdateRequest,
   type UserUpgradeRequest,
 } from '@/app/types/User';
+import { logger } from '@/app/utils/logger';
 
 /**
  * Create a new invited user via the admin endpoint.
@@ -114,8 +116,12 @@ export async function upgradeUser(userId: number, email: string): Promise<Create
 }
 
 /**
- * Fetch a single user summary by id for the admin detail view. Returns `null` on 404 (mapped from
- * an empty body) so callers can `notFound()` cleanly.
+ * Fetch a single user summary by id for the admin detail view.
+ *
+ * `null` means an EMPTY BODY, not a 404: `fetchAdminGetApi` throws `ApiError` for every non-OK
+ * response, 404 included. Callers that want a `notFound()` must narrow on `error.status === 404`
+ * and rethrow the rest — see `app/(admin)/admin/users/[id]/page.tsx`. Catching every status there
+ * would render "user not found" at an admin whose backend is merely unreachable.
  */
 export async function getAdminUser(id: number): Promise<AdminUserSummary | null> {
   return await fetchAdminGetApi<AdminUserSummary>(`/users/${id}`);
@@ -159,7 +165,11 @@ export async function getInvitePreview(token: string): Promise<InvitePreviewResu
 
 /**
  * Fetch the full page (CollectionModel) for a user as seen by the admin.
- * Returns null when the user has no galleries.
+ *
+ * Same contract as {@link getAdminUser}: `null` means an empty body, while every non-OK status —
+ * 404 included — throws `ApiError`. Callers must narrow on 404 rather than catching everything;
+ * see `loadUserSpace`, where a bare `.catch(() => null)` once turned a 500, a timeout and a lapsed
+ * admin session into the claim "this user has no galleries yet".
  */
 export async function getUserPageById(userId: number): Promise<CollectionModel | null> {
   return fetchAdminGetApi<CollectionModel>(`/users/${userId}/page`);
@@ -171,20 +181,50 @@ export async function getUserPageById(userId: number): Promise<CollectionModel |
  * to the session principal — self-only by construction — so an admin rendering ANOTHER user's
  * space cannot use them. These take the target id instead.
  *
- * Both resolve to `[]` rather than throwing when the read fails, matching the personal.ts reads:
- * a Saved or Following section that cannot load should render empty, not 500 the whole page.
+ * Both stay fail-soft rather than throwing: a Saved or Following section that cannot load must not
+ * 500 the whole detail page, and these two endpoints do not exist on the deployed backend yet, so
+ * the failure path is the CURRENT path. But the failure is reported, not swallowed — it is logged
+ * and returned as {@link FailSoftRead} `ok: false` so the caller can say "unavailable" instead of
+ * "none".
+ *
+ * ## Log level
+ *
+ * `warn`, not `error`, and the self-side twins in `personal.ts` agree. A known-missing endpoint is
+ * the expected steady state until the backend ships it, so `error` here would put two entries on
+ * the error channel for every single render of `/admin/users/[id]` — the reliable way to train
+ * everyone to stop reading it. `error` is reserved for a failure that is NOT expected. When these
+ * endpoints deploy, the level is worth revisiting; until then this is normal operation and is
+ * logged as such.
  */
-export async function listSavedImagesByUserServer(userId: number): Promise<ContentImageModel[]> {
-  const images = await fetchAdminGetApi<ContentImageModel[]>(`/users/${userId}/saves/images`).catch(
-    () => null
-  );
-  return images ?? [];
+export async function listSavedImagesByUserServer(
+  userId: number
+): Promise<FailSoftRead<ContentImageModel>> {
+  try {
+    const images = await fetchAdminGetApi<ContentImageModel[]>(`/users/${userId}/saves/images`);
+    return { ok: true, items: images ?? [] };
+  } catch (error) {
+    logger.warn('users', 'Failed to read saved images for user; reporting unavailable', {
+      error,
+      userId,
+    });
+    return { ok: false };
+  }
 }
 
 /** See {@link listSavedImagesByUserServer}. */
-export async function listFollowedCollectionIdsByUserServer(userId: number): Promise<number[]> {
-  const ids = await fetchAdminGetApi<number[]>(`/users/${userId}/follows`).catch(() => null);
-  return ids ?? [];
+export async function listFollowedCollectionIdsByUserServer(
+  userId: number
+): Promise<FailSoftRead<number>> {
+  try {
+    const ids = await fetchAdminGetApi<number[]>(`/users/${userId}/follows`);
+    return { ok: true, items: ids ?? [] };
+  } catch (error) {
+    logger.warn('users', 'Failed to read follows for user; reporting unavailable', {
+      error,
+      userId,
+    });
+    return { ok: false };
+  }
 }
 
 /**

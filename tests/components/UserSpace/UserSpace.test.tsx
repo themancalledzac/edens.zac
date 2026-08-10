@@ -10,6 +10,8 @@ jest.mock('@/app/components/Personal/FollowsContext', () => ({
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
+import { FormError } from '@/app/components/ui/Field/FormError';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { type TabKey, type UserSpaceData } from '@/app/components/UserSpace/userSpaceData';
 import { type MeResponse } from '@/app/types/Auth';
@@ -38,15 +40,29 @@ function makeData(overrides: Partial<UserSpaceData> = {}): UserSpaceData {
       title: 'Your Space',
       content: [],
     } as unknown as UserSpaceData['collection'],
+    // `count` is carried separately from `content` because only the ACTIVE section is hydrated —
+    // an inactive section's `content` is empty by design, so its badge has to come from somewhere
+    // else. `following` below is exactly that case: two followed ids, zero hydrated blocks.
     sections: {
-      collections: { label: 'Collections', content: [], emptyLabel: 'No collections yet.' },
+      collections: {
+        label: 'Collections',
+        content: [],
+        count: 0,
+        emptyLabel: 'No collections yet.',
+      },
       images: {
         label: 'Images',
         content: [imageBlock(1)] as UserSpaceData['sections']['images']['content'],
+        count: 1,
         emptyLabel: 'none',
       },
-      saved: { label: 'Saved', content: [], emptyLabel: 'This user has not saved any images yet.' },
-      following: { label: 'Following', content: [], emptyLabel: 'none' },
+      saved: {
+        label: 'Saved',
+        content: [],
+        count: 0,
+        emptyLabel: 'This user has not saved any images yet.',
+      },
+      following: { label: 'Following', content: [], count: 2, emptyLabel: 'none' },
     },
     followedCollectionIds: [7, 9],
     savedImageIds: [3],
@@ -127,13 +143,16 @@ describe('UserSpace — section chips', () => {
     ]);
   });
 
-  it('counts every section regardless of which is active', () => {
+  // `following` is the load-bearing row: its `content` is empty (only the active section is
+  // hydrated) while its count is 2. Deriving the badge from `content.length` would silently badge
+  // it 0 — a claim that the user follows nothing, made on a page that has not looked.
+  it('counts every section regardless of which is active, hydrated or not', () => {
     const props = findProps(render(principal), CollectionPageClient);
     expect(props.sections.map((s: { key: string; count: number }) => [s.key, s.count])).toEqual([
       ['collections', 0],
       ['images', 1],
       ['saved', 0],
-      ['following', 0],
+      ['following', 2],
     ]);
   });
 
@@ -167,5 +186,94 @@ describe('UserSpace — rail extras', () => {
 
   it('defaults to no extras when the page supplies none', () => {
     expect(findProps(render(principal), CollectionPageClient).railExtras).toBeNull();
+  });
+});
+
+/**
+ * `EmptyState`'s docblock forbids it for a failed read: it asserts there is nothing here, which is
+ * a claim about data that nobody managed to read. A section whose read failed carries
+ * `unavailableLabel`, checked ahead of the empty state — the same ordering `UserForm` uses for its
+ * unknown role membership, and the same `FormError` channel, so failure never wears the muted
+ * empty-state styling.
+ */
+describe('UserSpace — a section whose read failed', () => {
+  const withFailedSaved = (unavailableLabel?: string) =>
+    UserSpace({
+      data: makeData({
+        sections: {
+          ...makeData().sections,
+          saved: {
+            label: 'Saved',
+            content: [],
+            // Present precisely so the assertions below prove the count is dropped because the
+            // read FAILED, not merely because no count was supplied.
+            count: 0,
+            emptyLabel: 'This user has not saved any images yet.',
+            unavailableLabel,
+          },
+        },
+      }),
+      activeKey: 'saved',
+      basePath: '/admin/users/5',
+      me: null,
+      ssrViewport: null,
+    });
+
+  it('says the section is unavailable rather than claiming the user has nothing', () => {
+    const props = findProps(withFailedSaved('Saved images are unavailable right now.'), FormError);
+
+    expect(props.children).toBe('Saved images are unavailable right now.');
+  });
+
+  it('renders no EmptyState for that section, so the false claim never appears', () => {
+    expect(
+      findProps(withFailedSaved('Saved images are unavailable right now.'), EmptyState)
+    ).toBeNull();
+  });
+
+  it('falls back to the genuine empty copy when the read succeeded and returned nothing', () => {
+    const props = findProps(withFailedSaved(), EmptyState);
+
+    expect(props.children).toBe('This user has not saved any images yet.');
+  });
+
+  it('renders no failure message when the read succeeded', () => {
+    expect(findProps(withFailedSaved(), FormError)).toBeNull();
+  });
+
+  /**
+   * A `0` badge on the chip is the same claim the body just stopped making, in miniature — and it
+   * would sit inches from copy saying the number is unknown. `ToolbarSection.count` is optional so
+   * an unknown count can be left unsaid; `FilterChip` then renders the bare label.
+   */
+  it('omits the failed section’s count instead of badging it 0', () => {
+    const props = findProps(
+      withFailedSaved('Saved images are unavailable right now.'),
+      CollectionPageClient
+    );
+    const saved = props.sections.find((s: { key: string }) => s.key === 'saved');
+    expect(saved.count).toBeUndefined();
+  });
+
+  it('leaves every loaded section’s count in place', () => {
+    const props = findProps(
+      withFailedSaved('Saved images are unavailable right now.'),
+      CollectionPageClient
+    );
+    expect(
+      props.sections
+        .filter((s: { key: string }) => s.key !== 'saved')
+        .map((s: { key: string; count?: number }) => [s.key, s.count])
+    ).toEqual([
+      ['collections', 0],
+      ['images', 1],
+      ['following', 2],
+    ]);
+  });
+
+  it('badges a genuinely empty section with 0, which is a count nobody guessed at', () => {
+    const props = findProps(withFailedSaved(), CollectionPageClient);
+    const saved = props.sections.find((s: { key: string }) => s.key === 'saved');
+    expect(saved.count).toBe(0);
   });
 });

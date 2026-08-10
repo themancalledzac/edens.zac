@@ -43,9 +43,13 @@ export default async function UserPage({ searchParams }: UserPageProps) {
   const principal = await meServer();
   if (!principal) notFound();
 
-  const [{ tab }, data, ssrViewport] = await Promise.all([
-    searchParams,
-    loadUserSpace('self'),
+  // Resolved ahead of the space load rather than alongside it — `loadUserSpace` hydrates only the
+  // active section, so the key is one of its inputs. See its docblock.
+  const { tab } = await searchParams;
+  const activeKey = resolveTabKey(tab);
+
+  const [data, ssrViewport] = await Promise.all([
+    loadUserSpace('self', activeKey),
     resolveSsrViewport(),
   ]);
   if (!data) notFound();
@@ -62,7 +66,7 @@ export default async function UserPage({ searchParams }: UserPageProps) {
 
           <UserSpace
             data={data}
-            activeKey={resolveTabKey(tab)}
+            activeKey={activeKey}
             basePath="/user"
             me={principal}
             ssrViewport={ssrViewport}

@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { FollowsProvider } from '@/app/components/Personal/FollowsContext';
+import { FormError } from '@/app/components/ui/Field/FormError';
 import { type ToolbarSection } from '@/app/components/ui/FilterToolbar/FilterToolbar';
 import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import {
@@ -75,6 +76,19 @@ export interface UserSpaceProps {
  * happens through the surfaces around this view — `UserForm` for the profile, and drilling into a
  * collection tile for its contents — not through in-place controls here.
  *
+ * ## A section whose read failed is not an empty section
+ *
+ * `EmptyState`'s own docblock forbids using it for a failed read: it tells the viewer there is
+ * nothing here, which is a claim about the data, and after an error that claim is false. So a
+ * section carrying `unavailableLabel` renders that instead, through `FormError` — checked ahead of
+ * the empty state, the same ordering and the same component `UserForm` uses for its unknown role
+ * membership. It is styled distinctly (danger, `role="alert"`) rather than reusing the muted empty
+ * text, so a dead backend cannot read as "this user has saved nothing".
+ *
+ * Its section chip drops its count for the same reason — a `0` badge is the same claim in
+ * miniature, and it would sit beside a body that has just said the number is unknown. `count` on
+ * {@link ToolbarSection} is optional precisely so an unknown count can be left unsaid.
+ *
  * Load-bearing invariant: the backend's `UserPageAssembler` builds this collection with no `id`,
  * `isClient` or `isPasswordProtected` (it is assembled, not a `collection` row). That absence is
  * what keeps the client-gallery affordances inside `CollectionPageClient` switched off —
@@ -93,20 +107,26 @@ export function UserSpace({
   const { collection, sections, followedCollectionIds, savedImageIds } = data;
   const active = sections[activeKey];
 
-  const toolbarSections: ToolbarSection[] = TAB_KEYS.map(key => ({
-    key,
-    label: sections[key].label,
-    count: sections[key].content.length,
-    href: `${basePath}?tab=${key}`,
-  }));
+  const toolbarSections: ToolbarSection[] = TAB_KEYS.map(key => {
+    const section = sections[key];
+    return {
+      key,
+      label: section.label,
+      count: section.unavailableLabel === undefined ? section.count : undefined,
+      href: `${basePath}?tab=${key}`,
+    };
+  });
 
   // Same collection (so the header row, slug and display mode are unchanged section to section),
   // swapping only which blocks the grid renders.
   const sectionCollection: CollectionModel = { ...collection, content: active.content };
 
+  // Deliberately NOT keyed on `activeKey`. Remounting per section collapsed the document height
+  // for a frame mid-swap, which made the browser clamp scroll position and threw the viewer toward
+  // the top on every section switch. `CollectionPageClient` resets its own per-section state off
+  // `activeSectionKey` instead — see the `renderedSectionKey` block there.
   const grid = (
     <CollectionPageClient
-      key={activeKey}
       collection={sectionCollection}
       serverContentWidth={ssrViewport?.contentWidth}
       serverViewportHeight={ssrViewport?.viewportHeight}
@@ -127,8 +147,14 @@ export function UserSpace({
         grid
       )}
 
-      {active.content.length === 0 && (
-        <EmptyState className={styles.empty}>{active.emptyLabel}</EmptyState>
+      {active.unavailableLabel === undefined ? (
+        active.content.length === 0 && (
+          <EmptyState className={styles.empty}>{active.emptyLabel}</EmptyState>
+        )
+      ) : (
+        <div className={styles.empty}>
+          <FormError>{active.unavailableLabel}</FormError>
+        </div>
       )}
     </>
   );

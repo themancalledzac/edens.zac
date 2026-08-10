@@ -92,7 +92,9 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
   it('loads the space for the routed user id, not the acting session', async () => {
     await renderPage();
 
-    expect(mockLoadUserSpace).toHaveBeenCalledWith({ mode: 'admin', userId: 5 });
+    // The active tab is part of the call: the loader hydrates only that section, so passing it is
+    // what keeps the Following tab's catalog read off the other three tabs.
+    expect(mockLoadUserSpace).toHaveBeenCalledWith({ mode: 'admin', userId: 5 }, 'collections');
   });
 
   // Regression, and the load-bearing one. Every personal-action control in the collection stack
@@ -144,6 +146,16 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
 
     expect(mockUserSpace).not.toHaveBeenCalled();
     expect(screen.getByText('This user has no galleries yet.')).toBeTruthy();
+  });
+
+  // The empty state above is only honest because `loadUserSpace` narrows its page read to a
+  // genuine 404 and lets the rest reject. Re-adding a catch here — at either end — would put
+  // "no galleries yet" back in front of an admin whose backend is simply down.
+  it('lets a failed space read reach the error boundary rather than showing the empty state', async () => {
+    mockLoadUserSpace.mockRejectedValue(new ApiError('Service Unavailable', 503));
+
+    await expect(renderPage()).rejects.toThrow('Service Unavailable');
+    expect(screen.queryByText('This user has no galleries yet.')).toBeNull();
   });
 
   // `getAdminUser` throws ApiError for EVERY non-OK status. Catching them all conflated "no such

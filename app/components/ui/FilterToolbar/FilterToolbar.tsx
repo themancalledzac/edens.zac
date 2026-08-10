@@ -58,8 +58,15 @@ export interface ToolbarSection {
   /** Stable key, also the search-param value. */
   key: string;
   label: string;
-  /** Item count in this section, shown as the chip's badge. */
-  count: number;
+  /**
+   * Item count in this section, shown as the chip's badge.
+   *
+   * OMITTED when the count is not known — a section whose read failed has no count, and badging it
+   * `0` would assert the section is empty in the one place a caller has already stopped making
+   * that claim in the body. Absent renders as the bare label, never an empty badge: `FilterChip`
+   * drops the whole count node on `undefined`.
+   */
+  count?: number;
   /** Destination selecting this section. */
   href: string;
 }

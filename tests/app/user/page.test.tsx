@@ -48,6 +48,8 @@ import { MeProvider } from '@/app/components/auth/MeProvider';
 import CollectionPageClient from '@/app/components/ContentCollection/CollectionPageClient';
 import { AccountCard } from '@/app/components/Personal/AccountCard';
 import { AdminCard } from '@/app/components/Personal/AdminCard';
+import { FormError } from '@/app/components/ui/Field/FormError';
+import { EmptyState } from '@/app/components/ui/StatusText/EmptyState';
 import { UserSpace } from '@/app/components/UserSpace/UserSpace';
 import { LAYOUT } from '@/app/constants';
 import { meServer } from '@/app/lib/api/auth';
@@ -115,8 +117,8 @@ function seedApis() {
     coverImage: { id: 42, contentType: 'IMAGE', imageUrl: 'https://cdn/cover.jpg' },
     content: [collectionBlock(1), collectionBlock(2), imageBlock(3), gifBlock(4)],
   });
-  (listSavedImagesServer as jest.Mock).mockResolvedValue([]);
-  (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([]);
+  (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [] });
+  (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [] });
   (getAllCollections as jest.Mock).mockResolvedValue([]);
   (resolveSsrViewport as jest.Mock).mockResolvedValue({
     contentWidth: 1200,
@@ -177,13 +179,13 @@ describe('UserPage', () => {
   });
 
   it('passes the saved images for ?tab=saved', async () => {
-    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(9)]);
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [imageBlock(9)] });
     const grid = gridProps(await renderTab('saved'));
     expect(grid.collection.content.map((b: { id: number }) => b.id)).toEqual([9]);
   });
 
   it('wraps followed collections as COLLECTION blocks keyed by referencedCollectionId', async () => {
-    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([7]);
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [7] });
     (getAllCollections as jest.Mock).mockResolvedValue([
       { id: 7, slug: 'seven', title: 'Seven' },
       { id: 8, slug: 'eight', title: 'Eight' },
@@ -234,8 +236,8 @@ describe('UserPage', () => {
   });
 
   it('labels all four sections with their counts regardless of the active section', async () => {
-    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(9)]);
-    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue([7]);
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: true, items: [imageBlock(9)] });
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: true, items: [7] });
     (getAllCollections as jest.Mock).mockResolvedValue([{ id: 7, slug: 'seven' }, { id: 8 }]);
     const { sections, activeKey } = sectionProps(await renderTab('saved'));
     expect(sections.map((s: { label: string; count: number }) => [s.label, s.count])).toEqual([
@@ -276,7 +278,10 @@ describe('UserPage', () => {
   it('seeds the saves provider from the saved-images read (no separate ids fetch)', async () => {
     // The full saved images read is the single source for both the Saved section and the seeded
     // SavesProvider ids — there is no separate `/user/saves` ids-only read to duplicate it.
-    (listSavedImagesServer as jest.Mock).mockResolvedValue([imageBlock(7), imageBlock(8)]);
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({
+      ok: true,
+      items: [imageBlock(7), imageBlock(8)],
+    });
     const grid = gridProps(await renderTab());
     expect(grid.initialSavedImageIds).toEqual([7, 8]);
     expect(listSavedImagesServer).toHaveBeenCalledTimes(1);
@@ -307,6 +312,79 @@ describe('UserPage', () => {
     const grid = gridProps(await renderTab('following'));
     expect(grid.collection.content).toEqual([]);
     expect(grid.collection.description).toBe('Photos I have been tagged in.');
+  });
+});
+
+/**
+ * `/user` is the owner's own page and the busier of the two surfaces, and it carried the same
+ * defect the admin path did: `personal.ts` flattened every failed read to `[]`, so a backend
+ * outage told the OWNER "You have not saved any images yet." These assert end-to-end — from the
+ * `personal.ts` mock through `loadUserSpace` to the props and nodes the page actually renders.
+ */
+describe('UserPage — a failed personal read never claims the owner has nothing', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
+    seedApis();
+  });
+
+  const failSaved = () =>
+    (listSavedImagesServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
+
+  it('says the saved images are unavailable, in the second person', async () => {
+    failSaved();
+    const props = findProps(await renderTab('saved'), FormError);
+    expect(props.children).toBe('Your saved images are unavailable right now.');
+  });
+
+  it('renders no EmptyState, so "You have not saved any images yet." never appears', async () => {
+    failSaved();
+    expect(findProps(await renderTab('saved'), EmptyState)).toBeNull();
+  });
+
+  it('drops the Saved chip’s count rather than badging it 0', async () => {
+    failSaved();
+    const { sections } = sectionProps(await renderTab('saved'));
+    const saved = sections.find((s: { key: string }) => s.key === 'saved');
+    expect(saved.count).toBeUndefined();
+  });
+
+  it('keeps every loaded section’s count intact', async () => {
+    failSaved();
+    const { sections } = sectionProps(await renderTab('saved'));
+    expect(
+      sections
+        .filter((s: { key: string }) => s.key !== 'saved')
+        .map((s: { key: string; count?: number }) => [s.key, s.count])
+    ).toEqual([
+      ['collections', 2],
+      ['images', 2],
+      ['following', 0],
+    ]);
+  });
+
+  it('reports the followed collections unavailable when that read fails', async () => {
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
+    const props = findProps(await renderTab('following'), FormError);
+    expect(props.children).toBe('Your followed collections are unavailable right now.');
+  });
+
+  it('still renders the genuine empty copy when the read succeeded with nothing', async () => {
+    const props = findProps(await renderTab('saved'), EmptyState);
+    expect(props.children).toBe('You have not saved any images yet.');
+    expect(findProps(await renderTab('saved'), FormError)).toBeNull();
+  });
+
+  it('badges a genuinely empty section with 0, which is a true count', async () => {
+    const { sections } = sectionProps(await renderTab('saved'));
+    const saved = sections.find((s: { key: string }) => s.key === 'saved');
+    expect(saved.count).toBe(0);
+  });
+
+  it('still renders the page rather than 500-ing when both reads fail', async () => {
+    failSaved();
+    (listFollowedCollectionIdsServer as jest.Mock).mockResolvedValue({ ok: false, items: [] });
+    expect(gridProps(await renderTab('saved'))).not.toBeNull();
   });
 });
 
