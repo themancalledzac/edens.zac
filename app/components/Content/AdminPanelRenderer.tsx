@@ -1,7 +1,8 @@
 'use client';
 
-import { type ComponentType, useState } from 'react';
+import { type ComponentType } from 'react';
 
+import { useAdminPanelCollapse } from '@/app/components/AdminPanel/AdminPanelCollapseContext';
 import { MessagesPanel } from '@/app/components/MessagesPanel/MessagesPanel';
 import { RolesPanel } from '@/app/components/RolesPanel/RolesPanel';
 import UserManagementPanel from '@/app/components/UserManagementPanel/UserManagementPanel';
@@ -44,21 +45,34 @@ const PANEL_COMPONENTS: Record<
  * `.box` must stay a flex column for that to work. A capped block box would clip its panel at the
  * cap instead of handing the overflow to the scrollable body, and the scroll would never appear.
  *
- * Collapsed state lives here rather than in {@link AdminPanel} because this is the component that
- * owns the footprint. It no longer has to unset a fixed height — a collapsed panel unmounts its
- * body and shrinks under the cap on its own — but it does drop the `min-height` that otherwise
- * holds a stable footprint while each panel's client fetch is in flight.
+ * Collapsed state is READ here but OWNED upstream by `AdminHubClient`, because collapsing has to
+ * change the panel's content model before layout runs: the packer sizes every row from those
+ * models, so a flag held at this depth can shrink one panel's own box and nothing else. The row
+ * stays as tall as its tallest sibling and every tile keeps its width. Owning it above `Component`
+ * is what lets the rest of the hub re-pack. What stays this component's business is the `.collapsed`
+ * class, which drops the `min-height` that otherwise holds a stable footprint during each panel's
+ * client fetch.
+ *
+ * With no provider the collapse props are omitted entirely, and `AdminPanel` renders its plain
+ * non-collapsible header — the same opt-in gate it already applies to `onCollapsedChange`.
  */
 export function AdminPanelRenderer({ content, width, height }: AdminPanelRendererProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const collapse = useAdminPanelCollapse();
+  const collapsed = collapse?.isCollapsed(content.panelType) ?? false;
   const Panel = PANEL_COMPONENTS[content.panelType];
+  const collapseProps = collapse
+    ? {
+        collapsed,
+        onCollapsedChange: (next: boolean) => collapse.setCollapsed(content.panelType, next),
+      }
+    : {};
 
   return (
     <div
       className={`${styles.box} ${collapsed ? styles.collapsed : ''}`}
       style={{ width, maxHeight: height }}
     >
-      <Panel collapsed={collapsed} onCollapsedChange={setCollapsed} />
+      <Panel {...collapseProps} />
     </div>
   );
 }
