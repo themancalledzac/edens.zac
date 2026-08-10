@@ -104,6 +104,8 @@ describe('UserManagementPanel', () => {
 
   // The in-flight message is a live region, so a screen-reader user hears the wait instead of
   // silence. It used to be a bare <p>; the shared <LoadingText> is what carries the semantics.
+  // The region also has to outlive the read — a region created with its text already inside is the
+  // case screen readers miss — so this asserts it is still the same node once the users arrive.
   it('announces the in-flight read as a polite live region', async () => {
     let resolveUsers!: (users: AdminUserSummary[]) => void;
     mockListUsers.mockImplementation(
@@ -121,6 +123,9 @@ describe('UserManagementPanel', () => {
 
     resolveUsers(USERS);
     await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
+
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status).toBeEmptyDOMElement();
   });
 
   // The load-bearing one. `listUsers` throws on any non-OK response, so a catch-less refresh left

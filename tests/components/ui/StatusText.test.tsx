@@ -40,8 +40,8 @@ describe('EmptyState', () => {
 });
 
 describe('LoadingText', () => {
-  it('renders its message', () => {
-    render(<LoadingText>Loading users…</LoadingText>);
+  it('renders its message while the read is in flight', () => {
+    render(<LoadingText isLoading>Loading users…</LoadingText>);
     expect(screen.getByText('Loading users…')).toBeInTheDocument();
   });
 
@@ -50,17 +50,72 @@ describe('LoadingText', () => {
    * one announced itself, so screen-reader users got silence where sighted users got "Loading…".
    */
   it('announces politely via role=status', () => {
-    render(<LoadingText>Loading users…</LoadingText>);
+    render(<LoadingText isLoading>Loading users…</LoadingText>);
     const node = screen.getByRole('status');
     expect(node).toHaveTextContent('Loading users…');
     expect(node).toHaveAttribute('aria-live', 'polite');
   });
 
+  it('keeps the region mounted and empty when nothing is loading', () => {
+    render(<LoadingText isLoading={false}>Loading users…</LoadingText>);
+    const node = screen.getByRole('status');
+    expect(node).toBeEmptyDOMElement();
+    expect(node).toHaveAttribute('aria-live', 'polite');
+    expect(screen.queryByText('Loading users…')).not.toBeInTheDocument();
+  });
+
+  /**
+   * The whole point of the component, and the only assertion that can catch a regression back to
+   * `{isLoading && <LoadingText>…}`: a live region that appears with its text already inside is
+   * routinely not announced. Node identity across the transition is what proves the region was
+   * there first and only its text changed.
+   */
+  it('is the same DOM node before, during, and after the read', () => {
+    const { rerender } = render(<LoadingText isLoading={false}>Loading users…</LoadingText>);
+    const before = screen.getByRole('status');
+
+    rerender(<LoadingText isLoading>Loading users…</LoadingText>);
+    const during = screen.getByRole('status');
+    expect(during).toBe(before);
+    expect(during).toHaveTextContent('Loading users…');
+
+    rerender(<LoadingText isLoading={false}>Loading users…</LoadingText>);
+    const after = screen.getByRole('status');
+    expect(after).toBe(before);
+    expect(after).toBeEmptyDOMElement();
+  });
+
   it('shares the placement API with EmptyState', () => {
-    const { rerender } = render(<LoadingText>Loading…</LoadingText>);
+    const { rerender } = render(<LoadingText isLoading>Loading…</LoadingText>);
     const inlineClass = screen.getByRole('status').className;
 
-    rerender(<LoadingText align="page">Loading…</LoadingText>);
+    rerender(
+      <LoadingText isLoading align="page">
+        Loading…
+      </LoadingText>
+    );
     expect(screen.getByRole('status').className).not.toBe(inlineClass);
+  });
+
+  /**
+   * A caller className is additive, never a replacement — `.text:empty` is what collapses the
+   * padding of an idle region, so losing the component's own class would give every caller a
+   * permanently-tall gap. Both classes are named outright rather than counted: how many classes
+   * the component emits is its own business, and would change the moment they were merged into one.
+   */
+  it('adds a caller className alongside its own, rather than replacing them', () => {
+    render(
+      <LoadingText isLoading className="caller">
+        Loading…
+      </LoadingText>
+    );
+    expect(screen.getByRole('status')).toHaveClass('text', 'inline', 'caller');
+  });
+
+  it('carries its own classes when the caller supplies none', () => {
+    render(<LoadingText isLoading>Loading…</LoadingText>);
+    const node = screen.getByRole('status');
+    expect(node).toHaveClass('text', 'inline');
+    expect(node).not.toHaveClass('caller');
   });
 });

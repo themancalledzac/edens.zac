@@ -24,7 +24,11 @@ interface AllImagesClientProps {
  *
  * Pagination: {@link useImageBrowser} owns the growing items array; an
  * IntersectionObserver sentinel triggers {@code loadNext()} as the user
- * scrolls within one viewport of the bottom.
+ * scrolls within one viewport of the bottom. The {@link LoadingText} beneath
+ * the sentinel stays mounted between pages so each fetch announces through the
+ * same live region rather than inserting a new one — this is the adopter that
+ * benefits most, since a long scroll runs the transition dozens of times. The
+ * text is static per fetch, so `polite` still means one announcement per page.
  *
  * Order preservation: the BE returns images in {@code capture_date ASC}
  * order. We assign a sequential {@code orderIndex} per array position and
@@ -80,7 +84,9 @@ export default function AllImagesClient({ initial, ssrViewport }: AllImagesClien
 
       <div ref={sentinelRef} className={styles.sentinel} aria-hidden />
 
-      {isLoading && <LoadingText align="page">Loading more…</LoadingText>}
+      <LoadingText isLoading={isLoading} align="page">
+        Loading more…
+      </LoadingText>
 
       {error && (
         <div className={styles.status} role="alert">

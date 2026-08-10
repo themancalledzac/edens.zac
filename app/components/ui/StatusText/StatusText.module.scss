@@ -21,3 +21,12 @@
   padding: var(--space-8) 0;
   text-align: center;
 }
+
+/* LoadingText keeps its live region mounted while nothing is loading (see its docblock), so the
+   empty node has to be invisible to layout — not `display: none`, which would take the region out
+   of the accessibility tree and put us back to announcing an insertion. An empty <p> with no
+   padding generates no line box and is therefore zero-height; only the placement padding above
+   needs unsetting. EmptyState never renders empty, so this only ever matches LoadingText. */
+.text:empty {
+  padding: 0;
+}
