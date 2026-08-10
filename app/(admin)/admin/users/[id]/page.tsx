@@ -41,11 +41,16 @@ interface AdminUserDetailPageProps {
  * its docblock for why that matters (a save heart here would write to the ADMIN's bookmarks).
  *
  * Editing a user happens INSIDE the space's header rail, via {@link AdminUserSpaceEditor}. The
- * rail already renders this person's name and description — the description it shows is literally
- * the field being edited, since `UserPageAssembler` feeds it from the same column — so a separate
- * profile card above the space displayed the same value twice and pushed the actual page down by a
- * screenful. Name, status, email, description and role membership all live in the rail now; the
- * only thing left above it is the breadcrumb.
+ * rail already renders this person's description — literally the field being edited, since
+ * `UserPageAssembler` feeds it from the same column — so a separate profile card above the space
+ * displayed the same value twice and pushed the actual page down by a screenful. Email, status,
+ * description and role membership all live in the rail now; the only thing left above it is the
+ * breadcrumb.
+ *
+ * The display NAME is not editable here. The space's cover carries it as its overlay, and a second
+ * copy in the rail was one name on screen twice; the overlay itself cannot host the editor, since
+ * it sits inside the parallax tile whose click opens the fullscreen viewer. Renaming is done from
+ * the Users panel on `/admin`, which mounts the full `UserForm`.
  *
  * The GRID stays read-only, which is a different question from the rail. The collection is a
  * synthetic aggregation (slug "user", no backing row), so mounting the collection edit layer on it
@@ -90,8 +95,6 @@ export default async function AdminUserDetailPage({
     throw error;
   }
   if (!user) notFound();
-
-  const displayName = user.displayName ?? user.email ?? '—';
 
   if (user.status === 'PERSON') {
     return (
@@ -147,15 +150,7 @@ export default async function AdminUserDetailPage({
               basePath={`/admin/users/${userId}`}
               me={null}
               ssrViewport={ssrViewport}
-              railExtras={
-                <div className={styles.rail}>
-                  <UserRolesSection userId={user.id} compact />
-                  <p className={styles.spaceNote}>
-                    Viewing {displayName}&rsquo;s space as they see it. Saving and following are
-                    disabled here — they would act on your own account, not theirs.
-                  </p>
-                </div>
-              }
+              railExtras={<UserRolesSection userId={user.id} compact />}
             />
           </div>
         </AdminUserSpaceEditor>

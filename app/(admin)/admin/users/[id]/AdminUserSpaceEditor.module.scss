@@ -40,12 +40,20 @@ textarea.seamless.seamless {
   resize: vertical;
 }
 
-/* Email — the line above the description, matching the rail's muted supporting text. */
+/* Email — leads the rail's title row, in the corner the name used to hold.
+
+   Ordinary body type rather than the rail's serif title face or the muted supporting grey it wore
+   further down the block: it is now the first thing read in the rail and the field that identifies
+   the account, so it takes the page's normal size and full-strength colour. `flex: 1 1 auto` with
+   `min-width: 0` lets it share the row with the account controls and ellipsise instead of pushing
+   them off the edge. */
 .email {
   display: block;
-  font-size: var(--text-sm);
-  line-height: 1.6;
-  color: var(--color-on-surface-muted);
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--color-fg);
   overflow-wrap: anywhere;
 }
 
@@ -57,6 +65,11 @@ textarea.seamless.seamless {
   flex: 0 0 auto;
   align-items: center;
   gap: var(--space-2);
+
+  /* Holds the corner whether or not a title shares the row. The rail hides the name (the cover
+     carries it), which leaves this the row's only child — without the auto margin it would slide
+     to the left edge, under the cover's top corner instead of opposite it. */
+  margin-left: auto;
 }
 
 /* Account status, pinned opposite the name in the rail's title row. Always a <select>, so there is

@@ -59,12 +59,19 @@ function RailProbe() {
   if (!inlineEdit) return <p>no inline edit context</p>;
   return (
     <div>
-      <InlineEditableText
-        as="input"
-        value={inlineEdit.title}
-        onCommit={value => inlineEdit.onCommitField('title', value)}
-        ariaLabel={inlineEdit.titleLabel ?? 'Collection title'}
-      />
+      {inlineEdit.titleLead ?? (
+        <InlineEditableText
+          as="input"
+          value={inlineEdit.title ?? ''}
+          onCommit={value => inlineEdit.onCommitField('title', value)}
+          ariaLabel={inlineEdit.titleLabel ?? 'Collection title'}
+        />
+      )}
+      {/* The rail draws no title field on this surface, so a stray 'title' commit must be a no-op
+          rather than writing something. */}
+      <button type="button" onClick={() => inlineEdit.onCommitField('title', 'Renamed')}>
+        commit title
+      </button>
       {inlineEdit.titleAside}
       {inlineEdit.beforeDescription}
       <InlineEditableText
@@ -76,6 +83,7 @@ function RailProbe() {
       <span data-testid="has-location">{String(Boolean(inlineEdit.onEditLocation))}</span>
       <span data-testid="has-cover-pick">{String(Boolean(inlineEdit.onTogglePickCover))}</span>
       <span data-testid="editor-class">{String(Boolean(inlineEdit.textEditorClassName))}</span>
+      <span data-testid="has-title-lead">{String(Boolean(inlineEdit.titleLead))}</span>
     </div>
   );
 }
@@ -103,12 +111,21 @@ describe('AdminUserSpaceEditor', () => {
   it("publishes the user's fields to the rail under user-appropriate names", () => {
     renderEditor();
 
-    expect(screen.getByRole('button', { name: 'Name' })).toHaveTextContent('Cara');
     expect(screen.getByRole('button', { name: 'Description' })).toHaveTextContent(
       'Wedding client, 2026'
     );
     expect(screen.getByRole('button', { name: 'Email' })).toHaveTextContent('cara@x.com');
     expect(screen.getByLabelText('Status')).toHaveValue('ACTIVE');
+  });
+
+  // The space's cover already carries this person's name as its overlay, so the rail leads with
+  // the email instead — in the corner the name used to hold, not buried further down the block.
+  it('leads the rail with the email in place of the name', () => {
+    renderEditor();
+
+    expect(screen.getByTestId('has-title-lead')).toHaveTextContent('true');
+    expect(screen.queryByRole('button', { name: 'Name' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Email' })).toHaveTextContent('cara@x.com');
   });
 
   // A person has no locations and no collection cover. Leaving these set would put an "Add
@@ -149,17 +166,15 @@ describe('AdminUserSpaceEditor', () => {
     );
   });
 
-  it('commits the name on Enter, sending the rest of the record unchanged', async () => {
+  // The display name is not editable on this surface at all — renaming happens in the /admin Users
+  // panel. A 'title' commit must therefore write nothing rather than quietly renaming the user.
+  it('ignores a title commit rather than writing a display name', async () => {
     renderEditor();
 
-    const input = openField('Name');
-    fireEvent.change(input, { target: { value: 'Cara B' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: 'commit title' }));
 
-    await waitFor(() =>
-      expect(mockUpdateUser).toHaveBeenCalledWith(5, payload({ displayName: 'Cara B' }))
-    );
-    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Email' })).toBeInTheDocument());
+    expect(mockUpdateUser).not.toHaveBeenCalled();
   });
 
   it('commits the description on Enter', async () => {
@@ -199,12 +214,14 @@ describe('AdminUserSpaceEditor', () => {
   it('reverts on Escape without writing', async () => {
     renderEditor();
 
-    const input = openField('Name');
+    const input = openField('Description');
     fireEvent.change(input, { target: { value: 'Wrong' } });
     fireEvent.keyDown(input, { key: 'Escape' });
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Name' })).toHaveTextContent('Cara')
+      expect(screen.getByRole('button', { name: 'Description' })).toHaveTextContent(
+        'Wedding client, 2026'
+      )
     );
     expect(mockUpdateUser).not.toHaveBeenCalled();
   });
@@ -212,11 +229,13 @@ describe('AdminUserSpaceEditor', () => {
   it('does not write when a field is committed unchanged', async () => {
     renderEditor();
 
-    const input = openField('Name');
+    const input = openField('Description');
     fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Name' })).toHaveTextContent('Cara')
+      expect(screen.getByRole('button', { name: 'Description' })).toHaveTextContent(
+        'Wedding client, 2026'
+      )
     );
     expect(mockUpdateUser).not.toHaveBeenCalled();
   });
@@ -248,15 +267,15 @@ describe('AdminUserSpaceEditor', () => {
     expect(mockUpdateUser).not.toHaveBeenCalled();
   });
 
-  it('clears the display name to null rather than an empty string', async () => {
+  it('clears a whitespace-only description to null rather than an empty string', async () => {
     renderEditor();
 
-    const input = openField('Name');
+    const input = openField('Description');
     fireEvent.change(input, { target: { value: '  ' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
     await waitFor(() =>
-      expect(mockUpdateUser).toHaveBeenCalledWith(5, payload({ displayName: null }))
+      expect(mockUpdateUser).toHaveBeenCalledWith(5, payload({ description: null }))
     );
   });
 

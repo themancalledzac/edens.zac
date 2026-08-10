@@ -113,17 +113,25 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
 
   const inlineEdit = useMemo<InlineEditContextValue>(
     () => ({
-      title: current.displayName ?? '',
       description: current.description ?? '',
-      titleLabel: 'Name',
       descriptionLabel: 'Description',
       textEditorClassName: styles.seamless,
+      // No `title`: the leading slot is the email (below), because the space's cover already
+      // carries this person's name. Editing the display name lives in the /admin Users panel.
+      titleLead: (
+        <InlineEditableText
+          as="input"
+          value={current.email ?? ''}
+          onCommit={value => void commit({ email: value.trim() })}
+          readOnlyClassName={styles.email}
+          editorClassName={`${styles.email} ${styles.seamless}`}
+          placeholder="Email"
+          ariaLabel="Email"
+        />
+      ),
       onCommitField: (field, value) => {
-        void commit(
-          field === 'title'
-            ? { displayName: value.trim() || null }
-            : { description: value.trim() || null }
-        );
+        if (field !== 'description') return;
+        void commit({ description: value.trim() || null });
       },
       titleAside: (
         <span className={styles.aside}>
@@ -150,20 +158,7 @@ export function AdminUserSpaceEditor({ user, children }: AdminUserSpaceEditorPro
           />
         </span>
       ),
-      beforeDescription: (
-        <>
-          <InlineEditableText
-            as="input"
-            value={current.email ?? ''}
-            onCommit={value => void commit({ email: value.trim() })}
-            readOnlyClassName={styles.email}
-            editorClassName={`${styles.email} ${styles.seamless}`}
-            placeholder="Email"
-            ariaLabel="Email"
-          />
-          {error && <FormError>{error}</FormError>}
-        </>
-      ),
+      beforeDescription: error ? <FormError>{error}</FormError> : null,
     }),
     [current, saving, error, commit, user.id]
   );

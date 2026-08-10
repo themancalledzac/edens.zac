@@ -34,15 +34,6 @@
     text-transform: uppercase;
     color: var(--color-on-surface-muted);
   }
-
-  /* Sized off the same tokens as the chips it sits under, so the row reads as one control set
-     rather than a chip row with a form control parked beneath it. */
-  .addSelect {
-    height: auto;
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--text-sm);
-    line-height: 1.4;
-  }
 }
 
 .heading {
@@ -139,6 +130,45 @@
      action is reachable at full size elsewhere — the /admin Users panel renders this same section
      without `compact`, where every remove keeps its 44px target. */
   --touch-target-min: 0;
+}
+
+/* The join control, leading the chip row. A <select> skinned as a chip: `appearance: none` drops
+   the native arrow so it reads as a button, and its empty option supplies the "Add" label. Height
+   comes from the same --space-5 the chips' remove × sets, so the row is one flat line of controls
+   rather than a form control wedged among chips. */
+.addItem {
+  display: inline-flex;
+}
+
+.addChip {
+  height: var(--space-5);
+  padding: 0 var(--space-3);
+  appearance: none;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--color-fg);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-fg);
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  &:focus-visible {
+    outline: var(--focus-ring);
+    outline-offset: 2px;
+  }
 }
 
 .chip {

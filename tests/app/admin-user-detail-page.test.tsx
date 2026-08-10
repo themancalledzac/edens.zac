@@ -133,15 +133,15 @@ describe("app/(admin)/admin/users/[id] — renders the target user's space", () 
 
   // The note rides in the header rail alongside the space's own metadata, not as a loose
   // paragraph above the grid — same placement contract as /user's Account and Admin cards.
-  it('says whose space this is and why saving/following is off, in the rail', async () => {
+  // Role membership rides the rail rather than a slab below the grid. It is the only rail extra
+  // left: the "viewing X's space" note that used to sit beside it was removed as clutter.
+  it('puts role membership in the rail', async () => {
     await renderPage();
 
     const { railExtras } = mockUserSpace.mock.calls[0][0];
     expect(railExtras).toBeTruthy();
-
-    render(railExtras);
-    expect(screen.getByText(/Viewing Cara’s space as they see it/)).toBeTruthy();
-    expect(screen.getByText(/would act on your own account, not theirs/)).toBeTruthy();
+    expect(railExtras.props.userId).toBe(5);
+    expect(railExtras.props.compact).toBe(true);
   });
 
   // The space below renders this person's name as its own title, so a page <h1> repeating it put

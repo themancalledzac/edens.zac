@@ -166,6 +166,48 @@ describe('UserRolesSection', () => {
     expect(screen.queryByText(/not in any roles yet/i)).not.toBeInTheDocument();
   });
 
+  describe('compact', () => {
+    // The rail's roles are one wrapping row, so the join control leads it as a chip rather than
+    // sitting under the row as a form field.
+    it('leads the row with an "Add" chip, before the role chips', async () => {
+      mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
+      mockListRoles.mockResolvedValue([{ id: 9, name: 'clients' }]);
+
+      render(<UserRolesSection userId={8} compact />);
+
+      const add = await screen.findByLabelText('Add Role');
+      // Shorter visible label; the accessible name stays the fuller phrase and still contains it.
+      expect(add).toHaveDisplayValue('Add');
+
+      const row = add.closest('ul');
+      expect(row).not.toBeNull();
+      const items = [...row!.children];
+      expect(items[0]).toContainElement(add);
+      expect(items[1]).toContainElement(screen.getByRole('link', { name: 'power' }));
+    });
+
+    it('still adds on select, from the chip', async () => {
+      mockListRoles.mockResolvedValue([{ id: 3, name: 'power' }]);
+
+      render(<UserRolesSection userId={8} compact />);
+
+      const add = await screen.findByLabelText('Add Role');
+      mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);
+      fireEvent.change(add, { target: { value: '3' } });
+
+      await waitFor(() => expect(mockAddUserToRole).toHaveBeenCalledWith(8, 3));
+    });
+
+    it('renders the row for the Add chip even when the user is in no roles', async () => {
+      mockListRoles.mockResolvedValue([{ id: 9, name: 'clients' }]);
+
+      render(<UserRolesSection userId={8} compact />);
+
+      expect(await screen.findByLabelText('Add Role')).toBeInTheDocument();
+      expect(screen.getByText(/not in any roles yet/i)).toBeInTheDocument();
+    });
+  });
+
   describe('readOnly', () => {
     it('keeps the links but drops the controls that change membership', async () => {
       mockListUserRoles.mockResolvedValue([{ roleId: 3, name: 'power' }]);

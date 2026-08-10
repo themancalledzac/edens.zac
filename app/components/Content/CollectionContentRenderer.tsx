@@ -286,18 +286,23 @@ export default function CollectionContentRenderer({
           <div className={cbStyles.metadataBlockInner}>
             {inlineEdit && (
               <div className={cbStyles.metadataTitleRow}>
-                <InlineEditableText
-                  as="input"
-                  value={inlineEdit.title}
-                  onCommit={value => inlineEdit.onCommitField('title', value)}
-                  readOnlyClassName={cbStyles.metadataTitle}
-                  editorClassName={
-                    inlineEdit.textEditorClassName &&
-                    `${cbStyles.metadataTitle} ${inlineEdit.textEditorClassName}`
-                  }
-                  placeholder="Title"
-                  ariaLabel={inlineEdit.titleLabel ?? 'Collection title'}
-                />
+                {/* One leading occupant: the editable title, or whatever the surface puts in its
+                    place (the admin user rail leads with the email — the cover already carries
+                    the name). */}
+                {inlineEdit.titleLead ?? (
+                  <InlineEditableText
+                    as="input"
+                    value={inlineEdit.title ?? ''}
+                    onCommit={value => inlineEdit.onCommitField('title', value)}
+                    readOnlyClassName={cbStyles.metadataTitle}
+                    editorClassName={
+                      inlineEdit.textEditorClassName &&
+                      `${cbStyles.metadataTitle} ${inlineEdit.textEditorClassName}`
+                    }
+                    placeholder="Title"
+                    ariaLabel={inlineEdit.titleLabel ?? 'Collection title'}
+                  />
+                )}
                 {inlineEdit.titleAside}
               </div>
             )}

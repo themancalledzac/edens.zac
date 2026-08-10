@@ -138,6 +138,36 @@ export function UserRolesSection({
     [userId]
   );
 
+  /**
+   * The join control. A `<select>` whose empty option is its label, so it reads as a button that
+   * happens to open a list — which is what it is. Compact shortens the label to "Add" and skins it
+   * as a chip so it can lead the chip row; the accessible name stays the fuller "Add Role", which
+   * still contains the visible word.
+   */
+  const addControl = !readOnly && availableRoles.length > 0 && (
+    <select
+      aria-label="Add Role"
+      className={compact ? styles.addChip : styles.addSelect}
+      value=""
+      disabled={pending}
+      onChange={e => {
+        const roleId = Number(e.target.value);
+        if (!roleId) return;
+        void runAction(
+          () => addUserToRole(userId, roleId),
+          'Failed to add role. Please try again.'
+        );
+      }}
+    >
+      <option value="">{compact ? 'Add' : 'Add Role'}</option>
+      {availableRoles.map(r => (
+        <option key={r.id} value={r.id}>
+          {r.name}
+        </option>
+      ))}
+    </select>
+  );
+
   return (
     <div
       className={[styles.roles, compact ? styles.rolesCompact : ''].filter(Boolean).join(' ')}
@@ -154,8 +184,11 @@ export function UserRolesSection({
       {actionError && <FormError>{actionError}</FormError>}
       {!rolesError && userRoles.length === 0 && <EmptyState>Not in any roles yet.</EmptyState>}
 
-      {userRoles.length > 0 && (
+      {(userRoles.length > 0 || (compact && addControl)) && (
         <ul className={compact ? styles.chipList : styles.list}>
+          {/* Compact leads the row with the join control, so "Roles" is followed immediately by the
+              way to add one and the row stays a single wrapping line. */}
+          {compact && addControl && <li className={styles.addItem}>{addControl}</li>}
           {userRoles.map(r => (
             <li key={r.roleId} className={compact ? styles.chip : styles.row}>
               <Link href={roleHref(r.roleId)} className={styles.roleLink}>
@@ -183,29 +216,7 @@ export function UserRolesSection({
         </ul>
       )}
 
-      {!readOnly && availableRoles.length > 0 && (
-        <select
-          aria-label="Add Role"
-          className={styles.addSelect}
-          value=""
-          disabled={pending}
-          onChange={e => {
-            const roleId = Number(e.target.value);
-            if (!roleId) return;
-            void runAction(
-              () => addUserToRole(userId, roleId),
-              'Failed to add role. Please try again.'
-            );
-          }}
-        >
-          <option value="">Add Role</option>
-          {availableRoles.map(r => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
-      )}
+      {!compact && addControl}
     </div>
   );
 }

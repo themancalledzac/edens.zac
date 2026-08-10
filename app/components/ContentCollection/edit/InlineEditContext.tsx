@@ -15,8 +15,8 @@ export type InlineEditField = 'title' | 'description';
  * affordance rather than inferring a "mode", so a consumer gets exactly the controls it filled in.
  */
 export interface InlineEditContextValue {
-  /** Current title buffer value (collection title, or the user's display name). */
-  title: string;
+  /** Current title buffer value. Unused when {@link titleLead} takes the leading slot instead. */
+  title?: string;
   /** Current description buffer value. */
   description: string;
   /** Write a field to the shared edit buffer and persist (save-on-blur). */
@@ -51,6 +51,16 @@ export interface InlineEditContextValue {
    * the metadata rail — not the (absent) cover — has to carry the entry point into cover-pick.
    */
   hasCover?: boolean;
+  /**
+   * Takes the leading slot of the title row INSTEAD of the editable title.
+   *
+   * The admin user surface puts the email here. The space's cover already carries the person's
+   * name as its overlay, so drawing it again in the rail put one name on screen twice — and once
+   * it was gone the corner sat empty while the email hid further down the block. One slot, rather
+   * than a "hide the title" flag plus somewhere else to put a replacement: the row's leading
+   * position has exactly one occupant, and this decides which.
+   */
+  titleLead?: ReactNode;
   /**
    * Rendered at the end of the title row, opposite the title itself.
    *
