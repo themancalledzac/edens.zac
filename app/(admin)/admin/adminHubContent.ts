@@ -13,8 +13,9 @@
  */
 
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
-import type { AnyContentModel, ContentPanelModel } from '@/app/types/Content';
+import type { AnyContentModel, ContentPanelModel, PanelType } from '@/app/types/Content';
 import { clampParallaxDimensions } from '@/app/utils/contentLayout';
+import { isPanelContent } from '@/app/utils/contentTypeGuards';
 
 import { ADMIN_TILES } from './adminTiles';
 
@@ -84,4 +85,37 @@ export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel
   };
 
   return [usersPanel, messagesPanel, rolesPanel, ...tileModels];
+}
+
+/**
+ * Footprint a COLLAPSED panel reports to the layout packer: a bar, not a column.
+ *
+ * This ratio deliberately breaks the "keep every panel strictly under 1:2" rule in this file's
+ * header docblock, and has to. That rule protects the EXPANDED panels, whose relative widths are
+ * re-solved the moment one of them crosses `EXTREMENESS_RAMP_START`. Crossing it is the entire
+ * point here: at ≈21:1 a collapsed panel clears both gates in `isSoloHero` — extremeness ≥ 2.0,
+ * and a width-cost above half the row budget — so it claims its own full-width row and everything
+ * else on the hub re-packs into the space it gave up. The layout engine is untouched.
+ *
+ * The absolute numbers matter far less than the ratio, but they are not arbitrary either: this
+ * resolves to ~55px at a 1174px content width and 18px on a phone, i.e. always UNDER a panel
+ * header's natural height. `AdminPanelRenderer` applies the packer's height as a `max-height`, so
+ * a cap below the header is simply not binding and the bar sizes to its own content. A ratio that
+ * resolved TALLER than the header would cap the header itself and clip it.
+ */
+export const COLLAPSED_PANEL_SIZE = { width: 1200, height: 56 } as const;
+
+/**
+ * Swap in the collapsed footprint for each collapsed panel, leaving every other block untouched.
+ *
+ * `buildContentRows` is a pure function of these models, so re-deriving the array IS how
+ * collapsing a panel re-packs the page. Returns a new array every call — memoize at the caller.
+ */
+export function withCollapsedPanels(
+  content: AnyContentModel[],
+  collapsed: Readonly<Record<PanelType, boolean>>
+): AnyContentModel[] {
+  return content.map(item =>
+    isPanelContent(item) && collapsed[item.panelType] ? { ...item, ...COLLAPSED_PANEL_SIZE } : item
+  );
 }

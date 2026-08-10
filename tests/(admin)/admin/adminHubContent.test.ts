@@ -1,7 +1,13 @@
-import { buildAdminHubContent } from '@/app/(admin)/admin/adminHubContent';
+import {
+  buildAdminHubContent,
+  COLLAPSED_PANEL_SIZE,
+  withCollapsedPanels,
+} from '@/app/(admin)/admin/adminHubContent';
 import { ADMIN_TILES } from '@/app/(admin)/admin/adminTiles';
+import { LAYOUT } from '@/app/constants';
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
 import type { ContentPanelModel, ContentParallaxImageModel } from '@/app/types/Content';
+import { isSoloHero } from '@/app/utils/rowCombination';
 
 function makeTile(tileKey: string, overrides: Partial<AdminHomeTileApi> = {}): AdminHomeTileApi {
   return {
@@ -136,5 +142,57 @@ describe('buildAdminHubContent', () => {
     for (const tile of tiles) {
       expect(tile.imageUrl).toBe('');
     }
+  });
+});
+
+describe('withCollapsedPanels', () => {
+  const content = buildAdminHubContent([]);
+  const NONE = { users: false, messages: false, roles: false } as const;
+
+  it('returns the content unchanged when nothing is collapsed', () => {
+    expect(withCollapsedPanels(content, NONE)).toEqual(content);
+  });
+
+  it('gives a collapsed panel the bar footprint and leaves its siblings alone', () => {
+    const [users, messages, roles] = withCollapsedPanels(content, {
+      ...NONE,
+      users: true,
+    }) as ContentPanelModel[];
+
+    expect(users?.width).toBe(COLLAPSED_PANEL_SIZE.width);
+    expect(users?.height).toBe(COLLAPSED_PANEL_SIZE.height);
+    expect(messages?.height).toBe(1100);
+    expect(roles?.height).toBe(1100);
+  });
+
+  it('collapses every panel type, not just the first', () => {
+    const panels = withCollapsedPanels(content, {
+      users: true,
+      messages: true,
+      roles: true,
+    }).slice(0, PANEL_COUNT) as ContentPanelModel[];
+
+    for (const panel of panels) {
+      expect(panel.height).toBe(COLLAPSED_PANEL_SIZE.height);
+    }
+  });
+
+  it('leaves non-panel blocks untouched', () => {
+    const collapsed = withCollapsedPanels(content, {
+      users: true,
+      messages: true,
+      roles: true,
+    });
+    expect(collapsed.slice(PANEL_COUNT)).toEqual(content.slice(PANEL_COUNT));
+  });
+
+  it('a collapsed panel clears the solo-hero gates, so it claims its own full-width row', () => {
+    const [users] = withCollapsedPanels(content, { ...NONE, users: true });
+    expect(isSoloHero(users!, LAYOUT.defaultChunkSize)).toBe(true);
+  });
+
+  it('an expanded panel does NOT solo — it shares its row', () => {
+    const [users] = withCollapsedPanels(content, NONE);
+    expect(isSoloHero(users!, LAYOUT.defaultChunkSize)).toBe(false);
   });
 });
