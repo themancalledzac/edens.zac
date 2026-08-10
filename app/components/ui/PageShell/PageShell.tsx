@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { SkipLink, SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
+import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 
 import styles from './PageShell.module.scss';
 
@@ -20,10 +20,10 @@ export interface PageShellProps {
  * the SiteHeader. The page-specific header (title/count/cover/breadcrumbs) is
  * composed via <CollectionHeader>, passed as the first child.
  *
- * First in the DOM is {@link SkipLink}, rendered only alongside the header — with
- * `withHeader={false}` (status pages) there is nothing to skip and it would be one more tab stop.
- * `CollectionPage` builds its own shell rather than using this one, so it renders the same pair
- * itself; see {@link SkipLink} for why the pieces live outside this file.
+ * The shell supplies only the {@link SkipTarget} half of the skip-link pair — always, even with
+ * `withHeader={false}`, because the link itself is now unconditional. The link is rendered once
+ * from the root layout, above the route's Suspense boundary; see {@link SkipLink} for why it
+ * cannot live down here.
  */
 export function PageShell({
   children,
@@ -35,7 +35,6 @@ export function PageShell({
   const mainClasses = [styles.main, className].filter(Boolean).join(' ');
   return (
     <div className={styles.container}>
-      {withHeader && <SkipLink />}
       <main className={mainClasses}>
         {withHeader && <SiteHeader pageType={pageType} collectionSlug={collectionSlug} />}
         <SkipTarget>{children}</SkipTarget>

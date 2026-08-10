@@ -42,16 +42,18 @@ describe('PageShell', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
   });
 
-  describe('skip link', () => {
-    it('renders a skip link whose target exists and is focusable', () => {
+  /**
+   * The shell supplies only the landing zone. The link itself is rendered once from the root
+   * layout, above the route's Suspense boundary — see tests/app/skipLink.layout.test.tsx, which
+   * pins that stream order and composes the two halves.
+   */
+  describe('skip target', () => {
+    it('wraps the children in a focusable #main-content target', () => {
       const { container } = render(
         <PageShell>
           <p>page body</p>
         </PageShell>
       );
-
-      const link = screen.getByRole('link', { name: /skip to main content/i });
-      expect(link).toHaveAttribute('href', '#main-content');
 
       const target = container.querySelector('#main-content');
       expect(target).not.toBeNull();
@@ -59,21 +61,25 @@ describe('PageShell', () => {
       expect(target).toContainElement(screen.getByText('page body'));
     });
 
-    it('comes first in the DOM, and its target comes after the header', () => {
+    it('places the target after the header, so the jump actually skips it', () => {
       const { container } = render(<PageShell>x</PageShell>);
 
-      const link = screen.getByRole('link', { name: /skip to main content/i });
       const header = screen.getByTestId('site-header');
       const target = container.querySelector('#main-content')!;
 
-      expect(link.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(
         header.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
+      expect(target).not.toContainElement(header);
     });
 
-    it('is omitted with the header — there is nothing to skip on a status page', () => {
-      render(<PageShell withHeader={false}>x</PageShell>);
+    it('still renders the target with withHeader={false} — the layout link is unconditional', () => {
+      const { container } = render(<PageShell withHeader={false}>x</PageShell>);
+      expect(container.querySelector('#main-content')).not.toBeNull();
+    });
+
+    it('renders no skip link of its own, which would duplicate the layout tab stop', () => {
+      render(<PageShell>x</PageShell>);
       expect(screen.queryByRole('link', { name: /skip to main content/i })).not.toBeInTheDocument();
     });
   });

@@ -1,6 +1,6 @@
 import ContentBlockWithFullScreen from '@/app/components/Content/ContentBlockWithFullScreen';
 import SiteHeader from '@/app/components/SiteHeader/SiteHeader';
-import { SkipLink, SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
+import { SkipTarget } from '@/app/components/ui/SkipLink/SkipLink';
 import { type MeResponse } from '@/app/types/Auth';
 import { type CollectionModel } from '@/app/types/Collection';
 import { CollectionVisibility } from '@/app/types/CollectionVisibility';
@@ -125,7 +125,6 @@ export default function CollectionPage({
     const headingText = collection.title?.trim() || collection.slug?.trim() || 'Untitled';
     return (
       <div className={styles.container}>
-        <SkipLink />
         <main className={styles.main}>
           <SiteHeader pageType="collection" collectionSlug={collection.slug} />
           <SkipTarget>
@@ -154,7 +153,6 @@ export default function CollectionPage({
 
   return (
     <div className={styles.container}>
-      <SkipLink />
       <main className={styles.main}>
         <SiteHeader pageType="collectionsCollection" />
         <SkipTarget>
