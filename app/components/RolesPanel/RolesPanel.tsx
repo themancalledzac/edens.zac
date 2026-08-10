@@ -1,6 +1,15 @@
 'use client';
 
-import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { AdminPanel } from '@/app/components/AdminPanel/AdminPanel';
 import { Button } from '@/app/components/ui/Button/Button';
@@ -35,6 +44,11 @@ interface RolesPanelProps {
  * how a user inherits them. Opening one swaps the body rather than navigating, so an admin can move
  * through several roles without losing the hub.
  *
+ * A role stays addressable even without a route of its own: `/admin?role=[id]` opens that role's
+ * detail directly, which is what `UserRolesSection` links a user's role names to. The param is an
+ * entry point only — moving around inside the panel does not rewrite the URL, so a Back to the
+ * list leaves `?role=` standing and a reload would reopen that role.
+ *
  * Deleting is offered twice on purpose: the per-row × here for the common case, and a Delete role
  * button inside {@link RoleDetailView} for when you have opened a role to check what it grants
  * before removing it. Both confirm first, matching the rest of the admin surface.
@@ -54,6 +68,7 @@ interface RolesPanelProps {
  * re-enters loading in the same commit.
  */
 export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
+  const searchParams = useSearchParams();
   const [roles, setRoles] = useState<RoleSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -98,6 +113,19 @@ export function RolesPanel({ collapsed, onCollapsedChange }: RolesPanelProps) {
     },
     [onCollapsedChange]
   );
+
+  // Keyed on the id rather than a "have we done this yet" flag, so arriving from a second role
+  // link opens that role too — the hub does not remount between two soft navigations to /admin.
+  const openedFromUrl = useRef<number | null>(null);
+
+  useEffect(() => {
+    const requested = Number(searchParams.get('role'));
+    if (!requested || openedFromUrl.current === requested) return;
+    const role = roles.find(r => r.id === requested);
+    if (!role) return;
+    openedFromUrl.current = requested;
+    openView({ mode: 'detail', role });
+  }, [roles, searchParams, openView]);
 
   const sortedRoles = useMemo(
     () => [...roles].sort((a, b) => compareNames(a.name, b.name)),

@@ -28,6 +28,14 @@ jest.mock('@/app/lib/api/roles', () => ({
   removeRoleMember: jest.fn(() => Promise.resolve()),
 }));
 
+// Reassigned per test to drive the ?role= deep link. Read lazily inside the hook, so the TDZ on
+// this `let` is never reached: the factory runs at import time, the arrow only during render.
+let mockSearchParams = new URLSearchParams();
+
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => mockSearchParams,
+}));
+
 jest.mock('@/app/lib/api/collections', () => ({
   getAllCollectionsAdmin: jest.fn(() => Promise.resolve([])),
 }));
@@ -55,6 +63,7 @@ describe('RolesPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.confirm = jest.fn(() => true);
+    mockSearchParams = new URLSearchParams();
     mockListRoles.mockResolvedValue(ROLES);
     mockGetRole.mockResolvedValue(ALPHA_DETAIL);
   });
@@ -228,5 +237,63 @@ describe('RolesPanel', () => {
     await waitFor(() => expect(screen.getByText('alpha')).toBeInTheDocument());
     expect(mockListRoles).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Roles lost their own routes when they moved onto the hub, so `?role=` is the only thing keeping
+   * a role addressable — it is what UserRolesSection links a user's role names to. Without it those
+   * links land on the list and the reader has to find the role again by hand.
+   */
+  describe('?role= deep link', () => {
+    it('opens that role instead of the list', async () => {
+      mockSearchParams = new URLSearchParams('role=3');
+      mockGetRole.mockResolvedValue({ id: 3, name: 'Beta', members: [], collections: [] });
+
+      render(<RolesPanel />);
+
+      await waitFor(() => expect(mockGetRole).toHaveBeenCalledWith(3));
+      expect(screen.getByRole('heading', { name: 'Beta' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'alpha' })).not.toBeInTheDocument();
+    });
+
+    it('returns to the list on ← Back, and does not reopen the role', async () => {
+      mockSearchParams = new URLSearchParams('role=3');
+      mockGetRole.mockResolvedValue({ id: 3, name: 'Beta', members: [], collections: [] });
+
+      render(<RolesPanel />);
+      await waitFor(() =>
+        expect(screen.getByRole('heading', { name: 'Beta' })).toBeInTheDocument()
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /back/i }));
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'alpha' })).toBeInTheDocument()
+      );
+      expect(screen.getByRole('heading', { name: 'Roles' })).toBeInTheDocument();
+    });
+
+    it('falls back to the list when the id matches no role', async () => {
+      mockSearchParams = new URLSearchParams('role=404');
+
+      render(<RolesPanel />);
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'alpha' })).toBeInTheDocument()
+      );
+      expect(mockGetRole).not.toHaveBeenCalled();
+      expect(screen.getByRole('heading', { name: 'Roles' })).toBeInTheDocument();
+    });
+
+    it('ignores a non-numeric id rather than opening anything', async () => {
+      mockSearchParams = new URLSearchParams('role=not-a-number');
+
+      render(<RolesPanel />);
+
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'alpha' })).toBeInTheDocument()
+      );
+      expect(mockGetRole).not.toHaveBeenCalled();
+    });
   });
 });
