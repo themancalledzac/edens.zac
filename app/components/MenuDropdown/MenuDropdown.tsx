@@ -393,8 +393,8 @@ export function MenuDropdown({
 
         {isAdmin && (
           <div className={styles.dropdownMenuItem}>
-            <NavLink href="/admin/roles" className={styles.dropdownMenuLink} onClick={onClose}>
-              <span className={styles.dropdownMenuOptions}>Roles</span>
+            <NavLink href="/admin" className={styles.dropdownMenuLink} onClick={onClose}>
+              <span className={styles.dropdownMenuOptions}>Admin</span>
             </NavLink>
           </div>
         )}

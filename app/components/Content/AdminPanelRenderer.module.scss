@@ -1,4 +1,24 @@
+/* The flex column is load-bearing, not cosmetic: the packer's height arrives as an inline
+   max-height, and only a flex container passes that constraint down to the panel so its body can
+   scroll. As a block box the panel would overflow the cap and be clipped by `overflow: hidden`
+   instead, with no scrollbar anywhere.
+
+   `align-self` opts out of the `align-items: stretch` that .hbox inherits by default, so a panel
+   shorter than its row neighbours stays short instead of being inflated back to the row height.
+   Safe against the mobile row's `align-items: center` only because a .box that is a direct row
+   child is always exactly the row width — give a panel a sub-row width and it would left-align. */
 .box {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  min-height: 12rem;
   overflow: hidden;
   border-radius: var(--radius-1);
+}
+
+/* Both panels fetch on mount and render only a loading line until they resolve, so the min-height
+   above is what stops the hub reflowing under them. Collapsing is the one case that must be free
+   to shrink past it — that is the entire point of collapsing. */
+.collapsed {
+  min-height: 0;
 }

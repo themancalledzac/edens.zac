@@ -6,6 +6,7 @@ import { PERSON_ADD_NEW_FIELDS } from '@/app/components/ui/Dropdown/commonAddNew
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import TagsSelector from '@/app/components/ui/TagsSelector/TagsSelector';
 import type { ContentPersonModel, ContentTagModel } from '@/app/types/Metadata';
+import { compareNames } from '@/app/utils/sortByName';
 
 import type { ImageUpdateState } from '../hooks/useMetadataState';
 import modalStyles from '../MetadataModal.module.scss';
@@ -25,10 +26,7 @@ export default function TagsPeopleSection({
 }: TagsPeopleSectionProps): React.JSX.Element {
   // People list alphabetical (case-insensitive), matching TagsSelector. Copy before sorting.
   const sortedPeople = useMemo(
-    () =>
-      [...availablePeople].sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-      ),
+    () => [...availablePeople].sort((a, b) => compareNames(a.name, b.name)),
     [availablePeople]
   );
 

@@ -299,7 +299,7 @@ export interface ContentCollectionModel extends Content {
  */
 export interface ContentPanelModel extends Content {
   contentType: 'PANEL';
-  panelType: 'users' | 'messages';
+  panelType: 'users' | 'messages' | 'roles';
   rating: number;
 }
 

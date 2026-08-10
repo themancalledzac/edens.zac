@@ -413,10 +413,10 @@ describe('UserPage — header rail cards', () => {
   });
 
   /**
-   * This card is the site's only navigation into /admin: the hub used to be reachable because
-   * localhost redirected `/` to it, and MenuDropdown links to /admin/roles but never the hub.
-   * It must gate on the real `isAdmin` principal — never an environment check — because it is
-   * meant to render in production too.
+   * This card is one of the site's two navigations into /admin, alongside MenuDropdown's admin
+   * link: the hub used to be reachable because localhost redirected `/` to it, and that redirect
+   * is gone. It must gate on the real `isAdmin` principal — never an environment check — because
+   * it is meant to render in production too.
    */
   it('omits the Admin card for an ordinary signed-in user', async () => {
     (meServer as jest.Mock).mockResolvedValue(authedPrincipal);
@@ -428,7 +428,7 @@ describe('UserPage — header rail cards', () => {
     expect(findProps(railExtras(await renderTab()), AdminCard)).not.toBeNull();
   });
 
-  it('links to the admin hub, which nothing else in the nav does', async () => {
+  it('links to the admin hub', async () => {
     (meServer as jest.Mock).mockResolvedValue({ ...authedPrincipal, isAdmin: true });
     expect(renderToStaticMarkup(railExtras(await renderTab()))).toContain('href="/admin"');
   });

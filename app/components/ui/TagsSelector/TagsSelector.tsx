@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 
 import Dropdown from '@/app/components/ui/Dropdown/Dropdown';
 import type { ContentTagModel } from '@/app/types/Metadata';
+import { compareNames } from '@/app/utils/sortByName';
 
 export interface TagsSelectorProps {
   /** Currently-selected tags (resolved to full models; id === 0 means not-yet-created). */
@@ -36,10 +37,7 @@ export default function TagsSelector({
   // Present the option list alphabetically (case-insensitive) so it stays scannable
   // as the tag vocabulary grows. Copy before sorting — never mutate the caller's array.
   const sortedTags = useMemo(
-    () =>
-      [...availableTags].sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-      ),
+    () => [...availableTags].sort((a, b) => compareNames(a.name, b.name)),
     [availableTags]
   );
 

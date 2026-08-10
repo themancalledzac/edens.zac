@@ -11,7 +11,7 @@
 }
 
 /* Wraps rather than scrolls: the rail is a narrow column (roughly a third of the row on
-   desktop, full width on mobile), so a single row of five links would overflow it. */
+   desktop, full width on mobile), so a single row of four links would overflow it. */
 .links {
   display: flex;
   flex-wrap: wrap;

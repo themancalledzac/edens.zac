@@ -15,6 +15,7 @@ import { UserForm } from '@/app/components/UserForm/UserForm';
 import { listUsers } from '@/app/lib/api/users';
 import { type AdminUserSummary } from '@/app/types/User';
 import { logger } from '@/app/utils/logger';
+import { compareNames } from '@/app/utils/sortByName';
 
 import styles from './UserManagementPanel.module.scss';
 
@@ -96,9 +97,7 @@ export function UserManagementPanel({ collapsed, onCollapsedChange }: UserManage
   const sortedUsers = useMemo(
     () =>
       [...users].sort((a, b) =>
-        (a.displayName ?? a.email ?? '').localeCompare(b.displayName ?? b.email ?? '', undefined, {
-          sensitivity: 'base',
-        })
+        compareNames(a.displayName ?? a.email ?? '', b.displayName ?? b.email ?? '')
       ),
     [users]
   );

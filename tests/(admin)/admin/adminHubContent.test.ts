@@ -14,42 +14,46 @@ function makeTile(tileKey: string, overrides: Partial<AdminHomeTileApi> = {}): A
   };
 }
 
+/** Users, Messages, Roles — the panels the hub puts ahead of the nav tiles. */
+const PANEL_COUNT = 3;
+
 describe('buildAdminHubContent', () => {
   const apiTiles: AdminHomeTileApi[] = ADMIN_TILES.map(c => makeTile(c.tileKey));
   const result = buildAdminHubContent(apiTiles);
 
-  it('returns one item per configured tile, plus the 2 panels', () => {
-    expect(result).toHaveLength(ADMIN_TILES.length + 2);
+  it('returns one item per configured tile, plus the panels', () => {
+    expect(result).toHaveLength(ADMIN_TILES.length + PANEL_COUNT);
   });
 
-  it('panels come first (indices 0 and 1)', () => {
-    expect(result[0]?.contentType).toBe('PANEL');
-    expect(result[1]?.contentType).toBe('PANEL');
+  it('panels come first', () => {
+    for (const panel of result.slice(0, PANEL_COUNT)) {
+      expect(panel.contentType).toBe('PANEL');
+    }
   });
 
   it('tile models all have contentType IMAGE', () => {
-    const tiles = result.slice(2);
+    const tiles = result.slice(PANEL_COUNT);
     for (const tile of tiles) {
       expect(tile.contentType).toBe('IMAGE');
     }
   });
 
   it('tile models all have enableParallax true', () => {
-    const tiles = result.slice(2) as ContentParallaxImageModel[];
+    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.enableParallax).toBe(true);
     }
   });
 
   it('tile models do not have collectionType', () => {
-    const tiles = result.slice(2) as ContentParallaxImageModel[];
+    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect('collectionType' in tile).toBe(false);
     }
   });
 
   it('carries each tile config rating through to its model', () => {
-    const tiles = result.slice(2) as ContentParallaxImageModel[];
+    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
     expect(tiles.length).toBe(ADMIN_TILES.length);
     for (const [i, tile] of tiles.entries()) {
       expect(tile.rating).toBe(ADMIN_TILES[i]?.rating);
@@ -57,14 +61,14 @@ describe('buildAdminHubContent', () => {
   });
 
   it('gives every tile a non-empty slug so isSlugNav can link it', () => {
-    const tiles = result.slice(2) as ContentParallaxImageModel[];
+    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.slug).toBeTruthy();
     }
   });
 
   it('slug maps so /slug equals config.href', () => {
-    const tiles = result.slice(2) as ContentParallaxImageModel[];
+    const tiles = result.slice(PANEL_COUNT) as ContentParallaxImageModel[];
     for (let i = 0; i < ADMIN_TILES.length; i++) {
       const config = ADMIN_TILES[i];
       const tile = tiles[i];
@@ -77,7 +81,7 @@ describe('buildAdminHubContent', () => {
       makeTile(c.tileKey, { coverImageWidth: 1200, coverImageHeight: 800 })
     );
     const res = buildAdminHubContent(tilesWithDims);
-    const firstTile = res[2] as ContentParallaxImageModel;
+    const firstTile = res[PANEL_COUNT] as ContentParallaxImageModel;
     expect(firstTile.imageWidth).toBeGreaterThan(0);
     expect(firstTile.imageHeight).toBeGreaterThan(0);
   });
@@ -87,26 +91,37 @@ describe('buildAdminHubContent', () => {
       makeTile(c.tileKey, { coverImageUrl: null, coverImageWidth: null, coverImageHeight: null })
     );
     const res = buildAdminHubContent(tilesNoCover);
-    const tiles = res.slice(2) as ContentParallaxImageModel[];
+    const tiles = res.slice(PANEL_COUNT) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.imageUrl).toBe('');
     }
   });
 
-  it('panels have contentType PANEL and rating 5', () => {
-    const usersPanel = result[0] as ContentPanelModel;
-    const messagesPanel = result[1] as ContentPanelModel;
-    expect(usersPanel.panelType).toBe('users');
-    expect(usersPanel.rating).toBe(5);
-    expect(messagesPanel.panelType).toBe('messages');
-    expect(messagesPanel.rating).toBe(5);
+  it('carries every panel type, in order, all rated 5', () => {
+    const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
+    expect(panels.map(p => p.panelType)).toEqual(['users', 'messages', 'roles']);
+    for (const panel of panels) {
+      expect(panel.rating).toBe(5);
+    }
   });
 
   it('panels have vertical AR (width < height)', () => {
-    const usersPanel = result[0] as ContentPanelModel;
-    const messagesPanel = result[1] as ContentPanelModel;
-    expect((usersPanel.width ?? 0) < (usersPanel.height ?? 0)).toBe(true);
-    expect((messagesPanel.width ?? 0) < (messagesPanel.height ?? 0)).toBe(true);
+    const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
+    for (const panel of panels) {
+      expect((panel.width ?? 0) < (panel.height ?? 0)).toBe(true);
+    }
+  });
+
+  /**
+   * The packer's height reaches the DOM as a max-height, so this ratio is each panel's tallest
+   * allowed shape. At exactly 1:2 the extremeness hits EXTREMENESS_RAMP_START and prominenceFactor
+   * steps from 1.0 to 1.4, which re-solves width allocation for the whole hub.
+   */
+  it('keeps every panel strictly under the 1:2 extremeness ramp', () => {
+    const panels = result.slice(0, PANEL_COUNT) as ContentPanelModel[];
+    for (const panel of panels) {
+      expect((panel.height ?? 0) / (panel.width ?? 1)).toBeLessThan(2);
+    }
   });
 
   it('all ids are unique', () => {
@@ -116,8 +131,8 @@ describe('buildAdminHubContent', () => {
 
   it('works with an empty tiles array', () => {
     const res = buildAdminHubContent([]);
-    expect(res).toHaveLength(ADMIN_TILES.length + 2);
-    const tiles = res.slice(2) as ContentParallaxImageModel[];
+    expect(res).toHaveLength(ADMIN_TILES.length + PANEL_COUNT);
+    const tiles = res.slice(PANEL_COUNT) as ContentParallaxImageModel[];
     for (const tile of tiles) {
       expect(tile.imageUrl).toBe('');
     }

@@ -1,6 +1,15 @@
 /**
  * Builds the AnyContentModel[] for the admin hub. Array order: panels first, then nav tiles.
- * Panel width/height (600×1100, AR≈0.55) and tile rating are tunable.
+ *
+ * A panel's width/height is an aspect ratio to the packer, and `AdminPanelRenderer` applies the
+ * height it computes as a `max-height` — so 600×1100 is the panel's tallest allowed shape, not its
+ * shape. A panel with little in it renders short; one with more scrolls internally at the cap.
+ *
+ * Keep that ratio strictly taller than 1:2. `prominenceFactor` steps at `EXTREMENESS_RAMP_START`
+ * (2.0), so 600×1200 would jump a panel's prominence from 5.0 to 7.0 and re-solve width allocation
+ * for the whole hub. 600×1100 is extremeness 1.83 and sits safely under it.
+ *
+ * Panel rating is the lever for how much width the packer gives a panel relative to the nav tiles.
  */
 
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
@@ -62,5 +71,17 @@ export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel
     visible: true,
   };
 
-  return [usersPanel, messagesPanel, ...tileModels];
+  const rolesPanel: ContentPanelModel = {
+    contentType: 'PANEL',
+    panelType: 'roles',
+    id: 1003,
+    rating: 5,
+    title: 'Roles',
+    width: 600,
+    height: 1100,
+    orderIndex: 102,
+    visible: true,
+  };
+
+  return [usersPanel, messagesPanel, rolesPanel, ...tileModels];
 }

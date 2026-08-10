@@ -111,7 +111,7 @@ app/
   (admin)/                        Admin routes (collection manager, image browser, admin panel)
     collection/manage/[[...slug]]/  Collection editor with drag-and-drop
     all-images/                     Image browser and metadata editor
-    admin/users/, admin/roles/      User management and role administration
+    admin/users/                    User management
   [slug]/page.tsx                 Dynamic collection pages (real collections and tag views)
   all-collections/                Collection list and management
   explore/                        Taxonomy entry point
