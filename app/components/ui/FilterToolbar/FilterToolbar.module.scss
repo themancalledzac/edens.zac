@@ -23,7 +23,15 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-1);
+
+  /* INVARIANT: keep this at >= --space-2 (8px) for as long as FilterChip paints the 44px
+     coarse-pointer overlay. A chip's box is ~29.6px tall, so its overlay overhangs by ~7.2px above
+     and below; at the previous --space-1 (4px) the overlay of every chip on a wrapped row reached
+     3.2px back over the chips on the row ABOVE and, painting later in DOM order, took their taps —
+     a touch near a chip's lower edge fired a different filter, with no cursor to reveal it. 8px
+     clears the overhang with 0.8px to spare. Tightening this again means lowering
+     --touch-target-min to match — see the docblock on FilterChip's .chip. */
+  gap: var(--space-2);
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -104,7 +112,10 @@
   z-index: var(--z-dropdown);
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
+
+  /* INVARIANT: >= --space-2, same reason as .controls — this panel is a wrapping grid of the same
+     chips, and at --space-1 each row's 44px overlay stole the taps aimed at the row above it. */
+  gap: var(--space-2);
   min-width: 160px;
   max-width: 320px;
   padding: 8px 10px;

@@ -1,7 +1,14 @@
 .group {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+
+  /* INVARIANT: keep this at >= --space-2 (8px) for as long as .segment paints the 44px
+     coarse-pointer overlay. A segment's box is 33px wide (15px glyph + --space-2 padding + a 1px
+     border), so its overlay overhangs by 5.5px per side; at the previous --space-1 (4px) every
+     segment's overlay reached 1.5px over its left neighbour and, painting later in DOM order,
+     took the taps that landed there. Tightening this again means lowering --touch-target-min to
+     match — see the docblock on .segment. */
+  gap: var(--space-2);
 }
 
 /* Sized from the same tokens as FilterChip so a segment's box is identical to a chip's: same
@@ -39,16 +46,22 @@
   }
 
   /* Touch-target padding on coarse pointers only, and via an overlay rather than the box itself,
-     so meeting the 44px minimum never changes the toolbar's height. */
+     so meeting the 44px minimum never changes the toolbar's height. The box is 33x25, so the
+     overlay overhangs it by 5.5px horizontally and 9.5px vertically — which is why .group's gap
+     is pinned at --space-2 rather than the --space-1 the rest of the bar uses.
+
+     Escape hatch for a cluster that cannot afford that gap: set --touch-target-min on .group (it
+     inherits). Read IconButton.module.scss before reaching for it — shrinking the target is the
+     last resort, not the first. */
   @media (pointer: coarse) {
     &::after {
       position: absolute;
       top: 50%;
       left: 50%;
       width: 100%;
-      min-width: 44px;
+      min-width: var(--touch-target-min, 44px);
       height: 100%;
-      min-height: 44px;
+      min-height: var(--touch-target-min, 44px);
       content: '';
       transform: translate(-50%, -50%);
     }
