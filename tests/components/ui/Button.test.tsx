@@ -46,6 +46,61 @@ describe('Button', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  /**
+   * A control that has to survive its own pending state carries `aria-disabled` instead of
+   * `disabled`, because disabling the focused element hands focus to `<body>` — and inside a focus
+   * trap, one Tab from there walks the page behind the dialog. The primitive owes those callers the
+   * same painted state the real attribute gets, so they do not each restate it locally.
+   *
+   * jest maps CSS modules to an identity proxy, so the stylesheet itself is out of reach here;
+   * these cover the half that is testable — the attribute contract the stylesheet keys off, and the
+   * focusability that is the whole reason for the swap.
+   */
+  describe('aria-disabled', () => {
+    it('stays focusable, because the real attribute is what drops focus', () => {
+      render(<Button aria-disabled>Verifying…</Button>);
+      const btn = screen.getByRole('button', { name: /verifying/i });
+
+      expect(btn).toHaveAttribute('aria-disabled', 'true');
+      expect(btn).not.toBeDisabled();
+
+      btn.focus();
+      expect(btn).toHaveFocus();
+    });
+
+    it('keeps its variant class, so the primitive paints the pending look off the attribute', () => {
+      const { rerender } = render(<Button variant="primary">Enter</Button>);
+      const btn = screen.getByRole('button', { name: 'Enter' });
+      const idle = btn.className;
+
+      rerender(
+        <Button variant="primary" aria-disabled>
+          Enter
+        </Button>
+      );
+
+      expect(btn.className).toBe(idle);
+      expect(btn).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('does not swallow the click — the caller owns the guard, not the primitive', () => {
+      const onClick = jest.fn();
+      render(
+        <Button aria-disabled onClick={onClick}>
+          Verifying…
+        </Button>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /verifying/i }));
+      expect(onClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('omits the attribute entirely when not pending', () => {
+      render(<Button aria-disabled={undefined}>Enter</Button>);
+      expect(screen.getByRole('button', { name: 'Enter' })).not.toHaveAttribute('aria-disabled');
+    });
+  });
+
   it('respects an explicit type and merges a custom className', () => {
     render(
       <Button type="submit" className="custom-x">

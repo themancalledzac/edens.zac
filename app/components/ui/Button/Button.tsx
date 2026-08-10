@@ -18,6 +18,12 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
  * Canonical action button. Variant drives color; size drives padding/height; loading shows a
  * spinner and disables the control. Forwards all native button attributes.
  *
+ * `aria-disabled` is painted the same as `disabled` — same dimming, same cursor, same suppressed
+ * hover — so a caller whose control must stay focusable through a pending action (see
+ * `ClientGalleryGate`) gets the look for free and only owes the handler guard. The attribute is
+ * forwarded as-is; the primitive deliberately does not swallow the click, because "inert" is the
+ * caller's state to define.
+ *
  * Server-Component-friendly: no hooks, so no 'use client' needed.
  */
 export function Button({

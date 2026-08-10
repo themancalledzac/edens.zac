@@ -36,6 +36,26 @@ describe('IconButton', () => {
     expect(btn).toHaveAttribute('aria-busy', 'true');
   });
 
+  /**
+   * The primitive paints `aria-disabled` the same as `disabled` (see `IconButton.module.scss`), so
+   * a dismiss or overlay control inside a focus trap can go inert without the browser dropping its
+   * focus onto `<body>`. See the fuller note in the `Button` suite.
+   */
+  it('carries aria-disabled without the real attribute, and stays focusable', () => {
+    render(
+      <IconButton aria-label="Close" aria-disabled>
+        <span>x</span>
+      </IconButton>
+    );
+    const btn = screen.getByRole('button', { name: 'Close' });
+
+    expect(btn).toHaveAttribute('aria-disabled', 'true');
+    expect(btn).not.toBeDisabled();
+
+    btn.focus();
+    expect(btn).toHaveFocus();
+  });
+
   it('forwards onClick', () => {
     const onClick = jest.fn();
     render(

@@ -46,16 +46,19 @@ interface RatingStarsProps {
  * activating the star that is already selected clears the rating back to unrated. Arrow/Home/End
  * never clear — a rating of 1 stays 1 when Home is pressed on it, and no write is issued.
  *
- * Every star is `disabled` while a write is in flight, and browsers drop focus from a control
- * that becomes disabled. `refocusAfterWrite` puts focus back on the roving star once the write
- * settles, so a second arrow press still lands instead of falling through to the document.
+ * While a write is in flight the stars report `aria-disabled` but stay focusable, and both
+ * handlers no-op. A real `disabled` attribute would be the obvious choice, but browsers drop
+ * focus from a control the moment it becomes disabled: the star the user just activated with
+ * Space/Enter — or arrowed onto — would hand focus back to the document, so the next Space press
+ * scrolls the page and the next Tab restarts from the top. Staying focusable means focus is never
+ * lost, so nothing has to be restored afterwards. Arrow keys are still `preventDefault`ed while
+ * pending, which makes them inert rather than letting ArrowDown fall through to the scroller.
  */
 export default function RatingStars({ initialRating, onChange, ariaLabel }: RatingStarsProps) {
   const [rating, setRating] = useState<number | null>(initialRating);
   const [pending, setPending] = useState(false);
   const [tabStop, setTabStop] = useState(initialRating ?? 1);
   const starRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const refocusAfterWrite = useRef(false);
 
   // `initialRating` often arrives after mount (admin metadata fetch), so the mount-time seed
   // would otherwise show empty stars for an already-rated collection all session.
@@ -63,12 +66,6 @@ export default function RatingStars({ initialRating, onChange, ariaLabel }: Rati
     setRating(initialRating);
     setTabStop(initialRating ?? 1);
   }, [initialRating]);
-
-  useEffect(() => {
-    if (pending || !refocusAfterWrite.current) return;
-    refocusAfterWrite.current = false;
-    starRefs.current[tabStop - 1]?.focus();
-  }, [pending, tabStop]);
 
   const commit = async (next: number | null) => {
     setPending(true);
@@ -84,6 +81,7 @@ export default function RatingStars({ initialRating, onChange, ariaLabel }: Rati
   };
 
   const handleClick = (n: number) => {
+    if (pending) return;
     setTabStop(n);
     void commit(rating === n ? null : n);
   };
@@ -92,10 +90,10 @@ export default function RatingStars({ initialRating, onChange, ariaLabel }: Rati
     const next = nextStarFor(event.key, from);
     if (next === null) return;
     event.preventDefault();
+    if (pending) return;
     setTabStop(next);
     starRefs.current[next - 1]?.focus();
     if (next === rating) return;
-    refocusAfterWrite.current = true;
     void commit(next);
   };
 
@@ -111,7 +109,7 @@ export default function RatingStars({ initialRating, onChange, ariaLabel }: Rati
           role="radio"
           aria-checked={rating === n}
           tabIndex={tabStop === n ? 0 : -1}
-          disabled={pending}
+          aria-disabled={pending || undefined}
           className={`${styles.star} ${rating != null && n <= rating ? styles.filled : ''}`}
           onClick={() => handleClick(n)}
           onKeyDown={event => handleKeyDown(event, n)}

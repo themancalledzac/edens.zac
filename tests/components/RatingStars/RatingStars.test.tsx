@@ -1,8 +1,24 @@
 import '@testing-library/jest-dom';
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import RatingStars from '@/app/components/RatingStars/RatingStars';
+
+/**
+ * An `onChange` that parks in the pending state until `settle()` is called, so a test can
+ * inspect the control mid-write.
+ */
+function deferredWrite() {
+  let resolveWrite: () => void = () => {};
+  const onChange = jest.fn(
+    () =>
+      new Promise<void>(resolve => {
+        resolveWrite = resolve;
+      })
+  );
+  return { onChange, settle: () => resolveWrite() };
+}
 
 describe('<RatingStars>', () => {
   it('clicking a star calls onChange with that rating', async () => {
@@ -33,7 +49,9 @@ describe('<RatingStars>', () => {
 
       fireEvent.click(screen.getAllByRole('radio')[4]!);
 
-      await waitFor(() => expect(screen.getAllByRole('radio')[4]).toBeEnabled());
+      await waitFor(() =>
+        expect(screen.getAllByRole('radio')[4]).not.toHaveAttribute('aria-disabled')
+      );
       expect(screen.getAllByRole('radio')[1]).toBeChecked();
       expect(screen.getAllByRole('radio')[4]).not.toBeChecked();
     });
@@ -48,7 +66,9 @@ describe('<RatingStars>', () => {
       render(<RatingStars initialRating={null} onChange={onChange} />);
       fireEvent.click(screen.getAllByRole('radio')[0]!);
 
-      await waitFor(() => expect(screen.getAllByRole('radio')[0]).toBeEnabled());
+      await waitFor(() =>
+        expect(screen.getAllByRole('radio')[0]).not.toHaveAttribute('aria-disabled')
+      );
       await new Promise(resolve => setTimeout(resolve, 0));
 
       process.off('unhandledRejection', unhandled);
@@ -57,27 +77,79 @@ describe('<RatingStars>', () => {
   });
 
   describe('pending state', () => {
-    it('disables every star while the write is in flight, then re-enables them', async () => {
-      let resolveWrite: () => void = () => {};
-      const onChange = jest.fn(
-        () =>
-          new Promise<void>(resolve => {
-            resolveWrite = resolve;
-          })
-      );
+    it('marks every star aria-disabled while the write is in flight, then clears it', async () => {
+      const { onChange, settle } = deferredWrite();
       render(<RatingStars initialRating={null} onChange={onChange} />);
 
       fireEvent.click(screen.getAllByRole('radio')[2]!);
 
       await waitFor(() => {
-        for (const star of screen.getAllByRole('radio')) expect(star).toBeDisabled();
+        for (const star of screen.getAllByRole('radio'))
+          expect(star).toHaveAttribute('aria-disabled', 'true');
       });
 
-      resolveWrite();
+      settle();
 
       await waitFor(() => {
-        for (const star of screen.getAllByRole('radio')) expect(star).toBeEnabled();
+        for (const star of screen.getAllByRole('radio'))
+          expect(star).not.toHaveAttribute('aria-disabled');
       });
+    });
+
+    it('never sets the real disabled attribute, so the browser cannot drop focus mid-write', async () => {
+      const { onChange, settle } = deferredWrite();
+      render(<RatingStars initialRating={null} onChange={onChange} />);
+      const stars = screen.getAllByRole('radio');
+      stars[2]!.focus();
+
+      fireEvent.click(stars[2]!);
+
+      await waitFor(() => expect(stars[2]).toHaveAttribute('aria-disabled', 'true'));
+      for (const star of stars) expect(star).toBeEnabled();
+      expect(stars[2]).toHaveAttribute('tabindex', '0');
+      expect(stars[2]).toHaveFocus();
+
+      settle();
+      await waitFor(() => expect(stars[2]).not.toHaveAttribute('aria-disabled'));
+      expect(stars[2]).toHaveFocus();
+    });
+
+    it('ignores a click while a write is in flight instead of double-submitting', async () => {
+      const { onChange, settle } = deferredWrite();
+      render(<RatingStars initialRating={null} onChange={onChange} />);
+      const stars = screen.getAllByRole('radio');
+
+      fireEvent.click(stars[2]!);
+      await waitFor(() => expect(stars[2]).toHaveAttribute('aria-disabled', 'true'));
+
+      fireEvent.click(stars[4]!);
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(stars[4]).not.toBeChecked();
+
+      settle();
+      await waitFor(() => expect(stars[2]).toBeChecked());
+      expect(stars[4]).not.toBeChecked();
+    });
+
+    it('swallows arrow keys while a write is in flight so the page cannot scroll', async () => {
+      const { onChange, settle } = deferredWrite();
+      render(<RatingStars initialRating={1} onChange={onChange} />);
+      const stars = screen.getAllByRole('radio');
+      stars[0]!.focus();
+
+      fireEvent.keyDown(stars[0]!, { key: 'ArrowRight' });
+      await waitFor(() => expect(stars[1]).toHaveAttribute('aria-disabled', 'true'));
+
+      const arrowDown = createEvent.keyDown(stars[1]!, { key: 'ArrowDown' });
+      fireEvent(stars[1]!, arrowDown);
+
+      expect(arrowDown.defaultPrevented).toBe(true);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(stars[1]).toHaveFocus();
+
+      settle();
+      await waitFor(() => expect(stars[1]).toBeChecked());
     });
   });
 
@@ -205,19 +277,22 @@ describe('<RatingStars>', () => {
       await waitFor(() => expect(stars[0]).toBeChecked());
     });
 
-    it('keeps a second arrow press working after the first write settles', async () => {
+    it('holds focus on the star it moved to, so the next arrow press lands on the group', async () => {
+      // Both presses are dispatched at `document.activeElement` rather than a captured node, so
+      // the test only passes while focus really is where the component claims to have put it.
+      // Losing focus to the document makes the second press miss the component entirely.
       const onChange = jest.fn(() => Promise.resolve());
       render(<RatingStars initialRating={1} onChange={onChange} />);
       const stars = screen.getAllByRole('radio');
       stars[0]!.focus();
 
-      fireEvent.keyDown(stars[0]!, { key: 'ArrowRight' });
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' });
       await waitFor(() => expect(stars[1]).toBeChecked());
-      expect(stars[1]).toHaveFocus();
+      expect(document.activeElement).toBe(stars[1]);
 
-      fireEvent.keyDown(stars[1]!, { key: 'ArrowRight' });
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowRight' });
       await waitFor(() => expect(stars[2]).toBeChecked());
-      expect(stars[2]).toHaveFocus();
+      expect(document.activeElement).toBe(stars[2]);
       expect(onChange).toHaveBeenNthCalledWith(2, 3);
     });
 
@@ -244,6 +319,53 @@ describe('<RatingStars>', () => {
 
       expect(onChange).not.toHaveBeenCalled();
       expect(stars[1]).toHaveFocus();
+    });
+  });
+
+  describe('Space and Enter', () => {
+    it('Space activates the focused star and commits it', async () => {
+      const user = userEvent.setup();
+      const onChange = jest.fn(() => Promise.resolve());
+      render(<RatingStars initialRating={null} onChange={onChange} />);
+      const stars = screen.getAllByRole('radio');
+      stars[2]!.focus();
+
+      await user.keyboard('[Space]');
+
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith(3));
+      await waitFor(() => expect(stars[2]).toBeChecked());
+    });
+
+    it('Enter activates the focused star and commits it', async () => {
+      const user = userEvent.setup();
+      const onChange = jest.fn(() => Promise.resolve());
+      render(<RatingStars initialRating={null} onChange={onChange} />);
+      const stars = screen.getAllByRole('radio');
+      stars[3]!.focus();
+
+      await user.keyboard('[Enter]');
+
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith(4));
+      await waitFor(() => expect(stars[3]).toBeChecked());
+    });
+
+    it('keeps focus on the activated star, so a second Space still reaches it', async () => {
+      // `user.keyboard` types at `document.activeElement`. If the write stole focus, the second
+      // press would land on the document and the toggle-off would never be issued.
+      const user = userEvent.setup();
+      const onChange = jest.fn(() => Promise.resolve());
+      render(<RatingStars initialRating={null} onChange={onChange} />);
+      const stars = screen.getAllByRole('radio');
+      stars[2]!.focus();
+
+      await user.keyboard('[Space]');
+      await waitFor(() => expect(stars[2]).toBeChecked());
+      expect(document.activeElement).toBe(stars[2]);
+
+      await user.keyboard('[Space]');
+      await waitFor(() => expect(stars[2]).not.toBeChecked());
+      expect(document.activeElement).toBe(stars[2]);
+      expect(onChange).toHaveBeenNthCalledWith(2, null);
     });
   });
 

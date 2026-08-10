@@ -1,3 +1,27 @@
+/* A button here is off in one of two ways, and both look the same.
+
+   `disabled` is the real attribute. `aria-disabled` is what a control uses when it has to stay
+   focusable while its action is in flight: browsers move focus to `<body>` the instant the focused
+   element becomes disabled, and inside a focus trap one Tab from there walks the page behind the
+   dialog. Those buttons keep focus and guard their own handler instead — see the submit button in
+   `ClientGalleryGate`.
+
+   Both are matched in the primitive because a call site cannot cover the gap. Restating the
+   disabled *look* locally works, but the hover rules below are the visible half of the problem: an
+   `aria-disabled` button whose variant still says `:hover:not(:disabled)` lightens under the
+   cursor while it is inert, and the call site's override and this rule are both 0-3-0, so which
+   one wins comes down to the order two CSS-module stylesheets happen to land in.
+
+   The guard is a mixin so the pair cannot drift apart again — a new variant gets it by writing
+   `@include enabled-hover`, and a third way of being off is added in one place. The `:not()` takes
+   a selector list rather than a chain of two so it costs no specificity: a list scores as its most
+   specific argument, leaving every variant's hover rule at the 0-3-0 it already was. */
+@mixin enabled-hover {
+  &:hover:not(:disabled, [aria-disabled='true']) {
+    @content;
+  }
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -13,7 +37,8 @@
     color var(--duration-base) var(--ease-standard),
     border-color var(--duration-base) var(--ease-standard);
 
-  &:disabled {
+  &:disabled,
+  &[aria-disabled='true'] {
     opacity: 0.6;
     cursor: not-allowed;
   }
@@ -40,7 +65,7 @@
   background-color: var(--color-fg);
   color: var(--color-bg);
 
-  &:hover:not(:disabled) {
+  @include enabled-hover {
     background-color: var(--color-primary-hover);
   }
 }
@@ -49,7 +74,7 @@
   background-color: var(--color-secondary);
   color: var(--color-white);
 
-  &:hover:not(:disabled) {
+  @include enabled-hover {
     background-color: var(--color-secondary-dark);
   }
 }
@@ -58,7 +83,7 @@
   background-color: var(--color-danger);
   color: var(--color-white);
 
-  &:hover:not(:disabled) {
+  @include enabled-hover {
     filter: brightness(0.92);
   }
 }
@@ -67,7 +92,7 @@
   background-color: var(--color-warning);
   color: var(--color-black);
 
-  &:hover:not(:disabled) {
+  @include enabled-hover {
     filter: brightness(0.92);
   }
 }
@@ -76,7 +101,7 @@
   background-color: transparent;
   color: var(--color-fg);
 
-  &:hover:not(:disabled) {
+  @include enabled-hover {
     background-color: var(--color-overlay-soft);
   }
 }
@@ -86,7 +111,7 @@
   color: var(--color-fg);
   border-color: var(--color-border);
 
-  &:hover:not(:disabled) {
+  @include enabled-hover {
     background-color: var(--color-overlay-soft);
     border-color: var(--color-fg);
   }

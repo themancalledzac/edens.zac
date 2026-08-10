@@ -15,7 +15,9 @@
     color: var(--color-warning, #f4b400);
   }
 
-  &:disabled {
+  /* The stars stay focusable through a write and carry aria-disabled instead of the real
+     attribute — see the component docblock — so the pending look hangs off the ARIA state. */
+  &[aria-disabled='true'] {
     opacity: 0.5;
     cursor: progress;
   }

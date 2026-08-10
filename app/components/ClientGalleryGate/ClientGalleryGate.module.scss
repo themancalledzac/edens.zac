@@ -70,9 +70,12 @@
     outline-offset: 2px;
   }
 
-  &:disabled {
+  /* The field goes `readonly` while verifying rather than `disabled`, so it keeps the focus the
+     user submitted from — see the component docblock. `not-allowed` would be the wrong cursor for
+     it: the text is still selectable and copyable, only editing is off. */
+  &[readonly] {
     opacity: 0.6;
-    cursor: not-allowed;
+    cursor: default;
   }
 }
 
@@ -83,12 +86,23 @@
 }
 
 /* Placement + spinner layout only — colour, size and the live-region semantics come from the
-   shared <LoadingText> this decorates. */
+   shared <LoadingText> this decorates.
+
+   Block flex rather than inline-flex, because the region now stays mounted while the password form
+   is showing (see ClientGalleryGate.tsx). An inline-level box still generates a line box when it is
+   empty, so it could never be zero-height; a block flex box with no children and no margin is.
+   `justify-content` replaces the centring the card's `text-align` gave the inline box.
+
+   The old `margin-top: var(--space-4)` is gone rather than restored, because block margins collapse
+   and the subtitle's larger `margin-bottom` would have swallowed it anyway. The message now sits
+   exactly where the form it replaces sat — one slot under the subtitle — which is what it always
+   should have done; the extra 1rem was an artefact of the inline box not collapsing. */
 .gateLoading {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  margin: var(--space-4) 0 0 0;
+  margin: 0;
 }
 
 /* Declared once because the reduced-motion guard below has to restate it. Holds only the duration,
@@ -120,7 +134,9 @@ $gate-spinner-duration: 0.8s;
   }
 }
 
-/* Canonical colors/padding/radius/disabled/focus come from <Button variant="primary">.
+/* Canonical colors/padding/radius/disabled/focus come from <Button variant="primary">, which
+   paints `aria-disabled` the same as `:disabled` — this button carries the ARIA form so the
+   Modal's focus trap never loses the focused element (see the component docblock).
    Only the gate-specific presentation remains (properties Button doesn't set, so they
    layer cleanly): full-width, uppercase CTA typography. */
 .gateButton {
