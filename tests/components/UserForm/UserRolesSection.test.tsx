@@ -58,11 +58,11 @@ describe('UserRolesSection', () => {
 
     render(<UserRolesSection userId={8} />);
 
-    expect(screen.getByRole('link', { name: 'Roles' })).toHaveAttribute('href', '/admin/roles');
+    expect(screen.getByRole('link', { name: 'Roles' })).toHaveAttribute('href', '/admin');
     await waitFor(() =>
-      expect(screen.getByRole('link', { name: 'power' })).toHaveAttribute('href', '/admin/roles/3')
+      expect(screen.getByRole('link', { name: 'power' })).toHaveAttribute('href', '/admin?role=3')
     );
-    expect(screen.getByRole('link', { name: 'clients' })).toHaveAttribute('href', '/admin/roles/9');
+    expect(screen.getByRole('link', { name: 'clients' })).toHaveAttribute('href', '/admin?role=9');
   });
 
   it('adds a role on select change, with no confirming button, and refetches membership', async () => {
@@ -216,10 +216,7 @@ describe('UserRolesSection', () => {
       render(<UserRolesSection userId={8} readOnly />);
 
       await waitFor(() =>
-        expect(screen.getByRole('link', { name: 'power' })).toHaveAttribute(
-          'href',
-          '/admin/roles/3'
-        )
+        expect(screen.getByRole('link', { name: 'power' })).toHaveAttribute('href', '/admin?role=3')
       );
       expect(screen.queryByLabelText('Add Role')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /remove/i })).not.toBeInTheDocument();

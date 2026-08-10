@@ -1,20 +1,17 @@
 /* AdminPanel — shared shell for admin hub panels (header + scrollable body) */
 
+/* Height is deliberately absent: the panel is a flex item of AdminPanelRenderer's .box, which
+   carries the packer's height as a max-height, so the panel is as tall as its contents up to that
+   cap. `overflow: hidden` is what lets it shrink past its content size when the cap binds (it
+   zeroes the flex automatic minimum size) and hand the overflow to .body's scroll — an explicit
+   `min-height: 0` here would be a second mechanism for the same job. */
 .panel {
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-1);
-}
-
-/* Collapsed, the panel must size to its header instead of filling the box it sits in —
-   AdminPanelRenderer drops the packer's fixed height at the same time, and the two together
-   are what actually reclaims the vertical space. */
-.isCollapsed {
-  height: auto;
 }
 
 .header {

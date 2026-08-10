@@ -12,12 +12,18 @@ import { logger } from '@/app/utils/logger';
 
 import styles from './UserRolesSection.module.scss';
 
-/** The role index. The section's own "Roles" label links here. */
-export const ROLES_HREF = '/admin/roles';
+/** The role index — the admin hub, where `RolesPanel` lists every role. */
+export const ROLES_HREF = '/admin';
 
-/** Detail for one role — its members and the collections it grants. */
+/**
+ * Detail for one role — its members and the collections it grants.
+ *
+ * Roles no longer have a route of their own: the index and the detail both live in `RolesPanel` on
+ * the hub, which reads this `role` param and opens that role instead of its list. The link is
+ * still a link to a specific role, it just lands on the hub with that role already open.
+ */
 export function roleHref(roleId: number): string {
-  return `${ROLES_HREF}/${roleId}`;
+  return `${ROLES_HREF}?role=${roleId}`;
 }
 
 export interface UserRolesSectionProps {
@@ -41,11 +47,11 @@ export interface UserRolesSectionProps {
 /**
  * One user's role membership — the list, and (unless `readOnly`) the controls to change it.
  *
- * Every role name here is a link. A role is a real place in this admin — `/admin/roles/[roleId]`
- * shows its members and the collections it grants — and membership is only half the question an
- * admin auditing access is asking. The section's own "Roles" label links to the index for the same
- * reason. This replaced a trailing "Manage roles and grants" link, which was a third control
- * pointing at a destination the surrounding text already named.
+ * Every role name here is a link. A role is a real place in this admin — `/admin?role=[roleId]`
+ * opens it on the hub, showing its members and the collections it grants — and membership is only
+ * half the question an admin auditing access is asking. The section's own "Roles" label links to
+ * the index for the same reason. This replaced a trailing "Manage roles and grants" link, which
+ * was a third control pointing at a destination the surrounding text already named.
  *
  * Adding a role commits on `change` rather than behind a second "Add" button. The select has no
  * draft state worth confirming — picking a name in a list of joinable roles *is* the intent, and
