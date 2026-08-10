@@ -2,12 +2,13 @@
 
 import { CircleX } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import { type KeyboardEvent, useEffect, useId, useRef, useState, useTransition } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState, useTransition } from 'react';
 
 import { About } from '@/app/components/About/About';
 import { ContactForm } from '@/app/components/ContactForm/ContactForm';
 import GitHubIcon from '@/app/components/Icons/GitHubIcon';
 import InstagramIcon from '@/app/components/Icons/InstagramIcon';
+import { Disclosure } from '@/app/components/ui/Disclosure/Disclosure';
 import { NavLink } from '@/app/components/ui/NavLink/NavLink';
 import { BREAKPOINTS } from '@/app/constants';
 import { useBodyScrollLock } from '@/app/hooks/useBodyScrollLock';
@@ -34,6 +35,37 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
+ * Skin for the two `Disclosure` rows. No `headingLevel`: these are menu items inside a labelled
+ * `dialog`, not sections of the document outline, so a heading here would be a phantom level.
+ */
+const disclosureClassNames = {
+  header: styles.dropdownMenuItem,
+  toggle: styles.dropdownMenuButton,
+  chevron: styles.disclosureChevron,
+  panel: styles.disclosurePanel,
+};
+
+/**
+ * Hands focus back when the overlay closes.
+ *
+ * The element that opened the menu is preferred, but `.focus()` on a node that has left the
+ * document is a silent no-op that leaves focus on `<body>` — one Tab from there restarts the whole
+ * page. So when the trigger unmounted while the menu was open (a route change that remounts the
+ * header, say), fall back to the first control in the page header: the same corner of the page the
+ * trigger lived in, so the tab order resumes roughly where the user left it.
+ *
+ * If the document has no header either, there is genuinely nothing to restore to and this does
+ * nothing rather than inventing a target.
+ */
+function restoreFocus(previous: HTMLElement | null) {
+  if (previous?.isConnected) {
+    previous.focus();
+    return;
+  }
+  document.querySelector('header')?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+}
+
+/**
  * Menu Dropdown
  *
  * Full-screen navigation overlay with expandable sections for About and Contact.
@@ -44,13 +76,26 @@ const FOCUSABLE_SELECTOR =
  *
  * Modal semantics are hand-rolled rather than delegated to the shared `Modal`: `Modal` paints a
  * scrim behind its dialog and sizes the dialog to the backdrop, which would darken the page behind
- * this menu and break the desktop-only click-outside-to-close. So this owns Escape, body scroll
- * lock, click-outside, focus trap, and focus restore directly.
+ * this menu and break the desktop-only click-outside-to-close. Those are the only two reasons —
+ * `Modal` does not touch the `fullscreen-open` body class (that is `FullScreenModal`'s, applied
+ * outside the primitive). So this owns Escape, body scroll lock, click-outside, focus trap, and
+ * focus restore directly.
  *
- * `aria-controls` on the disclosures is emitted only while the panel is mounted — a reference to a
- * non-existent id is an invalid ARIA value, and the panels are conditionally rendered. The panel
- * wrappers that carry those ids are `display: contents`, so About/ContactForm stay direct flex
- * children of the scroll container and the overlay's layout is unchanged.
+ * Escape ignores `isComposing` keydowns: dismissing an IME candidate list is a cancel inside the
+ * ContactForm's inputs, not a request to tear the whole menu down and discard the draft.
+ *
+ * About and Contact are the shared `Disclosure` primitive, which owns the generated panel id,
+ * `aria-expanded`, and the `aria-controls` that is emitted only while the panel is mounted. Its
+ * chevron is hidden here (`.disclosureChevron`): the rows are right-aligned display type with no
+ * affordance glyph on any other item, and it is `aria-hidden` decoration, so hiding it costs
+ * nothing a screen reader can hear. The panel wrappers that carry the ids are `display: contents`,
+ * so About/ContactForm stay direct flex children of the scroll container and the layout is
+ * unchanged.
+ *
+ * Clear Cache goes `aria-disabled` rather than `disabled` while its action is in flight. Disabling
+ * the focused button drops focus to `<body>`, and the Tab trap is a handler on the overlay root —
+ * once focus is out there no keydown reaches it and Tab walks the `aria-modal`'d page behind the
+ * overlay. Staying focusable keeps focus inside; the handler guards the pending state itself.
  *
  * "Update" links to `/[slug]?manage=1`, the same route the page is already on, so the soft
  * navigation hands `CollectionPageClient` `editMode=true` without remounting it. No slug falls
@@ -74,9 +119,6 @@ export function MenuDropdown({
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
-
-  const aboutPanelId = useId();
-  const contactPanelId = useId();
 
   const [showContactForm, setShowContactForm] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -106,6 +148,8 @@ export function MenuDropdown({
   };
 
   const handleClearCache = () => {
+    if (isClearing) return;
+
     startClearing(async () => {
       const result = await clearCacheAction();
       if (result.ok) {
@@ -116,12 +160,12 @@ export function MenuDropdown({
   };
 
   const handleToggle = {
-    about: () => {
-      setShowAbout(prev => !prev);
+    about: (open: boolean) => {
+      setShowAbout(open);
       setShowContactForm(false);
     },
-    contact: () => {
-      setShowContactForm(prev => !prev);
+    contact: (open: boolean) => {
+      setShowContactForm(open);
       setShowAbout(false);
     },
   };
@@ -178,7 +222,7 @@ export function MenuDropdown({
   // Escape key to close dropdown
   useEffect(() => {
     const handleEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape' && isOpen) {
+      if (event.key === 'Escape' && !event.isComposing && isOpen) {
         onClose();
       }
     };
@@ -201,7 +245,7 @@ export function MenuDropdown({
     dropdownRef.current?.focus();
 
     return () => {
-      previouslyFocusedRef.current?.focus();
+      restoreFocus(previouslyFocusedRef.current);
     };
   }, [isOpen]);
 
@@ -277,41 +321,23 @@ export function MenuDropdown({
           </div>
         )}
 
-        <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleToggle.about}
-            aria-expanded={showAbout}
-            aria-controls={showAbout ? aboutPanelId : undefined}
-          >
-            <span className={styles.dropdownMenuOptions}>About</span>
-          </button>
-        </div>
+        <Disclosure
+          title={<span className={styles.dropdownMenuOptions}>About</span>}
+          open={showAbout}
+          onOpenChange={handleToggle.about}
+          classNames={disclosureClassNames}
+        >
+          <About />
+        </Disclosure>
 
-        {showAbout && (
-          <div id={aboutPanelId} className={styles.disclosurePanel}>
-            <About />
-          </div>
-        )}
-
-        <div className={styles.dropdownMenuItem}>
-          <button
-            type="button"
-            className={styles.dropdownMenuButton}
-            onClick={handleToggle.contact}
-            aria-expanded={showContactForm}
-            aria-controls={showContactForm ? contactPanelId : undefined}
-          >
-            <span className={styles.dropdownMenuOptions}>Contact</span>
-          </button>
-        </div>
-
-        {showContactForm && (
-          <div id={contactPanelId} className={styles.disclosurePanel}>
-            <ContactForm onSubmit={handleContactSubmit} />
-          </div>
-        )}
+        <Disclosure
+          title={<span className={styles.dropdownMenuOptions}>Contact</span>}
+          open={showContactForm}
+          onOpenChange={handleToggle.contact}
+          classNames={disclosureClassNames}
+        >
+          <ContactForm onSubmit={handleContactSubmit} />
+        </Disclosure>
 
         <div className={styles.dropdownMenuItem}>
           <NavLink href="/explore" className={styles.dropdownMenuLink} onClick={onClose}>
@@ -385,7 +411,7 @@ export function MenuDropdown({
               type="button"
               className={styles.dropdownMenuButton}
               onClick={handleClearCache}
-              disabled={isClearing}
+              aria-disabled={isClearing || undefined}
             >
               <span className={styles.dropdownMenuOptions}>
                 {isClearing ? 'Clearing…' : 'Clear Cache'}

@@ -51,6 +51,13 @@
   display: contents;
 }
 
+/* No other row in this menu carries an affordance glyph, and these are right-aligned display type
+   where a chevron reads as debris rather than a hint. The `Disclosure` chevron is `aria-hidden`
+   decoration, so removing it from the box costs nothing a screen reader can hear. */
+.disclosureChevron {
+  display: none;
+}
+
 .dropdownCloseButtonWrapper {
   display: flex;
   justify-content: flex-end;
@@ -158,6 +165,17 @@
     outline: var(--focus-ring);
     outline-offset: 2px;
   }
+}
+
+/* Clear Cache goes `aria-disabled` while its action is in flight rather than `disabled`, so the
+   overlay's focus trap never loses the focused element.
+
+   This rule is not restoring something the real attribute used to give: `.dropdownMenuButton` sets
+   `cursor: pointer` unconditionally above, and no UA stylesheet overrides `cursor` on a disabled
+   button, so `:disabled` would have left the pointer sitting there too. The row simply never
+   dropped the affordance while inert, either way — it does now. */
+.dropdownMenuButton[aria-disabled='true'] {
+  cursor: default;
 }
 
 /* NavLink underlines on hover; this menu signals hover with the grey colour shift on the label
