@@ -17,9 +17,17 @@
  * That is why each panel declares {@link PANEL_MIN_WIDTH} rather than a higher rating: the minimum
  * acts on row MEMBERSHIP, which is the lever that actually moves. At the 1274.4px max desktop
  * content width it takes all three nav tiles out of the panels' row, and the panels go from
- * 298.13px each to 416.27px each (measured through `buildContentRows`). Below 3 × 400 + 2 × gap =
- * 1225.6px of content width three minimums no longer fit, and the packer drops the third panel to
- * its own row — one panel per row by the time a phone is that narrow.
+ * 298.13px each to 416.27px each (measured through `buildContentRows`).
+ *
+ * Three panels share a row only at or above **1232.0px** of content width; below it the packer
+ * drops the third to its own row, and by phone widths it is one panel per row. Do NOT recompute
+ * that threshold as 3 × 400 + 2 × gap = 1225.6px and conclude the code is wrong — 1225.6 is where
+ * the RENDERED width reaches 400 (the sizer's equal-height solve redistributes the gap budget so
+ * all three panels land at exactly `(W − 2 × gap) / 3`), but membership is decided earlier, from
+ * the packer's gap-aware share ESTIMATE, which charges a leaf nested under two horizontal nodes a
+ * share of both gaps (⅚ × gap, not ⅔ × gap). That stricter test clears 400px at 1232.0px, 6.4px
+ * later. Bisected through the real `processContentForDisplay`: 1232.0 → 609.60/609.60 + 1232.00,
+ * 1232.1 → 402.17 × 3.
  */
 
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';

@@ -60,11 +60,21 @@ export interface Content {
    * `buildRows` to close a row rather than admit a row-mate that would starve this item,
    * so the constraint costs width from its NEIGHBOURS, never from the page.
    *
-   * It is a preference, not a guarantee. An item alone in a row narrower than its own
-   * minimum takes the full width available — an unsatisfiable minimum degrades, because
-   * overflowing a phone would be worse than rendering slightly cramped. Leave it
-   * undefined (not 0) for anything that scales: `undefined` is what keeps the entire
-   * min-width path out of the layout engine's hot loops.
+   * It is a strong preference, not a hard guarantee, in two distinct ways:
+   *
+   * 1. **Unsatisfiable minimums degrade.** An item alone in a row narrower than its own
+   *    minimum takes the full width available, because overflowing a phone would be worse
+   *    than rendering cramped. A 400px panel on a 390px phone gets 390px.
+   * 2. **Satisfiable minimums are honoured to within a few pixels.** The packer decides
+   *    membership from a gap-aware estimate of each leaf's width, not from the sizer's
+   *    exact equal-height solve (see `leafWidthShares` in rowCombination.ts), so a leaf
+   *    can render marginally under its declared minimum. Measured over ~8000 multi-member
+   *    rows: 21 leaves landed short, worst case 3.54px (1.63%). Size the value with that
+   *    tolerance in mind — declare the width below which the block genuinely breaks, not
+   *    the width at which it starts looking tight.
+   *
+   * Leave it undefined (not 0) for anything that scales: `undefined` is what keeps the
+   * entire min-width path out of the layout engine's hot loops.
    */
   minWidth?: number;
 

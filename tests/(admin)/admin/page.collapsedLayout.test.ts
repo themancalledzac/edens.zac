@@ -13,10 +13,12 @@ import { isPanelContent } from '@/app/utils/contentTypeGuards';
  *
  * DESKTOP is the real max desktop content width (`getContentWidth()` = pageMaxWidth 1300 −
  * desktopPadding 25.6), not a round number. It has to be: each panel declares a 400px
- * {@link Content.minWidth}, so three of them share a row only at or above 3×400 + 2×gap =
- * 1225.6px. NARROW_DESKTOP below sits deliberately under that threshold and pins what the packer
- * does there, so the difference between "the feature moved" and "the viewport is too narrow for
- * three panels" can never be confused again.
+ * {@link Content.minWidth}, and three of them share a row only at or above a measured 1232.0px of
+ * content width. (Not 3×400 + 2×gap = 1225.6 — that is where the RENDERED width reaches 400, while
+ * membership is decided from the packer's stricter share estimate; see the header docblock of
+ * `adminHubContent.ts`.) NARROW_DESKTOP below sits deliberately under that threshold and pins what
+ * the packer does there, so the difference between "the feature moved" and "the viewport is too
+ * narrow for three panels" can never be confused again.
  */
 const DESKTOP = { contentWidth: 1274.4, viewportHeight: 900, isMobile: false };
 const NARROW_DESKTOP = { contentWidth: 1174.4, viewportHeight: 900, isMobile: false };
@@ -41,8 +43,12 @@ const rowsFor = (
 const panelRows = (collapsed: Record<PanelType, boolean>, viewport = DESKTOP) =>
   rowsFor(collapsed, viewport).filter(row => row.items.some(item => isPanelContent(item.content)));
 
-const widthOf = (collapsed: Record<PanelType, boolean>, panelType: PanelType) => {
-  for (const row of rowsFor(collapsed)) {
+const widthOf = (
+  collapsed: Record<PanelType, boolean>,
+  panelType: PanelType,
+  viewport = DESKTOP
+) => {
+  for (const row of rowsFor(collapsed, viewport)) {
     for (const item of row.items) {
       if (isPanelContent(item.content) && item.content.panelType === panelType) return item.width;
     }
@@ -65,6 +71,37 @@ describe('admin hub collapsed layout', () => {
     for (const row of rows) {
       for (const item of row.items) {
         expect(item.width).toBeGreaterThanOrEqual(400);
+      }
+    }
+  });
+
+  /**
+   * The narrow desktop is where the layout is most asymmetric and where collapsing therefore
+   * behaves least like the marketing story, so it gets pinned rather than assumed. Collapsing the
+   * FIRST panel does not widen `roles` — it narrows it, 1174.4 → 580.8, because `roles` was only
+   * full-width as the odd one out of a 2+1 split, and freeing `users` lets `messages` join it.
+   * Collapsing the second then hands `roles` the whole width. Both moves are correct; what must
+   * hold throughout is that no standing panel is ever pushed under its declared minimum.
+   */
+  it('keeps every standing panel above its minimum through a narrow-desktop collapse', () => {
+    const rolesExpanded = widthOf(NONE, 'roles', NARROW_DESKTOP);
+    const rolesAfterOne = widthOf({ ...NONE, users: true }, 'roles', NARROW_DESKTOP);
+    const rolesAfterTwo = widthOf(
+      { ...NONE, users: true, messages: true },
+      'roles',
+      NARROW_DESKTOP
+    );
+
+    expect(rolesAfterOne).toBeLessThan(rolesExpanded);
+    expect(rolesAfterOne).toBeGreaterThanOrEqual(400);
+    expect(rolesAfterTwo).toBeGreaterThan(rolesAfterOne);
+    expect(Math.round(rolesAfterTwo)).toBe(Math.round(NARROW_DESKTOP.contentWidth));
+
+    for (const collapsed of [NONE, { ...NONE, users: true }, { ...NONE, messages: true }]) {
+      for (const row of panelRows(collapsed, NARROW_DESKTOP)) {
+        for (const item of row.items) {
+          expect(item.width).toBeGreaterThanOrEqual(400);
+        }
       }
     }
   });

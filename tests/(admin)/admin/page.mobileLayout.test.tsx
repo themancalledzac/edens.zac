@@ -65,7 +65,12 @@ describe('admin hub mobile layout', () => {
   });
 
   it('leaves every panel one per row at the un-pinned budget, on its declared minimum alone', () => {
-    for (const row of layout([]).slice(0, 3)) {
+    const panelRows = layout([]).filter(row =>
+      row.items.some(item => item.content.contentType === 'PANEL')
+    );
+
+    expect(panelRows).toHaveLength(3);
+    for (const row of panelRows) {
       expect(row.items).toHaveLength(1);
       expect(Math.round(row.items[0]!.width)).toBe(MOBILE_VIEWPORT.contentWidth);
     }

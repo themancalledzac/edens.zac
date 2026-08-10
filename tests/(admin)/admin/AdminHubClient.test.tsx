@@ -16,10 +16,11 @@ import { buildAdminHubContent } from '@/app/(admin)/admin/adminHubContent';
 
 /**
  * The real max desktop content width (pageMaxWidth 1300 − desktopPadding 25.6). Each panel
- * declares a 400px {@link Content.minWidth}, so three share a row only at or above
- * 3×400 + 2×gap = 1225.6px — below that the packer legitimately splits them and this test's
- * "collapsing one widens the rest" premise stops being about collapsing at all.
- * `page.collapsedLayout.test.ts` pins the narrow case separately.
+ * declares a 400px {@link Content.minWidth}, and three share a row only at or above a measured
+ * 1232.0px of content width (NOT 3×400 + 2×gap = 1225.6 — membership is decided from the packer's
+ * share estimate, which is stricter than the rendered width; see `adminHubContent.ts`). Below that
+ * the packer legitimately splits them and this test's "collapsing one widens the rest" premise
+ * stops being about collapsing at all. `page.collapsedLayout.test.ts` pins the narrow case.
  */
 const DESKTOP_VIEWPORT = { contentWidth: 1274.4, viewportHeight: 900, isMobile: false };
 

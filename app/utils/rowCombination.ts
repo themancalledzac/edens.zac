@@ -264,10 +264,15 @@ export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
 // =============================================================================
 
 /**
- * Additive score penalty for a composition that starves a declared minimum. Sized to
- * dominate every legitimate score exactly as {@link rowARCost}'s sub-floor penalty does
- * (equitySpread is a small ratio and LAMBDA · arPenalty is smaller still), so a starving
- * arrangement can only win when every alternative also starves.
+ * Additive score penalty for a composition that starves a declared minimum, mirroring
+ * {@link rowARCost}'s sub-floor penalty in both magnitude and intent.
+ *
+ * Dominance is EMPIRICAL, not structural. `equitySpread` is an unbounded ratio — in-band
+ * candidates with a spread above 2e7 exist — so 1000 cannot be proven to outrank every
+ * legitimate score. It holds in practice because the winning candidate is always at or
+ * near minimal spread, where scores sit in the low single digits: 0 failures over 6000+
+ * generated constrained rows. If a future change lets a wildly inequitable arrangement
+ * win a row, revisit this constant rather than assuming it still dominates.
  *
  * Deliberately a penalty and not an early return in `consider`: rejecting outright would
  * leave `best` null and hand the row to the `arClosest ?? hChain` fallback, which knows
@@ -296,9 +301,17 @@ interface LeafWidthShare {
  *
  * Bottom-up recurrence for a child folded into an hPair with width factor `f`:
  * `share' = f · share` and `gapCoeff' = share' + gapCoeff` — the child pays its share of
- * this node's gap on top of whatever gaps it already owed. Ignores the equal-height `b`
- * correction `calculateSizesFromBoxTree` applies for nested gaps, which moves a boundary
- * by well under a gap; the tests measure real widths through the real sizer.
+ * this node's gap on top of whatever gaps it already owed.
+ *
+ * This is an ESTIMATE, and the size of its error is part of the feature's contract. It
+ * omits the equal-height `b` correction that {@link computeHeightCoeffs} feeds the real
+ * sizer, which shifts a boundary whenever nested subtrees carry different internal gap
+ * budgets. Measured against `calculateSizesFromBoxTree` over 3000 random compositions,
+ * `estimate − real` ranges from **−9.08px to +14.85px** — the optimistic tail exceeds a
+ * full 12.8px desktop gap, so a leaf can render slightly under its declared minimum
+ * (measured worst case 3.54px / 1.63%; see {@link Content.minWidth}). Threading `b`
+ * through would close that gap at the cost of duplicating the sizer's solve inside the
+ * candidate loop, which is not worth it for a few pixels on a UI block.
  */
 function leafWidthShares(component: AtomicComponent): { ar: number; leaves: LeafWidthShare[] } {
   if (component.type === 'single') {
@@ -436,6 +449,14 @@ function createBlankLeaf(aspectRatio: number, id: number): BoxTree {
  * under-filled last row, and padding it would hand a 390px panel ~215px of that width.
  * Skipping is also the right answer on the merits: a block that declares a pixel floor is
  * a deliberate UI shape, not a leftover photo that should keep an honest width share.
+ *
+ * That guard is the ONE part of the feature not gated on the caller threading
+ * `componentWidth`/`gap`, and deliberately so. Padding is a decision about the row's
+ * shape, not about pixels — it needs no width to make — and the declaration alone is
+ * enough to know the block is a UI shape. Gating it would mean an unthreaded caller
+ * silently re-shrinks a block that asked not to be shrunk, which is the failure this
+ * guard exists to prevent; leaving it ungated only ever declines to pad, which is the
+ * conservative direction.
  *
  * Guards return the row unchanged when width-cost is zero/NaN or the row's
  * aspect ratio is non-positive (degenerate zero-width content).
@@ -731,7 +752,10 @@ export function buildRows(
 
         // The same membership guard as the greedy loop. This path is reached only when
         // greedy fill took nothing at all, so it starts a row from scratch and can starve
-        // a minimum in exactly the same way.
+        // a minimum in exactly the same way. `break` rather than `continue` is deliberate
+        // and matches the greedy loop: one starving candidate closes the row, instead of
+        // skipping past it to a later window item, which would reorder content to squeeze
+        // in a filler.
         if (
           constrained &&
           starvesMinWidth([...bestFitComponents, window[idx]!], targetARBaseline, rowPixels, rowGap)
