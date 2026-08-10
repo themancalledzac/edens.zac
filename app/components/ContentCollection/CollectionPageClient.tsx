@@ -143,7 +143,10 @@ export default function CollectionPageClient({
   // CHRONOLOGICAL), so auto-engaging date sort there would revert saved manual reorders.
   const isChronological = !editMode && collection.displayMode === 'CHRONOLOGICAL';
 
-  const [filterState, setFilterState] = useState<FilterState>(() => ({
+  // Named rather than inlined into the initializer below because a sectioned page resets back to
+  // it on every section switch — see `renderedSectionKey`. One definition keeps "the state a fresh
+  // view starts in" identical whether that view came from a mount or from a section change.
+  const initialFilterState: FilterState = {
     ...INITIAL_FILTER_STATE,
     dateSortDirection: editMode ? 'off' : initialDateSortDirection(collection.displayMode),
     highlyRatedOnly: initialCriteria.minRating !== undefined && initialCriteria.minRating >= 4,
@@ -151,7 +154,9 @@ export default function CollectionPageClient({
     selectedCameras: initialCriteria.cameras ?? [],
     selectedLocations: initialCriteria.locations ?? [],
     selectedDates: initialCriteria.dates ?? [],
-  }));
+  };
+
+  const [filterState, setFilterState] = useState<FilterState>(initialFilterState);
 
   // Clamped to the slider's own range: `density` is both the layout budget AND the slider's value,
   // so a seed outside 1..maxDensityDesktop leaves the control pinned at an end stop reporting a
@@ -226,6 +231,35 @@ export default function CollectionPageClient({
 
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  /**
+   * Reset the per-section view state when a sectioned page switches sections.
+   *
+   * A sectioned page (`/user`, `/admin/users/[id]`) swaps `collection.content` for a different
+   * section's blocks while keeping this component MOUNTED. Mounted, because the obvious
+   * alternative — `key={activeSectionKey}` at the call site — tears the whole grid down and
+   * rebuilds it, and the intermediate frame where the DOM holds no grid collapses the document
+   * height to the header. The browser clamps `scrollY` to that height and never restores it, so
+   * every section switch threw the viewer toward the top of the page even though the section
+   * chips navigate with `scroll={false}`.
+   *
+   * Staying mounted fixes that, but it also means this state would otherwise carry over: a camera
+   * facet chosen on Images would still be filtering Collections, and a selection made in one
+   * section would still be armed in the next against ids that are no longer on screen. Density is
+   * deliberately NOT reset — photo size is a viewer preference about how they want to read the
+   * page, not a fact about one section's contents.
+   *
+   * Written as a render-phase reset keyed on the previous value (React's documented pattern for
+   * adjusting state on prop change) rather than an effect, so the section renders once with the
+   * correct state instead of flashing the previous section's filters for a frame.
+   */
+  const [renderedSectionKey, setRenderedSectionKey] = useState(activeSectionKey);
+  if (activeSectionKey !== renderedSectionKey) {
+    setRenderedSectionKey(activeSectionKey);
+    setFilterState(initialFilterState);
+    setIsSelectMode(false);
+    setSelectedIds([]);
+  }
 
   const handleSelectToggle = useCallback((imageId: number) => {
     setSelectedIds(prev => toggleImageSelection(imageId, prev));
@@ -448,18 +482,24 @@ export default function CollectionPageClient({
 
   const pageSize = collection.contentPerPage ?? 30;
 
-  // The landing page never gets the filter bar. It is a curated showcase, not a browsable index:
-  // the running order is the point, so offering to re-sort or facet it works against the page.
-  // This is a property of the home collection itself rather than a caller's preference, so it is
-  // decided here instead of via a prop — and it outranks `alwaysShowFilterBar` for the same
-  // reason. BROWSE_EXCLUDED_SLUGS keys off HOME_SLUG for the same kind of reason.
-  const isHomeCollection = collection.slug === HOME_SLUG;
+  // The landing page never gets the filter bar while it is being VIEWED. It is a curated
+  // showcase, not a browsable index: the running order is the point, so offering to re-sort or
+  // facet it works against the page. This is a property of the home collection itself rather than
+  // a caller's preference, so it is decided here instead of via a prop — and it outranks
+  // `alwaysShowFilterBar` for the same reason. BROWSE_EXCLUDED_SLUGS keys off HOME_SLUG likewise.
+  //
+  // Curating it is the other half of that rule, not an exception to it: an admin at
+  // `/home?manage=1` is arranging the very running order the suppression protects, and both the
+  // toolbar and the edit-mode density slider mount from this page's filter context with no other
+  // source. Suppressing them there would take away the controls rather than the temptation, and
+  // manage mode is meant to be the public page plus the manage bar, never a lesser one.
+  const isHomeShowcaseView = collection.slug === HOME_SLUG && !editMode;
 
   // Sections alone justify the bar: a sectioned page needs its section chips even with no facet
   // dimensions of its own, and rendering the bar is also what gives it the shared chrome (the
   // density slider) that makes it match an ordinary collection page.
   const hasOptions =
-    !isHomeCollection &&
+    !isHomeShowcaseView &&
     (alwaysShowFilterBar ||
       (sections !== undefined && sections.length > 0) ||
       hasFilterableOptions(baseCollectionOptions, showHighlyRated, showDateSort));

@@ -217,3 +217,53 @@ describe('CollectionPageClient — the landing page never gets the filter bar', 
     expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
   });
 });
+
+/**
+ * ...but the suppression above is about how the page READS, so it lifts while the page is being
+ * CURATED. An admin at `/home?manage=1` is arranging exactly the running order the rule protects,
+ * and both the toolbar and the edit-mode row-density slider mount from this page's filter context
+ * with no other source — suppressing them there removes the controls rather than the temptation.
+ *
+ * `Row density` is the edit-mode density control (visitors get the `Photo size` tiers instead), so
+ * finding it proves both that the bar mounted and that it mounted in its curator form. Assertions
+ * are paired against the same payload under a different slug, matching the suite above.
+ */
+describe('CollectionPageClient — the landing page keeps the filter bar while curated', () => {
+  const browsable = (slug: string): CollectionModel =>
+    ({ ...bareCollection([collectionCard(1), collectionCard(2)]), slug }) as CollectionModel;
+
+  it('renders the bar on the home collection in manage mode', () => {
+    render(<CollectionPageClient collection={browsable(HOME_SLUG)} {...ssr} editMode />);
+    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
+  });
+
+  it('renders the same curator bar for the payload under any other slug', () => {
+    render(<CollectionPageClient collection={browsable('dolomites')} {...ssr} editMode />);
+    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
+  });
+
+  it('still suppresses the bar on the home collection when it is only being viewed', () => {
+    render(<CollectionPageClient collection={browsable(HOME_SLUG)} {...ssr} />);
+    expect(screen.queryByLabelText('Row density')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Photo size' })).not.toBeInTheDocument();
+  });
+
+  it('still renders the bar for the same viewed payload under any other slug', () => {
+    render(<CollectionPageClient collection={browsable('dolomites')} {...ssr} />);
+    expect(screen.getByRole('radiogroup', { name: 'Photo size' })).toBeInTheDocument();
+  });
+
+  // Nothing about `alwaysShowFilterBar` is special in manage mode: with the home rule lifted, the
+  // prop is simply back in force, so it can carry a payload that has nothing of its own to filter.
+  it('honours alwaysShowFilterBar on the home collection in manage mode', () => {
+    render(
+      <CollectionPageClient
+        collection={{ ...bareCollection([collectionCard(1)]), slug: HOME_SLUG } as CollectionModel}
+        {...ssr}
+        editMode
+        alwaysShowFilterBar
+      />
+    );
+    expect(screen.getByLabelText('Row density')).toBeInTheDocument();
+  });
+});
