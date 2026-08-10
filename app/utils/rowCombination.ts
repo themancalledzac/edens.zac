@@ -11,6 +11,13 @@
  *
  * Width-cost Hv = √(P·AR) is an item's orientation-agnostic packing cost; a row's
  * fill is ΣHv / rowWidth, and a row is complete once fill reaches MIN_FILL_RATIO.
+ *
+ * Both stages are unitless — they reason in width-cost, not pixels — with ONE exception:
+ * an item that declares {@link Content.minWidth} (a UI block that breaks below a pixel
+ * width, never a photograph) makes both membership and composition width-dependent for
+ * the row it sits in. Callers opt in by threading `componentWidth`/`gap`; every caller
+ * that does not, and every row whose items declare no minimum, takes the unitless path
+ * unchanged. See MIN-WIDTH CONSTRAINT below.
  */
 
 import { EXTREMENESS_RAMP_START } from '@/app/constants';
@@ -19,6 +26,7 @@ import {
   getArExtremeness,
   getEffectiveRating,
   getHeightDemand,
+  getMinWidth,
   getProminence,
   getWidthCost,
 } from '@/app/utils/contentRatingUtils';
@@ -245,6 +253,127 @@ export function isSoloHero(item: AnyContentModel, rowWidth: number): boolean {
 }
 
 // =============================================================================
+// MIN-WIDTH CONSTRAINT
+// =============================================================================
+// The one width-dependent corner of an otherwise unitless engine. An item that
+// declares Content.minWidth (an admin panel; never a photograph) needs a pixel
+// floor, which costs width from its ROW-MATES: buildRows refuses to admit an item
+// that would starve a declared minimum, and pickBestComposition scores a starving
+// arrangement out of contention. Both are gated on a single O(n) precheck, so
+// content that declares no minimum never reaches any of this.
+// =============================================================================
+
+/**
+ * Additive score penalty for a composition that starves a declared minimum. Sized to
+ * dominate every legitimate score exactly as {@link rowARCost}'s sub-floor penalty does
+ * (equitySpread is a small ratio and LAMBDA · arPenalty is smaller still), so a starving
+ * arrangement can only win when every alternative also starves.
+ *
+ * Deliberately a penalty and not an early return in `consider`: rejecting outright would
+ * leave `best` null and hand the row to the `arClosest ?? hChain` fallback, which knows
+ * nothing about minimums and would return a starving composition in silence.
+ */
+const MIN_WIDTH_PENALTY = 1000;
+
+/** A leaf's pixel width in a composed row: `share × rowPixels − gapCoeff × gap`. */
+interface LeafWidthShare {
+  source: AnyContentModel;
+  /** Fraction of the row's pixel width, before gaps. */
+  share: number;
+  /** How many gaps this leaf pays for — fractional, since it pays a share of each. */
+  gapCoeff: number;
+}
+
+/**
+ * Per-leaf WIDTH shares for a direction-assigned composition, with the gap budget carried
+ * alongside so a leaf's pixel width can be recovered from a row width.
+ *
+ * Distinct from {@link leafShares}, which returns AREA shares for the equity score: under
+ * a vStack two leaves have the same width but different areas, so area shares would badly
+ * under-report the width of a stacked item. Mirrors what
+ * `calculateSizesFromBoxTree` does: an hPair spends one gap and splits the remainder ∝ AR,
+ * a vStack passes its full width to both children.
+ *
+ * Bottom-up recurrence for a child folded into an hPair with width factor `f`:
+ * `share' = f · share` and `gapCoeff' = share' + gapCoeff` — the child pays its share of
+ * this node's gap on top of whatever gaps it already owed. Ignores the equal-height `b`
+ * correction `calculateSizesFromBoxTree` applies for nested gaps, which moves a boundary
+ * by well under a gap; the tests measure real widths through the real sizer.
+ */
+function leafWidthShares(component: AtomicComponent): { ar: number; leaves: LeafWidthShare[] } {
+  if (component.type === 'single') {
+    return {
+      ar: component.img.numericAR,
+      leaves: [{ source: component.img.source, share: 1, gapCoeff: 0 }],
+    };
+  }
+
+  const left = leafWidthShares(component.children[0]);
+  const right = leafWidthShares(component.children[1]);
+  const sum = left.ar + right.ar;
+
+  if (component.direction === 'V') {
+    return { ar: (left.ar * right.ar) / sum, leaves: [...left.leaves, ...right.leaves] };
+  }
+
+  const scale = (leaves: LeafWidthShare[], factor: number): LeafWidthShare[] =>
+    leaves.map(leaf => {
+      const share = leaf.share * factor;
+      return { source: leaf.source, share, gapCoeff: share + leaf.gapCoeff };
+    });
+
+  return {
+    ar: sum,
+    leaves: [...scale(left.leaves, left.ar / sum), ...scale(right.leaves, right.ar / sum)],
+  };
+}
+
+/**
+ * Total relative shortfall of a composition against its members' declared minimums:
+ * Σ (minWidth − renderedWidth) / minWidth over the starved leaves, 0 when none starve.
+ *
+ * Relative rather than absolute so the measure is comparable across items with different
+ * minimums, and graded rather than boolean so that when every candidate starves, the one
+ * that starves LEAST still wins.
+ */
+function minWidthDeficit(component: AtomicComponent, componentWidth: number, gap: number): number {
+  let deficit = 0;
+  for (const leaf of leafWidthShares(component).leaves) {
+    const minWidth = getMinWidth(leaf.source);
+    if (minWidth === undefined) continue;
+    const rendered = leaf.share * componentWidth - leaf.gapCoeff * gap;
+    if (rendered < minWidth) deficit += (minWidth - rendered) / minWidth;
+  }
+  return deficit;
+}
+
+/**
+ * Whether composing `items` as one row would starve a declared minimum — the membership
+ * question, answered by actually composing the candidate row and measuring it.
+ *
+ * A single item is never starved: the row cannot be made any wider by evicting anyone, so
+ * an unsatisfiable minimum degrades to the full available width instead (see
+ * {@link Content.minWidth}). That also means this never promotes an item to its own row.
+ *
+ * The second early return keeps the cost proportional to the constraint rather than to
+ * the page: `buildRows`' precheck is true for a whole page as soon as ONE item declares a
+ * minimum, and without this a long photo collection carrying a single panel would compose
+ * every unrelated row twice.
+ */
+function starvesMinWidth(
+  items: AnyContentModel[],
+  targetARBaseline: number,
+  componentWidth: number,
+  gap: number
+): boolean {
+  if (items.length <= 1) return false;
+  if (!items.some(item => getMinWidth(item) !== undefined)) return false;
+  const imgs = items.map(item => toImageType(item));
+  const composition = buildAtomic(imgs, rowTargetAR(imgs, targetARBaseline), componentWidth, gap);
+  return minWidthDeficit(composition, componentWidth, gap) > 0;
+}
+
+// =============================================================================
 // BLANK PADDING
 // =============================================================================
 
@@ -300,6 +429,14 @@ function createBlankLeaf(aspectRatio: number, id: number): BoxTree {
  * ratio. Padding is viewport-relative, so a higher-rated item fills more of the
  * row. Solo heroes are skipped -- their full-width row is intentional.
  *
+ * Rows holding a {@link Content.minWidth} member are skipped too, and that guard is
+ * load-bearing rather than cosmetic: this runs AFTER composition has already satisfied
+ * every minimum, and shrinking each real item to its width-cost share would silently undo
+ * that. The case is not hypothetical — a lone admin panel on a phone is exactly an
+ * under-filled last row, and padding it would hand a 390px panel ~215px of that width.
+ * Skipping is also the right answer on the merits: a block that declares a pixel floor is
+ * a deliberate UI shape, not a leftover photo that should keep an honest width share.
+ *
  * Guards return the row unchanged when width-cost is zero/NaN or the row's
  * aspect ratio is non-positive (degenerate zero-width content).
  */
@@ -314,9 +451,10 @@ function padRowToWidth(
   if (!isLastRow) return row;
   if (realWidthCost / rowWidth >= MIN_FILL_RATIO) return row;
   if (row.components.length === 1 && isSoloHero(row.components[0]!, rowWidth)) return row;
+  if (row.components.some(item => getMinWidth(item) !== undefined)) return row;
 
-  const minWidthCost = Math.min(...row.components.map(getWidthCost));
-  if ((realWidthCost + minWidthCost) / rowWidth > MAX_FILL_RATIO) return row;
+  const smallestWidthCost = Math.min(...row.components.map(getWidthCost));
+  if ((realWidthCost + smallestWidthCost) / rowWidth > MAX_FILL_RATIO) return row;
 
   const realAspectRatio = calculateBoxTreeAspectRatio(row.boxTree);
   if (realAspectRatio <= 0) return row;
@@ -341,6 +479,13 @@ function padRowToWidth(
  *
  * The invariant that buys this: row-membership decisions never run the expensive
  * search, so density-to-size behavior stays independent of how a row is composed.
+ *
+ * {@link Content.minWidth} is the one deliberate exception, and it does not weaken the
+ * invariant for anyone else. A pixel floor cannot be answered from width-cost alone —
+ * "does a composition exist that keeps this item above N px?" is a question only the
+ * composer can answer — so `starvesMinWidth` runs the full search once per candidate row
+ * size, but ONLY for rows whose items declare a minimum (admin panels; nothing in a photo
+ * collection does). Density-to-size behavior for scale-free content is untouched.
  */
 export function estimateRowAR(images: ImageType[], targetAR: number): number {
   if (images.length === 0) throw new Error('estimateRowAR requires at least 1 image');
@@ -390,19 +535,39 @@ function collectRowItems(
  * 3. A solo-eligible item met after the row has started is skipped rather than taken,
  *    so it surfaces as a leading solo hero on the next iteration and gets its own row.
  *
+ * A fourth applies only when some item declares a {@link Content.minWidth}: the row
+ * closes rather than admit an item that would starve that minimum. It is the only fill
+ * decision made in pixels, it can never leave a row empty (a lone item's unsatisfiable
+ * minimum degrades instead), and it is skipped entirely — via one hoisted precheck — for
+ * content that declares no minimum.
+ *
  * @param rowWidth - Row width budget (5 desktop, 4 tablet, etc.).
  * @param targetARBaseline - Baseline (viewport) target AR. Fill and estimate use it
  *   directly; each row derives a per-row target from it via rowTargetAR.
+ * @param componentWidth - Rendered width of the row in CSS px. Optional: supply it only
+ *   to enable min-width enforcement; omitting it keeps the layout purely unitless.
+ * @param gap - CSS gap between adjacent items in px, paired with componentWidth.
  */
 export function buildRows(
   items: AnyContentModel[],
   rowWidth: number,
-  targetARBaseline: number = 1.5
+  targetARBaseline: number = 1.5,
+  componentWidth?: number,
+  gap?: number
 ): RowResult[] {
   const rows: RowResult[] = [];
   const remaining = [...items];
 
   const effectiveMinFill = MIN_FILL_RATIO;
+
+  // One O(n) precheck, hoisted above every loop below. False for every collection page —
+  // no photograph declares a minimum — and then the fill loops are the pre-feature code.
+  const constrained =
+    componentWidth !== undefined &&
+    gap !== undefined &&
+    items.some(item => getMinWidth(item) !== undefined);
+  const rowPixels = componentWidth ?? 0;
+  const rowGap = gap ?? 0;
 
   while (remaining.length > 0) {
     const window = remaining.slice(0, 5);
@@ -461,6 +626,24 @@ export function buildRows(
         continue;
       }
 
+      // Membership guard: item i is the (sequentialCount + 1)-th unskipped item, so this
+      // asks "would the row I am about to grow starve a declared minimum?" and closes the
+      // row at its current members if so. Placed ahead of all three add sites below —
+      // the moderate-overfill accept, the AR-widening pass, and the plain fill — so none
+      // of them can slip an item past it.
+      if (
+        constrained &&
+        sequentialCount > 0 &&
+        starvesMinWidth(
+          collectRowItems(expandedWindow, sequentialCount + 1, skippedStandalones),
+          targetARBaseline,
+          rowPixels,
+          rowGap
+        )
+      ) {
+        break;
+      }
+
       const newFill = (sequentialTotal + widthCost) / rowWidth;
 
       if (newFill > MAX_FILL_RATIO && !slotCountComplete) {
@@ -506,7 +689,12 @@ export function buildRows(
     if (sequentialCount > 0) {
       const rowItems = collectRowItems(expandedWindow, sequentialCount, skippedStandalones);
       const rowImgs = rowItems.map(item => toImageType(item));
-      const composition = buildAtomic(rowImgs, rowTargetAR(rowImgs, targetARBaseline));
+      const composition = buildAtomic(
+        rowImgs,
+        rowTargetAR(rowImgs, targetARBaseline),
+        componentWidth,
+        gap
+      );
       const boxTree = acToBoxTree(composition);
 
       rows.push({
@@ -541,6 +729,16 @@ export function buildRows(
       for (let idx = 1; idx < window.length; idx++) {
         if (!available.has(idx)) continue;
 
+        // The same membership guard as the greedy loop. This path is reached only when
+        // greedy fill took nothing at all, so it starts a row from scratch and can starve
+        // a minimum in exactly the same way.
+        if (
+          constrained &&
+          starvesMinWidth([...bestFitComponents, window[idx]!], targetARBaseline, rowPixels, rowGap)
+        ) {
+          break;
+        }
+
         const currentTotal = getTotalWidthCost(bestFitComponents);
         const candidateWidthCost = getWidthCost(window[idx]!);
         const newTotal = currentTotal + candidateWidthCost;
@@ -573,7 +771,12 @@ export function buildRows(
     }
 
     const bestFitImgs = bestFitComponents.map(item => toImageType(item));
-    const composition = buildAtomic(bestFitImgs, rowTargetAR(bestFitImgs, targetARBaseline));
+    const composition = buildAtomic(
+      bestFitImgs,
+      rowTargetAR(bestFitImgs, targetARBaseline),
+      componentWidth,
+      gap
+    );
     const boxTree = acToBoxTree(composition);
 
     rows.push({
@@ -956,16 +1159,34 @@ function pickRootAssignment(tree: AbstractNode, targetAR: number): AtomicCompone
  * equitySpread + LAMBDA · arPenalty(rowAR, target), tiebroken by closeness to target.
  * Falls back to the AR-closest candidate (then a flat hChain) only if nothing lands in
  * band. `counters`, when passed, records shapes/candidates for the perf-guard test.
+ *
+ * When — and only when — a member declares a {@link Content.minWidth} and the caller
+ * threaded `componentWidth`/`gap`, {@link MIN_WIDTH_PENALTY} joins that score, which
+ * makes the choice of arrangement width-dependent for this row. Rearrangement alone
+ * cannot always satisfy a minimum (the root is a forced hPair, so n leaves always split
+ * one width n ways); {@link buildRows}' membership guard is what frees up the width, and
+ * this only spends what it is given as well as possible.
  */
 function pickBestComposition(
   items: ImageType[],
   targetAR: number,
-  counters?: { shapes: number; candidates: number }
+  counters?: { shapes: number; candidates: number },
+  componentWidth?: number,
+  gap?: number
 ): AtomicComponent {
   const shapes = enumerateStructures(items);
   if (counters) counters.shapes += shapes.length;
   const target = Math.max(targetAR, ROW_AR_FLOOR);
   const ceiling = CEILING_MULT * target;
+
+  // One O(n) precheck, hoisted above the candidate loops: false for every collection
+  // page, and then `consider` below scores exactly what it scored pre-feature.
+  const constrained =
+    componentWidth !== undefined &&
+    gap !== undefined &&
+    items.some(img => getMinWidth(img.source) !== undefined);
+  const rowPixels = componentWidth ?? 0;
+  const rowGap = gap ?? 0;
 
   let best: AtomicComponent | null = null;
   let bestScore = Infinity;
@@ -981,7 +1202,11 @@ function pickBestComposition(
       arClosest = component;
     }
     if (rowAR < ROW_AR_FLOOR || rowAR > ceiling) return;
-    const score = equitySpread(component) + LAMBDA * arPenalty(rowAR, target);
+    const starvation = constrained ? minWidthDeficit(component, rowPixels, rowGap) : 0;
+    const score =
+      equitySpread(component) +
+      LAMBDA * arPenalty(rowAR, target) +
+      (starvation > 0 ? MIN_WIDTH_PENALTY + starvation : 0);
     const arDist = Math.abs(rowAR - target);
     if (score < bestScore || (score === bestScore && arDist < bestArDist)) {
       bestScore = score;
@@ -1018,12 +1243,26 @@ function pickBestComposition(
  * Build a row's atomic component tree, leaves in input order. Runs the multi-structure
  * equity-primary search; targetAR below ROW_AR_FLOOR (1.0) is lifted to it. The cheap
  * single-structure path backs estimateRowAR in the Stage-1 fill loop.
+ *
+ * The single-item short-circuit below is also the whole of min-width degradation: a lone
+ * item is returned as a leaf and rendered at the full available width, whether or not
+ * that clears its declared minimum. No second degrade path exists, and none is wanted —
+ * solo-hero rows never reach here either.
+ *
+ * @param componentWidth - Rendered row width in CSS px; supply with `gap` to enforce
+ *   {@link Content.minWidth}. Omitted by every caller that does not need it.
+ * @param gap - CSS gap between adjacent items in px, paired with componentWidth.
  */
-export function buildAtomic(items: ImageType[], targetAR: number): AtomicComponent {
+export function buildAtomic(
+  items: ImageType[],
+  targetAR: number,
+  componentWidth?: number,
+  gap?: number
+): AtomicComponent {
   if (items.length === 0) throw new Error('buildAtomic requires at least 1 image');
   if (items.length === 1) return single(items[0]!);
 
-  return pickBestComposition(items, targetAR);
+  return pickBestComposition(items, targetAR, undefined, componentWidth, gap);
 }
 
 /**

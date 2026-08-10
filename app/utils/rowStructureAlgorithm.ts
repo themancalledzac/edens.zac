@@ -64,6 +64,12 @@ export function computeHeightCoeffs(tree: BoxTree, gap: number): HeightCoeffs {
  * AR is intrinsic to the tree shape — it does not depend on the row's pixel
  * width — so no width/chunk argument is needed.
  *
+ * Read that as a statement about this function only, not about layout as a whole. WHICH
+ * tree the composer hands you can now depend on pixel width: an item declaring
+ * `Content.minWidth` makes `buildRows`/`pickBestComposition` width-dependent for its row
+ * (see the MIN-WIDTH CONSTRAINT section in rowCombination.ts). Once a tree exists, its AR
+ * is still a pure function of its shape.
+ *
  * @param tree - BoxTree to calculate aspect ratio for
  */
 export function calculateBoxTreeAspectRatio(tree: BoxTree): number {

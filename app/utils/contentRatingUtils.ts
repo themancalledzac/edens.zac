@@ -147,6 +147,25 @@ export function getMeanWidthCost(items: AnyContentModel[]): number {
 }
 
 /**
+ * Declared minimum rendered width in CSS px, or `undefined` for content that has none.
+ *
+ * The single accessor the layout engine keys on, and the reason the min-width feature is
+ * free for every collection page: `buildRows` and `pickBestComposition` each run one
+ * `items.some(getMinWidth !== undefined)` precheck, and when it is false — nothing in a
+ * photo collection declares a minimum — not one line of the constraint path executes.
+ *
+ * Non-positive and non-finite values read as "not declared" rather than as a floor of 0,
+ * so malformed data can never widen an item or poison the deficit arithmetic.
+ *
+ * @param item - The content item to evaluate
+ * @returns The declared minimum width in px, or undefined
+ */
+export function getMinWidth(item: AnyContentModel): number | undefined {
+  const declared = item.minWidth;
+  return declared !== undefined && Number.isFinite(declared) && declared > 0 ? declared : undefined;
+}
+
+/**
  * Vertical demand (Vv): the "height" dimension of prominence.
  *
  * Vv = sqrt(P / AR)

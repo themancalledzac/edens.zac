@@ -14,7 +14,14 @@ import { buildAdminHubContent } from '@/app/(admin)/admin/adminHubContent';
  * DOM the packer produced changed shape, not just that a class toggled.
  */
 
-const DESKTOP_VIEWPORT = { contentWidth: 1174.4, viewportHeight: 900, isMobile: false };
+/**
+ * The real max desktop content width (pageMaxWidth 1300 − desktopPadding 25.6). Each panel
+ * declares a 400px {@link Content.minWidth}, so three share a row only at or above
+ * 3×400 + 2×gap = 1225.6px — below that the packer legitimately splits them and this test's
+ * "collapsing one widens the rest" premise stops being about collapsing at all.
+ * `page.collapsedLayout.test.ts` pins the narrow case separately.
+ */
+const DESKTOP_VIEWPORT = { contentWidth: 1274.4, viewportHeight: 900, isMobile: false };
 
 /**
  * Pinned at all-zero so `resolveEffectiveViewport` (inside `Component`) never treats jsdom's

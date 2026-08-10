@@ -50,6 +50,24 @@ export interface Content {
   width?: number;
   height?: number;
 
+  /**
+   * Minimum rendered width in CSS px, honoured by the row packer at composition time.
+   *
+   * A photograph is scale-free — it reads at any width — so image content leaves this
+   * undefined and width-cost math alone decides its size. A UI block is not: an admin
+   * panel carries irreducible chrome (a header row of controls, per-row action buttons)
+   * that wraps and then clips below a certain width. Declaring `minWidth` tells
+   * `buildRows` to close a row rather than admit a row-mate that would starve this item,
+   * so the constraint costs width from its NEIGHBOURS, never from the page.
+   *
+   * It is a preference, not a guarantee. An item alone in a row narrower than its own
+   * minimum takes the full width available — an unsatisfiable minimum degrades, because
+   * overflowing a phone would be worse than rendering slightly cramped. Leave it
+   * undefined (not 0) for anything that scales: `undefined` is what keeps the entire
+   * min-width path out of the layout engine's hot loops.
+   */
+  minWidth?: number;
+
   // UI enhancements for cover images and display
   overlayText?: string;
   cardTypeBadge?: string;

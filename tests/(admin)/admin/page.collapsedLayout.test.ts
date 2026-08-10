@@ -10,8 +10,16 @@ import { isPanelContent } from '@/app/utils/contentTypeGuards';
  * stood as tall as its tallest sibling and every other item kept its packer-assigned width. These
  * pin the part that closes that gap: the packer sees the collapsed footprint, gives the bar its own
  * full-width row, and re-solves widths for everything left.
+ *
+ * DESKTOP is the real max desktop content width (`getContentWidth()` = pageMaxWidth 1300 −
+ * desktopPadding 25.6), not a round number. It has to be: each panel declares a 400px
+ * {@link Content.minWidth}, so three of them share a row only at or above 3×400 + 2×gap =
+ * 1225.6px. NARROW_DESKTOP below sits deliberately under that threshold and pins what the packer
+ * does there, so the difference between "the feature moved" and "the viewport is too narrow for
+ * three panels" can never be confused again.
  */
-const DESKTOP = { contentWidth: 1174.4, viewportHeight: 900, isMobile: false };
+const DESKTOP = { contentWidth: 1274.4, viewportHeight: 900, isMobile: false };
+const NARROW_DESKTOP = { contentWidth: 1174.4, viewportHeight: 900, isMobile: false };
 const MOBILE = { contentWidth: 390, viewportHeight: 844, isMobile: true };
 
 const NONE: Record<PanelType, boolean> = { users: false, messages: false, roles: false };
@@ -30,8 +38,8 @@ const rowsFor = (
     mobileChunkSize
   ).rows;
 
-const panelRows = (collapsed: Record<PanelType, boolean>) =>
-  rowsFor(collapsed).filter(row => row.items.some(item => isPanelContent(item.content)));
+const panelRows = (collapsed: Record<PanelType, boolean>, viewport = DESKTOP) =>
+  rowsFor(collapsed, viewport).filter(row => row.items.some(item => isPanelContent(item.content)));
 
 const widthOf = (collapsed: Record<PanelType, boolean>, panelType: PanelType) => {
   for (const row of rowsFor(collapsed)) {
@@ -48,6 +56,17 @@ describe('admin hub collapsed layout', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.items.filter(item => isPanelContent(item.content))).toHaveLength(3);
+  });
+
+  it('drops the third panel to its own row once the viewport cannot fit three minimums', () => {
+    const rows = panelRows(NONE, NARROW_DESKTOP);
+
+    expect(rows.map(row => row.items.length)).toEqual([2, 1]);
+    for (const row of rows) {
+      for (const item of row.items) {
+        expect(item.width).toBeGreaterThanOrEqual(400);
+      }
+    }
   });
 
   it('gives each collapsed panel its own full-width row', () => {

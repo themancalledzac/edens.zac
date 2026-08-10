@@ -6,10 +6,14 @@ import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
 
 /**
  * The admin hub lays out through the shared content pipeline, whose mobile row budget
- * ({@link LAYOUT.mobileSlotWidth}) is calibrated for photos. Left at that budget the packer fits two
- * items per row on a phone: the users/messages panels land at ~212px each — too narrow for a user
- * list — and portrait-covered nav tiles pair up too. `mobileChunkSize={1}` restores the single
- * column the pre-pipeline `AdminHubGrid` had via `grid-template-columns: 1fr`.
+ * ({@link LAYOUT.mobileSlotWidth}) is calibrated for photos: left at that budget the packer fits two
+ * items per row on a phone. `mobileChunkSize={1}` restores the single column the pre-pipeline
+ * `AdminHubGrid` had via `grid-template-columns: 1fr`.
+ *
+ * The panels no longer depend on that prop for their own protection — each declares a 400px
+ * {@link Content.minWidth}, which a 430px phone cannot satisfy twice over, so the packer keeps them
+ * one per row at any budget. Portrait-covered nav TILES still pair up at ~212px without the prop,
+ * which is what it is still there for; the last case below pins exactly that split.
  */
 const MOBILE_VIEWPORT = { contentWidth: 430, viewportHeight: 932, isMobile: true };
 
@@ -60,11 +64,20 @@ describe('admin hub mobile layout', () => {
     }
   });
 
-  it('documents the un-pinned budget that squeezed both panels into one row', () => {
-    const [panelRow] = layout([]);
+  it('leaves every panel one per row at the un-pinned budget, on its declared minimum alone', () => {
+    for (const row of layout([]).slice(0, 3)) {
+      expect(row.items).toHaveLength(1);
+      expect(Math.round(row.items[0]!.width)).toBe(MOBILE_VIEWPORT.contentWidth);
+    }
+  });
 
-    expect(panelRow?.items).toHaveLength(2);
-    for (const item of panelRow?.items ?? []) {
+  it('documents the un-pinned budget still pairing nav tiles — why mobileChunkSize is pinned', () => {
+    const tileRow = layout(tilesWithCovers(1600, 2400)).find(row =>
+      row.items.every(item => item.content.contentType !== 'PANEL')
+    );
+
+    expect(tileRow?.items).toHaveLength(2);
+    for (const item of tileRow?.items ?? []) {
       expect(item.width).toBeLessThan(MOBILE_VIEWPORT.contentWidth / 2);
     }
   });

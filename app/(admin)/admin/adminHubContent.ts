@@ -13,6 +13,13 @@
  * among whatever shares it, so a panel's width moves only when the number or shape of its
  * row-mates changes. Verified by measuring identical 298px panel widths at a 1274px content width
  * across rating 1, 2, and 3 alike, with row composition held fixed.
+ *
+ * That is why each panel declares {@link PANEL_MIN_WIDTH} rather than a higher rating: the minimum
+ * acts on row MEMBERSHIP, which is the lever that actually moves. At the 1274.4px max desktop
+ * content width it takes all three nav tiles out of the panels' row, and the panels go from
+ * 298.13px each to 416.27px each (measured through `buildContentRows`). Below 3 × 400 + 2 × gap =
+ * 1225.6px of content width three minimums no longer fit, and the packer drops the third panel to
+ * its own row — one panel per row by the time a phone is that narrow.
  */
 
 import type { AdminHomeTileApi } from '@/app/lib/api/adminHome';
@@ -21,6 +28,23 @@ import { clampParallaxDimensions } from '@/app/utils/contentLayout';
 import { isPanelContent } from '@/app/utils/contentTypeGuards';
 
 import { ADMIN_TILES } from './adminTiles';
+
+/**
+ * Narrowest width, in CSS px, at which a panel still displays everything it holds.
+ *
+ * Set by the widest irreducible row of chrome, which is the Users panel's: a header
+ * carrying the title, the "Show tag-only people" toggle and "+ New User", over body rows
+ * carrying an identity plus "Update" and "Reset pw". Below roughly 430-450px those wrap,
+ * then ellipsize; 400 is the honest floor for the panel body once padding is taken off,
+ * and it is shared by all three panels so the row solves symmetrically.
+ *
+ * The packer treats this as a preference over ROW MEMBERSHIP, not a reservation of page
+ * width: it evicts row-mates to honour it, and drops it when the item is alone in a row
+ * narrower than 400px (see {@link Content.minWidth}). That is what keeps a phone from
+ * getting a horizontally-overflowing panel — there the panel simply takes the full
+ * viewport width, which is the widest it could ever be given.
+ */
+const PANEL_MIN_WIDTH = 400;
 
 export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel[] {
   const apiByKey = new Map(tiles.map(t => [t.tileKey, t]));
@@ -59,6 +83,7 @@ export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel
     title: 'Users',
     width: 600,
     height: 1100,
+    minWidth: PANEL_MIN_WIDTH,
     orderIndex: 100,
     visible: true,
   };
@@ -71,6 +96,7 @@ export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel
     title: 'Messages',
     width: 600,
     height: 1100,
+    minWidth: PANEL_MIN_WIDTH,
     orderIndex: 101,
     visible: true,
   };
@@ -83,6 +109,7 @@ export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel
     title: 'Roles',
     width: 600,
     height: 1100,
+    minWidth: PANEL_MIN_WIDTH,
     orderIndex: 102,
     visible: true,
   };
@@ -110,6 +137,15 @@ export function buildAdminHubContent(tiles: AdminHomeTileApi[]): AnyContentModel
  * instead lets the bar size to its own header content. It is also why the clipping this fixed was
  * invisible on a maximized wide desktop and severe on a phone: the same cap sits on opposite sides
  * of the header's height depending on viewport.
+ *
+ * Note that this ratio and {@link PANEL_MIN_WIDTH} pull in OPPOSITE directions on the same blocks,
+ * and both are deliberate. The collapsed footprint is engineered to trip `isSoloHero`, which hands
+ * the bar its own full-width row; `minWidth` exists to keep an EXPANDED panel out of its own row by
+ * evicting row-mates instead. They never fight, because `isSoloHero` short-circuits in `buildRows`
+ * before composition runs: a collapsed panel is alone, is therefore as wide as it can possibly be,
+ * and its minimum is dropped as unsatisfiable-but-alone (see `Content.minWidth`). Do not "fix"
+ * either lever by weakening the other — flattening this ratio would strand collapsed bars mid-row,
+ * and dropping the minimum would put the expanded panels back at 298px.
  */
 export const COLLAPSED_PANEL_SIZE = { width: 1200, height: 56 } as const;
 
